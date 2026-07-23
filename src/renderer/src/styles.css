@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 13px;
+}
+
 :root {
   color: #ffffff;
   background: #000000;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 13px;
 }
 
 body {
@@ -14,6 +19,13 @@ body {
   overflow: hidden;
   background: #000000;
   font-size: 13px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
 #root {
