@@ -23,6 +23,7 @@ export const LeftSideBar = (): React.JSX.Element => {
             isCollapsed ? "left-1/2 -translate-x-1/2" : "left-0 translate-x-0"
           }`}
           aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
+          title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
           onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         >
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

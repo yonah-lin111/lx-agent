@@ -2,11 +2,20 @@ import { Check, Edit3, Plus, Save, Settings, Trash2, X } from "lucide-react"
 import type React from "react"
 import { forwardRef } from "react"
 
+import type { TooltipPlacement } from "@/components/ui/Tooltip"
+import { Tooltip } from "@/components/ui/Tooltip"
+
 // 图标按钮预设类型。
 export type IconButtonPreset = "add" | "close" | "save" | "confirm" | "delete" | "edit" | "default"
 
 // 图标按钮尺寸类型。
 export type IconButtonSize = "small" | "medium" | "large"
+
+// 图标按钮内置 Tooltip 配置。
+export interface IconButtonTooltip {
+  content: string
+  placement?: TooltipPlacement
+}
 
 const SIZE_CONTAINER_CLASSES: Record<IconButtonSize, string> = {
   small: "h-6 w-6",
@@ -77,6 +86,8 @@ export interface IconButtonProps
   iconOnly?: boolean
   preset?: IconButtonPreset
   size?: IconButtonSize
+  // 内置 Tooltip 配置。
+  title?: IconButtonTooltip
 }
 
 /**
@@ -95,6 +106,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       preset,
       size = "medium",
       disabled,
+      title,
       ...props
     },
     ref,
@@ -132,7 +144,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       renderContent = <DefaultIcon className={SIZE_ICON_CLASSES[size]} />
     }
 
-    return (
+    const button = (
       <button
         ref={ref}
         type={type}
@@ -142,6 +154,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       >
         {renderContent}
       </button>
+    )
+
+    return title ? (
+      <Tooltip content={title.content} placement={title.placement}>
+        {button}
+      </Tooltip>
+    ) : (
+      button
     )
   },
 )

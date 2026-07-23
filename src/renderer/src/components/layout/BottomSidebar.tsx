@@ -7,7 +7,7 @@ import { IconButton } from "@/components/ui/IconButton"
  * 页面底边栏布局容器。
  */
 export const BottomSidebar = (): React.JSX.Element => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
 
   return (
     <aside
@@ -21,6 +21,7 @@ export const BottomSidebar = (): React.JSX.Element => {
             isCollapsed ? "top-1/2 -translate-y-1/2" : "top-0 translate-y-0"
           }`}
           aria-label={isCollapsed ? "展开底边栏" : "折叠底边栏"}
+          title={{ content: isCollapsed ? "展开底边栏" : "折叠底边栏", placement: "top" }}
           onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         >
           {isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

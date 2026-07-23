@@ -7,7 +7,7 @@ import { IconButton } from "@/components/ui/IconButton"
  * 左侧栏
  */
 export const RightSidebar = (): React.JSX.Element => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
 
   return (
     <aside
@@ -21,6 +21,7 @@ export const RightSidebar = (): React.JSX.Element => {
             isCollapsed ? "left-1/2 -translate-x-1/2" : "left-[calc(100%_-_1.5rem)] translate-x-0"
           }`}
           aria-label={isCollapsed ? "展开右侧栏" : "折叠右侧栏"}
+          title={{ content: isCollapsed ? "展开右侧栏" : "折叠右侧栏", placement: "left" }}
           onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         >
           {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
