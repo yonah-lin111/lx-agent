@@ -11,8 +11,8 @@ export const RightSidebar = (): React.JSX.Element => {
 
   return (
     <aside
-      className={`h-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-16 min-w-16 max-w-16" : "min-w-[380px]"
+      className={`h-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,min-width,max-width] duration-300 ease-in-out ${
+        isCollapsed ? "w-16 min-w-16 max-w-16" : "w-[380px] min-w-[380px] max-w-[380px]"
       }`}
     >
       <div className="relative h-6 w-full">
