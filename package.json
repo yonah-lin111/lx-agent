@@ -1,0 +1,93 @@
+{
+  "name": "prompt-design-agent",
+  "version": "0.1.0",
+  "description": "本地优先的提示词设计 Agent 桌面应用。",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "pnpm rebuild:native:electron && electron-vite dev",
+    "build": "pnpm typecheck && pnpm rebuild:native:electron && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "biome check . --linter-enabled=false",
+    "format": "biome format --write .",
+    "test": "pnpm rebuild:native:node && vitest run --passWithNoTests",
+    "rebuild:native": "pnpm rebuild:native:electron",
+    "rebuild:native:electron": "node scripts/rebuildNativeIfNeeded.mjs electron",
+    "rebuild:native:electron:force": "electron-rebuild -f -w better-sqlite3 --build-from-source",
+    "rebuild:native:node": "node scripts/rebuildNativeIfNeeded.mjs node",
+    "rebuild:native:node:force": "pnpm rebuild better-sqlite3",
+    "postinstall": "pnpm rebuild:native:electron"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/google": "^3.0.80",
+    "@ai-sdk/openai": "^3.0.66",
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@tanstack/react-query": "^5.90.12",
+    "@xyflow/react": "^12.11.1",
+    "ai": "^6.0.193",
+    "better-sqlite3": "^12.4.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
+    "drizzle-orm": "^0.45.1",
+    "echarts": "^6.1.0",
+    "gray-matter": "^4.0.3",
+    "lucide-react": "^0.561.0",
+    "md-editor-rt": "^6.5.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.2.1",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
+    "@electron-toolkit/tsconfig": "^1.0.1",
+    "@electron/rebuild": "^4.0.4",
+    "@tailwindcss/vite": "^4.1.18",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/dagre": "^0.7.54",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "code-inspector-plugin": "^1.5.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "jsdom": "^29.1.1",
+    "playwright": "^1.57.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "vitest": "^4.0.15"
+  },
+  "build": {
+    "appId": "com.promptdesign.agent",
+    "productName": "Prompt Design Agent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**"
+    ],
+    "extraResources": [
+      "resources/**"
+    ],
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
