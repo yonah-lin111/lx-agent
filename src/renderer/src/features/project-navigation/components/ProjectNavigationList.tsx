@@ -3,42 +3,22 @@ import type React from "react"
 import { useState } from "react"
 
 import type {
-  LeftSideBarMenuType,
+  EditingItem,
+  ProjectNavigationMenuType,
+  ProjectNavigationProject,
+  ProjectNavigationPrompt,
   PromptStatus,
-} from "@/features/project-navigation/components/ProjectNavigationMenu"
+} from "@/features/project-navigation/types"
 
-// 侧边栏提示词数据。
-export interface SidebarPrompt {
-  id: string
-  name: string
-  status: PromptStatus
-}
-
-// 侧边栏模块数据。
-export interface SidebarModule {
-  id: string
-  name: string
-  prompts: SidebarPrompt[]
-}
-
-// 侧边栏项目数据。
-export interface SidebarProject {
-  id: string
-  name: string
-  path?: string
-  modules: SidebarModule[]
-  prompts: SidebarPrompt[]
-}
-
-// 行内编辑状态。
-export type EditingItem = {
-  id: string
-  name: string
-}
+export type {
+  EditingItem,
+  ProjectNavigationProject as SidebarProject,
+  ProjectNavigationPrompt as SidebarPrompt,
+} from "@/features/project-navigation/types"
 
 // 项目列表属性。
-interface ProjectListProps {
-  projects: SidebarProject[]
+interface ProjectNavigationListProps {
+  projects: ProjectNavigationProject[]
   searchKeyword: string
   activePromptId: string
   editingItem: EditingItem | null
@@ -53,7 +33,7 @@ interface ProjectListProps {
   onModuleToggle: (moduleId: string) => void
   onOpenMenu: (
     event: React.MouseEvent,
-    type: LeftSideBarMenuType,
+    type: ProjectNavigationMenuType,
     item: { id: string; name: string; status?: PromptStatus },
     projectId?: string,
   ) => void
@@ -62,7 +42,7 @@ interface ProjectListProps {
 /**
  * 展示项目、模块和提示词树，并管理模块内已完成提示词的折叠状态。
  */
-export const ProjectList = ({
+export const ProjectNavigationList = ({
   projects,
   searchKeyword,
   activePromptId,
@@ -77,7 +57,7 @@ export const ProjectList = ({
   onProjectToggle,
   onModuleToggle,
   onOpenMenu,
-}: ProjectListProps): React.JSX.Element => {
+}: ProjectNavigationListProps): React.JSX.Element => {
   const [collapsedCompletedPromptGroups, setCollapsedCompletedPromptGroups] = useState<
     Record<string, boolean>
   >({})
@@ -135,7 +115,7 @@ export const ProjectList = ({
   /**
    * 渲染可选择的提示词节点。
    */
-  const renderPrompt = (prompt: SidebarPrompt, isNested: boolean): React.JSX.Element => (
+  const renderPrompt = (prompt: ProjectNavigationPrompt, isNested: boolean): React.JSX.Element => (
     <div
       key={prompt.id}
       role="button"
@@ -169,7 +149,10 @@ export const ProjectList = ({
   /**
    * 渲染模块内未完成与已完成提示词，已完成项默认折叠。
    */
-  const renderModulePrompts = (prompts: SidebarPrompt[], moduleId: string): React.JSX.Element[] => {
+  const renderModulePrompts = (
+    prompts: ProjectNavigationProject["modules"][number]["prompts"],
+    moduleId: string,
+  ): React.JSX.Element[] => {
     const unfinishedPrompts = prompts.filter((prompt) => prompt.status !== "completed")
     const completedPrompts = prompts.filter((prompt) => prompt.status === "completed")
     const shouldAutoExpand =

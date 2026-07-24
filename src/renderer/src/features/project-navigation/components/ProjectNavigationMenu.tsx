@@ -3,14 +3,13 @@ import type React from "react"
 import { useEffect, useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
 
-export type LeftSideBarMenuType = "project" | "module" | "prompt"
+export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
 
-export type PromptStatus = "todo" | "in_progress" | "completed"
-
-type LeftSideBarMenuProps = {
+type ProjectNavigationMenuProps = {
   isOpen: boolean
-  type: LeftSideBarMenuType
+  type: ProjectNavigationMenuType
   title: string
   x: number
   y: number
@@ -26,7 +25,7 @@ type LeftSideBarMenuProps = {
 
 // 菜单退出动画期间保留的展示数据。
 type MenuDisplayState = {
-  type: LeftSideBarMenuType
+  type: ProjectNavigationMenuType
   title: string
   x: number
   y: number
@@ -43,7 +42,7 @@ const STATUS_OPTIONS: { value: PromptStatus; label: string; className: string }[
 /**
  * 展示项目、模块与提示词的右键操作菜单。
  */
-export const LeftSideBarMenu = ({
+export const ProjectNavigationMenu = ({
   isOpen,
   type,
   title,
@@ -57,7 +56,7 @@ export const LeftSideBarMenu = ({
   onStatusChange,
   onDelete,
   onClose,
-}: LeftSideBarMenuProps): React.JSX.Element | null => {
+}: ProjectNavigationMenuProps): React.JSX.Element | null => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
   const [lastMenu, setLastMenu] = useState<MenuDisplayState>({
     type: "project",

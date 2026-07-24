@@ -31,3 +31,10 @@ export interface ProjectNavigationProject {
 
 // 行内编辑状态。
 export type EditingItem = { id: string; name: string }
+
+// 菜单目标数据。
+export type ProjectNavigationMenuTarget = {
+  type: ProjectNavigationMenuType
+  id: string
+  projectId?: string
+}

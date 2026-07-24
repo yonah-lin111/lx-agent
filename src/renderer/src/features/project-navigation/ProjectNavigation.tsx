@@ -19,21 +19,22 @@ import {
 } from "@/features/project-navigation/components/ProjectModal"
 import {
   type EditingItem,
-  ProjectList,
+  ProjectNavigationList,
   type SidebarProject,
 } from "@/features/project-navigation/components/ProjectNavigationList"
 import {
-  LeftSideBarMenu,
-  type LeftSideBarMenuType,
+  ProjectNavigationMenu,
+  type ProjectNavigationMenuType,
   type PromptStatus,
 } from "@/features/project-navigation/components/ProjectNavigationMenu"
+import { useProjectNavigationActions } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
 import { filterProjectNavigationTree } from "@/features/project-navigation/utils"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 当前右键菜单状态。
 type MenuState = {
-  type: LeftSideBarMenuType
+  type: ProjectNavigationMenuType
   id: string
   projectId?: string
   title: string
@@ -46,13 +47,6 @@ type MenuState = {
 type ProjectModalState =
   | { mode: Extract<ProjectModalMode, "create"> }
   | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
-
-// 提示词状态的展示排序权重。
-const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
-  in_progress: 0,
-  todo: 1,
-  completed: 2,
-}
 
 /**
  * 页面左侧栏，展示可搜索的持久化项目与提示词层级。
@@ -69,6 +63,14 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
+  const {
+    createMenuItem,
+    deleteItem,
+    renameItem,
+    saveProject,
+    sortPromptsByStatus,
+    updatePromptStatus,
+  } = useProjectNavigationActions(projects, refreshProjects, toast)
 
   // 根据搜索关键词筛选项目树。
   const filteredProjects = useMemo(
@@ -81,7 +83,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
    */
   const openMenu = (
     event: React.MouseEvent,
-    type: LeftSideBarMenuType,
+    type: ProjectNavigationMenuType,
     item: { id: string; name: string; status?: PromptStatus },
     projectId?: string,
   ): void => {
@@ -124,28 +126,14 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const addMenuItem = async (itemType: "module" | "prompt"): Promise<void> => {
     if (!menu) return
     const name = itemType === "module" ? "new module" : "new design"
-    if (!window.api) return
-
-    try {
-      const item =
-        itemType === "module"
-          ? await window.api.project.modules.create({ projectId: menu.id, name })
-          : await window.api.project.designs.create({
-              projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
-              moduleId: menu.type === "module" ? menu.id : undefined,
-              name,
-            })
-
-      await refreshProjects()
+    const id = await createMenuItem(menu, itemType)
+    if (id) {
       if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
       if (itemType === "prompt" && menu.type === "module") {
         setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
       }
-      setEditingItem({ id: item.id, name })
+      setEditingItem({ id, name })
       setMenu(null)
-      toast.success(itemType === "module" ? "模块创建成功" : "提示词创建成功")
-    } catch {
-      toast.error(itemType === "module" ? "模块创建失败" : "提示词创建失败")
     }
   }
 
@@ -160,27 +148,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
       return
     }
 
-    if (!window.api) return
-
-    const project = projects.find((item) => item.id === editingItem.id)
-    const module = projects
-      .flatMap((item) => item.modules)
-      .find((item) => item.id === editingItem.id)
-
-    try {
-      if (project) {
-        await window.api.project.projects.update(project.id, { name })
-      } else if (module) {
-        await window.api.project.modules.update(module.id, { name })
-      } else {
-        await window.api.project.designs.update(editingItem.id, { name })
-      }
-
-      await refreshProjects()
+    if (await renameItem(editingItem.id, name)) {
       setEditingItem(null)
-      toast.success(project ? "项目更新成功" : module ? "模块更新成功" : "提示词更新成功")
-    } catch {
-      toast.error(project ? "项目更新失败" : module ? "模块更新失败" : "提示词更新失败")
     }
   }
 
@@ -196,68 +165,26 @@ export const ProjectNavigation = (): React.JSX.Element => {
    */
   const handleProjectModalSubmit = async (values: ProjectModalValues): Promise<void> => {
     if (!projectModal) return
-    if (!window.api) return
-
-    const type = values.path ? "filesystem" : "virtual"
-
-    try {
+    const projectId = await saveProject(
+      projectModal.mode === "edit" ? projectModal.project.id : null,
+      values.name,
+      values.path,
+    )
+    if (projectId) {
       if (projectModal.mode === "create") {
-        const project = await window.api.project.projects.create({ ...values, type })
-        setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: false }))
-      } else {
-        await window.api.project.projects.update(projectModal.project.id, {
-          name: values.name,
-          path: values.path ?? "",
-          type,
-        })
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: false }))
       }
-
-      await refreshProjects()
       setProjectModal(null)
-      toast.success(projectModal.mode === "create" ? "项目创建成功" : "项目更新成功")
-    } catch {
-      toast.error(projectModal.mode === "create" ? "项目创建失败" : "项目更新失败")
     }
   }
 
   /**
    * 更新右键目标提示词的状态。
    */
-  const updatePromptStatus = async (status: PromptStatus): Promise<void> => {
+  const handlePromptStatusChange = async (status: PromptStatus): Promise<void> => {
     if (!menu) return
-    if (!window.api) return
-
-    try {
-      await window.api.project.designs.update(menu.id, { status })
-      await refreshProjects()
-      setMenu(null)
-      toast.success("提示词状态更新成功")
-    } catch {
-      toast.error("提示词状态更新失败")
-    }
-  }
-
-  /**
-   * 按提示词状态稳定排序各模块和项目直属提示词。
-   */
-  const sortPromptsByStatus = async (): Promise<void> => {
-    if (!window.api) return
-
-    const sortedIds = projects
-      .flatMap((project) => [
-        ...project.modules.flatMap((module) => module.prompts),
-        ...project.prompts,
-      ])
-      .map((prompt, index) => ({ prompt, index }))
-      .sort(
-        (left, right) =>
-          PROMPT_STATUS_SORT_ORDER[left.prompt.status] -
-            PROMPT_STATUS_SORT_ORDER[right.prompt.status] || left.index - right.index,
-      )
-      .map(({ prompt }) => prompt.id)
-
-    await window.api.project.designs.sort(sortedIds)
-    await refreshProjects()
+    await updatePromptStatus(menu.id, status)
+    setMenu(null)
   }
 
   /**
@@ -265,8 +192,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
    */
   const deleteMenuItem = async (): Promise<void> => {
     if (!menu) return
-    if (!window.api) return
-
     const deletedPromptIds =
       menu.type === "project"
         ? (projects
@@ -281,29 +206,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
               ?.prompts.map((prompt) => prompt.id) ?? [])
           : [menu.id]
 
-    try {
-      if (menu.type === "project") await window.api.project.projects.delete(menu.id)
-      if (menu.type === "module") await window.api.project.modules.delete(menu.id)
-      if (menu.type === "prompt") await window.api.project.designs.delete(menu.id)
-
+    if (await deleteItem(menu)) {
       if (deletedPromptIds.includes(activePromptId)) setActivePromptId("")
-      await refreshProjects()
       setMenu(null)
-      toast.success(
-        menu.type === "project"
-          ? "项目删除成功"
-          : menu.type === "module"
-            ? "模块删除成功"
-            : "提示词删除成功",
-      )
-    } catch {
-      toast.error(
-        menu.type === "project"
-          ? "项目删除失败"
-          : menu.type === "module"
-            ? "模块删除失败"
-            : "提示词删除失败",
-      )
     }
   }
 
@@ -406,7 +311,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             />
           </div>
 
-          <ProjectList
+          <ProjectNavigationList
             activePromptId={activePromptId}
             collapsedModules={collapsedModules}
             collapsedProjects={collapsedProjects}
@@ -424,7 +329,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
           />
         </div>
       )}
-      <LeftSideBarMenu
+      <ProjectNavigationMenu
         isOpen={menu !== null}
         type={menu?.type ?? "project"}
         title={menu?.title ?? ""}
@@ -435,7 +340,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         onRename={renameMenuItem}
         onAddModule={() => addMenuItem("module")}
         onAddPrompt={() => addMenuItem("prompt")}
-        onStatusChange={updatePromptStatus}
+        onStatusChange={handlePromptStatusChange}
         onDelete={deleteMenuItem}
         onClose={() => setMenu(null)}
       />

@@ -6,6 +6,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@shared",
+        replacement: resolve(process.cwd(), "src/shared"),
+      },
+      {
         find: /^@\/(.*)$/,
         replacement: "$1",
         customResolver(source, importer) {

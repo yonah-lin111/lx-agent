@@ -1,5 +1,6 @@
 import type { Design, Module, Project } from "@shared/project"
 import { describe, expect, it } from "vitest"
+import { getSortedPromptIds } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import {
   createProjectNavigationTree,
   filterProjectNavigationTree,
@@ -56,6 +57,13 @@ describe("project navigation utils", () => {
     const tree = createProjectNavigationTree([project], [module], designs)
     expect(filterProjectNavigationTree(tree, "navigation")).toMatchObject([
       { id: project.id, modules: [{ id: module.id, prompts: [{ id: "design-1" }] }], prompts: [] },
+    ])
+  })
+
+  it("按状态稳定排序提示词", () => {
+    expect(getSortedPromptIds(createProjectNavigationTree([project], [module], designs))).toEqual([
+      "design-1",
+      "design-2",
     ])
   })
 })
