@@ -1,7 +1,7 @@
 {
-  "name": "prompt-design-agent",
+  "name": "lx-agent",
   "version": "0.1.0",
-  "description": "本地优先的提示词设计 Agent 桌面应用。",
+  "description": "专用于生产提示词的 LX Agent 桌面应用。",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
@@ -75,8 +75,8 @@
     "vitest": "^4.0.15"
   },
   "build": {
-    "appId": "com.promptdesign.agent",
-    "productName": "Prompt Design Agent",
+    "appId": "com.lx.agent",
+    "productName": "LX Agent",
     "directories": {
       "output": "release"
     },
