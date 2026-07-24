@@ -1,5 +1,4 @@
 import {
-  ArrowUpDown,
   Boxes,
   CheckCircle2,
   ChevronDown,
@@ -14,12 +13,13 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import {
-  LeftSideBarContextMenu,
-  type LeftSideBarContextMenuType,
+  LeftSideBarMenu,
+  type LeftSideBarMenuType,
   type PromptStatus,
-} from "@/components/layout/LeftSideBar/components/LeftSideBarContextMenu"
+} from "@/components/layout/LeftSideBar/components/LeftSideBarMenu"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxModal } from "@/components/ui/LxModal"
 
 // 模拟提示词数据结构。
 interface MockPrompt {
@@ -39,6 +39,7 @@ interface MockModule {
 interface MockProject {
   id: string
   name: string
+  path?: string
   modules: MockModule[]
   prompts: MockPrompt[]
 }
@@ -80,8 +81,8 @@ const MOCK_PROJECTS: MockProject[] = [
 ]
 
 // 当前右键菜单状态。
-type ContextMenuState = {
-  type: LeftSideBarContextMenuType
+type MenuState = {
+  type: LeftSideBarMenuType
   id: string
   projectId?: string
   title: string
@@ -96,6 +97,13 @@ type EditingItem = {
   name: string
 }
 
+// 当前项目编辑状态。
+type EditingProject = {
+  id: string
+  name: string
+  path: string
+}
+
 /**
  * 页面左侧栏，展示可搜索的模拟项目与提示词层级。
  */
@@ -104,8 +112,12 @@ export const LeftSideBar = (): React.JSX.Element => {
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [activePromptId, setActivePromptId] = useState<string>("product-1")
   const [projects, setProjects] = useState<MockProject[]>(MOCK_PROJECTS)
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState<boolean>(false)
+  const [newProjectName, setNewProjectName] = useState<string>("")
+  const [newProjectPath, setNewProjectPath] = useState<string>("")
+  const [editingProject, setEditingProject] = useState<EditingProject | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({
     development: true,
@@ -143,14 +155,14 @@ export const LeftSideBar = (): React.JSX.Element => {
   /**
    * 打开指定层级节点的右键菜单。
    */
-  const openContextMenu = (
+  const openMenu = (
     event: React.MouseEvent,
-    type: LeftSideBarContextMenuType,
+    type: LeftSideBarMenuType,
     item: { id: string; name: string; status?: PromptStatus },
     projectId?: string,
   ): void => {
     event.preventDefault()
-    setContextMenu({
+    setMenu({
       type,
       id: item.id,
       projectId,
@@ -164,41 +176,45 @@ export const LeftSideBar = (): React.JSX.Element => {
   /**
    * 进入右键目标的行内重命名状态。
    */
-  const renameContextMenuItem = (): void => {
-    if (!contextMenu) return
-    setEditingItem({ id: contextMenu.id, name: contextMenu.title })
-    setContextMenu(null)
+  const renameMenuItem = (): void => {
+    if (!menu) return
+    setEditingItem({ id: menu.id, name: menu.title })
+    setMenu(null)
+  }
+
+  /**
+   * 打开右键目标项目的编辑弹窗。
+   */
+  const openEditProjectModal = (): void => {
+    if (!menu || menu.type !== "project") return
+    const project = projects.find((item) => item.id === menu.id)
+    if (!project) return
+
+    setEditingProject({ id: project.id, name: project.name, path: project.path ?? "" })
+    setMenu(null)
   }
 
   /**
    * 在右键菜单目标下新增节点并进入行内编辑状态。
    */
-  const addContextMenuItem = (itemType: "module" | "prompt"): void => {
-    if (!contextMenu) return
+  const addMenuItem = (itemType: "module" | "prompt"): void => {
+    if (!menu) return
     const id = crypto.randomUUID()
     const name = itemType === "module" ? "新模块" : "新提示词"
 
     setProjects((currentProjects) =>
       currentProjects.map((project) => {
-        if (itemType === "module" && project.id === contextMenu.id) {
+        if (itemType === "module" && project.id === menu.id) {
           return { ...project, modules: [...project.modules, { id, name, prompts: [] }] }
         }
-        if (
-          itemType === "prompt" &&
-          contextMenu.type === "project" &&
-          project.id === contextMenu.id
-        ) {
+        if (itemType === "prompt" && menu.type === "project" && project.id === menu.id) {
           return { ...project, prompts: [...project.prompts, { id, name, status: "todo" }] }
         }
-        if (
-          itemType === "prompt" &&
-          contextMenu.type === "module" &&
-          project.id === contextMenu.projectId
-        ) {
+        if (itemType === "prompt" && menu.type === "module" && project.id === menu.projectId) {
           return {
             ...project,
             modules: project.modules.map((module) =>
-              module.id === contextMenu.id
+              module.id === menu.id
                 ? { ...module, prompts: [...module.prompts, { id, name, status: "todo" }] }
                 : module,
             ),
@@ -207,13 +223,12 @@ export const LeftSideBar = (): React.JSX.Element => {
         return project
       }),
     )
-    if (itemType === "module")
-      setCollapsedProjects((value) => ({ ...value, [contextMenu.id]: false }))
-    if (itemType === "prompt" && contextMenu.type === "module") {
-      setCollapsedModules((value) => ({ ...value, [contextMenu.id]: false }))
+    if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+    if (itemType === "prompt" && menu.type === "module") {
+      setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
     }
     setEditingItem({ id, name })
-    setContextMenu(null)
+    setMenu(null)
   }
 
   /**
@@ -254,55 +269,100 @@ export const LeftSideBar = (): React.JSX.Element => {
   }
 
   /**
+   * 创建项目并展开其内容区域。
+   */
+  const createProject = (): void => {
+    const name = newProjectName.trim()
+    if (!name) return
+
+    const id = crypto.randomUUID()
+    setProjects((currentProjects) => [
+      ...currentProjects,
+      { id, name, path: newProjectPath.trim() || undefined, modules: [], prompts: [] },
+    ])
+    setCollapsedProjects((currentValue) => ({ ...currentValue, [id]: false }))
+    setNewProjectName("")
+    setNewProjectPath("")
+    setIsCreateProjectModalOpen(false)
+  }
+
+  /**
+   * 关闭创建项目弹窗并清空未提交内容。
+   */
+  const closeCreateProjectModal = (): void => {
+    setNewProjectName("")
+    setNewProjectPath("")
+    setIsCreateProjectModalOpen(false)
+  }
+
+  /**
+   * 保存项目弹窗中的名称与路径。
+   */
+  const saveEditedProject = (): void => {
+    if (!editingProject) return
+    const name = editingProject.name.trim()
+    if (!name) return
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === editingProject.id
+          ? { ...project, name, path: editingProject.path.trim() || undefined }
+          : project,
+      ),
+    )
+    setEditingProject(null)
+  }
+
+  /**
    * 更新右键目标提示词的状态。
    */
   const updatePromptStatus = (status: PromptStatus): void => {
-    if (!contextMenu) return
+    if (!menu) return
     setProjects((currentProjects) =>
       currentProjects.map((project) => ({
         ...project,
         modules: project.modules.map((module) => ({
           ...module,
           prompts: module.prompts.map((prompt) =>
-            prompt.id === contextMenu.id ? { ...prompt, status } : prompt,
+            prompt.id === menu.id ? { ...prompt, status } : prompt,
           ),
         })),
         prompts: project.prompts.map((prompt) =>
-          prompt.id === contextMenu.id ? { ...prompt, status } : prompt,
+          prompt.id === menu.id ? { ...prompt, status } : prompt,
         ),
       })),
     )
-    setContextMenu(null)
+    setMenu(null)
   }
 
   /**
    * 删除右键菜单目标及其下属数据。
    */
-  const deleteContextMenuItem = (): void => {
-    if (!contextMenu) return
+  const deleteMenuItem = (): void => {
+    if (!menu) return
     setProjects((currentProjects) =>
       currentProjects
-        .filter((project) => contextMenu.type !== "project" || project.id !== contextMenu.id)
+        .filter((project) => menu.type !== "project" || project.id !== menu.id)
         .map((project) => ({
           ...project,
           modules:
-            contextMenu.type === "module" && project.id === contextMenu.projectId
-              ? project.modules.filter((module) => module.id !== contextMenu.id)
+            menu.type === "module" && project.id === menu.projectId
+              ? project.modules.filter((module) => module.id !== menu.id)
               : project.modules.map((module) => ({
                   ...module,
                   prompts:
-                    contextMenu.type === "prompt"
-                      ? module.prompts.filter((prompt) => prompt.id !== contextMenu.id)
+                    menu.type === "prompt"
+                      ? module.prompts.filter((prompt) => prompt.id !== menu.id)
                       : module.prompts,
                 })),
           prompts:
-            contextMenu.type === "prompt"
-              ? project.prompts.filter((prompt) => prompt.id !== contextMenu.id)
+            menu.type === "prompt"
+              ? project.prompts.filter((prompt) => prompt.id !== menu.id)
               : project.prompts,
         })),
     )
-    if (contextMenu.type === "prompt" && activePromptId === contextMenu.id) setActivePromptId("")
-    setContextMenu(null)
+    if (menu.type === "prompt" && activePromptId === menu.id) setActivePromptId("")
+    setMenu(null)
   }
 
   /**
@@ -384,7 +444,7 @@ export const LeftSideBar = (): React.JSX.Element => {
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
       }}
-      onContextMenu={(event) => openContextMenu(event, "prompt", prompt)}
+      onContextMenu={(event) => openMenu(event, "prompt", prompt)}
     >
       {renderStatusIcon(prompt.status)}
       {renderItemName(
@@ -426,12 +486,6 @@ export const LeftSideBar = (): React.JSX.Element => {
             </LxIconButton>
             <div className="flex items-center gap-0.5">
               <LxIconButton
-                aria-label="按状态排序"
-                title={{ content: "按状态排序", placement: "bottom" }}
-              >
-                <ArrowUpDown className="h-3.5 w-3.5" />
-              </LxIconButton>
-              <LxIconButton
                 aria-label="导入项目"
                 title={{ content: "导入项目", placement: "bottom" }}
               >
@@ -440,6 +494,7 @@ export const LeftSideBar = (): React.JSX.Element => {
               <LxIconButton
                 aria-label="新建项目"
                 title={{ content: "新建项目", placement: "bottom" }}
+                onClick={() => setIsCreateProjectModalOpen(true)}
               >
                 <Plus className="h-4 w-4" />
               </LxIconButton>
@@ -477,7 +532,7 @@ export const LeftSideBar = (): React.JSX.Element => {
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
                       }}
-                      onContextMenu={(event) => openContextMenu(event, "project", project)}
+                      onContextMenu={(event) => openMenu(event, "project", project)}
                     >
                       <FolderKanban className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
                       {renderItemName(
@@ -509,7 +564,7 @@ export const LeftSideBar = (): React.JSX.Element => {
                                     event.currentTarget.click()
                                 }}
                                 onContextMenu={(event) =>
-                                  openContextMenu(event, "module", module, project.id)
+                                  openMenu(event, "module", module, project.id)
                                 }
                               >
                                 <Boxes className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
@@ -537,21 +592,129 @@ export const LeftSideBar = (): React.JSX.Element => {
           </div>
         </div>
       )}
-      {contextMenu ? (
-        <LeftSideBarContextMenu
-          type={contextMenu.type}
-          title={contextMenu.title}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          status={contextMenu.status}
-          onRename={renameContextMenuItem}
-          onAddModule={() => addContextMenuItem("module")}
-          onAddPrompt={() => addContextMenuItem("prompt")}
-          onStatusChange={updatePromptStatus}
-          onDelete={deleteContextMenuItem}
-          onClose={() => setContextMenu(null)}
-        />
-      ) : null}
+      <LeftSideBarMenu
+        isOpen={menu !== null}
+        type={menu?.type ?? "project"}
+        title={menu?.title ?? ""}
+        x={menu?.x ?? 0}
+        y={menu?.y ?? 0}
+        status={menu?.status}
+        onEditProject={openEditProjectModal}
+        onRename={renameMenuItem}
+        onAddModule={() => addMenuItem("module")}
+        onAddPrompt={() => addMenuItem("prompt")}
+        onStatusChange={updatePromptStatus}
+        onDelete={deleteMenuItem}
+        onClose={() => setMenu(null)}
+      />
+      <LxModal isOpen={isCreateProjectModalOpen} title="新建项目" onClose={closeCreateProjectModal}>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            createProject()
+          }}
+        >
+          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+            项目名称
+            <LxInput
+              autoFocus
+              required
+              aria-label="项目名称"
+              placeholder="输入项目名称"
+              size="xs"
+              value={newProjectName}
+              onChange={(event) => setNewProjectName(event.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+            项目路径（可选）
+            <LxInput
+              aria-label="项目路径"
+              placeholder="例如：/Users/name/project"
+              size="xs"
+              value={newProjectPath}
+              onChange={(event) => setNewProjectPath(event.target.value)}
+            />
+          </label>
+          <div className="mt-1 flex justify-end gap-1.5">
+            <LxIconButton
+              aria-label="取消创建项目"
+              preset="close"
+              size="small"
+              title={{ content: "取消", placement: "bottom" }}
+              onClick={closeCreateProjectModal}
+            />
+            <LxIconButton
+              aria-label="确认创建项目"
+              preset="confirm"
+              size="small"
+              title={{ content: "创建项目", placement: "bottom" }}
+              type="submit"
+            />
+          </div>
+        </form>
+      </LxModal>
+      <LxModal
+        isOpen={editingProject !== null}
+        title="编辑项目"
+        onClose={() => setEditingProject(null)}
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            saveEditedProject()
+          }}
+        >
+          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+            项目名称
+            <LxInput
+              autoFocus
+              required
+              aria-label="项目名称"
+              placeholder="输入项目名称"
+              size="xs"
+              value={editingProject?.name ?? ""}
+              onChange={(event) =>
+                setEditingProject((currentValue) =>
+                  currentValue ? { ...currentValue, name: event.target.value } : null,
+                )
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+            项目路径（可选）
+            <LxInput
+              aria-label="项目路径"
+              placeholder="例如：/Users/name/project"
+              size="xs"
+              value={editingProject?.path ?? ""}
+              onChange={(event) =>
+                setEditingProject((currentValue) =>
+                  currentValue ? { ...currentValue, path: event.target.value } : null,
+                )
+              }
+            />
+          </label>
+          <div className="mt-1 flex justify-end gap-1.5">
+            <LxIconButton
+              aria-label="取消编辑项目"
+              preset="close"
+              size="small"
+              title={{ content: "取消", placement: "bottom" }}
+              onClick={() => setEditingProject(null)}
+            />
+            <LxIconButton
+              aria-label="确认编辑项目"
+              preset="confirm"
+              size="small"
+              title={{ content: "保存项目", placement: "bottom" }}
+              type="submit"
+            />
+          </div>
+        </form>
+      </LxModal>
     </aside>
   )
 }
