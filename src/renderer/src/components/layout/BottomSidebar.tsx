@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, PanelBottom, PanelBottomDashed } from "lucide-react"
+import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
 import { useState } from "react"
 
 import { IconButton } from "@/components/ui/IconButton"
@@ -26,22 +26,22 @@ export const BottomSidebar = ({
     >
       <div className="relative h-full w-full">
         <div
-          className={`absolute right-0 flex gap-1 transition-[top,transform] duration-300 ease-in-out ${
+          className={`absolute right-0 flex gap-1 transition-transform duration-300 ease-in-out ${
             isCollapsed ? "top-1/2 -translate-y-1/2" : "top-0 translate-y-0"
           }`}
         >
           <IconButton
-            aria-label={isCoveringRightSidebar ? "底边栏覆盖右侧栏宽度" : "底边栏不覆盖右侧栏宽度"}
+            aria-label={isCoveringRightSidebar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
             title={{
-              content: isCoveringRightSidebar ? "底边栏覆盖右侧栏宽度" : "底边栏不覆盖右侧栏宽度",
+              content: isCoveringRightSidebar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
               placement: "top",
             }}
             onClick={() => onCoveringRightSidebarChange(!isCoveringRightSidebar)}
           >
             {isCoveringRightSidebar ? (
-              <PanelBottom className="h-4 w-4" />
+              <ChevronsRightLeft className="h-4 w-4" />
             ) : (
-              <PanelBottomDashed className="h-4 w-4" />
+              <ChevronsLeftRight className="h-4 w-4" />
             )}
           </IconButton>
           <IconButton

@@ -19,8 +19,8 @@ export const LeftSideBar = (): React.JSX.Element => {
     >
       <div className="relative h-6 w-full">
         <IconButton
-          className={`absolute top-0 transition-[left,transform] duration-300 ease-in-out ${
-            isCollapsed ? "left-1/2 -translate-x-1/2" : "left-0 translate-x-0"
+          className={`absolute left-0 top-0 transition-transform duration-300 ease-in-out ${
+            isCollapsed ? "translate-x-3" : "translate-x-0"
           }`}
           aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
           title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
