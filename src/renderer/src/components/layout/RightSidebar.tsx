@@ -6,7 +6,7 @@ import { IconButton } from "@/components/ui/IconButton"
 /**
  * 左侧栏
  */
-export const RightSidebar = (): React.JSX.Element => {
+export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
 
   return (
