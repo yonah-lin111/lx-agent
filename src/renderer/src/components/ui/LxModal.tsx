@@ -84,9 +84,9 @@ export const LxModal = ({
   return createPortal(
     <div
       ref={backdropRef}
-      aria-hidden={!isOpen}
-      aria-modal="true"
+      aria-modal={isOpen ? "true" : undefined}
       className="fixed inset-0 z-[999998] flex items-center justify-center"
+      inert={!isOpen}
       role="dialog"
       onClick={handleBackdropClick}
       onMouseDown={handleBackdropMouseDown}

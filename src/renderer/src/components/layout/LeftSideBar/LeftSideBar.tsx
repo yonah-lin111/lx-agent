@@ -1,22 +1,15 @@
-import {
-  Boxes,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Circle,
-  FolderKanban,
-  Import,
-  LoaderCircle,
-  Plus,
-  Search,
-} from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, Import, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import {
   LeftSideBarMenu,
   type LeftSideBarMenuType,
   type PromptStatus,
 } from "@/components/layout/LeftSideBar/components/LeftSideBarMenu"
+import {
+  type EditingItem,
+  ProjectList,
+  type SidebarProject,
+} from "@/components/layout/LeftSideBar/components/ProjectList"
 import {
   ProjectModal,
   type ProjectModalMode,
@@ -25,31 +18,8 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 
-// 模拟提示词数据结构。
-interface MockPrompt {
-  id: string
-  name: string
-  status: PromptStatus
-}
-
-// 模拟模块数据结构。
-interface MockModule {
-  id: string
-  name: string
-  prompts: MockPrompt[]
-}
-
-// 模拟项目数据结构。
-interface MockProject {
-  id: string
-  name: string
-  path?: string
-  modules: MockModule[]
-  prompts: MockPrompt[]
-}
-
 // 侧边栏展示用的模拟项目数据。
-const MOCK_PROJECTS: MockProject[] = [
+const MOCK_PROJECTS: SidebarProject[] = [
   {
     id: "lx-agent",
     name: "LX Agent",
@@ -95,16 +65,17 @@ type MenuState = {
   y: number
 }
 
-// 当前行内编辑状态。
-type EditingItem = {
-  id: string
-  name: string
-}
-
 // 当前项目弹窗状态。
 type ProjectModalState =
   | { mode: Extract<ProjectModalMode, "create"> }
-  | { mode: Extract<ProjectModalMode, "edit">; project: MockProject }
+  | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
+
+// 提示词状态的展示排序权重。
+const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
+  in_progress: 0,
+  todo: 1,
+  completed: 2,
+}
 
 /**
  * 页面左侧栏，展示可搜索的模拟项目与提示词层级。
@@ -113,7 +84,7 @@ export const LeftSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [activePromptId, setActivePromptId] = useState<string>("product-1")
-  const [projects, setProjects] = useState<MockProject[]>(MOCK_PROJECTS)
+  const [projects, setProjects] = useState<SidebarProject[]>(MOCK_PROJECTS)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
   const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
@@ -314,6 +285,28 @@ export const LeftSideBar = (): React.JSX.Element => {
   }
 
   /**
+   * 按提示词状态稳定排序各模块和项目直属提示词。
+   */
+  const sortPromptsByStatus = (): void => {
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => ({
+        ...project,
+        modules: project.modules.map((module) => ({
+          ...module,
+          prompts: [...module.prompts].sort(
+            (left, right) =>
+              PROMPT_STATUS_SORT_ORDER[left.status] - PROMPT_STATUS_SORT_ORDER[right.status],
+          ),
+        })),
+        prompts: [...project.prompts].sort(
+          (left, right) =>
+            PROMPT_STATUS_SORT_ORDER[left.status] - PROMPT_STATUS_SORT_ORDER[right.status],
+        ),
+      })),
+    )
+  }
+
+  /**
    * 删除右键菜单目标及其下属数据。
    */
   const deleteMenuItem = (): void => {
@@ -363,77 +356,6 @@ export const LeftSideBar = (): React.JSX.Element => {
     }))
   }
 
-  /**
-   * 渲染提示词状态图标。
-   */
-  const renderStatusIcon = (status: PromptStatus): React.JSX.Element => {
-    if (status === "completed") {
-      return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
-    }
-    if (status === "in_progress") {
-      return <LoaderCircle className="h-3.5 w-3.5 animate-spin text-amber-400/80" />
-    }
-    return <Circle className="h-3.5 w-3.5 text-white/30" />
-  }
-
-  /**
-   * 渲染名称或对应的行内编辑输入框。
-   */
-  const renderItemName = (
-    item: { id: string; name: string },
-    className: string,
-  ): React.JSX.Element => {
-    if (editingItem?.id !== item.id) return <span className={className}>{item.name}</span>
-
-    return (
-      <input
-        autoFocus
-        className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-xs text-white/80 outline-none"
-        value={editingItem.name}
-        onBlur={commitEditingItem}
-        onChange={(event) => setEditingItem({ ...editingItem, name: event.target.value })}
-        onClick={(event) => event.stopPropagation()}
-        onFocus={(event) => event.target.select()}
-        onKeyDown={(event) => {
-          event.stopPropagation()
-          if (event.key === "Escape") cancelEditingItem()
-          if (event.key === "Enter" && !event.nativeEvent.isComposing) commitEditingItem()
-        }}
-      />
-    )
-  }
-
-  /**
-   * 渲染可选择的提示词节点。
-   */
-  const renderPrompt = (prompt: MockPrompt, isNested: boolean): React.JSX.Element => (
-    <div
-      key={prompt.id}
-      role="button"
-      tabIndex={0}
-      className={`flex w-full items-center gap-2 rounded-[6px] py-1.5 pr-2 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-        isNested ? "pl-5" : "pl-2"
-      } ${
-        activePromptId === prompt.id
-          ? "bg-white/10 text-white"
-          : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
-      }`}
-      onClick={() => setActivePromptId(prompt.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
-      }}
-      onContextMenu={(event) => openMenu(event, "prompt", prompt)}
-    >
-      {renderStatusIcon(prompt.status)}
-      {renderItemName(
-        prompt,
-        prompt.status === "completed"
-          ? "min-w-0 flex-1 truncate text-white/40 line-through"
-          : "min-w-0 flex-1 truncate",
-      )}
-    </div>
-  )
-
   return (
     <aside
       className={`h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
@@ -464,6 +386,13 @@ export const LeftSideBar = (): React.JSX.Element => {
             </LxIconButton>
             <div className="flex items-center gap-0.5">
               <LxIconButton
+                aria-label="按状态排序"
+                title={{ content: "按状态排序", placement: "bottom" }}
+                onClick={sortPromptsByStatus}
+              >
+                <ArrowUpDown className="h-3.5 w-3.5" />
+              </LxIconButton>
+              <LxIconButton
                 aria-label="导入项目"
                 title={{ content: "导入项目", placement: "bottom" }}
               >
@@ -492,82 +421,21 @@ export const LeftSideBar = (): React.JSX.Element => {
             />
           </div>
 
-          <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2">
-            {filteredProjects.length > 0 ? (
-              filteredProjects.map((project) => {
-                const isProjectCollapsed = searchKeyword
-                  ? false
-                  : Boolean(collapsedProjects[project.id])
-
-                return (
-                  <div key={project.id} className="space-y-1">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="group flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04]"
-                      aria-expanded={!isProjectCollapsed}
-                      onClick={() => toggleProject(project.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
-                      }}
-                      onContextMenu={(event) => openMenu(event, "project", project)}
-                    >
-                      <FolderKanban className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
-                      {renderItemName(
-                        project,
-                        "min-w-0 flex-1 truncate text-xs font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",
-                      )}
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 text-white/30 transition-transform ${isProjectCollapsed ? "-rotate-90" : ""}`}
-                      />
-                    </div>
-
-                    {!isProjectCollapsed && (
-                      <div className="space-y-0.5">
-                        {project.modules.map((module) => {
-                          const isModuleCollapsed = searchKeyword
-                            ? false
-                            : Boolean(collapsedModules[module.id])
-
-                          return (
-                            <div key={module.id} className="space-y-0.5">
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                className="group flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left text-xs text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04] hover:text-white/85"
-                                aria-expanded={!isModuleCollapsed}
-                                onClick={() => toggleModule(module.id)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter" || event.key === " ")
-                                    event.currentTarget.click()
-                                }}
-                                onContextMenu={(event) =>
-                                  openMenu(event, "module", module, project.id)
-                                }
-                              >
-                                <Boxes className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
-                                {renderItemName(module, "min-w-0 flex-1 truncate")}
-                                <ChevronDown
-                                  className={`h-3.5 w-3.5 text-white/30 transition-transform ${isModuleCollapsed ? "-rotate-90" : ""}`}
-                                />
-                              </div>
-                              {!isModuleCollapsed &&
-                                module.prompts.map((prompt) => renderPrompt(prompt, true))}
-                            </div>
-                          )
-                        })}
-                        {project.prompts.map((prompt) => renderPrompt(prompt, false))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            ) : (
-              <div className="rounded-[6px] border border-white/5 px-3 py-4 text-center text-xs text-white/35">
-                没有匹配的项目
-              </div>
-            )}
-          </div>
+          <ProjectList
+            activePromptId={activePromptId}
+            collapsedModules={collapsedModules}
+            collapsedProjects={collapsedProjects}
+            editingItem={editingItem}
+            projects={filteredProjects}
+            searchKeyword={searchKeyword}
+            onActivePromptChange={setActivePromptId}
+            onEditingItemCancel={cancelEditingItem}
+            onEditingItemChange={setEditingItem}
+            onEditingItemCommit={commitEditingItem}
+            onModuleToggle={toggleModule}
+            onOpenMenu={openMenu}
+            onProjectToggle={toggleProject}
+          />
         </div>
       )}
       <LeftSideBarMenu
