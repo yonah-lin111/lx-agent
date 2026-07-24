@@ -4,12 +4,13 @@
     "electron.vite.config.ts",
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
+    "src/shared/**/*.ts",
     "test/main/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "moduleResolution": "bundler",
     "types": ["node"],
-    "paths": { "@/*": ["./src/main/*"] }
+    "paths": { "@/*": ["./src/main/*"], "@shared/*": ["./src/shared/*"] }
   }
 }

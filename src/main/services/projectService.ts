@@ -1,77 +1,31 @@
 import { randomUUID } from "node:crypto"
+import type {
+  CreateDesignInput,
+  CreateModuleInput,
+  CreateProjectInput,
+  Design,
+  DesignStatus,
+  Module,
+  Project,
+  UpdateDesignInput,
+  UpdateModuleInput,
+  UpdateProjectInput,
+} from "@shared/project"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
 
-// 设计状态。
-export type DesignStatus = "todo" | "in_progress" | "completed"
-
-// 项目数据。
-export type Project = {
-  id: string
-  name: string
-  type: "filesystem" | "virtual"
-  path?: string
-  createdAt: string
-  updatedAt: string
-}
-
-// 模块数据。
-export type Module = {
-  id: string
-  projectId: string
-  name: string
-  createdAt: string
-  updatedAt: string
-}
-
-// 设计数据。
-export type Design = {
-  id: string
-  projectId: string
-  moduleId?: string
-  name: string
-  designData: string
-  status: DesignStatus
-  sortOrder: number
-  createdAt: string
-  updatedAt: string
-}
-
-// 项目创建参数。
-export type CreateProjectInput = {
-  name: string
-  type?: "filesystem" | "virtual"
-  path?: string
-}
-
-// 项目更新参数。
-export type UpdateProjectInput = Partial<CreateProjectInput>
-
-// 模块创建参数。
-export type CreateModuleInput = {
-  projectId: string
-  name: string
-}
-
-// 模块更新参数。
-export type UpdateModuleInput = {
-  name: string
-}
-
-// 设计创建参数。
-export type CreateDesignInput = {
-  projectId: string
-  moduleId?: string
-  name: string
-  designData?: string
-}
-
-// 设计更新参数。
-export type UpdateDesignInput = {
-  name?: string
-  designData?: string
-  status?: DesignStatus
-}
+export type {
+  CreateDesignInput,
+  CreateModuleInput,
+  CreateProjectInput,
+  Design,
+  DesignStatus,
+  Module,
+  Project,
+  UpdateDesignInput,
+  UpdateModuleInput,
+  UpdateProjectInput,
+} from "@shared/project"
 
 // 项目数据库记录。
 type ProjectRow = {

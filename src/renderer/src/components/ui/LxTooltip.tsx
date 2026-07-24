@@ -1,29 +1,18 @@
 import React, { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
-import { LxIconButton } from "@/components/ui/LxIconButton"
-
 // Tooltip 弹出位置。
 export type LxTooltipPlacement = "top" | "bottom" | "left" | "right"
 
 // Tooltip 触发方式。
 export type LxTooltipTrigger = "hover" | "click" | "both"
 
-// 确认按钮样式。
-export type LxTooltipVariant = "danger" | "primary"
-
 // Tooltip 组件属性。
 export interface LxTooltipProps {
   children: React.ReactNode
   content?: React.ReactNode
-  title?: string
-  description?: string
-  form?: React.ReactNode
-  onConfirm?: () => void
-  onCancel?: () => void
   placement?: LxTooltipPlacement
   trigger?: LxTooltipTrigger
-  variant?: LxTooltipVariant
   delay?: number
   contentClassName?: string
   className?: string
@@ -47,14 +36,8 @@ const assignRef = (ref: React.Ref<HTMLElement> | undefined, node: HTMLElement | 
 export const LxTooltip = ({
   children,
   content,
-  title,
-  description,
-  form,
-  onConfirm,
-  onCancel,
   placement = "top",
   trigger = "hover",
-  variant = "primary",
   delay = 150,
   contentClassName = "",
   className = "",
@@ -69,9 +52,8 @@ export const LxTooltip = ({
   const tooltipRef = useRef<HTMLDivElement>(null)
   const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isConfirmMode = typeof onConfirm === "function"
-  const activeTrigger = isConfirmMode ? "click" : trigger
-  const activeDelay = isConfirmMode ? 0 : delay
+  const activeTrigger = trigger
+  const activeDelay = delay
 
   /**
    * 清理待执行的显示或隐藏计时器。
@@ -187,13 +169,11 @@ export const LxTooltip = ({
       const target = event.target as Node
       if (!containerRef.current?.contains(target) && !tooltipRef.current?.contains(target)) {
         setIsVisible(false)
-        if (isConfirmMode) onCancel?.()
       }
     }
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setIsVisible(false)
-        if (isConfirmMode) onCancel?.()
       }
     }
     document.addEventListener("mousedown", handleOutsideClick)
@@ -202,7 +182,7 @@ export const LxTooltip = ({
       document.removeEventListener("mousedown", handleOutsideClick)
       document.removeEventListener("keydown", handleEscape)
     }
-  }, [isVisible, isConfirmMode, onCancel])
+  }, [isVisible])
 
   useEffect(() => () => clearTimers(), [])
 
@@ -254,9 +234,8 @@ export const LxTooltip = ({
     arrowStyle.top = `${arrowOffset}px`
     arrowStyle.transform = "translateY(-50%) rotate(270deg)"
   }
-  const cardClassName = isConfirmMode
-    ? "w-48 p-2.5 text-white bg-[#303030]"
-    : "px-2.5 py-1.5 text-xs font-semibold text-white bg-[#303030] whitespace-nowrap"
+  const cardClassName =
+    "bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap"
   let triggerElement: React.ReactNode = children
   if (React.isValidElement(children)) {
     const child = children as React.ReactElement<
@@ -310,45 +289,7 @@ export const LxTooltip = ({
             onMouseLeave={hideTooltip}
             onClick={(event) => event.stopPropagation()}
           >
-            {isConfirmMode ? (
-              <div className="flex flex-col gap-2">
-                {form ?? (
-                  <>
-                    <span className="text-sm leading-snug">{title ?? content}</span>
-                    {description ? (
-                      <span className="text-xs text-white/50">{description}</span>
-                    ) : null}
-                  </>
-                )}
-                <div className="flex justify-end gap-1">
-                  <LxIconButton
-                    type="button"
-                    preset="close"
-                    aria-label="取消"
-                    title={{ content: "取消", placement: "bottom" }}
-                    onClick={() => {
-                      setIsVisible(false)
-                      onCancel?.()
-                    }}
-                  />
-                  <LxIconButton
-                    type="button"
-                    preset="confirm"
-                    className={variant === "danger" ? "text-rose-400" : ""}
-                    hoverBgClass={variant === "danger" ? "hover:bg-rose-400/10" : undefined}
-                    hoverTextClass={variant === "danger" ? "hover:text-rose-300" : undefined}
-                    aria-label="确认"
-                    title={{ content: "确认", placement: "bottom" }}
-                    onClick={() => {
-                      setIsVisible(false)
-                      onConfirm?.()
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              (content ?? title)
-            )}
+            {content}
             <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
               <path
                 d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"

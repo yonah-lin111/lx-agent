@@ -6,7 +6,7 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite"
 
 export default defineConfig(() => ({
   main: {
-    resolve: { alias: { "@": resolve("src/main") } },
+    resolve: { alias: { "@": resolve("src/main"), "@shared": resolve("src/shared") } },
     plugins: [externalizeDepsPlugin()],
   },
   preload: {
@@ -15,12 +15,12 @@ export default defineConfig(() => ({
         output: { format: "cjs" as const },
       },
     },
-    resolve: { alias: { "@": resolve("src/preload") } },
+    resolve: { alias: { "@": resolve("src/preload"), "@shared": resolve("src/shared") } },
     plugins: [externalizeDepsPlugin()],
   },
   renderer: {
     server: { port: 6868 },
-    resolve: { alias: { "@": resolve("src/renderer/src") } },
+    resolve: { alias: { "@": resolve("src/renderer/src"), "@shared": resolve("src/shared") } },
     plugins: [react(), tailwindcss(), codeInspectorPlugin({ bundler: "vite" })],
   },
 }))

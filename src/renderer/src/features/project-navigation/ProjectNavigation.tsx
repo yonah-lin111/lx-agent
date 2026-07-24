@@ -7,51 +7,29 @@ import {
   Search,
   Settings,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  LeftSideBarMenu,
-  type LeftSideBarMenuType,
-  type PromptStatus,
-} from "@/components/layout/LeftSideBar/components/LeftSideBarMenu"
-import {
-  type EditingItem,
-  ProjectList,
-  type SidebarProject,
-} from "@/components/layout/LeftSideBar/components/ProjectList"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInput } from "@/components/ui/LxInput"
+import { useLxToast } from "@/components/ui/LxToast"
 import {
   ProjectModal,
   type ProjectModalMode,
   type ProjectModalValues,
-} from "@/components/layout/LeftSideBar/components/ProjectModal"
-import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxInput } from "@/components/ui/LxInput"
-import { useLxToast } from "@/components/ui/LxToast"
+} from "@/features/project-navigation/components/ProjectModal"
+import {
+  type EditingItem,
+  ProjectList,
+  type SidebarProject,
+} from "@/features/project-navigation/components/ProjectNavigationList"
+import {
+  LeftSideBarMenu,
+  type LeftSideBarMenuType,
+  type PromptStatus,
+} from "@/features/project-navigation/components/ProjectNavigationMenu"
+import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
+import { filterProjectNavigationTree } from "@/features/project-navigation/utils"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
-
-// 数据库记录转换后的侧边栏项目树。
-const createSidebarProjects = (
-  projectRecords: Project[],
-  moduleRecords: Module[],
-  designRecords: Design[],
-): SidebarProject[] =>
-  projectRecords.map((project) => ({
-    id: project.id,
-    name: project.name,
-    path: project.path,
-    modules: moduleRecords
-      .filter((module) => module.projectId === project.id)
-      .map((module) => ({
-        id: module.id,
-        name: module.name,
-        prompts: designRecords
-          .filter((design) => design.moduleId === module.id)
-          .map((design) => ({ id: design.id, name: design.name, status: design.status })),
-      })),
-    prompts: designRecords
-      .filter((design) => design.projectId === project.id && !design.moduleId)
-      .map((design) => ({ id: design.id, name: design.name, status: design.status })),
-  }))
 
 // 当前右键菜单状态。
 type MenuState = {
@@ -79,64 +57,24 @@ const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
 /**
  * 页面左侧栏，展示可搜索的持久化项目与提示词层级。
  */
-export const LeftSideBar = (): React.JSX.Element => {
+export const ProjectNavigation = (): React.JSX.Element => {
   const toast = useLxToast()
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [activePromptId, setActivePromptId] = useState<string>("")
-  const [projects, setProjects] = useState<SidebarProject[]>([])
+  const { projects, refreshProjects } = useProjectNavigationData()
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
   const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
 
-  /**
-   * 从数据库读取并构建侧边栏项目树。
-   */
-  const refreshProjects = useCallback(async (): Promise<void> => {
-    if (!window.api) return
-
-    const [projectRecords, moduleRecords, designRecords] = await Promise.all([
-      window.api.project.projects.list(),
-      window.api.project.modules.list(),
-      window.api.project.designs.list(),
-    ])
-    setProjects(createSidebarProjects(projectRecords, moduleRecords, designRecords))
-  }, [])
-
-  useEffect(() => {
-    void refreshProjects().catch((error: unknown) => console.error("Failed to load designs", error))
-  }, [refreshProjects])
-
   // 根据搜索关键词筛选项目树。
-  const filteredProjects = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase()
-    if (!keyword) return projects
-
-    return projects.flatMap((project) => {
-      const matchesProject = project.name.toLowerCase().includes(keyword)
-      const modules = project.modules
-        .map((module) => ({
-          ...module,
-          prompts: module.prompts.filter((prompt) => prompt.name.toLowerCase().includes(keyword)),
-        }))
-        .filter(
-          (module) =>
-            matchesProject ||
-            module.name.toLowerCase().includes(keyword) ||
-            module.prompts.length > 0,
-        )
-      const prompts = project.prompts.filter((prompt) =>
-        prompt.name.toLowerCase().includes(keyword),
-      )
-
-      return matchesProject || modules.length > 0 || prompts.length > 0
-        ? [{ ...project, modules, prompts }]
-        : []
-    })
-  }, [projects, searchKeyword])
+  const filteredProjects = useMemo(
+    () => filterProjectNavigationTree(projects, searchKeyword),
+    [projects, searchKeyword],
+  )
 
   /**
    * 打开指定层级节点的右键菜单。

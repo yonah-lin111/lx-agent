@@ -1,6 +1,7 @@
+import type { ProjectApi } from "@shared/project"
 import { contextBridge, ipcRenderer } from "electron"
 
-contextBridge.exposeInMainWorld("api", {
+const api: ProjectApi = {
   project: {
     projects: {
       list: () => ipcRenderer.invoke("project:projects:list"),
@@ -25,4 +26,6 @@ contextBridge.exposeInMainWorld("api", {
       delete: (id: string) => ipcRenderer.invoke("project:designs:delete", id),
     },
   },
-})
+}
+
+contextBridge.exposeInMainWorld("api", api)

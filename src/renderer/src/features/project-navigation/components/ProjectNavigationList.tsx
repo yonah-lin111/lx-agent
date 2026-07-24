@@ -5,7 +5,7 @@ import { useState } from "react"
 import type {
   LeftSideBarMenuType,
   PromptStatus,
-} from "@/components/layout/LeftSideBar/components/LeftSideBarMenu"
+} from "@/features/project-navigation/components/ProjectNavigationMenu"
 
 // 侧边栏提示词数据。
 export interface SidebarPrompt {
