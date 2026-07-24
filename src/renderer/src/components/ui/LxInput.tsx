@@ -38,7 +38,6 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
     const textSizeClass = size === "xs" ? "text-xs" : "text-sm"
-    const paddingClass = prefix ? "pl-0" : "pl-3"
 
     useEffect(() => {
       if (value !== undefined) {
@@ -90,7 +89,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
         {prefix}
         <input
           ref={assignRef}
-          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${paddingClass} ${textSizeClass} text-white outline-none placeholder:text-white/20 disabled:cursor-not-allowed`}
+          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} text-white outline-none placeholder:text-white/20 disabled:cursor-not-allowed`}
           disabled={disabled}
           value={value}
           defaultValue={defaultValue}
