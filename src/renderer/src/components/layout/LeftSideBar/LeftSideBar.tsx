@@ -1,5 +1,14 @@
-import { ArrowUpDown, ChevronLeft, ChevronRight, Import, Plus, Search } from "lucide-react"
+import {
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Import,
+  Plus,
+  Search,
+  Settings,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   LeftSideBarMenu,
   type LeftSideBarMenuType,
@@ -18,6 +27,7 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { useLxToast } from "@/components/ui/LxToast"
+import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 数据库记录转换后的侧边栏项目树。
 const createSidebarProjects = (
@@ -71,6 +81,7 @@ const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
  */
 export const LeftSideBar = (): React.JSX.Element => {
   const toast = useLxToast()
+  const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [activePromptId, setActivePromptId] = useState<string>("")
@@ -387,7 +398,14 @@ export const LeftSideBar = (): React.JSX.Element => {
       }`}
     >
       {isCollapsed ? (
-        <div className="flex h-full justify-center pt-1">
+        <div className="flex h-full flex-col items-center gap-1 pt-1">
+          <LxIconButton
+            aria-label="打开设置页面"
+            title={{ content: "设置", placement: "right" }}
+            onClick={() => navigate(PAGE_ROUTES.settings)}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </LxIconButton>
           <LxIconButton
             aria-label="展开左侧栏"
             title={{ content: "展开左侧栏", placement: "right" }}
@@ -407,6 +425,13 @@ export const LeftSideBar = (): React.JSX.Element => {
               <ChevronLeft className="h-4 w-4" />
             </LxIconButton>
             <div className="flex items-center gap-0.5">
+              <LxIconButton
+                aria-label="打开设置页面"
+                title={{ content: "设置", placement: "bottom" }}
+                onClick={() => navigate(PAGE_ROUTES.settings)}
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </LxIconButton>
               <LxIconButton
                 aria-label="按状态排序"
                 title={{ content: "按状态排序", placement: "bottom" }}
@@ -451,6 +476,7 @@ export const LeftSideBar = (): React.JSX.Element => {
             projects={filteredProjects}
             searchKeyword={searchKeyword}
             onActivePromptChange={setActivePromptId}
+            onDesignOpen={() => navigate(PAGE_ROUTES.design)}
             onEditingItemCancel={cancelEditingItem}
             onEditingItemChange={setEditingItem}
             onEditingItemCommit={commitEditingItem}

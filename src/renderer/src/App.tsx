@@ -5,6 +5,7 @@ import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSideBar"
 import { LxToastProvider } from "@/components/ui/LxToast"
+import { PageRouter } from "@/pages/PageRouter"
 
 /**
  * 渲染应用根节点。
@@ -40,7 +41,9 @@ export const App = () => {
                 isExpanded={isHeaderExpanded}
                 onExpandedChange={handleHeaderExpandedChange}
               />
-              <PageContent />
+              <PageContent>
+                <PageRouter />
+              </PageContent>
             </div>
             <div className={isBottomSideBarCoveringRightSideBar ? "" : "lg:row-span-2"}>
               <RightSideBar />
