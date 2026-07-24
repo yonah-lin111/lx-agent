@@ -1,6 +1,7 @@
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { app, BrowserWindow } from "electron"
+import { initDatabase } from "@/db"
 
 /**
  * 创建桌面应用主窗口。
@@ -24,6 +25,8 @@ const createWindow = (): void => {
 }
 
 app.whenReady().then(() => {
+  initDatabase()
+
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })

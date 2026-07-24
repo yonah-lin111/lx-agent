@@ -19,6 +19,10 @@ export default defineConfig({
             if (existsSync(path + extension)) {
               return path + extension
             }
+
+            if (existsSync(resolve(path, `index${extension}`))) {
+              return resolve(path, `index${extension}`)
+            }
           }
 
           return path
