@@ -199,7 +199,7 @@ export const LeftSideBar = (): React.JSX.Element => {
   const addMenuItem = (itemType: "module" | "prompt"): void => {
     if (!menu) return
     const id = crypto.randomUUID()
-    const name = itemType === "module" ? "新模块" : "新提示词"
+    const name = itemType === "module" ? "new module" : "new design"
 
     setProjects((currentProjects) =>
       currentProjects.map((project) => {
