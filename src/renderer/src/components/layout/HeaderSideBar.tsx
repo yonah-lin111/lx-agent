@@ -3,7 +3,7 @@
  */
 import { ChevronDown, ChevronUp } from "lucide-react"
 
-import { IconButton } from "@/components/ui/IconButton"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 
 interface HeaderSideBarProps {
   isExpanded: boolean
@@ -25,13 +25,13 @@ export const HeaderSideBar = ({
           isExpanded ? "translate-y-0" : "-translate-y-0.5"
         }`}
       >
-        <IconButton
+        <LxIconButton
           aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
           title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}
           onClick={() => onExpandedChange(!isExpanded)}
         >
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </IconButton>
+        </LxIconButton>
       </div>
     </div>
   </header>

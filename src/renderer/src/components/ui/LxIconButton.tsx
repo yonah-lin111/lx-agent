@@ -2,40 +2,47 @@ import { Check, Edit3, Plus, Save, Settings, Trash2, X } from "lucide-react"
 import type React from "react"
 import { forwardRef } from "react"
 
-import type { TooltipPlacement } from "@/components/ui/Tooltip"
-import { Tooltip } from "@/components/ui/Tooltip"
+import type { LxTooltipPlacement } from "@/components/ui/LxTooltip"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 
 // 图标按钮预设类型。
-export type IconButtonPreset = "add" | "close" | "save" | "confirm" | "delete" | "edit" | "default"
+export type LxIconButtonPreset =
+  | "add"
+  | "close"
+  | "save"
+  | "confirm"
+  | "delete"
+  | "edit"
+  | "default"
 
 // 图标按钮尺寸类型。
-export type IconButtonSize = "small" | "medium" | "large"
+export type LxIconButtonSize = "small" | "medium" | "large"
 
 // 图标按钮内置 Tooltip 配置。
-export interface IconButtonTooltip {
+export interface LxIconButtonTooltip {
   content: string
-  placement?: TooltipPlacement
+  placement?: LxTooltipPlacement
 }
 
-const SIZE_CONTAINER_CLASSES: Record<IconButtonSize, string> = {
+const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
   small: "h-6 w-6",
   medium: "h-7 w-7",
   large: "h-8 w-8",
 }
 
-const SIZE_ICON_CLASSES: Record<IconButtonSize, string> = {
+const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   small: "h-3 w-3",
   medium: "h-4 w-4",
   large: "h-[18px] w-[18px]",
 }
 
-const SIZE_CHIP_ICON_CLASSES: Record<IconButtonSize, string> = {
+const SIZE_CHIP_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   small: "h-2.5 w-2.5",
   medium: "h-3.5 w-3.5",
   large: "h-4 w-4",
 }
 
-const PRESET_ICONS: Record<IconButtonPreset, React.ComponentType<{ className?: string }>> = {
+const PRESET_ICONS: Record<LxIconButtonPreset, React.ComponentType<{ className?: string }>> = {
   add: Plus,
   close: X,
   save: Save,
@@ -45,7 +52,7 @@ const PRESET_ICONS: Record<IconButtonPreset, React.ComponentType<{ className?: s
   default: Settings,
 }
 
-const PRESET_BG_CLASSES: Record<IconButtonPreset, string> = {
+const PRESET_BG_CLASSES: Record<LxIconButtonPreset, string> = {
   add: "hover:bg-white/5",
   close: "hover:bg-white/5",
   save: "hover:bg-emerald-500/10",
@@ -55,7 +62,7 @@ const PRESET_BG_CLASSES: Record<IconButtonPreset, string> = {
   default: "hover:bg-white/5",
 }
 
-const PRESET_TEXT_CLASSES: Record<IconButtonPreset, string> = {
+const PRESET_TEXT_CLASSES: Record<LxIconButtonPreset, string> = {
   add: "hover:text-white",
   close: "hover:text-white",
   save: "hover:text-emerald-400",
@@ -65,7 +72,7 @@ const PRESET_TEXT_CLASSES: Record<IconButtonPreset, string> = {
   default: "hover:text-white",
 }
 
-const PRESET_DEFAULT_TEXT_CLASSES: Record<IconButtonPreset, string> = {
+const PRESET_DEFAULT_TEXT_CLASSES: Record<LxIconButtonPreset, string> = {
   add: "text-white/45",
   close: "text-white/45",
   save: "text-emerald-500/70",
@@ -76,7 +83,7 @@ const PRESET_DEFAULT_TEXT_CLASSES: Record<IconButtonPreset, string> = {
 }
 
 // 图标按钮属性。
-export interface IconButtonProps
+export interface LxIconButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
   children?: React.ReactNode
   className?: string
@@ -84,16 +91,16 @@ export interface IconButtonProps
   hoverBgClass?: string
   hoverTextClass?: string
   iconOnly?: boolean
-  preset?: IconButtonPreset
-  size?: IconButtonSize
+  preset?: LxIconButtonPreset
+  size?: LxIconButtonSize
   // 内置 Tooltip 配置。
-  title?: IconButtonTooltip
+  title?: LxIconButtonTooltip
 }
 
 /**
  * 统一渲染黑色主题下的图标按钮，并提供明确的悬停、聚焦与禁用状态。
  */
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
+export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
   (
     {
       children,
@@ -157,13 +164,13 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     )
 
     return title ? (
-      <Tooltip content={title.content} placement={title.placement}>
+      <LxTooltip content={title.content} placement={title.placement}>
         {button}
-      </Tooltip>
+      </LxTooltip>
     ) : (
       button
     )
   },
 )
 
-IconButton.displayName = "IconButton"
+LxIconButton.displayName = "LxIconButton"

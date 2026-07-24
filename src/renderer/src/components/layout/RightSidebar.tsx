@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useState } from "react"
 
-import { IconButton } from "@/components/ui/IconButton"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 
 /**
  * 左侧栏
@@ -16,7 +16,7 @@ export const RightSideBar = (): React.JSX.Element => {
       }`}
     >
       <div className="relative h-6 w-full">
-        <IconButton
+        <LxIconButton
           className={`absolute right-0 top-0 transition-transform duration-300 ease-in-out ${
             isCollapsed ? "-translate-x-3" : "translate-x-0"
           }`}
@@ -25,7 +25,7 @@ export const RightSideBar = (): React.JSX.Element => {
           onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         >
           {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </IconButton>
+        </LxIconButton>
       </div>
     </aside>
   )

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
-import { IconButton } from "@/components/ui/IconButton"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 
 // 页面底边栏属性。
 interface BottomSideBarProps {
@@ -30,7 +30,7 @@ export const BottomSideBar = ({
             isExpanded ? "translate-y-0" : "-translate-y-0.5"
           }`}
         >
-          <IconButton
+          <LxIconButton
             aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
             title={{
               content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
@@ -43,14 +43,14 @@ export const BottomSideBar = ({
             ) : (
               <ChevronsLeftRight className="h-4 w-4" />
             )}
-          </IconButton>
-          <IconButton
+          </LxIconButton>
+          <LxIconButton
             aria-label={isExpanded ? "折叠底边栏" : "展开底边栏"}
             title={{ content: isExpanded ? "折叠底边栏" : "展开底边栏", placement: "top" }}
             onClick={() => onExpandedChange(!isExpanded)}
           >
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-          </IconButton>
+          </LxIconButton>
         </div>
       </div>
     </aside>

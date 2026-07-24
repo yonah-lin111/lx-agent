@@ -1,19 +1,19 @@
 import React, { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
-import { IconButton } from "@/components/ui/IconButton"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 
 // Tooltip 弹出位置。
-export type TooltipPlacement = "top" | "bottom" | "left" | "right"
+export type LxTooltipPlacement = "top" | "bottom" | "left" | "right"
 
 // Tooltip 触发方式。
-export type TooltipTrigger = "hover" | "click" | "both"
+export type LxTooltipTrigger = "hover" | "click" | "both"
 
 // 确认按钮样式。
-export type TooltipVariant = "danger" | "primary"
+export type LxTooltipVariant = "danger" | "primary"
 
 // Tooltip 组件属性。
-export interface TooltipProps {
+export interface LxTooltipProps {
   children: React.ReactNode
   content?: React.ReactNode
   title?: string
@@ -21,9 +21,9 @@ export interface TooltipProps {
   form?: React.ReactNode
   onConfirm?: () => void
   onCancel?: () => void
-  placement?: TooltipPlacement
-  trigger?: TooltipTrigger
-  variant?: TooltipVariant
+  placement?: LxTooltipPlacement
+  trigger?: LxTooltipTrigger
+  variant?: LxTooltipVariant
   delay?: number
   contentClassName?: string
   className?: string
@@ -44,7 +44,7 @@ const assignRef = (ref: React.Ref<HTMLElement> | undefined, node: HTMLElement | 
  * Tooltip - 通过 Portal 渲染的统一提示与二次确认气泡。
  * 自动根据可用视口空间调整方向，并避免被父级 overflow 裁剪。
  */
-export const Tooltip = ({
+export const LxTooltip = ({
   children,
   content,
   title,
@@ -58,11 +58,11 @@ export const Tooltip = ({
   delay = 150,
   contentClassName = "",
   className = "",
-}: TooltipProps): React.JSX.Element => {
+}: LxTooltipProps): React.JSX.Element => {
   const [isVisible, setIsVisible] = useState(false)
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-  const [activePlacement, setActivePlacement] = useState<TooltipPlacement>(placement)
+  const [activePlacement, setActivePlacement] = useState<LxTooltipPlacement>(placement)
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(null)
   const [arrowOffset, setArrowOffset] = useState(0)
   const containerRef = useRef<HTMLElement>(null)
@@ -321,7 +321,7 @@ export const Tooltip = ({
                   </>
                 )}
                 <div className="flex justify-end gap-1">
-                  <IconButton
+                  <LxIconButton
                     type="button"
                     preset="close"
                     aria-label="取消"
@@ -331,7 +331,7 @@ export const Tooltip = ({
                       onCancel?.()
                     }}
                   />
-                  <IconButton
+                  <LxIconButton
                     type="button"
                     preset="confirm"
                     className={variant === "danger" ? "text-rose-400" : ""}
