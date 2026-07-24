@@ -200,7 +200,7 @@ export const ProjectList = ({
 
   return (
     <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2">
-      {projects.length > 0 ? (
+      {projects.length > 0 &&
         projects.map((project) => {
           const isProjectCollapsed = searchKeyword ? false : Boolean(collapsedProjects[project.id])
 
@@ -264,12 +264,7 @@ export const ProjectList = ({
               )}
             </div>
           )
-        })
-      ) : (
-        <div className="rounded-[6px] border border-white/5 px-3 py-4 text-center text-sm text-white/35">
-          没有匹配的项目
-        </div>
-      )}
+        })}
     </div>
   )
 }
