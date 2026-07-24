@@ -236,7 +236,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
     <aside
       className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
         isCollapsed
-          ? "w-16 min-w-16 max-w-16"
+          ? "w-10 min-w-10 max-w-10"
           : "w-full min-w-full max-w-full lg:w-56 lg:min-w-56 lg:max-w-56"
       }`}
     >
@@ -301,8 +301,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
         </div>
       )}
       <LxIconButton
-        className={`absolute left-1 top-1 transition-transform duration-300 ease-in-out ${
-          isCollapsed ? "translate-x-1.5" : "translate-x-0"
+        className={`absolute top-1 transition-transform duration-300 ease-in-out ${
+          isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
         }`}
         aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
         title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
@@ -311,8 +311,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </LxIconButton>
       <LxIconButton
-        className={`absolute bottom-1 left-1 transition-transform duration-300 ease-in-out ${
-          isCollapsed ? "translate-x-1.5" : "translate-x-0"
+        className={`absolute bottom-1 transition-transform duration-300 ease-in-out ${
+          isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
         }`}
         aria-label="打开设置页面"
         title={{ content: "设置", placement: "right" }}

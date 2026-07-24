@@ -12,13 +12,13 @@ export const RightSideBar = (): React.JSX.Element => {
   return (
     <aside
       className={`h-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,min-width,max-width] duration-300 ease-in-out ${
-        isCollapsed ? "w-16 min-w-16 max-w-16" : "w-[380px] min-w-[380px] max-w-[380px]"
+        isCollapsed ? "w-10 min-w-10 max-w-10" : "w-[380px] min-w-[380px] max-w-[380px]"
       }`}
     >
       <div className="relative h-6 w-full">
         <LxIconButton
-          className={`absolute right-0 top-0 transition-transform duration-300 ease-in-out ${
-            isCollapsed ? "-translate-x-3" : "translate-x-0"
+          className={`absolute top-0 transition-transform duration-300 ease-in-out ${
+            isCollapsed ? "left-1/2 -translate-x-1/2" : "right-0 translate-x-0"
           }`}
           aria-label={isCollapsed ? "展开右侧栏" : "折叠右侧栏"}
           title={{ content: isCollapsed ? "展开右侧栏" : "折叠右侧栏", placement: "left" }}
