@@ -9,7 +9,7 @@ let sqlite: Database.Database | null = null
  */
 export const createDesignTables = (database: Database.Database): void => {
   database.exec(`
-    CREATE TABLE IF NOT EXISTS design_projects (
+    CREATE TABLE IF NOT EXISTS project (
       id INTEGER PRIMARY KEY,
       external_id TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
@@ -19,20 +19,20 @@ export const createDesignTables = (database: Database.Database): void => {
       updated_at TIMESTAMP NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS design_modules (
+    CREATE TABLE IF NOT EXISTS module (
       id INTEGER PRIMARY KEY,
       external_id TEXT NOT NULL UNIQUE,
       project_id TEXT NOT NULL,
       name TEXT NOT NULL,
       created_at TIMESTAMP NOT NULL,
       updated_at TIMESTAMP NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES design_projects(external_id) ON DELETE CASCADE
+      FOREIGN KEY (project_id) REFERENCES project(external_id) ON DELETE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_design_modules_project_id
-    ON design_modules(project_id);
+    CREATE INDEX IF NOT EXISTS idx_module_project_id
+    ON module(project_id);
 
-    CREATE TABLE IF NOT EXISTS design_items (
+    CREATE TABLE IF NOT EXISTS design (
       id INTEGER PRIMARY KEY,
       external_id TEXT NOT NULL UNIQUE,
       project_id TEXT NOT NULL,
@@ -43,15 +43,15 @@ export const createDesignTables = (database: Database.Database): void => {
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL,
       updated_at TIMESTAMP NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES design_projects(external_id) ON DELETE CASCADE,
-      FOREIGN KEY (module_id) REFERENCES design_modules(external_id) ON DELETE CASCADE
+      FOREIGN KEY (project_id) REFERENCES project(external_id) ON DELETE CASCADE,
+      FOREIGN KEY (module_id) REFERENCES module(external_id) ON DELETE CASCADE
     );
 
-    CREATE INDEX IF NOT EXISTS idx_design_items_project_id
-    ON design_items(project_id);
+    CREATE INDEX IF NOT EXISTS idx_design_project_id
+    ON design(project_id);
 
-    CREATE INDEX IF NOT EXISTS idx_design_items_module_id
-    ON design_items(module_id);
+    CREATE INDEX IF NOT EXISTS idx_design_module_id
+    ON design(module_id);
   `)
 }
 

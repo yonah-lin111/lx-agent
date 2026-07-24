@@ -25,12 +25,12 @@ describe("createDesignTables", () => {
       .all()
       .map((row) => (row as { name: string }).name)
 
-    expect(tableNames).toEqual(["design_items", "design_modules", "design_projects"])
+    expect(tableNames).toEqual(["design", "module", "project"])
     expect(indexNames).toEqual(
       expect.arrayContaining([
-        "idx_design_items_module_id",
-        "idx_design_items_project_id",
-        "idx_design_modules_project_id",
+        "idx_design_module_id",
+        "idx_design_project_id",
+        "idx_module_project_id",
       ]),
     )
   })
