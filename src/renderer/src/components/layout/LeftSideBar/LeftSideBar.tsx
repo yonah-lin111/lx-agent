@@ -17,9 +17,13 @@ import {
   type LeftSideBarMenuType,
   type PromptStatus,
 } from "@/components/layout/LeftSideBar/components/LeftSideBarMenu"
+import {
+  ProjectModal,
+  type ProjectModalMode,
+  type ProjectModalValues,
+} from "@/components/layout/LeftSideBar/components/ProjectModal"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import { LxModal } from "@/components/ui/LxModal"
 
 // 模拟提示词数据结构。
 interface MockPrompt {
@@ -97,12 +101,10 @@ type EditingItem = {
   name: string
 }
 
-// 当前项目编辑状态。
-type EditingProject = {
-  id: string
-  name: string
-  path: string
-}
+// 当前项目弹窗状态。
+type ProjectModalState =
+  | { mode: Extract<ProjectModalMode, "create"> }
+  | { mode: Extract<ProjectModalMode, "edit">; project: MockProject }
 
 /**
  * 页面左侧栏，展示可搜索的模拟项目与提示词层级。
@@ -114,10 +116,7 @@ export const LeftSideBar = (): React.JSX.Element => {
   const [projects, setProjects] = useState<MockProject[]>(MOCK_PROJECTS)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
-  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState<boolean>(false)
-  const [newProjectName, setNewProjectName] = useState<string>("")
-  const [newProjectPath, setNewProjectPath] = useState<string>("")
-  const [editingProject, setEditingProject] = useState<EditingProject | null>(null)
+  const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
   const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({
     development: true,
@@ -190,7 +189,7 @@ export const LeftSideBar = (): React.JSX.Element => {
     const project = projects.find((item) => item.id === menu.id)
     if (!project) return
 
-    setEditingProject({ id: project.id, name: project.name, path: project.path ?? "" })
+    setProjectModal({ mode: "edit", project })
     setMenu(null)
   }
 
@@ -269,48 +268,27 @@ export const LeftSideBar = (): React.JSX.Element => {
   }
 
   /**
-   * 创建项目并展开其内容区域。
+   * 根据弹窗模式创建或更新项目。
    */
-  const createProject = (): void => {
-    const name = newProjectName.trim()
-    if (!name) return
+  const handleProjectModalSubmit = (values: ProjectModalValues): void => {
+    if (!projectModal) return
 
-    const id = crypto.randomUUID()
-    setProjects((currentProjects) => [
-      ...currentProjects,
-      { id, name, path: newProjectPath.trim() || undefined, modules: [], prompts: [] },
-    ])
-    setCollapsedProjects((currentValue) => ({ ...currentValue, [id]: false }))
-    setNewProjectName("")
-    setNewProjectPath("")
-    setIsCreateProjectModalOpen(false)
-  }
+    if (projectModal.mode === "create") {
+      const id = crypto.randomUUID()
+      setProjects((currentProjects) => [
+        ...currentProjects,
+        { id, ...values, modules: [], prompts: [] },
+      ])
+      setCollapsedProjects((currentValue) => ({ ...currentValue, [id]: false }))
+    } else {
+      setProjects((currentProjects) =>
+        currentProjects.map((project) =>
+          project.id === projectModal.project.id ? { ...project, ...values } : project,
+        ),
+      )
+    }
 
-  /**
-   * 关闭创建项目弹窗并清空未提交内容。
-   */
-  const closeCreateProjectModal = (): void => {
-    setNewProjectName("")
-    setNewProjectPath("")
-    setIsCreateProjectModalOpen(false)
-  }
-
-  /**
-   * 保存项目弹窗中的名称与路径。
-   */
-  const saveEditedProject = (): void => {
-    if (!editingProject) return
-    const name = editingProject.name.trim()
-    if (!name) return
-
-    setProjects((currentProjects) =>
-      currentProjects.map((project) =>
-        project.id === editingProject.id
-          ? { ...project, name, path: editingProject.path.trim() || undefined }
-          : project,
-      ),
-    )
-    setEditingProject(null)
+    setProjectModal(null)
   }
 
   /**
@@ -494,7 +472,7 @@ export const LeftSideBar = (): React.JSX.Element => {
               <LxIconButton
                 aria-label="新建项目"
                 title={{ content: "新建项目", placement: "bottom" }}
-                onClick={() => setIsCreateProjectModalOpen(true)}
+                onClick={() => setProjectModal({ mode: "create" })}
               >
                 <Plus className="h-4 w-4" />
               </LxIconButton>
@@ -607,114 +585,13 @@ export const LeftSideBar = (): React.JSX.Element => {
         onDelete={deleteMenuItem}
         onClose={() => setMenu(null)}
       />
-      <LxModal isOpen={isCreateProjectModalOpen} title="新建项目" onClose={closeCreateProjectModal}>
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            createProject()
-          }}
-        >
-          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-            项目名称
-            <LxInput
-              autoFocus
-              required
-              aria-label="项目名称"
-              placeholder="输入项目名称"
-              size="xs"
-              value={newProjectName}
-              onChange={(event) => setNewProjectName(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-            项目路径（可选）
-            <LxInput
-              aria-label="项目路径"
-              placeholder="例如：/Users/name/project"
-              size="xs"
-              value={newProjectPath}
-              onChange={(event) => setNewProjectPath(event.target.value)}
-            />
-          </label>
-          <div className="mt-1 flex justify-end gap-1.5">
-            <LxIconButton
-              aria-label="取消创建项目"
-              preset="close"
-              size="small"
-              title={{ content: "取消", placement: "bottom" }}
-              onClick={closeCreateProjectModal}
-            />
-            <LxIconButton
-              aria-label="确认创建项目"
-              preset="confirm"
-              size="small"
-              title={{ content: "创建项目", placement: "bottom" }}
-              type="submit"
-            />
-          </div>
-        </form>
-      </LxModal>
-      <LxModal
-        isOpen={editingProject !== null}
-        title="编辑项目"
-        onClose={() => setEditingProject(null)}
-      >
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            saveEditedProject()
-          }}
-        >
-          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-            项目名称
-            <LxInput
-              autoFocus
-              required
-              aria-label="项目名称"
-              placeholder="输入项目名称"
-              size="xs"
-              value={editingProject?.name ?? ""}
-              onChange={(event) =>
-                setEditingProject((currentValue) =>
-                  currentValue ? { ...currentValue, name: event.target.value } : null,
-                )
-              }
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-            项目路径（可选）
-            <LxInput
-              aria-label="项目路径"
-              placeholder="例如：/Users/name/project"
-              size="xs"
-              value={editingProject?.path ?? ""}
-              onChange={(event) =>
-                setEditingProject((currentValue) =>
-                  currentValue ? { ...currentValue, path: event.target.value } : null,
-                )
-              }
-            />
-          </label>
-          <div className="mt-1 flex justify-end gap-1.5">
-            <LxIconButton
-              aria-label="取消编辑项目"
-              preset="close"
-              size="small"
-              title={{ content: "取消", placement: "bottom" }}
-              onClick={() => setEditingProject(null)}
-            />
-            <LxIconButton
-              aria-label="确认编辑项目"
-              preset="confirm"
-              size="small"
-              title={{ content: "保存项目", placement: "bottom" }}
-              type="submit"
-            />
-          </div>
-        </form>
-      </LxModal>
+      <ProjectModal
+        isOpen={projectModal !== null}
+        mode={projectModal?.mode ?? "create"}
+        project={projectModal?.mode === "edit" ? projectModal.project : undefined}
+        onClose={() => setProjectModal(null)}
+        onSubmit={handleProjectModalSubmit}
+      />
     </aside>
   )
 }
