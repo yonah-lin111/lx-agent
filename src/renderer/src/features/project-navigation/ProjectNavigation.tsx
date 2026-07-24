@@ -234,47 +234,18 @@ export const ProjectNavigation = (): React.JSX.Element => {
 
   return (
     <aside
-      className={`h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
+      className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
         isCollapsed
           ? "w-16 min-w-16 max-w-16"
           : "w-full min-w-full max-w-full lg:w-56 lg:min-w-56 lg:max-w-56"
       }`}
     >
       {isCollapsed ? (
-        <div className="flex h-full flex-col items-center gap-1 pt-1">
-          <LxIconButton
-            aria-label="打开设置页面"
-            title={{ content: "设置", placement: "right" }}
-            onClick={() => navigate(PAGE_ROUTES.settings)}
-          >
-            <Settings className="h-3.5 w-3.5" />
-          </LxIconButton>
-          <LxIconButton
-            aria-label="展开左侧栏"
-            title={{ content: "展开左侧栏", placement: "right" }}
-            onClick={() => setIsCollapsed(false)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </LxIconButton>
-        </div>
+        <div className="h-full" />
       ) : (
         <div className="flex h-full min-w-0 flex-col gap-3">
-          <div className="flex h-7 shrink-0 items-center justify-between px-1">
-            <LxIconButton
-              aria-label="折叠左侧栏"
-              title={{ content: "折叠左侧栏", placement: "right" }}
-              onClick={() => setIsCollapsed(true)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </LxIconButton>
+          <div className="flex h-7 shrink-0 items-center justify-end px-1">
             <div className="flex items-center gap-0.5">
-              <LxIconButton
-                aria-label="打开设置页面"
-                title={{ content: "设置", placement: "bottom" }}
-                onClick={() => navigate(PAGE_ROUTES.settings)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-              </LxIconButton>
               <LxIconButton
                 aria-label="按状态排序"
                 title={{ content: "按状态排序", placement: "bottom" }}
@@ -329,6 +300,26 @@ export const ProjectNavigation = (): React.JSX.Element => {
           />
         </div>
       )}
+      <LxIconButton
+        className={`absolute left-1 top-1 transition-transform duration-300 ease-in-out ${
+          isCollapsed ? "translate-x-1.5" : "translate-x-0"
+        }`}
+        aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
+        title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
+        onClick={() => setIsCollapsed((currentValue) => !currentValue)}
+      >
+        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </LxIconButton>
+      <LxIconButton
+        className={`absolute bottom-1 left-1 transition-transform duration-300 ease-in-out ${
+          isCollapsed ? "translate-x-1.5" : "translate-x-0"
+        }`}
+        aria-label="打开设置页面"
+        title={{ content: "设置", placement: "right" }}
+        onClick={() => navigate(PAGE_ROUTES.settings)}
+      >
+        <Settings className="h-3.5 w-3.5" />
+      </LxIconButton>
       <ProjectNavigationMenu
         isOpen={menu !== null}
         type={menu?.type ?? "project"}

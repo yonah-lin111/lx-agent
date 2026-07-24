@@ -92,7 +92,9 @@ export const ProjectNavigationList = ({
     item: { id: string; name: string },
     className: string,
   ): React.JSX.Element => {
-    if (editingItem?.id !== item.id) return <span className={className}>{item.name}</span>
+    if (editingItem?.id !== item.id) {
+      return <span className={`${className} select-none`}>{item.name}</span>
+    }
 
     return (
       <input
