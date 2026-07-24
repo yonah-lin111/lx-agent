@@ -26,7 +26,7 @@ interface ProjectModalProps {
   mode: ProjectModalMode
   project?: ProjectModalProject
   onClose: () => void
-  onSubmit: (values: ProjectModalValues) => void
+  onSubmit: (values: ProjectModalValues) => Promise<void>
 }
 
 /**
@@ -41,6 +41,8 @@ export const ProjectModal = ({
 }: ProjectModalProps): React.JSX.Element => {
   const [name, setName] = useState<string>("")
   const [path, setPath] = useState<string>("")
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const isEditMode = mode === "edit"
 
   useEffect(() => {
@@ -48,17 +50,27 @@ export const ProjectModal = ({
 
     setName(project?.name ?? "")
     setPath(project?.path ?? "")
+    setErrorMessage("")
+    setIsSubmitting(false)
   }, [isOpen, project])
 
   /**
    * 校验名称后提交项目表单。
    */
-  const handleSubmit = (event: React.FormEvent): void => {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault()
     const trimmedName = name.trim()
-    if (!trimmedName) return
+    if (!trimmedName || isSubmitting) return
 
-    onSubmit({ name: trimmedName, path: path.trim() || undefined })
+    setErrorMessage("")
+    setIsSubmitting(true)
+
+    try {
+      await onSubmit({ name: trimmedName, path: path.trim() || undefined })
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "创建项目失败")
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -86,12 +98,14 @@ export const ProjectModal = ({
             onChange={(event) => setPath(event.target.value)}
           />
         </label>
+        {errorMessage ? <p className="text-xs text-rose-300">{errorMessage}</p> : null}
         <div className="mt-1 flex justify-end gap-1.5">
           <LxIconButton
             aria-label={isEditMode ? "取消编辑项目" : "取消创建项目"}
             preset="close"
             size="small"
             title={{ content: "取消", placement: "bottom" }}
+            disabled={isSubmitting}
             onClick={onClose}
           />
           <LxIconButton
@@ -100,6 +114,7 @@ export const ProjectModal = ({
             size="small"
             title={{ content: isEditMode ? "保存项目" : "创建项目", placement: "bottom" }}
             type="submit"
+            disabled={isSubmitting}
           />
         </div>
       </form>

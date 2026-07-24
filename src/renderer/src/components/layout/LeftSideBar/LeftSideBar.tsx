@@ -1,5 +1,5 @@
 import { ArrowUpDown, ChevronLeft, ChevronRight, Import, Plus, Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   LeftSideBarMenu,
   type LeftSideBarMenuType,
@@ -18,41 +18,29 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 
-// 侧边栏展示用的模拟项目数据。
-const MOCK_PROJECTS: SidebarProject[] = [
-  {
-    id: "lx-agent",
-    name: "LX Agent",
-    modules: [
-      {
-        id: "product",
-        name: "产品规划",
-        prompts: [
-          { id: "product-1", name: "需求澄清与拆解", status: "in_progress" },
-          { id: "product-2", name: "功能验收清单", status: "todo" },
-        ],
-      },
-      {
-        id: "development",
-        name: "研发协作",
-        prompts: [{ id: "development-1", name: "代码审查规范", status: "completed" }],
-      },
-    ],
-    prompts: [{ id: "lx-1", name: "项目上下文初始化", status: "todo" }],
-  },
-  {
-    id: "website",
-    name: "官网改版",
-    modules: [
-      {
-        id: "design",
-        name: "界面设计",
-        prompts: [{ id: "design-1", name: "首页视觉方向", status: "completed" }],
-      },
-    ],
-    prompts: [],
-  },
-]
+// 数据库记录转换后的侧边栏项目树。
+const createSidebarProjects = (
+  projectRecords: Project[],
+  moduleRecords: Module[],
+  designRecords: Design[],
+): SidebarProject[] =>
+  projectRecords.map((project) => ({
+    id: project.id,
+    name: project.name,
+    path: project.path,
+    modules: moduleRecords
+      .filter((module) => module.projectId === project.id)
+      .map((module) => ({
+        id: module.id,
+        name: module.name,
+        prompts: designRecords
+          .filter((design) => design.moduleId === module.id)
+          .map((design) => ({ id: design.id, name: design.name, status: design.status })),
+      })),
+    prompts: designRecords
+      .filter((design) => design.projectId === project.id && !design.moduleId)
+      .map((design) => ({ id: design.id, name: design.name, status: design.status })),
+  }))
 
 // 当前右键菜单状态。
 type MenuState = {
@@ -78,21 +66,36 @@ const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
 }
 
 /**
- * 页面左侧栏，展示可搜索的模拟项目与提示词层级。
+ * 页面左侧栏，展示可搜索的持久化项目与提示词层级。
  */
 export const LeftSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
-  const [activePromptId, setActivePromptId] = useState<string>("product-1")
-  const [projects, setProjects] = useState<SidebarProject[]>(MOCK_PROJECTS)
+  const [activePromptId, setActivePromptId] = useState<string>("")
+  const [projects, setProjects] = useState<SidebarProject[]>([])
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
   const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
-  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({
-    development: true,
-    design: true,
-  })
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
+
+  /**
+   * 从数据库读取并构建侧边栏项目树。
+   */
+  const refreshProjects = useCallback(async (): Promise<void> => {
+    if (!window.api) return
+
+    const [projectRecords, moduleRecords, designRecords] = await Promise.all([
+      window.api.project.projects.list(),
+      window.api.project.modules.list(),
+      window.api.project.designs.list(),
+    ])
+    setProjects(createSidebarProjects(projectRecords, moduleRecords, designRecords))
+  }, [])
+
+  useEffect(() => {
+    void refreshProjects().catch((error: unknown) => console.error("Failed to load designs", error))
+  }, [refreshProjects])
 
   // 根据搜索关键词筛选项目树。
   const filteredProjects = useMemo(() => {
@@ -167,44 +170,33 @@ export const LeftSideBar = (): React.JSX.Element => {
   /**
    * 在右键菜单目标下新增节点并进入行内编辑状态。
    */
-  const addMenuItem = (itemType: "module" | "prompt"): void => {
+  const addMenuItem = async (itemType: "module" | "prompt"): Promise<void> => {
     if (!menu) return
-    const id = crypto.randomUUID()
     const name = itemType === "module" ? "new module" : "new design"
+    if (!window.api) return
 
-    setProjects((currentProjects) =>
-      currentProjects.map((project) => {
-        if (itemType === "module" && project.id === menu.id) {
-          return { ...project, modules: [...project.modules, { id, name, prompts: [] }] }
-        }
-        if (itemType === "prompt" && menu.type === "project" && project.id === menu.id) {
-          return { ...project, prompts: [...project.prompts, { id, name, status: "todo" }] }
-        }
-        if (itemType === "prompt" && menu.type === "module" && project.id === menu.projectId) {
-          return {
-            ...project,
-            modules: project.modules.map((module) =>
-              module.id === menu.id
-                ? { ...module, prompts: [...module.prompts, { id, name, status: "todo" }] }
-                : module,
-            ),
-          }
-        }
-        return project
-      }),
-    )
+    const item =
+      itemType === "module"
+        ? await window.api.project.modules.create({ projectId: menu.id, name })
+        : await window.api.project.designs.create({
+            projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
+            moduleId: menu.type === "module" ? menu.id : undefined,
+            name,
+          })
+
+    await refreshProjects()
     if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
     if (itemType === "prompt" && menu.type === "module") {
       setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
     }
-    setEditingItem({ id, name })
+    setEditingItem({ id: item.id, name })
     setMenu(null)
   }
 
   /**
    * 提交当前行内编辑的名称。
    */
-  const commitEditingItem = (): void => {
+  const commitEditingItem = async (): Promise<void> => {
     if (!editingItem) return
     const name = editingItem.name.trim()
     if (!name) {
@@ -212,22 +204,22 @@ export const LeftSideBar = (): React.JSX.Element => {
       return
     }
 
-    setProjects((currentProjects) =>
-      currentProjects.map((project) => ({
-        ...project,
-        name: project.id === editingItem.id ? name : project.name,
-        modules: project.modules.map((module) => ({
-          ...module,
-          name: module.id === editingItem.id ? name : module.name,
-          prompts: module.prompts.map((prompt) =>
-            prompt.id === editingItem.id ? { ...prompt, name } : prompt,
-          ),
-        })),
-        prompts: project.prompts.map((prompt) =>
-          prompt.id === editingItem.id ? { ...prompt, name } : prompt,
-        ),
-      })),
-    )
+    if (!window.api) return
+
+    const project = projects.find((item) => item.id === editingItem.id)
+    const module = projects
+      .flatMap((item) => item.modules)
+      .find((item) => item.id === editingItem.id)
+
+    if (project) {
+      await window.api.project.projects.update(project.id, { name })
+    } else if (module) {
+      await window.api.project.modules.update(module.id, { name })
+    } else {
+      await window.api.project.designs.update(editingItem.id, { name })
+    }
+
+    await refreshProjects()
     setEditingItem(null)
   }
 
@@ -241,98 +233,89 @@ export const LeftSideBar = (): React.JSX.Element => {
   /**
    * 根据弹窗模式创建或更新项目。
    */
-  const handleProjectModalSubmit = (values: ProjectModalValues): void => {
+  const handleProjectModalSubmit = async (values: ProjectModalValues): Promise<void> => {
     if (!projectModal) return
+    if (!window.api) return
+
+    const type = values.path ? "filesystem" : "virtual"
 
     if (projectModal.mode === "create") {
-      const id = crypto.randomUUID()
-      setProjects((currentProjects) => [
-        ...currentProjects,
-        { id, ...values, modules: [], prompts: [] },
-      ])
-      setCollapsedProjects((currentValue) => ({ ...currentValue, [id]: false }))
+      const project = await window.api.project.projects.create({ ...values, type })
+      setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: false }))
     } else {
-      setProjects((currentProjects) =>
-        currentProjects.map((project) =>
-          project.id === projectModal.project.id ? { ...project, ...values } : project,
-        ),
-      )
+      await window.api.project.projects.update(projectModal.project.id, {
+        name: values.name,
+        path: values.path ?? "",
+        type,
+      })
     }
 
+    await refreshProjects()
     setProjectModal(null)
   }
 
   /**
    * 更新右键目标提示词的状态。
    */
-  const updatePromptStatus = (status: PromptStatus): void => {
+  const updatePromptStatus = async (status: PromptStatus): Promise<void> => {
     if (!menu) return
-    setProjects((currentProjects) =>
-      currentProjects.map((project) => ({
-        ...project,
-        modules: project.modules.map((module) => ({
-          ...module,
-          prompts: module.prompts.map((prompt) =>
-            prompt.id === menu.id ? { ...prompt, status } : prompt,
-          ),
-        })),
-        prompts: project.prompts.map((prompt) =>
-          prompt.id === menu.id ? { ...prompt, status } : prompt,
-        ),
-      })),
-    )
+    if (!window.api) return
+
+    await window.api.project.designs.update(menu.id, { status })
+    await refreshProjects()
     setMenu(null)
   }
 
   /**
    * 按提示词状态稳定排序各模块和项目直属提示词。
    */
-  const sortPromptsByStatus = (): void => {
-    setProjects((currentProjects) =>
-      currentProjects.map((project) => ({
-        ...project,
-        modules: project.modules.map((module) => ({
-          ...module,
-          prompts: [...module.prompts].sort(
-            (left, right) =>
-              PROMPT_STATUS_SORT_ORDER[left.status] - PROMPT_STATUS_SORT_ORDER[right.status],
-          ),
-        })),
-        prompts: [...project.prompts].sort(
-          (left, right) =>
-            PROMPT_STATUS_SORT_ORDER[left.status] - PROMPT_STATUS_SORT_ORDER[right.status],
-        ),
-      })),
-    )
+  const sortPromptsByStatus = async (): Promise<void> => {
+    if (!window.api) return
+
+    const sortedIds = projects
+      .flatMap((project) => [
+        ...project.modules.flatMap((module) => module.prompts),
+        ...project.prompts,
+      ])
+      .map((prompt, index) => ({ prompt, index }))
+      .sort(
+        (left, right) =>
+          PROMPT_STATUS_SORT_ORDER[left.prompt.status] -
+            PROMPT_STATUS_SORT_ORDER[right.prompt.status] || left.index - right.index,
+      )
+      .map(({ prompt }) => prompt.id)
+
+    await window.api.project.designs.sort(sortedIds)
+    await refreshProjects()
   }
 
   /**
    * 删除右键菜单目标及其下属数据。
    */
-  const deleteMenuItem = (): void => {
+  const deleteMenuItem = async (): Promise<void> => {
     if (!menu) return
-    setProjects((currentProjects) =>
-      currentProjects
-        .filter((project) => menu.type !== "project" || project.id !== menu.id)
-        .map((project) => ({
-          ...project,
-          modules:
-            menu.type === "module" && project.id === menu.projectId
-              ? project.modules.filter((module) => module.id !== menu.id)
-              : project.modules.map((module) => ({
-                  ...module,
-                  prompts:
-                    menu.type === "prompt"
-                      ? module.prompts.filter((prompt) => prompt.id !== menu.id)
-                      : module.prompts,
-                })),
-          prompts:
-            menu.type === "prompt"
-              ? project.prompts.filter((prompt) => prompt.id !== menu.id)
-              : project.prompts,
-        })),
-    )
-    if (menu.type === "prompt" && activePromptId === menu.id) setActivePromptId("")
+    if (!window.api) return
+
+    const deletedPromptIds =
+      menu.type === "project"
+        ? (projects
+            .find((project) => project.id === menu.id)
+            ?.modules.flatMap((module) => module.prompts)
+            .concat(projects.find((project) => project.id === menu.id)?.prompts ?? [])
+            .map((prompt) => prompt.id) ?? [])
+        : menu.type === "module"
+          ? (projects
+              .find((project) => project.id === menu.projectId)
+              ?.modules.find((module) => module.id === menu.id)
+              ?.prompts.map((prompt) => prompt.id) ?? [])
+          : [menu.id]
+
+    if (menu.type === "project") await window.api.project.projects.delete(menu.id)
+    if (menu.type === "module") await window.api.project.modules.delete(menu.id)
+    if (menu.type === "prompt") await window.api.project.designs.delete(menu.id)
+
+    if (deletedPromptIds.includes(activePromptId)) setActivePromptId("")
+    await refreshProjects()
     setMenu(null)
   }
 

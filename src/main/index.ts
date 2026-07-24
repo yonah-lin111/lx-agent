@@ -2,6 +2,7 @@ import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { app, BrowserWindow } from "electron"
 import { initDatabase } from "@/db"
+import { registerProjectHandlers } from "@/ipc/projectHandlers"
 
 /**
  * 创建桌面应用主窗口。
@@ -13,7 +14,7 @@ const createWindow = (): void => {
     minWidth: 1240,
     minHeight: 780,
     backgroundColor: "#000000",
-    webPreferences: { preload: join(__dirname, "../preload/index.mjs") },
+    webPreferences: { preload: join(__dirname, "../preload/index.cjs") },
   })
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
@@ -26,6 +27,7 @@ const createWindow = (): void => {
 
 app.whenReady().then(() => {
   initDatabase()
+  registerProjectHandlers()
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window)
