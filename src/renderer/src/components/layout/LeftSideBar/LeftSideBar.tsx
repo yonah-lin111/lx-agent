@@ -17,6 +17,7 @@ import {
 } from "@/components/layout/LeftSideBar/components/ProjectModal"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { useLxToast } from "@/components/ui/LxToast"
 
 // 数据库记录转换后的侧边栏项目树。
 const createSidebarProjects = (
@@ -69,6 +70,7 @@ const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
  * 页面左侧栏，展示可搜索的持久化项目与提示词层级。
  */
 export const LeftSideBar = (): React.JSX.Element => {
+  const toast = useLxToast()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [activePromptId, setActivePromptId] = useState<string>("")
@@ -175,22 +177,27 @@ export const LeftSideBar = (): React.JSX.Element => {
     const name = itemType === "module" ? "new module" : "new design"
     if (!window.api) return
 
-    const item =
-      itemType === "module"
-        ? await window.api.project.modules.create({ projectId: menu.id, name })
-        : await window.api.project.designs.create({
-            projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
-            moduleId: menu.type === "module" ? menu.id : undefined,
-            name,
-          })
+    try {
+      const item =
+        itemType === "module"
+          ? await window.api.project.modules.create({ projectId: menu.id, name })
+          : await window.api.project.designs.create({
+              projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
+              moduleId: menu.type === "module" ? menu.id : undefined,
+              name,
+            })
 
-    await refreshProjects()
-    if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
-    if (itemType === "prompt" && menu.type === "module") {
-      setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
+      await refreshProjects()
+      if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+      if (itemType === "prompt" && menu.type === "module") {
+        setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
+      }
+      setEditingItem({ id: item.id, name })
+      setMenu(null)
+      toast.success(itemType === "module" ? "模块创建成功" : "提示词创建成功")
+    } catch {
+      toast.error(itemType === "module" ? "模块创建失败" : "提示词创建失败")
     }
-    setEditingItem({ id: item.id, name })
-    setMenu(null)
   }
 
   /**
@@ -211,16 +218,21 @@ export const LeftSideBar = (): React.JSX.Element => {
       .flatMap((item) => item.modules)
       .find((item) => item.id === editingItem.id)
 
-    if (project) {
-      await window.api.project.projects.update(project.id, { name })
-    } else if (module) {
-      await window.api.project.modules.update(module.id, { name })
-    } else {
-      await window.api.project.designs.update(editingItem.id, { name })
-    }
+    try {
+      if (project) {
+        await window.api.project.projects.update(project.id, { name })
+      } else if (module) {
+        await window.api.project.modules.update(module.id, { name })
+      } else {
+        await window.api.project.designs.update(editingItem.id, { name })
+      }
 
-    await refreshProjects()
-    setEditingItem(null)
+      await refreshProjects()
+      setEditingItem(null)
+      toast.success(project ? "项目更新成功" : module ? "模块更新成功" : "提示词更新成功")
+    } catch {
+      toast.error(project ? "项目更新失败" : module ? "模块更新失败" : "提示词更新失败")
+    }
   }
 
   /**
@@ -239,19 +251,24 @@ export const LeftSideBar = (): React.JSX.Element => {
 
     const type = values.path ? "filesystem" : "virtual"
 
-    if (projectModal.mode === "create") {
-      const project = await window.api.project.projects.create({ ...values, type })
-      setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: false }))
-    } else {
-      await window.api.project.projects.update(projectModal.project.id, {
-        name: values.name,
-        path: values.path ?? "",
-        type,
-      })
-    }
+    try {
+      if (projectModal.mode === "create") {
+        const project = await window.api.project.projects.create({ ...values, type })
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: false }))
+      } else {
+        await window.api.project.projects.update(projectModal.project.id, {
+          name: values.name,
+          path: values.path ?? "",
+          type,
+        })
+      }
 
-    await refreshProjects()
-    setProjectModal(null)
+      await refreshProjects()
+      setProjectModal(null)
+      toast.success(projectModal.mode === "create" ? "项目创建成功" : "项目更新成功")
+    } catch {
+      toast.error(projectModal.mode === "create" ? "项目创建失败" : "项目更新失败")
+    }
   }
 
   /**
@@ -261,9 +278,14 @@ export const LeftSideBar = (): React.JSX.Element => {
     if (!menu) return
     if (!window.api) return
 
-    await window.api.project.designs.update(menu.id, { status })
-    await refreshProjects()
-    setMenu(null)
+    try {
+      await window.api.project.designs.update(menu.id, { status })
+      await refreshProjects()
+      setMenu(null)
+      toast.success("提示词状态更新成功")
+    } catch {
+      toast.error("提示词状态更新失败")
+    }
   }
 
   /**
@@ -310,13 +332,30 @@ export const LeftSideBar = (): React.JSX.Element => {
               ?.prompts.map((prompt) => prompt.id) ?? [])
           : [menu.id]
 
-    if (menu.type === "project") await window.api.project.projects.delete(menu.id)
-    if (menu.type === "module") await window.api.project.modules.delete(menu.id)
-    if (menu.type === "prompt") await window.api.project.designs.delete(menu.id)
+    try {
+      if (menu.type === "project") await window.api.project.projects.delete(menu.id)
+      if (menu.type === "module") await window.api.project.modules.delete(menu.id)
+      if (menu.type === "prompt") await window.api.project.designs.delete(menu.id)
 
-    if (deletedPromptIds.includes(activePromptId)) setActivePromptId("")
-    await refreshProjects()
-    setMenu(null)
+      if (deletedPromptIds.includes(activePromptId)) setActivePromptId("")
+      await refreshProjects()
+      setMenu(null)
+      toast.success(
+        menu.type === "project"
+          ? "项目删除成功"
+          : menu.type === "module"
+            ? "模块删除成功"
+            : "提示词删除成功",
+      )
+    } catch {
+      toast.error(
+        menu.type === "project"
+          ? "项目删除失败"
+          : menu.type === "module"
+            ? "模块删除失败"
+            : "提示词删除失败",
+      )
+    }
   }
 
   /**

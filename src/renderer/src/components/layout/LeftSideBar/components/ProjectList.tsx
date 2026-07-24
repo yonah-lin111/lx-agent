@@ -115,7 +115,7 @@ export const ProjectList = ({
     return (
       <input
         autoFocus
-        className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-xs text-white/80 outline-none"
+        className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-sm text-white/80 outline-none"
         value={editingItem.name}
         onBlur={onEditingItemCommit}
         onChange={(event) => onEditingItemChange({ ...editingItem, name: event.target.value })}
@@ -138,7 +138,7 @@ export const ProjectList = ({
       key={prompt.id}
       role="button"
       tabIndex={0}
-      className={`flex w-full items-center gap-2 rounded-[6px] py-1.5 pr-2 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+      className={`flex w-full items-center gap-2 rounded-[6px] py-1.5 pr-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
         isNested ? "pl-5" : "pl-2"
       } ${
         activePromptId === prompt.id
@@ -181,7 +181,7 @@ export const ProjectList = ({
               <div className="pl-5">
                 <button
                   type="button"
-                  className="cursor-pointer select-none text-xs font-medium text-white/35 transition-colors hover:text-white/60"
+                  className="cursor-pointer select-none text-sm font-medium text-white/35 transition-colors hover:text-white/60"
                   aria-expanded={!isCompletedGroupCollapsed}
                   onClick={() => toggleCompletedPromptGroup(moduleId)}
                 >
@@ -220,7 +220,7 @@ export const ProjectList = ({
                 <FolderKanban className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
                 {renderItemName(
                   project,
-                  "min-w-0 flex-1 truncate text-xs font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",
+                  "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",
                 )}
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-white/30 transition-transform ${isProjectCollapsed ? "-rotate-90" : ""}`}
@@ -239,7 +239,7 @@ export const ProjectList = ({
                         <div
                           role="button"
                           tabIndex={0}
-                          className="group flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left text-xs text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04] hover:text-white/85"
+                          className="group flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left text-sm text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04] hover:text-white/85"
                           aria-expanded={!isModuleCollapsed}
                           onClick={() => onModuleToggle(module.id)}
                           onKeyDown={(event) => {
@@ -266,7 +266,7 @@ export const ProjectList = ({
           )
         })
       ) : (
-        <div className="rounded-[6px] border border-white/5 px-3 py-4 text-center text-xs text-white/35">
+        <div className="rounded-[6px] border border-white/5 px-3 py-4 text-center text-sm text-white/35">
           没有匹配的项目
         </div>
       )}
