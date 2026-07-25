@@ -1,14 +1,7 @@
-import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  Import,
-  Plus,
-  Search,
-  Settings,
-} from "lucide-react"
+import { ArrowUpDown, Import, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -55,7 +48,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const toast = useLxToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const activePromptId = searchParams.get("designId") ?? ""
   const { projects, refreshProjects } = useProjectNavigationData()
@@ -234,92 +226,62 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   return (
-    <aside
-      className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
-        isCollapsed
-          ? "w-10 min-w-10 max-w-10"
-          : "w-full min-w-full max-w-full lg:w-56 lg:min-w-56 lg:max-w-56"
-      }`}
-    >
-      {isCollapsed ? (
-        <div className="h-full" />
-      ) : (
-        <div className="flex h-full min-w-0 flex-col gap-3">
-          <div className="flex h-7 shrink-0 items-center justify-end px-1">
-            <div className="flex items-center gap-0.5">
-              <LxIconButton
-                aria-label="按状态排序"
-                title={{ content: "按状态排序", placement: "bottom" }}
-                onClick={sortPromptsByStatus}
-              >
-                <ArrowUpDown className="h-3.5 w-3.5" />
-              </LxIconButton>
-              <LxIconButton
-                aria-label="导入项目"
-                title={{ content: "导入项目", placement: "bottom" }}
-              >
-                <Import className="h-4 w-4" />
-              </LxIconButton>
-              <LxIconButton
-                aria-label="新建项目"
-                title={{ content: "新建项目", placement: "bottom" }}
-                onClick={() => setProjectModal({ mode: "create" })}
-              >
-                <Plus className="h-4 w-4" />
-              </LxIconButton>
-            </div>
+    <LeftSideBar>
+      <div className="flex h-full min-w-0 flex-col gap-3">
+        <div className="flex h-7 shrink-0 items-center justify-end px-1">
+          <div className="flex items-center gap-0.5">
+            <LxIconButton
+              aria-label="按状态排序"
+              title={{ content: "按状态排序", placement: "bottom" }}
+              onClick={sortPromptsByStatus}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+            </LxIconButton>
+            <LxIconButton
+              aria-label="导入项目"
+              title={{ content: "导入项目", placement: "bottom" }}
+            >
+              <Import className="h-4 w-4" />
+            </LxIconButton>
+            <LxIconButton
+              aria-label="新建项目"
+              title={{ content: "新建项目", placement: "bottom" }}
+              onClick={() => setProjectModal({ mode: "create" })}
+            >
+              <Plus className="h-4 w-4" />
+            </LxIconButton>
           </div>
+        </div>
 
-          <div className="px-1">
-            <LxInput
-              type="text"
-              value={searchKeyword}
-              placeholder="搜索项目..."
-              aria-label="搜索项目"
-              prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
-              size="xs"
-              onChange={(event) => setSearchKeyword(event.target.value)}
-              clear
-            />
-          </div>
-
-          <ProjectNavigationList
-            activePromptId={activePromptId}
-            collapsedModules={collapsedModules}
-            collapsedProjects={collapsedProjects}
-            editingItem={editingItem}
-            projects={filteredProjects}
-            searchKeyword={searchKeyword}
-            onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.design}?designId=${designId}`)}
-            onEditingItemCancel={cancelEditingItem}
-            onEditingItemChange={setEditingItem}
-            onEditingItemCommit={commitEditingItem}
-            onModuleToggle={toggleModule}
-            onOpenMenu={openMenu}
-            onProjectToggle={toggleProject}
+        <div className="px-1">
+          <LxInput
+            type="text"
+            value={searchKeyword}
+            placeholder="搜索项目..."
+            aria-label="搜索项目"
+            prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+            size="xs"
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            clear
           />
         </div>
-      )}
-      <LxIconButton
-        className={`absolute top-2 transition-transform duration-300 ease-in-out ${
-          isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
-        }`}
-        aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
-        title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
-        onClick={() => setIsCollapsed((currentValue) => !currentValue)}
-      >
-        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </LxIconButton>
-      <LxIconButton
-        className={`absolute bottom-2 transition-transform duration-300 ease-in-out ${
-          isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
-        }`}
-        aria-label="打开设置页面"
-        title={{ content: "设置", placement: "right" }}
-        onClick={() => navigate(PAGE_ROUTES.settings)}
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </LxIconButton>
+
+        <ProjectNavigationList
+          activePromptId={activePromptId}
+          collapsedModules={collapsedModules}
+          collapsedProjects={collapsedProjects}
+          editingItem={editingItem}
+          projects={filteredProjects}
+          searchKeyword={searchKeyword}
+          onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.design}?designId=${designId}`)}
+          onEditingItemCancel={cancelEditingItem}
+          onEditingItemChange={setEditingItem}
+          onEditingItemCommit={commitEditingItem}
+          onModuleToggle={toggleModule}
+          onOpenMenu={openMenu}
+          onProjectToggle={toggleProject}
+        />
+      </div>
       <ProjectNavigationMenu
         isOpen={menu !== null}
         type={menu?.type ?? "project"}
@@ -342,6 +304,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
         onClose={() => setProjectModal(null)}
         onSubmit={handleProjectModalSubmit}
       />
-    </aside>
+    </LeftSideBar>
   )
 }

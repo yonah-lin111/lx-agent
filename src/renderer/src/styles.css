@@ -86,6 +86,28 @@ select {
   min-height: 100vh;
 }
 
+@keyframes sidebar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-sidebar-content-slide-in {
+  animation: sidebar-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sidebar-content-slide-in {
+    animation: none;
+  }
+}
+
 @keyframes tooltip-in {
   from {
     opacity: 0;

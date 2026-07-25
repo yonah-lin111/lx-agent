@@ -25,6 +25,16 @@ export const DesignPage = (): React.JSX.Element => {
           onSave={save}
         />
       )}
+      {!isDesignLoading && !designId && (
+        <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
+          <span className="text-sm text-white/60">请选择一个设计</span>
+        </div>
+      )}
+      {!isDesignLoading && designId && !hasDesign && (
+        <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
+          <span className="text-sm text-white/60">未找到设计</span>
+        </div>
+      )}
     </div>
   )
 }
