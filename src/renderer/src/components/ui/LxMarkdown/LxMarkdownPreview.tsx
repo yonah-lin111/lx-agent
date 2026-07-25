@@ -164,7 +164,7 @@ export const LxMarkdownPreview = ({
   return (
     <article
       ref={previewRef}
-      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-auto px-5 ${
+      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-auto px-5 text-sm ${
         previewMode === "split" ? "border-l border-white/5" : ""
       }`}
     >

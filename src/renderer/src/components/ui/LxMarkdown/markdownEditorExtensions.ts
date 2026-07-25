@@ -10,7 +10,7 @@ export const editorTheme = EditorView.theme(
       height: "100%",
       backgroundColor: "#212121",
       color: "#e5e5e5",
-      fontSize: "13px",
+      fontSize: "14px",
     },
     ".cm-content": {
       minHeight: "100%",
