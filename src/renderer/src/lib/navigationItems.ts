@@ -1,5 +1,5 @@
-import { FolderKanban, House, Settings } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { FolderKanban, House, Settings } from "lucide-react"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 全局底部导航项。

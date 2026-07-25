@@ -124,6 +124,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
       if (itemType === "prompt" && menu.type === "module") {
         setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
       }
+      if (itemType === "prompt" && menu.type === "project") {
+        setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+      }
+      if (itemType === "prompt") {
+        navigate(`${PAGE_ROUTES.project}?designId=${id}`)
+      }
       setEditingItem({ id, name })
       setMenu(null)
     }
@@ -199,7 +205,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
           : [menu.id]
 
     if (await deleteItem(menu)) {
-      if (deletedPromptIds.includes(activePromptId)) navigate(PAGE_ROUTES.home)
+      if (deletedPromptIds.includes(activePromptId)) navigate(PAGE_ROUTES.project)
       setMenu(null)
     }
   }

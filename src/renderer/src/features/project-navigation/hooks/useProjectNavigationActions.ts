@@ -103,14 +103,12 @@ export const useProjectNavigationActions = (
         else if (module) await projectNavigationApi.updateModule(id, { name })
         else await projectNavigationApi.updateDesign(id, { name })
         await refreshProjects()
-        toast.success(project ? "项目更新成功" : module ? "模块更新成功" : "提示词更新成功")
         return true
       } catch {
-        toast.error(project ? "项目更新失败" : module ? "模块更新失败" : "提示词更新失败")
         return false
       }
     },
-    [projects, refreshProjects, toast],
+    [projects, refreshProjects],
   )
 
   const saveProject = useCallback(
@@ -120,7 +118,6 @@ export const useProjectNavigationActions = (
         if (projectId) {
           await projectNavigationApi.updateProject(projectId, { name, path: path ?? "", type })
           await refreshProjects()
-          toast.success("项目更新成功")
           return projectId
         }
         const project = await projectNavigationApi.createProject({ name, path, type })
@@ -128,7 +125,9 @@ export const useProjectNavigationActions = (
         toast.success("项目创建成功")
         return project.id
       } catch {
-        toast.error(projectId ? "项目更新失败" : "项目创建失败")
+        if (!projectId) {
+          toast.error("项目创建失败")
+        }
         return null
       }
     },

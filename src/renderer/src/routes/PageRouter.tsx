@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
-import { ProjectPage } from "@/pages/project"
 import { HomePage } from "@/pages/home"
+import { ProjectPage } from "@/pages/project"
 import { SettingsPage } from "@/pages/settings"
 
 /**
