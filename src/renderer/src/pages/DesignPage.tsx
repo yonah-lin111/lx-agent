@@ -3,6 +3,40 @@ import { LxMarkdownEditor } from "@/components/ui/LxMarkdownEditor"
 // 默认文案
 const defaultContent = `Here are "Hello, World!" programs in several mainstream programming languages:
 
+## Mermaid diagrams
+
+\`\`\`mermaid
+flowchart LR
+  A[需求] --> B{评审}
+  B -->|通过| C[实现]
+  B -->|修改| A
+  C --> D[验证]
+\`\`\`
+
+\`\`\`mermaid
+sequenceDiagram
+  participant U as User
+  participant E as Editor
+  participant P as Preview
+  U->>E: Edit Mermaid source
+  E->>P: Render SVG
+  P-->>U: Pan and zoom diagram
+\`\`\`
+
+\`\`\`mermaid
+classDiagram
+  class MarkdownEditor {
+    +content: string
+    +render()
+  }
+  class MermaidDiagram {
+    +scale: number
+    +pan()
+    +zoom()
+  }
+  MarkdownEditor --> MermaidDiagram
+\`\`\`
+
 ---
 
 ### **1. Python**

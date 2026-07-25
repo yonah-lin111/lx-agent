@@ -16,8 +16,8 @@ import sql from "highlight.js/lib/languages/sql"
 import typescript from "highlight.js/lib/languages/typescript"
 import xml from "highlight.js/lib/languages/xml"
 import yaml from "highlight.js/lib/languages/yaml"
-import MarkdownIt from "markdown-it"
 import type { Options, Token } from "markdown-it"
+import MarkdownIt from "markdown-it"
 
 const languageAliases: Record<string, string> = {
   cs: "csharp",
@@ -81,6 +81,13 @@ markdownRenderer.renderer.rules.fence = (
 ): string => {
   const token = tokens[index]
   const language = token.info.trim().split(/\s+/)[0] || "text"
+
+  if (language.toLowerCase() === "mermaid") {
+    const source = encodeURIComponent(token.content)
+
+    return `<section class="markdown-mermaid" data-mermaid-source="${source}"></section>`
+  }
+
   const renderedCode = `<pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderCode(token.content, language)}</code></pre>\n`
 
   return `<section class="markdown-code-block"><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content">${renderedCode}</div></section>`

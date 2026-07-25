@@ -2,6 +2,7 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { MermaidDiagram } from "@/components/ui/LxMarkdownEditor/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdownEditor/types"
 
 // Markdown 预览属性。
@@ -147,10 +148,18 @@ export const MarkdownPreview = ({
         previewElement?.querySelectorAll<HTMLElement>(".markdown-code-collapse") ?? [],
         (container) => mountButton(container, <CodeBlockCollapseButton />),
       ),
+      ...Array.from(
+        previewElement?.querySelectorAll<HTMLElement>(".markdown-mermaid") ?? [],
+        (container) => {
+          const encodedSource = container.dataset.mermaidSource
+          const source = encodedSource ? decodeURIComponent(encodedSource) : ""
+          return mountButton(container, <MermaidDiagram source={source} />)
+        },
+      ),
     ]
 
     return () => roots.forEach((root) => root.unmount())
-  }, [html, previewRef])
+  }, [html, previewMode, previewRef])
 
   return (
     <article
