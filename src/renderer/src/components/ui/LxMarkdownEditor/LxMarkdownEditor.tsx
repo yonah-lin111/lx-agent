@@ -10,7 +10,7 @@ import {
 import { markdown } from "@codemirror/lang-markdown"
 import { syntaxHighlighting } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState } from "@codemirror/state"
+import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import {
@@ -41,6 +41,7 @@ import {
   createMarkdownBlockInsertion,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  isInsideMarkdownCodeFence,
 } from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
 import {
   createMarkdownTable,
@@ -99,7 +100,10 @@ export const LxMarkdownEditor = ({
     const line = view.state.doc.lineAt(cursor)
     const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
     const coords = view.coordsAtPos(cursor)
-    const commands = trigger ? getMarkdownBlockCommands(trigger.kind) : []
+    const isClosingCodeFence =
+      trigger?.kind === "codeBlock" &&
+      isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))
+    const commands = trigger && !isClosingCodeFence ? getMarkdownBlockCommands(trigger.kind) : []
 
     if (!trigger || !coords || commands.length === 0) {
       blockCommandPanelRef.current = null
@@ -134,15 +138,19 @@ export const LxMarkdownEditor = ({
    */
   const selectBlockCommand = (command: MarkdownBlockCommand): void => {
     const view = editorViewRef.current
-    const panel = blockCommandPanelRef.current
-    if (!view || !panel) return
+    if (!view) return
+
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
+    if (!trigger) return
 
     const insertion = createMarkdownBlockInsertion(command.id)
     view.dispatch({
-      changes: { from: panel.trigger.from, to: panel.trigger.to, insert: insertion.text },
+      changes: { from: trigger.from, to: trigger.to, insert: insertion.text },
       selection: {
-        anchor: panel.trigger.from + insertion.selectionStart,
-        head: panel.trigger.from + insertion.selectionEnd,
+        anchor: trigger.from + insertion.selectionStart,
+        head: trigger.from + insertion.selectionEnd,
       },
     })
     view.focus()
@@ -261,6 +269,32 @@ export const LxMarkdownEditor = ({
         editorTheme,
         markdownMarkerHighlight,
         EditorView.lineWrapping,
+        Prec.highest(
+          keymap.of([
+            { key: "ArrowDown", run: () => handleBlockCommandKey(1) },
+            { key: "ArrowUp", run: () => handleBlockCommandKey(-1) },
+            {
+              key: "Enter",
+              run: () => {
+                const panel = blockCommandPanelRef.current
+                if (!panel) return false
+                selectBlockCommand(
+                  panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
+                )
+                return true
+              },
+            },
+            {
+              key: "Escape",
+              run: () => {
+                if (!blockCommandPanelRef.current) return false
+                blockCommandPanelRef.current = null
+                setBlockCommandPanel(null)
+                return true
+              },
+            },
+          ]),
+        ),
         keymap.of([
           { key: "Mod-a", run: selectAllPreservingScrollPosition },
           { key: "Tab", run: indentMore },
@@ -282,28 +316,6 @@ export const LxMarkdownEditor = ({
           { key: "Mod-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
-          { key: "ArrowDown", run: () => handleBlockCommandKey(1) },
-          { key: "ArrowUp", run: () => handleBlockCommandKey(-1) },
-          {
-            key: "Enter",
-            run: () => {
-              const panel = blockCommandPanelRef.current
-              if (!panel) return false
-              selectBlockCommand(
-                panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
-              )
-              return true
-            },
-          },
-          {
-            key: "Escape",
-            run: () => {
-              if (!blockCommandPanelRef.current) return false
-              blockCommandPanelRef.current = null
-              setBlockCommandPanel(null)
-              return true
-            },
-          },
           {
             key: "Mod-Shift-Alt-t",
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),

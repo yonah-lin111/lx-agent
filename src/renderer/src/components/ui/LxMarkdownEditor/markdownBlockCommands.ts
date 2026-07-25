@@ -62,7 +62,7 @@ const commandsByTrigger: Record<MarkdownBlockTriggerKind, MarkdownBlockCommand[]
   ],
   orderedList: [{ id: "orderedList", label: "有序列表", preview: "1. Item", icon: ListOrdered }],
   quote: [{ id: "quote", label: "引用", preview: "> Quote", icon: Quote }],
-  codeBlock: [{ id: "codeBlock", label: "代码块", preview: "```", icon: Code }],
+  codeBlock: [{ id: "codeBlock", label: "代码块", preview: "```language", icon: Code }],
   table: [{ id: "table", label: "表格", preview: "| Header |", icon: Table2 }],
 }
 
@@ -97,6 +97,30 @@ export const getMarkdownBlockTrigger = (
 }
 
 /**
+ * 判断指定文本末尾是否处于未闭合的 Markdown 代码围栏内。
+ */
+export const isInsideMarkdownCodeFence = (text: string): boolean => {
+  let openingFence: string | null = null
+
+  for (const line of text.split("\n")) {
+    const match = line.match(/^\s*(`{3,}|~{3,})/)
+    if (!match) continue
+
+    const marker = match[1]
+    if (!openingFence) {
+      openingFence = marker
+      continue
+    }
+
+    if (marker[0] === openingFence[0] && marker.length >= openingFence.length) {
+      openingFence = null
+    }
+  }
+
+  return openingFence !== null
+}
+
+/**
  * 获取匹配触发标记时可用的 Markdown 块命令。
  */
 export const getMarkdownBlockCommands = (kind: MarkdownBlockTriggerKind): MarkdownBlockCommand[] =>
@@ -116,17 +140,17 @@ export const createMarkdownBlockInsertion = (
 
   switch (commandId) {
     case "unorderedList":
-      return { text: "- Item", selectionStart: 2, selectionEnd: 6 }
+      return { text: "- item", selectionStart: 2, selectionEnd: 6 }
     case "taskList":
-      return { text: "- [ ] Task", selectionStart: 6, selectionEnd: 10 }
+      return { text: "- [ ] task", selectionStart: 6, selectionEnd: 10 }
     case "orderedList":
-      return { text: "1. Item", selectionStart: 3, selectionEnd: 7 }
+      return { text: "1. item", selectionStart: 3, selectionEnd: 7 }
     case "quote":
-      return { text: "> Quote", selectionStart: 2, selectionEnd: 7 }
+      return { text: "> quote", selectionStart: 2, selectionEnd: 7 }
     case "codeBlock":
-      return { text: "```\ncode\n```", selectionStart: 4, selectionEnd: 8 }
+      return { text: "```language\n```", selectionStart: 3, selectionEnd: 11 }
     case "table": {
-      const text = "| Header | Header |\n| --- | --- |\n| Content | Content |\n|  |  |"
+      const text = "| Header | Header |\n| --- | --- |\n| content | content |\n|  |  |"
       return { text, selectionStart: 2, selectionEnd: 8 }
     }
     default:
