@@ -8,7 +8,7 @@ import {
   Settings,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -54,9 +54,10 @@ type ProjectModalState =
 export const ProjectNavigation = (): React.JSX.Element => {
   const toast = useLxToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [searchKeyword, setSearchKeyword] = useState<string>("")
-  const [activePromptId, setActivePromptId] = useState<string>("")
+  const activePromptId = searchParams.get("designId") ?? ""
   const { projects, refreshProjects } = useProjectNavigationData()
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
@@ -207,7 +208,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
           : [menu.id]
 
     if (await deleteItem(menu)) {
-      if (deletedPromptIds.includes(activePromptId)) setActivePromptId("")
+      if (deletedPromptIds.includes(activePromptId)) navigate(PAGE_ROUTES.home)
       setMenu(null)
     }
   }
@@ -289,8 +290,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             editingItem={editingItem}
             projects={filteredProjects}
             searchKeyword={searchKeyword}
-            onActivePromptChange={setActivePromptId}
-            onDesignOpen={() => navigate(PAGE_ROUTES.design)}
+            onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.design}?designId=${designId}`)}
             onEditingItemCancel={cancelEditingItem}
             onEditingItemChange={setEditingItem}
             onEditingItemCommit={commitEditingItem}

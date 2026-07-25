@@ -35,4 +35,6 @@ export type MarkdownPreviewMode = "edit" | "preview" | "split"
 export interface LxMarkdownEditorProps {
   initialContent?: string
   onChange?: (content: string) => void
+  onSave?: () => void
+  isSaved?: boolean
 }

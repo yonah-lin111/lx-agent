@@ -73,12 +73,15 @@ interface MarkdownBlockCommandPanelState {
 export const LxMarkdownEditor = ({
   initialContent = "",
   onChange,
+  onSave,
+  isSaved = true,
 }: LxMarkdownEditorProps): React.JSX.Element => {
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
   const previewRef = useRef<HTMLElement>(null)
   const editorScrollAnchorRef = useRef<EditorScrollAnchor | null>(null)
   const onChangeRef = useRef(onChange)
+  const onSaveRef = useRef(onSave)
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
   const [content, setContent] = useState(initialContent)
@@ -92,6 +95,10 @@ export const LxMarkdownEditor = ({
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
+
+  useEffect(() => {
+    onSaveRef.current = onSave
+  }, [onSave])
 
   /**
    * 更新 Markdown 块命令面板的候选项及其相对光标的位置。
@@ -298,6 +305,13 @@ export const LxMarkdownEditor = ({
         ),
         keymap.of([
           { key: "Mod-a", run: selectAllPreservingScrollPosition },
+          {
+            key: "Mod-s",
+            run: () => {
+              onSaveRef.current?.()
+              return true
+            },
+          },
           { key: "Tab", run: indentMore },
           { key: "Shift-Tab", run: indentLess },
           { key: "Mod-d", run: deleteLine },
@@ -458,6 +472,7 @@ export const LxMarkdownEditor = ({
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
       <MarkdownEditorToolbar
         actions={actions}
+        isSaved={isSaved}
         onInsertTable={(size) => insertText(createMarkdownTable(size))}
       />
       <div className="min-h-0 flex flex-1">

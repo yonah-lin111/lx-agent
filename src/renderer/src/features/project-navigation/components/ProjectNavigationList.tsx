@@ -24,8 +24,7 @@ interface ProjectNavigationListProps {
   editingItem: EditingItem | null
   collapsedProjects: Record<string, boolean>
   collapsedModules: Record<string, boolean>
-  onActivePromptChange: (promptId: string) => void
-  onDesignOpen: () => void
+  onDesignOpen: (designId: string) => void
   onEditingItemChange: (item: EditingItem) => void
   onEditingItemCommit: () => void
   onEditingItemCancel: () => void
@@ -49,7 +48,6 @@ export const ProjectNavigationList = ({
   editingItem,
   collapsedProjects,
   collapsedModules,
-  onActivePromptChange,
   onDesignOpen,
   onEditingItemChange,
   onEditingItemCommit,
@@ -130,8 +128,7 @@ export const ProjectNavigationList = ({
           : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
       }`}
       onClick={() => {
-        onActivePromptChange(prompt.id)
-        onDesignOpen()
+        onDesignOpen(prompt.id)
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.currentTarget.click()

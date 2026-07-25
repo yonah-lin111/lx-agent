@@ -8,10 +8,12 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 // 工具栏属性。
 interface MarkdownEditorToolbarProps {
   actions: MarkdownToolbarAction[]
+  isSaved: boolean
   onInsertTable: (size: MarkdownTableSize) => void
 }
 
 const markdownShortcuts = [
+  { keys: "Cmd / Ctrl + S", description: "保存当前内容" },
   { keys: "Tab", description: "增加缩进" },
   { keys: "Shift + Tab", description: "减少缩进" },
   { keys: "Cmd / Ctrl + D", description: "删除当前行" },
@@ -36,6 +38,7 @@ const markdownShortcuts = [
  */
 export const MarkdownEditorToolbar = ({
   actions,
+  isSaved,
   onInsertTable,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
@@ -177,6 +180,15 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
+      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+        <span
+          aria-label={isSaved ? "已保存" : "未保存"}
+          className={`ml-1 h-2 w-2 shrink-0 rounded-full ${
+            isSaved ? "bg-emerald-400" : "bg-amber-400"
+          }`}
+          role="status"
+        />
+      </LxTooltip>
     </div>
   )
 }
