@@ -301,7 +301,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         </div>
       )}
       <LxIconButton
-        className={`absolute top-1 transition-transform duration-300 ease-in-out ${
+        className={`absolute top-2 transition-transform duration-300 ease-in-out ${
           isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
         }`}
         aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
@@ -311,7 +311,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </LxIconButton>
       <LxIconButton
-        className={`absolute bottom-1 transition-transform duration-300 ease-in-out ${
+        className={`absolute bottom-2 transition-transform duration-300 ease-in-out ${
           isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
         }`}
         aria-label="打开设置页面"
