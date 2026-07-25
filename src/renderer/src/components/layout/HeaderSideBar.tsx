@@ -2,13 +2,25 @@
  * 渲染页面顶部栏。
  */
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { getLxToastColorClass, useLxToast } from "@/components/ui/LxToast"
+import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
+import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
+import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 interface HeaderSideBarProps {
   isExpanded: boolean
   onExpandedChange: (isExpanded: boolean) => void
+}
+
+// 项目页面包屑名称。
+interface ProjectBreadcrumb {
+  projectName: string
+  moduleName: string
+  designName: string
 }
 
 export const HeaderSideBar = ({
@@ -16,6 +28,76 @@ export const HeaderSideBar = ({
   onExpandedChange,
 }: HeaderSideBarProps): React.JSX.Element => {
   const { toasts } = useLxToast()
+  const { pathname } = useLocation()
+  const [searchParams] = useSearchParams()
+  const designId = searchParams.get("designId")
+  const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
+  const activeNavigationItem =
+    PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
+
+  useEffect(() => {
+    if (pathname !== PAGE_ROUTES.project || !designId) {
+      setProjectBreadcrumb(null)
+      return
+    }
+
+    setProjectBreadcrumb(null)
+    let isCurrent = true
+    const loadProjectBreadcrumb = async (): Promise<void> => {
+      try {
+        const [projects, modules, designs] = await Promise.all([
+          projectNavigationApi.listProjects(),
+          projectNavigationApi.listModules(),
+          projectNavigationApi.listDesigns(),
+        ])
+        const navigationProjects = createProjectNavigationTree(projects, modules, designs)
+        for (const project of navigationProjects) {
+          const projectDesign = project.prompts.find((prompt) => prompt.id === designId)
+          if (projectDesign) {
+            if (isCurrent) {
+              setProjectBreadcrumb({
+                projectName: project.name,
+                moduleName: "GENERAL",
+                designName: projectDesign.name,
+              })
+            }
+            return
+          }
+
+          const module = project.modules.find((item) =>
+            item.prompts.some((prompt) => prompt.id === designId),
+          )
+          const moduleDesign = module?.prompts.find((prompt) => prompt.id === designId)
+          if (module && moduleDesign) {
+            if (isCurrent) {
+              setProjectBreadcrumb({
+                projectName: project.name,
+                moduleName: module.name,
+                designName: moduleDesign.name,
+              })
+            }
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load breadcrumb", error)
+      }
+    }
+
+    void loadProjectBreadcrumb()
+    return () => {
+      isCurrent = false
+    }
+  }, [designId, pathname])
+
+  const breadcrumbParts =
+    pathname === PAGE_ROUTES.project && projectBreadcrumb
+      ? [
+          activeNavigationItem.breadcrumbCategory,
+          projectBreadcrumb.projectName,
+          `${projectBreadcrumb.moduleName} - ${projectBreadcrumb.designName}`,
+        ]
+      : [activeNavigationItem.breadcrumbCategory]
 
   return (
     <header
@@ -24,6 +106,24 @@ export const HeaderSideBar = ({
       }`}
     >
       <div className="relative h-full w-full">
+        <div
+          key={`${pathname}-${designId ?? ""}-${projectBreadcrumb?.designName ?? ""}`}
+          className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono animate-header-breadcrumb-in"
+        >
+          <span className="text-white/30">//</span>
+          {breadcrumbParts.map((part, index) => (
+            <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-2 truncate">
+              {index > 0 && <span className="shrink-0 text-white/20">/</span>}
+              <span
+                className={`truncate font-bold ${
+                  index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
+                }`}
+              >
+                {part}
+              </span>
+            </span>
+          ))}
+        </div>
         <div
           className={`absolute right-0 top-0 flex items-center gap-2 transition-transform duration-300 ease-in-out ${
             isExpanded ? "translate-y-0" : "-translate-y-0.5"
