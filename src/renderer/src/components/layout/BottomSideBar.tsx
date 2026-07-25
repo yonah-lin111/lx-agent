@@ -26,8 +26,8 @@ export const BottomSideBar = ({
     >
       <div className="relative h-full w-full">
         <div
-          className={`absolute right-0 top-0 flex gap-1 transition-transform duration-300 ease-in-out ${
-            isExpanded ? "translate-y-0" : "-translate-y-0.5"
+          className={`absolute right-0 bottom-0 flex gap-1 transition-transform duration-300 ease-in-out ${
+            isExpanded ? "translate-y-0" : "translate-y-[2px]"
           }`}
         >
           <LxIconButton

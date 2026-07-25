@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -18,6 +18,10 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    setIsCollapsed(false)
+  }, [pathname])
+
   return (
     <aside
       className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
@@ -27,11 +31,13 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
       }`}
     >
       <div className={isCollapsed ? "hidden" : "h-full overflow-hidden"}>
-        <div className="h-full animate-sidebar-content-slide-in">{children}</div>
+        <div key={pathname} className="h-full animate-sidebar-content-slide-in">
+          {children}
+        </div>
       </div>
       <LxIconButton
-        className={`absolute top-2 transition-transform duration-300 ease-in-out ${
-          isCollapsed ? "left-1/2 -translate-x-1/2" : "left-1 translate-x-0"
+        className={`absolute top-2 left-1 transition-transform duration-300 ease-in-out ${
+          isCollapsed ? "translate-x-[2px]" : "translate-x-0"
         }`}
         aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
         title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}

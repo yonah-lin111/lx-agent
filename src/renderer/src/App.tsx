@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { BottomSideBar } from "@/components/layout/BottomSideBar"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
+import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSideBar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
@@ -44,7 +45,7 @@ export const App = () => {
     }
   }
 
-  const renderLeftSideBar = (): React.JSX.Element => {
+  const renderLeftSideBarContent = (): React.JSX.Element => {
     if (pathname === PAGE_ROUTES.home) return <HomeLeftSideBar />
     if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />
     return <ProjectLeftSideBar />
@@ -53,7 +54,7 @@ export const App = () => {
   return (
     <LxToastProvider>
       <div className="flex h-screen w-screen flex-col gap-2 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
-        {renderLeftSideBar()}
+        <LeftSideBar>{renderLeftSideBarContent()}</LeftSideBar>
         <div className="flex h-auto min-w-0 flex-1 flex-col overflow-hidden lg:h-full">
           <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,1fr)_auto]">
             <div className="flex min-w-0 flex-col">
