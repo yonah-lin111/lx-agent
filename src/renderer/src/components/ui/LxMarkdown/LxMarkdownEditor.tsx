@@ -92,6 +92,36 @@ export const LxMarkdownEditor = ({
   const [activeBlockCommandIndex, setActiveBlockCommandIndex] = useState(0)
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
 
+  const previewModeRef = useRef(previewMode)
+  useEffect(() => {
+    previewModeRef.current = previewMode
+  }, [previewMode])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const isModKey = event.metaKey || event.ctrlKey
+      const isShift = event.shiftKey
+
+      if (isModKey && isShift) {
+        const key = event.key.toLowerCase()
+        if (key === "e") {
+          event.preventDefault()
+          const currentMode = previewModeRef.current
+          changePreviewMode(currentMode === "split" ? "edit" : "split")
+        } else if (key === "v") {
+          event.preventDefault()
+          const currentMode = previewModeRef.current
+          changePreviewMode(currentMode === "preview" ? "edit" : "preview")
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
+
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
@@ -428,6 +458,10 @@ export const LxMarkdownEditor = ({
     }
   }, [previewHtml, previewMode])
 
+  const isMacOS = navigator.userAgent.includes("Macintosh")
+  const splitLabel = isMacOS ? "双栏预览 (Cmd+Shift+E)" : "双栏预览 (Ctrl+Shift+E)"
+  const previewLabel = isMacOS ? "仅预览 (Cmd+Shift+V)" : "仅预览 (Ctrl+Shift+V)"
+
   const actions: MarkdownToolbarAction[] = [
     {
       icon: Undo2,
@@ -455,14 +489,14 @@ export const LxMarkdownEditor = ({
     { icon: Link, label: "链接", onClick: () => wrapSelection("[", "](https://)", "link text") },
     {
       icon: SquareSplitHorizontal,
-      label: "双栏预览",
+      label: splitLabel,
       onClick: () => changePreviewMode(previewMode === "split" ? "edit" : "split"),
       alignRight: true,
       highlighted: previewMode === "split",
     },
     {
       icon: Eye,
-      label: "仅预览",
+      label: previewLabel,
       onClick: () => changePreviewMode(previewMode === "preview" ? "edit" : "preview"),
       highlighted: previewMode === "preview",
     },

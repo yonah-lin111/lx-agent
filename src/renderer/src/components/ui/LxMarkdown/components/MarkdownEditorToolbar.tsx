@@ -31,6 +31,8 @@ const markdownShortcuts = [
   { keys: "Cmd / Ctrl + Shift + Z", description: "重做" },
   { keys: "Cmd / Ctrl + Alt + C", description: "行内代码" },
   { keys: "Cmd / Ctrl + Shift + Alt + T", description: "插入表格" },
+  { keys: "Cmd / Ctrl + Shift + E", description: "双栏预览" },
+  { keys: "Cmd / Ctrl + Shift + V", description: "仅预览" },
 ]
 
 /**
