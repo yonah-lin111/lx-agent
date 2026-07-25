@@ -30,19 +30,19 @@ import {
   Undo2,
 } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdownEditor/components/MarkdownBlockCommandMenu"
-import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdownEditor/components/MarkdownEditorToolbar"
-import { MarkdownPreview } from "@/components/ui/LxMarkdownEditor/components/MarkdownPreview"
+import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
+import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
+import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import type {
   MarkdownBlockCommand,
   MarkdownBlockTrigger,
-} from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
+} from "@/components/ui/LxMarkdown/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
-} from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
+} from "@/components/ui/LxMarkdown/markdownBlockCommands"
 import {
   createMarkdownTable,
   editorTheme,
@@ -50,14 +50,14 @@ import {
   markdownMarkerHighlight,
   selectAllPreservingScrollPosition,
   synchronizeScrollByScale,
-} from "@/components/ui/LxMarkdownEditor/markdownEditorExtensions"
-import { markdownRenderer } from "@/components/ui/LxMarkdownEditor/markdownRenderer"
+} from "@/components/ui/LxMarkdown/markdownEditorExtensions"
+import { markdownRenderer } from "@/components/ui/LxMarkdown/markdownRenderer"
 import type {
   EditorScrollAnchor,
   LxMarkdownEditorProps,
   MarkdownPreviewMode,
   MarkdownToolbarAction,
-} from "@/components/ui/LxMarkdownEditor/types"
+} from "@/components/ui/LxMarkdown/types"
 
 // Markdown 块命令面板状态。
 interface MarkdownBlockCommandPanelState {
@@ -457,7 +457,7 @@ export const LxMarkdownEditor = ({
           className={`min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
-          <MarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
+          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
         )}
       </div>
       {blockCommandPanel && (

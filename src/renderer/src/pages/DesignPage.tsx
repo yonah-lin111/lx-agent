@@ -1,4 +1,4 @@
-import { LxMarkdownEditor } from "@/components/ui/LxMarkdownEditor"
+import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
 
 // 默认文案
 const defaultContent = `Here are "Hello, World!" programs in several mainstream programming languages:

@@ -1,1 +1,1 @@
-export { LxMarkdownEditor } from "@/components/ui/LxMarkdownEditor/LxMarkdownEditor"
+export { LxMarkdownEditor } from "@/components/ui/LxMarkdown"

@@ -2,7 +2,7 @@ import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder } from "@codemirror/state"
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
-import type { MarkdownTableSize } from "@/components/ui/LxMarkdownEditor/types"
+import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
   {

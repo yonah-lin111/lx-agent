@@ -2,11 +2,11 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { MermaidDiagram } from "@/components/ui/LxMarkdownEditor/components/MermaidDiagram"
-import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdownEditor/types"
+import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
+import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 
 // Markdown 预览属性。
-interface MarkdownPreviewProps {
+interface LxMarkdownPreviewProps {
   html: string
   previewMode: MarkdownPreviewMode
   previewRef: React.RefObject<HTMLElement | null>
@@ -127,11 +127,11 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 /**
  * 渲染 Markdown 内容，并为代码块挂载复制按钮。
  */
-export const MarkdownPreview = ({
+export const LxMarkdownPreview = ({
   html,
   previewMode,
   previewRef,
-}: MarkdownPreviewProps): React.JSX.Element => {
+}: LxMarkdownPreviewProps): React.JSX.Element => {
   useLayoutEffect(() => {
     const mountButton = (container: HTMLElement, button: React.JSX.Element) => {
       const root = createRoot(container)

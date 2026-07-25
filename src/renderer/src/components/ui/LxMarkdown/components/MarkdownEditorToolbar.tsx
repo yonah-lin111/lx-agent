@@ -2,10 +2,7 @@ import { Keyboard, Table2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import type {
-  MarkdownTableSize,
-  MarkdownToolbarAction,
-} from "@/components/ui/LxMarkdownEditor/types"
+import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 
 // 工具栏属性。
 interface MarkdownEditorToolbarProps {

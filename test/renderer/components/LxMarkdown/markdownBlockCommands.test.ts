@@ -4,7 +4,7 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
-} from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
+} from "@/components/ui/LxMarkdown/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
   it("在行首标记末尾识别相应块命令", () => {
