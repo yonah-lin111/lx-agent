@@ -30,8 +30,18 @@ import {
   Undo2,
 } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdownEditor/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdownEditor/components/MarkdownEditorToolbar"
 import { MarkdownPreview } from "@/components/ui/LxMarkdownEditor/components/MarkdownPreview"
+import type {
+  MarkdownBlockCommand,
+  MarkdownBlockTrigger,
+} from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
+import {
+  createMarkdownBlockInsertion,
+  getMarkdownBlockCommands,
+  getMarkdownBlockTrigger,
+} from "@/components/ui/LxMarkdownEditor/markdownBlockCommands"
 import {
   createMarkdownTable,
   editorTheme,
@@ -48,6 +58,13 @@ import type {
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdownEditor/types"
 
+// Markdown 块命令面板状态。
+interface MarkdownBlockCommandPanelState {
+  commands: MarkdownBlockCommand[]
+  position: React.CSSProperties
+  trigger: MarkdownBlockTrigger
+}
+
 /**
  * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
  */
@@ -60,13 +77,97 @@ export const LxMarkdownEditor = ({
   const previewRef = useRef<HTMLElement>(null)
   const editorScrollAnchorRef = useRef<EditorScrollAnchor | null>(null)
   const onChangeRef = useRef(onChange)
+  const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
+  const activeBlockCommandIndexRef = useRef(0)
   const [content, setContent] = useState(initialContent)
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
+  const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
+    null,
+  )
+  const [activeBlockCommandIndex, setActiveBlockCommandIndex] = useState(0)
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
 
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
+
+  /**
+   * 更新 Markdown 块命令面板的候选项及其相对光标的位置。
+   */
+  const syncBlockCommandPanel = (view: EditorView): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
+    const coords = view.coordsAtPos(cursor)
+    const commands = trigger ? getMarkdownBlockCommands(trigger.kind) : []
+
+    if (!trigger || !coords || commands.length === 0) {
+      blockCommandPanelRef.current = null
+      activeBlockCommandIndexRef.current = 0
+      setBlockCommandPanel(null)
+      setActiveBlockCommandIndex(0)
+      return
+    }
+
+    const panelWidth = 256
+    const offset = 6
+    const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
+    const panel = {
+      commands,
+      trigger,
+      position:
+        window.innerHeight - coords.bottom < window.innerHeight * 0.3
+          ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
+          : { left, top: coords.bottom + offset, bottom: "auto" },
+    }
+    const previous = blockCommandPanelRef.current
+    if (previous?.trigger.kind !== trigger.kind || previous.trigger.to !== trigger.to) {
+      activeBlockCommandIndexRef.current = 0
+      setActiveBlockCommandIndex(0)
+    }
+    blockCommandPanelRef.current = panel
+    setBlockCommandPanel(panel)
+  }
+
+  /**
+   * 将当前触发标记替换为用户选择的 Markdown 块模板。
+   */
+  const selectBlockCommand = (command: MarkdownBlockCommand): void => {
+    const view = editorViewRef.current
+    const panel = blockCommandPanelRef.current
+    if (!view || !panel) return
+
+    const insertion = createMarkdownBlockInsertion(command.id)
+    view.dispatch({
+      changes: { from: panel.trigger.from, to: panel.trigger.to, insert: insertion.text },
+      selection: {
+        anchor: panel.trigger.from + insertion.selectionStart,
+        head: panel.trigger.from + insertion.selectionEnd,
+      },
+    })
+    view.focus()
+  }
+
+  /**
+   * 切换菜单高亮项，并保持键盘选择状态与视图一致。
+   */
+  const setActiveBlockCommand = (index: number): void => {
+    activeBlockCommandIndexRef.current = index
+    setActiveBlockCommandIndex(index)
+  }
+
+  /**
+   * 处理 Markdown 块命令菜单的键盘选择。
+   */
+  const handleBlockCommandKey = (offset: number): boolean => {
+    const panel = blockCommandPanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeBlockCommandIndexRef.current + offset + panel.commands.length) % panel.commands.length
+    setActiveBlockCommand(nextIndex)
+    return true
+  }
 
   /**
    * 在当前选区插入内容，并将焦点还给编辑器。
@@ -181,6 +282,28 @@ export const LxMarkdownEditor = ({
           { key: "Mod-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
+          { key: "ArrowDown", run: () => handleBlockCommandKey(1) },
+          { key: "ArrowUp", run: () => handleBlockCommandKey(-1) },
+          {
+            key: "Enter",
+            run: () => {
+              const panel = blockCommandPanelRef.current
+              if (!panel) return false
+              selectBlockCommand(
+                panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
+              )
+              return true
+            },
+          },
+          {
+            key: "Escape",
+            run: () => {
+              if (!blockCommandPanelRef.current) return false
+              blockCommandPanelRef.current = null
+              setBlockCommandPanel(null)
+              return true
+            },
+          },
           {
             key: "Mod-Shift-Alt-t",
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
@@ -188,6 +311,9 @@ export const LxMarkdownEditor = ({
           ...historyKeymap,
         ]),
         EditorView.updateListener.of((update) => {
+          if (update.docChanged || update.selectionSet || update.viewportChanged) {
+            syncBlockCommandPanel(update.view)
+          }
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
             setContent(nextContent)
@@ -322,6 +448,15 @@ export const LxMarkdownEditor = ({
           <MarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
         )}
       </div>
+      {blockCommandPanel && (
+        <MarkdownBlockCommandMenu
+          activeIndex={activeBlockCommandIndex}
+          commands={blockCommandPanel.commands}
+          position={blockCommandPanel.position}
+          onActiveIndexChange={setActiveBlockCommand}
+          onSelect={selectBlockCommand}
+        />
+      )}
     </section>
   )
 }
