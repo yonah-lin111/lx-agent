@@ -60,6 +60,18 @@ export const markdownRenderer = new MarkdownIt({
   linkify: true,
 })
 
+markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
+  state.tokens.forEach((token) => {
+    if (!token.map || token.level !== 0 || (token.nesting !== 1 && token.type !== "fence")) {
+      return
+    }
+
+    token.attrSet("data-line", String(token.map[0]))
+  })
+
+  return true
+})
+
 // 对已注册语言生成高亮 HTML，其他语言保留纯文本。
 const renderCode = (content: string, language: string): string => {
   const normalizedLanguage = languageAliases[language.toLowerCase()] ?? language.toLowerCase()
@@ -81,14 +93,16 @@ markdownRenderer.renderer.rules.fence = (
 ): string => {
   const token = tokens[index]
   const language = token.info.trim().split(/\s+/)[0] || "text"
+  const sourceLine = token.attrGet("data-line")
+  const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
 
   if (language.toLowerCase() === "mermaid") {
     const source = encodeURIComponent(token.content)
 
-    return `<section class="markdown-mermaid" data-mermaid-source="${source}"></section>`
+    return `<section class="markdown-mermaid" data-mermaid-source="${source}"${lineAttribute}></section>`
   }
 
   const renderedCode = `<pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderCode(token.content, language)}</code></pre>\n`
 
-  return `<section class="markdown-code-block"><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content">${renderedCode}</div></section>`
+  return `<section class="markdown-code-block"${lineAttribute}><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content">${renderedCode}</div></section>`
 }

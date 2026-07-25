@@ -49,7 +49,8 @@ import {
   markdownHighlightStyle,
   markdownMarkerHighlight,
   selectAllPreservingScrollPosition,
-  synchronizeScrollByScale,
+  synchronizeEditorToPreview,
+  synchronizePreviewToEditor,
 } from "@/components/ui/LxMarkdown/markdownEditorExtensions"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/markdownRenderer"
 import type {
@@ -376,12 +377,12 @@ export const LxMarkdownEditor = ({
     let restoreListenerTimer: number | null = null
 
     const synchronize = (
-      source: HTMLElement,
       target: HTMLElement,
       targetListener: EventListener,
+      synchronizeTarget: () => void,
     ): void => {
       target.removeEventListener("scroll", targetListener)
-      synchronizeScrollByScale(source, target)
+      synchronizeTarget()
       if (restoreListenerTimer !== null) window.clearTimeout(restoreListenerTimer)
       restoreListenerTimer = window.setTimeout(() => {
         target.addEventListener("scroll", targetListener)
@@ -390,17 +391,25 @@ export const LxMarkdownEditor = ({
     }
 
     const synchronizePreview = (): void =>
-      synchronize(editorScrollElement, previewElement, synchronizeEditor)
+      synchronize(previewElement, synchronizeEditor, () =>
+        synchronizeEditorToPreview(editorViewRef.current!, previewElement),
+      )
     const synchronizeEditor = (): void =>
-      synchronize(previewElement, editorScrollElement, synchronizePreview)
+      synchronize(editorScrollElement, synchronizePreview, () =>
+        synchronizePreviewToEditor(previewElement, editorViewRef.current!),
+      )
+    const previewContentElement = previewElement.querySelector(".markdown-preview-content")
+    const previewContentObserver = new ResizeObserver(() => synchronizePreview())
 
     editorScrollElement.addEventListener("scroll", synchronizePreview)
     previewElement.addEventListener("scroll", synchronizeEditor)
+    if (previewContentElement) previewContentObserver.observe(previewContentElement)
     synchronizePreview()
 
     return () => {
       editorScrollElement.removeEventListener("scroll", synchronizePreview)
       previewElement.removeEventListener("scroll", synchronizeEditor)
+      previewContentObserver.disconnect()
       if (restoreListenerTimer !== null) window.clearTimeout(restoreListenerTimer)
     }
   }, [previewHtml, previewMode])
