@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { designApi } from "@/features/design/api/designApi"
+import { projectApi } from "@/features/project/api/projectApi"
 
 // 自动保存延迟时间。
 const AUTO_SAVE_DELAY = 800
@@ -7,7 +7,7 @@ const AUTO_SAVE_DELAY = 800
 /**
  * 加载指定设计，并提供防抖自动保存和手动保存能力。
  */
-export const useDesignEditor = (
+export const useProjectEditor = (
   designId: string | null,
 ): {
   content: string
@@ -42,7 +42,7 @@ export const useDesignEditor = (
       setHasDesign(false)
       try {
         const design = designId
-          ? (await designApi.list()).find((item) => item.id === designId)
+          ? (await projectApi.list()).find((item) => item.id === designId)
           : undefined
         if (!isCurrent) return
         const designData = design?.designData ?? ""
@@ -78,7 +78,7 @@ export const useDesignEditor = (
     const contentToSave = contentRef.current
     const requestId = saveRequestRef.current + 1
     saveRequestRef.current = requestId
-    void designApi
+    void projectApi
       .update(designId, { designData: contentToSave })
       .then(() => {
         if (saveRequestRef.current !== requestId || contentRef.current !== contentToSave) return

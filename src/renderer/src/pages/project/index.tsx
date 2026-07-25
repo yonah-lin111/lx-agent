@@ -1,16 +1,16 @@
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
-import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
-import { useDesignEditor } from "@/features/design/hooks/useDesignEditor"
+import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
+import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 
 /**
  * 渲染设计页面。
  */
-export const DesignPage = (): React.JSX.Element => {
+export const ProjectPage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
   const { content, hasDesign, isLoading, isSaved, loadedDesignId, save, setContent } =
-    useDesignEditor(designId)
+    useProjectEditor(designId)
   const isDesignLoading = isLoading || (designId !== null && loadedDesignId !== designId)
 
   return (

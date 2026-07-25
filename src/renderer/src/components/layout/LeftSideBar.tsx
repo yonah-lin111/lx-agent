@@ -1,9 +1,9 @@
-import { ChevronLeft, ChevronRight, House, Palette, Settings } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { PAGE_ROUTES } from "@/lib/pageRoutes"
+import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 
 // 左侧栏属性。
 interface LeftSideBarProps {
@@ -17,12 +17,6 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const { pathname } = useLocation()
   const navigate = useNavigate()
-
-  const navigationItems = [
-    { icon: House, label: "主页", path: PAGE_ROUTES.home },
-    { icon: Palette, label: "设计", path: PAGE_ROUTES.design },
-    { icon: Settings, label: "设置", path: PAGE_ROUTES.settings },
-  ]
 
   return (
     <aside
@@ -52,7 +46,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
             : "left-1 right-1 translate-x-0 flex-row justify-center"
         }`}
       >
-        {navigationItems.map(({ icon: Icon, label, path }) => {
+        {PRIMARY_NAVIGATION_ITEMS.map(({ icon: Icon, label, path }) => {
           const isActive = pathname === path
           return (
             <LxIconButton

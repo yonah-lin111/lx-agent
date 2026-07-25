@@ -2,14 +2,14 @@ import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { BottomSideBar } from "@/components/layout/BottomSideBar"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
-import { HomeSideBar } from "@/components/layout/HomeSideBar"
 import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSideBar"
-import { SettingsSideBar } from "@/components/layout/SettingsSideBar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
-import { ProjectNavigation } from "@/features/project-navigation"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
+import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
+import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
+import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { PageRouter } from "@/routes/PageRouter"
 
 /**
@@ -45,9 +45,9 @@ export const App = () => {
   }
 
   const renderLeftSideBar = (): React.JSX.Element => {
-    if (pathname === PAGE_ROUTES.home) return <HomeSideBar />
-    if (pathname === PAGE_ROUTES.settings) return <SettingsSideBar />
-    return <ProjectNavigation />
+    if (pathname === PAGE_ROUTES.home) return <HomeLeftSideBar />
+    if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />
+    return <ProjectLeftSideBar />
   }
 
   return (

@@ -1,7 +1,6 @@
 import { ArrowUpDown, Import, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -226,7 +225,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   return (
-    <LeftSideBar>
+    <>
       <div className="flex h-full min-w-0 flex-col gap-3">
         <div className="flex h-7 shrink-0 items-center justify-end px-1">
           <div className="flex items-center gap-0.5">
@@ -273,7 +272,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
           editingItem={editingItem}
           projects={filteredProjects}
           searchKeyword={searchKeyword}
-          onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.design}?designId=${designId}`)}
+          onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.project}?designId=${designId}`)}
           onEditingItemCancel={cancelEditingItem}
           onEditingItemChange={setEditingItem}
           onEditingItemCommit={commitEditingItem}
@@ -304,6 +303,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
         onClose={() => setProjectModal(null)}
         onSubmit={handleProjectModalSubmit}
       />
-    </LeftSideBar>
+    </>
   )
 }
