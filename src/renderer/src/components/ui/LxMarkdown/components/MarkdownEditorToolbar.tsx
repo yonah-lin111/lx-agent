@@ -1,8 +1,9 @@
-import { Keyboard, Table2 } from "lucide-react"
+import { Keyboard, Search, Table2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTooltip } from "@/components/ui/LxTooltip"
+import { LxInput } from "@/components/ui/LxInput"
 import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 
 // 工具栏属性。
 interface MarkdownEditorToolbarProps {
@@ -38,6 +39,25 @@ export const MarkdownEditorToolbar = ({
   onInsertTable,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
+  const [shortcutQuery, setShortcutQuery] = useState("")
+  const isMacOS = navigator.userAgent.includes("Macintosh")
+
+  // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
+  const filteredShortcuts = useMemo(() => {
+    const query = shortcutQuery.trim().toLocaleLowerCase()
+    if (!query) return markdownShortcuts
+
+    return markdownShortcuts.filter(({ keys, description }) =>
+      `${keys} ${description}`.toLocaleLowerCase().includes(query),
+    )
+  }, [shortcutQuery])
+
+  /**
+   * 将跨平台快捷键转换为当前系统对应的修饰键显示。
+   */
+  const getShortcutKeys = (keys: string): string =>
+    keys.replace("Cmd / Ctrl", isMacOS ? "Cmd" : "Ctrl")
+
   const tablePicker = useMemo(
     () => (
       <div className="flex flex-col gap-1" aria-label="选择表格大小">
@@ -78,13 +98,49 @@ export const MarkdownEditorToolbar = ({
     [onInsertTable, tableSize],
   )
 
+  const shortcutList = (
+    <div className="flex w-80 flex-col gap-2" aria-label="Markdown 编辑器快捷键">
+      <LxInput
+        aria-label="筛选快捷键"
+        className="!px-2 !py-1"
+        placeholder="筛选快捷键或说明"
+        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+        size="xs"
+        value={shortcutQuery}
+        onChange={(event) => setShortcutQuery(event.target.value)}
+      />
+      <div className="max-h-72 overflow-y-auto custom-scrollbar">
+        <div className="space-y-0.5">
+          {filteredShortcuts.map(({ keys, description }) => (
+            <div
+              key={keys}
+              className="flex min-h-7 items-center justify-between gap-3 rounded-[3px] px-1.5 text-xs hover:bg-white/5"
+            >
+              <span className="min-w-0 text-white/55">{description}</span>
+              <kbd className="shrink-0 font-mono text-[11px] text-white/75">
+                {getShortcutKeys(keys)}
+              </kbd>
+            </div>
+          ))}
+        </div>
+        {filteredShortcuts.length === 0 && (
+          <div className="py-4 text-center text-xs text-white/45">未找到匹配的快捷键</div>
+        )}
+      </div>
+    </div>
+  )
+
+  const firstRightActionIndex = actions.findIndex(({ alignRight }) => alignRight)
+  const leftActions =
+    firstRightActionIndex === -1 ? actions : actions.slice(0, firstRightActionIndex)
+  const rightActions = firstRightActionIndex === -1 ? [] : actions.slice(firstRightActionIndex)
+
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
-      {actions.map(({ alignRight, highlighted, icon: Icon, label, onClick }) => (
+      {leftActions.map(({ highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}
           aria-label={label}
-          className={alignRight ? "ml-auto" : ""}
           highlighted={highlighted}
           size="medium"
           title={{ content: label }}
@@ -103,25 +159,24 @@ export const MarkdownEditorToolbar = ({
           <Table2 className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
-      <LxTooltip
-        content={
-          <div className="w-64 space-y-1" aria-label="Markdown 编辑器快捷键">
-            {markdownShortcuts.map(({ keys, description }) => (
-              <div key={keys} className="flex items-center justify-between gap-3 text-xs">
-                <kbd className="font-mono text-[11px] text-white/75">{keys}</kbd>
-                <span className="text-white/55">{description}</span>
-              </div>
-            ))}
-          </div>
-        }
-        placement="bottom"
-        trigger="click"
-        contentClassName="!p-2"
-      >
+      <LxTooltip content={shortcutList} placement="bottom" trigger="click" contentClassName="!p-2">
         <LxIconButton aria-label="快捷键" size="medium">
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
+      {rightActions.map(({ highlighted, icon: Icon, label, onClick }, index) => (
+        <LxIconButton
+          key={label}
+          aria-label={label}
+          className={index === 0 ? "ml-auto" : ""}
+          highlighted={highlighted}
+          size="medium"
+          title={{ content: label }}
+          onClick={onClick}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </LxIconButton>
+      ))}
     </div>
   )
 }
