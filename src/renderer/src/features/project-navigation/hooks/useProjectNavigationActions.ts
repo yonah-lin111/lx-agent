@@ -124,8 +124,10 @@ export const useProjectNavigationActions = (
         await refreshProjects()
         toast.success("项目创建成功")
         return project.id
-      } catch {
-        if (!projectId) {
+      } catch (error) {
+        if (error instanceof Error && error.message === "PROJECT_PATH_NOT_FOUND") {
+          toast.error("项目路径不存在")
+        } else if (!projectId) {
           toast.error("项目创建失败")
         }
         return null

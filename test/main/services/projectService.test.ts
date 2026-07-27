@@ -1,6 +1,7 @@
 import Database from "better-sqlite3"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { createDesignTables } from "@/db"
+import { getProjectFileMatchScore } from "@/lib/fileSystem"
 import { createProjectService } from "@/services/projectService"
 
 // 测试使用的内存数据库。
@@ -17,9 +18,15 @@ afterEach(() => {
 })
 
 describe("projectService", () => {
+  it("支持完整路径的子序列模糊匹配", () => {
+    expect(
+      getProjectFileMatchScore("src/renderer/src/pages/settings/index.tsx", "setind"),
+    ).toBeGreaterThan(0)
+  })
+
   it("支持项目、模块和设计的 CRUD", () => {
     const service = createProjectService(() => database)
-    const project = service.createProject({ name: "LX Agent", path: "/tmp/lx-agent" })
+    const project = service.createProject({ name: "LX Agent", path: "/tmp" })
     const module = service.createModule({ projectId: project.id, name: "Product" })
     const design = service.createDesign({
       projectId: project.id,
@@ -56,5 +63,13 @@ describe("projectService", () => {
     expect(service.listProjects()).toEqual([])
     expect(service.listModules()).toEqual([])
     expect(service.listDesigns()).toEqual([])
+  })
+
+  it("拒绝不存在的项目路径", () => {
+    const service = createProjectService(() => database)
+
+    expect(() =>
+      service.createProject({ name: "Missing", path: "/path/that/does-not-exist" }),
+    ).toThrow("PROJECT_PATH_NOT_FOUND")
   })
 })

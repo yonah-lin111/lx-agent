@@ -10,6 +10,7 @@ vi.mock("@/services/projectService", () => ({
     createProject: vi.fn(),
     updateProject: vi.fn(),
     deleteProject: vi.fn(),
+    searchProjectFiles: vi.fn(),
     listModules: vi.fn(),
     createModule: vi.fn(),
     updateModule: vi.fn(),
@@ -34,5 +35,20 @@ describe("project IPC handlers", () => {
     expect(handle.mock.calls.map(([channel]) => channel).sort()).toEqual(
       Object.values(PROJECT_CHANNELS).sort(),
     )
+  })
+
+  it("校验并转发项目文件搜索参数", async () => {
+    const { projectService } = await import("@/services/projectService")
+    const { registerProjectHandlers } = await import("@/ipc/projectHandlers")
+    const searchHandler = vi.fn()
+    handle.mockImplementation((channel, handler) => {
+      if (channel === PROJECT_CHANNELS.searchProjectFiles) searchHandler.mockImplementation(handler)
+    })
+
+    registerProjectHandlers()
+
+    searchHandler({}, "project-1", "readme")
+    expect(projectService.searchProjectFiles).toHaveBeenCalledWith("project-1", "readme")
+    expect(() => searchHandler({}, "project-1", 1)).toThrow("INVALID_PROJECT_FILE_SEARCH_INPUT")
   })
 })

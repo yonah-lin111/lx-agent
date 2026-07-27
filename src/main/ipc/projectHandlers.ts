@@ -12,6 +12,13 @@ export const registerProjectHandlers = (): void => {
     projectService.updateProject(id, input),
   )
   ipcMain.handle(PROJECT_CHANNELS.deleteProject, (_, id) => projectService.deleteProject(id))
+  ipcMain.handle(PROJECT_CHANNELS.searchProjectFiles, (_, projectId, query) => {
+    if (typeof projectId !== "string" || typeof query !== "string") {
+      throw new Error("INVALID_PROJECT_FILE_SEARCH_INPUT")
+    }
+
+    return projectService.searchProjectFiles(projectId, query)
+  })
 
   ipcMain.handle(PROJECT_CHANNELS.listModules, (_, projectId) =>
     projectService.listModules(projectId),

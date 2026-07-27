@@ -39,6 +39,9 @@ export type CreateProjectInput = { name: string; type?: Project["type"]; path?: 
 // 项目更新参数。
 export type UpdateProjectInput = Partial<CreateProjectInput>
 
+// 项目文件提及候选项。
+export type ProjectFileEntry = { path: string; isDirectory: boolean }
+
 // 模块创建参数。
 export type CreateModuleInput = { projectId: string; name: string }
 
@@ -64,6 +67,7 @@ export interface ProjectApi {
       create: (input: CreateProjectInput) => Promise<Project>
       update: (id: string, input: UpdateProjectInput) => Promise<void>
       delete: (id: string) => Promise<void>
+      searchFiles: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
     }
     modules: {
       list: (projectId?: string) => Promise<Module[]>

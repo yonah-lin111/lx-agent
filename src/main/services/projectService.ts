@@ -13,6 +13,7 @@ import type {
 } from "@shared/project"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
+import { assertProjectDirectory, searchProjectFiles } from "@/lib/fileSystem"
 
 export type {
   CreateDesignInput,
@@ -132,6 +133,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     const id = randomUUID()
     const name = requireName(input.name)
     const type = input.type ?? (input.path ? "filesystem" : "virtual")
+    assertProjectDirectory(input.path)
 
     database
       .prepare(
@@ -155,6 +157,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       values.push(input.type)
     }
     if (input.path !== undefined) {
+      assertProjectDirectory(input.path)
       updates.push("path = ?")
       values.push(input.path.trim() || null)
     }
@@ -170,6 +173,15 @@ export const createProjectService = (getConnection: () => Database.Database) => 
   deleteProject: (id: string): void => {
     // 外键 ON DELETE CASCADE 会同步删除下属模块和设计。
     getConnection().prepare("DELETE FROM project WHERE external_id = ?").run(id)
+  },
+
+  searchProjectFiles: (projectId: string, query: string) => {
+    const row = getConnection()
+      .prepare("SELECT path FROM project WHERE external_id = ?")
+      .get(projectId) as { path: string | null } | undefined
+    if (!row?.path) return []
+
+    return searchProjectFiles(row.path, query)
   },
 
   listModules: (projectId?: string): Module[] => {

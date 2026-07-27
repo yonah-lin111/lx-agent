@@ -1,4 +1,5 @@
 import type React from "react"
+import type { ProjectFileEntry } from "@shared/project"
 
 // 表格网格尺寸。
 export interface MarkdownTableSize {
@@ -37,4 +38,6 @@ export interface LxMarkdownEditorProps {
   onChange?: (content: string) => void
   onSave?: () => void
   isSaved?: boolean
+  projectId?: string
+  onSearchFiles?: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
 }

@@ -19,6 +19,7 @@ import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
+import type { ProjectFileEntry } from "@shared/project"
 import {
   Bold,
   Code,
@@ -37,6 +38,7 @@ import {
   WandSparkles,
 } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
@@ -61,6 +63,7 @@ import {
   synchronizeEditorToPreview,
   synchronizePreviewToEditor,
 } from "@/components/ui/LxMarkdown/markdownEditorExtensions"
+import { getFileMentionDeletionRange } from "@/components/ui/LxMarkdown/markdownFileMentions"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/markdownRenderer"
 import type {
   EditorScrollAnchor,
@@ -68,12 +71,20 @@ import type {
   MarkdownPreviewMode,
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
+import { isMacOS } from "@/lib/platform"
 
 // Markdown 块命令面板状态。
 interface MarkdownBlockCommandPanelState {
   commands: MarkdownBlockCommand[]
   position: React.CSSProperties
   trigger: MarkdownBlockTrigger
+}
+
+// 文件提及面板状态。
+interface FileMentionPanelState {
+  files: ProjectFileEntry[]
+  position: React.CSSProperties
+  start: number
 }
 
 /**
@@ -84,6 +95,8 @@ export const LxMarkdownEditor = ({
   onChange,
   onSave,
   isSaved = true,
+  projectId,
+  onSearchFiles,
 }: LxMarkdownEditorProps): React.JSX.Element => {
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
@@ -93,12 +106,19 @@ export const LxMarkdownEditor = ({
   const onSaveRef = useRef(onSave)
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
+  const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
+  const activeFileMentionIndexRef = useRef(0)
+  const fileSearchRequestRef = useRef(0)
+  const onSearchFilesRef = useRef(onSearchFiles)
+  const projectIdRef = useRef(projectId)
   const [content, setContent] = useState(initialContent)
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
     null,
   )
   const [activeBlockCommandIndex, setActiveBlockCommandIndex] = useState(0)
+  const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
+  const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
 
   const previewModeRef = useRef(previewMode)
@@ -138,6 +158,109 @@ export const LxMarkdownEditor = ({
   useEffect(() => {
     onSaveRef.current = onSave
   }, [onSave])
+
+  useEffect(() => {
+    onSearchFilesRef.current = onSearchFiles
+    projectIdRef.current = projectId
+  }, [onSearchFiles, projectId])
+
+  /**
+   * 关闭文件提及面板并取消过期查询结果。
+   */
+  const closeFileMentionPanel = (): void => {
+    fileSearchRequestRef.current += 1
+    fileMentionPanelRef.current = null
+    activeFileMentionIndexRef.current = 0
+    setFileMentionPanel(null)
+    setActiveFileMentionIndex(0)
+  }
+
+  /**
+   * 根据光标前的 @ 查询同步项目文件提及面板。
+   */
+  const syncFileMentionPanel = (view: EditorView): void => {
+    const searchFiles = onSearchFilesRef.current
+    const activeProjectId = projectIdRef.current
+    const cursor = view.state.selection.main.head
+    const prefix = view.state.doc.sliceString(0, cursor)
+    const match = /(^|\s)@([^\s]*)$/.exec(prefix)
+
+    if (!match || !searchFiles || !activeProjectId) {
+      closeFileMentionPanel()
+      return
+    }
+
+    const coords = view.coordsAtPos(cursor)
+    if (!coords) {
+      closeFileMentionPanel()
+      return
+    }
+
+    const requestId = fileSearchRequestRef.current + 1
+    fileSearchRequestRef.current = requestId
+    const query = match[2] ?? ""
+    const start = cursor - query.length - 1
+
+    void searchFiles(activeProjectId, query)
+      .then((files) => {
+        if (fileSearchRequestRef.current !== requestId) return
+        if (files.length === 0) {
+          fileMentionPanelRef.current = null
+          setFileMentionPanel(null)
+          return
+        }
+
+        const panelWidth = 320
+        const offset = 6
+        const left = Math.min(
+          Math.max(coords.left, 8),
+          Math.max(window.innerWidth - panelWidth - 8, 8),
+        )
+        const position =
+          window.innerHeight - coords.bottom < window.innerHeight * 0.3
+            ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
+            : { left, top: coords.bottom + offset, bottom: "auto" }
+        const panel = { files, position, start }
+        fileMentionPanelRef.current = panel
+        activeFileMentionIndexRef.current = 0
+        setFileMentionPanel(panel)
+        setActiveFileMentionIndex(0)
+      })
+      .catch(() => closeFileMentionPanel())
+  }
+
+  /**
+   * 将选中的项目相对路径插入当前 @ 提及位置。
+   */
+  const selectFileMention = (file: ProjectFileEntry): void => {
+    const view = editorViewRef.current
+    const panel = fileMentionPanelRef.current
+    if (!view || !panel) return
+
+    const cursor = view.state.selection.main.head
+    const insertion = `@${file.path} `
+    view.dispatch({
+      changes: { from: panel.start, to: cursor, insert: insertion },
+      selection: { anchor: panel.start + insertion.length },
+    })
+    view.focus()
+    closeFileMentionPanel()
+  }
+
+  /**
+   * 处理文件提及面板的键盘导航。
+   */
+  const handleFileMentionKey = (key: "ArrowDown" | "ArrowUp"): boolean => {
+    const panel = fileMentionPanelRef.current
+    if (!panel) return false
+
+    const offset = key === "ArrowDown" ? 1 : -1
+    const nextIndex =
+      (activeFileMentionIndexRef.current + offset + panel.files.length) % panel.files.length
+    activeFileMentionIndexRef.current = nextIndex
+    setActiveFileMentionIndex(nextIndex)
+    return true
+  }
 
   /**
    * 更新 Markdown 块命令面板的候选项及其相对光标的位置。
@@ -454,11 +577,25 @@ export const LxMarkdownEditor = ({
         bracketMatching(),
         Prec.highest(
           keymap.of([
-            { key: "ArrowDown", run: () => handleBlockCommandKey(1) },
-            { key: "ArrowUp", run: () => handleBlockCommandKey(-1) },
+            {
+              key: "ArrowDown",
+              run: () => handleFileMentionKey("ArrowDown") || handleBlockCommandKey(1),
+            },
+            {
+              key: "ArrowUp",
+              run: () => handleFileMentionKey("ArrowUp") || handleBlockCommandKey(-1),
+            },
             {
               key: "Enter",
               run: (view) => {
+                const fileMention = fileMentionPanelRef.current
+                if (fileMention) {
+                  selectFileMention(
+                    fileMention.files[activeFileMentionIndexRef.current] ?? fileMention.files[0],
+                  )
+                  return true
+                }
+
                 const panel = blockCommandPanelRef.current
                 if (panel) {
                   selectBlockCommand(
@@ -504,13 +641,42 @@ export const LxMarkdownEditor = ({
             {
               key: "Escape",
               run: () => {
-                if (!blockCommandPanelRef.current) return false
-                blockCommandPanelRef.current = null
-                setBlockCommandPanel(null)
-                return true
+                if (fileMentionPanelRef.current) {
+                  closeFileMentionPanel()
+                  return true
+                }
+                if (blockCommandPanelRef.current) {
+                  blockCommandPanelRef.current = null
+                  setBlockCommandPanel(null)
+                  return true
+                }
+                return false
               },
             },
           ]),
+        ),
+        Prec.high(
+          EditorView.domEventHandlers({
+            keydown: (event, view) => {
+              if (event.key !== "Backspace" || fileMentionPanelRef.current) return false
+
+              const { selection } = view.state
+              if (!selection.main.empty) return false
+
+              const cursor = selection.main.head
+              const deletionRange = getFileMentionDeletionRange(view.state.doc.toString(), cursor)
+              if (!deletionRange) return false
+
+              event.preventDefault()
+              view.dispatch({
+                changes: { from: deletionRange.start, to: deletionRange.end, insert: "" },
+                selection: { anchor: deletionRange.start },
+                userEvent: "delete.backward",
+              })
+              closeFileMentionPanel()
+              return true
+            },
+          }),
         ),
         keymap.of([
           {
@@ -582,6 +748,8 @@ export const LxMarkdownEditor = ({
           if (update.docChanged || update.selectionSet || update.viewportChanged) {
             syncBlockCommandPanel(update.view)
           }
+          if (update.docChanged) syncFileMentionPanel(update.view)
+          if (update.selectionSet && !update.docChanged) closeFileMentionPanel()
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
             setContent(nextContent)
@@ -675,9 +843,8 @@ export const LxMarkdownEditor = ({
     }
   }, [previewHtml, previewMode])
 
-  const isMacOS = navigator.userAgent.includes("Macintosh")
-  const splitLabel = isMacOS ? "双栏预览 (Cmd+Shift+E)" : "双栏预览 (Ctrl+Shift+E)"
-  const previewLabel = isMacOS ? "仅预览 (Cmd+Shift+V)" : "仅预览 (Ctrl+Shift+V)"
+  const splitLabel = isMacOS() ? "双栏预览 (Cmd+Shift+E)" : "双栏预览 (Ctrl+Shift+E)"
+  const previewLabel = isMacOS() ? "仅预览 (Cmd+Shift+V)" : "仅预览 (Ctrl+Shift+V)"
 
   const actions: MarkdownToolbarAction[] = [
     {
@@ -741,8 +908,13 @@ export const LxMarkdownEditor = ({
           activeIndex={activeBlockCommandIndex}
           commands={blockCommandPanel.commands}
           position={blockCommandPanel.position}
-          onActiveIndexChange={setActiveBlockCommand}
-          onSelect={selectBlockCommand}
+        />
+      )}
+      {fileMentionPanel && (
+        <FileMentionCommandMenu
+          activeIndex={activeFileMentionIndex}
+          files={fileMentionPanel.files}
+          position={fileMentionPanel.position}
         />
       )}
     </section>

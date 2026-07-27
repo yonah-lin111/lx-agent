@@ -6,8 +6,6 @@ interface MarkdownBlockCommandMenuProps {
   commands: MarkdownBlockCommand[]
   activeIndex: number
   position: CSSProperties
-  onActiveIndexChange: (index: number) => void
-  onSelect: (command: MarkdownBlockCommand) => void
 }
 
 /**
@@ -17,12 +15,10 @@ export const MarkdownBlockCommandMenu = ({
   commands,
   activeIndex,
   position,
-  onActiveIndexChange,
-  onSelect,
 }: MarkdownBlockCommandMenuProps): React.JSX.Element => (
   <div
     aria-label="Markdown 块命令"
-    className="fixed z-50 w-64 overflow-hidden rounded-[6px] border border-white/10 bg-[#212121] p-1 text-[13px] shadow-xl"
+    className="pointer-events-none fixed z-50 w-64 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
     role="listbox"
     style={position}
   >
@@ -31,17 +27,13 @@ export const MarkdownBlockCommandMenu = ({
       const isActive = index === activeIndex
 
       return (
-        <button
+        <div
           key={command.id}
           aria-selected={isActive}
-          className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/60 ${
-            isActive ? "bg-white/10" : "hover:bg-white/5"
+          className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+            isActive ? "bg-white/8 text-white" : "text-white/75"
           }`}
           role="option"
-          type="button"
-          onMouseDown={(event) => event.preventDefault()}
-          onMouseEnter={() => onActiveIndexChange(index)}
-          onClick={() => onSelect(command)}
         >
           <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-white/70">
             <Icon className="h-3 w-3" />
@@ -52,7 +44,7 @@ export const MarkdownBlockCommandMenu = ({
               {command.preview}
             </span>
           </span>
-        </button>
+        </div>
       )
     })}
   </div>

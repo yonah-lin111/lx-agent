@@ -4,6 +4,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { isMacOS } from "@/lib/platform"
 
 // 工具栏属性。
 interface MarkdownEditorToolbarProps {
@@ -46,7 +47,6 @@ export const MarkdownEditorToolbar = ({
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
-  const isMacOS = navigator.userAgent.includes("Macintosh")
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
@@ -62,7 +62,7 @@ export const MarkdownEditorToolbar = ({
    * 将跨平台快捷键转换为当前系统对应的修饰键显示。
    */
   const getShortcutKeys = (keys: string): string =>
-    keys.replace("Cmd / Ctrl", isMacOS ? "Cmd" : "Ctrl")
+    keys.replace("Cmd / Ctrl", isMacOS() ? "Cmd" : "Ctrl")
 
   const tablePicker = useMemo(
     () => (

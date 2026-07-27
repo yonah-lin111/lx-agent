@@ -6,7 +6,7 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
 
 // 项目弹窗模式。
-export type ProjectModalMode = "create" | "edit"
+export type ProjectModalMode = "create" | "edit" | "import"
 
 // 项目表单值。
 export type ProjectModalValues = {
@@ -43,6 +43,7 @@ export const ProjectModal = ({
   const [path, setPath] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const isEditMode = mode === "edit"
+  const isImportMode = mode === "import"
 
   useEffect(() => {
     if (!isOpen) return
@@ -70,7 +71,11 @@ export const ProjectModal = ({
   }
 
   return (
-    <LxModal isOpen={isOpen} title={isEditMode ? "编辑项目" : "新建项目"} onClose={onClose}>
+    <LxModal
+      isOpen={isOpen}
+      title={isEditMode ? "编辑项目" : isImportMode ? "导入项目" : "新建项目"}
+      onClose={onClose}
+    >
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
           项目名称
@@ -85,9 +90,10 @@ export const ProjectModal = ({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-          项目路径（可选）
+          项目路径{isImportMode ? "" : "（可选）"}
           <LxInput
             aria-label="项目路径"
+            required={isImportMode}
             placeholder="例如：/Users/name/project"
             size="xs"
             value={path}

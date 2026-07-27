@@ -37,7 +37,7 @@ type MenuState = {
 
 // 当前项目弹窗状态。
 type ProjectModalState =
-  | { mode: Extract<ProjectModalMode, "create"> }
+  | { mode: Extract<ProjectModalMode, "create" | "import"> }
   | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
 
 /**
@@ -169,7 +169,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
       values.path,
     )
     if (projectId) {
-      if (projectModal.mode === "create") {
+      if (projectModal.mode !== "edit") {
         setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: false }))
       }
       setProjectModal(null)
@@ -245,6 +245,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             <LxIconButton
               aria-label="导入项目"
               title={{ content: "导入项目", placement: "bottom" }}
+              onClick={() => setProjectModal({ mode: "import" })}
             >
               <Import className="h-4 w-4" />
             </LxIconButton>

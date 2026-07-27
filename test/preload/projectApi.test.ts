@@ -22,10 +22,17 @@ describe("preload project API", () => {
     const input = { name: "LX Agent" }
 
     await api.project.projects.create(input)
+    await api.project.projects.searchFiles("project-1", "readme")
     await api.project.designs.sort(["design-1"])
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
     expect(invoke).toHaveBeenNthCalledWith(1, PROJECT_CHANNELS.createProject, input)
-    expect(invoke).toHaveBeenNthCalledWith(2, PROJECT_CHANNELS.sortDesigns, ["design-1"])
+    expect(invoke).toHaveBeenNthCalledWith(
+      2,
+      PROJECT_CHANNELS.searchProjectFiles,
+      "project-1",
+      "readme",
+    )
+    expect(invoke).toHaveBeenNthCalledWith(3, PROJECT_CHANNELS.sortDesigns, ["design-1"])
   })
 })

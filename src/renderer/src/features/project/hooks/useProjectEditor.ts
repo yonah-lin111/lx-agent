@@ -15,6 +15,7 @@ export const useProjectEditor = (
   isLoading: boolean
   isSaved: boolean
   loadedDesignId: string | null
+  projectId: string | null
   save: () => void
   setContent: (content: string) => void
 } => {
@@ -23,6 +24,7 @@ export const useProjectEditor = (
   const [isLoading, setIsLoading] = useState(true)
   const [isSaved, setIsSaved] = useState(true)
   const [loadedDesignId, setLoadedDesignId] = useState<string | null>(null)
+  const [projectId, setProjectId] = useState<string | null>(null)
   const contentRef = useRef(content)
   const savedContentRef = useRef(content)
   const saveRequestRef = useRef(0)
@@ -40,6 +42,7 @@ export const useProjectEditor = (
     const loadDesign = async (): Promise<void> => {
       setIsLoading(true)
       setHasDesign(false)
+      setProjectId(null)
       try {
         const design = designId
           ? (await projectApi.list()).find((item) => item.id === designId)
@@ -50,6 +53,7 @@ export const useProjectEditor = (
         savedContentRef.current = designData
         setContentState(designData)
         setHasDesign(design !== undefined)
+        setProjectId(design?.projectId ?? null)
         setIsSaved(true)
         setLoadedDesignId(designId)
       } catch (error) {
@@ -106,5 +110,5 @@ export const useProjectEditor = (
     return () => window.clearTimeout(timer)
   }, [content, designId, isLoading, loadedDesignId, save])
 
-  return { content, hasDesign, isLoading, isSaved, loadedDesignId, save, setContent }
+  return { content, hasDesign, isLoading, isSaved, loadedDesignId, projectId, save, setContent }
 }

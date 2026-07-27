@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
+import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 
 /**
@@ -9,7 +10,7 @@ import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 export const ProjectPage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
-  const { content, hasDesign, isLoading, isSaved, loadedDesignId, save, setContent } =
+  const { content, hasDesign, isLoading, isSaved, loadedDesignId, projectId, save, setContent } =
     useProjectEditor(designId)
   const isDesignLoading = isLoading || (designId !== null && loadedDesignId !== designId)
 
@@ -21,7 +22,9 @@ export const ProjectPage = (): React.JSX.Element => {
           key={designId}
           initialContent={content}
           isSaved={isSaved}
+          projectId={projectId ?? undefined}
           onChange={setContent}
+          onSearchFiles={projectApi.searchFiles}
           onSave={save}
         />
       )}
