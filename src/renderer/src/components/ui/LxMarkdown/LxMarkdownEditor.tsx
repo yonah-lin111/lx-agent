@@ -5,6 +5,7 @@ import {
   indentLess,
   indentMore,
   redo,
+  standardKeymap,
   undo,
 } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
@@ -84,7 +85,6 @@ export const LxMarkdownEditor = ({
   const onSaveRef = useRef(onSave)
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
-  const hasNavigatedRef = useRef(false)
   const [content, setContent] = useState(initialContent)
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
@@ -168,7 +168,6 @@ export const LxMarkdownEditor = ({
     if (!trigger || !coords || commands.length === 0) {
       blockCommandPanelRef.current = null
       activeBlockCommandIndexRef.current = 0
-      hasNavigatedRef.current = false
       setBlockCommandPanel(null)
       setActiveBlockCommandIndex(0)
       return
@@ -189,7 +188,6 @@ export const LxMarkdownEditor = ({
     if (previous?.trigger.kind !== trigger.kind || previous.trigger.to !== trigger.to) {
       activeBlockCommandIndexRef.current = 0
       setActiveBlockCommandIndex(0)
-      hasNavigatedRef.current = false
     }
     blockCommandPanelRef.current = panel
     setBlockCommandPanel(panel)
@@ -207,7 +205,23 @@ export const LxMarkdownEditor = ({
     const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
     if (!trigger) return
 
-    const insertion = createMarkdownBlockInsertion(command.id)
+    let insertion = createMarkdownBlockInsertion(command.id)
+
+    // 针对代码块命令，检测下一行是否已经是闭合行，防止出现重复的 ```
+    if (command.id === "codeBlock" && line.number < view.state.doc.lines) {
+      const nextLine = view.state.doc.line(line.number + 1)
+      const nextText = nextLine.text.trim()
+      const fenceChar = line.text.trim()[0] || "`"
+      const fenceLength = line.text.trim().length
+      if (nextText === fenceChar.repeat(fenceLength)) {
+        insertion = {
+          text: `${fenceChar.repeat(fenceLength)}language`,
+          selectionStart: fenceLength,
+          selectionEnd: fenceLength + 8,
+        }
+      }
+    }
+
     view.dispatch({
       changes: { from: trigger.from, to: trigger.to, insert: insertion.text },
       selection: {
@@ -233,7 +247,6 @@ export const LxMarkdownEditor = ({
     const panel = blockCommandPanelRef.current
     if (!panel) return false
 
-    hasNavigatedRef.current = true
     const nextIndex =
       (activeBlockCommandIndexRef.current + offset + panel.commands.length) % panel.commands.length
     setActiveBlockCommand(nextIndex)
@@ -272,6 +285,32 @@ export const LxMarkdownEditor = ({
         ? { anchor: from + prefix.length, head: from + prefix.length + innerText.length }
         : { anchor: from + prefix.length, head: from + prefix.length + placeholder.length },
     })
+    view.focus()
+  }
+
+  /**
+   * 插入或包裹代码块。
+   */
+  const insertCodeBlock = (): void => {
+    const view = editorViewRef.current
+    if (!view) return
+
+    const { from, to } = view.state.selection.main
+    const selectedText = view.state.doc.sliceString(from, to)
+
+    if (selectedText) {
+      const insert = `\`\`\`\n${selectedText}\n\`\`\``
+      view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor: from + 4, head: from + 4 + selectedText.length },
+      })
+    } else {
+      const insert = "```language\n```"
+      view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor: from + 3, head: from + 11 },
+      })
+    }
     view.focus()
   }
 
@@ -340,7 +379,7 @@ export const LxMarkdownEditor = ({
               key: "Enter",
               run: (view) => {
                 const panel = blockCommandPanelRef.current
-                if (panel && hasNavigatedRef.current) {
+                if (panel) {
                   selectBlockCommand(
                     panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
                   )
@@ -396,7 +435,7 @@ export const LxMarkdownEditor = ({
           { key: "Mod-l", run: () => (wrapSelection("[", "](https://)", "link text"), true) },
           { key: "Mod-Shift-s", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
           { key: "Mod-Shift-u", run: () => (prefixLines("- ", "Item"), true) },
-          { key: "Mod-Shift-c", run: () => (wrapSelection("```\n", "\n```", "code"), true) },
+          { key: "Mod-Shift-c", run: () => (insertCodeBlock(), true) },
           { key: "Mod-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
@@ -405,6 +444,7 @@ export const LxMarkdownEditor = ({
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
           },
           ...historyKeymap,
+          ...standardKeymap,
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged || update.selectionSet || update.viewportChanged) {
@@ -524,7 +564,7 @@ export const LxMarkdownEditor = ({
     { icon: ListTodo, label: "任务列表", onClick: () => prefixLines("- [ ] ", "Task") },
     { icon: Quote, label: "引用", onClick: () => prefixLines("> ", "Quote") },
     { icon: Code2, label: "行内代码", onClick: () => wrapSelection("`", "`", "code") },
-    { icon: Code, label: "代码块", onClick: () => wrapSelection("```\n", "\n```", "code") },
+    { icon: Code, label: "代码块", onClick: insertCodeBlock },
     { icon: Link, label: "链接", onClick: () => wrapSelection("[", "](https://)", "link text") },
     {
       icon: SquareSplitHorizontal,
