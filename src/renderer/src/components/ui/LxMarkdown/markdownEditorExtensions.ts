@@ -28,20 +28,29 @@ export const editorTheme = EditorView.theme(
       color: "rgba(255, 255, 255, 0.3)",
     },
     ".cm-lineNumbers .cm-gutterElement": {
-      paddingLeft: "8px",
-      paddingRight: "4px",
+      paddingLeft: "10px",
+      paddingRight: "6px",
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "flex-end",
+      boxSizing: "border-box",
+      height: "1.5em",
+      lineHeight: "1.5em",
     },
     ".cm-foldGutter .cm-gutterElement": {
       cursor: "pointer",
       color: "rgba(255, 255, 255, 0.35)",
       transition: "color 0.15s ease",
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "center",
-      paddingRight: "6px",
+      paddingLeft: "4px",
+      paddingRight: "8px",
+      boxSizing: "border-box",
+    },
+    ".cm-gutters > .cm-foldGutter:first-child .cm-gutterElement": {
+      paddingLeft: "8px",
+      paddingRight: "8px",
     },
     ".cm-foldGutter .cm-gutterElement:hover": {
       color: "#ffffff",
@@ -51,16 +60,16 @@ export const editorTheme = EditorView.theme(
       alignItems: "center",
       justifyContent: "center",
       width: "12px",
-      height: "12px",
+      height: "1.5em",
       color: "currentColor",
     },
     ".cm-foldPlaceholder": {
       backgroundColor: "rgba(255, 255, 255, 0.08)",
-      border: "1px solid rgba(255, 255, 255, 0.12)",
+      border: "none",
       color: "rgba(255, 255, 255, 0.5)",
-      borderRadius: "4px",
-      padding: "3px 6px",
-      margin: "0 6px",
+      borderRadius: "3px",
+      padding: "2px 4px",
+      margin: "0 4px",
       cursor: "pointer",
       display: "inline-flex",
       alignItems: "center",
@@ -70,10 +79,8 @@ export const editorTheme = EditorView.theme(
       transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
     },
     ".cm-foldPlaceholder:hover": {
-      backgroundColor: "rgba(255, 255, 255, 0.16)",
-      borderColor: "rgba(255, 255, 255, 0.25)",
+      backgroundColor: "rgba(255, 255, 255, 0.18)",
       color: "#ffffff",
-      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
     },
     ".cm-activeLine": {
       backgroundColor: "rgba(255, 255, 255, 0.035)",
@@ -229,12 +236,17 @@ class CodeBlockActionWidget extends WidgetType {
     readonly codeText: string,
     readonly isFolded: boolean,
     readonly onToggleFold: () => void,
+    readonly showFoldBtn = true,
   ) {
     super()
   }
 
   eq(other: CodeBlockActionWidget) {
-    return this.codeText === other.codeText && this.isFolded === other.isFolded
+    return (
+      this.codeText === other.codeText &&
+      this.isFolded === other.isFolded &&
+      this.showFoldBtn === other.showFoldBtn
+    )
   }
 
   toDOM() {
@@ -324,7 +336,9 @@ class CodeBlockActionWidget extends WidgetType {
     }
 
     wrap.appendChild(copyBtn)
-    wrap.appendChild(foldBtn)
+    if (this.showFoldBtn) {
+      wrap.appendChild(foldBtn)
+    }
 
     return wrap
   }
@@ -333,34 +347,41 @@ class CodeBlockActionWidget extends WidgetType {
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
-export const markdownMarkerHighlight = ViewPlugin.fromClass(
-  class {
-    decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
-    foldedIndices = new Set<number>()
+export const markdownMarkerHighlight = (showFolding = false) =>
+  ViewPlugin.fromClass(
+    class {
+      decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
+      foldedIndices = new Set<number>()
 
-    constructor(view: EditorView) {
-      this.decorations = buildMarkdownMarkerDecorations(view, this.foldedIndices, (index) =>
-        this.toggleFold(view, index),
-      )
-    }
-
-    update(update: { docChanged: boolean; view: EditorView }): void {
-      this.decorations = buildMarkdownMarkerDecorations(update.view, this.foldedIndices, (index) =>
-        this.toggleFold(update.view, index),
-      )
-    }
-
-    toggleFold(view: EditorView, index: number) {
-      if (this.foldedIndices.has(index)) {
-        this.foldedIndices.delete(index)
-      } else {
-        this.foldedIndices.add(index)
+      constructor(view: EditorView) {
+        this.decorations = buildMarkdownMarkerDecorations(
+          view,
+          this.foldedIndices,
+          (index) => this.toggleFold(view, index),
+          showFolding,
+        )
       }
-      view.dispatch({})
-    }
-  },
-  { decorations: (plugin) => plugin.decorations },
-)
+
+      update(update: { docChanged: boolean; view: EditorView }): void {
+        this.decorations = buildMarkdownMarkerDecorations(
+          update.view,
+          this.foldedIndices,
+          (index) => this.toggleFold(update.view, index),
+          showFolding,
+        )
+      }
+
+      toggleFold(view: EditorView, index: number) {
+        if (this.foldedIndices.has(index)) {
+          this.foldedIndices.delete(index)
+        } else {
+          this.foldedIndices.add(index)
+        }
+        view.dispatch({})
+      }
+    },
+    { decorations: (plugin) => plugin.decorations },
+  )
 
 /**
  * 扫描文档行并生成 Markdown 标记装饰。
@@ -369,6 +390,7 @@ const buildMarkdownMarkerDecorations = (
   view: EditorView,
   foldedIndices = new Set<number>(),
   onToggleFold: (index: number) => void = () => {},
+  showFolding = false,
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -441,8 +463,11 @@ const buildMarkdownMarkerDecorations = (
           type: "widget",
           from: offset + line.length,
           to: offset + line.length,
-          widget: new CodeBlockActionWidget(collectedText, currentFenceFolded, () =>
-            onToggleFold(currentBlockIdx),
+          widget: new CodeBlockActionWidget(
+            collectedText,
+            currentFenceFolded,
+            () => onToggleFold(currentBlockIdx),
+            !showFolding,
           ),
         })
 

@@ -1,8 +1,8 @@
+import type { ProjectFileEntry } from "@shared/project"
 import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useRef } from "react"
-import type { ProjectFileEntry } from "@shared/project"
 
 // 文件提及面板属性。
 interface FileMentionCommandMenuProps {

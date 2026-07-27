@@ -26,6 +26,7 @@ export const ProjectPage = (): React.JSX.Element => {
           onChange={setContent}
           onSearchFiles={projectApi.searchFiles}
           onSave={save}
+          showFolding={true}
         />
       )}
       {!isDesignLoading && !designId && (

@@ -130,6 +130,8 @@ export const LxMarkdownEditor = ({
   isSaved = true,
   projectId,
   onSearchFiles,
+  showLineNumbers = false,
+  showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const editorViewRef = useRef<EditorView | null>(null)
@@ -603,36 +605,39 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
-        markdownMarkerHighlight,
-        lineNumbers(),
-        highlightActiveLineGutter(),
-        codeFolding({
-          placeholderDOM: (_view, onclick) => {
-            const button = document.createElement("button")
-            button.type = "button"
-            button.className = "cm-foldPlaceholder"
-            button.title = "展开折叠内容"
-            button.onclick = (event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onclick(event)
-            }
-            button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
+        markdownMarkerHighlight(showFolding),
+        ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
+        ...(showFolding
+          ? [
+              codeFolding({
+                placeholderDOM: (_view, onclick) => {
+                  const button = document.createElement("button")
+                  button.type = "button"
+                  button.className = "cm-foldPlaceholder"
+                  button.title = "展开折叠内容"
+                  button.onclick = (event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onclick(event)
+                  }
+                  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
 
-            return button
-          },
-        }),
-        markdownHeadingFolding,
-        foldGutter({
-          markerDOM: (open) => {
-            const icon = document.createElement("span")
-            icon.className = `cm-fold-marker ${open ? "is-open" : "is-closed"}`
-            icon.innerHTML = open
-              ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`
-              : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
-            return icon
-          },
-        }),
+                  return button
+                },
+              }),
+              markdownHeadingFolding,
+              foldGutter({
+                markerDOM: (open) => {
+                  const icon = document.createElement("span")
+                  icon.className = `cm-fold-marker ${open ? "is-open" : "is-closed"}`
+                  icon.innerHTML = open
+                    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`
+                    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
+                  return icon
+                },
+              }),
+            ]
+          : []),
         EditorView.lineWrapping,
         indentUnit.of("  "),
         indentOnInput(),
@@ -827,7 +832,7 @@ export const LxMarkdownEditor = ({
       editorViewRef.current = null
       view.destroy()
     }
-  }, [])
+  }, [showLineNumbers, showFolding])
 
   useLayoutEffect(() => {
     const anchor = editorScrollAnchorRef.current
@@ -962,7 +967,13 @@ export const LxMarkdownEditor = ({
           className={`min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
-          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
+          <LxMarkdownPreview
+            html={previewHtml}
+            previewMode={previewMode}
+            previewRef={previewRef}
+            showLineNumbers={showLineNumbers}
+            showFolding={showFolding}
+          />
         )}
       </div>
       {blockCommandPanel && (
