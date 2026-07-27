@@ -137,11 +137,13 @@ export const editorTheme = EditorView.theme(
       borderTop: "1px solid rgba(255, 255, 255, 0.08)",
       borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
       borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+      borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
       borderTopLeftRadius: "6px",
       borderTopRightRadius: "6px",
       backgroundColor: "rgba(255, 255, 255, 0.015)",
       paddingLeft: "6px",
       paddingTop: "4px",
+      paddingBottom: "4px",
     },
     ".cm-md-code-fence-middle-line": {
       borderLeft: "1px solid rgba(255, 255, 255, 0.08)",

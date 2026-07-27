@@ -333,6 +333,7 @@ select {
   align-items: center;
   justify-content: space-between;
   border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: #171717;
   color: rgba(255, 255, 255, 0.55);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
