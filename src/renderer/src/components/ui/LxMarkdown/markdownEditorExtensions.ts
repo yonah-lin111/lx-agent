@@ -473,7 +473,7 @@ const buildMarkdownMarkerDecorations = (
             collectedText,
             currentFenceFolded,
             () => onToggleFold(currentBlockIdx),
-            !showFolding,
+            showFolding,
           ),
         })
 

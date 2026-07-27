@@ -11,16 +11,27 @@ import {
 import { markdown } from "@codemirror/lang-markdown"
 import {
   bracketMatching,
-  codeFolding,
-  foldGutter,
+  foldable,
+  foldEffect,
+  foldedRanges,
+  foldKeymap,
   foldService,
+  foldState,
   indentOnInput,
   indentUnit,
   syntaxHighlighting,
+  unfoldEffect,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState, Prec } from "@codemirror/state"
-import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
+import { EditorState, Prec, RangeSetBuilder } from "@codemirror/state"
+import {
+  EditorView,
+  GutterMarker,
+  gutter,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import type { ProjectFileEntry } from "@shared/project"
 import {
@@ -134,6 +145,93 @@ const markdownHeadingFolding = foldService.of((state, lineStart) => {
   }
 
   return headingLine.to < state.doc.length ? { from: headingLine.to, to: state.doc.length } : null
+})
+
+class FoldMarker extends GutterMarker {
+  constructor(readonly open: boolean) {
+    super()
+  }
+
+  eq(other: FoldMarker) {
+    return this.open === other.open
+  }
+
+  toDOM() {
+    const icon = document.createElement("span")
+    icon.className = `cm-fold-marker ${this.open ? "is-open" : "is-closed"}`
+    icon.innerHTML = this.open
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
+    return icon
+  }
+}
+
+const openFoldMarker = new FoldMarker(true)
+const closedFoldMarker = new FoldMarker(false)
+
+/**
+ * 忽略代码块及其内部所有行的左侧折叠栏。
+ */
+const markdownFoldGutter = gutter({
+  class: "cm-foldGutter",
+  markers(view) {
+    const builder = new RangeSetBuilder<GutterMarker>()
+    for (const { from, to } of view.visibleRanges) {
+      let pos = from
+      while (pos <= to) {
+        const line = view.state.doc.lineAt(pos)
+        const prefix = view.state.doc.sliceString(0, line.from)
+        const isFenceLine = /^\s*(`{3,}|~{3,})/.test(line.text)
+        const isInsideFence = isInsideMarkdownCodeFence(prefix)
+
+        if (!isFenceLine && !isInsideFence) {
+          let isFolded = false
+          foldedRanges(view.state).between(line.from, line.to, (fromPos) => {
+            if (fromPos >= line.from && fromPos <= line.to) isFolded = true
+          })
+
+          if (isFolded) {
+            builder.add(line.from, line.from, closedFoldMarker)
+          } else if (foldable(view.state, line.from, line.to)) {
+            builder.add(line.from, line.from, openFoldMarker)
+          }
+        }
+        pos = line.to + 1
+      }
+    }
+    return builder.finish()
+  },
+  initialSpacer() {
+    return openFoldMarker
+  },
+  domEventHandlers: {
+    click(view, lineBlock) {
+      const docLine = view.state.doc.lineAt(lineBlock.from)
+      const prefix = view.state.doc.sliceString(0, docLine.from)
+      const isFenceLine = /^\s*(`{3,}|~{3,})/.test(docLine.text)
+      const isInsideFence = isInsideMarkdownCodeFence(prefix)
+
+      if (isFenceLine || isInsideFence) {
+        return false
+      }
+
+      let folded = false
+      foldedRanges(view.state).between(docLine.from, docLine.to, (from, to) => {
+        if (from >= docLine.from && from <= docLine.to) {
+          view.dispatch({ effects: unfoldEffect.of({ from, to }) })
+          folded = true
+        }
+      })
+
+      if (!folded) {
+        const range = foldable(view.state, docLine.from, docLine.to)
+        if (range) {
+          view.dispatch({ effects: foldEffect.of(range) })
+        }
+      }
+      return true
+    },
+  },
 })
 
 /**
@@ -713,35 +811,7 @@ export const LxMarkdownEditor = ({
         markdownMarkerHighlight(showFolding),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
-          ? [
-              codeFolding({
-                placeholderDOM: (_view, onclick) => {
-                  const button = document.createElement("button")
-                  button.type = "button"
-                  button.className = "cm-foldPlaceholder"
-                  button.title = "展开折叠内容"
-                  button.onclick = (event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    onclick(event)
-                  }
-                  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
-
-                  return button
-                },
-              }),
-              markdownHeadingFolding,
-              foldGutter({
-                markerDOM: (open) => {
-                  const icon = document.createElement("span")
-                  icon.className = `cm-fold-marker ${open ? "is-open" : "is-closed"}`
-                  icon.innerHTML = open
-                    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`
-                    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
-                  return icon
-                },
-              }),
-            ]
+          ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
           : []),
         EditorView.lineWrapping,
         indentUnit.of("  "),
