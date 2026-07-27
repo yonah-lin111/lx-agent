@@ -127,14 +127,31 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
+    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace":
+      {
+        color: "inherit !important",
+        backgroundColor: "transparent !important",
+        padding: "0 !important",
+        borderRadius: "0 !important",
+      },
+    ".cm-md-code-fence-start-line span, .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span":
+      {
+        backgroundColor: "transparent !important",
+        padding: "0 !important",
+        borderRadius: "0 !important",
+      },
   },
   { dark: true },
 )
 
 export const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading, color: "#f8fafc", fontWeight: "700" },
-  { tag: [tags.heading1, tags.heading2], color: "#fbbf24" },
-  { tag: [tags.heading3, tags.heading4], color: "#fde68a" },
+  { tag: tags.heading, color: "#fbbf24", fontWeight: "700" },
+  { tag: tags.heading1, color: "#fbbf24", fontSize: "1.5em" },
+  { tag: tags.heading2, color: "#fbbf24", fontSize: "1.3em" },
+  { tag: tags.heading3, color: "#fbbf24", fontSize: "1.15em" },
+  { tag: tags.heading4, color: "#fbbf24", fontSize: "1.08em" },
+  { tag: tags.heading5, color: "#fbbf24", fontSize: "1.03em" },
+  { tag: tags.heading6, color: "#fbbf24", fontSize: "1.0em" },
   { tag: tags.emphasis, color: "#fcd34d", fontStyle: "italic" },
   { tag: tags.strong, color: "#f59e0b", fontWeight: "700" },
   { tag: tags.strikethrough, color: "#fda4af", textDecoration: "line-through" },

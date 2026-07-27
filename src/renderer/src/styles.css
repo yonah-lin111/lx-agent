@@ -235,9 +235,58 @@ select {
   margin: 0.8em 0;
 }
 
+.markdown-preview ul {
+  list-style-type: disc;
+}
+
+.markdown-preview ol {
+  list-style-type: decimal;
+}
+
 .markdown-preview ul,
 .markdown-preview ol {
   padding-left: 1.5em;
+}
+
+.markdown-preview li.task-list-item {
+  list-style-type: none !important;
+  position: relative;
+  padding-left: 1.5em;
+}
+
+.markdown-preview .task-list-item-checkbox {
+  position: absolute;
+  left: 0;
+  top: 0.35em;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background-color: transparent;
+  outline: none;
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.markdown-preview .task-list-item-checkbox:checked {
+  background-color: #ffffff;
+  border-color: #ffffff;
+}
+
+.markdown-preview .task-list-item-checkbox:checked::after {
+  content: "";
+  display: block;
+  width: 3.5px;
+  height: 7px;
+  border: solid #000000;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  margin-bottom: 1.5px;
 }
 
 .markdown-preview li + li {

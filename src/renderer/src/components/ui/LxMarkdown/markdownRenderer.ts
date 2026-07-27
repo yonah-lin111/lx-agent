@@ -60,6 +60,12 @@ export const markdownRenderer = new MarkdownIt({
   linkify: true,
 })
 
+markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
+  const token = tokens[idx]
+  const checked = token.meta?.checked
+  return `<input type="checkbox" class="task-list-item-checkbox" disabled${checked ? " checked" : ""}>`
+}
+
 markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
   state.tokens.forEach((token) => {
     if (!token.map || token.level !== 0 || (token.nesting !== 1 && token.type !== "fence")) {
@@ -68,6 +74,42 @@ markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
 
     token.attrSet("data-line", String(token.map[0]))
   })
+
+  return true
+})
+
+markdownRenderer.core.ruler.push("markdown-task-lists", (state) => {
+  const tokens = state.tokens
+  let currentListItem: Token | null = null
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+
+    if (token.type === "list_item_open") {
+      currentListItem = token
+    } else if (token.type === "list_item_close") {
+      currentListItem = null
+    } else if (token.type === "inline" && currentListItem) {
+      const match = token.content.match(/^\[([ xX])\]\s*(.*)/)
+      if (match) {
+        const checked = match[1].toLowerCase() === "x"
+        currentListItem.attrSet("class", "task-list-item")
+
+        token.content = match[2]
+
+        if (token.children && token.children.length > 0) {
+          const firstChild = token.children[0]
+          if (firstChild.type === "text") {
+            firstChild.content = firstChild.content.replace(/^\[[ xX]\]\s*/, "")
+          }
+        }
+
+        const checkboxToken = new state.Token("task_checkbox", "", 0)
+        checkboxToken.meta = { checked }
+        token.children = [checkboxToken, ...(token.children || [])]
+      }
+    }
+  }
 
   return true
 })

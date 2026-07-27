@@ -9,7 +9,12 @@ import {
   undo,
 } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
-import { syntaxHighlighting } from "@codemirror/language"
+import {
+  bracketMatching,
+  indentOnInput,
+  indentUnit,
+  syntaxHighlighting,
+} from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
@@ -138,7 +143,11 @@ export const LxMarkdownEditor = ({
     const cursor = view.state.selection.main.head
     const line = view.state.doc.lineAt(cursor)
     const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
-    const coords = view.coordsAtPos(cursor)
+    // 针对代码块命令，由于会在行末尾插入一个 CodeBlockActionWidget 挂件，
+    // CodeMirror 的 coordsAtPos(cursor) 会受到绝对定位挂件的影响而返回远端最右侧的坐标。
+    // 为此，当触发器为 codeBlock 且光标不在行首时，我们测量光标前一个字符的坐标。
+    const measurePos = trigger?.kind === "codeBlock" && cursor > line.from ? cursor - 1 : cursor
+    const coords = view.coordsAtPos(measurePos)
     const isClosingCodeFence =
       trigger?.kind === "codeBlock" &&
       isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))
@@ -175,7 +184,9 @@ export const LxMarkdownEditor = ({
 
     const panelWidth = 256
     const offset = 6
-    const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
+    const coordsLeft =
+      trigger?.kind === "codeBlock" && cursor > line.from ? coords.right : coords.left
+    const left = Math.min(Math.max(coordsLeft, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
     const panel = {
       commands,
       trigger,
@@ -207,15 +218,26 @@ export const LxMarkdownEditor = ({
 
     let insertion = createMarkdownBlockInsertion(command.id)
 
-    // 针对代码块命令，检测下一行是否已经是闭合行，防止出现重复的 ```
+    // 针对代码块命令，检测当前代码块是否已经是闭合状态，防止出现重复的 ```
     if (command.id === "codeBlock" && line.number < view.state.doc.lines) {
-      const nextLine = view.state.doc.line(line.number + 1)
-      const nextText = nextLine.text.trim()
       const fenceChar = line.text.trim()[0] || "`"
       const fenceLength = line.text.trim().length
-      if (nextText === fenceChar.repeat(fenceLength)) {
+      const fenceString = fenceChar.repeat(fenceLength)
+      let hasClosingFence = false
+
+      for (let i = line.number + 1; i <= view.state.doc.lines; i++) {
+        const currLineText = view.state.doc.line(i).text.trim()
+        if (currLineText.startsWith(fenceString)) {
+          if (currLineText === fenceString) {
+            hasClosingFence = true
+          }
+          break
+        }
+      }
+
+      if (hasClosingFence) {
         insertion = {
-          text: `${fenceChar.repeat(fenceLength)}language`,
+          text: `${fenceString}language`,
           selectionStart: fenceLength,
           selectionEnd: fenceLength + 8,
         }
@@ -366,11 +388,17 @@ export const LxMarkdownEditor = ({
       doc: content,
       extensions: [
         history(),
-        markdown({ codeLanguages: languages, extensions: [GFM] }),
+        markdown({
+          codeLanguages: languages,
+          extensions: [GFM, { remove: ["SetextHeading"] }],
+        }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
         markdownMarkerHighlight,
         EditorView.lineWrapping,
+        indentUnit.of("  "),
+        indentOnInput(),
+        bracketMatching(),
         Prec.highest(
           keymap.of([
             { key: "ArrowDown", run: () => handleBlockCommandKey(1) },
@@ -397,6 +425,26 @@ export const LxMarkdownEditor = ({
                   return true
                 }
 
+                // 括号对智能换行缩进处理
+                if (cursor > 0 && cursor < view.state.doc.length) {
+                  const prevChar = view.state.doc.sliceString(cursor - 1, cursor)
+                  const nextChar = view.state.doc.sliceString(cursor, cursor + 1)
+                  if (
+                    (prevChar === "{" && nextChar === "}") ||
+                    (prevChar === "[" && nextChar === "]") ||
+                    (prevChar === "(" && nextChar === ")")
+                  ) {
+                    const indentMatch = line.text.match(/^(\s*)/)
+                    const currentIndent = indentMatch ? indentMatch[1] : ""
+                    const insertText = `\n${currentIndent}  \n${currentIndent}`
+                    view.dispatch({
+                      changes: { from: cursor, to: cursor, insert: insertText },
+                      selection: { anchor: cursor + 1 + currentIndent.length + 2 },
+                    })
+                    return true
+                  }
+                }
+
                 return false
               },
             },
@@ -412,6 +460,36 @@ export const LxMarkdownEditor = ({
           ]),
         ),
         keymap.of([
+          {
+            key: "Ctrl-Shift-Enter",
+            run: (view) => {
+              const cursor = view.state.selection.main.head
+              const line = view.state.doc.lineAt(cursor)
+              const indentMatch = line.text.match(/^(\s*)/)
+              const currentIndent = indentMatch ? indentMatch[1] : ""
+              const insertText = `\n${currentIndent}`
+              view.dispatch({
+                changes: { from: line.to, to: line.to, insert: insertText },
+                selection: { anchor: line.to + insertText.length },
+              })
+              return true
+            },
+          },
+          {
+            key: "Cmd-Shift-Enter",
+            run: (view) => {
+              const cursor = view.state.selection.main.head
+              const line = view.state.doc.lineAt(cursor)
+              const indentMatch = line.text.match(/^(\s*)/)
+              const currentIndent = indentMatch ? indentMatch[1] : ""
+              const insertText = `\n${currentIndent}`
+              view.dispatch({
+                changes: { from: line.to, to: line.to, insert: insertText },
+                selection: { anchor: line.to + insertText.length },
+              })
+              return true
+            },
+          },
           { key: "Mod-a", run: selectAllPreservingScrollPosition },
           {
             key: "Mod-s",
