@@ -34,6 +34,7 @@ import {
   SquareSplitHorizontal,
   Strikethrough,
   Undo2,
+  WandSparkles,
 } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
@@ -52,6 +53,8 @@ import {
 import {
   createMarkdownTable,
   editorTheme,
+  formatMarkdown,
+  mapMarkdownPosition,
   markdownHighlightStyle,
   markdownMarkerHighlight,
   selectAllPreservingScrollPosition,
@@ -337,6 +340,30 @@ export const LxMarkdownEditor = ({
   }
 
   /**
+   * 格式化整篇 Markdown，并将结果作为一次可撤销的编辑提交。
+   */
+  const formatDocument = (): void => {
+    const view = editorViewRef.current
+    if (!view) return
+
+    const sourceContent = view.state.doc.toString()
+    const editorScrollAnchor = captureEditorScrollAnchor(view)
+    const formattedContent = formatMarkdown(sourceContent)
+    if (formattedContent === sourceContent) return
+
+    const selection = view.state.selection.main
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: formattedContent },
+      selection: {
+        anchor: mapMarkdownPosition(sourceContent, formattedContent, selection.anchor),
+        head: mapMarkdownPosition(sourceContent, formattedContent, selection.head),
+      },
+    })
+    view.focus()
+    restoreEditorScrollAnchor(view, editorScrollAnchor)
+  }
+
+  /**
    * 在选择的每一行前添加 Markdown 列表或引用前缀。
    */
   const prefixLines = (prefix: string, placeholder: string): void => {
@@ -363,18 +390,44 @@ export const LxMarkdownEditor = ({
   }
 
   /**
+   * 记录编辑器当前可见行和相对偏移，供文档重排后恢复视觉位置。
+   */
+  const captureEditorScrollAnchor = (view: EditorView): EditorScrollAnchor => {
+    const { scrollLeft, scrollTop } = view.scrollDOM
+    const block = view.lineBlockAtHeight(scrollTop)
+    return {
+      left: scrollLeft,
+      line: view.state.doc.lineAt(block.from).number,
+      offset: scrollTop - block.top,
+    }
+  }
+
+  /**
+   * 在 CodeMirror 完成文档测量后恢复之前的滚动位置。
+   */
+  const restoreEditorScrollAnchor = (view: EditorView, anchor: EditorScrollAnchor): void => {
+    view.requestMeasure({
+      read: () => anchor,
+      write: (scrollAnchor, measuredView) => {
+        const line = measuredView.state.doc.line(
+          Math.min(scrollAnchor.line, measuredView.state.doc.lines),
+        )
+        const block = measuredView.lineBlockAt(line.from)
+        measuredView.scrollDOM.scrollTo({
+          left: scrollAnchor.left,
+          top: block.top + scrollAnchor.offset,
+        })
+      },
+    })
+  }
+
+  /**
    * 在编辑区宽度变更前记录首个可见行，供测量完成后恢复视觉位置。
    */
   const changePreviewMode = (mode: MarkdownPreviewMode): void => {
     const view = editorViewRef.current
     if (view) {
-      const { scrollLeft, scrollTop } = view.scrollDOM
-      const block = view.lineBlockAtHeight(scrollTop)
-      editorScrollAnchorRef.current = {
-        left: scrollLeft,
-        line: view.state.doc.lineAt(block.from).number,
-        offset: scrollTop - block.top,
-      }
+      editorScrollAnchorRef.current = captureEditorScrollAnchor(view)
     }
 
     setPreviewMode(mode)
@@ -521,6 +574,7 @@ export const LxMarkdownEditor = ({
             key: "Mod-Shift-Alt-t",
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
           },
+          { key: "Mod-Shift-f", run: () => (formatDocument(), true) },
           ...historyKeymap,
           ...standardKeymap,
         ]),
@@ -569,11 +623,17 @@ export const LxMarkdownEditor = ({
   }, [previewMode])
 
   useEffect(() => {
-    if (previewMode !== "split") return
-
     const editorScrollElement = editorViewRef.current?.scrollDOM
     const previewElement = previewRef.current
     if (!editorScrollElement || !previewElement) return
+
+    if (previewMode === "preview") {
+      const frame = requestAnimationFrame(() =>
+        synchronizeEditorToPreview(editorViewRef.current!, previewElement),
+      )
+      return () => cancelAnimationFrame(frame)
+    }
+    if (previewMode !== "split") return
 
     let restoreListenerTimer: number | null = null
 
@@ -644,6 +704,7 @@ export const LxMarkdownEditor = ({
     { icon: Code2, label: "行内代码", onClick: () => wrapSelection("`", "`", "code") },
     { icon: Code, label: "代码块", onClick: insertCodeBlock },
     { icon: Link, label: "链接", onClick: () => wrapSelection("[", "](https://)", "link text") },
+    { icon: WandSparkles, label: "格式化 Markdown", onClick: formatDocument },
     {
       icon: SquareSplitHorizontal,
       label: splitLabel,
