@@ -129,9 +129,9 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
       color: "#38bdf8 !important",
       fontWeight: "700",
-      backgroundColor: "rgba(56, 189, 248, 0.12)",
-      padding: "1px 6px",
-      borderRadius: "3px",
+      backgroundColor: "rgba(56, 189, 248, 0.12) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
     },
     ".cm-md-code-fence-start-line": {
       borderTop: "1px solid rgba(255, 255, 255, 0.08)",
@@ -189,7 +189,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span, .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language), .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",

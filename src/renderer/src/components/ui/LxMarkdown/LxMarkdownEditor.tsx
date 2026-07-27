@@ -314,7 +314,7 @@ export const LxMarkdownEditor = ({
       isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))
 
     let isContinuousList = false
-    if (trigger && (trigger.kind === "unorderedList" || trigger.kind === "orderedList")) {
+    if (trigger) {
       if (line.number > 1) {
         const prevLine = view.state.doc.line(line.number - 1)
         const prevText = prevLine.text
@@ -324,6 +324,14 @@ export const LxMarkdownEditor = ({
           }
         } else if (trigger.kind === "orderedList") {
           if (/^(\s*)\d+[.)](\s|$)/.test(prevText)) {
+            isContinuousList = true
+          }
+        } else if (trigger.kind === "quote") {
+          if (/^(\s*)>(\s|$)/.test(prevText)) {
+            isContinuousList = true
+          }
+        } else if (trigger.kind === "table") {
+          if (/^(\s*)\|/.test(prevText)) {
             isContinuousList = true
           }
         }
