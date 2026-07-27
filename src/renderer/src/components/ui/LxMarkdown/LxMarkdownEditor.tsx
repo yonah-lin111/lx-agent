@@ -44,6 +44,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
+import { MarkdownSlashCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownSlashCommandMenu"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import type {
   MarkdownBlockCommand,
@@ -69,6 +70,14 @@ import {
 import { getFileMentionDeletionRange } from "@/components/ui/LxMarkdown/markdownFileMentions"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/markdownRenderer"
 import type {
+  MarkdownSlashCommand,
+  MarkdownSlashCommandLine,
+} from "@/components/ui/LxMarkdown/markdownSlashCommands"
+import {
+  getMarkdownSlashCommandLine,
+  getMarkdownSlashCommands,
+} from "@/components/ui/LxMarkdown/markdownSlashCommands"
+import type {
   EditorScrollAnchor,
   LxMarkdownEditorProps,
   MarkdownPreviewMode,
@@ -88,6 +97,13 @@ interface FileMentionPanelState {
   files: ProjectFileEntry[]
   position: React.CSSProperties
   start: number
+}
+
+// Markdown 斜杠命令面板状态。
+interface MarkdownSlashCommandPanelState {
+  commands: MarkdownSlashCommand[]
+  line: MarkdownSlashCommandLine
+  position: React.CSSProperties
 }
 
 /**
@@ -141,6 +157,8 @@ export const LxMarkdownEditor = ({
   const onSaveRef = useRef(onSave)
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
+  const slashCommandPanelRef = useRef<MarkdownSlashCommandPanelState | null>(null)
+  const activeSlashCommandIndexRef = useRef(0)
   const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
   const activeFileMentionIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
@@ -152,6 +170,10 @@ export const LxMarkdownEditor = ({
     null,
   )
   const [activeBlockCommandIndex, setActiveBlockCommandIndex] = useState(0)
+  const [slashCommandPanel, setSlashCommandPanel] = useState<MarkdownSlashCommandPanelState | null>(
+    null,
+  )
+  const [activeSlashCommandIndex, setActiveSlashCommandIndex] = useState(0)
   const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
@@ -208,6 +230,81 @@ export const LxMarkdownEditor = ({
     activeFileMentionIndexRef.current = 0
     setFileMentionPanel(null)
     setActiveFileMentionIndex(0)
+  }
+
+  /**
+   * 关闭 Markdown 斜杠命令面板。
+   */
+  const closeSlashCommandPanel = (): void => {
+    slashCommandPanelRef.current = null
+    activeSlashCommandIndexRef.current = 0
+    setSlashCommandPanel(null)
+    setActiveSlashCommandIndex(0)
+  }
+
+  /**
+   * 同步 Markdown 光标处的模板命令面板。
+   */
+  const syncSlashCommandPanel = (view: EditorView): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const commands = commandLine ? getMarkdownSlashCommands(commandLine.value) : []
+    const coords = view.coordsAtPos(cursor)
+
+    if (!commandLine || !coords || commands.length === 0) {
+      closeSlashCommandPanel()
+      return
+    }
+
+    const panelWidth = 288
+    const offset = 6
+    const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
+    const panel = {
+      commands,
+      line: commandLine,
+      position:
+        window.innerHeight - coords.bottom < window.innerHeight * 0.3
+          ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
+          : { left, top: coords.bottom + offset, bottom: "auto" },
+    }
+    const previous = slashCommandPanelRef.current
+    if (previous?.line.value !== commandLine.value) {
+      activeSlashCommandIndexRef.current = 0
+      setActiveSlashCommandIndex(0)
+    }
+    slashCommandPanelRef.current = panel
+    setSlashCommandPanel(panel)
+  }
+
+  /**
+   * 用选中的模板替换当前斜杠命令行。
+   */
+  const selectSlashCommand = (command: MarkdownSlashCommand): void => {
+    const view = editorViewRef.current
+    const panel = slashCommandPanelRef.current
+    if (!view || !panel) return
+
+    view.dispatch({
+      changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+      selection: { anchor: panel.line.from + command.cursorOffset },
+    })
+    view.focus()
+    closeSlashCommandPanel()
+  }
+
+  /**
+   * 更新模板命令面板的当前选项。
+   */
+  const handleSlashCommandKey = (offset: number): boolean => {
+    const panel = slashCommandPanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeSlashCommandIndexRef.current + offset + panel.commands.length) % panel.commands.length
+    activeSlashCommandIndexRef.current = nextIndex
+    setActiveSlashCommandIndex(nextIndex)
+    return true
   }
 
   /**
@@ -654,11 +751,17 @@ export const LxMarkdownEditor = ({
           keymap.of([
             {
               key: "ArrowDown",
-              run: () => handleFileMentionKey("ArrowDown") || handleBlockCommandKey(1),
+              run: () =>
+                handleFileMentionKey("ArrowDown") ||
+                handleSlashCommandKey(1) ||
+                handleBlockCommandKey(1),
             },
             {
               key: "ArrowUp",
-              run: () => handleFileMentionKey("ArrowUp") || handleBlockCommandKey(-1),
+              run: () =>
+                handleFileMentionKey("ArrowUp") ||
+                handleSlashCommandKey(-1) ||
+                handleBlockCommandKey(-1),
             },
             {
               key: "Enter",
@@ -667,6 +770,15 @@ export const LxMarkdownEditor = ({
                 if (fileMention) {
                   selectFileMention(
                     fileMention.files[activeFileMentionIndexRef.current] ?? fileMention.files[0],
+                  )
+                  return true
+                }
+
+                const slashCommand = slashCommandPanelRef.current
+                if (slashCommand) {
+                  selectSlashCommand(
+                    slashCommand.commands[activeSlashCommandIndexRef.current] ??
+                      slashCommand.commands[0],
                   )
                   return true
                 }
@@ -718,6 +830,10 @@ export const LxMarkdownEditor = ({
               run: () => {
                 if (fileMentionPanelRef.current) {
                   closeFileMentionPanel()
+                  return true
+                }
+                if (slashCommandPanelRef.current) {
+                  closeSlashCommandPanel()
                   return true
                 }
                 if (blockCommandPanelRef.current) {
@@ -822,6 +938,7 @@ export const LxMarkdownEditor = ({
         EditorView.updateListener.of((update) => {
           if (update.docChanged || update.selectionSet || update.viewportChanged) {
             syncBlockCommandPanel(update.view)
+            syncSlashCommandPanel(update.view)
           }
           if (update.docChanged) syncFileMentionPanel(update.view)
           if (update.selectionSet && !update.docChanged) closeFileMentionPanel()
@@ -983,6 +1100,13 @@ export const LxMarkdownEditor = ({
           activeIndex={activeBlockCommandIndex}
           commands={blockCommandPanel.commands}
           position={blockCommandPanel.position}
+        />
+      )}
+      {slashCommandPanel && (
+        <MarkdownSlashCommandMenu
+          activeIndex={activeSlashCommandIndex}
+          commands={slashCommandPanel.commands}
+          position={slashCommandPanel.position}
         />
       )}
       {fileMentionPanel && (

@@ -113,10 +113,10 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label={isExpanded ? "折叠代码块" : "展开代码块"}
+      aria-label={isExpanded ? "折叠内容" : "展开内容"}
       aria-expanded={isExpanded}
       size="small"
-      title={{ content: isExpanded ? "折叠代码块" : "展开代码块", placement: "bottom" }}
+      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
       onClick={toggleContent}
     >
       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

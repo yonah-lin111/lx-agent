@@ -1,0 +1,78 @@
+// Markdown 模板命令标识。
+export type MarkdownTemplateCommandId =
+  | "addTemplate"
+  | "bugTemplate"
+  | "refactorTemplate"
+  | "commonTemplate"
+
+// Markdown 斜杠命令配置。
+export interface MarkdownSlashCommand {
+  id: MarkdownTemplateCommandId
+  label: string
+  description: string
+  content: string
+  cursorOffset: number
+}
+
+// 斜杠命令行范围。
+export interface MarkdownSlashCommandLine {
+  from: number
+  to: number
+  value: string
+}
+
+const templateCommands: MarkdownSlashCommand[] = [
+  {
+    id: "addTemplate",
+    label: "/addTemplate",
+    description: "插入需求提示词模板",
+    content: "# 添加需求\n\n- 描述：\n- 要求：\n  - \n- 注意：\n  - ",
+    cursorOffset: "# 添加需求\n\n- 描述：".length,
+  },
+  {
+    id: "bugTemplate",
+    label: "/bugTemplate",
+    description: "插入 Bug 修复提示词模板",
+    content: "# 修复 Bug\n\n- 描述：\n- 复现：-> ->\n- 要求：\n  - \n- 期望：",
+    cursorOffset: "# 修复 Bug\n\n- 描述：".length,
+  },
+  {
+    id: "refactorTemplate",
+    label: "/refactorTemplate",
+    description: "插入功能重构提示词模板",
+    content: "# 重构功能\n\n- 目标：\n- 要求：\n  - \n- 注意：\n  - ",
+    cursorOffset: "# 重构功能\n\n- 目标：".length,
+  },
+  {
+    id: "commonTemplate",
+    label: "/commonTemplate",
+    description: "插入代码修改提示词模板",
+    content: "# 修改代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：",
+    cursorOffset: "# 修改代码\n\n- 要求：\n  -".length,
+  },
+]
+
+/**
+ * 获取光标所在行的斜杠命令范围。
+ */
+export const getMarkdownSlashCommandLine = (
+  lineText: string,
+  lineFrom: number,
+  lineTo: number,
+): MarkdownSlashCommandLine | null => {
+  const value = lineText.trimStart()
+  if (!value.startsWith("/")) return null
+
+  return { from: lineFrom, to: lineTo, value }
+}
+
+/**
+ * 获取与当前斜杠命令匹配的候选项。
+ */
+export const getMarkdownSlashCommands = (value: string): MarkdownSlashCommand[] => {
+  const match = /^\/(\w*)$/i.exec(value)
+  if (!match) return []
+
+  const query = match[1].toLowerCase()
+  return templateCommands.filter((command) => command.id.includes(query))
+}
