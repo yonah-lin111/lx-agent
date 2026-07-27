@@ -43,7 +43,7 @@ describe("Markdown 块命令", () => {
       selectionEnd: 7,
     })
     expect(createMarkdownBlockInsertion("codeBlock")).toEqual({
-      text: "```language\n\n```",
+      text: "```language\n```",
       selectionStart: 3,
       selectionEnd: 11,
     })

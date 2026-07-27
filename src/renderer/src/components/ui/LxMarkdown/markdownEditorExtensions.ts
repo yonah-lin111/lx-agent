@@ -71,6 +71,39 @@ export const editorTheme = EditorView.theme(
       color: "#e879f9 !important",
       fontWeight: "700",
     },
+    ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
+      color: "#38bdf8 !important",
+      fontWeight: "700",
+      backgroundColor: "rgba(56, 189, 248, 0.12)",
+      padding: "1px 6px",
+      borderRadius: "3px",
+    },
+    ".cm-md-code-fence-start-line": {
+      borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+      borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+      borderTopLeftRadius: "6px",
+      borderTopRightRadius: "6px",
+      backgroundColor: "rgba(255, 255, 255, 0.015)",
+      paddingLeft: "6px",
+      paddingTop: "4px",
+    },
+    ".cm-md-code-fence-middle-line": {
+      borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+      backgroundColor: "rgba(255, 255, 255, 0.015)",
+      paddingLeft: "6px",
+    },
+    ".cm-md-code-fence-end-line": {
+      borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+      borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+      borderBottomLeftRadius: "6px",
+      borderBottomRightRadius: "6px",
+      backgroundColor: "rgba(255, 255, 255, 0.015)",
+      paddingLeft: "6px",
+      paddingBottom: "4px",
+    },
     ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
       color: "#fb7185 !important",
       fontWeight: "700",
@@ -105,7 +138,13 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.link, color: "#93c5fd", textDecoration: "underline" },
   { tag: tags.url, color: "#67e8f9" },
   { tag: tags.quote, color: "#c4b5fd", fontStyle: "italic" },
-  { tag: tags.monospace, color: "#fca5a5" },
+  {
+    tag: tags.monospace,
+    color: "#fca5a5",
+    backgroundColor: "rgba(252, 165, 165, 0.12)",
+    borderRadius: "3px",
+    padding: "1px 4px",
+  },
   { tag: [tags.meta, tags.processingInstruction], color: "#7dd3fc" },
   { tag: tags.keyword, color: "#c4b5fd" },
   { tag: tags.string, color: "#86efac" },
@@ -142,13 +181,16 @@ export const markdownMarkerHighlight = ViewPlugin.fromClass(
  */
 const buildMarkdownMarkerDecorations = (view: EditorView) => {
   const builder = new RangeSetBuilder<Decoration>()
-  const markers: { from: number; to: number; className: string }[] = []
+  const allDecos: (
+    | { type: "line"; from: number; className: string }
+    | { type: "mark"; from: number; to: number; className: string }
+  )[] = []
   let offset = 0
   let isInsideCodeFence = false
 
   for (const line of view.state.doc.iterLines()) {
     const addMarker = (from: number, to: number, className: string): void => {
-      markers.push({ from: offset + from, to: offset + to, className })
+      allDecos.push({ type: "mark", from: offset + from, to: offset + to, className })
     }
     const addMatches = (pattern: RegExp, className: string): void => {
       for (const match of line.matchAll(pattern)) {
@@ -165,12 +207,33 @@ const buildMarkdownMarkerDecorations = (view: EditorView) => {
         fenceMatch[1].length + fenceMatch[2].length,
         "cm-md-code-fence-marker",
       )
+      const fenceMarkerEnd = fenceMatch[1].length + fenceMatch[2].length
+      const remainingText = line.slice(fenceMarkerEnd)
+      const langMatch = remainingText.match(/^(\s*)(\S+)/)
+      if (langMatch) {
+        addMarker(
+          fenceMarkerEnd + langMatch[1].length,
+          fenceMarkerEnd + langMatch[1].length + langMatch[2].length,
+          "cm-md-code-fence-language",
+        )
+      }
+      const isStart = !isInsideCodeFence
+      allDecos.push({
+        type: "line",
+        from: offset,
+        className: isStart ? "cm-md-code-fence-start-line" : "cm-md-code-fence-end-line",
+      })
       isInsideCodeFence = !isInsideCodeFence
       offset += line.length + 1
       continue
     }
 
     if (isInsideCodeFence) {
+      allDecos.push({
+        type: "line",
+        from: offset,
+        className: "cm-md-code-fence-middle-line",
+      })
       offset += line.length + 1
       continue
     }
@@ -241,9 +304,23 @@ const buildMarkdownMarkerDecorations = (view: EditorView) => {
     offset += line.length + 1
   }
 
-  markers.sort((first, second) => first.from - second.from || first.to - second.to)
-  for (const marker of markers) {
-    builder.add(marker.from, marker.to, Decoration.mark({ class: marker.className }))
+  allDecos.sort((first, second) => {
+    if (first.from !== second.from) {
+      return first.from - second.from
+    }
+    if (first.type === "line" && second.type !== "line") return -1
+    if (first.type !== "line" && second.type === "line") return 1
+    if (first.type === "mark" && second.type === "mark") {
+      return first.to - second.to
+    }
+    return 0
+  })
+  for (const deco of allDecos) {
+    if (deco.type === "line") {
+      builder.add(deco.from, deco.from, Decoration.line({ attributes: { class: deco.className } }))
+    } else {
+      builder.add(deco.from, deco.to, Decoration.mark({ class: deco.className }))
+    }
   }
 
   return builder.finish()
