@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import type { MarkdownBlockCommand } from "@/components/ui/LxMarkdown/markdownBlockCommands"
+import type { MarkdownBlockCommand } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 // Markdown 块命令菜单属性。
 interface MarkdownBlockCommandMenuProps {

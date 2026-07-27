@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
-import { LxMarkdownEditor } from "@/components/ui/LxMarkdown/LxMarkdownEditor"
+import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 

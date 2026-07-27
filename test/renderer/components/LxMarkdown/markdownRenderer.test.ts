@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/markdownRenderer"
+import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 describe("markdownRenderer", () => {
   it("为 fenced code block 添加语言栏和复制按钮挂载点", () => {

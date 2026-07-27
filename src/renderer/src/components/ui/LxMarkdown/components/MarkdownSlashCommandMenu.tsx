@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import type { MarkdownSlashCommand } from "@/components/ui/LxMarkdown/markdownSlashCommands"
+import type { MarkdownSlashCommand } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
 
 // Markdown 斜杠命令菜单属性。
 interface MarkdownSlashCommandMenuProps {
