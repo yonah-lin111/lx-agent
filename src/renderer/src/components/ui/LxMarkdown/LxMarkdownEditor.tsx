@@ -11,13 +11,16 @@ import {
 import { markdown } from "@codemirror/lang-markdown"
 import {
   bracketMatching,
+  codeFolding,
+  foldGutter,
+  foldService,
   indentOnInput,
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
-import { EditorView, keymap } from "@codemirror/view"
+import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import type { ProjectFileEntry } from "@shared/project"
 import {
@@ -86,6 +89,36 @@ interface FileMentionPanelState {
   position: React.CSSProperties
   start: number
 }
+
+/**
+ * 为 ATX 标题提供折叠范围，直到下一个同级或更高层级标题。
+ */
+const markdownHeadingFolding = foldService.of((state, lineStart) => {
+  const headingLine = state.doc.lineAt(lineStart)
+  const headingMatch = /^ {0,3}(#{1,6})(?:\s|$)/.exec(headingLine.text)
+  if (!headingMatch || isInsideMarkdownCodeFence(state.doc.sliceString(0, headingLine.from))) {
+    return null
+  }
+
+  const headingLevel = headingMatch[1].length
+  for (let lineNumber = headingLine.number + 1; lineNumber <= state.doc.lines; lineNumber += 1) {
+    const nextLine = state.doc.line(lineNumber)
+    const nextHeadingMatch = /^ {0,3}(#{1,6})(?:\s|$)/.exec(nextLine.text)
+    if (
+      !nextHeadingMatch ||
+      isInsideMarkdownCodeFence(state.doc.sliceString(0, nextLine.from)) ||
+      nextHeadingMatch[1].length > headingLevel
+    ) {
+      continue
+    }
+
+    return nextLine.from - 1 > headingLine.to
+      ? { from: headingLine.to, to: nextLine.from - 1 }
+      : null
+  }
+
+  return headingLine.to < state.doc.length ? { from: headingLine.to, to: state.doc.length } : null
+})
 
 /**
  * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
@@ -571,6 +604,35 @@ export const LxMarkdownEditor = ({
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
         markdownMarkerHighlight,
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        codeFolding({
+          placeholderDOM: (_view, onclick) => {
+            const button = document.createElement("button")
+            button.type = "button"
+            button.className = "cm-foldPlaceholder"
+            button.title = "展开折叠内容"
+            button.onclick = (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onclick(event)
+            }
+            button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
+
+            return button
+          },
+        }),
+        markdownHeadingFolding,
+        foldGutter({
+          markerDOM: (open) => {
+            const icon = document.createElement("span")
+            icon.className = `cm-fold-marker ${open ? "is-open" : "is-closed"}`
+            icon.innerHTML = open
+              ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`
+              : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
+            return icon
+          },
+        }),
         EditorView.lineWrapping,
         indentUnit.of("  "),
         indentOnInput(),
