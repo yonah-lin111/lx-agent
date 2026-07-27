@@ -1,6 +1,6 @@
 import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder } from "@codemirror/state"
-import { Decoration, EditorView, ViewPlugin } from "@codemirror/view"
+import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
 
@@ -124,6 +124,9 @@ export const editorTheme = EditorView.theme(
       color: "#fde047 !important",
       fontWeight: "700",
     },
+    ".cm-md-code-fence-hidden-line": {
+      display: "none !important",
+    },
   },
   { dark: true },
 )
@@ -156,21 +159,139 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.operator, color: "#fcd34d" },
 ])
 
+class CodeBlockActionWidget extends WidgetType {
+  constructor(
+    readonly codeText: string,
+    readonly isFolded: boolean,
+    readonly onToggleFold: () => void,
+  ) {
+    super()
+  }
+
+  eq(other: CodeBlockActionWidget) {
+    return this.codeText === other.codeText && this.isFolded === other.isFolded
+  }
+
+  toDOM() {
+    const wrap = document.createElement("span")
+    wrap.className = "cm-code-block-action-wrap"
+    wrap.style.position = "absolute"
+    wrap.style.right = "24px"
+    wrap.style.display = "inline-flex"
+    wrap.style.alignItems = "center"
+    wrap.style.gap = "6px"
+    wrap.style.background = "transparent"
+    wrap.style.border = "none"
+    wrap.style.borderRadius = "4px"
+    wrap.style.padding = "2px 4px"
+    wrap.style.zIndex = "10"
+    wrap.style.transform = "translateY(-4px)"
+
+    // 复制按钮
+    const copyBtn = document.createElement("button")
+    copyBtn.type = "button"
+    copyBtn.className = "cm-code-block-action-btn"
+    copyBtn.style.border = "none"
+    copyBtn.style.background = "transparent"
+    copyBtn.style.cursor = "pointer"
+    copyBtn.style.display = "flex"
+    copyBtn.style.padding = "2px"
+    copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
+    copyBtn.style.transition = "color 0.2s"
+    copyBtn.title = "复制代码"
+    copyBtn.onmouseenter = () => {
+      copyBtn.style.color = "#ffffff"
+    }
+    copyBtn.onmouseleave = () => {
+      copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
+    }
+
+    // 复制图标 SVG
+    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+
+    copyBtn.onclick = async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        await navigator.clipboard.writeText(this.codeText)
+        copyBtn.style.color = "#86efac" // 变成绿色，表示成功
+        copyBtn.title = "已复制"
+        copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
+        setTimeout(() => {
+          copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
+          copyBtn.title = "复制代码"
+          copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+        }, 1500)
+      } catch (err) {
+        console.error("Failed to copy text: ", err)
+      }
+    }
+
+    // 折叠按钮
+    const foldBtn = document.createElement("button")
+    foldBtn.type = "button"
+    foldBtn.className = "cm-code-block-action-btn"
+    foldBtn.style.border = "none"
+    foldBtn.style.background = "transparent"
+    foldBtn.style.cursor = "pointer"
+    foldBtn.style.display = "flex"
+    foldBtn.style.padding = "2px"
+    foldBtn.style.color = "rgba(255, 255, 255, 0.5)"
+    foldBtn.style.transition = "color 0.2s"
+    foldBtn.title = this.isFolded ? "展开代码块" : "折叠代码块"
+    foldBtn.onmouseenter = () => {
+      foldBtn.style.color = "#ffffff"
+    }
+    foldBtn.onmouseleave = () => {
+      foldBtn.style.color = "rgba(255, 255, 255, 0.5)"
+    }
+
+    if (this.isFolded) {
+      foldBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`
+    } else {
+      foldBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>`
+    }
+
+    foldBtn.onclick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      this.onToggleFold()
+    }
+
+    wrap.appendChild(copyBtn)
+    wrap.appendChild(foldBtn)
+
+    return wrap
+  }
+}
+
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
 export const markdownMarkerHighlight = ViewPlugin.fromClass(
   class {
     decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
+    foldedIndices = new Set<number>()
 
     constructor(view: EditorView) {
-      this.decorations = buildMarkdownMarkerDecorations(view)
+      this.decorations = buildMarkdownMarkerDecorations(view, this.foldedIndices, (index) =>
+        this.toggleFold(view, index),
+      )
     }
 
     update(update: { docChanged: boolean; view: EditorView }): void {
-      if (update.docChanged) {
-        this.decorations = buildMarkdownMarkerDecorations(update.view)
+      this.decorations = buildMarkdownMarkerDecorations(update.view, this.foldedIndices, (index) =>
+        this.toggleFold(update.view, index),
+      )
+    }
+
+    toggleFold(view: EditorView, index: number) {
+      if (this.foldedIndices.has(index)) {
+        this.foldedIndices.delete(index)
+      } else {
+        this.foldedIndices.add(index)
       }
+      view.dispatch({})
     }
   },
   { decorations: (plugin) => plugin.decorations },
@@ -179,18 +300,35 @@ export const markdownMarkerHighlight = ViewPlugin.fromClass(
 /**
  * 扫描文档行并生成 Markdown 标记装饰。
  */
-const buildMarkdownMarkerDecorations = (view: EditorView) => {
+const buildMarkdownMarkerDecorations = (
+  view: EditorView,
+  foldedIndices = new Set<number>(),
+  onToggleFold: (index: number) => void = () => {},
+) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
     | { type: "line"; from: number; className: string }
     | { type: "mark"; from: number; to: number; className: string }
+    | { type: "widget"; from: number; to: number; widget: CodeBlockActionWidget }
   )[] = []
   let offset = 0
   let isInsideCodeFence = false
+  let currentFenceFolded = false
+  let currentFenceTextLines: string[] = []
+  let codeBlockIndex = 0
 
-  for (const line of view.state.doc.iterLines()) {
-    const addMarker = (from: number, to: number, className: string): void => {
+  const lines = Array.from(view.state.doc.iterLines())
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    const addMarkerAlways = (from: number, to: number, className: string): void => {
       allDecos.push({ type: "mark", from: offset + from, to: offset + to, className })
+    }
+    const addMarker = (from: number, to: number, className: string): void => {
+      if (!currentFenceFolded) {
+        addMarkerAlways(from, to, className)
+      }
     }
     const addMatches = (pattern: RegExp, className: string): void => {
       for (const match of line.matchAll(pattern)) {
@@ -202,38 +340,88 @@ const buildMarkdownMarkerDecorations = (view: EditorView) => {
     const fenceMatch = line.match(/^(\s*)(`{3,}|~{3,})/)
 
     if (fenceMatch) {
-      addMarker(
+      addMarkerAlways(
         fenceMatch[1].length,
         fenceMatch[1].length + fenceMatch[2].length,
         "cm-md-code-fence-marker",
       )
-      const fenceMarkerEnd = fenceMatch[1].length + fenceMatch[2].length
-      const remainingText = line.slice(fenceMarkerEnd)
-      const langMatch = remainingText.match(/^(\s*)(\S+)/)
-      if (langMatch) {
-        addMarker(
-          fenceMarkerEnd + langMatch[1].length,
-          fenceMarkerEnd + langMatch[1].length + langMatch[2].length,
-          "cm-md-code-fence-language",
-        )
-      }
       const isStart = !isInsideCodeFence
-      allDecos.push({
-        type: "line",
-        from: offset,
-        className: isStart ? "cm-md-code-fence-start-line" : "cm-md-code-fence-end-line",
-      })
+
+      if (isStart) {
+        const currentBlockIdx = codeBlockIndex++
+        currentFenceFolded = foldedIndices.has(currentBlockIdx)
+
+        currentFenceTextLines = []
+        for (let j = i + 1; j < lines.length; j++) {
+          const subLine = lines[j]
+          if (subLine.match(/^(\s*)(`{3,}|~{3,})/)) {
+            break
+          }
+          currentFenceTextLines.push(subLine)
+        }
+        const collectedText = currentFenceTextLines.join("\n")
+
+        const fenceMarkerEnd = fenceMatch[1].length + fenceMatch[2].length
+        const remainingText = line.slice(fenceMarkerEnd)
+        const langMatch = remainingText.match(/^(\s*)(\S+)/)
+        if (langMatch) {
+          addMarkerAlways(
+            fenceMarkerEnd + langMatch[1].length,
+            fenceMarkerEnd + langMatch[1].length + langMatch[2].length,
+            "cm-md-code-fence-language",
+          )
+        }
+
+        allDecos.push({
+          type: "widget",
+          from: offset + line.length,
+          to: offset + line.length,
+          widget: new CodeBlockActionWidget(collectedText, currentFenceFolded, () =>
+            onToggleFold(currentBlockIdx),
+          ),
+        })
+
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: "cm-md-code-fence-start-line",
+        })
+      } else {
+        if (currentFenceFolded) {
+          allDecos.push({
+            type: "line",
+            from: offset,
+            className: "cm-md-code-fence-hidden-line",
+          })
+        } else {
+          allDecos.push({
+            type: "line",
+            from: offset,
+            className: "cm-md-code-fence-end-line",
+          })
+        }
+        currentFenceFolded = false
+      }
+
       isInsideCodeFence = !isInsideCodeFence
       offset += line.length + 1
       continue
     }
 
     if (isInsideCodeFence) {
-      allDecos.push({
-        type: "line",
-        from: offset,
-        className: "cm-md-code-fence-middle-line",
-      })
+      if (currentFenceFolded) {
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: "cm-md-code-fence-hidden-line",
+        })
+      } else {
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: "cm-md-code-fence-middle-line",
+        })
+      }
       offset += line.length + 1
       continue
     }
@@ -310,6 +498,8 @@ const buildMarkdownMarkerDecorations = (view: EditorView) => {
     }
     if (first.type === "line" && second.type !== "line") return -1
     if (first.type !== "line" && second.type === "line") return 1
+    if (first.type === "widget" && second.type === "mark") return -1
+    if (first.type === "mark" && second.type === "widget") return 1
     if (first.type === "mark" && second.type === "mark") {
       return first.to - second.to
     }
@@ -318,6 +508,8 @@ const buildMarkdownMarkerDecorations = (view: EditorView) => {
   for (const deco of allDecos) {
     if (deco.type === "line") {
       builder.add(deco.from, deco.from, Decoration.line({ attributes: { class: deco.className } }))
+    } else if (deco.type === "widget") {
+      builder.add(deco.from, deco.to, Decoration.widget({ widget: deco.widget, side: 1 }))
     } else {
       builder.add(deco.from, deco.to, Decoration.mark({ class: deco.className }))
     }

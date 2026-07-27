@@ -84,6 +84,7 @@ export const LxMarkdownEditor = ({
   const onSaveRef = useRef(onSave)
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
+  const hasNavigatedRef = useRef(false)
   const [content, setContent] = useState(initialContent)
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
@@ -141,11 +142,33 @@ export const LxMarkdownEditor = ({
     const isClosingCodeFence =
       trigger?.kind === "codeBlock" &&
       isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))
-    const commands = trigger && !isClosingCodeFence ? getMarkdownBlockCommands(trigger.kind) : []
+
+    let isContinuousList = false
+    if (trigger && (trigger.kind === "unorderedList" || trigger.kind === "orderedList")) {
+      if (line.number > 1) {
+        const prevLine = view.state.doc.line(line.number - 1)
+        const prevText = prevLine.text
+        if (trigger.kind === "unorderedList") {
+          if (/^(\s*)[-+*](\s|$)/.test(prevText)) {
+            isContinuousList = true
+          }
+        } else if (trigger.kind === "orderedList") {
+          if (/^(\s*)\d+[.)](\s|$)/.test(prevText)) {
+            isContinuousList = true
+          }
+        }
+      }
+    }
+
+    const commands =
+      trigger && !isClosingCodeFence && !isContinuousList
+        ? getMarkdownBlockCommands(trigger.kind)
+        : []
 
     if (!trigger || !coords || commands.length === 0) {
       blockCommandPanelRef.current = null
       activeBlockCommandIndexRef.current = 0
+      hasNavigatedRef.current = false
       setBlockCommandPanel(null)
       setActiveBlockCommandIndex(0)
       return
@@ -166,6 +189,7 @@ export const LxMarkdownEditor = ({
     if (previous?.trigger.kind !== trigger.kind || previous.trigger.to !== trigger.to) {
       activeBlockCommandIndexRef.current = 0
       setActiveBlockCommandIndex(0)
+      hasNavigatedRef.current = false
     }
     blockCommandPanelRef.current = panel
     setBlockCommandPanel(panel)
@@ -209,6 +233,7 @@ export const LxMarkdownEditor = ({
     const panel = blockCommandPanelRef.current
     if (!panel) return false
 
+    hasNavigatedRef.current = true
     const nextIndex =
       (activeBlockCommandIndexRef.current + offset + panel.commands.length) % panel.commands.length
     setActiveBlockCommand(nextIndex)
@@ -313,13 +338,27 @@ export const LxMarkdownEditor = ({
             { key: "ArrowUp", run: () => handleBlockCommandKey(-1) },
             {
               key: "Enter",
-              run: () => {
+              run: (view) => {
                 const panel = blockCommandPanelRef.current
-                if (!panel) return false
-                selectBlockCommand(
-                  panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
-                )
-                return true
+                if (panel && hasNavigatedRef.current) {
+                  selectBlockCommand(
+                    panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
+                  )
+                  return true
+                }
+
+                const cursor = view.state.selection.main.head
+                const line = view.state.doc.lineAt(cursor)
+                const emptyListMarkerRegex = /^(\s*)([-+*](\s+\[[ xX]\])?|\d+[.)]|>)\s*$/
+                if (emptyListMarkerRegex.test(line.text)) {
+                  view.dispatch({
+                    changes: { from: line.from, to: line.to, insert: "" },
+                    selection: { anchor: line.from },
+                  })
+                  return true
+                }
+
+                return false
               },
             },
             {

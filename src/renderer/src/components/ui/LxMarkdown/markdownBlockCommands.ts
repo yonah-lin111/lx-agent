@@ -80,7 +80,7 @@ export const getMarkdownBlockTrigger = (
   const matches: [MarkdownBlockTriggerKind, RegExp][] = [
     ["heading", /^(\s*)#{1,6}\s?$/],
     ["unorderedList", /^(\s*)[-+*]\s?$/],
-    ["orderedList", /^(\s*)\d+[.)]\s?$/],
+    ["orderedList", /^(\s*)1[.)]\s?$/],
     ["quote", /^(\s*)>\s?$/],
     ["codeBlock", /^(\s*)(?:`{3,}|~{3,})$/],
     ["table", /^(\s*)\|$/],
