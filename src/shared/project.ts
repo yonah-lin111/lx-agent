@@ -67,6 +67,7 @@ export interface ProjectApi {
       create: (input: CreateProjectInput) => Promise<Project>
       update: (id: string, input: UpdateProjectInput) => Promise<void>
       delete: (id: string) => Promise<void>
+      selectDirectory: () => Promise<string | null>
       searchFiles: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
     }
     modules: {

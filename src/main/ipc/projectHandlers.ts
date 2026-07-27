@@ -1,5 +1,5 @@
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
-import { ipcMain } from "electron"
+import { dialog, ipcMain } from "electron"
 import { projectService } from "@/services/projectService"
 
 /**
@@ -12,6 +12,14 @@ export const registerProjectHandlers = (): void => {
     projectService.updateProject(id, input),
   )
   ipcMain.handle(PROJECT_CHANNELS.deleteProject, (_, id) => projectService.deleteProject(id))
+  ipcMain.handle(PROJECT_CHANNELS.selectProjectDirectory, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+      title: "选择项目文件夹",
+    })
+
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
   ipcMain.handle(PROJECT_CHANNELS.searchProjectFiles, (_, projectId, query) => {
     if (typeof projectId !== "string" || typeof query !== "string") {
       throw new Error("INVALID_PROJECT_FILE_SEARCH_INPUT")

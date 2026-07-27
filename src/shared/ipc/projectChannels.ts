@@ -4,6 +4,7 @@ export const PROJECT_CHANNELS = {
   createProject: "project:projects:create",
   updateProject: "project:projects:update",
   deleteProject: "project:projects:delete",
+  selectProjectDirectory: "project:projects:select-directory",
   searchProjectFiles: "project:files:search",
   listModules: "project:modules:list",
   createModule: "project:modules:create",

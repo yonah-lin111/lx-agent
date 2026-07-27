@@ -47,4 +47,25 @@ describe("useProjectNavigationActions", () => {
     expect(toast.error).toHaveBeenCalledWith("提示词状态更新失败")
     expect(toast.success).not.toHaveBeenCalled()
   })
+
+  it("选择目录后使用目录名创建文件系统项目", async () => {
+    const refreshProjects = vi.fn<() => Promise<void>>().mockResolvedValue()
+    const toast = { success: vi.fn(), error: vi.fn() }
+    vi.spyOn(projectNavigationApi, "selectProjectDirectory").mockResolvedValue("/tmp/LX Agent")
+    const createProject = vi
+      .spyOn(projectNavigationApi, "createProject")
+      .mockResolvedValue({ id: "project-2", name: "LX Agent", type: "filesystem" })
+    const { result } = renderHook(() =>
+      useProjectNavigationActions(projects, refreshProjects, toast),
+    )
+
+    await expect(act(() => result.current.importProject())).resolves.toBe("project-2")
+
+    expect(createProject).toHaveBeenCalledWith({
+      name: "LX Agent",
+      path: "/tmp/LX Agent",
+      type: "filesystem",
+    })
+    expect(refreshProjects).toHaveBeenCalledOnce()
+  })
 })

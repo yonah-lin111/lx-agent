@@ -49,6 +49,7 @@ export const useProjectNavigationActions = (
   ) => Promise<string | null>
   renameItem: (id: string, name: string) => Promise<boolean>
   saveProject: (projectId: string | null, name: string, path?: string) => Promise<string | null>
+  importProject: () => Promise<string | null>
   deleteItem: (menu: ProjectNavigationMenuTarget) => Promise<boolean>
 } => {
   const sortPromptsByStatus = useCallback(async (): Promise<void> => {
@@ -136,6 +137,18 @@ export const useProjectNavigationActions = (
     [refreshProjects, toast],
   )
 
+  const importProject = useCallback(async (): Promise<string | null> => {
+    const path = await projectNavigationApi.selectProjectDirectory()
+    if (!path) return null
+
+    const name =
+      path
+        .split(/[/\\\\]/)
+        .filter(Boolean)
+        .pop() ?? "未命名项目"
+    return saveProject(null, name, path)
+  }, [saveProject])
+
   const deleteItem = useCallback(
     async (menu: ProjectNavigationMenuTarget): Promise<boolean> => {
       try {
@@ -171,6 +184,7 @@ export const useProjectNavigationActions = (
     createMenuItem,
     renameItem,
     saveProject,
+    importProject,
     deleteItem,
   }
 }

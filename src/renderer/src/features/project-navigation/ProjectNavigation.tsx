@@ -37,7 +37,7 @@ type MenuState = {
 
 // 当前项目弹窗状态。
 type ProjectModalState =
-  | { mode: Extract<ProjectModalMode, "create" | "import"> }
+  | { mode: Extract<ProjectModalMode, "create"> }
   | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
 
 /**
@@ -60,6 +60,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
     deleteItem,
     renameItem,
     saveProject,
+    importProject,
     sortPromptsByStatus,
     updatePromptStatus,
   } = useProjectNavigationActions(projects, refreshProjects, toast)
@@ -177,6 +178,16 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
+   * 打开系统目录选择器并导入选中的项目。
+   */
+  const handleProjectImport = async (): Promise<void> => {
+    const projectId = await importProject()
+    if (projectId) {
+      setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: false }))
+    }
+  }
+
+  /**
    * 更新右键目标提示词的状态。
    */
   const handlePromptStatusChange = async (status: PromptStatus): Promise<void> => {
@@ -245,7 +256,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             <LxIconButton
               aria-label="导入项目"
               title={{ content: "导入项目", placement: "bottom" }}
-              onClick={() => setProjectModal({ mode: "import" })}
+              onClick={() => void handleProjectImport()}
             >
               <Import className="h-4 w-4" />
             </LxIconButton>

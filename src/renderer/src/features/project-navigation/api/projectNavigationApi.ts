@@ -22,6 +22,8 @@ export const projectNavigationApi = {
   updateProject: (id: string, input: UpdateProjectInput): Promise<void> =>
     window.api.project.projects.update(id, input),
   deleteProject: (id: string): Promise<void> => window.api.project.projects.delete(id),
+  selectProjectDirectory: (): Promise<string | null> =>
+    window.api.project.projects.selectDirectory(),
   createModule: (input: CreateModuleInput): Promise<Module> =>
     window.api.project.modules.create(input),
   updateModule: (id: string, input: UpdateModuleInput): Promise<void> =>

@@ -10,6 +10,7 @@ const api: ProjectApi = {
       update: (id: string, input: unknown) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.updateProject, id, input),
       delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteProject, id),
+      selectDirectory: () => ipcRenderer.invoke(PROJECT_CHANNELS.selectProjectDirectory),
       searchFiles: (projectId: string, query: string) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.searchProjectFiles, projectId, query),
     },
