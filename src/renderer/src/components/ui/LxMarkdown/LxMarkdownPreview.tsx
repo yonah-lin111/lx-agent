@@ -10,8 +10,6 @@ interface LxMarkdownPreviewProps {
   html: string
   previewMode: MarkdownPreviewMode
   previewRef: React.RefObject<HTMLElement | null>
-  showLineNumbers?: boolean
-  showFolding?: boolean
 }
 
 /**
@@ -133,8 +131,6 @@ export const LxMarkdownPreview = ({
   html,
   previewMode,
   previewRef,
-  showLineNumbers = false,
-  showFolding = false,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   useLayoutEffect(() => {
     const mountButton = (container: HTMLElement, button: React.JSX.Element) => {
@@ -148,12 +144,10 @@ export const LxMarkdownPreview = ({
         previewElement?.querySelectorAll<HTMLElement>(".markdown-code-copy") ?? [],
         (container) => mountButton(container, <CodeBlockCopyButton />),
       ),
-      ...(!showFolding
-        ? Array.from(
-            previewElement?.querySelectorAll<HTMLElement>(".markdown-code-collapse") ?? [],
-            (container) => mountButton(container, <CodeBlockCollapseButton />),
-          )
-        : []),
+      ...Array.from(
+        previewElement?.querySelectorAll<HTMLElement>(".markdown-code-collapse") ?? [],
+        (container) => mountButton(container, <CodeBlockCollapseButton />),
+      ),
       ...Array.from(
         previewElement?.querySelectorAll<HTMLElement>(".markdown-mermaid") ?? [],
         (container) => {
@@ -165,7 +159,7 @@ export const LxMarkdownPreview = ({
     ]
 
     return () => roots.forEach((root) => root.unmount())
-  }, [html, previewMode, previewRef, showFolding, showLineNumbers])
+  }, [html, previewMode, previewRef])
 
   return (
     <article

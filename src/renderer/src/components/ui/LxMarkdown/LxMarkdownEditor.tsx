@@ -975,13 +975,7 @@ export const LxMarkdownEditor = ({
           className={`min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
-          <LxMarkdownPreview
-            html={previewHtml}
-            previewMode={previewMode}
-            previewRef={previewRef}
-            showLineNumbers={showLineNumbers}
-            showFolding={showFolding}
-          />
+          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
         )}
       </div>
       {blockCommandPanel && (

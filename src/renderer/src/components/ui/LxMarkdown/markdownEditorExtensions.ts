@@ -179,6 +179,12 @@ export const editorTheme = EditorView.theme(
       color: "#fde047 !important",
       fontWeight: "700",
     },
+    ".cm-md-file-mention, .cm-md-file-mention *": {
+      color: "#818cf8 !important",
+      fontWeight: "500",
+      textDecoration: "underline",
+      textDecorationColor: "rgba(129, 140, 248, 0.4)",
+    },
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
@@ -578,6 +584,7 @@ const buildMarkdownMarkerDecorations = (
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }
+    addMatches(/(?<![\w\[])@[^\[\]\(\)\s]+(?=\s|$)/g, "cm-md-file-mention")
 
     offset += line.length + 1
   }
