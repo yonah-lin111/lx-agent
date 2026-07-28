@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view"
-import type { ProjectFileEntry } from "@shared/project"
+import type { ProjectFileEntry, ReferencedProjectFileEntry } from "@shared/project"
 import type { CSSProperties, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import type {
@@ -19,6 +19,8 @@ import type {
 import {
   createMarkdownReference,
   getMarkdownReferenceCommands,
+  getMarkdownReferenceName,
+  getMarkdownReferenceProjectPaths,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import type {
   MarkdownSlashCommand,
@@ -28,6 +30,7 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
 } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
 
 /**
  * Markdown 块命令面板状态。
@@ -42,7 +45,7 @@ export interface MarkdownBlockCommandPanelState {
  * 文件提及面板状态。
  */
 export interface FileMentionPanelState {
-  files: ProjectFileEntry[]
+  files: MarkdownFileMentionEntry[]
   position: CSSProperties
   start: number
 }
@@ -74,10 +77,15 @@ export const useMarkdownPanels = ({
   editorViewRef,
   projectId,
   onSearchFiles,
+  onSearchReferencedFiles,
 }: {
   editorViewRef: RefObject<EditorView | null>
   projectId?: string
   onSearchFiles?: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
+  onSearchReferencedFiles?: (
+    projectPaths: string[],
+    query: string,
+  ) => Promise<ReferencedProjectFileEntry[]>
 }) => {
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
@@ -89,6 +97,7 @@ export const useMarkdownPanels = ({
   const activeReferenceCommandIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
   const onSearchFilesRef = useRef(onSearchFiles)
+  const onSearchReferencedFilesRef = useRef(onSearchReferencedFiles)
   const projectIdRef = useRef(projectId)
 
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
@@ -107,8 +116,9 @@ export const useMarkdownPanels = ({
 
   useEffect(() => {
     onSearchFilesRef.current = onSearchFiles
+    onSearchReferencedFilesRef.current = onSearchReferencedFiles
     projectIdRef.current = projectId
-  }, [onSearchFiles, projectId])
+  }, [onSearchFiles, onSearchReferencedFiles, projectId])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -274,12 +284,18 @@ export const useMarkdownPanels = ({
    */
   const syncFileMentionPanel = (view: EditorView): void => {
     const searchFiles = onSearchFilesRef.current
+    const searchReferencedFiles = onSearchReferencedFilesRef.current
     const activeProjectId = projectIdRef.current
     const cursor = view.state.selection.main.head
     const prefix = view.state.doc.sliceString(0, cursor)
     const match = /(^|\s)@([^\s]*)$/.exec(prefix)
+    const referencedProjectPaths = getMarkdownReferenceProjectPaths(view.state.doc.toString())
+    const canSearchCurrentProject = Boolean(searchFiles && activeProjectId)
+    const canSearchReferencedProjects = Boolean(
+      searchReferencedFiles && referencedProjectPaths.length > 0,
+    )
 
-    if (!match || !searchFiles || !activeProjectId) {
+    if (!match || (!canSearchCurrentProject && !canSearchReferencedProjects)) {
       closeFileMentionPanel()
       return
     }
@@ -295,9 +311,25 @@ export const useMarkdownPanels = ({
     const query = match[2] ?? ""
     const start = cursor - query.length - 1
 
-    void searchFiles(activeProjectId, query)
-      .then((files) => {
+    const currentProjectSearch = canSearchCurrentProject
+      ? searchFiles!(activeProjectId!, query).then((files) =>
+          files.map((file) => ({ ...file, mentionPath: file.path, source: "current" as const })),
+        )
+      : Promise.resolve([])
+    const referencedProjectSearch = canSearchReferencedProjects
+      ? searchReferencedFiles!(referencedProjectPaths, query).then((files) =>
+          files.map((file) => ({
+            ...file,
+            mentionPath: `${getMarkdownReferenceName(file.projectPath)}/${file.path}`,
+            source: "reference" as const,
+          })),
+        )
+      : Promise.resolve([])
+
+    void Promise.all([currentProjectSearch, referencedProjectSearch])
+      .then(([currentProjectFiles, referencedProjectFiles]) => {
         if (fileSearchRequestRef.current !== requestId) return
+        const files = [...currentProjectFiles, ...referencedProjectFiles]
         if (files.length === 0) {
           fileMentionPanelRef.current = null
           setFileMentionPanel(null)
@@ -326,13 +358,13 @@ export const useMarkdownPanels = ({
   /**
    * 将选中的项目相对路径插入当前 @ 提及位置。
    */
-  const selectFileMention = (file: ProjectFileEntry): void => {
+  const selectFileMention = (file: MarkdownFileMentionEntry): void => {
     const view = editorViewRef.current
     const panel = fileMentionPanelRef.current
     if (!view || !panel) return
 
     const cursor = view.state.selection.main.head
-    const insertion = `@${file.path} `
+    const insertion = `@${file.mentionPath} `
     view.dispatch({
       changes: { from: panel.start, to: cursor, insert: insertion },
       selection: { anchor: panel.start + insertion.length },

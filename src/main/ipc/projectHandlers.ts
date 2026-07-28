@@ -27,6 +27,17 @@ export const registerProjectHandlers = (): void => {
 
     return projectService.searchProjectFiles(projectId, query)
   })
+  ipcMain.handle(PROJECT_CHANNELS.searchReferencedProjectFiles, (_, projectPaths, query) => {
+    if (
+      !Array.isArray(projectPaths) ||
+      !projectPaths.every((projectPath) => typeof projectPath === "string") ||
+      typeof query !== "string"
+    ) {
+      throw new Error("INVALID_REFERENCED_PROJECT_FILE_SEARCH_INPUT")
+    }
+
+    return projectService.searchReferencedProjectFiles(projectPaths, query)
+  })
 
   ipcMain.handle(PROJECT_CHANNELS.listModules, (_, projectId) =>
     projectService.listModules(projectId),

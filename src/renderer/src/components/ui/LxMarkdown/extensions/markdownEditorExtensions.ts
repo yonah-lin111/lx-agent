@@ -2,6 +2,10 @@ import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder } from "@codemirror/state"
 import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
+import {
+  getMarkdownReferenceName,
+  getMarkdownReferenceProjectPaths,
+} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
@@ -186,6 +190,12 @@ export const editorTheme = EditorView.theme(
       fontWeight: "500",
       textDecoration: "underline",
       textDecorationColor: "rgba(129, 140, 248, 0.4)",
+    },
+    ".cm-md-referenced-file-mention, .cm-md-referenced-file-mention *": {
+      color: "#c4b5fd !important",
+      fontWeight: "500",
+      textDecoration: "underline",
+      textDecorationColor: "rgba(196, 181, 253, 0.4)",
     },
     ".cm-md-reference-project, .cm-md-reference-project *": {
       color: "#c4b5fd !important",
@@ -428,6 +438,9 @@ const buildMarkdownMarkerDecorations = (
   let codeBlockIndex = 0
 
   const lines = Array.from(view.state.doc.iterLines())
+  const referencedProjectNames = new Set(
+    getMarkdownReferenceProjectPaths(view.state.doc.toString()).map(getMarkdownReferenceName),
+  )
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -604,7 +617,16 @@ const buildMarkdownMarkerDecorations = (
     addMatches(/@\[refer-project\]\([^)\r\n]+\)/g, "cm-md-reference-project")
     addMatches(/@\[refer-file\]\([^)\r\n]+\)/g, "cm-md-reference-file")
     addMatches(/@\[refer-image\]\([^)\r\n]+\)/g, "cm-md-reference-image")
-    addMatches(/(?<![\w\[])@[^\[\]\(\)\s]+(?=\s|$)/g, "cm-md-file-mention")
+    for (const match of line.matchAll(/(?<![\w\[])@([^\[\]\(\)\s]+)(?=\s|$)/g)) {
+      if (match.index === undefined) continue
+
+      const projectName = match[1]?.split("/")[0]
+      const className =
+        projectName && referencedProjectNames.has(projectName)
+          ? "cm-md-referenced-file-mention"
+          : "cm-md-file-mention"
+      addMarker(match.index, match.index + match[0].length, className)
+    }
 
     offset += line.length + 1
   }

@@ -24,6 +24,7 @@ describe("preload project API", () => {
     await api.project.projects.create(input)
     await api.project.projects.selectDirectory()
     await api.project.projects.searchFiles("project-1", "readme")
+    await api.project.projects.searchReferencedFiles(["/tmp/reference"], "readme")
     await api.project.designs.sort(["design-1"])
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
@@ -35,6 +36,12 @@ describe("preload project API", () => {
       "project-1",
       "readme",
     )
-    expect(invoke).toHaveBeenNthCalledWith(4, PROJECT_CHANNELS.sortDesigns, ["design-1"])
+    expect(invoke).toHaveBeenNthCalledWith(
+      4,
+      PROJECT_CHANNELS.searchReferencedProjectFiles,
+      ["/tmp/reference"],
+      "readme",
+    )
+    expect(invoke).toHaveBeenNthCalledWith(5, PROJECT_CHANNELS.sortDesigns, ["design-1"])
   })
 })

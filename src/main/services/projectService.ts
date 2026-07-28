@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { basename } from "node:path"
 import type {
   CreateDesignInput,
   CreateModuleInput,
@@ -183,6 +184,17 @@ export const createProjectService = (getConnection: () => Database.Database) => 
 
     return searchProjectFiles(row.path, query)
   },
+
+  searchReferencedProjectFiles: (projectPaths: string[], query: string) =>
+    projectPaths.flatMap((projectPath) => {
+      try {
+        const files = searchProjectFiles(projectPath, query, basename(projectPath))
+
+        return files.map((file) => ({ ...file, projectPath }))
+      } catch {
+        return []
+      }
+    }),
 
   listModules: (projectId?: string): Module[] => {
     const database = getConnection()

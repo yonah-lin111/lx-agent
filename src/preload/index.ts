@@ -15,6 +15,8 @@ const api: ProjectApi & ClipboardApi = {
       selectDirectory: () => ipcRenderer.invoke(PROJECT_CHANNELS.selectProjectDirectory),
       searchFiles: (projectId: string, query: string) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.searchProjectFiles, projectId, query),
+      searchReferencedFiles: (projectPaths: string[], query: string) =>
+        ipcRenderer.invoke(PROJECT_CHANNELS.searchReferencedProjectFiles, projectPaths, query),
     },
     modules: {
       list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listModules, projectId),

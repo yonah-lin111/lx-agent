@@ -32,6 +32,13 @@ export interface EditorScrollAnchor {
 // Markdown 编辑器显示模式。
 export type MarkdownPreviewMode = "edit" | "preview" | "split"
 
+// @ 文件提及候选项。
+export type MarkdownFileMentionEntry = ProjectFileEntry & {
+  mentionPath: string
+  projectPath?: string
+  source: "current" | "reference"
+}
+
 // Markdown 编辑器属性。
 export interface LxMarkdownEditorProps {
   initialContent?: string
@@ -40,6 +47,10 @@ export interface LxMarkdownEditorProps {
   isSaved?: boolean
   projectId?: string
   onSearchFiles?: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
+  onSearchReferencedFiles?: (
+    projectPaths: string[],
+    query: string,
+  ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
   showLineNumbers?: boolean
   showFolding?: boolean
 }

@@ -91,7 +91,11 @@ export const getProjectFileMatchScore = (path: string, query: string): number =>
 /**
  * 在给定项目根目录内搜索文件和目录。
  */
-export const searchProjectFiles = (projectPath: string, query: string): ProjectFileEntry[] => {
+export const searchProjectFiles = (
+  projectPath: string,
+  query: string,
+  pathPrefix = "",
+): ProjectFileEntry[] => {
   assertProjectDirectory(projectPath)
 
   const rootPath = realpathSync(projectPath)
@@ -122,7 +126,8 @@ export const searchProjectFiles = (projectPath: string, query: string): ProjectF
 
       const path = relativePath.split(sep).join("/")
       const isDirectory = entry.isDirectory()
-      const score = getProjectFileMatchScore(path, cleanQuery)
+      const searchPath = pathPrefix ? `${pathPrefix}/${path}` : path
+      const score = getProjectFileMatchScore(searchPath, cleanQuery)
       if (score > 0) matches.push({ path: isDirectory ? `${path}/` : path, isDirectory, score })
       if (isDirectory) walk(fullPath)
     }

@@ -9,4 +9,6 @@ export const projectApi = {
     window.api.project.designs.update(id, input),
   searchFiles: (projectId: string, query: string) =>
     window.api.project.projects.searchFiles(projectId, query),
+  searchReferencedFiles: (projectPaths: string[], query: string) =>
+    window.api.project.projects.searchReferencedFiles(projectPaths, query),
 }

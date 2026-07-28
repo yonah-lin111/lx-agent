@@ -112,6 +112,7 @@ export const LxMarkdownEditor = ({
   isSaved = true,
   projectId,
   onSearchFiles,
+  onSearchReferencedFiles,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -158,7 +159,12 @@ export const LxMarkdownEditor = ({
     selectBlockCommand,
     handleBlockCommandKey,
     setBlockCommandPanel,
-  } = useMarkdownPanels({ editorViewRef, projectId, onSearchFiles })
+  } = useMarkdownPanels({
+    editorViewRef,
+    projectId,
+    onSearchFiles,
+    onSearchReferencedFiles,
+  })
 
   const { captureScrollAnchor } = useEditorScrollSync({
     editorViewRef,

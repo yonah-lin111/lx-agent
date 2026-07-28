@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   createMarkdownReference,
   getMarkdownReferenceName,
+  getMarkdownReferenceProjectPaths,
   isMarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 
@@ -21,5 +22,19 @@ describe("markdownReferenceCommands", () => {
   it("仅接受支持的引用类型", () => {
     expect(isMarkdownReferenceType("image")).toBe(true)
     expect(isMarkdownReferenceType("audio")).toBe(false)
+  })
+
+  it("提取并去重引用项目路径", () => {
+    expect(
+      getMarkdownReferenceProjectPaths(
+        "@[refer-project](/Users/yonah/.lx/db)\n@[refer-project](/Users/yonah/.lx/db)",
+      ),
+    ).toEqual(["/Users/yonah/.lx/db"])
+  })
+
+  it("提取引用项目的目录名", () => {
+    expect(getMarkdownReferenceName("/Users/yonah/projects/agent/memory-curator-agent")).toBe(
+      "memory-curator-agent",
+    )
   })
 })

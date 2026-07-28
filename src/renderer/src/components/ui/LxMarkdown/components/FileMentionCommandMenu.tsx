@@ -1,13 +1,14 @@
-import type { ProjectFileEntry } from "@shared/project"
-import { FileText, Folder } from "lucide-react"
+import { FileText, FileType2, Folder, FolderTree } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useEffect, useRef } from "react"
+import { useLayoutEffect, useRef } from "react"
+import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
+import { Tag } from "@/components/ui/Tag"
 
 // 文件提及面板属性。
 interface FileMentionCommandMenuProps {
   activeIndex: number
-  files: ProjectFileEntry[]
+  files: MarkdownFileMentionEntry[]
   position: CSSProperties
 }
 
@@ -22,14 +23,24 @@ export const FileMentionCommandMenu = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const activeFile = files[activeIndex] ?? files[0]
 
-  useEffect(() => {
-    if (!containerRef.current || !activeFile) return
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container || !activeFile) return
 
-    const activeElement = containerRef.current.querySelector(
-      `[id="markdown-file-mention-${activeFile.path}"]`,
+    const activeElement = container.querySelector(
+      `[id="markdown-file-mention-${activeFile.source}-${activeFile.mentionPath}"]`,
     ) as HTMLElement
-    if (activeElement && typeof activeElement.scrollIntoView === "function") {
-      activeElement.scrollIntoView({ block: "nearest" })
+    if (!activeElement) return
+
+    // 激活项与面板边缘保持间距，避免上下键移动时被裁切。
+    const scrollPadding = 4
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeElement.getBoundingClientRect()
+
+    if (activeRect.top < containerRect.top + scrollPadding) {
+      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
+    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
+      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
     }
   }, [activeFile, activeIndex])
 
@@ -37,8 +48,8 @@ export const FileMentionCommandMenu = ({
     <div
       ref={containerRef}
       aria-label="项目文件提及"
-      aria-activedescendant={`markdown-file-mention-${activeFile?.path}`}
-      className="pointer-events-none fixed z-50 max-h-[30vh] w-80 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+      aria-activedescendant={`markdown-file-mention-${activeFile?.source}-${activeFile?.mentionPath}`}
+      className="pointer-events-none fixed z-50 max-h-[30vh] w-80 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="listbox"
       style={position}
     >
@@ -47,28 +58,53 @@ export const FileMentionCommandMenu = ({
         const slashIndex = normalizedPath.lastIndexOf("/")
         const name = normalizedPath.slice(slashIndex + 1)
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
-        const Icon = file.isDirectory ? Folder : FileText
+        const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
+        const Icon =
+          file.source === "reference"
+            ? file.isDirectory
+              ? FolderTree
+              : FileType2
+            : file.isDirectory
+              ? Folder
+              : FileText
         const isActive = index === activeIndex
 
         return (
           <div
-            key={file.path}
-            id={`markdown-file-mention-${file.path}`}
+            key={`${file.source}-${file.mentionPath}`}
+            id={`markdown-file-mention-${file.source}-${file.mentionPath}`}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+            className={`relative flex min-h-11 w-full rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
               isActive ? "bg-white/8 text-white" : "text-white/75"
             }`}
             role="option"
           >
-            <Icon className="h-4 w-4 shrink-0 text-white/50" />
-            <span className="min-w-0 flex-1">
-              <span className={`block truncate ${isActive ? "text-white" : "text-white/75"}`}>
-                {file.isDirectory ? `${name}/` : name}
-              </span>
-              {directory && (
-                <span className="block truncate text-[12px] text-white/40">{directory}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-h-8 items-center gap-2">
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${
+                    file.source === "reference" ? "text-violet-300" : "text-[#818cf8]"
+                  }`}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className={`truncate ${isActive ? "text-white" : "text-white/75"}`}>
+                    {file.isDirectory ? `${name}/` : name}
+                  </div>
+                  {directory && (
+                    <div className="truncate text-[12px] text-white/40">{directory}</div>
+                  )}
+                </div>
+              </div>
+              {file.source === "reference" && (
+                <Tag
+                  bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
+                  className="pointer-events-none ml-6 mt-0.5"
+                  size="small"
+                >
+                  {referenceProjectName ?? "refer-project"}
+                </Tag>
               )}
-            </span>
+            </div>
           </div>
         )
       })}

@@ -25,6 +25,7 @@ export const ProjectPage = (): React.JSX.Element => {
           projectId={projectId ?? undefined}
           onChange={setContent}
           onSearchFiles={projectApi.searchFiles}
+          onSearchReferencedFiles={projectApi.searchReferencedFiles}
           onSave={save}
           showFolding={true}
         />

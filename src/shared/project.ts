@@ -42,6 +42,9 @@ export type UpdateProjectInput = Partial<CreateProjectInput>
 // 项目文件提及候选项。
 export type ProjectFileEntry = { path: string; isDirectory: boolean }
 
+// 引用项目的文件搜索结果。
+export type ReferencedProjectFileEntry = ProjectFileEntry & { projectPath: string }
+
 // 模块创建参数。
 export type CreateModuleInput = { projectId: string; name: string }
 
@@ -69,6 +72,10 @@ export interface ProjectApi {
       delete: (id: string) => Promise<void>
       selectDirectory: () => Promise<string | null>
       searchFiles: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
+      searchReferencedFiles: (
+        projectPaths: string[],
+        query: string,
+      ) => Promise<ReferencedProjectFileEntry[]>
     }
     modules: {
       list: (projectId?: string) => Promise<Module[]>

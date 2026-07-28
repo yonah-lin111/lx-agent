@@ -36,6 +36,23 @@ export const getMarkdownReferenceType = (value: string): MarkdownReferenceType |
 }
 
 /**
+ * 从 Markdown 内容中读取全部引用项目路径。
+ */
+export const getMarkdownReferenceProjectPaths = (value: string): string[] => {
+  const paths = new Set<string>()
+  const pattern = /@\[refer-project\]\(([^)\r\n]+)\)/g
+
+  let match = pattern.exec(value)
+  while (match) {
+    const path = match[1]?.trim()
+    if (path) paths.add(path)
+    match = pattern.exec(value)
+  }
+
+  return [...paths]
+}
+
+/**
  * 根据类型和路径创建 Markdown 引用。
  */
 export const createMarkdownReference = (type: MarkdownReferenceType, path: string): string =>
