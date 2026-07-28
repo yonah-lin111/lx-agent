@@ -187,6 +187,21 @@ export const editorTheme = EditorView.theme(
       textDecoration: "underline",
       textDecorationColor: "rgba(129, 140, 248, 0.4)",
     },
+    ".cm-md-reference-project, .cm-md-reference-project *": {
+      color: "#c4b5fd !important",
+      backgroundColor: "rgba(196, 181, 253, 0.12) !important",
+      borderRadius: "3px !important",
+    },
+    ".cm-md-reference-file, .cm-md-reference-file *": {
+      color: "#7dd3fc !important",
+      backgroundColor: "rgba(125, 211, 252, 0.12) !important",
+      borderRadius: "3px !important",
+    },
+    ".cm-md-reference-image, .cm-md-reference-image *": {
+      color: "#f9a8d4 !important",
+      backgroundColor: "rgba(249, 168, 212, 0.12) !important",
+      borderRadius: "3px !important",
+    },
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
@@ -586,6 +601,9 @@ const buildMarkdownMarkerDecorations = (
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }
+    addMatches(/@\[refer-project\]\([^)\r\n]+\)/g, "cm-md-reference-project")
+    addMatches(/@\[refer-file\]\([^)\r\n]+\)/g, "cm-md-reference-file")
+    addMatches(/@\[refer-image\]\([^)\r\n]+\)/g, "cm-md-reference-image")
     addMatches(/(?<![\w\[])@[^\[\]\(\)\s]+(?=\s|$)/g, "cm-md-file-mention")
 
     offset += line.length + 1

@@ -24,4 +24,13 @@ describe("markdownRenderer", () => {
     expect(html).toContain(`data-mermaid-source="${encodeURIComponent(`${source}\n`)}"`)
     expect(html).not.toContain('class="markdown-code-block"')
   })
+
+  it("渲染带类型和路径的 Markdown 引用", () => {
+    const html = markdownRenderer.render("@[refer-image](/Users/yonah/Desktop/example.png)")
+
+    expect(html).toContain('class="markdown-reference markdown-reference-image"')
+    expect(html).toContain('data-reference-path="/Users/yonah/Desktop/example.png"')
+    expect(html).toContain("参考图片")
+    expect(html).toContain("example.png")
+  })
 })

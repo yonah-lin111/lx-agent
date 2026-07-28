@@ -1,8 +1,10 @@
+import type { ClipboardApi } from "@shared/clipboard"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import type { ProjectApi } from "@shared/project"
-import { contextBridge, ipcRenderer } from "electron"
+import { contextBridge, ipcRenderer, webUtils } from "electron"
 
-const api: ProjectApi = {
+const api: ProjectApi & ClipboardApi = {
+  getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
       list: () => ipcRenderer.invoke(PROJECT_CHANNELS.listProjects),

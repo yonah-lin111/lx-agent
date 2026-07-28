@@ -18,6 +18,11 @@ import xml from "highlight.js/lib/languages/xml"
 import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
+import {
+  getMarkdownReferenceLabel,
+  getMarkdownReferenceName,
+  getMarkdownReferenceType,
+} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 
 const languageAliases: Record<string, string> = {
   cs: "csharp",
@@ -59,6 +64,32 @@ export const markdownRenderer = new MarkdownIt({
   html: false,
   linkify: true,
 })
+
+markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
+  const match = /^@\[(refer-[a-z]+)\]\(([^)\r\n]+)\)/.exec(state.src.slice(state.pos))
+  const type = match ? getMarkdownReferenceType(match[1] ?? "") : null
+  if (!match || !type) return false
+
+  if (!silent) {
+    const token = state.push("markdown_reference", "", 0)
+    token.meta = { path: match[2], type }
+  }
+
+  state.pos += match[0].length
+  return true
+})
+
+markdownRenderer.renderer.rules.markdown_reference = (tokens, index) => {
+  const reference = tokens[index]?.meta as { path: string; type: string }
+  const type = getMarkdownReferenceType(reference.type)
+  if (!type) return ""
+
+  const path = markdownRenderer.utils.escapeHtml(reference.path)
+  const label = markdownRenderer.utils.escapeHtml(getMarkdownReferenceLabel(type))
+  const name = markdownRenderer.utils.escapeHtml(getMarkdownReferenceName(reference.path))
+
+  return `<span class="markdown-reference markdown-reference-${type}" data-reference-path="${path}"><span class="markdown-reference-label">${label}</span><span class="markdown-reference-name">${name}</span></span>`
+}
 
 markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
   const token = tokens[idx]
