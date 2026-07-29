@@ -8,6 +8,7 @@ import { useLocation, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { getLxToastColorClass, useLxToast } from "@/components/ui/LxToast"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
+import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
@@ -31,6 +32,7 @@ export const HeaderSideBar = ({
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
+  const settingsSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
@@ -98,6 +100,10 @@ export const HeaderSideBar = ({
           `${projectBreadcrumb.moduleName} - ${projectBreadcrumb.designName}`,
         ]
       : [activeNavigationItem.breadcrumbCategory]
+  if (pathname === PAGE_ROUTES.settings) {
+    const section = SETTINGS_SECTIONS.find((item) => item.id === settingsSection)
+    if (section) breadcrumbParts.push(section.label)
+  }
 
   return (
     <header
@@ -107,7 +113,7 @@ export const HeaderSideBar = ({
     >
       <div className="relative h-full w-full">
         <div
-          key={`${pathname}-${designId ?? ""}-${projectBreadcrumb?.designName ?? ""}`}
+          key={`${pathname}-${designId ?? ""}-${settingsSection}-${projectBreadcrumb?.designName ?? ""}`}
           className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono animate-header-breadcrumb-in"
         >
           <span className="text-white/30">//</span>

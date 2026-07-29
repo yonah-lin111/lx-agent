@@ -8,6 +8,11 @@ import { join } from "node:path"
 export const getAppDataRoot = (): string => join(homedir(), ".lx")
 
 /**
+ * 获取模型 Provider 配置文件路径。
+ */
+export const getConfigPath = (): string => join(getAppDataRoot(), "config.json")
+
+/**
  * 获取 SQLite 数据库存储目录。
  */
 export const getDatabaseDir = (): string => join(getAppDataRoot(), "db")

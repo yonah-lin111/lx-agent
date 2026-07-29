@@ -1,10 +1,143 @@
+import { Save } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
+import { LxSelect } from "@/components/ui/LxSelect"
+import {
+  ModelProviderSettings,
+  SETTINGS_SECTIONS,
+  useSettingsData,
+  useSettingsMutations,
+  type ModelSelection,
+} from "@/features/settings"
+
+const MODEL_SELECTIONS = [
+  { key: "defaultModel", label: "默认对话模型" },
+  { key: "titleSummary", label: "标题总结模型" },
+  { key: "weeklySummary", label: "周度总结模型" },
+  { key: "suggestedQuestions", label: "推荐问题模型" },
+] as const
+
+/**
+ * 渲染模型选择和推荐问题配置。
+ */
+const ModelSettingsContent = (): React.JSX.Element => {
+  const { settings, setSettings, error, setError } = useSettingsData()
+  const { isSaving, saveSettings } = useSettingsMutations()
+
+  const updateSelection = (
+    key: (typeof MODEL_SELECTIONS)[number]["key"],
+    selection: ModelSelection,
+  ): void => {
+    setSettings((current) => (current ? { ...current, [key]: selection } : current))
+  }
+
+  const save = async (): Promise<void> => {
+    if (!settings) return
+    setError("")
+    try {
+      const saved = await saveSettings(settings)
+      setSettings(saved)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "保存配置失败")
+    }
+  }
+
+  if (!settings) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-white/45">
+        {error || "正在读取配置..."}
+      </div>
+    )
+  }
+
+  const providerOptions = Object.values(settings.providers).map((provider) => ({
+    value: provider.id,
+    label: provider.name || provider.id,
+  }))
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="mt-1 text-xs text-white/45">选择各类任务默认使用的模型</p>
+        <LxIconButton
+          preset="save"
+          aria-label="保存模型配置"
+          title={{ content: "保存配置", placement: "bottom" }}
+          disabled={isSaving}
+          onClick={() => void save()}
+        >
+          <Save className="h-4 w-4" />
+        </LxIconButton>
+      </div>
+
+      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {MODEL_SELECTIONS.map(({ key, label }) => {
+          const selection = settings[key]
+          const models = settings.providers[selection.provider]?.models ?? {}
+          return (
+            <section key={key} className="border-t border-white/8 pt-3">
+              <h3 className="text-sm text-white/80">{label}</h3>
+              <div className="mt-3 grid gap-2">
+                <LxSelect
+                  value={selection.provider}
+                  options={providerOptions}
+                  disabled={providerOptions.length === 0}
+                  onChange={(provider) =>
+                    updateSelection(key, {
+                      provider,
+                      model: Object.keys(settings.providers[provider]?.models ?? {})[0] ?? "",
+                    })
+                  }
+                />
+                <LxSelect
+                  value={selection.model}
+                  options={Object.values(models).map((model) => ({
+                    value: model.id,
+                    label: model.name,
+                  }))}
+                  disabled={Object.keys(models).length === 0}
+                  onChange={(model) => updateSelection(key, { ...selection, model })}
+                />
+              </div>
+            </section>
+          )
+        })}
+      </div>
+
+      <section className="border-t border-white/8 pt-4">
+        <h3 className="text-sm text-white/80">推荐问题</h3>
+        <LxRadioGroup
+          className="mt-2 flex gap-2"
+          name="suggested-questions"
+          value={settings.suggestedQuestionsEnabled ? "enabled" : "disabled"}
+          onChange={(value) =>
+            setSettings((current) =>
+              current ? { ...current, suggestedQuestionsEnabled: value === "enabled" } : current,
+            )
+          }
+        >
+          <LxRadio value="enabled" label="启用" />
+          <LxRadio value="disabled" label="停用" />
+        </LxRadioGroup>
+      </section>
+    </div>
+  )
+}
+
 /**
  * 渲染设置页面。
  */
 export const SettingsPage = (): React.JSX.Element => {
+  const [searchParams] = useSearchParams()
+  const activeSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
+
   return (
-    <section className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121] p-4">
-      <span className="text-sm text-white/60">设置页面</span>
+    <section className="min-w-0 flex-1 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
+      {activeSection === "models" ? <ModelSettingsContent /> : null}
+      {activeSection === "providers" ? <ModelProviderSettings /> : null}
     </section>
   )
 }

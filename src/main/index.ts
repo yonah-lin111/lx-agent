@@ -3,6 +3,7 @@ import { is, optimizer } from "@electron-toolkit/utils"
 import { app, BrowserWindow } from "electron"
 import { initDatabase } from "@/db"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
+import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 
 /**
  * 创建桌面应用主窗口。
@@ -28,6 +29,7 @@ const createWindow = (): void => {
 app.whenReady().then(() => {
   initDatabase()
   registerProjectHandlers()
+  registerSettingsHandlers()
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window)

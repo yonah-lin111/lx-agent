@@ -1,9 +1,11 @@
 import type { ClipboardApi } from "@shared/clipboard"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import type { ProjectApi } from "@shared/project"
+import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
+import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 
-const api: ProjectApi & ClipboardApi = {
+const api: ProjectApi & ClipboardApi & SettingsApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
@@ -33,6 +35,11 @@ const api: ProjectApi & ClipboardApi = {
       sort: (ids: string[]) => ipcRenderer.invoke(PROJECT_CHANNELS.sortDesigns, ids),
       delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteDesign, id),
     },
+  },
+  settings: {
+    getModelProviders: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getModelProviders),
+    saveModelProviders: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveModelProviders, settings),
   },
 }
 
