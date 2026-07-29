@@ -109,14 +109,14 @@ export const LxSelect = <T extends string>({
       </button>
       {shouldRender ? (
         <div
-          className={`absolute top-full z-50 mt-1 max-h-60 min-w-full overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg ${
+          className={`absolute top-full z-50 mt-1 flex max-h-60 min-w-full flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
             isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
           }`}
           role="listbox"
         >
           {options.map((item) =>
             isGroup(item) ? (
-              <div key={item.label}>
+              <div key={item.label} className="flex flex-col gap-0.5">
                 <div className="px-2.5 py-1.5 text-xs text-white/35">{item.label}</div>
                 {item.options.map((option) => renderOption(option, true))}
               </div>
