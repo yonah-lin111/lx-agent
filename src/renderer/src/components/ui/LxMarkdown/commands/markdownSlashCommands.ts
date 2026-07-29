@@ -43,12 +43,13 @@ const templateCommands: MarkdownSlashCommand[] = [
     content: "# 重构功能\n\n- 目标：\n- 要求：\n  - \n- 注意：\n  - ",
     cursorOffset: "# 重构功能\n\n- 目标：".length,
   },
+  // 通用提示词模板（通用模板，非代码修改模板）
   {
     id: "commonTemplate",
     label: "/commonTemplate",
-    description: "插入代码修改提示词模板",
-    content: "# 修改代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：",
-    cursorOffset: "# 修改代码\n\n- 要求：\n  -".length,
+    description: "插入通用提示词模板（非代码修改模板）",
+    content: "# 根据下面要求编写代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：",
+    cursorOffset: "# 根据下面要求编写代码\n\n- 要求：\n  -".length,
   },
 ]
 
