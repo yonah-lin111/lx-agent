@@ -93,7 +93,7 @@ export const LxSelect = <T extends string>({
   }
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full min-w-0 ${className}`}>
       <button
         type="button"
         className="flex h-9 w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-left text-sm text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40"

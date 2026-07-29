@@ -8,11 +8,12 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useSettingsData } from "../hooks/useSettingsData"
 import { useSettingsMutations } from "../hooks/useSettingsMutations"
 import type { ModelProvider } from "../types"
@@ -148,6 +149,18 @@ export const ModelProviderSettings = (): React.JSX.Element => {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("")
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
   const [menuState, setMenuState] = useState<ProviderMenuState | null>(null)
+  const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings && lastSavedSettings === null) {
+      setLastSavedSettings(JSON.stringify(settings))
+    }
+  }, [settings, lastSavedSettings])
+
+  const isSaved = useMemo(() => {
+    if (!settings || lastSavedSettings === null) return true
+    return JSON.stringify(settings) === lastSavedSettings
+  }, [settings, lastSavedSettings])
 
   useEffect(() => {
     if (settings && !selectedProviderId) {
@@ -250,6 +263,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
     try {
       const savedSettings = await saveSettings(settings)
       setSettings(savedSettings)
+      setLastSavedSettings(JSON.stringify(savedSettings))
       setSelectedProviderId((current) =>
         savedSettings.providers[current]
           ? current
@@ -280,10 +294,10 @@ export const ModelProviderSettings = (): React.JSX.Element => {
   const selectedProvider = settings.providers[selectedProviderId]
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 p-3">
+    <div className="@container flex h-full min-h-0 flex-col gap-3 p-3">
       <div className="flex shrink-0 items-center justify-between gap-3">
         <p className="text-xs text-white/45">配置与管理模型 Provider 及模型参数</p>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <LxIconButton
             preset="add"
             aria-label="添加 Provider"
@@ -299,12 +313,21 @@ export const ModelProviderSettings = (): React.JSX.Element => {
           >
             <Save className="h-4 w-4" />
           </LxIconButton>
+          <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+            <span
+              aria-label={isSaved ? "已保存" : "未保存"}
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                isSaved ? "bg-emerald-400" : "bg-amber-400"
+              }`}
+              role="status"
+            />
+          </LxTooltip>
         </div>
       </div>
 
       {error ? <p className="shrink-0 text-xs text-rose-300">{error}</p> : null}
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-3 @[520px]:grid-cols-[180px_minmax(0,1fr)]">
         <nav
           className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="模型 Provider 列表"
@@ -358,8 +381,8 @@ export const ModelProviderSettings = (): React.JSX.Element => {
         {selectedProvider ? (
           <div className="min-h-0 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <h3 className="mb-3 text-sm font-medium text-white">Provider</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1.5 text-xs text-white/55">
+            <div className="grid gap-3 @[380px]:grid-cols-2">
+              <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                 Provider ID
                 <LxInput
                   value={selectedProvider.id}
@@ -371,7 +394,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55">
+              <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                 显示名称
                 <LxInput
                   value={selectedProvider.name}
@@ -383,7 +406,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55 md:col-span-2">
+              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
                 传输格式
                 <LxSelect
                   value={selectedProvider.type}
@@ -396,7 +419,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55 md:col-span-2">
+              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
                 Base URL
                 <LxInput
                   value={selectedProvider.options.baseURL}
@@ -409,7 +432,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55 md:col-span-2">
+              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
                 API Key
                 <LxInput
                   type="password"
@@ -432,15 +455,18 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   preset="add"
                   size="small"
                   aria-label="添加模型"
-                  title={{ content: "添加模型", placement: "left" }}
+                  title={{ content: "添加模型", placement: "top" }}
                   onClick={() => addModel(selectedProviderId)}
                 />
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 {Object.entries(selectedProvider.models).map(([modelKey, model]) => (
-                  <div key={modelKey} className="rounded-[6px] border border-white/8 bg-white/[0.04] p-2">
-                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
-                      <label className="grid gap-1.5 text-xs text-white/55">
+                  <div
+                    key={modelKey}
+                    className="rounded-[6px] border border-white/8 bg-white/[0.04] p-2"
+                  >
+                    <div className="grid gap-2 grid-cols-1 @[380px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                      <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                         模型 ID
                         <LxInput
                           aria-label={`${modelKey} 模型 ID`}
@@ -459,7 +485,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                           }
                         />
                       </label>
-                      <label className="grid gap-1.5 text-xs text-white/55">
+                      <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                         显示名称
                         <LxInput
                           aria-label={`${modelKey} 模型名称`}
@@ -478,34 +504,34 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                           }
                         />
                       </label>
-                      <LxIconButton
-                        className="mt-[22px]"
-                        aria-label={`模型 ${model.id} 高级设置`}
-                        title={{ content: "高级设置", placement: "top" }}
-                        highlighted={expandedModelKeys[`${selectedProviderId}:${modelKey}`]}
-                        onClick={() =>
-                          setExpandedModelKeys((current) => ({
-                            ...current,
-                            [`${selectedProviderId}:${modelKey}`]:
-                              !current[`${selectedProviderId}:${modelKey}`],
-                          }))
-                        }
-                      >
-                        <SlidersHorizontal className="h-3.5 w-3.5" />
-                      </LxIconButton>
-                      <LxIconButton
-                        className="mt-[22px]"
-                        preset="delete"
-                        aria-label={`删除模型 ${model.id}`}
-                        title={{ content: "删除模型", placement: "top" }}
-                        onClick={() =>
-                          updateProvider(selectedProviderId, (provider) => {
-                            const models = { ...provider.models }
-                            delete models[modelKey]
-                            return { ...provider, models }
-                          })
-                        }
-                      />
+                      <div className="flex items-center justify-end gap-1 @[380px]:mt-[22px]">
+                        <LxIconButton
+                          aria-label={`模型 ${model.id} 高级设置`}
+                          title={{ content: "高级设置", placement: "top" }}
+                          highlighted={expandedModelKeys[`${selectedProviderId}:${modelKey}`]}
+                          onClick={() =>
+                            setExpandedModelKeys((current) => ({
+                              ...current,
+                              [`${selectedProviderId}:${modelKey}`]:
+                                !current[`${selectedProviderId}:${modelKey}`],
+                            }))
+                          }
+                        >
+                          <SlidersHorizontal className="h-3.5 w-3.5" />
+                        </LxIconButton>
+                        <LxIconButton
+                          preset="delete"
+                          aria-label={`删除模型 ${model.id}`}
+                          title={{ content: "删除模型", placement: "top" }}
+                          onClick={() =>
+                            updateProvider(selectedProviderId, (provider) => {
+                              const models = { ...provider.models }
+                              delete models[modelKey]
+                              return { ...provider, models }
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                     <div
                       className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
@@ -515,8 +541,8 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 md:grid-cols-4">
-                          <label className="grid gap-1.5 text-xs text-white/55">
+                        <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 @[360px]:grid-cols-2 @[580px]:grid-cols-4">
+                          <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                             上下文限制
                             <LxInput
                               type="number"
@@ -539,7 +565,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                               }
                             />
                           </label>
-                          <label className="grid gap-1.5 text-xs text-white/55">
+                          <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                             最大输出限制
                             <LxInput
                               type="number"
@@ -561,7 +587,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                               }
                             />
                           </label>
-                          <label className="grid gap-1.5 text-xs text-white/55">
+                          <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                             输入模态
                             <LxInput
                               value={(model.modalities?.input ?? ["text"]).join(", ")}
@@ -587,7 +613,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                               }
                             />
                           </label>
-                          <label className="grid gap-1.5 text-xs text-white/55">
+                          <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
                             输出模态
                             <LxInput
                               value={(model.modalities?.output ?? ["text"]).join(", ")}

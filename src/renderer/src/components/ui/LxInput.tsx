@@ -82,7 +82,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
 
     return (
       <div
-        className={`flex w-full items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 py-1.5 text-white/80 transition-colors duration-150 hover:border-white/20 focus-within:border-white/25 ${
+        className={`flex w-full min-w-0 items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 py-1.5 text-white/80 transition-colors duration-150 hover:border-white/20 focus-within:border-white/25 ${
           disabled ? "cursor-not-allowed opacity-40" : ""
         } ${className}`}
       >

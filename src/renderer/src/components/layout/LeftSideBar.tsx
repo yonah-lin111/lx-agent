@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -24,15 +24,17 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
 
   return (
     <aside
-      className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,max-width,min-width] duration-300 ease-in-out lg:h-full ${
+      className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,max-width,min-width,padding] duration-300 ease-in-out lg:h-full ${
         isCollapsed
-          ? "w-10 min-w-10 max-w-10"
-          : "w-full min-w-full max-w-full lg:w-56 lg:min-w-56 lg:max-w-56"
+          ? "w-10 min-w-10 max-w-10 py-2 px-1"
+          : "w-full min-w-full max-w-full p-2 lg:w-56 lg:min-w-56 lg:max-w-56"
       }`}
     >
-      <div className={isCollapsed ? "hidden" : "h-full overflow-hidden"}>
+      <div className="h-full overflow-hidden">
         <div key={pathname} className="h-full animate-sidebar-content-slide-in">
-          {children}
+          {React.isValidElement(children)
+            ? React.cloneElement(children, { isCollapsed } as Record<string, unknown>)
+            : children}
         </div>
       </div>
       <LxIconButton

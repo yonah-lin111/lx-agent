@@ -1,8 +1,10 @@
 import { Save } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   ModelProviderSettings,
   SETTINGS_SECTIONS,
@@ -23,6 +25,18 @@ const MODEL_SELECTIONS = [
 const ModelSettingsContent = (): React.JSX.Element => {
   const { settings, setSettings, error, setError } = useSettingsData()
   const { isSaving, saveSettings } = useSettingsMutations()
+  const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (settings && lastSavedSettings === null) {
+      setLastSavedSettings(JSON.stringify(settings))
+    }
+  }, [settings, lastSavedSettings])
+
+  const isSaved = useMemo(() => {
+    if (!settings || lastSavedSettings === null) return true
+    return JSON.stringify(settings) === lastSavedSettings
+  }, [settings, lastSavedSettings])
 
   const updateSelection = (
     key: (typeof MODEL_SELECTIONS)[number]["key"],
@@ -37,6 +51,7 @@ const ModelSettingsContent = (): React.JSX.Element => {
     try {
       const saved = await saveSettings(settings)
       setSettings(saved)
+      setLastSavedSettings(JSON.stringify(saved))
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存配置失败")
     }
@@ -59,15 +74,26 @@ const ModelSettingsContent = (): React.JSX.Element => {
     <div className="flex h-full min-h-0 flex-col gap-3 p-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-white/45">选择各类任务默认使用的模型</p>
-        <LxIconButton
-          preset="save"
-          aria-label="保存模型配置"
-          title={{ content: "保存配置", placement: "bottom" }}
-          disabled={isSaving}
-          onClick={() => void save()}
-        >
-          <Save className="h-4 w-4" />
-        </LxIconButton>
+        <div className="flex items-center gap-1.5">
+          <LxIconButton
+            preset="save"
+            aria-label="保存模型配置"
+            title={{ content: "保存配置", placement: "bottom" }}
+            disabled={isSaving}
+            onClick={() => void save()}
+          >
+            <Save className="h-4 w-4" />
+          </LxIconButton>
+          <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+            <span
+              aria-label={isSaved ? "已保存" : "未保存"}
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                isSaved ? "bg-emerald-400" : "bg-amber-400"
+              }`}
+              role="status"
+            />
+          </LxTooltip>
+        </div>
       </div>
 
       {error ? <p className="text-xs text-rose-300">{error}</p> : null}
