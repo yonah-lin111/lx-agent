@@ -11,5 +11,5 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
 }> = [
   { icon: House, label: "主页", path: PAGE_ROUTES.home, breadcrumbCategory: "HOME" },
   { icon: FolderKanban, label: "项目", path: PAGE_ROUTES.project, breadcrumbCategory: "PROJECT" },
-  { icon: Settings, label: "设置", path: PAGE_ROUTES.settings, breadcrumbCategory: "SYSTEM" },
+  { icon: Settings, label: "设置", path: PAGE_ROUTES.settings, breadcrumbCategory: "SETTING" },
 ]

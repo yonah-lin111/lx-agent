@@ -1,8 +1,17 @@
-import { AlertCircle, KeyRound, Save, SlidersHorizontal } from "lucide-react"
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Circle,
+  KeyRound,
+  Save,
+  SlidersHorizontal,
+  Trash2,
+} from "lucide-react"
 import { useEffect, useState } from "react"
-import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { useSettingsData } from "../hooks/useSettingsData"
 import { useSettingsMutations } from "../hooks/useSettingsMutations"
@@ -28,6 +37,108 @@ const createProviderId = (providers: Record<string, ModelProvider>): string => {
   return id
 }
 
+type ProviderMenuState = {
+  providerKey: string
+  providerName: string
+  isEnabled: boolean
+  x: number
+  y: number
+}
+
+type ModelProviderMenuProps = {
+  isOpen: boolean
+  providerName: string
+  isEnabled: boolean
+  x: number
+  y: number
+  onToggleEnabled: (enabled: boolean) => void
+  onDelete: () => void
+  onClose: () => void
+}
+
+/**
+ * 渲染模型 Provider 右键操作菜单。
+ */
+const ModelProviderMenu = ({
+  isOpen,
+  providerName,
+  isEnabled,
+  x,
+  y,
+  onToggleEnabled,
+  onDelete,
+  onClose,
+}: ModelProviderMenuProps): React.JSX.Element | null => {
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
+  const [lastMenu, setLastMenu] = useState({ providerName, isEnabled, x, y })
+
+  const displayedMenu = isOpen ? { providerName, isEnabled, x, y } : lastMenu
+
+  useEffect(() => {
+    if (isOpen) setLastMenu({ providerName, isEnabled, x, y })
+  }, [isOpen, providerName, isEnabled, x, y])
+
+  useEffect(() => {
+    setIsConfirmingDelete(false)
+  }, [isOpen, providerName])
+
+  const handleDeleteClick = (): void => {
+    if (!isConfirmingDelete) {
+      setIsConfirmingDelete(true)
+      return
+    }
+    onDelete()
+  }
+
+  return (
+    <LxMenu
+      ariaLabel={`${displayedMenu.providerName} 操作菜单`}
+      isOpen={isOpen}
+      x={displayedMenu.x}
+      y={displayedMenu.y}
+      onClose={onClose}
+    >
+      <LxMenuItem
+        aria-checked={displayedMenu.isEnabled}
+        leading={<span className="h-2 w-2 rounded-full bg-emerald-400/80" />}
+        menuRole="menuitemradio"
+        onClick={() => {
+          onToggleEnabled(true)
+          onClose()
+        }}
+        trailing={displayedMenu.isEnabled ? <Check className="h-3.5 w-3.5 text-white/70" /> : null}
+      >
+        启用
+      </LxMenuItem>
+      <LxMenuItem
+        aria-checked={!displayedMenu.isEnabled}
+        leading={<span className="h-2 w-2 rounded-full bg-white/40" />}
+        menuRole="menuitemradio"
+        onClick={() => {
+          onToggleEnabled(false)
+          onClose()
+        }}
+        trailing={!displayedMenu.isEnabled ? <Check className="h-3.5 w-3.5 text-white/70" /> : null}
+      >
+        停用
+      </LxMenuItem>
+      <LxMenuSeparator />
+      <LxMenuItem
+        active={isConfirmingDelete}
+        danger
+        leading={
+          <Trash2
+            className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
+          />
+        }
+        onClick={handleDeleteClick}
+      >
+        {isConfirmingDelete ? "确认删除" : "删除 Provider"}
+      </LxMenuItem>
+    </LxMenu>
+  )
+}
+
 /**
  * 渲染模型 Provider 的读取、编辑和保存界面。
  */
@@ -36,6 +147,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
   const { isSaving, saveSettings } = useSettingsMutations()
   const [selectedProviderId, setSelectedProviderId] = useState<string>("")
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
+  const [menuState, setMenuState] = useState<ProviderMenuState | null>(null)
 
   useEffect(() => {
     if (settings && !selectedProviderId) {
@@ -58,6 +170,18 @@ export const ModelProviderSettings = (): React.JSX.Element => {
       return {
         ...current,
         providers: { ...current.providers, [providerId]: updater(current.providers[providerId]) },
+      }
+    })
+  }
+
+  const toggleProviderEnabled = (providerKey: string, enabled: boolean): void => {
+    setSettings((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        enabledProviders: enabled
+          ? Array.from(new Set([...current.enabledProviders, providerKey]))
+          : current.enabledProviders.filter((id) => id !== providerKey),
       }
     })
   }
@@ -156,11 +280,9 @@ export const ModelProviderSettings = (): React.JSX.Element => {
   const selectedProvider = settings.providers[selectedProviderId]
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 p-4">
+    <div className="flex h-full min-h-0 flex-col gap-3 p-3">
       <div className="flex shrink-0 items-center justify-between gap-3">
-        <div>
-          <p className="mt-1 text-xs text-white/45">保存后立即写入 ~/.lx/config.json</p>
-        </div>
+        <p className="text-xs text-white/45">配置与管理模型 Provider 及模型参数</p>
         <div className="flex items-center gap-1">
           <LxIconButton
             preset="add"
@@ -184,7 +306,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
 
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[180px_minmax(0,1fr)]">
         <nav
-          className="min-h-0 overflow-y-auto border-r border-white/8 pr-2"
+          className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="模型 Provider 列表"
         >
           <div className="flex flex-col gap-1">
@@ -192,31 +314,50 @@ export const ModelProviderSettings = (): React.JSX.Element => {
               const isSelected = providerKey === selectedProviderId
               const isEnabled = settings.enabledProviders.includes(providerKey)
               return (
-                <button
+                <div
                   key={providerKey}
-                  type="button"
-                  className={`rounded-[6px] px-3 py-2 text-left transition-colors ${
+                  role="button"
+                  tabIndex={0}
+                  className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
                     isSelected
-                      ? "bg-white text-black"
-                      : "text-white/65 hover:bg-white/5 hover:text-white"
+                      ? "bg-white/10 text-white"
+                      : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
                   }`}
                   aria-current={isSelected ? "true" : undefined}
                   onClick={() => setSelectedProviderId(providerKey)}
+                  onContextMenu={(event) => {
+                    event.preventDefault()
+                    setMenuState({
+                      providerKey,
+                      providerName: provider.name || provider.id,
+                      isEnabled,
+                      x: event.clientX,
+                      y: event.clientY,
+                    })
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      setSelectedProviderId(providerKey)
+                    }
+                  }}
                 >
-                  <span className="block truncate text-sm">{provider.name || provider.id}</span>
-                  <span
-                    className={`block text-xs ${isSelected ? "text-black/60" : "text-white/35"}`}
-                  >
-                    {provider.type} · {isEnabled ? "已启用" : "已停用"}
+                  {isEnabled ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
+                  ) : (
+                    <Circle className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate select-none">
+                    {provider.name || provider.id}
                   </span>
-                </button>
+                </div>
               )
             })}
           </div>
         </nav>
 
         {selectedProvider ? (
-          <div className="min-h-0 overflow-y-auto pr-1">
+          <div className="min-h-0 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <h3 className="mb-3 text-sm font-medium text-white">Provider</h3>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1.5 text-xs text-white/55">
                 Provider ID
@@ -242,7 +383,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55">
+              <label className="grid gap-1.5 text-xs text-white/55 md:col-span-2">
                 传输格式
                 <LxSelect
                   value={selectedProvider.type}
@@ -254,23 +395,6 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                     }))
                   }
                 />
-              </label>
-              <label className="flex items-end gap-2 pb-2 text-xs text-white/65">
-                <LxCheckbox
-                  checked={settings.enabledProviders.includes(selectedProviderId)}
-                  onChange={(checked) =>
-                    setSettings((current) => {
-                      if (!current) return current
-                      return {
-                        ...current,
-                        enabledProviders: checked
-                          ? Array.from(new Set([...current.enabledProviders, selectedProviderId]))
-                          : current.enabledProviders.filter((id) => id !== selectedProviderId),
-                      }
-                    })
-                  }
-                />
-                启用此 Provider
               </label>
               <label className="grid gap-1.5 text-xs text-white/55 md:col-span-2">
                 Base URL
@@ -314,7 +438,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 {Object.entries(selectedProvider.models).map(([modelKey, model]) => (
-                  <div key={modelKey} className="rounded-[6px] border border-white/8 p-2">
+                  <div key={modelKey} className="rounded-[6px] border border-white/8 bg-white/[0.04] p-2">
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
                       <label className="grid gap-1.5 text-xs text-white/55">
                         模型 ID
@@ -372,9 +496,8 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                       <LxIconButton
                         className="mt-[22px]"
                         preset="delete"
-                        size="small"
                         aria-label={`删除模型 ${model.id}`}
-                        title={{ content: "删除模型", placement: "left" }}
+                        title={{ content: "删除模型", placement: "top" }}
                         onClick={() =>
                           updateProvider(selectedProviderId, (provider) => {
                             const models = { ...provider.models }
@@ -384,122 +507,118 @@ export const ModelProviderSettings = (): React.JSX.Element => {
                         }
                       />
                     </div>
-                    {expandedModelKeys[`${selectedProviderId}:${modelKey}`] ? (
-                      <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 md:grid-cols-4">
-                        <label className="grid gap-1.5 text-xs text-white/55">
-                          上下文限制
-                          <LxInput
-                            type="number"
-                            aria-label={`${modelKey} 上下文限制`}
-                            value={model.limit?.context ?? 8192}
-                            onChange={(event) =>
-                              updateProvider(selectedProviderId, (provider) => ({
-                                ...provider,
-                                models: {
-                                  ...provider.models,
-                                  [modelKey]: {
-                                    ...provider.models[modelKey],
-                                    limit: {
-                                      context: Number(event.target.value),
-                                      output: provider.models[modelKey].limit?.output ?? 4096,
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+                        expandedModelKeys[`${selectedProviderId}:${modelKey}`]
+                          ? "grid-rows-[1fr]"
+                          : "grid-rows-[0fr]"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 md:grid-cols-4">
+                          <label className="grid gap-1.5 text-xs text-white/55">
+                            上下文限制
+                            <LxInput
+                              type="number"
+                              aria-label={`${modelKey} 上下文限制`}
+                              value={model.limit?.context ?? 8192}
+                              onChange={(event) =>
+                                updateProvider(selectedProviderId, (provider) => ({
+                                  ...provider,
+                                  models: {
+                                    ...provider.models,
+                                    [modelKey]: {
+                                      ...provider.models[modelKey],
+                                      limit: {
+                                        context: Number(event.target.value),
+                                        output: provider.models[modelKey].limit?.output ?? 4096,
+                                      },
                                     },
                                   },
-                                },
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className="grid gap-1.5 text-xs text-white/55">
-                          最大输出限制
-                          <LxInput
-                            type="number"
-                            value={model.limit?.output ?? 4096}
-                            onChange={(event) =>
-                              updateProvider(selectedProviderId, (provider) => ({
-                                ...provider,
-                                models: {
-                                  ...provider.models,
-                                  [modelKey]: {
-                                    ...provider.models[modelKey],
-                                    limit: {
-                                      context: provider.models[modelKey].limit?.context ?? 8192,
-                                      output: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-xs text-white/55">
+                            最大输出限制
+                            <LxInput
+                              type="number"
+                              value={model.limit?.output ?? 4096}
+                              onChange={(event) =>
+                                updateProvider(selectedProviderId, (provider) => ({
+                                  ...provider,
+                                  models: {
+                                    ...provider.models,
+                                    [modelKey]: {
+                                      ...provider.models[modelKey],
+                                      limit: {
+                                        context: provider.models[modelKey].limit?.context ?? 8192,
+                                        output: Number(event.target.value),
+                                      },
                                     },
                                   },
-                                },
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className="grid gap-1.5 text-xs text-white/55">
-                          输入模态
-                          <LxInput
-                            value={(model.modalities?.input ?? ["text"]).join(", ")}
-                            onChange={(event) =>
-                              updateProvider(selectedProviderId, (provider) => ({
-                                ...provider,
-                                models: {
-                                  ...provider.models,
-                                  [modelKey]: {
-                                    ...provider.models[modelKey],
-                                    modalities: {
-                                      input: event.target.value
-                                        .split(",")
-                                        .map((value) => value.trim())
-                                        .filter(Boolean),
-                                      output: provider.models[modelKey].modalities?.output ?? [
-                                        "text",
-                                      ],
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-xs text-white/55">
+                            输入模态
+                            <LxInput
+                              value={(model.modalities?.input ?? ["text"]).join(", ")}
+                              onChange={(event) =>
+                                updateProvider(selectedProviderId, (provider) => ({
+                                  ...provider,
+                                  models: {
+                                    ...provider.models,
+                                    [modelKey]: {
+                                      ...provider.models[modelKey],
+                                      modalities: {
+                                        input: event.target.value
+                                          .split(",")
+                                          .map((value) => value.trim())
+                                          .filter(Boolean),
+                                        output: provider.models[modelKey].modalities?.output ?? [
+                                          "text",
+                                        ],
+                                      },
                                     },
                                   },
-                                },
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className="grid gap-1.5 text-xs text-white/55">
-                          输出模态
-                          <LxInput
-                            value={(model.modalities?.output ?? ["text"]).join(", ")}
-                            onChange={(event) =>
-                              updateProvider(selectedProviderId, (provider) => ({
-                                ...provider,
-                                models: {
-                                  ...provider.models,
-                                  [modelKey]: {
-                                    ...provider.models[modelKey],
-                                    modalities: {
-                                      input: provider.models[modelKey].modalities?.input ?? [
-                                        "text",
-                                      ],
-                                      output: event.target.value
-                                        .split(",")
-                                        .map((value) => value.trim())
-                                        .filter(Boolean),
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-xs text-white/55">
+                            输出模态
+                            <LxInput
+                              value={(model.modalities?.output ?? ["text"]).join(", ")}
+                              onChange={(event) =>
+                                updateProvider(selectedProviderId, (provider) => ({
+                                  ...provider,
+                                  models: {
+                                    ...provider.models,
+                                    [modelKey]: {
+                                      ...provider.models[modelKey],
+                                      modalities: {
+                                        input: provider.models[modelKey].modalities?.input ?? [
+                                          "text",
+                                        ],
+                                        output: event.target.value
+                                          .split(",")
+                                          .map((value) => value.trim())
+                                          .filter(Boolean),
+                                      },
                                     },
                                   },
-                                },
-                              }))
-                            }
-                          />
-                        </label>
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
                       </div>
-                    ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="mt-5 border-t border-white/8 pt-4">
-              <LxIconButton
-                preset="delete"
-                iconOnly={false}
-                aria-label="删除当前 Provider"
-                title={{ content: "删除当前 Provider", placement: "top" }}
-                onClick={() => deleteProvider(selectedProviderId)}
-              >
-                删除 Provider
-              </LxIconButton>
             </div>
           </div>
         ) : (
@@ -508,6 +627,24 @@ export const ModelProviderSettings = (): React.JSX.Element => {
           </div>
         )}
       </div>
+
+      <ModelProviderMenu
+        isOpen={menuState !== null}
+        providerName={menuState?.providerName ?? ""}
+        isEnabled={menuState?.isEnabled ?? false}
+        x={menuState?.x ?? 0}
+        y={menuState?.y ?? 0}
+        onToggleEnabled={(enabled) => {
+          if (menuState) toggleProviderEnabled(menuState.providerKey, enabled)
+        }}
+        onDelete={() => {
+          if (menuState) {
+            deleteProvider(menuState.providerKey)
+            setMenuState(null)
+          }
+        }}
+        onClose={() => setMenuState(null)}
+      />
     </div>
   )
 }

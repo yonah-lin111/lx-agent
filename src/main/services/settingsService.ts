@@ -25,7 +25,6 @@ type RawProvider = {
 type RawAiConfig = {
   defaultModel?: Partial<ModelSelection>
   titleSummary?: Partial<ModelSelection>
-  weeklySummary?: Partial<ModelSelection>
   suggestedQuestions?: Partial<ModelSelection>
   suggestedQuestionsEnabled?: boolean
   enabled_providers?: string[]
@@ -246,7 +245,6 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
     enabledProviders,
     defaultModel,
     titleSummary: normalizeSelection(settings.titleSummary, providers, defaultModel),
-    weeklySummary: normalizeSelection(settings.weeklySummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(settings.suggestedQuestions, providers, defaultModel),
     suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled !== false,
   }
@@ -271,7 +269,6 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
     ),
     defaultModel,
     titleSummary: normalizeSelection(rawAi.titleSummary, providers, defaultModel),
-    weeklySummary: normalizeSelection(rawAi.weeklySummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(rawAi.suggestedQuestions, providers, defaultModel),
     suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled !== false,
   }
@@ -287,15 +284,17 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
   const directory = dirname(configPath)
   mkdirSync(directory, { recursive: true })
 
+  const rawAiObj = isRecord(rawConfig.ai) ? { ...rawConfig.ai } : {}
+  delete rawAiObj.weeklySummary
+
   const nextConfig: RawConfig = {
     ...rawConfig,
     ai: {
-      ...(isRecord(rawConfig.ai) ? rawConfig.ai : {}),
+      ...rawAiObj,
       enabled_providers: settings.enabledProviders,
       providers: settings.providers,
       defaultModel: settings.defaultModel,
       titleSummary: settings.titleSummary,
-      weeklySummary: settings.weeklySummary,
       suggestedQuestions: settings.suggestedQuestions,
       suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled,
     },

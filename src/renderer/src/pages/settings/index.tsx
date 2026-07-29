@@ -14,7 +14,6 @@ import {
 const MODEL_SELECTIONS = [
   { key: "defaultModel", label: "默认对话模型" },
   { key: "titleSummary", label: "标题总结模型" },
-  { key: "weeklySummary", label: "周度总结模型" },
   { key: "suggestedQuestions", label: "推荐问题模型" },
 ] as const
 
@@ -57,9 +56,9 @@ const ModelSettingsContent = (): React.JSX.Element => {
   }))
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="mt-1 text-xs text-white/45">选择各类任务默认使用的模型</p>
+    <div className="flex h-full min-h-0 flex-col gap-3 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-white/45">选择各类任务默认使用的模型</p>
         <LxIconButton
           preset="save"
           aria-label="保存模型配置"
@@ -73,56 +72,66 @@ const ModelSettingsContent = (): React.JSX.Element => {
 
       {error ? <p className="text-xs text-rose-300">{error}</p> : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {MODEL_SELECTIONS.map(({ key, label }) => {
-          const selection = settings[key]
-          const models = settings.providers[selection.provider]?.models ?? {}
-          return (
-            <section key={key} className="border-t border-white/8 pt-3">
-              <h3 className="text-sm text-white/80">{label}</h3>
-              <div className="mt-3 grid gap-2">
-                <LxSelect
-                  value={selection.provider}
-                  options={providerOptions}
-                  disabled={providerOptions.length === 0}
-                  onChange={(provider) =>
-                    updateSelection(key, {
-                      provider,
-                      model: Object.keys(settings.providers[provider]?.models ?? {})[0] ?? "",
-                    })
-                  }
-                />
-                <LxSelect
-                  value={selection.model}
-                  options={Object.values(models).map((model) => ({
-                    value: model.id,
-                    label: model.name,
-                  }))}
-                  disabled={Object.keys(models).length === 0}
-                  onChange={(model) => updateSelection(key, { ...selection, model })}
-                />
-              </div>
-            </section>
-          )
-        })}
+      <div>
+        <h3 className="mb-2 text-sm font-medium text-white">默认模型</h3>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {MODEL_SELECTIONS.map(({ key, label }) => {
+            const selection = settings[key]
+            const models = settings.providers[selection.provider]?.models ?? {}
+            return (
+              <section key={key}>
+                <h4 className="text-xs text-white/60">{label}</h4>
+                <div className="mt-2 grid gap-2">
+                  <LxSelect
+                    value={selection.provider}
+                    options={providerOptions}
+                    disabled={providerOptions.length === 0}
+                    onChange={(provider) =>
+                      updateSelection(key, {
+                        provider,
+                        model: Object.keys(settings.providers[provider]?.models ?? {})[0] ?? "",
+                      })
+                    }
+                  />
+                  <LxSelect
+                    value={selection.model}
+                    options={Object.values(models).map((model) => ({
+                      value: model.id,
+                      label: model.name,
+                    }))}
+                    disabled={Object.keys(models).length === 0}
+                    onChange={(model) => updateSelection(key, { ...selection, model })}
+                  />
+                </div>
+              </section>
+            )
+          })}
+        </div>
       </div>
 
-      <section className="border-t border-white/8 pt-4">
-        <h3 className="text-sm text-white/80">推荐问题</h3>
-        <LxRadioGroup
-          className="mt-2 flex gap-2"
-          name="suggested-questions"
-          value={settings.suggestedQuestionsEnabled ? "enabled" : "disabled"}
-          onChange={(value) =>
-            setSettings((current) =>
-              current ? { ...current, suggestedQuestionsEnabled: value === "enabled" } : current,
-            )
-          }
-        >
-          <LxRadio value="enabled" label="启用" />
-          <LxRadio value="disabled" label="停用" />
-        </LxRadioGroup>
-      </section>
+      <div className="border-t border-white/8 pt-3">
+        <h3 className="mb-2 text-sm font-medium text-white">功能配置</h3>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <section>
+            <h4 className="text-xs text-white/60">推荐问题</h4>
+            <div className="mt-2 flex items-center">
+              <LxRadioGroup
+                className="flex gap-2"
+                name="suggested-questions"
+                value={settings.suggestedQuestionsEnabled ? "enabled" : "disabled"}
+                onChange={(value) =>
+                  setSettings((current) =>
+                    current ? { ...current, suggestedQuestionsEnabled: value === "enabled" } : current,
+                  )
+                }
+              >
+                <LxRadio value="enabled" label="启用" />
+                <LxRadio value="disabled" label="停用" />
+              </LxRadioGroup>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

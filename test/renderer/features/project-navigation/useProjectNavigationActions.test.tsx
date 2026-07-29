@@ -52,15 +52,13 @@ describe("useProjectNavigationActions", () => {
     const refreshProjects = vi.fn<() => Promise<void>>().mockResolvedValue()
     const toast = { success: vi.fn(), error: vi.fn() }
     vi.spyOn(projectNavigationApi, "selectProjectDirectory").mockResolvedValue("/tmp/LX Agent")
-    const createProject = vi
-      .spyOn(projectNavigationApi, "createProject")
-      .mockResolvedValue({
-        id: "project-2",
-        name: "LX Agent",
-        type: "filesystem",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      })
+    const createProject = vi.spyOn(projectNavigationApi, "createProject").mockResolvedValue({
+      id: "project-2",
+      name: "LX Agent",
+      type: "filesystem",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    })
     const { result } = renderHook(() =>
       useProjectNavigationActions(projects, refreshProjects, toast),
     )

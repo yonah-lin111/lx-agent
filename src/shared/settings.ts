@@ -39,7 +39,6 @@ export type ModelProviderSettings = {
   providers: Record<string, ModelProvider>
   defaultModel: ModelSelection
   titleSummary: ModelSelection
-  weeklySummary: ModelSelection
   suggestedQuestions: ModelSelection
   suggestedQuestionsEnabled: boolean
 }
