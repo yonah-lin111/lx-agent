@@ -1,4 +1,4 @@
-import { FileText, FileType2, Folder, FolderTree } from "lucide-react"
+import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useLayoutEffect, useRef } from "react"
@@ -49,7 +49,7 @@ export const FileMentionCommandMenu = ({
       ref={containerRef}
       aria-label="项目文件提及"
       aria-activedescendant={`markdown-file-mention-${activeFile?.source}-${activeFile?.mentionPath}`}
-      className="pointer-events-none fixed z-50 max-h-[30vh] w-80 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="listbox"
       style={position}
     >
@@ -59,14 +59,7 @@ export const FileMentionCommandMenu = ({
         const name = normalizedPath.slice(slashIndex + 1)
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
-        const Icon =
-          file.source === "reference"
-            ? file.isDirectory
-              ? FolderTree
-              : FileType2
-            : file.isDirectory
-              ? Folder
-              : FileText
+        const Icon = file.isDirectory ? Folder : FileText
         const isActive = index === activeIndex
 
         return (

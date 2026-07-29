@@ -70,6 +70,46 @@ export interface MarkdownReferenceCommandPanelState {
   to: number
 }
 
+type MarkdownPanelKind = "block" | "file" | "reference" | "slash"
+
+/**
+ * 将样式配置中的尺寸换算为像素，供面板边界定位使用。
+ */
+const getCssDimensionInPixels = (variableName: string): number => {
+  const cssValue = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim()
+  const value = Number.parseFloat(cssValue)
+  if (!Number.isFinite(value)) return 0
+
+  if (cssValue.endsWith("rem")) {
+    return value * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+  }
+  if (cssValue.endsWith("vh")) return (value / 100) * window.innerHeight
+  if (cssValue.endsWith("vw")) return (value / 100) * window.innerWidth
+
+  return value
+}
+
+/**
+ * 根据 CSS 中的面板尺寸计算可视区域内的位置。
+ */
+const getMarkdownPanelPosition = (
+  kind: MarkdownPanelKind,
+  coords: { bottom: number; left: number; top: number },
+  horizontalPosition = coords.left,
+): CSSProperties => {
+  const panelWidth = getCssDimensionInPixels(`--markdown-command-menu-${kind}-width`)
+  const maxHeight = getCssDimensionInPixels(`--markdown-command-menu-${kind}-max-height`)
+  const offset = 6
+  const left = Math.min(
+    Math.max(horizontalPosition, 8),
+    Math.max(window.innerWidth - panelWidth - 8, 8),
+  )
+
+  return window.innerHeight - coords.bottom < maxHeight
+    ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
+    : { left, top: coords.bottom + offset, bottom: "auto" }
+}
+
 /**
  * 管理编辑器弹出面板（斜杠命令、块命令、文件提及）的状态同步与交互。
  */
@@ -159,17 +199,11 @@ export const useMarkdownPanels = ({
     const coords = view.coordsAtPos(to)
     if (!coords) return
 
-    const panelWidth = 256
-    const offset = 6
-    const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
     const panel = {
       commands: getMarkdownReferenceCommands(),
       from,
       path,
-      position:
-        window.innerHeight - coords.bottom < window.innerHeight * 0.3
-          ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-          : { left, top: coords.bottom + offset, bottom: "auto" },
+      position: getMarkdownPanelPosition("reference", coords),
       to,
     }
 
@@ -229,16 +263,10 @@ export const useMarkdownPanels = ({
       return
     }
 
-    const panelWidth = 288
-    const offset = 6
-    const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
     const panel = {
       commands,
       line: commandLine,
-      position:
-        window.innerHeight - coords.bottom < window.innerHeight * 0.3
-          ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-          : { left, top: coords.bottom + offset, bottom: "auto" },
+      position: getMarkdownPanelPosition("slash", coords),
     }
     const previous = slashCommandPanelRef.current
     if (previous?.line.value !== commandLine.value) {
@@ -336,16 +364,7 @@ export const useMarkdownPanels = ({
           return
         }
 
-        const panelWidth = 320
-        const offset = 6
-        const left = Math.min(
-          Math.max(coords.left, 8),
-          Math.max(window.innerWidth - panelWidth - 8, 8),
-        )
-        const position =
-          window.innerHeight - coords.bottom < window.innerHeight * 0.3
-            ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-            : { left, top: coords.bottom + offset, bottom: "auto" }
+        const position = getMarkdownPanelPosition("file", coords)
         const panel = { files, position, start }
         fileMentionPanelRef.current = panel
         activeFileMentionIndexRef.current = 0
@@ -439,18 +458,12 @@ export const useMarkdownPanels = ({
       return
     }
 
-    const panelWidth = 256
-    const offset = 6
     const coordsLeft =
       trigger?.kind === "codeBlock" && cursor > line.from ? coords.right : coords.left
-    const left = Math.min(Math.max(coordsLeft, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
     const panel = {
       commands,
       trigger,
-      position:
-        window.innerHeight - coords.bottom < window.innerHeight * 0.3
-          ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-          : { left, top: coords.bottom + offset, bottom: "auto" },
+      position: getMarkdownPanelPosition("block", coords, coordsLeft),
     }
     const previous = blockCommandPanelRef.current
     if (previous?.trigger.kind !== trigger.kind || previous.trigger.to !== trigger.to) {

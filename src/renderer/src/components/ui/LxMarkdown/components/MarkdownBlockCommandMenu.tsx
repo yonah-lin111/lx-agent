@@ -18,7 +18,7 @@ export const MarkdownBlockCommandMenu = ({
 }: MarkdownBlockCommandMenuProps): React.JSX.Element => (
   <div
     aria-label="Markdown 块命令"
-    className="pointer-events-none fixed z-50 w-64 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+    className="markdown-command-menu markdown-command-menu--block pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
     role="listbox"
     style={position}
   >

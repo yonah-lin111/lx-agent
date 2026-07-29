@@ -10,6 +10,18 @@
   color: #ffffff;
   background: #000000;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 块命令面板：空行或 Markdown 块上下文。 */
+  --markdown-command-menu-block-width: 20rem;
+  --markdown-command-menu-block-max-height: 30vh;
+  /* 斜杠命令面板：输入 / 时显示。 */
+  --markdown-command-menu-slash-width: 20rem;
+  --markdown-command-menu-slash-max-height: 30vh;
+  /* 引用命令面板：粘贴文件路径后显示。 */
+  --markdown-command-menu-reference-width: 25rem;
+  --markdown-command-menu-reference-max-height: 30vh;
+  /* 文件提及面板：输入 @ 时显示。 */
+  --markdown-command-menu-file-width: 30rem;
+  --markdown-command-menu-file-max-height: 40vh;
 }
 
 body {
@@ -26,6 +38,30 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+/* 块命令面板：在空行或 Markdown 块上下文中显示。 */
+.markdown-command-menu--block {
+  width: var(--markdown-command-menu-block-width);
+  max-height: var(--markdown-command-menu-block-max-height);
+}
+
+/* 斜杠命令面板：输入 / 时显示。 */
+.markdown-command-menu--slash {
+  width: var(--markdown-command-menu-slash-width);
+  max-height: var(--markdown-command-menu-slash-max-height);
+}
+
+/* 引用命令面板：粘贴文件路径后显示。 */
+.markdown-command-menu--reference {
+  width: var(--markdown-command-menu-reference-width);
+  max-height: var(--markdown-command-menu-reference-max-height);
+}
+
+/* 文件提及面板：输入 @ 时显示，预留更宽空间展示文件路径。 */
+.markdown-command-menu--file {
+  width: var(--markdown-command-menu-file-width);
+  max-height: var(--markdown-command-menu-file-max-height);
 }
 
 ::-webkit-scrollbar {
