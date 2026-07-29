@@ -186,7 +186,7 @@ export const MarkdownEditorToolbar = ({
       <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
         <span
           aria-label={isSaved ? "已保存" : "未保存"}
-          className={`ml-1 h-2 w-2 shrink-0 rounded-full ${
+          className={`ml-1.5 mr-1.5 h-2 w-2 shrink-0 rounded-full ${
             isSaved ? "bg-emerald-400" : "bg-amber-400"
           }`}
           role="status"

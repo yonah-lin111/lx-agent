@@ -1,12 +1,6 @@
-import { Save } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
-import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useSettingsData } from "../hooks/useSettingsData"
-import { useSettingsMutations } from "../hooks/useSettingsMutations"
-import type { ModelSelection } from "../types"
+import type { ModelProviderSettingsData, ModelSelection } from "../types"
 
 const MODEL_SELECTIONS = [
   { key: "defaultModel", label: "默认对话模型" },
@@ -14,50 +8,20 @@ const MODEL_SELECTIONS = [
   { key: "suggestedQuestions", label: "推荐问题模型" },
 ] as const
 
+export interface ModelSettingsProps {
+  settings: ModelProviderSettingsData
+  setSettings: React.Dispatch<React.SetStateAction<ModelProviderSettingsData | null>>
+}
+
 /**
  * 渲染模型选择和推荐问题配置。
  */
-export const ModelSettings = (): React.JSX.Element => {
-  const { settings, setSettings, error, setError } = useSettingsData()
-  const { isSaving, saveSettings } = useSettingsMutations()
-  const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (settings && lastSavedSettings === null) {
-      setLastSavedSettings(JSON.stringify(settings))
-    }
-  }, [settings, lastSavedSettings])
-
-  const isSaved = useMemo(() => {
-    if (!settings || lastSavedSettings === null) return true
-    return JSON.stringify(settings) === lastSavedSettings
-  }, [settings, lastSavedSettings])
-
+export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): React.JSX.Element => {
   const updateSelection = (
     key: (typeof MODEL_SELECTIONS)[number]["key"],
     selection: ModelSelection,
   ): void => {
     setSettings((current) => (current ? { ...current, [key]: selection } : current))
-  }
-
-  const save = async (): Promise<void> => {
-    if (!settings) return
-    setError("")
-    try {
-      const saved = await saveSettings(settings)
-      setSettings(saved)
-      setLastSavedSettings(JSON.stringify(saved))
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "保存配置失败")
-    }
-  }
-
-  if (!settings) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-white/45">
-        {error || "正在读取配置..."}
-      </div>
-    )
   }
 
   const providerOptions = Object.values(settings.providers).map((provider) => ({
@@ -66,33 +30,7 @@ export const ModelSettings = (): React.JSX.Element => {
   }))
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-white/45">选择各类任务默认使用的模型</p>
-        <div className="flex items-center gap-1.5">
-          <LxIconButton
-            preset="save"
-            aria-label="保存模型配置"
-            title={{ content: "保存配置", placement: "bottom" }}
-            disabled={isSaving}
-            onClick={() => void save()}
-          >
-            <Save className="h-4 w-4" />
-          </LxIconButton>
-          <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
-            <span
-              aria-label={isSaved ? "已保存" : "未保存"}
-              className={`h-2 w-2 shrink-0 rounded-full ${
-                isSaved ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-              role="status"
-            />
-          </LxTooltip>
-        </div>
-      </div>
-
-      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
-
+    <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       <div>
         <h3 className="mb-2 text-sm font-medium text-white">默认模型</h3>
         <div className="grid gap-3 lg:grid-cols-2">

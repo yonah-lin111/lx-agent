@@ -1,22 +1,10 @@
-import {
-  AlertCircle,
-  Check,
-  CheckCircle2,
-  Circle,
-  KeyRound,
-  Save,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Check, CheckCircle2, Circle, KeyRound, SlidersHorizontal, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
-import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useSettingsData } from "../hooks/useSettingsData"
-import { useSettingsMutations } from "../hooks/useSettingsMutations"
-import type { ModelProvider } from "../types"
+import type { ModelProvider, ModelProviderSettingsData } from "../types"
 
 const PROVIDER_TYPES: ModelProvider["type"][] = [
   "openai-compatible",
@@ -140,27 +128,23 @@ const ModelProviderMenu = ({
   )
 }
 
+export interface ModelProviderSettingsProps {
+  settings: ModelProviderSettingsData
+  setSettings: React.Dispatch<React.SetStateAction<ModelProviderSettingsData | null>>
+  onRegisterAddProvider?: (fn: () => void) => void
+}
+
 /**
  * 渲染模型 Provider 的读取、编辑和保存界面。
  */
-export const ModelProviderSettings = (): React.JSX.Element => {
-  const { settings, setSettings, isLoading, error, setError } = useSettingsData()
-  const { isSaving, saveSettings } = useSettingsMutations()
+export const ModelProviderSettings = ({
+  settings,
+  setSettings,
+  onRegisterAddProvider,
+}: ModelProviderSettingsProps): React.JSX.Element => {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("")
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
   const [menuState, setMenuState] = useState<ProviderMenuState | null>(null)
-  const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (settings && lastSavedSettings === null) {
-      setLastSavedSettings(JSON.stringify(settings))
-    }
-  }, [settings, lastSavedSettings])
-
-  const isSaved = useMemo(() => {
-    if (!settings || lastSavedSettings === null) return true
-    return JSON.stringify(settings) === lastSavedSettings
-  }, [settings, lastSavedSettings])
 
   useEffect(() => {
     if (settings && !selectedProviderId) {
@@ -199,7 +183,7 @@ export const ModelProviderSettings = (): React.JSX.Element => {
     })
   }
 
-  const addProvider = (): void => {
+  const addProvider = useCallback((): void => {
     setSettings((current) => {
       if (!current) return current
       const id = createProviderId(current.providers)
@@ -219,7 +203,11 @@ export const ModelProviderSettings = (): React.JSX.Element => {
         },
       }
     })
-  }
+  }, [setSettings])
+
+  useEffect(() => {
+    onRegisterAddProvider?.(addProvider)
+  }, [onRegisterAddProvider, addProvider])
 
   const deleteProvider = (providerId: string): void => {
     setSettings((current) => {
@@ -257,76 +245,10 @@ export const ModelProviderSettings = (): React.JSX.Element => {
     })
   }
 
-  const save = async (): Promise<void> => {
-    if (!settings) return
-    setError("")
-    try {
-      const savedSettings = await saveSettings(settings)
-      setSettings(savedSettings)
-      setLastSavedSettings(JSON.stringify(savedSettings))
-      setSelectedProviderId((current) =>
-        savedSettings.providers[current]
-          ? current
-          : (Object.keys(savedSettings.providers)[0] ?? ""),
-      )
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "保存配置失败")
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-white/45">
-        正在读取配置...
-      </div>
-    )
-  }
-
-  if (!settings) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-rose-300">
-        <AlertCircle className="h-5 w-5" />
-        <span>{error || "无法读取配置"}</span>
-      </div>
-    )
-  }
-
   const selectedProvider = settings.providers[selectedProviderId]
 
   return (
-    <div className="@container flex h-full min-h-0 flex-col gap-3 p-3">
-      <div className="flex shrink-0 items-center justify-between gap-3">
-        <p className="text-xs text-white/45">配置与管理模型 Provider 及模型参数</p>
-        <div className="flex items-center gap-1.5">
-          <LxIconButton
-            preset="add"
-            aria-label="添加 Provider"
-            title={{ content: "添加 Provider", placement: "bottom" }}
-            onClick={addProvider}
-          />
-          <LxIconButton
-            preset="save"
-            aria-label="保存 Provider 配置"
-            title={{ content: "保存配置", placement: "bottom" }}
-            disabled={isSaving}
-            onClick={() => void save()}
-          >
-            <Save className="h-4 w-4" />
-          </LxIconButton>
-          <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
-            <span
-              aria-label={isSaved ? "已保存" : "未保存"}
-              className={`h-2 w-2 shrink-0 rounded-full ${
-                isSaved ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-              role="status"
-            />
-          </LxTooltip>
-        </div>
-      </div>
-
-      {error ? <p className="shrink-0 text-xs text-rose-300">{error}</p> : null}
-
+    <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
       <div className="grid min-h-0 flex-1 gap-3 @[520px]:grid-cols-[180px_minmax(0,1fr)]">
         <nav
           className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"

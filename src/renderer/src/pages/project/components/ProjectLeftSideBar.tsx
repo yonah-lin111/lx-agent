@@ -7,7 +7,9 @@ interface ProjectLeftSideBarProps {
 /**
  * 渲染设计页面专属左侧栏内容。
  */
-export const ProjectLeftSideBar = ({ isCollapsed }: ProjectLeftSideBarProps): React.JSX.Element | null => {
+export const ProjectLeftSideBar = ({
+  isCollapsed,
+}: ProjectLeftSideBarProps): React.JSX.Element | null => {
   if (isCollapsed) return null
   return <ProjectNavigation />
 }
