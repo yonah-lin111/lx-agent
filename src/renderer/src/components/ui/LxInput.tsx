@@ -1,4 +1,4 @@
-import { X } from "lucide-react"
+import { ChevronDown, ChevronUp, Eye, EyeOff, X } from "lucide-react"
 import type React from "react"
 import { forwardRef, useEffect, useRef, useState } from "react"
 
@@ -37,7 +37,9 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
   ): React.JSX.Element => {
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
+    const [showPassword, setShowPassword] = useState<boolean>(false)
     const textSizeClass = size === "xs" ? "text-xs" : "text-sm"
+    const inputType = props.type === "password" ? (showPassword ? "text" : "password") : props.type
 
     useEffect(() => {
       if (value !== undefined) {
@@ -80,6 +82,32 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
       input.focus()
     }
 
+    /**
+     * 调整数字输入框的数值。
+     */
+    const handleStep = (direction: "up" | "down"): void => {
+      const input = inputRef.current
+      if (!input || disabled) return
+
+      try {
+        if (direction === "up") {
+          input.stepUp()
+        } else {
+          input.stepDown()
+        }
+      } catch {
+        const step = Number.parseFloat(String(props.step ?? 1)) || 1
+        const current = Number.parseFloat(input.value) || 0
+        const next = direction === "up" ? current + step : current - step
+        input.value = String(next)
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+      valueSetter?.call(input, input.value)
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+      setHasValue(input.value.length > 0)
+    }
+
     return (
       <div
         className={`flex w-full min-w-0 items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 py-1.5 text-white/80 transition-colors duration-150 hover:border-white/20 focus-within:border-white/25 ${
@@ -89,12 +117,13 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
         {prefix}
         <input
           ref={assignRef}
-          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} text-white outline-none placeholder:text-white/20 disabled:cursor-not-allowed`}
+          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} text-white outline-none placeholder:text-white/20 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none`}
           disabled={disabled}
           value={value}
           defaultValue={defaultValue}
           onChange={handleChange}
           {...props}
+          type={inputType}
         />
         {clear && hasValue && !disabled ? (
           <button
@@ -105,6 +134,38 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
           >
             <X className="h-3.5 w-3.5" />
           </button>
+        ) : null}
+        {props.type === "password" && !disabled ? (
+          <button
+            type="button"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] text-white/45 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50"
+            aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          </button>
+        ) : null}
+        {props.type === "number" && !disabled ? (
+          <div className="flex shrink-0 flex-col justify-center -my-1 text-white/40">
+            <button
+              type="button"
+              tabIndex={-1}
+              className="flex h-3 w-4 items-center justify-center rounded-[2px] transition-colors hover:bg-white/10 hover:text-white focus:outline-none"
+              aria-label="增加数值"
+              onClick={() => handleStep("up")}
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              tabIndex={-1}
+              className="flex h-3 w-4 items-center justify-center rounded-[2px] transition-colors hover:bg-white/10 hover:text-white focus:outline-none"
+              aria-label="减少数值"
+              onClick={() => handleStep("down")}
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
         ) : null}
         {suffix}
       </div>

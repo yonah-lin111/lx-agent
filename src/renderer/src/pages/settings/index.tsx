@@ -2,6 +2,7 @@ import { AlertCircle, Save } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   ModelProviderSettings,
@@ -26,6 +27,7 @@ export const SettingsPage = (): React.JSX.Element => {
   const { isSaving, saveSettings } = useSettingsMutations()
   const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
   const addProviderRef = useRef<(() => void) | null>(null)
+  const toast = useLxToast()
 
   useEffect(() => {
     if (settings && lastSavedSettings === null) {
@@ -45,8 +47,11 @@ export const SettingsPage = (): React.JSX.Element => {
       const saved = await saveSettings(settings)
       setSettings(saved)
       setLastSavedSettings(JSON.stringify(saved))
+      toast.success("保存配置成功")
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "保存配置失败")
+      const errorMessage = saveError instanceof Error ? saveError.message : "保存配置失败"
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -108,6 +113,8 @@ export const SettingsPage = (): React.JSX.Element => {
               onRegisterAddProvider={(fn) => {
                 addProviderRef.current = fn
               }}
+              onAddProvider={() => toast.success("添加 Provider 成功")}
+              onDeleteProvider={() => toast.success("删除 Provider 成功")}
             />
           ) : null}
         </div>

@@ -132,6 +132,8 @@ export interface ModelProviderSettingsProps {
   settings: ModelProviderSettingsData
   setSettings: React.Dispatch<React.SetStateAction<ModelProviderSettingsData | null>>
   onRegisterAddProvider?: (fn: () => void) => void
+  onAddProvider?: () => void
+  onDeleteProvider?: (providerId: string) => void
 }
 
 /**
@@ -141,6 +143,8 @@ export const ModelProviderSettings = ({
   settings,
   setSettings,
   onRegisterAddProvider,
+  onAddProvider,
+  onDeleteProvider,
 }: ModelProviderSettingsProps): React.JSX.Element => {
   const [selectedProviderId, setSelectedProviderId] = useState<string>("")
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
@@ -203,7 +207,8 @@ export const ModelProviderSettings = ({
         },
       }
     })
-  }, [setSettings])
+    onAddProvider?.()
+  }, [setSettings, onAddProvider])
 
   useEffect(() => {
     onRegisterAddProvider?.(addProvider)
@@ -220,6 +225,7 @@ export const ModelProviderSettings = ({
         enabledProviders: current.enabledProviders.filter((id) => id !== providerId),
       }
     })
+    onDeleteProvider?.(providerId)
   }
 
   const addModel = (providerId: string): void => {
@@ -469,7 +475,7 @@ export const ModelProviderSettings = ({
                             <LxInput
                               type="number"
                               aria-label={`${modelKey} 上下文限制`}
-                              value={model.limit?.context ?? 8192}
+                              value={model.limit?.context || ""}
                               onChange={(event) =>
                                 updateProvider(selectedProviderId, (provider) => ({
                                   ...provider,
@@ -478,7 +484,10 @@ export const ModelProviderSettings = ({
                                     [modelKey]: {
                                       ...provider.models[modelKey],
                                       limit: {
-                                        context: Number(event.target.value),
+                                        context:
+                                          event.target.value === ""
+                                            ? 0
+                                            : Number(event.target.value),
                                         output: provider.models[modelKey].limit?.output ?? 4096,
                                       },
                                     },
@@ -491,7 +500,8 @@ export const ModelProviderSettings = ({
                             最大输出限制
                             <LxInput
                               type="number"
-                              value={model.limit?.output ?? 4096}
+                              aria-label={`${modelKey} 最大输出限制`}
+                              value={model.limit?.output || ""}
                               onChange={(event) =>
                                 updateProvider(selectedProviderId, (provider) => ({
                                   ...provider,
@@ -501,7 +511,10 @@ export const ModelProviderSettings = ({
                                       ...provider.models[modelKey],
                                       limit: {
                                         context: provider.models[modelKey].limit?.context ?? 8192,
-                                        output: Number(event.target.value),
+                                        output:
+                                          event.target.value === ""
+                                            ? 0
+                                            : Number(event.target.value),
                                       },
                                     },
                                   },
