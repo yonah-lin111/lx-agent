@@ -1,6 +1,5 @@
-import { ArrowUp, Plus, Square } from "lucide-react"
+import { Plus, Send, Square } from "lucide-react"
 import type React from "react"
-import { useEffect, useRef } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 
 interface AgentInputProps {
@@ -12,7 +11,7 @@ interface AgentInputProps {
 }
 
 /**
- * Agent 聊天底栏输入框组件 (OpenAI ChatGPT 风格重构)。
+ * Agent 聊天底栏输入框组件 (对标 OpenAI ChatGPT 顶级极简平滑架构)。
  */
 export const AgentInput = ({
   inputText,
@@ -21,23 +20,6 @@ export const AgentInput = ({
   onSend,
   onStop,
 }: AgentInputProps): React.JSX.Element => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  // 动态根据输入文本调整 textarea 的高度
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    if (!inputText) {
-      textarea.style.height = ""
-      return
-    }
-
-    // 先重置高度以准确获取真实 scrollHeight，防止被 Flex 容器伸展
-    textarea.style.height = "0px"
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`
-  }, [inputText])
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
@@ -47,58 +29,63 @@ export const AgentInput = ({
     }
   }
 
+  // 加号按钮
+  const addButton = (
+    <LxTooltip content="添加附件" placement="top">
+      <button
+        type="button"
+        aria-label="添加附件"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70 transition-all duration-150 hover:bg-white/20 hover:text-white active:scale-95"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </LxTooltip>
+  )
+
+  // 发送 / 停止按钮
+  const actionButton = isStreaming ? (
+    <LxTooltip content="停止生成" placement="top">
+      <button
+        type="button"
+        aria-label="停止生成"
+        onClick={onStop}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-black transition-all duration-150 hover:bg-white/90 active:scale-95 shadow-sm"
+      >
+        <Square className="h-3 w-3 fill-current" />
+      </button>
+    </LxTooltip>
+  ) : (
+    <LxTooltip content="发送消息 (Enter)" placement="top">
+      <button
+        type="button"
+        aria-label="发送消息"
+        onClick={onSend}
+        disabled={!inputText.trim()}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 disabled:cursor-not-allowed bg-white text-black hover:bg-white/90 active:scale-95 disabled:bg-white/15 disabled:text-white/30 disabled:shadow-none shadow-sm"
+      >
+        <Send className="h-3.5 w-3.5" />
+      </button>
+    </LxTooltip>
+  )
+
   return (
-    <div className="bg-transparent p-1 pt-1.5">
-      <div className="relative flex flex-col rounded-[14px] border border-white/10 bg-[#1a1a1a] transition-all duration-200 shadow-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10">
+    <div className="bg-transparent p-1.5 pt-1">
+      {/* 统一恒定布局容器：高度跟随 textarea 自然平滑伸缩，无横向滑行 */}
+      <div className="relative flex flex-col justify-between rounded-[22px] border border-white/10 bg-[#1a1a1a] px-2.5 pt-2 pb-2 shadow-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-[border-color,box-shadow,background-color] duration-200">
+        {/* 输入区 */}
         <textarea
-          ref={textareaRef}
           value={inputText}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="给 LX Agent 发送消息..."
           rows={1}
-          className="w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-[12px] leading-relaxed text-white/90 placeholder-white/35 focus:outline-none max-h-[180px] min-h-[40px] overflow-y-auto"
+          className="min-h-6 max-h-[124px] w-full resize-none overflow-y-auto bg-transparent px-1 py-0.5 text-[12px] leading-[20px] text-white/90 placeholder-white/35 focus:outline-none [field-sizing:content]"
         />
 
-        <div className="flex items-center justify-between px-2.5 pb-2 pt-0.5">
-          <div className="flex items-center">
-            <LxTooltip content="添加附件" placement="top">
-              <button
-                type="button"
-                aria-label="添加附件"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/70 transition-all hover:bg-white/20 hover:text-white active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </LxTooltip>
-          </div>
-
-          <div>
-            {isStreaming ? (
-              <LxTooltip content="停止生成" placement="top">
-                <button
-                  type="button"
-                  aria-label="停止生成"
-                  onClick={onStop}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-black transition-all hover:bg-white/90 active:scale-95 shadow-sm"
-                >
-                  <Square className="h-3 w-3 fill-current" />
-                </button>
-              </LxTooltip>
-            ) : (
-              <LxTooltip content="发送消息 (Enter)" placement="top">
-                <button
-                  type="button"
-                  aria-label="发送消息"
-                  onClick={onSend}
-                  disabled={!inputText.trim()}
-                  className="flex h-7 w-7 items-center justify-center rounded-full transition-all duration-150 disabled:cursor-not-allowed bg-white text-black hover:bg-white/90 active:scale-95 disabled:bg-white/15 disabled:text-white/30 disabled:shadow-none shadow-sm"
-                >
-                  <ArrowUp className="h-3.5 w-3.5 stroke-[2.5]" />
-                </button>
-              </LxTooltip>
-            )}
-          </div>
+        {/* 恒定固定的底部工具栏，左置加号右置发送 */}
+        <div className="flex w-full items-center justify-between pt-1.5">
+          <div>{addButton}</div>
+          <div>{actionButton}</div>
         </div>
       </div>
     </div>

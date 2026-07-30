@@ -11,7 +11,7 @@ interface AgentMessageItemProps {
 }
 
 /**
- * 渲染单条 Agent 消息气泡（隐藏气泡顶部头像与名字，无边框与左右内边距，复制按钮置于底部左侧）。
+ * 渲染单条 Agent 或用户消息气泡（隐藏气泡顶部头像与名字，无边框与左右内边距，底部悬浮显示复制按钮，Agent 消息靠左对齐，用户消息靠右对齐）。
  */
 export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
@@ -36,9 +36,19 @@ export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.
 
   if (isUser) {
     return (
-      <div className="flex flex-col items-end px-0">
+      <div className="group flex flex-col items-end px-0">
         <div className="max-w-[88%] rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 transition-all hover:bg-white/12 whitespace-pre-wrap break-words">
           {message.content}
+        </div>
+        <div className="mt-1 flex items-center justify-end opacity-0 transition-opacity group-hover:opacity-100">
+          <LxIconButton
+            size="small"
+            aria-label="复制消息"
+            title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+            onClick={copyMessageContent}
+          >
+            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+          </LxIconButton>
         </div>
       </div>
     )
@@ -59,8 +69,9 @@ export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.
           previewMode="preview"
           previewRef={previewRef}
           className="px-0"
+          contentClassName="py-1"
         />
-        <div className="flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
           <LxIconButton
             size="small"
             aria-label="复制消息"
