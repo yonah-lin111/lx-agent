@@ -5,6 +5,43 @@ const FILE_MENTION_PATTERN = /(^|\s)(@[^\s]+)(?=$|\s)/g
 export type FileMentionDeletionRange = { start: number; end: number }
 
 /**
+ * 获取文件提及在预览时的缩略显示名称：
+ * 当前项目显示【@父文件夹名称/文件名】；
+ * 引用项目显示【@引用项目名称/.../@父文件夹名称/文件名】。
+ */
+export const getFileMentionDisplayLabel = (
+  rawPath: string,
+  referencedProjectNames?: Set<string>,
+): string => {
+  const cleanPath = rawPath.replace(/^@/, "")
+  const parts = cleanPath.split(/[/\\]+/).filter(Boolean)
+
+  if (parts.length === 0) return `@${cleanPath}`
+
+  const firstPart = parts[0]
+  const isReferencedProject = referencedProjectNames?.has(firstPart) ?? false
+
+  if (isReferencedProject && parts.length >= 2) {
+    const projectName = firstPart
+    if (parts.length >= 3) {
+      const parentFolder = parts[parts.length - 2]
+      const fileName = parts[parts.length - 1]
+      return `@${projectName}/.../@${parentFolder}/${fileName}`
+    }
+    const fileName = parts[1]
+    return `@${projectName}/.../${fileName}`
+  }
+
+  if (parts.length >= 2) {
+    const parentFolder = parts[parts.length - 2]
+    const fileName = parts[parts.length - 1]
+    return `@${parentFolder}/${fileName}`
+  }
+
+  return `@${parts[0]}`
+}
+
+/**
  * 计算 @ 文件提及需要整块删除的范围。
  */
 export const getFileMentionDeletionRange = (

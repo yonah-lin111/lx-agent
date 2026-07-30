@@ -30,7 +30,7 @@ describe("markdownRenderer", () => {
 
     expect(html).toContain('class="markdown-reference markdown-reference-image"')
     expect(html).toContain('data-reference-path="/Users/yonah/Desktop/example.png"')
-    expect(html).toContain("参考图片")
+    expect(html).toContain("image:")
     expect(html).toContain("example.png")
   })
 
@@ -54,5 +54,37 @@ describe("markdownRenderer", () => {
 
     expect(html.match(/class="markdown-template-block"/g)).toHaveLength(1)
     expect(html).toContain("内层")
+  })
+
+  it("渲染 @文件提及 并转换为父文件夹/文件名格式的缩略文本与完整内容 dataset", () => {
+    const html = markdownRenderer.render(
+      "请查看 @src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件",
+    )
+
+    expect(html).toContain('class="markdown-file-mention"')
+    expect(html).toContain(
+      `data-full-mention="${encodeURIComponent("@src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
+    )
+    expect(html).toContain(
+      `data-display-label="${encodeURIComponent("@LxMarkdown/LxMarkdownEditor.tsx")}"`,
+    )
+    expect(html).toContain("@LxMarkdown/LxMarkdownEditor.tsx")
+  })
+
+  it("渲染引用项目的 @文件提及 并转换为 @引用项目名称/.../@父文件夹名称/文件名 格式", () => {
+    const markdown =
+      "@[refer-project](/Users/yonah/projects/other-app)\n\n请查看 @other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件"
+    const html = markdownRenderer.render(markdown)
+
+    expect(html).toContain('class="markdown-file-mention"')
+    expect(html).toContain('data-is-referenced="true"')
+    expect(html).toContain('markdown-file-mention-node--referenced')
+    expect(html).toContain(
+      `data-full-mention="${encodeURIComponent("@other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
+    )
+    expect(html).toContain(
+      `data-display-label="${encodeURIComponent("@other-app/.../@LxMarkdown/LxMarkdownEditor.tsx")}"`,
+    )
+    expect(html).toContain("@other-app/.../@LxMarkdown/LxMarkdownEditor.tsx")
   })
 })

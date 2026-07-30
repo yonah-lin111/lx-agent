@@ -2,6 +2,7 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 
@@ -238,6 +239,27 @@ export const LxMarkdownPreview = ({
           const encodedSource = container.dataset.mermaidSource
           const source = encodedSource ? decodeURIComponent(encodedSource) : ""
           return mountButton(container, <MermaidDiagram source={source} />)
+        },
+      ),
+      ...Array.from(
+        previewElement?.querySelectorAll<HTMLElement>(".markdown-file-mention") ?? [],
+        (container) => {
+          const fullMention = container.dataset.fullMention
+            ? decodeURIComponent(container.dataset.fullMention)
+            : ""
+          const displayLabel = container.dataset.displayLabel
+            ? decodeURIComponent(container.dataset.displayLabel)
+            : fullMention
+          const isReferenced = container.dataset.isReferenced === "true"
+          const nodeClassName = `markdown-file-mention-node ${
+            isReferenced ? "markdown-file-mention-node--referenced" : ""
+          }`
+          return mountButton(
+            container,
+            <LxTooltip content={fullMention} placement="top">
+              <span className={nodeClassName}>{displayLabel}</span>
+            </LxTooltip>,
+          )
         },
       ),
     ]

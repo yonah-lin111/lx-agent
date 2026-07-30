@@ -61,8 +61,7 @@ export const createMarkdownReference = (type: MarkdownReferenceType, path: strin
 /**
  * 获取引用类型的展示标签。
  */
-export const getMarkdownReferenceLabel = (type: MarkdownReferenceType): string =>
-  markdownReferenceCommands.find((command) => command.id === type)?.label ?? type
+export const getMarkdownReferenceLabel = (type: MarkdownReferenceType): string => `${type}:`
 
 /**
  * 从路径中提取适合展示的文件或目录名称。

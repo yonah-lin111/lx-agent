@@ -21,8 +21,10 @@ import MarkdownIt from "markdown-it"
 import {
   getMarkdownReferenceLabel,
   getMarkdownReferenceName,
+  getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { getFileMentionDisplayLabel } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 
 const languageAliases: Record<string, string> = {
   cs: "csharp",
@@ -152,11 +154,63 @@ markdownRenderer.renderer.rules.markdown_reference = (tokens, index) => {
   return `<span class="markdown-reference markdown-reference-${type}" data-reference-path="${path}"><span class="markdown-reference-label">${label}</span><span class="markdown-reference-name">${name}</span></span>`
 }
 
+markdownRenderer.inline.ruler.after("markdown-reference", "markdown-file-mention", (state, silent) => {
+  if (state.src.charCodeAt(state.pos) !== 0x40 /* @ */) return false
+  if (state.pos > 0 && /\w/.test(state.src[state.pos - 1])) return false
+
+  const match = /^@([^\s\[\]\(\)]+)/.exec(state.src.slice(state.pos))
+  if (!match) return false
+
+  let rawMention = match[0]
+  let rawPath = match[1]
+
+  const trailingPunctuationMatch = /([.,;:!?]+)$/.exec(rawPath)
+  if (trailingPunctuationMatch) {
+    const punctLen = trailingPunctuationMatch[1].length
+    rawMention = rawMention.slice(0, -punctLen)
+    rawPath = rawPath.slice(0, -punctLen)
+  }
+  if (!rawPath) return false
+
+  if (!silent) {
+    const token = state.push("markdown_file_mention", "", 0)
+    token.meta = { mention: rawMention, path: rawPath }
+  }
+
+  state.pos += rawMention.length
+  return true
+})
+
+markdownRenderer.renderer.rules.markdown_file_mention = (tokens, index, _options, env) => {
+  const meta = tokens[index]?.meta as { mention: string; path: string }
+  if (!meta) return ""
+
+  const fullMention = meta.mention.startsWith("@") ? meta.mention : `@${meta.mention}`
+  const encodedMention = encodeURIComponent(fullMention)
+  const referencedProjectNames = env?.referencedProjectNames as Set<string> | undefined
+  const displayLabel = getFileMentionDisplayLabel(meta.path, referencedProjectNames)
+  const encodedDisplayLabel = encodeURIComponent(displayLabel)
+  const escapedDisplayLabel = markdownRenderer.utils.escapeHtml(displayLabel)
+
+  const firstPart = meta.path.replace(/^@/, "").split(/[/\\]+/).filter(Boolean)[0]
+  const isReferenced = Boolean(firstPart && referencedProjectNames?.has(firstPart))
+
+  return `<span class="markdown-file-mention" data-full-mention="${encodedMention}" data-display-label="${encodedDisplayLabel}" data-is-referenced="${isReferenced ? "true" : "false"}"><span class="markdown-file-mention-node ${isReferenced ? "markdown-file-mention-node--referenced" : ""}">${escapedDisplayLabel}</span></span>`
+}
+
 markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
   const token = tokens[idx]
   const checked = token.meta?.checked
   return `<input type="checkbox" class="task-list-item-checkbox" disabled${checked ? " checked" : ""}>`
 }
+
+markdownRenderer.core.ruler.push("markdown-referenced-projects", (state) => {
+  const projectPaths = getMarkdownReferenceProjectPaths(state.src)
+  const projectNames = new Set(projectPaths.map(getMarkdownReferenceName))
+  state.env = state.env || {}
+  state.env.referencedProjectNames = projectNames
+  return true
+})
 
 markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
   state.tokens.forEach((token) => {
