@@ -1,6 +1,6 @@
-import { Plus, Send, Square } from "lucide-react"
+import { Send, Square } from "lucide-react"
 import type React from "react"
-import { LxTooltip } from "@/components/ui/LxTooltip"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 
 interface AgentInputProps {
   inputText: string
@@ -31,41 +31,41 @@ export const AgentInput = ({
 
   // 加号按钮
   const addButton = (
-    <LxTooltip content="添加附件" placement="top">
-      <button
-        type="button"
-        aria-label="添加附件"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70 transition-all duration-150 hover:bg-white/20 hover:text-white active:scale-95"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
-    </LxTooltip>
+    <LxIconButton
+      shape="circle"
+      preset="add"
+      aria-label="添加附件"
+      title={{ content: "添加附件", placement: "top" }}
+      hoverBgClass="hover:bg-white/20"
+      hoverTextClass="hover:text-white"
+      className="bg-white/10 !text-white/70"
+    />
   )
 
   // 发送 / 停止按钮
   const actionButton = isStreaming ? (
-    <LxTooltip content="停止生成" placement="top">
-      <button
-        type="button"
-        aria-label="停止生成"
-        onClick={onStop}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-black transition-all duration-150 hover:bg-white/90 active:scale-95 shadow-sm"
-      >
-        <Square className="h-3 w-3 fill-current" />
-      </button>
-    </LxTooltip>
+    <LxIconButton
+      shape="circle"
+      aria-label="停止生成"
+      title={{ content: "停止生成", placement: "top" }}
+      onClick={onStop}
+      hoverBgClass="hover:bg-white/90"
+      className="bg-white !text-black shadow-sm"
+    >
+      <Square className="h-3 w-3 fill-current" />
+    </LxIconButton>
   ) : (
-    <LxTooltip content="发送消息 (Enter)" placement="top">
-      <button
-        type="button"
-        aria-label="发送消息"
-        onClick={onSend}
-        disabled={!inputText.trim()}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 disabled:cursor-not-allowed bg-white text-black hover:bg-white/90 active:scale-95 disabled:bg-white/15 disabled:text-white/30 disabled:shadow-none shadow-sm"
-      >
-        <Send className="h-3.5 w-3.5" />
-      </button>
-    </LxTooltip>
+    <LxIconButton
+      shape="circle"
+      aria-label="发送消息"
+      title={{ content: "发送消息 (Enter)", placement: "top" }}
+      onClick={onSend}
+      disabled={!inputText.trim()}
+      hoverBgClass="hover:bg-white/90"
+      className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
+    >
+      <Send className="h-3.5 w-3.5" />
+    </LxIconButton>
   )
 
   return (

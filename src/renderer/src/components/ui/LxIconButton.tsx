@@ -18,6 +18,9 @@ export type LxIconButtonPreset =
 // 图标按钮尺寸类型。
 export type LxIconButtonSize = "small" | "medium" | "large"
 
+// 图标按钮形状类型。
+export type LxIconButtonShape = "square" | "circle"
+
 // 图标按钮内置 Tooltip 配置。
 export interface LxIconButtonTooltip {
   content: string
@@ -92,6 +95,7 @@ export interface LxIconButtonProps
   hoverTextClass?: string
   iconOnly?: boolean
   preset?: LxIconButtonPreset
+  shape?: LxIconButtonShape
   size?: LxIconButtonSize
   // 内置 Tooltip 配置。
   title?: LxIconButtonTooltip
@@ -111,6 +115,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       hoverTextClass,
       iconOnly = true,
       preset,
+      shape = "square",
       size = "medium",
       disabled,
       title,
@@ -119,7 +124,8 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     ref,
   ): React.JSX.Element => {
     const baseStyles =
-      "flex items-center justify-center rounded-[6px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
+      "flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
+    const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
     const sizeStyles = iconOnly ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
     const finalHoverBg = hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5")
     const finalHoverText =
@@ -155,7 +161,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       <button
         ref={ref}
         type={type}
-        className={`${baseStyles} ${sizeStyles} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >
