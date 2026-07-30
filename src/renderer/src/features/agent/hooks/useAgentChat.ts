@@ -89,6 +89,13 @@ export const useAgentChat = () => {
     [inputText, isStreaming],
   )
 
+  // 编辑已发送的消息内容。
+  const editMessage = useCallback((id: string, newContent: string) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, content: newContent } : msg)),
+    )
+  }, [])
+
   return {
     messages,
     inputText,
@@ -97,5 +104,6 @@ export const useAgentChat = () => {
     sendMessage,
     stopStreaming,
     createNewChat,
+    editMessage,
   }
 }

@@ -19,6 +19,7 @@ export const AgentPage = ({ onNewChatRef }: AgentPageProps): React.JSX.Element =
     sendMessage,
     stopStreaming,
     createNewChat,
+    editMessage,
   } = useAgentChat()
 
   if (onNewChatRef) {
@@ -27,7 +28,11 @@ export const AgentPage = ({ onNewChatRef }: AgentPageProps): React.JSX.Element =
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">
-      <AgentMessageList messages={messages} onSelectPrompt={(prompt) => sendMessage(prompt)} />
+      <AgentMessageList
+        messages={messages}
+        onSelectPrompt={(prompt) => sendMessage(prompt)}
+        onEditMessage={editMessage}
+      />
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}

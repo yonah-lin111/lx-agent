@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react"
 import type React from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { DEFAULT_PROMPT_CARDS } from "../constants"
 import type { AgentMessage } from "../types"
 import { AgentMessageItem } from "./AgentMessageItem"
@@ -8,6 +8,7 @@ import { AgentMessageItem } from "./AgentMessageItem"
 interface AgentMessageListProps {
   messages: AgentMessage[]
   onSelectPrompt: (prompt: string) => void
+  onEditMessage?: (id: string, newContent: string) => void
 }
 
 /**
@@ -16,8 +17,10 @@ interface AgentMessageListProps {
 export const AgentMessageList = ({
   messages,
   onSelectPrompt,
+  onEditMessage,
 }: AgentMessageListProps): React.JSX.Element => {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
 
   // 新消息出现时自动滚动到底部。
   useEffect(() => {
@@ -58,7 +61,21 @@ export const AgentMessageList = ({
   return (
     <div className="custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-1 [scrollbar-gutter:stable]">
       {messages.map((message) => (
-        <AgentMessageItem key={message.id} message={message} />
+        <AgentMessageItem
+          key={message.id}
+          message={message}
+          isEditing={editingMessageId === message.id}
+          onStartEdit={() => setEditingMessageId(message.id)}
+          onCancelEdit={() => {
+            if (editingMessageId === message.id) {
+              setEditingMessageId(null)
+            }
+          }}
+          onEdit={(id, newContent) => {
+            onEditMessage?.(id, newContent)
+            setEditingMessageId(null)
+          }}
+        />
       ))}
       <div ref={bottomRef} />
     </div>
