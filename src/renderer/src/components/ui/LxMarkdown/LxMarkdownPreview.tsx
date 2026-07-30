@@ -264,7 +264,13 @@ export const LxMarkdownPreview = ({
       ),
     ]
 
-    return () => roots.forEach((root) => root.unmount())
+    return () => {
+      // root.unmount() 不能在 React 渲染过程中同步执行，否则会触发
+      // "Attempted to synchronously unmount a root while React was already
+      // rendering" 警告，并导致部分 root 未完成卸载、新 root 挂载失败，
+      // 表现为代码块按钮和文件提及提示消失。延迟到当前渲染结束后再卸载。
+      queueMicrotask(() => roots.forEach((root) => root.unmount()))
+    }
   }, [html, previewMode, previewRef])
 
   return (
