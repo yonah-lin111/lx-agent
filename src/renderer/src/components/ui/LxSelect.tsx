@@ -1,6 +1,6 @@
 import { Check, ChevronDown } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
 import type React from "react"
+import { useEffect, useRef, useState } from "react"
 
 // 下拉选项。
 export interface LxSelectOption<T> {

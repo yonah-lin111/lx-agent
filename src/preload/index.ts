@@ -1,7 +1,7 @@
 import type { ClipboardApi } from "@shared/clipboard"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
-import type { ProjectApi } from "@shared/project"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
+import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 

@@ -2,9 +2,9 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 
 // Markdown 预览属性。
 interface LxMarkdownPreviewProps {

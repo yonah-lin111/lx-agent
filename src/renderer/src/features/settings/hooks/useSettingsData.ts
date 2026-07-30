@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import type { ModelProviderSettingsData } from "../types"
 import { settingsApi } from "../api/settingsApi"
+import type { ModelProviderSettingsData } from "../types"
 
 /**
  * 获取并管理模型设置数据的 Hook。

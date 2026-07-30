@@ -1,6 +1,6 @@
-import { Check, Copy } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import type React from "react"
-import { useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
@@ -16,13 +16,97 @@ interface AgentMessageItemProps {
 export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
+  const userContentRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isCollapsible, setIsCollapsible] = useState(false)
+  const [isClamped, setIsClamped] = useState(false)
 
   // 渲染 Markdown 为 HTML。
   const renderedHtml = useMemo(() => {
     if (isUser) return ""
     return markdownRenderer.render(message.content)
   }, [message.content, isUser])
+
+  // 检测用户消息是否超过3行。
+  useLayoutEffect(() => {
+    if (!isUser) return
+    const content = userContentRef.current
+    if (!content) return
+
+    // 临时移除 line-clamp 以准确测量完整高度
+    const wasClamped = content.classList.contains("line-clamp-3")
+    if (wasClamped) {
+      content.classList.remove("line-clamp-3")
+    }
+
+    const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
+    const collapsedHeight = lineHeight * 3
+    const fullHeight = content.scrollHeight
+
+    if (wasClamped && !isExpanded) {
+      content.classList.add("line-clamp-3")
+    }
+
+    if (fullHeight > collapsedHeight + 1) {
+      setIsCollapsible(true)
+      if (!isExpanded) {
+        content.style.height = `${collapsedHeight}px`
+        setIsClamped(true)
+      }
+    } else {
+      setIsCollapsible(false)
+      setIsClamped(false)
+      content.style.height = ""
+    }
+  }, [message.content, isUser, isExpanded])
+
+  const toggleExpand = (): void => {
+    const content = userContentRef.current
+    if (!content) return
+
+    const nextIsExpanded = !isExpanded
+    const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
+    const collapsedHeight = lineHeight * 3
+
+    if (nextIsExpanded) {
+      setIsClamped(false)
+      content.style.height = `${collapsedHeight}px`
+
+      requestAnimationFrame(() => {
+        content.style.height = `${content.scrollHeight}px`
+      })
+
+      content.addEventListener(
+        "transitionend",
+        () => {
+          if (content.dataset.expanded === "true") {
+            content.style.height = ""
+          }
+        },
+        { once: true },
+      )
+    } else {
+      content.style.height = `${content.scrollHeight}px`
+
+      requestAnimationFrame(() => {
+        content.style.height = `${collapsedHeight}px`
+      })
+
+      content.addEventListener(
+        "transitionend",
+        () => {
+          if (content.dataset.expanded === "false") {
+            setIsClamped(true)
+          }
+        },
+        { once: true },
+      )
+    }
+
+    content.dataset.expanded = nextIsExpanded ? "true" : "false"
+    setIsExpanded(nextIsExpanded)
+  }
 
   const copyMessageContent = async (): Promise<void> => {
     try {
@@ -38,9 +122,26 @@ export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.
     return (
       <div className="group flex flex-col items-end px-0">
         <div className="max-w-[88%] rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 transition-all hover:bg-white/12 whitespace-pre-wrap break-words">
-          {message.content}
+          <div
+            ref={userContentRef}
+            className={`overflow-hidden transition-[height] duration-300 ease-in-out ${
+              isClamped ? "line-clamp-3" : ""
+            }`}
+          >
+            {message.content}
+          </div>
         </div>
-        <div className="mt-1 flex items-center justify-end opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100">
+          {isCollapsible && (
+            <LxIconButton
+              size="small"
+              aria-label={isExpanded ? "折叠内容" : "展开内容"}
+              title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
+              onClick={toggleExpand}
+            >
+              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </LxIconButton>
+          )}
           <LxIconButton
             size="small"
             aria-label="复制消息"

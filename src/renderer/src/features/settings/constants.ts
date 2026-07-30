@@ -1,4 +1,4 @@
-import { Bot, Server, type LucideIcon } from "lucide-react"
+import { Bot, type LucideIcon, Server } from "lucide-react"
 
 export interface SettingsSection {
   id: string
