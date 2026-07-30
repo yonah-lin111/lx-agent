@@ -505,6 +505,76 @@ select {
   color: #e2e8f0;
 }
 
+.markdown-preview .markdown-template-block {
+  margin: 0.8em 0;
+  border-radius: 6px;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  background: #1c1d24;
+}
+
+.markdown-preview .markdown-template-block-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.2);
+  background: #21222b;
+  color: #a5b4fc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 0.45rem 0 0.9rem;
+}
+
+.markdown-preview .markdown-template-block.is-collapsed .markdown-template-block-header {
+  border-bottom: 0;
+  border-radius: 6px;
+}
+
+.markdown-preview .markdown-template-command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.markdown-preview .markdown-template-block[data-template-command="addTemplate"] .markdown-template-command {
+  color: #34d399;
+}
+
+.markdown-preview .markdown-template-block[data-template-command="bugTemplate"] .markdown-template-command {
+  color: #fb7185;
+}
+
+.markdown-preview .markdown-template-block[data-template-command="refactorTemplate"] .markdown-template-command {
+  color: #c084fc;
+}
+
+.markdown-preview .markdown-template-block[data-template-command="commonTemplate"] .markdown-template-command {
+  color: #38bdf8;
+}
+
+.markdown-preview .markdown-template-actions {
+  display: flex;
+  flex: none;
+  gap: 0.1rem;
+}
+
+.markdown-preview .markdown-template-copy {
+  display: flex;
+  flex: none;
+}
+
+.markdown-preview .markdown-template-content {
+  overflow: hidden;
+  padding: 0.1rem 1rem;
+  transition: height 300ms ease-in-out;
+}
+
 .markdown-preview table {
   width: 100%;
   border-collapse: collapse;

@@ -65,6 +65,67 @@ export const markdownRenderer = new MarkdownIt({
   linkify: true,
 })
 
+interface MarkdownBlockState {
+  env?: { disableTemplateBlocks?: boolean }
+  src: string
+  bMarks: number[]
+  tShift: number[]
+  eMarks: number[]
+  blkIndent: number
+  line: number
+  getLines: (begin: number, end: number, indent: number, keepLastLF: boolean) => string
+  push: (type: string, tag: string, nesting: number) => Token
+}
+
+const markdownTemplateCommands = new Set([
+  "addTemplate",
+  "bugTemplate",
+  "refactorTemplate",
+  "commonTemplate",
+])
+
+const markdownTemplateBlock = (
+  state: MarkdownBlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean => {
+  if (state.env?.disableTemplateBlocks) return false
+
+  const startText = state.src.slice(
+    state.bMarks[startLine] + state.tShift[startLine],
+    state.eMarks[startLine],
+  )
+  const startMatch = /^&&&\s+([A-Za-z]\w*)\s*$/.exec(startText)
+  if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
+
+  let closeLine = startLine + 1
+  while (closeLine < endLine) {
+    const lineText = state.src.slice(
+      state.bMarks[closeLine] + state.tShift[closeLine],
+      state.eMarks[closeLine],
+    )
+    if (/^&&&\s*$/.test(lineText)) break
+    closeLine += 1
+  }
+  if (closeLine >= endLine) return false
+  if (silent) return true
+
+  const token = state.push("markdown_template", "", 0)
+  token.block = true
+  token.map = [startLine, closeLine + 1]
+  token.meta = {
+    command: startMatch[1],
+    content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
+  }
+  state.line = closeLine + 1
+  return true
+}
+
+markdownRenderer.block.ruler.before("fence", "markdown_template", markdownTemplateBlock, {
+  alt: ["paragraph", "reference", "blockquote", "list"],
+})
+
 markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
   const match = /^@\[(refer-[a-z]+)\]\(([^)\r\n]+)\)/.exec(state.src.slice(state.pos))
   const type = match ? getMarkdownReferenceType(match[1] ?? "") : null
@@ -178,4 +239,16 @@ markdownRenderer.renderer.rules.fence = (
   const renderedCode = `<pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderCode(token.content, language)}</code></pre>\n`
 
   return `<section class="markdown-code-block"${lineAttribute}><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content">${renderedCode}</div></section>`
+}
+
+/**
+ * 渲染模板块；内部 Markdown 禁止再次解析模板块。
+ */
+markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
+  const meta = tokens[index]?.meta as { command: string; content: string }
+  const command = markdownRenderer.utils.escapeHtml(meta.command)
+  const encodedContent = encodeURIComponent(meta.content)
+  const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
+
+  return `<section class="markdown-template-block" data-template-command="${command}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }

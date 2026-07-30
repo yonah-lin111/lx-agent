@@ -125,6 +125,82 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 }
 
 /**
+ * 渲染模板块复制按钮及其短暂成功反馈。
+ */
+const MarkdownTemplateCopyButton = (): React.JSX.Element => {
+  const [isCopied, setIsCopied] = useState(false)
+
+  const copyTemplate = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    const template = event.currentTarget.closest<HTMLElement>(".markdown-template-block")
+    const encodedContent = template?.dataset.templateContent
+    if (!encodedContent) return
+
+    try {
+      await copyToClipboard(decodeURIComponent(encodedContent))
+      setIsCopied(true)
+      window.setTimeout(() => setIsCopied(false), 1500)
+    } catch {
+      setIsCopied(false)
+    }
+  }
+
+  return (
+    <LxIconButton
+      aria-label="复制模板内容"
+      size="small"
+      title={{ content: isCopied ? "已复制" : "复制模板内容", placement: "bottom" }}
+      onClick={copyTemplate}
+    >
+      {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </LxIconButton>
+  )
+}
+
+/**
+ * 渲染模板块折叠按钮，并保持顶部工具栏可见。
+ */
+const MarkdownTemplateCollapseButton = (): React.JSX.Element => {
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  const toggleContent = (event: React.MouseEvent<HTMLButtonElement>): void => {
+    const templateBlock = event.currentTarget.closest<HTMLElement>(".markdown-template-block")
+    const content = templateBlock?.querySelector<HTMLElement>(".markdown-template-content")
+    if (!templateBlock || !content) return
+
+    const nextIsExpanded = !isExpanded
+    content.style.height = `${content.scrollHeight}px`
+    templateBlock.classList.toggle("is-collapsed", !nextIsExpanded)
+    requestAnimationFrame(() => {
+      content.style.height = nextIsExpanded ? `${content.scrollHeight}px` : "0px"
+    })
+
+    if (nextIsExpanded) {
+      content.addEventListener(
+        "transitionend",
+        () => {
+          if (!templateBlock.classList.contains("is-collapsed")) content.style.height = ""
+        },
+        { once: true },
+      )
+    }
+
+    setIsExpanded(nextIsExpanded)
+  }
+
+  return (
+    <LxIconButton
+      aria-label={isExpanded ? "折叠内容" : "展开内容"}
+      aria-expanded={isExpanded}
+      size="small"
+      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+      onClick={toggleContent}
+    >
+      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+    </LxIconButton>
+  )
+}
+
+/**
  * 渲染 Markdown 内容，并为代码块挂载复制按钮。
  */
 export const LxMarkdownPreview = ({
@@ -147,6 +223,14 @@ export const LxMarkdownPreview = ({
       ...Array.from(
         previewElement?.querySelectorAll<HTMLElement>(".markdown-code-collapse") ?? [],
         (container) => mountButton(container, <CodeBlockCollapseButton />),
+      ),
+      ...Array.from(
+        previewElement?.querySelectorAll<HTMLElement>(".markdown-template-copy") ?? [],
+        (container) => mountButton(container, <MarkdownTemplateCopyButton />),
+      ),
+      ...Array.from(
+        previewElement?.querySelectorAll<HTMLElement>(".markdown-template-collapse") ?? [],
+        (container) => mountButton(container, <MarkdownTemplateCollapseButton />),
       ),
       ...Array.from(
         previewElement?.querySelectorAll<HTMLElement>(".markdown-mermaid") ?? [],

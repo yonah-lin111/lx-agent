@@ -121,6 +121,23 @@ export const isInsideMarkdownCodeFence = (text: string): boolean => {
 }
 
 /**
+ * 判断指定文本末尾是否处于未闭合的模板块内。
+ */
+export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
+  let isOpen = false
+
+  for (const line of text.split("\n")) {
+    if (/^\s*&&&\s+[A-Za-z]\w*\s*$/.test(line)) {
+      isOpen = true
+    } else if (/^\s*&&&\s*$/.test(line)) {
+      isOpen = false
+    }
+  }
+
+  return isOpen
+}
+
+/**
  * 获取匹配触发标记时可用的 Markdown 块命令。
  */
 export const getMarkdownBlockCommands = (kind: MarkdownBlockTriggerKind): MarkdownBlockCommand[] =>

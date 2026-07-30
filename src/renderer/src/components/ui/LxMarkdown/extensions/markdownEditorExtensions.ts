@@ -130,6 +130,33 @@ export const editorTheme = EditorView.theme(
       color: "#e879f9 !important",
       fontWeight: "700",
     },
+    ".cm-md-template-marker, .cm-md-template-marker *": {
+      color: "#818cf8 !important",
+      fontWeight: "700",
+    },
+    ".cm-md-template-command, .cm-md-template-command *": {
+      color: "#c4b5fd !important",
+      fontWeight: "700",
+      backgroundColor: "rgba(196, 181, 253, 0.12) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+    },
+    ".cm-md-template-command-addTemplate, .cm-md-template-command-addTemplate *": {
+      color: "#34d399 !important",
+      backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+    },
+    ".cm-md-template-command-bugTemplate, .cm-md-template-command-bugTemplate *": {
+      color: "#fb7185 !important",
+      backgroundColor: "rgba(251, 113, 133, 0.15) !important",
+    },
+    ".cm-md-template-command-refactorTemplate, .cm-md-template-command-refactorTemplate *": {
+      color: "#c084fc !important",
+      backgroundColor: "rgba(192, 132, 252, 0.15) !important",
+    },
+    ".cm-md-template-command-commonTemplate, .cm-md-template-command-commonTemplate *": {
+      color: "#38bdf8 !important",
+      backgroundColor: "rgba(56, 189, 248, 0.15) !important",
+    },
     ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
       color: "#38bdf8 !important",
       fontWeight: "700",
@@ -164,6 +191,37 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgba(255, 255, 255, 0.015)",
       paddingLeft: "6px",
       paddingBottom: "4px",
+    },
+    ".cm-md-template-start-line": {
+      borderTop: "1px solid rgba(129, 140, 248, 0.2)",
+      borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+      borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+      borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
+      borderTopLeftRadius: "6px",
+      borderTopRightRadius: "6px",
+      backgroundColor: "rgba(129, 140, 248, 0.03)",
+      paddingLeft: "6px",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-template-middle-line": {
+      borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+      borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+      backgroundColor: "rgba(129, 140, 248, 0.03)",
+      paddingLeft: "6px",
+    },
+    ".cm-md-template-end-line": {
+      borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
+      borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+      borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+      borderBottomLeftRadius: "6px",
+      borderBottomRightRadius: "6px",
+      backgroundColor: "rgba(129, 140, 248, 0.03)",
+      paddingLeft: "6px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-template-hidden-line": {
+      display: "none !important",
     },
     ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
       color: "#fb7185 !important",
@@ -215,14 +273,14 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
-    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace":
+    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace":
       {
         color: "inherit !important",
         backgroundColor: "transparent !important",
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language), .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language), .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span, .cm-md-template-start-line span:not(.cm-md-template-command), .cm-md-template-middle-line span, .cm-md-template-end-line span":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -270,6 +328,10 @@ class CodeBlockActionWidget extends WidgetType {
     readonly isFolded: boolean,
     readonly onToggleFold: () => void,
     readonly showFoldBtn = true,
+    readonly actionClassName = "cm-code-block-action-wrap",
+    readonly copyTitle = "复制代码",
+    readonly foldTitle = "折叠代码块",
+    readonly unfoldTitle = "展开代码块",
   ) {
     super()
   }
@@ -278,13 +340,14 @@ class CodeBlockActionWidget extends WidgetType {
     return (
       this.codeText === other.codeText &&
       this.isFolded === other.isFolded &&
-      this.showFoldBtn === other.showFoldBtn
+      this.showFoldBtn === other.showFoldBtn &&
+      this.actionClassName === other.actionClassName
     )
   }
 
   toDOM() {
     const wrap = document.createElement("span")
-    wrap.className = "cm-code-block-action-wrap"
+    wrap.className = this.actionClassName
     wrap.style.position = "absolute"
     wrap.style.right = "24px"
     wrap.style.display = "inline-flex"
@@ -300,7 +363,7 @@ class CodeBlockActionWidget extends WidgetType {
     // 复制按钮
     const copyBtn = document.createElement("button")
     copyBtn.type = "button"
-    copyBtn.className = "cm-code-block-action-btn"
+    copyBtn.className = `${this.actionClassName}-btn`
     copyBtn.style.border = "none"
     copyBtn.style.background = "transparent"
     copyBtn.style.cursor = "pointer"
@@ -308,7 +371,7 @@ class CodeBlockActionWidget extends WidgetType {
     copyBtn.style.padding = "2px"
     copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
     copyBtn.style.transition = "color 0.2s"
-    copyBtn.title = "复制代码"
+    copyBtn.title = this.copyTitle
     copyBtn.onmouseenter = () => {
       copyBtn.style.color = "#ffffff"
     }
@@ -329,7 +392,7 @@ class CodeBlockActionWidget extends WidgetType {
         copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
         setTimeout(() => {
           copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
-          copyBtn.title = "复制代码"
+          copyBtn.title = this.copyTitle
           copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
         }, 1500)
       } catch (err) {
@@ -340,7 +403,7 @@ class CodeBlockActionWidget extends WidgetType {
     // 折叠按钮
     const foldBtn = document.createElement("button")
     foldBtn.type = "button"
-    foldBtn.className = "cm-code-block-action-btn"
+    foldBtn.className = `${this.actionClassName}-btn`
     foldBtn.style.border = "none"
     foldBtn.style.background = "transparent"
     foldBtn.style.cursor = "pointer"
@@ -348,7 +411,7 @@ class CodeBlockActionWidget extends WidgetType {
     foldBtn.style.padding = "2px"
     foldBtn.style.color = "rgba(255, 255, 255, 0.5)"
     foldBtn.style.transition = "color 0.2s"
-    foldBtn.title = this.isFolded ? "展开代码块" : "折叠代码块"
+    foldBtn.title = this.isFolded ? this.unfoldTitle : this.foldTitle
     foldBtn.onmouseenter = () => {
       foldBtn.style.color = "#ffffff"
     }
@@ -385,12 +448,15 @@ export const markdownMarkerHighlight = (showFolding = false) =>
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
       foldedIndices = new Set<number>()
+      templateFoldedIndices = new Set<number>()
 
       constructor(view: EditorView) {
         this.decorations = buildMarkdownMarkerDecorations(
           view,
           this.foldedIndices,
           (index) => this.toggleFold(view, index),
+          this.templateFoldedIndices,
+          (index) => this.toggleTemplateFold(view, index),
           showFolding,
         )
       }
@@ -400,6 +466,8 @@ export const markdownMarkerHighlight = (showFolding = false) =>
           update.view,
           this.foldedIndices,
           (index) => this.toggleFold(update.view, index),
+          this.templateFoldedIndices,
+          (index) => this.toggleTemplateFold(update.view, index),
           showFolding,
         )
       }
@@ -409,6 +477,15 @@ export const markdownMarkerHighlight = (showFolding = false) =>
           this.foldedIndices.delete(index)
         } else {
           this.foldedIndices.add(index)
+        }
+        view.dispatch({})
+      }
+
+      toggleTemplateFold(view: EditorView, index: number) {
+        if (this.templateFoldedIndices.has(index)) {
+          this.templateFoldedIndices.delete(index)
+        } else {
+          this.templateFoldedIndices.add(index)
         }
         view.dispatch({})
       }
@@ -423,6 +500,8 @@ const buildMarkdownMarkerDecorations = (
   view: EditorView,
   foldedIndices = new Set<number>(),
   onToggleFold: (index: number) => void = () => {},
+  templateFoldedIndices = new Set<number>(),
+  onToggleTemplateFold: (index: number) => void = () => {},
   showFolding = false,
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
@@ -436,6 +515,10 @@ const buildMarkdownMarkerDecorations = (
   let currentFenceFolded = false
   let currentFenceTextLines: string[] = []
   let codeBlockIndex = 0
+  let isInsideTemplateBlock = false
+  let currentTemplateFolded = false
+  let templateBlockIndex = 0
+  let currentTemplateTextLines: string[] = []
 
   const lines = Array.from(view.state.doc.iterLines())
   const referencedProjectNames = new Set(
@@ -550,6 +633,85 @@ const buildMarkdownMarkerDecorations = (
       }
       offset += line.length + 1
       continue
+    }
+
+    const templateStartMatch = line.match(/^(\s*)&&&\s+([A-Za-z]\w*)\s*$/)
+    const templateEndMatch = line.match(/^\s*&&&\s*$/)
+    if (templateStartMatch && !isInsideTemplateBlock) {
+      const currentTemplateIndex = templateBlockIndex++
+      currentTemplateFolded = templateFoldedIndices.has(currentTemplateIndex)
+      currentTemplateTextLines = []
+      for (let j = i + 1; j < lines.length; j++) {
+        const subLine = lines[j]
+        if (subLine.match(/^\s*&&&\s*$/)) break
+        currentTemplateTextLines.push(subLine)
+      }
+
+      const markerStart = templateStartMatch[1].length
+      const markerEnd = markerStart + 3
+      const commandName = templateStartMatch[2]
+      addMarkerAlways(markerStart, markerEnd, "cm-md-template-marker")
+      const commandIndex = line.indexOf(commandName, markerEnd)
+      if (commandIndex !== -1) {
+        addMarkerAlways(
+          commandIndex,
+          commandIndex + commandName.length,
+          `cm-md-template-command cm-md-template-command-${commandName}`,
+        )
+      } else {
+        addMarkerAlways(
+          markerEnd + 1,
+          line.length,
+          `cm-md-template-command cm-md-template-command-${commandName}`,
+        )
+      }
+      allDecos.push({
+        type: "widget",
+        from: offset + line.length,
+        to: offset + line.length,
+        widget: new CodeBlockActionWidget(
+          currentTemplateTextLines.join("\n"),
+          currentTemplateFolded,
+          () => onToggleTemplateFold(currentTemplateIndex),
+          showFolding,
+          "cm-template-block-action-wrap",
+          "复制模板内容",
+          "折叠模板块",
+          "展开模板块",
+        ),
+      })
+      allDecos.push({
+        type: "line",
+        from: offset,
+        className: "cm-md-template-start-line",
+      })
+      isInsideTemplateBlock = true
+      offset += line.length + 1
+      continue
+    }
+
+    if (templateEndMatch && isInsideTemplateBlock) {
+      const markerStart = line.indexOf("&&&")
+      addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
+      allDecos.push({
+        type: "line",
+        from: offset,
+        className: currentTemplateFolded ? "cm-md-template-hidden-line" : "cm-md-template-end-line",
+      })
+      isInsideTemplateBlock = false
+      currentTemplateFolded = false
+      offset += line.length + 1
+      continue
+    }
+
+    if (isInsideTemplateBlock) {
+      allDecos.push({
+        type: "line",
+        from: offset,
+        className: currentTemplateFolded
+          ? "cm-md-template-hidden-line"
+          : "cm-md-template-middle-line",
+      })
     }
 
     const headingMatch = line.match(/^(\s*)(#{1,6})(?=\s)/)
