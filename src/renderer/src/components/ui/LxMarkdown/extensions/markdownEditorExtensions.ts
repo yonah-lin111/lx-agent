@@ -270,6 +270,11 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgba(249, 168, 212, 0.12) !important",
       borderRadius: "3px !important",
     },
+    ".cm-md-reference-common, .cm-md-reference-common *": {
+      color: "#cbd5e1 !important",
+      backgroundColor: "rgba(203, 213, 225, 0.12) !important",
+      borderRadius: "3px !important",
+    },
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
@@ -779,6 +784,7 @@ const buildMarkdownMarkerDecorations = (
     addMatches(/@\[refer-project\]\([^)\r\n]+\)/g, "cm-md-reference-project")
     addMatches(/@\[refer-file\]\([^)\r\n]+\)/g, "cm-md-reference-file")
     addMatches(/@\[refer-image\]\([^)\r\n]+\)/g, "cm-md-reference-image")
+    addMatches(/@\[refer-common\]\([^)\r\n]+\)/g, "cm-md-reference-common")
     for (const match of line.matchAll(/(?<![\w\[])@([^\[\]\(\)\s]+)(?=\s|$)/g)) {
       if (match.index === undefined) continue
 

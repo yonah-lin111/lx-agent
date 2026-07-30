@@ -11,6 +11,9 @@ describe("markdownReferenceCommands", () => {
     expect(createMarkdownReference("file", "/Users/yonah/Desktop/example.wav")).toBe(
       "@[refer-file](/Users/yonah/Desktop/example.wav)",
     )
+    expect(createMarkdownReference("common", "/Users/yonah/Desktop/example.txt")).toBe(
+      "@[refer-common](/Users/yonah/Desktop/example.txt)",
+    )
   })
 
   it("从路径提取展示名称", () => {
@@ -21,6 +24,7 @@ describe("markdownReferenceCommands", () => {
 
   it("仅接受支持的引用类型", () => {
     expect(isMarkdownReferenceType("image")).toBe(true)
+    expect(isMarkdownReferenceType("common")).toBe(true)
     expect(isMarkdownReferenceType("audio")).toBe(false)
   })
 

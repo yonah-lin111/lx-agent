@@ -196,7 +196,15 @@ export const useMarkdownPanels = ({
    */
   const openReferenceCommandPanel = (path: string, view: EditorView): void => {
     const { from, to } = view.state.selection.main
-    const coords = view.coordsAtPos(to)
+    const insertedTo = from + path.length
+
+    view.dispatch({
+      changes: { from, to, insert: path },
+      selection: { anchor: insertedTo },
+      userEvent: "input.paste",
+    })
+
+    const coords = view.coordsAtPos(insertedTo)
     if (!coords) return
 
     const panel = {
@@ -204,7 +212,7 @@ export const useMarkdownPanels = ({
       from,
       path,
       position: getMarkdownPanelPosition("reference", coords),
-      to,
+      to: insertedTo,
     }
 
     closeFileMentionPanel()

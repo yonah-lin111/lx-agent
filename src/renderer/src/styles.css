@@ -280,6 +280,11 @@ select {
   background-color: rgba(249, 168, 212, 0.12);
 }
 
+.markdown-preview .markdown-reference-common {
+  color: #cbd5e1;
+  background-color: rgba(203, 213, 225, 0.12);
+}
+
 .markdown-preview .markdown-file-mention {
   display: inline-block;
   vertical-align: baseline;

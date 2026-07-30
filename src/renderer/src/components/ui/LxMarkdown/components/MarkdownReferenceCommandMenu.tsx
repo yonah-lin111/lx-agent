@@ -1,4 +1,4 @@
-import { FileText, FolderKanban, Image } from "lucide-react"
+import { Bookmark, FileText, FolderKanban, Image } from "lucide-react"
 import type { CSSProperties } from "react"
 import type { MarkdownReferenceCommand } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 
@@ -13,12 +13,14 @@ const commandIcons = {
   project: FolderKanban,
   file: FileText,
   image: Image,
+  common: Bookmark,
 }
 
 const commandIconColors = {
   project: "text-violet-300",
   file: "text-sky-300",
   image: "text-pink-300",
+  common: "text-slate-300",
 }
 
 /**

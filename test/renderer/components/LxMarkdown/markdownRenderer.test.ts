@@ -26,12 +26,19 @@ describe("markdownRenderer", () => {
   })
 
   it("渲染带类型和路径的 Markdown 引用", () => {
-    const html = markdownRenderer.render("@[refer-image](/Users/yonah/Desktop/example.png)")
+    const htmlImage = markdownRenderer.render("@[refer-image](/Users/yonah/Desktop/example.png)")
 
-    expect(html).toContain('class="markdown-reference markdown-reference-image"')
-    expect(html).toContain('data-reference-path="/Users/yonah/Desktop/example.png"')
-    expect(html).toContain("image:")
-    expect(html).toContain("example.png")
+    expect(htmlImage).toContain('class="markdown-reference markdown-reference-image"')
+    expect(htmlImage).toContain('data-reference-path="/Users/yonah/Desktop/example.png"')
+    expect(htmlImage).toContain("image:")
+    expect(htmlImage).toContain("example.png")
+
+    const htmlCommon = markdownRenderer.render("@[refer-common](/Users/yonah/Desktop/example.txt)")
+
+    expect(htmlCommon).toContain('class="markdown-reference markdown-reference-common"')
+    expect(htmlCommon).toContain('data-reference-path="/Users/yonah/Desktop/example.txt"')
+    expect(htmlCommon).toContain("common:")
+    expect(htmlCommon).toContain("example.txt")
   })
 
   it("渲染模板块并提供原始内容复制数据", () => {

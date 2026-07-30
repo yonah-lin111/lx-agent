@@ -1,5 +1,5 @@
 // Markdown 引用类型。
-export type MarkdownReferenceType = "project" | "file" | "image"
+export type MarkdownReferenceType = "project" | "file" | "image" | "common"
 
 // Markdown 引用命令。
 export interface MarkdownReferenceCommand {
@@ -12,6 +12,7 @@ const markdownReferenceCommands: MarkdownReferenceCommand[] = [
   { id: "project", label: "参考项目", description: "将路径标记为项目引用" },
   { id: "file", label: "参考文件", description: "将路径标记为文件引用" },
   { id: "image", label: "参考图片", description: "将路径标记为图片引用" },
+  { id: "common", label: "普通引用", description: "将路径标记为普通引用" },
 ]
 
 /**
