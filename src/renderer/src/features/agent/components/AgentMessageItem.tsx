@@ -274,7 +274,7 @@ export const AgentMessageItem = ({
       <div className="group flex flex-col items-end px-0 w-full">
         <div ref={userBubbleRef} className="w-fit max-w-[88%] flex flex-col items-end">
           {isEditing ? (
-            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] border border-white/10 bg-white/10 p-2.5 shadow-sm">
+            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] bg-white/10 p-2.5 shadow-sm">
               <textarea
                 ref={textareaRef}
                 value={editText}
