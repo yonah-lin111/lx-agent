@@ -9,6 +9,7 @@ import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
+import { ProjectBottomSideBar } from "@/pages/project/components/ProjectBottomSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { PageRouter } from "@/routes/PageRouter"
@@ -51,6 +52,11 @@ export const App = () => {
     return <ProjectLeftSideBar />
   }
 
+  const renderBottomSideBarContent = (): React.JSX.Element | null => {
+    if (pathname !== PAGE_ROUTES.project) return null
+    return <ProjectBottomSideBar isExpanded={isBottomSideBarExpanded} />
+  }
+
   return (
     <LxToastProvider>
       <div className="flex h-screen w-screen flex-col gap-2 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
@@ -80,7 +86,9 @@ export const App = () => {
                 isExpanded={isBottomSideBarExpanded}
                 onCoveringRightSideBarChange={setIsBottomSideBarCoveringRightSideBar}
                 onExpandedChange={handleBottomSideBarExpandedChange}
-              />
+              >
+                {renderBottomSideBarContent()}
+              </BottomSideBar>
             </div>
           </div>
         </div>

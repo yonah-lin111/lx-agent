@@ -1,8 +1,11 @@
 import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
+import type React from "react"
+
 import { LxIconButton } from "@/components/ui/LxIconButton"
 
 // 页面底边栏属性。
 interface BottomSideBarProps {
+  children?: React.ReactNode
   isCoveringRightSideBar: boolean
   isExpanded: boolean
   onCoveringRightSideBarChange: (isCoveringRightSideBar: boolean) => void
@@ -13,6 +16,7 @@ interface BottomSideBarProps {
  * 页面底边栏布局容器。
  */
 export const BottomSideBar = ({
+  children,
   isCoveringRightSideBar,
   isExpanded,
   onCoveringRightSideBarChange,
@@ -25,6 +29,7 @@ export const BottomSideBar = ({
       }`}
     >
       <div className="relative h-full w-full">
+        {children}
         <div
           className={`absolute right-0 bottom-0 flex gap-1 transition-transform duration-300 ease-in-out ${
             isExpanded ? "translate-y-0" : "translate-y-[2px]"
