@@ -26,7 +26,7 @@ export const AgentMessageList = ({
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full flex-col justify-between p-3 select-none">
+      <div className="flex h-full flex-col justify-between p-1 select-none">
         <div className="mt-8 flex flex-col items-center text-center">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[6px] border border-white/10 bg-white/5 text-emerald-400 shadow-inner">
             <Sparkles className="h-5 w-5" />
@@ -37,7 +37,7 @@ export const AgentMessageList = ({
           </p>
         </div>
 
-        <div className="mb-2 flex flex-col gap-2">
+        <div className="mb-1 flex flex-col gap-2">
           <span className="px-1 text-[11px] font-medium text-white/35">快捷灵感推荐：</span>
           {DEFAULT_PROMPT_CARDS.map((card) => (
             <button
@@ -56,7 +56,7 @@ export const AgentMessageList = ({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-2 [scrollbar-gutter:stable]">
+    <div className="custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-1 [scrollbar-gutter:stable]">
       {messages.map((message) => (
         <AgentMessageItem key={message.id} message={message} />
       ))}

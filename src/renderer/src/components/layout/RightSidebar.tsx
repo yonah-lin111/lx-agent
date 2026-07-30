@@ -70,7 +70,7 @@ export const RightSideBar = (): React.JSX.Element => {
         </LxIconButton>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-[6px]">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <AgentPage key={chatKey} />
       </div>
     </aside>

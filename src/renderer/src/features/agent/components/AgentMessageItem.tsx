@@ -60,7 +60,7 @@ export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.
           previewRef={previewRef}
           className="px-0"
         />
-        <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
           <LxIconButton
             size="small"
             aria-label="复制消息"

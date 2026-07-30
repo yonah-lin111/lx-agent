@@ -644,7 +644,7 @@ export const LxMarkdownEditor = ({
       <div className="min-h-0 flex flex-1 text-sm">
         <div
           ref={editorContainerRef}
-          className={`min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
+          className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
           <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
