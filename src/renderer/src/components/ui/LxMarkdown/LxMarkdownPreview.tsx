@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { createRoot } from "react-dom/client"
+import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
@@ -11,6 +11,12 @@ interface LxMarkdownPreviewProps {
   html: string
   previewMode: MarkdownPreviewMode
   previewRef: React.RefObject<HTMLElement | null>
+}
+
+// 预览 HTML 中可交互节点的挂载配置。
+interface MarkdownPreviewMount {
+  container: HTMLElement
+  content: React.ReactNode
 }
 
 /**
@@ -209,40 +215,41 @@ export const LxMarkdownPreview = ({
   previewMode,
   previewRef,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
+
   useLayoutEffect(() => {
-    const mountButton = (container: HTMLElement, button: React.JSX.Element) => {
-      const root = createRoot(container)
-      root.render(button)
-      return root
-    }
-    const previewElement = previewRef.current
-    const roots = [
+    const previewContent = contentRef.current
+    if (!previewContent) return
+
+    previewContent.innerHTML = html
+    const nextMounts = [
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-code-copy") ?? [],
-        (container) => mountButton(container, <CodeBlockCopyButton />),
+        previewContent.querySelectorAll<HTMLElement>(".markdown-code-copy"),
+        (container) => ({ container, content: <CodeBlockCopyButton /> }),
       ),
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-code-collapse") ?? [],
-        (container) => mountButton(container, <CodeBlockCollapseButton />),
+        previewContent.querySelectorAll<HTMLElement>(".markdown-code-collapse"),
+        (container) => ({ container, content: <CodeBlockCollapseButton /> }),
       ),
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-template-copy") ?? [],
-        (container) => mountButton(container, <MarkdownTemplateCopyButton />),
+        previewContent.querySelectorAll<HTMLElement>(".markdown-template-copy"),
+        (container) => ({ container, content: <MarkdownTemplateCopyButton /> }),
       ),
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-template-collapse") ?? [],
-        (container) => mountButton(container, <MarkdownTemplateCollapseButton />),
+        previewContent.querySelectorAll<HTMLElement>(".markdown-template-collapse"),
+        (container) => ({ container, content: <MarkdownTemplateCollapseButton /> }),
       ),
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-mermaid") ?? [],
+        previewContent.querySelectorAll<HTMLElement>(".markdown-mermaid"),
         (container) => {
           const encodedSource = container.dataset.mermaidSource
           const source = encodedSource ? decodeURIComponent(encodedSource) : ""
-          return mountButton(container, <MermaidDiagram source={source} />)
+          return { container, content: <MermaidDiagram source={source} /> }
         },
       ),
       ...Array.from(
-        previewElement?.querySelectorAll<HTMLElement>(".markdown-file-mention") ?? [],
+        previewContent.querySelectorAll<HTMLElement>(".markdown-file-mention"),
         (container) => {
           const fullMention = container.dataset.fullMention
             ? decodeURIComponent(container.dataset.fullMention)
@@ -254,24 +261,20 @@ export const LxMarkdownPreview = ({
           const nodeClassName = `markdown-file-mention-node ${
             isReferenced ? "markdown-file-mention-node--referenced" : ""
           }`
-          return mountButton(
+          return {
             container,
-            <LxTooltip content={fullMention} placement="top">
-              <span className={nodeClassName}>{displayLabel}</span>
-            </LxTooltip>,
-          )
+            content: (
+              <LxTooltip content={fullMention} placement="top">
+                <span className={nodeClassName}>{displayLabel}</span>
+              </LxTooltip>
+            ),
+          }
         },
       ),
     ]
-
-    return () => {
-      // root.unmount() 不能在 React 渲染过程中同步执行，否则会触发
-      // "Attempted to synchronously unmount a root while React was already
-      // rendering" 警告，并导致部分 root 未完成卸载、新 root 挂载失败，
-      // 表现为代码块按钮和文件提及提示消失。延迟到当前渲染结束后再卸载。
-      queueMicrotask(() => roots.forEach((root) => root.unmount()))
-    }
-  }, [html, previewMode, previewRef])
+    nextMounts.forEach(({ container }) => container.replaceChildren())
+    setMounts(nextMounts)
+  }, [html])
 
   return (
     <article
@@ -280,7 +283,8 @@ export const LxMarkdownPreview = ({
         previewMode === "split" ? "border-l border-white/5" : ""
       }`}
     >
-      <div className="markdown-preview-content py-4" dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={contentRef} className="markdown-preview-content py-4" />
+      {mounts.map(({ container, content }, index) => createPortal(content, container, index))}
     </article>
   )
 }
