@@ -56,7 +56,7 @@ export const AgentMessageList = ({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-2">
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-2 [scrollbar-gutter:stable]">
       {messages.map((message) => (
         <AgentMessageItem key={message.id} message={message} />
       ))}

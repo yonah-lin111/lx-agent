@@ -36,7 +36,7 @@ export const AgentMessageItem = ({ message }: AgentMessageItemProps): React.JSX.
 
   if (isUser) {
     return (
-      <div className="flex flex-col items-end px-1">
+      <div className="flex flex-col items-end px-0">
         <div className="max-w-[88%] rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 transition-all hover:bg-white/12 whitespace-pre-wrap break-words">
           {message.content}
         </div>
