@@ -85,7 +85,7 @@ describe("markdownRenderer", () => {
 
     expect(html).toContain('class="markdown-file-mention"')
     expect(html).toContain('data-is-referenced="true"')
-    expect(html).toContain('markdown-file-mention-node--referenced')
+    expect(html).toContain("markdown-file-mention-node--referenced")
     expect(html).toContain(
       `data-full-mention="${encodeURIComponent("@other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
     )

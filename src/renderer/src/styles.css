@@ -445,7 +445,6 @@ select {
   align-items: center;
   justify-content: space-between;
   border-radius: 6px 6px 0 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: #171717;
   color: rgba(255, 255, 255, 0.55);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -455,7 +454,6 @@ select {
 }
 
 .markdown-preview .markdown-code-block.is-collapsed .markdown-code-block-header {
-  border-bottom: 0;
   border-radius: 6px;
 }
 
@@ -558,7 +556,6 @@ select {
   align-items: center;
   justify-content: space-between;
   border-radius: 6px 6px 0 0;
-  border-bottom: 1px solid rgba(129, 140, 248, 0.2);
   background: #21222b;
   color: #a5b4fc;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -568,7 +565,6 @@ select {
 }
 
 .markdown-preview .markdown-template-block.is-collapsed .markdown-template-block-header {
-  border-bottom: 0;
   border-radius: 6px;
 }
 
@@ -579,19 +575,27 @@ select {
   font-weight: 600;
 }
 
-.markdown-preview .markdown-template-block[data-template-command="addTemplate"] .markdown-template-command {
+.markdown-preview
+  .markdown-template-block[data-template-command="addTemplate"]
+  .markdown-template-command {
   color: #34d399;
 }
 
-.markdown-preview .markdown-template-block[data-template-command="bugTemplate"] .markdown-template-command {
+.markdown-preview
+  .markdown-template-block[data-template-command="bugTemplate"]
+  .markdown-template-command {
   color: #fb7185;
 }
 
-.markdown-preview .markdown-template-block[data-template-command="refactorTemplate"] .markdown-template-command {
+.markdown-preview
+  .markdown-template-block[data-template-command="refactorTemplate"]
+  .markdown-template-command {
   color: #c084fc;
 }
 
-.markdown-preview .markdown-template-block[data-template-command="commonTemplate"] .markdown-template-command {
+.markdown-preview
+  .markdown-template-block[data-template-command="commonTemplate"]
+  .markdown-template-command {
   color: #38bdf8;
 }
 

@@ -11,6 +11,7 @@ interface LxMarkdownPreviewProps {
   html: string
   previewMode: MarkdownPreviewMode
   previewRef: React.RefObject<HTMLElement | null>
+  className?: string
 }
 
 // 预览 HTML 中可交互节点的挂载配置。
@@ -214,6 +215,7 @@ export const LxMarkdownPreview = ({
   html,
   previewMode,
   previewRef,
+  className = "px-5",
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
@@ -279,7 +281,7 @@ export const LxMarkdownPreview = ({
   return (
     <article
       ref={previewRef}
-      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-auto px-5 text-sm ${
+      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-auto text-sm ${className} ${
         previewMode === "split" ? "border-l border-white/5" : ""
       }`}
     >

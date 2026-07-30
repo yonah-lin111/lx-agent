@@ -33,7 +33,8 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "bugTemplate",
     label: "/bugTemplate",
     description: "插入 Bug 修复提示词模板",
-    content: "&&& bugTemplate\n# 修复 Bug\n\n- 描述：\n- 复现：-> ->\n- 要求：\n  - \n- 期望：\n&&&",
+    content:
+      "&&& bugTemplate\n# 修复 Bug\n\n- 描述：\n- 复现：-> ->\n- 要求：\n  - \n- 期望：\n&&&",
     cursorOffset: "&&& bugTemplate\n# 修复 Bug\n\n- 描述：".length,
   },
   {
@@ -48,7 +49,8 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "commonTemplate",
     label: "/commonTemplate",
     description: "插入通用提示词模板（非代码修改模板）",
-    content: "&&& commonTemplate\n# 根据下面要求编写代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：\n&&&",
+    content:
+      "&&& commonTemplate\n# 根据下面要求编写代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：\n&&&",
     cursorOffset: "&&& commonTemplate\n# 根据下面要求编写代码\n\n- 要求：\n  -".length,
   },
 ]
