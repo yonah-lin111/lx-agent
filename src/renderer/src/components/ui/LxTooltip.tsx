@@ -154,10 +154,14 @@ export const LxTooltip = ({
   useEffect(() => {
     if (!shouldRender) return
     const frame = requestAnimationFrame(updatePosition)
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updatePosition)
+    if (tooltipRef.current) resizeObserver?.observe(tooltipRef.current)
     window.addEventListener("resize", updatePosition)
     window.addEventListener("scroll", updatePosition, true)
     return () => {
       cancelAnimationFrame(frame)
+      resizeObserver?.disconnect()
       window.removeEventListener("resize", updatePosition)
       window.removeEventListener("scroll", updatePosition, true)
     }

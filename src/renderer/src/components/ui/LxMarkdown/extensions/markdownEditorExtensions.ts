@@ -1,9 +1,10 @@
 import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder } from "@codemirror/state"
-import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view"
+import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import {
   getMarkdownReferenceIconSvg,
+  getMarkdownReferenceImageSource,
   getMarkdownReferenceLabel,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
@@ -367,11 +368,11 @@ export const hideMentionTooltip = (immediately = false): void => {
   if (!mentionTooltipHideTimer) {
     mentionTooltipHideTimer = setTimeout(() => {
       hideMentionTooltip(true)
-    }, 200)
+    }, 300)
   }
 }
 
-const showMentionTooltip = (target: HTMLElement, text: string): void => {
+const showMentionTooltip = (target: HTMLElement, text: string, imagePath?: string): void => {
   if (mentionTooltipHideTimer) {
     clearTimeout(mentionTooltipHideTimer)
     mentionTooltipHideTimer = null
@@ -399,11 +400,42 @@ const showMentionTooltip = (target: HTMLElement, text: string): void => {
       return
     }
 
-    const rect = target.getBoundingClientRect()
     const tooltip = document.createElement("div")
     tooltip.className =
-      "fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap animate-tooltip-in"
-    tooltip.textContent = text
+      "fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white animate-tooltip-in"
+    let image: HTMLImageElement | null = null
+    if (imagePath) {
+      tooltip.style.width = "fit-content"
+      tooltip.style.minWidth = "160px"
+      tooltip.style.maxWidth = "min(480px, calc(100vw - 16px))"
+
+      image = document.createElement("img")
+      image.alt = text
+      image.style.display = "block"
+      image.style.maxWidth = "100%"
+      image.style.maxHeight = "360px"
+      image.style.objectFit = "contain"
+      image.style.borderRadius = "4px"
+
+      image.addEventListener(
+        "error",
+        () => {
+          image?.remove()
+          const message = document.createElement("span")
+          message.textContent = "图片加载失败"
+          message.style.whiteSpace = "nowrap"
+          tooltip.prepend(message)
+          requestAnimationFrame(positionTooltip)
+        },
+        { once: true },
+      )
+      image.src = getMarkdownReferenceImageSource(imagePath)
+
+      tooltip.append(image)
+    } else {
+      tooltip.style.whiteSpace = "nowrap"
+      tooltip.textContent = text
+    }
 
     tooltip.addEventListener("mouseenter", () => {
       if (mentionTooltipHideTimer) {
@@ -441,30 +473,36 @@ const showMentionTooltip = (target: HTMLElement, text: string): void => {
     document.body.appendChild(tooltip)
     activeMentionTooltip = tooltip
 
-    const tooltipWidth = tooltip.offsetWidth
-    const tooltipHeight = tooltip.offsetHeight
-    const gap = 12
-    const padding = 8
+    const positionTooltip = (): void => {
+      const rect = target.getBoundingClientRect()
+      const tooltipWidth = tooltip.offsetWidth
+      const tooltipHeight = tooltip.offsetHeight
+      const gap = 12
+      const padding = 8
 
-    let left = rect.left + rect.width / 2 - tooltipWidth / 2
-    let top = rect.top - tooltipHeight - gap
+      let left = rect.left + rect.width / 2 - tooltipWidth / 2
+      let top = rect.top - tooltipHeight - gap
 
-    if (top < padding) {
-      top = rect.bottom + gap
-      svg.style.bottom = ""
-      svg.style.top = "-14px"
-      svg.style.transform = "translateX(-50%)"
+      if (top < padding) {
+        top = rect.bottom + gap
+        svg.style.bottom = ""
+        svg.style.top = "-14px"
+        svg.style.transform = "translateX(-50%)"
+      }
+
+      left = Math.max(padding, Math.min(window.innerWidth - padding - tooltipWidth, left))
+      top = Math.max(padding, Math.min(window.innerHeight - padding - tooltipHeight, top))
+
+      const triggerCenter = rect.left + rect.width / 2
+      const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, triggerCenter - left))
+      svg.style.left = `${arrowOffset}px`
+
+      tooltip.style.left = `${left}px`
+      tooltip.style.top = `${top}px`
     }
 
-    left = Math.max(padding, Math.min(window.innerWidth - padding - tooltipWidth, left))
-    top = Math.max(padding, Math.min(window.innerHeight - padding - tooltipHeight, top))
-
-    const triggerCenter = rect.left + rect.width / 2
-    const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, triggerCenter - left))
-    svg.style.left = `${arrowOffset}px`
-
-    tooltip.style.left = `${left}px`
-    tooltip.style.top = `${top}px`
+    image?.addEventListener("load", positionTooltip, { once: true })
+    positionTooltip()
   }, 150)
 }
 
@@ -555,7 +593,11 @@ export class MarkdownReferenceWidget extends WidgetType {
     wrap.appendChild(nameSpan)
 
     wrap.addEventListener("mouseenter", () => {
-      showMentionTooltip(wrap, this.path)
+      showMentionTooltip(
+        wrap,
+        this.type === "image" ? this.name : this.path,
+        this.type === "image" ? this.path : undefined,
+      )
     })
     wrap.addEventListener("mouseleave", () => {
       hideMentionTooltip(false)
@@ -710,20 +752,13 @@ export const markdownMarkerHighlight = (showFolding = false) => [
       hideMentionTooltip(true)
       return false
     },
-    compositionstart: (_event, view) => {
-      requestAnimationFrame(() => view.dispatch({}))
-      return false
-    },
-    compositionend: (_event, view) => {
-      requestAnimationFrame(() => view.dispatch({}))
-      return false
-    },
   }),
   ViewPlugin.fromClass(
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
       foldedIndices = new Set<number>()
       templateFoldedIndices = new Set<number>()
+      wasComposing = false
 
       constructor(view: EditorView) {
         this.decorations = buildMarkdownMarkerDecorations(
@@ -736,7 +771,16 @@ export const markdownMarkerHighlight = (showFolding = false) => [
         )
       }
 
-      update(update: { docChanged: boolean; view: EditorView }): void {
+      update(update: ViewUpdate): void {
+        if (update.view.composing) {
+          if (update.docChanged) this.decorations = this.decorations.map(update.changes)
+          this.wasComposing = true
+          return
+        }
+
+        if (!update.docChanged && !update.selectionSet && !this.wasComposing) return
+
+        this.wasComposing = false
         this.decorations = buildMarkdownMarkerDecorations(
           update.view,
           this.foldedIndices,

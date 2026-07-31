@@ -1,9 +1,18 @@
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
-import { app, BrowserWindow } from "electron"
+import { app, BrowserWindow, protocol } from "electron"
 import { initDatabase } from "@/db"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
+import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
+import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: LOCAL_IMAGE_PROTOCOL,
+    privileges: { secure: true, standard: true },
+  },
+])
 
 /**
  * 创建桌面应用主窗口。
@@ -28,6 +37,7 @@ const createWindow = (): void => {
 
 app.whenReady().then(() => {
   initDatabase()
+  registerLocalImageProtocol()
   registerProjectHandlers()
   registerSettingsHandlers()
 

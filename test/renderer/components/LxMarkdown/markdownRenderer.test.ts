@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { getMarkdownReferenceImageSource } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 describe("markdownRenderer", () => {
@@ -39,6 +40,12 @@ describe("markdownRenderer", () => {
     expect(htmlCommon).toContain('data-reference-path="/Users/yonah/Desktop/example.txt"')
     expect(htmlCommon).toContain("common:")
     expect(htmlCommon).toContain("example.txt")
+  })
+
+  it("将本地图片路径转换为可加载的自定义协议 URL", () => {
+    expect(getMarkdownReferenceImageSource("/Users/yonah/Desktop/example image#.png")).toBe(
+      "lx-image://local/Users/yonah/Desktop/example%20image%23.png",
+    )
   })
 
   it("渲染模板块并提供原始内容复制数据", () => {

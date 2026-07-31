@@ -3,6 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
+import {
+  getMarkdownReferenceImageSource,
+  getMarkdownReferenceName,
+} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 
@@ -19,6 +23,33 @@ interface LxMarkdownPreviewProps {
 interface MarkdownPreviewMount {
   container: HTMLElement
   content: React.ReactNode
+}
+
+// 本地图片 Tooltip 内容属性。
+interface MarkdownReferenceImageTooltipProps {
+  path: string
+}
+
+/**
+ * 渲染本地图片预览，并在加载失败时提供反馈。
+ */
+const MarkdownReferenceImageTooltip = ({
+  path,
+}: MarkdownReferenceImageTooltipProps): React.JSX.Element => {
+  const [hasError, setHasError] = useState(false)
+
+  if (hasError) return <span className="whitespace-nowrap">图片加载失败</span>
+
+  return (
+    <div className="w-fit min-w-40 max-w-[min(30rem,calc(100vw-1rem))]">
+      <img
+        alt={getMarkdownReferenceName(path)}
+        className="mx-auto block h-auto max-h-90 max-w-full rounded-[4px] object-contain"
+        src={getMarkdownReferenceImageSource(path)}
+        onError={() => setHasError(true)}
+      />
+    </div>
+  )
 }
 
 /**
@@ -293,11 +324,21 @@ export const LxMarkdownPreview = ({
         previewContent.querySelectorAll<HTMLElement>(".markdown-reference"),
         (container) => {
           const referencePath = container.dataset.referencePath ?? ""
+          const isImageReference = container.classList.contains("markdown-reference-image")
           const innerHtml = container.innerHTML
           return {
             container,
             content: (
-              <LxTooltip content={referencePath} placement="top">
+              <LxTooltip
+                content={
+                  isImageReference ? (
+                    <MarkdownReferenceImageTooltip path={referencePath} />
+                  ) : (
+                    referencePath
+                  )
+                }
+                placement="top"
+              >
                 <span
                   className="inline-flex max-w-full items-center gap-1"
                   dangerouslySetInnerHTML={{ __html: innerHtml }}

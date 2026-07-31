@@ -1,3 +1,5 @@
+import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
+
 // Markdown 引用类型。
 export type MarkdownReferenceType = "project" | "file" | "image" | "common"
 
@@ -18,8 +20,7 @@ const markdownReferenceCommands: MarkdownReferenceCommand[] = [
 const referenceIconSvgs: Record<MarkdownReferenceType, string> = {
   project:
     '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-kanban"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M8 10v4"/><path d="M12 10v2"/><path d="M16 10v6"/></svg>',
-  file:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  file: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
   image:
     '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
   common:
@@ -95,4 +96,25 @@ export const getMarkdownReferenceName = (path: string): string => {
   } catch {
     return name
   }
+}
+
+/**
+ * 将本地图片绝对路径转换为可供渲染器加载的自定义协议 URL。
+ */
+export const getMarkdownReferenceImageSource = (path: string): string => {
+  let localPath = path
+  if (path.startsWith("file://")) {
+    try {
+      localPath = decodeURIComponent(new URL(path).pathname)
+    } catch {
+      return ""
+    }
+  }
+
+  const encodedPath = localPath
+    .split(/[\\/]+/)
+    .map((part) => encodeURIComponent(part))
+    .join("/")
+
+  return `${LOCAL_IMAGE_PROTOCOL}://local${localPath.startsWith("/") ? "" : "/"}${encodedPath}`
 }
