@@ -301,7 +301,8 @@ select {
   vertical-align: baseline;
 }
 
-.markdown-preview .markdown-file-mention-node {
+.markdown-preview .markdown-file-mention-node,
+.cm-editor .markdown-file-mention-node {
   color: #eab308;
   font-weight: 500;
   text-decoration: underline;
@@ -312,16 +313,19 @@ select {
   transition: background-color 0.15s ease;
 }
 
-.markdown-preview .markdown-file-mention-node:hover {
+.markdown-preview .markdown-file-mention-node:hover,
+.cm-editor .markdown-file-mention-node:hover {
   background-color: rgba(234, 179, 8, 0.12);
 }
 
-.markdown-preview .markdown-file-mention-node--referenced {
+.markdown-preview .markdown-file-mention-node--referenced,
+.cm-editor .markdown-file-mention-node--referenced {
   color: #c4b5fd;
   text-decoration-color: rgba(196, 181, 253, 0.4);
 }
 
-.markdown-preview .markdown-file-mention-node--referenced:hover {
+.markdown-preview .markdown-file-mention-node--referenced:hover,
+.cm-editor .markdown-file-mention-node--referenced:hover {
   background-color: rgba(196, 181, 253, 0.12);
 }
 

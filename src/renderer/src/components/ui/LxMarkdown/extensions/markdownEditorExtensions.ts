@@ -6,6 +6,7 @@ import {
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { getFileMentionDisplayLabel } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
@@ -327,6 +328,129 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.operator, color: "#fcd34d" },
 ])
 
+let activeMentionTooltip: HTMLDivElement | null = null
+let mentionTooltipTimer: ReturnType<typeof setTimeout> | null = null
+
+const hideMentionTooltip = (): void => {
+  if (mentionTooltipTimer) {
+    clearTimeout(mentionTooltipTimer)
+    mentionTooltipTimer = null
+  }
+  if (activeMentionTooltip) {
+    activeMentionTooltip.remove()
+    activeMentionTooltip = null
+  }
+}
+
+const showMentionTooltip = (target: HTMLElement, text: string): void => {
+  hideMentionTooltip()
+
+  mentionTooltipTimer = setTimeout(() => {
+    if (!document.body.contains(target)) return
+
+    const rect = target.getBoundingClientRect()
+    const tooltip = document.createElement("div")
+    tooltip.className =
+      "fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap animate-tooltip-in"
+    tooltip.textContent = text
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    svg.setAttribute("aria-hidden", "true")
+    svg.setAttribute("viewBox", "0 0 20 20")
+    svg.style.position = "absolute"
+    svg.style.width = "20px"
+    svg.style.height = "20px"
+    svg.style.pointerEvents = "none"
+    svg.style.bottom = "-14px"
+    svg.style.transform = "translateX(-50%) rotate(180deg)"
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    path.setAttribute(
+      "d",
+      "M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z",
+    )
+    path.setAttribute("fill", "#303030")
+    path.setAttribute("stroke", "none")
+    svg.appendChild(path)
+    tooltip.appendChild(svg)
+
+    document.body.appendChild(tooltip)
+    activeMentionTooltip = tooltip
+
+    const tooltipWidth = tooltip.offsetWidth
+    const tooltipHeight = tooltip.offsetHeight
+    const gap = 12
+    const padding = 8
+
+    let left = rect.left + rect.width / 2 - tooltipWidth / 2
+    let top = rect.top - tooltipHeight - gap
+
+    if (top < padding) {
+      top = rect.bottom + gap
+      svg.style.bottom = ""
+      svg.style.top = "-14px"
+      svg.style.transform = "translateX(-50%)"
+    }
+
+    left = Math.max(padding, Math.min(window.innerWidth - padding - tooltipWidth, left))
+    top = Math.max(padding, Math.min(window.innerHeight - padding - tooltipHeight, top))
+
+    const triggerCenter = rect.left + rect.width / 2
+    const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, triggerCenter - left))
+    svg.style.left = `${arrowOffset}px`
+
+    tooltip.style.left = `${left}px`
+    tooltip.style.top = `${top}px`
+  }, 150)
+}
+
+export class FileMentionWidget extends WidgetType {
+  constructor(
+    readonly fullMention: string,
+    readonly displayLabel: string,
+    readonly isReferenced: boolean,
+  ) {
+    super()
+  }
+
+  eq(other: FileMentionWidget) {
+    return (
+      this.fullMention === other.fullMention &&
+      this.displayLabel === other.displayLabel &&
+      this.isReferenced === other.isReferenced
+    )
+  }
+
+  toDOM() {
+    const span = document.createElement("span")
+    const nodeClassName = `markdown-file-mention-node ${
+      this.isReferenced ? "markdown-file-mention-node--referenced" : ""
+    }`
+    span.className = `${nodeClassName} cm-md-file-mention-widget inline-block cursor-pointer`
+    span.textContent = this.displayLabel
+
+    span.addEventListener("mouseenter", () => {
+      showMentionTooltip(span, this.fullMention)
+    })
+    span.addEventListener("mouseleave", () => {
+      hideMentionTooltip()
+    })
+    span.addEventListener("mousedown", () => {
+      hideMentionTooltip()
+    })
+
+    return span
+  }
+
+  destroy() {
+    hideMentionTooltip()
+  }
+
+  ignoreEvent() {
+    return false
+  }
+}
+
 class CodeBlockActionWidget extends WidgetType {
   constructor(
     readonly codeText: string,
@@ -517,6 +641,7 @@ const buildMarkdownMarkerDecorations = (
     | { type: "line"; from: number; className: string }
     | { type: "mark"; from: number; to: number; className: string }
     | { type: "widget"; from: number; to: number; widget: CodeBlockActionWidget }
+    | { type: "replace"; from: number; to: number; widget: FileMentionWidget }
   )[] = []
   let offset = 0
   let isInsideCodeFence = false
@@ -791,12 +916,20 @@ const buildMarkdownMarkerDecorations = (
     for (const match of line.matchAll(/(?<![\w\[])@([^\[\]\(\)\s]+)(?=\s|$)/g)) {
       if (match.index === undefined) continue
 
+      const fullMention = match[0]
+      const from = offset + match.index
+      const to = from + fullMention.length
+
       const projectName = match[1]?.split("/")[0]
-      const className =
-        projectName && referencedProjectNames.has(projectName)
-          ? "cm-md-referenced-file-mention"
-          : "cm-md-file-mention"
-      addMarker(match.index, match.index + match[0].length, className)
+      const isReferenced = Boolean(projectName && referencedProjectNames.has(projectName))
+      const displayLabel = getFileMentionDisplayLabel(fullMention, referencedProjectNames)
+
+      allDecos.push({
+        type: "replace",
+        from,
+        to,
+        widget: new FileMentionWidget(fullMention, displayLabel, isReferenced),
+      })
     }
 
     offset += line.length + 1
@@ -808,6 +941,8 @@ const buildMarkdownMarkerDecorations = (
     }
     if (first.type === "line" && second.type !== "line") return -1
     if (first.type !== "line" && second.type === "line") return 1
+    if (first.type === "replace" && second.type !== "replace") return -1
+    if (first.type !== "replace" && second.type === "replace") return 1
     if (first.type === "widget" && second.type === "mark") return -1
     if (first.type === "mark" && second.type === "widget") return 1
     if (first.type === "mark" && second.type === "mark") {
@@ -818,6 +953,8 @@ const buildMarkdownMarkerDecorations = (
   for (const deco of allDecos) {
     if (deco.type === "line") {
       builder.add(deco.from, deco.from, Decoration.line({ attributes: { class: deco.className } }))
+    } else if (deco.type === "replace") {
+      builder.add(deco.from, deco.to, Decoration.replace({ widget: deco.widget }))
     } else if (deco.type === "widget") {
       builder.add(deco.from, deco.to, Decoration.widget({ widget: deco.widget, side: 1 }))
     } else {
