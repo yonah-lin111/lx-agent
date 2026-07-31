@@ -1,12 +1,13 @@
 import type { ReferencedFolder } from "@shared/project"
-import { Check, ChevronLeft, ChevronRight, Copy, Folder } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Copy, Folder, FolderPlus } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInput } from "@/components/ui/LxInput"
 import {
   createMarkdownReference,
   getMarkdownReferenceName,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { projectApi } from "@/features/project/api/projectApi"
@@ -50,6 +51,7 @@ export const ProjectBottomSideBar = ({
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
   const [projectId, setProjectId] = useState<string | null>(null)
+  const [folderPathInput, setFolderPathInput] = useState<string>("")
   const [folderPanel, setFolderPanel] = useState<FolderPanelState | null>(null)
   const [copiedFolderPath, setCopiedFolderPath] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -106,10 +108,7 @@ export const ProjectBottomSideBar = ({
   const openFolderPanel = useCallback((folderPath: string, event: React.MouseEvent): void => {
     const rect = event.currentTarget.getBoundingClientRect()
     const panelWidth = getCssDimensionInPixels("--markdown-command-menu-file-width") || 480
-    const left = Math.min(
-      Math.max(rect.left, 8),
-      Math.max(window.innerWidth - panelWidth - 8, 8),
-    )
+    const left = Math.min(Math.max(rect.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
     setFolderPanel({
       folderPath,
       position: { left, bottom: window.innerHeight - rect.top + 6 },
@@ -131,6 +130,36 @@ export const ProjectBottomSideBar = ({
     },
     [projectId, referencedFolders, setReferencedFolders],
   )
+
+  /**
+   * 添加项目级共享文件夹引用。
+   */
+  const addFolderReference = useCallback(
+    (path: string): void => {
+      if (!projectId) return
+
+      const trimmed = path.trim()
+      if (!trimmed) return
+      if (referencedFolders.some((folder) => folder.path === trimmed)) return
+
+      const newFolder: ReferencedFolder = {
+        path: trimmed,
+        createdAt: new Date().toISOString(),
+      }
+      const nextFolders = [...referencedFolders, newFolder]
+      setReferencedFolders(projectId, nextFolders)
+      void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
+        setReferencedFolders(projectId, referencedFolders)
+      })
+    },
+    [projectId, referencedFolders, setReferencedFolders],
+  )
+
+  const handleAddFolder = (): void => {
+    if (!folderPathInput.trim()) return
+    addFolderReference(folderPathInput.trim())
+    setFolderPathInput("")
+  }
 
   /**
    * 复制文件夹引用的 Markdown 文本。
@@ -159,13 +188,21 @@ export const ProjectBottomSideBar = ({
     updateScrollState()
 
     const onScroll = (): void => updateScrollState()
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.deltaY) return
+      event.preventDefault()
+      el.scrollLeft += event.deltaY
+    }
+
     el.addEventListener("scroll", onScroll, { passive: true })
+    el.addEventListener("wheel", onWheel, { passive: false })
 
     const observer = new ResizeObserver(() => updateScrollState())
     observer.observe(el)
 
     return () => {
       el.removeEventListener("scroll", onScroll)
+      el.removeEventListener("wheel", onWheel)
       observer.disconnect()
     }
   }, [sortedFolders, updateScrollState])
@@ -186,6 +223,31 @@ export const ProjectBottomSideBar = ({
       }`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1">
+        <LxTooltip
+          title="添加文件夹"
+          content={
+            <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+              文件夹路径
+              <LxInput
+                autoFocus
+                required
+                aria-label="文件夹路径"
+                placeholder="例如：/Users/name/project"
+                size="sm"
+                value={folderPathInput}
+                onChange={(event) => setFolderPathInput(event.target.value)}
+              />
+            </label>
+          }
+          contentClassName="w-64"
+          placement="top"
+          onCancel={() => setFolderPathInput("")}
+          onConfirm={handleAddFolder}
+        >
+          <LxIconButton aria-label="添加文件夹" size="medium">
+            <FolderPlus className="h-4 w-4 text-white/60 hover:text-white" />
+          </LxIconButton>
+        </LxTooltip>
         {hasOverflow && (
           <LxIconButton
             aria-label="向左滚动"
@@ -207,6 +269,7 @@ export const ProjectBottomSideBar = ({
               <LxTag
                 key={folder.path}
                 bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
+                closeTooltipContent="是否要删除这个文件夹？"
                 hoverClass=""
                 prefix={<Folder className="h-3 w-3" />}
                 size="default"

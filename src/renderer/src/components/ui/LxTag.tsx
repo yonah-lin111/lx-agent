@@ -29,6 +29,7 @@ export interface LxTagProps {
   highlighted?: boolean
   onClick?: (event: React.MouseEvent<HTMLSpanElement>) => void
   onClose?: () => void
+  closeTooltipContent?: React.ReactNode
   color?: LxTagColor
   bgClass?: string
   highlightBgClass?: string
@@ -125,6 +126,7 @@ export const LxTag = ({
   highlighted = false,
   onClick,
   onClose,
+  closeTooltipContent = "确认删除此标签？",
   color = "default",
   bgClass,
   highlightBgClass,
@@ -157,7 +159,7 @@ export const LxTag = ({
         <span className="flex shrink-0 items-center gap-0.5">
           {suffix}
           {onClose && (
-            <LxTooltip content="确认删除此标签？" onConfirm={onClose} placement="top">
+            <LxTooltip content={closeTooltipContent} onConfirm={onClose} placement="top">
               <span
                 aria-label="删除标签"
                 className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"

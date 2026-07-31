@@ -11,6 +11,7 @@ export type LxTooltipTrigger = "hover" | "click" | "both"
 // Tooltip 组件属性。
 export interface LxTooltipProps {
   children: React.ReactNode
+  title?: React.ReactNode
   content?: React.ReactNode
   placement?: LxTooltipPlacement
   trigger?: LxTooltipTrigger
@@ -38,6 +39,7 @@ const assignRef = (ref: React.Ref<HTMLElement> | undefined, node: HTMLElement | 
  */
 export const LxTooltip = ({
   children,
+  title,
   content,
   placement = "top",
   trigger = "hover",
@@ -321,8 +323,9 @@ export const LxTooltip = ({
             onClick={(event) => event.stopPropagation()}
           >
             {isConfirming ? (
-              <div className="flex flex-col">
-                <span className="text-sm leading-snug">{content}</span>
+              <div className="flex flex-col gap-1.5">
+                {title && <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>}
+                <div className="text-sm leading-snug">{content}</div>
                 <div className="mt-0.5 flex items-center justify-end gap-1">
                   <button
                     aria-label="取消"
@@ -347,6 +350,13 @@ export const LxTooltip = ({
                     <Check className="h-3 w-3" />
                   </button>
                 </div>
+              </div>
+            ) : title ? (
+              <div className="flex flex-col gap-1">
+                <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
+                  {title}
+                </div>
+                {content}
               </div>
             ) : (
               content
