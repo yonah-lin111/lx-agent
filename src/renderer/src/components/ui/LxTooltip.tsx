@@ -190,8 +190,15 @@ export const LxTooltip = ({
    * 按触发模式延迟显示气泡。
    */
   const showTooltip = (): void => {
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
-    if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current)
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current)
+      hideTimeoutRef.current = null
+    }
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current)
+      showTimeoutRef.current = null
+    }
+    if (isVisible) return
     if (activeDelay === 0) {
       setIsVisible(true)
       return
@@ -203,9 +210,17 @@ export const LxTooltip = ({
    * 为悬停触发保留进入气泡的缓冲时间。
    */
   const hideTooltip = (): void => {
-    if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current)
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current)
+      showTimeoutRef.current = null
+    }
     if (activeTrigger === "hover" || activeTrigger === "both") {
-      hideTimeoutRef.current = setTimeout(() => setIsVisible(false), 150)
+      if (!hideTimeoutRef.current) {
+        hideTimeoutRef.current = setTimeout(() => {
+          hideTimeoutRef.current = null
+          setIsVisible(false)
+        }, 200)
+      }
       return
     }
     setIsVisible(false)
@@ -285,7 +300,12 @@ export const LxTooltip = ({
             role="tooltip"
             className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
             style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
-            onMouseEnter={() => hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current)}
+            onMouseEnter={() => {
+              if (hideTimeoutRef.current) {
+                clearTimeout(hideTimeoutRef.current)
+                hideTimeoutRef.current = null
+              }
+            }}
             onMouseLeave={hideTooltip}
             onClick={(event) => event.stopPropagation()}
           >

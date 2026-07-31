@@ -19,6 +19,7 @@ import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
 import {
+  getMarkdownReferenceIconSvg,
   getMarkdownReferenceLabel,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
@@ -150,8 +151,9 @@ markdownRenderer.renderer.rules.markdown_reference = (tokens, index) => {
   const path = markdownRenderer.utils.escapeHtml(reference.path)
   const label = markdownRenderer.utils.escapeHtml(getMarkdownReferenceLabel(type))
   const name = markdownRenderer.utils.escapeHtml(getMarkdownReferenceName(reference.path))
+  const iconSvg = getMarkdownReferenceIconSvg(type)
 
-  return `<span class="markdown-reference markdown-reference-${type}" data-reference-path="${path}"><span class="markdown-reference-label">${label}</span><span class="markdown-reference-name">${name}</span></span>`
+  return `<span class="markdown-reference markdown-reference-${type}" data-reference-path="${path}"><span class="markdown-reference-icon">${iconSvg}</span><span class="markdown-reference-label">${label}</span><span class="markdown-reference-name">${name}</span></span>`
 }
 
 markdownRenderer.inline.ruler.after(

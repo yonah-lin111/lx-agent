@@ -289,6 +289,24 @@ export const LxMarkdownPreview = ({
           }
         },
       ),
+      ...Array.from(
+        previewContent.querySelectorAll<HTMLElement>(".markdown-reference"),
+        (container) => {
+          const referencePath = container.dataset.referencePath ?? ""
+          const innerHtml = container.innerHTML
+          return {
+            container,
+            content: (
+              <LxTooltip content={referencePath} placement="top">
+                <span
+                  className="inline-flex max-w-full items-center gap-1"
+                  dangerouslySetInnerHTML={{ __html: innerHtml }}
+                />
+              </LxTooltip>
+            ),
+          }
+        },
+      ),
     ]
     nextMounts.forEach(({ container }) => container.replaceChildren())
     setMounts(nextMounts)

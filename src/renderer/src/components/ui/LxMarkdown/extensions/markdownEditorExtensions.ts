@@ -3,8 +3,12 @@ import { RangeSetBuilder } from "@codemirror/state"
 import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import {
+  getMarkdownReferenceIconSvg,
+  getMarkdownReferenceLabel,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
+  getMarkdownReferenceType,
+  type MarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { getFileMentionDisplayLabel } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
@@ -286,7 +290,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language), .cm-md-code-fence-middle-line span, .cm-md-code-fence-end-line span, .cm-md-template-start-line span:not(.cm-md-template-command), .cm-md-template-middle-line span, .cm-md-template-end-line span":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -329,30 +333,90 @@ export const markdownHighlightStyle = HighlightStyle.define([
 ])
 
 let activeMentionTooltip: HTMLDivElement | null = null
-let mentionTooltipTimer: ReturnType<typeof setTimeout> | null = null
+let mentionTooltipTarget: HTMLElement | null = null
+let mentionTooltipShowTimer: ReturnType<typeof setTimeout> | null = null
+let mentionTooltipHideTimer: ReturnType<typeof setTimeout> | null = null
 
-const hideMentionTooltip = (): void => {
-  if (mentionTooltipTimer) {
-    clearTimeout(mentionTooltipTimer)
-    mentionTooltipTimer = null
+const clearMentionTooltipTimers = (): void => {
+  if (mentionTooltipShowTimer) {
+    clearTimeout(mentionTooltipShowTimer)
+    mentionTooltipShowTimer = null
   }
-  if (activeMentionTooltip) {
-    activeMentionTooltip.remove()
-    activeMentionTooltip = null
+  if (mentionTooltipHideTimer) {
+    clearTimeout(mentionTooltipHideTimer)
+    mentionTooltipHideTimer = null
+  }
+}
+
+export const hideMentionTooltip = (immediately = false): void => {
+  if (immediately) {
+    clearMentionTooltipTimers()
+    if (activeMentionTooltip) {
+      activeMentionTooltip.remove()
+      activeMentionTooltip = null
+    }
+    mentionTooltipTarget = null
+    return
+  }
+
+  if (mentionTooltipShowTimer) {
+    clearTimeout(mentionTooltipShowTimer)
+    mentionTooltipShowTimer = null
+  }
+
+  if (!mentionTooltipHideTimer) {
+    mentionTooltipHideTimer = setTimeout(() => {
+      hideMentionTooltip(true)
+    }, 200)
   }
 }
 
 const showMentionTooltip = (target: HTMLElement, text: string): void => {
-  hideMentionTooltip()
+  if (mentionTooltipHideTimer) {
+    clearTimeout(mentionTooltipHideTimer)
+    mentionTooltipHideTimer = null
+  }
 
-  mentionTooltipTimer = setTimeout(() => {
-    if (!document.body.contains(target)) return
+  if (mentionTooltipTarget === target && activeMentionTooltip) {
+    return
+  }
+
+  if (activeMentionTooltip && mentionTooltipTarget !== target) {
+    hideMentionTooltip(true)
+  }
+
+  if (mentionTooltipShowTimer) {
+    clearTimeout(mentionTooltipShowTimer)
+    mentionTooltipShowTimer = null
+  }
+
+  mentionTooltipTarget = target
+
+  mentionTooltipShowTimer = setTimeout(() => {
+    mentionTooltipShowTimer = null
+    if (!document.body.contains(target)) {
+      mentionTooltipTarget = null
+      return
+    }
 
     const rect = target.getBoundingClientRect()
     const tooltip = document.createElement("div")
     tooltip.className =
       "fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap animate-tooltip-in"
     tooltip.textContent = text
+
+    tooltip.addEventListener("mouseenter", () => {
+      if (mentionTooltipHideTimer) {
+        clearTimeout(mentionTooltipHideTimer)
+        mentionTooltipHideTimer = null
+      }
+    })
+    tooltip.addEventListener("mouseleave", () => {
+      hideMentionTooltip(false)
+    })
+    tooltip.addEventListener("mousedown", (event) => {
+      event.stopPropagation()
+    })
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
     svg.setAttribute("aria-hidden", "true")
@@ -433,17 +497,78 @@ export class FileMentionWidget extends WidgetType {
       showMentionTooltip(span, this.fullMention)
     })
     span.addEventListener("mouseleave", () => {
-      hideMentionTooltip()
+      hideMentionTooltip(false)
     })
     span.addEventListener("mousedown", () => {
-      hideMentionTooltip()
+      hideMentionTooltip(true)
     })
 
     return span
   }
 
   destroy() {
-    hideMentionTooltip()
+    hideMentionTooltip(true)
+  }
+
+  ignoreEvent() {
+    return false
+  }
+}
+
+export class MarkdownReferenceWidget extends WidgetType {
+  constructor(
+    readonly path: string,
+    readonly type: MarkdownReferenceType,
+    readonly label: string,
+    readonly name: string,
+  ) {
+    super()
+  }
+
+  eq(other: MarkdownReferenceWidget) {
+    return (
+      this.path === other.path &&
+      this.type === other.type &&
+      this.label === other.label &&
+      this.name === other.name
+    )
+  }
+
+  toDOM() {
+    const wrap = document.createElement("span")
+    wrap.className = `markdown-reference markdown-reference-${this.type} cursor-pointer`
+
+    const iconSpan = document.createElement("span")
+    iconSpan.className = "markdown-reference-icon"
+    iconSpan.innerHTML = getMarkdownReferenceIconSvg(this.type)
+
+    const labelSpan = document.createElement("span")
+    labelSpan.className = "markdown-reference-label"
+    labelSpan.textContent = this.label
+
+    const nameSpan = document.createElement("span")
+    nameSpan.className = "markdown-reference-name"
+    nameSpan.textContent = this.name
+
+    wrap.appendChild(iconSpan)
+    wrap.appendChild(labelSpan)
+    wrap.appendChild(nameSpan)
+
+    wrap.addEventListener("mouseenter", () => {
+      showMentionTooltip(wrap, this.path)
+    })
+    wrap.addEventListener("mouseleave", () => {
+      hideMentionTooltip(false)
+    })
+    wrap.addEventListener("mousedown", () => {
+      hideMentionTooltip(true)
+    })
+
+    return wrap
+  }
+
+  destroy() {
+    hideMentionTooltip(true)
   }
 
   ignoreEvent() {
@@ -575,7 +700,25 @@ class CodeBlockActionWidget extends WidgetType {
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
-export const markdownMarkerHighlight = (showFolding = false) =>
+export const markdownMarkerHighlight = (showFolding = false) => [
+  EditorView.domEventHandlers({
+    scroll: () => {
+      hideMentionTooltip(true)
+      return false
+    },
+    blur: () => {
+      hideMentionTooltip(true)
+      return false
+    },
+    compositionstart: (_event, view) => {
+      requestAnimationFrame(() => view.dispatch({}))
+      return false
+    },
+    compositionend: (_event, view) => {
+      requestAnimationFrame(() => view.dispatch({}))
+      return false
+    },
+  }),
   ViewPlugin.fromClass(
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
@@ -623,7 +766,8 @@ export const markdownMarkerHighlight = (showFolding = false) =>
       }
     },
     { decorations: (plugin) => plugin.decorations },
-  )
+  ),
+]
 
 /**
  * 扫描文档行并生成 Markdown 标记装饰。
@@ -641,7 +785,12 @@ const buildMarkdownMarkerDecorations = (
     | { type: "line"; from: number; className: string }
     | { type: "mark"; from: number; to: number; className: string }
     | { type: "widget"; from: number; to: number; widget: CodeBlockActionWidget }
-    | { type: "replace"; from: number; to: number; widget: FileMentionWidget }
+    | {
+        type: "replace"
+        from: number
+        to: number
+        widget: FileMentionWidget | MarkdownReferenceWidget
+      }
   )[] = []
   let offset = 0
   let isInsideCodeFence = false
@@ -909,10 +1058,36 @@ const buildMarkdownMarkerDecorations = (
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }
-    addMatches(/@\[refer-project\]\([^)\r\n]+\)/g, "cm-md-reference-project")
-    addMatches(/@\[refer-file\]\([^)\r\n]+\)/g, "cm-md-reference-file")
-    addMatches(/@\[refer-image\]\([^)\r\n]+\)/g, "cm-md-reference-image")
-    addMatches(/@\[refer-common\]\([^)\r\n]+\)/g, "cm-md-reference-common")
+    const isComposing = view.composing
+    const mainSelection = view.state.selection.main
+    for (const match of line.matchAll(/@\[(refer-[a-z]+)\]\(([^)\r\n]+)\)/g)) {
+      if (match.index === undefined) continue
+
+      const rawMatch = match[0]
+      const typeStr = match[1] ?? ""
+      const path = match[2] ?? ""
+      const type = getMarkdownReferenceType(typeStr)
+      if (!type) continue
+
+      const label = getMarkdownReferenceLabel(type)
+      const name = getMarkdownReferenceName(path)
+      const from = offset + match.index
+      const to = from + rawMatch.length
+
+      const isCursorInside = mainSelection.from <= to && mainSelection.to >= from
+
+      if (isCursorInside || isComposing) {
+        const className = `cm-md-reference-${type}`
+        addMarker(match.index, match.index + rawMatch.length, className)
+      } else {
+        allDecos.push({
+          type: "replace",
+          from,
+          to,
+          widget: new MarkdownReferenceWidget(path, type, label, name),
+        })
+      }
+    }
     for (const match of line.matchAll(/(?<![\w\[])@([^\[\]\(\)\s]+)(?=\s|$)/g)) {
       if (match.index === undefined) continue
 
@@ -924,12 +1099,19 @@ const buildMarkdownMarkerDecorations = (
       const isReferenced = Boolean(projectName && referencedProjectNames.has(projectName))
       const displayLabel = getFileMentionDisplayLabel(fullMention, referencedProjectNames)
 
-      allDecos.push({
-        type: "replace",
-        from,
-        to,
-        widget: new FileMentionWidget(fullMention, displayLabel, isReferenced),
-      })
+      const isCursorInside = mainSelection.from <= to && mainSelection.to >= from
+
+      if (isCursorInside || isComposing) {
+        const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
+        addMarker(match.index, match.index + fullMention.length, className)
+      } else {
+        allDecos.push({
+          type: "replace",
+          from,
+          to,
+          widget: new FileMentionWidget(fullMention, displayLabel, isReferenced),
+        })
+      }
     }
 
     offset += line.length + 1
