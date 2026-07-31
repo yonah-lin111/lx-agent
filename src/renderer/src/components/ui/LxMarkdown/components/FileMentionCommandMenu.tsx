@@ -1,29 +1,67 @@
 import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useLayoutEffect, useRef } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
 import { LxTag } from "@/components/ui/LxTag"
 
 // 文件提及面板属性。
 interface FileMentionCommandMenuProps {
-  activeIndex: number
-  files: MarkdownFileMentionEntry[]
-  position: CSSProperties
+  files?: MarkdownFileMentionEntry[]
+  activeIndex?: number
+  position?: CSSProperties
+  visible?: boolean
 }
 
 /**
  * 渲染 Markdown 编辑器的项目文件 @ 命令面板。
  */
 export const FileMentionCommandMenu = ({
-  activeIndex,
   files,
+  activeIndex = 0,
   position,
-}: FileMentionCommandMenuProps): React.JSX.Element => {
+  visible = false,
+}: FileMentionCommandMenuProps): React.JSX.Element | null => {
+  const [shouldRender, setShouldRender] = useState(false)
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+
+  const lastDataRef = useRef<{
+    files: MarkdownFileMentionEntry[]
+    activeIndex: number
+    position: CSSProperties
+  } | null>(null)
+
+  if (visible && files && position) {
+    lastDataRef.current = { files, activeIndex, position }
+  }
+
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true)
+      setIsAnimatingOut(false)
+      return
+    }
+    if (!shouldRender) return
+
+    setIsAnimatingOut(true)
+    const timer = setTimeout(() => {
+      setShouldRender(false)
+      setIsAnimatingOut(false)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [visible, shouldRender])
+
   const containerRef = useRef<HTMLDivElement>(null)
-  const activeFile = files[activeIndex] ?? files[0]
+
+  const displayData =
+    visible && files && position ? { files, activeIndex, position } : lastDataRef.current
+
+  const activeFile = displayData
+    ? displayData.files[displayData.activeIndex] ?? displayData.files[0]
+    : null
 
   useLayoutEffect(() => {
+    if (!shouldRender) return
     const container = containerRef.current
     if (!container || !activeFile) return
 
@@ -42,25 +80,35 @@ export const FileMentionCommandMenu = ({
     } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
       container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
     }
-  }, [activeFile, activeIndex])
+  }, [activeFile, displayData?.activeIndex, shouldRender])
+
+  if (!shouldRender || !displayData) return null
+
+  const {
+    files: displayFiles,
+    activeIndex: displayActiveIndex,
+    position: displayPosition,
+  } = displayData
 
   return (
     <div
       ref={containerRef}
       aria-label="项目文件提及"
       aria-activedescendant={`markdown-file-mention-${activeFile?.source}-${activeFile?.mentionPath}`}
-      className="markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
       role="listbox"
-      style={position}
+      style={displayPosition}
     >
-      {files.map((file, index) => {
+      {displayFiles.map((file, index) => {
         const normalizedPath = file.path.replace(/\/$/, "")
         const slashIndex = normalizedPath.lastIndexOf("/")
         const name = normalizedPath.slice(slashIndex + 1)
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
         const Icon = file.isDirectory ? Folder : FileText
-        const isActive = index === activeIndex
+        const isActive = index === displayActiveIndex
 
         return (
           <div

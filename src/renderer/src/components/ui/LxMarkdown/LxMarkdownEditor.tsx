@@ -647,27 +647,24 @@ export const LxMarkdownEditor = ({
           <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
         )}
       </div>
-      {blockCommandPanel && (
-        <MarkdownBlockCommandMenu
-          activeIndex={activeBlockCommandIndex}
-          commands={blockCommandPanel.commands}
-          position={blockCommandPanel.position}
-        />
-      )}
-      {slashCommandPanel && (
-        <MarkdownSlashCommandMenu
-          activeIndex={activeSlashCommandIndex}
-          commands={slashCommandPanel.commands}
-          position={slashCommandPanel.position}
-        />
-      )}
-      {fileMentionPanel && (
-        <FileMentionCommandMenu
-          activeIndex={activeFileMentionIndex}
-          files={fileMentionPanel.files}
-          position={fileMentionPanel.position}
-        />
-      )}
+      <MarkdownBlockCommandMenu
+        activeIndex={activeBlockCommandIndex}
+        commands={blockCommandPanel?.commands}
+        position={blockCommandPanel?.position}
+        visible={Boolean(blockCommandPanel)}
+      />
+      <MarkdownSlashCommandMenu
+        activeIndex={activeSlashCommandIndex}
+        commands={slashCommandPanel?.commands}
+        position={slashCommandPanel?.position}
+        visible={Boolean(slashCommandPanel)}
+      />
+      <FileMentionCommandMenu
+        activeIndex={activeFileMentionIndex}
+        files={fileMentionPanel?.files}
+        position={fileMentionPanel?.position}
+        visible={Boolean(fileMentionPanel)}
+      />
     </section>
   )
 }

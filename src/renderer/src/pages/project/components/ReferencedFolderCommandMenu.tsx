@@ -24,10 +24,27 @@ export const ReferencedFolderCommandMenu = ({
 }: ReferencedFolderCommandMenuProps): React.JSX.Element => {
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
   const [query, setQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const closeTimeoutRef = useRef<number | null>(null)
+
+  const handleClose = (): void => {
+    if (isAnimatingOut) return
+    setIsAnimatingOut(true)
+    closeTimeoutRef.current = window.setTimeout(() => {
+      onClose()
+    }, 120)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -35,7 +52,6 @@ export const ReferencedFolderCommandMenu = ({
 
   useEffect(() => {
     let isCurrent = true
-    setIsLoading(true)
     void projectApi
       .searchReferencedFiles([folderPath], query)
       .then((nextFiles) => {
@@ -43,9 +59,6 @@ export const ReferencedFolderCommandMenu = ({
       })
       .catch(() => {
         if (isCurrent) setFiles([])
-      })
-      .finally(() => {
-        if (isCurrent) setIsLoading(false)
       })
 
     return () => {
@@ -55,10 +68,10 @@ export const ReferencedFolderCommandMenu = ({
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape") handleClose()
     }
     const closeOnOutsideClick = (event: MouseEvent): void => {
-      if (!panelRef.current?.contains(event.target as Node)) onClose()
+      if (!panelRef.current?.contains(event.target as Node)) handleClose()
     }
     document.addEventListener("keydown", closeOnEscape)
     document.addEventListener("mousedown", closeOnOutsideClick)
@@ -66,7 +79,7 @@ export const ReferencedFolderCommandMenu = ({
       document.removeEventListener("keydown", closeOnEscape)
       document.removeEventListener("mousedown", closeOnOutsideClick)
     }
-  }, [onClose])
+  }, [onClose, isAnimatingOut])
 
   /**
    * 复制可直接粘贴进 Markdown 编辑器的引用文本。
@@ -83,15 +96,13 @@ export const ReferencedFolderCommandMenu = ({
     <div
       ref={panelRef}
       aria-label="引用文件夹内容"
-      className="markdown-command-menu markdown-command-menu--file fixed z-50 flex max-h-80 w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+      className={`markdown-command-menu markdown-command-menu--file fixed z-50 flex max-h-80 w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+        isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
       role="listbox"
       style={position}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {isLoading && <div className="px-2 py-3 text-xs text-white/45">正在加载...</div>}
-        {!isLoading && files.length === 0 && (
-          <div className="px-2 py-3 text-xs text-white/45">没有匹配的文件</div>
-        )}
         {files.map((file) => {
           const normalizedPath = file.path.replace(/\/$/, "")
           const slashIndex = normalizedPath.lastIndexOf("/")
@@ -129,7 +140,7 @@ export const ReferencedFolderCommandMenu = ({
           )
         })}
       </div>
-      <div className="border-t border-white/10">
+      <div>
         <LxInput
           ref={inputRef}
           aria-label="搜索文件夹内容"
