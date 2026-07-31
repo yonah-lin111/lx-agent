@@ -2,6 +2,7 @@ import type { ProjectFileEntry } from "@shared/project"
 import { Check, Copy, FileText, Folder, Search } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { LxInput } from "@/components/ui/LxInput"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -25,6 +26,7 @@ export const ReferencedFolderCommandMenu = ({
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
   const [query, setQuery] = useState("")
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+  const [isFolderPathCopied, setIsFolderPathCopied] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -37,6 +39,14 @@ export const ReferencedFolderCommandMenu = ({
       onClose()
     }, 120)
   }
+
+  useEffect(() => {
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+    setIsAnimatingOut(false)
+  }, [folderPath])
 
   useEffect(() => {
     return () => {
@@ -92,7 +102,16 @@ export const ReferencedFolderCommandMenu = ({
     window.setTimeout(() => setCopiedPath((path) => (path === file.path ? null : path)), 1500)
   }
 
-  return (
+  /**
+   * 复制文件夹物理路径。
+   */
+  const copyFolderPath = async (): Promise<void> => {
+    await navigator.clipboard.writeText(folderPath)
+    setIsFolderPathCopied(true)
+    window.setTimeout(() => setIsFolderPathCopied(false), 1500)
+  }
+
+  return createPortal(
     <div
       ref={panelRef}
       aria-label="引用文件夹内容"
@@ -102,6 +121,27 @@ export const ReferencedFolderCommandMenu = ({
       role="listbox"
       style={position}
     >
+      <div className="flex items-center gap-1.5 border-b border-white/10 px-2 py-1.5 text-xs text-white/60">
+        <Folder className="h-3.5 w-3.5 shrink-0 text-[#d97706]" />
+        <span
+          className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/70 select-all"
+          title={folderPath}
+        >
+          {folderPath}
+        </span>
+        <LxTooltip content={isFolderPathCopied ? "已复制" : "复制路径"} placement="top">
+          <button
+            aria-label="复制文件夹路径"
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${
+              isFolderPathCopied ? "text-emerald-400" : "text-white/40 hover:text-white/80"
+            }`}
+            type="button"
+            onClick={() => void copyFolderPath()}
+          >
+            {isFolderPathCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          </button>
+        </LxTooltip>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {files.map((file) => {
           const normalizedPath = file.path.replace(/\/$/, "")
@@ -152,6 +192,7 @@ export const ReferencedFolderCommandMenu = ({
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
