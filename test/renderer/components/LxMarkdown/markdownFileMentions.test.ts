@@ -14,6 +14,15 @@ describe("getFileMentionDeletionRange", () => {
     expect(getFileMentionDeletionRange(content, content.length)).toEqual({ start: 3, end: 23 })
   })
 
+  it("删除 Markdown 文件引用后的连续水平空白", () => {
+    const content = "读取 @[refer-file](/Users/test/My File.txt) "
+
+    expect(getFileMentionDeletionRange(content, content.length)).toEqual({
+      start: 3,
+      end: content.length,
+    })
+  })
+
   it("不会跨行删除文件提及", () => {
     const content = "@src/main/index.ts\n下一行"
 

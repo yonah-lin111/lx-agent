@@ -1,5 +1,6 @@
-// 文件提及 token 匹配表达式。
-const FILE_MENTION_PATTERN = /(^|\s)(@[^\s]+)(?=$|\s)/g
+// 文件提及和 Markdown 引用 token 匹配表达式。
+const FILE_MENTION_PATTERN =
+  /(^|\s)(@\[refer-(?:project|folder|file|image|common)\]\((?:[^()\r\n]|\([^()\r\n]*\))+\)|@[^\s]+)(?=$|\s)/g
 
 // 文件提及删除范围。
 export type FileMentionDeletionRange = { start: number; end: number }
