@@ -466,8 +466,10 @@ export const LxMarkdownEditor = ({
 
               event.preventDefault()
               const type = file.isDirectory ? "folder" : file.isImage ? "image" : "file"
-              const insertion = `${createMarkdownReference(type, file.path)} `
               const { from, to } = view.state.selection.main
+              const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
+              const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
+              const insertion = `${leadingSpace}${createMarkdownReference(type, file.path)} `
               view.dispatch({
                 changes: { from, to, insert: insertion },
                 selection: { anchor: from + insertion.length },
