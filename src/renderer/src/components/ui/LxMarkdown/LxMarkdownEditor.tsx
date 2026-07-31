@@ -22,21 +22,14 @@ import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import {
-  Bold,
   Code,
-  Code2,
   Eye,
-  Italic,
-  Link,
   List,
   ListOrdered,
   ListTodo,
-  Quote,
   Redo2,
   SquareSplitHorizontal,
-  Strikethrough,
   Undo2,
-  WandSparkles,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
@@ -610,21 +603,10 @@ export const LxMarkdownEditor = ({
       label: "重做",
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
     },
-    { icon: Bold, label: "粗体", onClick: () => wrapSelection("**", "**", "bold") },
-    { icon: Italic, label: "斜体", onClick: () => wrapSelection("_", "_", "italic") },
-    {
-      icon: Strikethrough,
-      label: "删除线",
-      onClick: () => wrapSelection("~~", "~~", "strikethrough"),
-    },
     { icon: List, label: "无序列表", onClick: () => prefixLines("- ", "Item") },
     { icon: ListOrdered, label: "有序列表", onClick: () => prefixLines("1. ", "Item") },
     { icon: ListTodo, label: "任务列表", onClick: () => prefixLines("- [ ] ", "Task") },
-    { icon: Quote, label: "引用", onClick: () => prefixLines("> ", "Quote") },
-    { icon: Code2, label: "行内代码", onClick: () => wrapSelection("`", "`", "code") },
     { icon: Code, label: "代码块", onClick: insertCodeBlock },
-    { icon: Link, label: "链接", onClick: () => wrapSelection("[", "](https://)", "link text") },
-    { icon: WandSparkles, label: "格式化 Markdown", onClick: formatDocument },
     {
       icon: SquareSplitHorizontal,
       label: splitLabel,

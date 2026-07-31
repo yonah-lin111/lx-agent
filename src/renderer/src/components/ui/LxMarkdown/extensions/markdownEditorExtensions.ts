@@ -27,6 +27,11 @@ export const editorTheme = EditorView.theme(
       padding: "12px 16px",
       caretColor: "#ffffff",
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      lineHeight: "1.65",
+    },
+    ".cm-line": {
+      // 内容行高
+      lineHeight: "1.85",
     },
     ".cm-scroller": {
       overflow: "auto",
@@ -44,8 +49,8 @@ export const editorTheme = EditorView.theme(
       alignItems: "flex-start",
       justifyContent: "flex-end",
       boxSizing: "border-box",
-      height: "1.5em",
-      lineHeight: "1.5em",
+      height: "1.65em",
+      lineHeight: "1.65em",
     },
     ".cm-foldGutter .cm-gutterElement": {
       cursor: "pointer",
@@ -70,7 +75,7 @@ export const editorTheme = EditorView.theme(
       alignItems: "center",
       justifyContent: "center",
       width: "12px",
-      height: "1.5em",
+      height: "1.65em",
       color: "currentColor",
     },
     ".cm-foldPlaceholder": {
