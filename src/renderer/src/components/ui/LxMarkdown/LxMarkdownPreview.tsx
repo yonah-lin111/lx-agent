@@ -79,11 +79,12 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
   return (
     <LxIconButton
       aria-label="复制代码"
+      preset={isCopied ? "confirm" : undefined}
       size="small"
       title={{ content: isCopied ? "已复制" : "复制代码", placement: "bottom" }}
       onClick={copyCode}
     >
-      {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
     </LxIconButton>
   )
 }
@@ -138,6 +139,14 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
  */
 const MarkdownTemplateCopyButton = (): React.JSX.Element => {
   const [isCopied, setIsCopied] = useState(false)
+  const resetTimerRef = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current)
+    },
+    [],
+  )
 
   const copyTemplate = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
     const template = event.currentTarget.closest<HTMLElement>(".markdown-template-block")
@@ -147,7 +156,11 @@ const MarkdownTemplateCopyButton = (): React.JSX.Element => {
     try {
       await copyToClipboard(decodeURIComponent(encodedContent))
       setIsCopied(true)
-      window.setTimeout(() => setIsCopied(false), 1500)
+      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current)
+      resetTimerRef.current = window.setTimeout(() => {
+        setIsCopied(false)
+        resetTimerRef.current = null
+      }, 1500)
     } catch {
       setIsCopied(false)
     }
@@ -156,11 +169,12 @@ const MarkdownTemplateCopyButton = (): React.JSX.Element => {
   return (
     <LxIconButton
       aria-label="复制模板内容"
+      preset={isCopied ? "confirm" : undefined}
       size="small"
       title={{ content: isCopied ? "已复制" : "复制模板内容", placement: "bottom" }}
       onClick={copyTemplate}
     >
-      {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
     </LxIconButton>
   )
 }

@@ -302,10 +302,10 @@ select {
 }
 
 .markdown-preview .markdown-file-mention-node {
-  color: #818cf8;
+  color: #eab308;
   font-weight: 500;
   text-decoration: underline;
-  text-decoration-color: rgba(129, 140, 248, 0.4);
+  text-decoration-color: rgba(234, 179, 8, 0.4);
   cursor: pointer;
   padding: 0 2px;
   border-radius: 3px;
@@ -313,7 +313,7 @@ select {
 }
 
 .markdown-preview .markdown-file-mention-node:hover {
-  background-color: rgba(129, 140, 248, 0.12);
+  background-color: rgba(234, 179, 8, 0.12);
 }
 
 .markdown-preview .markdown-file-mention-node--referenced {

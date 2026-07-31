@@ -99,7 +99,7 @@ export const editorTheme = EditorView.theme(
       borderLeftColor: "#ffffff",
     },
     ".cm-md-heading-marker, .cm-md-heading-marker *": {
-      color: "#fbbf24 !important",
+      color: "#e9a339 !important",
       fontWeight: "700",
     },
     ".cm-md-strong-marker, .cm-md-strong-marker *": {
@@ -244,10 +244,10 @@ export const editorTheme = EditorView.theme(
       fontWeight: "700",
     },
     ".cm-md-file-mention, .cm-md-file-mention *": {
-      color: "#818cf8 !important",
+      color: "#eab308 !important",
       fontWeight: "500",
       textDecoration: "underline",
-      textDecorationColor: "rgba(129, 140, 248, 0.4)",
+      textDecorationColor: "rgba(234, 179, 8, 0.4)",
     },
     ".cm-md-referenced-file-mention, .cm-md-referenced-file-mention *": {
       color: "#c4b5fd !important",
@@ -296,13 +296,13 @@ export const editorTheme = EditorView.theme(
 )
 
 export const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading, color: "#fbbf24", fontWeight: "700" },
-  { tag: tags.heading1, color: "#fbbf24", fontSize: "1.5em" },
-  { tag: tags.heading2, color: "#fbbf24", fontSize: "1.3em" },
-  { tag: tags.heading3, color: "#fbbf24", fontSize: "1.15em" },
-  { tag: tags.heading4, color: "#fbbf24", fontSize: "1.08em" },
-  { tag: tags.heading5, color: "#fbbf24", fontSize: "1.03em" },
-  { tag: tags.heading6, color: "#fbbf24", fontSize: "1.0em" },
+  { tag: tags.heading, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading1, color: "#e9a339", fontSize: "1.5em" },
+  { tag: tags.heading2, color: "#e9a339", fontSize: "1.3em" },
+  { tag: tags.heading3, color: "#e9a339", fontSize: "1.15em" },
+  { tag: tags.heading4, color: "#e9a339", fontSize: "1.08em" },
+  { tag: tags.heading5, color: "#e9a339", fontSize: "1.03em" },
+  { tag: tags.heading6, color: "#e9a339", fontSize: "1.0em" },
   { tag: tags.emphasis, color: "#fcd34d", fontStyle: "italic" },
   { tag: tags.strong, color: "#f59e0b", fontWeight: "700" },
   { tag: tags.strikethrough, color: "#fda4af", textDecoration: "line-through" },
@@ -377,11 +377,12 @@ class CodeBlockActionWidget extends WidgetType {
     copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
     copyBtn.style.transition = "color 0.2s"
     copyBtn.title = this.copyTitle
+    let isCopied = false
     copyBtn.onmouseenter = () => {
-      copyBtn.style.color = "#ffffff"
+      copyBtn.style.color = isCopied ? "#34d399" : "#ffffff"
     }
     copyBtn.onmouseleave = () => {
-      copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
+      copyBtn.style.color = isCopied ? "#34d399" : "rgba(255, 255, 255, 0.5)"
     }
 
     // 复制图标 SVG
@@ -392,10 +393,12 @@ class CodeBlockActionWidget extends WidgetType {
       e.stopPropagation()
       try {
         await navigator.clipboard.writeText(this.codeText)
-        copyBtn.style.color = "#86efac"
+        isCopied = true
+        copyBtn.style.color = "#34d399"
         copyBtn.title = "已复制"
         copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
         setTimeout(() => {
+          isCopied = false
           copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
           copyBtn.title = this.copyTitle
           copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`

@@ -76,7 +76,7 @@ export const FileMentionCommandMenu = ({
               <div className="flex min-h-8 items-center gap-2">
                 <Icon
                   className={`h-4 w-4 shrink-0 ${
-                    file.source === "reference" ? "text-violet-300" : "text-[#818cf8]"
+                    file.source === "reference" ? "text-violet-300" : "text-[#eab308]"
                   }`}
                 />
                 <div className="min-w-0 flex-1">
