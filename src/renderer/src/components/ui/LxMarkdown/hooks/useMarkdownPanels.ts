@@ -12,13 +12,7 @@ import {
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import type {
-  MarkdownReferenceCommand,
-  MarkdownReferenceType,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
-  createMarkdownReference,
-  getMarkdownReferenceCommands,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
@@ -59,18 +53,7 @@ export interface MarkdownSlashCommandPanelState {
   position: CSSProperties
 }
 
-/**
- * Markdown 引用命令面板状态。
- */
-export interface MarkdownReferenceCommandPanelState {
-  commands: MarkdownReferenceCommand[]
-  from: number
-  path: string
-  position: CSSProperties
-  to: number
-}
-
-type MarkdownPanelKind = "block" | "file" | "reference" | "slash"
+type MarkdownPanelKind = "block" | "file" | "slash"
 
 /**
  * 将样式配置中的尺寸换算为像素，供面板边界定位使用。
@@ -133,8 +116,6 @@ export const useMarkdownPanels = ({
   const activeSlashCommandIndexRef = useRef(0)
   const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
   const activeFileMentionIndexRef = useRef(0)
-  const referenceCommandPanelRef = useRef<MarkdownReferenceCommandPanelState | null>(null)
-  const activeReferenceCommandIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
   const onSearchFilesRef = useRef(onSearchFiles)
   const onSearchReferencedFilesRef = useRef(onSearchReferencedFiles)
@@ -150,9 +131,6 @@ export const useMarkdownPanels = ({
   const [activeSlashCommandIndex, setActiveSlashCommandIndex] = useState(0)
   const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
-  const [referenceCommandPanel, setReferenceCommandPanel] =
-    useState<MarkdownReferenceCommandPanelState | null>(null)
-  const [activeReferenceCommandIndex, setActiveReferenceCommandIndex] = useState(0)
 
   useEffect(() => {
     onSearchFilesRef.current = onSearchFiles
@@ -179,81 +157,6 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndexRef.current = 0
     setSlashCommandPanel(null)
     setActiveSlashCommandIndex(0)
-  }
-
-  /**
-   * 关闭路径引用命令面板。
-   */
-  const closeReferenceCommandPanel = (): void => {
-    referenceCommandPanelRef.current = null
-    activeReferenceCommandIndexRef.current = 0
-    setReferenceCommandPanel(null)
-    setActiveReferenceCommandIndex(0)
-  }
-
-  /**
-   * 在当前选区旁打开路径引用命令面板。
-   */
-  const openReferenceCommandPanel = (path: string, view: EditorView): void => {
-    const { from, to } = view.state.selection.main
-    const insertedTo = from + path.length
-
-    view.dispatch({
-      changes: { from, to, insert: path },
-      selection: { anchor: insertedTo },
-      userEvent: "input.paste",
-    })
-
-    const coords = view.coordsAtPos(insertedTo)
-    if (!coords) return
-
-    const panel = {
-      commands: getMarkdownReferenceCommands(),
-      from,
-      path,
-      position: getMarkdownPanelPosition("reference", coords),
-      to: insertedTo,
-    }
-
-    closeFileMentionPanel()
-    closeSlashCommandPanel()
-    referenceCommandPanelRef.current = panel
-    activeReferenceCommandIndexRef.current = 0
-    setReferenceCommandPanel(panel)
-    setActiveReferenceCommandIndex(0)
-  }
-
-  /**
-   * 将选中的引用类型写入粘贴路径所在的选区。
-   */
-  const selectReferenceCommand = (type: MarkdownReferenceType): void => {
-    const view = editorViewRef.current
-    const panel = referenceCommandPanelRef.current
-    if (!view || !panel) return
-
-    const insertion = `${createMarkdownReference(type, panel.path)} `
-    view.dispatch({
-      changes: { from: panel.from, to: panel.to, insert: insertion },
-      selection: { anchor: panel.from + insertion.length },
-      userEvent: "input.paste",
-    })
-    view.focus()
-    closeReferenceCommandPanel()
-  }
-
-  /**
-   * 切换路径引用命令的高亮项。
-   */
-  const handleReferenceCommandKey = (offset: number): boolean => {
-    const panel = referenceCommandPanelRef.current
-    if (!panel) return false
-
-    const nextIndex =
-      (activeReferenceCommandIndexRef.current + offset + panel.commands.length) %
-      panel.commands.length
-    activeReferenceCommandIndexRef.current = nextIndex
-    setActiveReferenceCommandIndex(nextIndex)
-    return true
   }
 
   /**
@@ -559,22 +462,14 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndex,
     fileMentionPanel,
     activeFileMentionIndex,
-    referenceCommandPanel,
-    activeReferenceCommandIndex,
     blockCommandPanelRef,
     activeBlockCommandIndexRef,
     slashCommandPanelRef,
     activeSlashCommandIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
-    referenceCommandPanelRef,
-    activeReferenceCommandIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
-    closeReferenceCommandPanel,
-    openReferenceCommandPanel,
-    selectReferenceCommand,
-    handleReferenceCommandKey,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,

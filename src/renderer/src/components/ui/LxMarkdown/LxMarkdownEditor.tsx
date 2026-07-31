@@ -42,8 +42,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
-import { MarkdownReferenceCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownReferenceCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownSlashCommandMenu"
+import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
   createMarkdownTable,
   editorTheme,
@@ -73,12 +73,17 @@ import { isMacOS } from "@/lib/platform"
 /**
  * 从剪贴板读取本地文件绝对路径。
  */
-const getClipboardFilePath = (event: ClipboardEvent): string | null => {
+const getClipboardFile = (
+  event: ClipboardEvent,
+): { isDirectory: boolean; isImage: boolean; path: string } | null => {
   const clipboardData = event.clipboardData
   if (!clipboardData) return null
 
   const plainText = clipboardData.getData("text/plain")
-  if (plainText.startsWith("/")) return plainText.trim()
+  if (plainText.startsWith("/")) {
+    const path = plainText.trim()
+    return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
+  }
 
   const fileUri = clipboardData
     .getData("text/uri-list")
@@ -87,7 +92,8 @@ const getClipboardFilePath = (event: ClipboardEvent): string | null => {
 
   if (fileUri?.startsWith("file://")) {
     try {
-      return decodeURIComponent(new URL(fileUri.trim()).pathname)
+      const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
+      return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
     } catch {
       return null
     }
@@ -97,7 +103,23 @@ const getClipboardFilePath = (event: ClipboardEvent): string | null => {
   if (!file) return null
 
   try {
-    return window.api.getPathForFile(file) || null
+    const path = window.api.getPathForFile(file)
+    if (!path) return null
+
+    const item = Array.from(clipboardData.items).find(
+      (clipboardItem) => clipboardItem.kind === "file",
+    )
+    const entry = (
+      item as
+        | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
+        | undefined
+    )?.webkitGetAsEntry?.()
+
+    return {
+      isDirectory: entry?.isDirectory ?? false,
+      isImage: file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path),
+      path,
+    }
   } catch {
     return null
   }
@@ -134,22 +156,14 @@ export const LxMarkdownEditor = ({
     activeSlashCommandIndex,
     fileMentionPanel,
     activeFileMentionIndex,
-    referenceCommandPanel,
-    activeReferenceCommandIndex,
     blockCommandPanelRef,
     activeBlockCommandIndexRef,
     slashCommandPanelRef,
     activeSlashCommandIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
-    referenceCommandPanelRef,
-    activeReferenceCommandIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
-    closeReferenceCommandPanel,
-    openReferenceCommandPanel,
-    selectReferenceCommand,
-    handleReferenceCommandKey,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,
@@ -358,7 +372,6 @@ export const LxMarkdownEditor = ({
             {
               key: "ArrowDown",
               run: () =>
-                handleReferenceCommandKey(1) ||
                 handleFileMentionKey("ArrowDown") ||
                 handleSlashCommandKey(1) ||
                 handleBlockCommandKey(1),
@@ -366,7 +379,6 @@ export const LxMarkdownEditor = ({
             {
               key: "ArrowUp",
               run: () =>
-                handleReferenceCommandKey(-1) ||
                 handleFileMentionKey("ArrowUp") ||
                 handleSlashCommandKey(-1) ||
                 handleBlockCommandKey(-1),
@@ -374,15 +386,6 @@ export const LxMarkdownEditor = ({
             {
               key: "Enter",
               run: (view) => {
-                const referenceCommand = referenceCommandPanelRef.current
-                if (referenceCommand) {
-                  selectReferenceCommand(
-                    referenceCommand.commands[activeReferenceCommandIndexRef.current]?.id ??
-                      referenceCommand.commands[0].id,
-                  )
-                  return true
-                }
-
                 const fileMention = fileMentionPanelRef.current
                 if (fileMention) {
                   selectFileMention(
@@ -444,10 +447,6 @@ export const LxMarkdownEditor = ({
             {
               key: "Escape",
               run: () => {
-                if (referenceCommandPanelRef.current) {
-                  closeReferenceCommandPanel()
-                  return true
-                }
                 if (fileMentionPanelRef.current) {
                   closeFileMentionPanel()
                   return true
@@ -469,11 +468,18 @@ export const LxMarkdownEditor = ({
         Prec.high(
           EditorView.domEventHandlers({
             paste: (event, view) => {
-              const path = getClipboardFilePath(event)
-              if (!path) return false
+              const file = getClipboardFile(event)
+              if (!file) return false
 
               event.preventDefault()
-              openReferenceCommandPanel(path, view)
+              const type = file.isDirectory ? "folder" : file.isImage ? "image" : "file"
+              const insertion = `${createMarkdownReference(type, file.path)} `
+              const { from, to } = view.state.selection.main
+              view.dispatch({
+                changes: { from, to, insert: insertion },
+                selection: { anchor: from + insertion.length },
+                userEvent: "input.paste",
+              })
               return true
             },
             keydown: (event, view) => {
@@ -570,10 +576,8 @@ export const LxMarkdownEditor = ({
             syncSlashCommandPanel(update.view)
           }
           if (update.docChanged) syncFileMentionPanel(update.view)
-          if (update.docChanged) closeReferenceCommandPanel()
           if (update.selectionSet && !update.docChanged) {
             closeFileMentionPanel()
-            closeReferenceCommandPanel()
           }
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
@@ -671,13 +675,6 @@ export const LxMarkdownEditor = ({
           activeIndex={activeFileMentionIndex}
           files={fileMentionPanel.files}
           position={fileMentionPanel.position}
-        />
-      )}
-      {referenceCommandPanel && (
-        <MarkdownReferenceCommandMenu
-          activeIndex={activeReferenceCommandIndex}
-          commands={referenceCommandPanel.commands}
-          position={referenceCommandPanel.position}
         />
       )}
     </section>

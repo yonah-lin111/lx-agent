@@ -266,6 +266,11 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgba(196, 181, 253, 0.12) !important",
       borderRadius: "3px !important",
     },
+    ".cm-md-reference-folder, .cm-md-reference-folder *": {
+      color: "#d97706 !important",
+      backgroundColor: "rgba(217, 119, 6, 0.12) !important",
+      borderRadius: "3px !important",
+    },
     ".cm-md-reference-file, .cm-md-reference-file *": {
       color: "#7dd3fc !important",
       backgroundColor: "rgba(125, 211, 252, 0.12) !important",
@@ -1104,7 +1109,7 @@ const buildMarkdownMarkerDecorations = (
     }
     const isComposing = view.composing
     const mainSelection = view.state.selection.main
-    for (const match of line.matchAll(/@\[(refer-[a-z]+)\]\(([^)\r\n]+)\)/g)) {
+    for (const match of line.matchAll(/@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g)) {
       if (match.index === undefined) continue
 
       const rawMatch = match[0]

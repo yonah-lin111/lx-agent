@@ -130,7 +130,9 @@ markdownRenderer.block.ruler.before("fence", "markdown_template", markdownTempla
 })
 
 markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
-  const match = /^@\[(refer-[a-z]+)\]\(([^)\r\n]+)\)/.exec(state.src.slice(state.pos))
+  const match = /^@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/.exec(
+    state.src.slice(state.pos),
+  )
   const type = match ? getMarkdownReferenceType(match[1] ?? "") : null
   if (!match || !type) return false
 
