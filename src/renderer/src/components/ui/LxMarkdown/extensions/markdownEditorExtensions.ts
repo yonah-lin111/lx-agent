@@ -35,6 +35,7 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-scroller": {
       overflow: "auto",
+      scrollbarGutter: "stable",
     },
     ".cm-gutters": {
       minHeight: "100%",
