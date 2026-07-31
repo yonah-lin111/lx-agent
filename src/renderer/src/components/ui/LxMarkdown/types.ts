@@ -51,6 +51,7 @@ export interface LxMarkdownEditorProps {
     projectPaths: string[],
     query: string,
   ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
+  onFolderReferenceAdd?: (path: string) => void
   showLineNumbers?: boolean
   showFolding?: boolean
 }

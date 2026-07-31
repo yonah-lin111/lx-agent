@@ -3,7 +3,7 @@ import type React from "react"
 import type { CSSProperties } from "react"
 import { useLayoutEffect, useRef } from "react"
 import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
-import { Tag } from "@/components/ui/Tag"
+import { LxTag } from "@/components/ui/LxTag"
 
 // 文件提及面板属性。
 interface FileMentionCommandMenuProps {
@@ -89,13 +89,13 @@ export const FileMentionCommandMenu = ({
                 </div>
               </div>
               {file.source === "reference" && (
-                <Tag
+                <LxTag
                   bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
                   className="pointer-events-none ml-6 mt-0.5"
                   size="small"
                 >
                   {referenceProjectName ?? "refer-project"}
-                </Tag>
+                </LxTag>
               )}
             </div>
           </div>

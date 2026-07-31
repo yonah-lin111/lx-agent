@@ -56,6 +56,7 @@ describe("useProjectNavigationActions", () => {
       id: "project-2",
       name: "LX Agent",
       type: "filesystem",
+      referencedFolders: [],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     })

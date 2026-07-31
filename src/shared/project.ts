@@ -1,12 +1,16 @@
 // 设计状态。
 export type DesignStatus = "todo" | "in_progress" | "completed"
 
+// 项目共享文件夹引用。
+export type ReferencedFolder = { path: string; createdAt: string }
+
 // 项目数据。
 export type Project = {
   id: string
   name: string
   type: "filesystem" | "virtual"
   path?: string
+  referencedFolders: ReferencedFolder[]
   createdAt: string
   updatedAt: string
 }
@@ -37,7 +41,9 @@ export type Design = {
 export type CreateProjectInput = { name: string; type?: Project["type"]; path?: string }
 
 // 项目更新参数。
-export type UpdateProjectInput = Partial<CreateProjectInput>
+export type UpdateProjectInput = Partial<CreateProjectInput> & {
+  referencedFolders?: ReferencedFolder[]
+}
 
 // 项目文件提及候选项。
 export type ProjectFileEntry = { path: string; isDirectory: boolean }

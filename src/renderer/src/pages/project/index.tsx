@@ -1,8 +1,10 @@
+import { useCallback } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
+import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
 
 /**
  * 渲染设计页面。
@@ -13,6 +15,29 @@ export const ProjectPage = (): React.JSX.Element => {
   const { content, hasDesign, isLoading, isSaved, loadedDesignId, projectId, save, setContent } =
     useProjectEditor(designId)
   const isDesignLoading = isLoading || (designId !== null && loadedDesignId !== designId)
+  const setReferencedFolders = useProjectReferencedFoldersStore(
+    (state) => state.setReferencedFolders,
+  )
+
+  const addFolderReference = useCallback(
+    (path: string): void => {
+      if (!projectId) return
+
+      void projectApi.listProjects().then((projects) => {
+        const project = projects.find((item) => item.id === projectId)
+        if (!project || project.referencedFolders.some((folder) => folder.path === path)) return
+
+        const referencedFolders = [
+          ...project.referencedFolders,
+          { path, createdAt: new Date().toISOString() },
+        ]
+        return projectApi.updateProject(projectId, { referencedFolders }).then(() => {
+          setReferencedFolders(projectId, referencedFolders)
+        })
+      })
+    },
+    [projectId, setReferencedFolders],
+  )
 
   return (
     <div className="relative flex min-w-0 flex-1">
@@ -26,6 +51,7 @@ export const ProjectPage = (): React.JSX.Element => {
           onChange={setContent}
           onSearchFiles={projectApi.searchFiles}
           onSearchReferencedFiles={projectApi.searchReferencedFiles}
+          onFolderReferenceAdd={addFolderReference}
           onSave={save}
           showFolding={true}
         />

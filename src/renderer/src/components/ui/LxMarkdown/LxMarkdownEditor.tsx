@@ -129,6 +129,7 @@ export const LxMarkdownEditor = ({
   projectId,
   onSearchFiles,
   onSearchReferencedFiles,
+  onFolderReferenceAdd,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -136,6 +137,7 @@ export const LxMarkdownEditor = ({
   const editorViewRef = useRef<EditorView | null>(null)
   const previewRef = useRef<HTMLElement>(null)
   const onChangeRef = useRef(onChange)
+  const onFolderReferenceAddRef = useRef(onFolderReferenceAdd)
   const onSaveRef = useRef(onSave)
 
   const [content, setContent] = useState(initialContent)
@@ -214,6 +216,10 @@ export const LxMarkdownEditor = ({
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
+
+  useEffect(() => {
+    onFolderReferenceAddRef.current = onFolderReferenceAdd
+  }, [onFolderReferenceAdd])
 
   useEffect(() => {
     onSaveRef.current = onSave
@@ -475,6 +481,7 @@ export const LxMarkdownEditor = ({
                 selection: { anchor: from + insertion.length },
                 userEvent: "input.paste",
               })
+              if (type === "folder") onFolderReferenceAddRef.current?.(file.path)
               return true
             },
             keydown: (event, view) => {

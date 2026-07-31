@@ -108,7 +108,6 @@ export const MarkdownEditorToolbar = ({
     <div className="flex w-80 flex-col gap-2" aria-label="Markdown 编辑器快捷键">
       <LxInput
         aria-label="筛选快捷键"
-        className="!px-2 !py-1"
         placeholder="筛选快捷键或说明"
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"

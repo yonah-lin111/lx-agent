@@ -8,6 +8,7 @@ import type {
   DesignStatus,
   Module,
   Project,
+  ReferencedFolder,
   UpdateDesignInput,
   UpdateModuleInput,
   UpdateProjectInput,
@@ -24,6 +25,7 @@ export type {
   DesignStatus,
   Module,
   Project,
+  ReferencedFolder,
   UpdateDesignInput,
   UpdateModuleInput,
   UpdateProjectInput,
@@ -35,6 +37,7 @@ type ProjectRow = {
   name: string
   type: "filesystem" | "virtual"
   path: string | null
+  referenced_folders: string | null
   created_at: string
   updated_at: string
 }
@@ -64,6 +67,15 @@ type DesignRow = {
 // 合法设计状态。
 const DESIGN_STATUSES: DesignStatus[] = ["todo", "in_progress", "completed"]
 
+// 合法共享文件夹引用。
+const isReferencedFolder = (value: unknown): value is ReferencedFolder =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof (value as ReferencedFolder).path === "string" &&
+      typeof (value as ReferencedFolder).createdAt === "string",
+  )
+
 /**
  * 验证并返回非空名称。
  */
@@ -80,11 +92,45 @@ const requireName = (name: string): string => {
 /**
  * 将项目数据库记录转换为业务数据。
  */
+const getReferencedFolders = (value: string | null): ReferencedFolder[] => {
+  try {
+    const folders = JSON.parse(value ?? "[]")
+    if (!Array.isArray(folders)) return []
+
+    return normalizeReferencedFolders(folders)
+  } catch {
+    return []
+  }
+}
+
+// 规范化项目共享文件夹路径。
+const normalizeReferencedFolders = (folders: unknown[]): ReferencedFolder[] => {
+  const foldersByPath = new Map<string, ReferencedFolder>()
+
+  for (const folder of folders) {
+    if (!isReferencedFolder(folder)) continue
+
+    const path = folder.path.trim()
+    if (!path) continue
+
+    const createdAt = new Date(folder.createdAt)
+    if (Number.isNaN(createdAt.getTime())) continue
+
+    const existing = foldersByPath.get(path)
+    if (!existing || existing.createdAt < folder.createdAt) {
+      foldersByPath.set(path, { path, createdAt: folder.createdAt })
+    }
+  }
+
+  return [...foldersByPath.values()]
+}
+
 const toProject = (row: ProjectRow): Project => ({
   id: row.external_id,
   name: row.name,
   type: row.type,
   path: row.path ?? undefined,
+  referencedFolders: getReferencedFolders(row.referenced_folders),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -142,7 +188,15 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       )
       .run(id, name, type, input.path?.trim() || null, now, now)
 
-    return { id, name, type, path: input.path?.trim() || undefined, createdAt: now, updatedAt: now }
+    return {
+      id,
+      name,
+      type,
+      path: input.path?.trim() || undefined,
+      referencedFolders: [],
+      createdAt: now,
+      updatedAt: now,
+    }
   },
 
   updateProject: (id: string, input: UpdateProjectInput): void => {
@@ -161,6 +215,16 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       assertProjectDirectory(input.path)
       updates.push("path = ?")
       values.push(input.path.trim() || null)
+    }
+    if (input.referencedFolders !== undefined) {
+      if (
+        !Array.isArray(input.referencedFolders) ||
+        !input.referencedFolders.every(isReferencedFolder)
+      ) {
+        throw new Error("INVALID_REFERENCED_FOLDERS")
+      }
+      updates.push("referenced_folders = ?")
+      values.push(JSON.stringify(normalizeReferencedFolders(input.referencedFolders)))
     }
     if (updates.length === 0) return
 

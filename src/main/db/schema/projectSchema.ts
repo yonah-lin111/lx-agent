@@ -11,6 +11,7 @@ export const createDesignTables = (database: Database.Database): void => {
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'virtual',
       path TEXT,
+      referenced_folders TEXT NOT NULL DEFAULT '[]',
       created_at TIMESTAMP NOT NULL,
       updated_at TIMESTAMP NOT NULL
     );

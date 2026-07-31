@@ -3,7 +3,10 @@ import type React from "react"
 import { forwardRef, useEffect, useRef, useState } from "react"
 
 // 输入框尺寸。
-export type LxInputSize = "xs" | "sm"
+export type LxInputSize = "xs" | "sm" | "lg"
+
+// 输入框样式。
+export type LxInputVariant = "default" | "simple"
 
 // 输入框属性。
 export interface LxInputProps
@@ -11,6 +14,7 @@ export interface LxInputProps
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   size?: LxInputSize
+  variant?: LxInputVariant
   clear?: boolean
   onClear?: () => void
 }
@@ -25,6 +29,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
       prefix,
       suffix,
       size = "sm",
+      variant = "default",
       clear = false,
       disabled,
       value,
@@ -38,7 +43,14 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
     const [showPassword, setShowPassword] = useState<boolean>(false)
-    const textSizeClass = size === "xs" ? "text-xs" : "text-sm"
+    const textSizeClass = size === "lg" ? "text-sm" : "text-xs"
+    const sizeClass = size === "xs" ? "gap-1.5 px-2 py-1" : "gap-1.5 px-2.5 py-1.5"
+    const variantClass =
+      variant === "simple"
+        ? "border-transparent bg-transparent hover:border-transparent focus-within:border-transparent"
+        : "border-white/10 bg-[#212121] hover:border-white/20 focus-within:border-white/25"
+    const placeholderClass =
+      variant === "simple" ? "placeholder:text-white/35" : "placeholder:text-white/20"
     const inputType = props.type === "password" ? (showPassword ? "text" : "password") : props.type
 
     useEffect(() => {
@@ -110,14 +122,14 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
 
     return (
       <div
-        className={`flex w-full min-w-0 items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 py-1.5 text-white/80 transition-colors duration-150 hover:border-white/20 focus-within:border-white/25 ${
+        className={`flex w-full min-w-0 items-center rounded-[6px] border text-white/80 transition-colors duration-150 ${sizeClass} ${variantClass} ${
           disabled ? "cursor-not-allowed opacity-40" : ""
         } ${className}`}
       >
         {prefix}
         <input
           ref={assignRef}
-          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} text-white outline-none placeholder:text-white/20 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none`}
+          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} ${placeholderClass} text-white outline-none disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none`}
           disabled={disabled}
           value={value}
           defaultValue={defaultValue}

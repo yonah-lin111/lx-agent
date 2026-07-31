@@ -79,7 +79,7 @@ export const ProjectModal = ({
             required
             aria-label="项目名称"
             placeholder="输入项目名称"
-            size="xs"
+            size="sm"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -89,7 +89,7 @@ export const ProjectModal = ({
           <LxInput
             aria-label="项目路径"
             placeholder="例如：/Users/name/project"
-            size="xs"
+            size="sm"
             value={path}
             onChange={(event) => setPath(event.target.value)}
           />

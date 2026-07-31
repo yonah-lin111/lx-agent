@@ -1,11 +1,12 @@
 import { X } from "lucide-react"
 import type React from "react"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 
-// Tag 组件尺寸类型。
-export type TagSize = "small" | "default" | "large"
+// LxTag 组件尺寸类型。
+export type LxTagSize = "small" | "default" | "large"
 
 // Tag 组件颜色类型。
-export type TagColor =
+export type LxTagColor =
   | "default"
   | "pink"
   | "amber"
@@ -20,21 +21,22 @@ export type TagColor =
   | "orange"
 
 // Tag 组件属性。
-export interface TagProps {
+export interface LxTagProps {
   children: React.ReactNode
-  size?: TagSize
+  size?: LxTagSize
   prefix?: React.ReactNode
+  suffix?: React.ReactNode
   highlighted?: boolean
   onClick?: (event: React.MouseEvent<HTMLSpanElement>) => void
-  onClose?: (event: React.MouseEvent<HTMLSpanElement>) => void
-  color?: TagColor
+  onClose?: () => void
+  color?: LxTagColor
   bgClass?: string
   highlightBgClass?: string
   hoverClass?: string
   className?: string
 }
 
-const colorStyles: Record<TagColor, { bg: string; highlightBg: string; hover: string }> = {
+const colorStyles: Record<LxTagColor, { bg: string; highlightBg: string; hover: string }> = {
   default: {
     bg: "border-white/5 bg-white/[0.03] text-white/45",
     highlightBg: "border-white/15 bg-white/10 text-white/90",
@@ -97,28 +99,29 @@ const colorStyles: Record<TagColor, { bg: string; highlightBg: string; hover: st
   },
 }
 
-const sizeStyles: Record<TagSize, { container: string; closeIconSize: string }> = {
+const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }> = {
   small: {
     container: "gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[10px]",
-    closeIconSize: "ml-0.5 h-2 w-2",
+    closeIconSize: "h-2 w-2",
   },
   default: {
     container: "gap-1 rounded-[6px] px-2 py-1 text-xs",
-    closeIconSize: "ml-1 h-2.5 w-2.5",
+    closeIconSize: "h-2.5 w-2.5",
   },
   large: {
     container: "gap-1.5 rounded-[6px] px-2.5 py-1.5 text-sm",
-    closeIconSize: "ml-1.5 h-3 w-3",
+    closeIconSize: "h-3 w-3",
   },
 }
 
 /**
  * 渲染可配置颜色、尺寸和交互的通用标签。
  */
-export const Tag = ({
+export const LxTag = ({
   children,
   size = "default",
   prefix,
+  suffix,
   highlighted = false,
   onClick,
   onClose,
@@ -127,7 +130,7 @@ export const Tag = ({
   highlightBgClass,
   hoverClass,
   className = "",
-}: TagProps): React.JSX.Element => {
+}: LxTagProps): React.JSX.Element => {
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
   const isInteractive = isClickable || typeof onClose === "function"
@@ -150,17 +153,21 @@ export const Tag = ({
         <span className="flex shrink-0 items-center justify-center text-current/60">{prefix}</span>
       )}
       <span className="truncate leading-none">{children}</span>
-      {onClose && (
-        <span
-          aria-label="删除标签"
-          className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
-          role="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            onClose(event)
-          }}
-        >
-          <X className={currentStyles.closeIconSize} />
+      {(suffix || onClose) && (
+        <span className="flex shrink-0 items-center gap-0.5">
+          {suffix}
+          {onClose && (
+            <LxTooltip content="确认删除此标签？" onConfirm={onClose} placement="top">
+              <span
+                aria-label="删除标签"
+                className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
+                role="button"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <X className={currentStyles.closeIconSize} />
+              </span>
+            </LxTooltip>
+          )}
         </span>
       )}
     </span>

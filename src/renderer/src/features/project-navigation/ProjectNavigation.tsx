@@ -277,7 +277,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
             placeholder="搜索项目..."
             aria-label="搜索项目"
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
-            size="xs"
+            size="sm"
             onChange={(event) => setSearchKeyword(event.target.value)}
             clear
           />

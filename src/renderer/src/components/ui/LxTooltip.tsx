@@ -1,3 +1,4 @@
+import { Check, X } from "lucide-react"
 import React, { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
@@ -16,6 +17,8 @@ export interface LxTooltipProps {
   delay?: number
   contentClassName?: string
   className?: string
+  onConfirm?: () => void
+  onCancel?: () => void
 }
 
 /**
@@ -41,6 +44,8 @@ export const LxTooltip = ({
   delay = 150,
   contentClassName = "",
   className = "",
+  onConfirm,
+  onCancel,
 }: LxTooltipProps): React.JSX.Element => {
   const [isVisible, setIsVisible] = useState(false)
   const [shouldRender, setShouldRender] = useState(false)
@@ -52,8 +57,9 @@ export const LxTooltip = ({
   const tooltipRef = useRef<HTMLDivElement>(null)
   const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const activeTrigger = trigger
-  const activeDelay = delay
+  const isConfirming = typeof onConfirm === "function"
+  const activeTrigger = isConfirming ? "click" : trigger
+  const activeDelay = isConfirming ? 0 : delay
 
   /**
    * 清理待执行的显示或隐藏计时器。
@@ -253,8 +259,9 @@ export const LxTooltip = ({
     arrowStyle.top = `${arrowOffset}px`
     arrowStyle.transform = "translateY(-50%) rotate(270deg)"
   }
-  const cardClassName =
-    "bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap"
+  const cardClassName = isConfirming
+    ? "w-48 bg-[#303030] p-2.5 text-white"
+    : "bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap"
   let triggerElement: React.ReactNode = children
   if (React.isValidElement(children)) {
     const child = children as React.ReactElement<
@@ -313,7 +320,37 @@ export const LxTooltip = ({
             onMouseLeave={hideTooltip}
             onClick={(event) => event.stopPropagation()}
           >
-            {content}
+            {isConfirming ? (
+              <div className="flex flex-col">
+                <span className="text-sm leading-snug">{content}</span>
+                <div className="mt-0.5 flex items-center justify-end gap-1">
+                  <button
+                    aria-label="取消"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                    type="button"
+                    onClick={() => {
+                      setIsVisible(false)
+                      onCancel?.()
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <button
+                    aria-label="确认"
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                    type="button"
+                    onClick={() => {
+                      setIsVisible(false)
+                      onConfirm()
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              content
+            )}
             <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
               <path
                 d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
