@@ -1,5 +1,5 @@
 import { HighlightStyle } from "@codemirror/language"
-import { RangeSetBuilder } from "@codemirror/state"
+import { RangeSetBuilder, StateEffect } from "@codemirror/state"
 import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import {
@@ -342,6 +342,9 @@ let activeMentionTooltip: HTMLDivElement | null = null
 let mentionTooltipTarget: HTMLElement | null = null
 let mentionTooltipShowTimer: ReturnType<typeof setTimeout> | null = null
 let mentionTooltipHideTimer: ReturnType<typeof setTimeout> | null = null
+
+// 代码块或模板块折叠状态变更事件。
+const markdownBlockFoldToggleEffect = StateEffect.define<void>()
 
 const clearMentionTooltipTimers = (): void => {
   if (mentionTooltipShowTimer) {
@@ -783,7 +786,11 @@ export const markdownMarkerHighlight = (showFolding = false) => [
           return
         }
 
-        if (!update.docChanged && !update.selectionSet && !this.wasComposing) return
+        const isFoldToggled = update.transactions.some((transaction) =>
+          transaction.effects.some((effect) => effect.is(markdownBlockFoldToggleEffect)),
+        )
+        if (!update.docChanged && !update.selectionSet && !isFoldToggled && !this.wasComposing)
+          return
 
         this.wasComposing = false
         this.decorations = buildMarkdownMarkerDecorations(
@@ -802,7 +809,7 @@ export const markdownMarkerHighlight = (showFolding = false) => [
         } else {
           this.foldedIndices.add(index)
         }
-        view.dispatch({})
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
 
       toggleTemplateFold(view: EditorView, index: number) {
@@ -811,7 +818,7 @@ export const markdownMarkerHighlight = (showFolding = false) => [
         } else {
           this.templateFoldedIndices.add(index)
         }
-        view.dispatch({})
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
     },
     { decorations: (plugin) => plugin.decorations },
