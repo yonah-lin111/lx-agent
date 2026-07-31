@@ -2,11 +2,12 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
+import type { MarkdownReferenceType } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
   getMarkdownReferenceImageSource,
   getMarkdownReferenceName,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 
@@ -17,6 +18,11 @@ interface LxMarkdownPreviewProps {
   previewRef: React.RefObject<HTMLElement | null>
   className?: string
   contentClassName?: string
+  onReferenceClick?: (
+    path: string,
+    type: MarkdownReferenceType,
+    event: React.MouseEvent<HTMLSpanElement>,
+  ) => void
 }
 
 // 预览 HTML 中可交互节点的挂载配置。
@@ -263,6 +269,7 @@ export const LxMarkdownPreview = ({
   previewRef,
   className = "px-5",
   contentClassName = "py-4",
+  onReferenceClick,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
@@ -324,6 +331,9 @@ export const LxMarkdownPreview = ({
         previewContent.querySelectorAll<HTMLElement>(".markdown-reference"),
         (container) => {
           const referencePath = container.dataset.referencePath ?? ""
+          const referenceType = Array.from(container.classList)
+            .find((className) => className.startsWith("markdown-reference-"))
+            ?.replace("markdown-reference-", "")
           const isImageReference = container.classList.contains("markdown-reference-image")
           const innerHtml = container.innerHTML
           return {
@@ -340,8 +350,15 @@ export const LxMarkdownPreview = ({
                 placement="top"
               >
                 <span
-                  className="inline-flex max-w-full items-center gap-1"
+                  className={`inline-flex max-w-full items-center gap-1 ${
+                    onReferenceClick && referenceType ? "cursor-pointer" : ""
+                  }`}
                   dangerouslySetInnerHTML={{ __html: innerHtml }}
+                  onClick={(event) => {
+                    if (onReferenceClick && referenceType) {
+                      onReferenceClick(referencePath, referenceType as MarkdownReferenceType, event)
+                    }
+                  }}
                 />
               </LxTooltip>
             ),
@@ -351,7 +368,7 @@ export const LxMarkdownPreview = ({
     ]
     nextMounts.forEach(({ container }) => container.replaceChildren())
     setMounts(nextMounts)
-  }, [html])
+  }, [html, onReferenceClick])
 
   return (
     <article
