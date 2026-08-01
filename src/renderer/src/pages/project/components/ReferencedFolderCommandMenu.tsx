@@ -115,7 +115,7 @@ export const ReferencedFolderCommandMenu = ({
     <div
       ref={panelRef}
       aria-label="引用文件夹内容"
-      className={`markdown-command-menu markdown-command-menu--file fixed z-50 flex max-h-80 w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`markdown-command-menu markdown-command-menu--file fixed z-50 flex h-[var(--markdown-command-menu-file-max-height)] w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
