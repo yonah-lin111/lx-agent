@@ -70,6 +70,12 @@ describe("markdownRenderer", () => {
     expect(html).toContain("内层")
   })
 
+  it("为顶层模板块添加同步滚动锚点 data-line", () => {
+    const html = markdownRenderer.render("&&& addTemplate\n内容\n&&&")
+
+    expect(html).toContain('class="markdown-template-block" data-line="0"')
+  })
+
   it("渲染 @文件提及 并转换为父文件夹/文件名格式的缩略文本与完整内容 dataset", () => {
     const html = markdownRenderer.render(
       "请查看 @src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件",

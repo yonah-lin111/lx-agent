@@ -224,7 +224,11 @@ markdownRenderer.core.ruler.push("markdown-referenced-projects", (state) => {
 
 markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
   state.tokens.forEach((token) => {
-    if (!token.map || token.level !== 0 || (token.nesting !== 1 && token.type !== "fence")) {
+    if (
+      !token.map ||
+      token.level !== 0 ||
+      (token.nesting !== 1 && token.type !== "fence" && token.type !== "markdown_template")
+    ) {
       return
     }
 
@@ -309,10 +313,13 @@ markdownRenderer.renderer.rules.fence = (
  * 渲染模板块；内部 Markdown 禁止再次解析模板块。
  */
 markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
-  const meta = tokens[index]?.meta as { command: string; content: string }
+  const token = tokens[index]
+  const meta = token?.meta as { command: string; content: string }
   const command = markdownRenderer.utils.escapeHtml(meta.command)
   const encodedContent = encodeURIComponent(meta.content)
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
+  const sourceLine = token.attrGet("data-line")
+  const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
 
-  return `<section class="markdown-template-block" data-template-command="${command}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
+  return `<section class="markdown-template-block"${lineAttribute} data-template-command="${command}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }
