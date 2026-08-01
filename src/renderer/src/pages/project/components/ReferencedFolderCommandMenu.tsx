@@ -1,7 +1,7 @@
 import type { ProjectFileEntry } from "@shared/project"
 import { Check, Copy, FileText, Folder, Search } from "lucide-react"
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxInput } from "@/components/ui/LxInput"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
@@ -28,8 +28,10 @@ export const ReferencedFolderCommandMenu = ({
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
   const [isFolderPathCopied, setIsFolderPathCopied] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const closeTimeoutRef = useRef<number | null>(null)
 
   const handleClose = (): void => {
@@ -75,6 +77,56 @@ export const ReferencedFolderCommandMenu = ({
       isCurrent = false
     }
   }, [folderPath, query])
+
+  // 查询变化时重置高亮，避免高亮停留在旧结果上。
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [query])
+
+  /**
+   * 处理面板键盘交互：上下键切换高亮项，Ctrl/⌘+C 复制高亮项的引用。
+   * 搜索框内有文本选区时保留原生复制行为。
+   */
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (files.length === 0) return
+      event.preventDefault()
+      const offset = event.key === "ArrowDown" ? 1 : -1
+      setActiveIndex((current) => (current + offset + files.length) % files.length)
+      return
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
+      const input = event.currentTarget
+      if (input.selectionStart !== input.selectionEnd) return
+      const activeFile = files[activeIndex] ?? files[0]
+      if (!activeFile) return
+      event.preventDefault()
+      void copyReference(activeFile)
+    }
+  }
+
+  /**
+   * 高亮项变化时滚动列表，确保其始终完整可见。
+   */
+  useLayoutEffect(() => {
+    const container = listRef.current
+    if (!container || files.length === 0) return
+    const activeElement = container.querySelector(
+      `[id="folder-file-${files[activeIndex]?.path}"]`,
+    ) as HTMLElement | null
+    if (!activeElement) return
+
+    const scrollPadding = 4
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeElement.getBoundingClientRect()
+
+    if (activeRect.top < containerRect.top + scrollPadding) {
+      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
+    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
+      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
+    }
+  }, [activeIndex, files])
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent): void => {
@@ -142,20 +194,26 @@ export const ReferencedFolderCommandMenu = ({
           </button>
         </LxTooltip>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {files.map((file) => {
+      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
+        {files.map((file, index) => {
           const normalizedPath = file.path.replace(/\/$/, "")
           const slashIndex = normalizedPath.lastIndexOf("/")
           const name = normalizedPath.slice(slashIndex + 1)
           const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
           const Icon = file.isDirectory ? Folder : FileText
           const isCopied = copiedPath === file.path
+          const isActive = index === activeIndex
 
           return (
             <div
               key={file.path}
-              className="relative flex min-h-11 w-full items-center rounded-[4px] px-2 py-1 text-left text-xs text-white/75 transition-colors hover:bg-white/8"
+              id={`folder-file-${file.path}`}
+              aria-selected={isActive}
+              className={`relative flex min-h-11 w-full items-center rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/8"
+              }`}
               role="option"
+              onMouseDown={(event) => event.preventDefault()}
             >
               <Icon className="h-4 w-4 shrink-0 text-violet-300" />
               <div className="ml-2 min-w-0 flex-1">
@@ -190,6 +248,7 @@ export const ReferencedFolderCommandMenu = ({
           value={query}
           variant="simple"
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={handleInputKeyDown}
         />
       </div>
     </div>,
