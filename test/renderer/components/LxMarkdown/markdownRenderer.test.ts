@@ -101,4 +101,11 @@ describe("markdownRenderer", () => {
     )
     expect(html).toContain("@other-app/.../@LxMarkdown/LxMarkdownEditor.tsx")
   })
+
+  it("不将 @ 后的单独符号解析为文件提及", () => {
+    const html = markdownRenderer.render("@. @/ @- @! @命令面板 @src/main/index.ts")
+
+    expect(html.match(/class="markdown-file-mention"/g)).toHaveLength(1)
+    expect(html).toContain(`data-full-mention="${encodeURIComponent("@src/main/index.ts")}"`)
+  })
 })

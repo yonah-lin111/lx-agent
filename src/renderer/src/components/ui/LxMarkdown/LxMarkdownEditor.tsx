@@ -32,6 +32,7 @@ import {
   Undo2,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { isInsideMarkdownTemplateBlock } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
@@ -414,6 +415,21 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
+                const templateEndMatch = /^(\s*)&&&\s*$/.exec(line.text)
+                if (
+                  cursor === line.to &&
+                  templateEndMatch &&
+                  isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
+                ) {
+                  const currentIndent = templateEndMatch[1] ?? ""
+                  const insertText = `\n${currentIndent}`
+                  view.dispatch({
+                    changes: { from: cursor, to: cursor, insert: insertText },
+                    selection: { anchor: cursor + insertText.length },
+                  })
+                  return true
+                }
+
                 const emptyListMarkerRegex = /^(\s*)([-+*](\s+\[[ xX]\])?|\d+[.)]|>)\s*$/
                 if (emptyListMarkerRegex.test(line.text)) {
                   view.dispatch({

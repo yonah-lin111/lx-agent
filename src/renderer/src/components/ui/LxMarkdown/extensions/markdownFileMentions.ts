@@ -1,6 +1,20 @@
+// 文件路径提及必须以 ASCII 字母、数字或下划线开头，只允许常见路径字符。
+export const MARKDOWN_FILE_MENTION_PATH_PATTERN = String.raw`[A-Za-z0-9_][A-Za-z0-9_.\/\\-]*`
+
+// 文件提及后的常见标点作为 token 边界，不参与提及高亮。
+const MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN = String.raw`(?=$|[\s.,;:!?，。；：！？、…()[\]{}])`
+
+// 编辑器和预览共用的普通文件提及匹配表达式。
+export const MARKDOWN_FILE_MENTION_PATTERN = new RegExp(
+  String.raw`(?<![\w\[])@(${MARKDOWN_FILE_MENTION_PATH_PATTERN})${MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN}`,
+  "gu",
+)
+
 // 文件提及和 Markdown 引用 token 匹配表达式。
-const FILE_MENTION_PATTERN =
-  /(^|\s)(@\[refer-(?:project|folder|file|image|common)\]\((?:[^()\r\n]|\([^()\r\n]*\))+\)|@[^\s]+)(?=$|\s)/g
+const FILE_MENTION_PATTERN = new RegExp(
+  String.raw`(^|\s)(@\[refer-(?:project|folder|file|image|common)\]\((?:[^()\r\n]|\([^()\r\n]*\))+\)|@${MARKDOWN_FILE_MENTION_PATH_PATTERN})(?=$|\s)`,
+  "gu",
+)
 
 // 文件提及删除范围。
 export type FileMentionDeletionRange = { start: number; end: number }
@@ -59,6 +73,14 @@ export const getFileMentionDeletionRange = (
     const start = match.index + prefix.length
     ranges.push({ start, end: start + token.length })
     match = FILE_MENTION_PATTERN.exec(value)
+  }
+
+  MARKDOWN_FILE_MENTION_PATTERN.lastIndex = 0
+  let fileMentionMatch = MARKDOWN_FILE_MENTION_PATTERN.exec(value)
+  while (fileMentionMatch) {
+    const start = fileMentionMatch.index
+    ranges.push({ start, end: start + fileMentionMatch[0].length })
+    fileMentionMatch = MARKDOWN_FILE_MENTION_PATTERN.exec(value)
   }
 
   if (ranges.some((range) => range.end === cursor)) return null

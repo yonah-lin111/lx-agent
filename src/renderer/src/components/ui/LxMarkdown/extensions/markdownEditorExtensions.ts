@@ -11,7 +11,10 @@ import {
   getMarkdownReferenceType,
   type MarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import { getFileMentionDisplayLabel } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
+import {
+  getFileMentionDisplayLabel,
+  MARKDOWN_FILE_MENTION_PATTERN,
+} from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
@@ -1150,7 +1153,7 @@ const buildMarkdownMarkerDecorations = (
         })
       }
     }
-    for (const match of line.matchAll(/(?<![\w\[])@([^\[\]\(\)\s]+)(?=\s|$)/g)) {
+    for (const match of line.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
       if (match.index === undefined) continue
 
       const fullMention = match[0]

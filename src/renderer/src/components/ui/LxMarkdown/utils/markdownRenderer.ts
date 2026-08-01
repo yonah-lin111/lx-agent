@@ -25,7 +25,10 @@ import {
   getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import { getFileMentionDisplayLabel } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
+import {
+  getFileMentionDisplayLabel,
+  MARKDOWN_FILE_MENTION_PATH_PATTERN,
+} from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 
 const languageAliases: Record<string, string> = {
   cs: "csharp",
@@ -165,18 +168,14 @@ markdownRenderer.inline.ruler.after(
     if (state.src.charCodeAt(state.pos) !== 0x40 /* @ */) return false
     if (state.pos > 0 && /\w/.test(state.src[state.pos - 1])) return false
 
-    const match = /^@([^\s\[\]\(\)]+)/.exec(state.src.slice(state.pos))
+    const match = new RegExp(
+      String.raw`^@(${MARKDOWN_FILE_MENTION_PATH_PATTERN})(?=$|[\s.,;:!?，。；：！？、…()[\]{}])`,
+      "u",
+    ).exec(state.src.slice(state.pos))
     if (!match) return false
 
-    let rawMention = match[0]
-    let rawPath = match[1]
-
-    const trailingPunctuationMatch = /([.,;:!?]+)$/.exec(rawPath)
-    if (trailingPunctuationMatch) {
-      const punctLen = trailingPunctuationMatch[1].length
-      rawMention = rawMention.slice(0, -punctLen)
-      rawPath = rawPath.slice(0, -punctLen)
-    }
+    const rawMention = match[0]
+    const rawPath = match[1]
     if (!rawPath) return false
 
     if (!silent) {

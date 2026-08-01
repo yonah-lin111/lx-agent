@@ -24,6 +24,7 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
 } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
 
 /**
@@ -232,7 +233,10 @@ export const useMarkdownPanels = ({
     const activeProjectId = projectIdRef.current
     const cursor = view.state.selection.main.head
     const prefix = view.state.doc.sliceString(0, cursor)
-    const match = /(^|\s)@([^\s]*)$/.exec(prefix)
+    const match = new RegExp(
+      String.raw`(^|\s)@((?:${MARKDOWN_FILE_MENTION_PATH_PATTERN})?)$`,
+      "u",
+    ).exec(prefix)
     const searchProjectPaths = [
       ...new Set([
         ...referencedProjectPathsRef.current,
