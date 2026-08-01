@@ -32,7 +32,10 @@ import {
   Undo2,
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { isInsideMarkdownTemplateBlock } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import {
+  isInsideMarkdownTemplateBlock,
+  toggleMarkdownTemplateDone,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
@@ -344,6 +347,20 @@ export const LxMarkdownEditor = ({
   const changePreviewMode = (mode: MarkdownPreviewMode): void => {
     captureScrollAnchor()
     setPreviewMode(mode)
+  }
+
+  /**
+   * 切换模板块起始行的 done 标记，作为完成状态持久化在源码中。
+   */
+  const toggleTemplateStatus = (line: number, done: boolean): void => {
+    const view = editorViewRef.current
+    if (!view) return
+
+    const docLine = view.state.doc.line(line + 1)
+    const nextLineText = toggleMarkdownTemplateDone(docLine.text, done)
+    if (nextLineText === null) return
+
+    view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
   }
 
   useEffect(() => {
@@ -662,7 +679,12 @@ export const LxMarkdownEditor = ({
           className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
-          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
+          <LxMarkdownPreview
+            html={previewHtml}
+            previewMode={previewMode}
+            previewRef={previewRef}
+            onTemplateStatusToggle={toggleTemplateStatus}
+          />
         )}
       </div>
       <MarkdownBlockCommandMenu

@@ -102,7 +102,7 @@ const markdownTemplateBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^&&&\s+([A-Za-z]\w*)\s*$/.exec(startText)
+  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+(done))?\s*$/.exec(startText)
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
@@ -122,6 +122,7 @@ const markdownTemplateBlock = (
   token.map = [startLine, closeLine + 1]
   token.meta = {
     command: startMatch[1],
+    status: startMatch[2] ?? "",
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   state.line = closeLine + 1
@@ -314,12 +315,14 @@ markdownRenderer.renderer.rules.fence = (
  */
 markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const token = tokens[index]
-  const meta = token?.meta as { command: string; content: string }
+  const meta = token?.meta as { command: string; content: string; status?: string }
   const command = markdownRenderer.utils.escapeHtml(meta.command)
+  const isDone = meta.status === "done"
   const encodedContent = encodeURIComponent(meta.content)
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+  const doneClass = isDone ? " markdown-template-block--done" : ""
 
-  return `<section class="markdown-template-block"${lineAttribute} data-template-command="${command}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
+  return `<section class="markdown-template-block${doneClass}"${lineAttribute} data-template-command="${command}" data-template-status="${isDone ? "done" : ""}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }

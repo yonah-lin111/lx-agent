@@ -4,6 +4,8 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
+  isInsideMarkdownTemplateBlock,
+  toggleMarkdownTemplateDone,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
@@ -25,6 +27,21 @@ describe("Markdown 块命令", () => {
   it("识别代码围栏的闭合位置", () => {
     expect(isInsideMarkdownCodeFence("```php\necho 'hello';\n")).toBe(true)
     expect(isInsideMarkdownCodeFence("```php\necho 'hello';\n```\n")).toBe(false)
+  })
+
+  it("识别带完成标记的模板块起始行仍处于未闭合状态", () => {
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n")).toBe(true)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate done\n")).toBe(true)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate done\n内容\n&&&\n")).toBe(false)
+  })
+
+  it("切换模板块起始行的 done 标记", () => {
+    expect(toggleMarkdownTemplateDone("&&& addTemplate", true)).toBe("&&& addTemplate done")
+    expect(toggleMarkdownTemplateDone("&&& addTemplate done", false)).toBe("&&& addTemplate")
+    expect(toggleMarkdownTemplateDone("&&& addTemplate done", true)).toBe("&&& addTemplate done")
+    expect(toggleMarkdownTemplateDone("普通文本", true)).toBeNull()
+    expect(toggleMarkdownTemplateDone("&&&", true)).toBeNull()
   })
 
   it("为不同标记提供匹配命令和可编辑模板", () => {

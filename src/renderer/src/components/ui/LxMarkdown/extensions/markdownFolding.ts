@@ -77,7 +77,7 @@ export const markdownFoldGutter = gutter({
         const prefix = view.state.doc.sliceString(0, line.from)
         const isFenceLine = /^\s*(`{3,}|~{3,})/.test(line.text)
         const isInsideFence = isInsideMarkdownCodeFence(prefix)
-        const isTemplateLine = /^\s*&&&(?:\s+[A-Za-z]\w*)?\s*$/.test(line.text)
+        const isTemplateLine = /^\s*&&&(?:\s+[A-Za-z]\w*)?(?:\s+done)?\s*$/.test(line.text)
         const isInsideTemplate = isInsideMarkdownTemplateBlock(prefix)
 
         if (!isFenceLine && !isInsideFence && !isTemplateLine && !isInsideTemplate) {

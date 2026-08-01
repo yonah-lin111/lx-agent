@@ -70,6 +70,24 @@ describe("markdownRenderer", () => {
     expect(html).toContain("内层")
   })
 
+  it("渲染模板块完成状态并提供切换按钮挂载点", () => {
+    const html = markdownRenderer.render("&&& addTemplate done\n内容\n&&&")
+
+    expect(html).toContain('data-template-status="done"')
+    expect(html).toContain("markdown-template-block--done")
+    expect(html).toContain('class="markdown-template-status"')
+    expect(html.indexOf('class="markdown-template-status"')).toBeLessThan(
+      html.indexOf('class="markdown-template-copy"'),
+    )
+  })
+
+  it("未标记完成时模板块默认为未完成状态", () => {
+    const html = markdownRenderer.render("&&& addTemplate\n内容\n&&&")
+
+    expect(html).toContain('data-template-status=""')
+    expect(html).not.toContain("markdown-template-block--done")
+  })
+
   it("为顶层模板块添加同步滚动锚点 data-line", () => {
     const html = markdownRenderer.render("&&& addTemplate\n内容\n&&&")
 

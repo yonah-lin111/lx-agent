@@ -594,6 +594,10 @@ select {
   background: #1c1d24;
 }
 
+.markdown-preview .markdown-template-block--done {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
 .markdown-preview .markdown-template-block-header {
   position: sticky;
   top: 0;
@@ -650,6 +654,11 @@ select {
   display: flex;
   flex: none;
   gap: 0.1rem;
+}
+
+.markdown-preview .markdown-template-status {
+  display: flex;
+  flex: none;
 }
 
 .markdown-preview .markdown-template-copy {

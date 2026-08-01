@@ -16,6 +16,7 @@ import {
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
+import { toggleMarkdownTemplateDone } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 export const editorTheme = EditorView.theme(
   {
@@ -172,6 +173,12 @@ export const editorTheme = EditorView.theme(
       color: "#38bdf8 !important",
       backgroundColor: "rgba(56, 189, 248, 0.15) !important",
     },
+    ".cm-md-template-done, .cm-md-template-done *": {
+      color: "#34d399 !important",
+      backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+    },
     ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
       color: "#38bdf8 !important",
       fontWeight: "700",
@@ -305,7 +312,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -635,6 +642,13 @@ export class MarkdownReferenceWidget extends WidgetType {
   }
 }
 
+// 模板块状态切换配置。
+interface TemplateStatusAction {
+  line: number
+  done: boolean
+  onToggle: (line: number, done: boolean) => void
+}
+
 class CodeBlockActionWidget extends WidgetType {
   constructor(
     readonly codeText: string,
@@ -645,6 +659,7 @@ class CodeBlockActionWidget extends WidgetType {
     readonly copyTitle = "复制代码",
     readonly foldTitle = "折叠代码块",
     readonly unfoldTitle = "展开代码块",
+    readonly templateStatus: TemplateStatusAction | null = null,
   ) {
     super()
   }
@@ -654,7 +669,9 @@ class CodeBlockActionWidget extends WidgetType {
       this.codeText === other.codeText &&
       this.isFolded === other.isFolded &&
       this.showFoldBtn === other.showFoldBtn &&
-      this.actionClassName === other.actionClassName
+      this.actionClassName === other.actionClassName &&
+      this.templateStatus?.line === other.templateStatus?.line &&
+      this.templateStatus?.done === other.templateStatus?.done
     )
   }
 
@@ -672,6 +689,37 @@ class CodeBlockActionWidget extends WidgetType {
     wrap.style.padding = "2px 4px"
     wrap.style.zIndex = "10"
     wrap.style.transform = "translateY(-4px)"
+
+    // 状态按钮（仅模板块）
+    const statusBtn = document.createElement("button")
+    statusBtn.type = "button"
+    statusBtn.className = `${this.actionClassName}-btn`
+    statusBtn.style.border = "none"
+    statusBtn.style.background = "transparent"
+    statusBtn.style.cursor = "pointer"
+    statusBtn.style.display = "flex"
+    statusBtn.style.padding = "2px"
+    statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "rgba(255, 255, 255, 0.5)"
+    statusBtn.style.transition = "color 0.2s"
+    statusBtn.title = this.templateStatus?.done ? "标记为未完成" : "标记为已完成"
+    statusBtn.onmouseenter = () => {
+      statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "#ffffff"
+    }
+    statusBtn.onmouseleave = () => {
+      statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "rgba(255, 255, 255, 0.5)"
+    }
+
+    statusBtn.innerHTML = this.templateStatus?.done
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle"><circle cx="12" cy="12" r="10"/></svg>`
+
+    statusBtn.onclick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (this.templateStatus) {
+        this.templateStatus.onToggle(this.templateStatus.line, !this.templateStatus.done)
+      }
+    }
 
     // 复制按钮
     const copyBtn = document.createElement("button")
@@ -747,6 +795,9 @@ class CodeBlockActionWidget extends WidgetType {
       this.onToggleFold()
     }
 
+    if (this.templateStatus) {
+      wrap.appendChild(statusBtn)
+    }
     wrap.appendChild(copyBtn)
     if (this.showFoldBtn) {
       wrap.appendChild(foldBtn)
@@ -784,6 +835,7 @@ export const markdownMarkerHighlight = (showFolding = false) => [
           (index) => this.toggleFold(view, index),
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(view, index),
+          (line, done) => this.toggleTemplateStatus(view, line, done),
           showFolding,
         )
       }
@@ -808,6 +860,7 @@ export const markdownMarkerHighlight = (showFolding = false) => [
           (index) => this.toggleFold(update.view, index),
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(update.view, index),
+          (line, done) => this.toggleTemplateStatus(update.view, line, done),
           showFolding,
         )
       }
@@ -829,6 +882,14 @@ export const markdownMarkerHighlight = (showFolding = false) => [
         }
         view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
+
+      toggleTemplateStatus(view: EditorView, line: number, done: boolean) {
+        const docLine = view.state.doc.line(line + 1)
+        const nextLineText = toggleMarkdownTemplateDone(docLine.text, done)
+        if (nextLineText === null) return
+
+        view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
+      }
     },
     { decorations: (plugin) => plugin.decorations },
   ),
@@ -843,6 +904,7 @@ const buildMarkdownMarkerDecorations = (
   onToggleFold: (index: number) => void = () => {},
   templateFoldedIndices = new Set<number>(),
   onToggleTemplateFold: (index: number) => void = () => {},
+  onToggleTemplateStatus: (line: number, done: boolean) => void = () => {},
   showFolding = false,
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
@@ -982,7 +1044,7 @@ const buildMarkdownMarkerDecorations = (
       continue
     }
 
-    const templateStartMatch = line.match(/^(\s*)&&&\s+([A-Za-z]\w*)\s*$/)
+    const templateStartMatch = line.match(/^(\s*)&&&\s+([A-Za-z]\w*)(?:\s+done)?\s*$/)
     const templateEndMatch = line.match(/^\s*&&&\s*$/)
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
@@ -1012,6 +1074,11 @@ const buildMarkdownMarkerDecorations = (
           `cm-md-template-command cm-md-template-command-${commandName}`,
         )
       }
+      const doneMatch = line.match(/\s+done\s*$/)
+      if (doneMatch?.index !== undefined) {
+        const doneStart = doneMatch.index + 1
+        addMarkerAlways(doneStart, doneStart + 4, "cm-md-template-done")
+      }
       allDecos.push({
         type: "widget",
         from: offset + line.length,
@@ -1025,6 +1092,7 @@ const buildMarkdownMarkerDecorations = (
           "复制模板内容",
           "折叠模板块",
           "展开模板块",
+          { line: i, done: /\s+done\s*$/.test(line), onToggle: onToggleTemplateStatus },
         ),
       })
       allDecos.push({

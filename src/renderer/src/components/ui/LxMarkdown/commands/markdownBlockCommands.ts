@@ -127,7 +127,7 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
   let isOpen = false
 
   for (const line of text.split("\n")) {
-    if (/^\s*&&&\s+[A-Za-z]\w*\s*$/.test(line)) {
+    if (/^\s*&&&\s+[A-Za-z]\w*(?:\s+done)?\s*$/.test(line)) {
       isOpen = true
     } else if (/^\s*&&&\s*$/.test(line)) {
       isOpen = false
@@ -135,6 +135,16 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
   }
 
   return isOpen
+}
+
+/**
+ * 切换模板块起始行的 done 标记；非起始行返回 null。
+ */
+export const toggleMarkdownTemplateDone = (lineText: string, done: boolean): string | null => {
+  const match = /^(\s*)(&&&\s+[A-Za-z]\w*)(?:\s+done)?\s*$/.exec(lineText)
+  if (!match) return null
+
+  return `${match[1]}${match[2]}${done ? " done" : ""}`
 }
 
 /**
