@@ -27,7 +27,7 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-content": {
       minHeight: "100%",
-      padding: "12px 16px",
+      padding: "12px 16px 35vh",
       caretColor: "#ffffff",
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
       lineHeight: "1.65",
