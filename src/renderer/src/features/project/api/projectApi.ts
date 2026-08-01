@@ -10,6 +10,7 @@ export const projectApi = {
     window.api.project.projects.update(id, input),
   update: (id: string, input: UpdateDesignInput): Promise<void> =>
     window.api.project.designs.update(id, input),
+  selectDirectory: (): Promise<string | null> => window.api.project.projects.selectDirectory(),
   searchFiles: (projectId: string, query: string) =>
     window.api.project.projects.searchFiles(projectId, query),
   searchReferencedFiles: (projectPaths: string[], query: string) =>

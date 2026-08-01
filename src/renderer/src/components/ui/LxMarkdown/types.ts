@@ -52,6 +52,8 @@ export interface LxMarkdownEditorProps {
     query: string,
   ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
   onFolderReferenceAdd?: (path: string) => void
+  // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
+  referencedProjectPaths?: string[]
   showLineNumbers?: boolean
   showFolding?: boolean
 }

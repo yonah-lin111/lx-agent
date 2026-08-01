@@ -118,7 +118,11 @@ const normalizeReferencedFolders = (folders: unknown[]): ReferencedFolder[] => {
 
     const existing = foldersByPath.get(path)
     if (!existing || existing.createdAt < folder.createdAt) {
-      foldersByPath.set(path, { path, createdAt: folder.createdAt })
+      foldersByPath.set(path, {
+        path,
+        createdAt: folder.createdAt,
+        enabled: Boolean(folder.enabled),
+      })
     }
   }
 

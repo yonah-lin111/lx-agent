@@ -1,10 +1,14 @@
-import { useCallback } from "react"
+import type { ReferencedFolder } from "@shared/project"
+import { useCallback, useMemo } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
+
+// 防止 Zustand 选择器因返回新数组而重复渲染。
+const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
 
 /**
  * 渲染设计页面。
@@ -18,6 +22,15 @@ export const ProjectPage = (): React.JSX.Element => {
   const setReferencedFolders = useProjectReferencedFoldersStore(
     (state) => state.setReferencedFolders,
   )
+  const projectReferencedFolders = useProjectReferencedFoldersStore((state) =>
+    projectId
+      ? (state.foldersByProjectId[projectId] ?? EMPTY_REFERENCED_FOLDERS)
+      : EMPTY_REFERENCED_FOLDERS,
+  )
+  const enabledReferencedFolderPaths = useMemo(
+    () => projectReferencedFolders.filter((folder) => folder.enabled).map((folder) => folder.path),
+    [projectReferencedFolders],
+  )
 
   const addFolderReference = useCallback(
     (path: string): void => {
@@ -29,7 +42,7 @@ export const ProjectPage = (): React.JSX.Element => {
 
         const referencedFolders = [
           ...project.referencedFolders,
-          { path, createdAt: new Date().toISOString() },
+          { path, createdAt: new Date().toISOString(), enabled: false },
         ]
         return projectApi.updateProject(projectId, { referencedFolders }).then(() => {
           setReferencedFolders(projectId, referencedFolders)
@@ -53,6 +66,7 @@ export const ProjectPage = (): React.JSX.Element => {
           onSearchReferencedFiles={projectApi.searchReferencedFiles}
           onFolderReferenceAdd={addFolderReference}
           onSave={save}
+          referencedProjectPaths={enabledReferencedFolderPaths}
           showFolding={true}
         />
       )}

@@ -1,9 +1,17 @@
 import type { ReferencedFolder } from "@shared/project"
-import { Check, ChevronLeft, ChevronRight, Copy, Folder, FolderPlus } from "lucide-react"
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Folder,
+  FolderPlus,
+  LoaderCircle,
+  Pin,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxInput } from "@/components/ui/LxInput"
 import {
   createMarkdownReference,
   getMarkdownReferenceName,
@@ -20,6 +28,11 @@ interface ProjectBottomSideBarProps {
 
 // 防止 Zustand 选择器因返回新数组而重复渲染。
 const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
+
+// loading 最短展示时长，避免 IPC 过快时闪烁。
+const MIN_LOADING_DURATION = 300
+// loading 淡出时长。
+const FADE_OUT_DURATION = 300
 
 // 换算 CSS 中的尺寸为像素，用于命令面板在可视区域内的边界定位。
 const getCssDimensionInPixels = (variableName: string): number => {
@@ -51,9 +64,11 @@ export const ProjectBottomSideBar = ({
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
   const [projectId, setProjectId] = useState<string | null>(null)
-  const [folderPathInput, setFolderPathInput] = useState<string>("")
   const [folderPanel, setFolderPanel] = useState<FolderPanelState | null>(null)
   const [copiedFolderPath, setCopiedFolderPath] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFadingOut, setIsFadingOut] = useState(false)
+  const loadingEndTimerRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -77,7 +92,13 @@ export const ProjectBottomSideBar = ({
 
     const loadProjectReferences = async (): Promise<void> => {
       setProjectId(null)
-      if (!designId) return
+      setIsFadingOut(false)
+      setIsLoading(true)
+      if (!designId) {
+        setIsLoading(false)
+        return
+      }
+      const startedAt = Date.now()
 
       try {
         const [designs, projects] = await Promise.all([
@@ -93,12 +114,33 @@ export const ProjectBottomSideBar = ({
       } catch (error) {
         if (isCurrent) setProjectId(null)
         console.error("Failed to load design references", error)
+      } finally {
+        const finishLoading = (): void => {
+          setIsFadingOut(true)
+          loadingEndTimerRef.current = window.setTimeout(() => {
+            loadingEndTimerRef.current = null
+            if (isCurrent) {
+              setIsLoading(false)
+              setIsFadingOut(false)
+            }
+          }, FADE_OUT_DURATION)
+        }
+        const remainingDuration = Math.max(0, MIN_LOADING_DURATION - (Date.now() - startedAt))
+        if (remainingDuration > 0) {
+          loadingEndTimerRef.current = window.setTimeout(finishLoading, remainingDuration)
+        } else {
+          finishLoading()
+        }
       }
     }
 
     void loadProjectReferences()
     return () => {
       isCurrent = false
+      if (loadingEndTimerRef.current !== null) {
+        window.clearTimeout(loadingEndTimerRef.current)
+        loadingEndTimerRef.current = null
+      }
     }
   }, [designId, setReferencedFolders])
 
@@ -132,6 +174,24 @@ export const ProjectBottomSideBar = ({
   )
 
   /**
+   * 切换文件夹是否参与 Markdown @ 命令搜索。
+   */
+  const toggleFolderReference = useCallback(
+    (path: string): void => {
+      if (!projectId) return
+
+      const nextFolders = referencedFolders.map((folder) =>
+        folder.path === path ? { ...folder, enabled: !Boolean(folder.enabled) } : folder,
+      )
+      setReferencedFolders(projectId, nextFolders)
+      void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
+        setReferencedFolders(projectId, referencedFolders)
+      })
+    },
+    [projectId, referencedFolders, setReferencedFolders],
+  )
+
+  /**
    * 添加项目级共享文件夹引用。
    */
   const addFolderReference = useCallback(
@@ -145,6 +205,7 @@ export const ProjectBottomSideBar = ({
       const newFolder: ReferencedFolder = {
         path: trimmed,
         createdAt: new Date().toISOString(),
+        enabled: false,
       }
       const nextFolders = [...referencedFolders, newFolder]
       setReferencedFolders(projectId, nextFolders)
@@ -155,10 +216,13 @@ export const ProjectBottomSideBar = ({
     [projectId, referencedFolders, setReferencedFolders],
   )
 
-  const handleAddFolder = (): void => {
-    if (!folderPathInput.trim()) return
-    addFolderReference(folderPathInput.trim())
-    setFolderPathInput("")
+  /**
+   * 打开系统目录选择器并添加选中的文件夹引用。
+   */
+  const handlePickFolder = async (): Promise<void> => {
+    if (!projectId) return
+    const path = await projectApi.selectDirectory()
+    if (path) addFolderReference(path)
   }
 
   /**
@@ -214,8 +278,6 @@ export const ProjectBottomSideBar = ({
     el.scrollBy({ left: scrollAmount, behavior: "smooth" })
   }, [])
 
-  const hasOverflow = canScrollLeft || canScrollRight
-
   return (
     <div
       className={`absolute bottom-0 left-0 right-16 min-w-0 flex items-center overflow-hidden transition-transform duration-300 ease-in-out ${
@@ -223,93 +285,114 @@ export const ProjectBottomSideBar = ({
       }`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-1">
-        <LxTooltip
-          title="添加文件夹"
-          content={
-            <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-              文件夹路径
-              <LxInput
-                autoFocus
-                required
-                aria-label="文件夹路径"
-                placeholder="例如：/Users/name/project"
-                size="sm"
-                value={folderPathInput}
-                onChange={(event) => setFolderPathInput(event.target.value)}
-              />
-            </label>
-          }
-          contentClassName="w-64"
-          placement="top"
-          onCancel={() => setFolderPathInput("")}
-          onConfirm={handleAddFolder}
+        <LxIconButton
+          aria-label="添加文件夹"
+          title={{ content: "添加文件夹", placement: "top" }}
+          onClick={() => void handlePickFolder()}
         >
-          <LxIconButton aria-label="添加文件夹" size="medium">
-            <FolderPlus className="h-4 w-4 text-white/60 hover:text-white" />
-          </LxIconButton>
-        </LxTooltip>
-        {hasOverflow && (
-          <LxIconButton
-            aria-label="向左滚动"
-            disabled={!canScrollLeft}
-            size="medium"
-            onClick={() => handleScroll("left")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </LxIconButton>
-        )}
+          <FolderPlus className="h-4 w-4 text-white/60 hover:text-white" />
+        </LxIconButton>
+        <LxIconButton
+          aria-label="向左滚动"
+          disabled={!canScrollLeft}
+          size="medium"
+          onClick={() => handleScroll("left")}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </LxIconButton>
         <div
           ref={scrollRef}
           className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
         >
-          {sortedFolders.map((folder) => {
-            const isCopied = copiedFolderPath === folder.path
+          {isLoading ? (
+            <div
+              className={`flex items-center gap-1.5 text-xs text-white/40 transition-opacity duration-300 ease-out ${
+                isFadingOut ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin text-amber-400/80" />
+              <span>加载中...</span>
+            </div>
+          ) : (
+            <div className="animate-fade-in flex min-w-0 items-center gap-1">
+              {sortedFolders.map((folder) => {
+                const isCopied = copiedFolderPath === folder.path
+                const isEnabled = Boolean(folder.enabled)
 
-            return (
-              <LxTag
-                key={folder.path}
-                bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
-                closeTooltipContent="是否要删除这个文件夹？"
-                hoverClass=""
-                prefix={<Folder className="h-3 w-3" />}
-                size="default"
-                suffix={
-                  <button
-                    aria-label="复制文件夹引用"
-                    className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
-                      isCopied ? "text-current" : "text-current/60 hover:text-current"
-                    }`}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void copyFolderReference(folder.path)
-                    }}
+                return (
+                  <LxTag
+                    key={folder.path}
+                    bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
+                    closeTooltipContent="是否要删除这个文件夹？"
+                    hoverClass=""
+                    prefix={<Folder className="h-3 w-3" />}
+                    size="default"
+                    suffix={
+                      <>
+                        <LxTooltip
+                          content={
+                            isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
+                          }
+                          placement="top"
+                        >
+                          <button
+                            aria-label={
+                              isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
+                            }
+                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
+                              isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
+                            }`}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleFolderReference(folder.path)
+                            }}
+                          >
+                            <Pin
+                              className="h-2.5 w-2.5"
+                              fill={isEnabled ? "currentColor" : "none"}
+                            />
+                          </button>
+                        </LxTooltip>
+                        <LxTooltip content={isCopied ? "已复制" : "复制文件夹引用"} placement="top">
+                          <button
+                            aria-label="复制文件夹引用"
+                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
+                              isCopied ? "text-current" : "text-current/60 hover:text-current"
+                            }`}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void copyFolderReference(folder.path)
+                            }}
+                          >
+                            {isCopied ? (
+                              <Check className="h-2.5 w-2.5" />
+                            ) : (
+                              <Copy className="h-2.5 w-2.5" />
+                            )}
+                          </button>
+                        </LxTooltip>
+                      </>
+                    }
+                    onClick={(event) => openFolderPanel(folder.path, event)}
+                    onClose={() => removeFolderReference(folder.path)}
                   >
-                    {isCopied ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <Copy className="h-2.5 w-2.5" />
-                    )}
-                  </button>
-                }
-                onClick={(event) => openFolderPanel(folder.path, event)}
-                onClose={() => removeFolderReference(folder.path)}
-              >
-                {getMarkdownReferenceName(folder.path)}
-              </LxTag>
-            )
-          })}
+                    {getMarkdownReferenceName(folder.path)}
+                  </LxTag>
+                )
+              })}
+            </div>
+          )}
         </div>
-        {hasOverflow && (
-          <LxIconButton
-            aria-label="向右滚动"
-            disabled={!canScrollRight}
-            size="medium"
-            onClick={() => handleScroll("right")}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </LxIconButton>
-        )}
+        <LxIconButton
+          aria-label="向右滚动"
+          disabled={!canScrollRight}
+          size="medium"
+          onClick={() => handleScroll("right")}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </LxIconButton>
       </div>
       {folderPanel && (
         <ReferencedFolderCommandMenu

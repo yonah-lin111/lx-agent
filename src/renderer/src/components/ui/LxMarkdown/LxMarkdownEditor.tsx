@@ -130,6 +130,7 @@ export const LxMarkdownEditor = ({
   onSearchFiles,
   onSearchReferencedFiles,
   onFolderReferenceAdd,
+  referencedProjectPaths,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -174,6 +175,7 @@ export const LxMarkdownEditor = ({
     projectId,
     onSearchFiles,
     onSearchReferencedFiles,
+    referencedProjectPaths,
   })
 
   const { captureScrollAnchor } = useEditorScrollSync({

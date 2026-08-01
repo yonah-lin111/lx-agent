@@ -101,6 +101,7 @@ export const useMarkdownPanels = ({
   projectId,
   onSearchFiles,
   onSearchReferencedFiles,
+  referencedProjectPaths = [],
 }: {
   editorViewRef: RefObject<EditorView | null>
   projectId?: string
@@ -109,6 +110,8 @@ export const useMarkdownPanels = ({
     projectPaths: string[],
     query: string,
   ) => Promise<ReferencedProjectFileEntry[]>
+  // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
+  referencedProjectPaths?: string[]
 }) => {
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
@@ -120,6 +123,7 @@ export const useMarkdownPanels = ({
   const onSearchFilesRef = useRef(onSearchFiles)
   const onSearchReferencedFilesRef = useRef(onSearchReferencedFiles)
   const projectIdRef = useRef(projectId)
+  const referencedProjectPathsRef = useRef(referencedProjectPaths)
 
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
     null,
@@ -136,7 +140,8 @@ export const useMarkdownPanels = ({
     onSearchFilesRef.current = onSearchFiles
     onSearchReferencedFilesRef.current = onSearchReferencedFiles
     projectIdRef.current = projectId
-  }, [onSearchFiles, onSearchReferencedFiles, projectId])
+    referencedProjectPathsRef.current = referencedProjectPaths
+  }, [onSearchFiles, onSearchReferencedFiles, projectId, referencedProjectPaths])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -228,10 +233,15 @@ export const useMarkdownPanels = ({
     const cursor = view.state.selection.main.head
     const prefix = view.state.doc.sliceString(0, cursor)
     const match = /(^|\s)@([^\s]*)$/.exec(prefix)
-    const referencedProjectPaths = getMarkdownReferenceProjectPaths(view.state.doc.toString())
+    const searchProjectPaths = [
+      ...new Set([
+        ...referencedProjectPathsRef.current,
+        ...getMarkdownReferenceProjectPaths(view.state.doc.toString()),
+      ]),
+    ]
     const canSearchCurrentProject = Boolean(searchFiles && activeProjectId)
     const canSearchReferencedProjects = Boolean(
-      searchReferencedFiles && referencedProjectPaths.length > 0,
+      searchReferencedFiles && searchProjectPaths.length > 0,
     )
 
     if (!match || (!canSearchCurrentProject && !canSearchReferencedProjects)) {
@@ -256,7 +266,7 @@ export const useMarkdownPanels = ({
         )
       : Promise.resolve([])
     const referencedProjectSearch = canSearchReferencedProjects
-      ? searchReferencedFiles!(referencedProjectPaths, query).then((files) =>
+      ? searchReferencedFiles!(searchProjectPaths, query).then((files) =>
           files.map((file) => ({
             ...file,
             mentionPath: `${getMarkdownReferenceName(file.projectPath)}/${file.path}`,

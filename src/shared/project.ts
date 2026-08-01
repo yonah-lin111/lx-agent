@@ -1,8 +1,8 @@
 // 设计状态。
 export type DesignStatus = "todo" | "in_progress" | "completed"
 
-// 项目共享文件夹引用。
-export type ReferencedFolder = { path: string; createdAt: string }
+// 项目共享文件夹引用。enabled 表示该文件夹内容是否出现在 Markdown @ 命令中。
+export type ReferencedFolder = { path: string; createdAt: string; enabled?: boolean }
 
 // 项目数据。
 export type Project = {
