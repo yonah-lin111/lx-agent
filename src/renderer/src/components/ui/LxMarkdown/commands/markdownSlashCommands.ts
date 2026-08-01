@@ -49,9 +49,19 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "commonTemplate",
     label: "/commonTemplate",
     description: "插入通用提示词模板（非代码修改模板）",
-    content:
-      "&&& commonTemplate\n# 根据下面要求编写代码\n\n- 要求：\n  -\n- 注意：\n  - \n- 期望：\n&&&",
-    cursorOffset: "&&& commonTemplate\n# 根据下面要求编写代码\n\n- 要求：\n  -".length,
+    content: [
+      "&&& commonTemplate",
+      "# 执行任务",
+      "",
+      "位置：",
+      "要求：",
+      "- ",
+      "注意：",
+      "- ",
+      "期望：",
+      "&&&",
+    ].join("\n"),
+    cursorOffset: ["&&& commonTemplate", "# 执行任务", "", "位置："].join("\n").length,
   },
 ]
 
