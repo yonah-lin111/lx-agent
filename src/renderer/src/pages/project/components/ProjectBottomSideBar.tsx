@@ -87,34 +87,65 @@ export const ProjectBottomSideBar = ({
     [referencedFolders],
   )
 
+  /**
+   * 解析当前设计所属项目。同项目内切换设计时 projectId 不变，
+   * 函数式更新返回原值会跳过重渲染，从而不触发下方 tag 列表刷新。
+   */
   useEffect(() => {
     let isCurrent = true
 
-    const loadProjectReferences = async (): Promise<void> => {
+    if (!designId) {
       setProjectId(null)
-      setIsFadingOut(false)
-      setIsLoading(true)
-      if (!designId) {
-        setIsLoading(false)
-        return
-      }
-      const startedAt = Date.now()
+    } else {
+      void projectApi
+        .list()
+        .then((designs) => {
+          const design = designs.find((item) => item.id === designId)
+          const nextProjectId = design?.projectId ?? null
+          if (isCurrent) {
+            setProjectId((current) => (current === nextProjectId ? current : nextProjectId))
+          }
+        })
+        .catch(() => {
+          if (isCurrent) setProjectId(null)
+        })
+    }
 
-      try {
-        const [designs, projects] = await Promise.all([
-          projectApi.list(),
-          projectApi.listProjects(),
-        ])
-        const design = designs.find((item) => item.id === designId)
-        const project = projects.find((item) => item.id === design?.projectId)
+    return () => {
+      isCurrent = false
+    }
+  }, [designId])
+
+  /**
+   * 项目变化时加载该项目的共享文件夹引用。
+   */
+  useEffect(() => {
+    let isCurrent = true
+    if (loadingEndTimerRef.current !== null) {
+      window.clearTimeout(loadingEndTimerRef.current)
+      loadingEndTimerRef.current = null
+    }
+    setIsFadingOut(false)
+
+    if (!projectId) {
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    const startedAt = Date.now()
+
+    void projectApi
+      .listProjects()
+      .then((projects) => {
+        const project = projects.find((item) => item.id === projectId)
         if (!isCurrent) return
-
-        setProjectId(project?.id ?? null)
-        if (project) setReferencedFolders(project.id, project.referencedFolders)
-      } catch (error) {
-        if (isCurrent) setProjectId(null)
-        console.error("Failed to load design references", error)
-      } finally {
+        if (project) setReferencedFolders(projectId, project.referencedFolders)
+      })
+      .catch((error) => {
+        if (isCurrent) console.error("Failed to load project references", error)
+      })
+      .finally(() => {
         const finishLoading = (): void => {
           setIsFadingOut(true)
           loadingEndTimerRef.current = window.setTimeout(() => {
@@ -131,18 +162,12 @@ export const ProjectBottomSideBar = ({
         } else {
           finishLoading()
         }
-      }
-    }
+      })
 
-    void loadProjectReferences()
     return () => {
       isCurrent = false
-      if (loadingEndTimerRef.current !== null) {
-        window.clearTimeout(loadingEndTimerRef.current)
-        loadingEndTimerRef.current = null
-      }
     }
-  }, [designId, setReferencedFolders])
+  }, [projectId, setReferencedFolders])
 
   /**
    * 打开文件夹标签上方的内容面板。
