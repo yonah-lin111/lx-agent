@@ -342,7 +342,13 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
-      <LxTooltip content={tablePicker} placement="bottom" trigger="both" contentClassName="!p-1.5">
+      <LxTooltip
+        closeOnContentClick
+        content={tablePicker}
+        placement="bottom"
+        trigger="both"
+        contentClassName="!p-1.5"
+      >
         <LxIconButton
           aria-label="插入表格"
           size="medium"

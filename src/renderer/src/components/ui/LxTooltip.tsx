@@ -18,6 +18,8 @@ export interface LxTooltipProps {
   delay?: number
   contentClassName?: string
   className?: string
+  // 点击气泡内容后自动关闭。
+  closeOnContentClick?: boolean
   // 受控显隐。
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -49,6 +51,7 @@ export const LxTooltip = ({
   delay = 150,
   contentClassName = "",
   className = "",
+  closeOnContentClick = false,
   open,
   onOpenChange,
   onConfirm,
@@ -338,7 +341,10 @@ export const LxTooltip = ({
               }
             }}
             onMouseLeave={hideTooltip}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (closeOnContentClick) syncVisible(false)
+            }}
           >
             {isConfirming ? (
               <div className="flex flex-col gap-1.5">
