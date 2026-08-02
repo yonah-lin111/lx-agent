@@ -2,9 +2,8 @@ import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder, StateEffect } from "@codemirror/state"
 import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
+import { toggleMarkdownTemplateDone } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
-  getMarkdownReferenceIconSvg,
-  getMarkdownReferenceImageSource,
   getMarkdownReferenceLabel,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
@@ -12,11 +11,14 @@ import {
   type MarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
+  mountFileMentionWidget,
+  mountMarkdownReferenceWidget,
+} from "@/components/ui/LxMarkdown/components/EditorMentionWidgets"
+import {
   getFileMentionDisplayLabel,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
-import { toggleMarkdownTemplateDone } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 export const editorTheme = EditorView.theme(
   {
@@ -354,183 +356,12 @@ export const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.operator, color: "#fcd34d" },
 ])
 
-let activeMentionTooltip: HTMLDivElement | null = null
-let mentionTooltipTarget: HTMLElement | null = null
-let mentionTooltipShowTimer: ReturnType<typeof setTimeout> | null = null
-let mentionTooltipHideTimer: ReturnType<typeof setTimeout> | null = null
-
 // 代码块或模板块折叠状态变更事件。
 const markdownBlockFoldToggleEffect = StateEffect.define<void>()
 
-const clearMentionTooltipTimers = (): void => {
-  if (mentionTooltipShowTimer) {
-    clearTimeout(mentionTooltipShowTimer)
-    mentionTooltipShowTimer = null
-  }
-  if (mentionTooltipHideTimer) {
-    clearTimeout(mentionTooltipHideTimer)
-    mentionTooltipHideTimer = null
-  }
-}
-
-export const hideMentionTooltip = (immediately = false): void => {
-  if (immediately) {
-    clearMentionTooltipTimers()
-    if (activeMentionTooltip) {
-      activeMentionTooltip.remove()
-      activeMentionTooltip = null
-    }
-    mentionTooltipTarget = null
-    return
-  }
-
-  if (mentionTooltipShowTimer) {
-    clearTimeout(mentionTooltipShowTimer)
-    mentionTooltipShowTimer = null
-  }
-
-  if (!mentionTooltipHideTimer) {
-    mentionTooltipHideTimer = setTimeout(() => {
-      hideMentionTooltip(true)
-    }, 300)
-  }
-}
-
-const showMentionTooltip = (target: HTMLElement, text: string, imagePath?: string): void => {
-  if (mentionTooltipHideTimer) {
-    clearTimeout(mentionTooltipHideTimer)
-    mentionTooltipHideTimer = null
-  }
-
-  if (mentionTooltipTarget === target && activeMentionTooltip) {
-    return
-  }
-
-  if (activeMentionTooltip && mentionTooltipTarget !== target) {
-    hideMentionTooltip(true)
-  }
-
-  if (mentionTooltipShowTimer) {
-    clearTimeout(mentionTooltipShowTimer)
-    mentionTooltipShowTimer = null
-  }
-
-  mentionTooltipTarget = target
-
-  mentionTooltipShowTimer = setTimeout(() => {
-    mentionTooltipShowTimer = null
-    if (!document.body.contains(target)) {
-      mentionTooltipTarget = null
-      return
-    }
-
-    const tooltip = document.createElement("div")
-    tooltip.className =
-      "fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white animate-tooltip-in"
-    let image: HTMLImageElement | null = null
-    if (imagePath) {
-      tooltip.style.width = "fit-content"
-      tooltip.style.minWidth = "160px"
-      tooltip.style.maxWidth = "min(480px, calc(100vw - 16px))"
-
-      image = document.createElement("img")
-      image.alt = text
-      image.style.display = "block"
-      image.style.maxWidth = "100%"
-      image.style.maxHeight = "360px"
-      image.style.objectFit = "contain"
-      image.style.borderRadius = "4px"
-
-      image.addEventListener(
-        "error",
-        () => {
-          image?.remove()
-          const message = document.createElement("span")
-          message.textContent = "图片加载失败"
-          message.style.whiteSpace = "nowrap"
-          tooltip.prepend(message)
-          requestAnimationFrame(positionTooltip)
-        },
-        { once: true },
-      )
-      image.src = getMarkdownReferenceImageSource(imagePath)
-
-      tooltip.append(image)
-    } else {
-      tooltip.style.whiteSpace = "nowrap"
-      tooltip.textContent = text
-    }
-
-    tooltip.addEventListener("mouseenter", () => {
-      if (mentionTooltipHideTimer) {
-        clearTimeout(mentionTooltipHideTimer)
-        mentionTooltipHideTimer = null
-      }
-    })
-    tooltip.addEventListener("mouseleave", () => {
-      hideMentionTooltip(false)
-    })
-    tooltip.addEventListener("mousedown", (event) => {
-      event.stopPropagation()
-    })
-
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-    svg.setAttribute("aria-hidden", "true")
-    svg.setAttribute("viewBox", "0 0 20 20")
-    svg.style.position = "absolute"
-    svg.style.width = "20px"
-    svg.style.height = "20px"
-    svg.style.pointerEvents = "none"
-    svg.style.bottom = "-14px"
-    svg.style.transform = "translateX(-50%) rotate(180deg)"
-
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
-    path.setAttribute(
-      "d",
-      "M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z",
-    )
-    path.setAttribute("fill", "#303030")
-    path.setAttribute("stroke", "none")
-    svg.appendChild(path)
-    tooltip.appendChild(svg)
-
-    document.body.appendChild(tooltip)
-    activeMentionTooltip = tooltip
-
-    const positionTooltip = (): void => {
-      const rect = target.getBoundingClientRect()
-      const tooltipWidth = tooltip.offsetWidth
-      const tooltipHeight = tooltip.offsetHeight
-      const gap = 12
-      const padding = 8
-
-      let left = rect.left + rect.width / 2 - tooltipWidth / 2
-      let top = rect.top - tooltipHeight - gap
-
-      if (top < padding) {
-        top = rect.bottom + gap
-        svg.style.bottom = ""
-        svg.style.top = "-14px"
-        svg.style.transform = "translateX(-50%)"
-      }
-
-      left = Math.max(padding, Math.min(window.innerWidth - padding - tooltipWidth, left))
-      top = Math.max(padding, Math.min(window.innerHeight - padding - tooltipHeight, top))
-
-      const triggerCenter = rect.left + rect.width / 2
-      const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, triggerCenter - left))
-      svg.style.left = `${arrowOffset}px`
-
-      tooltip.style.left = `${left}px`
-      tooltip.style.top = `${top}px`
-    }
-
-    image?.addEventListener("load", positionTooltip, { once: true })
-    positionTooltip()
-  }, 150)
-}
-
 export class FileMentionWidget extends WidgetType {
+  private mount: { container: HTMLElement; destroy: () => void } | null = null
+
   constructor(
     readonly fullMention: string,
     readonly displayLabel: string,
@@ -548,28 +379,14 @@ export class FileMentionWidget extends WidgetType {
   }
 
   toDOM() {
-    const span = document.createElement("span")
-    const nodeClassName = `markdown-file-mention-node ${
-      this.isReferenced ? "markdown-file-mention-node--referenced" : ""
-    }`
-    span.className = `${nodeClassName} cm-md-file-mention-widget inline-block cursor-pointer`
-    span.textContent = this.displayLabel
-
-    span.addEventListener("mouseenter", () => {
-      showMentionTooltip(span, this.fullMention)
-    })
-    span.addEventListener("mouseleave", () => {
-      hideMentionTooltip(false)
-    })
-    span.addEventListener("mousedown", () => {
-      hideMentionTooltip(true)
-    })
-
-    return span
+    this.mount?.destroy()
+    this.mount = mountFileMentionWidget(this.displayLabel, this.fullMention, this.isReferenced)
+    return this.mount.container
   }
 
   destroy() {
-    hideMentionTooltip(true)
+    this.mount?.destroy()
+    this.mount = null
   }
 
   ignoreEvent() {
@@ -578,6 +395,8 @@ export class FileMentionWidget extends WidgetType {
 }
 
 export class MarkdownReferenceWidget extends WidgetType {
+  private mount: { container: HTMLElement; destroy: () => void } | null = null
+
   constructor(
     readonly path: string,
     readonly type: MarkdownReferenceType,
@@ -597,44 +416,14 @@ export class MarkdownReferenceWidget extends WidgetType {
   }
 
   toDOM() {
-    const wrap = document.createElement("span")
-    wrap.className = `markdown-reference markdown-reference-${this.type} cursor-pointer`
-
-    const iconSpan = document.createElement("span")
-    iconSpan.className = "markdown-reference-icon"
-    iconSpan.innerHTML = getMarkdownReferenceIconSvg(this.type)
-
-    const labelSpan = document.createElement("span")
-    labelSpan.className = "markdown-reference-label"
-    labelSpan.textContent = this.label
-
-    const nameSpan = document.createElement("span")
-    nameSpan.className = "markdown-reference-name"
-    nameSpan.textContent = this.name
-
-    wrap.appendChild(iconSpan)
-    wrap.appendChild(labelSpan)
-    wrap.appendChild(nameSpan)
-
-    wrap.addEventListener("mouseenter", () => {
-      showMentionTooltip(
-        wrap,
-        this.type === "image" ? this.name : this.path,
-        this.type === "image" ? this.path : undefined,
-      )
-    })
-    wrap.addEventListener("mouseleave", () => {
-      hideMentionTooltip(false)
-    })
-    wrap.addEventListener("mousedown", () => {
-      hideMentionTooltip(true)
-    })
-
-    return wrap
+    this.mount?.destroy()
+    this.mount = mountMarkdownReferenceWidget(this.path, this.type, this.label, this.name)
+    return this.mount.container
   }
 
   destroy() {
-    hideMentionTooltip(true)
+    this.mount?.destroy()
+    this.mount = null
   }
 
   ignoreEvent() {
@@ -811,16 +600,6 @@ class CodeBlockActionWidget extends WidgetType {
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
 export const markdownMarkerHighlight = (showFolding = false) => [
-  EditorView.domEventHandlers({
-    scroll: () => {
-      hideMentionTooltip(true)
-      return false
-    },
-    blur: () => {
-      hideMentionTooltip(true)
-      return false
-    },
-  }),
   ViewPlugin.fromClass(
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>

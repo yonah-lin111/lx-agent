@@ -45,7 +45,6 @@ import {
   createMarkdownTable,
   editorTheme,
   formatMarkdown,
-  hideMentionTooltip,
   mapMarkdownPosition,
   markdownHighlightStyle,
   markdownMarkerHighlight,
@@ -608,7 +607,6 @@ export const LxMarkdownEditor = ({
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged || update.selectionSet || update.viewportChanged) {
-            hideMentionTooltip(true)
             syncBlockCommandPanel(update.view)
             syncSlashCommandPanel(update.view)
           }
