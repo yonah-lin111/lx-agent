@@ -13,12 +13,17 @@ import {
 import {
   mountFileMentionWidget,
   mountMarkdownReferenceWidget,
+  mountMarkdownTableRowWidget,
 } from "@/components/ui/LxMarkdown/components/EditorMentionWidgets"
 import {
   getFileMentionDisplayLabel,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
-import type { MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
+import type {
+  MarkdownTableAlignment,
+  MarkdownTableRowKind,
+  MarkdownTableSize,
+} from "@/components/ui/LxMarkdown/types"
 
 export const editorTheme = EditorView.theme(
   {
@@ -431,6 +436,37 @@ export class MarkdownReferenceWidget extends WidgetType {
   }
 }
 
+export class MarkdownTableRowWidget extends WidgetType {
+  constructor(
+    readonly cells: string[],
+    readonly alignments: MarkdownTableAlignment[],
+    readonly rowKind: MarkdownTableRowKind,
+    readonly columnCount: number,
+  ) {
+    super()
+  }
+
+  eq(other: MarkdownTableRowWidget) {
+    return (
+      this.cells.length === other.cells.length &&
+      this.cells.every((cell, index) => cell === other.cells[index]) &&
+      this.alignments.length === other.alignments.length &&
+      this.alignments.every((alignment, index) => alignment === other.alignments[index]) &&
+      this.rowKind === other.rowKind &&
+      this.columnCount === other.columnCount
+    )
+  }
+
+  toDOM() {
+    return mountMarkdownTableRowWidget(this.cells, this.alignments, this.rowKind, this.columnCount)
+      .container
+  }
+
+  ignoreEvent() {
+    return false
+  }
+}
+
 // 模板块状态切换配置。
 interface TemplateStatusAction {
   line: number
@@ -695,7 +731,7 @@ const buildMarkdownMarkerDecorations = (
         type: "replace"
         from: number
         to: number
-        widget: FileMentionWidget | MarkdownReferenceWidget
+        widget: FileMentionWidget | MarkdownReferenceWidget | MarkdownTableRowWidget
       }
   )[] = []
   let offset = 0
@@ -715,6 +751,8 @@ const buildMarkdownMarkerDecorations = (
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
+    const isComposing = view.composing
+    const mainSelection = view.state.selection.main
 
     const addMarkerAlways = (from: number, to: number, className: string): void => {
       allDecos.push({ type: "mark", from: offset + from, to: offset + to, className })
@@ -953,6 +991,66 @@ const buildMarkdownMarkerDecorations = (
       )
     }
 
+    if (
+      !isInsideTemplateBlock &&
+      !splitMarkdownTableRow(lines[i - 1] ?? "") &&
+      splitMarkdownTableRow(line) &&
+      splitMarkdownTableRow(lines[i + 1] ?? "")
+    ) {
+      const tableStartOffset = offset
+      const tableRows: string[][] = []
+      const tableRawLines: string[] = []
+      let tableIndex = i
+      while (tableIndex < lines.length) {
+        const row = splitMarkdownTableRow(lines[tableIndex])
+        if (!row) break
+        tableRows.push(row)
+        tableRawLines.push(lines[tableIndex])
+        tableIndex += 1
+      }
+      if (tableRows[1]?.every((cell) => markdownTableSeparatorCellPattern.test(cell))) {
+        const columnCount = Math.max(...tableRows.map((row) => row.length))
+        const normalizedRows = tableRows.map((row) =>
+          Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
+        )
+        const alignments = normalizedRows[1].map(getMarkdownTableAlignment)
+        const tableEndOffset =
+          tableStartOffset + tableRawLines.reduce((sum, raw) => sum + raw.length + 1, 0) - 1
+        const isCursorInside =
+          mainSelection.from <= tableEndOffset && mainSelection.to >= tableStartOffset
+
+        if (!isCursorInside && !isComposing) {
+          let rowOffset = tableStartOffset
+          for (let rowIndex = 0; rowIndex < tableRawLines.length; rowIndex += 1) {
+            const rawRow = tableRawLines[rowIndex]
+            if (rowIndex === 1) {
+              allDecos.push({
+                type: "line",
+                from: rowOffset,
+                className: "cm-md-table-separator-line",
+              })
+            } else {
+              allDecos.push({
+                type: "replace",
+                from: rowOffset,
+                to: rowOffset + rawRow.length,
+                widget: new MarkdownTableRowWidget(
+                  normalizedRows[rowIndex],
+                  alignments,
+                  rowIndex === 0 ? "header" : "body",
+                  columnCount,
+                ),
+              })
+            }
+            rowOffset += rawRow.length + 1
+          }
+          offset = tableEndOffset + 1
+          i = tableIndex - 1
+          continue
+        }
+      }
+    }
+
     if (/^\s*\|.*\|\s*$/.test(line)) {
       addMatches(/(?<!\\)\|/g, "cm-md-table-marker")
     }
@@ -970,8 +1068,6 @@ const buildMarkdownMarkerDecorations = (
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }
-    const isComposing = view.composing
-    const mainSelection = view.state.selection.main
     for (const match of line.matchAll(/@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g)) {
       if (match.index === undefined) continue
 
@@ -1061,24 +1157,11 @@ const buildMarkdownMarkerDecorations = (
 
 // 生成包含表头和内容行的 Markdown 表格。
 export const createMarkdownTable = ({ columns, rows }: MarkdownTableSize): string => {
-  const createRow = (firstCell = ""): string => `| ${firstCell} |${"  |".repeat(columns - 1)}\n`
+  const createRow = (firstCell = ""): string => `| ${firstCell} |${" |".repeat(columns - 1)}\n`
   return `${createRow("Header")}|${" --- |".repeat(columns)}\n${createRow("Content")}${createRow().repeat(rows - 1)}`
 }
 
-const markdownTableSeparatorCellPattern = /^:?-{3,}:?$/
-
-const getMarkdownDisplayWidth = (text: string): number => {
-  let width = 0
-  for (const character of text) {
-    width +=
-      /[\u1100-\u115f\u2329\u232a\u2e80-\u303e\u3040-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua960-\ua97f\uac00-\ud7ff\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]/.test(
-        character,
-      )
-        ? 2
-        : 1
-  }
-  return width
-}
+const markdownTableSeparatorCellPattern = /^:?-+:?$/
 
 const splitMarkdownTableRow = (line: string): string[] | null => {
   const trimmedLine = line.trim()
@@ -1089,7 +1172,7 @@ const splitMarkdownTableRow = (line: string): string[] | null => {
   return cells.length > 1 ? cells : null
 }
 
-const getMarkdownTableAlignment = (cell: string): "left" | "center" | "right" => {
+const getMarkdownTableAlignment = (cell: string): MarkdownTableAlignment => {
   const startsWithColon = cell.startsWith(":")
   const endsWithColon = cell.endsWith(":")
   if (startsWithColon && endsWithColon) return "center"
@@ -1112,34 +1195,14 @@ const formatMarkdownTable = (lines: string[]): string[] => {
     Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
   )
   const alignments = normalizedRows[separatorIndex].map(getMarkdownTableAlignment)
-  const widths = Array.from({ length: columnCount }, (_, columnIndex) =>
-    Math.max(
-      3,
-      ...normalizedRows
-        .filter((_, rowIndex) => rowIndex !== separatorIndex)
-        .map((row) => getMarkdownDisplayWidth(row[columnIndex])),
-    ),
-  )
-
-  const formatCell = (cell: string, columnIndex: number): string => {
-    const width = widths[columnIndex]
-    const padding = width - getMarkdownDisplayWidth(cell)
-    if (alignments[columnIndex] === "right") return `${" ".repeat(padding)}${cell}`
-    if (alignments[columnIndex] === "center") {
-      const leftPadding = Math.floor(padding / 2)
-      return `${" ".repeat(leftPadding)}${cell}${" ".repeat(padding - leftPadding)}`
-    }
-    return `${cell}${" ".repeat(padding)}`
-  }
 
   return normalizedRows.map((row, rowIndex) => {
     const cells = row.map((cell, columnIndex) => {
-      if (rowIndex !== separatorIndex) return formatCell(cell, columnIndex)
-      const width = widths[columnIndex]
+      if (rowIndex !== separatorIndex) return cell
       const alignment = alignments[columnIndex]
-      if (alignment === "center") return `:${"-".repeat(Math.max(1, width - 2))}:`
-      if (alignment === "right") return `${"-".repeat(Math.max(2, width - 1))}:`
-      return "-".repeat(width)
+      if (alignment === "center") return ":-:"
+      if (alignment === "right") return "--:"
+      return "---"
     })
     return `| ${cells.join(" | ")} |`
   })

@@ -7,6 +7,12 @@ export interface MarkdownTableSize {
   rows: number
 }
 
+// 表格列对齐方式。
+export type MarkdownTableAlignment = "left" | "center" | "right"
+
+// 表格渲染行类型。
+export type MarkdownTableRowKind = "header" | "body"
+
 // Markdown 快捷键说明。
 export interface MarkdownShortcut {
   keys: string
