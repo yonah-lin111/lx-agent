@@ -47,7 +47,7 @@ export const AgentMessageList = ({
               key={card.id}
               type="button"
               onClick={() => onSelectPrompt(card.prompt)}
-              className="flex flex-col items-start rounded-[6px] border border-white/5 bg-[#1a1a1a] p-2.5 text-left transition-all hover:border-white/20 hover:bg-white/5 active:scale-[0.99]"
+              className="flex flex-col items-start rounded-[6px] bg-white/[0.04] p-2.5 text-left transition-colors hover:bg-white/10 active:scale-[0.99]"
             >
               <span className="text-[12px] font-medium text-white/80">{card.title}</span>
               <span className="mt-0.5 text-[11px] text-white/40">{card.description}</span>
