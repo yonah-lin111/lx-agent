@@ -1,8 +1,12 @@
-import { Keyboard, Search, Table2 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { ChevronLeft, ChevronRight, Keyboard, Plus, Search, Table2 } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
+import type {
+  MarkdownPage,
+  MarkdownTableSize,
+  MarkdownToolbarAction,
+} from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { isMacOS } from "@/lib/platform"
 
@@ -11,6 +15,13 @@ interface MarkdownEditorToolbarProps {
   actions: MarkdownToolbarAction[]
   isSaved: boolean
   onInsertTable: (size: MarkdownTableSize) => void
+  pageMode?: boolean
+  pages?: MarkdownPage[]
+  activePageIndex?: number
+  pageName?: string
+  onPageChange?: (index: number) => void
+  onPageNameChange?: (name: string) => void
+  onCreatePage?: () => void
 }
 
 const markdownShortcuts = [
@@ -44,9 +55,18 @@ export const MarkdownEditorToolbar = ({
   actions,
   isSaved,
   onInsertTable,
+  pageMode = false,
+  pages = [],
+  activePageIndex = 0,
+  pageName = "",
+  onPageChange,
+  onPageNameChange,
+  onCreatePage,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
+  const [isEditingPageName, setIsEditingPageName] = useState(false)
+  const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
@@ -63,6 +83,81 @@ export const MarkdownEditorToolbar = ({
    */
   const getShortcutKeys = (keys: string): string =>
     keys.replace("Cmd / Ctrl", isMacOS() ? "Cmd" : "Ctrl")
+
+  const pageControls = pageMode && pages.length > 0 && (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <LxIconButton
+        aria-label="新建页面"
+        size="medium"
+        title={{ content: "新建页面" }}
+        onClick={onCreatePage}
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </LxIconButton>
+      {isEditingPageName ? (
+        <input
+          autoFocus
+          aria-label="页面名称"
+          className="min-w-[4ch] max-w-[12ch] border-b border-white/20 bg-transparent px-1 text-center text-xs text-white/80 outline-none"
+          style={{ width: `${Math.min(Math.max(pageName.length, 4), 12)}ch` }}
+          title={pageName}
+          value={pageName}
+          onBlur={() => {
+            if (!pageName.trim()) onPageNameChange?.(pageNameBeforeEditRef.current)
+            setIsEditingPageName(false)
+          }}
+          onChange={(event) => onPageNameChange?.(event.target.value)}
+          onFocus={(event) => event.target.select()}
+          onKeyDown={(event) => {
+            event.stopPropagation()
+            if (event.key === "Escape") {
+              onPageNameChange?.(pageNameBeforeEditRef.current)
+              setIsEditingPageName(false)
+              return
+            }
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              if (!pageName.trim()) onPageNameChange?.(pageNameBeforeEditRef.current)
+              setIsEditingPageName(false)
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          aria-label={`编辑页面名称 ${pageName}`}
+          className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
+          title={pageName}
+          onClick={() => {
+            pageNameBeforeEditRef.current = pageName
+            setIsEditingPageName(true)
+          }}
+        >
+          {pageName}
+        </button>
+      )}
+      <LxIconButton
+        aria-label="上一页"
+        disabled={activePageIndex === 0}
+        size="medium"
+        title={{ content: "上一页" }}
+        onClick={() => onPageChange?.(activePageIndex - 1)}
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </LxIconButton>
+      <span className="text-[11px] text-white/35">
+        {activePageIndex + 1} / {pages.length}
+      </span>
+      <LxIconButton
+        aria-label="下一页"
+        disabled={activePageIndex === pages.length - 1}
+        size="medium"
+        title={{ content: "下一页" }}
+        onClick={() => onPageChange?.(activePageIndex + 1)}
+      >
+        <ChevronRight className="h-3.5 w-3.5" />
+      </LxIconButton>
+    </div>
+  )
 
   const tablePicker = useMemo(
     () => (
@@ -142,6 +237,7 @@ export const MarkdownEditorToolbar = ({
 
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
+      {pageControls}
       {leftActions.map(({ highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}

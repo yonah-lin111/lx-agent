@@ -45,12 +45,22 @@ export type MarkdownFileMentionEntry = ProjectFileEntry & {
   source: "current" | "reference"
 }
 
+// Markdown 页面数据。
+export interface MarkdownPage {
+  id: string
+  name: string
+  content: string
+}
+
 // Markdown 编辑器属性。
 export interface LxMarkdownEditorProps {
   initialContent?: string
+  pages?: MarkdownPage[]
   onChange?: (content: string) => void
+  onPagesChange?: (pages: MarkdownPage[]) => void
   onSave?: () => void
   isSaved?: boolean
+  pageMode?: boolean
   projectId?: string
   onSearchFiles?: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
   onSearchReferencedFiles?: (

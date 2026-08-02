@@ -126,9 +126,12 @@ const getClipboardFile = (
  */
 export const LxMarkdownEditor = ({
   initialContent = "",
+  pages,
   onChange,
+  onPagesChange,
   onSave,
   isSaved = true,
+  pageMode = false,
   projectId,
   onSearchFiles,
   onSearchReferencedFiles,
@@ -143,10 +146,67 @@ export const LxMarkdownEditor = ({
   const onChangeRef = useRef(onChange)
   const onFolderReferenceAddRef = useRef(onFolderReferenceAdd)
   const onSaveRef = useRef(onSave)
+  const pagesRef = useRef(pages)
+  const activePageIndexRef = useRef(0)
+  const onPagesChangeRef = useRef(onPagesChange)
 
   const [content, setContent] = useState(initialContent)
+  const [activePageIndex, setActivePageIndex] = useState(0)
+  const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
+  pagesRef.current = pages
+  activePageIndexRef.current = activePageIndex
+  onPagesChangeRef.current = onPagesChange
+  const activePage = pageMode ? pages?.[activePageIndex] : undefined
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
+
+  useEffect(() => {
+    if (!pageMode || !pages?.length) return
+    const nextPage = pages[Math.min(activePageIndex, pages.length - 1)]
+    if (!nextPage) return
+    setContent(nextPage.content)
+    setPageName(nextPage.name)
+  }, [activePageIndex, pageMode, pages])
+
+  useEffect(() => {
+    if (!pageMode || !activePage || !editorViewRef.current) return
+    const view = editorViewRef.current
+    const nextContent = activePage.content
+    if (view.state.doc.toString() === nextContent) return
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+    })
+  }, [activePage, pageMode])
+
+  const switchPage = (index: number): void => {
+    if (!pages || index < 0 || index >= pages.length || index === activePageIndex) return
+    setActivePageIndex(index)
+  }
+
+  /**
+   * 创建一个空白页面并切换到该页面。
+   */
+  const createPage = (): void => {
+    const nextPage = {
+      id: crypto.randomUUID(),
+      name: `Page ${(pages?.length ?? 0) + 1}`,
+      content: "",
+    }
+    const nextPages = [...(pages ?? []), nextPage]
+    onPagesChangeRef.current?.(nextPages)
+    setActivePageIndex(nextPages.length - 1)
+  }
+
+  /**
+   * 保存当前页面名称。
+   */
+  const renamePage = (name: string): void => {
+    setPageName(name)
+    if (!pages || !activePage) return
+    onPagesChangeRef.current?.(
+      pages.map((page, index) => (index === activePageIndex ? { ...page, name } : page)),
+    )
+  }
 
   const {
     blockCommandPanel,
@@ -617,6 +677,13 @@ export const LxMarkdownEditor = ({
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
             setContent(nextContent)
+            if (pageMode && pagesRef.current && pagesRef.current[activePageIndexRef.current]) {
+              onPagesChangeRef.current?.(
+                pagesRef.current.map((page, index) =>
+                  index === activePageIndexRef.current ? { ...page, content: nextContent } : page,
+                ),
+              )
+            }
             onChangeRef.current?.(nextContent)
           }
         }),
@@ -670,6 +737,13 @@ export const LxMarkdownEditor = ({
         actions={actions}
         isSaved={isSaved}
         onInsertTable={(size) => insertText(createMarkdownTable(size))}
+        pageMode={pageMode}
+        pages={pages}
+        activePageIndex={activePageIndex}
+        pageName={pageName}
+        onPageChange={switchPage}
+        onPageNameChange={renamePage}
+        onCreatePage={createPage}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div

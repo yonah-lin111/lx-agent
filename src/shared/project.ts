@@ -24,6 +24,9 @@ export type Module = {
   updatedAt: string
 }
 
+// Markdown 页面数据。
+export type MarkdownPage = { id: string; name: string; content: string }
+
 // 设计数据。
 export type Design = {
   id: string

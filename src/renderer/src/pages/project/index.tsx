@@ -16,7 +16,7 @@ const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
 export const ProjectPage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const designId = searchParams.get("designId")
-  const { content, hasDesign, isLoading, isSaved, loadedDesignId, projectId, save, setContent } =
+  const { hasDesign, isLoading, isSaved, loadedDesignId, pages, projectId, save, setPages } =
     useProjectEditor(designId)
   const isDesignLoading = isLoading || (designId !== null && loadedDesignId !== designId)
   const setReferencedFolders = useProjectReferencedFoldersStore(
@@ -58,10 +58,12 @@ export const ProjectPage = (): React.JSX.Element => {
       {!isDesignLoading && hasDesign && (
         <LxMarkdownEditor
           key={designId}
-          initialContent={content}
+          initialContent={pages[0]?.content ?? ""}
+          pages={pages}
+          pageMode
           isSaved={isSaved}
           projectId={projectId ?? undefined}
-          onChange={setContent}
+          onPagesChange={setPages}
           onSearchFiles={projectApi.searchFiles}
           onSearchReferencedFiles={projectApi.searchReferencedFiles}
           onFolderReferenceAdd={addFolderReference}
