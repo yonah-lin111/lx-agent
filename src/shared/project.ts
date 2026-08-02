@@ -1,5 +1,5 @@
-// 设计状态。
-export type DesignStatus = "todo" | "in_progress" | "completed"
+// 项目条目状态。
+export type ProjectItemStatus = "todo" | "in_progress" | "completed"
 
 // 项目共享文件夹引用。enabled 表示该文件夹内容是否出现在 Markdown @ 命令中。
 export type ReferencedFolder = { path: string; createdAt: string; enabled?: boolean }
@@ -15,8 +15,8 @@ export type Project = {
   updatedAt: string
 }
 
-// 模块数据。
-export type Module = {
+// 项目文件夹数据。
+export type ProjectFolder = {
   id: string
   projectId: string
   name: string
@@ -27,14 +27,14 @@ export type Module = {
 // Markdown 页面数据。
 export type MarkdownPage = { id: string; name: string; content: string }
 
-// 设计数据。
-export type Design = {
+// 项目条目数据。
+export type ProjectItem = {
   id: string
   projectId: string
-  moduleId?: string
+  projectFolderId?: string
   name: string
-  designData: string
-  status: DesignStatus
+  itemData: string
+  status: ProjectItemStatus
   sortOrder: number
   createdAt: string
   updatedAt: string
@@ -54,22 +54,26 @@ export type ProjectFileEntry = { path: string; isDirectory: boolean }
 // 引用项目的文件搜索结果。
 export type ReferencedProjectFileEntry = ProjectFileEntry & { projectPath: string }
 
-// 模块创建参数。
-export type CreateModuleInput = { projectId: string; name: string }
+// 项目文件夹创建参数。
+export type CreateProjectFolderInput = { projectId: string; name: string }
 
-// 模块更新参数。
-export type UpdateModuleInput = { name: string }
+// 项目文件夹更新参数。
+export type UpdateProjectFolderInput = { name: string }
 
-// 设计创建参数。
-export type CreateDesignInput = {
+// 项目条目创建参数。
+export type CreateProjectItemInput = {
   projectId: string
-  moduleId?: string
+  projectFolderId?: string
   name: string
-  designData?: string
+  itemData?: string
 }
 
-// 设计更新参数。
-export type UpdateDesignInput = { name?: string; designData?: string; status?: DesignStatus }
+// 项目条目更新参数。
+export type UpdateProjectItemInput = {
+  name?: string
+  itemData?: string
+  status?: ProjectItemStatus
+}
 
 // 渲染进程可调用的项目 IPC 接口。
 export interface ProjectApi {
@@ -86,17 +90,17 @@ export interface ProjectApi {
         query: string,
       ) => Promise<ReferencedProjectFileEntry[]>
     }
-    modules: {
-      list: (projectId?: string) => Promise<Module[]>
-      create: (input: CreateModuleInput) => Promise<Module>
-      update: (id: string, input: UpdateModuleInput) => Promise<void>
+    folders: {
+      list: (projectId?: string) => Promise<ProjectFolder[]>
+      create: (input: CreateProjectFolderInput) => Promise<ProjectFolder>
+      update: (id: string, input: UpdateProjectFolderInput) => Promise<void>
       delete: (id: string) => Promise<void>
     }
-    designs: {
-      list: (projectId?: string) => Promise<Design[]>
-      create: (input: CreateDesignInput) => Promise<Design>
-      update: (id: string, input: UpdateDesignInput) => Promise<void>
-      sort: (ids: string[]) => Promise<Design[]>
+    items: {
+      list: (projectId?: string) => Promise<ProjectItem[]>
+      create: (input: CreateProjectItemInput) => Promise<ProjectItem>
+      update: (id: string, input: UpdateProjectItemInput) => Promise<void>
+      sort: (ids: string[]) => Promise<ProjectItem[]>
       delete: (id: string) => Promise<void>
     }
   }

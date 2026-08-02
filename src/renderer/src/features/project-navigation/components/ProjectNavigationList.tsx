@@ -1,4 +1,4 @@
-import { Boxes, CheckCircle2, ChevronDown, Circle, FolderKanban, LoaderCircle } from "lucide-react"
+import { CheckCircle2, ChevronDown, Circle, Folder, FolderKanban, LoaderCircle } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 
@@ -23,13 +23,13 @@ interface ProjectNavigationListProps {
   activePromptId: string
   editingItem: EditingItem | null
   collapsedProjects: Record<string, boolean>
-  collapsedModules: Record<string, boolean>
-  onDesignOpen: (designId: string) => void
+  collapsedProjectFolders: Record<string, boolean>
+  onItemOpen: (itemId: string) => void
   onEditingItemChange: (item: EditingItem) => void
   onEditingItemCommit: () => void
   onEditingItemCancel: () => void
   onProjectToggle: (projectId: string) => void
-  onModuleToggle: (moduleId: string) => void
+  onProjectFolderToggle: (projectFolderId: string) => void
   onOpenMenu: (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
@@ -39,7 +39,7 @@ interface ProjectNavigationListProps {
 }
 
 /**
- * 展示项目、模块和提示词树，并管理模块内已完成提示词的折叠状态。
+ * 展示项目、文件夹和条目树，并管理文件夹内已完成条目的折叠状态。
  */
 export const ProjectNavigationList = ({
   projects,
@@ -47,13 +47,13 @@ export const ProjectNavigationList = ({
   activePromptId,
   editingItem,
   collapsedProjects,
-  collapsedModules,
-  onDesignOpen,
+  collapsedProjectFolders,
+  onItemOpen,
   onEditingItemChange,
   onEditingItemCommit,
   onEditingItemCancel,
   onProjectToggle,
-  onModuleToggle,
+  onProjectFolderToggle,
   onOpenMenu,
 }: ProjectNavigationListProps): React.JSX.Element => {
   const [collapsedCompletedPromptGroups, setCollapsedCompletedPromptGroups] = useState<
@@ -61,17 +61,17 @@ export const ProjectNavigationList = ({
   >({})
 
   /**
-   * 切换指定模块内已完成提示词分组的展开状态。
+   * 切换指定文件夹内已完成条目分组的展开状态。
    */
-  const toggleCompletedPromptGroup = (moduleId: string): void => {
+  const toggleCompletedPromptGroup = (projectFolderId: string): void => {
     setCollapsedCompletedPromptGroups((currentValue) => ({
       ...currentValue,
-      [moduleId]: !(currentValue[moduleId] ?? true),
+      [projectFolderId]: !(currentValue[projectFolderId] ?? true),
     }))
   }
 
   /**
-   * 渲染提示词状态图标。
+   * 渲染条目状态图标。
    */
   const renderStatusIcon = (status: PromptStatus): React.JSX.Element => {
     if (status === "completed") {
@@ -113,7 +113,7 @@ export const ProjectNavigationList = ({
   }
 
   /**
-   * 渲染可选择的提示词节点。
+   * 渲染可选择的条目节点。
    */
   const renderPrompt = (prompt: ProjectNavigationPrompt, isNested: boolean): React.JSX.Element => (
     <div
@@ -128,7 +128,7 @@ export const ProjectNavigationList = ({
           : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
       }`}
       onClick={() => {
-        onDesignOpen(prompt.id)
+        onItemOpen(prompt.id)
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
@@ -146,11 +146,11 @@ export const ProjectNavigationList = ({
   )
 
   /**
-   * 渲染模块内未完成与已完成提示词，已完成项默认折叠。
+   * 渲染文件夹内未完成与已完成条目，已完成项默认折叠。
    */
-  const renderModulePrompts = (
-    prompts: ProjectNavigationProject["modules"][number]["prompts"],
-    moduleId: string,
+  const renderFolderPrompts = (
+    prompts: ProjectNavigationProject["projectFolders"][number]["prompts"],
+    projectFolderId: string,
   ): React.JSX.Element[] => {
     const unfinishedPrompts = prompts.filter((prompt) => prompt.status !== "completed")
     const completedPrompts = prompts.filter((prompt) => prompt.status === "completed")
@@ -158,19 +158,19 @@ export const ProjectNavigationList = ({
       searchKeyword.length > 0 || completedPrompts.some((prompt) => prompt.id === activePromptId)
     const isCompletedGroupCollapsed = shouldAutoExpand
       ? false
-      : (collapsedCompletedPromptGroups[moduleId] ?? true)
+      : (collapsedCompletedPromptGroups[projectFolderId] ?? true)
 
     return [
       ...unfinishedPrompts.map((prompt) => renderPrompt(prompt, true)),
       ...(completedPrompts.length > 0
         ? [
-            <div key={`${moduleId}:completed`} className="flex flex-col gap-0.5">
+            <div key={`${projectFolderId}:completed`} className="flex flex-col gap-0.5">
               <div className="pl-5">
                 <button
                   type="button"
                   className="cursor-pointer select-none text-sm font-medium text-white/35 transition-colors hover:text-white/60"
                   aria-expanded={!isCompletedGroupCollapsed}
-                  onClick={() => toggleCompletedPromptGroup(moduleId)}
+                  onClick={() => toggleCompletedPromptGroup(projectFolderId)}
                 >
                   {isCompletedGroupCollapsed
                     ? `显示 ${completedPrompts.length} 个已完成项...`
@@ -216,33 +216,35 @@ export const ProjectNavigationList = ({
 
               {!isProjectCollapsed && (
                 <div className="space-y-0.5">
-                  {project.modules.map((module) => {
-                    const isModuleCollapsed = searchKeyword
+                  {project.projectFolders.map((folder) => {
+                    const isFolderCollapsed = searchKeyword
                       ? false
-                      : Boolean(collapsedModules[module.id])
+                      : Boolean(collapsedProjectFolders[folder.id])
 
                     return (
-                      <div key={module.id} className="space-y-0.5">
+                      <div key={folder.id} className="space-y-0.5">
                         <div
                           role="button"
                           tabIndex={0}
                           className="group flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left text-sm text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04] hover:text-white/85"
-                          aria-expanded={!isModuleCollapsed}
-                          onClick={() => onModuleToggle(module.id)}
+                          aria-expanded={!isFolderCollapsed}
+                          onClick={() => onProjectFolderToggle(folder.id)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
                               event.currentTarget.click()
                             }
                           }}
-                          onContextMenu={(event) => onOpenMenu(event, "module", module, project.id)}
+                          onContextMenu={(event) =>
+                            onOpenMenu(event, "project_folder", folder, project.id)
+                          }
                         >
-                          <Boxes className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
-                          {renderItemName(module, "min-w-0 flex-1 truncate")}
+                          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
+                          {renderItemName(folder, "min-w-0 flex-1 truncate")}
                           <ChevronDown
-                            className={`h-3.5 w-3.5 text-white/30 transition-transform ${isModuleCollapsed ? "-rotate-90" : ""}`}
+                            className={`h-3.5 w-3.5 text-white/30 transition-transform ${isFolderCollapsed ? "-rotate-90" : ""}`}
                           />
                         </div>
-                        {!isModuleCollapsed && renderModulePrompts(module.prompts, module.id)}
+                        {!isFolderCollapsed && renderFolderPrompts(folder.prompts, folder.id)}
                       </div>
                     )
                   })}

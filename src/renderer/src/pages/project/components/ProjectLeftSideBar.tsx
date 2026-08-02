@@ -5,7 +5,7 @@ interface ProjectLeftSideBarProps {
 }
 
 /**
- * 渲染设计页面专属左侧栏内容。
+ * 渲染项目条目页面专属左侧栏内容。
  */
 export const ProjectLeftSideBar = ({
   isCollapsed,

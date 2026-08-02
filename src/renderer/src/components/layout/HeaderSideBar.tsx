@@ -20,8 +20,8 @@ interface HeaderSideBarProps {
 // 项目页面包屑名称。
 interface ProjectBreadcrumb {
   projectName: string
-  moduleName: string
-  designName: string
+  folderName: string
+  itemName: string
 }
 
 export const HeaderSideBar = ({
@@ -31,14 +31,14 @@ export const HeaderSideBar = ({
   const { toasts } = useLxToast()
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
-  const designId = searchParams.get("designId")
+  const itemId = searchParams.get("itemId")
   const settingsSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
 
   useEffect(() => {
-    if (pathname !== PAGE_ROUTES.project || !designId) {
+    if (pathname !== PAGE_ROUTES.project || !itemId) {
       setProjectBreadcrumb(null)
       return
     }
@@ -47,35 +47,35 @@ export const HeaderSideBar = ({
     let isCurrent = true
     const loadProjectBreadcrumb = async (): Promise<void> => {
       try {
-        const [projects, modules, designs] = await Promise.all([
+        const [projects, folders, items] = await Promise.all([
           projectNavigationApi.listProjects(),
-          projectNavigationApi.listModules(),
-          projectNavigationApi.listDesigns(),
+          projectNavigationApi.listFolders(),
+          projectNavigationApi.listItems(),
         ])
-        const navigationProjects = createProjectNavigationTree(projects, modules, designs)
+        const navigationProjects = createProjectNavigationTree(projects, folders, items)
         for (const project of navigationProjects) {
-          const projectDesign = project.prompts.find((prompt) => prompt.id === designId)
-          if (projectDesign) {
+          const projectItem = project.prompts.find((prompt) => prompt.id === itemId)
+          if (projectItem) {
             if (isCurrent) {
               setProjectBreadcrumb({
                 projectName: project.name,
-                moduleName: "GENERAL",
-                designName: projectDesign.name,
+                folderName: "GENERAL",
+                itemName: projectItem.name,
               })
             }
             return
           }
 
-          const module = project.modules.find((item) =>
-            item.prompts.some((prompt) => prompt.id === designId),
+          const folder = project.projectFolders.find((item) =>
+            item.prompts.some((prompt) => prompt.id === itemId),
           )
-          const moduleDesign = module?.prompts.find((prompt) => prompt.id === designId)
-          if (module && moduleDesign) {
+          const folderItem = folder?.prompts.find((prompt) => prompt.id === itemId)
+          if (folder && folderItem) {
             if (isCurrent) {
               setProjectBreadcrumb({
                 projectName: project.name,
-                moduleName: module.name,
-                designName: moduleDesign.name,
+                folderName: folder.name,
+                itemName: folderItem.name,
               })
             }
             return
@@ -90,14 +90,14 @@ export const HeaderSideBar = ({
     return () => {
       isCurrent = false
     }
-  }, [designId, pathname])
+  }, [itemId, pathname])
 
   const breadcrumbParts =
     pathname === PAGE_ROUTES.project && projectBreadcrumb
       ? [
           activeNavigationItem.breadcrumbCategory,
           projectBreadcrumb.projectName,
-          `${projectBreadcrumb.moduleName} - ${projectBreadcrumb.designName}`,
+          `${projectBreadcrumb.folderName} - ${projectBreadcrumb.itemName}`,
         ]
       : [activeNavigationItem.breadcrumbCategory]
   if (pathname === PAGE_ROUTES.settings) {
@@ -113,7 +113,7 @@ export const HeaderSideBar = ({
     >
       <div className="relative h-full w-full">
         <div
-          key={`${pathname}-${designId ?? ""}-${settingsSection}-${projectBreadcrumb?.designName ?? ""}`}
+          key={`${pathname}-${itemId ?? ""}-${settingsSection}-${projectBreadcrumb?.itemName ?? ""}`}
           className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono animate-header-breadcrumb-in"
         >
           <span className="text-white/30">//</span>

@@ -41,20 +41,22 @@ type ProjectModalState =
   | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
 
 /**
- * 页面左侧栏，展示可搜索的持久化项目与提示词层级。
+ * 页面左侧栏，展示可搜索的持久化项目与条目层级。
  */
 export const ProjectNavigation = (): React.JSX.Element => {
   const toast = useLxToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [searchKeyword, setSearchKeyword] = useState<string>("")
-  const activePromptId = searchParams.get("designId") ?? ""
+  const activePromptId = searchParams.get("itemId") ?? ""
   const { projects, refreshProjects } = useProjectNavigationData()
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
   const [projectModal, setProjectModal] = useState<ProjectModalState | null>(null)
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
-  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
+  const [collapsedProjectFolders, setCollapsedProjectFolders] = useState<Record<string, boolean>>(
+    {},
+  )
   const {
     createMenuItem,
     deleteItem,
@@ -116,20 +118,21 @@ export const ProjectNavigation = (): React.JSX.Element => {
   /**
    * 在右键菜单目标下新增节点并进入行内编辑状态。
    */
-  const addMenuItem = async (itemType: "module" | "prompt"): Promise<void> => {
+  const addMenuItem = async (itemType: "project_folder" | "prompt"): Promise<void> => {
     if (!menu) return
-    const name = itemType === "module" ? "new module" : "new design"
+    const name = itemType === "project_folder" ? "new folder" : "new item"
     const id = await createMenuItem(menu, itemType)
     if (id) {
-      if (itemType === "module") setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
-      if (itemType === "prompt" && menu.type === "module") {
-        setCollapsedModules((value) => ({ ...value, [menu.id]: false }))
+      if (itemType === "project_folder")
+        setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+      if (itemType === "prompt" && menu.type === "project_folder") {
+        setCollapsedProjectFolders((value) => ({ ...value, [menu.id]: false }))
       }
       if (itemType === "prompt" && menu.type === "project") {
         setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
       }
       if (itemType === "prompt") {
-        navigate(`${PAGE_ROUTES.project}?designId=${id}`)
+        navigate(`${PAGE_ROUTES.project}?itemId=${id}`)
       }
       setEditingItem({ id, name })
       setMenu(null)
@@ -188,7 +191,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 更新右键目标提示词的状态。
+   * 更新右键目标条目的状态。
    */
   const handlePromptStatusChange = async (status: PromptStatus): Promise<void> => {
     if (!menu) return
@@ -205,13 +208,13 @@ export const ProjectNavigation = (): React.JSX.Element => {
       menu.type === "project"
         ? (projects
             .find((project) => project.id === menu.id)
-            ?.modules.flatMap((module) => module.prompts)
+            ?.projectFolders.flatMap((folder) => folder.prompts)
             .concat(projects.find((project) => project.id === menu.id)?.prompts ?? [])
             .map((prompt) => prompt.id) ?? [])
-        : menu.type === "module"
+        : menu.type === "project_folder"
           ? (projects
               .find((project) => project.id === menu.projectId)
-              ?.modules.find((module) => module.id === menu.id)
+              ?.projectFolders.find((folder) => folder.id === menu.id)
               ?.prompts.map((prompt) => prompt.id) ?? [])
           : [menu.id]
 
@@ -232,12 +235,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 切换模块的展开状态。
+   * 切换文件夹的展开状态。
    */
-  const toggleModule = (moduleId: string): void => {
-    setCollapsedModules((currentValue) => ({
+  const toggleProjectFolder = (projectFolderId: string): void => {
+    setCollapsedProjectFolders((currentValue) => ({
       ...currentValue,
-      [moduleId]: !currentValue[moduleId],
+      [projectFolderId]: !currentValue[projectFolderId],
     }))
   }
 
@@ -285,16 +288,16 @@ export const ProjectNavigation = (): React.JSX.Element => {
 
         <ProjectNavigationList
           activePromptId={activePromptId}
-          collapsedModules={collapsedModules}
+          collapsedProjectFolders={collapsedProjectFolders}
           collapsedProjects={collapsedProjects}
           editingItem={editingItem}
           projects={filteredProjects}
           searchKeyword={searchKeyword}
-          onDesignOpen={(designId) => navigate(`${PAGE_ROUTES.project}?designId=${designId}`)}
           onEditingItemCancel={cancelEditingItem}
           onEditingItemChange={setEditingItem}
           onEditingItemCommit={commitEditingItem}
-          onModuleToggle={toggleModule}
+          onItemOpen={(itemId) => navigate(`${PAGE_ROUTES.project}?itemId=${itemId}`)}
+          onProjectFolderToggle={toggleProjectFolder}
           onOpenMenu={openMenu}
           onProjectToggle={toggleProject}
         />
@@ -308,7 +311,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         status={menu?.status}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
-        onAddModule={() => addMenuItem("module")}
+        onAddFolder={() => addMenuItem("project_folder")}
         onAddPrompt={() => addMenuItem("prompt")}
         onStatusChange={handlePromptStatusChange}
         onDelete={deleteMenuItem}

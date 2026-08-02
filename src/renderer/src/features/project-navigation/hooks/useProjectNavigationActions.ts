@@ -9,7 +9,7 @@ import type {
 // 消息提示接口。
 type Toast = { success: (message: string) => void; error: (message: string) => void }
 
-// 提示词状态排序权重。
+// 条目状态排序权重。
 const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
   in_progress: 0,
   todo: 1,
@@ -17,12 +17,12 @@ const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
 }
 
 /**
- * 按状态稳定排序项目树中的全部提示词。
+ * 按状态稳定排序项目树中的全部条目。
  */
 export const getSortedPromptIds = (projects: ProjectNavigationProject[]): string[] =>
   projects
     .flatMap((project) => [
-      ...project.modules.flatMap((module) => module.prompts),
+      ...project.projectFolders.flatMap((folder) => folder.prompts),
       ...project.prompts,
     ])
     .map((prompt, index) => ({ prompt, index }))
@@ -34,7 +34,7 @@ export const getSortedPromptIds = (projects: ProjectNavigationProject[]): string
     .map(({ prompt }) => prompt.id)
 
 /**
- * 提供项目导航中可独立于视图调用的提示词操作。
+ * 提供项目导航中可独立于视图调用的条目操作。
  */
 export const useProjectNavigationActions = (
   projects: ProjectNavigationProject[],
@@ -45,7 +45,7 @@ export const useProjectNavigationActions = (
   updatePromptStatus: (id: string, status: PromptStatus) => Promise<void>
   createMenuItem: (
     menu: ProjectNavigationMenuTarget,
-    type: "module" | "prompt",
+    type: "project_folder" | "prompt",
   ) => Promise<string | null>
   renameItem: (id: string, name: string) => Promise<boolean>
   saveProject: (projectId: string | null, name: string, path?: string) => Promise<string | null>
@@ -53,18 +53,18 @@ export const useProjectNavigationActions = (
   deleteItem: (menu: ProjectNavigationMenuTarget) => Promise<boolean>
 } => {
   const sortPromptsByStatus = useCallback(async (): Promise<void> => {
-    await projectNavigationApi.sortDesigns(getSortedPromptIds(projects))
+    await projectNavigationApi.sortItems(getSortedPromptIds(projects))
     await refreshProjects()
   }, [projects, refreshProjects])
 
   const updatePromptStatus = useCallback(
     async (id: string, status: PromptStatus): Promise<void> => {
       try {
-        await projectNavigationApi.updateDesign(id, { status })
+        await projectNavigationApi.updateItem(id, { status })
         await refreshProjects()
-        toast.success("提示词状态更新成功")
+        toast.success("条目状态更新成功")
       } catch {
-        toast.error("提示词状态更新失败")
+        toast.error("条目状态更新失败")
       }
     },
     [refreshProjects, toast],
@@ -73,22 +73,22 @@ export const useProjectNavigationActions = (
   const createMenuItem = useCallback(
     async (
       menu: ProjectNavigationMenuTarget,
-      type: "module" | "prompt",
+      type: "project_folder" | "prompt",
     ): Promise<string | null> => {
       try {
         const item =
-          type === "module"
-            ? await projectNavigationApi.createModule({ projectId: menu.id, name: "new module" })
-            : await projectNavigationApi.createDesign({
+          type === "project_folder"
+            ? await projectNavigationApi.createFolder({ projectId: menu.id, name: "new folder" })
+            : await projectNavigationApi.createItem({
                 projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
-                moduleId: menu.type === "module" ? menu.id : undefined,
-                name: "new design",
+                projectFolderId: menu.type === "project_folder" ? menu.id : undefined,
+                name: "new item",
               })
         await refreshProjects()
-        toast.success(type === "module" ? "模块创建成功" : "提示词创建成功")
+        toast.success(type === "project_folder" ? "文件夹创建成功" : "条目创建成功")
         return item.id
       } catch {
-        toast.error(type === "module" ? "模块创建失败" : "提示词创建失败")
+        toast.error(type === "project_folder" ? "文件夹创建失败" : "条目创建失败")
         return null
       }
     },
@@ -98,11 +98,11 @@ export const useProjectNavigationActions = (
   const renameItem = useCallback(
     async (id: string, name: string): Promise<boolean> => {
       const project = projects.find((item) => item.id === id)
-      const module = projects.flatMap((item) => item.modules).find((item) => item.id === id)
+      const folder = projects.flatMap((item) => item.projectFolders).find((item) => item.id === id)
       try {
         if (project) await projectNavigationApi.updateProject(id, { name })
-        else if (module) await projectNavigationApi.updateModule(id, { name })
-        else await projectNavigationApi.updateDesign(id, { name })
+        else if (folder) await projectNavigationApi.updateFolder(id, { name })
+        else await projectNavigationApi.updateItem(id, { name })
         await refreshProjects()
         return true
       } catch {
@@ -153,24 +153,24 @@ export const useProjectNavigationActions = (
     async (menu: ProjectNavigationMenuTarget): Promise<boolean> => {
       try {
         if (menu.type === "project") await projectNavigationApi.deleteProject(menu.id)
-        if (menu.type === "module") await projectNavigationApi.deleteModule(menu.id)
-        if (menu.type === "prompt") await projectNavigationApi.deleteDesign(menu.id)
+        if (menu.type === "project_folder") await projectNavigationApi.deleteFolder(menu.id)
+        if (menu.type === "prompt") await projectNavigationApi.deleteItem(menu.id)
         await refreshProjects()
         toast.success(
           menu.type === "project"
             ? "项目删除成功"
-            : menu.type === "module"
-              ? "模块删除成功"
-              : "提示词删除成功",
+            : menu.type === "project_folder"
+              ? "文件夹删除成功"
+              : "条目删除成功",
         )
         return true
       } catch {
         toast.error(
           menu.type === "project"
             ? "项目删除失败"
-            : menu.type === "module"
-              ? "模块删除失败"
-              : "提示词删除失败",
+            : menu.type === "project_folder"
+              ? "文件夹删除失败"
+              : "条目删除失败",
         )
         return false
       }

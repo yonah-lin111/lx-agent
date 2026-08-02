@@ -1,5 +1,5 @@
 import Database from "better-sqlite3"
-import { createDesignTables } from "@/db/schema/projectSchema"
+import { createProjectTables } from "@/db/schema/projectSchema"
 import { ensureDatabaseDir, getDatabasePath } from "@/paths"
 
 // SQLite 数据库单例。
@@ -14,7 +14,7 @@ export const initDatabase = (): Database.Database => {
   ensureDatabaseDir()
   sqlite = new Database(getDatabasePath())
   sqlite.pragma("foreign_keys = ON")
-  createDesignTables(sqlite)
+  createProjectTables(sqlite)
   return sqlite
 }
 

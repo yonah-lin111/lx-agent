@@ -13,16 +13,16 @@ export const useProjectNavigationData = (): {
   const [projects, setProjects] = useState<ProjectNavigationProject[]>([])
 
   const refreshProjects = useCallback(async (): Promise<void> => {
-    const [projectRecords, moduleRecords, designRecords] = await Promise.all([
+    const [projectRecords, folderRecords, itemRecords] = await Promise.all([
       projectNavigationApi.listProjects(),
-      projectNavigationApi.listModules(),
-      projectNavigationApi.listDesigns(),
+      projectNavigationApi.listFolders(),
+      projectNavigationApi.listItems(),
     ])
-    setProjects(createProjectNavigationTree(projectRecords, moduleRecords, designRecords))
+    setProjects(createProjectNavigationTree(projectRecords, folderRecords, itemRecords))
   }, [])
 
   useEffect(() => {
-    void refreshProjects().catch((error: unknown) => console.error("Failed to load designs", error))
+    void refreshProjects().catch((error: unknown) => console.error("Failed to load items", error))
   }, [refreshProjects])
 
   return { projects, refreshProjects }

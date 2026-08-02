@@ -1,20 +1,20 @@
-import type { DesignStatus } from "@shared/project"
+import type { ProjectItemStatus } from "@shared/project"
 
 // 项目导航菜单项类型。
-export type ProjectNavigationMenuType = "project" | "module" | "prompt"
+export type ProjectNavigationMenuType = "project" | "project_folder" | "prompt"
 
-// 项目导航展示的提示词状态。
-export type PromptStatus = DesignStatus
+// 项目导航展示的条目状态。
+export type PromptStatus = ProjectItemStatus
 
-// 项目导航展示的提示词数据。
+// 项目导航展示的条目数据。
 export interface ProjectNavigationPrompt {
   id: string
   name: string
   status: PromptStatus
 }
 
-// 项目导航展示的模块数据。
-export interface ProjectNavigationModule {
+// 项目导航展示的文件夹数据。
+export interface ProjectNavigationFolder {
   id: string
   name: string
   prompts: ProjectNavigationPrompt[]
@@ -25,7 +25,7 @@ export interface ProjectNavigationProject {
   id: string
   name: string
   path?: string
-  modules: ProjectNavigationModule[]
+  projectFolders: ProjectNavigationFolder[]
   prompts: ProjectNavigationPrompt[]
 }
 

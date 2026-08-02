@@ -11,14 +11,14 @@ import { useProjectReferencedFoldersStore } from "@/features/project/referencedF
 const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
 
 /**
- * 渲染设计页面。
+ * 渲染项目条目页面。
  */
 export const ProjectPage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
-  const designId = searchParams.get("designId")
-  const { hasDesign, isLoading, isSaved, loadedDesignId, pages, projectId, save, setPages } =
-    useProjectEditor(designId)
-  const isDesignLoading = isLoading || (designId !== null && loadedDesignId !== designId)
+  const itemId = searchParams.get("itemId")
+  const { hasItem, isLoading, isSaved, loadedItemId, pages, projectId, save, setPages } =
+    useProjectEditor(itemId)
+  const isItemLoading = isLoading || (itemId !== null && loadedItemId !== itemId)
   const setReferencedFolders = useProjectReferencedFoldersStore(
     (state) => state.setReferencedFolders,
   )
@@ -54,10 +54,10 @@ export const ProjectPage = (): React.JSX.Element => {
 
   return (
     <div className="relative flex min-w-0 flex-1">
-      <LxLoadingOverlay isLoading={isDesignLoading} text="Loading design..." />
-      {!isDesignLoading && hasDesign && (
+      <LxLoadingOverlay isLoading={isItemLoading} text="Loading item..." />
+      {!isItemLoading && hasItem && (
         <LxMarkdownEditor
-          key={designId}
+          key={itemId}
           initialContent={pages[0]?.content ?? ""}
           pages={pages}
           pageMode
@@ -72,14 +72,14 @@ export const ProjectPage = (): React.JSX.Element => {
           showFolding={true}
         />
       )}
-      {!isDesignLoading && !designId && (
+      {!isItemLoading && !itemId && (
         <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
-          <span className="text-sm text-white/60">请选择一个设计</span>
+          <span className="text-sm text-white/60">请选择一个条目</span>
         </div>
       )}
-      {!isDesignLoading && designId && !hasDesign && (
+      {!isItemLoading && itemId && !hasItem && (
         <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
-          <span className="text-sm text-white/60">未找到设计</span>
+          <span className="text-sm text-white/60">未找到条目</span>
         </div>
       )}
     </div>

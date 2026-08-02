@@ -20,20 +20,20 @@ const api: ProjectApi & ClipboardApi & SettingsApi = {
       searchReferencedFiles: (projectPaths: string[], query: string) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.searchReferencedProjectFiles, projectPaths, query),
     },
-    modules: {
-      list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listModules, projectId),
-      create: (input: unknown) => ipcRenderer.invoke(PROJECT_CHANNELS.createModule, input),
+    folders: {
+      list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listFolders, projectId),
+      create: (input: unknown) => ipcRenderer.invoke(PROJECT_CHANNELS.createFolder, input),
       update: (id: string, input: unknown) =>
-        ipcRenderer.invoke(PROJECT_CHANNELS.updateModule, id, input),
-      delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteModule, id),
+        ipcRenderer.invoke(PROJECT_CHANNELS.updateFolder, id, input),
+      delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteFolder, id),
     },
-    designs: {
-      list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listDesigns, projectId),
-      create: (input: unknown) => ipcRenderer.invoke(PROJECT_CHANNELS.createDesign, input),
+    items: {
+      list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listItems, projectId),
+      create: (input: unknown) => ipcRenderer.invoke(PROJECT_CHANNELS.createItem, input),
       update: (id: string, input: unknown) =>
-        ipcRenderer.invoke(PROJECT_CHANNELS.updateDesign, id, input),
-      sort: (ids: string[]) => ipcRenderer.invoke(PROJECT_CHANNELS.sortDesigns, ids),
-      delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteDesign, id),
+        ipcRenderer.invoke(PROJECT_CHANNELS.updateItem, id, input),
+      sort: (ids: string[]) => ipcRenderer.invoke(PROJECT_CHANNELS.sortItems, ids),
+      delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteItem, id),
     },
   },
   settings: {

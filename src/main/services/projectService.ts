@@ -1,34 +1,34 @@
 import { randomUUID } from "node:crypto"
 import { basename } from "node:path"
 import type {
-  CreateDesignInput,
-  CreateModuleInput,
+  CreateProjectFolderInput,
   CreateProjectInput,
-  Design,
-  DesignStatus,
-  Module,
+  CreateProjectItemInput,
   Project,
+  ProjectFolder,
+  ProjectItem,
+  ProjectItemStatus,
   ReferencedFolder,
-  UpdateDesignInput,
-  UpdateModuleInput,
+  UpdateProjectFolderInput,
   UpdateProjectInput,
+  UpdateProjectItemInput,
 } from "@shared/project"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
 import { assertProjectDirectory, searchProjectFiles } from "@/lib/fileSystem"
 
 export type {
-  CreateDesignInput,
-  CreateModuleInput,
+  CreateProjectFolderInput,
   CreateProjectInput,
-  Design,
-  DesignStatus,
-  Module,
+  CreateProjectItemInput,
   Project,
+  ProjectFolder,
+  ProjectItem,
+  ProjectItemStatus,
   ReferencedFolder,
-  UpdateDesignInput,
-  UpdateModuleInput,
+  UpdateProjectFolderInput,
   UpdateProjectInput,
+  UpdateProjectItemInput,
 } from "@shared/project"
 
 // 项目数据库记录。
@@ -42,8 +42,8 @@ type ProjectRow = {
   updated_at: string
 }
 
-// 模块数据库记录。
-type ModuleRow = {
+// 项目文件夹数据库记录。
+type ProjectFolderRow = {
   external_id: string
   project_id: string
   name: string
@@ -51,21 +51,21 @@ type ModuleRow = {
   updated_at: string
 }
 
-// 设计数据库记录。
-type DesignRow = {
+// 项目条目数据库记录。
+type ProjectItemRow = {
   external_id: string
   project_id: string
-  module_id: string | null
+  project_folder_id: string | null
   name: string
-  design_data: string | null
-  status: DesignStatus
+  item_data: string | null
+  status: ProjectItemStatus
   sort_order: number
   created_at: string
   updated_at: string
 }
 
-// 合法设计状态。
-const DESIGN_STATUSES: DesignStatus[] = ["todo", "in_progress", "completed"]
+// 合法项目条目状态。
+const PROJECT_ITEM_STATUSES: ProjectItemStatus[] = ["todo", "in_progress", "completed"]
 
 // 合法共享文件夹引用。
 const isReferencedFolder = (value: unknown): value is ReferencedFolder =>
@@ -140,9 +140,9 @@ const toProject = (row: ProjectRow): Project => ({
 })
 
 /**
- * 将模块数据库记录转换为业务数据。
+ * 将项目文件夹数据库记录转换为业务数据。
  */
-const toModule = (row: ModuleRow): Module => ({
+const toFolder = (row: ProjectFolderRow): ProjectFolder => ({
   id: row.external_id,
   projectId: row.project_id,
   name: row.name,
@@ -151,14 +151,14 @@ const toModule = (row: ModuleRow): Module => ({
 })
 
 /**
- * 将设计数据库记录转换为业务数据。
+ * 将项目条目数据库记录转换为业务数据。
  */
-const toDesign = (row: DesignRow): Design => ({
+const toItem = (row: ProjectItemRow): ProjectItem => ({
   id: row.external_id,
   projectId: row.project_id,
-  moduleId: row.module_id ?? undefined,
+  projectFolderId: row.project_folder_id ?? undefined,
   name: row.name,
-  designData: row.design_data ?? "",
+  itemData: row.item_data ?? "",
   status: row.status,
   sortOrder: row.sort_order,
   createdAt: row.created_at,
@@ -166,7 +166,7 @@ const toDesign = (row: DesignRow): Design => ({
 })
 
 /**
- * 提供项目、模块和设计的持久化 CRUD 操作。
+ * 提供项目、文件夹和项目条目的持久化 CRUD 操作。
  */
 export const createProjectService = (getConnection: () => Database.Database) => ({
   listProjects: (): Project[] => {
@@ -240,7 +240,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
   },
 
   deleteProject: (id: string): void => {
-    // 外键 ON DELETE CASCADE 会同步删除下属模块和设计。
+    // 外键 ON DELETE CASCADE 会同步删除下属文件夹和条目。
     getConnection().prepare("DELETE FROM project WHERE external_id = ?").run(id)
   },
 
@@ -264,80 +264,82 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       }
     }),
 
-  listModules: (projectId?: string): Module[] => {
+  listFolders: (projectId?: string): ProjectFolder[] => {
     const database = getConnection()
     const rows = projectId
       ? (database
-          .prepare("SELECT * FROM module WHERE project_id = ? ORDER BY created_at ASC, id ASC")
-          .all(projectId) as ModuleRow[])
+          .prepare(
+            "SELECT * FROM project_folder WHERE project_id = ? ORDER BY created_at ASC, id ASC",
+          )
+          .all(projectId) as ProjectFolderRow[])
       : (database
-          .prepare("SELECT * FROM module ORDER BY created_at ASC, id ASC")
-          .all() as ModuleRow[])
+          .prepare("SELECT * FROM project_folder ORDER BY created_at ASC, id ASC")
+          .all() as ProjectFolderRow[])
 
-    return rows.map(toModule)
+    return rows.map(toFolder)
   },
 
-  createModule: (input: CreateModuleInput): Module => {
+  createFolder: (input: CreateProjectFolderInput): ProjectFolder => {
     const now = new Date().toISOString()
     const id = randomUUID()
     const name = requireName(input.name)
 
     getConnection()
       .prepare(
-        "INSERT INTO module (external_id, project_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO project_folder (external_id, project_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
       )
       .run(id, input.projectId, name, now, now)
 
     return { id, projectId: input.projectId, name, createdAt: now, updatedAt: now }
   },
 
-  updateModule: (id: string, input: UpdateModuleInput): void => {
+  updateFolder: (id: string, input: UpdateProjectFolderInput): void => {
     getConnection()
-      .prepare("UPDATE module SET name = ?, updated_at = ? WHERE external_id = ?")
+      .prepare("UPDATE project_folder SET name = ?, updated_at = ? WHERE external_id = ?")
       .run(requireName(input.name), new Date().toISOString(), id)
   },
 
-  deleteModule: (id: string): void => {
-    // 外键 ON DELETE CASCADE 会同步删除所属设计。
-    getConnection().prepare("DELETE FROM module WHERE external_id = ?").run(id)
+  deleteFolder: (id: string): void => {
+    // 外键 ON DELETE CASCADE 会同步删除所属条目。
+    getConnection().prepare("DELETE FROM project_folder WHERE external_id = ?").run(id)
   },
 
-  listDesigns: (projectId?: string): Design[] => {
+  listItems: (projectId?: string): ProjectItem[] => {
     const database = getConnection()
     const rows = projectId
       ? (database
           .prepare(
-            "SELECT * FROM design WHERE project_id = ? ORDER BY sort_order ASC, created_at ASC, id ASC",
+            "SELECT * FROM project_item WHERE project_id = ? ORDER BY sort_order ASC, created_at ASC, id ASC",
           )
-          .all(projectId) as DesignRow[])
+          .all(projectId) as ProjectItemRow[])
       : (database
-          .prepare("SELECT * FROM design ORDER BY sort_order ASC, created_at ASC, id ASC")
-          .all() as DesignRow[])
+          .prepare("SELECT * FROM project_item ORDER BY sort_order ASC, created_at ASC, id ASC")
+          .all() as ProjectItemRow[])
 
-    return rows.map(toDesign)
+    return rows.map(toItem)
   },
 
-  createDesign: (input: CreateDesignInput): Design => {
+  createItem: (input: CreateProjectItemInput): ProjectItem => {
     const database = getConnection()
     const now = new Date().toISOString()
     const id = randomUUID()
     const name = requireName(input.name)
     const sortOrder = database
       .prepare(
-        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM design WHERE project_id = ?",
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM project_item WHERE project_id = ?",
       )
       .get(input.projectId) as { sort_order: number }
 
     database
       .prepare(
-        "INSERT INTO design (external_id, project_id, module_id, name, design_data, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO project_item (external_id, project_id, project_folder_id, name, item_data, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         id,
         input.projectId,
-        input.moduleId ?? null,
+        input.projectFolderId ?? null,
         name,
-        input.designData ?? "",
+        input.itemData ?? "",
         "todo",
         sortOrder.sort_order,
         now,
@@ -347,9 +349,9 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     return {
       id,
       projectId: input.projectId,
-      moduleId: input.moduleId,
+      projectFolderId: input.projectFolderId,
       name,
-      designData: input.designData ?? "",
+      itemData: input.itemData ?? "",
       status: "todo",
       sortOrder: sortOrder.sort_order,
       createdAt: now,
@@ -357,7 +359,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     }
   },
 
-  updateDesign: (id: string, input: UpdateDesignInput): void => {
+  updateItem: (id: string, input: UpdateProjectItemInput): void => {
     const updates: string[] = []
     const values: string[] = []
 
@@ -365,13 +367,13 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       updates.push("name = ?")
       values.push(requireName(input.name))
     }
-    if (input.designData !== undefined) {
-      updates.push("design_data = ?")
-      values.push(input.designData)
+    if (input.itemData !== undefined) {
+      updates.push("item_data = ?")
+      values.push(input.itemData)
     }
     if (input.status !== undefined) {
-      if (!DESIGN_STATUSES.includes(input.status)) {
-        throw new Error(`Invalid design status: ${input.status}`)
+      if (!PROJECT_ITEM_STATUSES.includes(input.status)) {
+        throw new Error(`Invalid project item status: ${input.status}`)
       }
       updates.push("status = ?")
       values.push(input.status)
@@ -381,14 +383,14 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     updates.push("updated_at = ?")
     values.push(new Date().toISOString(), id)
     getConnection()
-      .prepare(`UPDATE design SET ${updates.join(", ")} WHERE external_id = ?`)
+      .prepare(`UPDATE project_item SET ${updates.join(", ")} WHERE external_id = ?`)
       .run(...values)
   },
 
-  sortDesigns: (ids: string[]): Design[] => {
+  sortItems: (ids: string[]): ProjectItem[] => {
     const database = getConnection()
     const updateSortOrder = database.prepare(
-      "UPDATE design SET sort_order = ?, updated_at = ? WHERE external_id = ?",
+      "UPDATE project_item SET sort_order = ?, updated_at = ? WHERE external_id = ?",
     )
 
     database.transaction(() => {
@@ -396,13 +398,13 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       ids.forEach((id, index) => updateSortOrder.run(index, now, id))
     })()
 
-    return createProjectService(getConnection).listDesigns()
+    return createProjectService(getConnection).listItems()
   },
 
-  deleteDesign: (id: string): void => {
-    getConnection().prepare("DELETE FROM design WHERE external_id = ?").run(id)
+  deleteItem: (id: string): void => {
+    getConnection().prepare("DELETE FROM project_item WHERE external_id = ?").run(id)
   },
 })
 
-// 生产环境使用的设计数据服务。
+// 生产环境使用的项目数据服务。
 export const projectService = createProjectService(getDatabase)

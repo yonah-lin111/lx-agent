@@ -1,4 +1,4 @@
-import { Check, Edit3, Plus, Trash2 } from "lucide-react"
+import { Check, Edit3, FilePlus, FolderPlus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
@@ -16,7 +16,7 @@ type ProjectNavigationMenuProps = {
   status?: PromptStatus
   onEditProject?: () => void
   onRename: () => void
-  onAddModule?: () => void
+  onAddFolder?: () => void
   onAddPrompt?: () => void
   onStatusChange?: (status: PromptStatus) => void
   onDelete: () => void
@@ -32,7 +32,7 @@ type MenuDisplayState = {
   status?: PromptStatus
 }
 
-// 提示词状态配置。
+// 条目状态配置。
 const STATUS_OPTIONS: { value: PromptStatus; label: string; className: string }[] = [
   { value: "todo", label: "待处理", className: "bg-white/40" },
   { value: "in_progress", label: "进行中", className: "bg-amber-400/80" },
@@ -40,7 +40,7 @@ const STATUS_OPTIONS: { value: PromptStatus; label: string; className: string }[
 ]
 
 /**
- * 展示项目、模块与提示词的右键操作菜单。
+ * 展示项目、文件夹与条目的右键操作菜单。
  */
 export const ProjectNavigationMenu = ({
   isOpen,
@@ -51,7 +51,7 @@ export const ProjectNavigationMenu = ({
   status,
   onEditProject,
   onRename,
-  onAddModule,
+  onAddFolder,
   onAddPrompt,
   onStatusChange,
   onDelete,
@@ -102,14 +102,20 @@ export const ProjectNavigationMenu = ({
       </LxMenuItem>
 
       {displayedMenu.type === "project" ? (
-        <LxMenuItem leading={<Plus className="h-3.5 w-3.5 text-white/45" />} onClick={onAddModule}>
-          新增模块
+        <LxMenuItem
+          leading={<FolderPlus className="h-3.5 w-3.5 text-white/45" />}
+          onClick={onAddFolder}
+        >
+          新增文件夹
         </LxMenuItem>
       ) : null}
 
       {displayedMenu.type !== "prompt" ? (
-        <LxMenuItem leading={<Plus className="h-3.5 w-3.5 text-white/45" />} onClick={onAddPrompt}>
-          新增提示词
+        <LxMenuItem
+          leading={<FilePlus className="h-3.5 w-3.5 text-white/45" />}
+          onClick={onAddPrompt}
+        >
+          新增条目
         </LxMenuItem>
       ) : null}
 
@@ -148,7 +154,7 @@ export const ProjectNavigationMenu = ({
       >
         {isConfirmingDelete
           ? "确认删除"
-          : `删除${displayedMenu.type === "project" ? "项目" : displayedMenu.type === "module" ? "模块" : "提示词"}`}
+          : `删除${displayedMenu.type === "project" ? "项目" : displayedMenu.type === "project_folder" ? "文件夹" : "条目"}`}
       </LxMenuItem>
     </LxMenu>
   )

@@ -62,7 +62,7 @@ export const ProjectBottomSideBar = ({
   isExpanded = false,
 }: ProjectBottomSideBarProps): React.JSX.Element => {
   const [searchParams] = useSearchParams()
-  const designId = searchParams.get("designId")
+  const itemId = searchParams.get("itemId")
   const [projectId, setProjectId] = useState<string | null>(null)
   const [folderPanel, setFolderPanel] = useState<FolderPanelState | null>(null)
   const [copiedFolderPath, setCopiedFolderPath] = useState<string | null>(null)
@@ -88,20 +88,20 @@ export const ProjectBottomSideBar = ({
   )
 
   /**
-   * 解析当前设计所属项目。同项目内切换设计时 projectId 不变，
+   * 解析当前条目所属项目。同项目内切换条目时 projectId 不变，
    * 函数式更新返回原值会跳过重渲染，从而不触发下方 tag 列表刷新。
    */
   useEffect(() => {
     let isCurrent = true
 
-    if (!designId) {
+    if (!itemId) {
       setProjectId(null)
     } else {
       void projectApi
         .list()
-        .then((designs) => {
-          const design = designs.find((item) => item.id === designId)
-          const nextProjectId = design?.projectId ?? null
+        .then((items) => {
+          const item = items.find((entry) => entry.id === itemId)
+          const nextProjectId = item?.projectId ?? null
           if (isCurrent) {
             setProjectId((current) => (current === nextProjectId ? current : nextProjectId))
           }
@@ -114,7 +114,7 @@ export const ProjectBottomSideBar = ({
     return () => {
       isCurrent = false
     }
-  }, [designId])
+  }, [itemId])
 
   /**
    * 项目变化时加载该项目的共享文件夹引用。

@@ -39,22 +39,20 @@ export const registerProjectHandlers = (): void => {
     return projectService.searchReferencedProjectFiles(projectPaths, query)
   })
 
-  ipcMain.handle(PROJECT_CHANNELS.listModules, (_, projectId) =>
-    projectService.listModules(projectId),
+  ipcMain.handle(PROJECT_CHANNELS.listFolders, (_, projectId) =>
+    projectService.listFolders(projectId),
   )
-  ipcMain.handle(PROJECT_CHANNELS.createModule, (_, input) => projectService.createModule(input))
-  ipcMain.handle(PROJECT_CHANNELS.updateModule, (_, id, input) =>
-    projectService.updateModule(id, input),
+  ipcMain.handle(PROJECT_CHANNELS.createFolder, (_, input) => projectService.createFolder(input))
+  ipcMain.handle(PROJECT_CHANNELS.updateFolder, (_, id, input) =>
+    projectService.updateFolder(id, input),
   )
-  ipcMain.handle(PROJECT_CHANNELS.deleteModule, (_, id) => projectService.deleteModule(id))
+  ipcMain.handle(PROJECT_CHANNELS.deleteFolder, (_, id) => projectService.deleteFolder(id))
 
-  ipcMain.handle(PROJECT_CHANNELS.listDesigns, (_, projectId) =>
-    projectService.listDesigns(projectId),
+  ipcMain.handle(PROJECT_CHANNELS.listItems, (_, projectId) => projectService.listItems(projectId))
+  ipcMain.handle(PROJECT_CHANNELS.createItem, (_, input) => projectService.createItem(input))
+  ipcMain.handle(PROJECT_CHANNELS.updateItem, (_, id, input) =>
+    projectService.updateItem(id, input),
   )
-  ipcMain.handle(PROJECT_CHANNELS.createDesign, (_, input) => projectService.createDesign(input))
-  ipcMain.handle(PROJECT_CHANNELS.updateDesign, (_, id, input) =>
-    projectService.updateDesign(id, input),
-  )
-  ipcMain.handle(PROJECT_CHANNELS.sortDesigns, (_, ids) => projectService.sortDesigns(ids))
-  ipcMain.handle(PROJECT_CHANNELS.deleteDesign, (_, id) => projectService.deleteDesign(id))
+  ipcMain.handle(PROJECT_CHANNELS.sortItems, (_, ids) => projectService.sortItems(ids))
+  ipcMain.handle(PROJECT_CHANNELS.deleteItem, (_, id) => projectService.deleteItem(id))
 }

@@ -1,13 +1,13 @@
 import type {
-  CreateDesignInput,
-  CreateModuleInput,
+  CreateProjectFolderInput,
   CreateProjectInput,
-  Design,
-  Module,
+  CreateProjectItemInput,
   Project,
-  UpdateDesignInput,
-  UpdateModuleInput,
+  ProjectFolder,
+  ProjectItem,
+  UpdateProjectFolderInput,
   UpdateProjectInput,
+  UpdateProjectItemInput,
 } from "@shared/project"
 
 /**
@@ -15,8 +15,8 @@ import type {
  */
 export const projectNavigationApi = {
   listProjects: (): Promise<Project[]> => window.api.project.projects.list(),
-  listModules: (): Promise<Module[]> => window.api.project.modules.list(),
-  listDesigns: (): Promise<Design[]> => window.api.project.designs.list(),
+  listFolders: (): Promise<ProjectFolder[]> => window.api.project.folders.list(),
+  listItems: (): Promise<ProjectItem[]> => window.api.project.items.list(),
   createProject: (input: CreateProjectInput): Promise<Project> =>
     window.api.project.projects.create(input),
   updateProject: (id: string, input: UpdateProjectInput): Promise<void> =>
@@ -24,15 +24,15 @@ export const projectNavigationApi = {
   deleteProject: (id: string): Promise<void> => window.api.project.projects.delete(id),
   selectProjectDirectory: (): Promise<string | null> =>
     window.api.project.projects.selectDirectory(),
-  createModule: (input: CreateModuleInput): Promise<Module> =>
-    window.api.project.modules.create(input),
-  updateModule: (id: string, input: UpdateModuleInput): Promise<void> =>
-    window.api.project.modules.update(id, input),
-  deleteModule: (id: string): Promise<void> => window.api.project.modules.delete(id),
-  createDesign: (input: CreateDesignInput): Promise<Design> =>
-    window.api.project.designs.create(input),
-  updateDesign: (id: string, input: UpdateDesignInput): Promise<void> =>
-    window.api.project.designs.update(id, input),
-  sortDesigns: (ids: string[]): Promise<Design[]> => window.api.project.designs.sort(ids),
-  deleteDesign: (id: string): Promise<void> => window.api.project.designs.delete(id),
+  createFolder: (input: CreateProjectFolderInput): Promise<ProjectFolder> =>
+    window.api.project.folders.create(input),
+  updateFolder: (id: string, input: UpdateProjectFolderInput): Promise<void> =>
+    window.api.project.folders.update(id, input),
+  deleteFolder: (id: string): Promise<void> => window.api.project.folders.delete(id),
+  createItem: (input: CreateProjectItemInput): Promise<ProjectItem> =>
+    window.api.project.items.create(input),
+  updateItem: (id: string, input: UpdateProjectItemInput): Promise<void> =>
+    window.api.project.items.update(id, input),
+  sortItems: (ids: string[]): Promise<ProjectItem[]> => window.api.project.items.sort(ids),
+  deleteItem: (id: string): Promise<void> => window.api.project.items.delete(id),
 }
