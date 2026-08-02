@@ -200,6 +200,16 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
+   * 更新列表中指定条目的状态。
+   */
+  const handlePromptStatusToggle = async (
+    promptId: string,
+    status: PromptStatus,
+  ): Promise<void> => {
+    await updatePromptStatus(promptId, status)
+  }
+
+  /**
    * 删除右键菜单目标及其下属数据。
    */
   const deleteMenuItem = async (): Promise<void> => {
@@ -300,6 +310,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
           onProjectFolderToggle={toggleProjectFolder}
           onOpenMenu={openMenu}
           onProjectToggle={toggleProject}
+          onPromptStatusChange={(promptId, status) =>
+            void handlePromptStatusToggle(promptId, status)
+          }
         />
       </div>
       <ProjectNavigationMenu
