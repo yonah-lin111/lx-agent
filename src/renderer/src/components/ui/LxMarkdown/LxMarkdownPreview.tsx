@@ -234,7 +234,7 @@ interface MarkdownTemplateStatusButtonProps {
 }
 
 /**
- * 渲染模板块完成状态图标按钮，点击后切换源码起始行的 done 标记。
+ * 渲染模板块完成状态图标按钮，点击后切换源码结束行的 done 标记。
  */
 const MarkdownTemplateStatusButton = ({
   line,
@@ -289,7 +289,7 @@ export const LxMarkdownPreview = ({
         previewContent.querySelectorAll<HTMLElement>(".markdown-template-status"),
         (container) => {
           const templateBlock = container.closest<HTMLElement>(".markdown-template-block")
-          const line = templateBlock ? Number(templateBlock.dataset.line) : NaN
+          const line = templateBlock ? Number(templateBlock.dataset.endLine) : NaN
           const isDone = templateBlock?.dataset.templateStatus === "done"
           return {
             container,

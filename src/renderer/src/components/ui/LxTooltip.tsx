@@ -18,6 +18,9 @@ export interface LxTooltipProps {
   delay?: number
   contentClassName?: string
   className?: string
+  // 受控显隐。
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onConfirm?: () => void
   onCancel?: () => void
 }
@@ -46,10 +49,12 @@ export const LxTooltip = ({
   delay = 150,
   contentClassName = "",
   className = "",
+  open,
+  onOpenChange,
   onConfirm,
   onCancel,
 }: LxTooltipProps): React.JSX.Element => {
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(open ?? false)
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [activePlacement, setActivePlacement] = useState<LxTooltipPlacement>(placement)
@@ -62,6 +67,14 @@ export const LxTooltip = ({
   const isConfirming = typeof onConfirm === "function"
   const activeTrigger = isConfirming ? "click" : trigger
   const activeDelay = isConfirming ? 0 : delay
+
+  /**
+   * 更新显隐状态并同步受控父组件。
+   */
+  const syncVisible = (visible: boolean): void => {
+    setIsVisible(visible)
+    onOpenChange?.(visible)
+  }
 
   /**
    * 清理待执行的显示或隐藏计时器。
@@ -143,6 +156,11 @@ export const LxTooltip = ({
   }
 
   useEffect(() => {
+    if (open === undefined) return
+    if (open !== isVisible) syncVisible(open)
+  }, [open])
+
+  useEffect(() => {
     if (isVisible) {
       setShouldRender(true)
       setIsAnimatingOut(false)
@@ -180,12 +198,12 @@ export const LxTooltip = ({
     const handleOutsideClick = (event: MouseEvent): void => {
       const target = event.target as Node
       if (!containerRef.current?.contains(target) && !tooltipRef.current?.contains(target)) {
-        setIsVisible(false)
+        syncVisible(false)
       }
     }
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        setIsVisible(false)
+        syncVisible(false)
       }
     }
     document.addEventListener("mousedown", handleOutsideClick)
@@ -212,10 +230,10 @@ export const LxTooltip = ({
     }
     if (isVisible) return
     if (activeDelay === 0) {
-      setIsVisible(true)
+      syncVisible(true)
       return
     }
-    showTimeoutRef.current = setTimeout(() => setIsVisible(true), activeDelay)
+    showTimeoutRef.current = setTimeout(() => syncVisible(true), activeDelay)
   }
 
   /**
@@ -230,12 +248,12 @@ export const LxTooltip = ({
       if (!hideTimeoutRef.current) {
         hideTimeoutRef.current = setTimeout(() => {
           hideTimeoutRef.current = null
-          setIsVisible(false)
+          syncVisible(false)
         }, 200)
       }
       return
     }
-    setIsVisible(false)
+    syncVisible(false)
   }
 
   const arrowStyle: React.CSSProperties = {
@@ -287,10 +305,10 @@ export const LxTooltip = ({
       onClick: (event: React.MouseEvent<HTMLElement>) => {
         if (activeTrigger === "click" || activeTrigger === "both") {
           event.stopPropagation()
-          setIsVisible((visible) => !visible)
+          syncVisible(!isVisible)
         } else {
           clearTimers()
-          setIsVisible(false)
+          syncVisible(false)
         }
         child.props.onClick?.(event)
       },
@@ -332,7 +350,7 @@ export const LxTooltip = ({
                     className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
                     type="button"
                     onClick={() => {
-                      setIsVisible(false)
+                      syncVisible(false)
                       onCancel?.()
                     }}
                   >
@@ -343,7 +361,7 @@ export const LxTooltip = ({
                     className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
                     type="button"
                     onClick={() => {
-                      setIsVisible(false)
+                      syncVisible(false)
                       onConfirm()
                     }}
                   >

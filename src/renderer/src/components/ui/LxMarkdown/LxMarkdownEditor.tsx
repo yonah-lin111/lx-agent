@@ -208,6 +208,16 @@ export const LxMarkdownEditor = ({
     )
   }
 
+  /**
+   * 删除当前页面并切换到相邻页面。
+   */
+  const deletePage = (): void => {
+    if (!pages || pages.length <= 1) return
+    const nextPages = pages.filter((_, index) => index !== activePageIndex)
+    onPagesChangeRef.current?.(nextPages)
+    setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
+  }
+
   const {
     blockCommandPanel,
     activeBlockCommandIndex,
@@ -409,7 +419,7 @@ export const LxMarkdownEditor = ({
   }
 
   /**
-   * 切换模板块起始行的 done 标记，作为完成状态持久化在源码中。
+   * 切换模板块结束行的 done 标记，作为完成状态持久化在源码中。
    */
   const toggleTemplateStatus = (line: number, done: boolean): void => {
     const view = editorViewRef.current
@@ -491,7 +501,7 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
-                const templateEndMatch = /^(\s*)&&&\s*$/.exec(line.text)
+                const templateEndMatch = /^(\s*)&&&(?:\s+done)?\s*$/.exec(line.text)
                 if (
                   cursor === line.to &&
                   templateEndMatch &&
@@ -744,6 +754,7 @@ export const LxMarkdownEditor = ({
         onPageChange={switchPage}
         onPageNameChange={renamePage}
         onCreatePage={createPage}
+        onDeletePage={deletePage}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div

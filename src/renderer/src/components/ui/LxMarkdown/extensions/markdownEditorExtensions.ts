@@ -319,7 +319,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -861,15 +861,19 @@ const buildMarkdownMarkerDecorations = (
       continue
     }
 
-    const templateStartMatch = line.match(/^(\s*)&&&\s+([A-Za-z]\w*)(?:\s+done)?\s*$/)
-    const templateEndMatch = line.match(/^\s*&&&\s*$/)
+    const templateStartMatch = line.match(/^(\s*)&&&\s+(?!done\b)([A-Za-z]\w*)(?:\s+done)?\s*$/)
+    const templateEndMatch = line.match(/^\s*&&&(?:\s+done)?\s*$/)
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
       currentTemplateFolded = templateFoldedIndices.has(currentTemplateIndex)
       currentTemplateTextLines = []
+      let templateEndIndex = -1
       for (let j = i + 1; j < lines.length; j++) {
         const subLine = lines[j]
-        if (subLine.match(/^\s*&&&\s*$/)) break
+        if (subLine.match(/^\s*&&&(?:\s+done)?\s*$/)) {
+          templateEndIndex = j
+          break
+        }
         currentTemplateTextLines.push(subLine)
       }
 
@@ -891,11 +895,8 @@ const buildMarkdownMarkerDecorations = (
           `cm-md-template-command cm-md-template-command-${commandName}`,
         )
       }
-      const doneMatch = line.match(/\s+done\s*$/)
-      if (doneMatch?.index !== undefined) {
-        const doneStart = doneMatch.index + 1
-        addMarkerAlways(doneStart, doneStart + 4, "cm-md-template-done")
-      }
+      const templateEndText = templateEndIndex === -1 ? "" : lines[templateEndIndex]
+      const endDoneMatch = templateEndText.match(/\s+done\s*$/)
       allDecos.push({
         type: "widget",
         from: offset + line.length,
@@ -909,7 +910,11 @@ const buildMarkdownMarkerDecorations = (
           "复制模板内容",
           "折叠模板块",
           "展开模板块",
-          { line: i, done: /\s+done\s*$/.test(line), onToggle: onToggleTemplateStatus },
+          {
+            line: templateEndIndex,
+            done: Boolean(endDoneMatch),
+            onToggle: onToggleTemplateStatus,
+          },
         ),
       })
       allDecos.push({
@@ -925,6 +930,11 @@ const buildMarkdownMarkerDecorations = (
     if (templateEndMatch && isInsideTemplateBlock) {
       const markerStart = line.indexOf("&&&")
       addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
+      const doneMatch = line.match(/\s+done\s*$/)
+      if (doneMatch?.index !== undefined) {
+        const doneStart = doneMatch.index + 1
+        addMarkerAlways(doneStart, doneStart + 4, "cm-md-template-done")
+      }
       allDecos.push({
         type: "line",
         from: offset,

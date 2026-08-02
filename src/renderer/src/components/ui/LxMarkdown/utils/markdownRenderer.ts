@@ -106,12 +106,14 @@ const markdownTemplateBlock = (
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
+  let closeMatch: RegExpExecArray | null = null
   while (closeLine < endLine) {
     const lineText = state.src.slice(
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    if (/^&&&\s*$/.test(lineText)) break
+    closeMatch = /^&&&(?:\s+(done))?\s*$/.exec(lineText)
+    if (closeMatch) break
     closeLine += 1
   }
   if (closeLine >= endLine) return false
@@ -122,9 +124,10 @@ const markdownTemplateBlock = (
   token.map = [startLine, closeLine + 1]
   token.meta = {
     command: startMatch[1],
-    status: startMatch[2] ?? "",
+    status: closeMatch?.[1] ?? startMatch[2] ?? "",
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
+  token.attrSet("data-end-line", String(closeLine))
   state.line = closeLine + 1
   return true
 }
@@ -322,7 +325,9 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+  const endLine = token.attrGet("data-end-line")
+  const endLineAttribute = endLine === null ? "" : ` data-end-line="${endLine}"`
   const doneClass = isDone ? " markdown-template-block--done" : ""
 
-  return `<section class="markdown-template-block${doneClass}"${lineAttribute} data-template-command="${command}" data-template-status="${isDone ? "done" : ""}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
+  return `<section class="markdown-template-block${doneClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${isDone ? "done" : ""}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }

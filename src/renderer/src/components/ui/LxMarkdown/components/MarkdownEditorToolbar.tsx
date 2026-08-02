@@ -1,4 +1,14 @@
-import { ChevronLeft, ChevronRight, Keyboard, Plus, Search, Table2 } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Keyboard,
+  MoreVertical,
+  Plus,
+  Search,
+  Table2,
+  Trash2,
+} from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
@@ -7,6 +17,7 @@ import type {
   MarkdownTableSize,
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
+import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { isMacOS } from "@/lib/platform"
 
@@ -22,6 +33,7 @@ interface MarkdownEditorToolbarProps {
   onPageChange?: (index: number) => void
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
+  onDeletePage?: () => void
 }
 
 const markdownShortcuts = [
@@ -62,10 +74,13 @@ export const MarkdownEditorToolbar = ({
   onPageChange,
   onPageNameChange,
   onCreatePage,
+  onDeletePage,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
   const [isEditingPageName, setIsEditingPageName] = useState(false)
+  const [isPageMenuOpen, setIsPageMenuOpen] = useState(false)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
@@ -84,16 +99,8 @@ export const MarkdownEditorToolbar = ({
   const getShortcutKeys = (keys: string): string =>
     keys.replace("Cmd / Ctrl", isMacOS() ? "Cmd" : "Ctrl")
 
-  const pageControls = pageMode && pages.length > 0 && (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <LxIconButton
-        aria-label="新建页面"
-        size="medium"
-        title={{ content: "新建页面" }}
-        onClick={onCreatePage}
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </LxIconButton>
+  const pageNameControls = pageMode && pages.length > 0 && (
+    <div className="flex shrink-0 items-center">
       {isEditingPageName ? (
         <input
           autoFocus
@@ -135,6 +142,11 @@ export const MarkdownEditorToolbar = ({
           {pageName}
         </button>
       )}
+    </div>
+  )
+
+  const pageSwitchControls = pageMode && pages.length > 0 && (
+    <div className="flex shrink-0 items-center gap-0.5">
       <LxIconButton
         aria-label="上一页"
         disabled={activePageIndex === 0}
@@ -157,6 +169,77 @@ export const MarkdownEditorToolbar = ({
         <ChevronRight className="h-3.5 w-3.5" />
       </LxIconButton>
     </div>
+  )
+
+  /**
+   * 第一次点击进入确认态，第二次点击才真正删除页面。
+   */
+  const handleDeletePageClick = (): void => {
+    if (!isConfirmingDelete) {
+      setIsConfirmingDelete(true)
+      return
+    }
+    setIsConfirmingDelete(false)
+    setIsPageMenuOpen(false)
+    onDeletePage?.()
+  }
+
+  const pageMenu = pageMode && (
+    <LxTooltip
+      content={
+        <div className="flex min-w-36 flex-col gap-0.5">
+          <LxMenuItem
+            leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
+            onClick={() => {
+              setIsPageMenuOpen(false)
+              setIsConfirmingDelete(false)
+              onCreatePage?.()
+            }}
+          >
+            添加页面
+          </LxMenuItem>
+          <LxMenuItem
+            className="disabled:opacity-35"
+            disabled={pages.length === 0}
+            leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
+            onClick={() => {
+              pageNameBeforeEditRef.current = pageName
+              setIsPageMenuOpen(false)
+              setIsConfirmingDelete(false)
+              setIsEditingPageName(true)
+            }}
+          >
+            重命名页面
+          </LxMenuItem>
+          <LxMenuItem
+            active={isConfirmingDelete}
+            className="disabled:opacity-35"
+            danger
+            disabled={pages.length <= 1}
+            leading={
+              <Trash2
+                className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
+              />
+            }
+            onClick={handleDeletePageClick}
+          >
+            {isConfirmingDelete ? "确认删除" : "删除页面"}
+          </LxMenuItem>
+        </div>
+      }
+      contentClassName="!p-1"
+      onOpenChange={(isOpen) => {
+        setIsPageMenuOpen(isOpen)
+        if (!isOpen) setIsConfirmingDelete(false)
+      }}
+      open={isPageMenuOpen}
+      placement="bottom"
+      trigger="click"
+    >
+      <LxIconButton aria-label="页面菜单" size="medium">
+        <MoreVertical className="h-3.5 w-3.5" />
+      </LxIconButton>
+    </LxTooltip>
   )
 
   const tablePicker = useMemo(
@@ -237,7 +320,16 @@ export const MarkdownEditorToolbar = ({
 
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
-      {pageControls}
+      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+        <span
+          aria-label={isSaved ? "已保存" : "未保存"}
+          className={`ml-1.5 mr-1.5 h-2 w-2 shrink-0 rounded-full ${
+            isSaved ? "bg-emerald-400" : "bg-amber-400"
+          }`}
+          role="status"
+        />
+      </LxTooltip>
+      {pageNameControls}
       {leftActions.map(({ highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}
@@ -278,15 +370,8 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
-      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
-        <span
-          aria-label={isSaved ? "已保存" : "未保存"}
-          className={`ml-1.5 mr-1.5 h-2 w-2 shrink-0 rounded-full ${
-            isSaved ? "bg-emerald-400" : "bg-amber-400"
-          }`}
-          role="status"
-        />
-      </LxTooltip>
+      {pageSwitchControls}
+      {pageMenu}
     </div>
   )
 }
