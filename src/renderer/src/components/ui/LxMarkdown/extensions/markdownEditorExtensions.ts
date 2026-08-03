@@ -636,8 +636,8 @@ class CodeBlockActionWidget extends WidgetType {
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
-export const markdownMarkerHighlight = (showFolding = false) => [
-  ViewPlugin.fromClass(
+export const markdownMarkerHighlight = (showFolding = false) => {
+  const markerPlugin = ViewPlugin.fromClass(
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
       foldedIndices = new Set<number>()
@@ -708,8 +708,10 @@ export const markdownMarkerHighlight = (showFolding = false) => [
       }
     },
     { decorations: (plugin) => plugin.decorations },
-  ),
-]
+  )
+
+  return [markerPlugin]
+}
 
 /**
  * 扫描文档行并生成 Markdown 标记装饰。
@@ -1093,9 +1095,11 @@ const buildMarkdownMarkerDecorations = (
       const from = offset + match.index
       const to = from + rawMatch.length
 
-      const isCursorInside = mainSelection.from <= to && mainSelection.to >= from
+      const isCursorInside = mainSelection.from < to && mainSelection.to > from
+      const isCursorOnLine =
+        mainSelection.head >= offset && mainSelection.head <= offset + line.length
 
-      if (isCursorInside || isComposing) {
+      if (isCursorInside || isCursorOnLine) {
         const className = `cm-md-reference-${type}`
         addMarker(match.index, match.index + rawMatch.length, className)
       } else {
@@ -1118,9 +1122,11 @@ const buildMarkdownMarkerDecorations = (
       const isReferenced = Boolean(projectName && referencedProjectNames.has(projectName))
       const displayLabel = getFileMentionDisplayLabel(fullMention, referencedProjectNames)
 
-      const isCursorInside = mainSelection.from <= to && mainSelection.to >= from
+      const isCursorInside = mainSelection.from < to && mainSelection.to > from
+      const isCursorOnLine =
+        mainSelection.head >= offset && mainSelection.head <= offset + line.length
 
-      if (isCursorInside || isComposing) {
+      if (isCursorInside || isCursorOnLine) {
         const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
         addMarker(match.index, match.index + fullMention.length, className)
       } else {
