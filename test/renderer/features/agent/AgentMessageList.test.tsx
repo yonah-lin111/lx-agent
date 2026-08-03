@@ -2,7 +2,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentMessageList } from "@/features/agent/components/AgentMessageList"
-import type { AgentMessage } from "@/features/agent/types"
+import type { ChatMessage } from "@/features/agent/types"
+
+// 构造用户消息展示条目。
+const userMessage = (id: string, text: string): ChatMessage => ({
+  id,
+  role: "user",
+  blocks: [{ kind: "text", text }],
+  isStreaming: false,
+})
 
 describe("AgentMessageList", () => {
   beforeEach(() => {
@@ -11,10 +19,7 @@ describe("AgentMessageList", () => {
   })
 
   it("消息列表中同一时间只能出现一个编辑输入框", () => {
-    const messages: AgentMessage[] = [
-      { id: "msg-1", role: "user", content: "消息 1", createdAt: 1 },
-      { id: "msg-2", role: "user", content: "消息 2", createdAt: 2 },
-    ]
+    const messages: ChatMessage[] = [userMessage("msg-1", "消息 1"), userMessage("msg-2", "消息 2")]
 
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 

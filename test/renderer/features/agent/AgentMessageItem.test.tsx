@@ -2,7 +2,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
-import type { AgentMessage } from "@/features/agent/types"
+import type { ChatMessage } from "@/features/agent/types"
+
+// 构造用户消息展示条目。
+const userMessage = (id: string, text: string): ChatMessage => ({
+  id,
+  role: "user",
+  blocks: [{ kind: "text", text }],
+  isStreaming: false,
+})
 
 describe("AgentMessageItem", () => {
   beforeEach(() => {
@@ -10,12 +18,7 @@ describe("AgentMessageItem", () => {
   })
 
   it("用户短消息不应该显示折叠/展开按钮", () => {
-    const message: AgentMessage = {
-      id: "1",
-      role: "user",
-      content: "这是一条短消息",
-      createdAt: Date.now(),
-    }
+    const message = userMessage("1", "这是一条短消息")
 
     render(<AgentMessageItem message={message} />)
 
@@ -27,12 +30,7 @@ describe("AgentMessageItem", () => {
 
   it("用户长消息（多于3行）折叠并提供展开/折叠切换功能", () => {
     const longContent = "第一行\n第二行\n第三行\n第四行\n第五行"
-    const message: AgentMessage = {
-      id: "2",
-      role: "user",
-      content: longContent,
-      createdAt: Date.now(),
-    }
+    const message = userMessage("2", longContent)
 
     // 在 jsdom 中模拟 scrollHeight 和 lineHeight
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
@@ -56,12 +54,7 @@ describe("AgentMessageItem", () => {
 
   it("点击编辑按钮切换输入框，并通过右下角发送按钮提交编辑", () => {
     const onEdit = vi.fn()
-    const message: AgentMessage = {
-      id: "3",
-      role: "user",
-      content: "原始内容",
-      createdAt: Date.now(),
-    }
+    const message = userMessage("3", "原始内容")
 
     render(<AgentMessageItem message={message} onEdit={onEdit} />)
 

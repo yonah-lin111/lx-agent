@@ -3,6 +3,7 @@ import type React from "react"
 import { useMemo, useState } from "react"
 import { LxInput } from "@/components/ui/LxInput"
 import type { ChatSession } from "../types"
+import { messageSearchText } from "../utils"
 
 interface ChatHistoryPanelProps {
   sessions: ChatSession[]
@@ -25,7 +26,7 @@ export const ChatHistoryPanel = ({
     if (!keyword) return sessions
 
     return sessions.filter((session) =>
-      `${session.title} ${session.messages.map((message) => message.content).join(" ")}`
+      `${session.title} ${session.messages.map((message) => messageSearchText(message)).join(" ")}`
         .toLocaleLowerCase()
         .includes(keyword),
     )

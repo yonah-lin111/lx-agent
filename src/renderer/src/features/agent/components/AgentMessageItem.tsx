@@ -1,13 +1,23 @@
-import { Check, ChevronDown, ChevronUp, Copy, Pencil, X } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileText,
+  Loader2,
+  Pencil,
+  Wrench,
+  X,
+} from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import type { AgentMessage } from "../types"
+import type { ChatMessage } from "../types"
 
 interface AgentMessageItemProps {
-  message: AgentMessage
+  message: ChatMessage
   isEditing?: boolean
   onStartEdit?: () => void
   onCancelEdit?: () => void
@@ -15,7 +25,7 @@ interface AgentMessageItemProps {
 }
 
 /**
- * 渲染单条 Agent 或用户消息气泡（隐藏气泡顶部头像与名字，无边框与左右内边距，底部悬浮显示复制与编辑按钮，Agent 消息靠左对齐，用户消息靠右对齐）。
+ * 渲染单条 Agent 或用户消息（blocks 渲染：文本 / 思考 / 工具调用 / 工具结果）。
  */
 export const AgentMessageItem = ({
   message,
@@ -35,19 +45,36 @@ export const AgentMessageItem = ({
   const [isCollapsible, setIsCollapsible] = useState(false)
   const [isClamped, setIsClamped] = useState(false)
   const [localIsEditing, setLocalIsEditing] = useState(false)
+  // 工具结果折叠状态（按 toolCallId）。
+  const [collapsedResults, setCollapsedResults] = useState<Record<string, boolean>>({})
   const isEditing = isEditingProp ?? localIsEditing
-  const [editText, setEditText] = useState(message.content)
+  const [editText, setEditText] = useState(
+    message.blocks.find((block) => block.kind === "text")?.text ?? "",
+  )
 
   // 记录上一次容器的渲染高度，用于 FLIP 动画
   const lastHeightRef = useRef<number>(0)
   const transitionCleanupRef = useRef<(() => void) | null>(null)
   const isTransitioningRef = useRef<boolean>(false)
 
+  const userText = useMemo(
+    () =>
+      message.blocks
+        .filter((block) => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n"),
+    [message.blocks],
+  )
+
   // 渲染 Markdown 为 HTML。
   const renderedHtml = useMemo(() => {
     if (isUser) return ""
-    return markdownRenderer.render(message.content)
-  }, [message.content, isUser])
+    const text = message.blocks
+      .filter((block) => block.kind === "text")
+      .map((block) => block.text)
+      .join("\n")
+    return markdownRenderer.render(text)
+  }, [message.blocks, isUser])
 
   // 使用 ResizeObserver 记录用户气泡容器最新高度
   useEffect(() => {
@@ -143,8 +170,8 @@ export const AgentMessageItem = ({
   }, [isEditing])
 
   useEffect(() => {
-    setEditText(message.content)
-  }, [message.content])
+    setEditText(userText)
+  }, [userText])
 
   // 检测用户消息是否超过3行。
   useLayoutEffect(() => {
@@ -177,7 +204,7 @@ export const AgentMessageItem = ({
       setIsClamped(false)
       content.style.height = ""
     }
-  }, [message.content, isUser, isExpanded, isEditing])
+  }, [userText, isUser, isExpanded, isEditing])
 
   const toggleExpand = (): void => {
     const content = userContentRef.current
@@ -228,7 +255,15 @@ export const AgentMessageItem = ({
 
   const copyMessageContent = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(message.content)
+      const text = message.blocks
+        .map((block) => {
+          if (block.kind === "text" || block.kind === "thinking") return block.text
+          if (block.kind === "toolResult") return block.text
+          return ""
+        })
+        .filter(Boolean)
+        .join("\n\n")
+      await navigator.clipboard.writeText(text)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -237,7 +272,7 @@ export const AgentMessageItem = ({
   }
 
   const handleStartEdit = (): void => {
-    setEditText(message.content)
+    setEditText(userText)
     if (onStartEdit) {
       onStartEdit()
     } else {
@@ -251,7 +286,9 @@ export const AgentMessageItem = ({
     if (onEdit) {
       onEdit(message.id, trimmed)
     } else {
-      message.content = trimmed
+      message.blocks = message.blocks.map((block) =>
+        block.kind === "text" ? { ...block, text: trimmed } : block,
+      )
     }
     if (onCancelEdit) {
       onCancelEdit()
@@ -261,12 +298,70 @@ export const AgentMessageItem = ({
   }
 
   const handleCancelEdit = (): void => {
-    setEditText(message.content)
+    setEditText(userText)
     if (onCancelEdit) {
       onCancelEdit()
     } else {
       setLocalIsEditing(false)
     }
+  }
+
+  // 工具调用块渲染。
+  const renderToolCall = (
+    block: Extract<ChatMessage["blocks"][number], { kind: "toolCall" }>,
+  ): React.JSX.Element => {
+    const argsSummary = JSON.stringify(block.args)
+    const argsPreview = argsSummary.length > 120 ? `${argsSummary.slice(0, 120)}…` : argsSummary
+    return (
+      <div
+        key={`${block.toolCallId}-call`}
+        className="flex items-center gap-2 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px]"
+      >
+        <Wrench className="h-3.5 w-3.5 shrink-0 text-white/50" />
+        <span className="font-medium text-white/80">{block.toolName}</span>
+        <span className="min-w-0 flex-1 truncate text-white/40">{argsPreview}</span>
+        {block.status === "running" ? (
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-400" />
+        ) : block.status === "error" ? (
+          <span className="shrink-0 text-red-400">失败</span>
+        ) : (
+          <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+        )}
+      </div>
+    )
+  }
+
+  // 工具结果块渲染（可折叠）。
+  const renderToolResult = (
+    block: Extract<ChatMessage["blocks"][number], { kind: "toolResult" }>,
+  ): React.JSX.Element => {
+    const collapsed = collapsedResults[block.toolCallId] !== false
+    const toggle = (): void => {
+      setCollapsedResults((prev) => ({ ...prev, [block.toolCallId]: !collapsed }))
+    }
+    const preview = block.text.length > 200 ? `${block.text.slice(0, 200)}…` : block.text
+    return (
+      <div
+        key={`${block.toolCallId}-result`}
+        className="flex flex-col gap-1 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1.5"
+      >
+        <button type="button" onClick={toggle} className="flex items-center gap-2 text-[12px]">
+          <FileText className="h-3.5 w-3.5 shrink-0 text-white/50" />
+          <span className="font-medium text-white/80">{block.toolName} 结果</span>
+          <span className={block.isError ? "shrink-0 text-red-400" : "shrink-0 text-white/30"}>
+            {block.isError ? "失败" : "完成"}
+          </span>
+          <span className="ml-auto shrink-0">
+            {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+          </span>
+        </button>
+        {!collapsed && (
+          <pre className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-relaxed text-white/60">
+            {preview}
+          </pre>
+        )}
+      </div>
+    )
   }
 
   if (isUser) {
@@ -302,7 +397,7 @@ export const AgentMessageItem = ({
                   size="small"
                   aria-label="发送消息"
                   title={{ content: "发送消息 (Enter)", placement: "top" }}
-                  disabled={!editText.trim() || editText.trim() === message.content.trim()}
+                  disabled={!editText.trim() || editText.trim() === userText.trim()}
                   onClick={handleSaveEdit}
                 >
                   <Check className="h-3.5 w-3.5 text-emerald-400" />
@@ -317,7 +412,7 @@ export const AgentMessageItem = ({
                   isClamped ? "line-clamp-3" : ""
                 }`}
               >
-                {message.content}
+                {userText}
               </div>
             </div>
           )}
@@ -373,14 +468,49 @@ export const AgentMessageItem = ({
         </div>
       )}
 
+      {message.error && (
+        <div className="rounded-[6px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] text-red-400">
+          {message.error}
+        </div>
+      )}
+
       <div className="relative rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
-        <LxMarkdownPreview
-          html={renderedHtml}
-          previewMode="preview"
-          previewRef={previewRef}
-          className="px-0"
-          contentClassName="py-1"
-        />
+        <div className="flex flex-col gap-1.5">
+          {message.blocks.map((block, index) => {
+            if (block.kind === "text") {
+              if (!block.text) return null
+              return (
+                <LxMarkdownPreview
+                  key={index}
+                  html={renderedHtml}
+                  previewMode="preview"
+                  previewRef={previewRef}
+                  className="px-0"
+                  contentClassName="py-1"
+                />
+              )
+            }
+            if (block.kind === "thinking") {
+              return (
+                <details
+                  key={index}
+                  className="group/think rounded-[6px] border border-white/10 bg-white/[0.03]"
+                >
+                  <summary className="cursor-pointer select-none px-2.5 py-1.5 text-[12px] text-white/40">
+                    思考过程
+                  </summary>
+                  <pre className="custom-scrollbar max-h-48 overflow-y-auto whitespace-pre-wrap break-words px-2.5 pb-2 text-[12px] leading-relaxed text-white/50">
+                    {block.text}
+                  </pre>
+                </details>
+              )
+            }
+            if (block.kind === "toolCall") {
+              return renderToolCall(block)
+            }
+            return renderToolResult(block)
+          })}
+        </div>
         <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
           <LxIconButton
             size="small"

@@ -1,10 +1,9 @@
-import { MOCK_CHAT_SESSIONS } from "../constants"
-import type { AgentMessage, ChatSession } from "../types"
+import type { ChatMessage, ChatSession } from "../types"
 
 // 历史会话最多保留条数。
 const MAX_SESSIONS = 50
 
-let sessions: ChatSession[] = [...MOCK_CHAT_SESSIONS]
+let sessions: ChatSession[] = []
 let currentSessionId: string | null = null
 const listeners = new Set<() => void>()
 
@@ -13,13 +12,14 @@ const notify = (): void => {
 }
 
 // 从消息中提取会话标题（取首条用户消息，压缩空白并截断）。
-const createTitle = (messages: AgentMessage[]): string => {
+const createTitle = (messages: ChatMessage[]): string => {
   const firstUser = messages.find((message) => message.role === "user")
-  return (firstUser?.content ?? "新对话").replace(/\s+/g, " ").trim().slice(0, 40)
+  const text = firstUser?.blocks.find((block) => block.kind === "text")?.text ?? ""
+  return (text || "新对话").replace(/\s+/g, " ").trim().slice(0, 40)
 }
 
 // 按消息 id 序列判断 prefix 是否为 full 的前缀（是否为同一对话的延续）。
-const isPrefixOf = (prefix: AgentMessage[], full: AgentMessage[]): boolean =>
+const isPrefixOf = (prefix: ChatMessage[], full: ChatMessage[]): boolean =>
   prefix.length <= full.length && prefix.every((message, index) => message.id === full[index]?.id)
 
 /**
@@ -46,7 +46,7 @@ export const chatHistoryStore = {
   },
 
   // 保存当前对话：最新会话为同一对话的延续时原地更新，否则插入新会话。
-  saveSession: (messages: AgentMessage[]): void => {
+  saveSession: (messages: ChatMessage[]): void => {
     if (messages.length === 0) return
     const latest = sessions[0]
     if (latest && isPrefixOf(latest.messages, messages)) {

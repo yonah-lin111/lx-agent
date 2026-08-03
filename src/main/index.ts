@@ -1,11 +1,12 @@
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
+import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, protocol } from "electron"
 import { initDatabase } from "@/db"
+import { registerAgentHandlers } from "@/ipc/agentHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
-import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -40,6 +41,7 @@ app.whenReady().then(() => {
   registerLocalImageProtocol()
   registerProjectHandlers()
   registerSettingsHandlers()
+  registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window)

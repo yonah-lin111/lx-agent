@@ -1,0 +1,132 @@
+import type { AgentMessage } from "@shared/contracts/agent"
+import type { ChatBlock, ChatMessage } from "./types"
+
+// 提取助手消息的错误信息。
+export const getAssistantError = (message: AgentMessage): string | undefined =>
+  message.role === "assistant" ? message.errorMessage : undefined
+
+// 将 shared AgentMessage 转换为展示条目。
+export const toChatMessage = (
+  message: AgentMessage,
+  isStreaming: boolean,
+  id: string,
+): ChatMessage => {
+  if (message.role === "user") {
+    const text = Array.isArray(message.content)
+      ? message.content.map((block) => (block.type === "text" ? block.text : `[图片]`)).join("\n")
+      : message.content
+    return { id, role: "user", blocks: [{ kind: "text", text }], isStreaming: false }
+  }
+
+  if (message.role === "toolResult") {
+    return {
+      id,
+      role: "toolResult",
+      blocks: [
+        {
+          kind: "toolResult",
+          toolCallId: message.toolCallId,
+          toolName: message.toolName,
+          text: message.content
+            .map((block) => (block.type === "text" ? block.text : "[图片]"))
+            .join("\n"),
+          isError: message.isError,
+        },
+      ],
+      isStreaming: false,
+    }
+  }
+
+  const blocks: ChatBlock[] = message.content.map((block) => {
+    if (block.type === "text") {
+      return { kind: "text", text: block.text }
+    }
+    if (block.type === "thinking") {
+      return { kind: "thinking", text: block.thinking }
+    }
+    return {
+      kind: "toolCall",
+      toolCallId: block.id,
+      toolName: block.name,
+      args: block.arguments,
+      status: "done",
+    }
+  })
+
+  return {
+    id,
+    role: "assistant",
+    blocks,
+    isStreaming,
+    error: message.errorMessage,
+  }
+}
+
+// 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
+export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
+  messages.flatMap((message): AgentMessage[] => {
+    if (message.role === "user") {
+      const text = message.blocks
+        .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n")
+      return [{ role: "user", content: text, timestamp: Date.now() }]
+    }
+
+    if (message.role === "toolResult") {
+      const block = message.blocks.find(
+        (item): item is Extract<ChatBlock, { kind: "toolResult" }> => item.kind === "toolResult",
+      )
+      if (!block) return []
+      return [
+        {
+          role: "toolResult",
+          toolCallId: block.toolCallId,
+          toolName: block.toolName,
+          content: [{ type: "text", text: block.text }],
+          isError: block.isError,
+          timestamp: Date.now(),
+        },
+      ]
+    }
+
+    const blocks = message.blocks.flatMap(
+      (
+        block,
+      ): Array<
+        | { type: "text"; text: string }
+        | { type: "thinking"; thinking: string }
+        | { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }
+      > => {
+        if (block.kind === "text") return [{ type: "text", text: block.text }]
+        if (block.kind === "thinking") return [{ type: "thinking", thinking: block.text }]
+        if (block.kind === "toolCall") {
+          return [
+            { type: "toolCall", id: block.toolCallId, name: block.toolName, arguments: block.args },
+          ]
+        }
+        return []
+      },
+    )
+    return [
+      {
+        role: "assistant",
+        content: blocks,
+        provider: "local",
+        model: "local",
+        usage: { input: 0, output: 0, totalTokens: 0 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+    ]
+  })
+
+// 提取消息可搜索文本。
+export const messageSearchText = (message: ChatMessage): string =>
+  message.blocks
+    .map((block) => {
+      if (block.kind === "text" || block.kind === "thinking") return block.text
+      if (block.kind === "toolResult") return block.text
+      return block.toolName
+    })
+    .join(" ")

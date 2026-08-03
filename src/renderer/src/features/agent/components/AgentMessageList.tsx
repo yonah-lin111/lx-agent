@@ -2,11 +2,11 @@ import { Sparkles } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { DEFAULT_PROMPT_CARDS } from "../constants"
-import type { AgentMessage } from "../types"
+import type { ChatMessage } from "../types"
 import { AgentMessageItem } from "./AgentMessageItem"
 
 interface AgentMessageListProps {
-  messages: AgentMessage[]
+  messages: ChatMessage[]
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
 }
