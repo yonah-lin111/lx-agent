@@ -2,9 +2,9 @@
 
 编写或评审代码前，必须阅读并遵守：
 
-- `docs/frontend-design-requirements.md`
-- `docs/project-directory-structure.md`
-- `docs/code-writing-standards.md`
+- `docs/standards/frontend-design-requirements.md`
+- `docs/standards/project-directory-structure.md`
+- `docs/standards/code-writing-standards.md`
 
 ## Agent 执行规则
 
