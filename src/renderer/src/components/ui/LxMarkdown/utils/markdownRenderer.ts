@@ -90,6 +90,60 @@ const markdownTemplateCommands = new Set([
   "commonTemplate",
 ])
 
+const isTemplateListItemLine = (line: string): RegExpMatchArray | null =>
+  /^(\s*)([-*+]\s*(?:\[[ xX]\]\s*)?)(.*)$/.exec(line)
+
+/**
+ * 移除模板块内容中未填写的列表项及空占位子项。
+ */
+export const stripEmptyTemplateItems = (content: string): string => {
+  const lines = content.split("\n")
+  const remove: boolean[] = lines.map(() => false)
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const itemMatch = isTemplateListItemLine(lines[i])
+    if (!itemMatch) continue
+    const itemIndent = (itemMatch[1] ?? "").length
+    const itemBody = (itemMatch[3] ?? "").trim()
+
+    if (itemBody === "") {
+      remove[i] = true
+      continue
+    }
+    if (!/^[^：:]*[：:]$/.test(itemBody)) continue
+
+    let hasFilledChild = false
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const childMatch = isTemplateListItemLine(lines[j])
+      if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
+      const childBody = (childMatch[3] ?? "").trim()
+      if (childBody !== "" && !/^[^：:]*[：:]$/.test(childBody)) {
+        hasFilledChild = true
+        break
+      }
+    }
+    if (hasFilledChild) continue
+
+    remove[i] = true
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const childMatch = isTemplateListItemLine(lines[j])
+      if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
+      remove[j] = true
+    }
+  }
+
+  const keptLines: string[] = []
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!remove[i]) keptLines.push(lines[i])
+  }
+
+  return keptLines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/^\n+/, "")
+    .trimEnd()
+}
+
 const markdownTemplateBlock = (
   state: MarkdownBlockState,
   startLine: number,
@@ -321,7 +375,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const meta = token?.meta as { command: string; content: string; status?: string }
   const command = markdownRenderer.utils.escapeHtml(meta.command)
   const isDone = meta.status === "done"
-  const encodedContent = encodeURIComponent(meta.content)
+  const encodedContent = encodeURIComponent(stripEmptyTemplateItems(meta.content))
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`

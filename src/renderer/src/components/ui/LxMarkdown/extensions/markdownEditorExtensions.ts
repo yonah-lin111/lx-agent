@@ -24,6 +24,7 @@ import type {
   MarkdownTableRowKind,
   MarkdownTableSize,
 } from "@/components/ui/LxMarkdown/types"
+import { stripEmptyTemplateItems } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 export const editorTheme = EditorView.theme(
   {
@@ -902,7 +903,7 @@ const buildMarkdownMarkerDecorations = (
         from: offset + line.length,
         to: offset + line.length,
         widget: new CodeBlockActionWidget(
-          currentTemplateTextLines.join("\n"),
+          stripEmptyTemplateItems(currentTemplateTextLines.join("\n")),
           currentTemplateFolded,
           () => onToggleTemplateFold(currentTemplateIndex),
           showFolding,
