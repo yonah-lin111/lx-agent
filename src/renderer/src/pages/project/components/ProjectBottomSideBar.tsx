@@ -28,6 +28,7 @@ interface ProjectBottomSideBarProps {
 
 // 防止 Zustand 选择器因返回新数组而重复渲染。
 const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
+const EMPTY_ENABLED_FOLDER_PATHS: string[] = []
 
 // loading 最短展示时长，避免 IPC 过快时闪烁。
 const MIN_LOADING_DURATION = 300
@@ -56,7 +57,7 @@ interface FolderPanelState {
 }
 
 /**
- * 渲染项目共享文件夹引用。
+ * 渲染项目共享文件夹引用。目录按项目共享，启用状态按条目独立。
  */
 export const ProjectBottomSideBar = ({
   isExpanded = false,
@@ -78,9 +79,15 @@ export const ProjectBottomSideBar = ({
       ? (state.foldersByProjectId[projectId] ?? EMPTY_REFERENCED_FOLDERS)
       : EMPTY_REFERENCED_FOLDERS,
   )
-  const setReferencedFolders = useProjectReferencedFoldersStore(
-    (state) => state.setReferencedFolders,
+  const enabledFolderPaths = useProjectReferencedFoldersStore((state) =>
+    itemId
+      ? (state.enabledPathsByItemId[itemId] ?? EMPTY_ENABLED_FOLDER_PATHS)
+      : EMPTY_ENABLED_FOLDER_PATHS,
   )
+  const setProjectReferencedFolders = useProjectReferencedFoldersStore(
+    (state) => state.setProjectReferencedFolders,
+  )
+  const setItemEnabledPaths = useProjectReferencedFoldersStore((state) => state.setItemEnabledPaths)
   const sortedFolders = useMemo(
     () =>
       [...referencedFolders].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -88,36 +95,8 @@ export const ProjectBottomSideBar = ({
   )
 
   /**
-   * 解析当前条目所属项目。同项目内切换条目时 projectId 不变，
-   * 函数式更新返回原值会跳过重渲染，从而不触发下方 tag 列表刷新。
-   */
-  useEffect(() => {
-    let isCurrent = true
-
-    if (!itemId) {
-      setProjectId(null)
-    } else {
-      void projectApi
-        .list()
-        .then((items) => {
-          const item = items.find((entry) => entry.id === itemId)
-          const nextProjectId = item?.projectId ?? null
-          if (isCurrent) {
-            setProjectId((current) => (current === nextProjectId ? current : nextProjectId))
-          }
-        })
-        .catch(() => {
-          if (isCurrent) setProjectId(null)
-        })
-    }
-
-    return () => {
-      isCurrent = false
-    }
-  }, [itemId])
-
-  /**
-   * 项目变化时加载该项目的共享文件夹引用。
+   * 解析当前条目所属项目，并加载该条目的文件夹启用状态。
+   * 同项目内切换条目时 projectId 不变，项目级目录无需重新加载。
    */
   useEffect(() => {
     let isCurrent = true
@@ -127,7 +106,8 @@ export const ProjectBottomSideBar = ({
     }
     setIsFadingOut(false)
 
-    if (!projectId) {
+    if (!itemId) {
+      setProjectId(null)
       setIsLoading(false)
       return
     }
@@ -136,14 +116,15 @@ export const ProjectBottomSideBar = ({
     const startedAt = Date.now()
 
     void projectApi
-      .listProjects()
-      .then((projects) => {
-        const project = projects.find((item) => item.id === projectId)
-        if (!isCurrent) return
-        if (project) setReferencedFolders(projectId, project.referencedFolders)
+      .list()
+      .then((items) => {
+        const item = items.find((entry) => entry.id === itemId)
+        if (!isCurrent || !item) return
+        setProjectId((current) => (current === item.projectId ? current : item.projectId))
+        setItemEnabledPaths(itemId, item.enabledFolderPaths)
       })
       .catch((error) => {
-        if (isCurrent) console.error("Failed to load project references", error)
+        if (isCurrent) console.error("Failed to load item references", error)
       })
       .finally(() => {
         const finishLoading = (): void => {
@@ -167,7 +148,31 @@ export const ProjectBottomSideBar = ({
     return () => {
       isCurrent = false
     }
-  }, [projectId, setReferencedFolders])
+  }, [itemId, setItemEnabledPaths])
+
+  /**
+   * 项目变化时加载该项目的共享文件夹目录。
+   */
+  useEffect(() => {
+    let isCurrent = true
+
+    if (!projectId) return
+
+    void projectApi
+      .listProjects()
+      .then((projects) => {
+        const project = projects.find((item) => item.id === projectId)
+        if (!isCurrent || !project) return
+        setProjectReferencedFolders(projectId, project.referencedFolders)
+      })
+      .catch((error) => {
+        if (isCurrent) console.error("Failed to load project references", error)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [projectId, setProjectReferencedFolders])
 
   /**
    * 打开文件夹标签上方的内容面板。
@@ -190,34 +195,34 @@ export const ProjectBottomSideBar = ({
       if (!projectId) return
 
       const nextFolders = referencedFolders.filter((folder) => folder.path !== path)
-      setReferencedFolders(projectId, nextFolders)
+      setProjectReferencedFolders(projectId, nextFolders)
       void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
-        setReferencedFolders(projectId, referencedFolders)
+        setProjectReferencedFolders(projectId, referencedFolders)
       })
     },
-    [projectId, referencedFolders, setReferencedFolders],
+    [projectId, referencedFolders, setProjectReferencedFolders],
   )
 
   /**
-   * 切换文件夹是否参与 Markdown @ 命令搜索。
+   * 切换当前条目对该文件夹的启用状态。
    */
   const toggleFolderReference = useCallback(
     (path: string): void => {
-      if (!projectId) return
+      if (!itemId) return
 
-      const nextFolders = referencedFolders.map((folder) =>
-        folder.path === path ? { ...folder, enabled: !Boolean(folder.enabled) } : folder,
-      )
-      setReferencedFolders(projectId, nextFolders)
-      void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
-        setReferencedFolders(projectId, referencedFolders)
+      const nextPaths = enabledFolderPaths.includes(path)
+        ? enabledFolderPaths.filter((itemPath) => itemPath !== path)
+        : [...enabledFolderPaths, path]
+      setItemEnabledPaths(itemId, nextPaths)
+      void projectApi.update(itemId, { enabledFolderPaths: nextPaths }).catch(() => {
+        setItemEnabledPaths(itemId, enabledFolderPaths)
       })
     },
-    [projectId, referencedFolders, setReferencedFolders],
+    [itemId, enabledFolderPaths, setItemEnabledPaths],
   )
 
   /**
-   * 添加项目级共享文件夹引用。
+   * 添加项目级共享文件夹引用，默认不启用。
    */
   const addFolderReference = useCallback(
     (path: string): void => {
@@ -230,15 +235,14 @@ export const ProjectBottomSideBar = ({
       const newFolder: ReferencedFolder = {
         path: trimmed,
         createdAt: new Date().toISOString(),
-        enabled: false,
       }
       const nextFolders = [...referencedFolders, newFolder]
-      setReferencedFolders(projectId, nextFolders)
+      setProjectReferencedFolders(projectId, nextFolders)
       void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
-        setReferencedFolders(projectId, referencedFolders)
+        setProjectReferencedFolders(projectId, referencedFolders)
       })
     },
-    [projectId, referencedFolders, setReferencedFolders],
+    [projectId, referencedFolders, setProjectReferencedFolders],
   )
 
   /**
@@ -342,7 +346,7 @@ export const ProjectBottomSideBar = ({
             <div className="animate-fade-in flex min-w-0 items-center gap-1">
               {sortedFolders.map((folder) => {
                 const isCopied = copiedFolderPath === folder.path
-                const isEnabled = Boolean(folder.enabled)
+                const isEnabled = enabledFolderPaths.includes(folder.path)
 
                 return (
                   <LxTag

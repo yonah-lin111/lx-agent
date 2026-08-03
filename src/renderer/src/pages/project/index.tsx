@@ -1,5 +1,3 @@
-import type { ReferencedFolder } from "@shared/project"
-import { useCallback, useMemo } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxMarkdownEditor } from "@/components/ui/LxMarkdown"
@@ -8,7 +6,7 @@ import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
 
 // 防止 Zustand 选择器因返回新数组而重复渲染。
-const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
+const EMPTY_ENABLED_FOLDER_PATHS: string[] = []
 
 /**
  * 渲染项目条目页面。
@@ -19,37 +17,10 @@ export const ProjectPage = (): React.JSX.Element => {
   const { hasItem, isLoading, isSaved, loadedItemId, pages, projectId, save, setPages } =
     useProjectEditor(itemId)
   const isItemLoading = isLoading || (itemId !== null && loadedItemId !== itemId)
-  const setReferencedFolders = useProjectReferencedFoldersStore(
-    (state) => state.setReferencedFolders,
-  )
-  const projectReferencedFolders = useProjectReferencedFoldersStore((state) =>
-    projectId
-      ? (state.foldersByProjectId[projectId] ?? EMPTY_REFERENCED_FOLDERS)
-      : EMPTY_REFERENCED_FOLDERS,
-  )
-  const enabledReferencedFolderPaths = useMemo(
-    () => projectReferencedFolders.filter((folder) => folder.enabled).map((folder) => folder.path),
-    [projectReferencedFolders],
-  )
-
-  const addFolderReference = useCallback(
-    (path: string): void => {
-      if (!projectId) return
-
-      void projectApi.listProjects().then((projects) => {
-        const project = projects.find((item) => item.id === projectId)
-        if (!project || project.referencedFolders.some((folder) => folder.path === path)) return
-
-        const referencedFolders = [
-          ...project.referencedFolders,
-          { path, createdAt: new Date().toISOString(), enabled: false },
-        ]
-        return projectApi.updateProject(projectId, { referencedFolders }).then(() => {
-          setReferencedFolders(projectId, referencedFolders)
-        })
-      })
-    },
-    [projectId, setReferencedFolders],
+  const enabledReferencedFolderPaths = useProjectReferencedFoldersStore((state) =>
+    itemId
+      ? (state.enabledPathsByItemId[itemId] ?? EMPTY_ENABLED_FOLDER_PATHS)
+      : EMPTY_ENABLED_FOLDER_PATHS,
   )
 
   return (
@@ -66,7 +37,6 @@ export const ProjectPage = (): React.JSX.Element => {
           onPagesChange={setPages}
           onSearchFiles={projectApi.searchFiles}
           onSearchReferencedFiles={projectApi.searchReferencedFiles}
-          onFolderReferenceAdd={addFolderReference}
           onSave={save}
           referencedProjectPaths={enabledReferencedFolderPaths}
           showFolding={true}

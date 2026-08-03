@@ -44,7 +44,11 @@ describe("projectService", () => {
       ],
     })
     service.updateFolder(folder.id, { name: "Engineering" })
-    service.updateItem(item.id, { name: "Build plan", status: "in_progress" })
+    service.updateItem(item.id, {
+      name: "Build plan",
+      status: "in_progress",
+      enabledFolderPaths: ["/tmp/docs", "/tmp/docs", " /tmp/src "],
+    })
 
     expect(service.listProjects()[0]).toMatchObject({
       name: "LX Agent Next",
@@ -58,6 +62,7 @@ describe("projectService", () => {
     expect(service.listItems(project.id)[0]).toMatchObject({
       name: "Build plan",
       status: "in_progress",
+      enabledFolderPaths: ["/tmp/docs", "/tmp/src"],
     })
 
     service.deleteItem(item.id)

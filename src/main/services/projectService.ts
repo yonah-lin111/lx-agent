@@ -58,6 +58,7 @@ type ProjectItemRow = {
   project_folder_id: string | null
   name: string
   item_data: string | null
+  enabled_folder_paths: string | null
   status: ProjectItemStatus
   sort_order: number
   created_at: string
@@ -103,7 +104,19 @@ const getReferencedFolders = (value: string | null): ReferencedFolder[] => {
   }
 }
 
-// 规范化项目共享文件夹路径。
+// 将条目启用的文件夹路径数据库记录转换为业务数据。
+const getEnabledFolderPaths = (value: string | null): string[] => {
+  try {
+    const paths = JSON.parse(value ?? "[]")
+    if (!Array.isArray(paths)) return []
+
+    return normalizeEnabledFolderPaths(paths)
+  } catch {
+    return []
+  }
+}
+
+// 规范化共享文件夹路径。
 const normalizeReferencedFolders = (folders: unknown[]): ReferencedFolder[] => {
   const foldersByPath = new Map<string, ReferencedFolder>()
 
@@ -118,15 +131,24 @@ const normalizeReferencedFolders = (folders: unknown[]): ReferencedFolder[] => {
 
     const existing = foldersByPath.get(path)
     if (!existing || existing.createdAt < folder.createdAt) {
-      foldersByPath.set(path, {
-        path,
-        createdAt: folder.createdAt,
-        enabled: Boolean(folder.enabled),
-      })
+      foldersByPath.set(path, { path, createdAt: folder.createdAt })
     }
   }
 
   return [...foldersByPath.values()]
+}
+
+// 规范化条目启用的文件夹路径。
+const normalizeEnabledFolderPaths = (paths: unknown[]): string[] => {
+  const uniquePaths = new Set<string>()
+
+  for (const path of paths) {
+    if (typeof path !== "string") continue
+    const trimmed = path.trim()
+    if (trimmed) uniquePaths.add(trimmed)
+  }
+
+  return [...uniquePaths]
 }
 
 const toProject = (row: ProjectRow): Project => ({
@@ -159,6 +181,7 @@ const toItem = (row: ProjectItemRow): ProjectItem => ({
   projectFolderId: row.project_folder_id ?? undefined,
   name: row.name,
   itemData: row.item_data ?? "",
+  enabledFolderPaths: getEnabledFolderPaths(row.enabled_folder_paths),
   status: row.status,
   sortOrder: row.sort_order,
   createdAt: row.created_at,
@@ -352,6 +375,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       projectFolderId: input.projectFolderId,
       name,
       itemData: input.itemData ?? "",
+      enabledFolderPaths: [],
       status: "todo",
       sortOrder: sortOrder.sort_order,
       createdAt: now,
@@ -377,6 +401,13 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       }
       updates.push("status = ?")
       values.push(input.status)
+    }
+    if (input.enabledFolderPaths !== undefined) {
+      if (!Array.isArray(input.enabledFolderPaths)) {
+        throw new Error("INVALID_ENABLED_FOLDER_PATHS")
+      }
+      updates.push("enabled_folder_paths = ?")
+      values.push(JSON.stringify(normalizeEnabledFolderPaths(input.enabledFolderPaths)))
     }
     if (updates.length === 0) return
 

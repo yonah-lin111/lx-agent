@@ -1,8 +1,8 @@
 // 项目条目状态。
 export type ProjectItemStatus = "todo" | "in_progress" | "completed"
 
-// 项目共享文件夹引用。enabled 表示该文件夹内容是否出现在 Markdown @ 命令中。
-export type ReferencedFolder = { path: string; createdAt: string; enabled?: boolean }
+// 共享文件夹引用。enabled 状态按条目独立记录，不在此字段中。
+export type ReferencedFolder = { path: string; createdAt: string }
 
 // 项目数据。
 export type Project = {
@@ -34,6 +34,8 @@ export type ProjectItem = {
   projectFolderId?: string
   name: string
   itemData: string
+  // 该条目启用的共享文件夹路径。新增共享文件夹默认禁用，不在此集合中。
+  enabledFolderPaths: string[]
   status: ProjectItemStatus
   sortOrder: number
   createdAt: string
@@ -73,6 +75,7 @@ export type UpdateProjectItemInput = {
   name?: string
   itemData?: string
   status?: ProjectItemStatus
+  enabledFolderPaths?: string[]
 }
 
 // 渲染进程可调用的项目 IPC 接口。

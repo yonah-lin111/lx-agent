@@ -35,6 +35,7 @@ export const createProjectTables = (database: Database.Database): void => {
       project_folder_id TEXT,
       name TEXT NOT NULL,
       item_data TEXT,
+      enabled_folder_paths TEXT NOT NULL DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed')),
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL,
