@@ -1,23 +1,16 @@
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  FileText,
-  Loader2,
-  Pencil,
-  Wrench,
-  X,
-} from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Copy, Pencil, X } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import type { ChatMessage } from "../types"
+import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
+import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
+import type { ChatMessage } from "@/features/agent/types"
 
 interface AgentMessageItemProps {
   message: ChatMessage
+  continuationMessages?: ChatMessage[]
   isEditing?: boolean
   onStartEdit?: () => void
   onCancelEdit?: () => void
@@ -29,6 +22,7 @@ interface AgentMessageItemProps {
  */
 export const AgentMessageItem = ({
   message,
+  continuationMessages = [],
   isEditing: isEditingProp,
   onStartEdit,
   onCancelEdit,
@@ -66,15 +60,29 @@ export const AgentMessageItem = ({
     [message.blocks],
   )
 
-  // 渲染 Markdown 为 HTML。
-  const renderedHtml = useMemo(() => {
-    if (isUser) return ""
-    const text = message.blocks
-      .filter((block) => block.kind === "text")
-      .map((block) => block.text)
-      .join("\n")
-    return markdownRenderer.render(text)
-  }, [message.blocks, isUser])
+  // 按真实事件顺序合并同一轮 Agent 消息中的内容块。
+  const displayBlocks = useMemo(
+    () =>
+      [message, ...continuationMessages].flatMap((currentMessage) =>
+        currentMessage.blocks.map((block) => ({ block, isStreaming: currentMessage.isStreaming })),
+      ),
+    [continuationMessages, message],
+  )
+  // 合并同一轮中所有 read 工具调用的文件路径。
+  const readToolCalls = useMemo(
+    () =>
+      displayBlocks.flatMap(({ block }) =>
+        block.kind === "toolCall" && block.toolName === "read" ? [block] : [],
+      ),
+    [displayBlocks],
+  )
+  const readToolCallIds = useMemo(
+    () => new Set(readToolCalls.map((block) => block.toolCallId)),
+    [readToolCalls],
+  )
+  const assistantError = !isUser
+    ? [message, ...continuationMessages].find((currentMessage) => currentMessage.error)?.error
+    : undefined
 
   // 使用 ResizeObserver 记录用户气泡容器最新高度
   useEffect(() => {
@@ -255,8 +263,8 @@ export const AgentMessageItem = ({
 
   const copyMessageContent = async (): Promise<void> => {
     try {
-      const text = message.blocks
-        .map((block) => {
+      const text = displayBlocks
+        .map(({ block }) => {
           if (block.kind === "text" || block.kind === "thinking") return block.text
           if (block.kind === "toolResult") return block.text
           return ""
@@ -304,64 +312,6 @@ export const AgentMessageItem = ({
     } else {
       setLocalIsEditing(false)
     }
-  }
-
-  // 工具调用块渲染。
-  const renderToolCall = (
-    block: Extract<ChatMessage["blocks"][number], { kind: "toolCall" }>,
-  ): React.JSX.Element => {
-    const argsSummary = JSON.stringify(block.args)
-    const argsPreview = argsSummary.length > 120 ? `${argsSummary.slice(0, 120)}…` : argsSummary
-    return (
-      <div
-        key={`${block.toolCallId}-call`}
-        className="flex items-center gap-2 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px]"
-      >
-        <Wrench className="h-3.5 w-3.5 shrink-0 text-white/50" />
-        <span className="font-medium text-white/80">{block.toolName}</span>
-        <span className="min-w-0 flex-1 truncate text-white/40">{argsPreview}</span>
-        {block.status === "running" ? (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-400" />
-        ) : block.status === "error" ? (
-          <span className="shrink-0 text-red-400">失败</span>
-        ) : (
-          <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
-        )}
-      </div>
-    )
-  }
-
-  // 工具结果块渲染（可折叠）。
-  const renderToolResult = (
-    block: Extract<ChatMessage["blocks"][number], { kind: "toolResult" }>,
-  ): React.JSX.Element => {
-    const collapsed = collapsedResults[block.toolCallId] !== false
-    const toggle = (): void => {
-      setCollapsedResults((prev) => ({ ...prev, [block.toolCallId]: !collapsed }))
-    }
-    const preview = block.text.length > 200 ? `${block.text.slice(0, 200)}…` : block.text
-    return (
-      <div
-        key={`${block.toolCallId}-result`}
-        className="flex flex-col gap-1 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1.5"
-      >
-        <button type="button" onClick={toggle} className="flex items-center gap-2 text-[12px]">
-          <FileText className="h-3.5 w-3.5 shrink-0 text-white/50" />
-          <span className="font-medium text-white/80">{block.toolName} 结果</span>
-          <span className={block.isError ? "shrink-0 text-red-400" : "shrink-0 text-white/30"}>
-            {block.isError ? "失败" : "完成"}
-          </span>
-          <span className="ml-auto shrink-0">
-            {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-          </span>
-        </button>
-        {!collapsed && (
-          <pre className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-relaxed text-white/60">
-            {preview}
-          </pre>
-        )}
-      </div>
-    )
   }
 
   if (isUser) {
@@ -461,28 +411,21 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex flex-col gap-1 px-0">
-      {message.isStreaming && (
-        <div className="flex items-center gap-1.5 px-0 text-[10px] text-emerald-400/80">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-400" />
-          <span>思考中...</span>
-        </div>
-      )}
-
-      {message.error && (
+      {assistantError && (
         <div className="rounded-[6px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] text-red-400">
-          {message.error}
+          {assistantError}
         </div>
       )}
 
       <div className="relative rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
         <div className="flex flex-col gap-1.5">
-          {message.blocks.map((block, index) => {
+          {displayBlocks.map(({ block, isStreaming }, index) => {
             if (block.kind === "text") {
               if (!block.text) return null
               return (
                 <LxMarkdownPreview
                   key={index}
-                  html={renderedHtml}
+                  html={markdownRenderer.render(block.text)}
                   previewMode="preview"
                   previewRef={previewRef}
                   className="px-0"
@@ -492,23 +435,74 @@ export const AgentMessageItem = ({
             }
             if (block.kind === "thinking") {
               return (
-                <details
+                <AgentThinkingBlock
                   key={index}
-                  className="group/think rounded-[6px] border border-white/10 bg-white/[0.03]"
-                >
-                  <summary className="cursor-pointer select-none px-2.5 py-1.5 text-[12px] text-white/40">
-                    思考过程
-                  </summary>
-                  <pre className="custom-scrollbar max-h-48 overflow-y-auto whitespace-pre-wrap break-words px-2.5 pb-2 text-[12px] leading-relaxed text-white/50">
-                    {block.text}
-                  </pre>
-                </details>
+                  content={block.text}
+                  isGenerating={isStreaming && index === displayBlocks.length - 1}
+                />
               )
             }
             if (block.kind === "toolCall") {
-              return renderToolCall(block)
+              if (block.toolName === "read") {
+                if (block.toolCallId !== readToolCalls[0]?.toolCallId) return null
+
+                return (
+                  <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={readToolCalls} />
+                )
+              }
+
+              const nextBlock = displayBlocks[index + 1]?.block
+              const inlineResult =
+                nextBlock?.kind === "toolResult" && nextBlock.toolCallId === block.toolCallId
+                  ? nextBlock
+                  : undefined
+              const collapsed = collapsedResults[block.toolCallId] !== false
+
+              return (
+                <AgentToolCallBlock
+                  key={`${block.toolCallId}-call`}
+                  toolCall={block}
+                  toolResult={inlineResult}
+                  isResultExpanded={!collapsed}
+                  onToggleResult={
+                    inlineResult
+                      ? () =>
+                          setCollapsedResults((previousResults) => ({
+                            ...previousResults,
+                            [block.toolCallId]: !collapsed,
+                          }))
+                      : undefined
+                  }
+                />
+              )
             }
-            return renderToolResult(block)
+            if (readToolCallIds.has(block.toolCallId)) return null
+
+            const previousBlock = displayBlocks[index - 1]?.block
+            if (
+              previousBlock?.kind === "toolCall" &&
+              previousBlock.toolCallId === block.toolCallId
+            ) {
+              return null
+            }
+            const collapsed = collapsedResults[block.toolCallId] !== false
+
+            return (
+              <AgentToolCallBlock
+                key={`${block.toolCallId}-result`}
+                toolResult={block}
+                isResultExpanded={block.toolName === "read" ? undefined : !collapsed}
+                onToggleResult={
+                  block.toolName === "read"
+                    ? undefined
+                    : () =>
+                        setCollapsedResults((previousResults) => ({
+                          ...previousResults,
+                          [block.toolCallId]: !collapsed,
+                        }))
+                }
+              />
+            )
           })}
         </div>
         <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">

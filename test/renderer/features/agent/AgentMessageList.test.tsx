@@ -42,4 +42,64 @@ describe("AgentMessageList", () => {
     expect(textareas.length).toBe(1)
     expect((textareas[0] as HTMLTextAreaElement).value).toBe("消息 2")
   })
+
+  it("将独立工具结果展示在对应的 AI 工具调用下", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "tool-1",
+            toolName: "read",
+            args: { path: "src/main.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "result-1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "tool-1",
+            toolName: "read",
+            text: "const answer = 42",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    const resultButton = screen.getByRole("button", { name: "展开文件路径" })
+    expect(screen.getAllByText("read").length).toBe(1)
+    expect(resultButton.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("同一轮 AI 执行只渲染一个底部复制操作", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        blocks: [{ kind: "thinking", text: "先读取文件" }],
+        isStreaming: false,
+      },
+      {
+        id: "assistant-2",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "读取完成" }],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBe(1)
+  })
 })

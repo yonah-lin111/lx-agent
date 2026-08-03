@@ -1,15 +1,39 @@
 import { Sparkles } from "lucide-react"
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
-import { DEFAULT_PROMPT_CARDS } from "../constants"
-import type { ChatMessage } from "../types"
-import { AgentMessageItem } from "./AgentMessageItem"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
+import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
+import type { ChatMessage } from "@/features/agent/types"
 
 interface AgentMessageListProps {
   messages: ChatMessage[]
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
 }
+
+// AI 消息与同一轮后续消息的展示条目。
+interface AgentMessageListEntry {
+  // 原始消息。
+  message: ChatMessage
+  // 同一轮连续的工具结果或 AI 后续消息。
+  continuationMessages: ChatMessage[]
+}
+
+/**
+ * 将一次连续 Agent 执行聚合为单一 AI 气泡的展示条目。
+ */
+const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
+  messages.reduce<AgentMessageListEntry[]>((entries, message) => {
+    const previousEntry = entries.at(-1)
+
+    if (message.role !== "user" && previousEntry?.message.role === "assistant") {
+      previousEntry.continuationMessages.push(message)
+      return entries
+    }
+
+    entries.push({ message, continuationMessages: [] })
+    return entries
+  }, [])
 
 /**
  * 渲染 Agent 消息列表与空状态。
@@ -21,6 +45,7 @@ export const AgentMessageList = ({
 }: AgentMessageListProps): React.JSX.Element => {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
 
   // 新消息出现时自动滚动到底部。
   useEffect(() => {
@@ -60,10 +85,11 @@ export const AgentMessageList = ({
 
   return (
     <div className="custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-1 [scrollbar-gutter:stable]">
-      {messages.map((message) => (
+      {messageEntries.map(({ message, continuationMessages }) => (
         <AgentMessageItem
           key={message.id}
           message={message}
+          continuationMessages={continuationMessages}
           isEditing={editingMessageId === message.id}
           onStartEdit={() => setEditingMessageId(message.id)}
           onCancelEdit={() => {

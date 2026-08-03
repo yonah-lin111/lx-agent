@@ -77,4 +77,55 @@ describe("AgentMessageItem", () => {
 
     expect(onEdit).toHaveBeenCalledWith("3", "修改后的内容")
   })
+
+  it("将同名 read 工具调用合并为路径列表并支持展开", () => {
+    const message: ChatMessage = {
+      id: "4",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "tool-1",
+          toolName: "read",
+          args: { path: "/Users/yonah/projects/agent/pi-main" },
+          status: "error",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "tool-2",
+          toolName: "read",
+          args: { path: "/Users/yonah/projects/agent/lx-agent" },
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "tool-3",
+          toolName: "read",
+          args: { path: "/Users/yonah/projects/agent/codex-main" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get() {
+        return 100
+      },
+    })
+
+    render(<AgentMessageItem message={message} />)
+
+    const expandButton = screen.getByRole("button", { name: "展开文件路径" })
+    expect(screen.getAllByText("read").length).toBe(1)
+    expect(screen.queryByLabelText("工具执行失败")).toBeNull()
+    expect(expandButton.textContent).toContain(
+      "/Users/.../agent/pi-main, /Users/.../agent/lx-agent, /Users/.../agent/codex-main",
+    )
+
+    fireEvent.click(expandButton)
+
+    expect(screen.getByRole("button", { name: "折叠文件路径" })).not.toBeNull()
+  })
 })
