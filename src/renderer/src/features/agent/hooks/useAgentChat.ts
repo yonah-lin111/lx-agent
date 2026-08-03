@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef, useState, useSyncExternalStore } from "react"
 import { MOCK_RESPONSES } from "../constants"
-import type { AgentMessage } from "../types"
+import type { AgentMessage, ChatSession } from "../types"
+import { chatHistoryStore } from "./chatHistoryStore"
 
 /**
  * 管理 Agent 对话消息、Mock 打字机流式回复及交互状态。
@@ -10,6 +11,14 @@ export const useAgentChat = () => {
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const timerRef = useRef<number | null>(null)
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+
+  // 订阅模块级历史会话列表。
+  const chatSessions = useSyncExternalStore<ChatSession[]>(
+    chatHistoryStore.subscribe,
+    chatHistoryStore.getSessions,
+  )
 
   // 停止打字机流式生成。
   const stopStreaming = useCallback(() => {
@@ -23,12 +32,29 @@ export const useAgentChat = () => {
     )
   }, [])
 
-  // 新建/重置对话。
+  // 新建/重置对话：先把当前对话存入历史。
   const createNewChat = useCallback(() => {
     stopStreaming()
+    chatHistoryStore.saveSession(messagesRef.current)
+    chatHistoryStore.setCurrentSessionId(null)
     setMessages([])
     setInputText("")
   }, [stopStreaming])
+
+  // 恢复指定历史会话：先保存当前对话，再加载目标会话。
+  const restoreChat = useCallback(
+    (sessionId: string) => {
+      const session = chatHistoryStore.getSession(sessionId)
+      if (!session) return
+      stopStreaming()
+      chatHistoryStore.saveSession(messagesRef.current)
+      chatHistoryStore.touch(sessionId)
+      chatHistoryStore.setCurrentSessionId(sessionId)
+      setMessages(session.messages)
+      setInputText("")
+    },
+    [stopStreaming],
+  )
 
   // 发送消息并触发 Mock 打字机回复。
   const sendMessage = useCallback(
@@ -101,9 +127,11 @@ export const useAgentChat = () => {
     inputText,
     setInputText,
     isStreaming,
+    chatSessions,
     sendMessage,
     stopStreaming,
     createNewChat,
+    restoreChat,
     editMessage,
   }
 }

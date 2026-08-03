@@ -17,3 +17,11 @@ export interface AgentPromptCard {
   description: string
   prompt: string
 }
+
+// 历史会话定义。
+export interface ChatSession {
+  id: string
+  title: string
+  createdAt: number
+  messages: AgentMessage[]
+}

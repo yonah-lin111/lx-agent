@@ -1,8 +1,10 @@
 import { ChevronLeft, ChevronRight, History, Plus } from "lucide-react"
 import type React from "react"
-import { useState } from "react"
+import { useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { AgentPage } from "@/features/agent"
+import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentPage, ChatHistoryPanel } from "@/features/agent"
+import { chatHistoryStore } from "@/features/agent/hooks/chatHistoryStore"
 
 /**
  * 右侧栏 (集成 Agent 页面与控制按钮)
@@ -10,6 +12,16 @@ import { AgentPage } from "@/features/agent"
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [chatKey, setChatKey] = useState<number>(0)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const restoreChatRef = useRef<((sessionId: string) => void) | null>(null)
+  const chatSessions = useSyncExternalStore(
+    chatHistoryStore.subscribe,
+    chatHistoryStore.getSessions,
+  )
+  const currentSessionId = useSyncExternalStore(
+    chatHistoryStore.subscribe,
+    chatHistoryStore.getCurrentSessionId,
+  )
 
   if (isCollapsed) {
     return (
@@ -56,9 +68,30 @@ export const RightSideBar = (): React.JSX.Element => {
             <Plus className="h-4 w-4" />
           </LxIconButton>
 
-          <LxIconButton aria-label="历史对话" title={{ content: "历史对话", placement: "bottom" }}>
-            <History className="h-4 w-4" />
-          </LxIconButton>
+          <LxTooltip
+            content={
+              <ChatHistoryPanel
+                currentSessionId={currentSessionId}
+                sessions={chatSessions}
+                onRestore={(sessionId) => {
+                  restoreChatRef.current?.(sessionId)
+                  setIsHistoryOpen(false)
+                }}
+              />
+            }
+            contentClassName="!p-2"
+            open={isHistoryOpen}
+            onOpenChange={setIsHistoryOpen}
+            placement="bottom"
+            trigger="click"
+          >
+            <LxIconButton
+              aria-label="历史对话"
+              title={{ content: "历史对话", placement: "bottom" }}
+            >
+              <History className="h-4 w-4" />
+            </LxIconButton>
+          </LxTooltip>
         </div>
 
         <LxIconButton
@@ -71,7 +104,12 @@ export const RightSideBar = (): React.JSX.Element => {
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
-        <AgentPage key={chatKey} />
+        <AgentPage
+          key={chatKey}
+          onRestoreChatRef={(fn) => {
+            restoreChatRef.current = fn
+          }}
+        />
       </div>
     </aside>
   )
