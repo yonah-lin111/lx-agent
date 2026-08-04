@@ -15,29 +15,6 @@ interface EditorWidgetMount {
 }
 
 /**
- * 挂载 @文件提及 widget：hover 显示完整提及路径。
- */
-export const mountFileMentionWidget = (
-  displayLabel: string,
-  fullMention: string,
-  isReferenced: boolean,
-): EditorWidgetMount => {
-  const container = document.createElement("span")
-  const root = createRoot(container)
-  const nodeClassName = `markdown-file-mention-node ${
-    isReferenced ? "markdown-file-mention-node--referenced" : ""
-  }`
-  root.render(
-    <LxTooltip content={fullMention} placement="top">
-      <span className={`${nodeClassName} cm-md-file-mention-widget inline-block cursor-pointer`}>
-        {displayLabel}
-      </span>
-    </LxTooltip>,
-  )
-  return { container, destroy: () => root.unmount() }
-}
-
-/**
  * 挂载表格行 widget：每行独立替换，避免跨换行的 CodeMirror replace decoration。
  */
 export const mountMarkdownTableRowWidget = (

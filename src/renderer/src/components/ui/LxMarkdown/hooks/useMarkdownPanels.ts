@@ -12,10 +12,7 @@ import {
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import {
-  getMarkdownReferenceName,
-  getMarkdownReferenceProjectPaths,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { getMarkdownReferenceProjectPaths } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import type {
   MarkdownSlashCommand,
   MarkdownSlashCommandLine,
@@ -273,7 +270,7 @@ export const useMarkdownPanels = ({
       ? searchReferencedFiles!(searchProjectPaths, query).then((files) =>
           files.map((file) => ({
             ...file,
-            mentionPath: `${getMarkdownReferenceName(file.projectPath)}/${file.path}`,
+            mentionPath: `${file.projectPath.replace(/[\\/]+$/, "")}/${file.path}`,
             source: "reference" as const,
           })),
         )

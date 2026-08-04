@@ -27,8 +27,12 @@ import {
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
   getFileMentionDisplayLabel,
+  isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATH_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
+
+// 无引用根路径时的空集合，避免每次渲染分配新对象。
+const EMPTY_REFERENCED_ROOTS: Set<string> = new Set()
 
 const languageAliases: Record<string, string> = {
   cs: "csharp",
@@ -252,16 +256,15 @@ markdownRenderer.renderer.rules.markdown_file_mention = (tokens, index, _options
 
   const fullMention = meta.mention.startsWith("@") ? meta.mention : `@${meta.mention}`
   const encodedMention = encodeURIComponent(fullMention)
-  const referencedProjectNames = env?.referencedProjectNames as Set<string> | undefined
-  const displayLabel = getFileMentionDisplayLabel(meta.path, referencedProjectNames)
+  const referencedRoots = env?.referencedRoots as Set<string> | undefined
+  const displayLabel = getFileMentionDisplayLabel(meta.path)
   const encodedDisplayLabel = encodeURIComponent(displayLabel)
   const escapedDisplayLabel = markdownRenderer.utils.escapeHtml(displayLabel)
 
-  const firstPart = meta.path
-    .replace(/^@/, "")
-    .split(/[/\\]+/)
-    .filter(Boolean)[0]
-  const isReferenced = Boolean(firstPart && referencedProjectNames?.has(firstPart))
+  const isReferenced = isPathUnderReferencedRoots(
+    meta.path,
+    referencedRoots ?? EMPTY_REFERENCED_ROOTS,
+  )
 
   return `<span class="markdown-file-mention" data-full-mention="${encodedMention}" data-display-label="${encodedDisplayLabel}" data-is-referenced="${isReferenced ? "true" : "false"}"><span class="markdown-file-mention-node ${isReferenced ? "markdown-file-mention-node--referenced" : ""}">${escapedDisplayLabel}</span></span>`
 }
@@ -273,14 +276,13 @@ markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
 }
 
 markdownRenderer.core.ruler.push("markdown-referenced-projects", (state) => {
-  const projectPaths = getMarkdownReferenceProjectPaths(state.src)
-  const projectNames = new Set(projectPaths.map(getMarkdownReferenceName))
-  const enabledNames = state.env?.referencedProjectNames as Set<string> | undefined
-  if (enabledNames) {
-    for (const name of enabledNames) projectNames.add(name)
+  const referencedRoots = new Set(getMarkdownReferenceProjectPaths(state.src))
+  const enabledRoots = state.env?.referencedRoots as Set<string> | undefined
+  if (enabledRoots) {
+    for (const root of enabledRoots) referencedRoots.add(root)
   }
   state.env = state.env || {}
-  state.env.referencedProjectNames = projectNames
+  state.env.referencedRoots = referencedRoots
   return true
 })
 

@@ -1,5 +1,5 @@
-// 文件路径提及必须以 ASCII 字母、数字或下划线开头，只允许常见路径字符。
-export const MARKDOWN_FILE_MENTION_PATH_PATTERN = String.raw`[A-Za-z0-9_][A-Za-z0-9_.\/\\-]*`
+// 文件路径提及必须以 ASCII 字母、数字或下划线开头（或为绝对路径以 / 开头），只允许常见路径字符。
+export const MARKDOWN_FILE_MENTION_PATH_PATTERN = String.raw`(?:[/\\])?[A-Za-z0-9_][A-Za-z0-9_.\/\\-]*`
 
 // 文件提及后的常见标点作为 token 边界，不参与提及高亮。
 const MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN = String.raw`(?=$|[\s.,;:!?，。；：！？、…()[\]{}])`
@@ -20,40 +20,27 @@ const FILE_MENTION_PATTERN = new RegExp(
 export type FileMentionDeletionRange = { start: number; end: number }
 
 /**
- * 获取文件提及在预览时的缩略显示名称：
- * 当前项目显示【@父文件夹名称/文件名】；
- * 引用项目显示【@引用项目名称/.../@父文件夹名称/文件名】。
+ * 判断提及的完整路径是否位于任一引用根路径（项目/文件夹）之下。
  */
-export const getFileMentionDisplayLabel = (
-  rawPath: string,
-  referencedProjectNames?: Set<string>,
-): string => {
+export const isPathUnderReferencedRoots = (
+  mentionPath: string,
+  referencedRoots: Set<string>,
+): boolean => {
+  const cleanPath = mentionPath.replace(/^@/, "")
+  if (!cleanPath.startsWith("/")) return false
+
+  for (const root of referencedRoots) {
+    if (cleanPath.startsWith(`${root.replace(/[\\/]+$/, "")}/`)) return true
+  }
+  return false
+}
+
+/**
+ * 获取文件提及在预览时的完整显示路径，不折叠。
+ */
+export const getFileMentionDisplayLabel = (rawPath: string): string => {
   const cleanPath = rawPath.replace(/^@/, "")
-  const parts = cleanPath.split(/[/\\]+/).filter(Boolean)
-
-  if (parts.length === 0) return `@${cleanPath}`
-
-  const firstPart = parts[0]
-  const isReferencedProject = referencedProjectNames?.has(firstPart) ?? false
-
-  if (isReferencedProject && parts.length >= 2) {
-    const projectName = firstPart
-    if (parts.length >= 3) {
-      const parentFolder = parts[parts.length - 2]
-      const fileName = parts[parts.length - 1]
-      return `@${projectName}/.../@${parentFolder}/${fileName}`
-    }
-    const fileName = parts[1]
-    return `@${projectName}/.../${fileName}`
-  }
-
-  if (parts.length >= 2) {
-    const parentFolder = parts[parts.length - 2]
-    const fileName = parts[parts.length - 1]
-    return `@${parentFolder}/${fileName}`
-  }
-
-  return `@${parts[0]}`
+  return cleanPath ? `@${cleanPath}` : `@${rawPath}`
 }
 
 /**

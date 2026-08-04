@@ -11,12 +11,11 @@ import {
   type MarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import {
-  mountFileMentionWidget,
   mountMarkdownReferenceWidget,
   mountMarkdownTableRowWidget,
 } from "@/components/ui/LxMarkdown/components/EditorMentionWidgets"
 import {
-  getFileMentionDisplayLabel,
+  isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type {
@@ -364,41 +363,6 @@ export const markdownHighlightStyle = HighlightStyle.define([
 
 // 代码块或模板块折叠状态变更事件。
 const markdownBlockFoldToggleEffect = StateEffect.define<void>()
-
-export class FileMentionWidget extends WidgetType {
-  private mount: { container: HTMLElement; destroy: () => void } | null = null
-
-  constructor(
-    readonly fullMention: string,
-    readonly displayLabel: string,
-    readonly isReferenced: boolean,
-  ) {
-    super()
-  }
-
-  eq(other: FileMentionWidget) {
-    return (
-      this.fullMention === other.fullMention &&
-      this.displayLabel === other.displayLabel &&
-      this.isReferenced === other.isReferenced
-    )
-  }
-
-  toDOM() {
-    this.mount?.destroy()
-    this.mount = mountFileMentionWidget(this.displayLabel, this.fullMention, this.isReferenced)
-    return this.mount.container
-  }
-
-  destroy() {
-    this.mount?.destroy()
-    this.mount = null
-  }
-
-  ignoreEvent() {
-    return false
-  }
-}
 
 export class MarkdownReferenceWidget extends WidgetType {
   private mount: { container: HTMLElement; destroy: () => void } | null = null
@@ -754,7 +718,7 @@ const buildMarkdownMarkerDecorations = (
         type: "replace"
         from: number
         to: number
-        widget: FileMentionWidget | MarkdownReferenceWidget | MarkdownTableRowWidget
+        widget: MarkdownReferenceWidget | MarkdownTableRowWidget
       }
   )[] = []
   let offset = 0
@@ -768,12 +732,10 @@ const buildMarkdownMarkerDecorations = (
   let currentTemplateTextLines: string[] = []
 
   const lines = Array.from(view.state.doc.iterLines())
-  const referencedProjectNames = new Set(
-    getMarkdownReferenceProjectPaths(view.state.doc.toString()).map(getMarkdownReferenceName),
-  )
-  const enabledProjectNames = getReferencedProjectNames?.()
-  if (enabledProjectNames) {
-    for (const name of enabledProjectNames) referencedProjectNames.add(name)
+  const referencedRoots = new Set(getMarkdownReferenceProjectPaths(view.state.doc.toString()))
+  const enabledRoots = getReferencedProjectNames?.()
+  if (enabledRoots) {
+    for (const root of enabledRoots) referencedRoots.add(root)
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -1139,28 +1101,9 @@ const buildMarkdownMarkerDecorations = (
       if (match.index === undefined) continue
 
       const fullMention = match[0]
-      const from = offset + match.index
-      const to = from + fullMention.length
-
-      const projectName = match[1]?.split("/")[0]
-      const isReferenced = Boolean(projectName && referencedProjectNames.has(projectName))
-      const displayLabel = getFileMentionDisplayLabel(fullMention, referencedProjectNames)
-
-      const isCursorInside = mainSelection.from < to && mainSelection.to > from
-      const isCursorOnLine =
-        mainSelection.head >= offset && mainSelection.head <= offset + line.length
-
-      if (isCursorInside || isCursorOnLine) {
-        const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
-        addMarker(match.index, match.index + fullMention.length, className)
-      } else {
-        allDecos.push({
-          type: "replace",
-          from,
-          to,
-          widget: new FileMentionWidget(fullMention, displayLabel, isReferenced),
-        })
-      }
+      const isReferenced = isPathUnderReferencedRoots(fullMention, referencedRoots)
+      const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
+      addMarker(match.index, match.index + fullMention.length, className)
     }
 
     offset += line.length + 1

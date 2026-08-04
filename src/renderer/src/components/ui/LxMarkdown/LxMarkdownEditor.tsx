@@ -36,10 +36,7 @@ import {
   isInsideMarkdownTemplateBlock,
   toggleMarkdownTemplateDone,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import {
-  createMarkdownReference,
-  getMarkdownReferenceName,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
@@ -163,18 +160,14 @@ export const LxMarkdownEditor = ({
   const pageModeRef = useRef(pageMode)
   pageModeRef.current = pageMode
   const activePage = pageMode ? pages?.[activePageIndex] : undefined
-  const referencedProjectNamesRef = useRef<Set<string>>(new Set())
+  const referencedRootsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    referencedProjectNamesRef.current = new Set(
-      (referencedProjectPaths ?? []).map((path) => getMarkdownReferenceName(path)),
-    )
+    referencedRootsRef.current = new Set(referencedProjectPaths ?? [])
   }, [referencedProjectPaths])
   const previewHtml = useMemo(
     () =>
       markdownRenderer.render(content, {
-        referencedProjectNames: new Set(
-          (referencedProjectPaths ?? []).map((path) => getMarkdownReferenceName(path)),
-        ),
+        referencedRoots: new Set(referencedProjectPaths ?? []),
       }),
     [content, referencedProjectPaths],
   )
@@ -492,7 +485,7 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
-        markdownMarkerHighlight(showFolding, () => referencedProjectNamesRef.current),
+        markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
