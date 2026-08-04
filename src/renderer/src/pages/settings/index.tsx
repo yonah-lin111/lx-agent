@@ -48,6 +48,7 @@ export const SettingsPage = (): React.JSX.Element => {
       setSettings(saved)
       setLastSavedSettings(JSON.stringify(saved))
       toast.success("保存配置成功")
+      window.location.reload()
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : "保存配置失败"
       setError(errorMessage)
@@ -73,9 +74,13 @@ export const SettingsPage = (): React.JSX.Element => {
           <LxIconButton
             preset="save"
             aria-label="保存配置"
-            title={{ content: "保存配置", placement: "bottom" }}
-            disabled={isSaving}
-            onClick={() => void save()}
+            title={{
+              title: "确认保存配置？",
+              content: "保存后将刷新页面",
+              placement: "bottom",
+              onConfirm: () => void save(),
+            }}
+            disabled={isSaving || isSaved}
           >
             <Save className="h-4 w-4" />
           </LxIconButton>

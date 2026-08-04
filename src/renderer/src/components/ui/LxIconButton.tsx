@@ -25,6 +25,8 @@ export type LxIconButtonShape = "square" | "circle"
 export interface LxIconButtonTooltip {
   content: string
   placement?: LxTooltipPlacement
+  title?: string
+  onConfirm?: () => void
 }
 
 const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
@@ -176,7 +178,12 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     )
 
     return title ? (
-      <LxTooltip content={title.content} placement={title.placement}>
+      <LxTooltip
+        content={title.content}
+        placement={title.placement}
+        title={title.title}
+        onConfirm={title.onConfirm}
+      >
         {button}
       </LxTooltip>
     ) : (
