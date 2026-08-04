@@ -20,15 +20,8 @@ import {
   isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
-import type {
-  MarkdownTableAlignment,
-  MarkdownTableRowKind,
-  MarkdownTableSize,
-} from "@/components/ui/LxMarkdown/types"
-import {
-  markdownRenderer,
-  stripEmptyTemplateItems,
-} from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import type { MarkdownTableAlignment, MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
+import { stripEmptyTemplateItems } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 export const editorTheme = EditorView.theme(
   {
@@ -376,9 +369,13 @@ const markdownBlockFoldToggleEffect = StateEffect.define<void>()
 const MARKDOWN_REFERENCE_PATTERN = /@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g
 
 /**
- * 构建引用图片 hover tooltip 的 DOM：图片预览 + 完整路径文本。
+ * 构建引用图片 hover tooltip 的 DOM：仅图片预览。
+ * 图片加载完成后触发 onSizeChange，让 CodeMirror 重新测量定位。
  */
-const buildMarkdownReferenceImageTooltipDom = (path: string): HTMLElement => {
+const buildMarkdownReferenceImageTooltipDom = (
+  path: string,
+  onSizeChange?: () => void,
+): HTMLElement => {
   const wrap = document.createElement("div")
   wrap.className = "w-fit min-w-40 max-w-[min(30rem,calc(100vw-1rem))]"
 
@@ -386,7 +383,9 @@ const buildMarkdownReferenceImageTooltipDom = (path: string): HTMLElement => {
   img.alt = getMarkdownReferenceName(path)
   img.className = "mx-auto block h-auto max-h-90 max-w-full rounded-[4px] object-contain"
   img.src = getMarkdownReferenceImageSource(path)
+  img.onload = () => onSizeChange?.()
   img.onerror = () => {
+    onSizeChange?.()
     wrap.replaceChildren()
     const fallback = document.createElement("span")
     fallback.className = "whitespace-nowrap"
@@ -394,16 +393,14 @@ const buildMarkdownReferenceImageTooltipDom = (path: string): HTMLElement => {
     wrap.appendChild(fallback)
   }
   wrap.appendChild(img)
-
-  const pathText = document.createElement("div")
-  pathText.className = "mt-1 max-w-full break-all text-xs text-[rgba(255,255,255,0.6)]"
-  pathText.textContent = path
-  wrap.appendChild(pathText)
   return wrap
 }
 
 /**
  * 编辑器内 hover 引用图片时显示图片预览 tooltip，不影响文本渲染。
+ * 方向在 hover 时按触发位置一次性确定并固定（strictSide），
+ * 避免图片加载后高度变化触发 CodeMirror 自动翻转导致浮层上下跳转；
+ * 图片加载完成后请求重测，使浮层贴合图片真实尺寸。
  */
 export const markdownReferenceHover = hoverTooltip((view, pos) => {
   const line = view.state.doc.lineAt(pos)
@@ -420,75 +417,21 @@ export const markdownReferenceHover = hoverTooltip((view, pos) => {
     if (type !== "image") return null
 
     const from = line.from + start
+    const coords = view.coordsAtPos(pos)
+    const editorRect = view.dom.getBoundingClientRect()
+    const above = coords ? coords.top - editorRect.top > editorRect.height / 2 : true
     return {
       pos: from,
       end: line.from + end,
-      above: true,
+      above,
+      strictSide: true,
       create: () => ({
-        dom: buildMarkdownReferenceImageTooltipDom(match[2] ?? ""),
+        dom: buildMarkdownReferenceImageTooltipDom(match[2] ?? "", () => view.requestMeasure()),
       }),
     }
   }
   return null
 })
-
-/**
- * 构建表格行 widget 的 DOM：每行独立替换，避免跨换行的 CodeMirror replace decoration。
- */
-const buildMarkdownTableRowWidget = (
-  cells: string[],
-  alignments: MarkdownTableAlignment[],
-  rowKind: MarkdownTableRowKind,
-  columnCount: number,
-): HTMLElement => {
-  const container = document.createElement("span")
-  container.className = "cm-md-table-row-widget-container"
-
-  const row = document.createElement("span")
-  row.className = `cm-md-table-row-widget cm-md-table-row-widget--${rowKind}`
-  row.style.setProperty("--cm-md-table-column-count", String(columnCount))
-
-  cells.forEach((cell, columnIndex) => {
-    const cellElement = document.createElement("span")
-    cellElement.className = "cm-md-table-cell"
-    cellElement.style.textAlign = alignments[columnIndex] ?? "left"
-    cellElement.innerHTML = markdownRenderer.renderInline(cell)
-    row.appendChild(cellElement)
-  })
-
-  container.appendChild(row)
-  return container
-}
-
-export class MarkdownTableRowWidget extends WidgetType {
-  constructor(
-    readonly cells: string[],
-    readonly alignments: MarkdownTableAlignment[],
-    readonly rowKind: MarkdownTableRowKind,
-    readonly columnCount: number,
-  ) {
-    super()
-  }
-
-  eq(other: MarkdownTableRowWidget) {
-    return (
-      this.cells.length === other.cells.length &&
-      this.cells.every((cell, index) => cell === other.cells[index]) &&
-      this.alignments.length === other.alignments.length &&
-      this.alignments.every((alignment, index) => alignment === other.alignments[index]) &&
-      this.rowKind === other.rowKind &&
-      this.columnCount === other.columnCount
-    )
-  }
-
-  toDOM() {
-    return buildMarkdownTableRowWidget(this.cells, this.alignments, this.rowKind, this.columnCount)
-  }
-
-  ignoreEvent() {
-    return false
-  }
-}
 
 // 模板块状态切换配置。
 interface TemplateStatusAction {
@@ -772,12 +715,6 @@ const buildMarkdownMarkerDecorations = (
     | { type: "line"; from: number; className: string }
     | { type: "mark"; from: number; to: number; className: string }
     | { type: "widget"; from: number; to: number; widget: CodeBlockActionWidget }
-    | {
-        type: "replace"
-        from: number
-        to: number
-        widget: MarkdownTableRowWidget
-      }
   )[] = []
   let offset = 0
   let isInsideCodeFence = false
@@ -798,8 +735,6 @@ const buildMarkdownMarkerDecorations = (
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    const isComposing = view.composing
-    const mainSelection = view.state.selection.main
 
     const addMarkerAlways = (from: number, to: number, className: string): void => {
       allDecos.push({ type: "mark", from: offset + from, to: offset + to, className })
@@ -1048,66 +983,6 @@ const buildMarkdownMarkerDecorations = (
       )
     }
 
-    if (
-      !isInsideTemplateBlock &&
-      !splitMarkdownTableRow(lines[i - 1] ?? "") &&
-      splitMarkdownTableRow(line) &&
-      splitMarkdownTableRow(lines[i + 1] ?? "")
-    ) {
-      const tableStartOffset = offset
-      const tableRows: string[][] = []
-      const tableRawLines: string[] = []
-      let tableIndex = i
-      while (tableIndex < lines.length) {
-        const row = splitMarkdownTableRow(lines[tableIndex])
-        if (!row) break
-        tableRows.push(row)
-        tableRawLines.push(lines[tableIndex])
-        tableIndex += 1
-      }
-      if (tableRows[1]?.every((cell) => markdownTableSeparatorCellPattern.test(cell))) {
-        const columnCount = Math.max(...tableRows.map((row) => row.length))
-        const normalizedRows = tableRows.map((row) =>
-          Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
-        )
-        const alignments = normalizedRows[1].map(getMarkdownTableAlignment)
-        const tableEndOffset =
-          tableStartOffset + tableRawLines.reduce((sum, raw) => sum + raw.length + 1, 0) - 1
-        const isCursorInside =
-          mainSelection.from <= tableEndOffset && mainSelection.to >= tableStartOffset
-
-        if (!isCursorInside && !isComposing) {
-          let rowOffset = tableStartOffset
-          for (let rowIndex = 0; rowIndex < tableRawLines.length; rowIndex += 1) {
-            const rawRow = tableRawLines[rowIndex]
-            if (rowIndex === 1) {
-              allDecos.push({
-                type: "line",
-                from: rowOffset,
-                className: "cm-md-table-separator-line",
-              })
-            } else {
-              allDecos.push({
-                type: "replace",
-                from: rowOffset,
-                to: rowOffset + rawRow.length,
-                widget: new MarkdownTableRowWidget(
-                  normalizedRows[rowIndex],
-                  alignments,
-                  rowIndex === 0 ? "header" : "body",
-                  columnCount,
-                ),
-              })
-            }
-            rowOffset += rawRow.length + 1
-          }
-          offset = tableEndOffset + 1
-          i = tableIndex - 1
-          continue
-        }
-      }
-    }
-
     if (/^\s*\|.*\|\s*$/.test(line)) {
       addMatches(/(?<!\\)\|/g, "cm-md-table-marker")
     }
@@ -1151,8 +1026,6 @@ const buildMarkdownMarkerDecorations = (
     }
     if (first.type === "line" && second.type !== "line") return -1
     if (first.type !== "line" && second.type === "line") return 1
-    if (first.type === "replace" && second.type !== "replace") return -1
-    if (first.type !== "replace" && second.type === "replace") return 1
     if (first.type === "widget" && second.type === "mark") return -1
     if (first.type === "mark" && second.type === "widget") return 1
     if (first.type === "mark" && second.type === "mark") {
@@ -1163,8 +1036,6 @@ const buildMarkdownMarkerDecorations = (
   for (const deco of allDecos) {
     if (deco.type === "line") {
       builder.add(deco.from, deco.from, Decoration.line({ attributes: { class: deco.className } }))
-    } else if (deco.type === "replace") {
-      builder.add(deco.from, deco.to, Decoration.replace({ widget: deco.widget }))
     } else if (deco.type === "widget") {
       builder.add(deco.from, deco.to, Decoration.widget({ widget: deco.widget, side: 1 }))
     } else {

@@ -355,66 +355,6 @@ select {
   background-color: rgba(196, 181, 253, 0.12);
 }
 
-.cm-editor .cm-md-table-row-widget-container {
-  display: inline-block;
-  width: 100%;
-  box-sizing: border-box;
-  vertical-align: top;
-  line-height: 0;
-  cursor: pointer;
-}
-
-.cm-editor .cm-md-table-row-widget {
-  display: grid;
-  grid-template-columns: repeat(var(--cm-md-table-column-count), minmax(0, 1fr));
-  width: 100%;
-  box-sizing: border-box;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.cm-editor .cm-md-table-cell {
-  min-width: 0;
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
-  white-space: normal;
-  border-left: 1px solid rgba(255, 255, 255, 0.14);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  padding: 6px 10px;
-  font-family: inherit;
-}
-
-.cm-editor .cm-md-table-cell:last-child {
-  border-right: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.cm-editor .cm-md-table-row-widget--header .cm-md-table-cell {
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.07);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.cm-editor .cm-md-table-row-widget--body .cm-md-table-cell {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.cm-editor .cm-md-table-row-widget-container:hover .cm-md-table-cell {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.cm-editor .cm-md-table-row-widget--header .cm-md-table-cell:first-child {
-  border-top-left-radius: 6px;
-}
-
-.cm-editor .cm-md-table-row-widget--header .cm-md-table-cell:last-child {
-  border-top-right-radius: 6px;
-}
-
-.cm-editor .cm-md-table-separator-line {
-  display: none !important;
-}
-
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3,
@@ -506,8 +446,7 @@ select {
   margin-top: 0.25em;
 }
 
-.markdown-preview a,
-.cm-editor .cm-md-table-cell a {
+.markdown-preview a {
   color: #93c5fd;
   text-decoration: underline;
 }
@@ -518,27 +457,13 @@ select {
   padding-left: 0.9em;
 }
 
-.markdown-preview code,
-.cm-editor .cm-md-table-cell code {
+.markdown-preview code {
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.08);
   color: #fca5a5;
   padding: 0.1em 0.3em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
-}
-
-.cm-editor .cm-md-table-cell strong {
-  color: #fb923c;
-  font-weight: 700;
-}
-
-.cm-editor .cm-md-table-cell em {
-  color: #f472b6;
-}
-
-.cm-editor .cm-md-table-cell del {
-  color: #fda4af;
 }
 
 .markdown-preview pre {

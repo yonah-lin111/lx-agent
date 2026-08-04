@@ -1,12 +1,4 @@
-import {
-  CheckCircle2,
-  ChevronDown,
-  Circle,
-  File,
-  Folder,
-  FolderKanban,
-  LoaderCircle,
-} from "lucide-react"
+import { CheckCircle2, ChevronDown, Circle, File, Folder, FolderKanban } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 
@@ -113,18 +105,7 @@ export const ProjectNavigationList = ({
    * 渲染条目状态图标，点击可循环切换状态。
    */
   const renderStatusIcon = (prompt: ProjectNavigationPrompt): React.JSX.Element => {
-    const Icon =
-      prompt.status === "completed"
-        ? CheckCircle2
-        : prompt.status === "in_progress"
-          ? LoaderCircle
-          : Circle
-    const className =
-      prompt.status === "completed"
-        ? "text-emerald-400/80"
-        : prompt.status === "in_progress"
-          ? "animate-spin text-amber-400/80"
-          : "text-white/30"
+    const className = prompt.status === "completed" ? "text-emerald-400/80" : "text-white/30"
 
     return (
       <LxIconButton
@@ -139,7 +120,13 @@ export const ProjectNavigationList = ({
           onPromptStatusChange(prompt.id, NEXT_PROMPT_STATUS[prompt.status])
         }}
       >
-        <Icon className={`h-3.5 w-3.5 ${className}`} />
+        {prompt.status === "completed" ? (
+          <CheckCircle2 className={`h-3.5 w-3.5 ${className}`} />
+        ) : prompt.status === "in_progress" ? (
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber-400/80" />
+        ) : (
+          <Circle className="h-3.5 w-3.5 text-white/30" />
+        )}
       </LxIconButton>
     )
   }
