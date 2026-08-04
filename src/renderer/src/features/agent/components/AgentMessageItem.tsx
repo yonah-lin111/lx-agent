@@ -117,6 +117,15 @@ export const AgentMessageItem = ({
   const assistantError = !isUser
     ? [message, ...continuationMessages].find((currentMessage) => currentMessage.error)?.error
     : undefined
+  // 当前（含 continuation）是否仍在流式生成。
+  const isStreamingNow =
+    message.isStreaming || continuationMessages.some((currentMessage) => currentMessage.isStreaming)
+  // 是否存在可展示的文本输出。
+  const hasOutput = displayBlocks.some(
+    ({ block }) => block.kind === "text" && block.text.trim() !== "",
+  )
+  // 是否存在思考内容。
+  const hasThinking = displayBlocks.some(({ block }) => block.kind === "thinking")
 
   // 使用 ResizeObserver 记录用户气泡容器最新高度
   useEffect(() => {
@@ -538,16 +547,29 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
-        <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
-          <LxIconButton
-            size="small"
-            aria-label="复制消息"
-            title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
-            onClick={copyMessageContent}
-          >
-            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-          </LxIconButton>
-        </div>
+        {!hasOutput && !hasThinking && isStreamingNow && !assistantError && (
+          <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
+            <div className="lx-liquid-loader">
+              <span className="lx-liquid-blob" />
+            </div>
+          </div>
+        )}
+        {hasOutput && !isStreamingNow && (
+          <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
+            <LxIconButton
+              size="small"
+              aria-label="复制消息"
+              title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+              onClick={copyMessageContent}
+            >
+              {copied ? (
+                <Check className="h-3 w-3 text-emerald-400" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </LxIconButton>
+          </div>
+        )}
       </div>
     </div>
   )
