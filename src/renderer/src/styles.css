@@ -19,6 +19,10 @@
   /* 文件提及面板：输入 @ 时显示。 */
   --markdown-command-menu-file-width: 30rem;
   --markdown-command-menu-file-max-height: 40vh;
+  /* Agent 输入框面板：/ 命令与模型选择。 */
+  --agent-input-command-menu-max-height: 30vh;
+  /* Agent 输入框面板：@ 文件提及。 */
+  --agent-input-file-menu-max-height: 30vh;
 }
 
 body {

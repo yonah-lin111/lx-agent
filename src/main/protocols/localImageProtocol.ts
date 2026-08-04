@@ -1,7 +1,7 @@
 import { extname } from "node:path"
 import { pathToFileURL } from "node:url"
-import { net, protocol } from "electron"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
+import { net, protocol } from "electron"
 
 const supportedImageExtensions = new Set([
   ".avif",

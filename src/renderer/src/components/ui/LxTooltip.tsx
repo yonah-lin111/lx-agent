@@ -187,14 +187,26 @@ export const LxTooltip = ({
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updatePosition)
     if (tooltipRef.current) resizeObserver?.observe(tooltipRef.current)
     window.addEventListener("resize", updatePosition)
-    window.addEventListener("scroll", updatePosition, true)
     return () => {
       cancelAnimationFrame(frame)
       resizeObserver?.disconnect()
       window.removeEventListener("resize", updatePosition)
-      window.removeEventListener("scroll", updatePosition, true)
     }
   }, [shouldRender, placement])
+
+  useEffect(() => {
+    if (!isVisible) return
+    // 任意滚动条滚动时关闭气泡，排除气泡自身内部滚动。
+    const handleScroll = (event: Event): void => {
+      const target = event.target as Node
+      if (!containerRef.current?.contains(target) && !tooltipRef.current?.contains(target)) {
+        clearTimers()
+        syncVisible(false)
+      }
+    }
+    document.addEventListener("scroll", handleScroll, true)
+    return () => document.removeEventListener("scroll", handleScroll, true)
+  }, [isVisible])
 
   useEffect(() => {
     if (!isVisible) return

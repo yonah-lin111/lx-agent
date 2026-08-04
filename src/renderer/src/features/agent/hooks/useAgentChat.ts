@@ -131,6 +131,20 @@ export const useAgentChat = () => {
     void agentApi.restore([])
   }, [stopStreaming])
 
+  // 撤销上一轮对话：删除最近一条用户消息及其后续 Agent 消息，并同步 main 侧上下文。
+  const undoLastTurn = useCallback(() => {
+    if (isStreaming) return
+
+    const nextMessages = messagesRef.current.slice()
+    const lastUserIndex = nextMessages.findLastIndex((message) => message.role === "user")
+    if (lastUserIndex < 0) return
+
+    nextMessages.splice(lastUserIndex)
+    setMessages(nextMessages)
+    setInputText("")
+    void agentApi.restore(toAgentMessages(nextMessages))
+  }, [isStreaming])
+
   // 恢复指定历史会话：先保存当前对话，再加载目标会话到 main 侧上下文。
   const restoreChat = useCallback(
     (sessionId: string) => {
@@ -183,6 +197,7 @@ export const useAgentChat = () => {
     sendMessage,
     stopStreaming,
     createNewChat,
+    undoLastTurn,
     restoreChat,
     editMessage,
   }

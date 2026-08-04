@@ -131,12 +131,13 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
     const sizeStyles = iconOnly ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
     const finalHoverBg = showHoverBg
-      ? hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5")
+      ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5"))
       : ""
     const finalHoverText =
       hoverTextClass ?? (preset ? PRESET_TEXT_CLASSES[preset] : "hover:text-white")
     const defaultTextClass = preset ? PRESET_DEFAULT_TEXT_CLASSES[preset] : "text-white/45"
-    const highlightedStyles = `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
+    const highlightedStyles =
+      `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
     const stateStyles = disabled
       ? highlighted
         ? highlightedStyles

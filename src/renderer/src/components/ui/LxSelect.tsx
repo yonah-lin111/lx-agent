@@ -66,6 +66,16 @@ export const LxSelect = <T extends string>({
     return () => document.removeEventListener("pointerdown", handleClickOutside)
   }, [])
 
+  // 任意滚动条滚动时收起下拉，排除自身容器内滚动（下拉选项列表与自动滚动定位）。
+  useEffect(() => {
+    if (!isOpen) return
+    const handleScroll = (event: Event): void => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    document.addEventListener("scroll", handleScroll, true)
+    return () => document.removeEventListener("scroll", handleScroll, true)
+  }, [isOpen])
+
   // 展开时滚动到选中选项，使其位于下拉容器视口内。
   useEffect(() => {
     if (!isOpen || !shouldRender || !listboxRef.current) return

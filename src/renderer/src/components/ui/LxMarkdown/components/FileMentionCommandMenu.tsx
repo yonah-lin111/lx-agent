@@ -57,7 +57,7 @@ export const FileMentionCommandMenu = ({
     visible && files && position ? { files, activeIndex, position } : lastDataRef.current
 
   const activeFile = displayData
-    ? displayData.files[displayData.activeIndex] ?? displayData.files[0]
+    ? (displayData.files[displayData.activeIndex] ?? displayData.files[0])
     : null
 
   useLayoutEffect(() => {

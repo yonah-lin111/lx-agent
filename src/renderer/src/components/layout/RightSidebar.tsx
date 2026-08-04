@@ -1,10 +1,12 @@
 import { ChevronLeft, ChevronRight, History, Plus } from "lucide-react"
 import type React from "react"
-import { useRef, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
 import { chatHistoryStore } from "@/features/agent/hooks/chatHistoryStore"
+import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 
 /**
  * 右侧栏 (集成 Agent 页面与控制按钮)
@@ -13,6 +15,8 @@ export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [chatKey, setChatKey] = useState<number>(0)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [searchParams] = useSearchParams()
+  const [currentProject, setCurrentProject] = useState<{ id: string; path?: string }>()
   const restoreChatRef = useRef<((sessionId: string) => void) | null>(null)
   const chatSessions = useSyncExternalStore(
     chatHistoryStore.subscribe,
@@ -22,6 +26,27 @@ export const RightSideBar = (): React.JSX.Element => {
     chatHistoryStore.subscribe,
     chatHistoryStore.getCurrentSessionId,
   )
+
+  useEffect(() => {
+    const itemId = searchParams.get("itemId")
+    if (!itemId) {
+      setCurrentProject(undefined)
+      return
+    }
+
+    let current = true
+    void Promise.all([projectNavigationApi.listItems(), projectNavigationApi.listProjects()]).then(
+      ([items, projects]) => {
+        if (!current) return
+        const item = items.find((entry) => entry.id === itemId)
+        const project = projects.find((entry) => entry.id === item?.projectId)
+        setCurrentProject(project ? { id: project.id, path: project.path } : undefined)
+      },
+    )
+    return () => {
+      current = false
+    }
+  }, [searchParams])
 
   if (isCollapsed) {
     return (
@@ -109,6 +134,8 @@ export const RightSideBar = (): React.JSX.Element => {
           onRestoreChatRef={(fn) => {
             restoreChatRef.current = fn
           }}
+          currentProjectId={currentProject?.id}
+          currentProjectPath={currentProject?.path}
         />
       </div>
     </aside>

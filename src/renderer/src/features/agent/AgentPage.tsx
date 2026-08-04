@@ -9,6 +9,8 @@ import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
   onRestoreChatRef?: (fn: (sessionId: string) => void) => void
+  currentProjectId?: string
+  currentProjectPath?: string
 }
 
 /**
@@ -17,6 +19,8 @@ export interface AgentPageProps {
 export const AgentPage = ({
   onNewChatRef,
   onRestoreChatRef,
+  currentProjectId,
+  currentProjectPath,
 }: AgentPageProps): React.JSX.Element => {
   const {
     messages,
@@ -26,6 +30,7 @@ export const AgentPage = ({
     sendMessage,
     stopStreaming,
     createNewChat,
+    undoLastTurn,
     restoreChat,
     editMessage,
   } = useAgentChat()
@@ -63,10 +68,14 @@ export const AgentPage = ({
         onInputChange={setInputText}
         onSend={() => sendMessage(undefined, selectedSelection)}
         onStop={stopStreaming}
+        onClear={createNewChat}
+        onUndo={undoLastTurn}
         selectedModel={selectedModel}
         onModelChange={handleModelChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
+        projectId={currentProjectId}
+        projectPath={currentProjectPath}
       />
     </div>
   )

@@ -26,6 +26,23 @@ describe("LxMarkdownPreview", () => {
     expect((await screen.findByRole("tooltip")).textContent).toContain("@src/example.ts")
   })
 
+  it("点击超链接时不触发页面跳转", () => {
+    const previewRef = { current: null }
+    render(
+      <LxMarkdownPreview
+        html='<a href="https://example.com" target="_blank">外部链接</a>'
+        previewMode="split"
+        previewRef={previewRef}
+      />,
+    )
+
+    const link = screen.getByRole("link", { name: "外部链接" })
+    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true })
+    link.dispatchEvent(clickEvent)
+
+    expect(clickEvent.defaultPrevented).toBe(true)
+  })
+
   it("悬停本地图片引用时显示图片预览和文件名", async () => {
     const previewRef = { current: null }
     render(
