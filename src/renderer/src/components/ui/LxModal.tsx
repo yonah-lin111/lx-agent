@@ -103,7 +103,6 @@ export const LxModal = ({
             aria-label="关闭弹窗"
             preset="close"
             size="small"
-            title={{ content: "关闭", placement: "bottom" }}
             onClick={handleClose}
           />
         </header>

@@ -99,7 +99,6 @@ export const ProjectModal = ({
             aria-label={isEditMode ? "取消编辑项目" : "取消创建项目"}
             preset="close"
             size="small"
-            title={{ content: "取消", placement: "bottom" }}
             disabled={isSubmitting}
             onClick={onClose}
           />
@@ -107,7 +106,6 @@ export const ProjectModal = ({
             aria-label={isEditMode ? "确认编辑项目" : "确认创建项目"}
             preset="confirm"
             size="small"
-            title={{ content: isEditMode ? "保存项目" : "创建项目", placement: "bottom" }}
             type="submit"
             disabled={isSubmitting}
           />
