@@ -258,8 +258,7 @@ select {
   margin-bottom: 0;
 }
 
-.markdown-preview .markdown-reference,
-.cm-editor .markdown-reference {
+.markdown-preview .markdown-reference {
   display: inline-flex;
   max-width: 100%;
   align-items: center;
@@ -272,29 +271,25 @@ select {
   vertical-align: middle;
 }
 
-.markdown-preview .markdown-reference-icon,
-.cm-editor .markdown-reference-icon {
+.markdown-preview .markdown-reference-icon {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
 }
 
-.markdown-preview .markdown-reference-icon svg,
-.cm-editor .markdown-reference-icon svg {
+.markdown-preview .markdown-reference-icon svg {
   width: 12px;
   height: 12px;
 }
 
-.markdown-preview .markdown-reference-label,
-.cm-editor .markdown-reference-label {
+.markdown-preview .markdown-reference-label {
   flex: none;
   font-size: 12px;
   font-weight: 600;
 }
 
-.markdown-preview .markdown-reference-name,
-.cm-editor .markdown-reference-name {
+.markdown-preview .markdown-reference-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -302,32 +297,27 @@ select {
   font-size: 12px;
 }
 
-.markdown-preview .markdown-reference-project,
-.cm-editor .markdown-reference-project {
+.markdown-preview .markdown-reference-project {
   color: #c4b5fd;
   background-color: rgba(196, 181, 253, 0.12);
 }
 
-.markdown-preview .markdown-reference-folder,
-.cm-editor .markdown-reference-folder {
+.markdown-preview .markdown-reference-folder {
   color: #d97706;
   background-color: rgba(217, 119, 6, 0.12);
 }
 
-.markdown-preview .markdown-reference-file,
-.cm-editor .markdown-reference-file {
+.markdown-preview .markdown-reference-file {
   color: #7dd3fc;
   background-color: rgba(125, 211, 252, 0.12);
 }
 
-.markdown-preview .markdown-reference-image,
-.cm-editor .markdown-reference-image {
+.markdown-preview .markdown-reference-image {
   color: #f9a8d4;
   background-color: rgba(249, 168, 212, 0.12);
 }
 
-.markdown-preview .markdown-reference-common,
-.cm-editor .markdown-reference-common {
+.markdown-preview .markdown-reference-common {
   color: #cbd5e1;
   background-color: rgba(203, 213, 225, 0.12);
 }

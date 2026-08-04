@@ -1,19 +1,21 @@
 import { HighlightStyle } from "@codemirror/language"
 import { RangeSetBuilder, StateEffect } from "@codemirror/state"
-import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view"
+import {
+  Decoration,
+  EditorView,
+  hoverTooltip,
+  ViewPlugin,
+  type ViewUpdate,
+  WidgetType,
+} from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import { toggleMarkdownTemplateDone } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
-  getMarkdownReferenceLabel,
+  getMarkdownReferenceImageSource,
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,
-  type MarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import {
-  mountMarkdownReferenceWidget,
-  mountMarkdownTableRowWidget,
-} from "@/components/ui/LxMarkdown/components/EditorMentionWidgets"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
@@ -23,7 +25,10 @@ import type {
   MarkdownTableRowKind,
   MarkdownTableSize,
 } from "@/components/ui/LxMarkdown/types"
-import { stripEmptyTemplateItems } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import {
+  markdownRenderer,
+  stripEmptyTemplateItems,
+} from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 export const editorTheme = EditorView.theme(
   {
@@ -120,6 +125,14 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-cursor, .cm-dropCursor": {
       borderLeftColor: "#ffffff",
+    },
+    ".cm-tooltip": {
+      backgroundColor: "#2b2b2b",
+      border: "1px solid rgba(255, 255, 255, 0.12)",
+      borderRadius: "6px",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+      padding: "6px",
+      zIndex: 100,
     },
     ".cm-md-heading-marker, .cm-md-heading-marker *": {
       color: "#e9a339 !important",
@@ -286,28 +299,23 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-md-reference-project, .cm-md-reference-project *": {
       color: "#c4b5fd !important",
-      backgroundColor: "rgba(196, 181, 253, 0.12) !important",
-      borderRadius: "3px !important",
+      fontWeight: "500",
     },
     ".cm-md-reference-folder, .cm-md-reference-folder *": {
       color: "#d97706 !important",
-      backgroundColor: "rgba(217, 119, 6, 0.12) !important",
-      borderRadius: "3px !important",
+      fontWeight: "500",
     },
     ".cm-md-reference-file, .cm-md-reference-file *": {
       color: "#7dd3fc !important",
-      backgroundColor: "rgba(125, 211, 252, 0.12) !important",
-      borderRadius: "3px !important",
+      fontWeight: "500",
     },
     ".cm-md-reference-image, .cm-md-reference-image *": {
       color: "#f9a8d4 !important",
-      backgroundColor: "rgba(249, 168, 212, 0.12) !important",
-      borderRadius: "3px !important",
+      fontWeight: "500",
     },
     ".cm-md-reference-common, .cm-md-reference-common *": {
       color: "#cbd5e1 !important",
-      backgroundColor: "rgba(203, 213, 225, 0.12) !important",
-      borderRadius: "3px !important",
+      fontWeight: "500",
     },
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
@@ -319,7 +327,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-reference):not(.markdown-reference *):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -364,41 +372,92 @@ export const markdownHighlightStyle = HighlightStyle.define([
 // 代码块或模板块折叠状态变更事件。
 const markdownBlockFoldToggleEffect = StateEffect.define<void>()
 
-export class MarkdownReferenceWidget extends WidgetType {
-  private mount: { container: HTMLElement; destroy: () => void } | null = null
+// 引用语法模式：@[refer-type](path)
+const MARKDOWN_REFERENCE_PATTERN = /@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g
 
-  constructor(
-    readonly path: string,
-    readonly type: MarkdownReferenceType,
-    readonly label: string,
-    readonly name: string,
-  ) {
-    super()
-  }
+/**
+ * 构建引用图片 hover tooltip 的 DOM：图片预览 + 完整路径文本。
+ */
+const buildMarkdownReferenceImageTooltipDom = (path: string): HTMLElement => {
+  const wrap = document.createElement("div")
+  wrap.className = "w-fit min-w-40 max-w-[min(30rem,calc(100vw-1rem))]"
 
-  eq(other: MarkdownReferenceWidget) {
-    return (
-      this.path === other.path &&
-      this.type === other.type &&
-      this.label === other.label &&
-      this.name === other.name
-    )
+  const img = document.createElement("img")
+  img.alt = getMarkdownReferenceName(path)
+  img.className = "mx-auto block h-auto max-h-90 max-w-full rounded-[4px] object-contain"
+  img.src = getMarkdownReferenceImageSource(path)
+  img.onerror = () => {
+    wrap.replaceChildren()
+    const fallback = document.createElement("span")
+    fallback.className = "whitespace-nowrap"
+    fallback.textContent = "图片加载失败"
+    wrap.appendChild(fallback)
   }
+  wrap.appendChild(img)
 
-  toDOM() {
-    this.mount?.destroy()
-    this.mount = mountMarkdownReferenceWidget(this.path, this.type, this.label, this.name)
-    return this.mount.container
-  }
+  const pathText = document.createElement("div")
+  pathText.className = "mt-1 max-w-full break-all text-xs text-[rgba(255,255,255,0.6)]"
+  pathText.textContent = path
+  wrap.appendChild(pathText)
+  return wrap
+}
 
-  destroy() {
-    this.mount?.destroy()
-    this.mount = null
-  }
+/**
+ * 编辑器内 hover 引用图片时显示图片预览 tooltip，不影响文本渲染。
+ */
+export const markdownReferenceHover = hoverTooltip((view, pos) => {
+  const line = view.state.doc.lineAt(pos)
+  const relative = pos - line.from
 
-  ignoreEvent() {
-    return false
+  MARKDOWN_REFERENCE_PATTERN.lastIndex = 0
+  for (const match of line.text.matchAll(MARKDOWN_REFERENCE_PATTERN)) {
+    if (match.index === undefined) continue
+    const start = match.index
+    const end = start + match[0].length
+    if (relative < start || relative >= end) continue
+
+    const type = getMarkdownReferenceType(match[1] ?? "")
+    if (type !== "image") return null
+
+    const from = line.from + start
+    return {
+      pos: from,
+      end: line.from + end,
+      above: true,
+      create: () => ({
+        dom: buildMarkdownReferenceImageTooltipDom(match[2] ?? ""),
+      }),
+    }
   }
+  return null
+})
+
+/**
+ * 构建表格行 widget 的 DOM：每行独立替换，避免跨换行的 CodeMirror replace decoration。
+ */
+const buildMarkdownTableRowWidget = (
+  cells: string[],
+  alignments: MarkdownTableAlignment[],
+  rowKind: MarkdownTableRowKind,
+  columnCount: number,
+): HTMLElement => {
+  const container = document.createElement("span")
+  container.className = "cm-md-table-row-widget-container"
+
+  const row = document.createElement("span")
+  row.className = `cm-md-table-row-widget cm-md-table-row-widget--${rowKind}`
+  row.style.setProperty("--cm-md-table-column-count", String(columnCount))
+
+  cells.forEach((cell, columnIndex) => {
+    const cellElement = document.createElement("span")
+    cellElement.className = "cm-md-table-cell"
+    cellElement.style.textAlign = alignments[columnIndex] ?? "left"
+    cellElement.innerHTML = markdownRenderer.renderInline(cell)
+    row.appendChild(cellElement)
+  })
+
+  container.appendChild(row)
+  return container
 }
 
 export class MarkdownTableRowWidget extends WidgetType {
@@ -423,8 +482,7 @@ export class MarkdownTableRowWidget extends WidgetType {
   }
 
   toDOM() {
-    return mountMarkdownTableRowWidget(this.cells, this.alignments, this.rowKind, this.columnCount)
-      .container
+    return buildMarkdownTableRowWidget(this.cells, this.alignments, this.rowKind, this.columnCount)
   }
 
   ignoreEvent() {
@@ -718,7 +776,7 @@ const buildMarkdownMarkerDecorations = (
         type: "replace"
         from: number
         to: number
-        widget: MarkdownReferenceWidget | MarkdownTableRowWidget
+        widget: MarkdownTableRowWidget
       }
   )[] = []
   let offset = 0
@@ -1067,35 +1125,13 @@ const buildMarkdownMarkerDecorations = (
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }
-    for (const match of line.matchAll(/@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g)) {
+    for (const match of line.matchAll(MARKDOWN_REFERENCE_PATTERN)) {
       if (match.index === undefined) continue
 
-      const rawMatch = match[0]
-      const typeStr = match[1] ?? ""
-      const path = match[2] ?? ""
-      const type = getMarkdownReferenceType(typeStr)
+      const type = getMarkdownReferenceType(match[1] ?? "")
       if (!type) continue
 
-      const label = getMarkdownReferenceLabel(type)
-      const name = getMarkdownReferenceName(path)
-      const from = offset + match.index
-      const to = from + rawMatch.length
-
-      const isCursorInside = mainSelection.from < to && mainSelection.to > from
-      const isCursorOnLine =
-        mainSelection.head >= offset && mainSelection.head <= offset + line.length
-
-      if (isCursorInside || isCursorOnLine) {
-        const className = `cm-md-reference-${type}`
-        addMarker(match.index, match.index + rawMatch.length, className)
-      } else {
-        allDecos.push({
-          type: "replace",
-          from,
-          to,
-          widget: new MarkdownReferenceWidget(path, type, label, name),
-        })
-      }
+      addMarker(match.index, match.index + match[0].length, `cm-md-reference-${type}`)
     }
     for (const match of line.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
       if (match.index === undefined) continue

@@ -329,23 +329,16 @@ export const LxMarkdownPreview = ({
       ...Array.from(
         previewContent.querySelectorAll<HTMLElement>(".markdown-file-mention"),
         (container) => {
-          const fullMention = container.dataset.fullMention
-            ? decodeURIComponent(container.dataset.fullMention)
-            : ""
           const displayLabel = container.dataset.displayLabel
             ? decodeURIComponent(container.dataset.displayLabel)
-            : fullMention
+            : ""
           const isReferenced = container.dataset.isReferenced === "true"
           const nodeClassName = `markdown-file-mention-node ${
             isReferenced ? "markdown-file-mention-node--referenced" : ""
           }`
           return {
             container,
-            content: (
-              <LxTooltip content={fullMention} placement="top">
-                <span className={nodeClassName}>{displayLabel}</span>
-              </LxTooltip>
-            ),
+            content: <span className={nodeClassName}>{displayLabel}</span>,
           }
         },
       ),
@@ -354,25 +347,34 @@ export const LxMarkdownPreview = ({
         (container) => {
           const referencePath = container.dataset.referencePath ?? ""
           const isImageReference = container.classList.contains("markdown-reference-image")
+          const isPathReference =
+            container.classList.contains("markdown-reference-file") ||
+            container.classList.contains("markdown-reference-folder")
           const innerHtml = container.innerHTML
+          const reference = (
+            <span
+              className="inline-flex max-w-full items-center gap-1"
+              dangerouslySetInnerHTML={{ __html: innerHtml }}
+            />
+          )
+          const tooltip =
+            isImageReference && referencePath ? (
+              <MarkdownReferenceImageTooltip path={referencePath} />
+            ) : isPathReference && referencePath ? (
+              <span className="block max-w-[24rem] break-all leading-snug">{referencePath}</span>
+            ) : null
           return {
             container,
-            content: (
+            content: tooltip ? (
               <LxTooltip
-                content={
-                  isImageReference ? (
-                    <MarkdownReferenceImageTooltip path={referencePath} />
-                  ) : (
-                    referencePath
-                  )
-                }
+                content={tooltip}
                 placement="top"
+                contentClassName="whitespace-normal max-w-[24rem]"
               >
-                <span
-                  className="inline-flex max-w-full items-center gap-1"
-                  dangerouslySetInnerHTML={{ __html: innerHtml }}
-                />
+                {reference}
               </LxTooltip>
+            ) : (
+              reference
             ),
           }
         },

@@ -48,6 +48,7 @@ import {
   mapMarkdownPosition,
   markdownHighlightStyle,
   markdownMarkerHighlight,
+  markdownReferenceHover,
   selectAllPreservingScrollPosition,
 } from "@/components/ui/LxMarkdown/extensions/markdownEditorExtensions"
 import { getFileMentionDeletionRange } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
@@ -485,6 +486,7 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
+        markdownReferenceHover,
         markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
