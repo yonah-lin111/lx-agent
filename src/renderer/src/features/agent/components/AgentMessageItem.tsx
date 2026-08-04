@@ -314,7 +314,7 @@ export const AgentMessageItem = ({
         })
         .filter(Boolean)
         .join("\n\n")
-      await navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(text || assistantError || "")
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -454,11 +454,7 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex flex-col gap-1 px-0">
-      {assistantError && (
-        <div className="rounded-[6px] border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[12px] text-red-400">
-          {assistantError}
-        </div>
-      )}
+      {assistantError && <div className="text-[13px] text-red-400">{assistantError}</div>}
 
       <div className="relative rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
         <div className="flex flex-col gap-1.5">
@@ -554,7 +550,7 @@ export const AgentMessageItem = ({
             </div>
           </div>
         )}
-        {hasOutput && !isStreamingNow && (
+        {!isStreamingNow && (hasOutput || assistantError) && (
           <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
             <LxIconButton
               size="small"
