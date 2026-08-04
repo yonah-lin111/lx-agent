@@ -109,6 +109,7 @@ export const AgentToolCallBlock = ({
     simpleSummary ??
     (toolResult ? formatToolResult(toolResult.text) : formatToolArgs(firstToolCall?.args ?? {}))
   const isSimpleTool = toolName === "read" || simpleSummary !== null || commandSummary !== null
+  const summaryIndentClass = isGrouped ? "pl-4" : "pl-1"
 
   return (
     <div className="my-0.5 min-w-0">
@@ -118,9 +119,7 @@ export const AgentToolCallBlock = ({
       </div>
       {isSimpleTool ? (
         <div
-          className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
-            isGrouped ? "pl-4" : ""
-          }`}
+          className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
         >
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           {toolName === "read" ? (
@@ -132,9 +131,7 @@ export const AgentToolCallBlock = ({
       ) : toolResult ? (
         <>
           <div
-            className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
-              isGrouped ? "pl-4" : ""
-            }`}
+            className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
           >
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
             <span className="min-w-0 break-all">{summary}</span>
@@ -142,9 +139,7 @@ export const AgentToolCallBlock = ({
         </>
       ) : (
         <div
-          className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
-            isGrouped ? "pl-4" : ""
-          }`}
+          className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
         >
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           <span className="min-w-0 break-all">{summary}</span>
