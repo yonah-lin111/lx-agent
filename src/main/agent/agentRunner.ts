@@ -5,14 +5,21 @@ import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
+import { createBashTool } from "./tools/bash"
+import { createEditTool } from "./tools/edit"
+import { createFindTool } from "./tools/find"
+import { createGrepTool } from "./tools/grep"
+import { createLsTool } from "./tools/ls"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
 import { createTimeTool } from "./tools/time"
+import { createWriteTool } from "./tools/write"
 
 // Agent 默认系统提示词。
 const DEFAULT_SYSTEM_PROMPT = [
   "你是 LX Agent，一个帮助用户在本地项目中工作的 AI 助手。",
-  "你可以使用提供的工具读取项目目录内的文件。",
+  "你可以使用工具读取、搜索、写入和编辑项目目录内的文件，并在项目根目录执行命令。",
+  "修改文件前先读取确认目标内容；执行有副作用的命令前说明你的意图。",
   "回答使用简体中文，代码与专有名词保留原文。",
 ].join("\n")
 
@@ -25,12 +32,18 @@ const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
-// 装配会话工具集。
+// 装配会话工具集：八工具全部激活。
 const createRegistry = (cwd: string): ToolRegistry => {
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd))
+  registry.register(createLsTool(cwd))
+  registry.register(createGrepTool(cwd))
+  registry.register(createFindTool(cwd))
+  registry.register(createWriteTool(cwd))
+  registry.register(createEditTool(cwd))
+  registry.register(createBashTool(cwd))
   registry.register(createTimeTool())
-  registry.setActive(["read", "time"])
+  registry.setActive(["read", "ls", "grep", "find", "write", "edit", "bash", "time"])
   return registry
 }
 

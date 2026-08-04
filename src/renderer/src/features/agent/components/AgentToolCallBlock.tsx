@@ -1,6 +1,5 @@
 import { CornerDownRight } from "lucide-react"
 import type React from "react"
-import { useLayoutEffect, useRef, useState } from "react"
 import type { ChatBlock } from "@/features/agent/types"
 
 // 工具调用块类型。
@@ -17,10 +16,8 @@ interface AgentToolCallBlockProps {
   toolCalls?: ToolCallBlock[]
   // 工具结果数据。
   toolResult?: ToolResultBlock
-  // 工具结果是否展开。
-  isResultExpanded?: boolean
-  // 切换工具结果展开状态的回调。
-  onToggleResult?: () => void
+  // 是否位于折叠工具组中。
+  isGrouped?: boolean
 }
 
 /**
@@ -48,16 +45,6 @@ const getSimpleToolSummary = (toolName: string): string | null => {
   return null
 }
 
-// 路径摘要组件属性类型。
-interface ToolPathSummaryProps {
-  // 文件路径列表。
-  paths: string[]
-  // 是否展开路径列表。
-  isExpanded?: boolean
-  // 切换路径列表展开状态的回调。
-  onToggle?: () => void
-}
-
 /**
  * 收缩路径中间段，保留根目录与最后两个路径段。
  */
@@ -68,76 +55,6 @@ const compactPath = (path: string): string => {
   if (segments.length <= 3) return path
 
   return `${isAbsolute ? "/" : ""}${segments[0]}/.../${segments.slice(-2).join("/")}`
-}
-
-/**
- * 渲染文件路径列表，并在超过三行时提供折叠展开。
- */
-const ToolPathSummary = ({
-  paths,
-  isExpanded,
-  onToggle,
-}: ToolPathSummaryProps): React.JSX.Element => {
-  const [localIsExpanded, setLocalIsExpanded] = useState(false)
-  const [isCollapsible, setIsCollapsible] = useState(false)
-  const containerRef = useRef<HTMLSpanElement>(null)
-  const measureRef = useRef<HTMLSpanElement>(null)
-  const displayText = paths.map(compactPath).join(", ")
-  const expanded = isExpanded ?? localIsExpanded
-
-  useLayoutEffect(() => {
-    const container = containerRef.current
-    const measureElement = measureRef.current
-    if (!container || !measureElement) return undefined
-
-    const updateCollapsible = (): void => {
-      const lineHeight = Number.parseFloat(window.getComputedStyle(measureElement).lineHeight) || 20
-      setIsCollapsible(measureElement.scrollHeight > lineHeight * 3 + 1)
-    }
-
-    updateCollapsible()
-    if (typeof ResizeObserver === "undefined") return undefined
-    const observer = new ResizeObserver(updateCollapsible)
-    observer.observe(container)
-
-    return () => observer.disconnect()
-  }, [displayText])
-
-  const canToggle = isCollapsible || onToggle !== undefined
-  const handleToggle = (): void => {
-    if (!canToggle) return
-    if (onToggle) {
-      onToggle()
-      return
-    }
-    setLocalIsExpanded((previousIsExpanded) => !previousIsExpanded)
-  }
-
-  return (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      aria-label={expanded ? "折叠文件路径" : "展开文件路径"}
-      disabled={!canToggle}
-      className={`relative block min-w-0 flex-1 p-0 text-left text-white/45 ${
-        canToggle ? "cursor-pointer" : "cursor-default"
-      }`}
-      onClick={handleToggle}
-    >
-      <span ref={containerRef} className="relative block min-w-0">
-        <span
-          ref={measureRef}
-          aria-hidden="true"
-          className="invisible absolute inset-x-0 top-0 block break-all text-white/45"
-        >
-          {displayText}
-        </span>
-        <span className={`block break-all text-white/45 ${expanded ? "" : "line-clamp-3"}`}>
-          {displayText}
-        </span>
-      </span>
-    </button>
-  )
 }
 
 /**
@@ -157,14 +74,26 @@ const getToolCallPaths = (toolCalls: ToolCallBlock[]): string[] =>
   })
 
 /**
+ * 按工具类型生成调用摘要，避免将结果正文混入命令展示。
+ */
+const formatToolCommand = (toolName: string, args: Record<string, unknown>): string | null => {
+  const path = typeof args.path === "string" ? args.path : "."
+  if (toolName === "edit" || toolName === "write") return `${toolName} ${path}`
+  if (toolName === "find") return `find ${String(args.pattern ?? "")} ${path}`.trim()
+  if (toolName === "grep") return `grep ${String(args.pattern ?? "")} ${path}`.trim()
+  if (toolName === "ls") return `ls ${path}`.trim()
+  if (toolName === "bash") return typeof args.command === "string" ? args.command : "bash"
+  return null
+}
+
+/**
  * 渲染 Agent 工具调用与结果的时间线步骤。
  */
 export const AgentToolCallBlock = ({
   toolCall,
   toolCalls,
   toolResult,
-  isResultExpanded = false,
-  onToggleResult,
+  isGrouped = false,
 }: AgentToolCallBlockProps): React.JSX.Element | null => {
   if (!toolCall && !toolCalls?.length && !toolResult) return null
 
@@ -174,49 +103,49 @@ export const AgentToolCallBlock = ({
   const displayToolName = toolName.charAt(0).toUpperCase() + toolName.slice(1)
   const readPaths = getToolCallPaths(resolvedToolCalls)
   const simpleSummary = getSimpleToolSummary(toolName)
+  const commandSummary = firstToolCall ? formatToolCommand(toolName, firstToolCall.args) : null
   const summary =
+    commandSummary ??
     simpleSummary ??
     (toolResult ? formatToolResult(toolResult.text) : formatToolArgs(firstToolCall?.args ?? {}))
-  const isSimpleTool = toolName === "read" || simpleSummary !== null
+  const isSimpleTool = toolName === "read" || simpleSummary !== null || commandSummary !== null
 
   return (
     <div className="my-0.5 min-w-0">
       <div className="flex items-center gap-1">
+        {isGrouped && <CornerDownRight className="h-3 w-3 shrink-0 text-white/45" />}
         <span className="font-mono text-[12px] font-bold text-amber-300">{displayToolName}</span>
       </div>
       {isSimpleTool ? (
-        <div className="mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45">
+        <div
+          className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
+            isGrouped ? "pl-4" : ""
+          }`}
+        >
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           {toolName === "read" ? (
-            <ToolPathSummary
-              paths={readPaths.length > 0 ? readPaths : ["Unknown file"]}
-              isExpanded={onToggleResult ? isResultExpanded : undefined}
-              onToggle={onToggleResult}
-            />
+            <span className="min-w-0 break-all">{readPaths.map(compactPath).join(", ")}</span>
           ) : (
             <span>{summary}</span>
           )}
         </div>
       ) : toolResult ? (
         <>
-          <button
-            type="button"
-            aria-expanded={isResultExpanded}
-            aria-label={`${toolName} 工具结果`}
-            className="mt-1 flex min-w-0 items-start gap-1 text-left text-[12px] leading-relaxed text-white/45"
-            onClick={onToggleResult}
+          <div
+            className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
+              isGrouped ? "pl-4" : ""
+            }`}
           >
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
             <span className="min-w-0 break-all">{summary}</span>
-          </button>
-          {isResultExpanded && (
-            <pre className="custom-scrollbar mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-relaxed text-white/60">
-              {toolResult.text}
-            </pre>
-          )}
+          </div>
         </>
       ) : (
-        <div className="mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45">
+        <div
+          className={`mt-1 flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45 ${
+            isGrouped ? "pl-4" : ""
+          }`}
+        >
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           <span className="min-w-0 break-all">{summary}</span>
         </div>

@@ -6,10 +6,21 @@ import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
+import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
+type ExecutionBlock = ToolCallBlock
+type ExecutionGroup = {
+  kind: "execution"
+  blocks: Array<{ block: ExecutionBlock; isStreaming: boolean }>
+}
+type ThinkingGroup = {
+  kind: "thinking"
+  block: Extract<ChatBlock, { kind: "thinking" }>
+  isStreaming: boolean
+}
 
 interface AgentMessageItemProps {
   message: ChatMessage
@@ -42,8 +53,6 @@ export const AgentMessageItem = ({
   const [isCollapsible, setIsCollapsible] = useState(false)
   const [isClamped, setIsClamped] = useState(false)
   const [localIsEditing, setLocalIsEditing] = useState(false)
-  // 工具结果折叠状态（按 toolCallId）。
-  const [collapsedResults, setCollapsedResults] = useState<Record<string, boolean>>({})
   const isEditing = isEditingProp ?? localIsEditing
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
@@ -97,10 +106,6 @@ export const AgentMessageItem = ({
 
     return groups.filter((group) => group.length > 0)
   }, [displayBlocks])
-  const readToolCalls = useMemo(
-    () => readToolCallGroups.flatMap((group) => group),
-    [readToolCallGroups],
-  )
   const readToolCallGroupById = useMemo(
     () =>
       new Map(
@@ -110,10 +115,40 @@ export const AgentMessageItem = ({
       ),
     [readToolCallGroups],
   )
-  const readToolCallIds = useMemo(
-    () => new Set(readToolCalls.map((block) => block.toolCallId)),
-    [readToolCalls],
-  )
+  const executionGroups = useMemo(() => {
+    const groups: Array<
+      | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
+      | ExecutionGroup
+      | ThinkingGroup
+    > = []
+    let currentExecution: ExecutionGroup | null = null
+
+    for (const item of displayBlocks) {
+      if (item.block.kind === "text") {
+        currentExecution = null
+        groups.push({ kind: "text", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      if (item.block.kind === "thinking") {
+        currentExecution = null
+        groups.push({ kind: "thinking", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      if (item.block.kind === "toolResult") continue
+      if (item.block.kind !== "toolCall") continue
+
+      if (!currentExecution) {
+        currentExecution = { kind: "execution", blocks: [] }
+        groups.push(currentExecution)
+      }
+      currentExecution.blocks.push({
+        block: item.block,
+        isStreaming: item.isStreaming,
+      })
+    }
+
+    return groups
+  }, [displayBlocks])
   const assistantError = !isUser
     ? [message, ...continuationMessages].find((currentMessage) => currentMessage.error)?.error
     : undefined
@@ -458,13 +493,13 @@ export const AgentMessageItem = ({
 
       <div className="relative rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
         <div className="flex flex-col gap-1.5">
-          {displayBlocks.map(({ block, isStreaming }, index) => {
-            if (block.kind === "text") {
-              if (!block.text) return null
+          {executionGroups.map((group, groupIndex) => {
+            if (group.kind === "text") {
+              if (!group.block.text) return null
               return (
                 <LxMarkdownPreview
-                  key={index}
-                  html={markdownRenderer.render(block.text)}
+                  key={groupIndex}
+                  html={markdownRenderer.render(group.block.text)}
                   previewMode="preview"
                   previewRef={previewRef}
                   className="px-0"
@@ -472,74 +507,43 @@ export const AgentMessageItem = ({
                 />
               )
             }
-            if (block.kind === "thinking") {
+
+            if (group.kind === "thinking") {
               return (
                 <AgentThinkingBlock
-                  key={index}
-                  content={block.text}
-                  isGenerating={isStreaming && index === displayBlocks.length - 1}
+                  key={groupIndex}
+                  content={group.block.text}
+                  isGenerating={group.isStreaming && groupIndex === executionGroups.length - 1}
                 />
               )
             }
-            if (block.kind === "toolCall") {
-              if (block.toolName === "read") {
-                const readGroup = readToolCallGroupById.get(block.toolCallId)
-                if (!readGroup || block.toolCallId !== readGroup[0]?.toolCallId) return null
 
-                return <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={readGroup} />
-              }
-
-              const nextBlock = displayBlocks[index + 1]?.block
-              const inlineResult =
-                nextBlock?.kind === "toolResult" && nextBlock.toolCallId === block.toolCallId
-                  ? nextBlock
-                  : undefined
-              const collapsed = collapsedResults[block.toolCallId] !== false
-
-              return (
-                <AgentToolCallBlock
-                  key={`${block.toolCallId}-call`}
-                  toolCall={block}
-                  toolResult={inlineResult}
-                  isResultExpanded={!collapsed}
-                  onToggleResult={
-                    inlineResult
-                      ? () =>
-                          setCollapsedResults((previousResults) => ({
-                            ...previousResults,
-                            [block.toolCallId]: !collapsed,
-                          }))
-                      : undefined
-                  }
-                />
-              )
-            }
-            if (readToolCallIds.has(block.toolCallId)) return null
-
-            const previousBlock = displayBlocks[index - 1]?.block
-            if (
-              previousBlock?.kind === "toolCall" &&
-              previousBlock.toolCallId === block.toolCallId
-            ) {
-              return null
-            }
-            const collapsed = collapsedResults[block.toolCallId] !== false
-
+            const toolCount = group.blocks.filter(({ block }) => block.kind === "toolCall").length
+            const isGrouped = toolCount >= 2
             return (
-              <AgentToolCallBlock
-                key={`${block.toolCallId}-result`}
-                toolResult={block}
-                isResultExpanded={block.toolName === "read" ? undefined : !collapsed}
-                onToggleResult={
-                  block.toolName === "read"
-                    ? undefined
-                    : () =>
-                        setCollapsedResults((previousResults) => ({
-                          ...previousResults,
-                          [block.toolCallId]: !collapsed,
-                        }))
-                }
-              />
+              <AgentToolCallGroup key={groupIndex} toolCount={toolCount}>
+                {group.blocks.map(({ block }) => {
+                  if (block.toolName === "read") {
+                    const readGroup = readToolCallGroupById.get(block.toolCallId)
+                    if (!readGroup || block.toolCallId !== readGroup[0]?.toolCallId) return null
+                    return (
+                      <AgentToolCallBlock
+                        key={`${block.toolCallId}-call`}
+                        toolCalls={readGroup}
+                        isGrouped={isGrouped}
+                      />
+                    )
+                  }
+
+                  return (
+                    <AgentToolCallBlock
+                      key={`${block.toolCallId}-call`}
+                      toolCall={block}
+                      isGrouped={isGrouped}
+                    />
+                  )
+                })}
+              </AgentToolCallGroup>
             )
           })}
         </div>

@@ -33,7 +33,7 @@
 3. **事件订阅已有**：`Agent.subscribe()` 即 pi harness 事件的前身；IPC 透传不改负载形状，harness 阶段新增事件类型不影响 renderer 订阅契约（renderer 按 type 分发，未知类型忽略）。
 4. **hooks 位点已具备**：`beforeToolCall` / `afterToolCall` / `transformContext` / `prepareNextTurn` / `getSteeringMessages` / `getFollowUpMessages` 全部随移植代码保留——harness 的权限控制、上下文注入、延迟写都挂在这些位点上。
 5. **工具执行与循环解耦**：`agent-loop` 执行工具（`executeToolCalls`），AI SDK 只做生成；harness 的 durable 工具记录（tool_started/resultEntryId）未来可包裹 `execute` 而不改 loop 结构。
-6. **cwd/权限模型**：工具创建时注入 cwd，权限判定集中在 read 工具内部；未来信任模型（如逐次确认）挂 `beforeToolCall` 即可。
+6. **cwd/权限模型**：工具创建时注入 cwd，路径类工具统一经 `tools/path-utils.ts` 的 `resolveToCwd` 解析（越界拒绝），不再各自实现；bash 工具仅超时+cwd 限制，未来信任模型（如逐次确认）挂 `beforeToolCall` 即可。
 
 ## 4. 演进路线
 

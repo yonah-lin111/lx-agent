@@ -8,7 +8,8 @@
 |---|------|------|
 | 1 | Agent 核心运行位置 | **main 进程**：LLM 调用、工具执行、会话状态全部在 main；renderer 纯 UI，经 IPC 订阅事件流 |
 | 2 | 实现路径 | **移植 pi agent-core**（`types.ts` / `agent.ts` / `agent-loop.ts` / `stream-fn.ts`），schema 体系由 typebox 换为 **zod**；LLM 调用经 **AI SDK streamFn 适配器**注入；harness 不搬代码，仅留口（见 `harness.md`） |
-| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；`read` 工具只允许读取 cwd 内路径（越界拒绝）；首版纯只读（`read` + `time`），写工具留后续 |
+| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；路径类工具只允许 cwd 内路径（越界拒绝）；内置工具对齐 pi coding-agent 八工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`）；写工具经 file-mutation-queue 串行化，bash 仅超时+cwd 限制 |
+| 3.1 | 工具范围演进 | v1 曾定"首版纯只读（read+time）"；本轮按参考项目升级为**全内置工具集**（含写工具），只读约束取消；安全边界见 harness 信任模型演进 |
 | 4 | 会话历史 | 首版内存级 store，restore 会话后**全量上下文续接**（历史消息含 toolResult 进 LLM）；SQLite 落盘归 harness 阶段 |
 | 5 | 模型装配 | main 内 `modelFactory` 按 settings 配置装配四种 provider；首版固定 `defaultModel`，预留 `setModel` 接口；apiKey 缺失返回明确 error 事件 |
 | 6 | IPC 契约 | `invoke` 发起 + main 经 `webContents.send` 推送流式事件；事件负载直接复用 `AgentEvent`；`agent:abort` 单独 channel |
@@ -26,7 +27,7 @@ flowchart TD
     Agent --> Adapter[streamFn 适配器<br/>aiSdkStreamFn.ts]
     Adapter --> AI[AI SDK streamText]
     AI --> Provider[createOpenAI / createAnthropic /<br/>createGoogleGenerativeAI / createOpenAICompatible]
-    Agent --> Tools[ToolRegistry<br/>read / time]
+    Agent --> Tools[ToolRegistry<br/>read/ls/grep/find/write/edit/bash/time]
     Tools --> FS[(node:fs cwd)]
     Runner --> Settings[settingsService<br/>模型 provider 配置]
     Agent -->|AgentEvent| Runner
@@ -58,7 +59,17 @@ src/main/agent/                  # 仅主进程可运行的 Agent 能力（stand
     modelFactory.ts              # settings 配置 → AI SDK provider/model 装配
   tools/
     registry.ts                  # ToolRegistry：注册、激活、cwd 绑定、名字冲突检测
-    read.ts                      # read 工具：cwd 内读取 + 截断
+    path-utils.ts                # resolveToCwd/pathExists：路径安全解析（`..` 逃逸/越界拒绝）
+    truncate.ts                  # DEFAULT_MAX_LINES/DEFAULT_MAX_BYTES/GREP_MAX_LINE_LENGTH + truncateHead/truncateTail/truncateLine/formatSize
+    file-mutation-queue.ts       # withFileMutationQueue：同文件写串行化（edit/write 内部使用）
+    search.ts                    # walkFiles（递归 + .gitignore）/globToRegExp/readFileText（grep/find 纯 Node 降级共享）
+    read.ts                      # read 工具：cwd 内读取 + offset/limit 分页 + 截断
+    ls.ts                        # ls 工具：目录列表（字母序 + `/` 后缀）
+    grep.ts                      # grep 工具：优先 rg 降级纯 Node 正则扫描
+    find.ts                      # find 工具：优先 fd 降级纯 Node glob
+    write.ts                     # write 工具：写文件（经 mutation queue）
+    edit.ts                      # edit 工具：目标文本替换（经 mutation queue）
+    bash.ts                      # bash 工具：命令执行（超时 + cwd 限制 + 进程树清理）
     time.ts                      # time 工具：当前时间
   agentRunner.ts                 # 会话级装配：Agent + 工具 + 事件转发 → IPC 事件的边界
 src/shared/
@@ -210,12 +221,22 @@ type AgentToolResult = { content: (TextContent | ImageContent)[]; details?: unkn
 - `execute` 抛错 → error toolResult，不中断 run。
 - ToolRegistry：`register`（重名拒绝）+ 当前激活集。cwd 在创建工具时注入（read 工具闭包持有 root）。
 
-内置工具：
+内置工具（对齐 pi coding-agent，激活集固定八工具）：
 
 | 工具 | 参数 | 说明 |
 |------|------|------|
-| `read` | `{ path: string }` | 读取 cwd 内文件内容，返回文本；越界（`..`/绝对路径逃逸）拒绝；超过 100KB 截断并注明 |
-| `time` | `{}` | 返回当前 ISO 时间字符串，供模型感知时间上下文 |
+| `read` | `{ path, offset?, limit? }` | 读取 cwd 内文件；`offset`/`limit` 行号分页；越界拒绝；截断 `DEFAULT_MAX_LINES` 行或 `DEFAULT_MAX_BYTES` 字节；二进制返回文件信息 |
+| `ls` | `{ path?, limit? }` | 列目录，字母序 + `/` 后缀，含 dotfiles，默认 500 条 |
+| `grep` | `{ pattern, path?, glob?, ignoreCase?, literal?, context?, limit? }` | 内容搜索，优先 `rg` 降级纯 Node；默认 100 匹配 |
+| `find` | `{ pattern, path?, limit? }` | glob 文件搜索，优先 `fd` 降级纯 Node；默认 1000 条 |
+| `write` | `{ path, content }` | 写入/覆盖文件，创建缺失父目录；经 mutation queue |
+| `edit` | `{ path, edits[] }` | 目标文本替换（oldText 唯一 + 互不重叠），返回 diff；经 mutation queue |
+| `bash` | `{ command, timeout? }` | cwd 内执行命令；默认超时 120s；stdout/stderr 合并；超时/abort 杀进程树；输出截断保留尾部 |
+| `time` | `{}` | 返回本机本地时间与时区 |
+
+- 写工具（write/edit）经 `withFileMutationQueue` 对**同一文件**串行化（不同文件并行），executionMode 仍为 parallel。
+- bash 无执行前确认钩子，仅超时 + cwd 限制；确认流程归 harness 信任模型（见 harness.md）。
+- 输出上限常量：`DEFAULT_MAX_LINES=2000`、`DEFAULT_MAX_BYTES=50KB`、`GREP_MAX_LINE_LENGTH=500`。
 
 ## 9. UI 契约
 

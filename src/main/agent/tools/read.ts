@@ -1,15 +1,17 @@
 import { readFile } from "node:fs/promises"
-import { isAbsolute, relative, resolve, sep } from "node:path"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { resolveToCwd } from "./path-utils"
+import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "./truncate"
 
-// 单次读取最大字节数。
-const MAX_BYTES = 100 * 1024
+const readSchema = z.object({
+  path: z.string().describe("相对于项目根目录的文件路径"),
+  offset: z.number().describe("起始读取行号（1 起始）").optional(),
+  limit: z.number().describe("最多读取的行数").optional(),
+})
 
-// 判断相对路径是否逃逸 cwd。
-const isPathWithinRoot = (root: string, target: string): boolean => {
-  const rel = relative(root, target)
-  return rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel))
+export interface ReadToolDetails {
+  truncation?: TruncationResult
 }
 
 // 判断文件是否疑似二进制（前 8KB 含空字节）。
@@ -18,19 +20,17 @@ const looksBinary = (buffer: Buffer): boolean => {
   return sample.includes(0)
 }
 
-// 创建 read 工具：读取 cwd 内文件内容，越界或二进制文件拒绝。
-export const createReadTool = (cwd: string): AgentTool<z.ZodType<{ path: string }>> => ({
+// 创建 read 工具：读取 cwd 内文件内容，支持 offset/limit 分页，越界或二进制文件拒绝。
+export const createReadTool = (cwd: string): AgentTool<typeof readSchema> => ({
   name: "read",
   label: "读取文件",
   description:
-    "读取项目目录内指定文件的内容。path 为相对于项目根目录的文件路径，支持子目录。禁止访问项目目录之外的文件。",
-  inputSchema: z.object({
-    path: z.string().describe("相对于项目根目录的文件路径"),
-  }),
+    "读取项目目录内指定文件的内容。path 为相对于项目根目录的文件路径，支持子目录。可选用 offset/limit 按行号分页读取大文件。禁止访问项目目录之外的文件。",
+  inputSchema: readSchema,
   executionMode: "sequential",
   execute: async (_toolCallId, params) => {
-    const target = resolve(cwd, params.path)
-    if (!isPathWithinRoot(cwd, target)) {
+    const absolutePath = resolveToCwd(params.path, cwd)
+    if (!absolutePath) {
       return {
         content: [{ type: "text", text: `拒绝访问项目目录之外的文件: ${params.path}` }],
         details: { refused: true },
@@ -38,7 +38,7 @@ export const createReadTool = (cwd: string): AgentTool<z.ZodType<{ path: string 
     }
 
     try {
-      const buffer = await readFile(target)
+      const buffer = await readFile(absolutePath)
       if (looksBinary(buffer)) {
         return {
           content: [
@@ -51,19 +51,55 @@ export const createReadTool = (cwd: string): AgentTool<z.ZodType<{ path: string 
         }
       }
 
-      const truncated = buffer.length > MAX_BYTES
-      const slice = truncated ? buffer.subarray(0, MAX_BYTES) : buffer
-      const text = slice.toString("utf8")
+      const textContent = buffer.toString("utf-8")
+      const allLines = textContent.split("\n")
+      const totalFileLines = allLines.length
+      const startLine = params.offset ? Math.max(0, params.offset - 1) : 0
+      const startLineDisplay = startLine + 1
+      if (startLine >= allLines.length) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Offset ${params.offset} 超出文件末尾（共 ${allLines.length} 行）。`,
+            },
+          ],
+          details: { error: "offset_out_of_bounds", totalLines: allLines.length },
+        }
+      }
+
+      let selectedContent: string
+      let userLimitedLines: number | undefined
+      if (params.limit !== undefined) {
+        const endLine = Math.min(startLine + params.limit, allLines.length)
+        selectedContent = allLines.slice(startLine, endLine).join("\n")
+        userLimitedLines = endLine - startLine
+      } else {
+        selectedContent = allLines.slice(startLine).join("\n")
+      }
+
+      const truncation = truncateHead(selectedContent)
+      let outputText: string
+      if (truncation.firstLineExceedsLimit) {
+        const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine], "utf-8"))
+        outputText = `[第 ${startLineDisplay} 行大小为 ${firstLineSize}，超过 ${formatSize(DEFAULT_MAX_BYTES)} 限制。]`
+      } else if (truncation.truncated) {
+        const endLineDisplay = startLineDisplay + truncation.outputLines - 1
+        const nextOffset = endLineDisplay + 1
+        const reason =
+          truncation.truncatedBy === "lines" ? "" : `（${formatSize(DEFAULT_MAX_BYTES)} 限制）`
+        outputText = `${truncation.content}\n\n[显示第 ${startLineDisplay}-${endLineDisplay} 行，共 ${totalFileLines} 行${reason}。使用 offset=${nextOffset} 继续读取。]`
+      } else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {
+        const remaining = allLines.length - (startLine + userLimitedLines)
+        const nextOffset = startLine + userLimitedLines + 1
+        outputText = `${truncation.content}\n\n[文件还有 ${remaining} 行。使用 offset=${nextOffset} 继续读取。]`
+      } else {
+        outputText = truncation.content
+      }
+
       return {
-        content: [
-          {
-            type: "text",
-            text: truncated
-              ? `${text}\n\n[内容过长已截断，文件共 ${buffer.length} 字节，仅显示前 ${MAX_BYTES} 字节]`
-              : text,
-          },
-        ],
-        details: { size: buffer.length, truncated },
+        content: [{ type: "text", text: outputText }],
+        details: { truncation: truncation.truncated ? truncation : undefined },
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

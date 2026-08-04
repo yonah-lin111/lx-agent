@@ -1,0 +1,142 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, describe, expect, it } from "vitest"
+import { createBashTool } from "@/agent/tools/bash"
+import { createEditTool } from "@/agent/tools/edit"
+import { createFindTool } from "@/agent/tools/find"
+import { createGrepTool } from "@/agent/tools/grep"
+import { createLsTool } from "@/agent/tools/ls"
+import { createReadTool } from "@/agent/tools/read"
+import { createWriteTool } from "@/agent/tools/write"
+
+// 每个用例独立临时目录，用后清理。
+const tmpDirs: string[] = []
+const makeTmp = async (): Promise<string> => {
+  const dir = await mkdtemp(join(tmpdir(), "lx-tools-"))
+  tmpDirs.push(dir)
+  return dir
+}
+afterEach(async () => {
+  await Promise.all(tmpDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })))
+})
+
+// 提取工具结果首段文本。
+const toolText = (result: { content: Array<{ type: string; text?: string }> }): string =>
+  result.content.find((block) => block.type === "text")?.text ?? ""
+
+describe("read / write / edit", () => {
+  it("write + read 往返", async () => {
+    const cwd = await makeTmp()
+    const write = createWriteTool(cwd)
+    const w = await write.execute("t1", { path: "new.txt", content: "line1\nline2\n" })
+    expect(toolText(w)).toMatch(/已写入/)
+
+    const read = createReadTool(cwd)
+    const r = await read.execute("t1", { path: "new.txt" })
+    expect(toolText(r)).toContain("line2")
+  })
+
+  it("read offset/limit 分页", async () => {
+    const cwd = await makeTmp()
+    const lines = Array.from({ length: 10 }, (_, i) => `line${i + 1}`)
+    await writeFile(join(cwd, "big.txt"), lines.join("\n"))
+    const read = createReadTool(cwd)
+    const r = await read.execute("t1", { path: "big.txt", offset: 3, limit: 2 })
+    expect(toolText(r)).toContain("line3")
+    expect(toolText(r)).toContain("line4")
+    expect(toolText(r)).not.toContain("line1")
+    expect(toolText(r)).toMatch(/offset=5/)
+  })
+
+  it("read 拒绝越界路径", async () => {
+    const cwd = await makeTmp()
+    const read = createReadTool(cwd)
+    const r = await read.execute("t1", { path: "../outside" })
+    expect(toolText(r)).toMatch(/拒绝访问/)
+  })
+
+  it("edit 替换并产出 diff", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
+    const edit = createEditTool(cwd)
+    const e = await edit.execute("t1", { path: "f.txt", edits: [{ oldText: "b", newText: "B!" }] })
+    expect(toolText(e)).toMatch(/已替换/)
+    expect((e.details as { diff?: string }).diff).toContain("- b")
+    expect((e.details as { diff?: string }).diff).toContain("+ B!")
+    expect(await readFile(join(cwd, "f.txt"), "utf-8")).toBe("a\nB!\nc\n")
+  })
+
+  it("edit 拒绝非唯一 oldText", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "f.txt"), "x\nx\n")
+    const edit = createEditTool(cwd)
+    const e = await edit.execute("t1", { path: "f.txt", edits: [{ oldText: "x", newText: "y" }] })
+    expect(toolText(e)).toMatch(/不唯一/)
+  })
+})
+
+describe("ls / grep / find", () => {
+  it("ls 列出目录且目录带 / 后缀", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "a.ts"), "")
+    await mkdir(join(cwd, "sub"), { recursive: true })
+    await writeFile(join(cwd, "sub", "b.ts"), "")
+    const ls = createLsTool(cwd)
+    const r = await ls.execute("t1", {})
+    expect(toolText(r)).toContain("a.ts")
+    expect(toolText(r)).toContain("sub/")
+  })
+
+  it("grep 命中行含路径，非命中文件不出现", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "a.ts"), "const x = 1\n// TODO fix\n")
+    await writeFile(join(cwd, "b.ts"), "console.log('no')\n")
+    const grep = createGrepTool(cwd)
+    const r = await grep.execute("t1", { pattern: "TODO" })
+    expect(toolText(r)).toContain("a.ts")
+    expect(toolText(r)).toContain("TODO")
+    expect(toolText(r)).not.toContain("b.ts")
+  })
+
+  it("grep ignoreCase + literal", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "a.txt"), "Hello\nworld\n")
+    const grep = createGrepTool(cwd)
+    const ci = await grep.execute("t1", { pattern: "hello", ignoreCase: true })
+    expect(toolText(ci)).toContain("Hello")
+    const lit = await grep.execute("t1", { pattern: "w.d", literal: true })
+    expect(toolText(lit)).toContain("未找到匹配")
+  })
+
+  it("find 按 glob 匹配", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "spec.ts"), "")
+    await writeFile(join(cwd, "app.ts"), "")
+    await mkdir(join(cwd, "src"), { recursive: true })
+    await writeFile(join(cwd, "src", "inner.spec.ts"), "")
+    const find = createFindTool(cwd)
+    const r = await find.execute("t1", { pattern: "**/*.spec.ts" })
+    const text = toolText(r)
+    expect(text).toContain("spec.ts")
+    expect(text).toContain("src/inner.spec.ts")
+    expect(text).not.toContain("app.ts")
+  })
+})
+
+describe("bash", () => {
+  it("在 cwd 执行命令", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "greeting.txt"), "hi")
+    const bash = createBashTool(cwd)
+    const r = await bash.execute("t1", { command: "cat greeting.txt" })
+    expect(toolText(r)).toContain("hi")
+  })
+
+  it("命令失败返回退出码", async () => {
+    const cwd = await makeTmp()
+    const bash = createBashTool(cwd)
+    const r = await bash.execute("t1", { command: "exit 3" })
+    expect(toolText(r)).toMatch(/退出码 3/)
+  })
+})
