@@ -271,6 +271,13 @@ export const LxMarkdownPreview = ({
   const contentRef = useRef<HTMLDivElement>(null)
   const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
 
+  /**
+   * 禁止 Markdown 预览中的超链接触发页面跳转。
+   */
+  const handlePreviewLinkClick = (event: React.MouseEvent<HTMLDivElement>): void => {
+    if (event.target instanceof Element && event.target.closest("a")) event.preventDefault()
+  }
+
   useLayoutEffect(() => {
     const previewContent = contentRef.current
     if (!previewContent) return
@@ -382,7 +389,11 @@ export const LxMarkdownPreview = ({
         previewMode === "split" ? "border-l border-white/5" : ""
       }`}
     >
-      <div ref={contentRef} className={`markdown-preview-content ${contentClassName}`} />
+      <div
+        ref={contentRef}
+        className={`markdown-preview-content ${contentClassName}`}
+        onClick={handlePreviewLinkClick}
+      />
       {mounts.map(({ container, content }, index) => createPortal(content, container, index))}
     </article>
   )
