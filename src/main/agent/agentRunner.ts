@@ -47,6 +47,8 @@ class AgentRunner {
   private eventSink?: (event: AgentEvent) => void
   // renderer 最近一次请求的模型选择；未设置时回退到默认模型。
   private requestedModel?: ModelSelection
+  // renderer 最近一次请求的项目目录；未设置时回退到最近更新的文件系统项目。
+  private requestedCwd?: string
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
   attachEventSink(sink: (event: AgentEvent) => void): void {
@@ -55,7 +57,7 @@ class AgentRunner {
 
   // 保证 Agent 就绪；返回错误信息时表示不可用。
   private ensureReady(): { agent: Agent } | { error: string } {
-    const cwd = resolveCwd()
+    const cwd = this.requestedCwd ?? resolveCwd()
     if (!cwd) {
       return { error: "未找到可用的项目目录。请先在项目管理中创建并绑定文件系统项目。" }
     }
@@ -100,9 +102,16 @@ class AgentRunner {
   }
 
   // 发送一条用户消息并驱动 Agent 运行。
-  async send(text: string, selection?: ModelSelection): Promise<AgentSendResult> {
+  async send(
+    text: string,
+    selection?: ModelSelection,
+    projectPath?: string,
+  ): Promise<AgentSendResult> {
     if (selection !== undefined) {
       this.requestedModel = selection
+    }
+    if (projectPath !== undefined) {
+      this.requestedCwd = projectPath
     }
     const ready = this.ensureReady()
     if ("error" in ready) {

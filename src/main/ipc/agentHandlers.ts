@@ -36,15 +36,21 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   agentRunner.attachEventSink(sendToRenderer)
 
-  ipcMain.handle(AGENT_CHANNELS.send, async (_, text: unknown, selection: unknown) => {
-    if (typeof text !== "string" || !text.trim()) {
-      return { ok: false, error: "消息内容不能为空。" }
-    }
-    if (selection !== undefined && !isValidModelSelection(selection)) {
-      return { ok: false, error: "模型选择参数无效。" }
-    }
-    return agentRunner.send(text.trim(), selection)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.send,
+    async (_, text: unknown, selection: unknown, projectPath: unknown) => {
+      if (typeof text !== "string" || !text.trim()) {
+        return { ok: false, error: "消息内容不能为空。" }
+      }
+      if (selection !== undefined && !isValidModelSelection(selection)) {
+        return { ok: false, error: "模型选择参数无效。" }
+      }
+      if (projectPath !== undefined && typeof projectPath !== "string") {
+        return { ok: false, error: "项目路径参数无效。" }
+      }
+      return agentRunner.send(text.trim(), selection, projectPath)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()

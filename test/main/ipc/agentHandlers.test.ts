@@ -43,6 +43,9 @@ describe("agent IPC handlers", () => {
     expect(invalidResult).toEqual({ ok: false, error: expect.any(String) })
 
     await sendHandler(undefined, "你好")
-    expect(agentRunner.send).toHaveBeenCalledWith("你好")
+    expect(agentRunner.send).toHaveBeenCalledWith("你好", undefined, undefined)
+
+    await sendHandler(undefined, "你好", undefined, "/foo/proj")
+    expect(agentRunner.send).toHaveBeenCalledWith("你好", undefined, "/foo/proj")
   })
 })

@@ -28,11 +28,13 @@ describe("preload agent API", () => {
     await api.agent.send("你好")
     await api.agent.abort()
     await api.agent.restore([])
+    await api.agent.send("你好", undefined, "/foo/proj")
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
-    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.send, "你好")
+    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.send, "你好", undefined, undefined)
     expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.abort)
     expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.restore, [])
+    expect(invoke).toHaveBeenNthCalledWith(4, AGENT_CHANNELS.send, "你好", undefined, "/foo/proj")
   })
 
   it("onEvent 订阅 agent:event 并返回取消函数", () => {

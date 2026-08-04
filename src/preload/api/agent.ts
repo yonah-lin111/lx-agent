@@ -5,8 +5,8 @@ import { ipcRenderer } from "electron"
 
 // Agent 领域 preload API：发送/中止/恢复会话 + 订阅事件流。
 export const agentApi: AgentApi["agent"] = {
-  send: (text: string, selection?: ModelSelection) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection),
+  send: (text: string, selection?: ModelSelection, projectPath?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, projectPath),
   abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),
   restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
   onEvent: (handler: (event: AgentEvent) => void) => {

@@ -12,7 +12,7 @@ let messageSequence = 0
 /**
  * 管理 Agent 对话：订阅 main 进程事件流，驱动消息列表、流式更新与工具状态。
  */
-export const useAgentChat = () => {
+export const useAgentChat = (projectPath?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
@@ -167,9 +167,9 @@ export const useAgentChat = () => {
       const text = (contentToSend ?? inputText).trim()
       if (!text || isStreaming) return
       setInputText("")
-      void agentApi.send(text, selection)
+      void agentApi.send(text, selection, projectPath)
     },
-    [inputText, isStreaming],
+    [inputText, isStreaming, projectPath],
   )
 
   // 编辑已发送的消息内容（仅影响显示与历史，不改变 main 侧上下文）。

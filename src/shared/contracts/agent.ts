@@ -115,7 +115,11 @@ export type AgentSendResult = { ok: true } | { ok: false; error: string }
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
-    send: (text: string, selection?: ModelSelection) => Promise<AgentSendResult>
+    send: (
+      text: string,
+      selection?: ModelSelection,
+      projectPath?: string,
+    ) => Promise<AgentSendResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
     onEvent: (handler: (event: AgentEvent) => void) => () => void

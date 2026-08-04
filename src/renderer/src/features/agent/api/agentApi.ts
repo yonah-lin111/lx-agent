@@ -6,7 +6,9 @@ export const agentApi = {
   send: (
     text: string,
     selection?: ModelSelection,
-  ): Promise<{ ok: true } | { ok: false; error: string }> => window.api.agent.send(text, selection),
+    projectPath?: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    window.api.agent.send(text, selection, projectPath),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>

@@ -33,7 +33,7 @@ export const AgentPage = ({
     undoLastTurn,
     restoreChat,
     editMessage,
-  } = useAgentChat()
+  } = useAgentChat(currentProjectPath)
 
   const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
     useAgentModelSelect()
