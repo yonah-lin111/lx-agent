@@ -275,6 +275,10 @@ markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
 markdownRenderer.core.ruler.push("markdown-referenced-projects", (state) => {
   const projectPaths = getMarkdownReferenceProjectPaths(state.src)
   const projectNames = new Set(projectPaths.map(getMarkdownReferenceName))
+  const enabledNames = state.env?.referencedProjectNames as Set<string> | undefined
+  if (enabledNames) {
+    for (const name of enabledNames) projectNames.add(name)
+  }
   state.env = state.env || {}
   state.env.referencedProjectNames = projectNames
   return true

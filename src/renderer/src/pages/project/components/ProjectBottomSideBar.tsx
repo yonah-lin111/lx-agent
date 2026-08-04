@@ -88,6 +88,9 @@ export const ProjectBottomSideBar = ({
     (state) => state.setProjectReferencedFolders,
   )
   const setItemEnabledPaths = useProjectReferencedFoldersStore((state) => state.setItemEnabledPaths)
+  const removeEnabledPathFromAllItems = useProjectReferencedFoldersStore(
+    (state) => state.removeEnabledPathFromAllItems,
+  )
   const sortedFolders = useMemo(
     () =>
       [...referencedFolders].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -188,19 +191,43 @@ export const ProjectBottomSideBar = ({
   }, [])
 
   /**
-   * 删除项目级共享文件夹引用。
+   * 删除项目级共享文件夹引用，并同步清理所有条目的启用状态。
    */
   const removeFolderReference = useCallback(
     (path: string): void => {
       if (!projectId) return
 
       const nextFolders = referencedFolders.filter((folder) => folder.path !== path)
+      const previousEnabledPaths = useProjectReferencedFoldersStore.getState().enabledPathsByItemId
       setProjectReferencedFolders(projectId, nextFolders)
+      removeEnabledPathFromAllItems(path)
       void projectApi.updateProject(projectId, { referencedFolders: nextFolders }).catch(() => {
         setProjectReferencedFolders(projectId, referencedFolders)
+        useProjectReferencedFoldersStore.setState({ enabledPathsByItemId: previousEnabledPaths })
       })
+
+      void projectApi
+        .list()
+        .then((items) =>
+          Promise.all(
+            items
+              .filter(
+                (item) => item.projectId === projectId && item.enabledFolderPaths?.includes(path),
+              )
+              .map((item) =>
+                projectApi.update(item.id, {
+                  enabledFolderPaths: item.enabledFolderPaths.filter(
+                    (itemPath) => itemPath !== path,
+                  ),
+                }),
+              ),
+          ),
+        )
+        .catch((error) => {
+          console.error("Failed to clear folder enabled state", error)
+        })
     },
-    [projectId, referencedFolders, setProjectReferencedFolders],
+    [projectId, referencedFolders, setProjectReferencedFolders, removeEnabledPathFromAllItems],
   )
 
   /**

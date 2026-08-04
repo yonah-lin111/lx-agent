@@ -636,13 +636,17 @@ class CodeBlockActionWidget extends WidgetType {
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
  */
-export const markdownMarkerHighlight = (showFolding = false) => {
+export const markdownMarkerHighlight = (
+  showFolding = false,
+  getReferencedProjectNames?: () => Set<string>,
+) => {
   const markerPlugin = ViewPlugin.fromClass(
     class {
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
       foldedIndices = new Set<number>()
       templateFoldedIndices = new Set<number>()
       wasComposing = false
+      referencedNamesKey = ""
 
       constructor(view: EditorView) {
         this.decorations = buildMarkdownMarkerDecorations(
@@ -653,6 +657,7 @@ export const markdownMarkerHighlight = (showFolding = false) => {
           (index) => this.toggleTemplateFold(view, index),
           (line, done) => this.toggleTemplateStatus(view, line, done),
           showFolding,
+          getReferencedProjectNames,
         )
       }
 
@@ -663,10 +668,23 @@ export const markdownMarkerHighlight = (showFolding = false) => {
           return
         }
 
+        let namesChanged = false
+        if (getReferencedProjectNames) {
+          const currentKey = [...getReferencedProjectNames()].sort().join("\u0000")
+          namesChanged = currentKey !== this.referencedNamesKey
+          this.referencedNamesKey = currentKey
+        }
+
         const isFoldToggled = update.transactions.some((transaction) =>
           transaction.effects.some((effect) => effect.is(markdownBlockFoldToggleEffect)),
         )
-        if (!update.docChanged && !update.selectionSet && !isFoldToggled && !this.wasComposing)
+        if (
+          !update.docChanged &&
+          !update.selectionSet &&
+          !isFoldToggled &&
+          !this.wasComposing &&
+          !namesChanged
+        )
           return
 
         this.wasComposing = false
@@ -678,6 +696,7 @@ export const markdownMarkerHighlight = (showFolding = false) => {
           (index) => this.toggleTemplateFold(update.view, index),
           (line, done) => this.toggleTemplateStatus(update.view, line, done),
           showFolding,
+          getReferencedProjectNames,
         )
       }
 
@@ -724,6 +743,7 @@ const buildMarkdownMarkerDecorations = (
   onToggleTemplateFold: (index: number) => void = () => {},
   onToggleTemplateStatus: (line: number, done: boolean) => void = () => {},
   showFolding = false,
+  getReferencedProjectNames?: () => Set<string>,
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -751,6 +771,10 @@ const buildMarkdownMarkerDecorations = (
   const referencedProjectNames = new Set(
     getMarkdownReferenceProjectPaths(view.state.doc.toString()).map(getMarkdownReferenceName),
   )
+  const enabledProjectNames = getReferencedProjectNames?.()
+  if (enabledProjectNames) {
+    for (const name of enabledProjectNames) referencedProjectNames.add(name)
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
