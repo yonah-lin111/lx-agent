@@ -42,9 +42,23 @@ export const resolveDefaultModel = (): { model: Model } | { error: string } => {
   if (!selection?.provider || !selection.model) {
     return { error: "未配置默认模型。请在设置中选择模型后重试。" }
   }
+  return resolveModelSelection(selection)
+}
+
+// 解析请求的模型选择；Provider 或模型不存在时返回错误信息。
+export const resolveModelSelection = (
+  selection: ModelSelection,
+): { model: Model } | { error: string } => {
+  if (!selection.provider || !selection.model) {
+    return { error: "未选择模型。请先在模型选择器中选择模型。" }
+  }
+  const settings = getModelProviderSettings()
   const provider = settings.providers[selection.provider]
-  if (!provider || !provider.models[selection.model]) {
-    return { error: "默认模型配置已失效。请在设置中重新选择模型。" }
+  if (!provider) {
+    return { error: `模型 Provider ${selection.provider} 未配置。请在设置中配置模型 Provider。` }
+  }
+  if (!provider.models[selection.model]) {
+    return { error: `所选模型 ${selection.model} 不存在。请在设置中重新选择模型。` }
   }
   return { model: { provider: selection.provider, id: selection.model } }
 }

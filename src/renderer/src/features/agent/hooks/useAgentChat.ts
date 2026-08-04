@@ -1,4 +1,5 @@
 import type { AgentEvent } from "@shared/contracts/agent"
+import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { agentApi } from "../api/agentApi"
 import type { ChatMessage, ChatSession } from "../types"
@@ -148,11 +149,11 @@ export const useAgentChat = () => {
 
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
   const sendMessage = useCallback(
-    (contentToSend?: string) => {
+    (contentToSend?: string, selection?: ModelSelection) => {
       const text = (contentToSend ?? inputText).trim()
       if (!text || isStreaming) return
       setInputText("")
-      void agentApi.send(text)
+      void agentApi.send(text, selection)
     },
     [inputText, isStreaming],
   )

@@ -2,6 +2,7 @@ import { Send, Square } from "lucide-react"
 import type React from "react"
 import { useRef } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
 
 interface AgentInputProps {
   inputText: string
@@ -9,6 +10,10 @@ interface AgentInputProps {
   onInputChange: (text: string) => void
   onSend: () => void
   onStop: () => void
+  selectedModel: string
+  onModelChange: (value: string) => void
+  modelOptions: AgentModelSelectProps["options"]
+  hasModelOptions: boolean
 }
 
 /**
@@ -20,6 +25,10 @@ export const AgentInput = ({
   onInputChange,
   onSend,
   onStop,
+  selectedModel,
+  onModelChange,
+  modelOptions,
+  hasModelOptions,
 }: AgentInputProps): React.JSX.Element => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -99,7 +108,15 @@ export const AgentInput = ({
 
         {/* 恒定固定的底部工具栏，左置加号右置发送 */}
         <div className="flex w-full items-center justify-between pt-1.5">
-          <div>{addButton}</div>
+          <div className="flex min-w-0 items-center gap-2">
+            {addButton}
+            <AgentModelSelect
+              value={selectedModel}
+              onChange={onModelChange}
+              options={modelOptions}
+              disabled={!hasModelOptions}
+            />
+          </div>
           <div>{actionButton}</div>
         </div>
       </div>

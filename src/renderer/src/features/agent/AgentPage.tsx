@@ -4,6 +4,7 @@ import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
 import { chatHistoryStore } from "./hooks/chatHistoryStore"
 import { useAgentChat } from "./hooks/useAgentChat"
+import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
@@ -28,6 +29,9 @@ export const AgentPage = ({
     restoreChat,
     editMessage,
   } = useAgentChat()
+
+  const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
+    useAgentModelSelect()
 
   if (onNewChatRef) {
     onNewChatRef(createNewChat)
@@ -57,8 +61,12 @@ export const AgentPage = ({
         inputText={inputText}
         isStreaming={isStreaming}
         onInputChange={setInputText}
-        onSend={() => sendMessage()}
+        onSend={() => sendMessage(undefined, selectedSelection)}
         onStop={stopStreaming}
+        selectedModel={selectedModel}
+        onModelChange={handleModelChange}
+        modelOptions={selectOptions}
+        hasModelOptions={hasModelOptions}
       />
     </div>
   )

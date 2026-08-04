@@ -20,7 +20,16 @@ export interface LxSelectProps<T> {
   onChange: (value: T) => void
   options: (LxSelectOption<T> | LxSelectGroup<T>)[]
   className?: string
+  // 下拉菜单弹出方向。默认为 "down"。
+  position?: "up" | "down"
+  // 触发按钮尺寸。默认为 "medium"。
+  size?: "small" | "medium"
   disabled?: boolean
+}
+
+const SIZE_BUTTON_CLASSES: Record<NonNullable<LxSelectProps<string>["size"]>, string> = {
+  small: "h-8 text-xs",
+  medium: "h-9 text-sm",
 }
 
 const isGroup = <T,>(item: LxSelectOption<T> | LxSelectGroup<T>): item is LxSelectGroup<T> =>
@@ -34,24 +43,40 @@ export const LxSelect = <T extends string>({
   onChange,
   options,
   className = "",
+  position = "down",
+  size = "medium",
   disabled = false,
 }: LxSelectProps<T>): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const listboxRef = useRef<HTMLDivElement | null>(null)
   const selectedOption = options
     .flatMap((item) => (isGroup(item) ? item.options : [item]))
     .find((item) => item.value === value)
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent): void => {
+    // 使用 pointerdown：避免被 preventDefault 抑制的兼容 mousedown 事件导致外部点击无法关闭。
+    const handleClickOutside = (event: PointerEvent): void => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node))
         setIsOpen(false)
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    document.addEventListener("pointerdown", handleClickOutside)
+    return () => document.removeEventListener("pointerdown", handleClickOutside)
   }, [])
+
+  // 展开时滚动到选中选项，使其位于下拉容器视口内。
+  useEffect(() => {
+    if (!isOpen || !shouldRender || !listboxRef.current) return
+    const selectedEl = listboxRef.current.querySelector(
+      '[aria-selected="true"]',
+    ) as HTMLElement | null
+    if (!selectedEl) return
+    const listbox = listboxRef.current
+    listbox.scrollTop =
+      selectedEl.offsetTop - listbox.clientHeight / 2 + selectedEl.clientHeight / 2
+  }, [isOpen, shouldRender, value])
 
   useEffect(() => {
     if (isOpen) {
@@ -96,7 +121,7 @@ export const LxSelect = <T extends string>({
     <div ref={containerRef} className={`relative w-full min-w-0 ${className}`}>
       <button
         type="button"
-        className="flex h-9 w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-left text-sm text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40"
+        className={`flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-left text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${SIZE_BUTTON_CLASSES[size]}`}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -109,9 +134,10 @@ export const LxSelect = <T extends string>({
       </button>
       {shouldRender ? (
         <div
-          className={`absolute top-full z-50 mt-1 flex max-h-60 min-w-full flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+          ref={listboxRef}
+          className={`absolute z-50 flex max-h-60 min-w-full flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
             isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-          }`}
+          } ${position === "up" ? "bottom-full mb-1" : "top-full mt-1"}`}
           role="listbox"
         >
           {options.map((item) =>

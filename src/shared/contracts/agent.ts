@@ -1,3 +1,5 @@
+import type { ModelSelection } from "@shared/settings"
+
 // 消息内容块：文本。
 export interface TextContent {
   type: "text"
@@ -113,7 +115,7 @@ export type AgentSendResult = { ok: true } | { ok: false; error: string }
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
-    send: (text: string) => Promise<AgentSendResult>
+    send: (text: string, selection?: ModelSelection) => Promise<AgentSendResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
     onEvent: (handler: (event: AgentEvent) => void) => () => void

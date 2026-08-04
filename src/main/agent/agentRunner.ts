@@ -1,9 +1,10 @@
 import type { AgentEvent, AgentMessage, AgentSendResult } from "@shared/contracts/agent"
+import type { ModelSelection } from "@shared/settings"
 import { projectService } from "@/services/projectService"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
-import { resolveDefaultModel } from "./stream/modelFactory"
+import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
 import { createTimeTool } from "./tools/time"
@@ -44,6 +45,8 @@ class AgentRunner {
   private cwd?: string
   private unsubscribe?: () => void
   private eventSink?: (event: AgentEvent) => void
+  // renderer 最近一次请求的模型选择；未设置时回退到默认模型。
+  private requestedModel?: ModelSelection
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
   attachEventSink(sink: (event: AgentEvent) => void): void {
@@ -57,7 +60,9 @@ class AgentRunner {
       return { error: "未找到可用的项目目录。请先在项目管理中创建并绑定文件系统项目。" }
     }
 
-    const modelResult = resolveDefaultModel()
+    const modelResult = this.requestedModel
+      ? resolveModelSelection(this.requestedModel)
+      : resolveDefaultModel()
     if ("error" in modelResult) {
       return { error: modelResult.error }
     }
@@ -95,7 +100,10 @@ class AgentRunner {
   }
 
   // 发送一条用户消息并驱动 Agent 运行。
-  async send(text: string): Promise<AgentSendResult> {
+  async send(text: string, selection?: ModelSelection): Promise<AgentSendResult> {
+    if (selection !== undefined) {
+      this.requestedModel = selection
+    }
     const ready = this.ensureReady()
     if ("error" in ready) {
       return { ok: false, error: ready.error }
