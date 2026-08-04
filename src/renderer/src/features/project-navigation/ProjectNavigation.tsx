@@ -124,12 +124,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
     const id = await createMenuItem(menu, itemType)
     if (id) {
       if (itemType === "project_folder")
-        setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+        setCollapsedProjects((value) => ({ ...value, [menu.id]: true }))
       if (itemType === "prompt" && menu.type === "project_folder") {
-        setCollapsedProjectFolders((value) => ({ ...value, [menu.id]: false }))
+        setCollapsedProjectFolders((value) => ({ ...value, [menu.id]: true }))
       }
       if (itemType === "prompt" && menu.type === "project") {
-        setCollapsedProjects((value) => ({ ...value, [menu.id]: false }))
+        setCollapsedProjects((value) => ({ ...value, [menu.id]: true }))
       }
       if (itemType === "prompt") {
         navigate(`${PAGE_ROUTES.project}?itemId=${id}`)
@@ -174,7 +174,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
     )
     if (projectId) {
       if (projectModal.mode !== "edit") {
-        setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: false }))
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: true }))
       }
       setProjectModal(null)
     }
@@ -186,7 +186,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const handleProjectImport = async (): Promise<void> => {
     const projectId = await importProject()
     if (projectId) {
-      setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: false }))
+      setCollapsedProjects((currentValue) => ({ ...currentValue, [projectId]: true }))
     }
   }
 

@@ -270,7 +270,7 @@ export const ProjectNavigationList = ({
     <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2">
       {projects.length > 0 &&
         projects.map((project) => {
-          const isProjectCollapsed = searchKeyword ? false : Boolean(collapsedProjects[project.id])
+          const isProjectCollapsed = searchKeyword ? false : !Boolean(collapsedProjects[project.id])
 
           return (
             <div key={project.id} className="space-y-1">
@@ -300,7 +300,7 @@ export const ProjectNavigationList = ({
                   {project.projectFolders.map((folder) => {
                     const isFolderCollapsed = searchKeyword
                       ? false
-                      : Boolean(collapsedProjectFolders[folder.id])
+                      : !Boolean(collapsedProjectFolders[folder.id])
 
                     return (
                       <div key={folder.id} className="space-y-0.5">
