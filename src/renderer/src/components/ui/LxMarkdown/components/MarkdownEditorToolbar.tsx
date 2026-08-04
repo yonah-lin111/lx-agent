@@ -60,6 +60,9 @@ const markdownShortcuts = [
   { keys: "Cmd / Ctrl + Shift + V", description: "仅预览" },
 ]
 
+// 分页模式专属快捷键。
+const pageShortcuts = [{ keys: "Cmd / Ctrl + Alt + ← / →", description: "切换上一页 / 下一页" }]
+
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
  */
@@ -85,13 +88,14 @@ export const MarkdownEditorToolbar = ({
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
+    const shortcuts = pageMode ? [...markdownShortcuts, ...pageShortcuts] : markdownShortcuts
     const query = shortcutQuery.trim().toLocaleLowerCase()
-    if (!query) return markdownShortcuts
+    if (!query) return shortcuts
 
-    return markdownShortcuts.filter(({ keys, description }) =>
+    return shortcuts.filter(({ keys, description }) =>
       `${keys} ${description}`.toLocaleLowerCase().includes(query),
     )
-  }, [shortcutQuery])
+  }, [pageMode, shortcutQuery])
 
   /**
    * 将跨平台快捷键转换为当前系统对应的修饰键显示。

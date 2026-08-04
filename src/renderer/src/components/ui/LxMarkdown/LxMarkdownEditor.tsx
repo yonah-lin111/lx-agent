@@ -64,6 +64,7 @@ import type {
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { useLxToast } from "@/components/ui/LxToast"
 import { isMacOS } from "@/lib/platform"
 
 /**
@@ -152,9 +153,12 @@ export const LxMarkdownEditor = ({
   const [activePageIndex, setActivePageIndex] = useState(0)
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
+  const { warning } = useLxToast()
   pagesRef.current = pages
   activePageIndexRef.current = activePageIndex
   onPagesChangeRef.current = onPagesChange
+  const pageModeRef = useRef(pageMode)
+  pageModeRef.current = pageMode
   const activePage = pageMode ? pages?.[activePageIndex] : undefined
   const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
 
@@ -215,6 +219,11 @@ export const LxMarkdownEditor = ({
     onPagesChangeRef.current?.(nextPages)
     setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
   }
+
+  const switchPageRef = useRef(switchPage)
+  const createPageRef = useRef(createPage)
+  switchPageRef.current = switchPage
+  createPageRef.current = createPage
 
   const {
     blockCommandPanel,
@@ -277,6 +286,32 @@ export const LxMarkdownEditor = ({
           const currentMode = previewModeRef.current
           changePreviewMode(currentMode === "preview" ? "edit" : "preview")
         }
+        return
+      }
+
+      if (isModKey && event.altKey) {
+        const key = event.key
+        if (key !== "ArrowLeft" && key !== "ArrowRight") return
+        event.preventDefault()
+        if (!pageModeRef.current || !pagesRef.current?.length) return
+        const currentIndex = activePageIndexRef.current
+
+        if (key === "ArrowLeft") {
+          switchPageRef.current(currentIndex - 1)
+          return
+        }
+
+        if (currentIndex < pagesRef.current.length - 1) {
+          switchPageRef.current(currentIndex + 1)
+          return
+        }
+
+        const currentPage = pagesRef.current[currentIndex]
+        if (currentPage && currentPage.content.trim() === "") {
+          warning("当前页内容为空，请先输入内容再创建下一页")
+          return
+        }
+        createPageRef.current()
       }
     }
 

@@ -94,6 +94,8 @@ export interface LxIconButtonProps
   hoverBgClass?: string
   hoverTextClass?: string
   iconOnly?: boolean
+  // 是否显示悬停背景颜色，默认为显示。
+  showHoverBg?: boolean
   preset?: LxIconButtonPreset
   shape?: LxIconButtonShape
   size?: LxIconButtonSize
@@ -116,6 +118,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       iconOnly = true,
       preset,
       shape = "square",
+      showHoverBg = true,
       size = "medium",
       disabled,
       title,
@@ -127,11 +130,13 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       "flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
     const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
     const sizeStyles = iconOnly ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
-    const finalHoverBg = hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5")
+    const finalHoverBg = showHoverBg
+      ? hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5")
+      : ""
     const finalHoverText =
       hoverTextClass ?? (preset ? PRESET_TEXT_CLASSES[preset] : "hover:text-white")
     const defaultTextClass = preset ? PRESET_DEFAULT_TEXT_CLASSES[preset] : "text-white/45"
-    const highlightedStyles = `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`
+    const highlightedStyles = `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
     const stateStyles = disabled
       ? highlighted
         ? highlightedStyles

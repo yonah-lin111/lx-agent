@@ -10,6 +10,7 @@ import {
 import type React from "react"
 import { useState } from "react"
 
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import type {
   EditingItem,
   ProjectNavigationMenuType,
@@ -29,6 +30,13 @@ const NEXT_PROMPT_STATUS: Record<PromptStatus, PromptStatus> = {
   todo: "in_progress",
   in_progress: "completed",
   completed: "todo",
+}
+
+// 状态对应的中文名称。
+const PROMPT_STATUS_LABELS: Record<PromptStatus, string> = {
+  todo: "待处理",
+  in_progress: "进行中",
+  completed: "已完成",
 }
 
 // 项目列表属性。
@@ -119,18 +127,20 @@ export const ProjectNavigationList = ({
           : "text-white/30"
 
     return (
-      <button
-        type="button"
-        title="切换状态"
+      <LxIconButton
+        size="small"
+        shape="circle"
+        showHoverBg={false}
         aria-label="切换状态"
-        className="-m-0.5 shrink-0 rounded p-0.5 transition-colors hover:bg-white/10"
+        title={{ content: PROMPT_STATUS_LABELS[prompt.status] }}
+        className="-m-0.5 shrink-0"
         onClick={(event) => {
           event.stopPropagation()
           onPromptStatusChange(prompt.id, NEXT_PROMPT_STATUS[prompt.status])
         }}
       >
         <Icon className={`h-3.5 w-3.5 ${className}`} />
-      </button>
+      </LxIconButton>
     )
   }
 
