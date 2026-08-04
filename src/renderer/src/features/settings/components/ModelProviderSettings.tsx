@@ -292,11 +292,24 @@ export const ModelProviderSettings = ({
                     }
                   }}
                 >
-                  {isEnabled ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
-                  ) : (
-                    <Circle className="h-3.5 w-3.5 shrink-0 text-white/30" />
-                  )}
+                  <LxIconButton
+                    size="small"
+                    shape="circle"
+                    showHoverBg={false}
+                    aria-label={isEnabled ? "已启用" : "已停用"}
+                    title={{ content: isEnabled ? "已启用" : "已停用" }}
+                    className="-m-0.5 shrink-0"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      toggleProviderEnabled(providerKey, !isEnabled)
+                    }}
+                  >
+                    {isEnabled ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-white/30" />
+                    )}
+                  </LxIconButton>
                   <span className="min-w-0 flex-1 truncate select-none">
                     {provider.name || provider.id}
                   </span>
@@ -334,7 +347,10 @@ export const ModelProviderSettings = ({
                   }
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
+              <label
+                className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2"
+                onClick={(event) => event.preventDefault()}
+              >
                 传输格式
                 <LxSelect
                   value={selectedProvider.type}

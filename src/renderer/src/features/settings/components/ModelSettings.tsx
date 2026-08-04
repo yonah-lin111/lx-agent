@@ -24,10 +24,16 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
     setSettings((current) => (current ? { ...current, [key]: selection } : current))
   }
 
-  const providerOptions = Object.values(settings.providers).map((provider) => ({
-    value: provider.id,
-    label: provider.name || provider.id,
-  }))
+  const providerOptions = (selection: ModelSelection) =>
+    Object.values(settings.providers)
+      .filter(
+        (provider) =>
+          settings.enabledProviders.includes(provider.id) || provider.id === selection.provider,
+      )
+      .map((provider) => ({
+        value: provider.id,
+        label: provider.name || provider.id,
+      }))
 
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
@@ -43,8 +49,8 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                 <div className="mt-2 grid gap-2">
                   <LxSelect
                     value={selection.provider}
-                    options={providerOptions}
-                    disabled={providerOptions.length === 0}
+                    options={providerOptions(selection)}
+                    disabled={providerOptions(selection).length === 0}
                     onChange={(provider) =>
                       updateSelection(key, {
                         provider,
