@@ -6,7 +6,10 @@ import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
-import type { ChatMessage } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+
+// 工具调用块类型。
+type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
 interface AgentMessageItemProps {
   message: ChatMessage
@@ -68,13 +71,44 @@ export const AgentMessageItem = ({
       ),
     [continuationMessages, message],
   )
-  // 合并同一轮中所有 read 工具调用的文件路径。
+  // 按其他工具或思考切分连续的 read 工具调用。
+  const readToolCallGroups = useMemo(() => {
+    const groups: ToolCallBlock[][] = []
+    const readToolCallIds = new Set<string>()
+
+    for (const { block } of displayBlocks) {
+      if (block.kind === "toolCall" && block.toolName === "read") {
+        readToolCallIds.add(block.toolCallId)
+        const lastGroup = groups.at(-1)
+        if (lastGroup) {
+          lastGroup.push(block)
+        } else {
+          groups.push([block])
+        }
+        continue
+      }
+
+      // read 结果只属于前一个 read 组，不应打断连续 read 的归类。
+      if (block.kind === "toolResult" && readToolCallIds.has(block.toolCallId)) continue
+      if (block.kind === "toolCall" || block.kind === "thinking" || block.kind === "text") {
+        groups.push([])
+      }
+    }
+
+    return groups.filter((group) => group.length > 0)
+  }, [displayBlocks])
   const readToolCalls = useMemo(
+    () => readToolCallGroups.flatMap((group) => group),
+    [readToolCallGroups],
+  )
+  const readToolCallGroupById = useMemo(
     () =>
-      displayBlocks.flatMap(({ block }) =>
-        block.kind === "toolCall" && block.toolName === "read" ? [block] : [],
+      new Map(
+        readToolCallGroups.flatMap((group) =>
+          group.map((block) => [block.toolCallId, group] as const),
+        ),
       ),
-    [displayBlocks],
+    [readToolCallGroups],
   )
   const readToolCallIds = useMemo(
     () => new Set(readToolCalls.map((block) => block.toolCallId)),
@@ -444,11 +478,10 @@ export const AgentMessageItem = ({
             }
             if (block.kind === "toolCall") {
               if (block.toolName === "read") {
-                if (block.toolCallId !== readToolCalls[0]?.toolCallId) return null
+                const readGroup = readToolCallGroupById.get(block.toolCallId)
+                if (!readGroup || block.toolCallId !== readGroup[0]?.toolCallId) return null
 
-                return (
-                  <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={readToolCalls} />
-                )
+                return <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={readGroup} />
               }
 
               const nextBlock = displayBlocks[index + 1]?.block

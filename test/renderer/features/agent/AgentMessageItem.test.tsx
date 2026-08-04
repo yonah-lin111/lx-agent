@@ -118,7 +118,7 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     const expandButton = screen.getByRole("button", { name: "展开文件路径" })
-    expect(screen.getAllByText("read").length).toBe(1)
+    expect(screen.getAllByText("Read").length).toBe(1)
     expect(screen.queryByLabelText("工具执行失败")).toBeNull()
     expect(expandButton.textContent).toContain(
       "/Users/.../agent/pi-main, /Users/.../agent/lx-agent, /Users/.../agent/codex-main",
@@ -127,5 +127,42 @@ describe("AgentMessageItem", () => {
     fireEvent.click(expandButton)
 
     expect(screen.getByRole("button", { name: "折叠文件路径" })).not.toBeNull()
+  })
+
+  it("read 被其他工具打断后应渲染新的 read 分组", () => {
+    const message: ChatMessage = {
+      id: "5",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "read-1",
+          toolName: "read",
+          args: { path: "/tmp/first.ts" },
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "time-1",
+          toolName: "time",
+          args: {},
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "read-2",
+          toolName: "read",
+          args: { path: "/tmp/second.ts" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getAllByText("Read")).toHaveLength(2)
+    expect(screen.getAllByText("/tmp/first.ts")).not.toHaveLength(0)
+    expect(screen.getAllByText("/tmp/second.ts")).not.toHaveLength(0)
   })
 })

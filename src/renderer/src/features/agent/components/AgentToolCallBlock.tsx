@@ -119,7 +119,6 @@ const ToolPathSummary = ({
       aria-expanded={expanded}
       aria-label={expanded ? "折叠文件路径" : "展开文件路径"}
       disabled={!canToggle}
-      title={paths.join(", ")}
       className={`relative block min-w-0 flex-1 p-0 text-left text-white/45 ${
         canToggle ? "cursor-pointer" : "cursor-default"
       }`}
