@@ -1,9 +1,10 @@
-import { ArrowUpDown, Import, Plus, Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import { ArrowUpDown, Import, Locate, Plus, Search } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { useLxToast } from "@/components/ui/LxToast"
+import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import {
   ProjectModal,
   type ProjectModalMode,
@@ -39,6 +40,36 @@ type MenuState = {
 type ProjectModalState =
   | { mode: Extract<ProjectModalMode, "create"> }
   | { mode: Extract<ProjectModalMode, "edit">; project: SidebarProject }
+
+// localStorage 中保存最近操作条目 id 的键。
+const LAST_OPERATED_ITEM_KEY = "project-navigation-last-item"
+
+// 读取最近操作的条目 id。
+const readLastOperatedItemId = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_OPERATED_ITEM_KEY)
+  } catch {
+    return null
+  }
+}
+
+// 保存最近操作的条目 id。
+const saveLastOperatedItemId = (itemId: string): void => {
+  try {
+    localStorage.setItem(LAST_OPERATED_ITEM_KEY, itemId)
+  } catch {
+    // 忽略可能存在的 Storage 写入异常。
+  }
+}
+
+// 清除最近操作的条目 id。
+const clearLastOperatedItemId = (): void => {
+  try {
+    localStorage.removeItem(LAST_OPERATED_ITEM_KEY)
+  } catch {
+    // 忽略可能存在的 Storage 写入异常。
+  }
+}
 
 /**
  * 页面左侧栏，展示可搜索的持久化项目与条目层级。
@@ -254,11 +285,88 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }))
   }
 
+  // 已自动定位过的条目 id，保证每次进入页面仅定位一次。
+  const locatedPromptIdRef = useRef<string>("")
+
+  /**
+   * 定位指定条目：展开其所属项目与所属文件夹，不改变其他节点状态。
+   * 返回是否定位成功。
+   */
+  const locatePrompt = (promptId: string): boolean => {
+    if (!promptId) return false
+
+    for (const project of projects) {
+      if (project.prompts.some((prompt) => prompt.id === promptId)) {
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: true }))
+        return true
+      }
+      const folder = project.projectFolders.find((item) =>
+        item.prompts.some((prompt) => prompt.id === promptId),
+      )
+      if (folder) {
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: true }))
+        setCollapsedProjectFolders((currentValue) => ({ ...currentValue, [folder.id]: true }))
+        return true
+      }
+    }
+
+    return false
+  }
+
+  // 每次进入项目页面（itemId 变化）时自动定位当前操作的条目一次。
+  useEffect(() => {
+    if (!activePromptId || locatedPromptIdRef.current === activePromptId) return
+    if (locatePrompt(activePromptId)) {
+      locatedPromptIdRef.current = activePromptId
+    }
+  }, [activePromptId, projects])
+
+  // 打开条目时记录最近操作的条目 id，用于下次进入页面时恢复。
+  useEffect(() => {
+    if (activePromptId) saveLastOperatedItemId(activePromptId)
+  }, [activePromptId])
+
+  // 每次进入项目页面（无 itemId）时自动打开一次最近操作的条目。
+  useEffect(() => {
+    if (activePromptId) return
+
+    let isCurrent = true
+    const restoreLastOperatedItem = async (): Promise<void> => {
+      const lastItemId = readLastOperatedItemId()
+      if (!lastItemId) return
+
+      try {
+        const items = await projectNavigationApi.listItems()
+        if (!isCurrent) return
+        if (items.some((item) => item.id === lastItemId)) {
+          navigate(`${PAGE_ROUTES.project}?itemId=${lastItemId}`, { replace: true })
+        } else {
+          clearLastOperatedItemId()
+        }
+      } catch {
+        // 恢复失败时保留原状，等待下次进入再尝试。
+      }
+    }
+
+    void restoreLastOperatedItem()
+    return () => {
+      isCurrent = false
+    }
+  }, [activePromptId, navigate])
+
   return (
     <>
       <div className="flex h-full min-w-0 flex-col gap-3">
         <div className="flex h-7 shrink-0 items-center justify-end px-1">
           <div className="flex items-center gap-0.5">
+            <LxIconButton
+              aria-label="定位当前条目"
+              title={{ content: "定位当前条目", placement: "bottom" }}
+              disabled={!activePromptId}
+              onClick={() => locatePrompt(activePromptId)}
+            >
+              <Locate className="h-3.5 w-3.5" />
+            </LxIconButton>
             <LxIconButton
               aria-label="按状态排序"
               title={{ content: "按状态排序", placement: "bottom" }}
