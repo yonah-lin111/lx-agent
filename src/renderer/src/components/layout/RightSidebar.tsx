@@ -1,11 +1,9 @@
 import type { AgentSendContext } from "@shared/contracts/agent"
-import { ChevronLeft, ChevronRight, History, MoreVertical, Plus, Tag, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, History, Plus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxInput } from "@/components/ui/LxInput"
-import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -50,13 +48,11 @@ export const RightSideBar = (): React.JSX.Element => {
     : undefined
   const currentTitle = currentSession?.title ?? "new chat"
   const [titleDraft, setTitleDraft] = useState("")
-  const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false)
-  const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false)
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
 
-  // 提交标题修改：写入 DB 并本地同步，随后关闭标题 tooltip。
+  // 提交标题修改：写入 DB 并本地同步，随后退出编辑态。
   const commitTitle = (): void => {
-    setIsTitleMenuOpen(false)
+    setIsEditingTitle(false)
     if (!currentSessionId) return
     const trimmed = titleDraft.trim()
     if (!trimmed || trimmed === currentTitle) return
@@ -69,15 +65,9 @@ export const RightSideBar = (): React.JSX.Element => {
       })
   }
 
-  // 设置菜单"删除"二次确认：首次点击进入确认态，再次点击才真正删除。
-  const handleDeleteSessionClick = (): void => {
+  // 删除会话：确认 tooltip 确认后删除并新建对话。
+  const handleDeleteSession = (): void => {
     if (!currentSessionId) return
-    if (!isConfirmingDelete) {
-      setIsConfirmingDelete(true)
-      return
-    }
-    setIsConfirmingDelete(false)
-    setIsSessionMenuOpen(false)
     const id = currentSessionId
     void agentApi
       .deleteSession(id)
@@ -190,81 +180,64 @@ export const RightSideBar = (): React.JSX.Element => {
   }, [context])
 
   // 新对话（未入库）不显示标题；仅会话落库（currentSessionId 存在）后展示。
+  const newChatButton = (
+    <LxIconButton
+      aria-label="新建对话"
+      disabled={!currentSessionId}
+      title={{ content: "新建对话", placement: "bottom" }}
+      onClick={() => newChatRef.current?.()}
+    >
+      <Plus className="h-4 w-4" />
+    </LxIconButton>
+  )
+
+  // 会话标题：非编辑态为文本按钮（点击进入编辑），编辑态为行内下划线输入框。
   const titleControls = currentSessionId && (
     <div className="flex min-w-0 shrink-0 items-center">
-      <LxTooltip
-        title="会话标题"
-        content={
-          <LxInput
-            multiline
-            aria-label="会话标题"
-            className="px-1"
-            maxLength={40}
-            rows={2}
-            size="xs"
-            value={titleDraft}
-            onChange={(event) => setTitleDraft(event.target.value)}
-          />
-        }
-        contentClassName="!w-64"
-        onConfirm={commitTitle}
-        onOpenChange={(open) => {
-          setIsTitleMenuOpen(open)
-          if (open) setTitleDraft(currentTitle)
-        }}
-        open={isTitleMenuOpen}
-        placement="bottom"
-      >
-        <LxIconButton aria-label={`会话标题 ${currentTitle}`} size="small">
-          <Tag className="h-3.5 w-3.5" />
-        </LxIconButton>
-      </LxTooltip>
+      {isEditingTitle ? (
+        <input
+          autoFocus
+          aria-label="会话标题"
+          className="w-[16ch] border-b border-white/20 bg-transparent px-1 text-center text-xs text-white/80 outline-none"
+          maxLength={40}
+          value={titleDraft}
+          onBlur={commitTitle}
+          onChange={(event) => setTitleDraft(event.target.value)}
+          onFocus={(event) => event.target.select()}
+          onKeyDown={(event) => {
+            event.stopPropagation()
+            if (event.key === "Escape") {
+              setTitleDraft(currentTitle)
+              setIsEditingTitle(false)
+              return
+            }
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              commitTitle()
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          aria-label={`编辑会话标题 ${currentTitle}`}
+          className="min-w-[4ch] max-w-[14ch] truncate px-1 text-right text-xs text-white/65 hover:text-white/90"
+          title={currentTitle}
+          onClick={() => {
+            setTitleDraft(currentTitle)
+            setIsEditingTitle(true)
+          }}
+        >
+          {currentTitle}
+        </button>
+      )}
     </div>
   )
 
-  const sessionMenu = (
-    <LxTooltip
-      content={
-        <div className="flex min-w-36 flex-col gap-0.5">
-          <LxMenuItem
-            className="disabled:opacity-35"
-            disabled={!currentSessionId}
-            leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
-            onClick={() => {
-              setIsSessionMenuOpen(false)
-              setIsConfirmingDelete(false)
-              newChatRef.current?.()
-            }}
-          >
-            新对话
-          </LxMenuItem>
-          <LxMenuItem
-            active={isConfirmingDelete}
-            className="disabled:opacity-35"
-            danger
-            disabled={!currentSessionId}
-            leading={
-              <Trash2
-                className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
-              />
-            }
-            onClick={handleDeleteSessionClick}
-          >
-            {isConfirmingDelete ? "确认删除" : "删除会话"}
-          </LxMenuItem>
-        </div>
-      }
-      contentClassName="!p-1"
-      onOpenChange={(open) => {
-        setIsSessionMenuOpen(open)
-        if (!open) setIsConfirmingDelete(false)
-      }}
-      open={isSessionMenuOpen}
-      placement="bottom"
-      trigger="click"
-    >
-      <LxIconButton aria-label="会话设置" size="medium">
-        <MoreVertical className="h-3.5 w-3.5" />
+  // 删除会话：内置确认 tooltip，确认后删除。
+  const deleteSessionButton = (
+    <LxTooltip content="是否删除当前会话" onConfirm={handleDeleteSession} placement="bottom">
+      <LxIconButton aria-label="删除会话" disabled={!currentSessionId}>
+        <Trash2 className="h-4 w-4" />
       </LxIconButton>
     </LxTooltip>
   )
@@ -338,7 +311,7 @@ export const RightSideBar = (): React.JSX.Element => {
       ) : (
         <div className="mb-2 flex h-7 w-full items-center justify-between border-b border-white/5 pb-2">
           <div className="flex min-w-0 items-center gap-1">
-            {titleControls}
+            {newChatButton}
 
             <LxTooltip
               content={
@@ -371,16 +344,20 @@ export const RightSideBar = (): React.JSX.Element => {
               </LxIconButton>
             </LxTooltip>
 
-            {sessionMenu}
+            {deleteSessionButton}
           </div>
 
-          <LxIconButton
-            aria-label="折叠右侧栏"
-            title={{ content: "折叠右侧栏", placement: "left" }}
-            onClick={() => setIsCollapsed(true)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </LxIconButton>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+            {titleControls}
+
+            <LxIconButton
+              aria-label="折叠右侧栏"
+              title={{ content: "折叠右侧栏", placement: "top" }}
+              onClick={() => setIsCollapsed(true)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </LxIconButton>
+          </div>
         </div>
       )}
 

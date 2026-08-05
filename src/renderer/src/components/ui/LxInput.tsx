@@ -37,6 +37,8 @@ export interface LxInputProps
   suffix?: React.ReactNode
   size?: LxInputSize
   variant?: LxInputVariant
+  // 是否显示背景颜色，默认显示。
+  transparent?: boolean
   clear?: boolean
   onClear?: () => void
   onBlur?(event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>): void
@@ -66,6 +68,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
       suffix,
       size = "sm",
       variant = "default",
+      transparent = false,
       clear = false,
       disabled,
       value,
@@ -84,7 +87,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const variantClass =
       variant === "simple"
         ? "border-transparent bg-transparent hover:border-transparent focus-within:border-transparent"
-        : "border-white/10 bg-[#212121] hover:border-white/20 focus-within:border-white/25"
+        : `border-white/10 ${transparent ? "bg-transparent" : "bg-[#212121]"} hover:border-white/20 focus-within:border-white/25`
     const placeholderClass =
       variant === "simple" ? "placeholder:text-white/35" : "placeholder:text-white/20"
     const inputType = props.type === "password" ? (showPassword ? "text" : "password") : props.type
