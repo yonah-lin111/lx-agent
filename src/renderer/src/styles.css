@@ -246,8 +246,16 @@ select {
 }
 
 .markdown-preview {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: rgba(255, 255, 255, 0.82);
   line-height: 1.7;
+}
+
+.markdown-preview-content {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .markdown-preview-content > :first-child {

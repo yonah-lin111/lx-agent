@@ -263,7 +263,7 @@ export const RightSideBar = (): React.JSX.Element => {
         isResizing
           ? "transition-none"
           : "transition-[width,min-width,max-width] duration-300 ease-in-out"
-      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center p-1.5" : "p-2"}`}
+      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-2"}`}
       style={isCollapsed ? undefined : { width, minWidth: width, maxWidth: width }}
     >
       {!isCollapsed && (
@@ -309,7 +309,7 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
         </div>
       ) : (
-        <div className="mb-2 flex h-7 w-full items-center justify-between border-b border-white/5 pb-2">
+        <div className="mb-2 flex w-full items-center justify-between border-b border-white/5">
           <div className="flex min-w-0 items-center gap-1">
             {newChatButton}
 

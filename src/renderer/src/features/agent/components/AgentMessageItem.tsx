@@ -492,11 +492,11 @@ export const AgentMessageItem = ({
   }
 
   return (
-    <div className="group flex flex-col gap-1 px-0">
+    <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {assistantError && <div className="text-[13px] text-red-400">{assistantError}</div>}
 
-      <div className="relative rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
-        <div className="flex flex-col gap-1.5">
+      <div className="relative min-w-0 max-w-full rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
+        <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
             if (group.kind === "text") {
               if (!group.block.text) return null

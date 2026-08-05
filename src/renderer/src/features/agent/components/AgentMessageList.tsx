@@ -86,7 +86,7 @@ export const AgentMessageList = ({
   }
 
   return (
-    <div className="custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-1 [scrollbar-gutter:stable]">
+    <div className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]">
       {messageEntries.map(({ message, continuationMessages }) => (
         <AgentMessageItem
           key={message.id}

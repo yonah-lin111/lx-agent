@@ -48,7 +48,7 @@ export const AgentPage = ({
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">
+    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent">
       <AgentMessageList
         messages={messages}
         onSelectPrompt={(prompt) => sendMessage(prompt)}
