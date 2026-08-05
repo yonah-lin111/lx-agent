@@ -8,13 +8,14 @@
 |---|------|------|
 | 1 | Agent 核心运行位置 | **main 进程**：LLM 调用、工具执行、会话状态全部在 main；renderer 纯 UI，经 IPC 订阅事件流 |
 | 2 | 实现路径 | **移植 pi agent-core**（`types.ts` / `agent.ts` / `agent-loop.ts` / `stream-fn.ts`），schema 体系由 typebox 换为 **zod**；LLM 调用经 **AI SDK streamFn 适配器**注入；harness 不搬代码，仅留口（见 `harness.md`） |
-| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；路径类工具只允许 cwd 内路径（越界拒绝）；内置工具对齐 pi coding-agent 八工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`）；写工具经 file-mutation-queue 串行化，bash 仅超时+cwd 限制 |
+| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；路径类工具只允许 cwd 内路径（越界拒绝）；内置工具对齐 pi coding-agent 九工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`）+ 联网搜索 `web_search`；写工具经 file-mutation-queue 串行化，bash 仅超时+cwd 限制 |
 | 3.1 | 工具范围演进 | v1 曾定"首版纯只读（read+time）"；本轮按参考项目升级为**全内置工具集**（含写工具），只读约束取消；安全边界见 harness 信任模型演进 |
+| 3.2 | 联网搜索 | `web_search` 复用 memory-curator-agent 方案：**Exa 优先、Tavily 兜底**，Key 配于 `~/.lx/config.json` 的 `ai.webSearch`，无 Key 保留匿名直连；详见 [websearch.md](./websearch.md) |
 | 4 | 会话历史 | 首版内存级 store，restore 会话后**全量上下文续接**（历史消息含 toolResult 进 LLM）；SQLite 落盘归 harness 阶段 |
 | 5 | 模型装配 | main 内 `modelFactory` 按 settings 配置装配四种 provider；首版固定 `defaultModel`，预留 `setModel` 接口；apiKey 缺失返回明确 error 事件 |
 | 6 | IPC 契约 | `invoke` 发起 + main 经 `webContents.send` 推送流式事件；事件负载直接复用 `AgentEvent`；`agent:abort` 单独 channel |
-| 7 | UI 边界 | 数据层 + 渲染层同步升级：blocks 消息模型渲染（text 打字机 / toolCall 行 / 可折叠 toolResult）；`AgentPage.tsx` 组装逻辑不变 |
-| 8 | 文档 | `design.md` + `harness.md` + `extensions.md` + `mcp.md` + `skills.md` 五篇 |
+| 7 | UI 边界 | 数据层 + 渲染层同步升级：blocks 消息模型渲染（text 打字机 / toolCall 行 / 可折叠 toolResult / MCP / Skill / 联网搜索独立展示块）；`AgentPage.tsx` 组装逻辑不变 |
+| 8 | 文档 | `design.md` + `harness.md` + `extensions.md` + `mcp.md` + `skills.md` + `websearch.md` 六篇 |
 
 ## 2. 架构总览
 
@@ -27,8 +28,10 @@ flowchart TD
     Agent --> Adapter[streamFn 适配器<br/>aiSdkStreamFn.ts]
     Adapter --> AI[AI SDK streamText]
     AI --> Provider[createOpenAI / createAnthropic /<br/>createGoogleGenerativeAI / createOpenAICompatible]
-    Agent --> Tools[ToolRegistry<br/>read/ls/grep/find/write/edit/bash/time/read_skill]
+    Agent --> Tools[ToolRegistry<br/>read/ls/grep/find/write/edit/bash/time/web_search/read_skill]
     Tools --> FS[(node:fs cwd)]
+    Tools --> WebSearch[web_search<br/>Exa MCP + Tavily 兜底]
+    WebSearch --> Ext[(mcp.exa.ai / api.tavily.com)]
     Runner --> MCP[mcpManager<br/>spawn + connect + listTools]
     MCP --> McpSrv[(MCP stdio servers)]
     Runner --> Skills[skillLoader<br/>~/.lx/skills + cwd/.lx/skills]
@@ -231,7 +234,7 @@ type AgentToolResult = { content: (TextContent | ImageContent)[]; details?: unkn
 - `execute` 抛错 → error toolResult，不中断 run。
 - ToolRegistry：`register`（重名拒绝）+ 当前激活集。cwd 在创建工具时注入（read 工具闭包持有 root）。
 
-内置工具（对齐 pi coding-agent，激活集固定八工具）：
+内置工具（对齐 pi coding-agent 九个 + 联网搜索）：
 
 | 工具 | 参数 | 说明 |
 |------|------|------|
@@ -243,6 +246,7 @@ type AgentToolResult = { content: (TextContent | ImageContent)[]; details?: unkn
 | `edit` | `{ path, edits[] }` | 目标文本替换（oldText 唯一 + 互不重叠），返回 diff；经 mutation queue |
 | `bash` | `{ command, timeout? }` | cwd 内执行命令；默认超时 120s；stdout/stderr 合并；超时/abort 杀进程树；输出截断保留尾部 |
 | `time` | `{}` | 返回本机本地时间与时区 |
+| `web_search` | `{ query, numResults?, type? }` | 联网搜索，Exa 优先 / Tavily 兜底；Key 配于 `~/.lx/config.json` 的 `ai.webSearch`；详见 [websearch.md](./websearch.md) |
 
 - 写工具（write/edit）经 `withFileMutationQueue` 对**同一文件**串行化（不同文件并行），executionMode 仍为 parallel。
 - bash 无执行前确认钩子，仅超时 + cwd 限制；确认流程归 harness 信任模型（见 harness.md）。

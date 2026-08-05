@@ -10,6 +10,7 @@ import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallB
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
+import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
@@ -32,6 +33,11 @@ type SkillCallGroup = {
   kind: "skill"
   blocks: ExecutionItem[]
 }
+// Web Search 调用组（连续调用合并）。
+type WebSearchCallGroup = {
+  kind: "webSearch"
+  blocks: ExecutionItem[]
+}
 type ThinkingGroup = {
   kind: "thinking"
   block: Extract<ChatBlock, { kind: "thinking" }>
@@ -43,17 +49,24 @@ type DisplayGroup =
   | ExecutionGroup
   | McpCallGroup
   | SkillCallGroup
+  | WebSearchCallGroup
   | ThinkingGroup
 
 // Skill 调用使用的工具名。
 const SKILL_TOOL_NAME = "read_skill"
 
+// Web Search 调用使用的工具名。
+const WEB_SEARCH_TOOL_NAME = "web_search"
+
 // 判断是否为 Skill 调用。
 const isSkillToolCall = (toolName: string): boolean => toolName === SKILL_TOOL_NAME
 
+// 判断是否为联网搜索调用。
+const isWebSearchToolCall = (toolName: string): boolean => toolName === WEB_SEARCH_TOOL_NAME
+
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，内置工具名不含下划线）。
 const isMcpToolCall = (toolName: string): boolean =>
-  toolName !== SKILL_TOOL_NAME && toolName.includes("_")
+  toolName !== SKILL_TOOL_NAME && !isWebSearchToolCall(toolName) && toolName.includes("_")
 
 // 提取 MCP 服务名（全名首段）。
 const getMcpServerName = (toolName: string): string => {
@@ -183,6 +196,19 @@ export const AgentMessageItem = ({
         } else {
           groups.push({
             kind: "skill",
+            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
+          })
+        }
+        continue
+      }
+      if (isWebSearchToolCall(toolName)) {
+        currentExecution = null
+        const previousGroup = groups.at(-1)
+        if (previousGroup?.kind === "webSearch") {
+          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
+        } else {
+          groups.push({
+            kind: "webSearch",
             blocks: [{ block: item.block, isStreaming: item.isStreaming }],
           })
         }
@@ -597,6 +623,15 @@ export const AgentMessageItem = ({
             if (group.kind === "skill") {
               return (
                 <AgentSkillCallBlock
+                  key={groupIndex}
+                  toolCalls={group.blocks.map(({ block }) => block)}
+                />
+              )
+            }
+
+            if (group.kind === "webSearch") {
+              return (
+                <AgentWebSearchBlock
                   key={groupIndex}
                   toolCalls={group.blocks.map(({ block }) => block)}
                 />

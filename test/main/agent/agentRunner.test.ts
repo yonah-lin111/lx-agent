@@ -143,8 +143,12 @@ describe("agentRunner 持久化", () => {
       "message",
       "message",
     ])
-    // 页面会话缺省最小只读集。
-    expect(JSON.parse(entries[0].payload)).toEqual({ tools: ["read", "time"], mcp: [], skills: [] })
+    // 页面会话缺省最小只读集 + 联网搜索。
+    expect(JSON.parse(entries[0].payload)).toEqual({
+      tools: ["read", "time", "web_search"],
+      mcp: [],
+      skills: [],
+    })
     const messages = entries.slice(1).map((entry) => JSON.parse(entry.payload))
     expect(messages.map((message) => message.role)).toEqual(["user", "assistant"])
   })
@@ -191,7 +195,7 @@ describe("agentRunner 持久化", () => {
 
     const restored = await agentRunner.restoreSession(result.sessionId)
     expect(restored.messages.map((message) => message.role)).toEqual(["user", "assistant"])
-    expect(restored.activeCapabilities.tools).toEqual(["read", "time"])
+    expect(restored.activeCapabilities.tools).toEqual(["read", "time", "web_search"])
   })
 
   it("工具调用写入 agent_call 并关联触发 entry", async () => {

@@ -35,6 +35,7 @@ import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
 import { createTimeTool } from "./tools/time"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
+import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
 
 // Agent 默认系统提示词。
@@ -46,7 +47,17 @@ const DEFAULT_SYSTEM_PROMPT = [
 ].join("\n")
 
 // 可装配的内置工具全集（注册全集，按能力快照激活子集）。
-const ALL_TOOL_NAMES = new Set(["read", "ls", "grep", "find", "write", "edit", "bash", "time"])
+const ALL_TOOL_NAMES = new Set([
+  "read",
+  "ls",
+  "grep",
+  "find",
+  "write",
+  "edit",
+  "bash",
+  "time",
+  "web_search",
+])
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
 const MAX_INJECTED_SKILLS = 50
@@ -76,6 +87,7 @@ const createRegistry = (
   registry.register(createEditTool(cwd))
   registry.register(createBashTool(cwd))
   registry.register(createTimeTool())
+  registry.register(createWebSearchTool())
   // MCP 工具：仅注册允许列表命中的已连接工具。
   const activeMcpNames: string[] = []
   for (const handle of mcpManager.getTools()) {

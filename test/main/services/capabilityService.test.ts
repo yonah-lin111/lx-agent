@@ -21,9 +21,13 @@ afterEach(() => {
 
 describe("capabilityService", () => {
   it("未配置时页面会话回退最小只读集，item 会话回退内置全集", () => {
-    expect(getPageCapabilities("/")).toEqual({ tools: ["read", "time"], mcp: [], skills: [] })
+    expect(getPageCapabilities("/")).toEqual({
+      tools: ["read", "time", "web_search"],
+      mcp: [],
+      skills: [],
+    })
     expect(getItemCapabilities()).toEqual({
-      tools: ["read", "ls", "grep", "find", "write", "edit", "bash", "time"],
+      tools: ["read", "ls", "grep", "find", "write", "edit", "bash", "time", "web_search"],
       mcp: [],
       skills: [],
     })
@@ -47,9 +51,9 @@ describe("capabilityService", () => {
       mcp: ["srv"],
       skills: ["sk"],
     })
-    // 未配置路由仍回退最小只读集。
+    // 未配置路由仍回退最小只读集 + 联网搜索。
     expect(getPageCapabilities("/project")).toEqual({
-      tools: ["read", "time"],
+      tools: ["read", "time", "web_search"],
       mcp: [],
       skills: [],
     })
@@ -67,9 +71,17 @@ describe("capabilityService", () => {
 
   it("配置损坏或非法时回退最小只读集", () => {
     writeFileSync(holder.configPath, "not json", "utf8")
-    expect(getPageCapabilities("/")).toEqual({ tools: ["read", "time"], mcp: [], skills: [] })
+    expect(getPageCapabilities("/")).toEqual({
+      tools: ["read", "time", "web_search"],
+      mcp: [],
+      skills: [],
+    })
 
     writeFileSync(holder.configPath, JSON.stringify({ agent: { pages: { "/": "bad" } } }), "utf8")
-    expect(getPageCapabilities("/")).toEqual({ tools: ["read", "time"], mcp: [], skills: [] })
+    expect(getPageCapabilities("/")).toEqual({
+      tools: ["read", "time", "web_search"],
+      mcp: [],
+      skills: [],
+    })
   })
 })

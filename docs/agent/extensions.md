@@ -1,6 +1,6 @@
 # 扩展点设计：工具 / MCP / Skill
 
-本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、MCP 工具与 Skill 的接入形态。内置工具为对齐 pi coding-agent 的八个：`read` / `bash` / `edit` / `write` / `grep` / `find` / `ls` / `time`；MCP 与 Skill 接入已实现，细节分别见 [mcp.md](./mcp.md) 与 [skills.md](./skills.md)。
+本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、MCP 工具与 Skill 的接入形态。内置工具为对齐 pi coding-agent 的九个：`read` / `bash` / `edit` / `write` / `grep` / `find` / `ls` / `time` / `web_search`；MCP 与 Skill 接入已实现，细节分别见 [mcp.md](./mcp.md) 与 [skills.md](./skills.md)，联网搜索见 [websearch.md](./websearch.md)。
 
 ## 1. AgentTool 契约（对齐 pi）
 
@@ -72,6 +72,7 @@ pi 中 `edit` / `write` 对**同一文件**的写操作经 `withFileMutationQueu
 | `edit` | `{ path: string; edits: { oldText: string; newText: string }[] }` | 目标文本替换。每个 `oldText` 须在原文中唯一且 edits 互不重叠（匹配原始内容，非增量）；成功返回 diff；经 `withFileMutationQueue` 串行化 |
 | `bash` | `{ command: string; timeout?: number }` | 在 cwd 执行 shell 命令。默认超时 `120s`（`timeout` 秒可覆盖）；stdout/stderr 合并流式回传，输出截断保留尾部；超时/abort 时终止整棵进程树（detached） |
 | `time` | `{}` | 返回本机本地时间与时区，供模型感知时间上下文 |
+| `web_search` | `{ query: string; numResults?: number; type?: string }` | 联网搜索公开互联网。Exa 优先、Tavily 兜底；Key 配于 `~/.lx/config.json` 的 `ai.webSearch`；无 Key 保留匿名直连。详见 [websearch.md](./websearch.md) |
 
 说明：
 
@@ -79,6 +80,13 @@ pi 中 `edit` / `write` 对**同一文件**的写操作经 `withFileMutationQueu
 - **输出上限**：`DEFAULT_MAX_LINES = 2000`、`DEFAULT_MAX_BYTES = 50KB`、`GREP_MAX_LINE_LENGTH = 500`；超限结果注明截断。
 - **bash 安全边界**：首版仅强制超时 + cwd 限制，无执行前确认；确认钩子（`beforeToolCall`）见 harness 信任模型演进。
 - **grep/find 混合依赖**：优先系统 `rg`/`fd`（性能），缺失时降级纯 Node；不捆绑二进制，跨平台零部署成本。
+
+## 3.1 联网搜索（web_search）
+
+`web_search` 为只读联网工具：**Exa 优先、Tavily 兜底**，Key 配于 `~/.lx/config.json` 的 `ai.webSearch`（`exaApiKey` / `tavilyApiKey`），无 Key 保留匿名直连；可用 provider 全部失败抛英文失败提示。完整设计见 [websearch.md](./websearch.md)。
+
+- **装配**：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录；`capabilityService` 的 `DEFAULT_ITEM_TOOLS` / `DEFAULT_PAGE_TOOLS` 默认激活，页面允许列表可裁剪。
+- **渲染**：连续 `web_search` 调用在 `AgentMessageItem` 归并为独立分组，由 `AgentWebSearchBlock` 以 `text-emerald-300` 配色展示，仅列搜索条件（`[条件1], [条件2]`），不进入普通工具折叠组。
 
 ## 4. MCP 工具接入（已实现）
 

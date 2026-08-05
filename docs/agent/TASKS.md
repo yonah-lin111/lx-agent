@@ -76,3 +76,26 @@
 - [x] `mcp.md`、`skills.md` 新增。
 - [x] `extensions.md` §4/§5 由"后续"改为"已实现"。
 - [x] `design.md` 模块结构 + 架构图补 MCP/skill 层。
+
+## 6. 联网搜索（web_search）
+
+设计决策见 [websearch.md](./websearch.md)；本文件只列改动项与验收。
+
+### 6.1 实现项
+
+- [x] `src/main/agent/tools/webSearch.ts`：`createWebSearchTool`（zod schema，Exa 优先 / Tavily 兜底，无 Key 匿名直连，匿名被拒 provider 暂停重试，全失败抛英文提示）。
+- [x] 装配：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录 `web_search`；`capabilityService` 的 `DEFAULT_ITEM_TOOLS` / `DEFAULT_PAGE_TOOLS` 默认激活。
+- [x] 渲染：`AgentWebSearchBlock`（emerald 独立配色、不参与普通工具折叠）；`AgentMessageItem` 归并连续 `web_search` 为独立分组（`[条件1], [条件2]` 展示）。
+- [x] 配置：`ai.webSearch` 节点（`exaApiKey` / `tavilyApiKey`）于 `~/.lx/config.json`，`createWebSearchTool` 内 `readWebSearchConfig()` 读取。
+
+### 6.2 验收
+
+- [ ] 配置 `ai.webSearch` Key 后，模型可调 `web_search` 联网并回填回答。
+- [ ] 无 Key 时仍匿名直连（优先 Exa）；两 provider 全失败展示英文 `Web search failed`。
+- [ ] 连续多次搜索渲染为 `[条件1], [条件2]`，不进入普通工具折叠组。
+
+### 6.3 测试
+
+- [x] `test/main/agent/webSearchTool.test.ts`：参数校验、Exa 优先、失败回退、双失败英文提示、无 Key 匿名、匿名 401 暂停重试。
+- [x] `test/renderer/features/agent/AgentMessageItem.test.tsx`：web_search 合并展示、不折叠、全失败提示。
+- [x] 快照断言同步（`agentRunner.test.ts` / `capabilityService.test.ts` 页面/内置能力集）。

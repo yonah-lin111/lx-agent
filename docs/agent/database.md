@@ -152,7 +152,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 ```
 
 - 解析顺序：**session 能力快照优先**（恢复旧会话按其 `active_capabilities` 重建工具集）；`config.json` 只决定**新建会话**的默认装配源。
-- 缺省（未配置某页面）：项目 item 会话 = 内置八工具全集 + 空 mcp/skills；非项目页面 = 最小只读集（`read` / `time`），`cwd = os.homedir()`。
+- 缺省（未配置某页面）：项目 item 会话 = 内置工具全集 + 空 mcp/skills；非项目页面 = 最小只读集 + 联网搜索（`read` / `time` / `web_search`），`cwd = os.homedir()`。
 - 读取实现与 `settingsService` 同级（`getAgentPageCapabilities(route)`），后续 MCP server 列表、skill 注册也挂在此节点演进。
 
 ## 4. 数据流与写入时机

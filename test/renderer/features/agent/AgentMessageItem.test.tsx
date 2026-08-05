@@ -301,4 +301,57 @@ describe("AgentMessageItem", () => {
     expect(screen.getAllByText("/tmp/first.ts")).not.toHaveLength(0)
     expect(screen.getAllByText("/tmp/second.ts")).not.toHaveLength(0)
   })
+
+  it("将连续的同名 web_search 调用合并为括号分隔的搜索条件，且不进入普通工具折叠", () => {
+    const message: ChatMessage = {
+      id: "ws-1",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "ws-1",
+          toolName: "web_search",
+          args: { query: "react hooks 文档" },
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "ws-2",
+          toolName: "web_search",
+          args: { query: "tailwind v4 发布" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByText("Web Search")).not.toBeNull()
+    expect(screen.getByText("[react hooks 文档], [tailwind v4 发布]")).not.toBeNull()
+    // web_search 有独立展示块，不参与普通工具折叠组。
+    expect(screen.queryByRole("button", { name: /Tool Calls/i })).toBeNull()
+  })
+
+  it("web_search 全部调用失败时标注英文失败提示", () => {
+    const message: ChatMessage = {
+      id: "ws-2",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "ws-1",
+          toolName: "web_search",
+          args: { query: "foo" },
+          status: "error",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByText("Web Search")).not.toBeNull()
+    expect(screen.getByText(/Web search failed/)).not.toBeNull()
+  })
 })

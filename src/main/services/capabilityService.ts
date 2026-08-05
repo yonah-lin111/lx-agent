@@ -2,11 +2,21 @@ import { readFileSync } from "node:fs"
 import type { AgentCapabilitySnapshot } from "@shared/contracts/agent"
 import { getConfigPath } from "@/paths"
 
-// 项目 item 会话缺省能力集：内置八工具全集。
-export const DEFAULT_ITEM_TOOLS = ["read", "ls", "grep", "find", "write", "edit", "bash", "time"]
+// 项目 item 会话缺省能力集：内置工具全集（含联网搜索）。
+export const DEFAULT_ITEM_TOOLS = [
+  "read",
+  "ls",
+  "grep",
+  "find",
+  "write",
+  "edit",
+  "bash",
+  "time",
+  "web_search",
+]
 
-// 非项目页面缺省能力集：最小只读集。
-const DEFAULT_PAGE_TOOLS = ["read", "time"]
+// 非项目页面缺省能力集：最小只读集 + 联网搜索。
+const DEFAULT_PAGE_TOOLS = ["read", "time", "web_search"]
 
 // 原始 config.json 的 agent.pages 配置。
 type RawPageCapabilities = {
@@ -50,7 +60,7 @@ export const getPageCapabilities = (route: string): AgentCapabilitySnapshot => {
 }
 
 /**
- * 解析项目 item 会话的默认能力集：内置八工具全集 + 空 mcp/skills。
+ * 解析项目 item 会话的默认能力集：内置工具全集 + 空 mcp/skills。
  */
 export const getItemCapabilities = (): AgentCapabilitySnapshot => ({
   tools: [...DEFAULT_ITEM_TOOLS],
