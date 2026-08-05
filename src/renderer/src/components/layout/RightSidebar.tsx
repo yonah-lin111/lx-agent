@@ -19,12 +19,25 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore, toSessionFilter } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 
+// 展开态最小宽度与相对视口的最大宽度比例。
+const MIN_WIDTH = 380
+const MAX_WIDTH_RATIO = 0.35
+
+// 约束宽度到 [MIN_WIDTH, max(MIN_WIDTH, 40vw)]：视口过小时下限让位于最小宽度。
+const clampWidth = (value: number): number => {
+  const maxWidth = Math.max(MIN_WIDTH, window.innerWidth * MAX_WIDTH_RATIO)
+  return Math.min(Math.max(value, MIN_WIDTH), maxWidth)
+}
+
 /**
  * 右侧栏 (集成 Agent 页面与控制按钮)
  */
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [width, setWidth] = useState<number>(MIN_WIDTH)
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const [searchParams] = useSearchParams()
   const { pathname } = useLocation()
   const [currentProject, setCurrentProject] = useState<{ id: string; path?: string }>()
@@ -113,6 +126,46 @@ export const RightSideBar = (): React.JSX.Element => {
       current = false
     }
   }, [searchParams])
+
+  // 拖拽左侧边缘调整宽度：最小 MIN_WIDTH，最大 40vw（视口过小时下限让位于最小宽度）。
+  const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
+    resizeStartRef.current = { startX: event.clientX, startWidth: width }
+    setIsResizing(true)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handleResizeMove = (event: React.PointerEvent<HTMLDivElement>): void => {
+    const start = resizeStartRef.current
+    if (!start) return
+    const next = start.startWidth - (event.clientX - start.startX)
+    setWidth(clampWidth(next))
+  }
+
+  const handleResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {
+    resizeStartRef.current = null
+    setIsResizing(false)
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  // 拖拽期间禁用文本选中，避免误选侧栏内容。
+  useEffect(() => {
+    if (!isResizing) return
+    const previous = document.body.style.userSelect
+    document.body.style.userSelect = "none"
+    return () => {
+      document.body.style.userSelect = previous
+    }
+  }, [isResizing])
+
+  // 窗口尺寸变化（含全屏切换）后重新约束宽度，避免展开态宽度超出当前 40vw 上限。
+  useEffect(() => {
+    if (isCollapsed) return
+    const handleWindowResize = (): void => {
+      setWidth((current) => clampWidth(current))
+    }
+    window.addEventListener("resize", handleWindowResize)
+    return () => window.removeEventListener("resize", handleWindowResize)
+  }, [isCollapsed])
 
   // 会话归属上下文：项目 item 会话或页面会话（item 解析中返回 undefined，避免误建桶）。
   const context = useMemo<AgentSendContext | undefined>(() => {
@@ -272,12 +325,25 @@ export const RightSideBar = (): React.JSX.Element => {
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,min-width,max-width] duration-300 ease-in-out ${
-        isCollapsed
-          ? "w-10 max-w-10 min-w-10 items-center p-1.5"
-          : "w-[380px] max-w-[380px] min-w-[380px] p-2"
-      }`}
+      className={`relative flex h-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+        isResizing
+          ? "transition-none"
+          : "transition-[width,min-width,max-width] duration-300 ease-in-out"
+      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center p-1.5" : "p-2"}`}
+      style={isCollapsed ? undefined : { width, minWidth: width, maxWidth: width }}
     >
+      {!isCollapsed && (
+        <div
+          aria-label="调整右侧栏宽度"
+          className={`absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize touch-none bg-transparent hover:bg-white/20 active:bg-white/30 ${
+            isResizing ? "bg-white/30" : ""
+          }`}
+          onPointerCancel={handleResizeEnd}
+          onPointerDown={handleResizeStart}
+          onPointerMove={handleResizeMove}
+          onPointerUp={handleResizeEnd}
+        />
+      )}
       {isCollapsed ? (
         <div className="flex flex-col items-center gap-2">
           <LxIconButton
