@@ -22,6 +22,11 @@ export const agentApi = {
     window.api.agent.listSessions(filter),
   restoreSession: (sessionId: string): Promise<AgentRestoredSession> =>
     window.api.agent.restoreSession(sessionId),
+  renameSession: (sessionId: string, title: string): Promise<void> =>
+    window.api.agent.renameSession(sessionId, title),
+  deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
+  deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
+    window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }

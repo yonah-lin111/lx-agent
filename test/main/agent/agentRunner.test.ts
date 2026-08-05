@@ -229,4 +229,131 @@ describe("agentRunner 持久化", () => {
     expect(sessions).toHaveLength(1)
     expect(sessions[0].id).toBe(result.sessionId)
   })
+
+  // 读取会话消息 entries 的原始角色序列。
+  const readRoles = (sessionId: string): string[] =>
+    (
+      holder
+        .db!.prepare(
+          "SELECT payload FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+        )
+        .all(sessionId) as Array<{ payload: string }>
+    ).map((entry) => {
+      const message = JSON.parse(entry.payload) as { role: string }
+      return message.role
+    })
+
+  // 读取会话全部用户消息时间戳。
+  const readUserTimestamps = (sessionId: string): number[] =>
+    (
+      holder
+        .db!.prepare(
+          "SELECT payload FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+        )
+        .all(sessionId) as Array<{ payload: string }>
+    )
+      .map((entry) => JSON.parse(entry.payload) as { role: string; timestamp: number })
+      .filter((message) => message.role === "user")
+      .map((message) => message.timestamp)
+
+  it("renameSession 重命名会话标题", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "你好" }])]
+    const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    agentRunner.renameSession(result.sessionId, "自定义标题")
+    expect(agentRunner.listSessions({ page: "/" })[0].title).toBe("自定义标题")
+  })
+
+  it("deleteSession 级联删除消息与调用", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [
+      assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+      assistant([{ type: "text", text: "完成" }]),
+    ]
+    const result = await agentRunner.send("现在几点", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    agentRunner.deleteSession(result.sessionId)
+    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(0)
+    expect(
+      holder
+        .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
+        .all(result.sessionId),
+    ).toHaveLength(0)
+    expect(
+      holder.db!.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(result.sessionId),
+    ).toHaveLength(0)
+  })
+
+  it("deleteMessageTurn 删除一轮（问题+回答+工具调用），保留后续轮", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [
+      assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+      assistant([{ type: "text", text: "第一轮回答" }]),
+    ]
+    const first = await agentRunner.send("第一问", undefined, { page: "/", cwd: "/tmp" })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    holder.streamResponses = [assistant([{ type: "text", text: "第二轮回答" }])]
+    const second = await agentRunner.send("第二问", undefined, { page: "/", cwd: "/tmp" })
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+    expect(second.sessionId).toBe(first.sessionId)
+
+    // 首轮：user + assistant(toolCall) + toolResult + assistant；次轮：user + assistant。
+    expect(readRoles(second.sessionId)).toEqual([
+      "user",
+      "assistant",
+      "toolResult",
+      "assistant",
+      "user",
+      "assistant",
+    ])
+    const [firstTurnTimestamp] = readUserTimestamps(second.sessionId)
+
+    agentRunner.deleteMessageTurn(second.sessionId, firstTurnTimestamp)
+
+    expect(readRoles(second.sessionId)).toEqual(["user", "assistant"])
+    expect(
+      holder.db!.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(second.sessionId),
+    ).toHaveLength(0)
+    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
+  })
+
+  it("deleteMessageTurn 删除最后一轮后会话清空则整体删除", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "回答" }])]
+    const result = await agentRunner.send("问题", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    agentRunner.deleteMessageTurn(result.sessionId, readUserTimestamps(result.sessionId)[0]!)
+
+    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(0)
+    expect(
+      holder
+        .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
+        .all(result.sessionId),
+    ).toHaveLength(0)
+  })
+
+  it("deleteMessageTurn 未命中时间戳时不动库", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "你好" }])]
+    const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    agentRunner.deleteMessageTurn(result.sessionId, -1)
+    const entries = holder
+      .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
+      .all(result.sessionId)
+    expect(entries).toHaveLength(3) // active_capabilities + user + assistant
+    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
+  })
 })

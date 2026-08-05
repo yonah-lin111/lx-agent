@@ -15,7 +15,13 @@ export const toChatMessage = (
     const text = Array.isArray(message.content)
       ? message.content.map((block) => (block.type === "text" ? block.text : `[图片]`)).join("\n")
       : message.content
-    return { id, role: "user", blocks: [{ kind: "text", text }], isStreaming: false }
+    return {
+      id,
+      role: "user",
+      blocks: [{ kind: "text", text }],
+      isStreaming: false,
+      timestamp: message.timestamp,
+    }
   }
 
   if (message.role === "toolResult") {
@@ -34,6 +40,7 @@ export const toChatMessage = (
         },
       ],
       isStreaming: false,
+      timestamp: message.timestamp,
     }
   }
 
@@ -58,6 +65,7 @@ export const toChatMessage = (
     role: "assistant",
     blocks,
     isStreaming,
+    timestamp: message.timestamp,
     error: message.errorMessage,
   }
 }

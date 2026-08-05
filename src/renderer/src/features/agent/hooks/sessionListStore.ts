@@ -50,4 +50,16 @@ export const sessionListStore = {
     }
     notify()
   },
+
+  // 重命名后本地同步标题。
+  updateSessionTitle(id: string, title: string): void {
+    sessions = sessions.map((session) => (session.id === id ? { ...session, title } : session))
+    notify()
+  },
+
+  // 删除会话后本地移除。
+  removeSession(id: string): void {
+    sessions = sessions.filter((session) => session.id !== id)
+    notify()
+  },
 }

@@ -160,6 +160,10 @@ export interface AgentApi {
     restore: (messages: AgentMessage[]) => Promise<void>
     listSessions: (filter?: AgentSessionFilter) => Promise<AgentSessionSummary[]>
     restoreSession: (sessionId: string) => Promise<AgentRestoredSession>
+    renameSession: (sessionId: string, title: string) => Promise<void>
+    deleteSession: (sessionId: string) => Promise<void>
+    // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
+    deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

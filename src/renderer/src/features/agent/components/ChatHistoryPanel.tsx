@@ -44,9 +44,12 @@ export const ChatHistoryPanel = ({
             return (
               <button
                 key={session.id}
+                disabled={isCurrent}
                 type="button"
-                className={`flex min-h-7 w-full items-center gap-3 rounded-[3px] px-1.5 text-left text-xs hover:bg-white/5 ${
-                  isCurrent ? "bg-white/10 text-white" : "text-white/70"
+                className={`flex min-h-7 w-full items-center gap-3 rounded-[3px] px-1.5 text-left text-xs ${
+                  isCurrent
+                    ? "cursor-default bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/5"
                 }`}
                 onClick={() => onRestore(session.id)}
               >

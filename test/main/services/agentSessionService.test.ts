@@ -183,4 +183,141 @@ describe("agentSessionService", () => {
     expect(service.listSessions({ page: "/" })).toEqual([])
     expect(service.getSession("missing")).toBeUndefined()
   })
+
+  it("renameSession 更新标题并同步 updated_at", () => {
+    insertSession("s1", "/", "2026-01-01T00:00:00.000Z")
+    service.renameSession("s1", "新标题", "2026-02-01T00:00:00.000Z")
+    const session = service.getSession("s1")
+    expect(session?.title).toBe("新标题")
+    expect(session?.updated_at).toBe("2026-02-01T00:00:00.000Z")
+  })
+
+  it("listMessageEntries 只返回消息条目并按 seq 升序", () => {
+    const sessionId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sessionId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "t",
+      cwd: "/",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertEntry({
+      externalId: "e-cap",
+      sessionId,
+      seq: 0,
+      type: "active_capabilities",
+      payload: "{}",
+      createdAt: now,
+    })
+    service.insertEntry({
+      externalId: "e-msg",
+      sessionId,
+      seq: 1,
+      type: "message",
+      payload: "{}",
+      createdAt: now,
+    })
+
+    const messages = service.listMessageEntries(sessionId)
+    expect(messages.map((entry) => entry.external_id)).toEqual(["e-msg"])
+  })
+
+  it("deleteCallsByEntryIds / deleteEntries 批量删除，空列表跳过", () => {
+    const sessionId = randomUUID()
+    const now = new Date().toISOString()
+    service.transaction(() => {
+      service.insertSession({
+        externalId: sessionId,
+        projectItemId: null,
+        projectId: null,
+        page: "/",
+        title: "t",
+        cwd: "/",
+        createdAt: now,
+        updatedAt: now,
+      })
+      service.insertEntry({
+        externalId: "e1",
+        sessionId,
+        seq: 0,
+        type: "message",
+        payload: "{}",
+        createdAt: now,
+      })
+      service.insertEntry({
+        externalId: "e2",
+        sessionId,
+        seq: 1,
+        type: "message",
+        payload: "{}",
+        createdAt: now,
+      })
+      service.insertCall({
+        sessionId,
+        externalId: randomUUID(),
+        entryId: "e1",
+        kind: "builtin",
+        name: "read",
+        status: "success",
+        startedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+    })
+
+    service.deleteCallsByEntryIds(["e1"])
+    expect(
+      database.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(sessionId),
+    ).toHaveLength(0)
+
+    service.deleteEntries(["e1", "e2"])
+    expect(service.listEntries(sessionId)).toHaveLength(0)
+  })
+
+  it("deleteSession 显式顺序级联删除调用、entries 与会话", () => {
+    const sessionId = randomUUID()
+    const now = new Date().toISOString()
+    service.transaction(() => {
+      service.insertSession({
+        externalId: sessionId,
+        projectItemId: null,
+        projectId: null,
+        page: "/",
+        title: "t",
+        cwd: "/",
+        createdAt: now,
+        updatedAt: now,
+      })
+      service.insertEntry({
+        externalId: "e1",
+        sessionId,
+        seq: 0,
+        type: "message",
+        payload: "{}",
+        createdAt: now,
+      })
+      service.insertCall({
+        sessionId,
+        externalId: randomUUID(),
+        entryId: "e1",
+        kind: "builtin",
+        name: "read",
+        status: "success",
+        startedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+    })
+
+    service.deleteSession(sessionId)
+    expect(service.getSession(sessionId)).toBeUndefined()
+    expect(service.listEntries(sessionId)).toEqual([])
+    expect(
+      database.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(sessionId),
+    ).toEqual([])
+  })
 })

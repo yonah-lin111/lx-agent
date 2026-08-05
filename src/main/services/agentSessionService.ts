@@ -124,6 +124,54 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .prepare("SELECT * FROM agent_session_entry WHERE session_id = ? ORDER BY seq ASC")
       .all(sessionId) as AgentSessionEntryRecord[],
 
+  // 只读会话的消息条目（删除一轮对话时定位边界用）。
+  listMessageEntries: (sessionId: string): AgentSessionEntryRecord[] =>
+    getConnection()
+      .prepare(
+        "SELECT * FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+      )
+      .all(sessionId) as AgentSessionEntryRecord[],
+
+  // 重命名会话标题（同步 updated_at）。
+  renameSession(sessionId: string, title: string, updatedAt: string): void {
+    getConnection()
+      .prepare("UPDATE agent_session SET title = ?, updated_at = ? WHERE external_id = ?")
+      .run(title, updatedAt, sessionId)
+  },
+
+  // 批量删除引用指定 entry 的调用记录（entry_id 无级联，必须先删调用再删 entry）。
+  deleteCallsByEntryIds(entryIds: string[]): void {
+    if (entryIds.length === 0) return
+    const placeholders = entryIds.map(() => "?").join(",")
+    getConnection()
+      .prepare(`DELETE FROM agent_call WHERE entry_id IN (${placeholders})`)
+      .run(...entryIds)
+  },
+
+  // 批量删除 entry 行。
+  deleteEntries(entryIds: string[]): void {
+    if (entryIds.length === 0) return
+    const placeholders = entryIds.map(() => "?").join(",")
+    getConnection()
+      .prepare(`DELETE FROM agent_session_entry WHERE external_id IN (${placeholders})`)
+      .run(...entryIds)
+  },
+
+  // 删除会话行本身（调用方须先清理其 entries/calls）。
+  deleteSessionRow(sessionId: string): void {
+    getConnection().prepare("DELETE FROM agent_session WHERE external_id = ?").run(sessionId)
+  },
+
+  // 级联删除整个会话：显式顺序删调用 → entries → 会话（避免 entry_id 无级联导致的 FK 冲突）。
+  deleteSession(sessionId: string): void {
+    const database = getConnection()
+    database.transaction(() => {
+      database.prepare("DELETE FROM agent_call WHERE session_id = ?").run(sessionId)
+      database.prepare("DELETE FROM agent_session_entry WHERE session_id = ?").run(sessionId)
+      database.prepare("DELETE FROM agent_session WHERE external_id = ?").run(sessionId)
+    })()
+  },
+
   insertCall(input: {
     sessionId: string
     externalId: string

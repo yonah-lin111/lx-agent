@@ -5,5 +5,8 @@ export const AGENT_CHANNELS = {
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",
+  renameSession: "agent:renameSession",
+  deleteSession: "agent:deleteSession",
+  deleteMessageTurn: "agent:deleteMessageTurn",
   event: "agent:event",
 } as const

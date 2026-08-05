@@ -1,9 +1,10 @@
-import { Check, ChevronDown, ChevronUp, Copy, Pencil, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
@@ -29,6 +30,7 @@ interface AgentMessageItemProps {
   onStartEdit?: () => void
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
+  onDelete?: (messageId: string) => void
 }
 
 /**
@@ -41,6 +43,7 @@ export const AgentMessageItem = ({
   onStartEdit,
   onCancelEdit,
   onEdit,
+  onDelete,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
@@ -568,6 +571,16 @@ export const AgentMessageItem = ({
                 <Copy className="h-3 w-3" />
               )}
             </LxIconButton>
+            {onDelete && (
+              <LxTooltip
+                content="是否删除当前的QA"
+                onConfirm={() => onDelete(message.id)}
+              >
+                <LxIconButton size="small" aria-label="删除消息">
+                  <Trash2 className="h-3 w-3" />
+                </LxIconButton>
+              </LxTooltip>
+            )}
           </div>
         )}
       </div>

@@ -4,6 +4,9 @@ import type { ModelSelection } from "@shared/settings"
 import { ipcMain, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 
+// 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
+const MAX_TITLE_LENGTH = 40
+
 // 校验消息数组为合法 AgentMessage（IPC 输入边界）。
 const isValidAgentMessage = (value: unknown): value is AgentMessage => {
   if (!value || typeof value !== "object" || !("role" in value)) return false
@@ -100,5 +103,36 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       throw new Error("INVALID_SESSION_ID")
     }
     return agentRunner.restoreSession(sessionId)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.renameSession, (_, sessionId: unknown, title: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    if (typeof title !== "string") {
+      throw new Error("INVALID_SESSION_TITLE")
+    }
+    const trimmed = title.trim()
+    if (!trimmed || trimmed.length > MAX_TITLE_LENGTH) {
+      throw new Error("INVALID_SESSION_TITLE")
+    }
+    agentRunner.renameSession(sessionId, trimmed)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.deleteSession, (_, sessionId: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    agentRunner.deleteSession(sessionId)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.deleteMessageTurn, (_, sessionId: unknown, timestamp: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
+      throw new Error("INVALID_MESSAGE_TIMESTAMP")
+    }
+    agentRunner.deleteMessageTurn(sessionId, timestamp)
   })
 }

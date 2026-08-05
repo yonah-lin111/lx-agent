@@ -64,10 +64,10 @@ const createRegistry = (cwd: string, activeTools: string[]): ToolRegistry => {
   return registry
 }
 
-// 由首条用户消息生成会话标题（对齐 renderer chatHistoryStore.createTitle）。
+// 由首条用户消息生成会话标题（空输入回退默认标题）。
 const createTitle = (text: string): string => {
-  const normalized = (text || "新对话").replace(/\s+/g, " ").trim().slice(0, 40)
-  return normalized || "新对话"
+  const normalized = (text || "new chat").replace(/\s+/g, " ").trim().slice(0, 40)
+  return normalized || "new chat"
 }
 
 // 查询视图落盘截断（复用 truncate.ts 常量）。
@@ -338,6 +338,71 @@ class AgentRunner {
   // 历史会话列表。
   listSessions(filter?: AgentSessionFilter): AgentSessionSummary[] {
     return agentSessionService.listSessions(filter ?? {})
+  }
+
+  // 删除一轮对话：以该轮用户消息 timestamp 定位，删除用户消息 + 后续 AI/toolResult 消息及关联调用。
+  // 删除后会话无剩余消息则整体删除会话（保持"空会话不入库"不变量）。
+  deleteMessageTurn(sessionId: string, userMessageTimestamp: number): void {
+    const parsed = agentSessionService.listMessageEntries(sessionId).map((entry) => {
+      let message: AgentMessage | undefined
+      try {
+        message = JSON.parse(entry.payload) as AgentMessage
+      } catch {
+        // 损坏的 entry 跳过，不参与边界判定。
+      }
+      return { entry, message }
+    })
+
+    let startIndex = -1
+    for (let index = 0; index < parsed.length; index++) {
+      const message = parsed[index].message
+      if (message?.role === "user" && message.timestamp === userMessageTimestamp) {
+        startIndex = index
+        break
+      }
+    }
+    // 未命中（UI-only 幽灵轮）：无需写库。
+    if (startIndex < 0) return
+
+    const turnEntryIds: string[] = []
+    for (let index = startIndex; index < parsed.length; index++) {
+      const { entry, message } = parsed[index]
+      // 遇到下一个用户消息即为一轮结束，不纳入本轮删除范围。
+      if (index > startIndex && message?.role === "user") break
+      turnEntryIds.push(entry.external_id)
+    }
+
+    const now = new Date().toISOString()
+    agentSessionService.transaction(() => {
+      agentSessionService.deleteCallsByEntryIds(turnEntryIds)
+      agentSessionService.deleteEntries(turnEntryIds)
+      if (agentSessionService.listMessageEntries(sessionId).length === 0) {
+        agentSessionService.deleteSessionRow(sessionId)
+        if (this.currentSessionId === sessionId) {
+          this.currentSessionId = null
+          this.sessionBinding = null
+        }
+      } else {
+        agentSessionService.touchSession(sessionId, now)
+      }
+    })
+  }
+
+  // 重命名会话标题（仅当会话存在）。
+  renameSession(sessionId: string, title: string): void {
+    if (!agentSessionService.getSession(sessionId)) return
+    agentSessionService.renameSession(sessionId, title, new Date().toISOString())
+  }
+
+  // 删除整个会话（含消息与调用）；若是当前会话则脱离，避免残留事件写入已删会话。
+  deleteSession(sessionId: string): void {
+    this.discardPendingTurn()
+    this.agent?.abort()
+    if (this.currentSessionId === sessionId) {
+      this.currentSessionId = null
+      this.sessionBinding = null
+    }
+    agentSessionService.deleteSession(sessionId)
   }
 
   // 当前会话上下文。

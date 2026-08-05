@@ -12,7 +12,7 @@ export const createAgentTables = (database: Database.Database): void => {
       project_item_id TEXT,
       project_id TEXT,
       page TEXT,
-      title TEXT NOT NULL DEFAULT '新对话',
+      title TEXT NOT NULL DEFAULT 'new chat',
       cwd TEXT NOT NULL,
       created_at TIMESTAMP NOT NULL,
       updated_at TIMESTAMP NOT NULL,

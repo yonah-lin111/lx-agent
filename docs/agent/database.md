@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS agent_session (
   project_item_id TEXT,                      -- 项目 item 会话的归属（NULL = 非 item 会话）
   project_id TEXT,                           -- 冗余：聚合"某项目全部 item 会话"免 join
   page TEXT,                                 -- 非 item 会话的路由（'/' | '/project' | '/settings' …）
-  title TEXT NOT NULL DEFAULT '新对话',
+  title TEXT NOT NULL DEFAULT 'new chat',
   cwd TEXT NOT NULL,                         -- 工具执行目录（项目页 = project.path；独立页 = 主目录/配置）
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,             -- 每次追加 entry 时同步（供"默认加载最近会话"排序）
@@ -176,6 +176,15 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 1. 项目页：`WHERE project_item_id=? ORDER BY updated_at DESC LIMIT 1`；独立页：`WHERE page=? ORDER BY updated_at DESC LIMIT 1`
 2. 读 entries 按 `seq` 升序 → 重建 `AgentMessage[]` → `restoreMessages`（harness v1 续接逻辑原样复用）
 3. 取最近 `active_capabilities` 快照 → 重建 ToolRegistry 激活集（优先于 config）
+
+**会话重命名**（一个事务）：`UPDATE agent_session SET title=?, updated_at=? WHERE external_id=?`
+
+**会话删除**（一个事务，显式顺序保证 `agent_call.entry_id` 无级联下 FK 不冲突）
+1. `DELETE agent_call WHERE session_id=?`
+2. `DELETE agent_session_entry WHERE session_id=?`
+3. `DELETE agent_session WHERE external_id=?`
+
+**删除一轮对话**（一个事务）：以该轮用户消息 `timestamp` 定位其 `message` entry，删除它到下一个用户消息（不含）之间的全部 entry，及 `entry_id` 落在其内的 `agent_call` 行。删除后会话无剩余消息则连会话行一并删除（维持"空会话不入库"）。`seq` 保留空洞不重排，`nextSeq` 取 `MAX(seq)+1` 不受影响。
 
 写入均由 main 进程 better-sqlite3 同步执行，单写者，无锁冲突。
 

@@ -62,4 +62,16 @@ describe("preload agent API", () => {
     expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.listSessions, { page: "/" })
     expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.restoreSession, "sess-1")
   })
+
+  it("renameSession/deleteSession/deleteMessageTurn 转发参数到共享 channel", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+
+    await api.agent.renameSession("sess-1", "标题")
+    await api.agent.deleteSession("sess-1")
+    await api.agent.deleteMessageTurn("sess-1", 123456)
+
+    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.renameSession, "sess-1", "标题")
+    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.deleteSession, "sess-1")
+    expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.deleteMessageTurn, "sess-1", 123456)
+  })
 })

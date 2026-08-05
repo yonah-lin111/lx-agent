@@ -109,8 +109,7 @@ export const MarkdownEditorToolbar = ({
         <input
           autoFocus
           aria-label="页面名称"
-          className="min-w-[4ch] max-w-[12ch] border-b border-white/20 bg-transparent px-1 text-center text-xs text-white/80 outline-none"
-          style={{ width: `${Math.min(Math.max(pageName.length, 4), 12)}ch` }}
+          className="w-[12ch] border-b border-white/20 bg-transparent px-1 text-left text-xs text-white/80 outline-none"
           title={pageName}
           value={pageName}
           onBlur={() => {

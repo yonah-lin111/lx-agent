@@ -13,6 +13,9 @@ vi.mock("@/agent/agentRunner", () => ({
     restoreMessages: vi.fn(),
     listSessions: vi.fn(),
     restoreSession: vi.fn(),
+    renameSession: vi.fn(),
+    deleteSession: vi.fn(),
+    deleteMessageTurn: vi.fn(),
   },
 }))
 
@@ -76,5 +79,45 @@ describe("agent IPC handlers", () => {
     // 同步抛错（IPC 层会转为拒绝）校验非法输入。
     expect(() => listHandler(undefined, { page: 1 })).toThrow("INVALID_SESSION_FILTER")
     expect(() => restoreHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
+  })
+
+  it("renameSession/deleteSession/deleteMessageTurn handler 校验并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const renameHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.renameSession,
+    )?.[1]
+    const deleteHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.deleteSession,
+    )?.[1]
+    const turnHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.deleteMessageTurn,
+    )?.[1]
+    expect(renameHandler).toBeTypeOf("function")
+    expect(deleteHandler).toBeTypeOf("function")
+    expect(turnHandler).toBeTypeOf("function")
+
+    renameHandler(undefined, "sess-1", "标题")
+    expect(agentRunner.renameSession).toHaveBeenCalledWith("sess-1", "标题")
+
+    deleteHandler(undefined, "sess-1")
+    expect(agentRunner.deleteSession).toHaveBeenCalledWith("sess-1")
+
+    turnHandler(undefined, "sess-1", 123456)
+    expect(agentRunner.deleteMessageTurn).toHaveBeenCalledWith("sess-1", 123456)
+
+    // 非法输入同步抛错。
+    expect(() => renameHandler(undefined, "", "标题")).toThrow("INVALID_SESSION_ID")
+    expect(() => renameHandler(undefined, "sess-1", "  ")).toThrow("INVALID_SESSION_TITLE")
+    expect(() => renameHandler(undefined, "sess-1", "x".repeat(41))).toThrow(
+      "INVALID_SESSION_TITLE",
+    )
+    expect(() => deleteHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
+    expect(() => turnHandler(undefined, "", 1)).toThrow("INVALID_SESSION_ID")
+    expect(() => turnHandler(undefined, "sess-1", "abc")).toThrow("INVALID_MESSAGE_TIMESTAMP")
   })
 })

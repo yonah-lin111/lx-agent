@@ -18,6 +18,11 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.listSessions, filter),
   restoreSession: (sessionId: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.restoreSession, sessionId),
+  renameSession: (sessionId: string, title: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.renameSession, sessionId, title),
+  deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
+  deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

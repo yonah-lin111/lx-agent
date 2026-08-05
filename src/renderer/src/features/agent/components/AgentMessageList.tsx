@@ -9,6 +9,7 @@ interface AgentMessageListProps {
   messages: ChatMessage[]
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
+  onDeleteMessage?: (messageId: string) => void
 }
 
 // AI 消息与同一轮后续消息的展示条目。
@@ -42,6 +43,7 @@ export const AgentMessageList = ({
   messages,
   onSelectPrompt,
   onEditMessage,
+  onDeleteMessage,
 }: AgentMessageListProps): React.JSX.Element => {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
@@ -101,6 +103,7 @@ export const AgentMessageList = ({
             onEditMessage?.(id, newContent)
             setEditingMessageId(null)
           }}
+          onDelete={onDeleteMessage}
         />
       ))}
       <div ref={bottomRef} />
