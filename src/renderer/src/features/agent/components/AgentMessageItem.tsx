@@ -5,6 +5,8 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
+import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
@@ -14,14 +16,49 @@ import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 type ExecutionBlock = ToolCallBlock
+type ExecutionItem = { block: ExecutionBlock; isStreaming: boolean }
 type ExecutionGroup = {
   kind: "execution"
-  blocks: Array<{ block: ExecutionBlock; isStreaming: boolean }>
+  blocks: ExecutionItem[]
+}
+// MCP 调用组（同服务名连续合并）。
+type McpCallGroup = {
+  kind: "mcp"
+  serverName: string
+  blocks: ExecutionItem[]
+}
+// Skill 调用组（连续调用合并）。
+type SkillCallGroup = {
+  kind: "skill"
+  blocks: ExecutionItem[]
 }
 type ThinkingGroup = {
   kind: "thinking"
   block: Extract<ChatBlock, { kind: "thinking" }>
   isStreaming: boolean
+}
+// 展示分组联合类型。
+type DisplayGroup =
+  | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
+  | ExecutionGroup
+  | McpCallGroup
+  | SkillCallGroup
+  | ThinkingGroup
+
+// Skill 调用使用的工具名。
+const SKILL_TOOL_NAME = "read_skill"
+
+// 判断是否为 Skill 调用。
+const isSkillToolCall = (toolName: string): boolean => toolName === SKILL_TOOL_NAME
+
+// 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，内置工具名不含下划线）。
+const isMcpToolCall = (toolName: string): boolean =>
+  toolName !== SKILL_TOOL_NAME && toolName.includes("_")
+
+// 提取 MCP 服务名（全名首段）。
+const getMcpServerName = (toolName: string): string => {
+  const separatorIndex = toolName.indexOf("_")
+  return separatorIndex > 0 ? toolName.slice(0, separatorIndex) : toolName
 }
 
 interface AgentMessageItemProps {
@@ -120,11 +157,7 @@ export const AgentMessageItem = ({
     [mergeableToolCallGroups],
   )
   const executionGroups = useMemo(() => {
-    const groups: Array<
-      | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
-      | ExecutionGroup
-      | ThinkingGroup
-    > = []
+    const groups: DisplayGroup[] = []
     let currentExecution: ExecutionGroup | null = null
 
     for (const item of displayBlocks) {
@@ -140,6 +173,36 @@ export const AgentMessageItem = ({
       }
       if (item.block.kind === "toolResult") continue
       if (item.block.kind !== "toolCall") continue
+
+      const toolName = item.block.toolName
+      if (isSkillToolCall(toolName)) {
+        currentExecution = null
+        const previousGroup = groups.at(-1)
+        if (previousGroup?.kind === "skill") {
+          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
+        } else {
+          groups.push({
+            kind: "skill",
+            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
+          })
+        }
+        continue
+      }
+      if (isMcpToolCall(toolName)) {
+        currentExecution = null
+        const serverName = getMcpServerName(toolName)
+        const previousGroup = groups.at(-1)
+        if (previousGroup?.kind === "mcp" && previousGroup.serverName === serverName) {
+          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
+        } else {
+          groups.push({
+            kind: "mcp",
+            serverName,
+            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
+          })
+        }
+        continue
+      }
 
       if (!currentExecution) {
         currentExecution = { kind: "execution", blocks: [] }
@@ -518,6 +581,24 @@ export const AgentMessageItem = ({
                   key={groupIndex}
                   content={group.block.text}
                   isGenerating={group.isStreaming && groupIndex === executionGroups.length - 1}
+                />
+              )
+            }
+
+            if (group.kind === "mcp") {
+              return (
+                <AgentMcpCallBlock
+                  key={groupIndex}
+                  toolCalls={group.blocks.map(({ block }) => block)}
+                />
+              )
+            }
+
+            if (group.kind === "skill") {
+              return (
+                <AgentSkillCallBlock
+                  key={groupIndex}
+                  toolCalls={group.blocks.map(({ block }) => block)}
                 />
               )
             }
