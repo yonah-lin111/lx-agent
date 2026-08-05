@@ -362,9 +362,14 @@ select {
 .markdown-preview h5,
 .markdown-preview h6 {
   margin: 1.25em 0 0.55em;
-  color: #ffffff;
+  color: #e5e5e5;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.markdown-preview strong,
+.markdown-preview b {
+  color: #d4d4d4;
 }
 
 .markdown-preview h1 {
@@ -691,6 +696,8 @@ select {
 
 .markdown-preview table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
@@ -699,11 +706,12 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0.45em 0.65em;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .markdown-preview th {
   background: rgba(255, 255, 255, 0.06);
-  color: #ffffff;
+  color: #d4d4d4;
 }
 
 /* AI 等待输出：白色光点液态抖动 */
