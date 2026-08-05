@@ -189,7 +189,7 @@ describe("agentRunner 持久化", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    const restored = agentRunner.restoreSession(result.sessionId)
+    const restored = await agentRunner.restoreSession(result.sessionId)
     expect(restored.messages.map((message) => message.role)).toEqual(["user", "assistant"])
     expect(restored.activeCapabilities.tools).toEqual(["read", "time"])
   })

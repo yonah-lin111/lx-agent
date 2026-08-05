@@ -14,7 +14,7 @@
 | 5 | 模型装配 | main 内 `modelFactory` 按 settings 配置装配四种 provider；首版固定 `defaultModel`，预留 `setModel` 接口；apiKey 缺失返回明确 error 事件 |
 | 6 | IPC 契约 | `invoke` 发起 + main 经 `webContents.send` 推送流式事件；事件负载直接复用 `AgentEvent`；`agent:abort` 单独 channel |
 | 7 | UI 边界 | 数据层 + 渲染层同步升级：blocks 消息模型渲染（text 打字机 / toolCall 行 / 可折叠 toolResult）；`AgentPage.tsx` 组装逻辑不变 |
-| 8 | 文档 | `design.md` + `harness.md` + `extensions.md` 三篇 |
+| 8 | 文档 | `design.md` + `harness.md` + `extensions.md` + `mcp.md` + `skills.md` 五篇 |
 
 ## 2. 架构总览
 
@@ -27,9 +27,13 @@ flowchart TD
     Agent --> Adapter[streamFn 适配器<br/>aiSdkStreamFn.ts]
     Adapter --> AI[AI SDK streamText]
     AI --> Provider[createOpenAI / createAnthropic /<br/>createGoogleGenerativeAI / createOpenAICompatible]
-    Agent --> Tools[ToolRegistry<br/>read/ls/grep/find/write/edit/bash/time]
+    Agent --> Tools[ToolRegistry<br/>read/ls/grep/find/write/edit/bash/time/read_skill]
     Tools --> FS[(node:fs cwd)]
-    Runner --> Settings[settingsService<br/>模型 provider 配置]
+    Runner --> MCP[mcpManager<br/>spawn + connect + listTools]
+    MCP --> McpSrv[(MCP stdio servers)]
+    Runner --> Skills[skillLoader<br/>~/.lx/skills + cwd/.lx/skills]
+    Skills --> SkillFiles[(SKILL.md)]
+    Runner --> Settings[settingsService<br/>模型 provider 配置 + agent.mcp]
     Agent -->|AgentEvent| Runner
     Runner -->|webContents.send agent:event| UI
 ```
@@ -71,6 +75,12 @@ src/main/agent/                  # 仅主进程可运行的 Agent 能力（stand
     edit.ts                      # edit 工具：目标文本替换（经 mutation queue）
     bash.ts                      # bash 工具：命令执行（超时 + cwd 限制 + 进程树清理）
     time.ts                      # time 工具：当前时间
+  mcp/                           # MCP 工具接入（见 mcp.md）
+    mcpManager.ts                # server 生命周期：spawn stdio / connect / listTools / 状态 / 断开
+    jsonSchemaToZod.ts           # MCP JSON Schema → zod（无损受限，兜底宽松 schema）
+  skills/                        # Skill 接入（见 skills.md）
+    skillLoader.ts               # ~/.lx/skills + cwd/.lx/skills 加载 / 校验 / 冲突 user 优先 / 缓存
+    readSkillTool.ts             # read_skill(name) 工具：查表读正文，不收路径参数
   agentRunner.ts                 # 会话级装配：Agent + 工具 + 事件转发 → IPC 事件的边界
 src/shared/
   contracts/agent.ts             # 跨进程 DTO：AgentEvent 传输负载、send 请求类型

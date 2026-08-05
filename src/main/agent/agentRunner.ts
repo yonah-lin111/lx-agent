@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import type {
   AgentCapabilitySnapshot,
@@ -15,6 +16,14 @@ import { getItemCapabilities, getPageCapabilities } from "@/services/capabilityS
 import { projectService } from "@/services/projectService"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
+import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
+import { createReadSkillTool } from "./skills/readSkillTool"
+import {
+  formatSkillsForPrompt,
+  type LoadedSkill,
+  skillLoader,
+  stripFrontmatter,
+} from "./skills/skillLoader"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { createBashTool } from "./tools/bash"
@@ -39,6 +48,9 @@ const DEFAULT_SYSTEM_PROMPT = [
 // 可装配的内置工具全集（注册全集，按能力快照激活子集）。
 const ALL_TOOL_NAMES = new Set(["read", "ls", "grep", "find", "write", "edit", "bash", "time"])
 
+// skill 注入上限（按 name 排序取前 N；描述注入时截断）。
+const MAX_INJECTED_SKILLS = 50
+
 // 解析 Agent 会话 cwd：最近更新的文件系统项目目录。
 const resolveCwd = (): string | undefined => {
   const projects = projectService.listProjects()
@@ -48,8 +60,13 @@ const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
-// 装配会话工具集：注册八工具全集，按能力快照激活。
-const createRegistry = (cwd: string, activeTools: string[]): ToolRegistry => {
+// 装配会话工具集：注册八工具全集 + MCP 包装工具 + read_skill，按能力集激活。
+const createRegistry = (
+  cwd: string,
+  activeTools: string[],
+  mcpToolNames: string[],
+  withReadSkill: boolean,
+): ToolRegistry => {
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd))
   registry.register(createLsTool(cwd))
@@ -59,8 +76,23 @@ const createRegistry = (cwd: string, activeTools: string[]): ToolRegistry => {
   registry.register(createEditTool(cwd))
   registry.register(createBashTool(cwd))
   registry.register(createTimeTool())
+  // MCP 工具：仅注册允许列表命中的已连接工具。
+  const activeMcpNames: string[] = []
+  for (const handle of mcpManager.getTools()) {
+    if (mcpToolNames.includes(handle.fullName)) {
+      registry.register(wrapMcpTool(handle.server, handle.def, handle.client, handle.timeout))
+      activeMcpNames.push(handle.fullName)
+    }
+  }
+  if (withReadSkill) {
+    registry.register(createReadSkillTool(cwd))
+  }
   // 配置可能引用未注册工具，过滤后激活。
-  registry.setActive(activeTools.filter((name) => ALL_TOOL_NAMES.has(name)))
+  registry.setActive([
+    ...activeTools.filter((name) => ALL_TOOL_NAMES.has(name)),
+    ...activeMcpNames,
+    ...(withReadSkill ? ["read_skill"] : []),
+  ])
   return registry
 }
 
@@ -127,6 +159,11 @@ class AgentRunner {
   private sessionBinding: SessionBinding | null = null
   // 当前会话的能力快照（激活工具集；随会话冻结）。
   private activeCapabilities: string[] = getItemCapabilities().tools
+  // 当前会话生效的 MCP 工具（全名）与注入 skill（随能力快照刷新）。
+  private activeMcp: string[] = []
+  private activeSkills: LoadedSkill[] = []
+  // 最近一次装配的能力指纹；cwd/模型不变且能力未变时跳过重建。
+  private builtSignature = ""
 
   // 当前 turn 的落盘输入；run 开始时捕获。
   private sessionInput: PendingSessionInput | null = null
@@ -160,19 +197,31 @@ class AgentRunner {
       return { error: modelResult.error }
     }
 
+    // 能力指纹：内置激活集 + MCP 工具 + 注入 skill 任一变化即重建装配。
+    const capabilitiesSignature = JSON.stringify([
+      this.activeCapabilities,
+      this.activeMcp,
+      this.activeSkills.map((skill) => skill.name),
+    ])
     if (
       !this.agent ||
       !this.registry ||
       this.cwd !== cwd ||
+      capabilitiesSignature !== this.builtSignature ||
       this.agent.state.model.provider !== modelResult.model.provider ||
       this.agent.state.model.id !== modelResult.model.id
     ) {
-      const registry = createRegistry(cwd, this.activeCapabilities)
+      const registry = createRegistry(
+        cwd,
+        this.activeCapabilities,
+        this.activeMcp,
+        this.activeSkills.length > 0,
+      )
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
         streamFn: createAiSdkStreamFn(),
         initialState: {
-          systemPrompt: DEFAULT_SYSTEM_PROMPT,
+          systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
           model: modelResult.model,
           tools: registry.getActive(),
         },
@@ -188,6 +237,7 @@ class AgentRunner {
       this.agent = agent
       this.registry = registry
       this.cwd = cwd
+      this.builtSignature = capabilitiesSignature
     }
 
     return { agent: this.agent }
@@ -213,17 +263,56 @@ class AgentRunner {
     return getPageCapabilities(binding.page ?? "/")
   }
 
-  // 绑定变化时切换会话：解析能力快照与 cwd，标记清空上下文。
+  // 绑定变化时切换会话：解析能力快照、MCP 工具与注入 skill 与 cwd，标记清空上下文。
   private prepareBinding(context: AgentSendContext): void {
     const binding = this.bindingFromContext(context)
     const changed = !this.currentSessionId || !this.isSameBinding(this.sessionBinding, binding)
     this.targetBinding = binding
     if (changed) {
-      this.activeCapabilities = this.resolveCapabilities(binding).tools
+      const snapshot = this.resolveCapabilities(binding)
+      this.activeCapabilities = snapshot.tools
       const cwd = context.cwd ?? (binding.projectItemId ? resolveCwd() : homedir())
       if (cwd) this.requestedCwd = cwd
+      this.activeMcp = this.resolveMcpTools(binding, snapshot)
+      this.activeSkills = cwd ? this.resolveInjectedSkills(binding, snapshot, cwd) : []
     }
     this.bindingChanged = changed
+  }
+
+  // MCP 激活集：item 会话全量（配置即启用），页面会话按允许列表过滤。
+  private resolveMcpTools(binding: SessionBinding, snapshot: AgentCapabilitySnapshot): string[] {
+    const connected = mcpManager.getTools().map((handle) => handle.fullName)
+    if (binding.projectItemId) return connected
+    return snapshot.mcp.filter((name) => connected.includes(name))
+  }
+
+  // skill 注入清单：item 会话全量可用，页面会话按允许列表过滤；排序后截断至注入上限。
+  private resolveInjectedSkills(
+    binding: SessionBinding,
+    snapshot: AgentCapabilitySnapshot,
+    cwd: string,
+  ): LoadedSkill[] {
+    const allowlist = binding.projectItemId ? undefined : snapshot.skills
+    const available = skillLoader.load(cwd).filter((skill) => !skill.disableModelInvocation)
+    const filtered = allowlist
+      ? available.filter((skill) => allowlist.includes(skill.name))
+      : available
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
+  }
+
+  // 显式触发 /skill:<name> args → 正文块（strip frontmatter）+ args；未命中原样透传。
+  private _expandSkillCommand(text: string): string {
+    if (!text.startsWith("/skill:")) return text
+    const spaceIndex = text.indexOf(" ")
+    const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
+    const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim()
+    const cwd = this.cwd
+    if (!cwd) return text
+    const skill = skillLoader.get(skillName, cwd)
+    if (!skill) return text
+    const body = stripFrontmatter(readFileSync(skill.filePath, "utf8")).trim()
+    const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`
+    return args ? `${skillBlock}\n\n${args}` : skillBlock
   }
 
   // 发送一条用户消息并驱动 Agent 运行。
@@ -235,6 +324,8 @@ class AgentRunner {
     if (selection !== undefined) {
       this.requestedModel = selection
     }
+    // MCP server 连接（幂等；配置空时立即返回）。
+    await mcpManager.ensureConnected()
     if (context !== undefined) {
       this.prepareBinding(context)
     }
@@ -250,9 +341,11 @@ class AgentRunner {
     if (this.bindingChanged) {
       agent.state.messages = []
     }
+    // 显式 /skill: 触发在 main 侧展开正文（未命中原样透传）。
+    const expanded = this._expandSkillCommand(text)
     this.beginSessionTurn(text)
     try {
-      await agent.prompt(text)
+      await agent.prompt(expanded)
     } catch (error) {
       this.discardPendingTurn()
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
@@ -281,8 +374,8 @@ class AgentRunner {
     }
   }
 
-  // 恢复历史会话：从 DB 读取 entries 重建上下文、能力快照与模型。
-  restoreSession(sessionId: string): AgentRestoredSession {
+  // 恢复历史会话：从 DB 读取 entries 重建上下文、能力快照与模型；MCP/skill 按当前配置重载。
+  async restoreSession(sessionId: string): Promise<AgentRestoredSession> {
     const session = agentSessionService.getSession(sessionId)
     if (!session) {
       throw new Error("SESSION_NOT_FOUND")
@@ -291,6 +384,7 @@ class AgentRunner {
 
     this.discardPendingTurn()
     this.agent?.abort()
+    await mcpManager.ensureConnected()
     this.currentSessionId = session.external_id
     this.sessionBinding = {
       projectItemId: session.project_item_id ?? undefined,
@@ -299,6 +393,11 @@ class AgentRunner {
     }
     this.activeCapabilities = capabilities.tools
     this.requestedCwd = session.cwd
+    // MCP/skill 按当前配置重载（外部资源）；快照仅展示/校验。
+    const isItem = Boolean(session.project_item_id)
+    const snapshot = isItem ? getItemCapabilities() : getPageCapabilities(session.page ?? "/")
+    this.activeMcp = this.resolveMcpTools(this.sessionBinding, snapshot)
+    this.activeSkills = this.resolveInjectedSkills(this.sessionBinding, snapshot, session.cwd)
 
     const ready = this.ensureReady()
     if ("error" in ready) {
@@ -429,7 +528,11 @@ class AgentRunner {
       binding: this.targetBinding ?? this.sessionBinding ?? {},
       cwd: this.cwd ?? "",
       title: createTitle(text),
-      capabilities: { tools: [...this.activeCapabilities], mcp: [], skills: [] },
+      capabilities: {
+        tools: [...this.activeCapabilities],
+        mcp: [...this.activeMcp],
+        skills: this.activeSkills.map((skill) => skill.name),
+      },
     }
   }
 

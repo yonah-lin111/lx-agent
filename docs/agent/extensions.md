@@ -1,6 +1,6 @@
 # 扩展点设计：工具 / MCP / Skill
 
-本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、未来 MCP 工具与 Skill 的接入形态。当前内置工具为对齐 pi coding-agent 的八个：`read` / `bash` / `edit` / `write` / `grep` / `find` / `ls` / `time`，其余为扩展留口。
+本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、MCP 工具与 Skill 的接入形态。内置工具为对齐 pi coding-agent 的八个：`read` / `bash` / `edit` / `write` / `grep` / `find` / `ls` / `time`；MCP 与 Skill 接入已实现，细节分别见 [mcp.md](./mcp.md) 与 [skills.md](./skills.md)。
 
 ## 1. AgentTool 契约（对齐 pi）
 
@@ -50,7 +50,7 @@ interface ToolRegistry {
 
 - 注册表随 runner 创建，cwd 来自当前激活项目目录（`selectProjectDirectory` 选择的目录）。
 - 首版激活集固定为 `["read", "bash", "edit", "write", "grep", "find", "ls", "time"]`；`setActive` 为后续"工具开关/角色切换"预留。
-- 新增内置工具：在 `src/main/agent/tools/` 下建文件 + 在 runner 装配处注册，两处改动即生效。
+- 新增内置工具：在 `src/main/agent/tools/` 下建文件 + 在 runner 装配处注册，两处改动即生效；skill 专用工具（`read_skill`）在 `src/main/agent/skills/` 下，同样在 runner 装配处注册。
 
 ## 2.1 写并发控制：file-mutation-queue
 
@@ -80,18 +80,18 @@ pi 中 `edit` / `write` 对**同一文件**的写操作经 `withFileMutationQueu
 - **bash 安全边界**：首版仅强制超时 + cwd 限制，无执行前确认；确认钩子（`beforeToolCall`）见 harness 信任模型演进。
 - **grep/find 混合依赖**：优先系统 `rg`/`fd`（性能），缺失时降级纯 Node；不捆绑二进制，跨平台零部署成本。
 
-## 4. MCP 工具接入（后续）
+## 4. MCP 工具接入（已实现）
 
-项目已依赖 `@modelcontextprotocol/sdk`，MCP 工具将以 **Adapter 模式**包装为 `AgentTool`，无需改动 loop：
+项目已依赖 `@modelcontextprotocol/sdk`，MCP 工具以 **Adapter 模式**包装为 `AgentTool`，无需改动 loop。完整设计见 [mcp.md](./mcp.md)。
 
 ```ts
 // 伪代码：MCP tool → AgentTool 适配
 function wrapMcpTool(server: McpClient, tool: McpToolDefinition, cwd: string): AgentTool {
   return {
-    name: tool.name,
+    name: `${sanitize(server)}_${sanitize(tool.name)}`,   // 一律前缀化，防冲突
     label: tool.name,
     description: tool.description,
-    inputSchema: jsonSchemaToZod(tool.inputSchema),   // 仅首版只读工具可用；参数未知时退化为宽松 schema
+    inputSchema: jsonSchemaToZod(tool.inputSchema),   // 无法无损转换的 schema 降级宽松 schema
     execute: async (toolCallId, params, signal) => {
       const result = await server.callTool(tool.name, params, { signal })
       return { content: [{ type: "text", text: result.text }] }
@@ -100,21 +100,22 @@ function wrapMcpTool(server: McpClient, tool: McpToolDefinition, cwd: string): A
 }
 ```
 
-接入形态（按演进顺序）：
+接入形态（v1 已落地）：
 
 1. **本地 stdio MCP server**（main 进程 spawn 子进程）：工具名冲突时前缀化（`<server>.<tool>`）；cwd 传入 server。
-2. **MCP 工具允许列表**：仅显式允许的工具进入激活集，防止任意工具被模型调用。
-3. **MCP hook 挂接**：敏感工具（写操作）经 `beforeToolCall` 走确认流程（见 harness.md 信任模型）。
+2. **MCP 工具允许列表**：item 会话配置即全量启用；`agent.pages[route].mcp` 允许列表覆盖页面会话。
+3. **MCP hook 挂接**：敏感工具（写操作）经 `beforeToolCall` 走确认流程（见 harness.md 信任模型），v1 与内置工具一致无门控。
 
 约束：MCP 工具 schema 是 JSON Schema，zod v4 提供 `z.toJSONSchema`/JSON schema 解析能力；无法无损转换的 schema（如 oneOf）降级为宽松 `z.record(z.unknown())` + 运行时透传。
 
-## 5. Skill 接入（后续）
+## 5. Skill 接入（已实现）
 
-Skill = 可复用指令包（system prompt 片段 + 可选工具集 + 可选上下文注入）。首版不实现，预留位点：
+Skill = 可复用指令包（system prompt 片段 + 可选工具集 + 可选上下文注入）。完整设计见 [skills.md](./skills.md)。
 
-- **注入位点**：`AgentOptions` 的 `systemPrompt` 拼接 + `transformContext`（向上下文注入 skill 指令消息）。
-- **注册形态**：skill 目录约定（如 `skills/<name>/SKILL.md` + `tools.ts`），加载器产出 `{ systemPromptFragment, tools }`，装配进 runner。
-- **触发方式**：`Agent.promptFromTemplate` 位点（pi 语义）或用户消息前缀匹配，二选一，演进时定。
+- **格式**：对齐 pi —— `<skill>/SKILL.md`（目录含 SKILL.md 即 skill 根），frontmatter 含 `name` / `description`（必填）/ `disable-model-invocation`；双来源 `~/.lx/skills`（user）+ `<cwd>/.lx/skills`（project），同名冲突 user 优先。
+- **注入位点**：skill 的 `name + description`（XML `<available_skills>`）拼入 `Agent` 的 `systemPrompt`（创建时一次性拼接）。
+- **按需读取**：专用内置工具 `read_skill(name)`（只收 skill name，加载器查表解析路径），模型命中描述时调用读入正文。
+- **触发方式**：模型自主 `read_skill` + 显式 `/skill:<name> args`（`agentRunner.send` 入口展开）；`disable-model-invocation` 的 skill 仅显式可用。
 
 ## 6. Hooks 位点汇总（扩展挂载点）
 
