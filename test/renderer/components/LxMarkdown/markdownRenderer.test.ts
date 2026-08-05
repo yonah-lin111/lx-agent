@@ -81,11 +81,20 @@ describe("markdownRenderer", () => {
     )
   })
 
+  it("渲染模板块进行中状态并提供切换按钮挂载点", () => {
+    const html = markdownRenderer.render("&&& addTemplate\n内容\n&&& in_progress")
+
+    expect(html).toContain('data-template-status="in_progress"')
+    expect(html).toContain("markdown-template-block--in-progress")
+    expect(html).toContain('class="markdown-template-status"')
+  })
+
   it("未标记完成时模板块默认为未完成状态", () => {
     const html = markdownRenderer.render("&&& addTemplate\n内容\n&&&")
 
-    expect(html).toContain('data-template-status=""')
+    expect(html).toContain('data-template-status="todo"')
     expect(html).not.toContain("markdown-template-block--done")
+    expect(html).not.toContain("markdown-template-block--in-progress")
   })
 
   it("为顶层模板块添加同步滚动锚点 data-line", () => {

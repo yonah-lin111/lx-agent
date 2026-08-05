@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
   createMarkdownBlockInsertion,
+  cycleMarkdownTemplateStatus,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  getMarkdownTemplateStatus,
+  getMarkdownTemplateStatuses,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
-  toggleMarkdownTemplateDone,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
@@ -29,20 +31,43 @@ describe("Markdown 块命令", () => {
     expect(isInsideMarkdownCodeFence("```php\necho 'hello';\n```\n")).toBe(false)
   })
 
-  it("识别带完成标记的模板块结束行并关闭块", () => {
+  it("识别带状态标记的模板块结束行并关闭块", () => {
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n")).toBe(true)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate done\n")).toBe(true)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate in_progress\n")).toBe(true)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate done\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& done\n")).toBe(false)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& in_progress\n")).toBe(false)
   })
 
-  it("切换模板块结束行的 done 标记", () => {
-    expect(toggleMarkdownTemplateDone("&&&", true)).toBe("&&& done")
-    expect(toggleMarkdownTemplateDone("&&& done", false)).toBe("&&&")
-    expect(toggleMarkdownTemplateDone("&&& done", true)).toBe("&&& done")
-    expect(toggleMarkdownTemplateDone("普通文本", true)).toBeNull()
-    expect(toggleMarkdownTemplateDone("&&& addTemplate", true)).toBeNull()
+  it("解析模板块结束行的源码状态", () => {
+    expect(getMarkdownTemplateStatus("&&&")).toBe("todo")
+    expect(getMarkdownTemplateStatus("&&& done")).toBe("done")
+    expect(getMarkdownTemplateStatus("&&& in_progress")).toBe("in_progress")
+    expect(getMarkdownTemplateStatus("普通文本")).toBeNull()
+    expect(getMarkdownTemplateStatus("&&& addTemplate")).toBeNull()
+  })
+
+  it("循环切换模板块结束行的状态", () => {
+    expect(cycleMarkdownTemplateStatus("&&&")).toBe("&&& in_progress")
+    expect(cycleMarkdownTemplateStatus("&&& in_progress")).toBe("&&& done")
+    expect(cycleMarkdownTemplateStatus("&&& done")).toBe("&&&")
+    expect(cycleMarkdownTemplateStatus("普通文本")).toBeNull()
+    expect(cycleMarkdownTemplateStatus("&&& addTemplate")).toBeNull()
+  })
+
+  it("扫描内容中全部模板块的状态，未闭合模板块不计入", () => {
+    expect(getMarkdownTemplateStatuses("&&& addTemplate\n内容\n&&&")).toEqual(["todo"])
+    expect(getMarkdownTemplateStatuses("&&& addTemplate\n内容\n&&& in_progress")).toEqual([
+      "in_progress",
+    ])
+    expect(
+      getMarkdownTemplateStatuses(
+        "&&& addTemplate\n内容\n&&& in_progress\n\n&&& bugTemplate\n内容\n&&& done",
+      ),
+    ).toEqual(["in_progress", "done"])
+    expect(getMarkdownTemplateStatuses("&&& addTemplate\n未闭合")).toEqual([])
   })
 
   it("为不同标记提供匹配命令和可编辑模板", () => {

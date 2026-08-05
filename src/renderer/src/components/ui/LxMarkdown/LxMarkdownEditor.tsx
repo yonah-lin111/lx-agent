@@ -33,8 +33,8 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
+  cycleMarkdownTemplateStatus,
   isInsideMarkdownTemplateBlock,
-  toggleMarkdownTemplateDone,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
@@ -465,14 +465,14 @@ export const LxMarkdownEditor = ({
   }
 
   /**
-   * 切换模板块结束行的 done 标记，作为完成状态持久化在源码中。
+   * 循环切换模板块结束行的状态（未完成 -> 进行中 -> 已完成），作为状态持久化在源码中。
    */
-  const toggleTemplateStatus = (line: number, done: boolean): void => {
+  const cycleTemplateStatus = (line: number): void => {
     const view = editorViewRef.current
     if (!view) return
 
     const docLine = view.state.doc.line(line + 1)
-    const nextLineText = toggleMarkdownTemplateDone(docLine.text, done)
+    const nextLineText = cycleMarkdownTemplateStatus(docLine.text)
     if (nextLineText === null) return
 
     view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
@@ -548,7 +548,7 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
-                const templateEndMatch = /^(\s*)&&&(?:\s+done)?\s*$/.exec(line.text)
+                const templateEndMatch = /^(\s*)&&&(?:\s+(?:done|in_progress))?\s*$/.exec(line.text)
                 if (
                   cursor === line.to &&
                   templateEndMatch &&
@@ -812,7 +812,7 @@ export const LxMarkdownEditor = ({
             html={previewHtml}
             previewMode={previewMode}
             previewRef={previewRef}
-            onTemplateStatusToggle={toggleTemplateStatus}
+            onTemplateStatusToggle={cycleTemplateStatus}
           />
         )}
       </div>

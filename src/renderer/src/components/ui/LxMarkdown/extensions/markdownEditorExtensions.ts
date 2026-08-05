@@ -9,7 +9,11 @@ import {
   WidgetType,
 } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
-import { toggleMarkdownTemplateDone } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import {
+  cycleMarkdownTemplateStatus,
+  getMarkdownTemplateStatus,
+  type MarkdownTemplateStatus,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
   getMarkdownReferenceImageSource,
   getMarkdownReferenceName,
@@ -189,6 +193,12 @@ export const editorTheme = EditorView.theme(
     ".cm-md-template-done, .cm-md-template-done *": {
       color: "#34d399 !important",
       backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+    },
+    ".cm-md-template-in-progress, .cm-md-template-in-progress *": {
+      color: "#fbbf24 !important",
+      backgroundColor: "rgba(251, 191, 36, 0.15) !important",
       padding: "1px 6px !important",
       borderRadius: "3px !important",
     },
@@ -436,8 +446,29 @@ export const markdownReferenceHover = hoverTooltip((view, pos) => {
 // 模板块状态切换配置。
 interface TemplateStatusAction {
   line: number
-  done: boolean
-  onToggle: (line: number, done: boolean) => void
+  status: MarkdownTemplateStatus
+  onToggle: (line: number) => void
+}
+
+// 模板块状态按钮的图标 SVG。
+const TEMPLATE_STATUS_ICON_SVG: Record<MarkdownTemplateStatus, string> = {
+  todo: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle"><circle cx="12" cy="12" r="10"/></svg>`,
+  in_progress: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="lucide lucide-circle-dot"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`,
+  done: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+}
+
+// 模板块状态按钮的悬停与普通颜色。
+const TEMPLATE_STATUS_COLOR: Record<MarkdownTemplateStatus, string> = {
+  todo: "rgba(255, 255, 255, 0.5)",
+  in_progress: "#fbbf24",
+  done: "#34d399",
+}
+
+// 模板块状态按钮的下一步操作提示。
+const TEMPLATE_STATUS_NEXT_LABEL: Record<MarkdownTemplateStatus, string> = {
+  todo: "标记为进行中",
+  in_progress: "标记为已完成",
+  done: "标记为未完成",
 }
 
 class CodeBlockActionWidget extends WidgetType {
@@ -462,7 +493,7 @@ class CodeBlockActionWidget extends WidgetType {
       this.showFoldBtn === other.showFoldBtn &&
       this.actionClassName === other.actionClassName &&
       this.templateStatus?.line === other.templateStatus?.line &&
-      this.templateStatus?.done === other.templateStatus?.done
+      this.templateStatus?.status === other.templateStatus?.status
     )
   }
 
@@ -490,25 +521,25 @@ class CodeBlockActionWidget extends WidgetType {
     statusBtn.style.cursor = "pointer"
     statusBtn.style.display = "flex"
     statusBtn.style.padding = "2px"
-    statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "rgba(255, 255, 255, 0.5)"
+    const currentStatus = this.templateStatus?.status ?? "todo"
+    statusBtn.style.color = TEMPLATE_STATUS_COLOR[currentStatus]
     statusBtn.style.transition = "color 0.2s"
-    statusBtn.title = this.templateStatus?.done ? "标记为未完成" : "标记为已完成"
+    statusBtn.title = TEMPLATE_STATUS_NEXT_LABEL[currentStatus]
     statusBtn.onmouseenter = () => {
-      statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "#ffffff"
+      statusBtn.style.color =
+        currentStatus === "todo" ? "#ffffff" : TEMPLATE_STATUS_COLOR[currentStatus]
     }
     statusBtn.onmouseleave = () => {
-      statusBtn.style.color = this.templateStatus?.done ? "#34d399" : "rgba(255, 255, 255, 0.5)"
+      statusBtn.style.color = TEMPLATE_STATUS_COLOR[currentStatus]
     }
 
-    statusBtn.innerHTML = this.templateStatus?.done
-      ? `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle"><circle cx="12" cy="12" r="10"/></svg>`
+    statusBtn.innerHTML = TEMPLATE_STATUS_ICON_SVG[currentStatus]
 
     statusBtn.onclick = (e) => {
       e.preventDefault()
       e.stopPropagation()
       if (this.templateStatus) {
-        this.templateStatus.onToggle(this.templateStatus.line, !this.templateStatus.done)
+        this.templateStatus.onToggle(this.templateStatus.line)
       }
     }
 
@@ -620,7 +651,7 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleFold(view, index),
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(view, index),
-          (line, done) => this.toggleTemplateStatus(view, line, done),
+          (line) => this.cycleTemplateStatus(view, line),
           showFolding,
           getReferencedProjectNames,
         )
@@ -659,7 +690,7 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleFold(update.view, index),
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(update.view, index),
-          (line, done) => this.toggleTemplateStatus(update.view, line, done),
+          (line) => this.cycleTemplateStatus(update.view, line),
           showFolding,
           getReferencedProjectNames,
         )
@@ -683,9 +714,9 @@ export const markdownMarkerHighlight = (
         view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
 
-      toggleTemplateStatus(view: EditorView, line: number, done: boolean) {
+      cycleTemplateStatus(view: EditorView, line: number) {
         const docLine = view.state.doc.line(line + 1)
-        const nextLineText = toggleMarkdownTemplateDone(docLine.text, done)
+        const nextLineText = cycleMarkdownTemplateStatus(docLine.text)
         if (nextLineText === null) return
 
         view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
@@ -706,7 +737,7 @@ const buildMarkdownMarkerDecorations = (
   onToggleFold: (index: number) => void = () => {},
   templateFoldedIndices = new Set<number>(),
   onToggleTemplateFold: (index: number) => void = () => {},
-  onToggleTemplateStatus: (line: number, done: boolean) => void = () => {},
+  onCycleTemplateStatus: (line: number) => void = () => {},
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
 ) => {
@@ -843,8 +874,10 @@ const buildMarkdownMarkerDecorations = (
       continue
     }
 
-    const templateStartMatch = line.match(/^(\s*)&&&\s+(?!done\b)([A-Za-z]\w*)(?:\s+done)?\s*$/)
-    const templateEndMatch = line.match(/^\s*&&&(?:\s+done)?\s*$/)
+    const templateStartMatch = line.match(
+      /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+(?:done|in_progress))?\s*$/,
+    )
+    const templateEndMatch = line.match(/^\s*&&&(?:\s+(?:done|in_progress))?\s*$/)
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
       currentTemplateFolded = templateFoldedIndices.has(currentTemplateIndex)
@@ -852,7 +885,7 @@ const buildMarkdownMarkerDecorations = (
       let templateEndIndex = -1
       for (let j = i + 1; j < lines.length; j++) {
         const subLine = lines[j]
-        if (subLine.match(/^\s*&&&(?:\s+done)?\s*$/)) {
+        if (subLine.match(/^\s*&&&(?:\s+(?:done|in_progress))?\s*$/)) {
           templateEndIndex = j
           break
         }
@@ -878,7 +911,7 @@ const buildMarkdownMarkerDecorations = (
         )
       }
       const templateEndText = templateEndIndex === -1 ? "" : lines[templateEndIndex]
-      const endDoneMatch = templateEndText.match(/\s+done\s*$/)
+      const templateEndStatus = getMarkdownTemplateStatus(templateEndText) ?? "todo"
       allDecos.push({
         type: "widget",
         from: offset + line.length,
@@ -894,8 +927,8 @@ const buildMarkdownMarkerDecorations = (
           "展开模板块",
           {
             line: templateEndIndex,
-            done: Boolean(endDoneMatch),
-            onToggle: onToggleTemplateStatus,
+            status: templateEndStatus,
+            onToggle: onCycleTemplateStatus,
           },
         ),
       })
@@ -912,10 +945,12 @@ const buildMarkdownMarkerDecorations = (
     if (templateEndMatch && isInsideTemplateBlock) {
       const markerStart = line.indexOf("&&&")
       addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
-      const doneMatch = line.match(/\s+done\s*$/)
-      if (doneMatch?.index !== undefined) {
-        const doneStart = doneMatch.index + 1
-        addMarkerAlways(doneStart, doneStart + 4, "cm-md-template-done")
+      const statusMatch = line.match(/\s+(done|in_progress)\s*$/)
+      if (statusMatch?.index !== undefined) {
+        const statusStart = statusMatch.index + 1
+        const statusClassName =
+          statusMatch[1] === "done" ? "cm-md-template-done" : "cm-md-template-in-progress"
+        addMarkerAlways(statusStart, line.length, statusClassName)
       }
       allDecos.push({
         type: "line",

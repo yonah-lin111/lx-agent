@@ -1,7 +1,8 @@
-import { Check, CheckCircle2, ChevronDown, ChevronUp, Circle, Copy } from "lucide-react"
+import { Check, CheckCircle2, ChevronDown, ChevronUp, Circle, CircleDot, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import type { MarkdownTemplateStatus } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { MarkdownReferenceImageTooltip } from "@/components/ui/LxMarkdown/components/MarkdownReferenceImageTooltip"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
@@ -14,8 +15,8 @@ interface LxMarkdownPreviewProps {
   previewRef: React.RefObject<HTMLElement | null>
   className?: string
   contentClassName?: string
-  // 切换模板块完成状态（line 为源码起始行，0 起）。
-  onTemplateStatusToggle?: (line: number, done: boolean) => void
+  // 循环切换模板块状态（line 为源码结束行，0 起）。
+  onTemplateStatusToggle?: (line: number) => void
 }
 
 // 预览 HTML 中可交互节点的挂载配置。
@@ -226,33 +227,46 @@ const MarkdownTemplateCollapseButton = (): React.JSX.Element => {
   )
 }
 
-// 模板块完成状态按钮属性。
+// 模板块状态对应的下一步操作提示。
+const TEMPLATE_STATUS_ACTION_LABELS: Record<MarkdownTemplateStatus, string> = {
+  todo: "标记为进行中",
+  in_progress: "标记为已完成",
+  done: "标记为未完成",
+}
+
+// 模板块状态按钮属性。
 interface MarkdownTemplateStatusButtonProps {
   line: number
-  isDone: boolean
-  onToggle: (line: number, done: boolean) => void
+  status: MarkdownTemplateStatus
+  onToggle: (line: number) => void
 }
 
 /**
- * 渲染模板块完成状态图标按钮，点击后切换源码结束行的 done 标记。
+ * 渲染模板块状态图标按钮，点击后循环切换源码结束行的状态标记。
  */
 const MarkdownTemplateStatusButton = ({
   line,
-  isDone,
+  status,
   onToggle,
 }: MarkdownTemplateStatusButtonProps): React.JSX.Element => {
-  const actionLabel = isDone ? "标记为未完成" : "标记为已完成"
+  const actionLabel = TEMPLATE_STATUS_ACTION_LABELS[status]
 
   return (
     <LxIconButton
       aria-label={actionLabel}
-      aria-pressed={isDone}
-      preset={isDone ? "confirm" : undefined}
+      aria-pressed={status === "done"}
+      preset={status === "done" ? "confirm" : undefined}
       size="small"
       title={{ content: actionLabel, placement: "bottom" }}
-      onClick={() => onToggle(line, !isDone)}
+      onClick={() => onToggle(line)}
     >
-      {isDone ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+      {status === "done" ? (
+        <CheckCircle2 className="h-3 w-3" />
+      ) : status === "in_progress" ? (
+        <CircleDot className="h-3 w-3 text-amber-400" />
+      ) : (
+        <Circle className="h-3 w-3" />
+      )}
     </LxIconButton>
   )
 }
@@ -297,13 +311,14 @@ export const LxMarkdownPreview = ({
         (container) => {
           const templateBlock = container.closest<HTMLElement>(".markdown-template-block")
           const line = templateBlock ? Number(templateBlock.dataset.endLine) : NaN
-          const isDone = templateBlock?.dataset.templateStatus === "done"
+          const status =
+            (templateBlock?.dataset.templateStatus as MarkdownTemplateStatus | undefined) ?? "todo"
           return {
             container,
             content: (
               <MarkdownTemplateStatusButton
                 line={line}
-                isDone={isDone}
+                status={status}
                 onToggle={onTemplateStatusToggle ?? (() => undefined)}
               />
             ),

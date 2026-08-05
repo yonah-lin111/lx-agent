@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type { ProjectNavigationProject } from "@/features/project-navigation/types"
 import { createProjectNavigationTree } from "@/features/project-navigation/utils"
 
@@ -11,6 +12,7 @@ export const useProjectNavigationData = (): {
   refreshProjects: () => Promise<void>
 } => {
   const [projects, setProjects] = useState<ProjectNavigationProject[]>([])
+  const itemsVersion = useProjectItemsVersionStore((state) => state.version)
 
   const refreshProjects = useCallback(async (): Promise<void> => {
     const [projectRecords, folderRecords, itemRecords] = await Promise.all([
@@ -23,7 +25,7 @@ export const useProjectNavigationData = (): {
 
   useEffect(() => {
     void refreshProjects().catch((error: unknown) => console.error("Failed to load items", error))
-  }, [refreshProjects])
+  }, [refreshProjects, itemsVersion])
 
   return { projects, refreshProjects }
 }

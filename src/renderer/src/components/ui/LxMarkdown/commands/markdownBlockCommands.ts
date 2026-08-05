@@ -1,6 +1,9 @@
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
 
+// 模板块源码状态：未完成 / 进行中 / 已完成。
+export type MarkdownTemplateStatus = "todo" | "in_progress" | "done"
+
 // Markdown 块命令标识。
 export type MarkdownBlockCommandId =
   | "heading1"
@@ -120,6 +123,24 @@ export const isInsideMarkdownCodeFence = (text: string): boolean => {
   return openingFence !== null
 }
 
+// 模板块状态标记（源码中的后缀文本）。
+export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
+  Exclude<MarkdownTemplateStatus, "todo">,
+  string
+> = {
+  done: " done",
+  in_progress: " in_progress",
+}
+
+// 模板块开始行：&&& command [状态标记]。
+const MARKDOWN_TEMPLATE_START_RE = /^\s*&&&\s+[A-Za-z]\w*(?:\s+(?:done|in_progress))?\s*$/
+
+// 模板块结束行：&&& [状态标记]。
+const MARKDOWN_TEMPLATE_END_RE = /^\s*&&&(?:\s+(?:done|in_progress))?\s*$/
+
+// 模板块状态标记后缀（供 exec 捕获）。
+const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE = /\s+(done|in_progress)\s*$/
+
 /**
  * 判断指定文本末尾是否处于未闭合的模板块内。
  */
@@ -127,9 +148,9 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
   let isOpen = false
 
   for (const line of text.split("\n")) {
-    if (/^\s*&&&(?:\s+done)?\s*$/.test(line)) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
       isOpen = false
-    } else if (/^\s*&&&\s+[A-Za-z]\w*(?:\s+done)?\s*$/.test(line)) {
+    } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
       isOpen = true
     }
   }
@@ -138,13 +159,54 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
 }
 
 /**
- * 切换模板块结束行的 done 标记；非结束行返回 null。
+ * 解析模板块结束行的源码状态；非结束行返回 null。
  */
-export const toggleMarkdownTemplateDone = (lineText: string, done: boolean): string | null => {
-  const match = /^(\s*)(&&&)(?:\s+done)?\s*$/.exec(lineText)
+export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateStatus | null => {
+  const match = /^(\s*)(&&&)(?:\s+(done|in_progress))?\s*$/.exec(lineText)
   if (!match) return null
 
-  return `${match[1]}${match[2]}${done ? " done" : ""}`
+  return (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
+}
+
+/**
+ * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
+ */
+export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
+  const match = /^(\s*)(&&&)(?:\s+(done|in_progress))?\s*$/.exec(lineText)
+  if (!match) return null
+
+  const current = (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
+  const next: MarkdownTemplateStatus =
+    current === "todo" ? "in_progress" : current === "in_progress" ? "done" : "todo"
+
+  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}`
+}
+
+/**
+ * 扫描内容中全部模板块的结束状态；未闭合模板块不计入。
+ */
+export const getMarkdownTemplateStatuses = (content: string): MarkdownTemplateStatus[] => {
+  const statuses: MarkdownTemplateStatus[] = []
+  let startStatus: MarkdownTemplateStatus = "todo"
+  let isOpen = false
+
+  for (const line of content.split("\n")) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+      const status = line.match(MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE)?.[1] as
+        | MarkdownTemplateStatus
+        | undefined
+      if (isOpen) statuses.push(status ?? startStatus)
+      isOpen = false
+    } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
+      startStatus =
+        (line.match(MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE)?.[1] as
+          | MarkdownTemplateStatus
+          | undefined) ?? "todo"
+      isOpen = true
+    }
+  }
+
+  return statuses
 }
 
 /**

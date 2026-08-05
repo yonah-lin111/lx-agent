@@ -18,6 +18,7 @@ import xml from "highlight.js/lib/languages/xml"
 import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
+import type { MarkdownTemplateStatus } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
   getMarkdownReferenceIconSvg,
   getMarkdownReferenceLabel,
@@ -160,7 +161,7 @@ const markdownTemplateBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+(done))?\s*$/.exec(startText)
+  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+(done|in_progress))?\s*$/.exec(startText)
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
@@ -170,7 +171,7 @@ const markdownTemplateBlock = (
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    closeMatch = /^&&&(?:\s+(done))?\s*$/.exec(lineText)
+    closeMatch = /^&&&(?:\s+(done|in_progress))?\s*$/.exec(lineText)
     if (closeMatch) break
     closeLine += 1
   }
@@ -182,7 +183,7 @@ const markdownTemplateBlock = (
   token.map = [startLine, closeLine + 1]
   token.meta = {
     command: startMatch[1],
-    status: closeMatch?.[1] ?? startMatch[2] ?? "",
+    status: (closeMatch?.[1] ?? startMatch[2] ?? "todo") as MarkdownTemplateStatus,
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   token.attrSet("data-end-line", String(closeLine))
@@ -378,16 +379,25 @@ markdownRenderer.renderer.rules.fence = (
  */
 markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const token = tokens[index]
-  const meta = token?.meta as { command: string; content: string; status?: string }
+  const meta = token?.meta as {
+    command: string
+    content: string
+    status?: MarkdownTemplateStatus
+  }
   const command = markdownRenderer.utils.escapeHtml(meta.command)
-  const isDone = meta.status === "done"
+  const status = meta.status ?? "todo"
   const encodedContent = encodeURIComponent(stripEmptyTemplateItems(meta.content))
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
   const endLine = token.attrGet("data-end-line")
   const endLineAttribute = endLine === null ? "" : ` data-end-line="${endLine}"`
-  const doneClass = isDone ? " markdown-template-block--done" : ""
+  const statusClass =
+    status === "done"
+      ? " markdown-template-block--done"
+      : status === "in_progress"
+        ? " markdown-template-block--in-progress"
+        : ""
 
-  return `<section class="markdown-template-block${doneClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${isDone ? "done" : ""}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
+  return `<section class="markdown-template-block${statusClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${status}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }

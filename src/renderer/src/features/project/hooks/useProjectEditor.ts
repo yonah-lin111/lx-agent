@@ -1,6 +1,8 @@
-import type { MarkdownPage } from "@shared/project"
+import type { MarkdownPage, ProjectItemStatus } from "@shared/project"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { getMarkdownTemplateStatuses } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 
 // 自动保存延迟时间。
 const AUTO_SAVE_DELAY = 800
@@ -19,6 +21,16 @@ const parsePages = (value: string): MarkdownPage[] => {
 
 // 将页面数据编码为持久化 JSON。
 const serializePages = (pages: MarkdownPage[]): string => JSON.stringify(pages)
+
+// 根据模板块状态推导条目状态：任一进行中则进行中；无进行中块时保持用户设置的已完成，否则待处理。
+// 无已闭合模板块的内容不参与推导。
+const deriveItemStatus = (pages: MarkdownPage[], current: ProjectItemStatus): ProjectItemStatus => {
+  const statuses = pages.flatMap((page) => getMarkdownTemplateStatuses(page.content))
+  if (statuses.length === 0) return current
+
+  if (statuses.some((status) => status === "in_progress")) return "in_progress"
+  return current === "completed" ? "completed" : "todo"
+}
 
 /**
  * 加载指定项目条目，并提供防抖自动保存和手动保存能力。
@@ -48,6 +60,7 @@ export const useProjectEditor = (
   const pagesRef = useRef(pages)
   const savedContentRef = useRef("")
   const saveRequestRef = useRef(0)
+  const itemStatusRef = useRef<ProjectItemStatus>("todo")
 
   const setPages = useCallback((nextPages: MarkdownPage[]): void => {
     pagesRef.current = nextPages
@@ -95,6 +108,7 @@ export const useProjectEditor = (
         pagesRef.current = nextPages
         contentRef.current = nextContent
         savedContentRef.current = nextContent
+        itemStatusRef.current = item?.status ?? "todo"
         setPagesState(nextPages)
         setContentState(nextContent)
         setHasItem(item !== undefined)
@@ -145,6 +159,24 @@ export const useProjectEditor = (
     const timer = window.setTimeout(save, AUTO_SAVE_DELAY)
     return () => window.clearTimeout(timer)
   }, [content, itemId, isLoading, loadedItemId, save])
+
+  // 模板块状态变化时同步推导条目状态并持久化，通知侧边栏刷新。
+  useEffect(() => {
+    if (!itemId || isLoading || loadedItemId !== itemId) return
+
+    const derived = deriveItemStatus(pagesRef.current, itemStatusRef.current)
+    if (derived === itemStatusRef.current) return
+
+    const previousStatus = itemStatusRef.current
+    itemStatusRef.current = derived
+    void projectApi
+      .update(itemId, { status: derived })
+      .then(() => useProjectItemsVersionStore.getState().bump())
+      .catch((error: unknown) => {
+        itemStatusRef.current = previousStatus
+        console.error("Failed to sync item status", error)
+      })
+  }, [content, itemId, isLoading, loadedItemId])
 
   return {
     content,

@@ -588,6 +588,17 @@ select {
   background: #1c1d24;
 }
 
+.markdown-preview .markdown-template-block[data-template-status="in_progress"] {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.markdown-preview
+  .markdown-template-block[data-template-status="in_progress"]
+  .markdown-template-block-header {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
+}
+
 .markdown-preview .markdown-template-block-header {
   position: sticky;
   top: 0;
