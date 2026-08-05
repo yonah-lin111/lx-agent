@@ -1,14 +1,14 @@
+import type { AgentSendContext } from "@shared/contracts/agent"
 import type React from "react"
-import { useEffect, useRef } from "react"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
-import { chatHistoryStore } from "./hooks/chatHistoryStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
   onRestoreChatRef?: (fn: (sessionId: string) => void) => void
+  context?: AgentSendContext
   currentProjectId?: string
   currentProjectPath?: string
 }
@@ -19,6 +19,7 @@ export interface AgentPageProps {
 export const AgentPage = ({
   onNewChatRef,
   onRestoreChatRef,
+  context,
   currentProjectId,
   currentProjectPath,
 }: AgentPageProps): React.JSX.Element => {
@@ -33,7 +34,7 @@ export const AgentPage = ({
     undoLastTurn,
     restoreChat,
     editMessage,
-  } = useAgentChat(currentProjectPath)
+  } = useAgentChat(context)
 
   const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
     useAgentModelSelect()
@@ -44,16 +45,6 @@ export const AgentPage = ({
   if (onRestoreChatRef) {
     onRestoreChatRef(restoreChat)
   }
-
-  // 卸载（折叠/新建重挂载）前把当前对话存入历史。
-  const messagesRef = useRef(messages)
-  messagesRef.current = messages
-  useEffect(() => {
-    return () => {
-      chatHistoryStore.saveSession(messagesRef.current)
-      chatHistoryStore.setCurrentSessionId(null)
-    }
-  }, [])
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">

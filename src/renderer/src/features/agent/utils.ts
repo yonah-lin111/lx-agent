@@ -120,13 +120,3 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
       },
     ]
   })
-
-// 提取消息可搜索文本。
-export const messageSearchText = (message: ChatMessage): string =>
-  message.blocks
-    .map((block) => {
-      if (block.kind === "text" || block.kind === "thinking") return block.text
-      if (block.kind === "toolResult") return block.text
-      return block.toolName
-    })
-    .join(" ")

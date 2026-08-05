@@ -1,18 +1,17 @@
+import type { AgentSessionSummary } from "@shared/contracts/agent"
 import { Search } from "lucide-react"
 import type React from "react"
 import { useMemo, useState } from "react"
 import { LxInput } from "@/components/ui/LxInput"
-import type { ChatSession } from "../types"
-import { messageSearchText } from "../utils"
 
 interface ChatHistoryPanelProps {
-  sessions: ChatSession[]
+  sessions: AgentSessionSummary[]
   currentSessionId: string | null
   onRestore: (sessionId: string) => void
 }
 
 /**
- * 历史对话面板：按标题或消息内容搜索，点击恢复会话。
+ * 历史对话面板：按标题搜索，点击恢复会话。
  */
 export const ChatHistoryPanel = ({
   sessions,
@@ -25,11 +24,7 @@ export const ChatHistoryPanel = ({
     const keyword = query.trim().toLocaleLowerCase()
     if (!keyword) return sessions
 
-    return sessions.filter((session) =>
-      `${session.title} ${session.messages.map((message) => messageSearchText(message)).join(" ")}`
-        .toLocaleLowerCase()
-        .includes(keyword),
-    )
+    return sessions.filter((session) => session.title.toLocaleLowerCase().includes(keyword))
   }, [query, sessions])
 
   return (

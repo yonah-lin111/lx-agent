@@ -1,18 +1,19 @@
-import type { AgentEvent } from "@shared/contracts/agent"
+import type { AgentEvent, AgentSendContext } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
-import type { ChatMessage, ChatSession } from "../types"
+import type { ChatMessage } from "../types"
 import { toAgentMessages, toChatMessage } from "../utils"
-import { chatHistoryStore } from "./chatHistoryStore"
+import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
 let messageSequence = 0
 
 /**
  * 管理 Agent 对话：订阅 main 进程事件流，驱动消息列表、流式更新与工具状态。
+ * 历史会话的持久化与恢复均由 main 进程 DB 承载。
  */
-export const useAgentChat = (projectPath?: string) => {
+export const useAgentChat = (context?: AgentSendContext) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
@@ -20,12 +21,6 @@ export const useAgentChat = (projectPath?: string) => {
   messagesRef.current = messages
   // 当前流式条目引用（message_update 定位）。
   const streamingRef = useRef<ChatMessage | null>(null)
-
-  // 订阅模块级历史会话列表。
-  const chatSessions = useSyncExternalStore<ChatSession[]>(
-    chatHistoryStore.subscribe,
-    chatHistoryStore.getSessions,
-  )
 
   // 按 toolCallId 更新消息内工具块状态。
   const updateToolStatus = useCallback(
@@ -121,13 +116,12 @@ export const useAgentChat = (projectPath?: string) => {
     streamingRef.current = null
   }, [])
 
-  // 新建/重置对话：先把当前对话存入历史，再清空 main 侧上下文。
+  // 新建/重置对话：脱离当前会话并清空 main 侧上下文。
   const createNewChat = useCallback(() => {
     stopStreaming()
-    chatHistoryStore.saveSession(messagesRef.current)
-    chatHistoryStore.setCurrentSessionId(null)
     setMessages([])
     setInputText("")
+    sessionListStore.setCurrentSessionId(null)
     void agentApi.restore([])
   }, [stopStreaming])
 
@@ -145,18 +139,24 @@ export const useAgentChat = (projectPath?: string) => {
     void agentApi.restore(toAgentMessages(nextMessages))
   }, [isStreaming])
 
-  // 恢复指定历史会话：先保存当前对话，再加载目标会话到 main 侧上下文。
+  // 恢复指定历史会话：从 main 进程 DB 读取并加载到上下文与展示。
   const restoreChat = useCallback(
     (sessionId: string) => {
-      const session = chatHistoryStore.getSession(sessionId)
-      if (!session) return
       stopStreaming()
-      chatHistoryStore.saveSession(messagesRef.current)
-      chatHistoryStore.touch(sessionId)
-      chatHistoryStore.setCurrentSessionId(sessionId)
-      setMessages(session.messages)
-      setInputText("")
-      void agentApi.restore(toAgentMessages(session.messages))
+      void agentApi
+        .restoreSession(sessionId)
+        .then((restored) => {
+          setMessages(
+            restored.messages.map((message) =>
+              toChatMessage(message, false, `m${++messageSequence}`),
+            ),
+          )
+          setInputText("")
+          sessionListStore.setCurrentSessionId(sessionId)
+        })
+        .catch(() => {
+          // 会话已不存在等错误：保持当前展示，不做额外处理。
+        })
     },
     [stopStreaming],
   )
@@ -167,12 +167,16 @@ export const useAgentChat = (projectPath?: string) => {
       const text = (contentToSend ?? inputText).trim()
       if (!text || isStreaming) return
       setInputText("")
-      void agentApi.send(text, selection, projectPath)
+      void agentApi.send(text, selection, context).then((result) => {
+        if (result.ok) {
+          sessionListStore.setCurrentSessionId(result.sessionId)
+        }
+      })
     },
-    [inputText, isStreaming, projectPath],
+    [inputText, isStreaming, context],
   )
 
-  // 编辑已发送的消息内容（仅影响显示与历史，不改变 main 侧上下文）。
+  // 编辑已发送的消息内容（仅影响显示，不改变 main 侧上下文）。
   const editMessage = useCallback((id: string, newContent: string) => {
     setMessages((prev) =>
       prev.map((message) =>
@@ -193,7 +197,6 @@ export const useAgentChat = (projectPath?: string) => {
     inputText,
     setInputText,
     isStreaming,
-    chatSessions,
     sendMessage,
     stopStreaming,
     createNewChat,

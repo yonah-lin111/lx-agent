@@ -11,6 +11,8 @@ vi.mock("@/agent/agentRunner", () => ({
     send: vi.fn(),
     abort: vi.fn(),
     restoreMessages: vi.fn(),
+    listSessions: vi.fn(),
+    restoreSession: vi.fn(),
   },
 }))
 
@@ -45,7 +47,34 @@ describe("agent IPC handlers", () => {
     await sendHandler(undefined, "你好")
     expect(agentRunner.send).toHaveBeenCalledWith("你好", undefined, undefined)
 
-    await sendHandler(undefined, "你好", undefined, "/foo/proj")
-    expect(agentRunner.send).toHaveBeenCalledWith("你好", undefined, "/foo/proj")
+    await sendHandler(undefined, "你好", undefined, { cwd: "/foo/proj" })
+    expect(agentRunner.send).toHaveBeenCalledWith("你好", undefined, { cwd: "/foo/proj" })
+  })
+
+  it("listSessions/restoreSession handler 校验输入并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const listHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.listSessions,
+    )?.[1]
+    const restoreHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.restoreSession,
+    )?.[1]
+    expect(listHandler).toBeTypeOf("function")
+    expect(restoreHandler).toBeTypeOf("function")
+
+    await listHandler(undefined, { page: "/" })
+    expect(agentRunner.listSessions).toHaveBeenCalledWith({ page: "/" })
+
+    await restoreHandler(undefined, "sess-1")
+    expect(agentRunner.restoreSession).toHaveBeenCalledWith("sess-1")
+
+    // 同步抛错（IPC 层会转为拒绝）校验非法输入。
+    expect(() => listHandler(undefined, { page: 1 })).toThrow("INVALID_SESSION_FILTER")
+    expect(() => restoreHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
   })
 })

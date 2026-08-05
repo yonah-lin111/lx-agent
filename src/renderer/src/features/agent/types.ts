@@ -31,11 +31,3 @@ export interface AgentPromptCard {
   description: string
   prompt: string
 }
-
-// 历史会话定义（消息存展示条目，恢复时转回 AgentMessage 发送给 main）。
-export interface ChatSession {
-  id: string
-  title: string
-  createdAt: number
-  messages: ChatMessage[]
-}

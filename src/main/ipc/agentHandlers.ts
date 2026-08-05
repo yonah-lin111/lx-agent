@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@shared/contracts/agent"
+import type { AgentMessage, AgentSendContext, AgentSessionFilter } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, type WebContents } from "electron"
@@ -23,6 +23,31 @@ const isValidModelSelection = (value: unknown): value is ModelSelection => {
   )
 }
 
+// undefined 或字符串（IPC 可选字段校验）。
+const isOptionalString = (value: unknown): value is string =>
+  value === undefined || typeof value === "string"
+
+// 校验发送上下文为合法 AgentSendContext（IPC 输入边界）。
+const isValidSendContext = (value: unknown): value is AgentSendContext => {
+  if (value === undefined) return true
+  if (!value || typeof value !== "object") return false
+  const context = value as Record<string, unknown>
+  return (
+    isOptionalString(context.projectItemId) &&
+    isOptionalString(context.projectId) &&
+    isOptionalString(context.page) &&
+    isOptionalString(context.cwd)
+  )
+}
+
+// 校验会话列表过滤条件为合法 AgentSessionFilter（IPC 输入边界）。
+const isValidSessionFilter = (value: unknown): value is AgentSessionFilter => {
+  if (value === undefined) return true
+  if (!value || typeof value !== "object") return false
+  const filter = value as Record<string, unknown>
+  return isOptionalString(filter.projectItemId) && isOptionalString(filter.page)
+}
+
 /**
  * 注册 Agent 对话 IPC 处理器，并把 Agent 事件推送到目标窗口。
  */
@@ -38,17 +63,17 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   ipcMain.handle(
     AGENT_CHANNELS.send,
-    async (_, text: unknown, selection: unknown, projectPath: unknown) => {
+    async (_, text: unknown, selection: unknown, context: unknown) => {
       if (typeof text !== "string" || !text.trim()) {
         return { ok: false, error: "消息内容不能为空。" }
       }
       if (selection !== undefined && !isValidModelSelection(selection)) {
         return { ok: false, error: "模型选择参数无效。" }
       }
-      if (projectPath !== undefined && typeof projectPath !== "string") {
-        return { ok: false, error: "项目路径参数无效。" }
+      if (!isValidSendContext(context)) {
+        return { ok: false, error: "会话上下文参数无效。" }
       }
-      return agentRunner.send(text.trim(), selection, projectPath)
+      return agentRunner.send(text.trim(), selection, context)
     },
   )
 
@@ -61,5 +86,19 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       throw new Error("INVALID_AGENT_RESTORE_MESSAGES")
     }
     agentRunner.restoreMessages(messages)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.listSessions, (_, filter: unknown) => {
+    if (!isValidSessionFilter(filter)) {
+      throw new Error("INVALID_SESSION_FILTER")
+    }
+    return agentRunner.listSessions(filter)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.restoreSession, (_, sessionId: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    return agentRunner.restoreSession(sessionId)
   })
 }

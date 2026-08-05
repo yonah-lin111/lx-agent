@@ -1,14 +1,23 @@
-import type { AgentApi, AgentEvent } from "@shared/contracts/agent"
+import type {
+  AgentApi,
+  AgentEvent,
+  AgentSendContext,
+  AgentSessionFilter,
+} from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcRenderer } from "electron"
 
-// Agent 领域 preload API：发送/中止/恢复会话 + 订阅事件流。
+// Agent 领域 preload API：发送/中止/恢复会话 + 会话列表 + 订阅事件流。
 export const agentApi: AgentApi["agent"] = {
-  send: (text: string, selection?: ModelSelection, projectPath?: string) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, projectPath),
+  send: (text: string, selection?: ModelSelection, context?: AgentSendContext) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context),
   abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),
   restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
+  listSessions: (filter?: AgentSessionFilter) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.listSessions, filter),
+  restoreSession: (sessionId: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.restoreSession, sessionId),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

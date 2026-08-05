@@ -1,4 +1,5 @@
 import Database from "better-sqlite3"
+import { createAgentTables } from "@/db/schema/agentSchema"
 import { createProjectTables } from "@/db/schema/projectSchema"
 import { ensureDatabaseDir, getDatabasePath } from "@/paths"
 
@@ -15,6 +16,7 @@ export const initDatabase = (): Database.Database => {
   sqlite = new Database(getDatabasePath())
   sqlite.pragma("foreign_keys = ON")
   createProjectTables(sqlite)
+  createAgentTables(sqlite)
   return sqlite
 }
 

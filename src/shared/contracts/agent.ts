@@ -109,8 +109,44 @@ export type AgentEvent =
       isError: boolean
     }
 
-// 发送对话请求的返回结果。
-export type AgentSendResult = { ok: true } | { ok: false; error: string }
+// 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
+export interface AgentSendContext {
+  projectItemId?: string // 项目 item 会话归属
+  projectId?: string // 冗余：项目 id（聚合某项目全部 item 会话）
+  page?: string // 非 item 会话的路由（'/' | '/project' | '/settings' …）
+  cwd?: string // 工具执行目录（项目页 = project.path；独立页可省略，回退主目录）
+}
+
+// 会话能力快照（随会话冻结）。
+export interface AgentCapabilitySnapshot {
+  tools: string[]
+  mcp: string[]
+  skills: string[]
+}
+
+// 会话列表查询条件：item 会话按 projectItemId，页面会话按 page。
+export interface AgentSessionFilter {
+  projectItemId?: string
+  page?: string
+}
+
+// 会话摘要（历史列表展示，不含消息体）。
+export interface AgentSessionSummary {
+  id: string
+  title: string
+  cwd: string
+  createdAt: string
+  updatedAt: string
+}
+
+// 恢复的会话内容。
+export interface AgentRestoredSession {
+  messages: AgentMessage[]
+  activeCapabilities: AgentCapabilitySnapshot
+}
+
+// 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。
+export type AgentSendResult = { ok: true; sessionId: string } | { ok: false; error: string }
 
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
@@ -118,10 +154,12 @@ export interface AgentApi {
     send: (
       text: string,
       selection?: ModelSelection,
-      projectPath?: string,
+      context?: AgentSendContext,
     ) => Promise<AgentSendResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
+    listSessions: (filter?: AgentSessionFilter) => Promise<AgentSessionSummary[]>
+    restoreSession: (sessionId: string) => Promise<AgentRestoredSession>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }
