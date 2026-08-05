@@ -1,17 +1,10 @@
 import type { AgentSendContext } from "@shared/contracts/agent"
-import {
-  ChevronLeft,
-  ChevronRight,
-  History,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react"
+import { ChevronLeft, ChevronRight, History, MoreVertical, Plus, Tag, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
@@ -19,14 +12,15 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore, toSessionFilter } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 
-// 展开态最小宽度与相对视口的最大宽度比例。
-const MIN_WIDTH = 380
-const MAX_WIDTH_RATIO = 0.35
+// 展开态最小/最大宽度比例（相对视口）。
+const MIN_WIDTH_RATIO = 0.32
+const MAX_WIDTH_RATIO = 0.38
 
-// 约束宽度到 [MIN_WIDTH, max(MIN_WIDTH, 40vw)]：视口过小时下限让位于最小宽度。
+// 约束宽度到 [25vw, 40vw]。
 const clampWidth = (value: number): number => {
-  const maxWidth = Math.max(MIN_WIDTH, window.innerWidth * MAX_WIDTH_RATIO)
-  return Math.min(Math.max(value, MIN_WIDTH), maxWidth)
+  const minWidth = window.innerWidth * MIN_WIDTH_RATIO
+  const maxWidth = window.innerWidth * MAX_WIDTH_RATIO
+  return Math.min(Math.max(value, minWidth), maxWidth)
 }
 
 /**
@@ -35,7 +29,7 @@ const clampWidth = (value: number): number => {
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-  const [width, setWidth] = useState<number>(MIN_WIDTH)
+  const [width, setWidth] = useState<number>(() => window.innerWidth * MIN_WIDTH_RATIO)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const [searchParams] = useSearchParams()
@@ -55,23 +49,14 @@ export const RightSideBar = (): React.JSX.Element => {
     ? chatSessions.find((session) => session.id === currentSessionId)
     : undefined
   const currentTitle = currentSession?.title ?? "new chat"
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState("")
-  const titleBeforeEditRef = useRef(currentTitle)
+  const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false)
   const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
-  // 进入标题编辑态（点击标题或设置菜单"重命名"触发）。
-  const startTitleEdit = (): void => {
-    if (!currentSessionId) return
-    titleBeforeEditRef.current = currentTitle
-    setTitleDraft(currentTitle)
-    setIsEditingTitle(true)
-  }
-
-  // 提交标题修改：写入 DB 并本地同步。
+  // 提交标题修改：写入 DB 并本地同步，随后关闭标题 tooltip。
   const commitTitle = (): void => {
-    setIsEditingTitle(false)
+    setIsTitleMenuOpen(false)
     if (!currentSessionId) return
     const trimmed = titleDraft.trim()
     if (!trimmed || trimmed === currentTitle) return
@@ -127,7 +112,7 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [searchParams])
 
-  // 拖拽左侧边缘调整宽度：最小 MIN_WIDTH，最大 40vw（视口过小时下限让位于最小宽度）。
+  // 拖拽左侧边缘调整宽度：最小 25vw，最大 40vw。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = { startX: event.clientX, startWidth: width }
     setIsResizing(true)
@@ -178,11 +163,6 @@ export const RightSideBar = (): React.JSX.Element => {
     return { page: pathname }
   }, [searchParams, currentProject, pathname])
 
-  // 切换会话（含新建/删除导致的 null）时退出标题编辑态，避免残留编辑态复现。
-  useEffect(() => {
-    setIsEditingTitle(false)
-  }, [currentSessionId])
-
   // 归属变化：刷新历史列表并自动加载最近会话（默认加载上次对话）。
   useEffect(() => {
     if (!context) return
@@ -212,40 +192,33 @@ export const RightSideBar = (): React.JSX.Element => {
   // 新对话（未入库）不显示标题；仅会话落库（currentSessionId 存在）后展示。
   const titleControls = currentSessionId && (
     <div className="flex min-w-0 shrink-0 items-center">
-      {isEditingTitle ? (
-        <input
-          autoFocus
-          aria-label="会话标题"
-          className="w-[12ch] border-b border-white/20 bg-transparent px-1 text-left text-xs text-white/80 outline-none"
-          maxLength={40}
-          title={titleDraft}
-          value={titleDraft}
-          onBlur={commitTitle}
-          onChange={(event) => setTitleDraft(event.target.value)}
-          onFocus={(event) => event.target.select()}
-          onKeyDown={(event) => {
-            event.stopPropagation()
-            if (event.key === "Escape") {
-              setTitleDraft(titleBeforeEditRef.current)
-              setIsEditingTitle(false)
-              return
-            }
-            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-              commitTitle()
-            }
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          aria-label={`编辑会话标题 ${currentTitle}`}
-          className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
-          title={currentTitle}
-          onClick={startTitleEdit}
-        >
-          {currentTitle}
-        </button>
-      )}
+      <LxTooltip
+        title="会话标题"
+        content={
+          <LxInput
+            multiline
+            aria-label="会话标题"
+            className="px-1"
+            maxLength={40}
+            rows={2}
+            size="xs"
+            value={titleDraft}
+            onChange={(event) => setTitleDraft(event.target.value)}
+          />
+        }
+        contentClassName="!w-64"
+        onConfirm={commitTitle}
+        onOpenChange={(open) => {
+          setIsTitleMenuOpen(open)
+          if (open) setTitleDraft(currentTitle)
+        }}
+        open={isTitleMenuOpen}
+        placement="bottom"
+      >
+        <LxIconButton aria-label={`会话标题 ${currentTitle}`} size="small">
+          <Tag className="h-3.5 w-3.5" />
+        </LxIconButton>
+      </LxTooltip>
     </div>
   )
 
@@ -264,18 +237,6 @@ export const RightSideBar = (): React.JSX.Element => {
             }}
           >
             新对话
-          </LxMenuItem>
-          <LxMenuItem
-            className="disabled:opacity-35"
-            disabled={!currentSessionId}
-            leading={<Pencil className="h-3.5 w-3.5 text-white/45" />}
-            onClick={() => {
-              setIsSessionMenuOpen(false)
-              setIsConfirmingDelete(false)
-              startTitleEdit()
-            }}
-          >
-            重命名
           </LxMenuItem>
           <LxMenuItem
             active={isConfirmingDelete}

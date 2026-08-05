@@ -1,5 +1,6 @@
 import { CornerDownRight } from "lucide-react"
 import type React from "react"
+import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock } from "@/features/agent/types"
 
 // 工具调用块类型。
@@ -87,6 +88,29 @@ const formatToolCommand = (toolName: string, args: Record<string, unknown>): str
 }
 
 /**
+ * 将连续的同名工具调用合并为单行摘要，条目间使用该工具专属分隔符。
+ */
+const formatToolGroupSummary = (toolName: string, toolCalls: ToolCallBlock[]): string => {
+  const separator = TOOL_GROUP_SEPARATORS[toolName]
+  if (!separator || toolCalls.length <= 1) return ""
+
+  if (toolName === "read") {
+    return getToolCallPaths(toolCalls).map(compactPath).join(separator)
+  }
+
+  const entries = toolCalls.map(({ args }) => {
+    const path = typeof args.path === "string" ? compactPath(args.path) : null
+    if (toolName === "ls") return path ?? "Unknown file"
+    if (toolName === "find" || toolName === "grep") {
+      return `${String(args.pattern ?? "")} ${path ?? "."}`.trim()
+    }
+    if (toolName === "bash") return typeof args.command === "string" ? args.command : "bash"
+    return JSON.stringify(args)
+  })
+  return entries.join(separator)
+}
+
+/**
  * 渲染 Agent 工具调用与结果的时间线步骤。
  */
 export const AgentToolCallBlock = ({
@@ -109,6 +133,7 @@ export const AgentToolCallBlock = ({
     simpleSummary ??
     (toolResult ? formatToolResult(toolResult.text) : formatToolArgs(firstToolCall?.args ?? {}))
   const isSimpleTool = toolName === "read" || simpleSummary !== null || commandSummary !== null
+  const groupSummary = formatToolGroupSummary(toolName, resolvedToolCalls)
   const summaryIndentClass = isGrouped ? "pl-4" : "pl-1"
 
   return (
@@ -123,7 +148,11 @@ export const AgentToolCallBlock = ({
         >
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           {toolName === "read" ? (
-            <span className="min-w-0 break-all">{readPaths.map(compactPath).join(", ")}</span>
+            <span className="min-w-0 break-all">
+              {readPaths.map(compactPath).join(TOOL_GROUP_SEPARATORS.read)}
+            </span>
+          ) : groupSummary ? (
+            <span className="min-w-0 break-all">{groupSummary}</span>
           ) : (
             <span>{summary}</span>
           )}

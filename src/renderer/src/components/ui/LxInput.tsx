@@ -10,22 +10,58 @@ export type LxInputVariant = "default" | "simple"
 
 // 输入框属性。
 export interface LxInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "prefix" | "size" | "suffix"> {
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement> & React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+    | "onBlur"
+    | "onChange"
+    | "onClick"
+    | "onCompositionEnd"
+    | "onCompositionStart"
+    | "onFocus"
+    | "onInput"
+    | "onKeyDown"
+    | "onKeyPress"
+    | "onKeyUp"
+    | "onMouseDown"
+    | "onMouseUp"
+    | "onPaste"
+    | "onSelect"
+    | "prefix"
+    | "size"
+    | "suffix"
+  > {
+  // 多行输入（textarea）。
+  multiline?: boolean
+  onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   size?: LxInputSize
   variant?: LxInputVariant
   clear?: boolean
   onClear?: () => void
+  onBlur?(event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onClick?(event: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onCompositionEnd?(event: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onCompositionStart?(event: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onFocus?(event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onInput?(event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onKeyDown?(event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onKeyPress?(event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onKeyUp?(event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onMouseDown?(event: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onMouseUp?(event: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onPaste?(event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>): void
+  onSelect?(event: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>): void
 }
 
 /**
- * 提供深色主题样式以及前后缀插槽的单行输入框。
+ * 提供深色主题样式以及前后缀插槽的单行输入框，multiline 时渲染多行 textarea。
  */
 export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
   (
     {
       className = "",
+      multiline = false,
       prefix,
       suffix,
       size = "sm",
@@ -52,6 +88,12 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const placeholderClass =
       variant === "simple" ? "placeholder:text-white/35" : "placeholder:text-white/20"
     const inputType = props.type === "password" ? (showPassword ? "text" : "password") : props.type
+    const { type: _fieldType, ...fieldProps } = props
+    const fieldClass = `min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} ${placeholderClass} text-white outline-none disabled:cursor-not-allowed ${
+      multiline
+        ? "resize-none leading-snug"
+        : "[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
+    }`
 
     useEffect(() => {
       if (value !== undefined) {
@@ -74,7 +116,9 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     /**
      * 同步输入状态，确保非受控输入也能显示清除按钮。
      */
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const handleChange = (
+      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ): void => {
       setHasValue(event.target.value.length > 0)
       onChange?.(event)
     }
@@ -86,7 +130,11 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
       const input = inputRef.current
       if (!input) return
 
-      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+      const proto =
+        input instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype
+      const valueSetter = Object.getOwnPropertyDescriptor(proto, "value")?.set
       valueSetter?.call(input, "")
       input.dispatchEvent(new Event("input", { bubbles: true }))
       setHasValue(false)
@@ -127,16 +175,28 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
         } ${className}`}
       >
         {prefix}
-        <input
-          ref={assignRef}
-          className={`min-w-0 flex-1 bg-transparent py-0 pr-0 ${textSizeClass} ${placeholderClass} text-white outline-none disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none`}
-          disabled={disabled}
-          value={value}
-          defaultValue={defaultValue}
-          onChange={handleChange}
-          {...props}
-          type={inputType}
-        />
+        {multiline ? (
+          <textarea
+            ref={(node) => assignRef(node as HTMLInputElement | null)}
+            className={fieldClass}
+            disabled={disabled}
+            value={value}
+            defaultValue={defaultValue}
+            onChange={handleChange}
+            {...fieldProps}
+          />
+        ) : (
+          <input
+            ref={assignRef}
+            className={fieldClass}
+            disabled={disabled}
+            value={value}
+            defaultValue={defaultValue}
+            onChange={handleChange}
+            {...props}
+            type={inputType}
+          />
+        )}
         {clear && hasValue && !disabled ? (
           <button
             type="button"

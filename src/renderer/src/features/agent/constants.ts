@@ -1,5 +1,15 @@
 import type { AgentPromptCard } from "./types"
 
+// 支持连续调用合并展示的工具及其条目分隔符。
+// 各工具分隔符刻意不同，便于在折叠组中区分条目来源；read 使用全角顿号。
+export const TOOL_GROUP_SEPARATORS: Record<string, string> = {
+  read: "、",
+  ls: " ; ",
+  grep: " | ",
+  find: " , ",
+  bash: " & ",
+}
+
 // 默认预设提示词列表。
 export const DEFAULT_PROMPT_CARDS: AgentPromptCard[] = [
   {

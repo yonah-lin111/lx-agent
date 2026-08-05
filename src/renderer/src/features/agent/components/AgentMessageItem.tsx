@@ -8,6 +8,7 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
+import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
 // 工具调用块类型。
@@ -83,16 +84,16 @@ export const AgentMessageItem = ({
       ),
     [continuationMessages, message],
   )
-  // 按其他工具或思考切分连续的 read 工具调用。
-  const readToolCallGroups = useMemo(() => {
+  // 按其他工具或思考切分连续的同名可合并工具调用（read/ls/grep/find/bash）。
+  const mergeableToolCallGroups = useMemo(() => {
     const groups: ToolCallBlock[][] = []
-    const readToolCallIds = new Set<string>()
+    const mergeableToolCallIds = new Set<string>()
 
     for (const { block } of displayBlocks) {
-      if (block.kind === "toolCall" && block.toolName === "read") {
-        readToolCallIds.add(block.toolCallId)
+      if (block.kind === "toolCall" && block.toolName in TOOL_GROUP_SEPARATORS) {
+        mergeableToolCallIds.add(block.toolCallId)
         const lastGroup = groups.at(-1)
-        if (lastGroup) {
+        if (lastGroup && lastGroup[0]?.toolName === block.toolName) {
           lastGroup.push(block)
         } else {
           groups.push([block])
@@ -100,8 +101,8 @@ export const AgentMessageItem = ({
         continue
       }
 
-      // read 结果只属于前一个 read 组，不应打断连续 read 的归类。
-      if (block.kind === "toolResult" && readToolCallIds.has(block.toolCallId)) continue
+      // 可合并工具的调用结果只属于前一组，不应打断连续归类。
+      if (block.kind === "toolResult" && mergeableToolCallIds.has(block.toolCallId)) continue
       if (block.kind === "toolCall" || block.kind === "thinking" || block.kind === "text") {
         groups.push([])
       }
@@ -109,14 +110,14 @@ export const AgentMessageItem = ({
 
     return groups.filter((group) => group.length > 0)
   }, [displayBlocks])
-  const readToolCallGroupById = useMemo(
+  const mergeableToolCallGroupById = useMemo(
     () =>
       new Map(
-        readToolCallGroups.flatMap((group) =>
+        mergeableToolCallGroups.flatMap((group) =>
           group.map((block) => [block.toolCallId, group] as const),
         ),
       ),
-    [readToolCallGroups],
+    [mergeableToolCallGroups],
   )
   const executionGroups = useMemo(() => {
     const groups: Array<
@@ -526,13 +527,13 @@ export const AgentMessageItem = ({
             return (
               <AgentToolCallGroup key={groupIndex} toolCount={toolCount}>
                 {group.blocks.map(({ block }) => {
-                  if (block.toolName === "read") {
-                    const readGroup = readToolCallGroupById.get(block.toolCallId)
-                    if (!readGroup || block.toolCallId !== readGroup[0]?.toolCallId) return null
+                  if (block.toolName in TOOL_GROUP_SEPARATORS) {
+                    const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
+                    if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return null
                     return (
                       <AgentToolCallBlock
                         key={`${block.toolCallId}-call`}
-                        toolCalls={readGroup}
+                        toolCalls={toolGroup}
                         isGrouped={isGrouped}
                       />
                     )
@@ -572,10 +573,7 @@ export const AgentMessageItem = ({
               )}
             </LxIconButton>
             {onDelete && (
-              <LxTooltip
-                content="是否删除当前的QA"
-                onConfirm={() => onDelete(message.id)}
-              >
+              <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
                 <LxIconButton size="small" aria-label="删除消息">
                   <Trash2 className="h-3 w-3" />
                 </LxIconButton>

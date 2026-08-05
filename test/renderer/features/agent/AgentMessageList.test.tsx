@@ -77,9 +77,8 @@ describe("AgentMessageList", () => {
 
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    const resultButton = screen.getByRole("button", { name: "展开文件路径" })
-    expect(screen.getAllByText("read").length).toBe(1)
-    expect(resultButton.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.getAllByText("Read")).toHaveLength(1)
+    expect(screen.getByText("src/main.ts")).not.toBeNull()
   })
 
   it("同一轮 AI 执行只渲染一个底部复制操作", () => {
