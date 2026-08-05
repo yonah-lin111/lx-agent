@@ -27,24 +27,24 @@ const templateCommands: MarkdownSlashCommand[] = [
     label: "/addTemplate",
     description: "插入需求提示词模板",
     content:
-      "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考：\n- 位置：\n- 描述：\n- 要求：\n  - \n- 注意：\n  - \n&&&",
-    cursorOffset: "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考：".length,
+      "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: \n- 位置: \n- 描述: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
+    cursorOffset: "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: ".length,
   },
   {
     id: "bugTemplate",
     label: "/bugTemplate",
     description: "插入 Bug 修复提示词模板",
     content:
-      "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考：\n- 位置：\n- 描述：\n- 复现：\n- 要求：\n  - \n- 期望：\n&&&",
-    cursorOffset: "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考：".length,
+      "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: \n- 位置: \n- 描述: \n- 复现: \n- 要求: \n  - \n- 期望: \n&&&",
+    cursorOffset: "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: ".length,
   },
   {
     id: "refactorTemplate",
     label: "/refactorTemplate",
     description: "插入功能重构提示词模板",
     content:
-      "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考：\n- 位置：\n- 目标：\n- 要求：\n  - \n- 注意：\n  - \n&&&",
-    cursorOffset: "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考：".length,
+      "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: \n- 位置: \n- 目标: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
+    cursorOffset: "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: ".length,
   },
   // 通用提示词模板（通用模板，非代码修改模板）
   {
@@ -55,16 +55,16 @@ const templateCommands: MarkdownSlashCommand[] = [
       "&&& commonTemplate 「title: 」",
       "# 执行任务",
       "",
-      "- 参考：",
-      "- 位置：",
-      "- 要求：",
+      "- 参考: ",
+      "- 位置: ",
+      "- 要求: ",
       "  - ",
-      "- 注意：",
+      "- 注意: ",
       "  - ",
-      "- 期望：",
+      "- 期望: ",
       "&&&",
     ].join("\n"),
-    cursorOffset: ["&&& commonTemplate", "# 执行任务", "", "- 参考："].join("\n").length,
+    cursorOffset: ["&&& commonTemplate 「title: 」", "# 执行任务", "", "- 参考: "].join("\n").length,
   },
 ]
 
