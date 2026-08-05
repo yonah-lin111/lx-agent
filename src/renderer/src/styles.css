@@ -620,11 +620,27 @@ select {
   border-radius: 6px;
 }
 
+.markdown-preview .markdown-template-titles {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
 .markdown-preview .markdown-template-command {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.markdown-preview .markdown-template-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #94a3b8;
 }
 
 .markdown-preview

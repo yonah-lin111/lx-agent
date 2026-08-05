@@ -132,8 +132,8 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
   in_progress: " in_progress",
 }
 
-// 模板块开始行：&&& command [状态标记]。
-const MARKDOWN_TEMPLATE_START_RE = /^\s*&&&\s+[A-Za-z]\w*(?:\s+(?:done|in_progress))?\s*$/
+// 模板块开始行：&&& command [「title: 标题」]。
+const MARKDOWN_TEMPLATE_START_RE = /^\s*&&&\s+[A-Za-z]\w*(?:\s+「title:[^」\n]*」)?\s*$/
 
 // 模板块结束行：&&& [状态标记]。
 const MARKDOWN_TEMPLATE_END_RE = /^\s*&&&(?:\s+(?:done|in_progress))?\s*$/
@@ -187,7 +187,6 @@ export const cycleMarkdownTemplateStatus = (lineText: string): string | null => 
  */
 export const getMarkdownTemplateStatuses = (content: string): MarkdownTemplateStatus[] => {
   const statuses: MarkdownTemplateStatus[] = []
-  let startStatus: MarkdownTemplateStatus = "todo"
   let isOpen = false
 
   for (const line of content.split("\n")) {
@@ -195,13 +194,9 @@ export const getMarkdownTemplateStatuses = (content: string): MarkdownTemplateSt
       const status = line.match(MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE)?.[1] as
         | MarkdownTemplateStatus
         | undefined
-      if (isOpen) statuses.push(status ?? startStatus)
+      if (isOpen) statuses.push(status ?? "todo")
       isOpen = false
     } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
-      startStatus =
-        (line.match(MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE)?.[1] as
-          | MarkdownTemplateStatus
-          | undefined) ?? "todo"
       isOpen = true
     }
   }

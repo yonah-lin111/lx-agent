@@ -324,15 +324,6 @@ export const MarkdownEditorToolbar = ({
 
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
-      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
-        <span
-          aria-label={isSaved ? "已保存" : "未保存"}
-          className={`ml-1.5 mr-1.5 h-2 w-2 shrink-0 rounded-full ${
-            isSaved ? "bg-emerald-400" : "bg-amber-400"
-          }`}
-          role="status"
-        />
-      </LxTooltip>
       {pageNameControls}
       {leftActions.map(({ highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
@@ -382,6 +373,13 @@ export const MarkdownEditorToolbar = ({
       ))}
       {pageSwitchControls}
       {pageMenu}
+      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+        <span
+          aria-label={isSaved ? "已保存" : "未保存"}
+          className={`mx-1.5 h-2 w-2 shrink-0 rounded-full ${isSaved ? "bg-emerald-400" : "bg-amber-400"}`}
+          role="status"
+        />
+      </LxTooltip>
     </div>
   )
 }

@@ -99,12 +99,7 @@ export const LxModal = ({
           <h2 id="lx-modal-title" className="text-sm font-semibold text-white/90">
             {title}
           </h2>
-          <LxIconButton
-            aria-label="关闭弹窗"
-            preset="close"
-            size="small"
-            onClick={handleClose}
-          />
+          <LxIconButton aria-label="关闭弹窗" preset="close" size="small" onClick={handleClose} />
         </header>
         {children}
       </section>

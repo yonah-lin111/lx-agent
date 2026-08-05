@@ -875,7 +875,7 @@ const buildMarkdownMarkerDecorations = (
     }
 
     const templateStartMatch = line.match(
-      /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+(?:done|in_progress))?\s*$/,
+      /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:[^」\n]*」)?\s*$/,
     )
     const templateEndMatch = line.match(/^\s*&&&(?:\s+(?:done|in_progress))?\s*$/)
     if (templateStartMatch && !isInsideTemplateBlock) {

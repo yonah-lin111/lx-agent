@@ -161,7 +161,7 @@ const markdownTemplateBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+(done|in_progress))?\s*$/.exec(startText)
+  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+「title:\s*([^」\n]*)」)?\s*$/.exec(startText)
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
@@ -183,7 +183,8 @@ const markdownTemplateBlock = (
   token.map = [startLine, closeLine + 1]
   token.meta = {
     command: startMatch[1],
-    status: (closeMatch?.[1] ?? startMatch[2] ?? "todo") as MarkdownTemplateStatus,
+    title: startMatch[2]?.trim() ?? "",
+    status: (closeMatch?.[1] ?? "todo") as MarkdownTemplateStatus,
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   token.attrSet("data-end-line", String(closeLine))
@@ -381,10 +382,13 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const token = tokens[index]
   const meta = token?.meta as {
     command: string
+    title?: string
     content: string
     status?: MarkdownTemplateStatus
   }
   const command = markdownRenderer.utils.escapeHtml(meta.command)
+  const title = markdownRenderer.utils.escapeHtml(meta.title ?? "").trim()
+  const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
   const status = meta.status ?? "todo"
   const encodedContent = encodeURIComponent(stripEmptyTemplateItems(meta.content))
   const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
@@ -399,5 +403,5 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
         ? " markdown-template-block--in-progress"
         : ""
 
-  return `<section class="markdown-template-block${statusClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${status}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-command">${command}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
+  return `<section class="markdown-template-block${statusClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${status}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-titles"><span class="markdown-template-command">${command}</span>${titleHtml}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }
