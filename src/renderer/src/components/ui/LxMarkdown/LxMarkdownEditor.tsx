@@ -150,8 +150,14 @@ export const LxMarkdownEditor = ({
   const activePageIndexRef = useRef(0)
   const onPagesChangeRef = useRef(onPagesChange)
 
-  const [content, setContent] = useState(initialContent)
-  const [activePageIndex, setActivePageIndex] = useState(0)
+  const [content, setContent] = useState(() =>
+    pageMode && pages?.length
+      ? (pages[pages.length - 1]?.content ?? initialContent)
+      : initialContent,
+  )
+  const [activePageIndex, setActivePageIndex] = useState(() =>
+    pageMode && pages?.length ? pages.length - 1 : 0,
+  )
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const { warning } = useLxToast()
