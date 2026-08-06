@@ -23,6 +23,7 @@ export interface MarkdownToolbarAction {
   onClick: () => void
   alignRight?: boolean
   highlighted?: boolean
+  disabled?: boolean
 }
 
 // 编辑器视觉滚动锚点。

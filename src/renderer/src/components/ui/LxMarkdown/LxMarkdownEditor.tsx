@@ -31,7 +31,7 @@ import {
   SquareSplitHorizontal,
   Undo2,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   cycleMarkdownTemplateStatus,
   isInsideMarkdownTemplateBlock,
@@ -67,6 +67,7 @@ import type {
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { useLxToast } from "@/components/ui/LxToast"
 import { isMacOS } from "@/lib/platform"
+import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
 /**
  * 从剪贴板读取本地文件绝对路径。
@@ -161,6 +162,10 @@ export const LxMarkdownEditor = ({
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const { warning } = useLxToast()
+  const isRightSidebarCollapsed = useSyncExternalStore(
+    rightSidebarStore.subscribe,
+    rightSidebarStore.isCollapsed,
+  )
   pagesRef.current = pages
   activePageIndexRef.current = activePageIndex
   onPagesChangeRef.current = onPagesChange
@@ -287,6 +292,11 @@ export const LxMarkdownEditor = ({
     previewModeRef.current = previewMode
   }, [previewMode])
 
+  const isRightSidebarCollapsedRef = useRef(isRightSidebarCollapsed)
+  useEffect(() => {
+    isRightSidebarCollapsedRef.current = isRightSidebarCollapsed
+  }, [isRightSidebarCollapsed])
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const isModKey = event.metaKey || event.ctrlKey
@@ -295,9 +305,11 @@ export const LxMarkdownEditor = ({
       if (isModKey && isShift) {
         const key = event.key.toLowerCase()
         if (key === "e") {
-          event.preventDefault()
-          const currentMode = previewModeRef.current
-          changePreviewMode(currentMode === "split" ? "edit" : "split")
+          if (isRightSidebarCollapsedRef.current) {
+            event.preventDefault()
+            const currentMode = previewModeRef.current
+            changePreviewMode(currentMode === "split" ? "edit" : "split")
+          }
         } else if (key === "v") {
           event.preventDefault()
           const currentMode = previewModeRef.current
@@ -463,6 +475,12 @@ export const LxMarkdownEditor = ({
     captureScrollAnchor()
     setPreviewMode(mode)
   }
+
+  // 右侧栏展开时强制退出双栏模式，避免窄宽度下分屏不可用。
+  useEffect(() => {
+    if (isRightSidebarCollapsed || previewModeRef.current !== "split") return
+    changePreviewMode("edit")
+  }, [isRightSidebarCollapsed])
 
   /**
    * 循环切换模板块结束行的状态（未完成 -> 进行中 -> 已完成），作为状态持久化在源码中。
@@ -778,6 +796,7 @@ export const LxMarkdownEditor = ({
       onClick: () => changePreviewMode(previewMode === "split" ? "edit" : "split"),
       alignRight: true,
       highlighted: previewMode === "split",
+      disabled: !isRightSidebarCollapsed,
     },
     {
       icon: Eye,

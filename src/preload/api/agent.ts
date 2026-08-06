@@ -23,6 +23,7 @@ export const agentApi: AgentApi["agent"] = {
   deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
+  getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

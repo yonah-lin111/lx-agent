@@ -7,6 +7,7 @@ import {
   type Tool,
   ToolListChangedNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js"
+import type { McpServerStatusItem } from "@shared/contracts/agent"
 import { getConfigPath } from "@/paths"
 import type { AgentTool } from "../core/types"
 import { jsonSchemaToZod } from "./jsonSchemaToZod"
@@ -144,6 +145,31 @@ type ServerState = {
 class McpManager {
   private states = new Map<string, ServerState>()
   private connectPromise?: Promise<void>
+  private statusChangeListeners = new Set<() => void>()
+
+  // 订阅连接状态变更，返回退订函数（渲染层状态 icon 刷新）。
+  onStatusChange(listener: () => void): () => void {
+    this.statusChangeListeners.add(listener)
+    return () => {
+      this.statusChangeListeners.delete(listener)
+    }
+  }
+
+  // 通知状态变更订阅者。
+  private emitStatusChange(): void {
+    for (const listener of this.statusChangeListeners) listener()
+  }
+
+  // 写入 server 状态并通知变更。
+  private updateState(name: string, state: ServerState): void {
+    this.states.set(name, state)
+    this.emitStatusChange()
+  }
+
+  // 全部 server 的连接状态快照（供渲染层展示）。
+  getStatus(): McpServerStatusItem[] {
+    return [...this.states.values()].map(({ server, status }) => ({ name: server, status }))
+  }
 
   // 读取 agent.mcp 配置（disabled / 非法条目跳过）。
   getServers(): Record<string, McpServerConfig> {
@@ -169,7 +195,7 @@ class McpManager {
     const timeout = config.timeout ?? DEFAULT_TIMEOUT
     const [command, ...args] = config.command
     if (config.disabled || !command) {
-      this.states.set(name, { server: name, status: "disabled", tools: [], timeout })
+      this.updateState(name, { server: name, status: "disabled", tools: [], timeout })
       return
     }
     const transport = new StdioClientTransport({
@@ -192,14 +218,18 @@ class McpManager {
       client.onclose = () => {
         const state = this.states.get(name)
         if (state && state.status === "connected") {
-          state.status = "failed"
-          state.error = "MCP server 连接已关闭"
-          state.tools = []
+          this.updateState(name, {
+            server: name,
+            status: "failed",
+            tools: [],
+            timeout: state.timeout,
+            error: "MCP server 连接已关闭",
+          })
         }
       }
-      this.states.set(name, { server: name, status: "connected", tools, client, timeout })
+      this.updateState(name, { server: name, status: "connected", tools, client, timeout })
     } catch (error) {
-      this.states.set(name, {
+      this.updateState(name, {
         server: name,
         status: "failed",
         tools: [],

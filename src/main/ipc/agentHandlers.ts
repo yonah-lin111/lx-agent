@@ -1,8 +1,15 @@
-import type { AgentMessage, AgentSendContext, AgentSessionFilter } from "@shared/contracts/agent"
+import type {
+  AgentEvent,
+  AgentMessage,
+  AgentSendContext,
+  AgentSessionFilter,
+  McpServerStatusItem,
+} from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
+import { mcpManager } from "@/agent/mcp/mcpManager"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
 const MAX_TITLE_LENGTH = 40
@@ -83,6 +90,15 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()
   })
+
+  // MCP 连接状态变更推送到渲染层（启动异步连接完成 / 运行中断连等）。
+  mcpManager.onStatusChange(() => {
+    const servers: McpServerStatusItem[] = mcpManager.getStatus()
+    const event: AgentEvent = { type: "mcp_status_changed", servers }
+    sendToRenderer(event)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.getMcpStatus, () => mcpManager.getStatus())
 
   ipcMain.handle(AGENT_CHANNELS.restore, (_, messages: unknown) => {
     if (!Array.isArray(messages) || !messages.every(isValidAgentMessage)) {

@@ -324,10 +324,11 @@ export const MarkdownEditorToolbar = ({
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
       {pageNameControls}
-      {leftActions.map(({ highlighted, icon: Icon, label, onClick }) => (
+      {leftActions.map(({ disabled, highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}
           aria-label={label}
+          disabled={disabled}
           highlighted={highlighted}
           size="medium"
           title={{ content: label }}
@@ -357,11 +358,12 @@ export const MarkdownEditorToolbar = ({
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
-      {rightActions.map(({ highlighted, icon: Icon, label, onClick }, index) => (
+      {rightActions.map(({ disabled, highlighted, icon: Icon, label, onClick }, index) => (
         <LxIconButton
           key={label}
           aria-label={label}
           className={index === 0 ? "ml-auto" : ""}
+          disabled={disabled}
           highlighted={highlighted}
           size="medium"
           title={{ content: label }}

@@ -108,6 +108,7 @@ export type AgentEvent =
       result: unknown
       isError: boolean
     }
+  | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
@@ -122,6 +123,12 @@ export interface AgentCapabilitySnapshot {
   tools: string[]
   mcp: string[]
   skills: string[]
+}
+
+// MCP server 连接状态（全局状态 icon 展示）。
+export interface McpServerStatusItem {
+  name: string
+  status: "connected" | "disabled" | "failed"
 }
 
 // 会话列表查询条件：item 会话按 projectItemId，页面会话按 page。
@@ -164,6 +171,8 @@ export interface AgentApi {
     deleteSession: (sessionId: string) => Promise<void>
     // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
     deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
+    // 获取全部 MCP server 的连接状态。
+    getMcpStatus: () => Promise<McpServerStatusItem[]>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

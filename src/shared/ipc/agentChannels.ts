@@ -8,5 +8,6 @@ export const AGENT_CHANNELS = {
   renameSession: "agent:renameSession",
   deleteSession: "agent:deleteSession",
   deleteMessageTurn: "agent:deleteMessageTurn",
+  getMcpStatus: "agent:getMcpStatus",
   event: "agent:event",
 } as const

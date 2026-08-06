@@ -3,12 +3,14 @@ import { ChevronLeft, ChevronRight, History, Plus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
+import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore, toSessionFilter } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
+import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
 // 展开态最小/最大宽度比例（相对视口）。
 const MIN_WIDTH_RATIO = 0.32
@@ -27,6 +29,12 @@ const clampWidth = (value: number): number => {
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+
+  // 同步折叠状态到全局存储，供其他区域（如 Markdown 编辑器）感知布局变化。
+  useEffect(() => {
+    rightSidebarStore.setCollapsed(isCollapsed)
+  }, [isCollapsed])
+
   const [width, setWidth] = useState<number>(() => window.innerWidth * MIN_WIDTH_RATIO)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
@@ -345,6 +353,8 @@ export const RightSideBar = (): React.JSX.Element => {
             </LxTooltip>
 
             {deleteSessionButton}
+
+            <McpStatusButton />
           </div>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
