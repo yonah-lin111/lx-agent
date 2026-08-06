@@ -12,6 +12,7 @@ import {
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
   isInsideMarkdownCodeFence,
+  isInsideMarkdownTemplateBlock,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { getMarkdownReferenceProjectPaths } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import type {
@@ -185,12 +186,18 @@ export const useMarkdownPanels = ({
 
   /**
    * 同步 Markdown 光标处的模板命令面板。
+   * 模板命令（/addTemplate 等）仅在模板块外可用；AI 总结命令（/summary）仅在模板块内可用。
    */
   const syncSlashCommandPanel = (view: EditorView): void => {
     const cursor = view.state.selection.main.head
     const line = view.state.doc.lineAt(cursor)
     const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
-    const commands = commandLine ? getMarkdownSlashCommands(commandLine.value) : []
+    const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
+      view.state.doc.sliceString(0, line.from),
+    )
+    const commands = commandLine
+      ? getMarkdownSlashCommands(commandLine.value, isInsideTemplateBlock)
+      : []
     const coords = view.coordsAtPos(cursor)
 
     if (!commandLine || !coords || commands.length === 0) {

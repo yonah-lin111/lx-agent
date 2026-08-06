@@ -5,13 +5,20 @@ export type MarkdownTemplateCommandId =
   | "refactorTemplate"
   | "commonTemplate"
 
+// Markdown 斜杠命令标识。
+export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summary"
+
+// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内。
+export type MarkdownSlashCommandScope = "normal" | "template"
+
 // Markdown 斜杠命令配置。
 export interface MarkdownSlashCommand {
-  id: MarkdownTemplateCommandId
+  id: MarkdownSlashCommandId
   label: string
   description: string
   content: string
   cursorOffset: number
+  scope: MarkdownSlashCommandScope
 }
 
 // 斜杠命令行范围。
@@ -26,6 +33,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "addTemplate",
     label: "/addTemplate",
     description: "插入需求提示词模板",
+    scope: "normal",
     content:
       "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: \n- 位置: \n- 描述: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
     cursorOffset: "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: ".length,
@@ -34,6 +42,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "bugTemplate",
     label: "/bugTemplate",
     description: "插入 Bug 修复提示词模板",
+    scope: "normal",
     content:
       "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: \n- 位置: \n- 描述: \n- 复现: \n- 要求: \n  - \n- 期望: \n&&&",
     cursorOffset: "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: ".length,
@@ -42,6 +51,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "refactorTemplate",
     label: "/refactorTemplate",
     description: "插入功能重构提示词模板",
+    scope: "normal",
     content:
       "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: \n- 位置: \n- 目标: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
     cursorOffset: "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: ".length,
@@ -51,6 +61,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     id: "commonTemplate",
     label: "/commonTemplate",
     description: "插入通用提示词模板（非代码修改模板）",
+    scope: "normal",
     content: [
       "&&& commonTemplate 「title: 」",
       "# 执行任务",
@@ -69,6 +80,18 @@ const templateCommands: MarkdownSlashCommand[] = [
   },
 ]
 
+// 模板块内的 AI 总结命令：当前仅回显静态占位内容，AI 生成能力后续接入。
+const summaryContent = ["## 总结", "", "- 待 AI 生成总结内容（功能开发中）"].join("\n")
+
+const summaryCommand: MarkdownSlashCommand = {
+  id: "summary",
+  label: "/summary",
+  description: "AI 总结当前模板块",
+  scope: "template",
+  content: summaryContent,
+  cursorOffset: summaryContent.length,
+}
+
 /**
  * 获取光标所在行的斜杠命令范围。
  */
@@ -84,12 +107,18 @@ export const getMarkdownSlashCommandLine = (
 }
 
 /**
- * 获取与当前斜杠命令匹配的候选项。
+ * 获取与当前斜杠命令匹配的候选项；按光标所在上下文（模板块内/外）过滤命令可用范围。
  */
-export const getMarkdownSlashCommands = (value: string): MarkdownSlashCommand[] => {
+export const getMarkdownSlashCommands = (
+  value: string,
+  isInsideTemplateBlock = false,
+): MarkdownSlashCommand[] => {
   const match = /^\/(\w*)$/i.exec(value)
   if (!match) return []
 
   const query = match[1].toLowerCase()
-  return templateCommands.filter((command) => command.id.includes(query))
+  const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
+  return [...templateCommands, summaryCommand].filter(
+    (command) => command.scope === expectedScope && command.id.includes(query),
+  )
 }
