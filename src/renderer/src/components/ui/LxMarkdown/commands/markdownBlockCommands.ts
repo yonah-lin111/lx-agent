@@ -1,3 +1,4 @@
+import type { MarkdownPage } from "@shared/project"
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
 
@@ -132,8 +133,9 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
   in_progress: " in_progress",
 }
 
-// 模板块开始行：&&& command [「title: 标题」]。
-const MARKDOWN_TEMPLATE_START_RE = /^\s*&&&\s+[A-Za-z]\w*(?:\s+「title:[^」\n]*」)?\s*$/
+// 模板块开始行：&&& command [「title: 标题」]；done/in_progress 为状态保留词。
+const MARKDOWN_TEMPLATE_START_RE =
+  /^\s*&&&\s+(?!done\b|in_progress\b)[A-Za-z]\w*(?:\s+「title:[^」\n]*」)?\s*$/
 
 // 模板块结束行：&&& [状态标记]。
 const MARKDOWN_TEMPLATE_END_RE = /^\s*&&&(?:\s+(?:done|in_progress))?\s*$/
@@ -240,4 +242,89 @@ export const createMarkdownBlockInsertion = (
     default:
       throw new Error(`Unsupported Markdown block command: ${commandId}`)
   }
+}
+
+// 模板块筛选标签：全部 / 具体状态。
+export type MarkdownTemplateIntegrate = "all" | MarkdownTemplateStatus
+
+// 模板块整合虚拟页的固定 id，用于标记不入库页面。
+export const MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID = "markdown-template-integrate-page"
+
+// 模板块整合选项的英文展示文案。
+export const MARKDOWN_TEMPLATE_INTEGRATE_LABELS: Record<MarkdownTemplateIntegrate, string> = {
+  all: "All",
+  todo: "Todo",
+  in_progress: "In Progress",
+  done: "Done",
+}
+
+// 已解析的模板块片段，保留源码原文以便恢复。
+export interface MarkdownTemplateBlock {
+  startText: string
+  endText: string
+  content: string
+  status: MarkdownTemplateStatus
+}
+
+/**
+ * 提取内容中全部已闭合的模板块片段；嵌套的 &&& 行按正文处理，与编辑器解析一致。
+ */
+export const extractMarkdownTemplateBlocks = (content: string): MarkdownTemplateBlock[] => {
+  const blocks: MarkdownTemplateBlock[] = []
+  let startText: string | null = null
+  let body: string[] = []
+
+  for (const line of content.split("\n")) {
+    if (startText !== null && MARKDOWN_TEMPLATE_END_RE.test(line)) {
+      blocks.push({
+        startText,
+        endText: line,
+        content: body.join("\n"),
+        status: getMarkdownTemplateStatus(line) ?? "todo",
+      })
+      startText = null
+      continue
+    }
+    if (startText === null && MARKDOWN_TEMPLATE_START_RE.test(line)) {
+      startText = line
+      body = []
+      continue
+    }
+    if (startText !== null) body.push(line)
+  }
+
+  return blocks
+}
+
+/**
+ * 生成模板块整合虚拟页内容：每页标题带整合标记，仅保留匹配状态的模板块源码。
+ * 选中 All 时按全部匹配处理；无匹配块时返回占位文本。
+ */
+export const buildMarkdownTemplateIntegratePage = (
+  pages: readonly MarkdownPage[],
+  integrate: readonly MarkdownTemplateIntegrate[],
+): string => {
+  const matchesAll = integrate.includes("all")
+  const selectedStatuses = new Set<MarkdownTemplateStatus>(
+    integrate.filter((value): value is MarkdownTemplateStatus => value !== "all"),
+  )
+  const sections: string[] = []
+
+  for (const page of pages) {
+    const blocks = extractMarkdownTemplateBlocks(page.content).filter(
+      (block) => matchesAll || selectedStatuses.has(block.status),
+    )
+    if (blocks.length === 0) continue
+
+    const parts = [`### ${page.name} 🔍`]
+    for (const block of blocks) {
+      parts.push("---", block.startText)
+      if (block.content) parts.push(block.content)
+      parts.push(block.endText)
+    }
+    sections.push(parts.join("\n"))
+  }
+
+  if (sections.length === 0) return "暂无匹配的模板块"
+  return sections.join("\n\n")
 }
