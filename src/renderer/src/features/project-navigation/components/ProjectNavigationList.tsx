@@ -277,9 +277,16 @@ export const ProjectNavigationList = ({
                   project,
                   "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",
                 )}
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-white/30 transition-transform ${isProjectCollapsed ? "-rotate-90" : ""}`}
-                />
+                {isProjectCollapsed ? (
+                  <>
+                    <span className="text-xs text-white/35 group-hover:hidden">
+                      {project.projectFolders.length}
+                    </span>
+                    <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+                  </>
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
+                )}
               </div>
 
               {!isProjectCollapsed && (
@@ -309,9 +316,16 @@ export const ProjectNavigationList = ({
                           <TreeBranchIcon />
                           <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
                           {renderItemName(folder, "min-w-0 flex-1 truncate")}
-                          <ChevronDown
-                            className={`h-3.5 w-3.5 text-white/30 transition-transform ${isFolderCollapsed ? "-rotate-90" : ""}`}
-                          />
+                          {isFolderCollapsed ? (
+                            <>
+                              <span className="text-xs text-white/35 group-hover:hidden">
+                                {folder.prompts.length}
+                              </span>
+                              <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+                            </>
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
+                          )}
                         </div>
                         {!isFolderCollapsed && renderFolderPrompts(folder.prompts, folder.id)}
                       </div>

@@ -1,8 +1,18 @@
-import { ArrowUpDown, Import, Locate, Plus, Search, SlidersHorizontal } from "lucide-react"
+import {
+  ArrowUpDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Import,
+  Locate,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -316,6 +326,33 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }))
   }
 
+  /**
+   * 当前可见项目与文件夹是否已全部折叠，用于切换折叠/展开全部图标。
+   */
+  const isAllCollapsed =
+    searchKeyword.length === 0 &&
+    filteredProjects.every(
+      (project) =>
+        !collapsedProjects[project.id] &&
+        project.projectFolders.every((folder) => !collapsedProjectFolders[folder.id]),
+    )
+
+  /**
+   * 折叠或展开全部项目与文件夹，并同步图标状态。
+   */
+  const toggleCollapseAll = (): void => {
+    const nextCollapsedProjects = { ...collapsedProjects }
+    const nextCollapsedFolders = { ...collapsedProjectFolders }
+    for (const project of filteredProjects) {
+      nextCollapsedProjects[project.id] = isAllCollapsed
+      for (const folder of project.projectFolders) {
+        nextCollapsedFolders[folder.id] = isAllCollapsed
+      }
+    }
+    setCollapsedProjects(nextCollapsedProjects)
+    setCollapsedProjectFolders(nextCollapsedFolders)
+  }
+
   // 范围筛选选项（单选）。
   const scopeFilterOptions: { value: ProjectNavigationFilterScope; label: string }[] = [
     { value: "all", label: "All Projects" },
@@ -390,6 +427,23 @@ export const ProjectNavigation = (): React.JSX.Element => {
     setStatusFilter(next)
     expandStatusFilteredContainers(next, filterScope)
   }
+
+  const addPanel = (
+    <div className="flex min-w-36 flex-col gap-0.5" aria-label="新建或导入项目">
+      <LxMenuItem
+        leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
+        onClick={() => setProjectModal({ mode: "create" })}
+      >
+        新建项目
+      </LxMenuItem>
+      <LxMenuItem
+        leading={<Import className="h-3.5 w-3.5 text-white/45" />}
+        onClick={() => void handleProjectImport()}
+      >
+        导入项目
+      </LxMenuItem>
+    </div>
+  )
 
   const filterPanel = (
     <div className="flex w-56 flex-col gap-1.5" aria-label="筛选项目条目">
@@ -511,25 +565,16 @@ export const ProjectNavigation = (): React.JSX.Element => {
               <Locate className="h-3.5 w-3.5" />
             </LxIconButton>
             <LxIconButton
-              aria-label="按状态排序"
-              title={{ content: "按状态排序", placement: "bottom" }}
-              onClick={sortPromptsByStatus}
+              aria-label={isAllCollapsed ? "展开全部" : "折叠全部"}
+              title={{ content: isAllCollapsed ? "展开全部" : "折叠全部", placement: "bottom" }}
+              disabled={searchKeyword.length > 0}
+              onClick={toggleCollapseAll}
             >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-            </LxIconButton>
-            <LxIconButton
-              aria-label="导入项目"
-              title={{ content: "导入项目", placement: "bottom" }}
-              onClick={() => void handleProjectImport()}
-            >
-              <Import className="h-4 w-4" />
-            </LxIconButton>
-            <LxIconButton
-              aria-label="新建项目"
-              title={{ content: "新建项目", placement: "bottom" }}
-              onClick={() => setProjectModal({ mode: "create" })}
-            >
-              <Plus className="h-4 w-4" />
+              {isAllCollapsed ? (
+                <ChevronsDownUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronsUpDown className="h-3.5 w-3.5" />
+              )}
             </LxIconButton>
             <LxTooltip
               content={filterPanel}
@@ -539,6 +584,24 @@ export const ProjectNavigation = (): React.JSX.Element => {
             >
               <LxIconButton aria-label="筛选条目">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
+              </LxIconButton>
+            </LxTooltip>
+            <LxIconButton
+              aria-label="按状态排序"
+              title={{ content: "按状态排序", placement: "bottom" }}
+              onClick={sortPromptsByStatus}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+            </LxIconButton>
+            <LxTooltip
+              content={addPanel}
+              contentClassName="!p-1"
+              placement="bottom"
+              trigger="hover"
+              closeOnContentClick
+            >
+              <LxIconButton aria-label="新建或导入项目">
+                <Plus className="h-4 w-4" />
               </LxIconButton>
             </LxTooltip>
           </div>
