@@ -252,8 +252,6 @@ export const AgentMessageItem = ({
   const hasOutput = displayBlocks.some(
     ({ block }) => block.kind === "text" && block.text.trim() !== "",
   )
-  // 是否存在思考内容。
-  const hasThinking = displayBlocks.some(({ block }) => block.kind === "thinking")
 
   // 使用 ResizeObserver 记录用户气泡容器最新高度
   useEffect(() => {
@@ -667,7 +665,7 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
-        {!hasOutput && !hasThinking && isStreamingNow && !assistantError && (
+        {isStreamingNow && !assistantError && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
               <span className="lx-liquid-blob" />

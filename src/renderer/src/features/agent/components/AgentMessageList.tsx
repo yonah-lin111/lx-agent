@@ -45,13 +45,28 @@ export const AgentMessageList = ({
   onEditMessage,
   onDeleteMessage,
 }: AgentMessageListProps): React.JSX.Element => {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const stickToBottomRef = useRef(true)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
 
-  // 新消息出现时自动滚动到底部。
+  // 距底部阈值内视为贴底。
+  const isNearBottom = (): boolean => {
+    const el = scrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 40
+  }
+
+  // 滚动位置决定吸底状态：贴底恢复吸底，上滚暂停吸底。
+  const handleScroll = (): void => {
+    stickToBottomRef.current = isNearBottom()
+  }
+
+  // 吸底状态下新消息自动滚动到底部。
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (!stickToBottomRef.current) return
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
   if (messages.length === 0) {
@@ -86,7 +101,11 @@ export const AgentMessageList = ({
   }
 
   return (
-    <div className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]">
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
+    >
       {messageEntries.map(({ message, continuationMessages }) => (
         <AgentMessageItem
           key={message.id}
@@ -106,7 +125,6 @@ export const AgentMessageList = ({
           onDelete={onDeleteMessage}
         />
       ))}
-      <div ref={bottomRef} />
     </div>
   )
 }
