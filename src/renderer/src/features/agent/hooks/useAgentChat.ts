@@ -17,6 +17,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
+  // 历史会话恢复是否进行中（驱动消息列表骨架屏）。
+  const [isRestoring, setIsRestoring] = useState(false)
   const messagesRef = useRef(messages)
   messagesRef.current = messages
   // 当前流式条目引用（message_update 定位）。
@@ -116,9 +118,10 @@ export const useAgentChat = (context?: AgentSendContext) => {
     streamingRef.current = null
   }, [])
 
-  // 新建/重置对话：脱离当前会话并清空 main 侧上下文。
+  // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
   const createNewChat = useCallback(() => {
     stopStreaming()
+    setIsRestoring(false)
     setMessages([])
     setInputText("")
     sessionListStore.setCurrentSessionId(null)
@@ -186,10 +189,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
     [isStreaming, removeTurn],
   )
 
-  // 恢复指定历史会话：从 main 进程 DB 读取并加载到上下文与展示。
+  // 恢复指定历史会话：从 main 进程 DB 读取并加载到上下文与展示。恢复期间展示骨架屏。
   const restoreChat = useCallback(
     (sessionId: string) => {
       stopStreaming()
+      setIsRestoring(true)
       void agentApi
         .restoreSession(sessionId)
         .then((restored) => {
@@ -203,6 +207,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
         })
         .catch(() => {
           // 会话已不存在等错误：保持当前展示，不做额外处理。
+        })
+        .finally(() => {
+          setIsRestoring(false)
         })
     },
     [stopStreaming],
@@ -246,6 +253,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     inputText,
     setInputText,
     isStreaming,
+    isRestoring,
     sendMessage,
     stopStreaming,
     createNewChat,
