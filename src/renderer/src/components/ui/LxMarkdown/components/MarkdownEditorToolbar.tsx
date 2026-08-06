@@ -241,7 +241,7 @@ export const MarkdownEditorToolbar = ({
   )
 
   const pageSwitchControls = pageMode && pages.length > 0 && (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="ml-auto flex shrink-0 items-center gap-0.5">
       <LxIconButton
         aria-label="上一页"
         disabled={activePageIndex === 0 || isIntegratePage}
@@ -458,7 +458,6 @@ export const MarkdownEditorToolbar = ({
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
       {pageNameControls}
-      {pageSwitchControls}
       {leftActions.map(({ disabled, highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}
@@ -493,11 +492,14 @@ export const MarkdownEditorToolbar = ({
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
+
+      {pageSwitchControls}
+
       {rightActions.map(({ disabled, highlighted, icon: Icon, label, onClick }, index) => (
         <LxIconButton
           key={label}
           aria-label={label}
-          className={index === 0 ? "ml-auto" : ""}
+          className={index === 0 && !pageSwitchControls ? "ml-auto" : ""}
           disabled={disabled}
           highlighted={highlighted}
           size="medium"
