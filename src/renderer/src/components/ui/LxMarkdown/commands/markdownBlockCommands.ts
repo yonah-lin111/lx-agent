@@ -161,6 +161,41 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
 }
 
 /**
+ * 提取文本中 position 所在模板块的正文（不含 &&& 标记行）；不在模板块内返回 null。
+ */
+export const getMarkdownTemplateBlockContent = (text: string, position: number): string | null => {
+  const lines = text.split("\n")
+  const boundedPosition = Math.min(Math.max(position, 0), text.length)
+  let inBlock = false
+  let bodyStart = 0
+  let offset = 0
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const lineStart = offset
+    const lineEnd = offset + line.length + 1
+
+    if (inBlock) {
+      if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+        if (boundedPosition < lineEnd) {
+          return text.slice(bodyStart, lineStart)
+        }
+        inBlock = false
+      }
+    } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
+      inBlock = true
+      bodyStart = lineEnd
+    } else if (boundedPosition <= lineEnd) {
+      return null
+    }
+
+    offset = lineEnd
+  }
+
+  return inBlock ? text.slice(bodyStart) : null
+}
+
+/**
  * 解析模板块结束行的源码状态；非结束行返回 null。
  */
 export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateStatus | null => {

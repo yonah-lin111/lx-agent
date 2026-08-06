@@ -2,8 +2,17 @@ import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import type { MarkdownTemplateFileKind } from "@/components/ui/LxMarkdown/commands/markdownTemplateFileCommands"
 import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
 import { LxTag } from "@/components/ui/LxTag"
+
+// 模板块文件快捷输入候选来源对应的图标颜色（@ 提及面板不使用）。
+const templateFileKindIconColors: Record<MarkdownTemplateFileKind, string> = {
+  currentMention: "text-[#eab308]",
+  referenceMention: "text-violet-300",
+  referFile: "text-sky-300",
+  referFolder: "text-[#d97706]",
+}
 
 // 文件提及面板属性。
 interface FileMentionCommandMenuProps {
@@ -11,16 +20,22 @@ interface FileMentionCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+  // 面板语义标签。
+  label?: string
+  // 选项 DOM id 前缀，避免多种文件面板并存时 id 冲突。
+  idPrefix?: string
 }
 
 /**
- * 渲染 Markdown 编辑器的项目文件 @ 命令面板。
+ * 渲染 Markdown 编辑器的项目文件命令面板（@ 提及 / 模板块文件快捷输入）。
  */
 export const FileMentionCommandMenu = ({
   files,
   activeIndex = 0,
   position,
   visible = false,
+  label = "项目文件提及",
+  idPrefix = "markdown-file-mention",
 }: FileMentionCommandMenuProps): React.JSX.Element | null => {
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
@@ -34,6 +49,10 @@ export const FileMentionCommandMenu = ({
   if (visible && files && position) {
     lastDataRef.current = { files, activeIndex, position }
   }
+
+  // 选项 DOM id：按来源类型分段，避免同路径多来源并存时 id 冲突。
+  const getOptionId = (file: MarkdownFileMentionEntry): string =>
+    `${idPrefix}-${file.source}-${file.templateKind ? `${file.templateKind}-` : ""}${file.mentionPath}`
 
   useEffect(() => {
     if (visible) {
@@ -66,7 +85,7 @@ export const FileMentionCommandMenu = ({
     if (!container || !activeFile) return
 
     const activeElement = container.querySelector(
-      `[id="markdown-file-mention-${activeFile.source}-${activeFile.mentionPath}"]`,
+      `[id="${getOptionId(activeFile)}"]`,
     ) as HTMLElement
     if (!activeElement) return
 
@@ -93,8 +112,8 @@ export const FileMentionCommandMenu = ({
   return (
     <div
       ref={containerRef}
-      aria-label="项目文件提及"
-      aria-activedescendant={`markdown-file-mention-${activeFile?.source}-${activeFile?.mentionPath}`}
+      aria-label={label}
+      aria-activedescendant={activeFile ? getOptionId(activeFile) : undefined}
       className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
@@ -108,12 +127,18 @@ export const FileMentionCommandMenu = ({
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const referenceProjectName = file.projectPath?.split("/").filter(Boolean).at(-1)
         const Icon = file.isDirectory ? Folder : FileText
+        const iconClassName = file.templateKind
+          ? templateFileKindIconColors[file.templateKind]
+          : file.source === "reference"
+            ? "text-violet-300"
+            : "text-[#eab308]"
         const isActive = index === displayActiveIndex
+        const optionId = getOptionId(file)
 
         return (
           <div
-            key={`${file.source}-${file.mentionPath}`}
-            id={`markdown-file-mention-${file.source}-${file.mentionPath}`}
+            key={optionId}
+            id={optionId}
             aria-selected={isActive}
             className={`relative flex min-h-11 w-full rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
               isActive ? "bg-white/8 text-white" : "text-white/75"
@@ -122,11 +147,7 @@ export const FileMentionCommandMenu = ({
           >
             <div className="min-w-0 flex-1">
               <div className="flex min-h-8 items-center gap-2">
-                <Icon
-                  className={`h-4 w-4 shrink-0 ${
-                    file.source === "reference" ? "text-violet-300" : "text-[#eab308]"
-                  }`}
-                />
+                <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} />
                 <div className="min-w-0 flex-1">
                   <div className={`truncate ${isActive ? "text-white" : "text-white/75"}`}>
                     {file.isDirectory ? `${name}/` : name}

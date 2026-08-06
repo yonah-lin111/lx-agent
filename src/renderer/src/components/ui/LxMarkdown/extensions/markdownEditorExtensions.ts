@@ -207,6 +207,10 @@ export const editorTheme = EditorView.theme(
       padding: "1px 6px !important",
       borderRadius: "3px !important",
     },
+    ".cm-md-bracket-content-marker, .cm-md-bracket-content-marker *": {
+      textDecoration: "underline",
+      textDecorationColor: "rgba(255, 255, 255, 0.4)",
+    },
     ".cm-md-template-done, .cm-md-template-done *": {
       color: "#34d399 !important",
       backgroundColor: "rgba(52, 211, 153, 0.15) !important",
@@ -970,6 +974,7 @@ const buildMarkdownMarkerDecorations = (
     addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
     addMatches(/(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g, "cm-md-emphasis-marker")
     addMatches(/(?<!\\)`/g, "cm-md-inline-code-marker")
+    addMatches(/(?<![\\]【)(?<=\【)[^【】\r\n]+(?=\】)/g, "cm-md-bracket-content-marker")
     if (!taskMatch) {
       addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
     }

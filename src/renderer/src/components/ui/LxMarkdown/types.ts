@@ -1,5 +1,6 @@
 import type { ProjectFileEntry } from "@shared/project"
 import type React from "react"
+import type { MarkdownTemplateFileKind } from "@/components/ui/LxMarkdown/commands/markdownTemplateFileCommands"
 
 // 表格网格尺寸。
 export interface MarkdownTableSize {
@@ -41,6 +42,8 @@ export type MarkdownFileMentionEntry = ProjectFileEntry & {
   mentionPath: string
   projectPath?: string
   source: "current" | "reference"
+  // 模板块文件快捷输入的候选来源类型（@ 提及面板不使用）。
+  templateKind?: MarkdownTemplateFileKind
 }
 
 // Markdown 页面数据。

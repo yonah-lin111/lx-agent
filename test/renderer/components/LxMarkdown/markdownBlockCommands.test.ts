@@ -4,6 +4,7 @@ import {
   cycleMarkdownTemplateStatus,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  getMarkdownTemplateBlockContent,
   getMarkdownTemplateStatus,
   getMarkdownTemplateStatuses,
   isInsideMarkdownCodeFence,
@@ -90,5 +91,35 @@ describe("Markdown 块命令", () => {
       selectionStart: 3,
       selectionEnd: 11,
     })
+  })
+
+  it("提取光标所在模板块的正文", () => {
+    const doc = [
+      "前文",
+      "&&& addTemplate",
+      "- 参考: @src/LxMarkdownEditor.tsx",
+      "&&&",
+      "中间文本",
+      "&&& bugTemplate",
+      "- 位置: @[refer-file](/abs/a.ts)",
+      "&&&",
+      "后文",
+    ].join("\n")
+
+    const firstBody = "- 参考: @src/LxMarkdownEditor.tsx\n"
+    const firstBodyStart = doc.indexOf(firstBody)
+    expect(getMarkdownTemplateBlockContent(doc, firstBodyStart + 1)).toBe(firstBody)
+
+    const middleStart = doc.indexOf("中间文本")
+    expect(getMarkdownTemplateBlockContent(doc, middleStart + 1)).toBeNull()
+
+    const secondBody = "- 位置: @[refer-file](/abs/a.ts)\n"
+    const secondBodyStart = doc.indexOf(secondBody)
+    expect(getMarkdownTemplateBlockContent(doc, secondBodyStart + 1)).toBe(secondBody)
+  })
+
+  it("未闭合模板块正文延伸到文档末尾", () => {
+    const doc = "&&& addTemplate\n- 位置: lxmded"
+    expect(getMarkdownTemplateBlockContent(doc, doc.length)).toBe("- 位置: lxmded")
   })
 })

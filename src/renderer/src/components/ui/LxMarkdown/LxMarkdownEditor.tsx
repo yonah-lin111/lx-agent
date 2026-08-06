@@ -319,6 +319,14 @@ export const LxMarkdownEditor = ({
     syncFileMentionPanel,
     selectFileMention,
     handleFileMentionKey,
+    templateFilePanel,
+    activeTemplateFileIndex,
+    templateFilePanelRef,
+    activeTemplateFileIndexRef,
+    closeTemplateFilePanel,
+    syncTemplateFilePanel,
+    selectTemplateFile,
+    handleTemplateFileKey,
     syncBlockCommandPanel,
     selectBlockCommand,
     handleBlockCommandKey,
@@ -594,14 +602,16 @@ export const LxMarkdownEditor = ({
               run: () =>
                 handleFileMentionKey("ArrowDown") ||
                 handleSlashCommandKey(1) ||
-                handleBlockCommandKey(1),
+                handleBlockCommandKey(1) ||
+                handleTemplateFileKey(1),
             },
             {
               key: "ArrowUp",
               run: () =>
                 handleFileMentionKey("ArrowUp") ||
                 handleSlashCommandKey(-1) ||
-                handleBlockCommandKey(-1),
+                handleBlockCommandKey(-1) ||
+                handleTemplateFileKey(-1),
             },
             {
               key: "Enter",
@@ -627,6 +637,15 @@ export const LxMarkdownEditor = ({
                 if (panel) {
                   selectBlockCommand(
                     panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
+                  )
+                  return true
+                }
+
+                const templateFilePanel = templateFilePanelRef.current
+                if (templateFilePanel) {
+                  selectTemplateFile(
+                    templateFilePanel.files[activeTemplateFileIndexRef.current] ??
+                      templateFilePanel.files[0],
                   )
                   return true
                 }
@@ -693,6 +712,10 @@ export const LxMarkdownEditor = ({
                 if (blockCommandPanelRef.current) {
                   blockCommandPanelRef.current = null
                   setBlockCommandPanel(null)
+                  return true
+                }
+                if (templateFilePanelRef.current) {
+                  closeTemplateFilePanel()
                   return true
                 }
                 return false
@@ -811,9 +834,13 @@ export const LxMarkdownEditor = ({
             syncBlockCommandPanel(update.view)
             syncSlashCommandPanel(update.view)
           }
-          if (update.docChanged) syncFileMentionPanel(update.view)
+          if (update.docChanged) {
+            syncFileMentionPanel(update.view)
+            syncTemplateFilePanel(update.view)
+          }
           if (update.selectionSet && !update.docChanged) {
             closeFileMentionPanel()
+            closeTemplateFilePanel()
           }
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
@@ -922,6 +949,14 @@ export const LxMarkdownEditor = ({
         files={fileMentionPanel?.files}
         position={fileMentionPanel?.position}
         visible={Boolean(fileMentionPanel)}
+      />
+      <FileMentionCommandMenu
+        activeIndex={activeTemplateFileIndex}
+        files={templateFilePanel?.files}
+        idPrefix="markdown-template-file"
+        label="模板块文件快捷输入"
+        position={templateFilePanel?.position}
+        visible={Boolean(templateFilePanel)}
       />
     </section>
   )
