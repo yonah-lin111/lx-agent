@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, Circle, File, Folder, FolderKanban } from "lucide-react"
+import { Boxes, CheckCircle2, ChevronDown, Circle, File, Folder } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 
@@ -272,7 +272,7 @@ export const ProjectNavigationList = ({
                 }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
               >
-                <FolderKanban className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
                 {renderItemName(
                   project,
                   "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",

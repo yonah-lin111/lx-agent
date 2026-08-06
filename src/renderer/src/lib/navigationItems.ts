@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { FolderKanban, House, Settings } from "lucide-react"
+import { Boxes, House, Settings } from "lucide-react"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 全局底部导航项。
@@ -10,6 +10,6 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
   breadcrumbCategory: string
 }> = [
   { icon: House, label: "主页", path: PAGE_ROUTES.home, breadcrumbCategory: "HOME" },
-  { icon: FolderKanban, label: "项目", path: PAGE_ROUTES.project, breadcrumbCategory: "PROJECT" },
+  { icon: Boxes, label: "项目", path: PAGE_ROUTES.project, breadcrumbCategory: "PROJECT" },
   { icon: Settings, label: "设置", path: PAGE_ROUTES.settings, breadcrumbCategory: "SETTING" },
 ]

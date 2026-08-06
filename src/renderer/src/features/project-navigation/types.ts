@@ -3,6 +3,9 @@ import type { ProjectItemStatus } from "@shared/project"
 // 项目导航菜单项类型。
 export type ProjectNavigationMenuType = "project" | "project_folder" | "prompt"
 
+// 项目导航条目筛选范围。
+export type ProjectNavigationFilterScope = "current" | "all"
+
 // 项目导航展示的条目状态。
 export type PromptStatus = ProjectItemStatus
 

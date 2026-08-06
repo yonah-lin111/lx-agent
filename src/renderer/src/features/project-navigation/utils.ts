@@ -1,5 +1,9 @@
 import type { Project, ProjectFolder, ProjectItem } from "@shared/project"
-import type { ProjectNavigationProject } from "@/features/project-navigation/types"
+import type {
+  ProjectNavigationFilterScope,
+  ProjectNavigationProject,
+  ProjectNavigationPrompt,
+} from "@/features/project-navigation/types"
 
 /**
  * 将持久化记录组装为项目导航所需的树形数据。
@@ -52,6 +56,32 @@ export const filterProjectNavigationTree = (
     const prompts = project.prompts.filter((prompt) => prompt.name.toLowerCase().includes(keyword))
     return matchesProject || folders.length > 0 || prompts.length > 0
       ? [{ ...project, projectFolders: folders, prompts }]
+      : []
+  })
+}
+
+/**
+ * 根据条目状态过滤项目树，同时保留匹配条目的父级层级。
+ * 范围限定为当前项目且存在当前条目时，仅保留该项目的匹配条目。
+ */
+export const filterProjectNavigationTreeByStatus = (
+  projects: ProjectNavigationProject[],
+  statuses: ProjectNavigationPrompt["status"][],
+  scope: ProjectNavigationFilterScope,
+  activeProjectId?: string,
+): ProjectNavigationProject[] => {
+  if (statuses.length === 0) return projects
+  return projects.flatMap((project) => {
+    if (scope !== "all" && activeProjectId && project.id !== activeProjectId) return []
+    const projectFolders = project.projectFolders
+      .map((folder) => ({
+        ...folder,
+        prompts: folder.prompts.filter((prompt) => statuses.includes(prompt.status)),
+      }))
+      .filter((folder) => folder.prompts.length > 0)
+    const prompts = project.prompts.filter((prompt) => statuses.includes(prompt.status))
+    return projectFolders.length > 0 || prompts.length > 0
+      ? [{ ...project, projectFolders, prompts }]
       : []
   })
 }
