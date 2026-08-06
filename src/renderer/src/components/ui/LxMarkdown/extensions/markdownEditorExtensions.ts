@@ -199,6 +199,14 @@ export const editorTheme = EditorView.theme(
       color: "#38bdf8 !important",
       backgroundColor: "rgba(56, 189, 248, 0.15) !important",
     },
+    ".cm-md-template-title, .cm-md-template-title *": {
+      color: "#fde68a !important",
+      backgroundColor: "rgba(253, 230, 138, 0.18) !important",
+      textDecoration: "underline",
+      textDecorationColor: "rgba(253, 230, 138, 0.6)",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+    },
     ".cm-md-template-done, .cm-md-template-done *": {
       color: "#34d399 !important",
       backgroundColor: "rgba(52, 211, 153, 0.15) !important",
@@ -345,7 +353,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -826,6 +834,14 @@ const buildMarkdownMarkerDecorations = (
           markerEnd + 1,
           line.length,
           `cm-md-template-command cm-md-template-command-${commandName}`,
+        )
+      }
+      const titleMatch = line.match(/「title:[^」\n]*」/)
+      if (titleMatch?.index !== undefined) {
+        addMarkerAlways(
+          titleMatch.index,
+          titleMatch.index + titleMatch[0].length,
+          "cm-md-template-title",
         )
       }
       const templateEndText = templateEndIndex === -1 ? "" : lines[templateEndIndex]
