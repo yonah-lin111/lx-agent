@@ -84,6 +84,8 @@ export const MarkdownEditorToolbar = ({
   const [isEditingPageName, setIsEditingPageName] = useState(false)
   const [isPageMenuOpen, setIsPageMenuOpen] = useState(false)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isPageListOpen, setIsPageListOpen] = useState(false)
+  const [pageListQuery, setPageListQuery] = useState("")
   const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
@@ -146,6 +148,55 @@ export const MarkdownEditorToolbar = ({
     </div>
   )
 
+  // 按页面名称筛选，便于在完整列表中快速定位。
+  const filteredPages = useMemo(() => {
+    const query = pageListQuery.trim().toLocaleLowerCase()
+    if (!query) return pages
+    return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
+  }, [pageListQuery, pages])
+
+  const pageList = (
+    <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
+      <LxInput
+        aria-label="搜索页面"
+        placeholder="搜索页面"
+        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+        size="xs"
+        value={pageListQuery}
+        onChange={(event) => setPageListQuery(event.target.value)}
+      />
+      <div className="max-h-72 overflow-y-auto custom-scrollbar">
+        <div className="space-y-0.5">
+          {filteredPages.map((page, index) => {
+            const isCurrent = index === activePageIndex
+            return (
+              <button
+                key={page.id}
+                disabled={isCurrent}
+                type="button"
+                className={`flex min-h-7 w-full items-center gap-2 rounded-[3px] px-1.5 text-left text-xs ${
+                  isCurrent
+                    ? "cursor-default bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/5"
+                }`}
+                onClick={() => {
+                  setIsPageListOpen(false)
+                  setPageListQuery("")
+                  onPageChange?.(index)
+                }}
+              >
+                <span className="min-w-0 truncate">{page.name}</span>
+              </button>
+            )
+          })}
+        </div>
+        {filteredPages.length === 0 && (
+          <div className="py-4 text-center text-xs text-white/45">未找到匹配的页面</div>
+        )}
+      </div>
+    </div>
+  )
+
   const pageSwitchControls = pageMode && pages.length > 0 && (
     <div className="flex shrink-0 items-center gap-0.5">
       <LxIconButton
@@ -157,9 +208,25 @@ export const MarkdownEditorToolbar = ({
       >
         <ChevronLeft className="h-3.5 w-3.5" />
       </LxIconButton>
-      <span className="text-[11px] text-white/35">
-        {activePageIndex + 1} / {pages.length}
-      </span>
+      <LxTooltip
+        content={pageList}
+        contentClassName="!p-2"
+        onOpenChange={(isOpen) => {
+          setIsPageListOpen(isOpen)
+          if (!isOpen) setPageListQuery("")
+        }}
+        open={isPageListOpen}
+        placement="bottom"
+        trigger="click"
+      >
+        <LxIconButton
+          aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
+          className="h-7 px-1.5 text-[11px] tabular-nums"
+          iconOnly={false}
+        >
+          {activePageIndex + 1} / {pages.length}
+        </LxIconButton>
+      </LxTooltip>
       <LxIconButton
         aria-label="下一页"
         disabled={activePageIndex === pages.length - 1}

@@ -167,7 +167,8 @@ export const AgentMessageList = ({
       </div>
 
       {scrollButtonRendered && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+        // z-10 高于代码块/模板块头部（z-index: 1），避免其滚入底部区域时遮挡按钮。
+        <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
           <button
             type="button"
             aria-label="滚动到底部"
