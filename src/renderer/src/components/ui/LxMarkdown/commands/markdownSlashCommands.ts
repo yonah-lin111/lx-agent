@@ -64,7 +64,8 @@ const templateCommands: MarkdownSlashCommand[] = [
       "- 期望: ",
       "&&&",
     ].join("\n"),
-    cursorOffset: ["&&& commonTemplate 「title: 」", "# 执行任务", "", "- 参考: "].join("\n").length,
+    cursorOffset: ["&&& commonTemplate 「title: 」", "# 执行任务", "", "- 参考: "].join("\n")
+      .length,
   },
 ]
 

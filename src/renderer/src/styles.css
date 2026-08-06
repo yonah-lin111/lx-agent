@@ -601,6 +601,14 @@ select {
   background: #1c1d24;
 }
 
+.markdown-preview .markdown-template-block[data-template-status="in_progress"] {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.markdown-preview .markdown-template-block[data-template-status="done"] {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
 .markdown-preview .markdown-template-block-header {
   position: sticky;
   top: 0;

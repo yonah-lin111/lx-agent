@@ -9,6 +9,8 @@ import {
   WidgetType,
 } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
+import { createElement, Fragment } from "react"
+import { createRoot, type Root } from "react-dom/client"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateStatus,
@@ -20,6 +22,11 @@ import {
   getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,
 } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import {
+  MarkdownActionCopyButton,
+  MarkdownActionFoldButton,
+  TemplateStatusButton,
+} from "@/components/ui/LxMarkdown/extensions/markdownActionWidgets"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
@@ -45,6 +52,8 @@ export const editorTheme = EditorView.theme(
     ".cm-line": {
       // 内容行高
       lineHeight: "1.85",
+      // 作为行内操作按钮（代码块/模板块右上角）的定位参照，实现垂直居中。
+      position: "relative",
     },
     ".cm-scroller": {
       overflow: "auto",
@@ -265,6 +274,12 @@ export const editorTheme = EditorView.theme(
       paddingLeft: "6px",
       paddingBottom: "4px",
     },
+    ".cm-md-template-line-in-progress": {
+      borderColor: "rgba(251, 191, 36, 0.35) !important",
+    },
+    ".cm-md-template-line-done": {
+      borderColor: "rgba(52, 211, 153, 0.35) !important",
+    },
     ".cm-md-template-hidden-line": {
       display: "none !important",
     },
@@ -450,28 +465,9 @@ interface TemplateStatusAction {
   onToggle: (line: number) => void
 }
 
-// 模板块状态按钮的图标 SVG。
-const TEMPLATE_STATUS_ICON_SVG: Record<MarkdownTemplateStatus, string> = {
-  todo: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle"><circle cx="12" cy="12" r="10"/></svg>`,
-  in_progress: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="lucide lucide-circle-dot"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`,
-  done: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
-}
-
-// 模板块状态按钮的悬停与普通颜色。
-const TEMPLATE_STATUS_COLOR: Record<MarkdownTemplateStatus, string> = {
-  todo: "rgba(255, 255, 255, 0.5)",
-  in_progress: "#fbbf24",
-  done: "#34d399",
-}
-
-// 模板块状态按钮的下一步操作提示。
-const TEMPLATE_STATUS_NEXT_LABEL: Record<MarkdownTemplateStatus, string> = {
-  todo: "标记为进行中",
-  in_progress: "标记为已完成",
-  done: "标记为未完成",
-}
-
 class CodeBlockActionWidget extends WidgetType {
+  private reactRoot: Root | null = null
+
   constructor(
     readonly codeText: string,
     readonly isFolded: boolean,
@@ -501,7 +497,8 @@ class CodeBlockActionWidget extends WidgetType {
     const wrap = document.createElement("span")
     wrap.className = this.actionClassName
     wrap.style.position = "absolute"
-    wrap.style.right = "24px"
+    wrap.style.top = "50%"
+    wrap.style.right = "12px"
     wrap.style.display = "inline-flex"
     wrap.style.alignItems = "center"
     wrap.style.gap = "6px"
@@ -510,122 +507,39 @@ class CodeBlockActionWidget extends WidgetType {
     wrap.style.borderRadius = "4px"
     wrap.style.padding = "2px 4px"
     wrap.style.zIndex = "10"
-    wrap.style.transform = "translateY(-4px)"
+    wrap.style.transform = "translateY(-50%)"
 
-    // 状态按钮（仅模板块）
-    const statusBtn = document.createElement("button")
-    statusBtn.type = "button"
-    statusBtn.className = `${this.actionClassName}-btn`
-    statusBtn.style.border = "none"
-    statusBtn.style.background = "transparent"
-    statusBtn.style.cursor = "pointer"
-    statusBtn.style.display = "flex"
-    statusBtn.style.padding = "2px"
-    const currentStatus = this.templateStatus?.status ?? "todo"
-    statusBtn.style.color = TEMPLATE_STATUS_COLOR[currentStatus]
-    statusBtn.style.transition = "color 0.2s"
-    statusBtn.title = TEMPLATE_STATUS_NEXT_LABEL[currentStatus]
-    statusBtn.onmouseenter = () => {
-      statusBtn.style.color =
-        currentStatus === "todo" ? "#ffffff" : TEMPLATE_STATUS_COLOR[currentStatus]
-    }
-    statusBtn.onmouseleave = () => {
-      statusBtn.style.color = TEMPLATE_STATUS_COLOR[currentStatus]
-    }
-
-    statusBtn.innerHTML = TEMPLATE_STATUS_ICON_SVG[currentStatus]
-
-    statusBtn.onclick = (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (this.templateStatus) {
-        this.templateStatus.onToggle(this.templateStatus.line)
-      }
-    }
-
-    // 复制按钮
-    const copyBtn = document.createElement("button")
-    copyBtn.type = "button"
-    copyBtn.className = `${this.actionClassName}-btn`
-    copyBtn.style.border = "none"
-    copyBtn.style.background = "transparent"
-    copyBtn.style.cursor = "pointer"
-    copyBtn.style.display = "flex"
-    copyBtn.style.padding = "2px"
-    copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
-    copyBtn.style.transition = "color 0.2s"
-    copyBtn.title = this.copyTitle
-    let isCopied = false
-    copyBtn.onmouseenter = () => {
-      copyBtn.style.color = isCopied ? "#34d399" : "#ffffff"
-    }
-    copyBtn.onmouseleave = () => {
-      copyBtn.style.color = isCopied ? "#34d399" : "rgba(255, 255, 255, 0.5)"
-    }
-
-    // 复制图标 SVG
-    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
-
-    copyBtn.onclick = async (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      try {
-        await navigator.clipboard.writeText(this.codeText)
-        isCopied = true
-        copyBtn.style.color = "#34d399"
-        copyBtn.title = "已复制"
-        copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>`
-        setTimeout(() => {
-          isCopied = false
-          copyBtn.style.color = "rgba(255, 255, 255, 0.5)"
-          copyBtn.title = this.copyTitle
-          copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
-        }, 1500)
-      } catch (err) {
-        console.error("Failed to copy text: ", err)
-      }
-    }
-
-    // 折叠按钮
-    const foldBtn = document.createElement("button")
-    foldBtn.type = "button"
-    foldBtn.className = `${this.actionClassName}-btn`
-    foldBtn.style.border = "none"
-    foldBtn.style.background = "transparent"
-    foldBtn.style.cursor = "pointer"
-    foldBtn.style.display = "flex"
-    foldBtn.style.padding = "2px"
-    foldBtn.style.color = "rgba(255, 255, 255, 0.5)"
-    foldBtn.style.transition = "color 0.2s"
-    foldBtn.title = this.isFolded ? this.unfoldTitle : this.foldTitle
-    foldBtn.onmouseenter = () => {
-      foldBtn.style.color = "#ffffff"
-    }
-    foldBtn.onmouseleave = () => {
-      foldBtn.style.color = "rgba(255, 255, 255, 0.5)"
-    }
-
-    if (this.isFolded) {
-      foldBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`
-    } else {
-      foldBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>`
-    }
-
-    foldBtn.onclick = (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      this.onToggleFold()
-    }
-
+    const actionNodes: React.ReactNode[] = []
     if (this.templateStatus) {
-      wrap.appendChild(statusBtn)
+      actionNodes.push(
+        createElement(TemplateStatusButton, {
+          status: this.templateStatus.status,
+          onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
+        }),
+      )
     }
-    wrap.appendChild(copyBtn)
+    actionNodes.push(
+      createElement(MarkdownActionCopyButton, { text: this.codeText, label: this.copyTitle }),
+    )
     if (this.showFoldBtn) {
-      wrap.appendChild(foldBtn)
+      actionNodes.push(
+        createElement(MarkdownActionFoldButton, {
+          isFolded: this.isFolded,
+          label: this.foldTitle,
+          unfoldLabel: this.unfoldTitle,
+          onToggle: this.onToggleFold,
+        }),
+      )
     }
 
+    this.reactRoot = createRoot(wrap)
+    this.reactRoot.render(createElement(Fragment, null, ...actionNodes))
     return wrap
+  }
+
+  destroy(_dom: HTMLElement): void {
+    this.reactRoot?.unmount()
+    this.reactRoot = null
   }
 }
 
@@ -754,8 +668,12 @@ const buildMarkdownMarkerDecorations = (
   let codeBlockIndex = 0
   let isInsideTemplateBlock = false
   let currentTemplateFolded = false
+  let currentTemplateStatus: MarkdownTemplateStatus = "todo"
   let templateBlockIndex = 0
   let currentTemplateTextLines: string[] = []
+
+  const templateStatusLineClass = (status: MarkdownTemplateStatus): string =>
+    status === "todo" ? "" : ` cm-md-template-line-${status.replace("_", "-")}`
 
   const lines = Array.from(view.state.doc.iterLines())
   const referencedRoots = new Set(getMarkdownReferenceProjectPaths(view.state.doc.toString()))
@@ -935,8 +853,9 @@ const buildMarkdownMarkerDecorations = (
       allDecos.push({
         type: "line",
         from: offset,
-        className: "cm-md-template-start-line",
+        className: `cm-md-template-start-line${templateStatusLineClass(templateEndStatus)}`,
       })
+      currentTemplateStatus = templateEndStatus
       isInsideTemplateBlock = true
       offset += line.length + 1
       continue
@@ -955,10 +874,13 @@ const buildMarkdownMarkerDecorations = (
       allDecos.push({
         type: "line",
         from: offset,
-        className: currentTemplateFolded ? "cm-md-template-hidden-line" : "cm-md-template-end-line",
+        className: currentTemplateFolded
+          ? "cm-md-template-hidden-line"
+          : `cm-md-template-end-line${templateStatusLineClass((statusMatch?.[1] as MarkdownTemplateStatus | undefined) ?? "todo")}`,
       })
       isInsideTemplateBlock = false
       currentTemplateFolded = false
+      currentTemplateStatus = "todo"
       offset += line.length + 1
       continue
     }
@@ -969,7 +891,7 @@ const buildMarkdownMarkerDecorations = (
         from: offset,
         className: currentTemplateFolded
           ? "cm-md-template-hidden-line"
-          : "cm-md-template-middle-line",
+          : `cm-md-template-middle-line${templateStatusLineClass(currentTemplateStatus)}`,
       })
     }
 
