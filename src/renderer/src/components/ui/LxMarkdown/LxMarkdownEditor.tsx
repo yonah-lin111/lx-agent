@@ -21,16 +21,7 @@ import { languages } from "@codemirror/language-data"
 import { Annotation, EditorState, Prec, Transaction } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
-import {
-  Code,
-  Eye,
-  List,
-  ListOrdered,
-  ListTodo,
-  Redo2,
-  SquareSplitHorizontal,
-  Undo2,
-} from "lucide-react"
+import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import type { MarkdownTemplateIntegrate } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
@@ -867,10 +858,6 @@ export const LxMarkdownEditor = ({
       label: "重做",
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
     },
-    { icon: List, label: "无序列表", onClick: () => prefixLines("- ", "Item") },
-    { icon: ListOrdered, label: "有序列表", onClick: () => prefixLines("1. ", "Item") },
-    { icon: ListTodo, label: "任务列表", onClick: () => prefixLines("- [ ] ", "Task") },
-    { icon: Code, label: "代码块", onClick: insertCodeBlock },
     {
       icon: SquareSplitHorizontal,
       label: splitLabel,
