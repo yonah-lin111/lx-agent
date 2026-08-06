@@ -16,8 +16,10 @@ import { LxInput } from "@/components/ui/LxInput"
 import {
   MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
   MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
+  MARKDOWN_TEMPLATE_TYPES,
   type MarkdownTemplateIntegrate,
   type MarkdownTemplateStatus,
+  type MarkdownTemplateType,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import type {
   MarkdownPage,
@@ -80,6 +82,17 @@ const templateIntegrateOptions: { value: MarkdownTemplateStatus; color: LxTagCol
   { value: "done", color: "emerald" },
 ]
 
+// 模板块类型整合标签选项（与斜杠命令模板一致）。
+const templateTypeColors: Record<MarkdownTemplateType, LxTagColor> = {
+  addTemplate: "blue",
+  bugTemplate: "rose",
+  refactorTemplate: "purple",
+  commonTemplate: "teal",
+}
+
+const templateTypeOptions: { value: MarkdownTemplateType; color: LxTagColor }[] =
+  MARKDOWN_TEMPLATE_TYPES.map((value) => ({ value, color: templateTypeColors[value] }))
+
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
  */
@@ -136,10 +149,10 @@ export const MarkdownEditorToolbar = ({
   }
 
   /**
-   * 切换模板块状态标签的多选状态，选中状态时退出"整合全部"。
-   * 取消全部状态时保持整合页（等价于全量整合），不退出整合视图。
+   * 切换模板块状态/模版类型标签的多选状态，选中状态时退出"整合全部"。
+   * 取消全部筛选时保持整合页（等价于全量整合），不退出整合视图。
    */
-  const toggleTemplateIntegrate = (value: MarkdownTemplateStatus): void => {
+  const toggleTemplateIntegrate = (value: MarkdownTemplateStatus | MarkdownTemplateType): void => {
     const withoutAll = templateIntegrate.includes("all") ? [] : templateIntegrate
     const next = withoutAll.includes(value)
       ? withoutAll.filter((item) => item !== value)
@@ -362,6 +375,24 @@ export const MarkdownEditorToolbar = ({
         按状态整合模板块
         <div className="flex flex-nowrap gap-1">
           {templateIntegrateOptions.map(({ value, color }) => {
+            const isSelected = templateIntegrate.includes(value)
+            return (
+              <LxTag
+                key={value}
+                color={color}
+                highlighted={isSelected}
+                onClick={() => toggleTemplateIntegrate(value)}
+              >
+                {MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]}
+              </LxTag>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
+        按模版类型整合模板块
+        <div className="flex flex-nowrap gap-1">
+          {templateTypeOptions.map(({ value, color }) => {
             const isSelected = templateIntegrate.includes(value)
             return (
               <LxTag

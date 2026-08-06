@@ -1,6 +1,7 @@
 import type { MarkdownPage } from "@shared/project"
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
+import type { MarkdownTemplateCommandId } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
 
 // 模板块源码状态：未完成 / 进行中 / 已完成。
 export type MarkdownTemplateStatus = "todo" | "in_progress" | "done"
@@ -206,6 +207,14 @@ export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateSta
 }
 
 /**
+ * 解析模板块开始行的模版类型（&&& 后的命令标识）；非开始行返回 null。
+ */
+export const getMarkdownTemplateType = (startText: string): string | null => {
+  const match = /^&&&\s+([A-Za-z]\w*)/.exec(startText.trim())
+  return match?.[1] ?? null
+}
+
+/**
  * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
  */
 export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
@@ -279,8 +288,19 @@ export const createMarkdownBlockInsertion = (
   }
 }
 
-// 模板块筛选标签：全部 / 具体状态。
-export type MarkdownTemplateIntegrate = "all" | MarkdownTemplateStatus
+// 模板块筛选标签：全部 / 具体状态 / 具体模版类型。
+export type MarkdownTemplateIntegrate = "all" | MarkdownTemplateStatus | MarkdownTemplateType
+
+// 模板块整合支持的模版类型（与斜杠命令模板一致）。
+export type MarkdownTemplateType = MarkdownTemplateCommandId
+
+// 模板块整合的固定模版类型选项。
+export const MARKDOWN_TEMPLATE_TYPES: readonly MarkdownTemplateType[] = [
+  "addTemplate",
+  "bugTemplate",
+  "refactorTemplate",
+  "commonTemplate",
+]
 
 // 模板块整合虚拟页的固定 id，用于标记不入库页面。
 export const MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID = "markdown-template-integrate-page"
@@ -291,6 +311,10 @@ export const MARKDOWN_TEMPLATE_INTEGRATE_LABELS: Record<MarkdownTemplateIntegrat
   todo: "Todo",
   in_progress: "In Progress",
   done: "Done",
+  addTemplate: "Add",
+  bugTemplate: "Bug",
+  refactorTemplate: "Refactor",
+  commonTemplate: "Common",
 }
 
 // 已解析的模板块片段，保留源码原文以便恢复。
@@ -299,6 +323,7 @@ export interface MarkdownTemplateBlock {
   endText: string
   content: string
   status: MarkdownTemplateStatus
+  type: string
 }
 
 /**
@@ -316,6 +341,7 @@ export const extractMarkdownTemplateBlocks = (content: string): MarkdownTemplate
         endText: line,
         content: body.join("\n"),
         status: getMarkdownTemplateStatus(line) ?? "todo",
+        type: getMarkdownTemplateType(startText) ?? "",
       })
       startText = null
       continue
@@ -332,8 +358,9 @@ export const extractMarkdownTemplateBlocks = (content: string): MarkdownTemplate
 }
 
 /**
- * 生成模板块整合虚拟页内容：每页标题带整合标记，仅保留匹配状态的模板块源码。
- * 选中 All 时按全部匹配处理；无匹配块时返回占位文本。
+ * 生成模板块整合虚拟页内容：每页标题带整合标记，仅保留匹配状态与模版类型的模板块源码。
+ * 选中 All 时按全部匹配处理；状态或类型维度未选择时该维度不设限制。
+ * 无匹配块时返回占位文本。
  */
 export const buildMarkdownTemplateIntegratePage = (
   pages: readonly MarkdownPage[],
@@ -341,13 +368,24 @@ export const buildMarkdownTemplateIntegratePage = (
 ): string => {
   const matchesAll = integrate.includes("all")
   const selectedStatuses = new Set<MarkdownTemplateStatus>(
-    integrate.filter((value): value is MarkdownTemplateStatus => value !== "all"),
+    integrate.filter(
+      (value): value is MarkdownTemplateStatus =>
+        value === "todo" || value === "in_progress" || value === "done",
+    ),
+  )
+  const selectedTypes = new Set<string>(
+    integrate.filter((value): value is MarkdownTemplateType =>
+      (MARKDOWN_TEMPLATE_TYPES as readonly string[]).includes(value),
+    ),
   )
   const sections: string[] = []
 
   for (const page of pages) {
     const blocks = extractMarkdownTemplateBlocks(page.content).filter(
-      (block) => matchesAll || selectedStatuses.has(block.status),
+      (block) =>
+        matchesAll ||
+        ((selectedStatuses.size === 0 || selectedStatuses.has(block.status)) &&
+          (selectedTypes.size === 0 || selectedTypes.has(block.type))),
     )
     if (blocks.length === 0) continue
 
