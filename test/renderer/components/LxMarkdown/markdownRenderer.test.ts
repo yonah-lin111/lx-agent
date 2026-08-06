@@ -48,13 +48,13 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("渲染模板块并提供原始内容复制数据", () => {
+  it("渲染模板块并提供清理后的原始内容复制数据", () => {
     const content = "# 标题\n\n- 内容"
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
 
     expect(html).toContain('class="markdown-template-block"')
     expect(html).toContain('data-template-command="addTemplate"')
-    expect(html).toContain(`data-template-content="${encodeURIComponent(`${content}\n`)}"`)
+    expect(html).toContain(`data-template-content="${encodeURIComponent(content)}"`)
     expect(html).toContain('class="markdown-template-copy"')
     expect(html).toContain('class="markdown-template-collapse"')
     expect(html).toContain(">标题</h1>")
@@ -71,7 +71,7 @@ describe("markdownRenderer", () => {
   })
 
   it("渲染模板块完成状态并提供切换按钮挂载点", () => {
-    const html = markdownRenderer.render("&&& addTemplate done\n内容\n&&&")
+    const html = markdownRenderer.render("&&& addTemplate\n内容\n&&& done")
 
     expect(html).toContain('data-template-status="done"')
     expect(html).toContain("markdown-template-block--done")
@@ -103,7 +103,7 @@ describe("markdownRenderer", () => {
     expect(html).toContain('class="markdown-template-block" data-line="0"')
   })
 
-  it("渲染 @文件提及 并转换为父文件夹/文件名格式的缩略文本与完整内容 dataset", () => {
+  it("渲染 @文件提及 并转换为完整路径显示标签与完整内容 dataset", () => {
     const html = markdownRenderer.render(
       "请查看 @src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件",
     )
@@ -113,26 +113,22 @@ describe("markdownRenderer", () => {
       `data-full-mention="${encodeURIComponent("@src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
     )
     expect(html).toContain(
-      `data-display-label="${encodeURIComponent("@LxMarkdown/LxMarkdownEditor.tsx")}"`,
+      `data-display-label="${encodeURIComponent("@src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
     )
-    expect(html).toContain("@LxMarkdown/LxMarkdownEditor.tsx")
+    expect(html).toContain("@src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")
   })
 
-  it("渲染引用项目的 @文件提及 并转换为 @引用项目名称/.../@父文件夹名称/文件名 格式", () => {
+  it("渲染引用项目根路径下的 @文件提及 并标记引用状态", () => {
     const markdown =
-      "@[refer-project](/Users/yonah/projects/other-app)\n\n请查看 @other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件"
+      "@[refer-project](/Users/yonah/projects/other-app)\n\n请查看 @/Users/yonah/projects/other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx 文件"
     const html = markdownRenderer.render(markdown)
 
     expect(html).toContain('class="markdown-file-mention"')
     expect(html).toContain('data-is-referenced="true"')
     expect(html).toContain("markdown-file-mention-node--referenced")
     expect(html).toContain(
-      `data-full-mention="${encodeURIComponent("@other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
+      `data-full-mention="${encodeURIComponent("@/Users/yonah/projects/other-app/src/renderer/src/components/ui/LxMarkdown/LxMarkdownEditor.tsx")}"`,
     )
-    expect(html).toContain(
-      `data-display-label="${encodeURIComponent("@other-app/.../@LxMarkdown/LxMarkdownEditor.tsx")}"`,
-    )
-    expect(html).toContain("@other-app/.../@LxMarkdown/LxMarkdownEditor.tsx")
   })
 
   it("不将 @ 后的单独符号解析为文件提及", () => {
