@@ -7,6 +7,7 @@ import { MarkdownReferenceImageTooltip } from "@/components/ui/LxMarkdown/compon
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // Markdown 预览属性。
 interface LxMarkdownPreviewProps {
@@ -15,6 +16,8 @@ interface LxMarkdownPreviewProps {
   previewRef: React.RefObject<HTMLElement | null>
   className?: string
   contentClassName?: string
+  // 复制选中文本时剥离选区末尾的块边界换行伪影。
+  sanitizeCopy?: boolean
   // 循环切换模板块状态（line 为源码结束行，0 起）。
   onTemplateStatusToggle?: (line: number) => void
 }
@@ -280,6 +283,7 @@ export const LxMarkdownPreview = ({
   previewRef,
   className = "px-5",
   contentClassName = "py-4",
+  sanitizeCopy = false,
   onTemplateStatusToggle,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   const contentRef = useRef<HTMLDivElement>(null)
@@ -290,6 +294,19 @@ export const LxMarkdownPreview = ({
    */
   const handlePreviewLinkClick = (event: React.MouseEvent<HTMLDivElement>): void => {
     if (event.target instanceof Element && event.target.closest("a")) event.preventDefault()
+  }
+
+  /**
+   * 复制选中文本时剥离选区末尾的块边界换行伪影。
+   */
+  const handleContentCopy = (event: React.ClipboardEvent<HTMLDivElement>): void => {
+    const selection = window.getSelection()
+    const content = contentRef.current
+    if (!selection || !content || !event.clipboardData) return
+    const cleaned = sanitizeSelectionTrailingNewlines(selection, content)
+    if (cleaned === null) return
+    event.preventDefault()
+    event.clipboardData.setData("text/plain", cleaned)
   }
 
   useLayoutEffect(() => {
@@ -410,6 +427,7 @@ export const LxMarkdownPreview = ({
         ref={contentRef}
         className={`markdown-preview-content ${contentClassName}`}
         onClick={handlePreviewLinkClick}
+        onCopy={sanitizeCopy ? handleContentCopy : undefined}
       />
       {mounts.map(({ container, content }, index) => createPortal(content, container, index))}
     </article>

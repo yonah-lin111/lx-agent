@@ -13,6 +13,7 @@ import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGro
 import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -433,6 +434,17 @@ export const AgentMessageItem = ({
     setIsExpanded(nextIsExpanded)
   }
 
+  // 双击/三击选中整条消息复制时，Chromium 会把选区结束处的块边界序列化为尾部换行，这里按内容原文还原。
+  const handleBubbleCopy = (e: React.ClipboardEvent<HTMLDivElement>): void => {
+    const content = userContentRef.current
+    const selection = window.getSelection()
+    if (!content || !selection || !e.clipboardData) return
+    const cleaned = sanitizeSelectionTrailingNewlines(selection, content)
+    if (cleaned === null) return
+    e.preventDefault()
+    e.clipboardData.setData("text/plain", cleaned)
+  }
+
   const copyMessageContent = async (): Promise<void> => {
     try {
       const text = displayBlocks
@@ -527,7 +539,10 @@ export const AgentMessageItem = ({
               </div>
             </div>
           ) : (
-            <div className="rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words">
+            <div
+              className="rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
+              onCopy={handleBubbleCopy}
+            >
               <div
                 ref={userContentRef}
                 className={`overflow-hidden transition-[height] duration-300 ease-in-out ${
@@ -598,6 +613,7 @@ export const AgentMessageItem = ({
                   previewRef={previewRef}
                   className="px-0"
                   contentClassName="py-1"
+                  sanitizeCopy
                 />
               )
             }

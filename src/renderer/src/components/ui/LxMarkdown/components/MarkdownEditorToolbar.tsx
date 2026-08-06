@@ -110,7 +110,6 @@ export const MarkdownEditorToolbar = ({
           autoFocus
           aria-label="页面名称"
           className="w-[12ch] border-b border-white/20 bg-transparent px-1 text-left text-xs text-white/80 outline-none"
-          title={pageName}
           value={pageName}
           onBlur={() => {
             if (!pageName.trim()) onPageNameChange?.(pageNameBeforeEditRef.current)
@@ -136,7 +135,6 @@ export const MarkdownEditorToolbar = ({
           type="button"
           aria-label={`编辑页面名称 ${pageName}`}
           className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
-          title={pageName}
           onClick={() => {
             pageNameBeforeEditRef.current = pageName
             setIsEditingPageName(true)

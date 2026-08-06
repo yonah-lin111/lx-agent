@@ -12,6 +12,21 @@ const userMessage = (id: string, text: string): ChatMessage => ({
   isStreaming: false,
 })
 
+// 构造携带 clipboardData 的 copy 事件（jsdom 未实现 ClipboardEvent/DataTransfer）。
+const makeCopyEvent = (): {
+  event: Event
+  dataTransfer: { setData: (type: string, data: string) => void; getData: (type: string) => string }
+} => {
+  const store = new Map<string, string>()
+  const dataTransfer = {
+    setData: (type: string, data: string) => store.set(type, data),
+    getData: (type: string) => store.get(type) ?? "",
+  }
+  const event = new Event("copy", { bubbles: true, cancelable: true })
+  Object.defineProperty(event, "clipboardData", { value: dataTransfer, configurable: true })
+  return { event, dataTransfer }
+}
+
 describe("AgentMessageItem", () => {
   beforeEach(() => {
     cleanup()
@@ -76,6 +91,119 @@ describe("AgentMessageItem", () => {
     fireEvent.click(sendBtn)
 
     expect(onEdit).toHaveBeenCalledWith("3", "修改后的内容")
+  })
+
+  it("双击/三击选中整条消息复制时剥离块边界换行伪影", () => {
+    const text = "这个项目架构是怎么样的？"
+    const { container } = render(<AgentMessageItem message={userMessage("copy-1", text)} />)
+
+    const content = container.querySelector(".overflow-hidden") as HTMLDivElement
+    const bubble = content.parentElement as HTMLDivElement
+    const textNode = content.firstChild as Text
+
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.setEndAfter(content)
+
+    const getSelection = vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: false,
+      rangeCount: 1,
+      getRangeAt: () => range,
+      toString: () => `${text}\n\n`,
+    } as unknown as Selection)
+
+    const { event, dataTransfer } = makeCopyEvent()
+    bubble.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(dataTransfer.getData("text/plain")).toBe(text)
+    getSelection.mockRestore()
+  })
+
+  it("多行消息整体复制时保留内部换行，仅剥离末尾伪影", () => {
+    const text = "第一行\n第二行"
+    const { container } = render(<AgentMessageItem message={userMessage("copy-2", text)} />)
+
+    const content = container.querySelector(".overflow-hidden") as HTMLDivElement
+    const bubble = content.parentElement as HTMLDivElement
+    const textNode = content.firstChild as Text
+
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.setEndAfter(content)
+
+    const getSelection = vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: false,
+      rangeCount: 1,
+      getRangeAt: () => range,
+      toString: () => `${text}\n`,
+    } as unknown as Selection)
+
+    const { event, dataTransfer } = makeCopyEvent()
+    bubble.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(dataTransfer.getData("text/plain")).toBe(text)
+    getSelection.mockRestore()
+  })
+
+  it("选区未结束于内容末尾时不做干预，走默认复制", () => {
+    const text = "这个项目架构是怎么样的？"
+    const { container } = render(<AgentMessageItem message={userMessage("copy-3", text)} />)
+
+    const content = container.querySelector(".overflow-hidden") as HTMLDivElement
+    const bubble = content.parentElement as HTMLDivElement
+    const textNode = content.firstChild as Text
+
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.setEnd(textNode, text.length - 2)
+
+    const getSelection = vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: false,
+      rangeCount: 1,
+      getRangeAt: () => range,
+      toString: () => text.slice(0, -2),
+    } as unknown as Selection)
+
+    const { event, dataTransfer } = makeCopyEvent()
+    bubble.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(dataTransfer.getData("text/plain")).toBe("")
+    getSelection.mockRestore()
+  })
+
+  it("AI 消息整体复制时剥离块边界换行伪影", () => {
+    const message: ChatMessage = {
+      id: "ai-copy-1",
+      role: "assistant",
+      blocks: [{ kind: "text", text: "这个项目架构是怎么样的？" }],
+      isStreaming: false,
+    }
+    const { container } = render(<AgentMessageItem message={message} />)
+
+    const content = container.querySelector(".markdown-preview-content") as HTMLDivElement
+    const paragraph = content.firstChild as HTMLParagraphElement
+    const textNode = paragraph.firstChild as Text
+
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.setEndAfter(paragraph)
+
+    const getSelection = vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: false,
+      rangeCount: 1,
+      getRangeAt: () => range,
+      toString: () => "这个项目架构是怎么样的？\n\n",
+    } as unknown as Selection)
+
+    const { event, dataTransfer } = makeCopyEvent()
+    content.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(dataTransfer.getData("text/plain")).toBe("这个项目架构是怎么样的？")
+    getSelection.mockRestore()
   })
 
   it("将连续的同名 read 工具调用合并为顿号分隔的路径列表", () => {
