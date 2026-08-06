@@ -745,6 +745,31 @@ select {
   animation: lx-liquid-breathe 2s ease-in-out infinite;
 }
 
+/* 大尺寸变体：滚动到底按钮使用。 */
+.lx-liquid-loader-lg {
+  width: 40px;
+  height: 40px;
+}
+
+.lx-liquid-loader-lg .lx-liquid-blob {
+  width: 36px;
+  height: 36px;
+}
+
+.lx-liquid-loader-lg .lx-liquid-blob::before {
+  top: -6px;
+  left: -6px;
+  width: 20px;
+  height: 20px;
+}
+
+.lx-liquid-loader-lg .lx-liquid-blob::after {
+  right: -4px;
+  bottom: -4px;
+  width: 16px;
+  height: 16px;
+}
+
 .lx-liquid-blob::before {
   content: "";
   position: absolute;

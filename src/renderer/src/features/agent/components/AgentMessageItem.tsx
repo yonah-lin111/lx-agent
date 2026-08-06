@@ -77,6 +77,8 @@ const getMcpServerName = (toolName: string): string => {
 interface AgentMessageItemProps {
   message: ChatMessage
   continuationMessages?: ChatMessage[]
+  // Agent 会话运行中且本条目为最后一条 AI 消息时由列表注入，使 loader 跨工具执行阶段保持显示。
+  isLoading?: boolean
   isEditing?: boolean
   onStartEdit?: () => void
   onCancelEdit?: () => void
@@ -90,6 +92,7 @@ interface AgentMessageItemProps {
 export const AgentMessageItem = ({
   message,
   continuationMessages = [],
+  isLoading,
   isEditing: isEditingProp,
   onStartEdit,
   onCancelEdit,
@@ -665,7 +668,7 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
-        {isStreamingNow && !assistantError && (
+        {(isStreamingNow || isLoading) && !assistantError && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
               <span className="lx-liquid-blob" />

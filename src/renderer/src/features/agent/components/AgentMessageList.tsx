@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react"
+import { ChevronDown, Sparkles } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
@@ -7,10 +7,15 @@ import type { ChatMessage } from "@/features/agent/types"
 
 interface AgentMessageListProps {
   messages: ChatMessage[]
+  // Agent 会话是否仍在运行（agent_start ~ agent_end，含工具执行阶段）。
+  isStreaming?: boolean
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
   onDeleteMessage?: (messageId: string) => void
 }
+
+// 距底部阈值（px），低于该距离视为贴底。
+const NEAR_BOTTOM_THRESHOLD = 40
 
 // AI 消息与同一轮后续消息的展示条目。
 interface AgentMessageListEntry {
@@ -41,6 +46,7 @@ const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
  */
 export const AgentMessageList = ({
   messages,
+  isStreaming,
   onSelectPrompt,
   onEditMessage,
   onDeleteMessage,
@@ -48,18 +54,26 @@ export const AgentMessageList = ({
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [scrollButtonRendered, setScrollButtonRendered] = useState(false)
+  const [scrollButtonAnimatingOut, setScrollButtonAnimatingOut] = useState(false)
   const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
+  const lastEntry = messageEntries.at(-1)
+  // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙（message_end ~ 下一轮 message_start），避免闪烁。
+  const isLastEntryLoading = Boolean(isStreaming) && lastEntry?.message.role === "assistant"
 
   // 距底部阈值内视为贴底。
   const isNearBottom = (): boolean => {
     const el = scrollRef.current
     if (!el) return true
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD
   }
 
-  // 滚动位置决定吸底状态：贴底恢复吸底，上滚暂停吸底。
+  // 滚动位置决定吸底状态与滚动到底按钮的显隐：贴底恢复吸底并隐藏，上滚暂停吸底并显示。
   const handleScroll = (): void => {
-    stickToBottomRef.current = isNearBottom()
+    const nearBottom = isNearBottom()
+    stickToBottomRef.current = nearBottom
+    setShowScrollToBottom(!nearBottom)
   }
 
   // 吸底状态下新消息自动滚动到底部。
@@ -67,7 +81,30 @@ export const AgentMessageList = ({
     if (!stickToBottomRef.current) return
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
+    setShowScrollToBottom(false)
   }, [messages])
+
+  // 滚动到底按钮显隐过渡：消失时先播退出动画再卸载。
+  useEffect(() => {
+    if (showScrollToBottom) {
+      setScrollButtonRendered(true)
+      return
+    }
+    if (!scrollButtonRendered) return
+
+    setScrollButtonAnimatingOut(true)
+    const timer = setTimeout(() => {
+      setScrollButtonRendered(false)
+      setScrollButtonAnimatingOut(false)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [showScrollToBottom, scrollButtonRendered])
+
+  // 点击按钮平滑滚动到底部。
+  const scrollToBottom = (): void => {
+    const el = scrollRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }
 
   if (messages.length === 0) {
     return (
@@ -101,30 +138,59 @@ export const AgentMessageList = ({
   }
 
   return (
-    <div
-      ref={scrollRef}
-      onScroll={handleScroll}
-      className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
-    >
-      {messageEntries.map(({ message, continuationMessages }) => (
-        <AgentMessageItem
-          key={message.id}
-          message={message}
-          continuationMessages={continuationMessages}
-          isEditing={editingMessageId === message.id}
-          onStartEdit={() => setEditingMessageId(message.id)}
-          onCancelEdit={() => {
-            if (editingMessageId === message.id) {
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
+      >
+        {messageEntries.map(({ message, continuationMessages }, index) => (
+          <AgentMessageItem
+            key={message.id}
+            message={message}
+            continuationMessages={continuationMessages}
+            isLoading={index === messageEntries.length - 1 && isLastEntryLoading}
+            isEditing={editingMessageId === message.id}
+            onStartEdit={() => setEditingMessageId(message.id)}
+            onCancelEdit={() => {
+              if (editingMessageId === message.id) {
+                setEditingMessageId(null)
+              }
+            }}
+            onEdit={(id, newContent) => {
+              onEditMessage?.(id, newContent)
               setEditingMessageId(null)
-            }
-          }}
-          onEdit={(id, newContent) => {
-            onEditMessage?.(id, newContent)
-            setEditingMessageId(null)
-          }}
-          onDelete={onDeleteMessage}
-        />
-      ))}
+            }}
+            onDelete={onDeleteMessage}
+          />
+        ))}
+      </div>
+
+      {scrollButtonRendered && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+          <button
+            type="button"
+            aria-label="滚动到底部"
+            onClick={scrollToBottom}
+            className={`relative flex items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
+              isStreaming
+                ? "h-10 w-10 bg-transparent"
+                : "h-8 w-8 border border-white/10 bg-[#303030] text-white/60 hover:bg-[#4a4a4a] hover:text-white"
+            } ${scrollButtonAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"}`}
+          >
+            {isStreaming ? (
+              <>
+                <div className="lx-liquid-loader lx-liquid-loader-lg">
+                  <span className="lx-liquid-blob" />
+                </div>
+                <ChevronDown className="absolute h-4 w-4 text-[#212121]" />
+              </>
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

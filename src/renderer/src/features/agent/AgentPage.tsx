@@ -51,6 +51,7 @@ export const AgentPage = ({
     <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent">
       <AgentMessageList
         messages={messages}
+        isStreaming={isStreaming}
         onSelectPrompt={(prompt) => sendMessage(prompt)}
         onEditMessage={editMessage}
         onDeleteMessage={deleteTurn}
