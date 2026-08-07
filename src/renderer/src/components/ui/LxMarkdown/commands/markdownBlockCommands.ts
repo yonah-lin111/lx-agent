@@ -231,6 +231,41 @@ export const getMarkdownTemplateBlockContent = (text: string, position: number):
 }
 
 /**
+ * 返回 position 所在模板块开始行的行号（1-based）；光标位于开始行自身时返回该行；不在模板块内返回 null。
+ */
+export const getMarkdownTemplateBlockStartLine = (
+  text: string,
+  position: number,
+): number | null => {
+  const lines = text.split("\n")
+  let offset = 0
+  let startLine: number | null = null
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineStart = offset
+    const lineEnd = offset + lines[index].length + 1
+    if (MARKDOWN_TEMPLATE_START_RE.test(lines[index])) startLine = index + 1
+    if (position >= lineStart && position < lineEnd) return startLine
+    if (MARKDOWN_TEMPLATE_END_RE.test(lines[index])) startLine = null
+    offset = lineEnd
+  }
+
+  return startLine
+}
+
+/**
+ * 更新模板块开始行的「title: 」字段：已有则替换内容，缺失则在行尾补插。
+ * 标题内不允许出现「」字符，否则会截断「title:...」字段解析。
+ */
+export const setMarkdownTemplateTitle = (startText: string, title: string): string => {
+  const safeTitle = title.replace(/[「」]/g, "").trim()
+  const replacement = `「title: ${safeTitle}」`
+  return /「title:[^」\n]*」/.test(startText)
+    ? startText.replace(/「title:[^」\n]*」/, replacement)
+    : `${startText.trimEnd()} ${replacement}`
+}
+
+/**
  * 解析模板块结束行的源码状态；非结束行返回 null。
  */
 export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateStatus | null => {

@@ -23,6 +23,7 @@ import type {
 import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
+  isMarkdownConfirmCommandArmed,
 } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
 import {
   createMarkdownTemplateFileReference,
@@ -196,12 +197,16 @@ export const useMarkdownPanels = ({
     const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
       view.state.doc.sliceString(0, line.from),
     )
+    // 已武装的确认命令行不弹面板，等待二次回车触发。
+    const isArmed = commandLine
+      ? isMarkdownConfirmCommandArmed(commandLine.value, isInsideTemplateBlock)
+      : false
     const commands = commandLine
       ? getMarkdownSlashCommands(commandLine.value, isInsideTemplateBlock)
       : []
     const coords = view.coordsAtPos(cursor)
 
-    if (!commandLine || !coords || commands.length === 0) {
+    if (!commandLine || isArmed || !coords || commands.length === 0) {
       closeSlashCommandPanel()
       return
     }
@@ -228,7 +233,18 @@ export const useMarkdownPanels = ({
     const panel = slashCommandPanelRef.current
     if (!view || !panel) return
 
-    // 模板块命令（scope=normal）插入时在结束行 &&& 后追加唯一 id；光标位置不受影响。
+    // 二次回车命令：回显命令内容到编辑器（确认型命令的 content 带尾随空格），等待二次 Enter 触发。
+    if (command.kind === "confirm") {
+      view.dispatch({
+        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        selection: { anchor: panel.line.from + command.content.length },
+      })
+      view.focus()
+      closeSlashCommandPanel()
+      return
+    }
+
+    // 直接命令（scope=normal）插入时在结束行 &&& 后追加唯一 id；光标位置不受影响。
     const content =
       command.scope === "normal"
         ? command.content.replace(/&&&$/, `&&& {id:${createMarkdownTemplateId()}}`)

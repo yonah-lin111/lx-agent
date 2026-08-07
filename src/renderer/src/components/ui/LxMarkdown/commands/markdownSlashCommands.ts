@@ -11,6 +11,9 @@ export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summary"
 // Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内。
 export type MarkdownSlashCommandScope = "normal" | "template"
 
+// Markdown 斜杠命令触发类型：direct = 面板选中即插入内容，confirm = 回显命令文本、二次回车触发。
+export type MarkdownSlashCommandKind = "direct" | "confirm"
+
 // Markdown 斜杠命令配置。
 export interface MarkdownSlashCommand {
   id: MarkdownSlashCommandId
@@ -19,6 +22,7 @@ export interface MarkdownSlashCommand {
   content: string
   cursorOffset: number
   scope: MarkdownSlashCommandScope
+  kind: MarkdownSlashCommandKind
 }
 
 // 斜杠命令行范围。
@@ -34,6 +38,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     label: "/addTemplate",
     description: "插入需求提示词模板",
     scope: "normal",
+    kind: "direct",
     content:
       "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: \n- 位置: \n- 描述: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
     cursorOffset: "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: ".length,
@@ -43,6 +48,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     label: "/bugTemplate",
     description: "插入 Bug 修复提示词模板",
     scope: "normal",
+    kind: "direct",
     content:
       "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: \n- 位置: \n- 描述: \n- 复现: \n- 要求: \n  - \n- 期望: \n&&&",
     cursorOffset: "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: ".length,
@@ -52,6 +58,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     label: "/refactorTemplate",
     description: "插入功能重构提示词模板",
     scope: "normal",
+    kind: "direct",
     content:
       "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: \n- 位置: \n- 目标: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
     cursorOffset: "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: ".length,
@@ -62,6 +69,7 @@ const templateCommands: MarkdownSlashCommand[] = [
     label: "/commonTemplate",
     description: "插入通用提示词模板（非代码修改模板）",
     scope: "normal",
+    kind: "direct",
     content: [
       "&&& commonTemplate 「title: 」",
       "# 执行任务",
@@ -80,16 +88,33 @@ const templateCommands: MarkdownSlashCommand[] = [
   },
 ]
 
-// 模板块内的 AI 总结命令：当前仅回显静态占位内容，AI 生成能力后续接入。
-const summaryContent = ["## 总结", "", "- 待 AI 生成总结内容（功能开发中）"].join("\n")
-
+// 模板块内的 AI 标题命令：确认型（回显 /summary、二次回车触发），content 为回显文本（带尾随空格）。
 const summaryCommand: MarkdownSlashCommand = {
   id: "summary",
   label: "/summary",
-  description: "AI 总结当前模板块",
+  description: "AI 提炼当前模板块标题",
   scope: "template",
-  content: summaryContent,
-  cursorOffset: summaryContent.length,
+  kind: "confirm",
+  content: "/summary ",
+  cursorOffset: "/summary ".length,
+}
+
+// 全部斜杠命令（含确认型），供 armed 判定使用。
+const markdownSlashCommands: MarkdownSlashCommand[] = [...templateCommands, summaryCommand]
+
+/**
+ * 判定光标行是否为已武装的确认命令行：行内容与某个确认命令标签完全一致且位于模板块内。
+ * 此状态下命令面板不弹出，Enter 直接触发该命令。
+ */
+export const isMarkdownConfirmCommandArmed = (
+  lineValue: string,
+  isInsideTemplateBlock: boolean,
+): boolean => {
+  if (!isInsideTemplateBlock) return false
+  const value = lineValue.trim()
+  return markdownSlashCommands.some(
+    (command) => command.kind === "confirm" && command.label === value,
+  )
 }
 
 /**
@@ -118,7 +143,7 @@ export const getMarkdownSlashCommands = (
 
   const query = match[1].toLowerCase()
   const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
-  return [...templateCommands, summaryCommand].filter(
+  return markdownSlashCommands.filter(
     (command) => command.scope === expectedScope && command.id.includes(query),
   )
 }

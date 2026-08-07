@@ -18,7 +18,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { Annotation, EditorState, Prec, Transaction } from "@codemirror/state"
+import { Annotation, EditorState, type Line, Prec, Transaction } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
@@ -27,13 +27,17 @@ import type { MarkdownTemplateIntegrate } from "@/components/ui/LxMarkdown/comma
 import {
   buildMarkdownTemplateIntegratePage,
   cycleMarkdownTemplateStatus,
+  getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   isInsideMarkdownTemplateBlock,
   MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
   MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
+  setMarkdownTemplateTitle,
   toggleMarkdownTemplateCommentLines,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { isMarkdownConfirmCommandArmed } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
@@ -62,13 +66,28 @@ import type {
   MarkdownPreviewMode,
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import {
+  markdownRenderer,
+  stripEmptyTemplateItems,
+  stripMarkdownTemplateComments,
+} from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { useLxToast } from "@/components/ui/LxToast"
 import { isMacOS } from "@/lib/platform"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
 // 允许整合虚拟页切换内容的事务注解，仅供页面切换内部使用。
 const integrateSyncAnnotation = Annotation.define<boolean>()
+
+// 模板块标题生成的加载占位文本（写入开始行「title: 」字段，兼作防重复触发与结果回写锚点）。
+const TEMPLATE_TITLE_LOADING_TEXT = "⏳ 正在生成标题…"
+// /summary 裸命令文本（trim 匹配用）。
+const SUMMARY_COMMAND_TEXT = "/summary"
+
+// 在文档中定位包含加载占位的行（即被写入「title: ⏳ 正在生成标题…」的开始行）；占位已消失时返回 null。
+const findTitleLoadingLine = (view: EditorView): Line | null => {
+  const markerIndex = view.state.doc.toString().indexOf(TEMPLATE_TITLE_LOADING_TEXT)
+  return markerIndex < 0 ? null : view.state.doc.lineAt(markerIndex)
+}
 
 /**
  * 从剪贴板读取本地文件绝对路径。
@@ -178,6 +197,8 @@ export const LxMarkdownEditor = ({
   onPagesChangeRef.current = onPagesChange
   const pageModeRef = useRef(pageMode)
   pageModeRef.current = pageMode
+  // 模板块标题生成进行中标记，防止并发重复触发。
+  const isGeneratingTitleRef = useRef(false)
 
   // 模板块整合虚拟页：融合全部页面中匹配状态的模板块，title 特殊标明且不入库。
   const integratePage = useMemo<MarkdownPage | null>(() => {
@@ -562,6 +583,91 @@ export const LxMarkdownEditor = ({
     view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
   }
 
+  /**
+   * 触发模板块标题生成：取光标所在模板块内容，排除 /summary 命令行后按复制逻辑清洗，
+   * 经 IPC 请求 main 进程生成标题。回车即移除 /summary 字样（保留所在行），
+   * 加载占位写入开始行「title: 」字段；成功回写最终标题，失败恢复原标题并提示。
+   * 整合虚拟页禁止执行。
+   */
+  const runTemplateTitleGeneration = (view: EditorView): void => {
+    if (isGeneratingTitleRef.current || isIntegrateViewRef.current) return
+    const docText = view.state.doc.toString()
+    const cursor = view.state.selection.main.head
+    const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
+    if (blockContent === null) return
+
+    const cleaned = stripEmptyTemplateItems(
+      stripMarkdownTemplateComments(
+        blockContent
+          .split("\n")
+          .filter((blockLine) => blockLine.trim() !== SUMMARY_COMMAND_TEXT)
+          .join("\n"),
+      ),
+    )
+    if (cleaned.trim() === "") {
+      warning("模板块内容为空，无法生成标题")
+      return
+    }
+
+    const startLineNumber = getMarkdownTemplateBlockStartLine(docText, cursor)
+    if (startLineNumber === null) return
+    const startDocLine = view.state.doc.line(startLineNumber)
+    const originalStartText = startDocLine.text
+
+    isGeneratingTitleRef.current = true
+    const changes: { from: number; to: number; insert: string }[] = [
+      {
+        from: startDocLine.from,
+        to: startDocLine.to,
+        insert: setMarkdownTemplateTitle(originalStartText, TEMPLATE_TITLE_LOADING_TEXT),
+      },
+    ]
+    // 立即移除 /summary 字样，仅清空该行文本、保留所在行（不删除行）。
+    const commandLine = view.state.doc.lineAt(cursor)
+    if (commandLine.text.trim() !== "") {
+      changes.push({ from: commandLine.from, to: commandLine.to, insert: "" })
+    }
+    view.dispatch({ changes })
+    view.focus()
+
+    void window.api.markdown.generateTemplateTitle(cleaned).then(
+      (title) => {
+        isGeneratingTitleRef.current = false
+        const currentView = editorViewRef.current
+        if (!currentView) return
+        const markerLine = findTitleLoadingLine(currentView)
+        if (!markerLine) return
+
+        if (title) {
+          const nextStartText = setMarkdownTemplateTitle(markerLine.text, title)
+          if (nextStartText !== markerLine.text) {
+            currentView.dispatch({
+              changes: { from: markerLine.from, to: markerLine.to, insert: nextStartText },
+            })
+          }
+        } else {
+          currentView.dispatch({
+            changes: { from: markerLine.from, to: markerLine.to, insert: originalStartText },
+          })
+          warning("标题生成失败，请检查模型配置后重试")
+        }
+        currentView.focus()
+      },
+      () => {
+        isGeneratingTitleRef.current = false
+        const currentView = editorViewRef.current
+        if (!currentView) return
+        const markerLine = findTitleLoadingLine(currentView)
+        if (!markerLine) return
+        currentView.dispatch({
+          changes: { from: markerLine.from, to: markerLine.to, insert: originalStartText },
+        })
+        currentView.focus()
+        warning("标题生成失败，请检查模型配置后重试")
+      },
+    )
+  }
+
   useEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
@@ -681,6 +787,17 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
+
+                // 二次回车命令：模板块内 /summary 命令行触发标题生成。
+                if (
+                  isMarkdownConfirmCommandArmed(
+                    line.text,
+                    isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from)),
+                  )
+                ) {
+                  runTemplateTitleGeneration(view)
+                  return true
+                }
                 const templateEndMatch =
                   /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.exec(
                     line.text,

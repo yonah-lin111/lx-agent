@@ -72,3 +72,35 @@ export const generateSessionTitle = async (firstTurn: AgentMessage[]): Promise<s
     return null
   }
 }
+
+/**
+ * 用配置的 titleSummary 模型为模板块内容生成标题。
+ * 纯生成、无工具、不进入 Agent 事件流；失败/无模型/无 key 返回 null（不抛错）。
+ * 渲染侧负责校验模板块归属并回写开始行「title: 」。
+ */
+export const generateTemplateTitle = async (content: string): Promise<string | null> => {
+  try {
+    const selection = getModelProviderSettings().titleSummary
+    const resolved = resolveModelSelection(selection)
+    if ("error" in resolved) return null
+    const languageModel = resolveLanguageModel(resolved.model)
+
+    const result = streamText({
+      model: languageModel,
+      abortSignal: AbortSignal.timeout(TITLE_TIMEOUT_MS),
+      messages: [
+        {
+          role: "user",
+          content:
+            "请用简体中文为以下开发任务描述提炼一个简洁精炼的标题。\n" +
+            "要求：一句话概括任务主题，不超过 20 字，不加标点结尾。\n\n" +
+            `任务描述：\n${content}`,
+        },
+      ],
+    })
+    return cleanTitle(await result.text)
+  } catch {
+    // 无响应 provider / 网络错误 / 超时：静默返回 null，由调用方提示失败。
+    return null
+  }
+}

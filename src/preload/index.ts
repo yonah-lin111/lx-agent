@@ -1,13 +1,15 @@
 import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
+import type { MarkdownApi } from "@shared/contracts/markdown"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
 import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { agentApi } from "./api/agent"
+import { markdownApi } from "./api/markdown"
 
-const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi = {
+const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
@@ -44,6 +46,7 @@ const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi = {
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveModelProviders, settings),
   },
   agent: agentApi,
+  markdown: markdownApi,
 }
 
 contextBridge.exposeInMainWorld("api", api)
