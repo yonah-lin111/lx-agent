@@ -1,6 +1,8 @@
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
+import type { FetchModelsInput } from "@shared/settings"
 import { ipcMain } from "electron"
 import { invalidateModelCache } from "@/agent/stream/modelFactory"
+import { fetchProviderModels } from "@/services/modelFetchService"
 import { getModelProviderSettings, saveModelProviderSettings } from "@/services/settingsService"
 
 /**
@@ -13,4 +15,7 @@ export const registerSettingsHandlers = (): void => {
     invalidateModelCache()
     return settings
   })
+  ipcMain.handle(SETTINGS_CHANNELS.fetchModels, (_, input: FetchModelsInput) =>
+    fetchProviderModels(input.baseURL, input.apiKey),
+  )
 }

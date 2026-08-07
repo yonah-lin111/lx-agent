@@ -1,9 +1,23 @@
-import { Check, CheckCircle2, Circle, KeyRound, SlidersHorizontal, Trash2 } from "lucide-react"
+import type { FetchedProviderModel } from "@shared/settings"
+import {
+  Bot,
+  Check,
+  CheckCircle2,
+  Circle,
+  Download,
+  KeyRound,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+} from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
+import { useLxToast } from "@/components/ui/LxToast"
+import { LxTooltip } from "@/components/ui/LxTooltip"
+import { settingsApi } from "../api/settingsApi"
 import type { ModelProvider, ModelProviderSettingsData } from "../types"
 
 const PROVIDER_TYPES: ModelProvider["type"][] = [
@@ -24,6 +38,43 @@ const createProviderId = (providers: Record<string, ModelProvider>): string => {
     id = `provider-${index}`
   }
   return id
+}
+
+/**
+ * 将获取模型列表的错误转换为用户可读的中文提示。
+ */
+const toFetchModelsErrorMessage = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error)
+  if (message.includes("HTTP 401") || message.includes("HTTP 403")) {
+    return "认证失败，请检查 API Key"
+  }
+  if (
+    message.includes("All candidates failed") ||
+    message.includes("HTTP 404") ||
+    message.includes("HTTP 405")
+  ) {
+    return "获取模型失败，请检查 Base URL 是否支持 /models 接口"
+  }
+  if (message.includes("timeout") || message.includes("timed out")) {
+    return "请求超时"
+  }
+  if (message.includes("Failed to parse")) {
+    return "响应格式不支持"
+  }
+  return "获取模型失败"
+}
+
+/**
+ * 模糊匹配：查询串的字符需按顺序出现在目标串中即匹配（忽略大小写）。
+ */
+const fuzzyMatches = (target: string, query: string): boolean => {
+  let index = 0
+  for (const char of query) {
+    index = target.indexOf(char, index)
+    if (index === -1) return false
+    index += 1
+  }
+  return true
 }
 
 type ProviderMenuState = {
@@ -149,6 +200,10 @@ export const ModelProviderSettings = ({
   const [selectedProviderId, setSelectedProviderId] = useState<string>("")
   const [expandedModelKeys, setExpandedModelKeys] = useState<Record<string, boolean>>({})
   const [menuState, setMenuState] = useState<ProviderMenuState | null>(null)
+  const [fetchedModels, setFetchedModels] = useState<Record<string, FetchedProviderModel[]>>({})
+  const [isFetchingModels, setIsFetchingModels] = useState<boolean>(false)
+  const [modelListQuery, setModelListQuery] = useState<string>("")
+  const toast = useLxToast()
 
   useEffect(() => {
     if (settings && !selectedProviderId) {
@@ -249,6 +304,111 @@ export const ModelProviderSettings = ({
         },
       }
     })
+  }
+
+  const invalidateFetchedModels = (providerId: string): void => {
+    setFetchedModels((current) => {
+      if (!(providerId in current)) return current
+      const next = { ...current }
+      delete next[providerId]
+      return next
+    })
+  }
+
+  const applyFetchedModel = (
+    providerId: string,
+    modelKey: string,
+    fetched: FetchedProviderModel,
+  ): void => {
+    const models = settings.providers[providerId]?.models ?? {}
+    const duplicateKey = Object.keys(models).find(
+      (key) => key !== modelKey && models[key]?.id === fetched.id,
+    )
+    if (duplicateKey) {
+      toast.error(`模型 ${fetched.id} 已存在`)
+      return
+    }
+    updateProvider(providerId, (provider) => ({
+      ...provider,
+      models: {
+        ...provider.models,
+        [modelKey]: {
+          ...provider.models[modelKey],
+          id: fetched.id,
+          name: fetched.id,
+        },
+      },
+    }))
+    toast.success(`已更新为模型 ${fetched.id}`)
+  }
+
+  const fetchProviderModels = async (providerId: string): Promise<void> => {
+    const provider = settings.providers[providerId]
+    if (!provider) return
+    if (!provider.options.baseURL) {
+      toast.error("请先填写 Base URL")
+      return
+    }
+    if (!provider.options.apiKey) {
+      toast.error("请先填写 API Key")
+      return
+    }
+    setIsFetchingModels(true)
+    try {
+      const models = await settingsApi.fetchModels({
+        baseURL: provider.options.baseURL,
+        apiKey: provider.options.apiKey,
+      })
+      setFetchedModels((current) => ({ ...current, [providerId]: models }))
+      toast.success(`获取到 ${models.length} 个模型`)
+    } catch (error) {
+      toast.error(toFetchModelsErrorMessage(error))
+    } finally {
+      setIsFetchingModels(false)
+    }
+  }
+
+  const renderFetchedModelsContent = (providerId: string, modelKey: string): React.ReactNode => {
+    const models = fetchedModels[providerId] ?? []
+    const query = modelListQuery.trim().toLocaleLowerCase()
+    const filteredModels = query
+      ? models.filter((model) => fuzzyMatches(`${model.id} ${model.ownedBy ?? ""}`, query))
+      : models
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-2 font-normal">
+        <div onClick={(event) => event.stopPropagation()}>
+          <LxInput
+            aria-label="搜索模型"
+            placeholder="搜索模型"
+            prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+            size="xs"
+            value={modelListQuery}
+            onChange={(event) => setModelListQuery(event.target.value)}
+          />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {models.length === 0 ? (
+            <div className="py-1 text-white/45">未获取到模型</div>
+          ) : filteredModels.length === 0 ? (
+            <div className="py-1 text-white/45">未找到匹配的模型</div>
+          ) : (
+            filteredModels.map((model) => (
+              <button
+                key={model.id}
+                type="button"
+                className="flex w-full items-center justify-between gap-3 rounded px-1 py-1 text-left text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+                onClick={() => applyFetchedModel(providerId, modelKey, model)}
+              >
+                <span className="min-w-0 truncate">{model.id}</span>
+                {model.ownedBy ? (
+                  <span className="shrink-0 text-[10px] text-white/35">{model.ownedBy}</span>
+                ) : null}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    )
   }
 
   const selectedProvider = settings.providers[selectedProviderId]
@@ -368,12 +528,13 @@ export const ModelProviderSettings = ({
                 <LxInput
                   value={selectedProvider.options.baseURL}
                   placeholder="https://api.example.com/v1"
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    invalidateFetchedModels(selectedProviderId)
                     updateProvider(selectedProviderId, (provider) => ({
                       ...provider,
                       options: { ...provider.options, baseURL: event.target.value },
                     }))
-                  }
+                  }}
                 />
               </label>
               <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
@@ -382,12 +543,13 @@ export const ModelProviderSettings = ({
                   type="password"
                   value={selectedProvider.options.apiKey}
                   prefix={<KeyRound className="h-3.5 w-3.5 text-white/35" />}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    invalidateFetchedModels(selectedProviderId)
                     updateProvider(selectedProviderId, (provider) => ({
                       ...provider,
                       options: { ...provider.options, apiKey: event.target.value },
                     }))
-                  }
+                  }}
                 />
               </label>
             </div>
@@ -395,13 +557,24 @@ export const ModelProviderSettings = ({
             <div className="mt-5 border-t border-white/8 pt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-white">模型</h3>
-                <LxIconButton
-                  preset="add"
-                  size="small"
-                  aria-label="添加模型"
-                  title={{ content: "添加模型", placement: "top" }}
-                  onClick={() => addModel(selectedProviderId)}
-                />
+                <div className="flex items-center gap-1">
+                  <LxIconButton
+                    size="small"
+                    aria-label="获取模型列表"
+                    title={{ content: "获取模型列表", placement: "top" }}
+                    disabled={isFetchingModels}
+                    onClick={() => void fetchProviderModels(selectedProviderId)}
+                  >
+                    <Download className="h-3 w-3" />
+                  </LxIconButton>
+                  <LxIconButton
+                    preset="add"
+                    size="small"
+                    aria-label="添加模型"
+                    title={{ content: "添加模型", placement: "top" }}
+                    onClick={() => addModel(selectedProviderId)}
+                  />
+                </div>
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 {Object.entries(selectedProvider.models).map(([modelKey, model]) => (
@@ -449,6 +622,20 @@ export const ModelProviderSettings = ({
                         />
                       </label>
                       <div className="flex items-center justify-end gap-1 @[380px]:mt-[22px]">
+                        {fetchedModels[selectedProviderId] !== undefined ? (
+                          <LxTooltip
+                            placement="top"
+                            trigger="click"
+                            multiline
+                            closeOnContentClick
+                            contentClassName="w-[350px] h-[200px]"
+                            content={renderFetchedModelsContent(selectedProviderId, modelKey)}
+                          >
+                            <LxIconButton aria-label={`模型 ${model.id} 模型列表`}>
+                              <Bot className="h-3.5 w-3.5" />
+                            </LxIconButton>
+                          </LxTooltip>
+                        ) : null}
                         <LxIconButton
                           aria-label={`模型 ${model.id} 高级设置`}
                           title={{ content: "高级设置", placement: "top" }}

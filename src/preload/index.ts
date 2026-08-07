@@ -44,6 +44,7 @@ const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi = {
     getModelProviders: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getModelProviders),
     saveModelProviders: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveModelProviders, settings),
+    fetchModels: (input) => ipcRenderer.invoke(SETTINGS_CHANNELS.fetchModels, input),
   },
   agent: agentApi,
   markdown: markdownApi,

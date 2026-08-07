@@ -18,6 +18,8 @@ export interface LxTooltipProps {
   delay?: number
   contentClassName?: string
   className?: string
+  // 内容允许多行/列表展示：宽度随内容自适应，超出视口时受限并可换行。
+  multiline?: boolean
   // 点击气泡内容后自动关闭。
   closeOnContentClick?: boolean
   // 受控显隐。
@@ -51,6 +53,7 @@ export const LxTooltip = ({
   delay = 150,
   contentClassName = "",
   className = "",
+  multiline = false,
   closeOnContentClick = false,
   open,
   onOpenChange,
@@ -296,7 +299,9 @@ export const LxTooltip = ({
   }
   const cardClassName = isConfirming
     ? "w-48 bg-[#303030] p-2.5 text-white"
-    : "bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-nowrap"
+    : `bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white ${
+        multiline ? "whitespace-normal max-w-[min(420px,80vw)]" : "whitespace-nowrap"
+      }`
   let triggerElement: React.ReactNode = children
   if (React.isValidElement(children)) {
     const child = children as React.ReactElement<
@@ -352,7 +357,9 @@ export const LxTooltip = ({
                 hideTimeoutRef.current = null
               }
             }}
-            onMouseLeave={hideTooltip}
+            onMouseLeave={() => {
+              if (activeTrigger === "hover" || activeTrigger === "both") hideTooltip()
+            }}
             onClick={(event) => {
               event.stopPropagation()
               if (closeOnContentClick) syncVisible(false)

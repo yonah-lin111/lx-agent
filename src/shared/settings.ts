@@ -43,10 +43,23 @@ export type ModelProviderSettings = {
   suggestedQuestionsEnabled: boolean
 }
 
+// 从 Provider 端点获取到的模型信息。
+export type FetchedProviderModel = {
+  id: string
+  ownedBy?: string | null
+}
+
+// 获取模型列表的请求参数。
+export type FetchModelsInput = {
+  baseURL: string
+  apiKey: string
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
     getModelProviders: () => Promise<ModelProviderSettings>
     saveModelProviders: (settings: ModelProviderSettings) => Promise<ModelProviderSettings>
+    fetchModels: (input: FetchModelsInput) => Promise<FetchedProviderModel[]>
   }
 }

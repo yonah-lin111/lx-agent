@@ -2,4 +2,5 @@
 export const SETTINGS_CHANNELS = {
   getModelProviders: "settings:model-providers:get",
   saveModelProviders: "settings:model-providers:save",
+  fetchModels: "settings:model-providers:fetch-models",
 } as const
