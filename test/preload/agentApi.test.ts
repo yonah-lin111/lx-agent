@@ -53,13 +53,13 @@ describe("preload agent API", () => {
     expect(removeListener).toHaveBeenCalledWith(AGENT_CHANNELS.event, listener)
   })
 
-  it("listSessions/restoreSession 转发参数到共享 channel", async () => {
+  it("listSessions/restoreSession 转发到共享 channel", async () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
 
-    await api.agent.listSessions({ page: "/" })
+    await api.agent.listSessions()
     await api.agent.restoreSession("sess-1")
 
-    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.listSessions, { page: "/" })
+    expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.listSessions)
     expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.restoreSession, "sess-1")
   })
 

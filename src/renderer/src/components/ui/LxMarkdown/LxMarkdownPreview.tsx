@@ -4,7 +4,6 @@ import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // Markdown 预览属性。

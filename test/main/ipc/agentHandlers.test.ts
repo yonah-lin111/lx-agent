@@ -70,14 +70,13 @@ describe("agent IPC handlers", () => {
     expect(listHandler).toBeTypeOf("function")
     expect(restoreHandler).toBeTypeOf("function")
 
-    await listHandler(undefined, { page: "/" })
-    expect(agentRunner.listSessions).toHaveBeenCalledWith({ page: "/" })
+    await listHandler(undefined)
+    expect(agentRunner.listSessions).toHaveBeenCalledWith()
 
     await restoreHandler(undefined, "sess-1")
     expect(agentRunner.restoreSession).toHaveBeenCalledWith("sess-1")
 
     // 同步抛错（IPC 层会转为拒绝）校验非法输入。
-    expect(() => listHandler(undefined, { page: 1 })).toThrow("INVALID_SESSION_FILTER")
     expect(() => restoreHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
   })
 

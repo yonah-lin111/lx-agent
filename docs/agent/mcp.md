@@ -7,8 +7,8 @@
 | # | 决策 | 结论 |
 |---|------|------|
 | 1 | 传输 | **仅 local stdio**（spawn 子进程 + stdio 协议）；无 HTTP / SSE / OAuth |
-| 2 | 配置位置 | `~/.lx/config.json` 的 **`agent.mcp`** 节点（与 `agent.pages` 同层，Agent 能力内聚） |
-| 3 | 启用策略 | item 会话**配置即启用**（连上的 server 工具全部进激活集）；`agent.pages[route].mcp` 允许列表仅覆盖页面会话 |
+| 2 | 配置位置 | `~/.lx/config.json` 的 **`agent.mcp`** 节点（Agent 能力内聚） |
+| 3 | 启用策略 | **配置即启用**：连上的 server 工具全部进激活集（无页面/项目裁剪） |
 | 4 | 命名 | MCP 工具**一律前缀化** `sanitize(server)_sanitize(tool)`，防与内置工具/跨 server 冲突 |
 | 5 | 失败语义 | 单 server 连接失败**降级不阻塞**：记 failed 状态（日志），其工具不进注册表，其余照常 |
 | 6 | 会话快照 | 恢复历史会话时**按当前配置重载**；快照 `mcp[]` 仅展示与校验 |
@@ -20,7 +20,6 @@
 {
   "ai": { /* ... 现有模型 provider 配置不变 */ },
   "agent": {
-    "pages": { /* ... 现有页面能力允许列表 */ },
     "mcp": {
       "codegraph": {
         "command": ["codegraph", "serve", "--mcp"],   // 必填：可执行命令 + 参数
@@ -89,8 +88,8 @@ schema 转换 `jsonSchemaToZod`（`src/main/agent/mcp/jsonSchemaToZod.ts`）：
 
 | 位点 | 改动 |
 |------|------|
-| `agentRunner.prepareBinding()` | 计算 MCP 激活集：item 会话取 `mcpManager.getTools()` 全量（配置即启用），页面会话按 `getPageCapabilities(route).mcp[]` 允许列表与已连接工具求交 |
-| `agentRunner.ensureReady()` | `createRegistry` 内注册 `mcpManager.getTools()` 包装的 AgentTool；按允许列表过滤（页面会话）或全量（item 会话）后 `setActive` |
+| `agentRunner.prepareBinding()` | 新会话建会话时计算 MCP 激活集 = `mcpManager.getTools()` 全量（配置即启用，无裁剪） |
+| `agentRunner.ensureReady()` | `createRegistry` 内注册 `mcpManager.getTools()` 包装的 AgentTool，全量 `setActive` |
 | `agentRunner.beginSessionTurn()` | `active_capabilities` 快照的 `mcp[]` 记实际生效清单（仅展示/校验，恢复时不据此重建） |
 | `agentRunner.restoreSession()` | 恢复历史会话时按当前配置重载 MCP 激活集；快照 `mcp[]` 仅展示/校验 |
 

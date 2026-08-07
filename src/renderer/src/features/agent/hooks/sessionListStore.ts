@@ -1,16 +1,5 @@
-import type {
-  AgentSendContext,
-  AgentSessionFilter,
-  AgentSessionSummary,
-} from "@shared/contracts/agent"
+import type { AgentSessionSummary } from "@shared/contracts/agent"
 import { agentApi } from "../api/agentApi"
-
-// 由会话归属上下文推导列表过滤条件。
-export const toSessionFilter = (context?: AgentSendContext): AgentSessionFilter | undefined => {
-  if (context?.projectItemId) return { projectItemId: context.projectItemId }
-  if (context?.page) return { page: context.page }
-  return undefined
-}
 
 // 历史会话列表（DB 支撑）：列表从 main 拉取，当前会话 id 供面板高亮。
 let sessions: AgentSessionSummary[] = []
@@ -52,10 +41,10 @@ export const sessionListStore = {
     notify()
   },
 
-  // 拉取指定归属下的会话列表（item 会话或页面会话）。
-  async refresh(filter?: AgentSessionFilter): Promise<void> {
+  // 拉取全量会话列表（历史面板客户端过滤）。
+  async refresh(): Promise<void> {
     try {
-      sessions = await agentApi.listSessions(filter)
+      sessions = await agentApi.listSessions()
     } catch {
       // IPC 失败：保留上次列表。
     }

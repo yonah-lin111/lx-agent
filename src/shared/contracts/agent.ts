@@ -132,17 +132,13 @@ export interface McpServerStatusItem {
   status: "connected" | "disabled" | "failed"
 }
 
-// 会话列表查询条件：item 会话按 projectItemId，页面会话按 page。
-export interface AgentSessionFilter {
-  projectItemId?: string
-  page?: string
-}
-
 // 会话摘要（历史列表展示，不含消息体）。
 export interface AgentSessionSummary {
   id: string
   title: string
   cwd: string
+  // 所属项目（历史面板项目 tag 客户端筛选用；独立页会话为 null）。
+  projectId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -166,7 +162,7 @@ export interface AgentApi {
     ) => Promise<AgentSendResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
-    listSessions: (filter?: AgentSessionFilter) => Promise<AgentSessionSummary[]>
+    listSessions: () => Promise<AgentSessionSummary[]>
     restoreSession: (sessionId: string) => Promise<AgentRestoredSession>
     renameSession: (sessionId: string, title: string) => Promise<void>
     deleteSession: (sessionId: string) => Promise<void>

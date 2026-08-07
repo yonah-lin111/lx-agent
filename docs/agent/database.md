@@ -7,7 +7,7 @@
 | # | 决策 | 结论 |
 |---|------|------|
 | 1 | 存储形态 | **混合**：`agent_session_entry` 树存完整会话上下文（恢复/续接的真相源），独立 `agent_call` 表存 tool/mcp/subagent/skill 调用记录（查询/统计/审计视图） |
-| 2 | session 归属 | 双归属：项目页会话绑 `project_item`（item→多 session）；非项目页（home/settings 等）按 `page` 路由分桶。`page` 列 + 可空 FK + CHECK 约束 |
+| 2 | session 归属 | **全局会话**：不按页面/项目分桶。会话归属（`project_item_id`/`project_id`/`page`）在建会话时**冻结**，导航不改变既有会话；归属列仅作历史「项目/当前项目」tag 的筛选依据。`page` 列 + 可空 FK + CHECK 约束保留 |
 | 3 | 调用记录 | 统一 `agent_call` 表 + `kind` 列（builtin/mcp/subagent/skill），subagent 嵌套用 `parent_call_id` 同表自关联表达 |
 | 4 | 能力快照 | 激活能力集（tools/mcp/skills）作为 entry type `active_capabilities` 落盘随会话冻结；`config.json` 仅作**新建会话**的默认装配源 |
 | 5 | id/时间规范 | 沿用现有规范：`id INTEGER PRIMARY KEY` + `external_id TEXT UNIQUE` + `created_at/updated_at TIMESTAMP`，FK 引用 `external_id` |
@@ -23,15 +23,15 @@
 CREATE TABLE IF NOT EXISTS agent_session (
   id INTEGER PRIMARY KEY,
   external_id TEXT NOT NULL UNIQUE,          -- uuid（业务键，供 FK 引用）
-  project_item_id TEXT,                      -- 项目 item 会话的归属（NULL = 非 item 会话）
-  project_id TEXT,                           -- 冗余：聚合"某项目全部 item 会话"免 join
-  page TEXT,                                 -- 非 item 会话的路由（'/' | '/project' | '/settings' …）
+  project_item_id TEXT,                      -- 建会话时的项目 item 归属（冻结；历史「项目」tag 用）
+  project_id TEXT,                           -- 冗余：项目 id（历史「项目/当前项目」tag 用）
+  page TEXT,                                 -- 建会话时的页面路由（冻结；NULL = item 会话）
   title TEXT NOT NULL DEFAULT 'new chat',
-  cwd TEXT NOT NULL,                         -- 工具执行目录（项目页 = project.path；独立页 = 主目录/配置）
+  cwd TEXT NOT NULL,                         -- 工具执行目录（冻结：建会话时的项目路径/主目录）
   created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,             -- 每次追加 entry 时同步（供"默认加载最近会话"排序）
+  updated_at TIMESTAMP NOT NULL,             -- 每次追加 entry 时同步（全局最近活跃排序）
 
-  -- 归属互斥：item 会话 vs 页面会话
+  -- 归属互斥：建会话时要么 item 会话要么页面会话（冻结后不变）
   CHECK ((project_item_id IS NOT NULL AND page IS NULL)
       OR (project_item_id IS NULL AND page IS NOT NULL)),
   -- item 会话必有所属项目
@@ -41,17 +41,18 @@ CREATE TABLE IF NOT EXISTS agent_session (
   FOREIGN KEY (project_id) REFERENCES project(external_id) ON DELETE CASCADE
 );
 
+-- 历史列表按全局最近活跃排序（不按归属分桶）；以下索引为「项目/当前项目」tag 扩展留口。
 CREATE INDEX IF NOT EXISTS idx_agent_session_item
-  ON agent_session(project_item_id, updated_at DESC);   -- 项目页默认加载最近会话
+  ON agent_session(project_item_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_session_page
-  ON agent_session(page, updated_at DESC);              -- 独立页按路由分桶
+  ON agent_session(page, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_session_project
-  ON agent_session(project_id, updated_at DESC);        -- 按项目聚合
+  ON agent_session(project_id, updated_at DESC);
 ```
 
-- 归属判定：`project_item_id IS NOT NULL` → 项目 item 会话；否则为页面会话（`page` 必填）。
-- 项目页但未选中具体 item 的会话：`page='/project'`、`project_id` 可填、`project_item_id=NULL`，落在项目页桶内。
-- `updated_at` 语义 = "最后一次活跃"，由追加 entry 的同一事务同步更新；默认加载 = `ORDER BY updated_at DESC LIMIT 1`。
+- **全局会话**：会话不按页面/项目分桶，历史列表返回全量 `ORDER BY updated_at DESC`；归属列仅作「项目/当前项目」tag 的**客户端筛选**依据。
+- 归属冻结：建会话时由当时导航上下文决定（有 item → item 会话；否则页面会话），导航不再改变既有会话的归属与 cwd。
+- `updated_at` 语义 = "最后一次活跃"，由追加 entry 的同一事务同步更新；启动恢复 = 全量 `ORDER BY updated_at DESC LIMIT 1`。
 
 ### 2.2 agent_session_entry —— 会话上下文树（真相源）
 
@@ -135,25 +136,21 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 - context 不污染：子代理内部消息**不进父会话 entries 树**，父树只落一个 toolCall/toolResult 对（子代理对外暴露成工具）；内部步骤仅靠 `agent_call` 留存 provenance。
 - 双向互跳：`entry_id` 从查询视图跳到上下文真相，反向由 message entry 内 toolCall block 的 id 对回调用行。
 
-## 3. 与 config.json 的能力接口（留口）
+## 3. 能力装配：全量默认（不再按页面裁剪）
 
-`~/.lx/config.json` 根节点已按 `[key: string]: unknown` 解析（`settingsService` 现状），追加 `agent` 节点不破坏现有读取：
+**能力不区分页面/项目会话**：所有会话一律内置工具全集 + 全部已连接 MCP 工具 + 全部可用 skill。`config.json` **不再有 `agent.pages` 节点**（能力按页面裁剪概念移除），`agent` 节点仅保留 `mcp` server 配置：
 
 ```jsonc
 {
-  "ai": { /* 现有 */ },
+  "ai": { /* 现有模型 provider 配置不变 */ },
   "agent": {
-    "pages": {
-      "/":        { "tools": ["read", "time"], "mcp": [], "skills": [] },
-      "/settings": { "tools": [],             "mcp": [], "skills": [] }
-    }
+    "mcp": { /* MCP server 配置（见 mcp.md） */ }
   }
 }
 ```
 
-- 解析顺序：**session 能力快照优先**（恢复旧会话按其 `active_capabilities` 重建工具集）；`config.json` 只决定**新建会话**的默认装配源。
-- 缺省（未配置某页面）：项目 item 会话 = 内置工具全集 + 空 mcp/skills；非项目页面 = 最小只读集 + 联网搜索（`read` / `time` / `web_search`），`cwd = os.homedir()`。
-- 读取实现与 `settingsService` 同级（`getAgentPageCapabilities(route)`），后续 MCP server 列表、skill 注册也挂在此节点演进。
+- 能力快照：`active_capabilities` entry 仍随会话落库（恢复时按快照重建工具集）；装配时默认能力集 = `capabilityService.getDefaultCapabilities()`（全量内置工具），MCP/skill 由 runner 从管理器**全量**装配。
+- `cwd`：建会话时冻结（item 会话 = 项目路径；页面会话 = `os.homedir()`）；恢复会话沿用快照 `cwd`。
 
 ## 4. 数据流与写入时机
 
@@ -173,9 +170,9 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 5. 同步 `agent_session.updated_at`
 
 **恢复会话**
-1. 项目页：`WHERE project_item_id=? ORDER BY updated_at DESC LIMIT 1`；独立页：`WHERE page=? ORDER BY updated_at DESC LIMIT 1`
+1. 历史列表：全量 `SELECT * FROM agent_session ORDER BY updated_at DESC`（无归属过滤）；应用启动/进入时恢复其中**最近活跃**的一个
 2. 读 entries 按 `seq` 升序 → 重建 `AgentMessage[]` → `restoreMessages`（harness v1 续接逻辑原样复用）
-3. 取最近 `active_capabilities` 快照 → 重建 ToolRegistry 激活集（优先于 config）
+3. 取最近 `active_capabilities` 快照 → 重建 ToolRegistry 激活集（全量默认）
 
 **会话重命名**（一个事务）：`UPDATE agent_session SET title=?, updated_at=? WHERE external_id=?`
 
@@ -200,9 +197,9 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 | `src/main/db/schema/agentSchema.ts` | 新增 `createAgentTables(db)`，三表 + 索引 |
 | `src/main/db/connection.ts` | `initDatabase` 内 `createProjectTables` 之后调用 |
 | `src/main/agent/agentRunner.ts` | 会话创建/追加/恢复的持久化落点（替换 renderer 内存 `chatHistoryStore`） |
-| `src/main/services/capabilityService.ts` | 读 `config.json` `agent.pages` → 新建会话能力快照 |
-| IPC / preload | 会话列表查询、恢复加载 channel（`agent:listSessions` / `agent:restoreSession`） |
-| `RightSidebar.tsx` → `AgentPage` | 透传 `projectItemId`（当前只传 project id/path，需补接线） |
+| `src/main/services/capabilityService.ts` | 收敛为单一**全量默认能力集**（移除 `agent.pages` 读取） |
+| IPC / preload | 会话列表查询、恢复加载 channel（`agent:listSessions` / `agent:restoreSession`；`listSessions` 不再带 filter） |
+| `RightSidebar.tsx` → `ChatHistoryPanel` | 透传 `currentProjectId` 与项目列表（历史「项目/当前项目」tag） |
 
 ## 7. 迁移机制演进预案（首版不实现）
 

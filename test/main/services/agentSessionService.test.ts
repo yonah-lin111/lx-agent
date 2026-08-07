@@ -84,16 +84,16 @@ describe("agentSessionService", () => {
     expect(service.nextSeq(sessionId)).toBe(2)
   })
 
-  it("listSessions 按归属过滤并按 updated_at 倒序", () => {
+  it("listSessions 全量拉取并按 updated_at 倒序，携带 projectId", () => {
     insertSession("s1", "/", "2026-01-01T00:00:00.000Z")
     insertSession("s2", "/", "2026-01-02T00:00:00.000Z")
     insertSession("s3", null, "2026-01-03T00:00:00.000Z")
 
-    const pageSessions = service.listSessions({ page: "/" })
-    expect(pageSessions.map((session) => session.id)).toEqual(["s2", "s1"])
-
-    const itemSessions = service.listSessions({ projectItemId: "item1" })
-    expect(itemSessions.map((session) => session.id)).toEqual(["s3"])
+    const sessions = service.listSessions()
+    expect(sessions.map((session) => session.id)).toEqual(["s3", "s2", "s1"])
+    // 页面会话 projectId 为 null；item 会话为所属项目。
+    expect(sessions[0].projectId).toBe("p1")
+    expect(sessions[1].projectId).toBeNull()
   })
 
   it("transaction 内多写原子回滚", () => {
@@ -180,7 +180,7 @@ describe("agentSessionService", () => {
   })
 
   it("空会话无记录：未插入任何行时列表为空", () => {
-    expect(service.listSessions({ page: "/" })).toEqual([])
+    expect(service.listSessions()).toEqual([])
     expect(service.getSession("missing")).toBeUndefined()
   })
 

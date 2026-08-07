@@ -3,7 +3,6 @@ import type {
   AgentMessage,
   AgentRestoredSession,
   AgentSendContext,
-  AgentSessionFilter,
   AgentSessionSummary,
   McpServerStatusItem,
 } from "@shared/contracts/agent"
@@ -19,8 +18,7 @@ export const agentApi = {
     window.api.agent.send(text, selection, context),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
-  listSessions: (filter?: AgentSessionFilter): Promise<AgentSessionSummary[]> =>
-    window.api.agent.listSessions(filter),
+  listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),
   restoreSession: (sessionId: string): Promise<AgentRestoredSession> =>
     window.api.agent.restoreSession(sessionId),
   renameSession: (sessionId: string, title: string): Promise<void> =>

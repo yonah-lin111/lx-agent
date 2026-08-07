@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AgentSessionFilter, AgentSessionSummary } from "@shared/contracts/agent"
+import type { AgentSessionSummary } from "@shared/contracts/agent"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
 
@@ -34,6 +34,7 @@ const toSummary = (row: AgentSessionRecord): AgentSessionSummary => ({
   id: row.external_id,
   title: row.title,
   cwd: row.cwd,
+  projectId: row.project_id ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -212,25 +213,11 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       )
   },
 
-  // 会话列表：item 会话按 projectItemId，页面会话按 page，均按最后活跃排序。
-  listSessions: (filter: AgentSessionFilter): AgentSessionSummary[] => {
-    const database = getConnection()
-    let rows: AgentSessionRecord[]
-    if (filter.projectItemId) {
-      rows = database
-        .prepare(
-          "SELECT * FROM agent_session WHERE project_item_id = ? ORDER BY updated_at DESC, id DESC",
-        )
-        .all(filter.projectItemId) as AgentSessionRecord[]
-    } else if (filter.page) {
-      rows = database
-        .prepare("SELECT * FROM agent_session WHERE page = ? ORDER BY updated_at DESC, id DESC")
-        .all(filter.page) as AgentSessionRecord[]
-    } else {
-      rows = database
-        .prepare("SELECT * FROM agent_session ORDER BY updated_at DESC, id DESC")
-        .all() as AgentSessionRecord[]
-    }
+  // 会话列表：全量拉取，按最后活跃排序（历史面板客户端过滤）。
+  listSessions: (): AgentSessionSummary[] => {
+    const rows = getConnection()
+      .prepare("SELECT * FROM agent_session ORDER BY updated_at DESC, id DESC")
+      .all() as AgentSessionRecord[]
     return rows.map(toSummary)
   },
 })

@@ -7,12 +7,11 @@ import type {
   AgentRestoredSession,
   AgentSendContext,
   AgentSendResult,
-  AgentSessionFilter,
   AgentSessionSummary,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
-import { getItemCapabilities, getPageCapabilities } from "@/services/capabilityService"
+import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
@@ -171,7 +170,7 @@ class AgentRunner {
   private currentSessionId: string | null = null
   private sessionBinding: SessionBinding | null = null
   // 当前会话的能力快照（激活工具集；随会话冻结）。
-  private activeCapabilities: string[] = getItemCapabilities().tools
+  private activeCapabilities: string[] = getDefaultCapabilities().tools
   // 当前会话生效的 MCP 工具（全名）与注入 skill（随能力快照刷新）。
   private activeMcp: string[] = []
   private activeSkills: LoadedSkill[] = []
@@ -186,10 +185,6 @@ class AgentRunner {
   private pendingCalls = new Map<string, PendingCall>()
   // run 代数：负值表示当前无活动 run（已丢弃/已结束），残留事件不再落盘。
   private currentRunGeneration = -1
-  // 本次 send 是否切换到新会话（需要清空上下文并重建会话）。
-  private bindingChanged = false
-  // 本次 send 的归属目标（prepareBinding 捕获，beginSessionTurn 消费）。
-  private targetBinding: SessionBinding | null = null
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
   attachEventSink(sink: (event: AgentEvent) => void): void {
@@ -256,61 +251,31 @@ class AgentRunner {
     return { agent: this.agent }
   }
 
-  // 归属上下文 → 绑定对象。
-  private bindingFromContext(context: AgentSendContext): SessionBinding {
-    return {
+  // 新会话（无当前会话）时冻结归属、cwd 与能力（全量）；既有会话忽略 context 的 binding/cwd。
+  private freezeNewSession(context: AgentSendContext): void {
+    if (this.currentSessionId) return
+    this.sessionBinding = {
       projectItemId: context.projectItemId,
       projectId: context.projectId,
       page: context.page,
     }
+    const cwd = context.cwd ?? (context.projectItemId ? resolveCwd() : homedir())
+    if (cwd) this.requestedCwd = cwd
+    const snapshot = getDefaultCapabilities()
+    this.activeCapabilities = snapshot.tools
+    this.activeMcp = this.resolveMcpTools()
+    this.activeSkills = cwd ? this.resolveInjectedSkills(cwd) : []
   }
 
-  private isSameBinding(a: SessionBinding | null, b: SessionBinding | null): boolean {
-    if (!a || !b) return false
-    return a.projectItemId === b.projectItemId && a.page === b.page
+  // MCP 激活集：全量已连接工具（配置即启用，无页面裁剪）。
+  private resolveMcpTools(): string[] {
+    return mcpManager.getTools().map((handle) => handle.fullName)
   }
 
-  // 解析绑定下的默认能力快照：item 会话 = 内置全集；页面会话 = config 或最小只读集。
-  private resolveCapabilities(binding: SessionBinding): AgentCapabilitySnapshot {
-    if (binding.projectItemId) return getItemCapabilities()
-    return getPageCapabilities(binding.page ?? "/")
-  }
-
-  // 绑定变化时切换会话：解析能力快照、MCP 工具与注入 skill 与 cwd，标记清空上下文。
-  private prepareBinding(context: AgentSendContext): void {
-    const binding = this.bindingFromContext(context)
-    const changed = !this.currentSessionId || !this.isSameBinding(this.sessionBinding, binding)
-    this.targetBinding = binding
-    if (changed) {
-      const snapshot = this.resolveCapabilities(binding)
-      this.activeCapabilities = snapshot.tools
-      const cwd = context.cwd ?? (binding.projectItemId ? resolveCwd() : homedir())
-      if (cwd) this.requestedCwd = cwd
-      this.activeMcp = this.resolveMcpTools(binding, snapshot)
-      this.activeSkills = cwd ? this.resolveInjectedSkills(binding, snapshot, cwd) : []
-    }
-    this.bindingChanged = changed
-  }
-
-  // MCP 激活集：item 会话全量（配置即启用），页面会话按允许列表过滤。
-  private resolveMcpTools(binding: SessionBinding, snapshot: AgentCapabilitySnapshot): string[] {
-    const connected = mcpManager.getTools().map((handle) => handle.fullName)
-    if (binding.projectItemId) return connected
-    return snapshot.mcp.filter((name) => connected.includes(name))
-  }
-
-  // skill 注入清单：item 会话全量可用，页面会话按允许列表过滤；排序后截断至注入上限。
-  private resolveInjectedSkills(
-    binding: SessionBinding,
-    snapshot: AgentCapabilitySnapshot,
-    cwd: string,
-  ): LoadedSkill[] {
-    const allowlist = binding.projectItemId ? undefined : snapshot.skills
+  // skill 注入清单：全部可用（disable-model-invocation 除外），排序后截断至注入上限。
+  private resolveInjectedSkills(cwd: string): LoadedSkill[] {
     const available = skillLoader.load(cwd).filter((skill) => !skill.disableModelInvocation)
-    const filtered = allowlist
-      ? available.filter((skill) => allowlist.includes(skill.name))
-      : available
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
+    return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
   }
 
   // 显式触发 /skill:<name> args → 正文块（strip frontmatter）+ args；未命中原样透传。
@@ -340,7 +305,7 @@ class AgentRunner {
     // MCP server 连接（幂等；配置空时立即返回）。
     await mcpManager.ensureConnected()
     if (context !== undefined) {
-      this.prepareBinding(context)
+      this.freezeNewSession(context)
     }
     const ready = this.ensureReady()
     if ("error" in ready) {
@@ -350,8 +315,8 @@ class AgentRunner {
     if (agent.state.isStreaming) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
-    // 切换到新会话：从空上下文开始（旧会话已在 DB 落盘，由恢复流程重建）。
-    const isNewSession = this.bindingChanged
+    // 新会话：从空上下文开始（旧会话已在 DB 落盘，由恢复流程重建）。
+    const isNewSession = !this.currentSessionId
     if (isNewSession) {
       agent.state.messages = []
     }
@@ -424,13 +389,11 @@ class AgentRunner {
       projectId: session.project_id ?? undefined,
       page: session.page ?? undefined,
     }
-    this.activeCapabilities = capabilities.tools
+    // 能力全量（与新建会话一致）；MCP/skill 按当前配置重载（外部资源），快照仅展示/校验。
+    this.activeCapabilities = getDefaultCapabilities().tools
     this.requestedCwd = session.cwd
-    // MCP/skill 按当前配置重载（外部资源）；快照仅展示/校验。
-    const isItem = Boolean(session.project_item_id)
-    const snapshot = isItem ? getItemCapabilities() : getPageCapabilities(session.page ?? "/")
-    this.activeMcp = this.resolveMcpTools(this.sessionBinding, snapshot)
-    this.activeSkills = this.resolveInjectedSkills(this.sessionBinding, snapshot, session.cwd)
+    this.activeMcp = this.resolveMcpTools()
+    this.activeSkills = this.resolveInjectedSkills(session.cwd)
 
     const ready = this.ensureReady()
     if ("error" in ready) {
@@ -467,9 +430,9 @@ class AgentRunner {
     return { messages, capabilities }
   }
 
-  // 历史会话列表。
-  listSessions(filter?: AgentSessionFilter): AgentSessionSummary[] {
-    return agentSessionService.listSessions(filter ?? {})
+  // 历史会话列表（全量，客户端过滤）。
+  listSessions(): AgentSessionSummary[] {
+    return agentSessionService.listSessions()
   }
 
   // 删除一轮对话：以该轮用户消息 timestamp 定位，删除用户消息 + 后续 AI/toolResult 消息及关联调用。
@@ -552,13 +515,8 @@ class AgentRunner {
     this.currentRunGeneration += 1
     this.runMessages = []
     this.pendingCalls.clear()
-    if (this.bindingChanged) {
-      this.currentSessionId = null
-      this.sessionBinding = null
-      this.bindingChanged = false
-    }
     this.sessionInput = {
-      binding: this.targetBinding ?? this.sessionBinding ?? {},
+      binding: this.sessionBinding ?? {},
       cwd: this.cwd ?? "",
       title: createTitle(text),
       capabilities: {

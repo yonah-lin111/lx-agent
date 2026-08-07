@@ -4,17 +4,22 @@ import { join } from "node:path"
 import type { AssistantMessage, StopReason, Usage } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// 共享状态：临时 config 路径、内存 DB 句柄与脚本化 stream 响应。
+// 共享状态：临时 config/appData 路径、内存 DB 句柄与脚本化 stream 响应。
 const holder = vi.hoisted(() => ({
   configPath: "",
+  appDataRoot: "",
   db: null as import("better-sqlite3").Database | null,
   streamResponses: [] as import("@shared/contracts/agent").AssistantMessage[],
 }))
 
-// config 读取指向临时文件（隔离真实用户配置）。
+// config/appData 指向临时目录（隔离真实用户配置与 ~/.lx/skills）。
 vi.mock("@/paths", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/paths")>()
-  return { ...actual, getConfigPath: () => holder.configPath }
+  return {
+    ...actual,
+    getConfigPath: () => holder.configPath,
+    getAppDataRoot: () => holder.appDataRoot,
+  }
 })
 
 // 模型解析回退到固定 Provider。
@@ -111,6 +116,7 @@ describe("agentRunner 持久化", () => {
     vi.resetModules()
     tmpDir = mkdtempSync(join(tmpdir(), "lx-agent-runner-"))
     holder.configPath = join(tmpDir, "config.json")
+    holder.appDataRoot = join(tmpDir, "appdata")
     holder.db = null
     holder.streamResponses = []
   })
@@ -131,7 +137,7 @@ describe("agentRunner 持久化", () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
-    const sessions = agentRunner.listSessions({ page: "/" })
+    const sessions = agentRunner.listSessions()
     expect(sessions).toHaveLength(1)
     expect(sessions[0]).toMatchObject({ title: "hello", cwd: "/tmp" })
 
@@ -143,9 +149,9 @@ describe("agentRunner 持久化", () => {
       "message",
       "message",
     ])
-    // 页面会话缺省最小只读集 + 联网搜索。
+    // 全量能力快照（无页面/项目裁剪）。
     expect(JSON.parse(entries[0].payload)).toEqual({
-      tools: ["read", "time", "web_search"],
+      tools: ["read", "ls", "grep", "find", "write", "edit", "bash", "time", "web_search"],
       mcp: [],
       skills: [],
     })
@@ -166,10 +172,10 @@ describe("agentRunner 持久化", () => {
     if (!second.ok) return
 
     expect(second.sessionId).toBe(first.sessionId)
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
+    expect(agentRunner.listSessions()).toHaveLength(1)
   })
 
-  it("绑定变化时新建会话", async () => {
+  it("绑定变化不影响会话归属（仍续接原会话）", async () => {
     const { agentRunner } = await importRunner()
     holder.streamResponses = [assistant([{ type: "text", text: "a" }])]
     const first = await agentRunner.send("msg1", undefined, { page: "/", cwd: "/tmp" })
@@ -181,9 +187,9 @@ describe("agentRunner 持久化", () => {
     expect(second.ok).toBe(true)
     if (!second.ok) return
 
-    expect(second.sessionId).not.toBe(first.sessionId)
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
-    expect(agentRunner.listSessions({ page: "/settings" })).toHaveLength(1)
+    // 归属冻结：切绑定继续聊 A 会话，不新建。
+    expect(second.sessionId).toBe(first.sessionId)
+    expect(agentRunner.listSessions()).toHaveLength(1)
   })
 
   it("restoreSession 重建消息与能力快照", async () => {
@@ -195,7 +201,17 @@ describe("agentRunner 持久化", () => {
 
     const restored = await agentRunner.restoreSession(result.sessionId)
     expect(restored.messages.map((message) => message.role)).toEqual(["user", "assistant"])
-    expect(restored.activeCapabilities.tools).toEqual(["read", "time", "web_search"])
+    expect(restored.activeCapabilities.tools).toEqual([
+      "read",
+      "ls",
+      "grep",
+      "find",
+      "write",
+      "edit",
+      "bash",
+      "time",
+      "web_search",
+    ])
   })
 
   it("工具调用写入 agent_call 并关联触发 entry", async () => {
@@ -229,7 +245,7 @@ describe("agentRunner 持久化", () => {
     if (!result.ok) return
 
     agentRunner.restoreMessages([])
-    const sessions = agentRunner.listSessions({ page: "/" })
+    const sessions = agentRunner.listSessions()
     expect(sessions).toHaveLength(1)
     expect(sessions[0].id).toBe(result.sessionId)
   })
@@ -268,7 +284,7 @@ describe("agentRunner 持久化", () => {
     if (!result.ok) return
 
     agentRunner.renameSession(result.sessionId, "自定义标题")
-    expect(agentRunner.listSessions({ page: "/" })[0].title).toBe("自定义标题")
+    expect(agentRunner.listSessions()[0].title).toBe("自定义标题")
   })
 
   it("deleteSession 级联删除消息与调用", async () => {
@@ -282,7 +298,7 @@ describe("agentRunner 持久化", () => {
     if (!result.ok) return
 
     agentRunner.deleteSession(result.sessionId)
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(0)
+    expect(agentRunner.listSessions()).toHaveLength(0)
     expect(
       holder
         .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
@@ -326,7 +342,7 @@ describe("agentRunner 持久化", () => {
     expect(
       holder.db!.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(second.sessionId),
     ).toHaveLength(0)
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
+    expect(agentRunner.listSessions()).toHaveLength(1)
   })
 
   it("deleteMessageTurn 删除最后一轮后会话清空则整体删除", async () => {
@@ -338,7 +354,7 @@ describe("agentRunner 持久化", () => {
 
     agentRunner.deleteMessageTurn(result.sessionId, readUserTimestamps(result.sessionId)[0]!)
 
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(0)
+    expect(agentRunner.listSessions()).toHaveLength(0)
     expect(
       holder
         .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
@@ -358,6 +374,6 @@ describe("agentRunner 持久化", () => {
       .db!.prepare("SELECT * FROM agent_session_entry WHERE session_id = ?")
       .all(result.sessionId)
     expect(entries).toHaveLength(3) // active_capabilities + user + assistant
-    expect(agentRunner.listSessions({ page: "/" })).toHaveLength(1)
+    expect(agentRunner.listSessions()).toHaveLength(1)
   })
 })

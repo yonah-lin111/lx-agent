@@ -48,8 +48,8 @@
 ### Step 5：装配接线
 
 - [x] `agentRunner` 计算实际生效清单（capabilityService 保持配置读取，不依赖 mcpManager/skillLoader）：
-  - `prepareBinding()` / `restoreSession()`：item 会话全量（配置即启用）、页面会话按 `getPageCapabilities` 的 `mcp`/`skills` 允许列表过滤，产出 `activeMcp`（全名）与 `activeSkills`（注入清单）。
-  - `createRegistry` 注册 MCP 包装工具 + `read_skill`；按允许列表（页面）或全量（item）`setActive`。
+  - `prepareBinding()` / `restoreSession()`：一律**全量**——MCP 取 `mcpManager.getTools()` 全量、skill 取全部可用（`disable-model-invocation` 除外），产出 `activeMcp`（全名）与 `activeSkills`（注入清单），无页面允许列表过滤。
+  - `createRegistry` 注册 MCP 包装工具 + `read_skill`；按全量激活集 `setActive`（无页面/项目裁剪）。
   - `beginSessionTurn()`：快照 `mcp[]`/`skills[]` 记实际生效清单。
   - 恢复历史会话（`restoreSession`）：MCP/skill 按当前配置重载，快照仅展示/校验。
   - `send()` 入口 `_expandSkillCommand`：`/skill:<name> args` → 正文块（strip frontmatter）+ args；未命中原样透传。
@@ -84,7 +84,7 @@
 ### 6.1 实现项
 
 - [x] `src/main/agent/tools/webSearch.ts`：`createWebSearchTool`（zod schema，Exa 优先 / Tavily 兜底，无 Key 匿名直连，匿名被拒 provider 暂停重试，全失败抛英文提示）。
-- [x] 装配：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录 `web_search`；`capabilityService` 的 `DEFAULT_ITEM_TOOLS` / `DEFAULT_PAGE_TOOLS` 默认激活。
+- [x] 装配：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录 `web_search`；`capabilityService` 的**全量默认能力集**默认激活（无页面裁剪）。
 - [x] 渲染：`AgentWebSearchBlock`（emerald 独立配色、不参与普通工具折叠）；`AgentMessageItem` 归并连续 `web_search` 为独立分组（`[条件1], [条件2]` 展示）。
 - [x] 配置：`ai.webSearch` 节点（`exaApiKey` / `tavilyApiKey`）于 `~/.lx/config.json`，`createWebSearchTool` 内 `readWebSearchConfig()` 读取。
 

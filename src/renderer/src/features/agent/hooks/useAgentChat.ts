@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
 import type { ChatMessage } from "../types"
 import { toAgentMessages, toChatMessage } from "../utils"
-import { sessionListStore, toSessionFilter } from "./sessionListStore"
+import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
 let messageSequence = 0
@@ -143,39 +143,35 @@ export const useAgentChat = (context?: AgentSendContext) => {
 
   // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并同步 main 侧上下文与 DB。
   // 未命中 DB 用户消息 timestamp（幽灵消息）时仅做本地移除。
-  const removeTurn = useCallback(
-    (userIndex: number): void => {
-      const list = messagesRef.current
-      const userTimestamp = list[userIndex]?.timestamp
-      let nextUserIndex = list.length
-      for (let index = userIndex + 1; index < list.length; index++) {
-        if (list[index].role === "user") {
-          nextUserIndex = index
-          break
-        }
+  const removeTurn = useCallback((userIndex: number): void => {
+    const list = messagesRef.current
+    const userTimestamp = list[userIndex]?.timestamp
+    let nextUserIndex = list.length
+    for (let index = userIndex + 1; index < list.length; index++) {
+      if (list[index].role === "user") {
+        nextUserIndex = index
+        break
       }
-      const nextMessages = [...list.slice(0, userIndex), ...list.slice(nextUserIndex)]
-      setMessages(nextMessages)
-      void agentApi.restore(toAgentMessages(nextMessages))
-      const sessionId = sessionListStore.getCurrentSessionId()
-      if (sessionId && typeof userTimestamp === "number") {
-        // 落库成功后再刷新列表，避免读到删除前的旧会话。
-        void agentApi
-          .deleteMessageTurn(sessionId, userTimestamp)
-          .then(() => {
-            const filter = toSessionFilter(context)
-            if (filter) void sessionListStore.refresh(filter)
-          })
-          .catch(() => {
-            // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
-          })
-      }
-      if (nextMessages.length === 0) {
-        sessionListStore.setCurrentSessionId(null)
-      }
-    },
-    [context],
-  )
+    }
+    const nextMessages = [...list.slice(0, userIndex), ...list.slice(nextUserIndex)]
+    setMessages(nextMessages)
+    void agentApi.restore(toAgentMessages(nextMessages))
+    const sessionId = sessionListStore.getCurrentSessionId()
+    if (sessionId && typeof userTimestamp === "number") {
+      // 落库成功后再刷新列表，避免读到删除前的旧会话。
+      void agentApi
+        .deleteMessageTurn(sessionId, userTimestamp)
+        .then(() => {
+          void sessionListStore.refresh()
+        })
+        .catch(() => {
+          // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
+        })
+    }
+    if (nextMessages.length === 0) {
+      sessionListStore.setCurrentSessionId(null)
+    }
+  }, [])
 
   // 撤销上一轮对话：删除最近一轮（含问题/回答/工具调用）并同步 main 侧与 DB。
   const undoLastTurn = useCallback(() => {
@@ -237,8 +233,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
       void agentApi.send(text, selection, context).then((result) => {
         if (result.ok) {
           sessionListStore.setCurrentSessionId(result.sessionId)
-          const filter = toSessionFilter(context)
-          if (filter) void sessionListStore.refresh(filter)
+          void sessionListStore.refresh()
         }
       })
     },

@@ -2,7 +2,6 @@ import type {
   AgentEvent,
   AgentMessage,
   AgentSendContext,
-  AgentSessionFilter,
   McpServerStatusItem,
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
@@ -48,14 +47,6 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
     isOptionalString(context.page) &&
     isOptionalString(context.cwd)
   )
-}
-
-// 校验会话列表过滤条件为合法 AgentSessionFilter（IPC 输入边界）。
-const isValidSessionFilter = (value: unknown): value is AgentSessionFilter => {
-  if (value === undefined) return true
-  if (!value || typeof value !== "object") return false
-  const filter = value as Record<string, unknown>
-  return isOptionalString(filter.projectItemId) && isOptionalString(filter.page)
 }
 
 /**
@@ -107,12 +98,7 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     agentRunner.restoreMessages(messages)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.listSessions, (_, filter: unknown) => {
-    if (!isValidSessionFilter(filter)) {
-      throw new Error("INVALID_SESSION_FILTER")
-    }
-    return agentRunner.listSessions(filter)
-  })
+  ipcMain.handle(AGENT_CHANNELS.listSessions, () => agentRunner.listSessions())
 
   ipcMain.handle(AGENT_CHANNELS.restoreSession, (_, sessionId: unknown) => {
     if (typeof sessionId !== "string" || !sessionId.trim()) {

@@ -1,3 +1,4 @@
+import type { AssistantMessage, TextContent, ThinkingContent } from "@shared/contracts/agent"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // 共享可变 settings 状态：按用例切换 titleSummary 配置。
@@ -39,7 +40,7 @@ const mockStream = (text: string): void => {
 }
 
 // 构造一条 assistant 消息。
-const assistant = (blocks: Array<{ type: string } & Record<string, unknown>>) => ({
+const assistant = (blocks: (TextContent | ThinkingContent)[]): AssistantMessage => ({
   role: "assistant",
   content: blocks,
   provider: "p",

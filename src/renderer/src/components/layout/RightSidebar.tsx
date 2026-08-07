@@ -8,7 +8,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { sessionListStore, toSessionFilter } from "@/features/agent/hooks/sessionListStore"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
@@ -41,6 +41,8 @@ export const RightSideBar = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const { pathname } = useLocation()
   const [currentProject, setCurrentProject] = useState<{ id: string; path?: string }>()
+  // 项目列表（历史面板项目 tag 筛选用）。
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
   const restoreChatRef = useRef<((sessionId: string) => void) | null>(null)
   const newChatRef = useRef<(() => void) | null>(null)
   const chatSessions = useSyncExternalStore(
@@ -167,16 +169,12 @@ export const RightSideBar = (): React.JSX.Element => {
     return { page: pathname }
   }, [searchParams, currentProject, pathname])
 
-  // 归属变化：刷新历史列表并自动加载最近会话（默认加载上次对话）。
+  // 挂载时恢复全局最近活跃会话（无会话则空白新对话）；导航切换不改变会话。
   useEffect(() => {
-    if (!context) return
-    const filter = toSessionFilter(context)
-    if (!filter) return
     let cancelled = false
-    sessionListStore.setCurrentSessionId(null)
-    void sessionListStore.refresh(filter)
+    void sessionListStore.refresh()
     void agentApi
-      .listSessions(filter)
+      .listSessions()
       .then((sessions) => {
         if (cancelled) return
         if (sessions[0]) {
@@ -191,7 +189,19 @@ export const RightSideBar = (): React.JSX.Element => {
     return () => {
       cancelled = true
     }
-  }, [context])
+  }, [])
+
+  // 拉取项目列表（历史面板项目 tag 筛选用）。
+  useEffect(() => {
+    let current = true
+    void projectNavigationApi.listProjects().then((list) => {
+      if (!current) return
+      setProjects(list.map((project) => ({ id: project.id, name: project.name })))
+    })
+    return () => {
+      current = false
+    }
+  }, [])
 
   // 新对话（未入库）不显示标题；仅会话落库（currentSessionId 存在）后展示。
   const newChatButton = (
@@ -335,6 +345,8 @@ export const RightSideBar = (): React.JSX.Element => {
                 <ChatHistoryPanel
                   currentSessionId={currentSessionId}
                   sessions={chatSessions}
+                  currentProjectId={currentProject?.id}
+                  projects={projects}
                   onRestore={(sessionId) => {
                     restoreChatRef.current?.(sessionId)
                     setIsHistoryOpen(false)
@@ -346,8 +358,7 @@ export const RightSideBar = (): React.JSX.Element => {
               onOpenChange={(open) => {
                 setIsHistoryOpen(open)
                 if (open) {
-                  const filter = toSessionFilter(context)
-                  if (filter) void sessionListStore.refresh(filter)
+                  void sessionListStore.refresh()
                 }
               }}
               placement="bottom"

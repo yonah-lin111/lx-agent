@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@shared/contracts/agent"
+import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
@@ -9,7 +9,7 @@ const TITLE_TIMEOUT_MS = 10_000
 const MAX_TITLE_LENGTH = 40
 
 // 提取文本块内容；非文本块（thinking/toolCall/image）返回空串。
-const textOf = (block: { type: string } & Record<string, unknown>): string =>
+const textOf = (block: TextContent | ImageContent): string =>
   block.type === "text" && typeof block.text === "string" ? block.text : ""
 
 // 首轮 → 生成输入：仅取 user 消息文本（跳过 assistant / toolResult / thinking）。

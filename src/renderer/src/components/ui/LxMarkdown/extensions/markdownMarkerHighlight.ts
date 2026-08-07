@@ -1,11 +1,5 @@
 import { RangeSetBuilder, StateEffect } from "@codemirror/state"
-import {
-  Decoration,
-  EditorView,
-  ViewPlugin,
-  type ViewUpdate,
-  type WidgetType,
-} from "@codemirror/view"
+import { Decoration, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view"
 import { createElement, Fragment } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import {

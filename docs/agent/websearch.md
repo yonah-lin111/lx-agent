@@ -9,8 +9,8 @@
 | 1 | Provider | **Exa 优先，Tavily 兜底**：同一搜索先试 Exa（`mcp.exa.ai` MCP），失败回退 Tavily（`api.tavily.com`）；固定顺序，不做轮询 |
 | 2 | 无 Key 行为 | **保留匿名直连**：未配置 Key 时仍发起请求（Exa 直连无认证参数、Tavily 无 Authorization 头）；匿名被拒（401/403）的 provider 在配置 Key 前**暂停重试**，避免反复打无效服务 |
 | 3 | 失败语义 | 可用 provider 全部失败时抛**英文失败提示**（回灌模型 + 展示侧红色标注），提示 `~/.lx/config.json` 配置 Key |
-| 4 | 配置位置 | `~/.lx/config.json` 的 **`ai.webSearch`** 节点（`exaApiKey` / `tavilyApiKey`），与 `agent.mcp` / `agent.pages` 平级而属于 `ai` 段 |
-| 5 | 能力激活 | `web_search` 进**内置工具全集**：item 会话与未配置页面会话默认启用（`DEFAULT_ITEM_TOOLS` / `DEFAULT_PAGE_TOOLS`）；页面允许列表可显式裁剪 |
+| 4 | 配置位置 | `~/.lx/config.json` 的 **`ai.webSearch`** 节点（`exaApiKey` / `tavilyApiKey`），与 `agent.mcp` 平级而属于 `ai` 段 |
+| 5 | 能力激活 | `web_search` 进**内置工具全集**：所有会话默认启用（全量默认能力集），无页面裁剪 |
 | 6 | 渲染形态 | 专用展示块 **`AgentWebSearchBlock`**（`text-emerald-300` 独立配色），**不参与普通工具折叠**；连续多次搜索合并为 `[条件1], [条件2]` 单行展示，不展示搜索正文 |
 
 ## 2. 配置 schema

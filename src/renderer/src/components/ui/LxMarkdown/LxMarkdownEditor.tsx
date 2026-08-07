@@ -18,7 +18,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState, Prec } from "@codemirror/state"
+import { EditorState } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"

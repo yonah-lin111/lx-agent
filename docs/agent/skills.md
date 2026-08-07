@@ -84,7 +84,7 @@ When a skill file references a relative path, resolve it against the skill direc
 
 - `disableModelInvocation=true` 的 skill **不进 prompt**（仅显式可用）。
 - 数量上限 50（按 name 排序取前 50）；description 截断 1024。
-- **只要加载到 ≥1 个可用 skill，`read_skill` 就注册并进激活集**（与 `agent.pages.skills` 允许列表正交）。
+- **只要加载到 ≥1 个可用 skill，`read_skill` 就注册并进激活集**（无页面允许列表裁剪）。
 
 ## 5. `read_skill` 工具
 
@@ -120,7 +120,7 @@ When a skill file references a relative path, resolve it against the skill direc
 | 位点 | 改动 |
 |------|------|
 | `agentRunner` | `ensureReady()`：cwd 确定后 `skillLoader.load(cwd)` → 拼 systemPrompt XML 块；注册 `read_skill` 工具；`send()` 入口 `_expandSkillCommand` |
-| `agentRunner.prepareBinding()` | 计算注入清单：item 会话取全部可用 skill（`disable-model-invocation` 除外），页面会话按 `getPageCapabilities(route).skills[]` 允许列表过滤；排序后截断至 50 |
+| `agentRunner.prepareBinding()` | 计算注入清单：取全部可用 skill（`disable-model-invocation` 除外），排序后截断至 50（无页面允许列表过滤） |
 | `agentRunner.beginSessionTurn()` | `active_capabilities` 快照 `skills[]` 记实际注入清单（仅展示/校验） |
 
 ## 8. 演进留口（v2+）

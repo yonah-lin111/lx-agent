@@ -11,7 +11,8 @@
 | 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；路径类工具只允许 cwd 内路径（越界拒绝）；内置工具对齐 pi coding-agent 九工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`）+ 联网搜索 `web_search`；写工具经 file-mutation-queue 串行化，bash 仅超时+cwd 限制 |
 | 3.1 | 工具范围演进 | v1 曾定"首版纯只读（read+time）"；本轮按参考项目升级为**全内置工具集**（含写工具），只读约束取消；安全边界见 harness 信任模型演进 |
 | 3.2 | 联网搜索 | `web_search` 复用 memory-curator-agent 方案：**Exa 优先、Tavily 兜底**，Key 配于 `~/.lx/config.json` 的 `ai.webSearch`，无 Key 保留匿名直连；详见 [websearch.md](./websearch.md) |
-| 4 | 会话历史 | 首版内存级 store，restore 会话后**全量上下文续接**（历史消息含 toolResult 进 LLM）；SQLite 落盘归 harness 阶段 |
+| 3.3 | 页面能力限制 | **已移除**：所有会话一律**全量能力**（内置九工具 + 全部已连接 MCP + 全部可用 skill）；`config.json` 的 `agent.pages` 配置废弃（见 [database.md](./database.md) §3） |
+| 4 | 会话历史 | **全局会话 + SQLite 落盘**：不按页面/项目分桶；会话归属（项目 + cwd）**建会话时冻结**、导航不改变既有会话；历史面板全量列出 + 项目 tag 客户端筛选；应用启动恢复全局最近活跃会话 |
 | 5 | 模型装配 | main 内 `modelFactory` 按 settings 配置装配四种 provider；首版固定 `defaultModel`，预留 `setModel` 接口；apiKey 缺失返回明确 error 事件 |
 | 6 | IPC 契约 | `invoke` 发起 + main 经 `webContents.send` 推送流式事件；事件负载直接复用 `AgentEvent`；`agent:abort` 单独 channel |
 | 7 | UI 边界 | 数据层 + 渲染层同步升级：blocks 消息模型渲染（text 打字机 / toolCall 行 / 可折叠 toolResult / MCP / Skill / 联网搜索独立展示块）；`AgentPage.tsx` 组装逻辑不变 |
@@ -258,6 +259,7 @@ type AgentToolResult = { content: (TextContent | ImageContent)[]; details?: unkn
 - `AgentMessageItem`：user 消息保持现有气泡；assistant 消息按 blocks 渲染——text 走 `LxMarkdownPreview`（现有打字机效果保留）、thinking 折叠展示、toolCall 单行（图标 + 工具名 + 参数摘要）、toolResult 可折叠、错误消息红色提示。
 - `AgentPage.tsx` 组装不变（props 不变）；`useAgentChat` 重写为 IPC 订阅驱动。
 - 空状态（无消息）仍展示 `DEFAULT_PROMPT_CARDS`；`MOCK_RESPONSES` / `MOCK_CHAT_SESSIONS` 移除（真实对话取代 mock）。
+- `ChatHistoryPanel`（右侧栏历史 tooltip）：**全量列出所有会话**（无页面过滤）；搜索框下方为项目 tag 组 `全部 / 项目 / 当前项目`（`LxTag`，英文 `All / Project / Current Project`，单选）；选中 `Project` 出现 `LxSelect` 从项目列表选具体项目；`Current Project` 按当前打开项目过滤。筛选在 renderer 客户端完成（会话摘要携带 `projectId`）。
 
 ## 10. 错误处理
 

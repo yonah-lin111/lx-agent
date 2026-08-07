@@ -25,6 +25,8 @@ export interface LxSelectProps<T> {
   // 触发按钮尺寸。默认为 "medium"。
   size?: "small" | "medium"
   disabled?: boolean
+  // 未选中任何选项（value 无匹配）时的占位提示。
+  placeholder?: string
 }
 
 const SIZE_BUTTON_CLASSES: Record<NonNullable<LxSelectProps<string>["size"]>, string> = {
@@ -46,6 +48,7 @@ export const LxSelect = <T extends string>({
   position = "down",
   size = "medium",
   disabled = false,
+  placeholder,
 }: LxSelectProps<T>): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
@@ -137,7 +140,9 @@ export const LxSelect = <T extends string>({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
       >
-        <span className="min-w-0 flex-1 truncate">{selectedOption?.label ?? value}</span>
+        <span className="min-w-0 flex-1 truncate">
+          {selectedOption?.label ?? placeholder ?? value}
+        </span>
         <ChevronDown
           className={`ml-2 h-3.5 w-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />

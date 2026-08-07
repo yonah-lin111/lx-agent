@@ -85,7 +85,7 @@ pi 中 `edit` / `write` 对**同一文件**的写操作经 `withFileMutationQueu
 
 `web_search` 为只读联网工具：**Exa 优先、Tavily 兜底**，Key 配于 `~/.lx/config.json` 的 `ai.webSearch`（`exaApiKey` / `tavilyApiKey`），无 Key 保留匿名直连；可用 provider 全部失败抛英文失败提示。完整设计见 [websearch.md](./websearch.md)。
 
-- **装配**：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录；`capabilityService` 的 `DEFAULT_ITEM_TOOLS` / `DEFAULT_PAGE_TOOLS` 默认激活，页面允许列表可裁剪。
+- **装配**：`agentRunner.createRegistry` 注册 + `ALL_TOOL_NAMES` 收录；`capabilityService` 的**全量默认能力集**默认激活（所有会话无裁剪）。
 - **渲染**：连续 `web_search` 调用在 `AgentMessageItem` 归并为独立分组，由 `AgentWebSearchBlock` 以 `text-emerald-300` 配色展示，仅列搜索条件（`[条件1], [条件2]`），不进入普通工具折叠组。
 
 ## 4. MCP 工具接入（已实现）
@@ -111,7 +111,7 @@ function wrapMcpTool(server: McpClient, tool: McpToolDefinition, cwd: string): A
 接入形态（v1 已落地）：
 
 1. **本地 stdio MCP server**（main 进程 spawn 子进程）：工具名冲突时前缀化（`<server>.<tool>`）；cwd 传入 server。
-2. **MCP 工具允许列表**：item 会话配置即全量启用；`agent.pages[route].mcp` 允许列表覆盖页面会话。
+2. **MCP 工具激活**：所有会话**配置即全量启用**（无页面/项目允许列表裁剪）。
 3. **MCP hook 挂接**：敏感工具（写操作）经 `beforeToolCall` 走确认流程（见 harness.md 信任模型），v1 与内置工具一致无门控。
 
 约束：MCP 工具 schema 是 JSON Schema，zod v4 提供 `z.toJSONSchema`/JSON schema 解析能力；无法无损转换的 schema（如 oneOf）降级为宽松 `z.record(z.unknown())` + 运行时透传。
