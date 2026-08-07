@@ -112,7 +112,7 @@ export const AgentExecutionGroup = ({
         className="flex h-5 w-fit items-center gap-1 rounded-[6px] bg-[#212121] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
-        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-current" />
+        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
         <span>
           {countSegments.map((segment, index) => (
             <Fragment key={segment.plural}>
@@ -142,13 +142,13 @@ export const AgentExecutionGroup = ({
         className="overflow-hidden"
       >
         <div ref={innerRef} className="relative flex min-w-0 flex-col gap-1.5">
-          <span aria-hidden className="absolute bottom-0 left-[4px] top-0 w-px bg-white/10" />
+          <span aria-hidden className="absolute bottom-0 left-[5px] top-0 w-px bg-white/10" />
           {items.map((item, index) => (
             <div key={index} className="relative pl-4 [&>*:first-child]:mt-0">
               {item.node}
               <span
                 aria-hidden
-                className={`absolute left-[1px] top-[5px] h-2 w-2 rounded-full ${DOT_COLOR[item.kind]}`}
+                className={`absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
               />
             </div>
           ))}
