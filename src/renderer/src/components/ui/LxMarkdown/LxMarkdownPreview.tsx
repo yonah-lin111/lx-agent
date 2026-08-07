@@ -1,9 +1,7 @@
-import { Check, CheckCircle2, ChevronDown, ChevronUp, Circle, CircleDot, Copy } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import type { MarkdownTemplateStatus } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import { MarkdownReferenceImageTooltip } from "@/components/ui/LxMarkdown/components/MarkdownReferenceImageTooltip"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -18,8 +16,6 @@ interface LxMarkdownPreviewProps {
   contentClassName?: string
   // 复制选中文本时剥离选区末尾的块边界换行伪影。
   sanitizeCopy?: boolean
-  // 循环切换模板块状态（line 为源码结束行，0 起）。
-  onTemplateStatusToggle?: (line: number) => void
 }
 
 // 预览 HTML 中可交互节点的挂载配置。
@@ -142,139 +138,6 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 }
 
 /**
- * 渲染模板块复制按钮及其短暂成功反馈。
- */
-const MarkdownTemplateCopyButton = (): React.JSX.Element => {
-  const [isCopied, setIsCopied] = useState(false)
-  const resetTimerRef = useRef<number | null>(null)
-
-  useEffect(
-    () => () => {
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current)
-    },
-    [],
-  )
-
-  const copyTemplate = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
-    const template = event.currentTarget.closest<HTMLElement>(".markdown-template-block")
-    const encodedContent = template?.dataset.templateContent
-    if (!encodedContent) return
-
-    try {
-      await copyToClipboard(decodeURIComponent(encodedContent))
-      setIsCopied(true)
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current)
-      resetTimerRef.current = window.setTimeout(() => {
-        setIsCopied(false)
-        resetTimerRef.current = null
-      }, 1500)
-    } catch {
-      setIsCopied(false)
-    }
-  }
-
-  return (
-    <LxIconButton
-      aria-label="复制模板内容"
-      preset={isCopied ? "confirm" : undefined}
-      size="small"
-      title={{ content: isCopied ? "已复制" : "复制模板内容", placement: "bottom" }}
-      onClick={copyTemplate}
-    >
-      {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-    </LxIconButton>
-  )
-}
-
-/**
- * 渲染模板块折叠按钮，并保持顶部工具栏可见。
- */
-const MarkdownTemplateCollapseButton = (): React.JSX.Element => {
-  const [isExpanded, setIsExpanded] = useState(true)
-
-  const toggleContent = (event: React.MouseEvent<HTMLButtonElement>): void => {
-    const templateBlock = event.currentTarget.closest<HTMLElement>(".markdown-template-block")
-    const content = templateBlock?.querySelector<HTMLElement>(".markdown-template-content")
-    if (!templateBlock || !content) return
-
-    const nextIsExpanded = !isExpanded
-    content.style.height = `${content.scrollHeight}px`
-    templateBlock.classList.toggle("is-collapsed", !nextIsExpanded)
-    requestAnimationFrame(() => {
-      content.style.height = nextIsExpanded ? `${content.scrollHeight}px` : "0px"
-    })
-
-    if (nextIsExpanded) {
-      content.addEventListener(
-        "transitionend",
-        () => {
-          if (!templateBlock.classList.contains("is-collapsed")) content.style.height = ""
-        },
-        { once: true },
-      )
-    }
-
-    setIsExpanded(nextIsExpanded)
-  }
-
-  return (
-    <LxIconButton
-      aria-label={isExpanded ? "折叠内容" : "展开内容"}
-      aria-expanded={isExpanded}
-      size="small"
-      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
-      onClick={toggleContent}
-    >
-      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-    </LxIconButton>
-  )
-}
-
-// 模板块状态对应的下一步操作提示。
-const TEMPLATE_STATUS_ACTION_LABELS: Record<MarkdownTemplateStatus, string> = {
-  todo: "标记为进行中",
-  in_progress: "标记为已完成",
-  done: "标记为未完成",
-}
-
-// 模板块状态按钮属性。
-interface MarkdownTemplateStatusButtonProps {
-  line: number
-  status: MarkdownTemplateStatus
-  onToggle: (line: number) => void
-}
-
-/**
- * 渲染模板块状态图标按钮，点击后循环切换源码结束行的状态标记。
- */
-const MarkdownTemplateStatusButton = ({
-  line,
-  status,
-  onToggle,
-}: MarkdownTemplateStatusButtonProps): React.JSX.Element => {
-  const actionLabel = TEMPLATE_STATUS_ACTION_LABELS[status]
-
-  return (
-    <LxIconButton
-      aria-label={actionLabel}
-      aria-pressed={status === "done"}
-      preset={status === "done" ? "confirm" : undefined}
-      size="small"
-      title={{ content: actionLabel, placement: "bottom" }}
-      onClick={() => onToggle(line)}
-    >
-      {status === "done" ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : status === "in_progress" ? (
-        <CircleDot className="h-3 w-3 text-amber-400" />
-      ) : (
-        <Circle className="h-3 w-3" />
-      )}
-    </LxIconButton>
-  )
-}
-
-/**
  * 渲染 Markdown 内容，并为代码块挂载复制按钮。
  */
 export const LxMarkdownPreview = ({
@@ -284,7 +147,6 @@ export const LxMarkdownPreview = ({
   className = "px-5",
   contentClassName = "py-4",
   sanitizeCopy = false,
-  onTemplateStatusToggle,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
@@ -324,91 +186,11 @@ export const LxMarkdownPreview = ({
         (container) => ({ container, content: <CodeBlockCollapseButton /> }),
       ),
       ...Array.from(
-        previewContent.querySelectorAll<HTMLElement>(".markdown-template-status"),
-        (container) => {
-          const templateBlock = container.closest<HTMLElement>(".markdown-template-block")
-          const line = templateBlock ? Number(templateBlock.dataset.endLine) : NaN
-          const status =
-            (templateBlock?.dataset.templateStatus as MarkdownTemplateStatus | undefined) ?? "todo"
-          return {
-            container,
-            content: (
-              <MarkdownTemplateStatusButton
-                line={line}
-                status={status}
-                onToggle={onTemplateStatusToggle ?? (() => undefined)}
-              />
-            ),
-          }
-        },
-      ),
-      ...Array.from(
-        previewContent.querySelectorAll<HTMLElement>(".markdown-template-copy"),
-        (container) => ({ container, content: <MarkdownTemplateCopyButton /> }),
-      ),
-      ...Array.from(
-        previewContent.querySelectorAll<HTMLElement>(".markdown-template-collapse"),
-        (container) => ({ container, content: <MarkdownTemplateCollapseButton /> }),
-      ),
-      ...Array.from(
         previewContent.querySelectorAll<HTMLElement>(".markdown-mermaid"),
         (container) => {
           const encodedSource = container.dataset.mermaidSource
           const source = encodedSource ? decodeURIComponent(encodedSource) : ""
           return { container, content: <MermaidDiagram source={source} /> }
-        },
-      ),
-      ...Array.from(
-        previewContent.querySelectorAll<HTMLElement>(".markdown-file-mention"),
-        (container) => {
-          const displayLabel = container.dataset.displayLabel
-            ? decodeURIComponent(container.dataset.displayLabel)
-            : ""
-          const isReferenced = container.dataset.isReferenced === "true"
-          const nodeClassName = `markdown-file-mention-node ${
-            isReferenced ? "markdown-file-mention-node--referenced" : ""
-          }`
-          return {
-            container,
-            content: <span className={nodeClassName}>{displayLabel}</span>,
-          }
-        },
-      ),
-      ...Array.from(
-        previewContent.querySelectorAll<HTMLElement>(".markdown-reference"),
-        (container) => {
-          const referencePath = container.dataset.referencePath ?? ""
-          const isImageReference = container.classList.contains("markdown-reference-image")
-          const isPathReference =
-            container.classList.contains("markdown-reference-file") ||
-            container.classList.contains("markdown-reference-folder")
-          const innerHtml = container.innerHTML
-          const reference = (
-            <span
-              className="inline-flex max-w-full items-center gap-1"
-              dangerouslySetInnerHTML={{ __html: innerHtml }}
-            />
-          )
-          const tooltip =
-            isImageReference && referencePath ? (
-              <MarkdownReferenceImageTooltip path={referencePath} />
-            ) : isPathReference && referencePath ? (
-              <span className="block max-w-[24rem] break-all leading-snug">{referencePath}</span>
-            ) : null
-          return {
-            container,
-            content: tooltip ? (
-              <LxTooltip
-                content={tooltip}
-                placement="top"
-                contentClassName="whitespace-normal max-w-[24rem]"
-              >
-                {reference}
-              </LxTooltip>
-            ) : (
-              reference
-            ),
-          }
         },
       ),
     ]

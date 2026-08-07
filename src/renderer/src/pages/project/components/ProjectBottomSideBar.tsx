@@ -12,12 +12,12 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   createMarkdownReference,
   getMarkdownReferenceName,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import { LxTag } from "@/components/ui/LxTag"
-import { LxTooltip } from "@/components/ui/LxTooltip"
+} from "@/features/markdown/commands/markdownReferenceCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
 import { ReferencedFolderCommandMenu } from "@/pages/project/components/ReferencedFolderCommandMenu"

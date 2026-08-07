@@ -1,6 +1,21 @@
-import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
+import { Check, CheckCircle2, ChevronDown, ChevronUp, Circle, CircleDot, Copy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import type { MarkdownTemplateStatus } from "@/features/markdown/commands/markdownBlockCommands"
+
+// 模板块状态按钮的悬停与普通颜色。
+const TEMPLATE_STATUS_COLOR: Record<MarkdownTemplateStatus, string> = {
+  todo: "rgba(255, 255, 255, 0.5)",
+  in_progress: "#fbbf24",
+  done: "#34d399",
+}
+
+// 模板块状态按钮的下一步操作提示。
+const TEMPLATE_STATUS_NEXT_LABEL: Record<MarkdownTemplateStatus, string> = {
+  todo: "标记为进行中",
+  in_progress: "标记为已完成",
+  done: "标记为未完成",
+}
 
 // 源码区操作按钮统一样式。
 const ACTION_BUTTON_STYLE: React.CSSProperties = {
@@ -65,7 +80,7 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
-// 折叠按钮：切换代码块的折叠状态。
+// 折叠按钮：切换代码块/模板块内容的折叠状态。
 export const MarkdownActionFoldButton = ({
   isFolded,
   label,
@@ -92,3 +107,39 @@ export const MarkdownActionFoldButton = ({
     </button>
   </LxTooltip>
 )
+
+// 状态按钮：循环切换模板块结束行的状态标记。
+export const TemplateStatusButton = ({
+  status,
+  onToggle,
+}: {
+  status: MarkdownTemplateStatus
+  onToggle: () => void
+}): React.JSX.Element => {
+  const [isHovered, setIsHovered] = useState(false)
+  const StatusIcon =
+    status === "done" ? CheckCircle2 : status === "in_progress" ? CircleDot : Circle
+  const label = TEMPLATE_STATUS_NEXT_LABEL[status]
+
+  return (
+    <LxTooltip content={label} placement="bottom">
+      <button
+        aria-label={label}
+        type="button"
+        style={{
+          ...ACTION_BUTTON_STYLE,
+          color: isHovered && status === "todo" ? "#ffffff" : TEMPLATE_STATUS_COLOR[status],
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onToggle()
+        }}
+      >
+        <StatusIcon className="h-3 w-3" />
+      </button>
+    </LxTooltip>
+  )
+}

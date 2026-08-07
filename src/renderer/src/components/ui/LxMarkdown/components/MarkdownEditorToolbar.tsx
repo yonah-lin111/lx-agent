@@ -1,33 +1,8 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Edit3,
-  Keyboard,
-  Merge,
-  MoreVertical,
-  Plus,
-  Search,
-  Table2,
-  Trash2,
-} from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { Keyboard, Search, Table2 } from "lucide-react"
+import { useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import {
-  MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
-  MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
-  MARKDOWN_TEMPLATE_TYPES,
-  type MarkdownTemplateIntegrate,
-  type MarkdownTemplateStatus,
-  type MarkdownTemplateType,
-} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import type {
-  MarkdownPage,
-  MarkdownTableSize,
-  MarkdownToolbarAction,
-} from "@/components/ui/LxMarkdown/types"
-import { LxMenuItem } from "@/components/ui/LxMenu"
-import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
+import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { isMacOS } from "@/lib/platform"
 
@@ -36,16 +11,6 @@ interface MarkdownEditorToolbarProps {
   actions: MarkdownToolbarAction[]
   isSaved: boolean
   onInsertTable: (size: MarkdownTableSize) => void
-  pageMode?: boolean
-  pages?: MarkdownPage[]
-  activePageIndex?: number
-  pageName?: string
-  onPageChange?: (index: number) => void
-  onPageNameChange?: (name: string) => void
-  onCreatePage?: () => void
-  onDeletePage?: () => void
-  templateIntegrate?: MarkdownTemplateIntegrate[]
-  onTemplateIntegrateChange?: (integrate: MarkdownTemplateIntegrate[]) => void
 }
 
 const markdownShortcuts = [
@@ -72,27 +37,6 @@ const markdownShortcuts = [
   { keys: "Cmd / Ctrl + Shift + V", description: "仅预览" },
 ]
 
-// 分页模式专属快捷键。
-const pageShortcuts = [{ keys: "Cmd / Ctrl + Alt + ← / →", description: "切换上一页 / 下一页" }]
-
-// 模板块状态整合标签选项。
-const templateIntegrateOptions: { value: MarkdownTemplateStatus; color: LxTagColor }[] = [
-  { value: "todo", color: "gray" },
-  { value: "in_progress", color: "amber" },
-  { value: "done", color: "emerald" },
-]
-
-// 模板块类型整合标签选项（与斜杠命令模板一致）。
-const templateTypeColors: Record<MarkdownTemplateType, LxTagColor> = {
-  addTemplate: "blue",
-  bugTemplate: "rose",
-  refactorTemplate: "purple",
-  commonTemplate: "teal",
-}
-
-const templateTypeOptions: { value: MarkdownTemplateType; color: LxTagColor }[] =
-  MARKDOWN_TEMPLATE_TYPES.map((value) => ({ value, color: templateTypeColors[value] }))
-
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
  */
@@ -100,315 +44,25 @@ export const MarkdownEditorToolbar = ({
   actions,
   isSaved,
   onInsertTable,
-  pageMode = false,
-  pages = [],
-  activePageIndex = 0,
-  pageName = "",
-  onPageChange,
-  onPageNameChange,
-  onCreatePage,
-  onDeletePage,
-  templateIntegrate = [],
-  onTemplateIntegrateChange,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
-  const [isEditingPageName, setIsEditingPageName] = useState(false)
-  const [isPageMenuOpen, setIsPageMenuOpen] = useState(false)
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
-  const [isPageListOpen, setIsPageListOpen] = useState(false)
-  const [pageListQuery, setPageListQuery] = useState("")
-  const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
-    const shortcuts = pageMode ? [...markdownShortcuts, ...pageShortcuts] : markdownShortcuts
     const query = shortcutQuery.trim().toLocaleLowerCase()
-    if (!query) return shortcuts
+    if (!query) return markdownShortcuts
 
-    return shortcuts.filter(({ keys, description }) =>
+    return markdownShortcuts.filter(({ keys, description }) =>
       `${keys} ${description}`.toLocaleLowerCase().includes(query),
     )
-  }, [pageMode, shortcutQuery])
+  }, [shortcutQuery])
 
   /**
    * 将跨平台快捷键转换为当前系统对应的修饰键显示。
    */
   const getShortcutKeys = (keys: string): string =>
     keys.replace("Cmd / Ctrl", isMacOS() ? "Cmd" : "Ctrl")
-
-  // 当前激活的页面是否为模板块整合虚拟页（只读、不入库）。
-  const isIntegratePage =
-    pageMode && pages[activePageIndex]?.id === MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID
-
-  /**
-   * 切换"整合全部"模式：与状态标签互斥，进入全量整合页面。
-   */
-  const toggleIntegrateAll = (): void => {
-    onTemplateIntegrateChange?.(templateIntegrate.includes("all") ? [] : ["all"])
-  }
-
-  /**
-   * 切换模板块状态/模版类型标签的多选状态，选中状态时退出"整合全部"。
-   * 取消全部筛选时保持整合页（等价于全量整合），不退出整合视图。
-   */
-  const toggleTemplateIntegrate = (value: MarkdownTemplateStatus | MarkdownTemplateType): void => {
-    const withoutAll = templateIntegrate.includes("all") ? [] : templateIntegrate
-    const next = withoutAll.includes(value)
-      ? withoutAll.filter((item) => item !== value)
-      : [...withoutAll, value]
-    onTemplateIntegrateChange?.(next.length === 0 ? ["all"] : next)
-  }
-
-  const pageNameControls = pageMode && pages.length > 0 && (
-    <div className="flex shrink-0 items-center">
-      {isEditingPageName ? (
-        <input
-          autoFocus
-          aria-label="页面名称"
-          className="w-[12ch] border-b border-white/20 bg-transparent px-1 text-left text-xs text-white/80 outline-none"
-          value={pageName}
-          onBlur={() => {
-            if (!pageName.trim()) onPageNameChange?.(pageNameBeforeEditRef.current)
-            setIsEditingPageName(false)
-          }}
-          onChange={(event) => onPageNameChange?.(event.target.value)}
-          onFocus={(event) => event.target.select()}
-          onKeyDown={(event) => {
-            event.stopPropagation()
-            if (event.key === "Escape") {
-              onPageNameChange?.(pageNameBeforeEditRef.current)
-              setIsEditingPageName(false)
-              return
-            }
-            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-              if (!pageName.trim()) onPageNameChange?.(pageNameBeforeEditRef.current)
-              setIsEditingPageName(false)
-            }
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          aria-label={`编辑页面名称 ${pageName}`}
-          className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
-          onClick={() => {
-            if (isIntegratePage) return
-            pageNameBeforeEditRef.current = pageName
-            setIsEditingPageName(true)
-          }}
-        >
-          {pageName}
-        </button>
-      )}
-    </div>
-  )
-
-  // 按页面名称筛选，便于在完整列表中快速定位。
-  const filteredPages = useMemo(() => {
-    const query = pageListQuery.trim().toLocaleLowerCase()
-    if (!query) return pages
-    return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
-  }, [pageListQuery, pages])
-
-  const pageList = (
-    <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
-      <LxInput
-        aria-label="搜索页面"
-        placeholder="搜索页面"
-        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-        size="xs"
-        value={pageListQuery}
-        onChange={(event) => setPageListQuery(event.target.value)}
-      />
-      <div className="max-h-72 overflow-y-auto custom-scrollbar">
-        <div className="space-y-0.5">
-          {filteredPages.map((page, index) => {
-            const isCurrent = index === activePageIndex
-            return (
-              <button
-                key={page.id}
-                disabled={isCurrent}
-                type="button"
-                className={`flex min-h-7 w-full items-center gap-2 rounded-[3px] px-1.5 text-left text-xs ${
-                  isCurrent
-                    ? "cursor-default bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/5"
-                }`}
-                onClick={() => {
-                  setIsPageListOpen(false)
-                  setPageListQuery("")
-                  onPageChange?.(index)
-                }}
-              >
-                <span className="min-w-0 truncate">{page.name}</span>
-              </button>
-            )
-          })}
-        </div>
-        {filteredPages.length === 0 && (
-          <div className="py-4 text-center text-xs text-white/45">未找到匹配的页面</div>
-        )}
-      </div>
-    </div>
-  )
-
-  const pageSwitchControls = pageMode && pages.length > 0 && (
-    <div className="ml-auto flex shrink-0 items-center gap-0.5">
-      <LxIconButton
-        aria-label="上一页"
-        disabled={activePageIndex === 0 || isIntegratePage}
-        size="medium"
-        title={{ content: "上一页" }}
-        onClick={() => onPageChange?.(activePageIndex - 1)}
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </LxIconButton>
-      <LxTooltip
-        content={pageList}
-        contentClassName="!p-2"
-        onOpenChange={(isOpen) => {
-          setIsPageListOpen(isOpen)
-          if (!isOpen) setPageListQuery("")
-        }}
-        open={isPageListOpen}
-        placement="bottom"
-        trigger="click"
-      >
-        <LxIconButton
-          aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
-          className="h-7 px-1.5 text-[11px] tabular-nums"
-          disabled={isIntegratePage}
-          iconOnly={false}
-        >
-          {activePageIndex + 1} / {pages.length}
-        </LxIconButton>
-      </LxTooltip>
-      <LxIconButton
-        aria-label="下一页"
-        disabled={activePageIndex === pages.length - 1 || isIntegratePage}
-        size="medium"
-        title={{ content: "下一页" }}
-        onClick={() => onPageChange?.(activePageIndex + 1)}
-      >
-        <ChevronRight className="h-3.5 w-3.5" />
-      </LxIconButton>
-    </div>
-  )
-
-  /**
-   * 第一次点击进入确认态，第二次点击才真正删除页面。
-   */
-  const handleDeletePageClick = (): void => {
-    if (!isConfirmingDelete) {
-      setIsConfirmingDelete(true)
-      return
-    }
-    setIsConfirmingDelete(false)
-    setIsPageMenuOpen(false)
-    onDeletePage?.()
-  }
-
-  const pageMenu = pageMode && (
-    <LxTooltip
-      content={
-        <div className="flex min-w-36 flex-col gap-0.5">
-          <LxMenuItem
-            className="disabled:opacity-35"
-            disabled={isIntegratePage}
-            leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
-            onClick={() => {
-              setIsPageMenuOpen(false)
-              setIsConfirmingDelete(false)
-              onCreatePage?.()
-            }}
-          >
-            添加页面
-          </LxMenuItem>
-          <LxMenuItem
-            className="disabled:opacity-35"
-            disabled={pages.length === 0 || isIntegratePage}
-            leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
-            onClick={() => {
-              pageNameBeforeEditRef.current = pageName
-              setIsPageMenuOpen(false)
-              setIsConfirmingDelete(false)
-              setIsEditingPageName(true)
-            }}
-          >
-            重命名页面
-          </LxMenuItem>
-          <LxMenuItem
-            active={isConfirmingDelete}
-            className="disabled:opacity-35"
-            danger
-            disabled={pages.length <= 1 || isIntegratePage}
-            leading={
-              <Trash2
-                className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
-              />
-            }
-            onClick={handleDeletePageClick}
-          >
-            {isConfirmingDelete ? "确认删除" : "删除页面"}
-          </LxMenuItem>
-        </div>
-      }
-      contentClassName="!p-1"
-      onOpenChange={(isOpen) => {
-        setIsPageMenuOpen(isOpen)
-        if (!isOpen) setIsConfirmingDelete(false)
-      }}
-      open={isPageMenuOpen}
-      placement="bottom"
-      trigger="click"
-    >
-      <LxIconButton aria-label="页面菜单" size="medium">
-        <MoreVertical className="h-3.5 w-3.5" />
-      </LxIconButton>
-    </LxTooltip>
-  )
-
-  const templateIntegratePanel = (
-    <div className="flex w-56 flex-col gap-1.5" aria-label="整合模版块">
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        按状态整合模板块
-        <div className="flex flex-nowrap gap-1">
-          {templateIntegrateOptions.map(({ value, color }) => {
-            const isSelected = templateIntegrate.includes(value)
-            return (
-              <LxTag
-                key={value}
-                color={color}
-                highlighted={isSelected}
-                onClick={() => toggleTemplateIntegrate(value)}
-              >
-                {MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]}
-              </LxTag>
-            )
-          })}
-        </div>
-      </div>
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        按模版类型整合模板块
-        <div className="flex flex-nowrap gap-1">
-          {templateTypeOptions.map(({ value, color }) => {
-            const isSelected = templateIntegrate.includes(value)
-            return (
-              <LxTag
-                key={value}
-                color={color}
-                highlighted={isSelected}
-                onClick={() => toggleTemplateIntegrate(value)}
-              >
-                {MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]}
-              </LxTag>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
 
   const tablePicker = useMemo(
     () => (
@@ -488,7 +142,6 @@ export const MarkdownEditorToolbar = ({
 
   return (
     <div className="flex h-9 flex-none items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5">
-      {pageNameControls}
       {leftActions.map(({ disabled, highlighted, icon: Icon, label, onClick }) => (
         <LxIconButton
           key={label}
@@ -524,13 +177,11 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       </LxTooltip>
 
-      {pageSwitchControls}
-
       {rightActions.map(({ disabled, highlighted, icon: Icon, label, onClick }, index) => (
         <LxIconButton
           key={label}
           aria-label={label}
-          className={index === 0 && !pageSwitchControls ? "ml-auto" : ""}
+          className={index === 0 ? "ml-auto" : ""}
           disabled={disabled}
           highlighted={highlighted}
           size="medium"
@@ -540,26 +191,6 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
-
-      {pageMode && (
-        <LxTooltip
-          content={templateIntegratePanel}
-          placement="bottom"
-          trigger="hover"
-          contentClassName="!p-2"
-        >
-          <LxIconButton
-            aria-label="整合模版块"
-            highlighted={templateIntegrate.length > 0}
-            size="medium"
-            onClick={toggleIntegrateAll}
-          >
-            <Merge className="h-3.5 w-3.5" />
-          </LxIconButton>
-        </LxTooltip>
-      )}
-
-      {pageMenu}
 
       <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
         <span

@@ -13,7 +13,7 @@ import {
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
   toggleMarkdownTemplateCommentLines,
-} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+} from "@/features/markdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
   it("在行首标记末尾识别相应块命令", () => {

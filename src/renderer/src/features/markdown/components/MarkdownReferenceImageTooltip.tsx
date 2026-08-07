@@ -2,7 +2,7 @@ import { useState } from "react"
 import {
   getMarkdownReferenceImageSource,
   getMarkdownReferenceName,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+} from "@/features/markdown/commands/markdownReferenceCommands"
 
 // 本地图片 Tooltip 内容属性。
 interface MarkdownReferenceImageTooltipProps {

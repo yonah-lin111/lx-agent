@@ -6,7 +6,7 @@ import {
   getMarkdownTemplateFileTrigger,
   isMarkdownTemplateImagePath,
   type MarkdownTemplateFileCandidate,
-} from "@/components/ui/LxMarkdown/commands/markdownTemplateFileCommands"
+} from "@/features/markdown/commands/markdownTemplateFileCommands"
 
 describe("模板块文件快捷输入命令", () => {
   it("识别光标前的裸片段触发", () => {

@@ -18,147 +18,43 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { Annotation, EditorState, type Line, Prec, Transaction } from "@codemirror/state"
+import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import type { MarkdownTemplateIntegrate } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import {
-  buildMarkdownTemplateIntegratePage,
-  cycleMarkdownTemplateStatus,
-  getMarkdownTemplateBlockContent,
-  getMarkdownTemplateBlockStartLine,
-  getMarkdownTemplateIdRanges,
-  isInsideMarkdownTemplateBlock,
-  MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
-  MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
-  setMarkdownTemplateTitle,
-  toggleMarkdownTemplateCommentLines,
-} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
-import { isMarkdownConfirmCommandArmed } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
-import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
-import { MarkdownBlockCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownBlockCommandMenu"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { MarkdownEditorToolbar } from "@/components/ui/LxMarkdown/components/MarkdownEditorToolbar"
-import { MarkdownSlashCommandMenu } from "@/components/ui/LxMarkdown/components/MarkdownSlashCommandMenu"
 import {
   createMarkdownTable,
   editorTheme,
   formatMarkdown,
   mapMarkdownPosition,
   markdownHighlightStyle,
-  markdownMarkerHighlight,
-  markdownReferenceHover,
   selectAllPreservingScrollPosition,
 } from "@/components/ui/LxMarkdown/extensions/markdownEditorExtensions"
-import { getFileMentionDeletionRange } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import {
   markdownFoldGutter,
   markdownHeadingFolding,
 } from "@/components/ui/LxMarkdown/extensions/markdownFolding"
+import { markdownMarkerHighlight } from "@/components/ui/LxMarkdown/extensions/markdownMarkerHighlight"
 import { useEditorScrollSync } from "@/components/ui/LxMarkdown/hooks/useEditorScrollSync"
-import { useMarkdownPanels } from "@/components/ui/LxMarkdown/hooks/useMarkdownPanels"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import type {
   LxMarkdownEditorProps,
-  MarkdownPage,
   MarkdownPreviewMode,
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
-import {
-  markdownRenderer,
-  stripEmptyTemplateItems,
-  stripMarkdownTemplateComments,
-} from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import { useLxToast } from "@/components/ui/LxToast"
+import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { isMacOS } from "@/lib/platform"
-import { rightSidebarStore } from "@/lib/rightSidebarStore"
-
-// 允许整合虚拟页切换内容的事务注解，仅供页面切换内部使用。
-const integrateSyncAnnotation = Annotation.define<boolean>()
-
-// 模板块标题生成的加载占位文本（写入开始行「title: 」字段，兼作防重复触发与结果回写锚点）。
-const TEMPLATE_TITLE_LOADING_TEXT = "⏳ 正在生成标题…"
-// /summary 裸命令文本（trim 匹配用）。
-const SUMMARY_COMMAND_TEXT = "/summary"
-
-// 在文档中定位包含加载占位的行（即被写入「title: ⏳ 正在生成标题…」的开始行）；占位已消失时返回 null。
-const findTitleLoadingLine = (view: EditorView): Line | null => {
-  const markerIndex = view.state.doc.toString().indexOf(TEMPLATE_TITLE_LOADING_TEXT)
-  return markerIndex < 0 ? null : view.state.doc.lineAt(markerIndex)
-}
-
-/**
- * 从剪贴板读取本地文件绝对路径。
- */
-const getClipboardFile = (
-  event: ClipboardEvent,
-): { isDirectory: boolean; isImage: boolean; path: string } | null => {
-  const clipboardData = event.clipboardData
-  if (!clipboardData) return null
-
-  const plainText = clipboardData.getData("text/plain")
-  if (plainText.startsWith("/")) {
-    const path = plainText.trim()
-    return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
-  }
-
-  const fileUri = clipboardData
-    .getData("text/uri-list")
-    .split(/\r?\n/)
-    .find((value) => value.trim() && !value.trim().startsWith("#"))
-
-  if (fileUri?.startsWith("file://")) {
-    try {
-      const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
-      return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
-    } catch {
-      return null
-    }
-  }
-
-  const file = clipboardData.files[0]
-  if (!file) return null
-
-  try {
-    const path = window.api.getPathForFile(file)
-    if (!path) return null
-
-    const item = Array.from(clipboardData.items).find(
-      (clipboardItem) => clipboardItem.kind === "file",
-    )
-    const entry = (
-      item as
-        | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
-        | undefined
-    )?.webkitGetAsEntry?.()
-
-    return {
-      isDirectory: entry?.isDirectory ?? false,
-      isImage: file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path),
-      path,
-    }
-  } catch {
-    return null
-  }
-}
 
 /**
  * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
  */
 export const LxMarkdownEditor = ({
   initialContent = "",
-  pages,
   onChange,
-  onPagesChange,
   onSave,
   isSaved = true,
-  pageMode = false,
-  projectId,
-  onSearchFiles,
-  onSearchReferencedFiles,
-  referencedProjectPaths,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -167,200 +63,11 @@ export const LxMarkdownEditor = ({
   const previewRef = useRef<HTMLElement>(null)
   const onChangeRef = useRef(onChange)
   const onSaveRef = useRef(onSave)
-  const pagesRef = useRef(pages)
-  const activePageIndexRef = useRef(0)
-  const onPagesChangeRef = useRef(onPagesChange)
-  // 进入整合视图前的真实页面索引，退出时用于恢复。
-  const pageBeforeIntegrateRef = useRef(0)
-  const templateIntegrateActiveRef = useRef(false)
-  // 当前是否处于整合虚拟页，供事务过滤器判断只读。
-  const isIntegrateViewRef = useRef(false)
 
-  const [content, setContent] = useState(() =>
-    pageMode && pages?.length
-      ? (pages[pages.length - 1]?.content ?? initialContent)
-      : initialContent,
-  )
-  const [activePageIndex, setActivePageIndex] = useState(() =>
-    pageMode && pages?.length ? pages.length - 1 : 0,
-  )
-  const [pageName, setPageName] = useState("")
+  const [content, setContent] = useState(initialContent)
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
-  const [templateIntegrate, setTemplateIntegrate] = useState<MarkdownTemplateIntegrate[]>([])
-  const { warning } = useLxToast()
-  const isRightSidebarCollapsed = useSyncExternalStore(
-    rightSidebarStore.subscribe,
-    rightSidebarStore.isCollapsed,
-  )
-  pagesRef.current = pages
-  activePageIndexRef.current = activePageIndex
-  onPagesChangeRef.current = onPagesChange
-  const pageModeRef = useRef(pageMode)
-  pageModeRef.current = pageMode
-  // 模板块标题生成进行中标记，防止并发重复触发。
-  const isGeneratingTitleRef = useRef(false)
 
-  // 模板块整合虚拟页：融合全部页面中匹配状态的模板块，title 特殊标明且不入库。
-  const integratePage = useMemo<MarkdownPage | null>(() => {
-    if (templateIntegrate.length === 0) return null
-    const label = templateIntegrate.includes("all")
-      ? "整合模版块"
-      : templateIntegrate.map((value) => MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]).join(" + ")
-    return {
-      id: MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
-      name: `🔍 ${label}`,
-      content: buildMarkdownTemplateIntegratePage(pages ?? [], templateIntegrate),
-    }
-  }, [pages, templateIntegrate])
-
-  const displayPages = useMemo<MarkdownPage[] | undefined>(
-    () => (integratePage ? [...(pages ?? []), integratePage] : pages),
-    [integratePage, pages],
-  )
-
-  const activePage = pageMode ? displayPages?.[activePageIndex] : undefined
-  const isIntegratePageActive =
-    pageMode && integratePage !== null && activePageIndex === (displayPages?.length ?? 1) - 1
-  isIntegrateViewRef.current = isIntegratePageActive
-  const referencedRootsRef = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    referencedRootsRef.current = new Set(referencedProjectPaths ?? [])
-  }, [referencedProjectPaths])
-  const previewHtml = useMemo(
-    () =>
-      markdownRenderer.render(content, {
-        referencedRoots: new Set(referencedProjectPaths ?? []),
-      }),
-    [content, referencedProjectPaths],
-  )
-
-  useEffect(() => {
-    if (!pageMode || !displayPages?.length) return
-    const nextPage = displayPages[Math.min(activePageIndex, displayPages.length - 1)]
-    if (!nextPage) return
-    setContent(nextPage.content)
-    setPageName(nextPage.name)
-  }, [activePageIndex, pageMode, displayPages])
-
-  useEffect(() => {
-    if (!pageMode || !activePage || !editorViewRef.current) return
-    const view = editorViewRef.current
-    const nextContent = activePage.content
-    if (view.state.doc.toString() === nextContent) return
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: nextContent },
-      // 页面切换不进入撤销历史，避免撤销恢复整合页内容污染真实页面。
-      annotations: [integrateSyncAnnotation.of(true), Transaction.addToHistory.of(false)],
-    })
-  }, [activePage, pageMode])
-
-  // 进入整合视图时记录来源页并跳到整合页；清除整合时恢复来源页。
-  useEffect(() => {
-    const isActive = templateIntegrate.length > 0
-    if (isActive && !templateIntegrateActiveRef.current) {
-      pageBeforeIntegrateRef.current = activePageIndexRef.current
-      setActivePageIndex((displayPages?.length ?? 1) - 1)
-    } else if (!isActive && templateIntegrateActiveRef.current) {
-      setActivePageIndex(pageBeforeIntegrateRef.current)
-    }
-    templateIntegrateActiveRef.current = isActive
-  }, [templateIntegrate, displayPages])
-
-  // 整合开启期间记录最近停留的真实页面，退出时回到该页。
-  useEffect(() => {
-    if (integratePage === null) return
-    if (activePageIndex >= (pages?.length ?? 0)) return
-    pageBeforeIntegrateRef.current = activePageIndex
-  }, [activePageIndex, integratePage, pages])
-
-  const switchPage = (index: number): void => {
-    // 整合虚拟页锁定：禁止切换到其他页面。
-    if (isIntegratePageActive) return
-    if (!displayPages || index < 0 || index >= displayPages.length || index === activePageIndex)
-      return
-    setActivePageIndex(index)
-  }
-
-  /**
-   * 创建一个空白页面并切换到该页面。
-   */
-  const createPage = (): void => {
-    const nextPage = {
-      id: crypto.randomUUID(),
-      name: `Page ${(pages?.length ?? 0) + 1}`,
-      content: "",
-    }
-    const nextPages = [...(pages ?? []), nextPage]
-    onPagesChangeRef.current?.(nextPages)
-    setActivePageIndex(nextPages.length - 1)
-  }
-
-  /**
-   * 保存当前页面名称。
-   */
-  const renamePage = (name: string): void => {
-    setPageName(name)
-    if (!pages || !activePage) return
-    onPagesChangeRef.current?.(
-      pages.map((page, index) => (index === activePageIndex ? { ...page, name } : page)),
-    )
-  }
-
-  /**
-   * 删除当前页面并切换到相邻页面。
-   */
-  const deletePage = (): void => {
-    if (!pages || pages.length <= 1) return
-    const nextPages = pages.filter((_, index) => index !== activePageIndex)
-    onPagesChangeRef.current?.(nextPages)
-    setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
-  }
-
-  const switchPageRef = useRef(switchPage)
-  const createPageRef = useRef(createPage)
-  switchPageRef.current = switchPage
-  createPageRef.current = createPage
-
-  const {
-    blockCommandPanel,
-    activeBlockCommandIndex,
-    slashCommandPanel,
-    activeSlashCommandIndex,
-    fileMentionPanel,
-    activeFileMentionIndex,
-    blockCommandPanelRef,
-    activeBlockCommandIndexRef,
-    slashCommandPanelRef,
-    activeSlashCommandIndexRef,
-    fileMentionPanelRef,
-    activeFileMentionIndexRef,
-    closeFileMentionPanel,
-    closeSlashCommandPanel,
-    syncSlashCommandPanel,
-    selectSlashCommand,
-    handleSlashCommandKey,
-    syncFileMentionPanel,
-    selectFileMention,
-    handleFileMentionKey,
-    templateFilePanel,
-    activeTemplateFileIndex,
-    templateFilePanelRef,
-    activeTemplateFileIndexRef,
-    closeTemplateFilePanel,
-    syncTemplateFilePanel,
-    selectTemplateFile,
-    handleTemplateFileKey,
-    syncBlockCommandPanel,
-    selectBlockCommand,
-    handleBlockCommandKey,
-    setBlockCommandPanel,
-  } = useMarkdownPanels({
-    editorViewRef,
-    projectId,
-    onSearchFiles,
-    onSearchReferencedFiles,
-    referencedProjectPaths,
-  })
+  const previewHtml = useMemo(() => markdownRenderer.render(content), [content])
 
   const { captureScrollAnchor } = useEditorScrollSync({
     editorViewRef,
@@ -374,60 +81,21 @@ export const LxMarkdownEditor = ({
     previewModeRef.current = previewMode
   }, [previewMode])
 
-  const isRightSidebarCollapsedRef = useRef(isRightSidebarCollapsed)
-  useEffect(() => {
-    isRightSidebarCollapsedRef.current = isRightSidebarCollapsed
-  }, [isRightSidebarCollapsed])
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const isModKey = event.metaKey || event.ctrlKey
       const isShift = event.shiftKey
+      if (!isModKey || !isShift) return
 
-      if (isModKey && isShift) {
-        const key = event.key.toLowerCase()
-        if (key === "e") {
-          if (isRightSidebarCollapsedRef.current) {
-            event.preventDefault()
-            const currentMode = previewModeRef.current
-            changePreviewMode(currentMode === "split" ? "edit" : "split")
-          }
-        } else if (key === "v") {
-          event.preventDefault()
-          const currentMode = previewModeRef.current
-          changePreviewMode(currentMode === "preview" ? "edit" : "preview")
-        }
-        return
-      }
-
-      if (isModKey && event.altKey) {
-        const key = event.key
-        if (key !== "ArrowLeft" && key !== "ArrowRight") return
+      const key = event.key.toLowerCase()
+      if (key === "e") {
         event.preventDefault()
-        if (!pageModeRef.current || !pagesRef.current?.length) return
-        // 整合虚拟页锁定：禁止页面切换快捷键。
-        if (isIntegrateViewRef.current) return
-        const currentIndex = activePageIndexRef.current
-
-        if (key === "ArrowLeft") {
-          switchPageRef.current(currentIndex - 1)
-          return
-        }
-
-        if (currentIndex < pagesRef.current.length - 1) {
-          switchPageRef.current(currentIndex + 1)
-          return
-        }
-
-        // 处于整合虚拟页时禁止继续创建页面。
-        if (currentIndex >= pagesRef.current.length) return
-
-        const currentPage = pagesRef.current[currentIndex]
-        if (currentPage && currentPage.content.trim() === "") {
-          warning("当前页内容为空，请先输入内容再创建下一页")
-          return
-        }
-        createPageRef.current()
+        const currentMode = previewModeRef.current
+        changePreviewMode(currentMode === "split" ? "edit" : "split")
+      } else if (key === "v") {
+        event.preventDefault()
+        const currentMode = previewModeRef.current
+        changePreviewMode(currentMode === "preview" ? "edit" : "preview")
       }
     }
 
@@ -563,111 +231,6 @@ export const LxMarkdownEditor = ({
     setPreviewMode(mode)
   }
 
-  // 右侧栏展开时强制退出双栏模式，避免窄宽度下分屏不可用。
-  useEffect(() => {
-    if (isRightSidebarCollapsed || previewModeRef.current !== "split") return
-    changePreviewMode("edit")
-  }, [isRightSidebarCollapsed])
-
-  /**
-   * 循环切换模板块结束行的状态（未完成 -> 进行中 -> 已完成），作为状态持久化在源码中。
-   */
-  const cycleTemplateStatus = (line: number): void => {
-    const view = editorViewRef.current
-    if (!view) return
-
-    const docLine = view.state.doc.line(line + 1)
-    const nextLineText = cycleMarkdownTemplateStatus(docLine.text)
-    if (nextLineText === null) return
-
-    view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
-  }
-
-  /**
-   * 触发模板块标题生成：取光标所在模板块内容，排除 /summary 命令行后按复制逻辑清洗，
-   * 经 IPC 请求 main 进程生成标题。回车即移除 /summary 字样（保留所在行），
-   * 加载占位写入开始行「title: 」字段；成功回写最终标题，失败恢复原标题并提示。
-   * 整合虚拟页禁止执行。
-   */
-  const runTemplateTitleGeneration = (view: EditorView): void => {
-    if (isGeneratingTitleRef.current || isIntegrateViewRef.current) return
-    const docText = view.state.doc.toString()
-    const cursor = view.state.selection.main.head
-    const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
-    if (blockContent === null) return
-
-    const cleaned = stripEmptyTemplateItems(
-      stripMarkdownTemplateComments(
-        blockContent
-          .split("\n")
-          .filter((blockLine) => blockLine.trim() !== SUMMARY_COMMAND_TEXT)
-          .join("\n"),
-      ),
-    )
-    if (cleaned.trim() === "") {
-      warning("模板块内容为空，无法生成标题")
-      return
-    }
-
-    const startLineNumber = getMarkdownTemplateBlockStartLine(docText, cursor)
-    if (startLineNumber === null) return
-    const startDocLine = view.state.doc.line(startLineNumber)
-    const originalStartText = startDocLine.text
-
-    isGeneratingTitleRef.current = true
-    const changes: { from: number; to: number; insert: string }[] = [
-      {
-        from: startDocLine.from,
-        to: startDocLine.to,
-        insert: setMarkdownTemplateTitle(originalStartText, TEMPLATE_TITLE_LOADING_TEXT),
-      },
-    ]
-    // 立即移除 /summary 字样，仅清空该行文本、保留所在行（不删除行）。
-    const commandLine = view.state.doc.lineAt(cursor)
-    if (commandLine.text.trim() !== "") {
-      changes.push({ from: commandLine.from, to: commandLine.to, insert: "" })
-    }
-    view.dispatch({ changes })
-    view.focus()
-
-    void window.api.markdown.generateTemplateTitle(cleaned).then(
-      (title) => {
-        isGeneratingTitleRef.current = false
-        const currentView = editorViewRef.current
-        if (!currentView) return
-        const markerLine = findTitleLoadingLine(currentView)
-        if (!markerLine) return
-
-        if (title) {
-          const nextStartText = setMarkdownTemplateTitle(markerLine.text, title)
-          if (nextStartText !== markerLine.text) {
-            currentView.dispatch({
-              changes: { from: markerLine.from, to: markerLine.to, insert: nextStartText },
-            })
-          }
-        } else {
-          currentView.dispatch({
-            changes: { from: markerLine.from, to: markerLine.to, insert: originalStartText },
-          })
-          warning("标题生成失败，请检查模型配置后重试")
-        }
-        currentView.focus()
-      },
-      () => {
-        isGeneratingTitleRef.current = false
-        const currentView = editorViewRef.current
-        if (!currentView) return
-        const markerLine = findTitleLoadingLine(currentView)
-        if (!markerLine) return
-        currentView.dispatch({
-          changes: { from: markerLine.from, to: markerLine.to, insert: originalStartText },
-        })
-        currentView.focus()
-        warning("标题生成失败，请检查模型配置后重试")
-      },
-    )
-  }
-
   useEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
@@ -682,236 +245,15 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
-        markdownReferenceHover,
-        markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
+        markdownMarkerHighlight(showFolding),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
           : []),
-        // 整合虚拟页只读：禁止除页面切换外的任何文档变更。
-        EditorState.transactionFilter.of((tr) => {
-          if (
-            tr.docChanged &&
-            isIntegrateViewRef.current &&
-            !tr.annotation(integrateSyncAnnotation)
-          ) {
-            return []
-          }
-          return tr
-        }),
-        // 模板块 id 只读：阻止对 id 文本的局部修改。零宽变更仅在光标位于 id 内部时阻止；
-        // 非零宽变更仅当其范围完全落在 id 内时阻止，因此状态循环、整行/整块删除、整篇格式化等
-        // 跨越 id 边界的合法操作不受影响，撤销（整行替换）同样放行。
-        EditorState.transactionFilter.of((tr) => {
-          if (!tr.docChanged) return tr
-          const source = tr.startState.doc.toString()
-          if (!source.includes("{id:")) return tr
-          const idRanges = getMarkdownTemplateIdRanges(source)
-          if (idRanges.length === 0) return tr
-
-          let blocked = false
-          tr.changes.iterChanges((from, to) => {
-            if (blocked) return
-            for (const range of idRanges) {
-              if (from === to) {
-                if (from > range.from && from < range.to) {
-                  blocked = true
-                  return
-                }
-              } else if (from >= range.from && to <= range.to) {
-                blocked = true
-                return
-              }
-            }
-          })
-          return blocked ? [] : tr
-        }),
         EditorView.lineWrapping,
         indentUnit.of("  "),
         indentOnInput(),
         bracketMatching(),
-        Prec.highest(
-          keymap.of([
-            {
-              key: "ArrowDown",
-              run: () =>
-                handleFileMentionKey("ArrowDown") ||
-                handleSlashCommandKey(1) ||
-                handleBlockCommandKey(1) ||
-                handleTemplateFileKey(1),
-            },
-            {
-              key: "ArrowUp",
-              run: () =>
-                handleFileMentionKey("ArrowUp") ||
-                handleSlashCommandKey(-1) ||
-                handleBlockCommandKey(-1) ||
-                handleTemplateFileKey(-1),
-            },
-            {
-              key: "Enter",
-              run: (view) => {
-                const fileMention = fileMentionPanelRef.current
-                if (fileMention) {
-                  selectFileMention(
-                    fileMention.files[activeFileMentionIndexRef.current] ?? fileMention.files[0],
-                  )
-                  return true
-                }
-
-                const slashCommand = slashCommandPanelRef.current
-                if (slashCommand) {
-                  selectSlashCommand(
-                    slashCommand.commands[activeSlashCommandIndexRef.current] ??
-                      slashCommand.commands[0],
-                  )
-                  return true
-                }
-
-                const panel = blockCommandPanelRef.current
-                if (panel) {
-                  selectBlockCommand(
-                    panel.commands[activeBlockCommandIndexRef.current] ?? panel.commands[0],
-                  )
-                  return true
-                }
-
-                const templateFilePanel = templateFilePanelRef.current
-                if (templateFilePanel) {
-                  selectTemplateFile(
-                    templateFilePanel.files[activeTemplateFileIndexRef.current] ??
-                      templateFilePanel.files[0],
-                  )
-                  return true
-                }
-
-                const cursor = view.state.selection.main.head
-                const line = view.state.doc.lineAt(cursor)
-
-                // 二次回车命令：模板块内 /summary 命令行触发标题生成。
-                if (
-                  isMarkdownConfirmCommandArmed(
-                    line.text,
-                    isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from)),
-                  )
-                ) {
-                  runTemplateTitleGeneration(view)
-                  return true
-                }
-                const templateEndMatch =
-                  /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.exec(
-                    line.text,
-                  )
-                if (
-                  cursor === line.to &&
-                  templateEndMatch &&
-                  isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
-                ) {
-                  const currentIndent = templateEndMatch[1] ?? ""
-                  const insertText = `\n${currentIndent}`
-                  view.dispatch({
-                    changes: { from: cursor, to: cursor, insert: insertText },
-                    selection: { anchor: cursor + insertText.length },
-                  })
-                  return true
-                }
-
-                const emptyListMarkerRegex = /^(\s*)([-+*](\s+\[[ xX]\])?|\d+[.)]|>)\s*$/
-                if (emptyListMarkerRegex.test(line.text)) {
-                  view.dispatch({
-                    changes: { from: line.from, to: line.to, insert: "" },
-                    selection: { anchor: line.from },
-                  })
-                  return true
-                }
-
-                if (cursor > 0 && cursor < view.state.doc.length) {
-                  const prevChar = view.state.doc.sliceString(cursor - 1, cursor)
-                  const nextChar = view.state.doc.sliceString(cursor, cursor + 1)
-                  if (
-                    (prevChar === "{" && nextChar === "}") ||
-                    (prevChar === "[" && nextChar === "]") ||
-                    (prevChar === "(" && nextChar === ")")
-                  ) {
-                    const indentMatch = line.text.match(/^(\s*)/)
-                    const currentIndent = indentMatch ? indentMatch[1] : ""
-                    const insertText = `\n${currentIndent}  \n${currentIndent}`
-                    view.dispatch({
-                      changes: { from: cursor, to: cursor, insert: insertText },
-                      selection: { anchor: cursor + 1 + currentIndent.length + 2 },
-                    })
-                    return true
-                  }
-                }
-
-                return false
-              },
-            },
-            {
-              key: "Escape",
-              run: () => {
-                if (fileMentionPanelRef.current) {
-                  closeFileMentionPanel()
-                  return true
-                }
-                if (slashCommandPanelRef.current) {
-                  closeSlashCommandPanel()
-                  return true
-                }
-                if (blockCommandPanelRef.current) {
-                  blockCommandPanelRef.current = null
-                  setBlockCommandPanel(null)
-                  return true
-                }
-                if (templateFilePanelRef.current) {
-                  closeTemplateFilePanel()
-                  return true
-                }
-                return false
-              },
-            },
-          ]),
-        ),
-        Prec.high(
-          EditorView.domEventHandlers({
-            paste: (event, view) => {
-              const file = getClipboardFile(event)
-              if (!file) return false
-
-              event.preventDefault()
-              const type = file.isDirectory ? "folder" : file.isImage ? "image" : "file"
-              const { from, to } = view.state.selection.main
-              const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
-              const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
-              const insertion = `${leadingSpace}${createMarkdownReference(type, file.path)} `
-              view.dispatch({
-                changes: { from, to, insert: insertion },
-                selection: { anchor: from + insertion.length },
-                userEvent: "input.paste",
-              })
-              return true
-            },
-            keydown: (event, view) => {
-              if (event.key !== "Backspace" || fileMentionPanelRef.current) return false
-
-              const { selection } = view.state
-              if (!selection.main.empty) return false
-
-              const cursor = selection.main.head
-              const deletionRange = getFileMentionDeletionRange(view.state.doc.toString(), cursor)
-              if (!deletionRange) return false
-
-              event.preventDefault()
-              view.dispatch({
-                changes: { from: deletionRange.start, to: deletionRange.end, insert: "" },
-                selection: { anchor: deletionRange.start },
-                userEvent: "delete.backward",
-              })
-              closeFileMentionPanel()
-              return true
-            },
-          }),
-        ),
         keymap.of([
           {
             key: "Ctrl-Shift-Enter",
@@ -954,27 +296,6 @@ export const LxMarkdownEditor = ({
           { key: "Tab", run: indentMore },
           { key: "Shift-Tab", run: indentLess },
           { key: "Mod-d", run: deleteLine },
-          {
-            key: "Mod-/",
-            run: (view) => {
-              const selection = view.state.selection.main
-              const prefixFrom = view.state.doc.sliceString(0, selection.from)
-              const prefixTo = view.state.doc.sliceString(0, selection.to)
-              if (
-                !isInsideMarkdownTemplateBlock(prefixFrom) ||
-                !isInsideMarkdownTemplateBlock(prefixTo)
-              ) {
-                return false
-              }
-              const lineFrom = view.state.doc.lineAt(selection.from).from
-              const lineTo = view.state.doc.lineAt(selection.to).to
-              const rangeText = view.state.doc.sliceString(lineFrom, lineTo)
-              const nextText = toggleMarkdownTemplateCommentLines(rangeText)
-              if (nextText === rangeText) return false
-              view.dispatch({ changes: { from: lineFrom, to: lineTo, insert: nextText } })
-              return true
-            },
-          },
           { key: "Mod-b", run: () => (wrapSelection("**", "**", "bold"), true) },
           { key: "Mod-i", run: () => (wrapSelection("_", "_", "italic"), true) },
           { key: "Mod-1", run: () => (addHeading(1), true) },
@@ -1000,35 +321,11 @@ export const LxMarkdownEditor = ({
           ...standardKeymap,
         ]),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged || update.selectionSet || update.viewportChanged) {
-            syncBlockCommandPanel(update.view)
-            syncSlashCommandPanel(update.view)
-          }
-          if (update.docChanged) {
-            syncFileMentionPanel(update.view)
-            syncTemplateFilePanel(update.view)
-          }
-          if (update.selectionSet && !update.docChanged) {
-            closeFileMentionPanel()
-            closeTemplateFilePanel()
-          }
-          if (update.docChanged) {
-            const nextContent = update.state.doc.toString()
-            setContent(nextContent)
-            // 整合虚拟页不入库，也不向外部回写内容。
-            const activeIndex = activePageIndexRef.current
-            const isFilterView = pageMode && activeIndex >= (pagesRef.current?.length ?? 0)
-            if (!isFilterView) {
-              if (pageMode && pagesRef.current && pagesRef.current[activeIndex]) {
-                onPagesChangeRef.current?.(
-                  pagesRef.current.map((page, index) =>
-                    index === activeIndex ? { ...page, content: nextContent } : page,
-                  ),
-                )
-              }
-              onChangeRef.current?.(nextContent)
-            }
-          }
+          if (!update.docChanged) return
+
+          const nextContent = update.state.doc.toString()
+          setContent(nextContent)
+          onChangeRef.current?.(nextContent)
         }),
       ],
     })
@@ -1061,7 +358,6 @@ export const LxMarkdownEditor = ({
       onClick: () => changePreviewMode(previewMode === "split" ? "edit" : "split"),
       alignRight: true,
       highlighted: previewMode === "split",
-      disabled: !isRightSidebarCollapsed,
     },
     {
       icon: Eye,
@@ -1077,16 +373,6 @@ export const LxMarkdownEditor = ({
         actions={actions}
         isSaved={isSaved}
         onInsertTable={(size) => insertText(createMarkdownTable(size))}
-        pageMode={pageMode}
-        pages={displayPages}
-        activePageIndex={activePageIndex}
-        pageName={pageName}
-        onPageChange={switchPage}
-        onPageNameChange={renamePage}
-        onCreatePage={createPage}
-        onDeletePage={deletePage}
-        templateIntegrate={templateIntegrate}
-        onTemplateIntegrateChange={setTemplateIntegrate}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div
@@ -1094,40 +380,9 @@ export const LxMarkdownEditor = ({
           className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
         />
         {previewMode !== "edit" && (
-          <LxMarkdownPreview
-            html={previewHtml}
-            previewMode={previewMode}
-            previewRef={previewRef}
-            onTemplateStatusToggle={cycleTemplateStatus}
-          />
+          <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />
         )}
       </div>
-      <MarkdownBlockCommandMenu
-        activeIndex={activeBlockCommandIndex}
-        commands={blockCommandPanel?.commands}
-        position={blockCommandPanel?.position}
-        visible={Boolean(blockCommandPanel)}
-      />
-      <MarkdownSlashCommandMenu
-        activeIndex={activeSlashCommandIndex}
-        commands={slashCommandPanel?.commands}
-        position={slashCommandPanel?.position}
-        visible={Boolean(slashCommandPanel)}
-      />
-      <FileMentionCommandMenu
-        activeIndex={activeFileMentionIndex}
-        files={fileMentionPanel?.files}
-        position={fileMentionPanel?.position}
-        visible={Boolean(fileMentionPanel)}
-      />
-      <FileMentionCommandMenu
-        activeIndex={activeTemplateFileIndex}
-        files={templateFilePanel?.files}
-        idPrefix="markdown-template-file"
-        label="模板块文件快捷输入"
-        position={templateFilePanel?.position}
-        visible={Boolean(templateFilePanel)}
-      />
     </section>
   )
 }

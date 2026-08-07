@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import type {
   MarkdownBlockCommand,
   MarkdownBlockTrigger,
-} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+} from "@/features/markdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
   createMarkdownTemplateId,
@@ -14,25 +14,25 @@ import {
   getMarkdownTemplateBlockContent,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
-} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
-import { getMarkdownReferenceProjectPaths } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+} from "@/features/markdown/commands/markdownBlockCommands"
+import { getMarkdownReferenceProjectPaths } from "@/features/markdown/commands/markdownReferenceCommands"
 import type {
   MarkdownSlashCommand,
   MarkdownSlashCommandLine,
-} from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+} from "@/features/markdown/commands/markdownSlashCommands"
 import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   isMarkdownConfirmCommandArmed,
-} from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+} from "@/features/markdown/commands/markdownSlashCommands"
 import {
   createMarkdownTemplateFileReference,
   filterMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
-} from "@/components/ui/LxMarkdown/commands/markdownTemplateFileCommands"
-import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
-import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
+} from "@/features/markdown/commands/markdownTemplateFileCommands"
+import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
+import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
 
 /**
  * Markdown 块命令面板状态。

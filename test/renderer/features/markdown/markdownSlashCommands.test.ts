@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
-} from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+} from "@/features/markdown/commands/markdownSlashCommands"
 
 describe("Markdown 斜杠命令", () => {
   it("解析光标所在行的斜杠命令范围", () => {

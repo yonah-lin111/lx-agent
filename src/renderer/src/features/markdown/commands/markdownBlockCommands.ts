@@ -1,7 +1,7 @@
 import type { MarkdownPage } from "@shared/project"
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
-import type { MarkdownTemplateCommandId } from "@/components/ui/LxMarkdown/commands/markdownSlashCommands"
+import type { MarkdownTemplateCommandId } from "@/features/markdown/commands/markdownSlashCommands"
 
 // 模板块源码状态：未完成 / 进行中 / 已完成。
 export type MarkdownTemplateStatus = "todo" | "in_progress" | "done"

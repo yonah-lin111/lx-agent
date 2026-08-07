@@ -4,8 +4,8 @@ import type React from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxInput } from "@/components/ui/LxInput"
-import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 
 // 文件夹命令面板属性。

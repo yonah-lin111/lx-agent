@@ -1,8 +1,8 @@
-import { getMarkdownReferenceName } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+import { getMarkdownReferenceName } from "@/features/markdown/commands/markdownReferenceCommands"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
-} from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
+} from "@/features/markdown/extensions/markdownFileMentions"
 
 // 模板块文件快捷输入片段：必须为非 @ 开头、仅含常见路径字符，且前一个字符是边界。
 const MARKDOWN_TEMPLATE_FILE_TRIGGER_RE =

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getFileMentionDeletionRange } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
+import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 
 describe("getFileMentionDeletionRange", () => {
   it("紧贴文件提及末尾时保留原生逐字删除", () => {

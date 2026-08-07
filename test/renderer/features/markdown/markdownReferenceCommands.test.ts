@@ -4,7 +4,7 @@ import {
   getMarkdownReferenceName,
   getMarkdownReferenceProjectPaths,
   isMarkdownReferenceType,
-} from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
+} from "@/features/markdown/commands/markdownReferenceCommands"
 
 describe("markdownReferenceCommands", () => {
   it("创建保留绝对路径的引用语法", () => {

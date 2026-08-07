@@ -1,4 +1,6 @@
+import type { ProjectFileEntry } from "@shared/project"
 import type React from "react"
+import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
 
 // 表格网格尺寸。
 export interface MarkdownTableSize {
@@ -35,12 +37,39 @@ export interface EditorScrollAnchor {
 // Markdown 编辑器显示模式。
 export type MarkdownPreviewMode = "edit" | "preview" | "split"
 
+// @ 文件提及候选项。
+export type MarkdownFileMentionEntry = ProjectFileEntry & {
+  mentionPath: string
+  projectPath?: string
+  source: "current" | "reference"
+  // 模板块文件快捷输入的候选来源类型（@ 提及面板不使用）。
+  templateKind?: MarkdownTemplateFileKind
+}
+
+// Markdown 页面数据。
+export interface MarkdownPage {
+  id: string
+  name: string
+  content: string
+}
+
 // Markdown 编辑器属性。
 export interface LxMarkdownEditorProps {
   initialContent?: string
+  pages?: MarkdownPage[]
   onChange?: (content: string) => void
+  onPagesChange?: (pages: MarkdownPage[]) => void
   onSave?: () => void
   isSaved?: boolean
+  pageMode?: boolean
+  projectId?: string
+  onSearchFiles?: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
+  onSearchReferencedFiles?: (
+    projectPaths: string[],
+    query: string,
+  ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
+  // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
+  referencedProjectPaths?: string[]
   showLineNumbers?: boolean
   showFolding?: boolean
 }

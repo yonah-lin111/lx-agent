@@ -1,6 +1,6 @@
 import type { MarkdownPage, ProjectItemStatus } from "@shared/project"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { getMarkdownTemplateStatuses } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 

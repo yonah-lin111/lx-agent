@@ -2,9 +2,9 @@ import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { MarkdownTemplateFileKind } from "@/components/ui/LxMarkdown/commands/markdownTemplateFileCommands"
-import type { MarkdownFileMentionEntry } from "@/components/ui/LxMarkdown/types"
 import { LxTag } from "@/components/ui/LxTag"
+import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
 
 // 模板块文件快捷输入候选来源对应的图标颜色（@ 提及面板不使用）。
 const templateFileKindIconColors: Record<MarkdownTemplateFileKind, string> = {
