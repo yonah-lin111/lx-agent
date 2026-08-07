@@ -8,6 +8,7 @@ import type {
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
+  createMarkdownTemplateId,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
@@ -227,8 +228,14 @@ export const useMarkdownPanels = ({
     const panel = slashCommandPanelRef.current
     if (!view || !panel) return
 
+    // 模板块命令（scope=normal）插入时在结束行 &&& 后追加唯一 id；光标位置不受影响。
+    const content =
+      command.scope === "normal"
+        ? command.content.replace(/&&&$/, `&&& {id:${createMarkdownTemplateId()}}`)
+        : command.content
+
     view.dispatch({
-      changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+      changes: { from: panel.line.from, to: panel.line.to, insert: content },
       selection: { anchor: panel.line.from + command.cursorOffset },
     })
     view.focus()

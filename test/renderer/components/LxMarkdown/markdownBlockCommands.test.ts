@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
   createMarkdownBlockInsertion,
+  createMarkdownTemplateId,
   cycleMarkdownTemplateStatus,
+  extractMarkdownTemplateBlocks,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
   getMarkdownTemplateStatuses,
   isInsideMarkdownCodeFence,
@@ -148,5 +151,71 @@ describe("Markdown 块命令", () => {
     const commented = toggleMarkdownTemplateCommentLines(doc)
     expect(commented).toBe("  // - 你是谁")
     expect(toggleMarkdownTemplateCommentLines(commented)).toBe(doc)
+  })
+})
+
+describe("模板块 id", () => {
+  const id = "0123456789abcdef0123456789abcdef"
+
+  it("生成 uuid 去连字符的 32 位小写十六进制 id", () => {
+    expect(createMarkdownTemplateId()).toMatch(/^[0-9a-f]{32}$/)
+    expect(createMarkdownTemplateId()).not.toContain("-")
+  })
+
+  it("带 id 的结束行仍能识别并关闭模板块", () => {
+    expect(isInsideMarkdownTemplateBlock(`&&& addTemplate\n内容\n&&& {id:${id}}\n`)).toBe(false)
+    expect(isInsideMarkdownTemplateBlock(`&&& addTemplate\n内容\n&&& done {id:${id}}\n`)).toBe(
+      false,
+    )
+  })
+
+  it("解析带 id 结束行的源码状态", () => {
+    expect(getMarkdownTemplateStatus(`&&& {id:${id}}`)).toBe("todo")
+    expect(getMarkdownTemplateStatus(`&&& done {id:${id}}`)).toBe("done")
+    expect(getMarkdownTemplateStatus(`&&& in_progress {id:${id}}`)).toBe("in_progress")
+  })
+
+  it("循环切换状态时保留 id", () => {
+    expect(cycleMarkdownTemplateStatus(`&&& {id:${id}}`)).toBe(`&&& in_progress {id:${id}}`)
+    expect(cycleMarkdownTemplateStatus(`&&& in_progress {id:${id}}`)).toBe(`&&& done {id:${id}}`)
+    expect(cycleMarkdownTemplateStatus(`&&& done {id:${id}}`)).toBe(`&&& {id:${id}}`)
+    expect(cycleMarkdownTemplateStatus(`&&& done`)).toBe("&&&")
+  })
+
+  it("扫描带 id 模板块的状态", () => {
+    expect(getMarkdownTemplateStatuses(`&&& addTemplate\n内容\n&&& done {id:${id}}`)).toEqual([
+      "done",
+    ])
+  })
+
+  it("提取带 id 模板块片段并保留结束行原文", () => {
+    expect(extractMarkdownTemplateBlocks(`&&& addTemplate\n内容\n&&& done {id:${id}}`)).toEqual([
+      {
+        startText: "&&& addTemplate",
+        endText: `&&& done {id:${id}}`,
+        content: "内容",
+        status: "done",
+        type: "addTemplate",
+      },
+    ])
+  })
+
+  it("定位全部模板块 id 的源码范围，仅限结束行", () => {
+    const doc = [
+      "前文 {id:deadbeefdeadbeefdeadbeefdeadbeef}",
+      "&&& addTemplate",
+      "- 内容",
+      `&&& in_progress {id:${id}}`,
+      `正文 {id:${id}}`,
+      "&&& bugTemplate",
+      "&&& done {id:11111111111111111111111111111111}",
+    ].join("\n")
+
+    const endLineId = doc.indexOf(`{id:${id}}`)
+    const todoLineId = doc.indexOf("{id:11111111111111111111111111111111}")
+    expect(getMarkdownTemplateIdRanges(doc)).toEqual([
+      { from: endLineId, to: endLineId + `{id:${id}}`.length },
+      { from: todoLineId, to: todoLineId + "{id:11111111111111111111111111111111}".length },
+    ])
   })
 })

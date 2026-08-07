@@ -227,6 +227,13 @@ export const editorTheme = EditorView.theme(
       padding: "1px 6px !important",
       borderRadius: "3px !important",
     },
+    ".cm-md-template-id, .cm-md-template-id *": {
+      color: "#f0abfc !important",
+      backgroundColor: "rgba(240, 171, 252, 0.14) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "600 !important",
+    },
     ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
       color: "#38bdf8 !important",
       fontWeight: "700",
@@ -371,7 +378,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.cm-md-template-id):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -684,7 +691,7 @@ const buildMarkdownMarkerDecorations = (
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
     | { type: "line"; from: number; className: string }
-    | { type: "mark"; from: number; to: number; className: string }
+    | { type: "mark"; from: number; to: number; className: string; atomic?: boolean }
     | { type: "widget"; from: number; to: number; widget: CodeBlockActionWidget }
   )[] = []
   let offset = 0
@@ -711,12 +718,12 @@ const buildMarkdownMarkerDecorations = (
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
-    const addMarkerAlways = (from: number, to: number, className: string): void => {
-      allDecos.push({ type: "mark", from: offset + from, to: offset + to, className })
+    const addMarkerAlways = (from: number, to: number, className: string, atomic = false): void => {
+      allDecos.push({ type: "mark", from: offset + from, to: offset + to, className, atomic })
     }
-    const addMarker = (from: number, to: number, className: string): void => {
+    const addMarker = (from: number, to: number, className: string, atomic = false): void => {
       if (!currentFenceFolded) {
-        addMarkerAlways(from, to, className)
+        addMarkerAlways(from, to, className, atomic)
       }
     }
     const addMatches = (pattern: RegExp, className: string): void => {
@@ -821,7 +828,9 @@ const buildMarkdownMarkerDecorations = (
     const templateStartMatch = line.match(
       /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:[^」\n]*」)?\s*$/,
     )
-    const templateEndMatch = line.match(/^\s*&&&(?:\s+(?:done|in_progress))?\s*$/)
+    const templateEndMatch = line.match(
+      /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/,
+    )
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
       currentTemplateFolded = templateFoldedIndices.has(currentTemplateIndex)
@@ -829,7 +838,7 @@ const buildMarkdownMarkerDecorations = (
       let templateEndIndex = -1
       for (let j = i + 1; j < lines.length; j++) {
         const subLine = lines[j]
-        if (subLine.match(/^\s*&&&(?:\s+(?:done|in_progress))?\s*$/)) {
+        if (subLine.match(/^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/)) {
           templateEndIndex = j
           break
         }
@@ -900,12 +909,18 @@ const buildMarkdownMarkerDecorations = (
     if (templateEndMatch && isInsideTemplateBlock) {
       const markerStart = line.indexOf("&&&")
       addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
-      const statusMatch = line.match(/\s+(done|in_progress)\s*$/)
+      const statusMatch = line.match(/\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}\s*$|\s*$)/)
       if (statusMatch?.index !== undefined) {
         const statusStart = statusMatch.index + 1
         const statusClassName =
           statusMatch[1] === "done" ? "cm-md-template-done" : "cm-md-template-in-progress"
-        addMarkerAlways(statusStart, line.length, statusClassName)
+        // 状态标记仅覆盖状态词本身，避免与紧跟其后的 id 标记叠加背景。
+        addMarkerAlways(statusStart, statusStart + statusMatch[1].length, statusClassName)
+      }
+      // id 为系统分配标识：着色展示并设为原子范围，光标导航跳过、源码受事务过滤器保护。
+      const idMatch = line.match(/\{id:[0-9a-f]{32}\}/)
+      if (idMatch?.index !== undefined) {
+        addMarkerAlways(idMatch.index, idMatch.index + idMatch[0].length, "cm-md-template-id", true)
       }
       allDecos.push({
         type: "line",
@@ -1034,7 +1049,13 @@ const buildMarkdownMarkerDecorations = (
     } else if (deco.type === "widget") {
       builder.add(deco.from, deco.to, Decoration.widget({ widget: deco.widget, side: 1 }))
     } else {
-      builder.add(deco.from, deco.to, Decoration.mark({ class: deco.className }))
+      builder.add(
+        deco.from,
+        deco.to,
+        deco.atomic
+          ? Decoration.mark({ class: deco.className, atomic: true })
+          : Decoration.mark({ class: deco.className }),
+      )
     }
   }
 

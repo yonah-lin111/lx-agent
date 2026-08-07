@@ -138,11 +138,20 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
 const MARKDOWN_TEMPLATE_START_RE =
   /^\s*&&&\s+(?!done\b|in_progress\b)[A-Za-z]\w*(?:\s+「title:[^」\n]*」)?\s*$/
 
-// 模板块结束行：&&& [状态标记]。
-const MARKDOWN_TEMPLATE_END_RE = /^\s*&&&(?:\s+(?:done|in_progress))?\s*$/
+// 模板块 id：uuid 去连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
+const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
 
-// 模板块状态标记后缀（供 exec 捕获）。
-const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE = /\s+(done|in_progress)\s*$/
+// 模板块结束行：&&& [状态标记] [{id:...}]。
+const MARKDOWN_TEMPLATE_END_RE =
+  /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
+
+// 模板块结束行解析：捕获缩进、&&&、状态标记与 id。
+const MARKDOWN_TEMPLATE_END_PARSE_RE =
+  /^(\s*)(&&&)(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?\s*$/
+
+// 模板块状态标记后缀（供 exec 捕获），状态后可能紧跟 id。
+const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
+  /\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}\s*$|\s*$)/
 
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
@@ -225,7 +234,7 @@ export const getMarkdownTemplateBlockContent = (text: string, position: number):
  * 解析模板块结束行的源码状态；非结束行返回 null。
  */
 export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateStatus | null => {
-  const match = /^(\s*)(&&&)(?:\s+(done|in_progress))?\s*$/.exec(lineText)
+  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
   if (!match) return null
 
   return (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
@@ -243,14 +252,43 @@ export const getMarkdownTemplateType = (startText: string): string | null => {
  * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
  */
 export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
-  const match = /^(\s*)(&&&)(?:\s+(done|in_progress))?\s*$/.exec(lineText)
+  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
   if (!match) return null
 
   const current = (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
   const next: MarkdownTemplateStatus =
     current === "todo" ? "in_progress" : current === "in_progress" ? "done" : "todo"
+  const id = match[4] ?? ""
 
-  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}`
+  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}${id ? ` {id:${id}}` : ""}`
+}
+
+/**
+ * 生成模板块 id：uuid 去除连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
+ */
+export const createMarkdownTemplateId = (): string => crypto.randomUUID().replaceAll("-", "")
+
+/**
+ * 扫描文本中全部模板块结束行上的 id 源码范围，供编辑器只读保护使用。
+ */
+export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: number }[] => {
+  const ranges: { from: number; to: number }[] = []
+  let offset = 0
+
+  for (const line of text.split("\n")) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+      const idMatch = line.match(MARKDOWN_TEMPLATE_ID_RE)
+      if (idMatch?.index !== undefined) {
+        ranges.push({
+          from: offset + idMatch.index,
+          to: offset + idMatch.index + idMatch[0].length,
+        })
+      }
+    }
+    offset += line.length + 1
+  }
+
+  return ranges
 }
 
 /**

@@ -27,6 +27,7 @@ import type { MarkdownTemplateIntegrate } from "@/components/ui/LxMarkdown/comma
 import {
   buildMarkdownTemplateIntegratePage,
   cycleMarkdownTemplateStatus,
+  getMarkdownTemplateIdRanges,
   isInsideMarkdownTemplateBlock,
   MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
   MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
@@ -592,6 +593,33 @@ export const LxMarkdownEditor = ({
           }
           return tr
         }),
+        // 模板块 id 只读：阻止对 id 文本的局部修改。零宽变更仅在光标位于 id 内部时阻止；
+        // 非零宽变更仅当其范围完全落在 id 内时阻止，因此状态循环、整行/整块删除、整篇格式化等
+        // 跨越 id 边界的合法操作不受影响，撤销（整行替换）同样放行。
+        EditorState.transactionFilter.of((tr) => {
+          if (!tr.docChanged) return tr
+          const source = tr.startState.doc.toString()
+          if (!source.includes("{id:")) return tr
+          const idRanges = getMarkdownTemplateIdRanges(source)
+          if (idRanges.length === 0) return tr
+
+          let blocked = false
+          tr.changes.iterChanges((from, to) => {
+            if (blocked) return
+            for (const range of idRanges) {
+              if (from === to) {
+                if (from > range.from && from < range.to) {
+                  blocked = true
+                  return
+                }
+              } else if (from >= range.from && to <= range.to) {
+                blocked = true
+                return
+              }
+            }
+          })
+          return blocked ? [] : tr
+        }),
         EditorView.lineWrapping,
         indentUnit.of("  "),
         indentOnInput(),
@@ -653,7 +681,10 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
-                const templateEndMatch = /^(\s*)&&&(?:\s+(?:done|in_progress))?\s*$/.exec(line.text)
+                const templateEndMatch =
+                  /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.exec(
+                    line.text,
+                  )
                 if (
                   cursor === line.to &&
                   templateEndMatch &&

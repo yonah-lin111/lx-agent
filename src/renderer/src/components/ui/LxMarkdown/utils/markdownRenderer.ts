@@ -183,7 +183,7 @@ const markdownTemplateBlock = (
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    closeMatch = /^&&&(?:\s+(done|in_progress))?\s*$/.exec(lineText)
+    closeMatch = /^&&&(?:\s+(done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.exec(lineText)
     if (closeMatch) break
     closeLine += 1
   }
