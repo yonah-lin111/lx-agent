@@ -4,6 +4,7 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  Copy,
   Download,
   KeyRound,
   Search,
@@ -92,6 +93,7 @@ type ModelProviderMenuProps = {
   x: number
   y: number
   onToggleEnabled: (enabled: boolean) => void
+  onDuplicate: () => void
   onDelete: () => void
   onClose: () => void
 }
@@ -106,6 +108,7 @@ const ModelProviderMenu = ({
   x,
   y,
   onToggleEnabled,
+  onDuplicate,
   onDelete,
   onClose,
 }: ModelProviderMenuProps): React.JSX.Element | null => {
@@ -163,6 +166,15 @@ const ModelProviderMenu = ({
         停用
       </LxMenuItem>
       <LxMenuSeparator />
+      <LxMenuItem
+        leading={<Copy className="h-3.5 w-3.5 text-white/70" />}
+        onClick={() => {
+          onDuplicate()
+          onClose()
+        }}
+      >
+        复制 Provider
+      </LxMenuItem>
       <LxMenuItem
         active={isConfirmingDelete}
         danger
@@ -283,6 +295,33 @@ export const ModelProviderSettings = ({
     onDeleteProvider?.(providerId)
   }
 
+  const duplicateProvider = (providerId: string): void => {
+    setSettings((current) => {
+      if (!current) return current
+      const source = current.providers[providerId]
+      if (!source) return current
+      const id = createProviderId(current.providers)
+      setSelectedProviderId(id)
+      return {
+        ...current,
+        providers: {
+          ...current.providers,
+          [id]: {
+            ...source,
+            id,
+            name: `${source.name || source.id}-copy`,
+            models: Object.fromEntries(
+              Object.entries(source.models).map(([modelKey, model]) => [modelKey, { ...model }]),
+            ),
+          },
+        },
+        enabledProviders: current.enabledProviders.includes(providerId)
+          ? [...current.enabledProviders, id]
+          : current.enabledProviders,
+      }
+    })
+  }
+
   const addModel = (providerId: string): void => {
     updateProvider(providerId, (provider) => {
       let index = Object.keys(provider.models).length + 1
@@ -301,6 +340,26 @@ export const ModelProviderSettings = ({
             limit: { context: 8192, output: 4096 },
             modalities: { input: ["text"], output: ["text"] },
           },
+        },
+      }
+    })
+  }
+
+  const duplicateModel = (providerId: string, modelKey: string): void => {
+    updateProvider(providerId, (provider) => {
+      const source = provider.models[modelKey]
+      if (!source) return provider
+      let index = Object.keys(provider.models).length + 1
+      let id = `model-${index}`
+      while (provider.models[id]) {
+        index += 1
+        id = `model-${index}`
+      }
+      return {
+        ...provider,
+        models: {
+          ...provider.models,
+          [id]: { ...source, name: `${source.name || source.id}-copy` },
         },
       }
     })
@@ -651,6 +710,13 @@ export const ModelProviderSettings = ({
                           <SlidersHorizontal className="h-3.5 w-3.5" />
                         </LxIconButton>
                         <LxIconButton
+                          aria-label={`复制模型 ${model.id}`}
+                          title={{ content: "复制模型", placement: "top" }}
+                          onClick={() => duplicateModel(selectedProviderId, modelKey)}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </LxIconButton>
+                        <LxIconButton
                           preset="delete"
                           aria-label={`删除模型 ${model.id}`}
                           title={{ content: "删除模型", placement: "top" }}
@@ -800,6 +866,9 @@ export const ModelProviderSettings = ({
         y={menuState?.y ?? 0}
         onToggleEnabled={(enabled) => {
           if (menuState) toggleProviderEnabled(menuState.providerKey, enabled)
+        }}
+        onDuplicate={() => {
+          if (menuState) duplicateProvider(menuState.providerKey)
         }}
         onDelete={() => {
           if (menuState) {
