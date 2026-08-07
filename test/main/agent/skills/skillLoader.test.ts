@@ -115,6 +115,26 @@ describe("skillLoader", () => {
     expect(skill?.filePath).not.toBe(projectPath)
   })
 
+  it("user / project 来源重合（cwd 下 .lx 即 appDataRoot）：同一文件重复扫描不报冲突", async () => {
+    appDataRoot = join(rootDir, ".lx")
+    const { skillLoader } = await importLoader()
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const userDir = join(appDataRoot, "skills", "grill-me")
+    mkdirSync(userDir, { recursive: true })
+    writeFileSync(
+      join(userDir, "SKILL.md"),
+      "---\nname: grill-me\ndescription: 测试\n---\n\nbody\n",
+    )
+
+    // cwd 指向 appDataRoot 的父目录：<cwd>/.lx/skills 与 user skills 是同一目录。
+    const skills = skillLoader.load(rootDir)
+    expect(skills.map((skill) => skill.name)).toEqual(["grill-me"])
+    expect(warnSpy.mock.calls.map((call) => call[0])).not.toContain(
+      expect.stringContaining("名称冲突"),
+    )
+    warnSpy.mockRestore()
+  })
+
   it("formatSkillsForPrompt：排除 disable-model-invocation、拼 XML 块、描述截断 1024", async () => {
     const { formatSkillsForPrompt } = await importLoader()
     const longDescription = "x".repeat(2000)

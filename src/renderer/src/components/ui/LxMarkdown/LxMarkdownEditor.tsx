@@ -30,6 +30,7 @@ import {
   isInsideMarkdownTemplateBlock,
   MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
   MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
+  toggleMarkdownTemplateCommentLines,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/components/ui/LxMarkdown/commands/markdownReferenceCommands"
 import { FileMentionCommandMenu } from "@/components/ui/LxMarkdown/components/FileMentionCommandMenu"
@@ -805,6 +806,27 @@ export const LxMarkdownEditor = ({
           { key: "Tab", run: indentMore },
           { key: "Shift-Tab", run: indentLess },
           { key: "Mod-d", run: deleteLine },
+          {
+            key: "Mod-/",
+            run: (view) => {
+              const selection = view.state.selection.main
+              const prefixFrom = view.state.doc.sliceString(0, selection.from)
+              const prefixTo = view.state.doc.sliceString(0, selection.to)
+              if (
+                !isInsideMarkdownTemplateBlock(prefixFrom) ||
+                !isInsideMarkdownTemplateBlock(prefixTo)
+              ) {
+                return false
+              }
+              const lineFrom = view.state.doc.lineAt(selection.from).from
+              const lineTo = view.state.doc.lineAt(selection.to).to
+              const rangeText = view.state.doc.sliceString(lineFrom, lineTo)
+              const nextText = toggleMarkdownTemplateCommentLines(rangeText)
+              if (nextText === rangeText) return false
+              view.dispatch({ changes: { from: lineFrom, to: lineTo, insert: nextText } })
+              return true
+            },
+          },
           { key: "Mod-b", run: () => (wrapSelection("**", "**", "bold"), true) },
           { key: "Mod-i", run: () => (wrapSelection("_", "_", "italic"), true) },
           { key: "Mod-1", run: () => (addHeading(1), true) },

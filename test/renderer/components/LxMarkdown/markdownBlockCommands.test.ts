@@ -9,6 +9,7 @@ import {
   getMarkdownTemplateStatuses,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
+  toggleMarkdownTemplateCommentLines,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 
 describe("Markdown 块命令", () => {
@@ -121,5 +122,31 @@ describe("Markdown 块命令", () => {
   it("未闭合模板块正文延伸到文档末尾", () => {
     const doc = "&&& addTemplate\n- 位置: lxmded"
     expect(getMarkdownTemplateBlockContent(doc, doc.length)).toBe("- 位置: lxmded")
+  })
+
+  it("为每行添加模板块注释，空行保持原样", () => {
+    const doc = "- 位置: a.ts\n- 描述: 描述\n\n- 要求:"
+    expect(toggleMarkdownTemplateCommentLines(doc)).toBe(
+      "// - 位置: a.ts\n// - 描述: 描述\n\n// - 要求:",
+    )
+  })
+
+  it("解除已注释行的注释并保留缩进", () => {
+    const doc = "// - 位置: a.ts\n  // 备注\n//   - 子项"
+    expect(toggleMarkdownTemplateCommentLines(doc)).toBe("- 位置: a.ts\n  备注\n  - 子项")
+  })
+
+  it("再次切换可在注释与解除注释间往返", () => {
+    const doc = "// - 位置: a.ts\n- 描述: 描述"
+    const commented = toggleMarkdownTemplateCommentLines(doc)
+    expect(commented).toBe("// // - 位置: a.ts\n// - 描述: 描述")
+    expect(toggleMarkdownTemplateCommentLines(commented)).toBe(doc)
+  })
+
+  it("注释保留原有缩进，解除后还原", () => {
+    const doc = "  - 你是谁"
+    const commented = toggleMarkdownTemplateCommentLines(doc)
+    expect(commented).toBe("  // - 你是谁")
+    expect(toggleMarkdownTemplateCommentLines(commented)).toBe(doc)
   })
 })

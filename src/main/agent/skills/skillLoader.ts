@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { basename, dirname, join, relative, resolve, sep } from "node:path"
 import matter from "gray-matter"
 import ignore from "ignore"
@@ -185,6 +185,16 @@ const loadSkillsFromDirInternal = (
   return skills
 }
 
+// 判断是否为同一物理文件（user/project 来源重合或符号链接导致的重复扫描）。
+const isSameFile = (a: string, b: string): boolean => {
+  if (a === b) return true
+  try {
+    return realpathSync(a) === realpathSync(b)
+  } catch {
+    return false
+  }
+}
+
 // 合并双来源：user（~/.lx/skills）优先，project（<cwd>/.lx/skills）同名冲突被覆盖（记诊断）。
 const loadSkills = (cwd: string): LoadedSkill[] => {
   const diagnostics: string[] = []
@@ -194,6 +204,8 @@ const loadSkills = (cwd: string): LoadedSkill[] => {
     for (const skill of loadSkillsFromDirInternal(dir, true, diagnostics)) {
       const existing = skillMap.get(skill.name)
       if (existing) {
+        // 同一物理文件重复扫描（如 cwd 为 home 时双来源重合）直接跳过，不记冲突。
+        if (isSameFile(existing.filePath, skill.filePath)) continue
         diagnostics.push(
           `[skill] 名称冲突 "${skill.name}"：${skill.filePath} 被 ${existing.filePath} 覆盖`,
         )

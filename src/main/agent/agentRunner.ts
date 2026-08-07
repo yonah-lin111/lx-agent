@@ -26,6 +26,7 @@ import {
 } from "./skills/skillLoader"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
+import { generateSessionTitle } from "./titleGenerator"
 import { createBashTool } from "./tools/bash"
 import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
@@ -350,16 +351,36 @@ class AgentRunner {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
     // 切换到新会话：从空上下文开始（旧会话已在 DB 落盘，由恢复流程重建）。
-    if (this.bindingChanged) {
+    const isNewSession = this.bindingChanged
+    if (isNewSession) {
       agent.state.messages = []
     }
     // 显式 /skill: 触发在 main 侧展开正文（未命中原样透传）。
     const expanded = this._expandSkillCommand(text)
     this.beginSessionTurn(text)
+    // 新建会话：发送后立即建会话行并触发 AI 标题生成（输入只用用户消息，不等一轮输出完成）。
+    if (isNewSession && this.sessionInput) {
+      agentSessionService.transaction(() => {
+        this.createSessionIfNeeded(this.sessionInput!, new Date().toISOString())
+      })
+      if (this.currentSessionId) {
+        this.generateTitle(this.currentSessionId, text)
+      }
+    }
     try {
       await agent.prompt(expanded)
     } catch (error) {
       this.discardPendingTurn()
+      // 首轮 prompt 失败且会话无任何消息落库：清理刚创建的空会话。
+      if (
+        isNewSession &&
+        this.currentSessionId &&
+        !this.hasSessionMessages(this.currentSessionId)
+      ) {
+        agentSessionService.deleteSession(this.currentSessionId)
+        this.currentSessionId = null
+        this.sessionBinding = null
+      }
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
     if (!this.currentSessionId) {
@@ -592,6 +613,41 @@ class AgentRunner {
     }
   }
 
+  // 会话不存在时创建会话行 + 能力快照；已存在则直接返回（须在事务内调用）。
+  private createSessionIfNeeded(input: PendingSessionInput, now: string): string {
+    let sessionId = this.currentSessionId
+    if (!sessionId) {
+      sessionId = createExternalId()
+      agentSessionService.insertSession({
+        externalId: sessionId,
+        projectItemId: input.binding.projectItemId ?? null,
+        projectId: input.binding.projectId ?? null,
+        page: input.binding.page ?? null,
+        title: input.title,
+        cwd: input.cwd,
+        createdAt: now,
+        updatedAt: now,
+      })
+      let seq = agentSessionService.nextSeq(sessionId)
+      agentSessionService.insertEntry({
+        externalId: createExternalId(),
+        sessionId,
+        seq: seq++,
+        type: "active_capabilities",
+        payload: JSON.stringify(input.capabilities),
+        createdAt: now,
+      })
+      this.currentSessionId = sessionId
+      this.sessionBinding = input.binding
+    }
+    return sessionId
+  }
+
+  // 会话是否已落库消息（首轮 prompt 失败清理空会话判定）。
+  private hasSessionMessages(sessionId: string): boolean {
+    return agentSessionService.listMessageEntries(sessionId).length > 0
+  }
+
   // 一个 turn 落库：会话创建（含能力/模型快照）+ 消息 entries + 调用记录，一个事务。
   private flushTurn(): void {
     const input = this.sessionInput
@@ -622,31 +678,7 @@ class AgentRunner {
     })
 
     agentSessionService.transaction(() => {
-      let sessionId = this.currentSessionId
-      if (!sessionId) {
-        sessionId = createExternalId()
-        agentSessionService.insertSession({
-          externalId: sessionId,
-          projectItemId: input.binding.projectItemId ?? null,
-          projectId: input.binding.projectId ?? null,
-          page: input.binding.page ?? null,
-          title: input.title,
-          cwd: input.cwd,
-          createdAt: now,
-          updatedAt: now,
-        })
-        let seq = agentSessionService.nextSeq(sessionId)
-        agentSessionService.insertEntry({
-          externalId: createExternalId(),
-          sessionId,
-          seq: seq++,
-          type: "active_capabilities",
-          payload: JSON.stringify(input.capabilities),
-          createdAt: now,
-        })
-        this.currentSessionId = sessionId
-        this.sessionBinding = input.binding
-      }
+      const sessionId = this.createSessionIfNeeded(input, now)
 
       let seq = agentSessionService.nextSeq(sessionId)
       for (const entry of entries) {
@@ -683,6 +715,23 @@ class AgentRunner {
 
       agentSessionService.touchSession(sessionId, now)
     })
+  }
+
+  // 标题生成：先推 pending 占位，成功/失败均回填 done 事件；写库前校验仍为当前会话。
+  private generateTitle(sessionId: string, userText: string): void {
+    this.eventSink?.({ type: "session_title", sessionId, title: null })
+    void generateSessionTitle([{ role: "user", content: userText, timestamp: Date.now() }]).then(
+      (generated) => {
+        const session = agentSessionService.getSession(sessionId)
+        if (!session) return
+        let title = session.title
+        if (generated && this.currentSessionId === sessionId) {
+          agentSessionService.renameSession(sessionId, generated, new Date().toISOString())
+          title = generated
+        }
+        this.eventSink?.({ type: "session_title", sessionId, title })
+      },
+    )
   }
 }
 

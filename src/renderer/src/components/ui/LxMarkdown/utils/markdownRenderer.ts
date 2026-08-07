@@ -18,7 +18,10 @@ import xml from "highlight.js/lib/languages/xml"
 import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
-import type { MarkdownTemplateStatus } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
+import {
+  MARKDOWN_TEMPLATE_COMMENT_RE,
+  type MarkdownTemplateStatus,
+} from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
   getMarkdownReferenceIconSvg,
   getMarkdownReferenceLabel,
@@ -148,6 +151,15 @@ export const stripEmptyTemplateItems = (content: string): string => {
     .replace(/^\n+/, "")
     .trimEnd()
 }
+
+/**
+ * 移除模板块内容中的注释行（// 开头），供复制场景使用。
+ */
+export const stripMarkdownTemplateComments = (content: string): string =>
+  content
+    .split("\n")
+    .filter((line) => !MARKDOWN_TEMPLATE_COMMENT_RE.test(line))
+    .join("\n")
 
 const markdownTemplateBlock = (
   state: MarkdownBlockState,
@@ -376,6 +388,46 @@ markdownRenderer.renderer.rules.fence = (
 }
 
 /**
+ * 渲染模板块正文：// 注释行按行拆出渲染为灰色斜体，其余内容分段交给 MarkdownIt。
+ * 拆出注释行而非注册块规则，可避免带缩进的注释行被列表 lazy 续行规则吞掉。
+ */
+const renderTemplateContent = (content: string): string => {
+  const renderSection = (lines: string[]): string =>
+    markdownRenderer.render(lines.join("\n"), { disableTemplateBlocks: true })
+
+  const sections: string[] = []
+  const buffer: string[] = []
+  const commentLines: string[] = []
+
+  const flushComments = (): void => {
+    if (commentLines.length === 0) return
+    sections.push(
+      `<div class="markdown-template-comment">${markdownRenderer.utils.escapeHtml(commentLines.join("\n"))}</div>`,
+    )
+    commentLines.length = 0
+  }
+
+  for (const line of content.split("\n")) {
+    if (MARKDOWN_TEMPLATE_COMMENT_RE.test(line)) {
+      if (buffer.length > 0) {
+        sections.push(renderSection(buffer))
+        buffer.length = 0
+      }
+      commentLines.push(line)
+    } else {
+      flushComments()
+      buffer.push(line)
+    }
+  }
+  flushComments()
+  if (buffer.length > 0) {
+    sections.push(renderSection(buffer))
+  }
+
+  return sections.join("")
+}
+
+/**
  * 渲染模板块；内部 Markdown 禁止再次解析模板块。
  */
 markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
@@ -390,8 +442,10 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const title = markdownRenderer.utils.escapeHtml(meta.title ?? "").trim()
   const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
   const status = meta.status ?? "todo"
-  const encodedContent = encodeURIComponent(stripEmptyTemplateItems(meta.content))
-  const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
+  const encodedContent = encodeURIComponent(
+    stripEmptyTemplateItems(stripMarkdownTemplateComments(meta.content)),
+  )
+  const contentHtml = renderTemplateContent(meta.content)
   const sourceLine = token.attrGet("data-line")
   const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
   const endLine = token.attrGet("data-end-line")

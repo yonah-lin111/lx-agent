@@ -98,6 +98,19 @@ export const useAgentChat = (context?: AgentSendContext) => {
           updateToolStatus(event.toolCallId, event.isError ? "error" : "done")
           break
 
+        case "session_title":
+          if (event.title === null) {
+            // 标题生成中：新建会话尚未落库（currentSessionId 为空），先同步标记当前会话，
+            // 让右侧栏标题位立即显示 pulse 占位；幂等（同值早退），不干扰后续 send 返回设置。
+            if (!sessionListStore.getCurrentSessionId()) {
+              sessionListStore.setCurrentSessionId(event.sessionId)
+            }
+            sessionListStore.setSessionTitlePending(event.sessionId)
+          } else {
+            sessionListStore.updateSessionTitle(event.sessionId, event.title)
+          }
+          break
+
         default:
           break
       }

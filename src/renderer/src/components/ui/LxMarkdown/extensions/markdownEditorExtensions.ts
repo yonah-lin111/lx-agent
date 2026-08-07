@@ -14,6 +14,7 @@ import { createRoot, type Root } from "react-dom/client"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateStatus,
+  MARKDOWN_TEMPLATE_COMMENT_RE,
   type MarkdownTemplateStatus,
 } from "@/components/ui/LxMarkdown/commands/markdownBlockCommands"
 import {
@@ -32,7 +33,10 @@ import {
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/components/ui/LxMarkdown/extensions/markdownFileMentions"
 import type { MarkdownTableAlignment, MarkdownTableSize } from "@/components/ui/LxMarkdown/types"
-import { stripEmptyTemplateItems } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import {
+  stripEmptyTemplateItems,
+  stripMarkdownTemplateComments,
+} from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 export const editorTheme = EditorView.theme(
   {
@@ -286,6 +290,16 @@ export const editorTheme = EditorView.theme(
       paddingLeft: "6px",
       paddingBottom: "4px",
     },
+    ".cm-md-template-comment-line": {
+      borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+      borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+      backgroundColor: "rgba(129, 140, 248, 0.03)",
+      paddingLeft: "6px",
+    },
+    ".cm-md-template-comment-line, .cm-md-template-comment-line *": {
+      color: "#6b7280 !important",
+      fontStyle: "italic !important",
+    },
     ".cm-md-template-line-in-progress": {
       borderColor: "rgba(251, 191, 36, 0.35) !important",
     },
@@ -350,14 +364,14 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
-    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace":
+    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace, .cm-md-template-comment-line .cm-monospace":
       {
         color: "inherit !important",
         backgroundColor: "transparent !important",
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -855,7 +869,9 @@ const buildMarkdownMarkerDecorations = (
         from: offset + line.length,
         to: offset + line.length,
         widget: new CodeBlockActionWidget(
-          stripEmptyTemplateItems(currentTemplateTextLines.join("\n")),
+          stripEmptyTemplateItems(
+            stripMarkdownTemplateComments(currentTemplateTextLines.join("\n")),
+          ),
           currentTemplateFolded,
           () => onToggleTemplateFold(currentTemplateIndex),
           showFolding,
@@ -906,12 +922,13 @@ const buildMarkdownMarkerDecorations = (
     }
 
     if (isInsideTemplateBlock) {
+      const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(line)
       allDecos.push({
         type: "line",
         from: offset,
         className: currentTemplateFolded
           ? "cm-md-template-hidden-line"
-          : `cm-md-template-middle-line${templateStatusLineClass(currentTemplateStatus)}`,
+          : `${isCommentLine ? "cm-md-template-comment-line" : "cm-md-template-middle-line"}${templateStatusLineClass(currentTemplateStatus)}`,
       })
     }
 

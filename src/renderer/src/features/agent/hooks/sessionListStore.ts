@@ -15,6 +15,8 @@ export const toSessionFilter = (context?: AgentSendContext): AgentSessionFilter 
 // 历史会话列表（DB 支撑）：列表从 main 拉取，当前会话 id 供面板高亮。
 let sessions: AgentSessionSummary[] = []
 let currentSessionId: string | null = null
+// 标题生成中的会话 id 集合（标题位展示 pulse 占位）。
+let pendingSessionIds = new Set<string>()
 const listeners = new Set<() => void>()
 
 const notify = (): void => {
@@ -34,6 +36,9 @@ export const sessionListStore = {
 
   getCurrentSessionId: (): string | null => currentSessionId,
 
+  // 当前标题生成中的会话 id（占位 pulse 判定）。
+  getPendingSessionIds: (): Set<string> => pendingSessionIds,
+
   // 标记当前正在查看/编辑的会话（null 表示空白新对话）。
   setCurrentSessionId: (id: string | null): void => {
     if (currentSessionId === id) return
@@ -51,15 +56,31 @@ export const sessionListStore = {
     notify()
   },
 
-  // 重命名后本地同步标题。
+  // 标题生成开始：标记 pending，标题位展示 pulse 占位。
+  setSessionTitlePending(id: string): void {
+    pendingSessionIds = new Set(pendingSessionIds).add(id)
+    notify()
+  },
+
+  // 标题生成结束：清除 pending 并本地同步标题。
   updateSessionTitle(id: string, title: string): void {
     sessions = sessions.map((session) => (session.id === id ? { ...session, title } : session))
+    if (pendingSessionIds.has(id)) {
+      const next = new Set(pendingSessionIds)
+      next.delete(id)
+      pendingSessionIds = next
+    }
     notify()
   },
 
   // 删除会话后本地移除。
   removeSession(id: string): void {
     sessions = sessions.filter((session) => session.id !== id)
+    if (pendingSessionIds.has(id)) {
+      const next = new Set(pendingSessionIds)
+      next.delete(id)
+      pendingSessionIds = next
+    }
     notify()
   },
 }

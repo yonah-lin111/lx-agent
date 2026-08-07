@@ -109,6 +109,7 @@ export type AgentEvent =
       isError: boolean
     }
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
+  | { type: "session_title"; sessionId: string; title: string | null }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {

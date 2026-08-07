@@ -1,8 +1,9 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
 import { Search } from "lucide-react"
 import type React from "react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { LxInput } from "@/components/ui/LxInput"
+import { sessionListStore } from "../hooks/sessionListStore"
 
 interface ChatHistoryPanelProps {
   sessions: AgentSessionSummary[]
@@ -19,6 +20,10 @@ export const ChatHistoryPanel = ({
   onRestore,
 }: ChatHistoryPanelProps): React.JSX.Element => {
   const [query, setQuery] = useState("")
+  const pendingSessionIds = useSyncExternalStore(
+    sessionListStore.subscribe,
+    sessionListStore.getPendingSessionIds,
+  )
 
   const filteredSessions = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase()
@@ -53,7 +58,11 @@ export const ChatHistoryPanel = ({
                 }`}
                 onClick={() => onRestore(session.id)}
               >
-                <span className="min-w-0 truncate">{session.title}</span>
+                {pendingSessionIds.has(session.id) ? (
+                  <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+                ) : (
+                  <span className="min-w-0 truncate">{session.title}</span>
+                )}
               </button>
             )
           })}

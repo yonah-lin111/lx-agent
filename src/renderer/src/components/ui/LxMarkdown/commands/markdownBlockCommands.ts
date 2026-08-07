@@ -144,6 +144,9 @@ const MARKDOWN_TEMPLATE_END_RE = /^\s*&&&(?:\s+(?:done|in_progress))?\s*$/
 // 模板块状态标记后缀（供 exec 捕获）。
 const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE = /\s+(done|in_progress)\s*$/
 
+// 模板块注释行：// 开头（允许前置缩进）。
+export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
+
 /**
  * 判断指定文本末尾是否处于未闭合的模板块内。
  */
@@ -159,6 +162,28 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
   }
 
   return isOpen
+}
+
+/**
+ * 切换文本中每一行的模板块注释状态：所有非空行均为注释时统一解除注释，
+ * 否则为所有非空行在原有缩进后添加 //。空行保持原样。
+ */
+export const toggleMarkdownTemplateCommentLines = (text: string): string => {
+  const lines = text.split("\n")
+  const contentLines = lines.filter((line) => line.trim() !== "")
+  const allCommented =
+    contentLines.length > 0 && contentLines.every((line) => MARKDOWN_TEMPLATE_COMMENT_RE.test(line))
+
+  return lines
+    .map((line) => {
+      if (line.trim() === "") return line
+      if (allCommented) {
+        return line.replace(/^(\s*)\/\/\s?/, "$1")
+      }
+      const indentMatch = line.match(/^(\s*)/)
+      return `${indentMatch?.[1] ?? ""}// ${line.trimStart()}`
+    })
+    .join("\n")
 }
 
 /**

@@ -699,6 +699,13 @@ select {
   transition: height 300ms ease-in-out;
 }
 
+.markdown-preview .markdown-template-comment {
+  margin: 0.8em 0;
+  color: #6b7280;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
 .markdown-preview table {
   width: 100%;
   max-width: 100%;

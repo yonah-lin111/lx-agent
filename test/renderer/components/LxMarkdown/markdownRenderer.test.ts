@@ -61,6 +61,31 @@ describe("markdownRenderer", () => {
     expect(html).toContain("<li>内容</li>")
   })
 
+  it("将模板块内的 // 行渲染为灰色斜体注释，且复制数据剔除注释行", () => {
+    const content = "# 标题\n\n// 这是注释\n\n- 内容\n\n  // 缩进注释"
+    const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
+
+    expect(html).toContain('class="markdown-template-comment"')
+    expect(html).toContain("这是注释")
+    expect(html).toContain("缩进注释")
+    expect(html).toContain(`data-template-content="${encodeURIComponent("# 标题\n\n- 内容")}"`)
+    expect(html).not.toContain("data-template-content=" + encodeURIComponent("这是注释"))
+  })
+
+  it("模板块外的 // 行不渲染为注释", () => {
+    const html = markdownRenderer.render("// 普通文本")
+
+    expect(html).not.toContain('class="markdown-template-comment"')
+    expect(html).toContain("// 普通文本")
+  })
+
+  it("缩进注释行紧跟列表项时仍渲染为注释并保留缩进", () => {
+    const html = markdownRenderer.render("&&& addTemplate\n- 要求:\n  - 支持\n  // 缩进注释\n&&&")
+
+    expect(html).toContain('class="markdown-template-comment"')
+    expect(html).toContain('<div class="markdown-template-comment">  // 缩进注释</div>')
+  })
+
   it("不在模板块内部解析嵌套模板块", () => {
     const html = markdownRenderer.render(
       "&&& addTemplate\n外层\n\n&&& bugTemplate\n内层\n&&&\n\n&&&",

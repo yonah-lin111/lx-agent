@@ -51,6 +51,10 @@ export const RightSideBar = (): React.JSX.Element => {
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionId,
   )
+  const pendingSessionIds = useSyncExternalStore(
+    sessionListStore.subscribe,
+    sessionListStore.getPendingSessionIds,
+  )
   const currentSession = currentSessionId
     ? chatSessions.find((session) => session.id === currentSessionId)
     : undefined
@@ -200,9 +204,12 @@ export const RightSideBar = (): React.JSX.Element => {
   )
 
   // 会话标题：非编辑态为文本按钮（点击进入编辑），编辑态为行内下划线输入框。
+  // 标题生成中（pending）展示 pulse 占位，暂不可编辑，避免覆盖自动生成的标题。
   const titleControls = currentSessionId && (
     <div className="flex min-w-0 shrink-0 items-center">
-      {isEditingTitle ? (
+      {currentSessionId && pendingSessionIds.has(currentSessionId) ? (
+        <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+      ) : isEditingTitle ? (
         <input
           autoFocus
           aria-label="会话标题"
