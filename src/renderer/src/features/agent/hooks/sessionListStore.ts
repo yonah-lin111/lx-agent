@@ -17,6 +17,8 @@ let sessions: AgentSessionSummary[] = []
 let currentSessionId: string | null = null
 // 标题生成中的会话 id 集合（标题位展示 pulse 占位）。
 let pendingSessionIds = new Set<string>()
+// 当前会话标题：会话尚未进列表（send 完成前）时先回填，标题生成后立即展示，不等列表刷新。
+let currentSessionTitle: string | null = null
 const listeners = new Set<() => void>()
 
 const notify = (): void => {
@@ -39,10 +41,14 @@ export const sessionListStore = {
   // 当前标题生成中的会话 id（占位 pulse 判定）。
   getPendingSessionIds: (): Set<string> => pendingSessionIds,
 
+  // 当前会话标题（未入列表会话的生成结果回填；入列表后以列表为准）。
+  getCurrentSessionTitle: (): string | null => currentSessionTitle,
+
   // 标记当前正在查看/编辑的会话（null 表示空白新对话）。
   setCurrentSessionId: (id: string | null): void => {
     if (currentSessionId === id) return
     currentSessionId = id
+    currentSessionTitle = null
     notify()
   },
 
@@ -65,6 +71,7 @@ export const sessionListStore = {
   // 标题生成结束：清除 pending 并本地同步标题。
   updateSessionTitle(id: string, title: string): void {
     sessions = sessions.map((session) => (session.id === id ? { ...session, title } : session))
+    if (id === currentSessionId) currentSessionTitle = title
     if (pendingSessionIds.has(id)) {
       const next = new Set(pendingSessionIds)
       next.delete(id)

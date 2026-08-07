@@ -58,7 +58,9 @@ export const RightSideBar = (): React.JSX.Element => {
   const currentSession = currentSessionId
     ? chatSessions.find((session) => session.id === currentSessionId)
     : undefined
-  const currentTitle = currentSession?.title ?? "new chat"
+  // 新会话（未入列表）时回退到 store 即时回填的生成标题，避免等到列表刷新后才显示。
+  const currentTitle =
+    currentSession?.title ?? sessionListStore.getCurrentSessionTitle() ?? "new chat"
   const [titleDraft, setTitleDraft] = useState("")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
 
