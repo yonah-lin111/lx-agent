@@ -152,26 +152,30 @@ export const AgentMessageList = ({
             onScroll={handleScroll}
             className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
           >
-            {messageEntries.map(({ message, continuationMessages }, index) => (
-              <AgentMessageItem
-                key={message.id}
-                message={message}
-                continuationMessages={continuationMessages}
-                isLoading={index === messageEntries.length - 1 && isLastEntryLoading}
-                isEditing={editingMessageId === message.id}
-                onStartEdit={() => setEditingMessageId(message.id)}
-                onCancelEdit={() => {
-                  if (editingMessageId === message.id) {
-                    setEditingMessageId(null)
-                  }
-                }}
-                onEdit={(id, newContent) => {
-                  onEditMessage?.(id, newContent)
-                  setEditingMessageId(null)
-                }}
-                onDelete={onDeleteMessage}
-              />
-            ))}
+            {messageEntries.map(({ message, continuationMessages }, index) => {
+              const isLastAi = index === messageEntries.length - 1 && message.role === "assistant"
+              return (
+                <div key={message.id} className={isLastAi ? "mb-16" : ""}>
+                  <AgentMessageItem
+                    message={message}
+                    continuationMessages={continuationMessages}
+                    isLoading={index === messageEntries.length - 1 && isLastEntryLoading}
+                    isEditing={editingMessageId === message.id}
+                    onStartEdit={() => setEditingMessageId(message.id)}
+                    onCancelEdit={() => {
+                      if (editingMessageId === message.id) {
+                        setEditingMessageId(null)
+                      }
+                    }}
+                    onEdit={(id, newContent) => {
+                      onEditMessage?.(id, newContent)
+                      setEditingMessageId(null)
+                    }}
+                    onDelete={onDeleteMessage}
+                  />
+                </div>
+              )
+            })}
           </div>
 
           {scrollButtonRendered && (
