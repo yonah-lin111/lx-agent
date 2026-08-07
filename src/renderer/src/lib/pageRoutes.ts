@@ -3,4 +3,5 @@ export const PAGE_ROUTES = {
   home: "/",
   project: "/project",
   settings: "/settings",
+  ui: "/ui",
 } as const
