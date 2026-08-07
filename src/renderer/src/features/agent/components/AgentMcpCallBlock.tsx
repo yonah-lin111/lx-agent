@@ -1,4 +1,4 @@
-import { CornerDownRight } from "lucide-react"
+import { CornerDownRight, Server } from "lucide-react"
 import type React from "react"
 import type { ChatBlock } from "@/features/agent/types"
 
@@ -63,6 +63,7 @@ export const AgentMcpCallBlock = ({
   return (
     <div className="my-0.5 min-w-0">
       <div className="flex items-center gap-1">
+        <Server className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
         <span className="font-mono text-[12px] font-bold text-cyan-300">MCP · {serverName}</span>
       </div>
       <div className="mt-1 flex min-w-0 flex-col gap-1 pl-1">

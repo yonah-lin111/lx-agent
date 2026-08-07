@@ -27,6 +27,16 @@ const makeCopyEvent = (): {
   return { event, dataTransfer }
 }
 
+// jsdom 未实现 ResizeObserver，用空实现代替（折叠动画相关组件依赖它）。
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe = (): void => undefined
+    unobserve = (): void => undefined
+    disconnect = (): void => undefined
+  },
+)
+
 describe("AgentMessageItem", () => {
   beforeEach(() => {
     cleanup()
@@ -481,5 +491,148 @@ describe("AgentMessageItem", () => {
 
     expect(screen.getByText("Web Search")).not.toBeNull()
     expect(screen.getByText(/Web search failed/)).not.toBeNull()
+  })
+
+  it("思考块与工具调用合并折叠，头部展示英文计数", () => {
+    const message: ChatMessage = {
+      id: "exec-1",
+      role: "assistant",
+      blocks: [
+        { kind: "thinking", text: "先梳理消息块结构" },
+        {
+          kind: "toolCall",
+          toolCallId: "ls-1",
+          toolName: "ls",
+          args: { path: "/src" },
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "ls-2",
+          toolName: "ls",
+          args: { path: "/lib" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    const groupButton = screen.getByRole("button", { name: "展开执行内容" })
+    expect(groupButton).not.toBeNull()
+    expect(screen.getByText("2 Tool Calls · 1 Thought")).not.toBeNull()
+
+    // 默认折叠，点击后展开并切换按钮文案。
+    fireEvent.click(groupButton)
+    expect(screen.getByRole("button", { name: "收起执行内容" })).not.toBeNull()
+  })
+
+  it("单个工具调用与思考块合并时展示英文单数计数", () => {
+    const message: ChatMessage = {
+      id: "exec-2",
+      role: "assistant",
+      blocks: [
+        { kind: "thinking", text: "分析中" },
+        {
+          kind: "toolCall",
+          toolCallId: "time-1",
+          toolName: "time",
+          args: {},
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
+    expect(screen.getByText("1 Tool Call · 1 Thought")).not.toBeNull()
+  })
+
+  it("仅单个工具调用且无思考时不折叠", () => {
+    const message: ChatMessage = {
+      id: "exec-3",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "time-1",
+          toolName: "time",
+          args: {},
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.queryByRole("button", { name: "展开执行内容" })).toBeNull()
+  })
+
+  it("MCP 调用并入执行折叠组，头部展示英文计数", () => {
+    const message: ChatMessage = {
+      id: "exec-4",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "mcp-1",
+          toolName: "github_get_issue",
+          args: { owner: "lx-agent" },
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "mcp-2",
+          toolName: "github_list_issues",
+          args: { owner: "lx-agent" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    const groupButton = screen.getByRole("button", { name: "展开执行内容" })
+    expect(groupButton).not.toBeNull()
+    expect(screen.getByText("2 MCP Calls")).not.toBeNull()
+
+    // 默认折叠，点击后展开并切换按钮文案。
+    fireEvent.click(groupButton)
+    expect(screen.getByRole("button", { name: "收起执行内容" })).not.toBeNull()
+  })
+
+  it("工具 + 思考 + MCP 合并折叠，头部展示三类英文计数", () => {
+    const message: ChatMessage = {
+      id: "exec-5",
+      role: "assistant",
+      blocks: [
+        { kind: "thinking", text: "先规划执行步骤" },
+        {
+          kind: "toolCall",
+          toolCallId: "time-1",
+          toolName: "time",
+          args: {},
+          status: "done",
+        },
+        {
+          kind: "toolCall",
+          toolCallId: "mcp-1",
+          toolName: "github_get_issue",
+          args: { owner: "lx-agent" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
+    expect(screen.getByText("1 Tool Call · 1 Thought · 1 MCP Call")).not.toBeNull()
   })
 })

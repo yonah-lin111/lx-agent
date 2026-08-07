@@ -1,4 +1,4 @@
-import { CornerDownRight } from "lucide-react"
+import { CornerDownRight, Sparkles } from "lucide-react"
 import type React from "react"
 import type { ChatBlock } from "@/features/agent/types"
 
@@ -28,6 +28,7 @@ export const AgentSkillCallBlock = ({
   return (
     <div className="my-0.5 min-w-0">
       <div className="flex items-center gap-1">
+        <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-300" />
         <span className="font-mono text-[12px] font-bold text-violet-300">Load_skill</span>
       </div>
       <div className="mt-1 flex min-w-0 flex-col gap-1 pl-1">

@@ -1,4 +1,4 @@
-import { ChevronDown, CornerDownRight } from "lucide-react"
+import { Brain, ChevronDown, CornerDownRight } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
@@ -49,7 +49,8 @@ export const AgentThinkingBlock = ({
           className="flex h-5 w-fit items-center gap-1 rounded-[6px] bg-[#212121] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
         >
-          <span>{isGenerating ? "Thinking" : "Thought Process"}</span>
+          <Brain className="h-3.5 w-3.5 shrink-0 text-rose-300" />
+          <span className="text-rose-300">{isGenerating ? "Thinking" : "Thought Process"}</span>
           {isGenerating && (
             <span className="relative ml-0.5 flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/40 opacity-75" />

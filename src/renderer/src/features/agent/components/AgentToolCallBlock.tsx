@@ -1,4 +1,16 @@
-import { CornerDownRight } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import {
+  Clock,
+  CornerDownRight,
+  FileText,
+  FolderOpen,
+  FolderSearch,
+  Pencil,
+  PenLine,
+  SearchCode,
+  Terminal,
+  Wrench,
+} from "lucide-react"
 import type React from "react"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock } from "@/features/agent/types"
@@ -17,8 +29,6 @@ interface AgentToolCallBlockProps {
   toolCalls?: ToolCallBlock[]
   // 工具结果数据。
   toolResult?: ToolResultBlock
-  // 是否位于折叠工具组中。
-  isGrouped?: boolean
 }
 
 /**
@@ -110,6 +120,24 @@ const formatToolGroupSummary = (toolName: string, toolCalls: ToolCallBlock[]): s
   return entries.join(separator)
 }
 
+// 各内置工具类型对应的标题图标。
+const TOOL_ICONS: Record<string, LucideIcon> = {
+  read: FileText,
+  ls: FolderOpen,
+  grep: SearchCode,
+  find: FolderSearch,
+  bash: Terminal,
+  edit: Pencil,
+  write: PenLine,
+  time: Clock,
+}
+
+// 未映射工具使用的兜底图标。
+const DEFAULT_TOOL_ICON: LucideIcon = Wrench
+
+// 获取工具对应的标题图标。
+const getToolIcon = (toolName: string): LucideIcon => TOOL_ICONS[toolName] ?? DEFAULT_TOOL_ICON
+
 /**
  * 渲染 Agent 工具调用与结果的时间线步骤。
  */
@@ -117,7 +145,6 @@ export const AgentToolCallBlock = ({
   toolCall,
   toolCalls,
   toolResult,
-  isGrouped = false,
 }: AgentToolCallBlockProps): React.JSX.Element | null => {
   if (!toolCall && !toolCalls?.length && !toolResult) return null
 
@@ -134,18 +161,16 @@ export const AgentToolCallBlock = ({
     (toolResult ? formatToolResult(toolResult.text) : formatToolArgs(firstToolCall?.args ?? {}))
   const isSimpleTool = toolName === "read" || simpleSummary !== null || commandSummary !== null
   const groupSummary = formatToolGroupSummary(toolName, resolvedToolCalls)
-  const summaryIndentClass = isGrouped ? "pl-4" : "pl-1"
+  const ToolIcon = getToolIcon(toolName)
 
   return (
     <div className="my-0.5 min-w-0">
       <div className="flex items-center gap-1">
-        {isGrouped && <CornerDownRight className="h-3 w-3 shrink-0 text-white/45" />}
+        <ToolIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
         <span className="font-mono text-[12px] font-bold text-amber-300">{displayToolName}</span>
       </div>
       {isSimpleTool ? (
-        <div
-          className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
-        >
+        <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           {toolName === "read" ? (
             <span className="min-w-0 break-all">
@@ -159,17 +184,13 @@ export const AgentToolCallBlock = ({
         </div>
       ) : toolResult ? (
         <>
-          <div
-            className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
-          >
+          <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
             <span className="min-w-0 break-all">{summary}</span>
           </div>
         </>
       ) : (
-        <div
-          className={`mt-1 flex min-w-0 items-start gap-1 ${summaryIndentClass} text-[12px] leading-relaxed text-white/45`}
-        >
+        <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           <span className="min-w-0 break-all">{summary}</span>
         </div>

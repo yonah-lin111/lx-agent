@@ -2,6 +2,14 @@ import type React from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { UI_SECTIONS } from "@/features/ui-preview"
+import { AgentMcpCallDemo } from "@/pages/ui/components/AgentMcpCallDemo"
+import { AgentMessageItemDemo } from "@/pages/ui/components/AgentMessageItemDemo"
+import { AgentMessageListDemo } from "@/pages/ui/components/AgentMessageListDemo"
+import { AgentMessageListSkeletonDemo } from "@/pages/ui/components/AgentMessageListSkeletonDemo"
+import { AgentSkillCallDemo } from "@/pages/ui/components/AgentSkillCallDemo"
+import { AgentThinkingDemo } from "@/pages/ui/components/AgentThinkingDemo"
+import { AgentToolCallDemo } from "@/pages/ui/components/AgentToolCallDemo"
+import { AgentWebSearchDemo } from "@/pages/ui/components/AgentWebSearchDemo"
 import { LxCheckboxDemo } from "@/pages/ui/components/LxCheckboxDemo"
 import { LxIconButtonDemo } from "@/pages/ui/components/LxIconButtonDemo"
 import { LxInputDemo } from "@/pages/ui/components/LxInputDemo"
@@ -42,6 +50,14 @@ export const UiPreviewPage = (): React.JSX.Element => {
         {activeSection === "tag" ? <LxTagDemo /> : null}
         {activeSection === "toast" ? <LxToastDemo /> : null}
         {activeSection === "tooltip" ? <LxTooltipDemo /> : null}
+        {activeSection === "thinking" ? <AgentThinkingDemo /> : null}
+        {activeSection === "tool-call" ? <AgentToolCallDemo /> : null}
+        {activeSection === "mcp-call" ? <AgentMcpCallDemo /> : null}
+        {activeSection === "skill-call" ? <AgentSkillCallDemo /> : null}
+        {activeSection === "web-search" ? <AgentWebSearchDemo /> : null}
+        {activeSection === "message-item" ? <AgentMessageItemDemo /> : null}
+        {activeSection === "message-list" ? <AgentMessageListDemo /> : null}
+        {activeSection === "skeleton" ? <AgentMessageListSkeletonDemo /> : null}
       </div>
     </section>
   )

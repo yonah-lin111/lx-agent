@@ -5,11 +5,11 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentExecutionGroup } from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
 import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
-import { AgentToolCallGroup } from "@/features/agent/components/AgentToolCallGroup"
 import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
@@ -17,41 +17,31 @@ import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
-type ExecutionBlock = ToolCallBlock
+// 执行组内容块（普通工具调用、思考块与 MCP 调用）。
+type ExecutionBlock = ToolCallBlock | Extract<ChatBlock, { kind: "thinking" }>
 type ExecutionItem = { block: ExecutionBlock; isStreaming: boolean }
+// 仅工具调用的执行条目（Skill / Web Search 组）。
+type ToolCallItem = { block: ToolCallBlock; isStreaming: boolean }
 type ExecutionGroup = {
   kind: "execution"
-  blocks: ExecutionItem[]
-}
-// MCP 调用组（同服务名连续合并）。
-type McpCallGroup = {
-  kind: "mcp"
-  serverName: string
   blocks: ExecutionItem[]
 }
 // Skill 调用组（连续调用合并）。
 type SkillCallGroup = {
   kind: "skill"
-  blocks: ExecutionItem[]
+  blocks: ToolCallItem[]
 }
 // Web Search 调用组（连续调用合并）。
 type WebSearchCallGroup = {
   kind: "webSearch"
-  blocks: ExecutionItem[]
-}
-type ThinkingGroup = {
-  kind: "thinking"
-  block: Extract<ChatBlock, { kind: "thinking" }>
-  isStreaming: boolean
+  blocks: ToolCallItem[]
 }
 // 展示分组联合类型。
 type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   | ExecutionGroup
-  | McpCallGroup
   | SkillCallGroup
   | WebSearchCallGroup
-  | ThinkingGroup
 
 // Skill 调用使用的工具名。
 const SKILL_TOOL_NAME = "read_skill"
@@ -173,6 +163,36 @@ export const AgentMessageItem = ({
       ),
     [mergeableToolCallGroups],
   )
+  // 按同服务名切分连续的 MCP 调用，供执行组内渲染 MCP 子块。
+  const mcpCallGroups = useMemo(() => {
+    const groups: ToolCallBlock[][] = []
+    for (const { block } of displayBlocks) {
+      // MCP 调用的结果只属于前一组，不应打断连续归类。
+      if (block.kind === "toolResult" && isMcpToolCall(block.toolName)) continue
+      if (block.kind !== "toolCall" || !isMcpToolCall(block.toolName)) {
+        groups.push([])
+        continue
+      }
+      const lastGroup = groups.at(-1)
+      if (
+        lastGroup?.[0] &&
+        getMcpServerName(lastGroup[0].toolName) === getMcpServerName(block.toolName)
+      ) {
+        lastGroup.push(block)
+      } else {
+        groups.push([block])
+      }
+    }
+
+    return groups.filter((group) => group.length > 0)
+  }, [displayBlocks])
+  const mcpCallGroupById = useMemo(
+    () =>
+      new Map(
+        mcpCallGroups.flatMap((group) => group.map((block) => [block.toolCallId, group] as const)),
+      ),
+    [mcpCallGroups],
+  )
   const executionGroups = useMemo(() => {
     const groups: DisplayGroup[] = []
     let currentExecution: ExecutionGroup | null = null
@@ -184,8 +204,11 @@ export const AgentMessageItem = ({
         continue
       }
       if (item.block.kind === "thinking") {
-        currentExecution = null
-        groups.push({ kind: "thinking", block: item.block, isStreaming: item.isStreaming })
+        if (!currentExecution) {
+          currentExecution = { kind: "execution", blocks: [] }
+          groups.push(currentExecution)
+        }
+        currentExecution.blocks.push({ block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (item.block.kind === "toolResult") continue
@@ -219,18 +242,11 @@ export const AgentMessageItem = ({
         continue
       }
       if (isMcpToolCall(toolName)) {
-        currentExecution = null
-        const serverName = getMcpServerName(toolName)
-        const previousGroup = groups.at(-1)
-        if (previousGroup?.kind === "mcp" && previousGroup.serverName === serverName) {
-          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
-        } else {
-          groups.push({
-            kind: "mcp",
-            serverName,
-            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
-          })
+        if (!currentExecution) {
+          currentExecution = { kind: "execution", blocks: [] }
+          groups.push(currentExecution)
         }
+        currentExecution.blocks.push({ block: item.block, isStreaming: item.isStreaming })
         continue
       }
 
@@ -618,25 +634,6 @@ export const AgentMessageItem = ({
               )
             }
 
-            if (group.kind === "thinking") {
-              return (
-                <AgentThinkingBlock
-                  key={groupIndex}
-                  content={group.block.text}
-                  isGenerating={group.isStreaming && groupIndex === executionGroups.length - 1}
-                />
-              )
-            }
-
-            if (group.kind === "mcp") {
-              return (
-                <AgentMcpCallBlock
-                  key={groupIndex}
-                  toolCalls={group.blocks.map(({ block }) => block)}
-                />
-              )
-            }
-
             if (group.kind === "skill") {
               return (
                 <AgentSkillCallBlock
@@ -655,32 +652,54 @@ export const AgentMessageItem = ({
               )
             }
 
-            const toolCount = group.blocks.filter(({ block }) => block.kind === "toolCall").length
-            const isGrouped = toolCount >= 2
+            const toolCount = group.blocks.filter(
+              ({ block }) => block.kind === "toolCall" && !isMcpToolCall(block.toolName),
+            ).length
+            const mcpCount = group.blocks.filter(
+              ({ block }) => block.kind === "toolCall" && isMcpToolCall(block.toolName),
+            ).length
+            const thinkingCount = group.blocks.length - toolCount - mcpCount
             return (
-              <AgentToolCallGroup key={groupIndex} toolCount={toolCount}>
-                {group.blocks.map(({ block }) => {
-                  if (block.toolName in TOOL_GROUP_SEPARATORS) {
-                    const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
-                    if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return null
+              <AgentExecutionGroup
+                key={groupIndex}
+                toolCount={toolCount}
+                thinkingCount={thinkingCount}
+                mcpCount={mcpCount}
+              >
+                {group.blocks.map(({ block, isStreaming }, blockIndex) => {
+                  if (block.kind === "thinking") {
                     return (
-                      <AgentToolCallBlock
-                        key={`${block.toolCallId}-call`}
-                        toolCalls={toolGroup}
-                        isGrouped={isGrouped}
+                      <AgentThinkingBlock
+                        key={`thinking-${groupIndex}-${blockIndex}`}
+                        content={block.text}
+                        isGenerating={
+                          isStreaming &&
+                          groupIndex === executionGroups.length - 1 &&
+                          blockIndex === group.blocks.length - 1
+                        }
                       />
                     )
                   }
 
-                  return (
-                    <AgentToolCallBlock
-                      key={`${block.toolCallId}-call`}
-                      toolCall={block}
-                      isGrouped={isGrouped}
-                    />
-                  )
+                  if (isMcpToolCall(block.toolName)) {
+                    const mcpGroup = mcpCallGroupById.get(block.toolCallId)
+                    if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return null
+                    return (
+                      <AgentMcpCallBlock key={`${block.toolCallId}-mcp`} toolCalls={mcpGroup} />
+                    )
+                  }
+
+                  if (block.toolName in TOOL_GROUP_SEPARATORS) {
+                    const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
+                    if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return null
+                    return (
+                      <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={toolGroup} />
+                    )
+                  }
+
+                  return <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCall={block} />
                 })}
-              </AgentToolCallGroup>
+              </AgentExecutionGroup>
             )
           })}
         </div>

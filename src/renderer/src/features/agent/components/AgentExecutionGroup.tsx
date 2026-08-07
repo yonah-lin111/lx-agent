@@ -1,28 +1,46 @@
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ListTree } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 
-// 工具折叠组件属性类型。
-interface AgentToolCallGroupProps {
+// 执行折叠组件属性类型。
+interface AgentExecutionGroupProps {
   // 组内渲染内容。
   children: React.ReactNode
-  // 组内工具数量，思考块不计入数量。
+  // 组内工具数量。
   toolCount: number
+  // 组内思考块数量。
+  thinkingCount: number
+  // 组内 MCP 调用数量。
+  mcpCount: number
 }
 
-const TOOL_COLLAPSE_THRESHOLD = 2
+// 工具、思考与 MCP 调用合计数量达到该阈值时默认折叠执行内容。
+const EXECUTION_GROUP_COLLAPSE_THRESHOLD = 2
+
+// 按单复数拼接英文计数片段。
+const formatCount = (count: number, singular: string, plural: string): string =>
+  `${count} ${count === 1 ? singular : plural}`
 
 /**
- * 工具数量达到阈值时默认折叠执行内容。
+ * 工具、思考与 MCP 调用合计数量达到阈值时默认折叠执行内容。
  */
-export const AgentToolCallGroup = ({
+export const AgentExecutionGroup = ({
   children,
   toolCount,
-}: AgentToolCallGroupProps): React.JSX.Element => {
+  thinkingCount,
+  mcpCount,
+}: AgentExecutionGroupProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
   const innerRef = useRef<HTMLDivElement>(null)
-  const isCollapsible = toolCount >= TOOL_COLLAPSE_THRESHOLD
+  const isCollapsible = toolCount + thinkingCount + mcpCount >= EXECUTION_GROUP_COLLAPSE_THRESHOLD
+  const countLabel = [
+    toolCount > 0 ? formatCount(toolCount, "Tool Call", "Tool Calls") : "",
+    thinkingCount > 0 ? formatCount(thinkingCount, "Thought", "Thoughts") : "",
+    mcpCount > 0 ? formatCount(mcpCount, "MCP Call", "MCP Calls") : "",
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   useLayoutEffect(() => {
     const element = innerRef.current
@@ -48,11 +66,12 @@ export const AgentToolCallGroup = ({
       <button
         type="button"
         aria-expanded={isExpanded}
-        aria-label={isExpanded ? "收起工具调用" : "展开工具调用"}
+        aria-label={isExpanded ? "收起执行内容" : "展开执行内容"}
         className="flex h-5 w-fit items-center gap-1 rounded-[6px] bg-[#212121] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
-        <span className="text-amber-400">{toolCount} Tool Calls</span>
+        <ListTree className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+        <span className="text-amber-400">{countLabel}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
         />
