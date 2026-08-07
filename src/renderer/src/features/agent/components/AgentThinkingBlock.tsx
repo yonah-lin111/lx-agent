@@ -79,7 +79,7 @@ export const AgentThinkingBlock = ({
             className="flex min-w-0 items-start gap-1 select-text pl-1 pt-1 text-white/45"
           >
             <CornerDownRight className="mt-1 h-3 w-3 shrink-0" />
-            <div className="min-w-0 flex-1">
+            <div className="custom-scrollbar max-h-72 min-w-0 flex-1 overflow-y-auto">
               <LxMarkdownPreview
                 html={markdownRenderer.render(content)}
                 previewMode="preview"

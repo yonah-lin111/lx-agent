@@ -5,6 +5,7 @@ import {
   AgentMcpCallBlock,
   AgentThinkingBlock,
   AgentToolCallBlock,
+  AgentWebSearchBlock,
   type ChatBlock,
 } from "@/features/agent"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
@@ -88,6 +89,24 @@ const MCP_CALLS: ToolCallBlock[] = [
   },
 ]
 
+// 连续执行的联网搜索调用。
+const WEB_SEARCH_CALLS: ToolCallBlock[] = [
+  {
+    kind: "toolCall",
+    toolCallId: "ws-1",
+    toolName: "web_search",
+    args: { query: "lucide-react icon list" },
+    status: "done",
+  },
+  {
+    kind: "toolCall",
+    toolCallId: "ws-2",
+    toolName: "web_search",
+    args: { query: "tailwind v4 release" },
+    status: "done",
+  },
+]
+
 /**
  * 预览 AgentToolCallBlock 组件。
  */
@@ -102,9 +121,13 @@ export const AgentToolCallDemo = (): React.JSX.Element => (
     </UiPreviewSection>
     <UiPreviewSection title="工具调用组" description="连续同名调用合并为单行摘要，数量 ≥2 时折叠">
       <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup toolCount={3} thinkingCount={0} mcpCount={0}>
-          <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} />
-        </AgentExecutionGroup>
+        <AgentExecutionGroup
+          toolCount={3}
+          thinkingCount={0}
+          mcpCount={0}
+          webSearchCount={0}
+          items={[{ kind: "tool", node: <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} /> }]}
+        />
       </div>
     </UiPreviewSection>
     <UiPreviewSection
@@ -112,11 +135,22 @@ export const AgentToolCallDemo = (): React.JSX.Element => (
       description="思考块与工具调用合并折叠，展示英文计数"
     >
       <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup toolCount={2} thinkingCount={1} mcpCount={0}>
-          <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
-          <AgentToolCallBlock toolCall={READ_CALL} />
-          <AgentToolCallBlock toolCall={BASH_CALL} />
-        </AgentExecutionGroup>
+        <AgentExecutionGroup
+          toolCount={2}
+          thinkingCount={1}
+          mcpCount={0}
+          webSearchCount={0}
+          items={[
+            {
+              kind: "thinking",
+              node: (
+                <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
+              ),
+            },
+            { kind: "tool", node: <AgentToolCallBlock toolCall={READ_CALL} /> },
+            { kind: "tool", node: <AgentToolCallBlock toolCall={BASH_CALL} /> },
+          ]}
+        />
       </div>
     </UiPreviewSection>
     <UiPreviewSection
@@ -124,11 +158,46 @@ export const AgentToolCallDemo = (): React.JSX.Element => (
       description="MCP 调用并入执行组折叠，展示三类英文计数"
     >
       <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup toolCount={1} thinkingCount={1} mcpCount={2}>
-          <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
-          <AgentToolCallBlock toolCall={GREP_CALL} />
-          <AgentMcpCallBlock toolCalls={MCP_CALLS} />
-        </AgentExecutionGroup>
+        <AgentExecutionGroup
+          toolCount={1}
+          thinkingCount={1}
+          mcpCount={2}
+          webSearchCount={0}
+          items={[
+            {
+              kind: "thinking",
+              node: (
+                <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
+              ),
+            },
+            { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
+            { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
+          ]}
+        />
+      </div>
+    </UiPreviewSection>
+    <UiPreviewSection
+      title="工具 + 思考 + MCP + Web Search 折叠组"
+      description="联网搜索并入执行组折叠，展示四类英文计数"
+    >
+      <div className="flex max-w-lg flex-col">
+        <AgentExecutionGroup
+          toolCount={1}
+          thinkingCount={1}
+          mcpCount={1}
+          webSearchCount={2}
+          items={[
+            {
+              kind: "thinking",
+              node: (
+                <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
+              ),
+            },
+            { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
+            { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
+            { kind: "webSearch", node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} /> },
+          ]}
+        />
       </div>
     </UiPreviewSection>
   </div>

@@ -5,7 +5,10 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentExecutionGroup } from "@/features/agent/components/AgentExecutionGroup"
+import {
+  AgentExecutionGroup,
+  type ExecutionGroupItem,
+} from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
 import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
@@ -17,10 +20,10 @@ import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
-// 执行组内容块（普通工具调用、思考块与 MCP 调用）。
+// 执行组内容块（普通工具调用、思考、MCP 与联网搜索调用）。
 type ExecutionBlock = ToolCallBlock | Extract<ChatBlock, { kind: "thinking" }>
 type ExecutionItem = { block: ExecutionBlock; isStreaming: boolean }
-// 仅工具调用的执行条目（Skill / Web Search 组）。
+// 仅工具调用的执行条目（Skill 组）。
 type ToolCallItem = { block: ToolCallBlock; isStreaming: boolean }
 type ExecutionGroup = {
   kind: "execution"
@@ -31,17 +34,11 @@ type SkillCallGroup = {
   kind: "skill"
   blocks: ToolCallItem[]
 }
-// Web Search 调用组（连续调用合并）。
-type WebSearchCallGroup = {
-  kind: "webSearch"
-  blocks: ToolCallItem[]
-}
 // 展示分组联合类型。
 type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   | ExecutionGroup
   | SkillCallGroup
-  | WebSearchCallGroup
 
 // Skill 调用使用的工具名。
 const SKILL_TOOL_NAME = "read_skill"
@@ -193,6 +190,35 @@ export const AgentMessageItem = ({
       ),
     [mcpCallGroups],
   )
+  // 按连续调用切分 web_search 调用，供执行组内渲染 Web Search 子块。
+  const webSearchCallGroups = useMemo(() => {
+    const groups: ToolCallBlock[][] = []
+    for (const { block } of displayBlocks) {
+      // web_search 调用的结果只属于前一组，不应打断连续归类。
+      if (block.kind === "toolResult" && isWebSearchToolCall(block.toolName)) continue
+      if (block.kind !== "toolCall" || !isWebSearchToolCall(block.toolName)) {
+        groups.push([])
+        continue
+      }
+      const lastGroup = groups.at(-1)
+      if (lastGroup?.[0] && lastGroup[0].toolName === block.toolName) {
+        lastGroup.push(block)
+      } else {
+        groups.push([block])
+      }
+    }
+
+    return groups.filter((group) => group.length > 0)
+  }, [displayBlocks])
+  const webSearchCallGroupById = useMemo(
+    () =>
+      new Map(
+        webSearchCallGroups.flatMap((group) =>
+          group.map((block) => [block.toolCallId, group] as const),
+        ),
+      ),
+    [webSearchCallGroups],
+  )
   const executionGroups = useMemo(() => {
     const groups: DisplayGroup[] = []
     let currentExecution: ExecutionGroup | null = null
@@ -229,16 +255,11 @@ export const AgentMessageItem = ({
         continue
       }
       if (isWebSearchToolCall(toolName)) {
-        currentExecution = null
-        const previousGroup = groups.at(-1)
-        if (previousGroup?.kind === "webSearch") {
-          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
-        } else {
-          groups.push({
-            kind: "webSearch",
-            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
-          })
+        if (!currentExecution) {
+          currentExecution = { kind: "execution", blocks: [] }
+          groups.push(currentExecution)
         }
+        currentExecution.blocks.push({ block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isMcpToolCall(toolName)) {
@@ -643,63 +664,78 @@ export const AgentMessageItem = ({
               )
             }
 
-            if (group.kind === "webSearch") {
-              return (
-                <AgentWebSearchBlock
-                  key={groupIndex}
-                  toolCalls={group.blocks.map(({ block }) => block)}
-                />
-              )
-            }
-
             const toolCount = group.blocks.filter(
-              ({ block }) => block.kind === "toolCall" && !isMcpToolCall(block.toolName),
+              ({ block }) =>
+                block.kind === "toolCall" &&
+                !isMcpToolCall(block.toolName) &&
+                !isWebSearchToolCall(block.toolName),
+            ).length
+            const webSearchCount = group.blocks.filter(
+              ({ block }) => block.kind === "toolCall" && isWebSearchToolCall(block.toolName),
             ).length
             const mcpCount = group.blocks.filter(
               ({ block }) => block.kind === "toolCall" && isMcpToolCall(block.toolName),
             ).length
-            const thinkingCount = group.blocks.length - toolCount - mcpCount
+            const thinkingCount = group.blocks.length - toolCount - webSearchCount - mcpCount
+            const executionItems: ExecutionGroupItem[] = group.blocks.flatMap<ExecutionGroupItem>(
+              ({ block, isStreaming }, blockIndex) => {
+                if (block.kind === "thinking") {
+                  return [
+                    {
+                      kind: "thinking" as const,
+                      node: (
+                        <AgentThinkingBlock
+                          content={block.text}
+                          isGenerating={
+                            isStreaming &&
+                            groupIndex === executionGroups.length - 1 &&
+                            blockIndex === group.blocks.length - 1
+                          }
+                        />
+                      ),
+                    },
+                  ]
+                }
+
+                if (isWebSearchToolCall(block.toolName)) {
+                  const searchGroup = webSearchCallGroupById.get(block.toolCallId)
+                  if (!searchGroup || block.toolCallId !== searchGroup[0]?.toolCallId) return []
+                  return [
+                    {
+                      kind: "webSearch" as const,
+                      node: <AgentWebSearchBlock toolCalls={searchGroup} />,
+                    },
+                  ]
+                }
+
+                if (isMcpToolCall(block.toolName)) {
+                  const mcpGroup = mcpCallGroupById.get(block.toolCallId)
+                  if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return []
+                  return [
+                    { kind: "mcp" as const, node: <AgentMcpCallBlock toolCalls={mcpGroup} /> },
+                  ]
+                }
+
+                if (block.toolName in TOOL_GROUP_SEPARATORS) {
+                  const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
+                  if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
+                  return [
+                    { kind: "tool" as const, node: <AgentToolCallBlock toolCalls={toolGroup} /> },
+                  ]
+                }
+
+                return [{ kind: "tool" as const, node: <AgentToolCallBlock toolCall={block} /> }]
+              },
+            )
             return (
               <AgentExecutionGroup
                 key={groupIndex}
                 toolCount={toolCount}
                 thinkingCount={thinkingCount}
                 mcpCount={mcpCount}
-              >
-                {group.blocks.map(({ block, isStreaming }, blockIndex) => {
-                  if (block.kind === "thinking") {
-                    return (
-                      <AgentThinkingBlock
-                        key={`thinking-${groupIndex}-${blockIndex}`}
-                        content={block.text}
-                        isGenerating={
-                          isStreaming &&
-                          groupIndex === executionGroups.length - 1 &&
-                          blockIndex === group.blocks.length - 1
-                        }
-                      />
-                    )
-                  }
-
-                  if (isMcpToolCall(block.toolName)) {
-                    const mcpGroup = mcpCallGroupById.get(block.toolCallId)
-                    if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return null
-                    return (
-                      <AgentMcpCallBlock key={`${block.toolCallId}-mcp`} toolCalls={mcpGroup} />
-                    )
-                  }
-
-                  if (block.toolName in TOOL_GROUP_SEPARATORS) {
-                    const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
-                    if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return null
-                    return (
-                      <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCalls={toolGroup} />
-                    )
-                  }
-
-                  return <AgentToolCallBlock key={`${block.toolCallId}-call`} toolCall={block} />
-                })}
-              </AgentExecutionGroup>
+                webSearchCount={webSearchCount}
+                items={executionItems}
+              />
             )
           })}
         </div>

@@ -440,7 +440,7 @@ describe("AgentMessageItem", () => {
     expect(screen.getAllByText("/tmp/second.ts")).not.toHaveLength(0)
   })
 
-  it("将连续的同名 web_search 调用合并为括号分隔的搜索条件，且不进入普通工具折叠", () => {
+  it("将连续的同名 web_search 调用合并为括号分隔的搜索条件，并入执行折叠组", () => {
     const message: ChatMessage = {
       id: "ws-1",
       role: "assistant",
@@ -465,10 +465,12 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
+    // web_search 并入执行折叠组，标题展示英文计数。
+    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
+    expect(screen.getByText("Web Searches")).not.toBeNull()
+    // 折叠内容仍在 DOM 中，块标题与合并后的搜索条件可见。
     expect(screen.getByText("Web Search")).not.toBeNull()
     expect(screen.getByText("[react hooks 文档], [tailwind v4 发布]")).not.toBeNull()
-    // web_search 有独立展示块，不参与普通工具折叠组。
-    expect(screen.queryByRole("button", { name: /Tool Calls/i })).toBeNull()
   })
 
   it("web_search 全部调用失败时标注英文失败提示", () => {
@@ -521,7 +523,8 @@ describe("AgentMessageItem", () => {
 
     const groupButton = screen.getByRole("button", { name: "展开执行内容" })
     expect(groupButton).not.toBeNull()
-    expect(screen.getByText("2 Tool Calls · 1 Thought")).not.toBeNull()
+    expect(screen.getByText("Tool Calls")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
 
     // 默认折叠，点击后展开并切换按钮文案。
     fireEvent.click(groupButton)
@@ -548,7 +551,8 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
-    expect(screen.getByText("1 Tool Call · 1 Thought")).not.toBeNull()
+    expect(screen.getByText("Tool Call")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
   })
 
   it("仅单个工具调用且无思考时不折叠", () => {
@@ -599,7 +603,7 @@ describe("AgentMessageItem", () => {
 
     const groupButton = screen.getByRole("button", { name: "展开执行内容" })
     expect(groupButton).not.toBeNull()
-    expect(screen.getByText("2 MCP Calls")).not.toBeNull()
+    expect(screen.getByText("MCP Calls")).not.toBeNull()
 
     // 默认折叠，点击后展开并切换按钮文案。
     fireEvent.click(groupButton)
@@ -633,6 +637,8 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
-    expect(screen.getByText("1 Tool Call · 1 Thought · 1 MCP Call")).not.toBeNull()
+    expect(screen.getByText("Tool Call")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("MCP Call")).not.toBeNull()
   })
 })

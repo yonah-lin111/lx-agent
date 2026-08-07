@@ -39,7 +39,7 @@ export const AgentWebSearchBlock = ({
       </div>
       {queries.length > 0 && (
         <div className="mt-1 flex min-w-0 items-start gap-1 pl-1">
-          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
+          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
           <span className="min-w-0 break-all font-mono text-[12px] leading-relaxed text-white/45">
             {queries.map((query) => `[${query}]`).join(", ")}
           </span>
