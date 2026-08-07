@@ -24,13 +24,13 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
 
   return (
     <aside
-      className={`relative h-40 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,max-width,min-width,padding] duration-300 ease-in-out lg:h-full ${
+      className={`relative flex h-40 shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,max-width,min-width,padding] duration-300 ease-in-out lg:h-full ${
         isCollapsed
           ? "w-10 min-w-10 max-w-10 py-2 px-1"
           : "w-full min-w-full max-w-full p-2 lg:w-56 lg:min-w-56 lg:max-w-56"
       }`}
     >
-      <div className="h-full overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <div key={pathname} className="h-full animate-sidebar-content-slide-in">
           {React.isValidElement(children)
             ? React.cloneElement(children, { isCollapsed } as Record<string, unknown>)
@@ -48,10 +48,10 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </LxIconButton>
       <div
-        className={`absolute bottom-2 flex gap-1 transition-transform duration-300 ease-in-out ${
+        className={`mt-2 flex shrink-0 gap-1 transition-transform duration-300 ease-in-out ${
           isCollapsed
-            ? "left-1/2 -translate-x-1/2 flex-col"
-            : "left-1 right-1 translate-x-0 flex-row justify-center"
+            ? "items-center -translate-x-[1px] flex-col"
+            : "translate-x-0 flex-row justify-center"
         }`}
       >
         {PRIMARY_NAVIGATION_ITEMS.map(({ icon: Icon, label, path }) => {

@@ -1,5 +1,7 @@
 .DS_Store
 node_modules/
+# 工作区以符号链接复用主仓库 node_modules 时，链接本身按文件匹配，需单独忽略。
+node_modules
 out/
 dist/
 dist-electron/

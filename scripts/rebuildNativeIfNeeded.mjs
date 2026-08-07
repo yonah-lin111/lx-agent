@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process"
+import { ensureWorktreeNodeModules } from "./setupWorktreeNodeModules.mjs"
 
 const nativeModuleName = "better-sqlite3"
 const supportedTargets = new Set(["electron", "node"])
@@ -66,6 +67,11 @@ const rebuildNativeModule = () => {
 if (!supportedTargets.has(target)) {
   fail("用法: node scripts/rebuildNativeIfNeeded.mjs <electron|node>")
 }
+
+// 工作区 node_modules 缺失/为空时，先复用主仓库安装，避免 `pnpm exec electron` 探测失败。
+const setupResult = ensureWorktreeNodeModules()
+if (!setupResult.ok) fail(setupResult.message)
+if (setupResult.message) console.log(setupResult.message)
 
 if (canLoadNativeModule()) {
   console.log(`${nativeModuleName} already matches ${target} runtime; skip rebuild.`)
