@@ -119,6 +119,19 @@ export const AgentMessageList = ({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }
 
+  // 用户发送消息后平滑滚动到底部（非跳转）：新用户消息到达列表末尾时触发，即使此前已上滚。
+  // 以 prev 快照判定"追加新增"——撤销/删除/恢复/编辑均不会追加用户消息，因此不会误触发；
+  // 允许与其他事件同批到达（追加部分只要含用户消息即视为发送动作）。
+  const prevMessagesRef = useRef<ChatMessage[]>(messages)
+  useEffect(() => {
+    const prev = prevMessagesRef.current
+    prevMessagesRef.current = messages
+    if (isRestoring) return
+    if (!messages.slice(prev.length).some((message) => message.role === "user")) return
+    const el = scrollRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }, [messages, isRestoring])
+
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {messages.length === 0 ? (
