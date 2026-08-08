@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react"
 import type React from "react"
-import { Fragment, useLayoutEffect, useRef, useState } from "react"
+import { Fragment, useState } from "react"
 
 // 时间轴子项（带类型以匹配小圆点颜色）。
 export type ExecutionGroupItem = {
@@ -51,8 +51,6 @@ export const AgentExecutionGroup = ({
   webSearchCount,
 }: AgentExecutionGroupProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [contentHeight, setContentHeight] = useState<number | null>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
   const isCollapsible =
     toolCount + thinkingCount + mcpCount + webSearchCount >= EXECUTION_GROUP_COLLAPSE_THRESHOLD
   const countSegments: CountSegment[] = [
@@ -77,21 +75,6 @@ export const AgentExecutionGroup = ({
       plural: "Web Searches",
     },
   ].filter((segment) => segment.count > 0)
-
-  useLayoutEffect(() => {
-    const element = innerRef.current
-    if (!element || !isExpanded) {
-      setContentHeight(null)
-      return undefined
-    }
-
-    const updateHeight = (): void => setContentHeight(element.scrollHeight)
-    updateHeight()
-    const observer = new ResizeObserver(updateHeight)
-    observer.observe(element)
-
-    return () => observer.disconnect()
-  }, [items, isExpanded])
 
   if (!isCollapsible) {
     return (
@@ -128,30 +111,29 @@ export const AgentExecutionGroup = ({
           className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
         />
       </button>
+      {/* 用 grid-template-rows 0fr/1fr 过渡展开：行高跟随内容自适应，避免测量 max-height 在嵌套动画期间被反复打断造成卡顿。 */}
       <div
         style={{
-          maxHeight: isExpanded
-            ? contentHeight !== null
-              ? `${contentHeight}px`
-              : `${innerRef.current?.scrollHeight ?? 0}px`
-            : "0px",
+          display: "grid",
+          gridTemplateRows: isExpanded ? "1fr" : "0fr",
           opacity: isExpanded ? 1 : 0,
           transition:
-            "max-height 0.25s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0.85, 0.2, 1)",
+            "grid-template-rows 0.25s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0.85, 0.2, 1)",
         }}
-        className="overflow-hidden"
       >
-        <div ref={innerRef} className="relative flex min-w-0 flex-col gap-1.5">
-          <span aria-hidden className="absolute bottom-0 left-[5px] top-0 w-px bg-white/10" />
-          {items.map((item, index) => (
-            <div key={index} className="relative pl-6 [&>*:first-child]:mt-0">
-              {item.node}
-              <span
-                aria-hidden
-                className={`absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
-              />
-            </div>
-          ))}
+        <div className="min-h-0 overflow-hidden">
+          <div className="relative flex min-w-0 flex-col gap-1.5">
+            <span aria-hidden className="absolute bottom-0 left-[5px] top-0 w-px bg-white/10" />
+            {items.map((item, index) => (
+              <div key={index} className="relative pl-6 [&>*:first-child]:mt-0">
+                {item.node}
+                <span
+                  aria-hidden
+                  className={`absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
