@@ -689,7 +689,9 @@ export const AgentMessageItem = ({
               return (
                 <div key={groupIndex} className="flex min-w-0 flex-col gap-1">
                   <AgentToolCallBlock toolCall={group.block} />
-                  {diff && diff.lines.length > 0 && <AgentDiffBlock diff={diff} />}
+                  {diff && diff.lines.length > 0 && (
+                    <AgentDiffBlock diff={diff} defaultExpanded={isStreamingNow} />
+                  )}
                 </div>
               )
             }

@@ -213,7 +213,7 @@ export const createEditTool = (cwd: string): AgentTool<typeof editSchema> => ({
           { type: "text", text: `已替换 ${params.edits.length} 处内容于 ${params.path}。` },
         ],
         details: {
-          diff: generateStructuredDiff(baseContent, newContent),
+          diff: generateStructuredDiff(baseContent, newContent, params.path),
         },
       }
     })

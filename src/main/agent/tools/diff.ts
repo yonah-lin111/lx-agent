@@ -233,7 +233,11 @@ const emitContextSegment = (
 /**
  * 生成结构化 diff：行级变更 + 单行替换的词级高亮，变更行超限截断并统计全量。
  */
-export const generateStructuredDiff = (oldContent: string, newContent: string): AgentDiff => {
+export const generateStructuredDiff = (
+  oldContent: string,
+  newContent: string,
+  fileName?: string,
+): AgentDiff => {
   const segments = buildSegments(Diff.diffLines(oldContent, newContent))
   const lines: AgentDiffLine[] = []
 
@@ -282,5 +286,5 @@ export const generateStructuredDiff = (oldContent: string, newContent: string): 
     emittedChanged += changed
   }
 
-  return { lines, truncated, stats: { added, removed } }
+  return { fileName, lines, truncated, stats: { added, removed } }
 }

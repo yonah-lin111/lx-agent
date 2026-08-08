@@ -55,7 +55,7 @@ export const createWriteTool = (cwd: string): AgentTool<typeof writeSchema> => (
       // 二进制内容不做 diff（null 字节/替换符无法可靠展示）。
       const diff =
         !isBinaryContent(oldContent) && !isBinaryContent(params.content)
-          ? generateStructuredDiff(oldContent, params.content)
+          ? generateStructuredDiff(oldContent, params.content, params.path)
           : undefined
 
       return {

@@ -78,6 +78,8 @@ export interface AgentDiffLine {
 
 // 结构化 diff 负载（edit/write 工具的展示副产品，随 ToolResultMessage 落库）。
 export interface AgentDiff {
+  // 被修改的文件路径（旧消息可能缺失，渲染端需容错）。
+  fileName?: string
   lines: AgentDiffLine[]
   // 是否因变更行数超限截断（渲染端显示提示条）。
   truncated: boolean
