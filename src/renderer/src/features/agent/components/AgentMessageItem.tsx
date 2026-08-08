@@ -787,7 +787,7 @@ export const AgentMessageItem = ({
             </div>
           </div>
         )}
-        {!isStreamingNow && (hasOutput || assistantError) && (
+        {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
           <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
             <LxIconButton
               size="small"
