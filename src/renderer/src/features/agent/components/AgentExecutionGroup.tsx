@@ -112,7 +112,7 @@ export const AgentExecutionGroup = ({
         className="flex h-5 w-fit items-center gap-1 rounded-[6px] bg-[#212121] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
-        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
+        <span aria-hidden className="mr-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
         <span>
           {countSegments.map((segment, index) => (
             <Fragment key={segment.plural}>
@@ -144,7 +144,7 @@ export const AgentExecutionGroup = ({
         <div ref={innerRef} className="relative flex min-w-0 flex-col gap-1.5">
           <span aria-hidden className="absolute bottom-0 left-[5px] top-0 w-px bg-white/10" />
           {items.map((item, index) => (
-            <div key={index} className="relative pl-4 [&>*:first-child]:mt-0">
+            <div key={index} className="relative pl-6 [&>*:first-child]:mt-0">
               {item.node}
               <span
                 aria-hidden

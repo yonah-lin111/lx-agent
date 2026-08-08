@@ -1,6 +1,6 @@
 import { ChevronDown, Sparkles } from "lucide-react"
 import type React from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
@@ -87,7 +87,10 @@ export const AgentMessageList = ({
   }, [isRestoring])
 
   // 吸底或骨架屏期间内容变化后直接跳到列表底部；骨架屏结束后不再额外调整滚动。
-  useEffect(() => {
+  // 必须用 useLayoutEffect 同步吸附：scrollTop 赋值会触发滚动事件，若延迟到 paint 后，
+  // 事件派发时可能已提交新内容（scrollHeight 增长而 scrollTop 滞后），误判为未贴底，
+  // 导致无滚动条时闪现带 loading 样式的回到底部按钮。
+  useLayoutEffect(() => {
     if (!isRestoring && !stickToBottomRef.current) return
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
