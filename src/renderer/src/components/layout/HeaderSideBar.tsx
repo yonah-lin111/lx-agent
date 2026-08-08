@@ -1,8 +1,8 @@
 /**
  * 渲染页面顶部栏。
  */
-import { ChevronDown, ChevronUp } from "lucide-react"
-import { useEffect, useState } from "react"
+import { ChevronDown, ChevronUp, MousePointer2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -17,6 +17,9 @@ interface HeaderSideBarProps {
   onExpandedChange: (isExpanded: boolean) => void
   children?: React.ReactNode
 }
+
+// localStorage 中保存"悬停自动展开"开关的键。
+const HOVER_EXPAND_STORAGE_KEY = "lx-header-hover-expand-enabled"
 
 // 项目页面包屑名称。
 interface ProjectBreadcrumb {
@@ -36,6 +39,11 @@ export const HeaderSideBar = ({
   const settingsSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const uiSection = searchParams.get("section") ?? UI_SECTIONS[0].id
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
+  const [isHoverExpandEnabled, setIsHoverExpandEnabled] = useState<boolean>(
+    () => localStorage.getItem(HOVER_EXPAND_STORAGE_KEY) === "1",
+  )
+  const expandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
 
@@ -94,6 +102,47 @@ export const HeaderSideBar = ({
     }
   }, [itemId, pathname])
 
+  const handleHoverExpandToggle = (): void => {
+    setIsHoverExpandEnabled((enabled) => {
+      const next = !enabled
+      localStorage.setItem(HOVER_EXPAND_STORAGE_KEY, next ? "1" : "0")
+      return next
+    })
+  }
+
+  const handleHeaderMouseEnter = (): void => {
+    if (!isHoverExpandEnabled || isExpanded) return
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current)
+      collapseTimeoutRef.current = null
+    }
+    if (expandTimeoutRef.current) return
+    expandTimeoutRef.current = setTimeout(() => {
+      expandTimeoutRef.current = null
+      onExpandedChange(true)
+    }, 200)
+  }
+
+  const handleHeaderMouseLeave = (): void => {
+    if (!isHoverExpandEnabled || !isExpanded) return
+    if (expandTimeoutRef.current) {
+      clearTimeout(expandTimeoutRef.current)
+      expandTimeoutRef.current = null
+    }
+    if (collapseTimeoutRef.current) return
+    collapseTimeoutRef.current = setTimeout(() => {
+      collapseTimeoutRef.current = null
+      onExpandedChange(false)
+    }, 200)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (expandTimeoutRef.current) clearTimeout(expandTimeoutRef.current)
+      if (collapseTimeoutRef.current) clearTimeout(collapseTimeoutRef.current)
+    }
+  }, [])
+
   const breadcrumbParts =
     pathname === PAGE_ROUTES.project && projectBreadcrumb
       ? [
@@ -113,6 +162,8 @@ export const HeaderSideBar = ({
 
   return (
     <header
+      onMouseEnter={handleHeaderMouseEnter}
+      onMouseLeave={handleHeaderMouseLeave}
       className={`mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
         isExpanded ? "h-[300px] min-h-[300px] max-h-[300px]" : "h-[40px] min-h-[40px] max-h-[40px]"
       }`}
@@ -148,6 +199,17 @@ export const HeaderSideBar = ({
             isExpanded ? "translate-y-0" : "-translate-y-0.5"
           }`}
         >
+          <LxIconButton
+            aria-label="悬停自动展开"
+            highlighted={isHoverExpandEnabled}
+            title={{
+              content: isHoverExpandEnabled ? "关闭悬停自动展开" : "开启悬停自动展开",
+              placement: "bottom",
+            }}
+            onClick={handleHoverExpandToggle}
+          >
+            <MousePointer2 className="h-4 w-4" />
+          </LxIconButton>
           <LxIconButton
             aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
             title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}

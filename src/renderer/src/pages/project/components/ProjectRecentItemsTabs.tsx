@@ -1,5 +1,5 @@
 import type { ProjectItemStatus } from "@shared/project"
-import { ChevronLeft, ChevronRight, File, X } from "lucide-react"
+import { Boxes, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -395,9 +395,20 @@ export const ProjectRecentItemsTabs = ({
                         </span>
                       )}
                     </div>
-                    <div className="truncate text-[11px] text-white/40">
-                      {card.projectName}
-                      {card.folderName ? ` / ${card.folderName}` : ""}
+                    <div className="flex items-center gap-1 truncate text-[11px] text-white/40">
+                      {card.projectName && (
+                        <>
+                          <Boxes className="h-3 w-3 shrink-0 text-sky-400/80" />
+                          <span className="truncate">{card.projectName}</span>
+                        </>
+                      )}
+                      {card.folderName && (
+                        <>
+                          <span className="shrink-0">/</span>
+                          <Folder className="h-3 w-3 shrink-0 text-amber-400/80" />
+                          <span className="truncate">{card.folderName}</span>
+                        </>
+                      )}
                     </div>
                     <button
                       aria-label="从最近列表移除"
