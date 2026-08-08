@@ -278,6 +278,9 @@ export const editorTheme = EditorView.theme(
       borderTopRightRadius: "6px",
       backgroundColor: "rgba(129, 140, 248, 0.03)",
       paddingLeft: "6px",
+      // 模板块操作按钮绝对定位在行末，预留空间避免遮挡标题。
+      paddingRight: "96px",
+      boxSizing: "border-box",
       paddingTop: "4px",
       paddingBottom: "4px",
     },

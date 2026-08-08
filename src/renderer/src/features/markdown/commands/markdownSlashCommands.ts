@@ -6,7 +6,7 @@ export type MarkdownTemplateCommandId =
   | "commonTemplate"
 
 // Markdown 斜杠命令标识。
-export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summary"
+export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summaryTitle"
 
 // Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内。
 export type MarkdownSlashCommandScope = "normal" | "template"
@@ -88,19 +88,19 @@ const templateCommands: MarkdownSlashCommand[] = [
   },
 ]
 
-// 模板块内的 AI 标题命令：确认型（回显 /summary、二次回车触发），content 为回显文本（带尾随空格）。
-const summaryCommand: MarkdownSlashCommand = {
-  id: "summary",
-  label: "/summary",
+// 模板块内的 AI 标题命令：确认型（回显 /summaryTitle、二次回车触发），content 为回显文本（带尾随空格）。
+const summaryTitleCommand: MarkdownSlashCommand = {
+  id: "summaryTitle",
+  label: "/summaryTitle",
   description: "AI 提炼当前模板块标题",
   scope: "template",
   kind: "confirm",
-  content: "/summary ",
-  cursorOffset: "/summary ".length,
+  content: "/summaryTitle ",
+  cursorOffset: "/summaryTitle ".length,
 }
 
 // 全部斜杠命令（含确认型），供 armed 判定使用。
-const markdownSlashCommands: MarkdownSlashCommand[] = [...templateCommands, summaryCommand]
+const markdownSlashCommands: MarkdownSlashCommand[] = [...templateCommands, summaryTitleCommand]
 
 /**
  * 判定光标行是否为已武装的确认命令行：行内容与某个确认命令标签完全一致且位于模板块内。

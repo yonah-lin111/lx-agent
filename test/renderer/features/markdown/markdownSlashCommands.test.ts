@@ -11,8 +11,8 @@ describe("Markdown 斜杠命令", () => {
       to: 22,
       value: "/addTemplate",
     })
-    expect(getMarkdownSlashCommandLine("   /summary", 10, 20)).toMatchObject({
-      value: "/summary",
+    expect(getMarkdownSlashCommandLine("   /summaryTitle", 10, 20)).toMatchObject({
+      value: "/summaryTitle",
     })
     expect(getMarkdownSlashCommandLine("plain text", 0, 10)).toBeNull()
   })
@@ -29,8 +29,8 @@ describe("Markdown 斜杠命令", () => {
   })
 
   it("模板块内仅匹配 AI 总结命令", () => {
-    expect(getMarkdownSlashCommands("/sum", true).map((c) => c.id)).toEqual(["summary"])
+    expect(getMarkdownSlashCommands("/sum", true).map((c) => c.id)).toEqual(["summaryTitle"])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
-    expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual(["summary"])
+    expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual(["summaryTitle"])
   })
 })

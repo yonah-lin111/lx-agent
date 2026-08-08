@@ -80,8 +80,8 @@ const integrateSyncAnnotation = Annotation.define<boolean>()
 
 // 模板块标题生成的加载占位文本（写入开始行「title: 」字段，兼作防重复触发与结果回写锚点）。
 const TEMPLATE_TITLE_LOADING_TEXT = "⏳ 正在生成标题…"
-// /summary 裸命令文本（trim 匹配用）。
-const SUMMARY_COMMAND_TEXT = "/summary"
+// /summaryTitle 裸命令文本（trim 匹配用）。
+const SUMMARY_COMMAND_TEXT = "/summaryTitle"
 
 // 在文档中定位包含加载占位的行（即被写入「title: ⏳ 正在生成标题…」的开始行）；占位已消失时返回 null。
 const findTitleLoadingLine = (view: EditorView): Line | null => {
@@ -584,8 +584,8 @@ export const LxMarkdownEditor = ({
   }
 
   /**
-   * 触发模板块标题生成：取光标所在模板块内容，排除 /summary 命令行后按复制逻辑清洗，
-   * 经 IPC 请求 main 进程生成标题。回车即移除 /summary 字样（保留所在行），
+   * 触发模板块标题生成：取光标所在模板块内容，排除 /summaryTitle 命令行后按复制逻辑清洗，
+   * 经 IPC 请求 main 进程生成标题。回车即移除 /summaryTitle 字样（保留所在行），
    * 加载占位写入开始行「title: 」字段；成功回写最终标题，失败恢复原标题并提示。
    * 整合虚拟页禁止执行。
    */
@@ -622,7 +622,7 @@ export const LxMarkdownEditor = ({
         insert: setMarkdownTemplateTitle(originalStartText, TEMPLATE_TITLE_LOADING_TEXT),
       },
     ]
-    // 立即移除 /summary 字样，仅清空该行文本、保留所在行（不删除行）。
+    // 立即移除 /summaryTitle 字样，仅清空该行文本、保留所在行（不删除行）。
     const commandLine = view.state.doc.lineAt(cursor)
     if (commandLine.text.trim() !== "") {
       changes.push({ from: commandLine.from, to: commandLine.to, insert: "" })
@@ -788,7 +788,7 @@ export const LxMarkdownEditor = ({
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
 
-                // 二次回车命令：模板块内 /summary 命令行触发标题生成。
+                // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成。
                 if (
                   isMarkdownConfirmCommandArmed(
                     line.text,

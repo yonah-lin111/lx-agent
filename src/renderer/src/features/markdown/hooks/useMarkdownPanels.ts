@@ -188,7 +188,7 @@ export const useMarkdownPanels = ({
 
   /**
    * 同步 Markdown 光标处的模板命令面板。
-   * 模板命令（/addTemplate 等）仅在模板块外可用；AI 总结命令（/summary）仅在模板块内可用。
+   * 模板命令（/addTemplate 等）仅在模板块外可用；AI 总结命令（/summaryTitle）仅在模板块内可用。
    */
   const syncSlashCommandPanel = (view: EditorView): void => {
     const cursor = view.state.selection.main.head
