@@ -45,6 +45,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
+    "diff": "8.0.4",
     "drizzle-orm": "^0.45.1",
     "echarts": "^6.1.0",
     "gray-matter": "^4.0.3",

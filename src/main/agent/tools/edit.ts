@@ -1,6 +1,7 @@
 import { access, readFile, writeFile } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { generateStructuredDiff } from "./diff"
 import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
@@ -141,23 +142,6 @@ const applyEditsToNormalizedContent = (
   return { baseContent: normalizedContent, newContent }
 }
 
-// 生成简化 diff（按行标记 +/-），供详情展示。
-const generateSimpleDiff = (baseContent: string, newContent: string): string => {
-  const baseLines = baseContent.split("\n")
-  const newLines = newContent.split("\n")
-  const diffLines: string[] = []
-  const maxLength = Math.max(baseLines.length, newLines.length)
-  for (let i = 0; i < maxLength; i++) {
-    const baseLine = baseLines[i]
-    const newLine = newLines[i]
-    if (baseLine !== newLine) {
-      if (baseLine !== undefined) diffLines.push(`- ${baseLine}`)
-      if (newLine !== undefined) diffLines.push(`+ ${newLine}`)
-    }
-  }
-  return diffLines.join("\n")
-}
-
 // 创建 edit 工具：目标文本替换，经 mutation queue 串行化。
 export const createEditTool = (cwd: string): AgentTool<typeof editSchema> => ({
   name: "edit",
@@ -228,7 +212,9 @@ export const createEditTool = (cwd: string): AgentTool<typeof editSchema> => ({
         content: [
           { type: "text", text: `已替换 ${params.edits.length} 处内容于 ${params.path}。` },
         ],
-        details: { diff: generateSimpleDiff(baseContent, newContent) },
+        details: {
+          diff: generateStructuredDiff(baseContent, newContent),
+        },
       }
     })
   },

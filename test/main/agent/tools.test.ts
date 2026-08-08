@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import type { AgentDiff } from "@shared/contracts/agent"
 import { afterEach, describe, expect, it } from "vitest"
 import { createBashTool } from "@/agent/tools/bash"
 import { createEditTool } from "@/agent/tools/edit"
@@ -25,6 +26,14 @@ afterEach(async () => {
 const toolText = (result: { content: Array<{ type: string; text?: string }> }): string =>
   result.content.find((block) => block.type === "text")?.text ?? ""
 
+// 从工具结果 details 提取结构化 diff。
+const toolDiff = (result: { details?: unknown }): AgentDiff | undefined =>
+  (result.details as { diff?: AgentDiff } | undefined)?.diff
+
+// 查找 diff 行中的删除/新增行文本。
+const changedLineTexts = (diff: AgentDiff, type: "del" | "add"): string[] =>
+  diff.lines.filter((line) => line.type === type).map((line) => line.text)
+
 describe("read / write / edit", () => {
   it("write + read 往返", async () => {
     const cwd = await makeTmp()
@@ -35,6 +44,28 @@ describe("read / write / edit", () => {
     const read = createReadTool(cwd)
     const r = await read.execute("t1", { path: "new.txt" })
     expect(toolText(r)).toContain("line2")
+  })
+
+  it("write 新文件产出全量新增 diff", async () => {
+    const cwd = await makeTmp()
+    const write = createWriteTool(cwd)
+    const w = await write.execute("t1", { path: "new.txt", content: "x\ny\n" })
+    expect(toolText(w)).toMatch(/已写入/)
+    const diff = toolDiff(w)
+    expect(diff?.stats).toEqual({ added: 2, removed: 0 })
+    expect(changedLineTexts(diff!, "add")).toEqual(["x", "y"])
+  })
+
+  it("write 覆盖旧文件产出 diff", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
+    const write = createWriteTool(cwd)
+    const w = await write.execute("t1", { path: "f.txt", content: "a\nB!\nc\n" })
+    expect(toolText(w)).toMatch(/已写入/)
+    const diff = toolDiff(w)
+    expect(diff?.stats).toEqual({ added: 1, removed: 1 })
+    expect(changedLineTexts(diff!, "del")).toEqual(["b"])
+    expect(changedLineTexts(diff!, "add")).toEqual(["B!"])
   })
 
   it("read offset/limit 分页", async () => {
@@ -56,14 +87,18 @@ describe("read / write / edit", () => {
     expect(toolText(r)).toMatch(/拒绝访问/)
   })
 
-  it("edit 替换并产出 diff", async () => {
+  it("edit 替换并产出结构化 diff", async () => {
     const cwd = await makeTmp()
     await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
     const edit = createEditTool(cwd)
     const e = await edit.execute("t1", { path: "f.txt", edits: [{ oldText: "b", newText: "B!" }] })
     expect(toolText(e)).toMatch(/已替换/)
-    expect((e.details as { diff?: string }).diff).toContain("- b")
-    expect((e.details as { diff?: string }).diff).toContain("+ B!")
+
+    const diff = toolDiff(e)
+    expect(diff?.stats).toEqual({ added: 1, removed: 1 })
+    expect(changedLineTexts(diff!, "del")).toEqual(["b"])
+    expect(changedLineTexts(diff!, "add")).toEqual(["B!"])
+    expect(diff?.lines.find((line) => line.type === "del")?.oldLine).toBe(2)
     expect(await readFile(join(cwd, "f.txt"), "utf-8")).toBe("a\nB!\nc\n")
   })
 
