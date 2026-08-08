@@ -553,44 +553,68 @@ select {
   overflow-x: auto;
 }
 
+.agent-diff-block .hljs {
+  color: #e5e5e5;
+  background: transparent;
+}
+
 .markdown-preview .markdown-code-block .hljs-comment,
-.markdown-preview .markdown-code-block .hljs-quote {
+.markdown-preview .markdown-code-block .hljs-quote,
+.agent-diff-block .hljs-comment,
+.agent-diff-block .hljs-quote {
   color: #94a3b8;
   font-style: italic;
 }
 
 .markdown-preview .markdown-code-block .hljs-keyword,
 .markdown-preview .markdown-code-block .hljs-selector-tag,
-.markdown-preview .markdown-code-block .hljs-meta {
+.markdown-preview .markdown-code-block .hljs-meta,
+.agent-diff-block .hljs-keyword,
+.agent-diff-block .hljs-selector-tag,
+.agent-diff-block .hljs-meta {
   color: #c084fc;
 }
 
 .markdown-preview .markdown-code-block .hljs-string,
 .markdown-preview .markdown-code-block .hljs-attr,
-.markdown-preview .markdown-code-block .hljs-template-variable {
+.markdown-preview .markdown-code-block .hljs-template-variable,
+.agent-diff-block .hljs-string,
+.agent-diff-block .hljs-attr,
+.agent-diff-block .hljs-template-variable {
   color: #86efac;
 }
 
 .markdown-preview .markdown-code-block .hljs-number,
 .markdown-preview .markdown-code-block .hljs-literal,
-.markdown-preview .markdown-code-block .hljs-symbol {
+.markdown-preview .markdown-code-block .hljs-symbol,
+.agent-diff-block .hljs-number,
+.agent-diff-block .hljs-literal,
+.agent-diff-block .hljs-symbol {
   color: #fca5a5;
 }
 
 .markdown-preview .markdown-code-block .hljs-title,
 .markdown-preview .markdown-code-block .hljs-function,
-.markdown-preview .markdown-code-block .hljs-property {
+.markdown-preview .markdown-code-block .hljs-property,
+.agent-diff-block .hljs-title,
+.agent-diff-block .hljs-function,
+.agent-diff-block .hljs-property {
   color: #93c5fd;
 }
 
 .markdown-preview .markdown-code-block .hljs-built_in,
 .markdown-preview .markdown-code-block .hljs-type,
-.markdown-preview .markdown-code-block .hljs-class .hljs-title {
+.markdown-preview .markdown-code-block .hljs-class .hljs-title,
+.agent-diff-block .hljs-built_in,
+.agent-diff-block .hljs-type,
+.agent-diff-block .hljs-class .hljs-title {
   color: #67e8f9;
 }
 
 .markdown-preview .markdown-code-block .hljs-variable,
-.markdown-preview .markdown-code-block .hljs-params {
+.markdown-preview .markdown-code-block .hljs-params,
+.agent-diff-block .hljs-variable,
+.agent-diff-block .hljs-params {
   color: #e2e8f0;
 }
 

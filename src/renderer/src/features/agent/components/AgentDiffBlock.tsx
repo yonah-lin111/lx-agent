@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronUp } from "lucide-react"
 import type React from "react"
-import { useLayoutEffect, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import type { AgentDiff, AgentDiffLine, DiffLinePart } from "@/features/agent/types"
+import type { AgentDiff, AgentDiffLine } from "@/features/agent/types"
+import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
 
 // diff 展示块属性。
 interface AgentDiffBlockProps {
@@ -14,17 +15,18 @@ interface AgentDiffBlockProps {
 // 展开态内容最大高度（超出内部滚动，与折叠动画的目标高度）。
 const MAX_CONTENT_HEIGHT = 320
 
-// 行类型对应的整行配色。
-const LINE_COLORS: Record<AgentDiffLine["type"], { row: string; sign: string }> = {
-  add: { row: "bg-emerald-500/10 text-emerald-300", sign: "text-emerald-300" },
-  del: { row: "bg-red-500/10 text-red-300", sign: "text-red-300" },
-  context: { row: "text-white/45", sign: "text-white/30" },
+// 行首符号配色（新增 + / 删除 − / 上下文空白）。
+const SIGN_COLORS: Record<AgentDiffLine["type"], string> = {
+  add: "text-emerald-300",
+  del: "text-red-300",
+  context: "text-white/30",
 }
 
-// 词级变更片段的逆色高亮配色。
-const PART_HIGHLIGHT: Record<"add" | "del", string> = {
-  add: "bg-emerald-400/30 text-white",
-  del: "bg-red-400/30 text-white",
+// 增删行极浅背景（仅弱化区分变更行，不覆盖语法高亮）。
+const ROW_BACKGROUND: Record<AgentDiffLine["type"], string> = {
+  add: "bg-emerald-500/5",
+  del: "bg-red-500/5",
+  context: "",
 }
 
 // 行首符号（新增 + / 删除 − / 上下文空白）。
@@ -41,19 +43,9 @@ const getLineNumber = (line: AgentDiffLine): string => {
   return line.newLine !== undefined ? String(line.newLine) : ""
 }
 
-// 渲染行内容（有词级片段时高亮变更 token）。
-const renderLineContent = (line: AgentDiffLine): React.ReactNode => {
-  if (!line.parts || line.parts.length === 0) return line.text
-  const highlight = PART_HIGHLIGHT[line.type as "add" | "del"]
-  return line.parts.map((part: DiffLinePart, index) => (
-    <span key={index} className={part.changed ? highlight : ""}>
-      {part.text}
-    </span>
-  ))
-}
-
 /**
- * 渲染结构化 diff 块（add/del/context 行 + 行号 + 词级变更高亮 + 截断/统计）。
+ * 渲染结构化 diff 块（add/del/context 行 + 行号 + 语法高亮 + 截断/统计）。
+ * 变更行仅以行首 + / − 符号区分，内容按文件语言语法高亮（与 markdown 代码块一致）。
  * 标题栏右侧带折叠/展开按钮，动画与 markdown 代码块一致（300ms 高度过渡）。
  */
 export const AgentDiffBlock = ({
@@ -65,6 +57,13 @@ export const AgentDiffBlock = ({
   const innerRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
+
+  // 按文件后缀推断语言并逐行生成语法高亮 HTML。
+  const language = useMemo(() => languageFromFileName(diff.fileName ?? ""), [diff.fileName])
+  const highlightedLines = useMemo(
+    () => lines.map((line) => highlightCode(line.text, language)),
+    [lines, language],
+  )
 
   // 展开态测量内容高度（受最大高度约束），diff 更新时保持折叠动画精确。
   useLayoutEffect(() => {
@@ -82,10 +81,11 @@ export const AgentDiffBlock = ({
   }, [lines, isExpanded])
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-[6px] bg-[#1c1c1c]">
+    <div className="agent-diff-block min-w-0 overflow-hidden rounded-[6px] bg-[#1c1c1c]">
       {hasChanges && (
         <div className="flex items-center gap-2 bg-black/30 py-1 pl-3">
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/40">
+            {diff.fileName !== undefined && <span className="text-sky-400">diff: </span>}
             {diff.fileName}
           </span>
           <span className="shrink-0 text-[11px] text-white/40">
@@ -125,19 +125,21 @@ export const AgentDiffBlock = ({
                 </div>
               )
             }
-            const colors = LINE_COLORS[line.type]
             return (
               <div
                 key={index}
-                className={`flex min-w-0 items-start px-1 font-mono text-[12px] leading-[1.7] ${colors.row}`}
+                className={`flex min-w-0 items-start px-1 font-mono text-[12px] leading-[1.7] ${ROW_BACKGROUND[line.type]}`}
               >
                 <span className="w-9 shrink-0 select-none pr-2 text-right text-white/30">
                   {getLineNumber(line)}
                 </span>
-                <span className={`w-3 shrink-0 select-none ${colors.sign}`}>{getSign(line)}</span>
-                <span className="min-w-0 whitespace-pre-wrap break-all">
-                  {renderLineContent(line)}
+                <span className={`w-3 shrink-0 select-none ${SIGN_COLORS[line.type]}`}>
+                  {getSign(line)}
                 </span>
+                <span
+                  className="min-w-0 whitespace-pre-wrap break-all"
+                  dangerouslySetInnerHTML={{ __html: highlightedLines[index] }}
+                />
               </div>
             )
           })}
