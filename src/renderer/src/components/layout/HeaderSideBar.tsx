@@ -6,7 +6,6 @@ import { useEffect, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { getLxToastColorClass, useLxToast } from "@/components/ui/LxToast"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
@@ -29,7 +28,6 @@ export const HeaderSideBar = ({
   isExpanded,
   onExpandedChange,
 }: HeaderSideBarProps): React.JSX.Element => {
-  const { toasts } = useLxToast()
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
@@ -141,19 +139,6 @@ export const HeaderSideBar = ({
             isExpanded ? "translate-y-0" : "-translate-y-0.5"
           }`}
         >
-          <div className="min-w-0 max-w-[calc(100vw-96px)]">
-            {toasts.map((toast) => (
-              <span
-                key={toast.id}
-                aria-hidden="true"
-                className={`block truncate text-xs font-medium tracking-wide select-none ${getLxToastColorClass(toast.type)} ${
-                  toast.isExiting ? "animate-toast-out" : "animate-toast-in"
-                }`}
-              >
-                {toast.message}
-              </span>
-            ))}
-          </div>
           <LxIconButton
             aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
             title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}

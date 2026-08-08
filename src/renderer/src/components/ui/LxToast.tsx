@@ -1,8 +1,25 @@
 import type React from "react"
-import { createContext, useCallback, useContext, useState } from "react"
+import { createContext, useCallback, useContext, useMemo, useState } from "react"
 
 // 消息提示类型。
 export type LxToastType = "success" | "error" | "info" | "warning"
+
+// 消息展示方位。
+export type LxToastPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+
+// 各方位对应的容器定位样式。
+const POSITION_CLASS: Record<LxToastPosition, string> = {
+  "top-left": "top-4 left-4 items-start",
+  "top-center": "top-4 left-1/2 -translate-x-1/2 items-center",
+  "top-right": "top-4 right-4 items-end",
+  "bottom-left": "bottom-4 left-4 items-start",
+  "bottom-right": "bottom-4 right-4 items-end",
+}
 
 // 单条消息提示数据。
 export interface LxToastItem {
@@ -12,24 +29,26 @@ export interface LxToastItem {
   message: string
   // 提示类型。
   type: LxToastType
+  // 展示方位，缺省时使用全局默认方位。
+  position?: LxToastPosition
   // 退出动画状态。
   isExiting?: boolean
 }
 
 // 消息提示上下文。
 interface LxToastContextType {
-  // 当前展示的消息列表，仅包含一条。
+  // 当前展示的消息列表。
   toasts: LxToastItem[]
   // 显示任意类型的消息。
-  show: (message: string, type?: LxToastType, duration?: number) => void
+  show: (message: string, type?: LxToastType, duration?: number, position?: LxToastPosition) => void
   // 显示成功消息。
-  success: (message: string, duration?: number) => void
+  success: (message: string, duration?: number, position?: LxToastPosition) => void
   // 显示错误消息。
-  error: (message: string, duration?: number) => void
+  error: (message: string, duration?: number, position?: LxToastPosition) => void
   // 显示信息消息。
-  info: (message: string, duration?: number) => void
+  info: (message: string, duration?: number, position?: LxToastPosition) => void
   // 显示警告消息。
-  warning: (message: string, duration?: number) => void
+  warning: (message: string, duration?: number, position?: LxToastPosition) => void
 }
 
 // 消息提示上下文实例。
@@ -53,36 +72,61 @@ export const getLxToastColorClass = (type: LxToastType): string => {
 }
 
 /**
- * 为应用提供全局单条消息提示。
+ * 返回方位对应的滑入/滑出方向。
  */
-export const LxToastProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
-  // 当前活动消息。
-  const [activeToast, setActiveToast] = useState<LxToastItem | null>(null)
+const getSlideStyle = (position: LxToastPosition): React.CSSProperties => {
+  if (position === "top-center") {
+    return { "--toast-slide-x": "0px", "--toast-slide-y": "-8px" } as React.CSSProperties
+  }
+  if (position.endsWith("left")) {
+    return { "--toast-slide-x": "-8px", "--toast-slide-y": "0px" } as React.CSSProperties
+  }
+  return { "--toast-slide-x": "8px", "--toast-slide-y": "0px" } as React.CSSProperties
+}
+
+/**
+ * 为应用提供全局消息提示。
+ */
+export const LxToastProvider = ({
+  children,
+  position = "top-center",
+}: {
+  children: React.ReactNode
+  // 消息默认展示方位。
+  position?: LxToastPosition
+}): React.JSX.Element => {
+  // 当前展示的消息列表，新消息追加到末尾，同方位下向上堆叠。
+  const [toasts, setToasts] = useState<LxToastItem[]>([])
 
   /**
    * 播放退出动画后移除指定消息。
    */
   const removeToast = useCallback((id: string): void => {
-    setActiveToast((currentToast) => {
-      if (currentToast?.id === id) {
-        return { ...currentToast, isExiting: true }
-      }
-      return currentToast
-    })
+    setToasts((currentToasts) =>
+      currentToasts.map((toast) => (toast.id === id ? { ...toast, isExiting: true } : toast)),
+    )
 
     setTimeout(() => {
-      setActiveToast((currentToast) => (currentToast?.id === id ? null : currentToast))
+      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id))
     }, 300)
   }, [])
 
   /**
-   * 显示一条新消息，并替换当前消息。
+   * 显示一条新消息，并追加到消息列表末尾。
    */
   const show = useCallback(
-    (message: string, type: LxToastType = "info", duration = 3000): void => {
+    (
+      message: string,
+      type: LxToastType = "info",
+      duration = 3000,
+      toastPosition?: LxToastPosition,
+    ): void => {
       const id = Math.random().toString(36).slice(2, 9)
 
-      setActiveToast({ id, message, type })
+      setToasts((currentToasts) => [
+        ...currentToasts,
+        { id, message, type, position: toastPosition },
+      ])
       setTimeout(() => removeToast(id), duration)
     },
     [removeToast],
@@ -92,7 +136,8 @@ export const LxToastProvider = ({ children }: { children: React.ReactNode }): Re
    * 显示成功消息。
    */
   const success = useCallback(
-    (message: string, duration = 3000): void => show(message, "success", duration),
+    (message: string, duration = 3000, toastPosition?: LxToastPosition): void =>
+      show(message, "success", duration, toastPosition),
     [show],
   )
 
@@ -100,7 +145,8 @@ export const LxToastProvider = ({ children }: { children: React.ReactNode }): Re
    * 显示错误消息。
    */
   const error = useCallback(
-    (message: string, duration = 3000): void => show(message, "error", duration),
+    (message: string, duration = 3000, toastPosition?: LxToastPosition): void =>
+      show(message, "error", duration, toastPosition),
     [show],
   )
 
@@ -108,7 +154,8 @@ export const LxToastProvider = ({ children }: { children: React.ReactNode }): Re
    * 显示信息消息。
    */
   const info = useCallback(
-    (message: string, duration = 3000): void => show(message, "info", duration),
+    (message: string, duration = 3000, toastPosition?: LxToastPosition): void =>
+      show(message, "info", duration, toastPosition),
     [show],
   )
 
@@ -116,23 +163,57 @@ export const LxToastProvider = ({ children }: { children: React.ReactNode }): Re
    * 显示警告消息。
    */
   const warning = useCallback(
-    (message: string, duration = 3000): void => show(message, "warning", duration),
+    (message: string, duration = 3000, toastPosition?: LxToastPosition): void =>
+      show(message, "warning", duration, toastPosition),
     [show],
   )
 
-  // 保持参考项目的数组接口，同时限制最多展示一条。
-  const toasts = activeToast ? [activeToast] : []
+  // 按方位分组，便于按方位渲染独立容器。
+  const groupedToasts = useMemo(() => {
+    const groups = new Map<LxToastPosition, LxToastItem[]>()
+    for (const toast of toasts) {
+      const toastPosition = toast.position ?? position
+      const group = groups.get(toastPosition)
+      if (group) {
+        group.push(toast)
+      } else {
+        groups.set(toastPosition, [toast])
+      }
+    }
+    return groups
+  }, [position, toasts])
 
   return (
     <LxToastContext.Provider value={{ toasts, show, success, error, info, warning }}>
       {children}
-      <div className="sr-only" aria-live="assertive">
-        {toasts.map((toast) => (
-          <div key={toast.id} role="alert">
-            {toast.message}
-          </div>
-        ))}
-      </div>
+      {[...groupedToasts.entries()].map(([toastPosition, positionToasts]) => (
+        <div
+          key={toastPosition}
+          role="status"
+          aria-live="assertive"
+          className={`pointer-events-none fixed z-[999999] flex flex-col ${POSITION_CLASS[toastPosition]}`}
+        >
+          {positionToasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+                toast.isExiting ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+              }`}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <span
+                  className={`mb-2 block max-w-[min(80vw,24rem)] truncate rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-none ${getLxToastColorClass(toast.type)} ${
+                    toast.isExiting ? "animate-toast-out" : "animate-toast-in"
+                  }`}
+                  style={getSlideStyle(toastPosition)}
+                >
+                  {toast.message}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
     </LxToastContext.Provider>
   )
 }
