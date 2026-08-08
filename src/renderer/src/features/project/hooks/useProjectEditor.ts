@@ -2,22 +2,11 @@ import type { MarkdownPage, ProjectItemStatus } from "@shared/project"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
+import { parseMarkdownPages } from "@/features/project/utils"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 
 // 自动保存延迟时间。
 const AUTO_SAVE_DELAY = 800
-
-// 规范化条目数据；条目数据必须是页面 JSON，空数据按单个空白页处理。
-const parsePages = (value: string): MarkdownPage[] => {
-  if (value.trim() === "") {
-    return [{ id: crypto.randomUUID(), name: "Page 1", content: "" }]
-  }
-  const parsed: unknown = JSON.parse(value)
-  if (!Array.isArray(parsed) || !parsed.every((page) => page && typeof page === "object")) {
-    throw new Error("INVALID_ITEM_PAGES")
-  }
-  return parsed as MarkdownPage[]
-}
 
 // 将页面数据编码为持久化 JSON。
 const serializePages = (pages: MarkdownPage[]): string => JSON.stringify(pages)
@@ -103,7 +92,7 @@ export const useProjectEditor = (
           : undefined
         if (!isCurrent) return
         const rawData = item?.itemData ?? ""
-        const nextPages = parsePages(rawData)
+        const nextPages = parseMarkdownPages(rawData)
         const nextContent = serializePages(nextPages)
         pagesRef.current = nextPages
         contentRef.current = nextContent
