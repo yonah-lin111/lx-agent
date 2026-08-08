@@ -622,7 +622,7 @@ select {
   margin: 0.8em 0;
   border-radius: 6px;
   border: 1px solid rgba(129, 140, 248, 0.2);
-  background: #1c1d24;
+  background: #1c1c1c;
 }
 
 .markdown-preview .markdown-template-block[data-template-status="in_progress"] {
@@ -642,7 +642,7 @@ select {
   align-items: center;
   justify-content: space-between;
   border-radius: 6px 6px 0 0;
-  background: #21222b;
+  background: #1c1c1c;
   color: #a5b4fc;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
