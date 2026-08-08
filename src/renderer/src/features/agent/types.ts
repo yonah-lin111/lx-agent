@@ -1,6 +1,13 @@
-import type { AgentMessage } from "@shared/contracts/agent"
+import type { AgentDiff, AgentMessage } from "@shared/contracts/agent"
 
-export type { AgentEvent, AgentMessage, ToolResultMessage } from "@shared/contracts/agent"
+export type {
+  AgentDiff,
+  AgentDiffLine,
+  AgentEvent,
+  AgentMessage,
+  DiffLinePart,
+  ToolResultMessage,
+} from "@shared/contracts/agent"
 
 // 消息内容块渲染视图。
 export type ChatBlock =
@@ -13,7 +20,14 @@ export type ChatBlock =
       args: Record<string, unknown>
       status: "running" | "done" | "error"
     }
-  | { kind: "toolResult"; toolCallId: string; toolName: string; text: string; isError: boolean }
+  | {
+      kind: "toolResult"
+      toolCallId: string
+      toolName: string
+      text: string
+      isError: boolean
+      diff?: AgentDiff
+    }
 
 // 消息展示条目（由 AgentEvent 驱动生成）。
 export interface ChatMessage {

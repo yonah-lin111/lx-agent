@@ -1,7 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { generateStructuredDiff, isBinaryContent } from "./diff"
 import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
@@ -35,11 +36,27 @@ export const createWriteTool = (cwd: string): AgentTool<typeof writeSchema> => (
       }
 
       throwIfAborted()
+      // 写前读取旧内容用于 diff（文件不存在视为新文件，全量新增）。
+      let oldContent = ""
+      try {
+        const buffer = await readFile(absolutePath)
+        oldContent = buffer.toString("utf-8")
+      } catch {
+        oldContent = ""
+      }
+      throwIfAborted()
+
       await mkdir(dir, { recursive: true })
       throwIfAborted()
 
       await writeFile(absolutePath, params.content, "utf-8")
       throwIfAborted()
+
+      // 二进制内容不做 diff（null 字节/替换符无法可靠展示）。
+      const diff =
+        !isBinaryContent(oldContent) && !isBinaryContent(params.content)
+          ? generateStructuredDiff(oldContent, params.content)
+          : undefined
 
       return {
         content: [
@@ -48,7 +65,10 @@ export const createWriteTool = (cwd: string): AgentTool<typeof writeSchema> => (
             text: `已写入 ${Buffer.byteLength(params.content, "utf-8")} 字节到 ${params.path}`,
           },
         ],
-        details: { bytes: Buffer.byteLength(params.content, "utf-8") },
+        details: {
+          bytes: Buffer.byteLength(params.content, "utf-8"),
+          ...(diff ? { diff } : {}),
+        },
       }
     })
   },

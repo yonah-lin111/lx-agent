@@ -37,6 +37,7 @@ export const toChatMessage = (
             .map((block) => (block.type === "text" ? block.text : "[图片]"))
             .join("\n"),
           isError: message.isError,
+          ...(message.diff ? { diff: message.diff } : {}),
         },
       ],
       isStreaming: false,

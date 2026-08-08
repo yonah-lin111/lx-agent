@@ -3,7 +3,12 @@
  * 全程以 AgentMessage 工作，仅在 LLM 调用边界转换为 LlmMessage。
  */
 
-import type { AgentMessage, AssistantMessage, ToolResultMessage } from "@shared/contracts/agent"
+import type {
+  AgentDiff,
+  AgentMessage,
+  AssistantMessage,
+  ToolResultMessage,
+} from "@shared/contracts/agent"
 import { getDefaultStreamFn } from "./stream-fn"
 import type {
   AgentContext,
@@ -699,6 +704,7 @@ async function emitToolExecutionEnd(
 
 // 由工具执行结果构造 ToolResultMessage。
 function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
+  const diff = (finalized.result.details as { diff?: AgentDiff } | undefined)?.diff
   return {
     role: "toolResult",
     toolCallId: finalized.toolCall.id,
@@ -706,6 +712,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     content: finalized.result.content ?? [],
     isError: finalized.isError,
     timestamp: Date.now(),
+    ...(diff ? { diff } : {}),
   }
 }
 

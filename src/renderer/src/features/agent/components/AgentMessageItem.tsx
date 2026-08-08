@@ -5,6 +5,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentDiffBlock } from "@/features/agent/components/AgentDiffBlock"
 import {
   AgentExecutionGroup,
   type ExecutionGroupItem,
@@ -39,6 +40,8 @@ type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   | ExecutionGroup
   | SkillCallGroup
+  // 写操作工具独立组（不参与执行折叠，展示 diff）。
+  | { kind: "write"; block: ToolCallBlock; isStreaming: boolean }
 
 // Skill 调用使用的工具名。
 const SKILL_TOOL_NAME = "read_skill"
@@ -61,6 +64,9 @@ const getMcpServerName = (toolName: string): string => {
   const separatorIndex = toolName.indexOf("_")
   return separatorIndex > 0 ? toolName.slice(0, separatorIndex) : toolName
 }
+
+// 判断是否为写操作工具（文件修改，独立展示且不参与执行折叠）。
+const isWriteToolCall = (toolName: string): boolean => toolName === "edit" || toolName === "write"
 
 interface AgentMessageItemProps {
   message: ChatMessage
@@ -124,6 +130,23 @@ export const AgentMessageItem = ({
         currentMessage.blocks.map((block) => ({ block, isStreaming: currentMessage.isStreaming })),
       ),
     [continuationMessages, message],
+  )
+  // 工具结果携带的 diff 按 toolCallId 索引（写工具组渲染用）。
+  const diffByToolCallId = useMemo(
+    () =>
+      new Map(
+        displayBlocks
+          .filter(
+            (
+              item,
+            ): item is {
+              block: Extract<ChatBlock, { kind: "toolResult" }>
+              isStreaming: boolean
+            } => item.block.kind === "toolResult" && item.block.diff !== undefined,
+          )
+          .map((item) => [item.block.toolCallId, item.block.diff]),
+      ),
+    [displayBlocks],
   )
   // 按其他工具或思考切分连续的同名可合并工具调用（read/ls/grep/find/bash）。
   const mergeableToolCallGroups = useMemo(() => {
@@ -252,6 +275,12 @@ export const AgentMessageItem = ({
             blocks: [{ block: item.block, isStreaming: item.isStreaming }],
           })
         }
+        continue
+      }
+      // 写操作工具独立成组：切断执行组并永不参与折叠，下方展示 diff。
+      if (isWriteToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "write", block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isWebSearchToolCall(toolName)) {
@@ -652,6 +681,16 @@ export const AgentMessageItem = ({
                   contentClassName="py-1"
                   sanitizeCopy
                 />
+              )
+            }
+
+            if (group.kind === "write") {
+              const diff = diffByToolCallId.get(group.block.toolCallId)
+              return (
+                <div key={groupIndex} className="flex min-w-0 flex-col gap-1">
+                  <AgentToolCallBlock toolCall={group.block} />
+                  {diff && diff.lines.length > 0 && <AgentDiffBlock diff={diff} />}
+                </div>
               )
             }
 
