@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import { useProjectNavigationActions } from "@/features/project-navigation/hooks/useProjectNavigationActions"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type { ProjectNavigationProject } from "@/features/project-navigation/types"
 
 const projects: ProjectNavigationProject[] = [
@@ -25,10 +26,12 @@ describe("useProjectNavigationActions", () => {
       useProjectNavigationActions(projects, refreshProjects, toast),
     )
 
+    const versionBefore = useProjectItemsVersionStore.getState().version
     await act(() => result.current.updatePromptStatus("item-1", "completed"))
 
     expect(updateItem).toHaveBeenCalledWith("item-1", { status: "completed" })
     expect(refreshProjects).toHaveBeenCalledOnce()
+    expect(useProjectItemsVersionStore.getState().version).toBe(versionBefore + 1)
     expect(toast.success).toHaveBeenCalledWith("条目状态更新成功")
     expect(toast.error).not.toHaveBeenCalled()
   })

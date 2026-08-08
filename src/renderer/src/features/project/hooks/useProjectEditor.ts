@@ -134,6 +134,7 @@ export const useProjectEditor = (
         if (saveRequestRef.current !== requestId || contentRef.current !== contentToSave) return
         savedContentRef.current = contentToSave
         setIsSaved(true)
+        useProjectItemsVersionStore.getState().bump()
       })
       .catch((error: unknown) => {
         if (saveRequestRef.current !== requestId) return

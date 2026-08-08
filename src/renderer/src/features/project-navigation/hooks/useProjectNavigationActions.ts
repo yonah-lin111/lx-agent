@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type {
   ProjectNavigationMenuTarget,
   ProjectNavigationProject,
@@ -62,6 +63,7 @@ export const useProjectNavigationActions = (
       try {
         await projectNavigationApi.updateItem(id, { status })
         await refreshProjects()
+        useProjectItemsVersionStore.getState().bump()
         toast.success("条目状态更新成功")
       } catch {
         toast.error("条目状态更新失败")
