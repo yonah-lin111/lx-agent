@@ -15,6 +15,7 @@ import { PAGE_ROUTES } from "@/lib/pageRoutes"
 interface HeaderSideBarProps {
   isExpanded: boolean
   onExpandedChange: (isExpanded: boolean) => void
+  children?: React.ReactNode
 }
 
 // 项目页面包屑名称。
@@ -27,6 +28,7 @@ interface ProjectBreadcrumb {
 export const HeaderSideBar = ({
   isExpanded,
   onExpandedChange,
+  children,
 }: HeaderSideBarProps): React.JSX.Element => {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
@@ -133,6 +135,13 @@ export const HeaderSideBar = ({
               </span>
             </span>
           ))}
+        </div>
+        <div
+          className={`absolute inset-x-0 bottom-0 top-8 overflow-hidden ${
+            isExpanded ? "" : "invisible"
+          }`}
+        >
+          {children}
         </div>
         <div
           className={`absolute right-0 top-0 flex items-center gap-2 transition-transform duration-300 ease-in-out ${

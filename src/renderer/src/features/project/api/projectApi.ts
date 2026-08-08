@@ -1,5 +1,6 @@
 import type {
   Project,
+  ProjectFolder,
   ProjectItem,
   UpdateProjectInput,
   UpdateProjectItemInput,
@@ -11,6 +12,7 @@ import type {
 export const projectApi = {
   list: (): Promise<ProjectItem[]> => window.api.project.items.list(),
   listProjects: (): Promise<Project[]> => window.api.project.projects.list(),
+  listFolders: (): Promise<ProjectFolder[]> => window.api.project.folders.list(),
   updateProject: (id: string, input: UpdateProjectInput): Promise<void> =>
     window.api.project.projects.update(id, input),
   update: (id: string, input: UpdateProjectItemInput): Promise<void> =>
