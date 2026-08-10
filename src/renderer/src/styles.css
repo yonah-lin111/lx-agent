@@ -4,6 +4,8 @@
   --font-size-xs: 13px;
   --font-size-sm: 14px;
   --font-size-base: 14px;
+  /* 用户消息气泡色 */
+  --color-user-bubble: #1f4e79;
 }
 
 :root {

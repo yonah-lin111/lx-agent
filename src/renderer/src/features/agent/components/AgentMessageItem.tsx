@@ -492,7 +492,7 @@ export const AgentMessageItem = ({
           }
         >
           {isEditing ? (
-            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] bg-[#303030] p-2.5 shadow-sm">
+            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[18px] bg-user-bubble p-2.5 shadow-sm">
               <textarea
                 ref={textareaRef}
                 value={editText}
@@ -529,7 +529,7 @@ export const AgentMessageItem = ({
             </div>
           ) : (
             <div
-              className="rounded-[6px] bg-[#303030] px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
+              className="rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
               onCopy={handleBubbleCopy}
             >
               <div
@@ -546,7 +546,7 @@ export const AgentMessageItem = ({
         {!isEditing && (
           <div
             className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
-              isPinned ? "rounded-[6px] bg-[#303030] p-0.5" : ""
+              isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
             }`}
           >
             {isCollapsible && (
@@ -593,7 +593,7 @@ export const AgentMessageItem = ({
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {assistantError && <div className="text-[13px] text-red-400">{assistantError}</div>}
 
-      <div className="relative min-w-0 max-w-full rounded-[6px] bg-transparent p-0 text-[13px] text-white/90">
+      <div className="relative min-w-0 w-full max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/90">
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
             if (group.kind === "text") {
