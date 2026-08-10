@@ -26,11 +26,13 @@ export const parseMarkdownPages = (value: string): MarkdownPage[] => {
 }
 
 /**
- * 按 LRU 纪律插入最近打开的条目 id：已存在则提到最前，否则插到最前，超出容量移除末尾。
+ * 记录最近打开的条目 id：不调整已有顺序（顺序由用户拖拽决定），
+ * 新条目追加到末尾，超出容量移除最前面的条目。
  */
 export const pushRecentItemId = (ids: readonly string[], itemId: string): string[] => {
-  const next = [itemId, ...ids.filter((id) => id !== itemId)]
-  return next.length > MAX_RECENT_ITEMS ? next.slice(0, MAX_RECENT_ITEMS) : next
+  if (ids.includes(itemId)) return ids.slice(0, MAX_RECENT_ITEMS)
+  const next = [...ids, itemId]
+  return next.length > MAX_RECENT_ITEMS ? next.slice(next.length - MAX_RECENT_ITEMS) : next
 }
 
 /**

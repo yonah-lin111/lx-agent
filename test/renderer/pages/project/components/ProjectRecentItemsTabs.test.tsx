@@ -147,4 +147,31 @@ describe("ProjectRecentItemsTabs", () => {
     expect(screen.queryByText("新增需求")).toBeNull()
     expect(localStorage.getItem(RECENT_ITEMS_KEY)).toBe("[]")
   })
+
+  it("拖拽卡片后顺序与本地记录同步重排", async () => {
+    const secondItem: ProjectItem = { ...item, id: "item-2", name: "旧需求" }
+    localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify([item.id, secondItem.id]))
+    vi.spyOn(projectApi, "listProjects").mockResolvedValue([project])
+    vi.spyOn(projectApi, "listFolders").mockResolvedValue([folder])
+    vi.spyOn(projectApi, "list").mockResolvedValue([item, secondItem])
+
+    renderTabs()
+
+    const firstCard = (await screen.findByText("新增需求")).closest("[data-recent-item-id]")!
+    const secondCard = screen.getByText("旧需求").closest("[data-recent-item-id]")!
+    const dataTransfer = { effectAllowed: "", setData: vi.fn(), getData: () => secondItem.id }
+
+    fireEvent.dragStart(secondCard, { dataTransfer })
+    fireEvent.dragOver(firstCard, { dataTransfer })
+    fireEvent.drop(firstCard, { dataTransfer })
+
+    const cardIds = Array.from(document.querySelectorAll("[data-recent-item-id]"), (el) =>
+      el.getAttribute("data-recent-item-id"),
+    )
+    expect(cardIds).toEqual([secondItem.id, item.id])
+    expect(JSON.parse(localStorage.getItem(RECENT_ITEMS_KEY) ?? "[]")).toEqual([
+      secondItem.id,
+      item.id,
+    ])
+  })
 })

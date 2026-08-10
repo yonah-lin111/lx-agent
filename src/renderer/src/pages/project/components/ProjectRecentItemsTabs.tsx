@@ -16,7 +16,7 @@ const RECENT_ITEMS_KEY = "project-navigation-recent-items"
 const MIN_LOADING_DURATION = 300
 // loading 淡出时长。
 const FADE_OUT_DURATION = 300
-// 卡片重排过渡时长。
+// 删除补位过渡时长。
 const FLIP_DURATION = 200
 
 // 最近条目卡片数据。
@@ -80,8 +80,8 @@ interface ProjectRecentItemsTabsProps {
 }
 
 /**
- * 项目页面头部最近条目标签栏：按最近打开顺序展示条目卡片，
- * 点击切换到对应条目，支持左右滚动与重排过渡动画。
+ * 项目页面头部最近条目标签栏：按用户拖拽固定的顺序展示条目卡片，
+ * 打开新条目不调整已有顺序，支持左右滚动与拖拽重排。
  * 组件在项目页内常驻，折叠时仅停止渲染列表、仍保持打开记录。
  */
 export const ProjectRecentItemsTabs = ({
@@ -99,6 +99,10 @@ export const ProjectRecentItemsTabs = ({
   const scrollRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const prevRectsRef = useRef<Map<string, DOMRect>>(new Map())
+  // 拖拽重排造成的顺序变化不触发补位动画。
+  const isDragReorderRef = useRef(false)
+  const draggingIdRef = useRef<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const version = useProjectItemsVersionStore((state) => state.version)
@@ -195,7 +199,8 @@ export const ProjectRecentItemsTabs = ({
     }
   }, [isExpanded, recentIds, version])
 
-  // 卡片重排时执行 FLIP 位移动画；新插入的卡片靠 animate-fade-in 淡入。
+  // 卡片因删除而非尾部条目产生位移时执行 FLIP 补位动画；
+  // 拖拽重排（isDragReorderRef）不触发，新卡片靠 animate-push-in 推入。
   useLayoutEffect(() => {
     const el = listRef.current
     if (!el || !isExpanded || cards === null) return
@@ -217,6 +222,17 @@ export const ProjectRecentItemsTabs = ({
     }
     prevRectsRef.current = next
     if (moved.length === 0) return
+    const reset = (): void => {
+      for (const cardEl of moved) {
+        cardEl.style.transition = ""
+        cardEl.style.transform = ""
+      }
+    }
+    if (isDragReorderRef.current) {
+      isDragReorderRef.current = false
+      reset()
+      return
+    }
     const frame = requestAnimationFrame(() => {
       for (const cardEl of moved) {
         cardEl.style.transition = `transform ${FLIP_DURATION}ms ease-out`
@@ -285,6 +301,41 @@ export const ProjectRecentItemsTabs = ({
     setCards((current) => (current ? current.filter((card) => card.id !== targetItemId) : current))
   }, [])
 
+  // 拖拽结束后将条目移动到目标卡片位置并持久化。
+  const handleDropOnCard = useCallback((targetItemId: string): void => {
+    const fromId = draggingIdRef.current
+    if (fromId === null || fromId === targetItemId) return
+    setRecentIds((current) => {
+      const from = current.indexOf(fromId)
+      const to = current.indexOf(targetItemId)
+      if (from === -1 || to === -1 || from === to) return current
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      writeRecentItemIds(next)
+      isDragReorderRef.current = true
+      return next
+    })
+    setCards((current) => {
+      if (!current) return current
+      const from = current.findIndex((card) => card.id === fromId)
+      const to = current.findIndex((card) => card.id === targetItemId)
+      if (from === -1 || to === -1 || from === to) return current
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+    draggingIdRef.current = null
+    setDraggingId(null)
+  }, [])
+
+  // 拖拽结束（含取消）时清理拖动状态。
+  const handleDragEnd = useCallback((): void => {
+    draggingIdRef.current = null
+    setDraggingId(null)
+  }, [])
+
   if (!isExpanded) return null
 
   return (
@@ -325,9 +376,10 @@ export const ProjectRecentItemsTabs = ({
           ) : cards !== null && cards.length === 0 ? (
             <div className="w-full py-2 text-center text-xs text-white/40">暂无最近条目</div>
           ) : (
-            <div ref={listRef} className="flex min-w-0 items-stretch gap-1.5">
+            <div className="flex min-w-0 items-stretch gap-1.5">
               {cards?.map((card) => {
                 const isActive = card.id === itemId
+                const isDragging = draggingId === card.id
                 return (
                   <div
                     key={card.id}
@@ -335,11 +387,28 @@ export const ProjectRecentItemsTabs = ({
                     role="button"
                     tabIndex={0}
                     aria-current={isActive ? "page" : undefined}
-                    className={`group relative flex w-[200px] shrink-0 animate-fade-in cursor-pointer flex-col gap-1 rounded-[6px] border p-2 text-left transition-colors duration-150 ${
+                    draggable
+                    onDragStart={(event) => {
+                      draggingIdRef.current = card.id
+                      setDraggingId(card.id)
+                      event.dataTransfer.effectAllowed = "move"
+                      event.dataTransfer.setData("text/plain", card.id)
+                    }}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(event) => {
+                      if (draggingIdRef.current !== null && draggingIdRef.current !== card.id) {
+                        event.preventDefault()
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      handleDropOnCard(card.id)
+                    }}
+                    className={`group relative flex w-[200px] shrink-0 animate-push-in cursor-pointer flex-col gap-1 rounded-[6px] border p-2 text-left transition-colors duration-150 ${
                       isActive
                         ? ITEM_STATUS_CARD_STYLES[card.status].active
                         : `${ITEM_STATUS_CARD_STYLES[card.status].idle} ${ITEM_STATUS_CARD_STYLES[card.status].hover}`
-                    }`}
+                    } ${isDragging ? "opacity-40" : ""}`}
                     onClick={() => handleCardClick(card.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {

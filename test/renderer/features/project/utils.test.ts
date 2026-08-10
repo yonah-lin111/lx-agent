@@ -33,24 +33,24 @@ describe("parseMarkdownPages", () => {
 })
 
 describe("pushRecentItemId", () => {
-  it("新 id 插入列表最前", () => {
-    expect(pushRecentItemId(["a", "b"], "c")).toEqual(["c", "a", "b"])
+  it("新 id 追加到列表末尾", () => {
+    expect(pushRecentItemId(["a", "b"], "c")).toEqual(["a", "b", "c"])
   })
 
-  it("已存在 id 提到最前且不重复", () => {
-    expect(pushRecentItemId(["a", "b", "c"], "b")).toEqual(["b", "a", "c"])
+  it("已存在 id 不调整顺序且不重复", () => {
+    expect(pushRecentItemId(["a", "b", "c"], "b")).toEqual(["a", "b", "c"])
   })
 
-  it("最前 id 保持不变", () => {
-    expect(pushRecentItemId(["a", "b"], "a")).toEqual(["a", "b"])
+  it("末尾 id 保持不变", () => {
+    expect(pushRecentItemId(["a", "b"], "b")).toEqual(["a", "b"])
   })
 
-  it("超出容量时移除最老的末尾 id", () => {
+  it("超出容量时移除最前面的旧 id", () => {
     const ids = Array.from({ length: MAX_RECENT_ITEMS }, (_, index) => `item-${index}`)
     const next = pushRecentItemId(ids, "new-item")
     expect(next).toHaveLength(MAX_RECENT_ITEMS)
-    expect(next[0]).toBe("new-item")
-    expect(next).not.toContain(`item-${MAX_RECENT_ITEMS - 1}`)
+    expect(next[next.length - 1]).toBe("new-item")
+    expect(next).not.toContain("item-0")
   })
 })
 
