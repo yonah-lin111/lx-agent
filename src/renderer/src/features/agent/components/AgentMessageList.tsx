@@ -18,8 +18,6 @@ interface AgentMessageListProps {
 }
 
 const NEAR_BOTTOM_THRESHOLD = 40
-// 吸顶判定容差（px）：吸收滚动抖动，避免 isPinned 反复翻转。
-const PINNED_TOP_TOLERANCE = 8
 
 // AI 消息与同一轮后续消息的展示条目。
 interface AgentMessageListEntry {
@@ -86,10 +84,8 @@ export const AgentMessageList = ({
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
   // 当前钉住的用户问题 id。
   const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
-  // 各 QA 对吸顶容器的 DOM 引用（按用户消息 id 索引）。
-  const stickyQuestionRefs = useRef(new Map<string, HTMLDivElement>())
-  // 当前钉住问题的 id 引用，供滞回判断。
-  const pinnedQuestionIdRef = useRef<string | null>(null)
+  // 各用户消息自然流结束位置的 DOM 引用（按用户消息 id 索引）。
+  const userMessageEndRefs = useRef(new Map<string, HTMLDivElement>())
 
   const isNearBottom = (): boolean => {
     const el = scrollRef.current
@@ -97,42 +93,34 @@ export const AgentMessageList = ({
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD
   }
 
-  // 列表已发生滚动且容器贴住滚动容器顶部（scrollTop > 0 排除首条消息自然贴顶）。
-  const isStickyPinned = (el: HTMLDivElement, container: HTMLDivElement): boolean => {
+  // 用户消息在自然流中的底部已完全越过消息列表视口顶部。
+  const hasUserMessageFullyScrolledPast = (
+    messageEnd: HTMLDivElement,
+    container: HTMLDivElement,
+  ): boolean => {
     if (container.scrollTop <= 0.5) return false
     const containerTop = container.getBoundingClientRect().top
-    const rect = el.getBoundingClientRect()
-    return rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop
+    return messageEnd.getBoundingClientRect().top <= containerTop
   }
 
-  // 已钉住的问题保持吸顶（滞回），换组时再扫描下一个贴顶问题。
+  // 仅在用户消息完全离开视口后启用吸顶。
   const updatePinnedQuestion = (): void => {
     const container = scrollRef.current
     if (!container) return
-    const currentId = pinnedQuestionIdRef.current
-    if (currentId) {
-      const currentEl = stickyQuestionRefs.current.get(currentId)
-      if (currentEl && isStickyPinned(currentEl, container)) {
-        setPinnedUserMessageId(currentId)
-        return
-      }
-    }
     let pinnedId: string | null = null
-    for (const [id, el] of stickyQuestionRefs.current) {
-      if (isStickyPinned(el, container)) {
+    for (const [id, messageEnd] of userMessageEndRefs.current) {
+      if (hasUserMessageFullyScrolledPast(messageEnd, container)) {
         pinnedId = id
-        break
       }
     }
-    pinnedQuestionIdRef.current = pinnedId
     setPinnedUserMessageId(pinnedId)
   }
 
-  const attachStickyQuestionRef =
+  const attachUserMessageEndRef =
     (messageId: string) =>
     (el: HTMLDivElement | null): void => {
-      if (el) stickyQuestionRefs.current.set(messageId, el)
-      else stickyQuestionRefs.current.delete(messageId)
+      if (el) userMessageEndRefs.current.set(messageId, el)
+      else userMessageEndRefs.current.delete(messageId)
     }
 
   const handleScroll = (): void => {
@@ -231,28 +219,36 @@ export const AgentMessageList = ({
               return (
                 <div key={groupKey} className={isLastGroupAi ? "mb-16" : ""}>
                   {userMessage && (
-                    // 吸顶容器：阅读回复期间问题钉住视口顶部。
-                    <div
-                      ref={attachStickyQuestionRef(userMessage.id)}
-                      className="sticky top-0 z-20 mb-4 w-full"
-                    >
-                      <AgentMessageItem
-                        message={userMessage}
-                        isPinned={pinnedUserMessageId === userMessage.id}
-                        isEditing={editingMessageId === userMessage.id}
-                        onStartEdit={() => setEditingMessageId(userMessage.id)}
-                        onCancelEdit={() => {
-                          if (editingMessageId === userMessage.id) {
+                    <>
+                      {/* 用户消息完全离开视口后，才将问题钉住视口顶部。 */}
+                      <div
+                        className={`top-0 z-20 mb-4 w-full ${
+                          pinnedUserMessageId === userMessage.id ? "sticky" : ""
+                        }`}
+                      >
+                        <AgentMessageItem
+                          message={userMessage}
+                          isPinned={pinnedUserMessageId === userMessage.id}
+                          isEditing={editingMessageId === userMessage.id}
+                          onStartEdit={() => setEditingMessageId(userMessage.id)}
+                          onCancelEdit={() => {
+                            if (editingMessageId === userMessage.id) {
+                              setEditingMessageId(null)
+                            }
+                          }}
+                          onEdit={(id, newContent) => {
+                            onEditMessage?.(id, newContent)
                             setEditingMessageId(null)
-                          }
-                        }}
-                        onEdit={(id, newContent) => {
-                          onEditMessage?.(id, newContent)
-                          setEditingMessageId(null)
-                        }}
-                        onDelete={onDeleteMessage}
+                          }}
+                          onDelete={onDeleteMessage}
+                        />
+                      </div>
+                      <div
+                        ref={attachUserMessageEndRef(userMessage.id)}
+                        className="h-0 -translate-y-4"
+                        aria-hidden="true"
                       />
-                    </div>
+                    </>
                   )}
                   {assistant && (
                     <AgentMessageItem

@@ -270,7 +270,7 @@ export const AgentToolCallBlock = ({
             type="button"
             aria-label="Diff 内容"
             aria-expanded={isDiffExpanded}
-            className="mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 rounded-[6px] bg-[#212121] pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
+            className="mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
             onClick={() => setIsDiffExpanded((previous) => !previous)}
           >
             <CornerDownRight className="h-3 w-3 shrink-0" />
@@ -292,7 +292,7 @@ export const AgentToolCallBlock = ({
           >
             <div
               ref={diffInnerRef}
-              className="agent-diff-block custom-scrollbar max-h-[320px] overflow-y-auto rounded-[6px] bg-[#2a2a2a] py-1"
+              className="agent-diff-block custom-scrollbar max-h-[320px] overflow-y-auto rounded-[6px] py-1"
             >
               {renderDiffLines(resolvedDiff, highlightedDiffLines)}
             </div>

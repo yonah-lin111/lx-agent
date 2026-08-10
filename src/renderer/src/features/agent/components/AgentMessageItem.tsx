@@ -1,5 +1,4 @@
 import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
-import { motion, useReducedMotion } from "motion/react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -90,10 +89,7 @@ export const AgentMessageItem = ({
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
-  const userBubbleRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  // 系统"减弱动态效果"偏好（Motion 提供），命中时吸顶居中的位移动画降级为瞬时切换。
-  const reduceMotion = useReducedMotion()
 
   const [copied, setCopied] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -104,31 +100,6 @@ export const AgentMessageItem = ({
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
-
-  // 吸顶谷偏移动画门控：layout 位移仅在 isPinned 切换瞬间启用（先开动画窗口保持旧布局，
-  // 下一帧再切换布局，给 layout 动画留出位移起点）；其余时刻（AI 输出、/undo 等高度变化）瞬时切换。
-  const [displayPinned, setDisplayPinned] = useState(isPinned)
-  const [pinAnimActive, setPinAnimActive] = useState(false)
-  const prevPinnedRef = useRef(isPinned)
-
-  useEffect(() => {
-    if (prevPinnedRef.current === isPinned) return
-    prevPinnedRef.current = isPinned
-    setPinAnimActive(true)
-    requestAnimationFrame(() => {
-      setDisplayPinned(isPinned)
-    })
-  }, [isPinned])
-
-  // 动画窗口兜底关闭（layout 动画约 240ms）。
-  useEffect(() => {
-    if (!pinAnimActive) return
-    const timer = window.setTimeout(() => {
-      setPinAnimActive(false)
-      setDisplayPinned(isPinned)
-    }, 400)
-    return () => window.clearTimeout(timer)
-  }, [pinAnimActive, isPinned])
 
   const userText = useMemo(
     () =>
@@ -502,19 +473,8 @@ export const AgentMessageItem = ({
 
   if (isUser) {
     return (
-      <motion.div
-        className={`group flex w-full flex-col px-0 ${displayPinned ? "items-center" : "items-end"}`}
-      >
-        <motion.div
-          ref={userBubbleRef}
-          layout
-          className="w-fit max-w-[88%] flex flex-col items-end"
-          transition={
-            reduceMotion || !pinAnimActive
-              ? { duration: 0 }
-              : { layout: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }
-          }
-        >
+      <div className={`group flex w-full flex-col px-0 ${isPinned ? "items-center" : "items-end"}`}>
+        <div className="w-fit max-w-[88%] flex flex-col items-end">
           {isEditing ? (
             <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[18px] bg-user-bubble p-2.5 shadow-sm">
               <textarea
@@ -566,13 +526,13 @@ export const AgentMessageItem = ({
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
         {isEditing ? (
           <div className="mt-1 h-5" aria-hidden="true" />
         ) : (
           <div
             className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
-              displayPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
+              isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
             }`}
           >
             {isCollapsible && (
@@ -611,7 +571,7 @@ export const AgentMessageItem = ({
             </LxIconButton>
           </div>
         )}
-      </motion.div>
+      </div>
     )
   }
 
@@ -751,11 +711,7 @@ export const AgentMessageItem = ({
             title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
             onClick={copyMessageContent}
           >
-            {copied ? (
-              <Check className="h-3 w-3 text-emerald-400" />
-            ) : (
-              <Copy className="h-3 w-3" />
-            )}
+            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
           </LxIconButton>
           {onDelete && (
             <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
