@@ -105,6 +105,31 @@ export const AgentMessageItem = ({
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
 
+  // 吸顶谷偏移动画门控：layout 位移仅在 isPinned 切换瞬间启用（先开动画窗口保持旧布局，
+  // 下一帧再切换布局，给 layout 动画留出位移起点）；其余时刻（AI 输出、/undo 等高度变化）瞬时切换。
+  const [displayPinned, setDisplayPinned] = useState(isPinned)
+  const [pinAnimActive, setPinAnimActive] = useState(false)
+  const prevPinnedRef = useRef(isPinned)
+
+  useEffect(() => {
+    if (prevPinnedRef.current === isPinned) return
+    prevPinnedRef.current = isPinned
+    setPinAnimActive(true)
+    requestAnimationFrame(() => {
+      setDisplayPinned(isPinned)
+    })
+  }, [isPinned])
+
+  // 动画窗口兜底关闭（layout 动画约 240ms）。
+  useEffect(() => {
+    if (!pinAnimActive) return
+    const timer = window.setTimeout(() => {
+      setPinAnimActive(false)
+      setDisplayPinned(isPinned)
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [pinAnimActive, isPinned])
+
   const userText = useMemo(
     () =>
       message.blocks
@@ -478,14 +503,14 @@ export const AgentMessageItem = ({
   if (isUser) {
     return (
       <motion.div
-        className={`group flex w-full flex-col px-0 ${isPinned ? "items-center" : "items-end"}`}
+        className={`group flex w-full flex-col px-0 ${displayPinned ? "items-center" : "items-end"}`}
       >
         <motion.div
           ref={userBubbleRef}
           layout
           className="w-fit max-w-[88%] flex flex-col items-end"
           transition={
-            reduceMotion
+            reduceMotion || !pinAnimActive
               ? { duration: 0 }
               : { layout: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }
           }
@@ -547,7 +572,7 @@ export const AgentMessageItem = ({
         ) : (
           <div
             className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
-              isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
+              displayPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
             }`}
           >
             {isCollapsible && (

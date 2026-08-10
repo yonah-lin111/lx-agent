@@ -234,7 +234,7 @@ export const AgentMessageList = ({
                     // 吸顶容器：阅读回复期间问题钉住视口顶部。
                     <div
                       ref={attachStickyQuestionRef(userMessage.id)}
-                      className="sticky top-0 z-20 w-full"
+                      className="sticky top-0 z-20 mb-4 w-full"
                     >
                       <AgentMessageItem
                         message={userMessage}
