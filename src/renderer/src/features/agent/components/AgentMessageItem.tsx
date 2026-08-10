@@ -592,9 +592,12 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
-      {assistantError && <div className="text-[13px] text-red-400">{assistantError}</div>}
-
-      <div className="relative min-w-0 w-full max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/90">
+      <div className="relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/90">
+        {assistantError && (
+          <div className="mb-1 text-[13px] text-red-400 whitespace-pre-wrap break-words">
+            {assistantError}
+          </div>
+        )}
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
             if (group.kind === "text") {
@@ -714,30 +717,30 @@ export const AgentMessageItem = ({
             </div>
           </div>
         )}
-        {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
-          <div className="mt-1 flex items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
-            <LxIconButton
-              size="small"
-              aria-label="复制消息"
-              title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
-              onClick={copyMessageContent}
-            >
-              {copied ? (
-                <Check className="h-3 w-3 text-emerald-400" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-            </LxIconButton>
-            {onDelete && (
-              <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
-                <LxIconButton size="small" aria-label="删除消息">
-                  <Trash2 className="h-3 w-3" />
-                </LxIconButton>
-              </LxTooltip>
-            )}
-          </div>
-        )}
       </div>
+      {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
+        <div className="mt-1 flex items-center gap-1 justify-start opacity-0 transition-opacity group-hover:opacity-100">
+          <LxIconButton
+            size="small"
+            aria-label="复制消息"
+            title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+            onClick={copyMessageContent}
+          >
+            {copied ? (
+              <Check className="h-3 w-3 text-emerald-400" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </LxIconButton>
+          {onDelete && (
+            <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
+              <LxIconButton size="small" aria-label="删除消息">
+                <Trash2 className="h-3 w-3" />
+              </LxIconButton>
+            </LxTooltip>
+          )}
+        </div>
+      )}
     </div>
   )
 }
