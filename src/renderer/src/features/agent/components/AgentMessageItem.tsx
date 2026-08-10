@@ -44,10 +44,7 @@ type DisplayGroup =
   // 写操作工具独立组（不参与执行折叠，展示 diff）。
   | { kind: "write"; block: ToolCallBlock; isStreaming: boolean }
 
-// Skill 调用使用的工具名。
 const SKILL_TOOL_NAME = "read_skill"
-
-// Web Search 调用使用的工具名。
 const WEB_SEARCH_TOOL_NAME = "web_search"
 
 // 判断是否为 Skill 调用。
@@ -60,7 +57,6 @@ const isWebSearchToolCall = (toolName: string): boolean => toolName === WEB_SEAR
 const isMcpToolCall = (toolName: string): boolean =>
   toolName !== SKILL_TOOL_NAME && !isWebSearchToolCall(toolName) && toolName.includes("_")
 
-// 提取 MCP 服务名（全名首段）。
 const getMcpServerName = (toolName: string): string => {
   const separatorIndex = toolName.indexOf("_")
   return separatorIndex > 0 ? toolName.slice(0, separatorIndex) : toolName
@@ -72,9 +68,7 @@ const isWriteToolCall = (toolName: string): boolean => toolName === "edit" || to
 interface AgentMessageItemProps {
   message: ChatMessage
   continuationMessages?: ChatMessage[]
-  // Agent 会话运行中且本条目为最后一条 AI 消息时由列表注入，使 loader 跨工具执行阶段保持显示。
   isLoading?: boolean
-  // 用户消息在 QA 对中吸顶时由列表注入，驱动其平滑移动到视口顶部居中的位移动画。
   isPinned?: boolean
   isEditing?: boolean
   onStartEdit?: () => void
@@ -83,9 +77,6 @@ interface AgentMessageItemProps {
   onDelete?: (messageId: string) => void
 }
 
-/**
- * 渲染单条 Agent 或用户消息（blocks 渲染：文本 / 思考 / 工具调用 / 工具结果）。
- */
 export const AgentMessageItem = ({
   message,
   continuationMessages = [],
@@ -99,7 +90,6 @@ export const AgentMessageItem = ({
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
-  const userRootRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
   const userBubbleRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -112,16 +102,9 @@ export const AgentMessageItem = ({
   const [isClamped, setIsClamped] = useState(false)
   const [localIsEditing, setLocalIsEditing] = useState(false)
   const isEditing = isEditingProp ?? localIsEditing
-  // 吸顶居中所需的水平平移量（容器宽 - 气泡宽）/ 2。
-  const [pinOffset, setPinOffset] = useState(0)
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
-
-  // 记录上一次容器的渲染高度，用于 FLIP 动画
-  const lastHeightRef = useRef<number>(0)
-  const transitionCleanupRef = useRef<(() => void) | null>(null)
-  const isTransitioningRef = useRef<boolean>(false)
 
   const userText = useMemo(
     () =>
@@ -132,7 +115,6 @@ export const AgentMessageItem = ({
     [message.blocks],
   )
 
-  // 按真实事件顺序合并同一轮 Agent 消息中的内容块。
   const displayBlocks = useMemo(
     () =>
       [message, ...continuationMessages].flatMap((currentMessage) =>
@@ -140,7 +122,6 @@ export const AgentMessageItem = ({
       ),
     [continuationMessages, message],
   )
-  // 工具结果携带的 diff 按 toolCallId 索引（写工具组渲染用）。
   const diffByToolCallId = useMemo(
     () =>
       new Map(
@@ -324,88 +305,12 @@ export const AgentMessageItem = ({
   const assistantError = !isUser
     ? [message, ...continuationMessages].find((currentMessage) => currentMessage.error)?.error
     : undefined
-  // 当前（含 continuation）是否仍在流式生成。
   const isStreamingNow =
     message.isStreaming || continuationMessages.some((currentMessage) => currentMessage.isStreaming)
-  // 是否存在可展示的文本输出。
   const hasOutput = displayBlocks.some(
     ({ block }) => block.kind === "text" && block.text.trim() !== "",
   )
 
-  // 使用 ResizeObserver 记录用户气泡容器最新高度
-  useEffect(() => {
-    if (!isUser) return
-    const el = userBubbleRef.current
-    if (!el || typeof ResizeObserver === "undefined") return
-
-    const observer = new ResizeObserver((entries) => {
-      if (isTransitioningRef.current) return
-      for (const entry of entries) {
-        lastHeightRef.current = entry.target.getBoundingClientRect().height
-      }
-    })
-
-    observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
-  }, [isUser])
-
-  // 当 isEditing 状态发生切换时，触发平滑的 FLIP 高度过渡动效
-  useLayoutEffect(() => {
-    if (!isUser) return
-    const el = userBubbleRef.current
-    if (!el) return
-
-    if (transitionCleanupRef.current) {
-      transitionCleanupRef.current()
-    }
-
-    const newHeight = el.getBoundingClientRect().height
-
-    if (lastHeightRef.current && lastHeightRef.current !== newHeight) {
-      const oldHeight = lastHeightRef.current
-
-      isTransitioningRef.current = true
-      el.style.overflow = "hidden"
-      el.style.transition = "none"
-      el.style.height = `${oldHeight}px`
-
-      // 强制重排
-      void el.offsetHeight
-
-      el.style.transition = "height 0.25s cubic-bezier(0.2, 0.85, 0.2, 1)"
-      el.style.height = `${newHeight}px`
-
-      const handleTransitionEnd = (e: TransitionEvent) => {
-        if (e.propertyName === "height") {
-          el.style.transition = ""
-          el.style.height = ""
-          el.style.overflow = ""
-          isTransitioningRef.current = false
-          lastHeightRef.current = newHeight
-        }
-      }
-
-      el.addEventListener("transitionend", handleTransitionEnd)
-
-      const cleanup = () => {
-        el.removeEventListener("transitionend", handleTransitionEnd)
-      }
-      transitionCleanupRef.current = cleanup
-    } else {
-      lastHeightRef.current = newHeight
-    }
-
-    return () => {
-      if (transitionCleanupRef.current) {
-        transitionCleanupRef.current()
-        transitionCleanupRef.current = null
-      }
-    }
-  }, [isEditing, isUser])
-
-  // 编辑模式下根据输入内容动态自动调整 textarea 高度
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       const el = textareaRef.current
@@ -416,7 +321,6 @@ export const AgentMessageItem = ({
     }
   }, [editText, isEditing])
 
-  // 进入编辑模式时自动聚焦 textarea 并定位光标至末尾
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       const el = textareaRef.current
@@ -429,7 +333,6 @@ export const AgentMessageItem = ({
     setEditText(userText)
   }, [userText])
 
-  // 检测用户消息是否超过3行。
   useLayoutEffect(() => {
     if (!isUser || isEditing) return
     const content = userContentRef.current
@@ -461,24 +364,6 @@ export const AgentMessageItem = ({
       content.style.height = ""
     }
   }, [userText, isUser, isExpanded, isEditing])
-
-  // 测量吸顶居中所需水平平移量（容器宽 - 气泡宽）/ 2，随气泡/容器尺寸变化（含窗口缩放）持续更新，供 Motion 位移动画使用。
-  useLayoutEffect(() => {
-    const root = userRootRef.current
-    const bubble = userBubbleRef.current
-    if (!isUser || !root || !bubble) return
-    const measure = (): void => {
-      const rootWidth = root.getBoundingClientRect().width
-      const bubbleWidth = bubble.getBoundingClientRect().width
-      setPinOffset(Math.max(0, (rootWidth - bubbleWidth) / 2))
-    }
-    measure()
-    if (typeof ResizeObserver === "undefined") return
-    const observer = new ResizeObserver(measure)
-    observer.observe(root)
-    observer.observe(bubble)
-    return () => observer.disconnect()
-  }, [isUser, userText, isExpanded, isEditing])
 
   const toggleExpand = (): void => {
     const content = userContentRef.current
@@ -594,14 +479,20 @@ export const AgentMessageItem = ({
   if (isUser) {
     return (
       <motion.div
-        ref={userRootRef}
-        className="group flex flex-col items-end px-0 w-full"
-        animate={{ transform: isPinned ? `translateX(-${pinOffset}px)` : "translateX(0px)" }}
-        transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.77, 0, 0.175, 1] }}
+        className={`group flex w-full flex-col px-0 ${isPinned ? "items-center" : "items-end"}`}
       >
-        <div ref={userBubbleRef} className="w-fit max-w-[88%] flex flex-col items-end">
+        <motion.div
+          ref={userBubbleRef}
+          layout
+          className="w-fit max-w-[88%] flex flex-col items-end"
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { layout: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }
+          }
+        >
           {isEditing ? (
-            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] bg-white/10 p-2.5 shadow-sm">
+            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] bg-[#303030] p-2.5 shadow-sm">
               <textarea
                 ref={textareaRef}
                 value={editText}
@@ -651,9 +542,13 @@ export const AgentMessageItem = ({
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
         {!isEditing && (
-          <div className="mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100">
+          <div
+            className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
+              isPinned ? "rounded-[6px] bg-[#303030] p-0.5" : ""
+            }`}
+          >
             {isCollapsible && (
               <LxIconButton
                 size="small"

@@ -101,7 +101,16 @@
       "resources/**"
     ],
     "mac": {
+      "icon": "resources/icons/lx-logo.png",
       "target": "dmg"
+    },
+    "win": {
+      "icon": "resources/icons/lx-logo.png",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "resources/icons/linux",
+      "target": "AppImage"
     }
   }
 }

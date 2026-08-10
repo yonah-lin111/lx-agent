@@ -17,16 +17,13 @@ interface AgentMessageListProps {
   onDeleteMessage?: (messageId: string) => void
 }
 
-// 距底部阈值（px），低于该距离视为贴底。
 const NEAR_BOTTOM_THRESHOLD = 40
-// 吸顶检测容差（px）：吸收滚动容器内边距与滚动中的亚像素/帧时序抖动，避免 isPinned 反复翻转。
+// 吸顶判定容差（px）：吸收滚动抖动，避免 isPinned 反复翻转。
 const PINNED_TOP_TOLERANCE = 8
 
 // AI 消息与同一轮后续消息的展示条目。
 interface AgentMessageListEntry {
-  // 原始消息。
   message: ChatMessage
-  // 同一轮连续的工具结果或 AI 后续消息。
   continuationMessages: ChatMessage[]
 }
 
@@ -38,9 +35,6 @@ interface AgentMessageListGroup {
   assistant: AgentMessageListEntry | null
 }
 
-/**
- * 将一次连续 Agent 执行聚合为单一 AI 气泡的展示条目。
- */
 const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
   messages.reduce<AgentMessageListEntry[]>((entries, message) => {
     const previousEntry = entries.at(-1)
@@ -54,7 +48,6 @@ const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
     return entries
   }, [])
 
-// 将消息条目归并为 QA 对：用户条目与紧随其后的 AI 条目合并，供问题吸顶共用容器。
 const buildQaGroups = (entries: AgentMessageListEntry[]): AgentMessageListGroup[] => {
   const groups: AgentMessageListGroup[] = []
   for (const entry of entries) {
@@ -72,9 +65,6 @@ const buildQaGroups = (entries: AgentMessageListEntry[]): AgentMessageListGroup[
   return groups
 }
 
-/**
- * 渲染 Agent 消息列表与空状态。
- */
 export const AgentMessageList = ({
   messages,
   isStreaming,
@@ -92,44 +82,44 @@ export const AgentMessageList = ({
   const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
   const messageGroups = useMemo(() => buildQaGroups(messageEntries), [messageEntries])
   const lastGroup = messageGroups.at(-1)
-  // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙（message_end ~ 下一轮 message_start），避免闪烁。
+  // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
-  // 当前钉住的用户问题 id（驱动其吸顶居中的位移动画）。
+  // 当前钉住的用户问题 id。
   const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
-  // 各 QA 对吸顶容器的 DOM 引用，按用户消息 id 索引。
+  // 各 QA 对吸顶容器的 DOM 引用（按用户消息 id 索引）。
   const stickyQuestionRefs = useRef(new Map<string, HTMLDivElement>())
-  // 当前钉住问题的 id 引用，供滞回判断（避免几何抖动导致居中闪烁）。
+  // 当前钉住问题的 id 引用，供滞回判断。
   const pinnedQuestionIdRef = useRef<string | null>(null)
 
-  // 距底部阈值内视为贴底。
   const isNearBottom = (): boolean => {
     const el = scrollRef.current
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD
   }
 
-  // 滚动时检测当前钉住的用户问题并保持居中状态：
-  // 已钉住的问题只要仍贴近容器顶部且未滚出视口就继续钉住（滞回），换组时再扫描下一个贴顶问题，
-  // 避免快速滚动中单帧几何抖动导致 isPinned 反复翻转、居中只闪现一下。
+  // 列表已发生滚动且容器贴住滚动容器顶部（scrollTop > 0 排除首条消息自然贴顶）。
+  const isStickyPinned = (el: HTMLDivElement, container: HTMLDivElement): boolean => {
+    if (container.scrollTop <= 0.5) return false
+    const containerTop = container.getBoundingClientRect().top
+    const rect = el.getBoundingClientRect()
+    return rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop
+  }
+
+  // 已钉住的问题保持吸顶（滞回），换组时再扫描下一个贴顶问题。
   const updatePinnedQuestion = (): void => {
     const container = scrollRef.current
     if (!container) return
-    const containerTop = container.getBoundingClientRect().top
     const currentId = pinnedQuestionIdRef.current
     if (currentId) {
       const currentEl = stickyQuestionRefs.current.get(currentId)
-      if (currentEl) {
-        const rect = currentEl.getBoundingClientRect()
-        if (rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop) {
-          setPinnedUserMessageId(currentId)
-          return
-        }
+      if (currentEl && isStickyPinned(currentEl, container)) {
+        setPinnedUserMessageId(currentId)
+        return
       }
     }
     let pinnedId: string | null = null
     for (const [id, el] of stickyQuestionRefs.current) {
-      const rect = el.getBoundingClientRect()
-      if (rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop) {
+      if (isStickyPinned(el, container)) {
         pinnedId = id
         break
       }
@@ -138,7 +128,6 @@ export const AgentMessageList = ({
     setPinnedUserMessageId(pinnedId)
   }
 
-  // 注册/注销 QA 对吸顶容器引用（按用户消息 id 索引）。
   const attachStickyQuestionRef =
     (messageId: string) =>
     (el: HTMLDivElement | null): void => {
@@ -146,7 +135,6 @@ export const AgentMessageList = ({
       else stickyQuestionRefs.current.delete(messageId)
     }
 
-  // 滚动位置决定吸底状态与滚动到底按钮的显隐：贴底恢复吸底并隐藏，上滚暂停吸底并显示。
   const handleScroll = (): void => {
     const nearBottom = isNearBottom()
     stickToBottomRef.current = nearBottom
@@ -160,10 +148,7 @@ export const AgentMessageList = ({
     stickToBottomRef.current = true
   }, [isRestoring])
 
-  // 吸底或骨架屏期间内容变化后直接跳到列表底部；骨架屏结束后不再额外调整滚动。
-  // 必须用 useLayoutEffect 同步吸附：scrollTop 赋值会触发滚动事件，若延迟到 paint 后，
-  // 事件派发时可能已提交新内容（scrollHeight 增长而 scrollTop 滞后），误判为未贴底，
-  // 导致无滚动条时闪现带 loading 样式的回到底部按钮。
+  // 吸底或骨架屏期间内容变化后同步跳到列表底部。
   useLayoutEffect(() => {
     if (!isRestoring && !stickToBottomRef.current) return
     const el = scrollRef.current
@@ -171,7 +156,6 @@ export const AgentMessageList = ({
     setShowScrollToBottom(false)
   }, [messages, isRestoring])
 
-  // 滚动到底按钮显隐过渡：消失时先播退出动画再卸载。
   useEffect(() => {
     if (showScrollToBottom) {
       setScrollButtonRendered(true)
@@ -187,15 +171,12 @@ export const AgentMessageList = ({
     return () => clearTimeout(timer)
   }, [showScrollToBottom, scrollButtonRendered])
 
-  // 点击按钮平滑滚动到底部。
   const scrollToBottom = (): void => {
     const el = scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }
 
-  // 用户发送消息后平滑滚动到底部（非跳转）：新用户消息到达列表末尾时触发，即使此前已上滚。
-  // 以 prev 快照判定"追加新增"——撤销/删除/恢复/编辑均不会追加用户消息，因此不会误触发；
-  // 允许与其他事件同批到达（追加部分只要含用户消息即视为发送动作）。
+  // 用户发送新消息后平滑滚动到底部（以 prev 快照判定追加新增）。
   const prevMessagesRef = useRef<ChatMessage[]>(messages)
   useEffect(() => {
     const prev = prevMessagesRef.current
@@ -250,7 +231,7 @@ export const AgentMessageList = ({
               return (
                 <div key={groupKey} className={isLastGroupAi ? "mb-16" : ""}>
                   {userMessage && (
-                    // 吸顶容器：与同组 AI 回复共用高度，阅读回复期间问题钉住视口顶部。
+                    // 吸顶容器：阅读回复期间问题钉住视口顶部。
                     <div
                       ref={attachStickyQuestionRef(userMessage.id)}
                       className="sticky top-0 z-20 w-full"
@@ -287,7 +268,7 @@ export const AgentMessageList = ({
           </div>
 
           {scrollButtonRendered && (
-            // z-10 高于代码块/模板块头部（z-index: 1），避免其滚入底部区域时遮挡按钮。
+            // z-10 高于代码块/模板块头部，避免遮挡。
             <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
               <button
                 type="button"
