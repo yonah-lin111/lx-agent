@@ -6,7 +6,6 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentDiffBlock } from "@/features/agent/components/AgentDiffBlock"
 import {
   AgentExecutionGroup,
   type ExecutionGroupItem,
@@ -612,14 +611,13 @@ export const AgentMessageItem = ({
             }
 
             if (group.kind === "write") {
-              const diff = diffByToolCallId.get(group.block.toolCallId)
               return (
-                <div key={groupIndex} className="flex min-w-0 flex-col gap-1">
-                  <AgentToolCallBlock toolCall={group.block} />
-                  {diff && diff.lines.length > 0 && (
-                    <AgentDiffBlock diff={diff} defaultExpanded={isStreamingNow} />
-                  )}
-                </div>
+                <AgentToolCallBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  diff={diffByToolCallId.get(group.block.toolCallId)}
+                  defaultExpanded={isStreamingNow}
+                />
               )
             }
 
