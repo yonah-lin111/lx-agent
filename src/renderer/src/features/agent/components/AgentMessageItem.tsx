@@ -345,8 +345,8 @@ export const AgentMessageItem = ({
     setEditText(userText)
   }, [userText])
 
-  useLayoutEffect(() => {
-    if (!isUser || isEditing) return
+  // 折叠测量：临时加 line-clamp-3 实测 3 行高度，避免解析 "normal" 行高（parseFloat → NaN → 20）带来的猜测误差。
+  const measureCollapse = useCallback((): void => {
     const content = userContentRef.current
     if (!content) return
 
@@ -356,9 +356,16 @@ export const AgentMessageItem = ({
       content.classList.remove("line-clamp-3")
     }
 
-    const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
-    const collapsedHeight = lineHeight * 3
+    // 显式 height 会覆盖 -webkit-line-clamp 的盒高（clientHeight 返回完整高度而非 3 行高度）。
+    // 折叠动画/侧栏折叠期间 height 可能正处于中间值，不清空会量出 collapsedHeight == fullHeight 而误判不可折叠。
+    const savedHeight = content.style.height
+    content.style.height = ""
+
+    content.classList.add("line-clamp-3")
+    const collapsedHeight = content.clientHeight
+    content.classList.remove("line-clamp-3")
     const fullHeight = content.scrollHeight
+    content.style.height = savedHeight
 
     if (wasClamped && !isExpanded) {
       content.classList.add("line-clamp-3")
@@ -375,52 +382,44 @@ export const AgentMessageItem = ({
       setIsClamped(false)
       content.style.height = ""
     }
-  }, [userText, isUser, isExpanded, isEditing])
+  }, [isExpanded])
+
+  useLayoutEffect(() => {
+    if (!isUser || isEditing) return
+    measureCollapse()
+  }, [isUser, isEditing, measureCollapse])
+
+  // 窗口尺寸/字体等布局变更会改变换行行数，使折叠状态过期；仅在宽度变化时重测，避免折叠动画期间反复触发。
+  useEffect(() => {
+    if (!isUser || isEditing) return
+    const content = userContentRef.current
+    if (!content) return
+
+    let lastWidth = content.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (content.clientWidth === lastWidth) return
+      lastWidth = content.clientWidth
+      measureCollapse()
+    })
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [isUser, isEditing, measureCollapse])
 
   const toggleExpand = (): void => {
     const content = userContentRef.current
     if (!content) return
 
     const nextIsExpanded = !isExpanded
-    const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
-    const collapsedHeight = lineHeight * 3
-
     if (nextIsExpanded) {
+      // 展开：移除 line-clamp 并清空显式高度，直接展示完整内容。
       setIsClamped(false)
-      content.style.height = `${collapsedHeight}px`
-
-      requestAnimationFrame(() => {
-        content.style.height = `${content.scrollHeight}px`
-      })
-
-      content.addEventListener(
-        "transitionend",
-        () => {
-          if (content.dataset.expanded === "true") {
-            content.style.height = ""
-          }
-        },
-        { once: true },
-      )
+      content.style.height = ""
     } else {
-      content.style.height = `${content.scrollHeight}px`
-
-      requestAnimationFrame(() => {
-        content.style.height = `${collapsedHeight}px`
-      })
-
-      content.addEventListener(
-        "transitionend",
-        () => {
-          if (content.dataset.expanded === "false") {
-            setIsClamped(true)
-          }
-        },
-        { once: true },
-      )
+      // 折叠：恢复 3 行截断高度并挂 line-clamp，无动画瞬时切换。
+      const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
+      content.style.height = `${lineHeight * 3}px`
+      setIsClamped(true)
     }
-
-    content.dataset.expanded = nextIsExpanded ? "true" : "false"
     setIsExpanded(nextIsExpanded)
   }
 
@@ -542,9 +541,7 @@ export const AgentMessageItem = ({
             >
               <div
                 ref={userContentRef}
-                className={`overflow-hidden transition-[height] duration-300 ease-in-out ${
-                  isClamped ? "line-clamp-3" : ""
-                }`}
+                className={`overflow-hidden ${isClamped ? "line-clamp-3" : ""}`}
               >
                 {userText}
               </div>
