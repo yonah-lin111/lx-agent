@@ -292,7 +292,7 @@ export const AgentToolCallBlock = ({
           >
             <div
               ref={diffInnerRef}
-              className="custom-scrollbar max-h-[320px] overflow-y-auto rounded-[6px] bg-[#2a2a2a] py-1"
+              className="agent-diff-block custom-scrollbar max-h-[320px] overflow-y-auto rounded-[6px] bg-[#2a2a2a] py-1"
             >
               {renderDiffLines(resolvedDiff, highlightedDiffLines)}
             </div>
