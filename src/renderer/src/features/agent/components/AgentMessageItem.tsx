@@ -542,7 +542,9 @@ export const AgentMessageItem = ({
             </div>
           )}
         </motion.div>
-        {!isEditing && (
+        {isEditing ? (
+          <div className="mt-1 h-5" aria-hidden="true" />
+        ) : (
           <div
             className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
               isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
