@@ -12,16 +12,13 @@ import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
-// 展开态最小/最大宽度比例（相对视口）。
-const MIN_WIDTH_RATIO = 0.32
-const MAX_WIDTH_RATIO = 0.38
+// 展开态最小/最大宽度（相对视口宽度，单位 vw）。
+const MIN_WIDTH_VW = 30
+const MAX_WIDTH_VW = 40
 
-// 约束宽度到 [25vw, 40vw]。
-const clampWidth = (value: number): number => {
-  const minWidth = window.innerWidth * MIN_WIDTH_RATIO
-  const maxWidth = window.innerWidth * MAX_WIDTH_RATIO
-  return Math.min(Math.max(value, minWidth), maxWidth)
-}
+// 约束宽度到 [30vw, 40vw]。
+const clampWidth = (value: number): number =>
+  Math.min(Math.max(value, MIN_WIDTH_VW), MAX_WIDTH_VW)
 
 /**
  * 右侧栏 (集成 Agent 页面与控制按钮)
@@ -35,7 +32,7 @@ export const RightSideBar = (): React.JSX.Element => {
     rightSidebarStore.setCollapsed(isCollapsed)
   }, [isCollapsed])
 
-  const [width, setWidth] = useState<number>(() => window.innerWidth * MIN_WIDTH_RATIO)
+  const [width, setWidth] = useState<number>(MIN_WIDTH_VW)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const [searchParams] = useSearchParams()
@@ -118,7 +115,7 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [searchParams])
 
-  // 拖拽左侧边缘调整宽度：最小 25vw，最大 40vw。
+  // 拖拽左侧边缘调整宽度：最小 30vw，最大 40vw。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = { startX: event.clientX, startWidth: width }
     setIsResizing(true)
@@ -128,7 +125,8 @@ export const RightSideBar = (): React.JSX.Element => {
   const handleResizeMove = (event: React.PointerEvent<HTMLDivElement>): void => {
     const start = resizeStartRef.current
     if (!start) return
-    const next = start.startWidth - (event.clientX - start.startX)
+    // 拖拽像素增量按当前视口宽度换算为 vw。
+    const next = start.startWidth - (event.clientX - start.startX) / (window.innerWidth / 100)
     setWidth(clampWidth(next))
   }
 
@@ -148,16 +146,7 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [isResizing])
 
-  // 窗口尺寸变化（含全屏切换）后重新约束宽度，避免展开态宽度超出当前 40vw 上限。
-  useEffect(() => {
-    if (isCollapsed) return
-    const handleWindowResize = (): void => {
-      setWidth((current) => clampWidth(current))
-    }
-    window.addEventListener("resize", handleWindowResize)
-    return () => window.removeEventListener("resize", handleWindowResize)
-  }, [isCollapsed])
-
+      // 窗口尺寸变化（含全屏切换）后宽度随 vw 自动重算，无需额外处理。
   // 会话归属上下文：项目 item 会话或页面会话（item 解析中返回 undefined，避免误建桶）。
   const context = useMemo<AgentSendContext | undefined>(() => {
     const itemId = searchParams.get("itemId")
@@ -291,7 +280,11 @@ export const RightSideBar = (): React.JSX.Element => {
           ? "transition-none"
           : "transition-[width,min-width,max-width] duration-300 ease-in-out"
       } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-2"}`}
-      style={isCollapsed ? undefined : { width, minWidth: width, maxWidth: width }}
+      style={
+        isCollapsed
+          ? undefined
+          : { width: `${width}vw`, minWidth: `${width}vw`, maxWidth: `${width}vw` }
+      }
     >
       {!isCollapsed && (
         <div
