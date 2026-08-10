@@ -92,10 +92,11 @@ export const AgentExecutionGroup = ({
         type="button"
         aria-expanded={isExpanded}
         aria-label={isExpanded ? "收起执行内容" : "展开执行内容"}
-        className="flex h-5 w-fit items-center gap-1 rounded-[6px] bg-[#212121] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:bg-[#212121]/80 hover:text-white/70 focus:outline-none"
+        className="relative ml-6 flex h-5 w-fit items-center gap-1 rounded-[6px] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
-        <span aria-hidden className="mr-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
+        {/* 小圆点置于黑色背景左侧，与展开项圆点同列，hover 颜色随按钮文字联动。 */}
+        <span aria-hidden className="absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
         <span>
           {countSegments.map((segment, index) => (
             <Fragment key={segment.plural}>
