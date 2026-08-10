@@ -19,6 +19,8 @@ interface AgentMessageListProps {
 
 // 距底部阈值（px），低于该距离视为贴底。
 const NEAR_BOTTOM_THRESHOLD = 40
+// 吸顶检测容差（px）：吸收滚动容器内边距与滚动中的亚像素/帧时序抖动，避免 isPinned 反复翻转。
+const PINNED_TOP_TOLERANCE = 8
 
 // AI 消息与同一轮后续消息的展示条目。
 interface AgentMessageListEntry {
@@ -26,6 +28,14 @@ interface AgentMessageListEntry {
   message: ChatMessage
   // 同一轮连续的工具结果或 AI 后续消息。
   continuationMessages: ChatMessage[]
+}
+
+// QA 对展示组：用户消息作为组头吸顶，紧随其后的 AI 条目作为回复。
+interface AgentMessageListGroup {
+  // 组头用户消息（可能为空的孤立 AI 条目）。
+  userMessage: ChatMessage | null
+  // 紧随其后的 AI 回复条目（可能缺失，如用户消息尚无回复）。
+  assistant: AgentMessageListEntry | null
 }
 
 /**
@@ -43,6 +53,24 @@ const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
     entries.push({ message, continuationMessages: [] })
     return entries
   }, [])
+
+// 将消息条目归并为 QA 对：用户条目与紧随其后的 AI 条目合并，供问题吸顶共用容器。
+const buildQaGroups = (entries: AgentMessageListEntry[]): AgentMessageListGroup[] => {
+  const groups: AgentMessageListGroup[] = []
+  for (const entry of entries) {
+    if (entry.message.role === "user") {
+      groups.push({ userMessage: entry.message, assistant: null })
+      continue
+    }
+    const lastGroup = groups.at(-1)
+    if (lastGroup?.userMessage && !lastGroup.assistant) {
+      lastGroup.assistant = entry
+    } else {
+      groups.push({ userMessage: null, assistant: entry })
+    }
+  }
+  return groups
+}
 
 /**
  * 渲染 Agent 消息列表与空状态。
@@ -62,9 +90,16 @@ export const AgentMessageList = ({
   const [scrollButtonRendered, setScrollButtonRendered] = useState(false)
   const [scrollButtonAnimatingOut, setScrollButtonAnimatingOut] = useState(false)
   const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
-  const lastEntry = messageEntries.at(-1)
+  const messageGroups = useMemo(() => buildQaGroups(messageEntries), [messageEntries])
+  const lastGroup = messageGroups.at(-1)
   // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙（message_end ~ 下一轮 message_start），避免闪烁。
-  const isLastEntryLoading = Boolean(isStreaming) && lastEntry?.message.role === "assistant"
+  const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
+  // 当前钉住的用户问题 id（驱动其吸顶居中的位移动画）。
+  const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
+  // 各 QA 对吸顶容器的 DOM 引用，按用户消息 id 索引。
+  const stickyQuestionRefs = useRef(new Map<string, HTMLDivElement>())
+  // 当前钉住问题的 id 引用，供滞回判断（避免几何抖动导致居中闪烁）。
+  const pinnedQuestionIdRef = useRef<string | null>(null)
 
   // 距底部阈值内视为贴底。
   const isNearBottom = (): boolean => {
@@ -73,11 +108,50 @@ export const AgentMessageList = ({
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD
   }
 
+  // 滚动时检测当前钉住的用户问题并保持居中状态：
+  // 已钉住的问题只要仍贴近容器顶部且未滚出视口就继续钉住（滞回），换组时再扫描下一个贴顶问题，
+  // 避免快速滚动中单帧几何抖动导致 isPinned 反复翻转、居中只闪现一下。
+  const updatePinnedQuestion = (): void => {
+    const container = scrollRef.current
+    if (!container) return
+    const containerTop = container.getBoundingClientRect().top
+    const currentId = pinnedQuestionIdRef.current
+    if (currentId) {
+      const currentEl = stickyQuestionRefs.current.get(currentId)
+      if (currentEl) {
+        const rect = currentEl.getBoundingClientRect()
+        if (rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop) {
+          setPinnedUserMessageId(currentId)
+          return
+        }
+      }
+    }
+    let pinnedId: string | null = null
+    for (const [id, el] of stickyQuestionRefs.current) {
+      const rect = el.getBoundingClientRect()
+      if (rect.top <= containerTop + PINNED_TOP_TOLERANCE && rect.bottom > containerTop) {
+        pinnedId = id
+        break
+      }
+    }
+    pinnedQuestionIdRef.current = pinnedId
+    setPinnedUserMessageId(pinnedId)
+  }
+
+  // 注册/注销 QA 对吸顶容器引用（按用户消息 id 索引）。
+  const attachStickyQuestionRef =
+    (messageId: string) =>
+    (el: HTMLDivElement | null): void => {
+      if (el) stickyQuestionRefs.current.set(messageId, el)
+      else stickyQuestionRefs.current.delete(messageId)
+    }
+
   // 滚动位置决定吸底状态与滚动到底按钮的显隐：贴底恢复吸底并隐藏，上滚暂停吸底并显示。
   const handleScroll = (): void => {
     const nearBottom = isNearBottom()
     stickToBottomRef.current = nearBottom
     setShowScrollToBottom(!nearBottom)
+    updatePinnedQuestion()
   }
 
   // 会话恢复开始时强制回到吸底，确保骨架屏期间滚动贴底。
@@ -168,27 +242,45 @@ export const AgentMessageList = ({
             onScroll={handleScroll}
             className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
           >
-            {messageEntries.map(({ message, continuationMessages }, index) => {
-              const isLastAi = index === messageEntries.length - 1 && message.role === "assistant"
+            {messageGroups.map((group, index) => {
+              const userMessage = group.userMessage
+              const assistant = group.assistant
+              const groupKey = userMessage?.id ?? assistant?.message.id
+              const isLastGroupAi = index === messageGroups.length - 1 && assistant != null
               return (
-                <div key={message.id} className={isLastAi ? "mb-16" : ""}>
-                  <AgentMessageItem
-                    message={message}
-                    continuationMessages={continuationMessages}
-                    isLoading={index === messageEntries.length - 1 && isLastEntryLoading}
-                    isEditing={editingMessageId === message.id}
-                    onStartEdit={() => setEditingMessageId(message.id)}
-                    onCancelEdit={() => {
-                      if (editingMessageId === message.id) {
-                        setEditingMessageId(null)
-                      }
-                    }}
-                    onEdit={(id, newContent) => {
-                      onEditMessage?.(id, newContent)
-                      setEditingMessageId(null)
-                    }}
-                    onDelete={onDeleteMessage}
-                  />
+                <div key={groupKey} className={isLastGroupAi ? "mb-16" : ""}>
+                  {userMessage && (
+                    // 吸顶容器：与同组 AI 回复共用高度，阅读回复期间问题钉住视口顶部。
+                    <div
+                      ref={attachStickyQuestionRef(userMessage.id)}
+                      className="sticky top-0 z-20 w-full"
+                    >
+                      <AgentMessageItem
+                        message={userMessage}
+                        isPinned={pinnedUserMessageId === userMessage.id}
+                        isEditing={editingMessageId === userMessage.id}
+                        onStartEdit={() => setEditingMessageId(userMessage.id)}
+                        onCancelEdit={() => {
+                          if (editingMessageId === userMessage.id) {
+                            setEditingMessageId(null)
+                          }
+                        }}
+                        onEdit={(id, newContent) => {
+                          onEditMessage?.(id, newContent)
+                          setEditingMessageId(null)
+                        }}
+                        onDelete={onDeleteMessage}
+                      />
+                    </div>
+                  )}
+                  {assistant && (
+                    <AgentMessageItem
+                      message={assistant.message}
+                      continuationMessages={assistant.continuationMessages}
+                      isLoading={index === messageGroups.length - 1 && isLastGroupLoading}
+                      onDelete={onDeleteMessage}
+                    />
+                  )}
                 </div>
               )
             })}

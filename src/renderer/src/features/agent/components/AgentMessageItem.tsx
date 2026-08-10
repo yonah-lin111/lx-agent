@@ -1,4 +1,5 @@
 import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
+import { motion, useReducedMotion } from "motion/react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -73,6 +74,8 @@ interface AgentMessageItemProps {
   continuationMessages?: ChatMessage[]
   // Agent 会话运行中且本条目为最后一条 AI 消息时由列表注入，使 loader 跨工具执行阶段保持显示。
   isLoading?: boolean
+  // 用户消息在 QA 对中吸顶时由列表注入，驱动其平滑移动到视口顶部居中的位移动画。
+  isPinned?: boolean
   isEditing?: boolean
   onStartEdit?: () => void
   onCancelEdit?: () => void
@@ -87,6 +90,7 @@ export const AgentMessageItem = ({
   message,
   continuationMessages = [],
   isLoading,
+  isPinned = false,
   isEditing: isEditingProp,
   onStartEdit,
   onCancelEdit,
@@ -95,9 +99,12 @@ export const AgentMessageItem = ({
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
+  const userRootRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
   const userBubbleRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // 系统"减弱动态效果"偏好（Motion 提供），命中时吸顶居中的位移动画降级为瞬时切换。
+  const reduceMotion = useReducedMotion()
 
   const [copied, setCopied] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -105,6 +112,8 @@ export const AgentMessageItem = ({
   const [isClamped, setIsClamped] = useState(false)
   const [localIsEditing, setLocalIsEditing] = useState(false)
   const isEditing = isEditingProp ?? localIsEditing
+  // 吸顶居中所需的水平平移量（容器宽 - 气泡宽）/ 2。
+  const [pinOffset, setPinOffset] = useState(0)
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
@@ -453,6 +462,24 @@ export const AgentMessageItem = ({
     }
   }, [userText, isUser, isExpanded, isEditing])
 
+  // 测量吸顶居中所需水平平移量（容器宽 - 气泡宽）/ 2，随气泡/容器尺寸变化（含窗口缩放）持续更新，供 Motion 位移动画使用。
+  useLayoutEffect(() => {
+    const root = userRootRef.current
+    const bubble = userBubbleRef.current
+    if (!isUser || !root || !bubble) return
+    const measure = (): void => {
+      const rootWidth = root.getBoundingClientRect().width
+      const bubbleWidth = bubble.getBoundingClientRect().width
+      setPinOffset(Math.max(0, (rootWidth - bubbleWidth) / 2))
+    }
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(root)
+    observer.observe(bubble)
+    return () => observer.disconnect()
+  }, [isUser, userText, isExpanded, isEditing])
+
   const toggleExpand = (): void => {
     const content = userContentRef.current
     if (!content) return
@@ -566,7 +593,12 @@ export const AgentMessageItem = ({
 
   if (isUser) {
     return (
-      <div className="group flex flex-col items-end px-0 w-full">
+      <motion.div
+        ref={userRootRef}
+        className="group flex flex-col items-end px-0 w-full"
+        animate={{ transform: isPinned ? `translateX(-${pinOffset}px)` : "translateX(0px)" }}
+        transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.77, 0, 0.175, 1] }}
+      >
         <div ref={userBubbleRef} className="w-fit max-w-[88%] flex flex-col items-end">
           {isEditing ? (
             <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[6px] bg-white/10 p-2.5 shadow-sm">
@@ -606,7 +638,7 @@ export const AgentMessageItem = ({
             </div>
           ) : (
             <div
-              className="rounded-[6px] bg-white/10 px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
+              className="rounded-[6px] bg-[#303030] px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
               onCopy={handleBubbleCopy}
             >
               <div
@@ -658,7 +690,7 @@ export const AgentMessageItem = ({
             </LxIconButton>
           </div>
         )}
-      </div>
+      </motion.div>
     )
   }
 

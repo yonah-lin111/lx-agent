@@ -101,4 +101,33 @@ describe("AgentMessageList", () => {
 
     expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBe(1)
   })
+
+  it("用户消息与其后 AI 回复合并为 QA 对，问题置于吸顶容器", () => {
+    const messages: ChatMessage[] = [
+      userMessage("qa-q", "问题一"),
+      {
+        id: "qa-a",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "回答一" }],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    const sticky = container.querySelector(".sticky")
+    expect(sticky).not.toBeNull()
+    expect(sticky?.textContent).toContain("问题一")
+    // 回复不进入吸顶容器，仍在 QA 对内正常渲染。
+    expect(screen.getByText("回答一")).not.toBeNull()
+  })
+
+  it("无回复的独立用户消息自成 QA 对，正常渲染编辑操作", () => {
+    const messages: ChatMessage[] = [userMessage("lone-q", "待回复问题")]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    expect(screen.getByRole("button", { name: "编辑消息" })).not.toBeNull()
+    expect(screen.getByText("待回复问题")).not.toBeNull()
+  })
 })
