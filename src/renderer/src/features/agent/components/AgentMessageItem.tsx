@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
 import type React from "react"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
@@ -100,6 +100,33 @@ export const AgentMessageItem = ({
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
+
+  // 吸顶居中所需的水平位移 =(容器宽 - 气泡宽)/ 2。flex 对齐不可动画，用 transform 表达，进入/退出双向都能过渡。
+  const outerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [pinShift, setPinShift] = useState(0)
+  const measurePinShift = useCallback((): void => {
+    const outer = outerRef.current
+    const content = contentRef.current
+    if (!outer || !content) return
+    setPinShift(Math.max(0, (outer.clientWidth - content.clientWidth) / 2))
+  }, [])
+
+  // 钉住瞬间先同步测量一次避免首帧闪跳；尺寸变化由 ResizeObserver 兜底。
+  useLayoutEffect(() => {
+    if (isPinned) measurePinShift()
+  }, [isPinned, measurePinShift])
+
+  useEffect(() => {
+    if (!isPinned) return
+    const outer = outerRef.current
+    const content = contentRef.current
+    if (!outer || !content) return
+    const observer = new ResizeObserver(measurePinShift)
+    observer.observe(outer)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [isPinned, measurePinShift])
 
   const userText = useMemo(
     () =>
@@ -309,16 +336,6 @@ export const AgentMessageItem = ({
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       const el = textareaRef.current
-      el.style.height = "auto"
-      const maxHeight = 140
-      const targetHeight = Math.min(el.scrollHeight, maxHeight)
-      el.style.height = `${targetHeight}px`
-    }
-  }, [editText, isEditing])
-
-  useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      const el = textareaRef.current
       el.focus()
       el.setSelectionRange(el.value.length, el.value.length)
     }
@@ -473,10 +490,17 @@ export const AgentMessageItem = ({
 
   if (isUser) {
     return (
-      <div className={`group flex w-full flex-col px-0 ${isPinned ? "items-center" : "items-end"}`}>
-        <div className="w-fit max-w-[88%] flex flex-col items-end">
+      <div
+        ref={outerRef}
+        className={`group flex w-full flex-col items-end px-0 ${isPinned ? "animate-pinned-in" : ""}`}
+      >
+        <div
+          ref={contentRef}
+          className="agent-pinned-shift flex w-fit max-w-[88%] flex-col items-end"
+          style={{ transform: isPinned ? `translateX(-${pinShift}px)` : undefined }}
+        >
           {isEditing ? (
-            <div className="flex flex-col gap-2 w-[380px] max-w-full rounded-[18px] bg-user-bubble p-2.5 shadow-sm">
+            <div className="flex w-[380px] max-w-full flex-col gap-2 rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2">
               <textarea
                 ref={textareaRef}
                 value={editText}
@@ -489,7 +513,7 @@ export const AgentMessageItem = ({
                     handleCancelEdit()
                   }
                 }}
-                className="w-full resize-none bg-transparent text-[13px] text-white/90 focus:outline-none custom-scrollbar"
+                className="custom-scrollbar h-[100px] w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-[20px] text-white/90 focus:outline-none"
               />
               <div className="flex items-center justify-end gap-1 pt-1">
                 <LxIconButton
@@ -513,7 +537,7 @@ export const AgentMessageItem = ({
             </div>
           ) : (
             <div
-              className="rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
+              className="w-fit max-w-full rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
               onCopy={handleBubbleCopy}
             >
               <div
@@ -526,51 +550,51 @@ export const AgentMessageItem = ({
               </div>
             </div>
           )}
-        </div>
-        {isEditing ? (
-          <div className="mt-1 h-5" aria-hidden="true" />
-        ) : (
-          <div
-            className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
-              isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
-            }`}
-          >
-            {isCollapsible && (
+          {isEditing ? (
+            <div className="mt-1 h-5" aria-hidden="true" />
+          ) : (
+            <div
+              className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
+                isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
+              }`}
+            >
+              {isCollapsible && (
+                <LxIconButton
+                  size="small"
+                  aria-label={isExpanded ? "折叠内容" : "展开内容"}
+                  title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
+                  onClick={toggleExpand}
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                </LxIconButton>
+              )}
               <LxIconButton
                 size="small"
-                aria-label={isExpanded ? "折叠内容" : "展开内容"}
-                title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
-                onClick={toggleExpand}
+                aria-label="编辑消息"
+                title={{ content: "编辑消息", placement: "top" }}
+                onClick={handleStartEdit}
               >
-                {isExpanded ? (
-                  <ChevronUp className="h-3 w-3" />
+                <Pencil className="h-3 w-3" />
+              </LxIconButton>
+              <LxIconButton
+                size="small"
+                aria-label="复制消息"
+                title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+                onClick={copyMessageContent}
+              >
+                {copied ? (
+                  <Check className="h-3 w-3 text-emerald-400" />
                 ) : (
-                  <ChevronDown className="h-3 w-3" />
+                  <Copy className="h-3 w-3" />
                 )}
               </LxIconButton>
-            )}
-            <LxIconButton
-              size="small"
-              aria-label="编辑消息"
-              title={{ content: "编辑消息", placement: "top" }}
-              onClick={handleStartEdit}
-            >
-              <Pencil className="h-3 w-3" />
-            </LxIconButton>
-            <LxIconButton
-              size="small"
-              aria-label="复制消息"
-              title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
-              onClick={copyMessageContent}
-            >
-              {copied ? (
-                <Check className="h-3 w-3 text-emerald-400" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-            </LxIconButton>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
