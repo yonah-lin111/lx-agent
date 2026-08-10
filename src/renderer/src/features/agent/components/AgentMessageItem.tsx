@@ -105,6 +105,7 @@ export const AgentMessageItem = ({
   const outerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [pinShift, setPinShift] = useState(0)
+  const prevIsEditingRef = useRef(isEditing)
   const measurePinShift = useCallback((): void => {
     const outer = outerRef.current
     const content = contentRef.current
@@ -127,6 +128,21 @@ export const AgentMessageItem = ({
     observer.observe(content)
     return () => observer.disconnect()
   }, [isPinned, measurePinShift])
+
+  // 编辑框(380px)与气泡(自适应)宽度不同，吸顶居中偏移不同；切换瞬间禁用过渡并同步重测，
+  // 使编辑框/气泡各自居中，且打开/关闭编辑时不触发滑动偏移动画。
+  useLayoutEffect(() => {
+    if (!isPinned || prevIsEditingRef.current === isEditing) return
+    prevIsEditingRef.current = isEditing
+    const content = contentRef.current
+    if (!content) return
+    content.style.transition = "none"
+    measurePinShift()
+    const raf = requestAnimationFrame(() => {
+      content.style.transition = ""
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isEditing, isPinned, measurePinShift])
 
   const userText = useMemo(
     () =>
