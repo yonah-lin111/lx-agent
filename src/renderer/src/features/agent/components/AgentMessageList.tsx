@@ -268,8 +268,8 @@ export const AgentMessageList = ({
           </div>
 
           {scrollButtonRendered && (
-            // z-10 高于代码块/模板块头部，避免遮挡。
-            <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
+            // z-30 高于吸顶问题(z-20)与代码块/模板块头部，避免被遮挡而无法点击。
+            <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
               <button
                 type="button"
                 aria-label="滚动到底部"
