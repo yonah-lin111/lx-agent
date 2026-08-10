@@ -1,7 +1,8 @@
+import { existsSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
-import { app, BrowserWindow, protocol } from "electron"
+import { app, BrowserWindow, nativeImage, protocol } from "electron"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
@@ -38,6 +39,27 @@ const createWindow = (): void => {
   void window.loadFile(join(__dirname, "../renderer/index.html"))
 }
 
+// 按工作区类型应用 Dock 图标：主工作区（.git 为目录）用 main 图标，worktree（.git 为文件）用 worktree 图标。
+// 仅 dev 模式用于区分多个实例；文件缺失或加载失败时静默跳过，不影响启动。
+const applyWorkspaceDockIcon = (): void => {
+  if (process.platform !== "darwin" || !app.dock || !is.dev) return
+
+  let iconFileName: string
+  try {
+    iconFileName = statSync(join(app.getAppPath(), ".git")).isDirectory()
+      ? "main.png"
+      : "worktree.png"
+  } catch {
+    return
+  }
+
+  const iconPath = join(app.getAppPath(), "resources", "icons", iconFileName)
+  if (!existsSync(iconPath)) return
+  const icon = nativeImage.createFromPath(iconPath)
+  if (icon.isEmpty()) return
+  app.dock.setIcon(icon)
+}
+
 app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
@@ -57,4 +79,5 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  applyWorkspaceDockIcon()
 })
