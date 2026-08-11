@@ -23,6 +23,8 @@ export interface LxSelectProps<T> {
   className?: string
   // 下拉菜单弹出方向。默认为 "down"。
   position?: "up" | "down"
+  // 下拉列表 z-index（portal 渲染到 body，嵌套于更高层浮层（如 Tooltip）时需传入更高值）。默认 50。
+  zIndex?: number
   // 触发按钮尺寸。默认为 "medium"。
   size?: "small" | "medium"
   disabled?: boolean
@@ -47,6 +49,7 @@ export const LxSelect = <T extends string>({
   options,
   className = "",
   position = "down",
+  zIndex = 50,
   size = "medium",
   disabled = false,
   placeholder,
@@ -194,11 +197,11 @@ export const LxSelect = <T extends string>({
         createPortal(
           <div
             ref={listboxRef}
-            className={`fixed z-50 flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+            className={`fixed flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
               isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
             }`}
             role="listbox"
-            style={listboxStyle ?? undefined}
+            style={{ ...(listboxStyle ?? undefined), zIndex }}
           >
             {options.map((item) =>
               isGroup(item) ? (

@@ -93,6 +93,7 @@ export const ChatHistoryPanel = ({
           placeholder="请选择项目"
           onChange={setSelectedProjectId}
           options={projectOptions}
+          zIndex={1_000_000}
         />
       )}
       <div className="max-h-72 overflow-y-auto custom-scrollbar">
