@@ -17,6 +17,7 @@ import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
+  getMarkdownTemplateStatuses,
   MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
   MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
   MARKDOWN_TEMPLATE_TYPES,
@@ -160,6 +161,110 @@ export const MarkdownEditorToolbar = ({
     onTemplateIntegrateChange?.(next.length === 0 ? ["all"] : next)
   }
 
+  // 每个页面的模板块状态数量，用于页面列表右侧标签展示。
+  const pageTemplateCounts = useMemo(() => {
+    const countsByPage = new Map<string, { todo: number; inProgress: number; done: number }>()
+    for (const page of pages) {
+      const counts = { todo: 0, inProgress: 0, done: 0 }
+      for (const status of getMarkdownTemplateStatuses(page.content)) {
+        if (status === "todo") counts.todo += 1
+        else if (status === "in_progress") counts.inProgress += 1
+        else counts.done += 1
+      }
+      countsByPage.set(page.id, counts)
+    }
+    return countsByPage
+  }, [pages])
+
+  // 按页面名称筛选，便于在完整列表中快速定位。
+  const filteredPages = useMemo(() => {
+    const query = pageListQuery.trim().toLocaleLowerCase()
+    if (!query) return pages
+    return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
+  }, [pageListQuery, pages])
+
+  const pageList = (
+    <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
+      <LxInput
+        aria-label="搜索页面"
+        placeholder="搜索页面"
+        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+        size="xs"
+        value={pageListQuery}
+        onChange={(event) => setPageListQuery(event.target.value)}
+      />
+      <div className="max-h-72 overflow-y-auto custom-scrollbar">
+        <div className="space-y-0.5">
+          {filteredPages.map((page, index) => {
+            const isCurrent = index === activePageIndex
+            const counts = pageTemplateCounts.get(page.id)
+            const hasCounts =
+              counts && (counts.todo > 0 || counts.inProgress > 0 || counts.done > 0)
+            return (
+              <button
+                key={page.id}
+                disabled={isCurrent}
+                type="button"
+                className={`flex min-h-7 w-full items-center gap-2 rounded-[3px] px-1.5 text-left text-xs ${
+                  isCurrent
+                    ? "cursor-default bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/5"
+                }`}
+                onClick={() => {
+                  setIsPageListOpen(false)
+                  setPageListQuery("")
+                  onPageChange?.(index)
+                }}
+              >
+                <span className="min-w-0 truncate">{page.name}</span>
+                {hasCounts && (
+                  <span className="ml-auto flex shrink-0 items-center gap-1">
+                    {counts.todo > 0 && (
+                      <LxTooltip content={`待办 ${counts.todo}`} placement="top">
+                        <span
+                          aria-label={`待办 ${counts.todo}`}
+                          className="flex items-center gap-1 rounded-[4px] bg-white/5 px-1 text-[10px] leading-4 text-white/50"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                          {counts.todo}
+                        </span>
+                      </LxTooltip>
+                    )}
+                    {counts.inProgress > 0 && (
+                      <LxTooltip content={`进行中 ${counts.inProgress}`} placement="top">
+                        <span
+                          aria-label={`进行中 ${counts.inProgress}`}
+                          className="flex items-center gap-1 rounded-[4px] bg-amber-400/10 px-1 text-[10px] leading-4 text-amber-400"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                          {counts.inProgress}
+                        </span>
+                      </LxTooltip>
+                    )}
+                    {counts.done > 0 && (
+                      <LxTooltip content={`已完成 ${counts.done}`} placement="top">
+                        <span
+                          aria-label={`已完成 ${counts.done}`}
+                          className="flex items-center gap-1 rounded-[4px] bg-emerald-400/10 px-1 text-[10px] leading-4 text-emerald-400"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          {counts.done}
+                        </span>
+                      </LxTooltip>
+                    )}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        {filteredPages.length === 0 && (
+          <div className="py-4 text-center text-xs text-white/45">未找到匹配的页面</div>
+        )}
+      </div>
+    </div>
+  )
+
   const pageNameControls = pageMode && pages.length > 0 && (
     <div className="flex shrink-0 items-center">
       {isEditingPageName ? (
@@ -188,68 +293,31 @@ export const MarkdownEditorToolbar = ({
           }}
         />
       ) : (
-        <button
-          type="button"
-          aria-label={`编辑页面名称 ${pageName}`}
-          className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
-          onClick={() => {
-            if (isIntegratePage) return
-            pageNameBeforeEditRef.current = pageName
-            setIsEditingPageName(true)
+        <LxTooltip
+          content={pageList}
+          contentClassName="!p-2"
+          onOpenChange={(isOpen) => {
+            setIsPageListOpen(isOpen)
+            if (!isOpen) setPageListQuery("")
           }}
+          open={isPageListOpen}
+          placement="bottom"
+          trigger="hover"
         >
-          {pageName}
-        </button>
+          <button
+            type="button"
+            aria-label={`编辑页面名称 ${pageName}`}
+            className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
+            onClick={() => {
+              if (isIntegratePage) return
+              pageNameBeforeEditRef.current = pageName
+              setIsEditingPageName(true)
+            }}
+          >
+            {pageName}
+          </button>
+        </LxTooltip>
       )}
-    </div>
-  )
-
-  // 按页面名称筛选，便于在完整列表中快速定位。
-  const filteredPages = useMemo(() => {
-    const query = pageListQuery.trim().toLocaleLowerCase()
-    if (!query) return pages
-    return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
-  }, [pageListQuery, pages])
-
-  const pageList = (
-    <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
-      <LxInput
-        aria-label="搜索页面"
-        placeholder="搜索页面"
-        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-        size="xs"
-        value={pageListQuery}
-        onChange={(event) => setPageListQuery(event.target.value)}
-      />
-      <div className="max-h-72 overflow-y-auto custom-scrollbar">
-        <div className="space-y-0.5">
-          {filteredPages.map((page, index) => {
-            const isCurrent = index === activePageIndex
-            return (
-              <button
-                key={page.id}
-                disabled={isCurrent}
-                type="button"
-                className={`flex min-h-7 w-full items-center gap-2 rounded-[3px] px-1.5 text-left text-xs ${
-                  isCurrent
-                    ? "cursor-default bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/5"
-                }`}
-                onClick={() => {
-                  setIsPageListOpen(false)
-                  setPageListQuery("")
-                  onPageChange?.(index)
-                }}
-              >
-                <span className="min-w-0 truncate">{page.name}</span>
-              </button>
-            )
-          })}
-        </div>
-        {filteredPages.length === 0 && (
-          <div className="py-4 text-center text-xs text-white/45">未找到匹配的页面</div>
-        )}
-      </div>
     </div>
   )
 
@@ -264,26 +332,12 @@ export const MarkdownEditorToolbar = ({
       >
         <ChevronLeft className="h-3.5 w-3.5" />
       </LxIconButton>
-      <LxTooltip
-        content={pageList}
-        contentClassName="!p-2"
-        onOpenChange={(isOpen) => {
-          setIsPageListOpen(isOpen)
-          if (!isOpen) setPageListQuery("")
-        }}
-        open={isPageListOpen}
-        placement="bottom"
-        trigger="click"
+      <span
+        aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
+        className={`h-7 px-1.5 text-[11px] leading-7 tabular-nums text-white/45 ${isIntegratePage ? "cursor-not-allowed opacity-35" : ""}`}
       >
-        <LxIconButton
-          aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
-          className="h-7 px-1.5 text-[11px] tabular-nums"
-          disabled={isIntegratePage}
-          iconOnly={false}
-        >
-          {activePageIndex + 1} / {pages.length}
-        </LxIconButton>
-      </LxTooltip>
+        {activePageIndex + 1} / {pages.length}
+      </span>
       <LxIconButton
         aria-label="下一页"
         disabled={activePageIndex === pages.length - 1 || isIntegratePage}
