@@ -789,12 +789,14 @@ export const AgentMessageItem = ({
           </div>
         )}
       </div>
-      <SuggestedQuestions
-        questions={suggestedQuestions}
-        isLoading={isLoadingSuggestedQuestions}
-        onSelect={handleSendSuggestedQuestion}
-        onEcho={handleEchoSuggestedQuestion}
-      />
+      {isLastAssistant && (
+        <SuggestedQuestions
+          questions={suggestedQuestions}
+          isLoading={isLoadingSuggestedQuestions}
+          onSelect={handleSendSuggestedQuestion}
+          onEcho={handleEchoSuggestedQuestion}
+        />
+      )}
       {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
         <div className="mt-1 flex items-center gap-1 justify-start opacity-0 transition-opacity group-hover:opacity-100">
           <LxIconButton
