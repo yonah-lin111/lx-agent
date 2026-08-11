@@ -198,6 +198,18 @@ select {
   }
 }
 
+/* 模板块跳转高亮：外围边框柔光闪烁两遍，内部行保持暗色。 */
+@keyframes lx-template-flash-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 16px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 4px 0 rgba(255, 255, 255, 0.08);
+  }
+}
+
 .animate-tooltip-in {
   animation: tooltip-in 150ms cubic-bezier(0, 0, 0.2, 1) both;
 }

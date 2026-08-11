@@ -1,7 +1,5 @@
-import type { MarkdownPage } from "@shared/project"
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
-import type { MarkdownTemplateCommandId } from "@/features/markdown/commands/markdownSlashCommands"
 
 // 模板块源码状态：未完成 / 进行中 / 已完成。
 export type MarkdownTemplateStatus = "todo" | "in_progress" | "done"
@@ -276,14 +274,6 @@ export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateSta
 }
 
 /**
- * 解析模板块开始行的模版类型（&&& 后的命令标识）；非开始行返回 null。
- */
-export const getMarkdownTemplateType = (startText: string): string | null => {
-  const match = /^&&&\s+([A-Za-z]\w*)/.exec(startText.trim())
-  return match?.[1] ?? null
-}
-
-/**
  * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
  */
 export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
@@ -386,116 +376,47 @@ export const createMarkdownBlockInsertion = (
   }
 }
 
-// 模板块筛选标签：全部 / 具体状态 / 具体模版类型。
-export type MarkdownTemplateIntegrate = "all" | MarkdownTemplateStatus | MarkdownTemplateType
-
-// 模板块整合支持的模版类型（与斜杠命令模板一致）。
-export type MarkdownTemplateType = MarkdownTemplateCommandId
-
-// 模板块整合的固定模版类型选项。
-export const MARKDOWN_TEMPLATE_TYPES: readonly MarkdownTemplateType[] = [
-  "addTemplate",
-  "bugTemplate",
-  "refactorTemplate",
-  "commonTemplate",
-]
-
-// 模板块整合虚拟页的固定 id，用于标记不入库页面。
-export const MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID = "markdown-template-integrate-page"
-
-// 模板块整合选项的英文展示文案。
-export const MARKDOWN_TEMPLATE_INTEGRATE_LABELS: Record<MarkdownTemplateIntegrate, string> = {
-  all: "All",
+// 模板块状态英文文案。
+export const MARKDOWN_TEMPLATE_STATUS_LABELS: Record<MarkdownTemplateStatus, string> = {
   todo: "Todo",
   in_progress: "In Progress",
   done: "Done",
-  addTemplate: "Add",
-  bugTemplate: "Bug",
-  refactorTemplate: "Refactor",
-  commonTemplate: "Common",
 }
 
-// 已解析的模板块片段，保留源码原文以便恢复。
-export interface MarkdownTemplateBlock {
-  startText: string
-  endText: string
-  content: string
+// 模板块状态筛选：all 表示不区分状态。
+export type MarkdownTemplateStatusFilter = MarkdownTemplateStatus | "all"
+
+// 已闭合模板块范围：开始行行首偏移与结束行行尾偏移（独占）及结束行状态。
+export interface MarkdownTemplateBlockRange {
+  start: number
+  end: number
   status: MarkdownTemplateStatus
-  type: string
 }
 
 /**
- * 提取内容中全部已闭合的模板块片段；嵌套的 &&& 行按正文处理，与编辑器解析一致。
+ * 返回内容中全部已闭合模板块的范围（开始行行首到结束行行尾，结束偏移独占），
+ * 含结束行状态，按文档顺序排列；未闭合模板块不计入。
  */
-export const extractMarkdownTemplateBlocks = (content: string): MarkdownTemplateBlock[] => {
-  const blocks: MarkdownTemplateBlock[] = []
-  let startText: string | null = null
-  let body: string[] = []
+export const getMarkdownTemplateBlockRanges = (content: string): MarkdownTemplateBlockRange[] => {
+  const ranges: MarkdownTemplateBlockRange[] = []
+  let pendingStart: number | null = null
+  let offset = 0
 
   for (const line of content.split("\n")) {
-    if (startText !== null && MARKDOWN_TEMPLATE_END_RE.test(line)) {
-      blocks.push({
-        startText,
-        endText: line,
-        content: body.join("\n"),
-        status: getMarkdownTemplateStatus(line) ?? "todo",
-        type: getMarkdownTemplateType(startText) ?? "",
-      })
-      startText = null
-      continue
+    if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
+      pendingStart = pendingStart ?? offset
+    } else if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+      if (pendingStart !== null) {
+        ranges.push({
+          start: pendingStart,
+          end: offset + line.length,
+          status: getMarkdownTemplateStatus(line) ?? "todo",
+        })
+      }
+      pendingStart = null
     }
-    if (startText === null && MARKDOWN_TEMPLATE_START_RE.test(line)) {
-      startText = line
-      body = []
-      continue
-    }
-    if (startText !== null) body.push(line)
+    offset += line.length + 1
   }
 
-  return blocks
-}
-
-/**
- * 生成模板块整合虚拟页内容：每页标题带整合标记，仅保留匹配状态与模版类型的模板块源码。
- * 选中 All 时按全部匹配处理；状态或类型维度未选择时该维度不设限制。
- * 无匹配块时返回占位文本。
- */
-export const buildMarkdownTemplateIntegratePage = (
-  pages: readonly MarkdownPage[],
-  integrate: readonly MarkdownTemplateIntegrate[],
-): string => {
-  const matchesAll = integrate.includes("all")
-  const selectedStatuses = new Set<MarkdownTemplateStatus>(
-    integrate.filter(
-      (value): value is MarkdownTemplateStatus =>
-        value === "todo" || value === "in_progress" || value === "done",
-    ),
-  )
-  const selectedTypes = new Set<string>(
-    integrate.filter((value): value is MarkdownTemplateType =>
-      (MARKDOWN_TEMPLATE_TYPES as readonly string[]).includes(value),
-    ),
-  )
-  const sections: string[] = []
-
-  for (const page of pages) {
-    const blocks = extractMarkdownTemplateBlocks(page.content).filter(
-      (block) =>
-        matchesAll ||
-        ((selectedStatuses.size === 0 || selectedStatuses.has(block.status)) &&
-          (selectedTypes.size === 0 || selectedTypes.has(block.type))),
-    )
-    if (blocks.length === 0) continue
-
-    const parts = [`### ${page.name} 🔍`]
-    for (const block of blocks) {
-      parts.push("---", block.startText)
-      if (block.content) parts.push(block.content)
-      parts.push(block.endText)
-    }
-    sections.push(parts.join("\n"))
-  }
-
-  if (sections.length === 0) return "暂无匹配的模板块"
-  return sections.join("\n\n")
+  return ranges
 }

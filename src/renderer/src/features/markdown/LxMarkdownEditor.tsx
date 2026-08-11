@@ -18,22 +18,21 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { Annotation, EditorState, type Line, Prec, Transaction } from "@codemirror/state"
+import { EditorState, type Line, Prec, Transaction } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
-import type { MarkdownTemplateIntegrate } from "@/features/markdown/commands/markdownBlockCommands"
 import {
-  buildMarkdownTemplateIntegratePage,
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockRanges,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   isInsideMarkdownTemplateBlock,
-  MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
-  MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
+  type MarkdownTemplateBlockRange,
+  type MarkdownTemplateStatusFilter,
   setMarkdownTemplateTitle,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -52,6 +51,9 @@ import {
   markdownMarkerHighlight,
   markdownReferenceHover,
   selectAllPreservingScrollPosition,
+  synchronizeEditorToPreview,
+  templateBlockFlash,
+  templateBlockFlashEffect,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import {
@@ -63,7 +65,6 @@ import { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import { LxMarkdownPreview } from "@/features/markdown/LxMarkdownPreview"
 import type {
   LxMarkdownEditorProps,
-  MarkdownPage,
   MarkdownPreviewMode,
   MarkdownToolbarAction,
 } from "@/features/markdown/types"
@@ -74,9 +75,6 @@ import {
 } from "@/features/markdown/utils/markdownRenderer"
 import { isMacOS } from "@/lib/platform"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
-
-// 允许整合虚拟页切换内容的事务注解，仅供页面切换内部使用。
-const integrateSyncAnnotation = Annotation.define<boolean>()
 
 // 模板块标题生成的加载占位文本（写入开始行「title: 」字段，兼作防重复触发与结果回写锚点）。
 const TEMPLATE_TITLE_LOADING_TEXT = "⏳ 正在生成标题…"
@@ -170,11 +168,8 @@ export const LxMarkdownEditor = ({
   const pagesRef = useRef(pages)
   const activePageIndexRef = useRef(0)
   const onPagesChangeRef = useRef(onPagesChange)
-  // 进入整合视图前的真实页面索引，退出时用于恢复。
-  const pageBeforeIntegrateRef = useRef(0)
-  const templateIntegrateActiveRef = useRef(false)
-  // 当前是否处于整合虚拟页，供事务过滤器判断只读。
-  const isIntegrateViewRef = useRef(false)
+  // 跨页跳转目标模板块（范围来自目标页内容），页面内容就位后定位并闪烁高亮。
+  const pendingJumpBlockRef = useRef<MarkdownTemplateBlockRange | null>(null)
 
   const [content, setContent] = useState(() =>
     pageMode && pages?.length
@@ -186,7 +181,6 @@ export const LxMarkdownEditor = ({
   )
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
-  const [templateIntegrate, setTemplateIntegrate] = useState<MarkdownTemplateIntegrate[]>([])
   const { warning } = useLxToast()
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
@@ -200,28 +194,7 @@ export const LxMarkdownEditor = ({
   // 模板块标题生成进行中标记，防止并发重复触发。
   const isGeneratingTitleRef = useRef(false)
 
-  // 模板块整合虚拟页：融合全部页面中匹配状态的模板块，title 特殊标明且不入库。
-  const integratePage = useMemo<MarkdownPage | null>(() => {
-    if (templateIntegrate.length === 0) return null
-    const label = templateIntegrate.includes("all")
-      ? "整合模版块"
-      : templateIntegrate.map((value) => MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]).join(" + ")
-    return {
-      id: MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
-      name: `🔍 ${label}`,
-      content: buildMarkdownTemplateIntegratePage(pages ?? [], templateIntegrate),
-    }
-  }, [pages, templateIntegrate])
-
-  const displayPages = useMemo<MarkdownPage[] | undefined>(
-    () => (integratePage ? [...(pages ?? []), integratePage] : pages),
-    [integratePage, pages],
-  )
-
-  const activePage = pageMode ? displayPages?.[activePageIndex] : undefined
-  const isIntegratePageActive =
-    pageMode && integratePage !== null && activePageIndex === (displayPages?.length ?? 1) - 1
-  isIntegrateViewRef.current = isIntegratePageActive
+  const activePage = pageMode ? pages?.[activePageIndex] : undefined
   const referencedRootsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     referencedRootsRef.current = new Set(referencedProjectPaths ?? [])
@@ -235,49 +208,34 @@ export const LxMarkdownEditor = ({
   )
 
   useEffect(() => {
-    if (!pageMode || !displayPages?.length) return
-    const nextPage = displayPages[Math.min(activePageIndex, displayPages.length - 1)]
+    if (!pageMode || !pages?.length) return
+    const nextPage = pages[Math.min(activePageIndex, pages.length - 1)]
     if (!nextPage) return
     setContent(nextPage.content)
     setPageName(nextPage.name)
-  }, [activePageIndex, pageMode, displayPages])
+  }, [activePageIndex, pageMode, pages])
 
   useEffect(() => {
     if (!pageMode || !activePage || !editorViewRef.current) return
     const view = editorViewRef.current
     const nextContent = activePage.content
-    if (view.state.doc.toString() === nextContent) return
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: nextContent },
-      // 页面切换不进入撤销历史，避免撤销恢复整合页内容污染真实页面。
-      annotations: [integrateSyncAnnotation.of(true), Transaction.addToHistory.of(false)],
-    })
+    if (view.state.doc.toString() !== nextContent) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+        // 页面切换不进入撤销历史。
+        annotations: [Transaction.addToHistory.of(false)],
+      })
+    }
+    // 跨页跳转：内容就位后定位到目标模板块开始行、滚动居中并闪烁高亮。
+    if (pendingJumpBlockRef.current !== null) {
+      const block = pendingJumpBlockRef.current
+      pendingJumpBlockRef.current = null
+      locateBlock(block)
+    }
   }, [activePage, pageMode])
 
-  // 进入整合视图时记录来源页并跳到整合页；清除整合时恢复来源页。
-  useEffect(() => {
-    const isActive = templateIntegrate.length > 0
-    if (isActive && !templateIntegrateActiveRef.current) {
-      pageBeforeIntegrateRef.current = activePageIndexRef.current
-      setActivePageIndex((displayPages?.length ?? 1) - 1)
-    } else if (!isActive && templateIntegrateActiveRef.current) {
-      setActivePageIndex(pageBeforeIntegrateRef.current)
-    }
-    templateIntegrateActiveRef.current = isActive
-  }, [templateIntegrate, displayPages])
-
-  // 整合开启期间记录最近停留的真实页面，退出时回到该页。
-  useEffect(() => {
-    if (integratePage === null) return
-    if (activePageIndex >= (pages?.length ?? 0)) return
-    pageBeforeIntegrateRef.current = activePageIndex
-  }, [activePageIndex, integratePage, pages])
-
   const switchPage = (index: number): void => {
-    // 整合虚拟页锁定：禁止切换到其他页面。
-    if (isIntegratePageActive) return
-    if (!displayPages || index < 0 || index >= displayPages.length || index === activePageIndex)
-      return
+    if (!pages || index < 0 || index >= pages.length || index === activePageIndex) return
     setActivePageIndex(index)
   }
 
@@ -314,6 +272,98 @@ export const LxMarkdownEditor = ({
     const nextPages = pages.filter((_, index) => index !== activePageIndex)
     onPagesChangeRef.current?.(nextPages)
     setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
+  }
+
+  /**
+   * 将模板块整体滚动到编辑视口垂直中心，并同步预览滚动位置。
+   */
+  const scrollBlockToCenter = (view: EditorView, from: number, to: number): void => {
+    if (view.state.doc.length === 0) return
+    const firstLine = view.lineBlockAt(from)
+    const lastLine = view.lineBlockAt(Math.max(from, to - 1))
+    const blockTop = firstLine.top
+    const blockHeight = lastLine.bottom - blockTop
+    const viewportHeight = view.scrollDOM.clientHeight
+    view.scrollDOM.scrollTop = blockTop - Math.max(0, (viewportHeight - blockHeight) / 2)
+    if (previewRef.current) synchronizeEditorToPreview(view, previewRef.current)
+  }
+
+  /**
+   * 将光标定位到模板块开始行，滚动块到视口中心并触发整块边框闪烁高亮。
+   */
+  const locateBlock = (block: MarkdownTemplateBlockRange): void => {
+    const view = editorViewRef.current
+    if (!view) return
+    const docLength = view.state.doc.length
+    const from = Math.min(block.start, docLength)
+    const to = Math.min(block.end, docLength)
+
+    view.dispatch({
+      selection: { anchor: from },
+      effects: templateBlockFlashEffect.of({ from, to }),
+    })
+    scrollBlockToCenter(view, from, to)
+    view.focus()
+  }
+
+  /**
+   * 将光标定位到指定页的模板块：同页直接定位，跨页先切页再在内容就位后定位。
+   */
+  const jumpToBlock = (pageIndex: number, block: MarkdownTemplateBlockRange): void => {
+    if (pageIndex === activePageIndex) {
+      locateBlock(block)
+      return
+    }
+    pendingJumpBlockRef.current = block
+    setActivePageIndex(pageIndex)
+  }
+
+  /**
+   * 按方向与状态筛选环行查找模板块并跳转：
+   * 当前页光标之后/之前 → 后续/前置页面页首/页尾 → 回绕当前页首/末块。
+   * 定位后滚动到视口中心并对整块边框闪烁高亮。
+   */
+  const jumpToTemplateBlock = (
+    direction: "previous" | "next",
+    filter: MarkdownTemplateStatusFilter,
+  ): void => {
+    if (!pageMode || !pages?.length || !editorViewRef.current) return
+    const pageCount = pages.length
+    const currentIndex = Math.min(activePageIndex, pageCount - 1)
+    const cursor = editorViewRef.current.state.selection.main.head
+
+    const matchingBlocks = (index: number): MarkdownTemplateBlockRange[] =>
+      getMarkdownTemplateBlockRanges(pages[index].content).filter(
+        (block) => filter === "all" || block.status === filter,
+      )
+
+    const currentBlocks = matchingBlocks(currentIndex)
+    // 当前页内光标之后的第一个 / 光标之前最后一个匹配块。
+    const currentTarget =
+      direction === "next"
+        ? currentBlocks.find((block) => block.start > cursor)
+        : [...currentBlocks].reverse().find((block) => block.start < cursor)
+    if (currentTarget) {
+      jumpToBlock(currentIndex, currentTarget)
+      return
+    }
+
+    // 其他页面（环行）：向后取页首、向前取页尾第一个匹配块。
+    const step = direction === "next" ? 1 : -1
+    for (let distance = 1; distance < pageCount; distance += 1) {
+      const pageIndex = (currentIndex + step * distance + pageCount) % pageCount
+      const blocks = matchingBlocks(pageIndex)
+      const target = direction === "next" ? blocks[0] : blocks[blocks.length - 1]
+      if (target) {
+        jumpToBlock(pageIndex, target)
+        return
+      }
+    }
+
+    // 回绕当前页：向后取首块、向前取末块（页内已无匹配）。
+    const wrapTarget =
+      direction === "next" ? currentBlocks[0] : currentBlocks[currentBlocks.length - 1]
+    if (wrapTarget) jumpToBlock(currentIndex, wrapTarget)
   }
 
   const switchPageRef = useRef(switchPage)
@@ -405,8 +455,6 @@ export const LxMarkdownEditor = ({
         if (key !== "ArrowLeft" && key !== "ArrowRight") return
         event.preventDefault()
         if (!pageModeRef.current || !pagesRef.current?.length) return
-        // 整合虚拟页锁定：禁止页面切换快捷键。
-        if (isIntegrateViewRef.current) return
         const currentIndex = activePageIndexRef.current
 
         if (key === "ArrowLeft") {
@@ -418,9 +466,6 @@ export const LxMarkdownEditor = ({
           switchPageRef.current(currentIndex + 1)
           return
         }
-
-        // 处于整合虚拟页时禁止继续创建页面。
-        if (currentIndex >= pagesRef.current.length) return
 
         const currentPage = pagesRef.current[currentIndex]
         if (currentPage && currentPage.content.trim() === "") {
@@ -587,10 +632,9 @@ export const LxMarkdownEditor = ({
    * 触发模板块标题生成：取光标所在模板块内容，排除 /summaryTitle 命令行后按复制逻辑清洗，
    * 经 IPC 请求 main 进程生成标题。回车即移除 /summaryTitle 字样（保留所在行），
    * 加载占位写入开始行「title: 」字段；成功回写最终标题，失败恢复原标题并提示。
-   * 整合虚拟页禁止执行。
    */
   const runTemplateTitleGeneration = (view: EditorView): void => {
-    if (isGeneratingTitleRef.current || isIntegrateViewRef.current) return
+    if (isGeneratingTitleRef.current) return
     const docText = view.state.doc.toString()
     const cursor = view.state.selection.main.head
     const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
@@ -684,21 +728,11 @@ export const LxMarkdownEditor = ({
         editorTheme,
         markdownReferenceHover,
         markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
+        templateBlockFlash,
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
           : []),
-        // 整合虚拟页只读：禁止除页面切换外的任何文档变更。
-        EditorState.transactionFilter.of((tr) => {
-          if (
-            tr.docChanged &&
-            isIntegrateViewRef.current &&
-            !tr.annotation(integrateSyncAnnotation)
-          ) {
-            return []
-          }
-          return tr
-        }),
         // 模板块 id 只读：阻止对 id 文本的局部修改。零宽变更仅在光标位于 id 内部时阻止；
         // 非零宽变更仅当其范围完全落在 id 内时阻止，因此状态循环、整行/整块删除、整篇格式化等
         // 跨越 id 边界的合法操作不受影响，撤销（整行替换）同样放行。
@@ -1015,19 +1049,15 @@ export const LxMarkdownEditor = ({
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
             setContent(nextContent)
-            // 整合虚拟页不入库，也不向外部回写内容。
             const activeIndex = activePageIndexRef.current
-            const isFilterView = pageMode && activeIndex >= (pagesRef.current?.length ?? 0)
-            if (!isFilterView) {
-              if (pageMode && pagesRef.current && pagesRef.current[activeIndex]) {
-                onPagesChangeRef.current?.(
-                  pagesRef.current.map((page, index) =>
-                    index === activeIndex ? { ...page, content: nextContent } : page,
-                  ),
-                )
-              }
-              onChangeRef.current?.(nextContent)
+            if (pageMode && pagesRef.current && pagesRef.current[activeIndex]) {
+              onPagesChangeRef.current?.(
+                pagesRef.current.map((page, index) =>
+                  index === activeIndex ? { ...page, content: nextContent } : page,
+                ),
+              )
             }
+            onChangeRef.current?.(nextContent)
           }
         }),
       ],
@@ -1078,15 +1108,14 @@ export const LxMarkdownEditor = ({
         isSaved={isSaved}
         onInsertTable={(size) => insertText(createMarkdownTable(size))}
         pageMode={pageMode}
-        pages={displayPages}
+        pages={pages}
         activePageIndex={activePageIndex}
         pageName={pageName}
         onPageChange={switchPage}
         onPageNameChange={renamePage}
         onCreatePage={createPage}
         onDeletePage={deletePage}
-        templateIntegrate={templateIntegrate}
-        onTemplateIntegrateChange={setTemplateIntegrate}
+        onJumpToTemplateBlock={jumpToTemplateBlock}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div

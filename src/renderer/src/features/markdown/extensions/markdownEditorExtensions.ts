@@ -1,7 +1,8 @@
 import { HighlightStyle } from "@codemirror/language"
-import { RangeSetBuilder, StateEffect } from "@codemirror/state"
+import { type Line, RangeSetBuilder, StateEffect } from "@codemirror/state"
 import {
   Decoration,
+  type DecorationSet,
   EditorView,
   hoverTooltip,
   ViewPlugin,
@@ -387,6 +388,25 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
+    ".cm-md-template-flash-start-line": {
+      // 跳转高亮首行：亮化上/左/右边框并向外柔光闪烁（动画见 styles.css），动画结束后由插件移除装饰。
+      borderTopColor: "rgba(255, 255, 255, 0.7) !important",
+      borderLeftColor: "rgba(255, 255, 255, 0.7) !important",
+      borderRightColor: "rgba(255, 255, 255, 0.7) !important",
+      animation: "lx-template-flash-glow 0.35s ease-in-out 3",
+    },
+    ".cm-md-template-flash-middle-line": {
+      // 中间行仅亮化左/右边框，保持内部行暗色。
+      borderLeftColor: "rgba(255, 255, 255, 0.7) !important",
+      borderRightColor: "rgba(255, 255, 255, 0.7) !important",
+    },
+    ".cm-md-template-flash-end-line": {
+      // 跳转高亮末行：亮化下/左/右边框并向外柔光闪烁。
+      borderBottomColor: "rgba(255, 255, 255, 0.7) !important",
+      borderLeftColor: "rgba(255, 255, 255, 0.7) !important",
+      borderRightColor: "rgba(255, 255, 255, 0.7) !important",
+      animation: "lx-template-flash-glow 0.35s ease-in-out 3",
+    },
   },
   { dark: true },
 )
@@ -425,6 +445,96 @@ export const markdownHighlightStyle = HighlightStyle.define([
 
 // 代码块或模板块折叠状态变更事件。
 const markdownBlockFoldToggleEffect = StateEffect.define<void>()
+
+// 模板块跳转闪烁高亮事件：from/to 为块范围（开始行行首到结束行行尾，结束偏移独占）。
+export const templateBlockFlashEffect = StateEffect.define<{ from: number; to: number }>()
+
+// 清除模板块闪烁高亮装饰（触发一次空事务以重渲染）。
+const templateBlockFlashClearEffect = StateEffect.define<void>()
+
+const buildTemplateBlockFlashDecorations = (
+  view: EditorView,
+  from: number,
+  to: number,
+): DecorationSet => {
+  const builder = new RangeSetBuilder<Decoration>()
+  if (view.state.doc.length === 0) return builder.finish()
+
+  const boundedFrom = Math.min(Math.max(from, 0), view.state.doc.length)
+  const startLine = view.state.doc.lineAt(boundedFrom)
+  const boundedTo = Math.min(Math.max(to - 1, boundedFrom), view.state.doc.length)
+  const endLine = view.state.doc.lineAt(boundedTo)
+
+  const lines: Line[] = []
+  let line = startLine
+  while (true) {
+    lines.push(line)
+    if (line.to >= endLine.to) break
+    line = view.state.doc.lineAt(Math.min(line.to + 1, view.state.doc.length))
+  }
+
+  lines.forEach((blockLine, index) => {
+    // 仅首/末行亮化顶部或底部边框并向外柔光，中间行只亮化左右边缘，内部行保持暗色。
+    const className =
+      index === 0
+        ? "cm-md-template-flash-start-line"
+        : index === lines.length - 1
+          ? "cm-md-template-flash-end-line"
+          : "cm-md-template-flash-middle-line"
+    builder.add(
+      blockLine.from,
+      blockLine.from,
+      Decoration.line({ attributes: { class: className } }),
+    )
+  })
+  return builder.finish()
+}
+
+class TemplateBlockFlashPlugin {
+  decorations: DecorationSet = Decoration.none
+  private timer: ReturnType<typeof setTimeout> | null = null
+
+  update(update: ViewUpdate): void {
+    for (const tr of update.transactions) {
+      for (const effect of tr.effects) {
+        if (effect.is(templateBlockFlashClearEffect)) {
+          this.decorations = Decoration.none
+          return
+        }
+      }
+    }
+    for (const tr of update.transactions) {
+      for (const effect of tr.effects) {
+        if (effect.is(templateBlockFlashEffect)) {
+          const { from, to } = effect.value
+          this.decorations = buildTemplateBlockFlashDecorations(update.view, from, to)
+          if (this.timer) clearTimeout(this.timer)
+          this.timer = setTimeout(() => {
+            this.timer = null
+            this.decorations = Decoration.none
+            update.view.dispatch({ effects: templateBlockFlashClearEffect.of() })
+          }, 1300)
+          return
+        }
+      }
+    }
+    // 高亮期间文档变动时映射装饰范围，避免位置漂移。
+    if (update.docChanged && this.decorations !== Decoration.none) {
+      this.decorations = this.decorations.map(update.changes)
+    }
+  }
+
+  destroy(): void {
+    if (this.timer) clearTimeout(this.timer)
+  }
+}
+
+/**
+ * 模板块跳转闪烁：命中块整块边框高亮闪烁一次后自动清除，供工具栏「上一个/下一个」定位反馈。
+ */
+export const templateBlockFlash = ViewPlugin.fromClass(TemplateBlockFlashPlugin, {
+  decorations: (plugin) => plugin.decorations,
+})
 
 // 引用语法模式：@[refer-type](path)
 const MARKDOWN_REFERENCE_PATTERN = /@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g

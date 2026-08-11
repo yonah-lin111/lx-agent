@@ -1,9 +1,10 @@
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Edit3,
   Keyboard,
-  Merge,
   MoreVertical,
   Plus,
   Search,
@@ -14,16 +15,13 @@ import { useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenu"
-import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
+import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
+  getMarkdownTemplateBlockRanges,
   getMarkdownTemplateStatuses,
-  MARKDOWN_TEMPLATE_INTEGRATE_LABELS,
-  MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID,
-  MARKDOWN_TEMPLATE_TYPES,
-  type MarkdownTemplateIntegrate,
-  type MarkdownTemplateStatus,
-  type MarkdownTemplateType,
+  MARKDOWN_TEMPLATE_STATUS_LABELS,
+  type MarkdownTemplateStatusFilter,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type {
   MarkdownPage,
@@ -45,8 +43,11 @@ interface MarkdownEditorToolbarProps {
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
   onDeletePage?: () => void
-  templateIntegrate?: MarkdownTemplateIntegrate[]
-  onTemplateIntegrateChange?: (integrate: MarkdownTemplateIntegrate[]) => void
+  // 按方向跳转模板块（由调用方负责跨页定位、居中滚动与高亮闪烁），status 为状态筛选。
+  onJumpToTemplateBlock?: (
+    direction: "previous" | "next",
+    status: MarkdownTemplateStatusFilter,
+  ) => void
 }
 
 const markdownShortcuts = [
@@ -76,23 +77,13 @@ const markdownShortcuts = [
 // 分页模式专属快捷键。
 const pageShortcuts = [{ keys: "Cmd / Ctrl + Alt + ← / →", description: "切换上一页 / 下一页" }]
 
-// 模板块状态整合标签选项。
-const templateIntegrateOptions: { value: MarkdownTemplateStatus; color: LxTagColor }[] = [
-  { value: "todo", color: "gray" },
-  { value: "in_progress", color: "amber" },
-  { value: "done", color: "emerald" },
+// 模板块状态筛选选项（LxSelect 下拉单选，All 在最前且默认选中）。
+const templateStatusOptions: LxSelectOption<MarkdownTemplateStatusFilter>[] = [
+  { value: "all", label: "All" },
+  { value: "todo", label: MARKDOWN_TEMPLATE_STATUS_LABELS.todo },
+  { value: "in_progress", label: MARKDOWN_TEMPLATE_STATUS_LABELS.in_progress },
+  { value: "done", label: MARKDOWN_TEMPLATE_STATUS_LABELS.done },
 ]
-
-// 模板块类型整合标签选项（与斜杠命令模板一致）。
-const templateTypeColors: Record<MarkdownTemplateType, LxTagColor> = {
-  addTemplate: "blue",
-  bugTemplate: "rose",
-  refactorTemplate: "purple",
-  commonTemplate: "teal",
-}
-
-const templateTypeOptions: { value: MarkdownTemplateType; color: LxTagColor }[] =
-  MARKDOWN_TEMPLATE_TYPES.map((value) => ({ value, color: templateTypeColors[value] }))
 
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
@@ -109,8 +100,7 @@ export const MarkdownEditorToolbar = ({
   onPageNameChange,
   onCreatePage,
   onDeletePage,
-  templateIntegrate = [],
-  onTemplateIntegrateChange,
+  onJumpToTemplateBlock,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
@@ -119,6 +109,8 @@ export const MarkdownEditorToolbar = ({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isPageListOpen, setIsPageListOpen] = useState(false)
   const [pageListQuery, setPageListQuery] = useState("")
+  // 模版状态筛选（all 表示全部），用于 tag 单选与上/下一个跳转过滤。
+  const [templateStatus, setTemplateStatus] = useState<MarkdownTemplateStatusFilter>("all")
   const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
@@ -137,29 +129,6 @@ export const MarkdownEditorToolbar = ({
    */
   const getShortcutKeys = (keys: string): string =>
     keys.replace("Cmd / Ctrl", isMacOS() ? "Cmd" : "Ctrl")
-
-  // 当前激活的页面是否为模板块整合虚拟页（只读、不入库）。
-  const isIntegratePage =
-    pageMode && pages[activePageIndex]?.id === MARKDOWN_TEMPLATE_INTEGRATE_PAGE_ID
-
-  /**
-   * 切换"整合全部"模式：与状态标签互斥，进入全量整合页面。
-   */
-  const toggleIntegrateAll = (): void => {
-    onTemplateIntegrateChange?.(templateIntegrate.includes("all") ? [] : ["all"])
-  }
-
-  /**
-   * 切换模板块状态/模版类型标签的多选状态，选中状态时退出"整合全部"。
-   * 取消全部筛选时保持整合页（等价于全量整合），不退出整合视图。
-   */
-  const toggleTemplateIntegrate = (value: MarkdownTemplateStatus | MarkdownTemplateType): void => {
-    const withoutAll = templateIntegrate.includes("all") ? [] : templateIntegrate
-    const next = withoutAll.includes(value)
-      ? withoutAll.filter((item) => item !== value)
-      : [...withoutAll, value]
-    onTemplateIntegrateChange?.(next.length === 0 ? ["all"] : next)
-  }
 
   // 每个页面的模板块状态数量，用于页面列表右侧标签展示。
   const pageTemplateCounts = useMemo(() => {
@@ -182,6 +151,16 @@ export const MarkdownEditorToolbar = ({
     if (!query) return pages
     return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
   }, [pageListQuery, pages])
+
+  // 当前筛选下是否存在可跳转的模板块，用于禁用上/下一个按钮。
+  const hasTemplateBlocks = useMemo(() => {
+    if (!pageMode) return false
+    return pages.some((page) =>
+      getMarkdownTemplateBlockRanges(page.content).some(
+        (block) => templateStatus === "all" || block.status === templateStatus,
+      ),
+    )
+  }, [pages, pageMode, templateStatus])
 
   const pageList = (
     <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
@@ -309,7 +288,6 @@ export const MarkdownEditorToolbar = ({
             aria-label={`编辑页面名称 ${pageName}`}
             className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
             onClick={() => {
-              if (isIntegratePage) return
               pageNameBeforeEditRef.current = pageName
               setIsEditingPageName(true)
             }}
@@ -325,7 +303,7 @@ export const MarkdownEditorToolbar = ({
     <div className="ml-auto flex shrink-0 items-center gap-0.5">
       <LxIconButton
         aria-label="上一页"
-        disabled={activePageIndex === 0 || isIntegratePage}
+        disabled={activePageIndex === 0}
         size="medium"
         title={{ content: "上一页" }}
         onClick={() => onPageChange?.(activePageIndex - 1)}
@@ -334,13 +312,13 @@ export const MarkdownEditorToolbar = ({
       </LxIconButton>
       <span
         aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
-        className={`h-7 px-1.5 text-[11px] leading-7 tabular-nums text-white/45 ${isIntegratePage ? "cursor-not-allowed opacity-35" : ""}`}
+        className="h-7 px-1.5 text-[11px] leading-7 tabular-nums text-white/45"
       >
         {activePageIndex + 1} / {pages.length}
       </span>
       <LxIconButton
         aria-label="下一页"
-        disabled={activePageIndex === pages.length - 1 || isIntegratePage}
+        disabled={activePageIndex === pages.length - 1}
         size="medium"
         title={{ content: "下一页" }}
         onClick={() => onPageChange?.(activePageIndex + 1)}
@@ -369,7 +347,7 @@ export const MarkdownEditorToolbar = ({
         <div className="flex min-w-36 flex-col gap-0.5">
           <LxMenuItem
             className="disabled:opacity-35"
-            disabled={isIntegratePage}
+            disabled={pages.length === 0}
             leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
             onClick={() => {
               setIsPageMenuOpen(false)
@@ -381,7 +359,7 @@ export const MarkdownEditorToolbar = ({
           </LxMenuItem>
           <LxMenuItem
             className="disabled:opacity-35"
-            disabled={pages.length === 0 || isIntegratePage}
+            disabled={pages.length === 0}
             leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
             onClick={() => {
               pageNameBeforeEditRef.current = pageName
@@ -396,7 +374,7 @@ export const MarkdownEditorToolbar = ({
             active={isConfirmingDelete}
             className="disabled:opacity-35"
             danger
-            disabled={pages.length <= 1 || isIntegratePage}
+            disabled={pages.length <= 1}
             leading={
               <Trash2
                 className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
@@ -421,47 +399,6 @@ export const MarkdownEditorToolbar = ({
         <MoreVertical className="h-3.5 w-3.5" />
       </LxIconButton>
     </LxTooltip>
-  )
-
-  const templateIntegratePanel = (
-    <div className="flex w-56 flex-col gap-1.5" aria-label="整合模版块">
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        按状态整合模板块
-        <div className="flex flex-nowrap gap-1">
-          {templateIntegrateOptions.map(({ value, color }) => {
-            const isSelected = templateIntegrate.includes(value)
-            return (
-              <LxTag
-                key={value}
-                color={color}
-                highlighted={isSelected}
-                onClick={() => toggleTemplateIntegrate(value)}
-              >
-                {MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]}
-              </LxTag>
-            )
-          })}
-        </div>
-      </div>
-      <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        按模版类型整合模板块
-        <div className="flex flex-nowrap gap-1">
-          {templateTypeOptions.map(({ value, color }) => {
-            const isSelected = templateIntegrate.includes(value)
-            return (
-              <LxTag
-                key={value}
-                color={color}
-                highlighted={isSelected}
-                onClick={() => toggleTemplateIntegrate(value)}
-              >
-                {MARKDOWN_TEMPLATE_INTEGRATE_LABELS[value]}
-              </LxTag>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 
   const tablePicker = useMemo(
@@ -596,21 +533,35 @@ export const MarkdownEditorToolbar = ({
       ))}
 
       {pageMode && (
-        <LxTooltip
-          content={templateIntegratePanel}
-          placement="bottom"
-          trigger="hover"
-          contentClassName="!p-2"
-        >
-          <LxIconButton
-            aria-label="整合模版块"
-            highlighted={templateIntegrate.length > 0}
-            size="medium"
-            onClick={toggleIntegrateAll}
-          >
-            <Merge className="h-3.5 w-3.5" />
-          </LxIconButton>
-        </LxTooltip>
+        <div className="flex shrink-0 items-center gap-1">
+          <LxSelect
+            size="small"
+            value={templateStatus}
+            onChange={setTemplateStatus}
+            options={templateStatusOptions}
+            className="w-28"
+          />
+          <div className="flex flex-col">
+            <button
+              type="button"
+              aria-label="上一个"
+              disabled={!hasTemplateBlocks}
+              className="flex h-[17px] w-6 items-center justify-center rounded-[3px] text-white/45 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+              onClick={() => onJumpToTemplateBlock?.("previous", templateStatus)}
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="下一个"
+              disabled={!hasTemplateBlocks}
+              className="flex h-[17px] w-6 items-center justify-center rounded-[3px] text-white/45 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+              onClick={() => onJumpToTemplateBlock?.("next", templateStatus)}
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       )}
 
       {pageMenu}
