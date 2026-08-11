@@ -13,6 +13,7 @@ import { ipcRenderer } from "electron"
 export const agentApi: AgentApi["agent"] = {
   send: (text: string, selection?: ModelSelection, context?: AgentSendContext) =>
     ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context),
+  continue: () => ipcRenderer.invoke(AGENT_CHANNELS.continue),
   abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),
   restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),

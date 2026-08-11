@@ -37,6 +37,8 @@ export const AgentPage = ({
     isStreaming,
     isRestoring,
     sendMessage,
+    continueChat,
+    canContinue,
     stopStreaming,
     createNewChat,
     undoLastTurn,
@@ -133,6 +135,8 @@ export const AgentPage = ({
         onSelectPrompt={(prompt) => sendMessage(prompt)}
         onEditMessage={editMessage}
         onDeleteMessage={deleteTurn}
+        canContinue={canContinue}
+        onContinue={continueChat}
       />
       <AgentInput
         inputText={inputText}

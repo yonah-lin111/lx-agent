@@ -22,6 +22,10 @@ interface AgentMessageListProps {
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
   onDeleteMessage?: (messageId: string) => void
+  // 最后一条 AI 回答被截断/中止时，"继续生成"可用（仅最后一条展示按钮）。
+  canContinue?: boolean
+  // 点击"继续生成"：续写被中断的上一轮输出。
+  onContinue?: () => void
 }
 
 const NEAR_BOTTOM_THRESHOLD = 40
@@ -44,7 +48,11 @@ const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
   messages.reduce<AgentMessageListEntry[]>((entries, message) => {
     const previousEntry = entries.at(-1)
 
-    if (message.role !== "user" && previousEntry?.message.role === "assistant") {
+    if (
+      message.role !== "user" &&
+      message.role !== "compactionSummary" &&
+      previousEntry?.message.role === "assistant"
+    ) {
       previousEntry.continuationMessages.push(message)
       return entries
     }
@@ -80,6 +88,8 @@ export const AgentMessageList = ({
   onSelectPrompt,
   onEditMessage,
   onDeleteMessage,
+  canContinue,
+  onContinue,
 }: AgentMessageListProps): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
@@ -92,6 +102,15 @@ export const AgentMessageList = ({
   const lastGroup = messageGroups.at(-1)
   // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
+  // 最后一条真实 AI 回答所在 group 索引（压缩摘要块不占用"最后一条"位置，避免建议问题错位）。
+  const lastRealAssistantIndex = useMemo(() => {
+    for (let index = messageGroups.length - 1; index >= 0; index--) {
+      if (messageGroups[index]?.assistant?.message.role !== "compactionSummary") {
+        return index
+      }
+    }
+    return -1
+  }, [messageGroups])
   // 当前钉住的用户问题 id。
   const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
   // 各用户消息自然流结束位置的 DOM 引用（按用户消息 id 索引）。
@@ -225,7 +244,7 @@ export const AgentMessageList = ({
               const userMessage = group.userMessage
               const assistant = group.assistant
               const groupKey = userMessage?.id ?? assistant?.message.id
-              const isLastGroupAi = index === messageGroups.length - 1 && assistant != null
+              const isLastGroupAi = lastRealAssistantIndex >= 0 && index === lastRealAssistantIndex
               return (
                 <div key={groupKey} className={isLastGroupAi ? "mb-16" : ""}>
                   {userMessage && (
@@ -272,6 +291,8 @@ export const AgentMessageList = ({
                       onSendSuggestedQuestion={isLastGroupAi ? onSendSuggestedQuestion : undefined}
                       onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
                       onDelete={onDeleteMessage}
+                      canContinue={isLastGroupAi ? canContinue : false}
+                      onContinue={isLastGroupAi ? onContinue : undefined}
                     />
                   )}
                 </div>

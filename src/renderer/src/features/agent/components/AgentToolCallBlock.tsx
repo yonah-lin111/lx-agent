@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
+  Bot,
   ChevronDown,
   Clock,
   CornerDownRight,
@@ -116,6 +117,7 @@ const getToolCallPaths = (toolCalls: ToolCallBlock[]): string[] =>
 const formatToolCommand = (toolName: string, args: Record<string, unknown>): string | null => {
   const path = typeof args.path === "string" ? args.path : "."
   if (toolName === "edit" || toolName === "write") return `${toolName} ${path}`
+  if (toolName === "task") return typeof args.description === "string" ? args.description : "task"
   if (toolName === "find") return `find ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "grep") return `grep ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "ls") return `ls ${path}`.trim()
@@ -154,6 +156,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   edit: Pencil,
   write: PenLine,
   time: Clock,
+  task: Bot,
 }
 
 // 未映射工具使用的兜底图标。
@@ -315,6 +318,11 @@ export const AgentToolCallBlock = ({
         <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
           <span className="min-w-0 break-all">{summary}</span>
+        </div>
+      )}
+      {firstToolCall?.progress && (
+        <div className="mt-1 max-h-24 overflow-y-auto rounded-[4px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] leading-relaxed text-white/50 whitespace-pre-wrap break-all">
+          {firstToolCall.progress}
         </div>
       )}
     </div>

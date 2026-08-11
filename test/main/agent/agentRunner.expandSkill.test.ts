@@ -47,6 +47,13 @@ vi.mock("@/services/settingsService", () => ({
     deny: [],
     ask: [],
   }),
+  // 压缩配置（默认值；测试上下文小，阈值不会触发）。
+  getCompactionSettings: () => ({
+    enabled: true,
+    contextWindow: 128000,
+    keepRecentTokens: 20000,
+    reserveTokens: 16384,
+  }),
 }))
 
 vi.mock("@/services/projectService", () => ({

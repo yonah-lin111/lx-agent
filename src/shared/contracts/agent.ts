@@ -56,6 +56,16 @@ export interface AssistantMessage {
   timestamp: number
 }
 
+// 上下文压缩摘要消息：可见的非交互块，标注"此处已压缩"。
+// 不落 message entry（compaction entry 的 payload 即摘要）；UI 与模型上下文共用同一份。
+export interface CompactionSummaryMessage {
+  role: "compactionSummary"
+  summary: string
+  // 被压缩部分的估计 token 数（展示"压缩了多少"）。
+  tokensBefore: number
+  timestamp: number
+}
+
 // 词级 diff 片段：文本 + 是否变更（变更片段渲染为逆色高亮）。
 export interface DiffLinePart {
   text: string
@@ -103,7 +113,11 @@ export interface ToolResultMessage {
 }
 
 // Agent 消息联合类型。
-export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage
+export type AgentMessage =
+  | UserMessage
+  | AssistantMessage
+  | CompactionSummaryMessage
+  | ToolResultMessage
 
 // 建议问题生成请求的对话上下文消息。
 export interface SuggestedQuestionContextMessage {
@@ -190,6 +204,8 @@ export type AgentEvent =
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
   | { type: "session_title"; sessionId: string; title: string | null }
   | { type: "permission_request"; request: PermissionRequest }
+  // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
+  | { type: "compaction_summary"; message: CompactionSummaryMessage }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
@@ -240,6 +256,8 @@ export interface AgentApi {
       selection?: ModelSelection,
       context?: AgentSendContext,
     ) => Promise<AgentSendResult>
+    // 继续生成：续写被截断/中止的上一轮输出（busy 时返回 { ok: false }）。
+    continue: () => Promise<AgentSendResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
     listSessions: () => Promise<AgentSessionSummary[]>

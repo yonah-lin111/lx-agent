@@ -2,12 +2,14 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname } from "node:path"
 import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
+  CompactionSettings,
   ModelProvider,
   ModelProviderModel,
   ModelProviderSettings,
   ModelSelection,
   ProviderTransportType,
 } from "@shared/settings"
+import { DEFAULT_COMPACTION_SETTINGS } from "@shared/settings"
 import { getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。
@@ -365,4 +367,32 @@ export const savePermissionSettings = (input: PermissionSettings): PermissionSet
   renameSync(temporaryPath, configPath)
 
   return settings
+}
+
+// 非零正整数（压缩配置字段校验）；非法回退默认值。
+const clampPositiveInt = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback
+
+/**
+ * 读取上下文压缩配置（ai.compaction 节点）；缺失/非法字段回退默认值，不抛错。
+ */
+export const getCompactionSettings = (): CompactionSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawAi = isRecord(rawConfig.ai) ? (rawConfig.ai as RawAiConfig) : {}
+  const rawCompaction = isRecord(rawAi.compaction) ? rawAi.compaction : {}
+  return {
+    enabled: rawCompaction.enabled !== false,
+    contextWindow: clampPositiveInt(
+      rawCompaction.contextWindow,
+      DEFAULT_COMPACTION_SETTINGS.contextWindow,
+    ),
+    keepRecentTokens: clampPositiveInt(
+      rawCompaction.keepRecentTokens,
+      DEFAULT_COMPACTION_SETTINGS.keepRecentTokens,
+    ),
+    reserveTokens: clampPositiveInt(
+      rawCompaction.reserveTokens,
+      DEFAULT_COMPACTION_SETTINGS.reserveTokens,
+    ),
+  }
 }

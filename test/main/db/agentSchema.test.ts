@@ -26,7 +26,12 @@ describe("createAgentTables", () => {
       .all()
       .map((row) => (row as { name: string }).name)
 
-    expect(tableNames).toEqual(["agent_call", "agent_session", "agent_session_entry"])
+    expect(tableNames).toEqual([
+      "agent_call",
+      "agent_session",
+      "agent_session_entry",
+      "agent_snapshot",
+    ])
     expect(indexNames).toEqual(
       expect.arrayContaining([
         "idx_agent_session_item",
@@ -40,6 +45,7 @@ describe("createAgentTables", () => {
         "idx_agent_call_name",
         "idx_agent_call_parent",
         "idx_agent_call_entry",
+        "idx_agent_snapshot_session",
       ]),
     )
   })

@@ -45,6 +45,22 @@ export type ModelProviderSettings = {
   suggestedQuestionsEnabled: boolean
 }
 
+// 上下文压缩配置（~/.lx/config.json 的 ai.compaction 节点）。
+export type CompactionSettings = {
+  enabled: boolean
+  contextWindow: number
+  keepRecentTokens: number
+  reserveTokens: number
+}
+
+// 上下文压缩配置默认值（可配，后续按实际模型窗口调整）。
+export const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = {
+  enabled: true,
+  contextWindow: 128000,
+  keepRecentTokens: 20000,
+  reserveTokens: 16384,
+}
+
 // 从 Provider 端点获取到的模型信息。
 export type FetchedProviderModel = {
   id: string

@@ -90,5 +90,21 @@ export const createAgentTables = (database: Database.Database): void => {
       ON agent_call(parent_call_id);
     CREATE INDEX IF NOT EXISTS idx_agent_call_entry
       ON agent_call(entry_id);
+
+    CREATE TABLE IF NOT EXISTS agent_snapshot (
+      id INTEGER PRIMARY KEY,
+      external_id TEXT NOT NULL UNIQUE,
+      session_id TEXT NOT NULL,
+      user_message_timestamp INTEGER NOT NULL,  -- 触发该快照的用户消息 timestamp（删轮定位用）
+      hash_start TEXT NOT NULL,                 -- turn 开始时的 git tree hash
+      hash_end TEXT NOT NULL,                   -- turn 结束时的 git tree hash
+      files_changed TEXT NOT NULL,              -- JSON: hash_start → hash_end 变更文件列表 [{status, file}]
+      created_at TIMESTAMP NOT NULL,
+
+      FOREIGN KEY (session_id) REFERENCES agent_session(external_id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_snapshot_session
+      ON agent_snapshot(session_id, user_message_timestamp);
   `)
 }

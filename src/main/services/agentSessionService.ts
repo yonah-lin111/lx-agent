@@ -163,12 +163,13 @@ export const createAgentSessionService = (getConnection: () => Database.Database
     getConnection().prepare("DELETE FROM agent_session WHERE external_id = ?").run(sessionId)
   },
 
-  // 级联删除整个会话：显式顺序删调用 → entries → 会话（避免 entry_id 无级联导致的 FK 冲突）。
+  // 级联删除整个会话：显式顺序删调用 → entries → snapshots → 会话（避免 FK 无级联导致的冲突）。
   deleteSession(sessionId: string): void {
     const database = getConnection()
     database.transaction(() => {
       database.prepare("DELETE FROM agent_call WHERE session_id = ?").run(sessionId)
       database.prepare("DELETE FROM agent_session_entry WHERE session_id = ?").run(sessionId)
+      database.prepare("DELETE FROM agent_snapshot WHERE session_id = ?").run(sessionId)
       database.prepare("DELETE FROM agent_session WHERE external_id = ?").run(sessionId)
     })()
   },
@@ -219,6 +220,70 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .prepare("SELECT * FROM agent_session ORDER BY updated_at DESC, id DESC")
       .all() as AgentSessionRecord[]
     return rows.map(toSummary)
+  },
+
+  // 插入一轮的文件快照（turn 开始/结束两次 write-tree 的哈希 + 变更列表）。
+  insertSnapshot(input: {
+    externalId: string
+    sessionId: string
+    userMessageTimestamp: number
+    hashStart: string
+    hashEnd: string
+    filesChanged: string
+    createdAt: string
+  }): void {
+    getConnection()
+      .prepare(
+        `INSERT INTO agent_snapshot
+          (external_id, session_id, user_message_timestamp, hash_start, hash_end, files_changed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.externalId,
+        input.sessionId,
+        input.userMessageTimestamp,
+        input.hashStart,
+        input.hashEnd,
+        input.filesChanged,
+        input.createdAt,
+      )
+  },
+
+  // 按用户消息 timestamp 查快照（删轮回滚定位）。
+  getSnapshotByUserTimestamp(
+    sessionId: string,
+    userMessageTimestamp: number,
+  ):
+    | {
+        external_id: string
+        session_id: string
+        user_message_timestamp: number
+        hash_start: string
+        hash_end: string
+        files_changed: string
+        created_at: string
+      }
+    | undefined {
+    return getConnection()
+      .prepare("SELECT * FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?")
+      .get(sessionId, userMessageTimestamp) as
+      | {
+          external_id: string
+          session_id: string
+          user_message_timestamp: number
+          hash_start: string
+          hash_end: string
+          files_changed: string
+          created_at: string
+        }
+      | undefined
+  },
+
+  // 删除一轮关联的快照（该轮消息删除后快照失效）。
+  deleteSnapshotsByUserTimestamp(sessionId: string, userMessageTimestamp: number): void {
+    getConnection()
+      .prepare("DELETE FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp = ?")
+      .run(sessionId, userMessageTimestamp)
   },
 })
 

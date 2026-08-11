@@ -12,7 +12,17 @@ import type {
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
+import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { projectService } from "@/services/projectService"
+import { getCompactionSettings } from "@/services/settingsService"
+import {
+  type CompactionBoundary,
+  createCompactionSummaryMessage,
+  estimateContextTokens,
+  findCutPoint,
+  generateCompactionSummary,
+  isContextOverflowFailure,
+} from "./compaction"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
@@ -34,6 +44,7 @@ import { createGrepTool } from "./tools/grep"
 import { createLsTool } from "./tools/ls"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
+import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
 import { createWebSearchTool } from "./tools/webSearch"
@@ -58,6 +69,7 @@ const ALL_TOOL_NAMES = new Set([
   "bash",
   "time",
   "web_search",
+  "task",
 ])
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
@@ -72,12 +84,13 @@ const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
-// 装配会话工具集：注册八工具全集 + MCP 包装工具 + read_skill，按能力集激活。
+// 装配会话工具集：注册八工具全集 + task + MCP 包装工具 + read_skill，按能力集激活。
 const createRegistry = (
   cwd: string,
   activeTools: string[],
   mcpToolNames: string[],
   withReadSkill: boolean,
+  taskDeps?: TaskToolDeps,
 ): ToolRegistry => {
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd))
@@ -89,6 +102,15 @@ const createRegistry = (
   registry.register(createBashTool(cwd))
   registry.register(createTimeTool())
   registry.register(createWebSearchTool())
+  // task 子代理工具：execute 时从注册表当前激活集派生子代理工具集（去掉 task 斩断递归）。
+  if (taskDeps) {
+    registry.register(
+      createTaskTool({
+        ...taskDeps,
+        getTools: () => registry.getActive().filter((tool) => tool.name !== "task"),
+      }),
+    )
+  }
   // MCP 工具：仅注册允许列表命中的已连接工具。
   const activeMcpNames: string[] = []
   for (const handle of mcpManager.getTools()) {
@@ -177,6 +199,14 @@ class AgentRunner {
   private activeSkills: LoadedSkill[] = []
   // 最近一次装配的能力指纹；cwd/模型不变且能力未变时跳过重建。
   private builtSignature = ""
+  // 上下文压缩边界：summary 替代 firstKeptSeq 之前的历史（transformContext 消费）。
+  private contextBoundary: CompactionBoundary | null = null
+  // 消息 → DB seq 对齐（与 agent.state.messages 下标一一对应；未落库消息为 -1 恒保留）。
+  private messageSeqs: number[] = []
+  // 本次 run 是否检测到 context-overflow 错误（不落库，force 压缩后自动重试一次）。
+  private overflowDetected = false
+  // 当前 turn 的起始快照哈希（send/continue 开始时捕获；flushTurn 落库后清空）。
+  private pendingSnapshotStart: string | null = null
 
   // 当前 turn 的落盘输入；run 开始时捕获。
   private sessionInput: PendingSessionInput | null = null
@@ -238,12 +268,28 @@ class AgentRunner {
         this.activeCapabilities,
         this.activeMcp,
         this.activeSkills.length > 0,
+        {
+          systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
+          model: modelResult.model,
+          beforeToolCall: (context, signal) =>
+            permissionManager.gate(context, this.currentSessionId, signal),
+          getSignal: () => this.agent?.signal,
+        },
       )
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
         streamFn: createAiSdkStreamFn(),
         beforeToolCall: (context, signal) =>
           permissionManager.gate(context, this.currentSessionId, signal),
+        // 上下文压缩：模型请求边界构造 [摘要] + 保留尾部；state.messages 保持全量（UI/DB 真相源）。
+        transformContext: async (messages) => {
+          const boundary = this.contextBoundary
+          if (!boundary) return messages
+          const kept = messages.filter(
+            (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
+          )
+          return [createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore), ...kept]
+        },
         initialState: {
           systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
           model: modelResult.model,
@@ -335,10 +381,15 @@ class AgentRunner {
     const isNewSession = !this.currentSessionId
     if (isNewSession) {
       agent.state.messages = []
+      this.messageSeqs = []
+      this.contextBoundary = null
+      this.overflowDetected = false
     }
     // 显式 /skill: 触发在 main 侧展开正文（未命中原样透传）。
     const expanded = this._expandSkillCommand(text)
     this.beginSessionTurn(text)
+    // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
+    this.pendingSnapshotStart = this.captureSnapshot()
     // 新建会话：发送后立即建会话行并触发 AI 标题生成（输入只用用户消息，不等一轮输出完成）。
     if (isNewSession && this.sessionInput) {
       agentSessionService.transaction(() => {
@@ -350,6 +401,26 @@ class AgentRunner {
     }
     try {
       await agent.prompt(expanded)
+      // context-overflow 自动压缩重试一次（决策 9）：移除错误消息 → 强制压缩 → 续跑重试。
+      if (this.overflowDetected) {
+        this.overflowDetected = false
+        this.removeLastOverflowMessage()
+        const compacted = await this.compactIfNeeded(true)
+        if (!compacted) {
+          throw new Error("上下文超出模型窗口且自动压缩失败，请新建会话或重试。")
+        }
+        // 重试用 continue 而非重新 prompt：本轮 user 消息已落库，避免重复注入。
+        this.beginSessionTurn(text)
+        await agent.continue()
+        if (this.overflowDetected) {
+          this.overflowDetected = false
+          this.removeLastOverflowMessage()
+          throw new Error("上下文压缩后仍超出模型窗口，请新建会话或减少会话长度。")
+        }
+      } else {
+        // 阈值压缩：turn 结束后同步执行（阻塞下一条消息数秒可接受）。
+        await this.compactIfNeeded(false)
+      }
     } catch (error) {
       this.discardPendingTurn()
       // 首轮 prompt 失败且会话无任何消息落库：清理刚创建的空会话。
@@ -370,6 +441,53 @@ class AgentRunner {
     return { ok: true, sessionId: this.currentSessionId }
   }
 
+  // 继续生成：续写被截断/中止的上一轮输出（对齐 pi 后置续跑语义）。
+  // 最后一条 assistant 的 stopReason ∈ {length, aborted} 时先注入可见的 user 续写指令再续跑，
+  // 使被中断的输出得以续写；续写消息走既有事件流与落库（作为 user 气泡如实展示）。
+  async continue(): Promise<AgentSendResult> {
+    await mcpManager.ensureConnected()
+    const ready = this.ensureReady()
+    if ("error" in ready) {
+      return { ok: false, error: ready.error }
+    }
+    const { agent } = ready
+    if (agent.state.isStreaming) {
+      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    }
+    if (!this.currentSessionId) {
+      return { ok: false, error: "没有可继续的会话。" }
+    }
+
+    const lastMessage = agent.state.messages[agent.state.messages.length - 1]
+    const isInterrupted =
+      lastMessage?.role === "assistant" &&
+      (lastMessage.stopReason === "length" || lastMessage.stopReason === "aborted")
+    if (!isInterrupted) {
+      return { ok: false, error: "当前没有可继续的对话。" }
+    }
+
+    const continueText = "请继续输出刚才被中断的内容。"
+    // steer 消息在下一轮 loop 前被消费，作为可见 user 气泡随事件流落库。
+    agent.steer({ role: "user", content: continueText, timestamp: Date.now() })
+    this.beginSessionTurn(continueText)
+    // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
+    this.pendingSnapshotStart = this.captureSnapshot()
+    try {
+      await agent.continue()
+      // continue 侧不做 overflow 自动重试（续写指令已消费）；识别到则移除错误轮并返回错误。
+      if (this.overflowDetected) {
+        this.overflowDetected = false
+        this.removeLastOverflowMessage()
+        throw new Error("上下文超出模型窗口，请新建会话或重试。")
+      }
+      await this.compactIfNeeded(false)
+    } catch (error) {
+      this.discardPendingTurn()
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+    return { ok: true, sessionId: this.currentSessionId }
+  }
+
   // 中止当前 run。
   abort(): void {
     this.agent?.abort()
@@ -382,9 +500,12 @@ class AgentRunner {
     const ready = this.ensureReady()
     if ("error" in ready) return
     ready.agent.state.messages = [...messages]
+    // 按 DB 消息 timestamp 重建 seq 对齐（未命中 = 幽灵消息，恒保留）。
+    this.messageSeqs = this.syncMessageSeqs(messages)
     if (messages.length === 0) {
       this.setSessionId(null)
       this.sessionBinding = null
+      this.contextBoundary = null
     }
   }
 
@@ -394,7 +515,7 @@ class AgentRunner {
     if (!session) {
       throw new Error("SESSION_NOT_FOUND")
     }
-    const { messages, capabilities } = this.readSessionEntries(sessionId)
+    const { messages, seqs, capabilities } = this.readSessionEntries(sessionId)
 
     this.discardPendingTurn()
     this.agent?.abort()
@@ -416,21 +537,27 @@ class AgentRunner {
       throw new Error(ready.error)
     }
     ready.agent.state.messages = [...messages]
-    return { messages, activeCapabilities: capabilities }
+    this.messageSeqs = seqs
+    this.contextBoundary = this.readCompactionEntry(sessionId)
+    // state.messages 保持全量；返回给 renderer 的消息列表插入可见摘要块（UI 位置与压缩边界一致）。
+    return { messages: this.withCompactionSummary(messages), activeCapabilities: capabilities }
   }
 
-  // 按 seq 读取会话，重建消息列表与最近的能力快照。
+  // 按 seq 读取会话，重建消息列表、消息 → seq 对齐与最近的能力快照。
   private readSessionEntries(sessionId: string): {
     messages: AgentMessage[]
+    seqs: number[]
     capabilities: AgentCapabilitySnapshot
   } {
     const messages: AgentMessage[] = []
+    const seqs: number[] = []
     let capabilities: AgentCapabilitySnapshot = { tools: [], mcp: [], skills: [] }
 
     for (const entry of agentSessionService.listEntries(sessionId)) {
       if (entry.type === "message") {
         try {
           messages.push(JSON.parse(entry.payload) as AgentMessage)
+          seqs.push(entry.seq)
         } catch {
           // 损坏的 message entry 跳过，不阻断恢复。
         }
@@ -443,7 +570,7 @@ class AgentRunner {
         }
       }
     }
-    return { messages, capabilities }
+    return { messages, seqs, capabilities }
   }
 
   // 历史会话列表（全量，客户端过滤）。
@@ -483,10 +610,25 @@ class AgentRunner {
       turnEntryIds.push(entry.external_id)
     }
 
+    // 文件快照回滚：仅当被删轮是最后一条用户消息轮时回滚文件（中段轮删除维持只删消息，
+    // 避免与后续轮引用/修改的文件状态冲突；完整 revert-and-cleanup 留 v2）。
+    let isLastUserTurn = true
+    for (let index = startIndex + 1; index < parsed.length; index++) {
+      if (parsed[index].message?.role === "user") {
+        isLastUserTurn = false
+        break
+      }
+    }
+    if (isLastUserTurn) {
+      this.revertTurnFiles(sessionId, userMessageTimestamp)
+    }
+
     const now = new Date().toISOString()
     agentSessionService.transaction(() => {
       agentSessionService.deleteCallsByEntryIds(turnEntryIds)
       agentSessionService.deleteEntries(turnEntryIds)
+      // 该轮快照随消息一并清理（回滚已完成，快照不再有效）。
+      agentSessionService.deleteSnapshotsByUserTimestamp(sessionId, userMessageTimestamp)
       if (agentSessionService.listMessageEntries(sessionId).length === 0) {
         agentSessionService.deleteSessionRow(sessionId)
         if (this.currentSessionId === sessionId) {
@@ -549,6 +691,7 @@ class AgentRunner {
     this.runMessages = []
     this.pendingCalls.clear()
     this.currentRunGeneration = -1
+    this.pendingSnapshotStart = null
   }
 
   // Agent 事件 → 持久化缓冲（转发渲染的事件由调用方处理）。
@@ -556,7 +699,12 @@ class AgentRunner {
     if (this.currentRunGeneration < 0) return
     switch (event.type) {
       case "message_end":
-        this.runMessages.push(event.message)
+        // context-overflow 错误轮不落库：标记后由 send 自动压缩重试，避免污染真相源。
+        if (this.isOverflowFailure(event.message)) {
+          this.overflowDetected = true
+        } else {
+          this.runMessages.push(event.message)
+        }
         break
 
       case "tool_execution_start":
@@ -632,7 +780,10 @@ class AgentRunner {
     this.pendingCalls.clear()
     this.currentRunGeneration = -1
 
-    if (!input || messages.length === 0) return
+    if (!input || messages.length === 0) {
+      this.pendingSnapshotStart = null
+      return
+    }
 
     const now = new Date().toISOString()
     const entries = messages.map((message) => ({
@@ -651,19 +802,25 @@ class AgentRunner {
       }
     })
 
+    // 文件快照：git 操作（add/write-tree/diff）放事务外，避免阻塞 DB 事务。
+    const snapshotRecord = this.computeSnapshotRecord(messages)
+
     agentSessionService.transaction(() => {
       const sessionId = this.createSessionIfNeeded(input, now)
 
       let seq = agentSessionService.nextSeq(sessionId)
+      const appendedSeqs: number[] = []
       for (const entry of entries) {
         agentSessionService.insertEntry({
           externalId: entry.externalId,
           sessionId,
-          seq: seq++,
+          seq,
           type: entry.type,
           payload: entry.payload,
           createdAt: now,
         })
+        appendedSeqs.push(seq)
+        seq += 1
       }
 
       for (const call of calls) {
@@ -673,7 +830,8 @@ class AgentRunner {
           externalId: createExternalId(),
           entryId: entryIdByToolCallId.get(call.toolCallId) ?? null,
           parentCallId: null,
-          kind: "builtin",
+          // task 调用落 kind=subagent（子代理内部工具 v1 不单独落库）。
+          kind: call.toolName === "task" ? "subagent" : "builtin",
           name: call.toolName,
           mcpServer: null,
           status: call.status,
@@ -688,7 +846,183 @@ class AgentRunner {
       }
 
       agentSessionService.touchSession(sessionId, now)
+      // 本轮消息 seq 追加到对齐数组（与 agent.state.messages 尾部对应）。
+      this.messageSeqs.push(...appendedSeqs)
+      // 本轮文件快照（hash_start → hash_end + 变更列表）。
+      if (snapshotRecord) {
+        agentSessionService.insertSnapshot({
+          externalId: createExternalId(),
+          sessionId,
+          userMessageTimestamp: snapshotRecord.userMessageTimestamp,
+          hashStart: snapshotRecord.hashStart,
+          hashEnd: snapshotRecord.hashEnd,
+          filesChanged: JSON.stringify(snapshotRecord.changes),
+          createdAt: now,
+        })
+      }
     })
+  }
+
+  // turn 起始快照：cwd 是 git 仓库才返回 tree hash，否则 null（静默降级）。
+  private captureSnapshot(): string | null {
+    if (!this.cwd) return null
+    return gitSnapshotService.capture(this.cwd)
+  }
+
+  // 计算本轮快照记录：hash_end + 变更列表；无变更/非 git 返回 null（并清理起始哈希）。
+  private computeSnapshotRecord(messages: AgentMessage[]): {
+    userMessageTimestamp: number
+    hashStart: string
+    hashEnd: string
+    changes: SnapshotFileChange[]
+  } | null {
+    const hashStart = this.pendingSnapshotStart
+    this.pendingSnapshotStart = null
+    if (!hashStart || !this.cwd) return null
+    const hashEnd = gitSnapshotService.capture(this.cwd)
+    if (!hashEnd || hashEnd === hashStart) return null
+    const changes = gitSnapshotService.diff(hashStart, hashEnd, this.cwd)
+    const userTimestamp = messages.find((message) => message.role === "user")?.timestamp
+    if (changes.length === 0 || userTimestamp === undefined) return null
+    return { userMessageTimestamp: userTimestamp, hashStart, hashEnd, changes }
+  }
+
+  // 回滚一轮的文件改动（仅当被删轮是最后一条用户消息轮；git 仓库才生效）。
+  private revertTurnFiles(sessionId: string, userMessageTimestamp: number): void {
+    const session = agentSessionService.getSession(sessionId)
+    if (!session) return
+    const snapshot = agentSessionService.getSnapshotByUserTimestamp(sessionId, userMessageTimestamp)
+    if (!snapshot) return
+    try {
+      const changes = JSON.parse(snapshot.files_changed) as SnapshotFileChange[]
+      gitSnapshotService.revert(session.cwd, snapshot.hash_start, changes)
+    } catch {
+      // 快照损坏回滚失败：静默，仅删消息（尽力而为）。
+    }
+  }
+
+  // 判断是否 context-overflow 错误轮（不落库，自动压缩重试）。
+  private isOverflowFailure(message: AgentMessage): boolean {
+    return (
+      message.role === "assistant" &&
+      message.stopReason === "error" &&
+      isContextOverflowFailure(message.errorMessage ?? "")
+    )
+  }
+
+  // 从 state.messages 尾部移除 overflow 错误消息（消息未落库，messageSeqs 无对应项）。
+  private removeLastOverflowMessage(): void {
+    const messages = this.agent?.state.messages
+    if (!messages) return
+    while (messages.length > 0 && this.isOverflowFailure(messages[messages.length - 1])) {
+      messages.pop()
+    }
+  }
+
+  // 按 DB 消息 timestamp 重建 seq 对齐（restoreMessages 用；未命中 = 幽灵消息，恒保留 -1）。
+  private syncMessageSeqs(messages: AgentMessage[]): number[] {
+    const seqByTimestamp = new Map<number, number>()
+    const sessionId = this.currentSessionId
+    if (sessionId) {
+      for (const entry of agentSessionService.listEntries(sessionId)) {
+        if (entry.type !== "message") continue
+        try {
+          const message = JSON.parse(entry.payload) as AgentMessage
+          if (typeof message.timestamp === "number" && !seqByTimestamp.has(message.timestamp)) {
+            seqByTimestamp.set(message.timestamp, entry.seq)
+          }
+        } catch {
+          // 损坏 entry 跳过。
+        }
+      }
+    }
+    return messages.map((message) =>
+      typeof message.timestamp === "number" ? (seqByTimestamp.get(message.timestamp) ?? -1) : -1,
+    )
+  }
+
+  // 读取会话最近的 compaction entry，重建压缩边界（无则 null）。
+  private readCompactionEntry(sessionId: string): CompactionBoundary | null {
+    for (const entry of agentSessionService.listEntries(sessionId)) {
+      if (entry.type !== "compaction") continue
+      try {
+        const parsed = JSON.parse(entry.payload) as Partial<CompactionBoundary>
+        if (
+          typeof parsed.summary === "string" &&
+          typeof parsed.firstKeptSeq === "number" &&
+          typeof parsed.tokensBefore === "number"
+        ) {
+          return parsed as CompactionBoundary
+        }
+      } catch {
+        // 损坏 entry 跳过。
+      }
+    }
+    return null
+  }
+
+  // 在返回给 renderer 的消息列表中，于压缩边界处插入可见摘要块（UI 展示全量历史 + 摘要）。
+  private withCompactionSummary(messages: AgentMessage[]): AgentMessage[] {
+    const boundary = this.contextBoundary
+    if (!boundary) return messages
+    const summary = createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore)
+    const insertIndex = messages.findIndex(
+      (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
+    )
+    if (insertIndex < 0) return [summary, ...messages]
+    return [...messages.slice(0, insertIndex), summary, ...messages.slice(insertIndex)]
+  }
+
+  // compaction entry 落库（独立事务；摘要不落 message entry，payload 即摘要）。
+  private persistCompaction(sessionId: string, boundary: CompactionBoundary): void {
+    agentSessionService.transaction(() => {
+      const seq = agentSessionService.nextSeq(sessionId)
+      agentSessionService.insertEntry({
+        externalId: createExternalId(),
+        sessionId,
+        seq,
+        type: "compaction",
+        payload: JSON.stringify(boundary),
+        createdAt: new Date().toISOString(),
+      })
+    })
+  }
+
+  // turn 结束后压缩：估计上下文 token 超阈值（或 overflow 强制）时，摘要化早期历史并建立新边界。
+  // 返回是否实际压缩；摘要生成失败静默保留旧边界（下轮再试）。
+  private async compactIfNeeded(force: boolean): Promise<boolean> {
+    const config = getCompactionSettings()
+    if (!config.enabled) return false
+    const agent = this.agent
+    if (!agent) return false
+    const messages = agent.state.messages
+    if (messages.length === 0) return false
+    if (!force) {
+      const estimated = estimateContextTokens(messages)
+      if (estimated <= config.contextWindow - config.reserveTokens) return false
+    }
+    const cutIndex = findCutPoint(messages, config.keepRecentTokens)
+    // 全部保留或压缩无收益（保留起点 ≤ 1）时不压缩。
+    if (cutIndex >= messages.length || cutIndex <= 1) return false
+    const compacted = messages.slice(0, cutIndex)
+    const summary = await generateCompactionSummary(compacted)
+    if (!summary) return false
+    const tokensBefore = estimateContextTokens(compacted)
+    const boundary: CompactionBoundary = {
+      summary,
+      firstKeptSeq: this.messageSeqs[cutIndex] ?? -1,
+      tokensBefore,
+    }
+    this.contextBoundary = boundary
+    if (this.currentSessionId) {
+      this.persistCompaction(this.currentSessionId, boundary)
+    }
+    // 推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
+    this.eventSink?.({
+      type: "compaction_summary",
+      message: createCompactionSummaryMessage(summary, tokensBefore),
+    })
+    return true
   }
 
   // 标题生成：先推 pending 占位，成功/失败均回填 done 事件；写库前校验仍为当前会话。

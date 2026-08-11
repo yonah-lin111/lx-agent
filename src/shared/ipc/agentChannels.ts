@@ -1,6 +1,7 @@
 // Agent 领域 IPC channel。
 export const AGENT_CHANNELS = {
   send: "agent:send",
+  continue: "agent:continue",
   abort: "agent:abort",
   restore: "agent:restore",
   listSessions: "agent:listSessions",

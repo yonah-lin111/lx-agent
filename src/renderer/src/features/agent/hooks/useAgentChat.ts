@@ -1,9 +1,9 @@
 import type { AgentEvent, AgentSendContext } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
 import type { ChatMessage } from "../types"
-import { toAgentMessages, toChatMessage } from "../utils"
+import { extractToolProgressText, toAgentMessages, toChatMessage } from "../utils"
 import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
@@ -94,6 +94,23 @@ export const useAgentChat = (context?: AgentSendContext) => {
           updateToolStatus(event.toolCallId, "running")
           break
 
+        case "tool_execution_update": {
+          // task 子代理流式进度回传：更新对应 toolCall 块的实时进度文本。
+          const progress = extractToolProgressText(event.partialResult)
+          if (progress === undefined) break
+          setMessages((prev) =>
+            prev.map((message) => ({
+              ...message,
+              blocks: message.blocks.map((block) =>
+                block.kind === "toolCall" && block.toolCallId === event.toolCallId
+                  ? { ...block, progress }
+                  : block,
+              ),
+            })),
+          )
+          break
+        }
+
         case "tool_execution_end":
           updateToolStatus(event.toolCallId, event.isError ? "error" : "done")
           break
@@ -109,6 +126,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
           } else {
             sessionListStore.updateSessionTitle(event.sessionId, event.title)
           }
+          break
+
+        case "compaction_summary":
+          // 上下文压缩完成：追加可见摘要块（非交互，标注"此处已压缩"）。
+          setMessages((prev) => [
+            ...prev,
+            toChatMessage(event.message, false, `m${++messageSequence}`),
+          ])
           break
 
         default:
@@ -240,6 +265,26 @@ export const useAgentChat = (context?: AgentSendContext) => {
     [inputText, isStreaming, context],
   )
 
+  // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。
+  const canContinue = useMemo(
+    () =>
+      !isStreaming &&
+      messages.at(-1)?.role === "assistant" &&
+      (messages.at(-1)?.stopReason === "length" || messages.at(-1)?.stopReason === "aborted"),
+    [messages, isStreaming],
+  )
+
+  // 继续生成：续写被截断/中止的上一轮输出（续写指令由 main 注入为可见 user 气泡）。
+  const continueChat = useCallback(() => {
+    if (!canContinue) return
+    void agentApi.continue().then((result) => {
+      if (result.ok) {
+        sessionListStore.setCurrentSessionId(result.sessionId)
+        void sessionListStore.refresh()
+      }
+    })
+  }, [canContinue])
+
   // 编辑已发送的消息内容（仅影响显示，不改变 main 侧上下文）。
   const editMessage = useCallback((id: string, newContent: string) => {
     setMessages((prev) =>
@@ -263,6 +308,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
     isStreaming,
     isRestoring,
     sendMessage,
+    continueChat,
+    canContinue,
     stopStreaming,
     createNewChat,
     undoLastTurn,

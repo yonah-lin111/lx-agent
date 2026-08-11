@@ -1,7 +1,7 @@
 import { globToRegExp } from "@/agent/tools/search"
 
-// 门控内置工具（有副作用或可外发数据）。
-export const GATED_BUILTIN_TOOLS = new Set(["bash", "write", "edit"])
+// 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn）。
+export const GATED_BUILTIN_TOOLS = new Set(["bash", "write", "edit", "task"])
 
 // 豁免工具集：永不询问（纯公开检索 + 本地只读）。
 export const EXEMPT_TOOLS = new Set([

@@ -5,6 +5,17 @@ import type { ChatBlock, ChatMessage } from "./types"
 export const getAssistantError = (message: AgentMessage): string | undefined =>
   message.role === "assistant" ? message.errorMessage : undefined
 
+// 提取工具执行进度的文本（task 子代理桥接的 partialResult.content 文本）。
+export const extractToolProgressText = (partialResult: unknown): string | undefined => {
+  if (!partialResult || typeof partialResult !== "object") return undefined
+  const result = partialResult as { content?: Array<{ type?: string; text?: string }> }
+  const text = result.content
+    ?.filter((block) => block.type === "text")
+    .map((block) => block.text ?? "")
+    .join("")
+  return text || undefined
+}
+
 // 将 shared AgentMessage 转换为展示条目。
 export const toChatMessage = (
   message: AgentMessage,
@@ -19,6 +30,16 @@ export const toChatMessage = (
       id,
       role: "user",
       blocks: [{ kind: "text", text }],
+      isStreaming: false,
+      timestamp: message.timestamp,
+    }
+  }
+
+  if (message.role === "compactionSummary") {
+    return {
+      id,
+      role: "compactionSummary",
+      blocks: [{ kind: "text", text: message.summary }],
       isStreaming: false,
       timestamp: message.timestamp,
     }
@@ -68,12 +89,16 @@ export const toChatMessage = (
     isStreaming,
     timestamp: message.timestamp,
     error: message.errorMessage,
+    stopReason: message.stopReason,
   }
 }
 
 // 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
 export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
   messages.flatMap((message): AgentMessage[] => {
+    // 压缩摘要为派生数据：不落库、不进 main 上下文（由 compaction entry 重建）。
+    if (message.role === "compactionSummary") return []
+
     if (message.role === "user") {
       const text = message.blocks
         .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")

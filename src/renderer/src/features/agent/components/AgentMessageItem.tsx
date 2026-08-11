@@ -1,5 +1,5 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Copy, Pencil, RefreshCw, Trash2, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -87,6 +87,10 @@ interface AgentMessageItemProps {
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
   onDelete?: (messageId: string) => void
+  // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）。
+  canContinue?: boolean
+  // 点击"继续生成"：续写被中断的上一轮输出。
+  onContinue?: () => void
 }
 
 export const AgentMessageItem = ({
@@ -103,6 +107,8 @@ export const AgentMessageItem = ({
   onCancelEdit,
   onEdit,
   onDelete,
+  canContinue = false,
+  onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const previewRef = useRef<HTMLDivElement>(null)
@@ -366,9 +372,10 @@ export const AgentMessageItem = ({
   const hasOutput = displayBlocks.some(
     ({ block }) => block.kind === "text" && block.text.trim() !== "",
   )
-  // 建议问题触发条件：最后一条 AI 回答 + 正常完成（非流式、无错误、有文本输出）。
+  // 建议问题触发条件：最后一条 AI 回答 + 正常完成（非流式、无错误、有文本输出）；压缩摘要块不触发。
   const canSuggestSuggestedQuestions = Boolean(
-    !isUser &&
+    message.role !== "compactionSummary" &&
+      !isUser &&
       isLastAssistant &&
       !isStreamingNow &&
       !isLoading &&
@@ -550,6 +557,22 @@ export const AgentMessageItem = ({
     } else {
       setLocalIsEditing(false)
     }
+  }
+
+  // 上下文压缩摘要块：非交互（不可编辑/删除），诚实地标注"此处已压缩"。
+  if (message.role === "compactionSummary") {
+    const summary = message.blocks.find((block) => block.kind === "text")?.text ?? ""
+    return (
+      <div className="my-1.5 w-full max-w-full select-none">
+        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-white/35">
+          <span className="rounded-[4px] bg-white/10 px-1 py-px">已压缩</span>
+          <span>此处之前的对话已压缩为摘要</span>
+        </div>
+        <div className="rounded-[6px] border border-white/10 bg-white/[0.03] px-2 py-1 text-xs leading-relaxed text-white/50 whitespace-pre-wrap break-words">
+          {summary}
+        </div>
+      </div>
+    )
   }
 
   if (isUser) {
@@ -792,6 +815,16 @@ export const AgentMessageItem = ({
           </div>
         )}
       </div>
+      {isLastAssistant && canContinue && onContinue && (
+        <button
+          type="button"
+          onClick={onContinue}
+          className="mt-1 flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+        >
+          <RefreshCw className="h-3 w-3" />
+          继续生成
+        </button>
+      )}
       {isLastAssistant && (
         <SuggestedQuestions
           questions={suggestedQuestions}

@@ -112,6 +112,8 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     },
   )
 
+  ipcMain.handle(AGENT_CHANNELS.continue, async () => agentRunner.continue())
+
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()
   })
