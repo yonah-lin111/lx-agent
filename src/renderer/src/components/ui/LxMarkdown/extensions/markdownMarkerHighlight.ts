@@ -66,8 +66,10 @@ class CodeBlockActionWidget extends WidgetType {
   }
 
   destroy(_dom: HTMLElement): void {
-    this.reactRoot?.unmount()
+    const root = this.reactRoot
     this.reactRoot = null
+    // 推迟到微任务，避免在 React 渲染/提交期间同步 unmount 子 root 触发警告。
+    if (root) queueMicrotask(() => root.unmount())
   }
 }
 

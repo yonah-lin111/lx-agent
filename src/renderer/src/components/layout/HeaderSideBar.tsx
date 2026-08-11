@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
@@ -42,6 +43,8 @@ export const HeaderSideBar = ({
   const [isHoverExpandEnabled, setIsHoverExpandEnabled] = useState<boolean>(
     () => localStorage.getItem(HOVER_EXPAND_STORAGE_KEY) === "1",
   )
+  const breadcrumbToasts = useLxBreadcrumbToast()
+  const hasBreadcrumbToast = breadcrumbToasts.length > 0
   const expandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeNavigationItem =
@@ -171,21 +174,27 @@ export const HeaderSideBar = ({
       <div className="relative h-full w-full">
         <div
           key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
-          className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono animate-header-breadcrumb-in"
+          className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono"
         >
-          <span className="text-white/30">//</span>
-          {breadcrumbParts.map((part, index) => (
-            <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-2 truncate">
-              {index > 0 && <span className="shrink-0 text-white/20">/</span>}
-              <span
-                className={`truncate font-bold ${
-                  index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
-                }`}
-              >
-                {part}
-              </span>
-            </span>
-          ))}
+          {hasBreadcrumbToast ? (
+            <LxBreadcrumbToast />
+          ) : (
+            <div className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in">
+              <span className="text-white/30">//</span>
+              {breadcrumbParts.map((part, index) => (
+                <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-2 truncate">
+                  {index > 0 && <span className="shrink-0 text-white/20">/</span>}
+                  <span
+                    className={`truncate font-bold ${
+                      index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
+                    }`}
+                  >
+                    {part}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div
           className={`absolute inset-x-0 bottom-0 top-8 overflow-hidden ${

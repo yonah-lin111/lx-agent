@@ -4,21 +4,23 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 // 消息提示类型。
 export type LxToastType = "success" | "error" | "info" | "warning"
 
-// 消息展示方位。
+// 消息展示方位。breadcrumb 表示在页面顶部栏面包屑处内联展示。
 export type LxToastPosition =
   | "top-left"
   | "top-center"
   | "top-right"
   | "bottom-left"
   | "bottom-right"
+  | "breadcrumb"
 
-// 各方位对应的容器定位样式。
+// 各方位对应的容器定位样式。breadcrumb 由 HeaderSideBar 内联渲染，无需固定定位。
 const POSITION_CLASS: Record<LxToastPosition, string> = {
   "top-left": "top-4 left-4 items-start",
   "top-center": "top-4 left-1/2 -translate-x-1/2 items-center",
   "top-right": "top-4 right-4 items-end",
   "bottom-left": "bottom-4 left-4 items-start",
   "bottom-right": "bottom-4 right-4 items-end",
+  breadcrumb: "",
 }
 
 // 单条消息提示数据。
@@ -39,6 +41,8 @@ export interface LxToastItem {
 interface LxToastContextType {
   // 当前展示的消息列表。
   toasts: LxToastItem[]
+  // 全局默认展示方位。
+  defaultPosition: LxToastPosition
   // 显示任意类型的消息。
   show: (message: string, type?: LxToastType, duration?: number, position?: LxToastPosition) => void
   // 显示成功消息。
@@ -78,7 +82,7 @@ const getSlideStyle = (position: LxToastPosition): React.CSSProperties => {
   if (position === "top-center") {
     return { "--toast-slide-x": "0px", "--toast-slide-y": "-8px" } as React.CSSProperties
   }
-  if (position.endsWith("left")) {
+  if (position === "breadcrumb" || position.endsWith("left")) {
     return { "--toast-slide-x": "-8px", "--toast-slide-y": "0px" } as React.CSSProperties
   }
   return { "--toast-slide-x": "8px", "--toast-slide-y": "0px" } as React.CSSProperties
@@ -89,7 +93,7 @@ const getSlideStyle = (position: LxToastPosition): React.CSSProperties => {
  */
 export const LxToastProvider = ({
   children,
-  position = "top-center",
+  position = "breadcrumb",
 }: {
   children: React.ReactNode
   // 消息默认展示方位。
@@ -168,11 +172,12 @@ export const LxToastProvider = ({
     [show],
   )
 
-  // 按方位分组，便于按方位渲染独立容器。
+  // 按方位分组，便于按方位渲染独立容器。breadcrumb 由 HeaderSideBar 内联渲染，跳过固定层。
   const groupedToasts = useMemo(() => {
     const groups = new Map<LxToastPosition, LxToastItem[]>()
     for (const toast of toasts) {
       const toastPosition = toast.position ?? position
+      if (toastPosition === "breadcrumb") continue
       const group = groups.get(toastPosition)
       if (group) {
         group.push(toast)
@@ -184,7 +189,9 @@ export const LxToastProvider = ({
   }, [position, toasts])
 
   return (
-    <LxToastContext.Provider value={{ toasts, show, success, error, info, warning }}>
+    <LxToastContext.Provider
+      value={{ toasts, show, success, error, info, warning, defaultPosition: position }}
+    >
       {children}
       {[...groupedToasts.entries()].map(([toastPosition, positionToasts]) => (
         <div
@@ -230,10 +237,42 @@ export const useLxToast = (): LxToastContextType => {
 
   return {
     toasts: [],
+    defaultPosition: "breadcrumb",
     show: () => {},
     success: () => {},
     error: () => {},
     info: () => {},
     warning: () => {},
   }
+}
+
+/**
+ * 获取在面包屑位置内联展示的消息列表。
+ */
+export const useLxBreadcrumbToast = (): LxToastItem[] => {
+  const { toasts, defaultPosition } = useLxToast()
+  return toasts.filter((toast) => (toast.position ?? defaultPosition) === "breadcrumb")
+}
+
+/**
+ * 渲染面包屑位置的消息：无边框、无背景，仅保留按类型着色的文字。
+ * 面包屑位置不堆叠，只展示最新一条；新消息替换旧消息时靠 key 变化重触发入场动画。
+ */
+export const LxBreadcrumbToast = (): React.JSX.Element | null => {
+  const breadcrumbToasts = useLxBreadcrumbToast()
+  if (breadcrumbToasts.length === 0) return null
+
+  const latestToast = breadcrumbToasts[breadcrumbToasts.length - 1]
+
+  return (
+    <span
+      key={latestToast.id}
+      className={`whitespace-nowrap text-xs font-medium tracking-wide ${getLxToastColorClass(
+        latestToast.type,
+      )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
+      style={getSlideStyle("breadcrumb")}
+    >
+      {latestToast.message}
+    </span>
+  )
 }

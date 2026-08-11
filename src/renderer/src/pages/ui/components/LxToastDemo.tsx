@@ -32,7 +32,7 @@ export const LxToastDemo = (): React.JSX.Element => {
       </UiPreviewSection>
       <UiPreviewSection
         title="消息方位"
-        description="支持四角与顶部居中五种方位，默认展示在顶部中间"
+        description="支持四角、顶部居中与面包屑位置，默认展示在顶部栏面包屑处（无边框无背景）"
       >
         <div className="flex flex-wrap gap-2">
           <UiActionButton onClick={() => toast.success("右下角消息", 3000, "bottom-right")}>
