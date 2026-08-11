@@ -390,8 +390,8 @@ export const AgentMessageItem = ({
     onSendSuggestedQuestion?.(question)
   }
 
+  // 回显不隐藏建议，方便连续回显（每次覆盖输入框）；发送消息后由"非最后一条"自然隐藏。
   const handleEchoSuggestedQuestion = (question: string): void => {
-    clearSuggestedQuestions()
     onEchoToInput?.(question)
   }
 
