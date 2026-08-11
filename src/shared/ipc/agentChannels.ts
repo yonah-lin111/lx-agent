@@ -10,5 +10,7 @@ export const AGENT_CHANNELS = {
   deleteMessageTurn: "agent:deleteMessageTurn",
   getMcpStatus: "agent:getMcpStatus",
   suggestedQuestions: "agent:suggestedQuestions",
+  // 权限请求经 event 通道以 permission_request 事件推送（见 AgentEvent）。
+  permissionResponse: "agent:permissionResponse",
   event: "agent:event",
 } as const

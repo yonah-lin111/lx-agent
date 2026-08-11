@@ -40,6 +40,13 @@ vi.mock("@/services/settingsService", () => ({
     suggestedQuestions: { provider: "p", model: "m" },
     suggestedQuestionsEnabled: true,
   }),
+  // 权限配置默认放行（agentRunner 装配时 permissionManager.load 读取）。
+  getPermissionSettings: () => ({
+    defaultMode: "default",
+    allow: [],
+    deny: [],
+    ask: [],
+  }),
 }))
 
 vi.mock("@/services/projectService", () => ({

@@ -872,6 +872,13 @@ select {
   animation: lx-liquid-orbit-2 0.8s ease-in-out infinite;
 }
 
+/* AI 等待输出（权限琥珀色）：权限确认挂起时，页面根容器加 .permission-pending，loader 由默认白切换为琥珀（与权限面板同色）。 */
+.permission-pending .lx-liquid-blob,
+.permission-pending .lx-liquid-blob::before,
+.permission-pending .lx-liquid-blob::after {
+  background: #fcd34d; /* amber-300 */
+}
+
 @keyframes lx-liquid-breathe {
   0% {
     transform: translate(-50%, -50%) scale(0.85);

@@ -1,3 +1,4 @@
+import type { PermissionRequest } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import { Send, Square } from "lucide-react"
 import type React from "react"
@@ -14,6 +15,12 @@ import {
   getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
 import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
+import {
+  PERMISSION_CONFIRM_OPTIONS,
+  PERMISSION_SELECT_OPTIONS,
+  type PermissionPanelPhase,
+  PermissionRequestPanel,
+} from "./PermissionRequestPanel"
 
 interface AgentInputProps {
   inputText: string
@@ -31,6 +38,13 @@ interface AgentInputProps {
   inputTextareaRef?: React.Ref<HTMLTextAreaElement>
   projectId?: string
   projectPath?: string
+  // 挂起的权限请求（非空时权限面板独占键盘）。
+  pendingRequest: PermissionRequest | null
+  onPermissionRespond: (
+    decision: "allow" | "deny",
+    rememberForSession?: boolean,
+    allowAll?: boolean,
+  ) => void
 }
 
 const INPUT_COMMANDS: AgentInputCommand[] = [
@@ -88,6 +102,8 @@ export const AgentInput = ({
   inputTextareaRef,
   projectId,
   projectPath,
+  pendingRequest,
+  onPermissionRespond,
 }: AgentInputProps): React.JSX.Element => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -109,6 +125,11 @@ export const AgentInput = ({
   const [modelIndex, setModelIndex] = useState(0)
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
   const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | null>(null)
+  // 权限面板状态：选择态 → 确认态（允许全部二次确认）。
+  const [permissionPhase, setPermissionPhase] = useState<PermissionPanelPhase>("select")
+  const [permissionIndex, setPermissionIndex] = useState(0)
+  // 面板折叠态（仅当前请求记忆）：折叠后键盘决策降级。
+  const [permissionCollapsed, setPermissionCollapsed] = useState(false)
   const matchedCommands = useMemo(() => getMatchedCommands(inputText), [inputText])
   const matchedModels = useMemo<AgentInputModel[]>(() => {
     if (!inputText.startsWith("/model")) return []
@@ -129,6 +150,8 @@ export const AgentInput = ({
   const isCommandMode = activeMode === "command" && matchedCommands.length > 0
   const isFileMode = activeMode === "file" && files.length > 0
   const isModelMode = activeMode === "model" && matchedModels.length > 0
+  // 权限请求挂起时面板独占键盘与其他面板。
+  const isPermissionMode = pendingRequest != null
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -137,11 +160,13 @@ export const AgentInput = ({
         setPanelPosition(null)
         return
       }
-      const kind: "command" | "file" | null = isFileMode
-        ? "file"
-        : isCommandMode || isModelMode
-          ? "command"
-          : null
+      const kind: "command" | "file" | null = isPermissionMode
+        ? "command"
+        : isFileMode
+          ? "file"
+          : isCommandMode || isModelMode
+            ? "command"
+            : null
       if (!kind) {
         setPanelPosition(null)
         return
@@ -151,7 +176,7 @@ export const AgentInput = ({
     update()
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
-  }, [isCommandMode, isFileMode, isModelMode])
+  }, [isPermissionMode, isCommandMode, isFileMode, isModelMode])
 
   useEffect(() => {
     if (!projectId || !projectPath || activeMode !== "file") {
@@ -204,6 +229,34 @@ export const AgentInput = ({
     [projectId, projectPath],
   )
 
+  // 权限请求变化时重置面板为选择态（新请求重新开始），并复位折叠。
+  useEffect(() => {
+    setPermissionPhase("select")
+    setPermissionIndex(0)
+    setPermissionCollapsed(false)
+  }, [pendingRequest])
+
+  // 处理权限面板选中项：选择态四选项 / 确认态两选项。
+  const handlePermissionAction = (index: number): void => {
+    if (permissionPhase === "select") {
+      if (index === 0) {
+        onPermissionRespond("allow")
+      } else if (index === 1) {
+        onPermissionRespond("allow", true)
+      } else if (index === 2) {
+        onPermissionRespond("deny")
+      } else {
+        setPermissionPhase("confirm")
+        setPermissionIndex(1) // 默认停在"返回"
+      }
+    } else if (index === 0) {
+      onPermissionRespond("allow", false, true) // 允许全部
+    } else {
+      setPermissionPhase("select")
+      setPermissionIndex(3) // 返回选择，保留"允许全部"高亮
+    }
+  }
+
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
     const value = event.target.value
     onInputChange(value)
@@ -246,6 +299,40 @@ export const AgentInput = ({
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // 权限面板独占键盘：↑↓ 循环选择、Enter 选中（不发送消息）、Esc 拒绝关闭。
+    if (isPermissionMode) {
+      // 折叠态键盘降级：不决策（防误触），Esc 仍拒绝关闭，Enter/↑↓ 拦截避免误发消息或移动光标。
+      if (permissionCollapsed) {
+        if (event.key === "Escape") {
+          event.preventDefault()
+          onPermissionRespond("deny")
+        } else if (event.key === "Enter" || event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault()
+        }
+        return
+      }
+      const options =
+        permissionPhase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault()
+        setPermissionIndex((index) => {
+          const offset = event.key === "ArrowDown" ? 1 : -1
+          return (index + offset + options.length) % options.length
+        })
+        return
+      }
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onPermissionRespond("deny")
+        return
+      }
+      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+        event.preventDefault()
+        handlePermissionAction(permissionIndex)
+        return
+      }
+    }
+
     if (isCommandMode) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
@@ -386,24 +473,43 @@ export const AgentInput = ({
         className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
         onPointerDown={handleContainerPointerDown}
       >
-        <AgentInputCommandPanel
-          isOpen={isCommandMode}
-          position={panelPosition}
-          commands={matchedCommands}
-          activeIndex={commandIndex}
-        />
-        <AgentInputModelPanel
-          isOpen={isModelMode}
-          position={panelPosition}
-          models={matchedModels}
-          activeIndex={modelIndex}
-        />
-        <AgentInputFilePanel
-          isOpen={isFileMode}
-          position={panelPosition}
-          files={files}
-          activeIndex={fileIndex}
-        />
+        {isPermissionMode && pendingRequest ? (
+          <PermissionRequestPanel
+            isOpen={isPermissionMode}
+            position={panelPosition}
+            request={pendingRequest}
+            phase={permissionPhase}
+            options={
+              permissionPhase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
+            }
+            activeIndex={permissionIndex}
+            isCollapsed={permissionCollapsed}
+            onToggleCollapse={() => setPermissionCollapsed((collapsed) => !collapsed)}
+            onHoverIndex={setPermissionIndex}
+            onSelect={handlePermissionAction}
+          />
+        ) : (
+          <>
+            <AgentInputCommandPanel
+              isOpen={isCommandMode}
+              position={panelPosition}
+              commands={matchedCommands}
+              activeIndex={commandIndex}
+            />
+            <AgentInputModelPanel
+              isOpen={isModelMode}
+              position={panelPosition}
+              models={matchedModels}
+              activeIndex={modelIndex}
+            />
+            <AgentInputFilePanel
+              isOpen={isFileMode}
+              position={panelPosition}
+              files={files}
+              activeIndex={fileIndex}
+            />
+          </>
+        )}
         <textarea
           ref={mergedTextareaRef}
           value={inputText}

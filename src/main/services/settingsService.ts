@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
+import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
   ModelProvider,
   ModelProviderModel,
@@ -297,6 +298,66 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
       titleSummary: settings.titleSummary,
       suggestedQuestions: settings.suggestedQuestions,
       suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
+}
+
+// 权限配置默认值（缺失/损坏时回退，默认安全）。
+const DEFAULT_PERMISSION_SETTINGS: PermissionSettings = {
+  defaultMode: "default",
+  allow: [],
+  deny: [],
+  ask: [],
+}
+
+/**
+ * 规范化权限配置：校验 defaultMode 枚举与规则数组；非法值回退默认，不抛错。
+ * 规则字符串格式在权限引擎解析时校验（非法条目跳过并记警告）。
+ */
+const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
+  if (!isRecord(raw)) return DEFAULT_PERMISSION_SETTINGS
+  const mode = raw.defaultMode
+  const defaultMode = mode === "acceptEdits" || mode === "bypassPermissions" ? mode : "default"
+  const toStringArray = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+  return {
+    defaultMode,
+    allow: toStringArray(raw.allow),
+    deny: toStringArray(raw.deny),
+    ask: toStringArray(raw.ask),
+  }
+}
+
+/**
+ * 读取 Agent 权限配置（缺失/损坏回退默认）。
+ */
+export const getPermissionSettings = (): PermissionSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawAgent = isRecord(rawConfig.agent) ? rawConfig.agent : {}
+  return normalizePermissionSettings(rawAgent.permissions)
+}
+
+/**
+ * 保存 Agent 权限配置，合并 agent.permissions 节点并保留其他字段（含 agent.mcp）。
+ */
+export const savePermissionSettings = (input: PermissionSettings): PermissionSettings => {
+  const settings = normalizePermissionSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawAgentObj = isRecord(rawConfig.agent) ? { ...rawConfig.agent } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    agent: {
+      ...rawAgentObj,
+      permissions: settings,
     },
   }
   const temporaryPath = `${configPath}.tmp`

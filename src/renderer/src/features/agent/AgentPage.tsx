@@ -1,6 +1,11 @@
-import type { AgentSendContext, SuggestedQuestionContextMessage } from "@shared/contracts/agent"
+import type {
+  AgentSendContext,
+  PermissionRequest,
+  SuggestedQuestionContextMessage,
+} from "@shared/contracts/agent"
 import type React from "react"
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
 import { useAgentChat } from "./hooks/useAgentChat"
@@ -75,6 +80,36 @@ export const AgentPage = ({
     [setInputText],
   )
 
+  // 挂起的权限请求：订阅事件流，驱动 AgentInput 命令面板（替代原弹窗）。
+  const [pendingRequest, setPendingRequest] = useState<PermissionRequest | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = agentApi.onEvent((event) => {
+      if (event.type === "permission_request") {
+        setPendingRequest(event.request)
+      } else if (event.type === "agent_end") {
+        setPendingRequest(null)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  // 权限决策：回传 main；允许全部由 main 侧记录为会话级放行。
+  const respondPermission = useCallback(
+    (decision: "allow" | "deny", rememberForSession?: boolean, allowAll?: boolean): void => {
+      const current = pendingRequest
+      if (!current) return
+      setPendingRequest(null)
+      void agentApi.permissionRespond({
+        requestId: current.requestId,
+        decision,
+        rememberForSession,
+        allowAll,
+      })
+    },
+    [pendingRequest],
+  )
+
   if (onNewChatRef) {
     onNewChatRef(createNewChat)
   }
@@ -83,7 +118,11 @@ export const AgentPage = ({
   }
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent">
+    <div
+      className={`flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent ${
+        pendingRequest ? "permission-pending" : ""
+      }`}
+    >
       <AgentMessageList
         messages={messages}
         isStreaming={isStreaming}
@@ -110,6 +149,8 @@ export const AgentPage = ({
         projectId={currentProjectId}
         projectPath={currentProjectPath}
         inputTextareaRef={inputTextareaRef}
+        pendingRequest={pendingRequest}
+        onPermissionRespond={respondPermission}
       />
     </div>
   )

@@ -7,7 +7,10 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   ModelProviderSettings,
   ModelSettings,
+  PermissionSettings,
   SETTINGS_SECTIONS,
+  settingsApi,
+  usePermissionSettings,
   useSettingsData,
   useSettingsMutations,
 } from "@/features/settings"
@@ -15,6 +18,7 @@ import {
 const SECTION_DESCRIPTIONS: Record<string, string> = {
   models: "选择各类任务默认使用的模型",
   providers: "配置与管理模型 Provider 及模型参数",
+  permissions: "配置 Agent 工具执行权限与确认模式",
 }
 
 /**
@@ -25,28 +29,33 @@ export const SettingsPage = (): React.JSX.Element => {
   const activeSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const { settings, setSettings, isLoading, error, setError } = useSettingsData()
   const { isSaving, saveSettings } = useSettingsMutations()
+  const { permissionSettings, setPermissionSettings, permissionError } = usePermissionSettings()
   const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
   const addProviderRef = useRef<(() => void) | null>(null)
   const toast = useLxToast()
 
   useEffect(() => {
-    if (settings && lastSavedSettings === null) {
-      setLastSavedSettings(JSON.stringify(settings))
+    if (settings && permissionSettings && lastSavedSettings === null) {
+      setLastSavedSettings(JSON.stringify({ models: settings, permissions: permissionSettings }))
     }
-  }, [settings, lastSavedSettings])
+  }, [settings, permissionSettings, lastSavedSettings])
 
   const isSaved = useMemo(() => {
-    if (!settings || lastSavedSettings === null) return true
-    return JSON.stringify(settings) === lastSavedSettings
-  }, [settings, lastSavedSettings])
+    if (!settings || !permissionSettings || lastSavedSettings === null) return true
+    return (
+      JSON.stringify({ models: settings, permissions: permissionSettings }) === lastSavedSettings
+    )
+  }, [settings, permissionSettings, lastSavedSettings])
 
   const save = async (): Promise<void> => {
-    if (!settings) return
+    if (!settings || !permissionSettings) return
     setError("")
     try {
       const saved = await saveSettings(settings)
+      const savedPermission = await settingsApi.savePermissionSettings(permissionSettings)
       setSettings(saved)
-      setLastSavedSettings(JSON.stringify(saved))
+      setPermissionSettings(savedPermission)
+      setLastSavedSettings(JSON.stringify({ models: saved, permissions: savedPermission }))
       toast.success("保存配置成功")
       window.location.reload()
     } catch (saveError) {
@@ -108,6 +117,9 @@ export const SettingsPage = (): React.JSX.Element => {
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {error ? <p className="px-3 pt-2 text-xs text-rose-300">{error}</p> : null}
+          {permissionError ? (
+            <p className="px-3 pt-2 text-xs text-rose-300">{permissionError}</p>
+          ) : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}
@@ -121,6 +133,9 @@ export const SettingsPage = (): React.JSX.Element => {
               onAddProvider={() => toast.success("添加 Provider 成功")}
               onDeleteProvider={() => toast.success("删除 Provider 成功")}
             />
+          ) : null}
+          {activeSection === "permissions" && permissionSettings ? (
+            <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}
         </div>
       )}

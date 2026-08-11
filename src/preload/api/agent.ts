@@ -2,6 +2,7 @@ import type {
   AgentApi,
   AgentEvent,
   AgentSendContext,
+  PermissionResponse,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
@@ -25,6 +26,8 @@ export const agentApi: AgentApi["agent"] = {
   getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
+  permissionRespond: (response: PermissionResponse) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.permissionResponse, response),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)
