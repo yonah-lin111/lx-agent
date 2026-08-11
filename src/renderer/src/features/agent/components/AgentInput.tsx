@@ -27,6 +27,8 @@ interface AgentInputProps {
   onModelChange: (value: string) => void
   modelOptions: AgentModelSelectProps["options"]
   hasModelOptions: boolean
+  // 外部输入框引用（父级用于建议问题回显聚焦），与内部 ref 合并。
+  inputTextareaRef?: React.Ref<HTMLTextAreaElement>
   projectId?: string
   projectPath?: string
 }
@@ -83,11 +85,24 @@ export const AgentInput = ({
   onModelChange,
   modelOptions,
   hasModelOptions,
+  inputTextareaRef,
   projectId,
   projectPath,
 }: AgentInputProps): React.JSX.Element => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // 合并内部 ref 与外部 ref，父级可聚焦/回显输入框。
+  const mergedTextareaRef = useCallback(
+    (node: HTMLTextAreaElement | null): void => {
+      textareaRef.current = node
+      if (typeof inputTextareaRef === "function") {
+        inputTextareaRef(node)
+      } else if (inputTextareaRef) {
+        inputTextareaRef.current = node
+      }
+    },
+    [inputTextareaRef],
+  )
   const [panelPosition, setPanelPosition] = useState<CSSProperties | null>(null)
   const [commandIndex, setCommandIndex] = useState(0)
   const [fileIndex, setFileIndex] = useState(0)
@@ -390,7 +405,7 @@ export const AgentInput = ({
           activeIndex={fileIndex}
         />
         <textarea
-          ref={textareaRef}
+          ref={mergedTextareaRef}
           value={inputText}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

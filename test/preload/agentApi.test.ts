@@ -74,4 +74,25 @@ describe("preload agent API", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.deleteSession, "sess-1")
     expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.deleteMessageTurn, "sess-1", 123456)
   })
+
+  it("suggestedQuestions 转发上下文与排除列表到共享 channel", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+    const messages = [
+      { role: "user", content: "你好" },
+      { role: "assistant", content: "你好，有什么可以帮你？" },
+    ]
+
+    await api.agent.suggestedQuestions(messages)
+    expect(invoke).toHaveBeenNthCalledWith(
+      1,
+      AGENT_CHANNELS.suggestedQuestions,
+      messages,
+      undefined,
+    )
+
+    await api.agent.suggestedQuestions(messages, ["旧问题"])
+    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.suggestedQuestions, messages, [
+      "旧问题",
+    ])
+  })
 })

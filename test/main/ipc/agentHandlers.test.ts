@@ -18,6 +18,9 @@ vi.mock("@/agent/agentRunner", () => ({
     deleteMessageTurn: vi.fn(),
   },
 }))
+vi.mock("@/agent/suggestedQuestionsGenerator", () => ({
+  generateSuggestedQuestions: vi.fn(),
+}))
 
 describe("agent IPC handlers", () => {
   beforeEach(() => handle.mockClear())
@@ -118,5 +121,29 @@ describe("agent IPC handlers", () => {
     expect(() => deleteHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "", 1)).toThrow("INVALID_SESSION_ID")
     expect(() => turnHandler(undefined, "sess-1", "abc")).toThrow("INVALID_MESSAGE_TIMESTAMP")
+  })
+
+  it("suggestedQuestions handler 校验输入并调用生成器", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { generateSuggestedQuestions } = await import("@/agent/suggestedQuestionsGenerator")
+
+    registerAgentHandlers(() => undefined)
+
+    const handler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.suggestedQuestions,
+    )?.[1]
+    expect(handler).toBeTypeOf("function")
+
+    // 非法上下文返回空数组，不触发生成器。
+    const invalidResult = await handler(undefined, "not-an-array")
+    expect(invalidResult).toEqual([])
+    expect(generateSuggestedQuestions).not.toHaveBeenCalled()
+
+    const messages = [{ role: "user", content: "你好" }]
+    vi.mocked(generateSuggestedQuestions).mockResolvedValue(["问题一", "问题二"])
+    const result = await handler(undefined, messages, ["旧问题"])
+    expect(generateSuggestedQuestions).toHaveBeenCalledWith(messages, ["旧问题"])
+    expect(result).toEqual(["问题一", "问题二"])
   })
 })

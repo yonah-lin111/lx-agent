@@ -3,12 +3,14 @@ import type {
   AgentMessage,
   AgentSendContext,
   McpServerStatusItem,
+  SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { mcpManager } from "@/agent/mcp/mcpManager"
+import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
 const MAX_TITLE_LENGTH = 40
@@ -47,6 +49,21 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
     isOptionalString(context.page) &&
     isOptionalString(context.cwd)
   )
+}
+
+// 校验建议问题上下文为合法消息数组（IPC 输入边界）。
+const isValidSuggestedQuestionContext = (
+  value: unknown,
+): value is SuggestedQuestionContextMessage[] => {
+  if (!Array.isArray(value)) return false
+  return value.every((item): item is SuggestedQuestionContextMessage => {
+    if (!item || typeof item !== "object") return false
+    const message = item as Record<string, unknown>
+    return (
+      (message.role === "user" || message.role === "assistant") &&
+      typeof message.content === "string"
+    )
+  })
 }
 
 /**
@@ -90,6 +107,17 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   })
 
   ipcMain.handle(AGENT_CHANNELS.getMcpStatus, () => mcpManager.getStatus())
+
+  ipcMain.handle(
+    AGENT_CHANNELS.suggestedQuestions,
+    (_, messages: unknown, excludedQuestions: unknown) => {
+      if (!isValidSuggestedQuestionContext(messages)) return []
+      const excluded = Array.isArray(excludedQuestions)
+        ? excludedQuestions.filter((item): item is string => typeof item === "string")
+        : []
+      return generateSuggestedQuestions(messages, excluded)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.restore, (_, messages: unknown) => {
     if (!Array.isArray(messages) || !messages.every(isValidAgentMessage)) {

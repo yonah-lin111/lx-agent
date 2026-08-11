@@ -1,4 +1,9 @@
-import type { AgentApi, AgentEvent, AgentSendContext } from "@shared/contracts/agent"
+import type {
+  AgentApi,
+  AgentEvent,
+  AgentSendContext,
+  SuggestedQuestionContextMessage,
+} from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcRenderer } from "electron"
@@ -18,6 +23,8 @@ export const agentApi: AgentApi["agent"] = {
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
   getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
+  suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

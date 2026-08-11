@@ -5,6 +5,7 @@ import type {
   AgentSendContext,
   AgentSessionSummary,
   McpServerStatusItem,
+  SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 
@@ -27,6 +28,10 @@ export const agentApi = {
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
+  suggestedQuestions: (
+    messages: SuggestedQuestionContextMessage[],
+    excludedQuestions?: string[],
+  ): Promise<string[]> => window.api.agent.suggestedQuestions(messages, excludedQuestions),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }
