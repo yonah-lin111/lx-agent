@@ -105,6 +105,12 @@ export interface ToolResultMessage {
 // Agent 消息联合类型。
 export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage
 
+// 建议问题生成请求的对话上下文消息。
+export interface SuggestedQuestionContextMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
 // 助手消息流式增量事件。
 export type AssistantMessageEvent =
   | { type: "start"; partial: AssistantMessage }
@@ -206,6 +212,11 @@ export interface AgentApi {
     deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
     // 获取全部 MCP server 的连接状态。
     getMcpStatus: () => Promise<McpServerStatusItem[]>
+    // 为最后一条 AI 回答生成后续建议问题。
+    suggestedQuestions: (
+      messages: SuggestedQuestionContextMessage[],
+      excludedQuestions?: string[],
+    ) => Promise<string[]>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

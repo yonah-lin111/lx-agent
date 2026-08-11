@@ -246,7 +246,7 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
     defaultModel,
     titleSummary: normalizeSelection(settings.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(settings.suggestedQuestions, providers, defaultModel),
-    suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled !== false,
+    suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled === true,
   }
 }
 
@@ -270,7 +270,7 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
     defaultModel,
     titleSummary: normalizeSelection(rawAi.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(rawAi.suggestedQuestions, providers, defaultModel),
-    suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled !== false,
+    suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled === true,
   }
 }
 

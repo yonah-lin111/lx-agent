@@ -1,3 +1,4 @@
+import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import { Check, ChevronDown, ChevronUp, Copy, Pencil, Trash2, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -14,7 +15,9 @@ import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallB
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
+import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
+import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
@@ -69,6 +72,14 @@ interface AgentMessageItemProps {
   isLoading?: boolean
   isPinned?: boolean
   isEditing?: boolean
+  // 是否为当前最后一条 AI 回答（仅该条目展示建议问题）。
+  isLastAssistant?: boolean
+  // 生成建议问题所需的完整会话上下文。
+  suggestedQuestionContext?: SuggestedQuestionContextMessage[]
+  // 点击建议问题直接发送。
+  onSendSuggestedQuestion?: (question: string) => void
+  // 点击建议问题回显到输入框并聚焦。
+  onEchoToInput?: (question: string) => void
   onStartEdit?: () => void
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
@@ -81,6 +92,10 @@ export const AgentMessageItem = ({
   isLoading,
   isPinned = false,
   isEditing: isEditingProp,
+  isLastAssistant = false,
+  suggestedQuestionContext,
+  onSendSuggestedQuestion,
+  onEchoToInput,
   onStartEdit,
   onCancelEdit,
   onEdit,
@@ -348,6 +363,35 @@ export const AgentMessageItem = ({
   const hasOutput = displayBlocks.some(
     ({ block }) => block.kind === "text" && block.text.trim() !== "",
   )
+  // 建议问题触发条件：最后一条 AI 回答 + 正常完成（非流式、无错误、有文本输出）。
+  const canSuggestSuggestedQuestions = Boolean(
+    !isUser &&
+      isLastAssistant &&
+      !isStreamingNow &&
+      !isLoading &&
+      !assistantError &&
+      hasOutput &&
+      suggestedQuestionContext &&
+      suggestedQuestionContext.length > 0,
+  )
+  const {
+    questions: suggestedQuestions,
+    isLoading: isLoadingSuggestedQuestions,
+    clear: clearSuggestedQuestions,
+  } = useSuggestedQuestions({
+    enabled: canSuggestSuggestedQuestions,
+    context: suggestedQuestionContext ?? [],
+  })
+
+  const handleSendSuggestedQuestion = (question: string): void => {
+    clearSuggestedQuestions()
+    onSendSuggestedQuestion?.(question)
+  }
+
+  const handleEchoSuggestedQuestion = (question: string): void => {
+    clearSuggestedQuestions()
+    onEchoToInput?.(question)
+  }
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -732,6 +776,14 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
+        {isLastAssistant && (
+          <SuggestedQuestions
+            questions={suggestedQuestions}
+            isLoading={isLoadingSuggestedQuestions}
+            onSelect={handleSendSuggestedQuestion}
+            onEcho={handleEchoSuggestedQuestion}
+          />
+        )}
         {(isStreamingNow || isLoading) && !assistantError && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">

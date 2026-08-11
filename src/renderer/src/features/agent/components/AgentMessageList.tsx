@@ -1,3 +1,4 @@
+import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import { ChevronDown, Sparkles } from "lucide-react"
 import type React from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -12,6 +13,12 @@ interface AgentMessageListProps {
   isStreaming?: boolean
   // 历史会话是否正在恢复（驱动骨架屏与吸底跳转）。
   isRestoring?: boolean
+  // 生成建议问题所需的完整会话上下文（仅最后一条 AI 回答使用）。
+  suggestedQuestionContext?: SuggestedQuestionContextMessage[]
+  // 点击建议问题直接发送。
+  onSendSuggestedQuestion?: (question: string) => void
+  // 点击建议问题回显到输入框并聚焦。
+  onEchoToInput?: (question: string) => void
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (id: string, newContent: string) => void
   onDeleteMessage?: (messageId: string) => void
@@ -67,6 +74,9 @@ export const AgentMessageList = ({
   messages,
   isStreaming,
   isRestoring,
+  suggestedQuestionContext,
+  onSendSuggestedQuestion,
+  onEchoToInput,
   onSelectPrompt,
   onEditMessage,
   onDeleteMessage,
@@ -255,6 +265,12 @@ export const AgentMessageList = ({
                       message={assistant.message}
                       continuationMessages={assistant.continuationMessages}
                       isLoading={index === messageGroups.length - 1 && isLastGroupLoading}
+                      isLastAssistant={isLastGroupAi}
+                      suggestedQuestionContext={
+                        isLastGroupAi ? suggestedQuestionContext : undefined
+                      }
+                      onSendSuggestedQuestion={isLastGroupAi ? onSendSuggestedQuestion : undefined}
+                      onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
                       onDelete={onDeleteMessage}
                     />
                   )}

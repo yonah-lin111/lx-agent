@@ -1,9 +1,11 @@
-import type { AgentSendContext } from "@shared/contracts/agent"
+import type { AgentSendContext, SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import type React from "react"
+import { useCallback, useMemo, useRef } from "react"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
+import type { ChatBlock } from "./types"
 
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
@@ -41,6 +43,38 @@ export const AgentPage = ({
   const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
     useAgentModelSelect()
 
+  // 建议问题输入框聚焦引用（回显后定位光标）。
+  const inputTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // 生成建议问题所需的完整会话上下文（跳过工具结果，仅用户与助手文本）。
+  const suggestedQuestionContext = useMemo<SuggestedQuestionContextMessage[]>(() => {
+    const result: SuggestedQuestionContextMessage[] = []
+    for (const message of messages) {
+      if (message.role !== "user" && message.role !== "assistant") continue
+      const content = message.blocks
+        .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n")
+      if (content.trim()) result.push({ role: message.role, content })
+    }
+    return result
+  }, [messages])
+
+  // 回显建议问题到输入框：覆盖内容、光标聚焦末尾。
+  const echoToInput = useCallback(
+    (question: string): void => {
+      setInputText(question)
+      requestAnimationFrame(() => {
+        const textarea = inputTextareaRef.current
+        if (textarea) {
+          textarea.focus()
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+        }
+      })
+    },
+    [setInputText],
+  )
+
   if (onNewChatRef) {
     onNewChatRef(createNewChat)
   }
@@ -54,6 +88,9 @@ export const AgentPage = ({
         messages={messages}
         isStreaming={isStreaming}
         isRestoring={isRestoring}
+        suggestedQuestionContext={suggestedQuestionContext}
+        onSendSuggestedQuestion={(question) => sendMessage(question, selectedSelection)}
+        onEchoToInput={echoToInput}
         onSelectPrompt={(prompt) => sendMessage(prompt)}
         onEditMessage={editMessage}
         onDeleteMessage={deleteTurn}
@@ -72,6 +109,7 @@ export const AgentPage = ({
         hasModelOptions={hasModelOptions}
         projectId={currentProjectId}
         projectPath={currentProjectPath}
+        inputTextareaRef={inputTextareaRef}
       />
     </div>
   )
