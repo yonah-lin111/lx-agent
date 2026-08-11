@@ -5,6 +5,7 @@ import type {
   AgentSendContext,
   AgentSessionSummary,
   McpServerStatusItem,
+  PermissionResponse,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 
@@ -27,6 +28,8 @@ export const agentApi = {
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
+  permissionRespond: (response: PermissionResponse): Promise<{ ok: boolean }> =>
+    window.api.agent.permissionRespond(response),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }

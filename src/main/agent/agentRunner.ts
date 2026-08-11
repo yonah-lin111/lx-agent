@@ -16,6 +16,7 @@ import { projectService } from "@/services/projectService"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
+import { permissionManager } from "./permissions/permissionManager"
 import { createReadSkillTool } from "./skills/readSkillTool"
 import {
   formatSkillsForPrompt,
@@ -191,8 +192,21 @@ class AgentRunner {
     this.eventSink = sink
   }
 
+  // 切换当前会话 id：旧会话的权限内存态（含挂起请求）随之清理。
+  private setSessionId(sessionId: string | null): void {
+    if (this.currentSessionId === sessionId) return
+    if (this.currentSessionId) {
+      permissionManager.clearSession(this.currentSessionId)
+    }
+    this.currentSessionId = sessionId
+  }
+
   // 保证 Agent 就绪；返回错误信息时表示不可用。
   private ensureReady(): { agent: Agent } | { error: string } {
+    // 每次装配刷新权限配置与 MCP 门控集（设置页保存后自然生效）。
+    permissionManager.load()
+    permissionManager.setMcpTools(this.activeMcp)
+
     const cwd = this.requestedCwd ?? resolveCwd()
     if (!cwd) {
       return { error: "未找到可用的项目目录。请先在项目管理中创建并绑定文件系统项目。" }
@@ -228,6 +242,8 @@ class AgentRunner {
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
         streamFn: createAiSdkStreamFn(),
+        beforeToolCall: (context, signal) =>
+          permissionManager.gate(context, this.currentSessionId, signal),
         initialState: {
           systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
           model: modelResult.model,
@@ -343,7 +359,7 @@ class AgentRunner {
         !this.hasSessionMessages(this.currentSessionId)
       ) {
         agentSessionService.deleteSession(this.currentSessionId)
-        this.currentSessionId = null
+        this.setSessionId(null)
         this.sessionBinding = null
       }
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
@@ -367,7 +383,7 @@ class AgentRunner {
     if ("error" in ready) return
     ready.agent.state.messages = [...messages]
     if (messages.length === 0) {
-      this.currentSessionId = null
+      this.setSessionId(null)
       this.sessionBinding = null
     }
   }
@@ -383,7 +399,7 @@ class AgentRunner {
     this.discardPendingTurn()
     this.agent?.abort()
     await mcpManager.ensureConnected()
-    this.currentSessionId = session.external_id
+    this.setSessionId(session.external_id)
     this.sessionBinding = {
       projectItemId: session.project_item_id ?? undefined,
       projectId: session.project_id ?? undefined,
@@ -474,7 +490,7 @@ class AgentRunner {
       if (agentSessionService.listMessageEntries(sessionId).length === 0) {
         agentSessionService.deleteSessionRow(sessionId)
         if (this.currentSessionId === sessionId) {
-          this.currentSessionId = null
+          this.setSessionId(null)
           this.sessionBinding = null
         }
       } else {
@@ -494,7 +510,7 @@ class AgentRunner {
     this.discardPendingTurn()
     this.agent?.abort()
     if (this.currentSessionId === sessionId) {
-      this.currentSessionId = null
+      this.setSessionId(null)
       this.sessionBinding = null
     }
     agentSessionService.deleteSession(sessionId)
@@ -595,7 +611,7 @@ class AgentRunner {
         payload: JSON.stringify(input.capabilities),
         createdAt: now,
       })
-      this.currentSessionId = sessionId
+      this.setSessionId(sessionId)
       this.sessionBinding = input.binding
     }
     return sessionId

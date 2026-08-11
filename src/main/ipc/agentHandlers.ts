@@ -3,12 +3,14 @@ import type {
   AgentMessage,
   AgentSendContext,
   McpServerStatusItem,
+  PermissionResponse,
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { mcpManager } from "@/agent/mcp/mcpManager"
+import { permissionManager } from "@/agent/permissions/permissionManager"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
 const MAX_TITLE_LENGTH = 40
@@ -49,6 +51,17 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
   )
 }
 
+// 校验权限决策为合法 PermissionResponse（IPC 输入边界）。
+const isValidPermissionResponse = (value: unknown): value is PermissionResponse => {
+  if (!value || typeof value !== "object") return false
+  const response = value as Record<string, unknown>
+  if (typeof response.requestId !== "string" || !response.requestId) return false
+  if (response.decision !== "allow" && response.decision !== "deny") return false
+  return (
+    response.rememberForSession === undefined || typeof response.rememberForSession === "boolean"
+  )
+}
+
 /**
  * 注册 Agent 对话 IPC 处理器，并把 Agent 事件推送到目标窗口。
  */
@@ -61,6 +74,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   }
 
   agentRunner.attachEventSink(sendToRenderer)
+  // 权限确认请求经事件流推送到 renderer 命令面板（与 agent:event 同路径）。
+  permissionManager.attachSender((request) =>
+    sendToRenderer({ type: "permission_request", request }),
+  )
 
   ipcMain.handle(
     AGENT_CHANNELS.send,
@@ -136,5 +153,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       throw new Error("INVALID_MESSAGE_TIMESTAMP")
     }
     agentRunner.deleteMessageTurn(sessionId, timestamp)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.permissionResponse, (_, response: unknown) => {
+    if (!isValidPermissionResponse(response)) return { ok: false }
+    return { ok: permissionManager.respond(response) }
   })
 }

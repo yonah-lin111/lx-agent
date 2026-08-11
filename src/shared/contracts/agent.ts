@@ -105,6 +105,43 @@ export interface ToolResultMessage {
 // Agent 消息联合类型。
 export type AgentMessage = UserMessage | AssistantMessage | ToolResultMessage
 
+// 权限确认模式（对齐 Claude Code 权限体系三态）。
+export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
+
+// 权限配置（~/.lx/config.json 的 agent.permissions 节点）。
+export interface PermissionSettings {
+  defaultMode: PermissionMode
+  allow: string[]
+  deny: string[]
+  ask: string[]
+}
+
+// 权限请求（main → renderer，命令面板展示）。
+export interface PermissionRequest {
+  requestId: string
+  toolName: string
+  args: unknown
+  summary: string
+  mode: PermissionMode
+  sessionId: string | null
+}
+
+// 权限决策（不含 requestId；主进程挂起请求的内部语义）。
+// allowAll：会话级"允许全部工具"，跳过规则与弹窗，随会话切换重置。
+export type PermissionDecision = {
+  decision: "allow" | "deny"
+  rememberForSession?: boolean
+  allowAll?: boolean
+}
+
+// 权限决策（renderer → main 响应负载）。
+export interface PermissionResponse {
+  requestId: string
+  decision: "allow" | "deny"
+  rememberForSession?: boolean
+  allowAll?: boolean
+}
+
 // 助手消息流式增量事件。
 export type AssistantMessageEvent =
   | { type: "start"; partial: AssistantMessage }
@@ -146,6 +183,7 @@ export type AgentEvent =
     }
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
   | { type: "session_title"; sessionId: string; title: string | null }
+  | { type: "permission_request"; request: PermissionRequest }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
@@ -206,6 +244,8 @@ export interface AgentApi {
     deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
     // 获取全部 MCP server 的连接状态。
     getMcpStatus: () => Promise<McpServerStatusItem[]>
+    // 响应权限确认请求（requestId 匹配 main 侧挂起的请求）。
+    permissionRespond: (response: PermissionResponse) => Promise<{ ok: boolean }>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

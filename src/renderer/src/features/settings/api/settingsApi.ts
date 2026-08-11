@@ -1,3 +1,4 @@
+import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
   FetchedProviderModel,
   FetchModelsInput,
@@ -11,4 +12,8 @@ export const settingsApi = {
     window.api.settings.saveModelProviders(settings),
   fetchModels: (input: FetchModelsInput): Promise<FetchedProviderModel[]> =>
     window.api.settings.fetchModels(input),
+  getPermissionSettings: (): Promise<PermissionSettings> =>
+    window.api.settings.getPermissionSettings(),
+  savePermissionSettings: (settings: PermissionSettings): Promise<PermissionSettings> =>
+    window.api.settings.savePermissionSettings(settings),
 }

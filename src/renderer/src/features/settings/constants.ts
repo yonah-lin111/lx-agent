@@ -1,4 +1,4 @@
-import { Bot, type LucideIcon, Server } from "lucide-react"
+import { Bot, type LucideIcon, Server, Shield } from "lucide-react"
 
 export interface SettingsSection {
   id: string
@@ -10,4 +10,5 @@ export interface SettingsSection {
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "models", label: "模型配置", icon: Bot },
   { id: "providers", label: "模型 Provider", icon: Server },
+  { id: "permissions", label: "权限", icon: Shield },
 ] as const

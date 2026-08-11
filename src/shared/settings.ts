@@ -1,3 +1,5 @@
+import type { PermissionSettings } from "./contracts/agent"
+
 // Provider 传输格式。
 export type ProviderTransportType = "openai" | "anthropic" | "google" | "openai-compatible"
 
@@ -61,5 +63,7 @@ export interface SettingsApi {
     getModelProviders: () => Promise<ModelProviderSettings>
     saveModelProviders: (settings: ModelProviderSettings) => Promise<ModelProviderSettings>
     fetchModels: (input: FetchModelsInput) => Promise<FetchedProviderModel[]>
+    getPermissionSettings: () => Promise<PermissionSettings>
+    savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
   }
 }
