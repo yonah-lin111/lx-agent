@@ -48,6 +48,9 @@ type DisplayGroup =
 const SKILL_TOOL_NAME = "read_skill"
 const WEB_SEARCH_TOOL_NAME = "web_search"
 
+// 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
+const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []
+
 // 判断是否为 Skill 调用。
 const isSkillToolCall = (toolName: string): boolean => toolName === SKILL_TOOL_NAME
 
@@ -382,7 +385,7 @@ export const AgentMessageItem = ({
     enabled: canSuggestSuggestedQuestions,
     isStreaming: isStreamingNow,
     isLastAssistant,
-    context: suggestedQuestionContext ?? [],
+    context: suggestedQuestionContext ?? EMPTY_SUGGESTED_QUESTION_CONTEXT,
   })
 
   const handleSendSuggestedQuestion = (question: string): void => {

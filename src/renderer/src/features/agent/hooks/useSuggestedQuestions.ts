@@ -52,7 +52,7 @@ export const useSuggestedQuestions = ({
 
   // 手动清空（发送/回显建议问题后立即隐藏）。
   const clear = useCallback((): void => {
-    setQuestions([])
+    setQuestions((prev) => (prev.length === 0 ? prev : []))
     setIsLoading(false)
     completedKeyRef.current = ""
     inFlightKeyRef.current = ""
@@ -62,7 +62,7 @@ export const useSuggestedQuestions = ({
   useEffect(() => {
     // 条件不满足（流式中、非最后一条、无实时完成转换等）：清理状态，允许后续重新生成。
     if (!enabled || isStreaming || !freshCompletionRef.current) {
-      setQuestions([])
+      setQuestions((prev) => (prev.length === 0 ? prev : []))
       setIsLoading(false)
       completedKeyRef.current = ""
       inFlightKeyRef.current = ""

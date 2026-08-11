@@ -127,4 +127,16 @@ describe("useSuggestedQuestions", () => {
     expect(result.current.questions).toEqual([])
     expect(result.current.isLoading).toBe(false)
   })
+
+  it("空上下文每次渲染新引用（非最后一条）不触发循环、不请求", () => {
+    // 模拟非最后一条条目：每次渲染都传入新的空数组，effect 依赖每次变化。
+    const { rerender } = renderHook(() =>
+      useSuggestedQuestions({ enabled: false, isStreaming: false, isLastAssistant: false, context: [] }),
+    )
+
+    for (let index = 0; index < 5; index++) {
+      rerender()
+    }
+    expect(agentApi.suggestedQuestions).not.toHaveBeenCalled()
+  })
 })
