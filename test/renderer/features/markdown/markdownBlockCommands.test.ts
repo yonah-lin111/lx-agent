@@ -6,7 +6,6 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
-  getMarkdownTemplateBlockRanges,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
   getMarkdownTemplateStatuses,
@@ -186,29 +185,6 @@ describe("模板块 id", () => {
     expect(getMarkdownTemplateStatuses(`&&& addTemplate\n内容\n&&& done {id:${id}}`)).toEqual([
       "done",
     ])
-  })
-
-  it("扫描全部已闭合模板块的范围与状态", () => {
-    const doc = [
-      "前文",
-      "&&& addTemplate",
-      "- 内容",
-      "&&&",
-      "&&& bugTemplate",
-      "&&& in_progress",
-    ].join("\n")
-    const startAdd = doc.indexOf("&&& addTemplate")
-    const startBug = doc.indexOf("&&& bugTemplate")
-    // 首块结束行 "&&&" 的结束偏移 = 紧随其后的换行位置。
-    const endAdd = doc.indexOf("\n&&& bugTemplate")
-    expect(getMarkdownTemplateBlockRanges(doc)).toEqual([
-      { start: startAdd, end: endAdd, status: "todo" },
-      { start: startBug, end: doc.length, status: "in_progress" },
-    ])
-  })
-
-  it("未闭合模板块不计入范围", () => {
-    expect(getMarkdownTemplateBlockRanges("&&& addTemplate\n- 内容")).toEqual([])
   })
 
   it("定位全部模板块 id 的源码范围，仅限结束行", () => {

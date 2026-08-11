@@ -27,12 +27,9 @@ import { useLxToast } from "@/components/ui/LxToast"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateBlockContent,
-  getMarkdownTemplateBlockRanges,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   isInsideMarkdownTemplateBlock,
-  type MarkdownTemplateBlockRange,
-  type MarkdownTemplateStatusFilter,
   setMarkdownTemplateTitle,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -51,9 +48,6 @@ import {
   markdownMarkerHighlight,
   markdownReferenceHover,
   selectAllPreservingScrollPosition,
-  synchronizeEditorToPreview,
-  templateBlockFlash,
-  templateBlockFlashEffect,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import {
@@ -168,8 +162,6 @@ export const LxMarkdownEditor = ({
   const pagesRef = useRef(pages)
   const activePageIndexRef = useRef(0)
   const onPagesChangeRef = useRef(onPagesChange)
-  // 跨页跳转目标模板块（范围来自目标页内容），页面内容就位后定位并闪烁高亮。
-  const pendingJumpBlockRef = useRef<MarkdownTemplateBlockRange | null>(null)
 
   const [content, setContent] = useState(() =>
     pageMode && pages?.length
@@ -226,12 +218,6 @@ export const LxMarkdownEditor = ({
         annotations: [Transaction.addToHistory.of(false)],
       })
     }
-    // 跨页跳转：内容就位后定位到目标模板块开始行、滚动居中并闪烁高亮。
-    if (pendingJumpBlockRef.current !== null) {
-      const block = pendingJumpBlockRef.current
-      pendingJumpBlockRef.current = null
-      locateBlock(block)
-    }
   }, [activePage, pageMode])
 
   const switchPage = (index: number): void => {
@@ -272,98 +258,6 @@ export const LxMarkdownEditor = ({
     const nextPages = pages.filter((_, index) => index !== activePageIndex)
     onPagesChangeRef.current?.(nextPages)
     setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
-  }
-
-  /**
-   * 将模板块整体滚动到编辑视口垂直中心，并同步预览滚动位置。
-   */
-  const scrollBlockToCenter = (view: EditorView, from: number, to: number): void => {
-    if (view.state.doc.length === 0) return
-    const firstLine = view.lineBlockAt(from)
-    const lastLine = view.lineBlockAt(Math.max(from, to - 1))
-    const blockTop = firstLine.top
-    const blockHeight = lastLine.bottom - blockTop
-    const viewportHeight = view.scrollDOM.clientHeight
-    view.scrollDOM.scrollTop = blockTop - Math.max(0, (viewportHeight - blockHeight) / 2)
-    if (previewRef.current) synchronizeEditorToPreview(view, previewRef.current)
-  }
-
-  /**
-   * 将光标定位到模板块开始行，滚动块到视口中心并触发整块边框闪烁高亮。
-   */
-  const locateBlock = (block: MarkdownTemplateBlockRange): void => {
-    const view = editorViewRef.current
-    if (!view) return
-    const docLength = view.state.doc.length
-    const from = Math.min(block.start, docLength)
-    const to = Math.min(block.end, docLength)
-
-    view.dispatch({
-      selection: { anchor: from },
-      effects: templateBlockFlashEffect.of({ from, to }),
-    })
-    scrollBlockToCenter(view, from, to)
-    view.focus()
-  }
-
-  /**
-   * 将光标定位到指定页的模板块：同页直接定位，跨页先切页再在内容就位后定位。
-   */
-  const jumpToBlock = (pageIndex: number, block: MarkdownTemplateBlockRange): void => {
-    if (pageIndex === activePageIndex) {
-      locateBlock(block)
-      return
-    }
-    pendingJumpBlockRef.current = block
-    setActivePageIndex(pageIndex)
-  }
-
-  /**
-   * 按方向与状态筛选环行查找模板块并跳转：
-   * 当前页光标之后/之前 → 后续/前置页面页首/页尾 → 回绕当前页首/末块。
-   * 定位后滚动到视口中心并对整块边框闪烁高亮。
-   */
-  const jumpToTemplateBlock = (
-    direction: "previous" | "next",
-    filter: MarkdownTemplateStatusFilter,
-  ): void => {
-    if (!pageMode || !pages?.length || !editorViewRef.current) return
-    const pageCount = pages.length
-    const currentIndex = Math.min(activePageIndex, pageCount - 1)
-    const cursor = editorViewRef.current.state.selection.main.head
-
-    const matchingBlocks = (index: number): MarkdownTemplateBlockRange[] =>
-      getMarkdownTemplateBlockRanges(pages[index].content).filter(
-        (block) => filter === "all" || block.status === filter,
-      )
-
-    const currentBlocks = matchingBlocks(currentIndex)
-    // 当前页内光标之后的第一个 / 光标之前最后一个匹配块。
-    const currentTarget =
-      direction === "next"
-        ? currentBlocks.find((block) => block.start > cursor)
-        : [...currentBlocks].reverse().find((block) => block.start < cursor)
-    if (currentTarget) {
-      jumpToBlock(currentIndex, currentTarget)
-      return
-    }
-
-    // 其他页面（环行）：向后取页首、向前取页尾第一个匹配块。
-    const step = direction === "next" ? 1 : -1
-    for (let distance = 1; distance < pageCount; distance += 1) {
-      const pageIndex = (currentIndex + step * distance + pageCount) % pageCount
-      const blocks = matchingBlocks(pageIndex)
-      const target = direction === "next" ? blocks[0] : blocks[blocks.length - 1]
-      if (target) {
-        jumpToBlock(pageIndex, target)
-        return
-      }
-    }
-
-    // 回绕当前页：向后取首块、向前取末块（页内已无匹配）。
-    const wrapTarget =
-      direction === "next" ? currentBlocks[0] : currentBlocks[currentBlocks.length - 1]
-    if (wrapTarget) jumpToBlock(currentIndex, wrapTarget)
   }
 
   const switchPageRef = useRef(switchPage)
@@ -728,7 +622,6 @@ export const LxMarkdownEditor = ({
         editorTheme,
         markdownReferenceHover,
         markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
-        templateBlockFlash,
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
@@ -1115,7 +1008,6 @@ export const LxMarkdownEditor = ({
         onPageNameChange={renamePage}
         onCreatePage={createPage}
         onDeletePage={deletePage}
-        onJumpToTemplateBlock={jumpToTemplateBlock}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div

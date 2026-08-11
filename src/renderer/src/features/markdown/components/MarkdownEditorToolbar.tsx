@@ -1,8 +1,6 @@
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Edit3,
   Keyboard,
   MoreVertical,
@@ -15,14 +13,8 @@ import { useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem } from "@/components/ui/LxMenu"
-import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import {
-  getMarkdownTemplateBlockRanges,
-  getMarkdownTemplateStatuses,
-  MARKDOWN_TEMPLATE_STATUS_LABELS,
-  type MarkdownTemplateStatusFilter,
-} from "@/features/markdown/commands/markdownBlockCommands"
+import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 import type {
   MarkdownPage,
   MarkdownTableSize,
@@ -43,11 +35,6 @@ interface MarkdownEditorToolbarProps {
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
   onDeletePage?: () => void
-  // 按方向跳转模板块（由调用方负责跨页定位、居中滚动与高亮闪烁），status 为状态筛选。
-  onJumpToTemplateBlock?: (
-    direction: "previous" | "next",
-    status: MarkdownTemplateStatusFilter,
-  ) => void
 }
 
 const markdownShortcuts = [
@@ -77,14 +64,6 @@ const markdownShortcuts = [
 // 分页模式专属快捷键。
 const pageShortcuts = [{ keys: "Cmd / Ctrl + Alt + ← / →", description: "切换上一页 / 下一页" }]
 
-// 模板块状态筛选选项（LxSelect 下拉单选，All 在最前且默认选中）。
-const templateStatusOptions: LxSelectOption<MarkdownTemplateStatusFilter>[] = [
-  { value: "all", label: "All" },
-  { value: "todo", label: MARKDOWN_TEMPLATE_STATUS_LABELS.todo },
-  { value: "in_progress", label: MARKDOWN_TEMPLATE_STATUS_LABELS.in_progress },
-  { value: "done", label: MARKDOWN_TEMPLATE_STATUS_LABELS.done },
-]
-
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
  */
@@ -100,7 +79,6 @@ export const MarkdownEditorToolbar = ({
   onPageNameChange,
   onCreatePage,
   onDeletePage,
-  onJumpToTemplateBlock,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
@@ -109,8 +87,6 @@ export const MarkdownEditorToolbar = ({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isPageListOpen, setIsPageListOpen] = useState(false)
   const [pageListQuery, setPageListQuery] = useState("")
-  // 模版状态筛选（all 表示全部），用于 tag 单选与上/下一个跳转过滤。
-  const [templateStatus, setTemplateStatus] = useState<MarkdownTemplateStatusFilter>("all")
   const pageNameBeforeEditRef = useRef(pageName)
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
@@ -151,16 +127,6 @@ export const MarkdownEditorToolbar = ({
     if (!query) return pages
     return pages.filter(({ name }) => name.toLocaleLowerCase().includes(query))
   }, [pageListQuery, pages])
-
-  // 当前筛选下是否存在可跳转的模板块，用于禁用上/下一个按钮。
-  const hasTemplateBlocks = useMemo(() => {
-    if (!pageMode) return false
-    return pages.some((page) =>
-      getMarkdownTemplateBlockRanges(page.content).some(
-        (block) => templateStatus === "all" || block.status === templateStatus,
-      ),
-    )
-  }, [pages, pageMode, templateStatus])
 
   const pageList = (
     <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
@@ -531,38 +497,6 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
-
-      {pageMode && (
-        <div className="flex shrink-0 items-center gap-1">
-          <LxSelect
-            size="small"
-            value={templateStatus}
-            onChange={setTemplateStatus}
-            options={templateStatusOptions}
-            className="w-28"
-          />
-          <div className="flex flex-col">
-            <button
-              type="button"
-              aria-label="上一个"
-              disabled={!hasTemplateBlocks}
-              className="flex h-[17px] w-6 items-center justify-center rounded-[3px] text-white/45 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-              onClick={() => onJumpToTemplateBlock?.("previous", templateStatus)}
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="下一个"
-              disabled={!hasTemplateBlocks}
-              className="flex h-[17px] w-6 items-center justify-center rounded-[3px] text-white/45 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-              onClick={() => onJumpToTemplateBlock?.("next", templateStatus)}
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {pageMenu}
 
