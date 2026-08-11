@@ -380,6 +380,8 @@ export const AgentMessageItem = ({
     clear: clearSuggestedQuestions,
   } = useSuggestedQuestions({
     enabled: canSuggestSuggestedQuestions,
+    isStreaming: isStreamingNow,
+    isLastAssistant,
     context: suggestedQuestionContext ?? [],
   })
 
@@ -776,14 +778,6 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
-        {isLastAssistant && (
-          <SuggestedQuestions
-            questions={suggestedQuestions}
-            isLoading={isLoadingSuggestedQuestions}
-            onSelect={handleSendSuggestedQuestion}
-            onEcho={handleEchoSuggestedQuestion}
-          />
-        )}
         {(isStreamingNow || isLoading) && !assistantError && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
@@ -792,6 +786,14 @@ export const AgentMessageItem = ({
           </div>
         )}
       </div>
+      {isLastAssistant && (
+        <SuggestedQuestions
+          questions={suggestedQuestions}
+          isLoading={isLoadingSuggestedQuestions}
+          onSelect={handleSendSuggestedQuestion}
+          onEcho={handleEchoSuggestedQuestion}
+        />
+      )}
       {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
         <div className="mt-1 flex items-center gap-1 justify-start opacity-0 transition-opacity group-hover:opacity-100">
           <LxIconButton
