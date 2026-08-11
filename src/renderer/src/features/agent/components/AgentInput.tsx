@@ -128,6 +128,7 @@ export const AgentInput = ({
   // 权限面板状态：选择态 → 确认态（允许全部二次确认）。
   const [permissionPhase, setPermissionPhase] = useState<PermissionPanelPhase>("select")
   const [permissionIndex, setPermissionIndex] = useState(0)
+  const [permissionKeyboardNavigationVersion, setPermissionKeyboardNavigationVersion] = useState(0)
   // 面板折叠态（仅当前请求记忆）：折叠后键盘决策降级。
   const [permissionCollapsed, setPermissionCollapsed] = useState(false)
   const matchedCommands = useMemo(() => getMatchedCommands(inputText), [inputText])
@@ -154,8 +155,8 @@ export const AgentInput = ({
   const isPermissionMode = pendingRequest != null
 
   useLayoutEffect(() => {
-    const container = containerRef.current
     const update = (): void => {
+      const container = containerRef.current
       if (!container) {
         setPanelPosition(null)
         return
@@ -173,9 +174,30 @@ export const AgentInput = ({
       }
       setPanelPosition(getAgentPanelPosition(kind, container.getBoundingClientRect()))
     }
+
+    let frameId: number | null = null
+    const scheduleUpdate = (): void => {
+      if (frameId !== null) return
+      frameId = requestAnimationFrame(() => {
+        frameId = null
+        update()
+      })
+    }
+
     update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
+    const container = containerRef.current
+    if (!container) return
+    const resizeObserver = new ResizeObserver(scheduleUpdate)
+    resizeObserver.observe(container)
+    const viewport = window.visualViewport
+    window.addEventListener("resize", scheduleUpdate)
+    viewport?.addEventListener("resize", scheduleUpdate)
+    return () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", scheduleUpdate)
+      viewport?.removeEventListener("resize", scheduleUpdate)
+    }
   }, [isPermissionMode, isCommandMode, isFileMode, isModelMode])
 
   useEffect(() => {
@@ -233,6 +255,7 @@ export const AgentInput = ({
   useEffect(() => {
     setPermissionPhase("select")
     setPermissionIndex(0)
+    setPermissionKeyboardNavigationVersion(0)
     setPermissionCollapsed(false)
   }, [pendingRequest])
 
@@ -319,6 +342,7 @@ export const AgentInput = ({
           const offset = event.key === "ArrowDown" ? 1 : -1
           return (index + offset + options.length) % options.length
         })
+        setPermissionKeyboardNavigationVersion((version) => version + 1)
         return
       }
       if (event.key === "Escape") {
@@ -484,6 +508,7 @@ export const AgentInput = ({
             }
             activeIndex={permissionIndex}
             isCollapsed={permissionCollapsed}
+            keyboardNavigationVersion={permissionKeyboardNavigationVersion}
             onToggleCollapse={() => setPermissionCollapsed((collapsed) => !collapsed)}
             onHoverIndex={setPermissionIndex}
             onSelect={handlePermissionAction}

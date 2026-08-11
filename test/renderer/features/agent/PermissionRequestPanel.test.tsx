@@ -47,15 +47,27 @@ describe("PermissionRequestPanel", () => {
     renderPanel()
 
     expect(screen.getByText("bash")).not.toBeNull()
-    expect(screen.getByText("ls")).not.toBeNull()
+    expect(screen.queryByText("ls")).toBeNull()
     expect(screen.getByText("允许")).not.toBeNull()
     expect(screen.getByText("允许本次会话")).not.toBeNull()
     expect(screen.getByText("拒绝")).not.toBeNull()
     expect(screen.getByText("允许全部")).not.toBeNull()
+    expect(screen.queryByText("default")).toBeNull()
+    expect(screen.queryByText("该操作将在项目目录执行命令，可能产生副作用。")).toBeNull()
 
     const options = screen.getAllByRole("option")
     expect(options).toHaveLength(4)
     expect(options[0]!.getAttribute("aria-selected")).toBe("true")
+  })
+
+  it("参数图标悬停展示请求参数", async () => {
+    renderPanel()
+
+    fireEvent.mouseEnter(screen.getByRole("img", { name: "查看命令参数" }))
+    const tooltip = await screen.findByRole("tooltip")
+
+    expect(tooltip.textContent).toContain("command")
+    expect(tooltip.textContent).toContain("ls")
   })
 
   it("确认态：展示确认文案与确认/返回两选项", () => {

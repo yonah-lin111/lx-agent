@@ -664,11 +664,6 @@ export const AgentMessageItem = ({
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       <div className="relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/90">
-        {assistantError && (
-          <div className="mb-1 text-[13px] text-red-400 whitespace-pre-wrap break-words">
-            {assistantError}
-          </div>
-        )}
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
             if (group.kind === "text") {
@@ -781,6 +776,14 @@ export const AgentMessageItem = ({
             )
           })}
         </div>
+        {assistantError && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            <div className="border-t border-white/10" />
+            <div className="text-[13px] text-red-400 italic whitespace-pre-wrap break-words">
+              {assistantError}
+            </div>
+          </div>
+        )}
         {(isStreamingNow || isLoading) && !assistantError && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
