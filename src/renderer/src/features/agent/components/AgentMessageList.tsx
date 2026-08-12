@@ -39,7 +39,7 @@ interface AgentMessageListProps {
   onContinue?: () => void
 }
 
-const NEAR_BOTTOM_THRESHOLD = 40
+const NEAR_BOTTOM_THRESHOLD = 250
 
 export const AgentMessageList = ({
   messages,
@@ -267,6 +267,7 @@ export const AgentMessageList = ({
                       message={assistant.message}
                       continuationMessages={assistant.continuationMessages}
                       isLoading={index === messageGroups.length - 1 && isLastGroupLoading}
+                      showScrollToBottom={showScrollToBottom}
                       isLastAssistant={isLastGroupAi}
                       suggestedQuestionContext={
                         isLastGroupAi ? suggestedQuestionContext : undefined

@@ -110,6 +110,8 @@ interface AgentMessageItemProps {
   onOpenSubagent?: (toolCall: ToolCallBlock) => void
   // 只读模式（子代理面板内渲染，隐藏编辑/删除操作，保留复制）。
   readOnly?: boolean
+  // 回到底部按钮是否可见（可见时由按钮接管 loader，隐藏条目内 loading 效果）。
+  showScrollToBottom?: boolean
   // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）。
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
@@ -133,6 +135,7 @@ export const AgentMessageItem = ({
   onLocate,
   onOpenSubagent,
   readOnly = false,
+  showScrollToBottom = false,
   canContinue = false,
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
@@ -877,7 +880,7 @@ export const AgentMessageItem = ({
             </div>
           </div>
         )}
-        {(isStreamingNow || isLoading) && !assistantError && (
+        {(isStreamingNow || isLoading) && !assistantError && !showScrollToBottom && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
               <span className="lx-liquid-blob" />

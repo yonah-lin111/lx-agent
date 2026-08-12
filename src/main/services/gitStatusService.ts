@@ -15,7 +15,7 @@ export class GitStatusService {
         cwd,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
+      }).trimEnd()
     } catch {
       return null
     }
