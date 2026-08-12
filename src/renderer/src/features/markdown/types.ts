@@ -70,6 +70,8 @@ export interface LxMarkdownEditorProps {
   ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
   // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
   referencedProjectPaths?: string[]
+  // 当前项目文件系统路径；virtual 项目或缺省时底部状态栏不渲染。
+  projectPath?: string
   showLineNumbers?: boolean
   showFolding?: boolean
 }
