@@ -1,5 +1,15 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import { Check, ChevronDown, ChevronUp, Copy, Pencil, RefreshCw, Trash2, X } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Locate,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -94,6 +104,8 @@ interface AgentMessageItemProps {
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
   onDelete?: (messageId: string) => void
+  // 吸顶状态下点击"定位"：滚动回该消息在自然流中的原始位置（消息顶对齐列表视口顶部）。
+  onLocate?: () => void
   // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）。
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
@@ -114,6 +126,7 @@ export const AgentMessageItem = ({
   onCancelEdit,
   onEdit,
   onDelete,
+  onLocate,
   canContinue = false,
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
@@ -656,6 +669,16 @@ export const AgentMessageItem = ({
                 isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
               }`}
             >
+              {isPinned && onLocate && (
+                <LxIconButton
+                  size="small"
+                  aria-label="定位到消息"
+                  title={{ content: "定位到消息", placement: "top" }}
+                  onClick={onLocate}
+                >
+                  <Locate className="h-3 w-3" />
+                </LxIconButton>
+              )}
               {isCollapsible && (
                 <LxIconButton
                   size="small"

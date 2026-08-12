@@ -234,6 +234,13 @@ export const editorTheme = EditorView.theme(
       borderRadius: "3px !important",
       fontWeight: "600 !important",
     },
+    ".cm-md-template-wt, .cm-md-template-wt *": {
+      color: "#22d3ee !important",
+      backgroundColor: "rgba(34, 211, 238, 0.14) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "600 !important",
+    },
     ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
       color: "#38bdf8 !important",
       fontWeight: "700",
@@ -381,7 +388,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.cm-md-template-id):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -930,6 +937,11 @@ const buildMarkdownMarkerDecorations = (
       const idMatch = line.match(/\{id:[0-9a-f]{32}\}/)
       if (idMatch?.index !== undefined) {
         addMarkerAlways(idMatch.index, idMatch.index + idMatch[0].length, "cm-md-template-id", true)
+      }
+      // wt 为工作区绑定：着色展示并设为原子范围，光标导航跳过、源码受事务过滤器保护。
+      const wtMatch = line.match(/\{wt:[^}\s{]+\}/)
+      if (wtMatch?.index !== undefined) {
+        addMarkerAlways(wtMatch.index, wtMatch.index + wtMatch[0].length, "cm-md-template-wt", true)
       }
       allDecos.push({
         type: "line",

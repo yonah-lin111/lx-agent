@@ -115,6 +115,8 @@ export const AgentMessageList = ({
   const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
   // 各用户消息自然流结束位置的 DOM 引用（按用户消息 id 索引）。
   const userMessageEndRefs = useRef(new Map<string, HTMLDivElement>())
+  // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。吸顶定位需读取组顶（= 用户消息自然流顶部）。
+  const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
 
   const isNearBottom = (): boolean => {
     const el = scrollRef.current
@@ -150,6 +152,13 @@ export const AgentMessageList = ({
     (el: HTMLDivElement | null): void => {
       if (el) userMessageEndRefs.current.set(messageId, el)
       else userMessageEndRefs.current.delete(messageId)
+    }
+
+  const attachMessageGroupRef =
+    (groupId: string) =>
+    (el: HTMLDivElement | null): void => {
+      if (el) messageGroupRefs.current.set(groupId, el)
+      else messageGroupRefs.current.delete(groupId)
     }
 
   const handleScroll = (): void => {
@@ -191,6 +200,19 @@ export const AgentMessageList = ({
   const scrollToBottom = (): void => {
     const el = scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }
+
+  // 定位吸顶的用户消息：滚动到其在自然流中的位置（消息顶部对齐列表视口内容区顶部，即吸顶解除的临界点）。
+  const handleLocateMessage = (messageId: string): void => {
+    const el = scrollRef.current
+    const group = messageGroupRefs.current.get(messageId)
+    if (!el || !group) return
+    const containerRect = el.getBoundingClientRect()
+    const groupRect = group.getBoundingClientRect()
+    const paddingTop = Number.parseFloat(window.getComputedStyle(el).paddingTop) || 0
+    // 组顶 = 用户消息自然流顶，吸顶视觉位置 = 视口内容区顶部；二者位移差即需滚动的距离。
+    const delta = groupRect.top - (containerRect.top + paddingTop)
+    el.scrollTo({ top: el.scrollTop + delta, behavior: "smooth" })
   }
 
   // 用户发送新消息后平滑滚动到底部（以 prev 快照判定追加新增）。
@@ -245,19 +267,23 @@ export const AgentMessageList = ({
               const assistant = group.assistant
               const groupKey = userMessage?.id ?? assistant?.message.id
               const isLastGroupAi = lastRealAssistantIndex >= 0 && index === lastRealAssistantIndex
+              const isUserPinned = pinnedUserMessageId === userMessage?.id
               return (
-                <div key={groupKey} className={isLastGroupAi ? "mb-16" : ""}>
+                <div
+                  key={groupKey}
+                  ref={groupKey ? attachMessageGroupRef(groupKey) : undefined}
+                  className={isLastGroupAi ? "mb-16" : ""}
+                >
                   {userMessage && (
                     <>
                       {/* 用户消息完全离开视口后，才将问题钉住视口顶部。 */}
-                      <div
-                        className={`top-0 z-20 mb-4 w-full ${
-                          pinnedUserMessageId === userMessage.id ? "sticky" : ""
-                        }`}
-                      >
+                      <div className={`top-0 z-20 mb-4 w-full ${isUserPinned ? "sticky" : ""}`}>
                         <AgentMessageItem
                           message={userMessage}
-                          isPinned={pinnedUserMessageId === userMessage.id}
+                          isPinned={isUserPinned}
+                          onLocate={
+                            isUserPinned ? () => handleLocateMessage(userMessage.id) : undefined
+                          }
                           isEditing={editingMessageId === userMessage.id}
                           onStartEdit={() => setEditingMessageId(userMessage.id)}
                           onCancelEdit={() => {
