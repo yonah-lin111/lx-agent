@@ -25,6 +25,7 @@ import {
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import {
   MarkdownActionCopyButton,
+  MarkdownActionDeleteButton,
   MarkdownActionFoldButton,
   TemplateStatusButton,
 } from "@/features/markdown/extensions/markdownActionWidgets"
@@ -508,6 +509,13 @@ interface TemplateStatusAction {
   onToggle: (line: number) => void
 }
 
+// 模板块删除配置。
+interface TemplateDeleteAction {
+  startLine: number
+  endLine: number
+  onDelete: (startLine: number, endLine: number) => void
+}
+
 class CodeBlockActionWidget extends WidgetType {
   private reactRoot: Root | null = null
 
@@ -521,6 +529,7 @@ class CodeBlockActionWidget extends WidgetType {
     readonly foldTitle = "折叠代码块",
     readonly unfoldTitle = "展开代码块",
     readonly templateStatus: TemplateStatusAction | null = null,
+    readonly templateDelete: TemplateDeleteAction | null = null,
   ) {
     super()
   }
@@ -532,7 +541,9 @@ class CodeBlockActionWidget extends WidgetType {
       this.showFoldBtn === other.showFoldBtn &&
       this.actionClassName === other.actionClassName &&
       this.templateStatus?.line === other.templateStatus?.line &&
-      this.templateStatus?.status === other.templateStatus?.status
+      this.templateStatus?.status === other.templateStatus?.status &&
+      this.templateDelete?.startLine === other.templateDelete?.startLine &&
+      this.templateDelete?.endLine === other.templateDelete?.endLine
     )
   }
 
@@ -558,6 +569,18 @@ class CodeBlockActionWidget extends WidgetType {
         createElement(TemplateStatusButton, {
           status: this.templateStatus.status,
           onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
+        }),
+      )
+    }
+    if (this.templateDelete) {
+      actionNodes.push(
+        createElement(MarkdownActionDeleteButton, {
+          label: "删除模板块",
+          onDelete: () =>
+            this.templateDelete?.onDelete(
+              this.templateDelete.startLine,
+              this.templateDelete.endLine,
+            ),
         }),
       )
     }
@@ -611,6 +634,7 @@ export const markdownMarkerHighlight = (
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(view, index),
           (line) => this.cycleTemplateStatus(view, line),
+          (startLine, endLine) => this.deleteTemplateBlock(view, startLine, endLine),
           showFolding,
           getReferencedProjectNames,
         )
@@ -650,6 +674,7 @@ export const markdownMarkerHighlight = (
           this.templateFoldedIndices,
           (index) => this.toggleTemplateFold(update.view, index),
           (line) => this.cycleTemplateStatus(update.view, line),
+          (startLine, endLine) => this.deleteTemplateBlock(update.view, startLine, endLine),
           showFolding,
           getReferencedProjectNames,
         )
@@ -680,6 +705,13 @@ export const markdownMarkerHighlight = (
 
         view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
       }
+
+      deleteTemplateBlock(view: EditorView, startLine: number, endLine: number) {
+        const from = view.state.doc.line(startLine + 1).from
+        const to = Math.min(view.state.doc.line(endLine + 1).to + 1, view.state.doc.length)
+        view.dispatch({ changes: { from, to, insert: "" }, selection: { anchor: from } })
+        view.focus()
+      }
     },
     { decorations: (plugin) => plugin.decorations },
   )
@@ -697,6 +729,7 @@ const buildMarkdownMarkerDecorations = (
   templateFoldedIndices = new Set<number>(),
   onToggleTemplateFold: (index: number) => void = () => {},
   onCycleTemplateStatus: (line: number) => void = () => {},
+  onDeleteTemplateBlock: (startLine: number, endLine: number) => void = () => {},
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
 ) => {
@@ -909,6 +942,13 @@ const buildMarkdownMarkerDecorations = (
             status: templateEndStatus,
             onToggle: onCycleTemplateStatus,
           },
+          templateEndIndex >= 0
+            ? {
+                startLine: i,
+                endLine: templateEndIndex,
+                onDelete: onDeleteTemplateBlock,
+              }
+            : null,
         ),
       })
       allDecos.push({
