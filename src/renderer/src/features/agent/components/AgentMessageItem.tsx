@@ -12,6 +12,7 @@ import {
 } from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
 import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
+import { AgentSubagentBlock } from "@/features/agent/components/AgentSubagentBlock"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
 import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
 import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
@@ -44,9 +45,12 @@ type DisplayGroup =
   | SkillCallGroup
   // 写操作工具独立组（不参与执行折叠，展示 diff）。
   | { kind: "write"; block: ToolCallBlock; isStreaming: boolean }
+  // 子代理调用独立组（不参与执行折叠）。
+  | { kind: "subagent"; block: ToolCallBlock; isStreaming: boolean }
 
 const SKILL_TOOL_NAME = "read_skill"
 const WEB_SEARCH_TOOL_NAME = "web_search"
+const SUBAGENT_TOOL_NAME = "task"
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
 const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []
@@ -56,6 +60,9 @@ const isSkillToolCall = (toolName: string): boolean => toolName === SKILL_TOOL_N
 
 // 判断是否为联网搜索调用。
 const isWebSearchToolCall = (toolName: string): boolean => toolName === WEB_SEARCH_TOOL_NAME
+
+// 判断是否为子代理（task 工具）调用。
+const isSubagentToolCall = (toolName: string): boolean => toolName === SUBAGENT_TOOL_NAME
 
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，内置工具名不含下划线）。
 const isMcpToolCall = (toolName: string): boolean =>
@@ -333,6 +340,12 @@ export const AgentMessageItem = ({
       if (isWriteToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "write", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      // 子代理调用独立成组：切断执行组并永不参与折叠。
+      if (isSubagentToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "subagent", block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isWebSearchToolCall(toolName)) {
@@ -722,6 +735,10 @@ export const AgentMessageItem = ({
                   toolCalls={group.blocks.map(({ block }) => block)}
                 />
               )
+            }
+
+            if (group.kind === "subagent") {
+              return <AgentSubagentBlock key={groupIndex} toolCall={group.block} />
             }
 
             const toolCount = group.blocks.filter(
