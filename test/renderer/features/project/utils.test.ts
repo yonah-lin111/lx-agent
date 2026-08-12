@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   countTemplateBlocks,
+  getMentionDirectoryTag,
   MAX_RECENT_ITEMS,
   parseMarkdownPages,
   pushRecentItemId,
@@ -51,6 +52,38 @@ describe("pushRecentItemId", () => {
     expect(next).toHaveLength(MAX_RECENT_ITEMS)
     expect(next[next.length - 1]).toBe("new-item")
     expect(next).not.toContain("item-0")
+  })
+})
+
+describe("getMentionDirectoryTag", () => {
+  it("test 目录包裹时返回 test 标签", () => {
+    const tag = getMentionDirectoryTag("src/test/foo.ts")
+    expect(tag).toEqual({
+      label: "test",
+      bgClass: "border-rose-400/20 bg-rose-400/10 text-rose-300",
+    })
+  })
+
+  it("temp 目录包裹时返回 temp 标签", () => {
+    const tag = getMentionDirectoryTag("temp/cache.json")
+    expect(tag).toEqual({
+      label: "temp",
+      bgClass: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+    })
+  })
+
+  it("目录名大小写不敏感", () => {
+    expect(getMentionDirectoryTag("src/Test/spec.ts")?.label).toBe("Test")
+    expect(getMentionDirectoryTag("TEMP/x.md")?.label).toBe("TEMP")
+  })
+
+  it("文件名或末段是 test/temp 不匹配", () => {
+    expect(getMentionDirectoryTag("src/test.ts")).toBeNull()
+    expect(getMentionDirectoryTag("src/temp")).toBeNull()
+  })
+
+  it("无 test/temp 目录时返回 null", () => {
+    expect(getMentionDirectoryTag("src/components/Button.tsx")).toBeNull()
   })
 })
 

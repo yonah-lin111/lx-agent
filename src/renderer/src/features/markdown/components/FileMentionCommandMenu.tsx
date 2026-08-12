@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
+import { getMentionDirectoryTag } from "@/features/project/utils"
 
 // 模板块文件快捷输入候选来源对应的图标颜色（@ 提及面板不使用）。
 const templateFileKindIconColors: Record<MarkdownTemplateFileKind, string> = {
@@ -134,6 +135,7 @@ export const FileMentionCommandMenu = ({
             : "text-[#eab308]"
         const isActive = index === displayActiveIndex
         const optionId = getOptionId(file)
+        const directoryTag = getMentionDirectoryTag(file.path)
 
         return (
           <div
@@ -162,6 +164,15 @@ export const FileMentionCommandMenu = ({
                         size="small"
                       >
                         {referenceProjectName ?? "refer-project"}
+                      </LxTag>
+                    )}
+                    {directoryTag && (
+                      <LxTag
+                        bgClass={directoryTag.bgClass}
+                        className="pointer-events-none shrink-0"
+                        size="small"
+                      >
+                        {directoryTag.label}
                       </LxTag>
                     )}
                     {file.source === "current" && file.worktreeName && (

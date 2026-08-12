@@ -1,6 +1,30 @@
 import type { MarkdownPage } from "@shared/project"
 import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 
+// 文件提及候选中被 test/temp 目录包裹时的 tag 样式类。
+const MENTION_DIR_TAG_CLASSES: Record<string, string> = {
+  test: "border-rose-400/20 bg-rose-400/10 text-rose-300",
+  temp: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+}
+
+// 文件提及目录 tag 结果：tag 文本与样式类。
+export interface MentionDirectoryTag {
+  label: string
+  bgClass: string
+}
+
+/**
+ * 提取路径中包裹该文件的 test/temp 目录段；无匹配返回 null。
+ */
+export const getMentionDirectoryTag = (path: string): MentionDirectoryTag | null => {
+  const segments = path.replace(/\/$/, "").split("/")
+  for (const segment of segments.slice(0, -1)) {
+    const bgClass = MENTION_DIR_TAG_CLASSES[segment.toLowerCase()]
+    if (bgClass) return { label: segment, bgClass }
+  }
+  return null
+}
+
 // 最近打开条目列表的最大容量。
 export const MAX_RECENT_ITEMS = 10
 

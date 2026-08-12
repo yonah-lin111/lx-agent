@@ -3,6 +3,8 @@ import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useLayoutEffect, useRef } from "react"
+import { LxTag } from "@/components/ui/LxTag"
+import { getMentionDirectoryTag } from "@/features/project/utils"
 
 export interface AgentInputCommand {
   id: "clear" | "undo" | "model" | "gitWorktree"
@@ -240,6 +242,7 @@ export const AgentInputFilePanel = ({
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const Icon = file.isDirectory ? Folder : FileText
         const isActive = index === activeIndex
+        const directoryTag = getMentionDirectoryTag(file.path)
 
         return (
           <div
@@ -253,8 +256,21 @@ export const AgentInputFilePanel = ({
           >
             <Icon className="h-4 w-4 shrink-0 text-[#eab308]" />
             <span className="min-w-0 flex-1">
-              <span className={`block truncate ${isActive ? "text-white" : "text-white/75"}`}>
-                {file.isDirectory ? `${name}/` : name}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
+                >
+                  {file.isDirectory ? `${name}/` : name}
+                </span>
+                {directoryTag && (
+                  <LxTag
+                    bgClass={directoryTag.bgClass}
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    {directoryTag.label}
+                  </LxTag>
+                )}
               </span>
               {directory && (
                 <span className="block truncate text-[12px] text-white/40">{directory}</span>
