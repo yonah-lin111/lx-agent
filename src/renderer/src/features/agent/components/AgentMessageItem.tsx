@@ -94,6 +94,10 @@ interface AgentMessageItemProps {
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
   onDelete?: (messageId: string) => void
+  // 点击子代理 label 打开面板弹窗。
+  onOpenSubagent?: (toolCall: ToolCallBlock) => void
+  // 只读模式（子代理面板内渲染，隐藏编辑/删除操作，保留复制）。
+  readOnly?: boolean
   // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）。
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
@@ -114,6 +118,8 @@ export const AgentMessageItem = ({
   onCancelEdit,
   onEdit,
   onDelete,
+  onOpenSubagent,
+  readOnly = false,
   canContinue = false,
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
@@ -642,7 +648,11 @@ export const AgentMessageItem = ({
             >
               <div
                 ref={userContentRef}
-                className={`overflow-hidden ${isClamped ? "line-clamp-3" : ""}`}
+                className={
+                  isClamped
+                    ? "line-clamp-3 overflow-hidden"
+                    : "custom-scrollbar max-h-[50vh] overflow-y-auto"
+                }
               >
                 {userText}
               </div>
@@ -670,14 +680,16 @@ export const AgentMessageItem = ({
                   )}
                 </LxIconButton>
               )}
-              <LxIconButton
-                size="small"
-                aria-label="编辑消息"
-                title={{ content: "编辑消息", placement: "top" }}
-                onClick={handleStartEdit}
-              >
-                <Pencil className="h-3 w-3" />
-              </LxIconButton>
+              {!readOnly && (
+                <LxIconButton
+                  size="small"
+                  aria-label="编辑消息"
+                  title={{ content: "编辑消息", placement: "top" }}
+                  onClick={handleStartEdit}
+                >
+                  <Pencil className="h-3 w-3" />
+                </LxIconButton>
+              )}
               <LxIconButton
                 size="small"
                 aria-label="复制消息"
@@ -738,7 +750,13 @@ export const AgentMessageItem = ({
             }
 
             if (group.kind === "subagent") {
-              return <AgentSubagentBlock key={groupIndex} toolCall={group.block} />
+              return (
+                <AgentSubagentBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  onOpen={onOpenSubagent}
+                />
+              )
             }
 
             const toolCount = group.blocks.filter(
@@ -860,7 +878,7 @@ export const AgentMessageItem = ({
           >
             {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
           </LxIconButton>
-          {onDelete && (
+          {!readOnly && onDelete && (
             <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
               <LxIconButton size="small" aria-label="删除消息">
                 <Trash2 className="h-3 w-3" />

@@ -100,6 +100,33 @@ export interface AgentDiff {
   }
 }
 
+// 子代理工具步骤（时间轴展示）。
+export interface SubagentStep {
+  toolName: string
+  args: Record<string, unknown>
+  // 结果摘要（成功文本）或错误信息。
+  result?: string
+  status: "running" | "done" | "error"
+}
+
+// 子代理面板数据（task 工具产物；随 ToolResultMessage 落库，恢复后重建弹窗）。
+export interface SubagentData {
+  // AI 分发的子代理名（缺失时回退 "task"）。
+  name: string
+  // 任务描述（task 输入）。
+  description: string
+  // 委托任务全文（task 输入）。
+  prompt: string
+  // 子代理完整内部上下文（弹窗展示真相源，含工具/MCP/skill/文本）。
+  messages: AgentMessage[]
+  // 工具步骤（时间轴展示；含内部工具/思考/MCP/skill 调用）。
+  steps: SubagentStep[]
+  // 聚合 token 用量。
+  usage: Usage
+  // 最终输出超限时完整结果落盘路径。
+  filePath?: string
+}
+
 // 工具结果消息。
 export interface ToolResultMessage {
   role: "toolResult"
@@ -110,6 +137,8 @@ export interface ToolResultMessage {
   timestamp: number
   // 工具执行的可视化 diff（edit/write 工具产物，供渲染与落库）。
   diff?: AgentDiff
+  // 子代理面板数据（task 工具产物，供渲染与落库）。
+  subagent?: SubagentData
 }
 
 // Agent 消息联合类型。

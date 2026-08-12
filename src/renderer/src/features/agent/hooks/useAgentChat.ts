@@ -1,13 +1,41 @@
-import type { AgentEvent, AgentSendContext } from "@shared/contracts/agent"
+import type { AgentEvent, AgentSendContext, SubagentData } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
 import type { ChatMessage } from "../types"
-import { extractToolProgressText, toAgentMessages, toChatMessage } from "../utils"
+import {
+  extractSubagentData,
+  extractToolProgressText,
+  toAgentMessages,
+  toChatMessage,
+} from "../utils"
 import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
 let messageSequence = 0
+
+// 恢复会话时把 task 工具结果携带的子代理快照回填到对应 toolCall 块（弹窗展示）。
+const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
+  const subagentByToolCallId = new Map<string, SubagentData>()
+  for (const message of chatMessages) {
+    for (const block of message.blocks) {
+      if (block.kind === "toolResult" && block.subagent) {
+        subagentByToolCallId.set(block.toolCallId, block.subagent)
+      }
+    }
+  }
+  if (subagentByToolCallId.size === 0) return chatMessages
+  return chatMessages.map((message) => ({
+    ...message,
+    blocks: message.blocks.map((block) => {
+      if (block.kind === "toolCall") {
+        const subagent = subagentByToolCallId.get(block.toolCallId)
+        if (subagent) return { ...block, subagent }
+      }
+      return block
+    }),
+  }))
+}
 
 /**
  * 管理 Agent 对话：订阅 main 进程事件流，驱动消息列表、流式更新与工具状态。
@@ -95,15 +123,20 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
 
         case "tool_execution_update": {
-          // task 子代理流式进度回传：更新对应 toolCall 块的实时进度文本。
+          // task 子代理流式回传：更新对应 toolCall 块的实时进度文本与面板快照。
           const progress = extractToolProgressText(event.partialResult)
-          if (progress === undefined) break
+          const subagent = extractSubagentData(event.partialResult)
+          if (progress === undefined && subagent === undefined) break
           setMessages((prev) =>
             prev.map((message) => ({
               ...message,
               blocks: message.blocks.map((block) =>
                 block.kind === "toolCall" && block.toolCallId === event.toolCallId
-                  ? { ...block, progress }
+                  ? {
+                      ...block,
+                      ...(progress !== undefined ? { progress } : {}),
+                      ...(subagent !== undefined ? { subagent } : {}),
+                    }
                   : block,
               ),
             })),
@@ -111,9 +144,25 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
         }
 
-        case "tool_execution_end":
-          updateToolStatus(event.toolCallId, event.isError ? "error" : "done")
+        case "tool_execution_end": {
+          // 最终快照（含聚合 usage）随结果回传，覆盖流式期间的中间快照。
+          const subagent = extractSubagentData(event.result)
+          setMessages((prev) =>
+            prev.map((message) => ({
+              ...message,
+              blocks: message.blocks.map((block) =>
+                block.kind === "toolCall" && block.toolCallId === event.toolCallId
+                  ? {
+                      ...block,
+                      status: event.isError ? "error" : "done",
+                      ...(subagent !== undefined ? { subagent } : {}),
+                    }
+                  : block,
+              ),
+            })),
+          )
           break
+        }
 
         case "session_title":
           if (event.title === null) {
@@ -231,11 +280,10 @@ export const useAgentChat = (context?: AgentSendContext) => {
       void agentApi
         .restoreSession(sessionId)
         .then((restored) => {
-          setMessages(
-            restored.messages.map((message) =>
-              toChatMessage(message, false, `m${++messageSequence}`),
-            ),
+          const chatMessages = restored.messages.map((message) =>
+            toChatMessage(message, false, `m${++messageSequence}`),
           )
+          setMessages(mergeSubagentSnapshots(chatMessages))
           setInputText("")
           sessionListStore.setCurrentSessionId(sessionId)
         })

@@ -7,6 +7,7 @@ import type {
   AgentDiff,
   AgentMessage,
   AssistantMessage,
+  SubagentData,
   ToolResultMessage,
 } from "@shared/contracts/agent"
 import { getDefaultStreamFn } from "./stream-fn"
@@ -704,7 +705,11 @@ async function emitToolExecutionEnd(
 
 // 由工具执行结果构造 ToolResultMessage。
 function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
-  const diff = (finalized.result.details as { diff?: AgentDiff } | undefined)?.diff
+  const details = finalized.result.details as
+    | { diff?: AgentDiff; subagent?: SubagentData }
+    | undefined
+  const diff = details?.diff
+  const subagent = details?.subagent
   return {
     role: "toolResult",
     toolCallId: finalized.toolCall.id,
@@ -713,6 +718,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     isError: finalized.isError,
     timestamp: Date.now(),
     ...(diff ? { diff } : {}),
+    ...(subagent ? { subagent } : {}),
   }
 }
 

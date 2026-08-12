@@ -1,4 +1,4 @@
-import type { AgentDiff, AgentMessage, StopReason } from "@shared/contracts/agent"
+import type { AgentDiff, AgentMessage, StopReason, SubagentData } from "@shared/contracts/agent"
 
 export type {
   AgentDiff,
@@ -7,6 +7,8 @@ export type {
   AgentMessage,
   DiffLinePart,
   StopReason,
+  SubagentData,
+  SubagentStep,
   ToolResultMessage,
 } from "@shared/contracts/agent"
 
@@ -22,6 +24,8 @@ export type ChatBlock =
       status: "running" | "done" | "error"
       // 工具执行中的实时进度文本（task 子代理流式回传；不落库）。
       progress?: string
+      // 子代理面板数据（task 流式快照/落库重建；驱动弹窗与时间轴）。
+      subagent?: SubagentData
     }
   | {
       kind: "toolResult"
@@ -30,6 +34,8 @@ export type ChatBlock =
       text: string
       isError: boolean
       diff?: AgentDiff
+      // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
+      subagent?: SubagentData
     }
 
 // 消息展示条目（由 AgentEvent 驱动生成）。
