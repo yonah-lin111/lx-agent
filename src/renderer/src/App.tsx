@@ -10,7 +10,6 @@ import { LxToastProvider } from "@/components/ui/LxToast"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { ProjectBottomSideBar } from "@/pages/project/components/ProjectBottomSideBar"
-import { ProjectHeaderSideBar } from "@/pages/project/components/ProjectHeaderSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { UiLeftSideBar } from "@/pages/ui/components/UiLeftSideBar"
@@ -60,11 +59,6 @@ export const App = () => {
     return <ProjectBottomSideBar isExpanded={isBottomSideBarExpanded} />
   }
 
-  const renderHeaderContent = (): React.ReactNode => {
-    if (pathname !== PAGE_ROUTES.project) return null
-    return <ProjectHeaderSideBar isExpanded={isHeaderExpanded} />
-  }
-
   return (
     <LxToastProvider>
       <div className="flex h-screen w-screen flex-col gap-2 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
@@ -75,9 +69,7 @@ export const App = () => {
               <HeaderSideBar
                 isExpanded={isHeaderExpanded}
                 onExpandedChange={handleHeaderExpandedChange}
-              >
-                {renderHeaderContent()}
-              </HeaderSideBar>
+              />
               <PageContent>
                 <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <PageRouter />

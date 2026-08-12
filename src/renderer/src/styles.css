@@ -154,8 +154,24 @@ select {
   }
 }
 
+@keyframes header-breadcrumb-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
 .animate-header-breadcrumb-in {
   animation: header-breadcrumb-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-header-breadcrumb-out {
+  animation: header-breadcrumb-out 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-sidebar-content-slide-in {
@@ -165,6 +181,7 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .animate-sidebar-content-slide-in,
   .animate-header-breadcrumb-in,
+  .animate-header-breadcrumb-out,
   .animate-pinned-in {
     animation: none;
   }
