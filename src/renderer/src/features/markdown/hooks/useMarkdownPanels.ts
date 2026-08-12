@@ -1,4 +1,5 @@
 import type { EditorView } from "@codemirror/view"
+import type { GitWorktreeEntry } from "@shared/contracts/git"
 import type { ProjectFileEntry, ReferencedProjectFileEntry } from "@shared/project"
 import type { CSSProperties, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
@@ -12,9 +13,17 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockEndLine,
+  getMarkdownTemplateWorktree,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  buildGitWorktreeOptions,
+  type GitWorktreeOption,
+  getGitWorktreeDirName,
+  getGitWorktreeDisplayName,
+} from "@/features/markdown/commands/markdownGitWorktreeCommands"
 import { getMarkdownReferenceProjectPaths } from "@/features/markdown/commands/markdownReferenceCommands"
 import type {
   MarkdownSlashCommand,
@@ -57,6 +66,15 @@ export interface FileMentionPanelState {
  */
 export interface MarkdownSlashCommandPanelState {
   commands: MarkdownSlashCommand[]
+  line: MarkdownSlashCommandLine
+  position: CSSProperties
+}
+
+/**
+ * git 工作区选择面板状态。
+ */
+export interface GitWorktreePanelState {
+  options: GitWorktreeOption[]
   line: MarkdownSlashCommandLine
   position: CSSProperties
 }
@@ -109,7 +127,13 @@ export const useMarkdownPanels = ({
   projectId,
   onSearchFiles,
   onSearchReferencedFiles,
+  onSearchDirectoryFiles,
   referencedProjectPaths = [],
+  projectPath,
+  worktreePath,
+  worktrees,
+  projectBranch,
+  reloadWorktrees,
 }: {
   editorViewRef: RefObject<EditorView | null>
   projectId?: string
@@ -118,13 +142,26 @@ export const useMarkdownPanels = ({
     projectPaths: string[],
     query: string,
   ) => Promise<ReferencedProjectFileEntry[]>
+  onSearchDirectoryFiles?: (directory: string, query: string) => Promise<ProjectFileEntry[]>
   // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
   referencedProjectPaths?: string[]
+  // 当前项目文件系统路径（@ 搜索根与工作区上下文判定用）。
+  projectPath?: string
+  // 当前条目全局绑定的 git 工作区绝对路径。
+  worktreePath?: string
+  // 项目所在仓库的工作区列表；非 git 仓库为 null。
+  worktrees?: GitWorktreeEntry[] | null
+  // 项目当前分支（默认工作区展示名）。
+  projectBranch?: string | null
+  // 主动重拉工作区列表（打开二级面板时若尚未加载则调用）。
+  reloadWorktrees?: () => void
 }) => {
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
   const slashCommandPanelRef = useRef<MarkdownSlashCommandPanelState | null>(null)
   const activeSlashCommandIndexRef = useRef(0)
+  const gitWorktreePanelRef = useRef<GitWorktreePanelState | null>(null)
+  const activeGitWorktreeIndexRef = useRef(0)
   const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
   const activeFileMentionIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
@@ -132,7 +169,13 @@ export const useMarkdownPanels = ({
   const activeTemplateFileIndexRef = useRef(0)
   const onSearchFilesRef = useRef(onSearchFiles)
   const onSearchReferencedFilesRef = useRef(onSearchReferencedFiles)
+  const onSearchDirectoryFilesRef = useRef(onSearchDirectoryFiles)
   const projectIdRef = useRef(projectId)
+  const projectPathRef = useRef(projectPath)
+  const worktreePathRef = useRef(worktreePath)
+  const worktreesRef = useRef(worktrees)
+  const projectBranchRef = useRef(projectBranch)
+  const reloadWorktreesRef = useRef(reloadWorktrees)
   const referencedProjectPathsRef = useRef(referencedProjectPaths)
 
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
@@ -143,6 +186,8 @@ export const useMarkdownPanels = ({
     null,
   )
   const [activeSlashCommandIndex, setActiveSlashCommandIndex] = useState(0)
+  const [gitWorktreePanel, setGitWorktreePanel] = useState<GitWorktreePanelState | null>(null)
+  const [activeGitWorktreeIndex, setActiveGitWorktreeIndex] = useState(0)
   const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
   const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
@@ -151,9 +196,26 @@ export const useMarkdownPanels = ({
   useEffect(() => {
     onSearchFilesRef.current = onSearchFiles
     onSearchReferencedFilesRef.current = onSearchReferencedFiles
+    onSearchDirectoryFilesRef.current = onSearchDirectoryFiles
     projectIdRef.current = projectId
+    projectPathRef.current = projectPath
+    worktreePathRef.current = worktreePath
+    worktreesRef.current = worktrees
+    projectBranchRef.current = projectBranch
+    reloadWorktreesRef.current = reloadWorktrees
     referencedProjectPathsRef.current = referencedProjectPaths
-  }, [onSearchFiles, onSearchReferencedFiles, projectId, referencedProjectPaths])
+  }, [
+    onSearchFiles,
+    onSearchReferencedFiles,
+    onSearchDirectoryFiles,
+    projectId,
+    projectPath,
+    worktreePath,
+    worktrees,
+    projectBranch,
+    reloadWorktrees,
+    referencedProjectPaths,
+  ])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -202,7 +264,11 @@ export const useMarkdownPanels = ({
       ? isMarkdownConfirmCommandArmed(commandLine.value, isInsideTemplateBlock)
       : false
     const commands = commandLine
-      ? getMarkdownSlashCommands(commandLine.value, isInsideTemplateBlock)
+      ? getMarkdownSlashCommands(
+          commandLine.value,
+          isInsideTemplateBlock,
+          Boolean(projectPathRef.current) && worktreesRef.current !== null,
+        )
       : []
     const coords = view.coordsAtPos(cursor)
 
@@ -226,6 +292,85 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 关闭 git 工作区选择面板。
+   */
+  const closeGitWorktreePanel = (): void => {
+    gitWorktreePanelRef.current = null
+    activeGitWorktreeIndexRef.current = 0
+    setGitWorktreePanel(null)
+    setActiveGitWorktreeIndex(0)
+  }
+
+  /**
+   * 打开 git 工作区选择面板：以当前光标处命令行为锚，列出工作区选项。
+   * projectPath 缺失（virtual）不打开；非 git 仓库（worktrees 为 null）触发重拉并暂不打开。
+   */
+  const openGitWorktreePanel = (view: EditorView): void => {
+    const projectPath = projectPathRef.current
+    if (!projectPath) return
+
+    const worktrees = worktreesRef.current
+    if (worktrees == null) {
+      reloadWorktreesRef.current?.()
+      return
+    }
+
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const coords = view.coordsAtPos(cursor)
+    if (!commandLine || !coords) return
+
+    const options = buildGitWorktreeOptions({
+      worktrees,
+      projectPath,
+      projectBranch: projectBranchRef.current ?? null,
+      worktreePath: worktreePathRef.current,
+    })
+    const panel = {
+      options,
+      line: commandLine,
+      position: getMarkdownPanelPosition("file", coords),
+    }
+    gitWorktreePanelRef.current = panel
+    activeGitWorktreeIndexRef.current = 0
+    setGitWorktreePanel(panel)
+    setActiveGitWorktreeIndex(0)
+  }
+
+  /**
+   * 选中工作区选项：把分支名（detached 用目录名）回显到命令行为 `/gitWorktree <名> `，
+   * 等待二次回车触发切换；默认工作区选中即回显默认分支名。
+   */
+  const selectGitWorktree = (option: GitWorktreeOption): void => {
+    const view = editorViewRef.current
+    const panel = gitWorktreePanelRef.current
+    if (!view || !panel) return
+
+    const insert = `${panel.line.value.split(" ")[0]} ${option.name} `
+    view.dispatch({
+      changes: { from: panel.line.from, to: panel.line.to, insert },
+      selection: { anchor: panel.line.from + insert.length },
+    })
+    view.focus()
+    closeGitWorktreePanel()
+  }
+
+  /**
+   * 更新 git 工作区选择面板的当前选项。
+   */
+  const handleGitWorktreeKey = (offset: number): boolean => {
+    const panel = gitWorktreePanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeGitWorktreeIndexRef.current + offset + panel.options.length) % panel.options.length
+    activeGitWorktreeIndexRef.current = nextIndex
+    setActiveGitWorktreeIndex(nextIndex)
+    return true
+  }
+
+  /**
    * 用选中的模板替换当前斜杠命令行。
    */
   const selectSlashCommand = (command: MarkdownSlashCommand): void => {
@@ -241,6 +386,18 @@ export const useMarkdownPanels = ({
       })
       view.focus()
       closeSlashCommandPanel()
+      return
+    }
+
+    // 选择型命令（/gitWorktree）：回显命令文本后打开二级工作区面板，选中后回显分支名、回车触发切换。
+    if (command.kind === "select") {
+      view.dispatch({
+        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        selection: { anchor: panel.line.from + command.content.length },
+      })
+      view.focus()
+      closeSlashCommandPanel()
+      openGitWorktreePanel(view)
       return
     }
 
@@ -273,11 +430,46 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 解析光标处的 git 工作区上下文目录：模板块内优先取块结束行 {wt:} 的局部绑定，
+   * 否则取全局 worktreePath ?? projectPath；无 git 上下文（virtual 项目）返回 null。
+   */
+  const resolveContextDirectory = (
+    view: EditorView,
+  ): { directory: string; worktreeName: string } | null => {
+    const projectPath = projectPathRef.current
+    const worktrees = worktreesRef.current
+    const cursor = view.state.selection.main.head
+    const docText = view.state.doc.toString()
+
+    // 模板块局部绑定：当前块结束行带 {wt:分支名} 时，解析为该工作区路径。
+    const endLine = getMarkdownTemplateBlockEndLine(docText, cursor)
+    if (endLine !== null) {
+      const branch = getMarkdownTemplateWorktree(view.state.doc.line(endLine).text)
+      if (branch) {
+        const entry = worktrees?.find((item) => item.branch === branch)
+        if (entry) {
+          return { directory: entry.path, worktreeName: getGitWorktreeDisplayName(entry) }
+        }
+      }
+    }
+
+    // 全局绑定：worktreePath ?? projectPath。
+    const directory = worktreePathRef.current ?? projectPath
+    if (!directory) return null
+
+    const entry = worktrees?.find((item) => item.path === directory)
+    const worktreeName =
+      entry?.branch ?? projectBranchRef.current ?? getGitWorktreeDirName(directory)
+    return { directory, worktreeName }
+  }
+
+  /**
    * 根据光标前的 @ 查询同步项目文件提及面板。
    */
   const syncFileMentionPanel = (view: EditorView): void => {
     const searchFiles = onSearchFilesRef.current
     const searchReferencedFiles = onSearchReferencedFilesRef.current
+    const searchDirectoryFiles = onSearchDirectoryFilesRef.current
     const activeProjectId = projectIdRef.current
     const cursor = view.state.selection.main.head
     const prefix = view.state.doc.sliceString(0, cursor)
@@ -291,7 +483,10 @@ export const useMarkdownPanels = ({
         ...getMarkdownReferenceProjectPaths(view.state.doc.toString()),
       ]),
     ]
-    const canSearchCurrentProject = Boolean(searchFiles && activeProjectId)
+    const context = resolveContextDirectory(view)
+    const canSearchCurrentProject = Boolean(
+      context && (searchDirectoryFiles || (searchFiles && activeProjectId)),
+    )
     const canSearchReferencedProjects = Boolean(
       searchReferencedFiles && searchProjectPaths.length > 0,
     )
@@ -313,8 +508,16 @@ export const useMarkdownPanels = ({
     const start = cursor - query.length - 1
 
     const currentProjectSearch = canSearchCurrentProject
-      ? searchFiles!(activeProjectId!, query).then((files) =>
-          files.map((file) => ({ ...file, mentionPath: file.path, source: "current" as const })),
+      ? (context!.directory === projectPathRef.current && searchFiles && activeProjectId
+          ? searchFiles(activeProjectId, query)
+          : searchDirectoryFiles!(context!.directory, query)
+        ).then((files) =>
+          files.map((file) => ({
+            ...file,
+            mentionPath: file.path,
+            source: "current" as const,
+            worktreeName: context!.worktreeName,
+          })),
         )
       : Promise.resolve([])
     const referencedProjectSearch = canSearchReferencedProjects
@@ -619,19 +822,26 @@ export const useMarkdownPanels = ({
     activeBlockCommandIndex,
     slashCommandPanel,
     activeSlashCommandIndex,
+    gitWorktreePanel,
+    activeGitWorktreeIndex,
     fileMentionPanel,
     activeFileMentionIndex,
     blockCommandPanelRef,
     activeBlockCommandIndexRef,
     slashCommandPanelRef,
     activeSlashCommandIndexRef,
+    gitWorktreePanelRef,
+    activeGitWorktreeIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
+    closeGitWorktreePanel,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,
+    selectGitWorktree,
+    handleGitWorktreeKey,
     syncFileMentionPanel,
     selectFileMention,
     handleFileMentionKey,

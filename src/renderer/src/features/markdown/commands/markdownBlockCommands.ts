@@ -139,17 +139,20 @@ const MARKDOWN_TEMPLATE_START_RE =
 // 模板块 id：uuid 去连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
 const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
 
-// 模板块结束行：&&& [状态标记] [{id:...}]。
+// 模板块 git 工作区绑定分支：源码格式 {wt:分支名}，分支名不含空白、} 或 {。
+const MARKDOWN_TEMPLATE_WT_RE = /\{wt:([^}\s{]+)\}/
+
+// 模板块结束行：&&& [状态标记] [{id:...}] [{wt:...}]。
 const MARKDOWN_TEMPLATE_END_RE =
-  /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/
+  /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
 
-// 模板块结束行解析：捕获缩进、&&&、状态标记与 id。
+// 模板块结束行解析：捕获缩进、&&&、状态标记、id 与 wt。
 const MARKDOWN_TEMPLATE_END_PARSE_RE =
-  /^(\s*)(&&&)(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?\s*$/
+  /^(\s*)(&&&)(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/
 
-// 模板块状态标记后缀（供 exec 捕获），状态后可能紧跟 id。
+// 模板块状态标记后缀（供 exec 捕获），状态后可能紧跟 id/wt。
 const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
-  /\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}\s*$|\s*$)/
+  /\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}(?:\s+\{wt:[^}\s{]+\})?\s*$|(?:\s+\{wt:[^}\s{]+\})?\s*$)/
 
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
@@ -252,6 +255,31 @@ export const getMarkdownTemplateBlockStartLine = (
 }
 
 /**
+ * 返回 position 所在模板块结束行的行号（1-based）；不在模板块内或块未闭合返回 null。
+ * 光标位于开始行、正文或结束行自身均返回所属块的结束行。
+ */
+export const getMarkdownTemplateBlockEndLine = (text: string, position: number): number | null => {
+  const lines = text.split("\n")
+  let offset = 0
+  let startLine: number | null = null
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineEnd = offset + lines[index].length + 1
+
+    if (MARKDOWN_TEMPLATE_END_RE.test(lines[index])) {
+      if (startLine !== null && position < lineEnd) return index + 1
+      startLine = null
+    } else if (MARKDOWN_TEMPLATE_START_RE.test(lines[index])) {
+      startLine = index + 1
+    }
+
+    offset = lineEnd
+  }
+
+  return null
+}
+
+/**
  * 更新模板块开始行的「title: 」字段：已有则替换内容，缺失则在行尾补插。
  * 标题内不允许出现「」字符，否则会截断「title:...」字段解析。
  */
@@ -275,6 +303,7 @@ export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateSta
 
 /**
  * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
+ * 保留 id 与 wt（工作区绑定）标记不变。
  */
 export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
   const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
@@ -284,8 +313,30 @@ export const cycleMarkdownTemplateStatus = (lineText: string): string | null => 
   const next: MarkdownTemplateStatus =
     current === "todo" ? "in_progress" : current === "in_progress" ? "done" : "todo"
   const id = match[4] ?? ""
+  const wt = match[5] ?? ""
 
-  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}${id ? ` {id:${id}}` : ""}`
+  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}${id ? ` {id:${id}}` : ""}${wt ? ` {wt:${wt}}` : ""}`
+}
+
+/**
+ * 读取模板块结束行的工作区绑定分支；非结束行或无绑定返回 null。
+ */
+export const getMarkdownTemplateWorktree = (lineText: string): string | null => {
+  if (!MARKDOWN_TEMPLATE_END_RE.test(lineText)) return null
+  return lineText.match(MARKDOWN_TEMPLATE_WT_RE)?.[1] ?? null
+}
+
+/**
+ * 更新模板块结束行的工作区绑定：branch 为 null 时移除绑定，否则写入 {wt:branch}。
+ * 保留缩进、&&&、状态标记与 id；非结束行返回原文本。
+ */
+export const setMarkdownTemplateWorktree = (lineText: string, branch: string | null): string => {
+  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
+  if (!match) return lineText
+
+  const id = match[4] ?? ""
+  const wt = branch?.trim() ?? ""
+  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[match[3] as MarkdownTemplateStatus] ?? ""}${id ? ` {id:${id}}` : ""}${wt ? ` {wt:${wt}}` : ""}`
 }
 
 /**
@@ -307,6 +358,29 @@ export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: n
         ranges.push({
           from: offset + idMatch.index,
           to: offset + idMatch.index + idMatch[0].length,
+        })
+      }
+    }
+    offset += line.length + 1
+  }
+
+  return ranges
+}
+
+/**
+ * 扫描文本中全部模板块结束行上的 wt（工作区绑定）源码范围，供编辑器只读保护使用。
+ */
+export const getMarkdownTemplateWtRanges = (text: string): { from: number; to: number }[] => {
+  const ranges: { from: number; to: number }[] = []
+  let offset = 0
+
+  for (const line of text.split("\n")) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+      const wtMatch = line.match(MARKDOWN_TEMPLATE_WT_RE)
+      if (wtMatch?.index !== undefined) {
+        ranges.push({
+          from: offset + wtMatch.index,
+          to: offset + wtMatch.index + wtMatch[0].length,
         })
       }
     }

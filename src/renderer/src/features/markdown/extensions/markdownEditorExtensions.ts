@@ -834,7 +834,7 @@ const buildMarkdownMarkerDecorations = (
       /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:[^」\n]*」)?\s*$/,
     )
     const templateEndMatch = line.match(
-      /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/,
+      /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
     )
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
@@ -843,7 +843,11 @@ const buildMarkdownMarkerDecorations = (
       let templateEndIndex = -1
       for (let j = i + 1; j < lines.length; j++) {
         const subLine = lines[j]
-        if (subLine.match(/^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/)) {
+        if (
+          subLine.match(
+            /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
+          )
+        ) {
           templateEndIndex = j
           break
         }

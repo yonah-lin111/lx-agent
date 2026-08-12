@@ -69,6 +69,19 @@ describe("projectService", () => {
     expect(service.listItems(project.id)).toEqual([])
   })
 
+  it("条目工作区绑定可写可读，null 解除绑定", () => {
+    const service = createProjectService(() => database)
+    const project = service.createProject({ name: "Git", path: "/tmp" })
+    const item = service.createItem({ projectId: project.id, name: "Plan" })
+    expect(item.worktreePath).toBeUndefined()
+
+    service.updateItem(item.id, { worktreePath: "/tmp/.worktrees/feature-x" })
+    expect(service.listItems(project.id)[0]?.worktreePath).toBe("/tmp/.worktrees/feature-x")
+
+    service.updateItem(item.id, { worktreePath: null })
+    expect(service.listItems(project.id)[0]?.worktreePath).toBeUndefined()
+  })
+
   it("删除项目或文件夹时级联删除下属条目", () => {
     const service = createProjectService(() => database)
     const project = service.createProject({ name: "First" })

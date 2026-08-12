@@ -91,6 +91,16 @@ describe("markdownRenderer", () => {
     expect(html).toContain('class="markdown-template-status"')
   })
 
+  it("带 id 与工作区绑定标记的结束行仍识别为模板块结束", () => {
+    const html = markdownRenderer.render(
+      `&&& addTemplate\n内容\n&&& done {id:0123456789abcdef0123456789abcdef} {wt:feature-x}`,
+    )
+
+    expect(html).toContain('data-template-status="done"')
+    expect(html).toContain("markdown-template-block--done")
+    expect(html).not.toContain("{wt:feature-x}")
+  })
+
   it("未标记完成时模板块默认为未完成状态", () => {
     const html = markdownRenderer.render("&&& addTemplate\n内容\n&&&")
 

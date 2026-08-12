@@ -38,6 +38,13 @@ export const registerProjectHandlers = (): void => {
 
     return projectService.searchReferencedProjectFiles(projectPaths, query)
   })
+  ipcMain.handle(PROJECT_CHANNELS.searchDirectoryFiles, (_, directory, query) => {
+    if (typeof directory !== "string" || typeof query !== "string") {
+      throw new Error("INVALID_DIRECTORY_FILE_SEARCH_INPUT")
+    }
+
+    return projectService.searchDirectoryFiles(directory, query)
+  })
 
   ipcMain.handle(PROJECT_CHANNELS.listFolders, (_, projectId) =>
     projectService.listFolders(projectId),

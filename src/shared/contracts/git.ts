@@ -16,10 +16,22 @@ export interface GitStatus {
   changes: GitWorktreeChanges
 }
 
+// git 工作区列表条目（git worktree list --porcelain 解析）。
+export interface GitWorktreeEntry {
+  // 工作区根目录绝对路径。
+  path: string
+  // 当前检出分支名；detached HEAD 时为 null。
+  branch: string | null
+  // 是否为主工作区（仓库根目录，即「默认工作区」）。
+  isDefault: boolean
+}
+
 // Git 领域 preload API。
 export interface GitApi {
   git: {
     // 查询指定目录的 git 分支与工作区变更；目录非 git 仓库时返回 null（能力降级）。
     getStatus: (directory: string) => Promise<GitStatus | null>
+    // 列出指定目录所在仓库的全部工作区；非 git 仓库返回 null。
+    listWorktrees: (directory: string) => Promise<GitWorktreeEntry[] | null>
   }
 }

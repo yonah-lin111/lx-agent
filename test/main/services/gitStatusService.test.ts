@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -76,5 +76,37 @@ describe("gitStatusService", () => {
       branch: "main",
       changes: { staged: 1, unstaged: 0, untracked: 0 },
     })
+  })
+
+  it("列出单仓库时主工作区标记为默认，其余工作区按分支标识", () => {
+    runGit(["checkout", "-b", "main"])
+    writeFileSync(join(workDir, "base.txt"), "v1\n", "utf8")
+    runGit(["add", "-A"])
+    runGit(["commit", "-q", "-m", "init"])
+
+    // 创建关联工作区（feature-x）。
+    const linked = mkdtempSync(join(tmpdir(), "lx-git-status-linked-"))
+    try {
+      runGit(["worktree", "add", "-q", "-b", "feature-x", linked])
+      const worktrees = gitStatusService.listWorktrees(workDir)
+      expect(worktrees).not.toBeNull()
+      expect(worktrees?.find((entry) => entry.branch === "main")).toMatchObject({
+        isDefault: true,
+      })
+      expect(worktrees?.find((entry) => entry.branch === "feature-x")).toMatchObject({
+        isDefault: false,
+      })
+    } finally {
+      if (existsSync(linked)) runGit(["worktree", "remove", "--force", linked])
+    }
+  })
+
+  it("非 git 目录返回 null", () => {
+    const plainDir = mkdtempSync(join(tmpdir(), "lx-git-status-plain-"))
+    try {
+      expect(gitStatusService.listWorktrees(plainDir)).toBeNull()
+    } finally {
+      rmSync(plainDir, { recursive: true, force: true })
+    }
   })
 })

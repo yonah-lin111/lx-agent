@@ -78,7 +78,7 @@ export const markdownFoldGutter = gutter({
         const isFenceLine = /^\s*(`{3,}|~{3,})/.test(line.text)
         const isInsideFence = isInsideMarkdownCodeFence(prefix)
         const isTemplateLine =
-          /^\s*&&&(?:\s+[A-Za-z]\w*)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.test(
+          /^\s*&&&(?:\s+[A-Za-z]\w*)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.test(
             line.text,
           )
         const isInsideTemplate = isInsideMarkdownTemplateBlock(prefix)
@@ -110,7 +110,7 @@ export const markdownFoldGutter = gutter({
       const isFenceLine = /^\s*(`{3,}|~{3,})/.test(docLine.text)
       const isInsideFence = isInsideMarkdownCodeFence(prefix)
       const isTemplateLine =
-        /^\s*&&&(?:\s+[A-Za-z]\w*)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.test(
+        /^\s*&&&(?:\s+[A-Za-z]\w*)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.test(
           docLine.text,
         )
       const isInsideTemplate = isInsideMarkdownTemplateBlock(prefix)
