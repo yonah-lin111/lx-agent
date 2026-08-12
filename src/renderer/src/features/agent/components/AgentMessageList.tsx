@@ -290,7 +290,8 @@ export const AgentMessageList = ({
                       }
                       onSendSuggestedQuestion={isLastGroupAi ? onSendSuggestedQuestion : undefined}
                       onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
-                      onDelete={onDeleteMessage}
+                      // 仅最后一组 QA 展示删除入口。
+                      onDelete={isLastGroupAi ? onDeleteMessage : undefined}
                       canContinue={isLastGroupAi ? canContinue : false}
                       onContinue={isLastGroupAi ? onContinue : undefined}
                     />
