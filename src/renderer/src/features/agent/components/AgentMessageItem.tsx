@@ -137,6 +137,9 @@ export const AgentMessageItem = ({
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
+  // 子代理面板（readOnly）内气泡使用独立配色，与主消息列表区分。
+  const userBubbleClass = readOnly ? "bg-[#33517a]" : "bg-user-bubble"
+  const assistantBubbleClass = readOnly ? "bg-[#363e4c]" : "bg-[#303030]"
   const previewRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -624,7 +627,9 @@ export const AgentMessageItem = ({
           style={{ transform: isPinned ? `translateX(-${pinShift}px)` : undefined }}
         >
           {isEditing ? (
-            <div className="flex w-[380px] max-w-full flex-col gap-2 rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2">
+            <div
+              className={`flex w-[380px] max-w-full flex-col gap-2 rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2`}
+            >
               <textarea
                 ref={textareaRef}
                 value={editText}
@@ -661,7 +666,7 @@ export const AgentMessageItem = ({
             </div>
           ) : (
             <div
-              className="w-fit max-w-full rounded-[18px] rounded-br-[4px] bg-user-bubble px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words"
+              className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
               onCopy={handleBubbleCopy}
             >
               <div
@@ -681,7 +686,7 @@ export const AgentMessageItem = ({
           ) : (
             <div
               className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
-                isPinned ? "rounded-[6px] bg-user-bubble p-0.5" : ""
+                isPinned ? `rounded-[6px] ${userBubbleClass} p-0.5` : ""
               }`}
             >
               {isPinned && onLocate && (
@@ -739,7 +744,9 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
-      <div className="relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/90">
+      <div
+        className={`relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
+      >
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
             if (group.kind === "text") {
