@@ -249,6 +249,16 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 关闭 git 工作区选择面板。
+   */
+  const closeGitWorktreePanel = (): void => {
+    gitWorktreePanelRef.current = null
+    activeGitWorktreeIndexRef.current = 0
+    setGitWorktreePanel(null)
+    setActiveGitWorktreeIndex(0)
+  }
+
+  /**
    * 同步 Markdown 光标处的模板命令面板。
    * 模板命令（/addTemplate 等）仅在模板块外可用；AI 总结命令（/summaryTitle）仅在模板块内可用。
    */
@@ -256,6 +266,14 @@ export const useMarkdownPanels = ({
     const cursor = view.state.selection.main.head
     const line = view.state.doc.lineAt(cursor)
     const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const gitWorktreePanel = gitWorktreePanelRef.current
+    if (
+      gitWorktreePanel &&
+      (commandLine?.from !== gitWorktreePanel.line.from ||
+        commandLine?.value !== gitWorktreePanel.line.value)
+    ) {
+      closeGitWorktreePanel()
+    }
     const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
       view.state.doc.sliceString(0, line.from),
     )
@@ -292,16 +310,6 @@ export const useMarkdownPanels = ({
   }
 
   /**
-   * 关闭 git 工作区选择面板。
-   */
-  const closeGitWorktreePanel = (): void => {
-    gitWorktreePanelRef.current = null
-    activeGitWorktreeIndexRef.current = 0
-    setGitWorktreePanel(null)
-    setActiveGitWorktreeIndex(0)
-  }
-
-  /**
    * 打开 git 工作区选择面板：以当前光标处命令行为锚，列出工作区选项。
    * projectPath 缺失（virtual）不打开；非 git 仓库（worktrees 为 null）触发重拉并暂不打开。
    */
@@ -321,11 +329,12 @@ export const useMarkdownPanels = ({
     const coords = view.coordsAtPos(cursor)
     if (!commandLine || !coords) return
 
+    const context = resolveContextDirectory(view)
     const options = buildGitWorktreeOptions({
       worktrees,
       projectPath,
       projectBranch: projectBranchRef.current ?? null,
-      worktreePath: worktreePathRef.current,
+      worktreePath: context?.directory ?? worktreePathRef.current,
     })
     const panel = {
       options,
@@ -472,15 +481,17 @@ export const useMarkdownPanels = ({
     const searchDirectoryFiles = onSearchDirectoryFilesRef.current
     const activeProjectId = projectIdRef.current
     const cursor = view.state.selection.main.head
+    const docText = view.state.doc.toString()
     const prefix = view.state.doc.sliceString(0, cursor)
     const match = new RegExp(
       String.raw`(^|\s)@((?:${MARKDOWN_FILE_MENTION_PATH_PATTERN})?)$`,
       "u",
     ).exec(prefix)
+    const templateBlockContent = getMarkdownTemplateBlockContent(docText, cursor)
     const searchProjectPaths = [
       ...new Set([
         ...referencedProjectPathsRef.current,
-        ...getMarkdownReferenceProjectPaths(view.state.doc.toString()),
+        ...getMarkdownReferenceProjectPaths(templateBlockContent ?? docText),
       ]),
     ]
     const context = resolveContextDirectory(view)
@@ -620,7 +631,7 @@ export const useMarkdownPanels = ({
     const referencedRoots = [
       ...new Set([
         ...referencedProjectPathsRef.current,
-        ...getMarkdownReferenceProjectPaths(docText),
+        ...getMarkdownReferenceProjectPaths(blockContent),
       ]),
     ]
     const matched = filterMarkdownTemplateFileCandidates(

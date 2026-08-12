@@ -22,7 +22,7 @@ export interface GitWorktreeOption {
   branch: string | null
   // 是否默认工作区（项目路径）。
   isDefault: boolean
-  // 是否为当前绑定（全局绑定命中或默认工作区未绑定时）。
+  // 是否为当前上下文绑定（全局绑定或模板块局部绑定命中时）。
   isCurrent: boolean
 }
 

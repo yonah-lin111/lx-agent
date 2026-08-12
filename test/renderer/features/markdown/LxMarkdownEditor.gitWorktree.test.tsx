@@ -140,5 +140,130 @@ describe("LxMarkdownEditor /gitWorktree 回车切换", () => {
     expect(result).toContain("&&& done {wt:git-worktree-switch}")
     expect(result).not.toContain("/gitWorktree")
     expect(onWorktreePathChange).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(document.querySelector(".cm-md-template-end-line")?.className).toContain(
+        "cm-md-template-line-done",
+      ),
+    )
+  })
+
+  it("模板块已绑定工作区时，二级面板高亮模板块工作区", async () => {
+    render(<LxMarkdownEditor initialContent="" projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+
+    vi.spyOn(EditorView.prototype, "coordsAtPos").mockReturnValue({
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    } as DOMRect)
+
+    const doc = ["&&& addTemplate", "/git", "&&& {wt:git-worktree-switch}"].join("\n")
+    const commandStart = doc.indexOf("/git")
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: commandStart + "/git".length },
+    })
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await waitFor(() => {
+      const menu = document.querySelector('[aria-label="git 工作区选择"]')
+      expect(menu).not.toBeNull()
+      expect(menu?.querySelectorAll('[role="option"]')[1]?.textContent).toContain("当前")
+      expect(menu?.querySelectorAll('[role="option"]')[0]?.textContent).not.toContain("当前")
+    })
+  })
+
+  it("删除 /gitWorktree 命令后关闭二级面板", async () => {
+    render(<LxMarkdownEditor initialContent="" projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+
+    vi.spyOn(EditorView.prototype, "coordsAtPos").mockReturnValue({
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    } as DOMRect)
+
+    const doc = ["&&& addTemplate", "/git", "&&&"].join("\n")
+    const commandStart = doc.indexOf("/git")
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: commandStart + "/git".length },
+    })
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    await waitFor(() =>
+      expect(document.querySelector('[aria-label="git 工作区选择"]')).not.toBeNull(),
+    )
+
+    view.dispatch({
+      changes: {
+        from: commandStart,
+        to: commandStart + "/gitWorktree ".length,
+        insert: "",
+      },
+      selection: { anchor: commandStart },
+    })
+
+    await waitFor(
+      () => expect(document.querySelector('[aria-label="git 工作区选择"]')).toBeNull(),
+      { timeout: 1000 },
+    )
+  })
+
+  it("模板块内 @ 搜索只使用当前模板块的引用项目", async () => {
+    const onSearchReferencedFiles = vi.fn().mockResolvedValue([])
+    render(
+      <LxMarkdownEditor
+        initialContent=""
+        projectPath="/repo"
+        onSearchReferencedFiles={onSearchReferencedFiles}
+      />,
+    )
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+
+    vi.spyOn(EditorView.prototype, "coordsAtPos").mockReturnValue({
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    } as DOMRect)
+
+    const doc = [
+      "&&& addTemplate",
+      "@[refer-project](/refs/first)",
+      "&&&",
+      "&&& bugTemplate",
+      "@[refer-project](/refs/second)",
+      "@",
+      "&&&",
+    ].join("\n")
+    const cursor = doc.lastIndexOf("@") + 1
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: cursor },
+    })
+
+    await waitFor(() => expect(onSearchReferencedFiles).toHaveBeenCalledWith(["/refs/second"], ""))
   })
 })

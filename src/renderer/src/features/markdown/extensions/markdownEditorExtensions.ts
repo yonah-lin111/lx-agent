@@ -925,7 +925,9 @@ const buildMarkdownMarkerDecorations = (
     if (templateEndMatch && isInsideTemplateBlock) {
       const markerStart = line.indexOf("&&&")
       addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
-      const statusMatch = line.match(/\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}\s*$|\s*$)/)
+      const statusMatch = line.match(
+        /\s+(done|in_progress)(?=(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$)/,
+      )
       if (statusMatch?.index !== undefined) {
         const statusStart = statusMatch.index + 1
         const statusClassName =
