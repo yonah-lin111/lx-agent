@@ -46,6 +46,7 @@ interface AgentInputProps {
     decision: "allow" | "deny",
     rememberForSession?: boolean,
     allowAll?: boolean,
+    permanent?: boolean,
   ) => void
   // git 工作区选项（/gitWorktree 二级面板；null = 无 git 上下文或非 git 仓库）。
   worktreeOptions: GitWorktreeOption[] | null
@@ -291,7 +292,7 @@ export const AgentInput = ({
     setPermissionCollapsed(false)
   }, [pendingRequest])
 
-  // 处理权限面板选中项：选择态四选项 / 确认态两选项。
+  // 处理权限面板选中项：选择态六选项 / 确认态两选项。
   const handlePermissionAction = (index: number): void => {
     if (permissionPhase === "select") {
       if (index === 0) {
@@ -299,7 +300,11 @@ export const AgentInput = ({
       } else if (index === 1) {
         onPermissionRespond("allow", true)
       } else if (index === 2) {
+        onPermissionRespond("allow", false, false, true) // 永久允许：写回配置，直接发送
+      } else if (index === 3) {
         onPermissionRespond("deny")
+      } else if (index === 4) {
+        onPermissionRespond("deny", false, false, true) // 永久拒绝：写回配置，直接发送
       } else {
         setPermissionPhase("confirm")
         setPermissionIndex(1) // 默认停在"返回"
@@ -308,7 +313,7 @@ export const AgentInput = ({
       onPermissionRespond("allow", false, true) // 允许全部
     } else {
       setPermissionPhase("select")
-      setPermissionIndex(3) // 返回选择，保留"允许全部"高亮
+      setPermissionIndex(5) // 返回选择，保留"允许全部"高亮
     }
   }
 

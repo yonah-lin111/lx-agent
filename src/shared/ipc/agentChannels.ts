@@ -10,6 +10,7 @@ export const AGENT_CHANNELS = {
   renameSession: "agent:renameSession",
   deleteSession: "agent:deleteSession",
   deleteMessageTurn: "agent:deleteMessageTurn",
+  forkSession: "agent:forkSession",
   getMcpStatus: "agent:getMcpStatus",
   suggestedQuestions: "agent:suggestedQuestions",
   // 权限请求经 event 通道以 permission_request 事件推送（见 AgentEvent）。

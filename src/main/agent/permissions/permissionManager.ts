@@ -5,7 +5,7 @@ import type {
   PermissionSettings,
 } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
-import { getPermissionSettings } from "@/services/settingsService"
+import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
@@ -47,7 +47,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * - allow：返回 undefined 继续执行；
  * - deny：返回 { block, reason } → error toolResult 回灌模型；
  * - ask：经 attachSender 推权限请求到 renderer 命令面板，挂起等待用户决策或 run 中止。
- * 面板"允许本次会话 / 允许全部"仅为内存态，随会话切换重置，不写回配置。
+ * 面板"允许本次会话 / 允许全部"仅为内存态，随会话切换重置，不写回配置；
+ * "永久允许 / 永久拒绝"精确参数写回配置 allow[]/deny[]（allowAll 不写回）。
+ * deny 规则先于 bypass / 会话级 allowAll 判定——敏感路径在绕过模式下仍受保护。
  */
 class PermissionManager {
   private settings: PermissionSettings = { defaultMode: "default", allow: [], deny: [], ask: [] }
@@ -62,8 +64,11 @@ class PermissionManager {
   private sessionAllowed = new Map<string, Set<string>>()
   // 会话级"允许全部"：已授权的 sessionId（跳过规则与询问，等同会话级 bypassPermissions）。
   private sessionAllowAll = new Set<string>()
-  // 挂起的权限请求：requestId → resolve。
-  private pending = new Map<string, (decision: PermissionDecision) => void>()
+  // 挂起的权限请求：requestId → resolve + 工具上下文（永久写回需要精确参数）。
+  private pending = new Map<
+    string,
+    { resolve: (decision: PermissionDecision) => void; toolName: string; args: unknown }
+  >()
   // 权限请求推送目标（agentHandlers 注入）。
   private sendRequest: ((request: PermissionRequest) => void) | null = null
   private requestSequence = 0
@@ -93,20 +98,21 @@ class PermissionManager {
   /**
    * 同步判定一次工具调用的处理方式（不产生确认请求）。
    * 门控集 = bash/write/edit + 已注册 MCP 工具；豁免集与未知工具默认放行。
+   * deny 规则先于一切（含 bypassPermissions）——敏感路径在绕过模式下仍受保护。
    */
   evaluate(toolName: string, args: unknown): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
+    // deny 优先于 bypass：`.env` 等敏感路径在 bypass 模式下仍拦截。
+    if (matchRule(this.parsed.deny, toolName, args)) return "deny"
     if (mode === "bypassPermissions") return "allow"
     if (EXEMPT_TOOLS.has(toolName)) return "allow"
     if (!GATED_BUILTIN_TOOLS.has(toolName) && !this.mcpTools.has(toolName)) return "allow"
 
-    const kind = matchRule(this.parsed.deny, toolName, args)
-      ? "deny"
-      : matchRule(this.parsed.ask, toolName, args)
-        ? "ask"
-        : matchRule(this.parsed.allow, toolName, args)
-          ? "allow"
-          : null
+    const kind = matchRule(this.parsed.ask, toolName, args)
+      ? "ask"
+      : matchRule(this.parsed.allow, toolName, args)
+        ? "allow"
+        : null
     if (kind) return kind
 
     if (mode === "acceptEdits" && (toolName === "write" || toolName === "edit")) return "allow"
@@ -123,8 +129,12 @@ class PermissionManager {
   ): Promise<BeforeToolCallResult | undefined> {
     const toolName = context.toolCall.name
     const args = context.args
-    // 会话级"允许全部"：完全跳过规则与询问（含 deny），等同会话级 bypassPermissions。
-    if (sessionId && this.sessionAllowAll.has(sessionId)) return undefined
+    // 会话级"允许全部"：先查 deny（G6——绕过模式下敏感路径仍拦截），否则完全跳过规则与询问。
+    if (sessionId && this.sessionAllowAll.has(sessionId)) {
+      if (matchRule(this.parsed.deny, toolName, args))
+        return { block: true, reason: DENY_RULE_REASON }
+      return undefined
+    }
     const decision = this.evaluate(toolName, args)
     if (decision === "allow") return undefined
     if (decision === "deny") return { block: true, reason: DENY_RULE_REASON }
@@ -145,9 +155,14 @@ class PermissionManager {
         return
       }
       signal?.addEventListener("abort", onAbort, { once: true })
-      this.pending.set(requestId, (userDecision) => {
-        signal?.removeEventListener("abort", onAbort)
-        resolve(userDecision)
+      // 保存工具上下文：永久写回需要精确参数。
+      this.pending.set(requestId, {
+        resolve: (userDecision) => {
+          signal?.removeEventListener("abort", onAbort)
+          resolve(userDecision)
+        },
+        toolName,
+        args,
       })
       this.sendRequest?.({
         requestId,
@@ -170,17 +185,37 @@ class PermissionManager {
 
   /**
    * 处理 renderer 的权限决策；未知/过期 requestId 返回 false。
+   * permanent=true 时按决策写回配置 allow[]/deny[]（精确参数）并重载规则。
    */
   respond(response: PermissionResponse): boolean {
-    const resolve = this.pending.get(response.requestId)
-    if (!resolve) return false
+    const pending = this.pending.get(response.requestId)
+    if (!pending) return false
     this.pending.delete(response.requestId)
+    const { resolve, toolName, args } = pending
+    // G5：永久允许/拒绝写回配置（精确参数；allowAll 不写回）。
+    if (response.permanent === true) {
+      this.persistRule(response.decision === "deny" ? "deny" : "allow", toolName, args)
+    }
     resolve({
       decision: response.decision === "deny" ? "deny" : "allow",
       rememberForSession: response.rememberForSession === true,
       allowAll: response.allowAll === true,
     })
     return true
+  }
+
+  // 永久决策写回配置：追加精确参数规则（去重）后保存 + 重载，同工具同参数后续直接命中。
+  private persistRule(kind: "allow" | "deny", toolName: string, args: unknown): void {
+    const rule = formatRule(toolName, args)
+    const list = this.settings[kind]
+    if (list.includes(rule)) return
+    const next = savePermissionSettings({ ...this.settings, [kind]: [...list, rule] })
+    this.settings = next
+    this.parsed = {
+      allow: parseList(next.allow),
+      deny: parseList(next.deny),
+      ask: parseList(next.ask),
+    }
   }
 
   // 记录会话内已允许的工具名（仅内存态）。
@@ -198,13 +233,27 @@ class PermissionManager {
     this.sessionAllowed.delete(sessionId)
     this.sessionAllowAll.delete(sessionId)
     const prefix = `${sessionId}:`
-    for (const [requestId, resolve] of this.pending) {
+    for (const [requestId, entry] of this.pending) {
       if (requestId.startsWith(prefix)) {
         this.pending.delete(requestId)
-        resolve({ decision: "deny" })
+        entry.resolve({ decision: "deny" })
       }
     }
   }
+}
+
+// 永久写回的规则串：精确参数原样（不做 Tool() 无参放大）——换参数/换文件回到正常确认流。
+// bash → `Bash(command)`；write/edit → `Write(path)`/`Edit(path)`；其余（task/MCP）→ `Tool(args JSON)`。
+const formatRule = (toolName: string, args: unknown): string => {
+  const record = isRecord(args) ? args : {}
+  const capitalized = toolName.charAt(0).toUpperCase() + toolName.slice(1)
+  if (toolName === "bash" && typeof record.command === "string") {
+    return `Bash(${record.command})`
+  }
+  if ((toolName === "write" || toolName === "edit") && typeof record.path === "string") {
+    return `${capitalized}(${record.path})`
+  }
+  return `${capitalized}(${JSON.stringify(args ?? {})})`
 }
 
 // PermissionManager 单例。

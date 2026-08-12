@@ -27,6 +27,8 @@ interface AgentMessageListProps {
   onSelectPrompt: (prompt: string) => void
   onEditMessage?: (messageId: string, newContent: string) => void
   onDeleteMessage?: (messageId: string) => void
+  // 点击"从此分支"：从该用户轮切割复制历史到新会话。
+  onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
   onOpenSubagent?: (toolCall: ToolCallBlock) => void
   // 子代理面板是否打开（打开时滚动按钮接管面板消息列表滚动）。
@@ -51,6 +53,7 @@ export const AgentMessageList = ({
   onSelectPrompt,
   onEditMessage,
   onDeleteMessage,
+  onFork,
   onOpenSubagent,
   isSubagentPanelOpen = false,
   subagentScrollRef,
@@ -80,6 +83,11 @@ export const AgentMessageList = ({
   const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
   // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。吸顶定位需读取组顶（= 用户消息自然流顶部）。
   const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
+  // 仅当存在 ≥2 个 QA 对时展示"从此分支"（单对时切割点之前无历史，fork 无意义）。
+  const canFork = useMemo(
+    () => messages.filter((message) => message.role === "user").length > 1,
+    [messages],
+  )
 
   const isNearBottom = (): boolean => {
     const el = scrollRef.current
@@ -252,6 +260,7 @@ export const AgentMessageList = ({
                             setEditingMessageId(null)
                           }}
                           onDelete={onDeleteMessage}
+                          onFork={canFork ? onFork : undefined}
                           onOpenSubagent={onOpenSubagent}
                         />
                       </div>

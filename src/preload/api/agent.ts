@@ -25,6 +25,8 @@ export const agentApi: AgentApi["agent"] = {
   deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.deleteMessageTurn, sessionId, userMessageTimestamp),
+  forkSession: (sessionId: string, userMessageTimestamp?: number) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.forkSession, sessionId, userMessageTimestamp),
   getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),

@@ -3,7 +3,7 @@ import Database from "better-sqlite3"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { createAgentTables } from "@/db/schema/agentSchema"
 import { createProjectTables } from "@/db/schema/projectSchema"
-import { createAgentSessionService } from "@/services/agentSessionService"
+import { createAgentSessionService, getForkedTitle } from "@/services/agentSessionService"
 
 let database: Database.Database
 let service: ReturnType<typeof createAgentSessionService>
@@ -319,5 +319,315 @@ describe("agentSessionService", () => {
     expect(
       database.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(sessionId),
     ).toEqual([])
+  })
+
+  it("getForkedTitle 递增 (fork #N) 后缀", () => {
+    expect(getForkedTitle("普通会话")).toBe("普通会话 (fork #1)")
+    expect(getForkedTitle("普通会话 (fork #1)")).toBe("普通会话 (fork #2)")
+    expect(getForkedTitle("会话 (fork #7)")).toBe("会话 (fork #8)")
+  })
+
+  it("forkSession 从用户轮切割复制：seq < 切割点、保持 seq、重写 id、不复制调用", () => {
+    const sourceId = randomUUID()
+    const now = new Date().toISOString()
+    service.transaction(() => {
+      service.insertSession({
+        externalId: sourceId,
+        projectItemId: null,
+        projectId: null,
+        page: "/",
+        title: "源会话",
+        cwd: "/proj",
+        createdAt: now,
+        updatedAt: now,
+      })
+      let seq = service.nextSeq(sourceId)
+      service.insertEntry({
+        externalId: "cap-1",
+        sessionId: sourceId,
+        seq: seq++,
+        type: "active_capabilities",
+        payload: '{"tools":["read"]}',
+        createdAt: now,
+      })
+      service.insertEntry({
+        externalId: "u1",
+        sessionId: sourceId,
+        seq: seq++,
+        type: "message",
+        payload: JSON.stringify({ role: "user", content: "q1", timestamp: 100 }),
+        createdAt: now,
+      })
+      service.insertEntry({
+        externalId: "a1",
+        sessionId: sourceId,
+        seq: seq++,
+        type: "message",
+        payload: JSON.stringify({
+          role: "assistant",
+          content: [],
+          provider: "p",
+          model: "m",
+          usage: { input: 0, output: 0, totalTokens: 0 },
+          stopReason: "stop",
+          timestamp: 101,
+        }),
+        createdAt: now,
+      })
+      service.insertEntry({
+        externalId: "u2",
+        sessionId: sourceId,
+        seq: seq++,
+        type: "message",
+        payload: JSON.stringify({ role: "user", content: "q2", timestamp: 200 }),
+        createdAt: now,
+      })
+      service.insertCall({
+        sessionId: sourceId,
+        externalId: randomUUID(),
+        entryId: "u2",
+        kind: "builtin",
+        name: "read",
+        status: "success",
+        startedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+    })
+
+    const result = service.forkSession(sourceId, 3) // q2（seq=3）为切割点，不包含该轮
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const forkId = result.session.id
+
+    expect(result.session.title).toBe("源会话 (fork #1)")
+    expect(result.session.cwd).toBe("/proj")
+    // 源会话原样保留。
+    expect(service.listEntries(sourceId)).toHaveLength(4)
+    // 新会话仅包含切割点之前的 3 条 entry，seq 原样、external_id 全部重写。
+    const forkEntries = service.listEntries(forkId)
+    expect(forkEntries.map((entry) => entry.seq)).toEqual([0, 1, 2])
+    expect(forkEntries.map((entry) => entry.type)).toEqual([
+      "active_capabilities",
+      "message",
+      "message",
+    ])
+    expect(forkEntries.map((entry) => entry.external_id)).not.toContain("cap-1")
+    expect(forkEntries.map((entry) => entry.external_id)).not.toContain("u2")
+    expect(forkEntries[2]?.payload).toContain('"timestamp":101')
+    // agent_call 不复制（renderer 展示依赖 entry payload）。
+    expect(
+      database.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(forkId),
+    ).toHaveLength(0)
+    // 新会话下一条 seq = 切割点 seq（继续从该轮编号）。
+    expect(service.nextSeq(forkId)).toBe(3)
+  })
+
+  it("forkSession 继承切割点轮（含）之前的快照", () => {
+    const sourceId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sourceId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "源会话",
+      cwd: "/proj",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertEntry({
+      externalId: "u1",
+      sessionId: sourceId,
+      seq: 0,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q1", timestamp: 100 }),
+      createdAt: now,
+    })
+    service.insertEntry({
+      externalId: "u2",
+      sessionId: sourceId,
+      seq: 1,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q2", timestamp: 200 }),
+      createdAt: now,
+    })
+    service.insertEntry({
+      externalId: "u3",
+      sessionId: sourceId,
+      seq: 2,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q3", timestamp: 300 }),
+      createdAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s1",
+      sessionId: sourceId,
+      userMessageTimestamp: 100,
+      hashStart: "a",
+      hashEnd: "b",
+      filesChanged: "[]",
+      createdAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s2",
+      sessionId: sourceId,
+      userMessageTimestamp: 200,
+      hashStart: "b",
+      hashEnd: "c",
+      filesChanged: "[]",
+      createdAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s3",
+      sessionId: sourceId,
+      userMessageTimestamp: 300,
+      hashStart: "c",
+      hashEnd: "d",
+      filesChanged: "[]",
+      createdAt: now,
+    })
+
+    // 切割点在 q2（seq=1，timestamp=200）：继承 timestamp <= 200 的两个快照。
+    const result = service.forkSession(sourceId, 1)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const rows = database
+      .prepare(
+        "SELECT user_message_timestamp FROM agent_snapshot WHERE session_id = ? ORDER BY user_message_timestamp",
+      )
+      .all(result.session.id) as Array<{ user_message_timestamp: number }>
+    expect(rows.map((row) => row.user_message_timestamp)).toEqual([100, 200])
+  })
+
+  it("forkSession 无 forkSeq = 整会话复制（全部 entries + 全部快照）", () => {
+    const sourceId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sourceId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "源会话",
+      cwd: "/proj",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertEntry({
+      externalId: "u1",
+      sessionId: sourceId,
+      seq: 0,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q1", timestamp: 100 }),
+      createdAt: now,
+    })
+    service.insertSnapshot({
+      externalId: "s1",
+      sessionId: sourceId,
+      userMessageTimestamp: 100,
+      hashStart: "a",
+      hashEnd: "b",
+      filesChanged: "[]",
+      createdAt: now,
+    })
+
+    const result = service.forkSession(sourceId)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(service.listEntries(result.session.id)).toHaveLength(1)
+    expect(
+      database.prepare("SELECT * FROM agent_snapshot WHERE session_id = ?").all(result.session.id),
+    ).toHaveLength(1)
+  })
+
+  it("forkSession 拒绝非用户消息轮 / 不存在的切割点", () => {
+    const sourceId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sourceId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "t",
+      cwd: "/",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertEntry({
+      externalId: "a1",
+      sessionId: sourceId,
+      seq: 0,
+      type: "message",
+      payload: JSON.stringify({
+        role: "assistant",
+        content: [],
+        provider: "p",
+        model: "m",
+        usage: { input: 0, output: 0, totalTokens: 0 },
+        stopReason: "stop",
+        timestamp: 1,
+      }),
+      createdAt: now,
+    })
+    service.insertEntry({
+      externalId: "cap-1",
+      sessionId: sourceId,
+      seq: 1,
+      type: "active_capabilities",
+      payload: "{}",
+      createdAt: now,
+    })
+
+    expect(service.forkSession(sourceId, 0).ok).toBe(false) // assistant 轮
+    expect(service.forkSession(sourceId, 1).ok).toBe(false) // 非 message entry
+    expect(service.forkSession(sourceId, 99).ok).toBe(false) // 不存在
+    expect(service.forkSession(randomUUID()).ok).toBe(false) // 会话不存在
+  })
+
+  it("forkSession 复制异常整体回滚（同一事务）", () => {
+    const sourceId = randomUUID()
+    const now = new Date().toISOString()
+    service.insertSession({
+      externalId: sourceId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "t",
+      cwd: "/",
+      createdAt: now,
+      updatedAt: now,
+    })
+    service.insertEntry({
+      externalId: "cap-1",
+      sessionId: sourceId,
+      seq: 0,
+      type: "active_capabilities",
+      payload: "{}",
+      createdAt: now,
+    })
+    // 切割点：seq=1 的 user 轮。
+    service.insertEntry({
+      externalId: "u1",
+      sessionId: sourceId,
+      seq: 1,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q1", timestamp: 100 }),
+      createdAt: now,
+    })
+    // 复制范围内（seq<1）的 cap-1 的 parent_id 指向不存在的 entry → 复制时 FK 冲突触发回滚。
+    // 先关 FK 播种悬空引用，再恢复（UPDATE 本身也会被 FK 拦）。
+    database.pragma("foreign_keys = OFF")
+    database
+      .prepare(
+        "UPDATE agent_session_entry SET parent_id = 'no-such-entry' WHERE external_id = 'cap-1'",
+      )
+      .run()
+    database.pragma("foreign_keys = ON")
+
+    const before = service.listSessions().length
+    const result = service.forkSession(sourceId, 1)
+    expect(result.ok).toBe(false)
+    // 回滚：新会话行不应残留。
+    expect(service.listSessions().length).toBe(before)
   })
 })

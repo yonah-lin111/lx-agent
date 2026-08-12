@@ -228,4 +228,66 @@ describe("agentRunner 权限接线", () => {
     agentRunner.restoreMessages([])
     expect(holder.clearedSessions).toContain(result.sessionId)
   })
+
+  it("forkSession：切割点在已压缩区域拒绝，边界之外放行", async () => {
+    const { agentRunner } = await importRunner()
+    const { agentSessionService } = await import("@/services/agentSessionService")
+    const sessionId = "s-fork-compaction"
+    const now = new Date().toISOString()
+    agentSessionService.insertSession({
+      externalId: sessionId,
+      projectItemId: null,
+      projectId: null,
+      page: "/",
+      title: "源会话",
+      cwd: "/tmp",
+      createdAt: now,
+      updatedAt: now,
+    })
+    agentSessionService.insertEntry({
+      externalId: "cap-1",
+      sessionId,
+      seq: 0,
+      type: "active_capabilities",
+      payload: "{}",
+      createdAt: now,
+    })
+    agentSessionService.insertEntry({
+      externalId: "u1",
+      sessionId,
+      seq: 1,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q1", timestamp: 100 }),
+      createdAt: now,
+    })
+    // 压缩边界：firstKeptSeq=2 → seq<2 的轮位于已压缩区域。
+    agentSessionService.insertEntry({
+      externalId: "comp-1",
+      sessionId,
+      seq: 2,
+      type: "compaction",
+      payload: JSON.stringify({ summary: "s", firstKeptSeq: 2, tokensBefore: 10 }),
+      createdAt: now,
+    })
+    agentSessionService.insertEntry({
+      externalId: "u2",
+      sessionId,
+      seq: 3,
+      type: "message",
+      payload: JSON.stringify({ role: "user", content: "q2", timestamp: 200 }),
+      createdAt: now,
+    })
+
+    // 切割点 u1（seq=1 < firstKeptSeq=2）位于压缩区：拒绝并给出明确原因。
+    const rejected = agentRunner.forkSession(sessionId, 100)
+    expect(rejected.ok).toBe(false)
+    if (rejected.ok) return
+    expect(rejected.error).toContain("已压缩区域")
+
+    // 切割点 u2（seq=3 >= firstKeptSeq）在边界之外：放行并返回新会话 id。
+    const accepted = agentRunner.forkSession(sessionId, 200)
+    expect(accepted.ok).toBe(true)
+    if (!accepted.ok) return
+    expect(agentSessionService.getSession(accepted.sessionId)).toBeDefined()
+  })
 })

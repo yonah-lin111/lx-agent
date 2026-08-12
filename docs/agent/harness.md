@@ -22,6 +22,8 @@
 
 - **Session 持久化（原 v2）**：SQLite 三表 + `agentRunner.flushTurn()` 事务落盘已实现，会话恢复（`restoreSession`）按当前配置重载 MCP/skill，快照仅展示/校验。详见 [database.md](./database.md)。
 - **权限信任模型**：`permissionManager.gate` 挂 `beforeToolCall`，模式 + 规则 + 逐次确认已落地（见 §3）。
+- **权限收尾（G5/G6）**：面板新增"永久允许 / 永久拒绝"，精确参数写回 `allow[]`/`deny[]`；`bypassPermissions` 与会话级 `allowAll` 下 deny 规则仍生效（保护敏感路径）。
+- **会话分支（fork）**：从任意用户轮切割复制历史到新会话，自动切换，共享 cwd / 文件状态（快照可回滚）；详见 [TASKS-v3.md](./TASKS-v3.md) §2。
 - **MCP 状态推送**：`mcp_status_changed` 事件 + `agent:getMcpStatus` 已实现。
 - **steer / followUp 队列**：`Agent` 已具备（`PendingMessageQueue`），但 IPC/UI 未暴露——后续按需接线。
 
@@ -38,9 +40,9 @@
 | 3 | 配置位置 | `~/.lx/config.json` 的 **`agent.permissions`** 节点；设置页"权限"分区读写 |
 | 4 | 规则语法 | 对齐 CC：`ToolName(arg)`，参数支持 glob；优先级 **deny > ask > allow > 模式默认值** |
 | 5 | 评估执行位置 | main 进程 `permissionManager` 单例，挂 **`beforeToolCall` 钩子**（agent-loop 已 `await`，返回 `{ block, reason }` 即阻止） |
-| 6 | 会话内记忆 | 面板"允许本次会话 / 允许全部"仅为**内存态**，随会话切换重置；**不写回配置** |
+| 6 | 会话内记忆 | 面板"允许本次会话 / 允许全部"仅为**内存态**，随会话切换重置；**"永久允许 / 永久拒绝"精确参数写回配置 `allow[]`/`deny[]`** |
 | 7 | 拒绝语义 | `block + reason` → error toolResult 回灌模型，模型自行解释/调整，不中断 run |
-| 8 | 配置生效时机 | 每次会话装配（`ensureReady`）刷新：`permissionManager.load()` + `setMcpTools(this.activeMcp)`；设置页保存后 reload 自然生效 |
+| 8 | 配置生效时机 | 每次会话装配（`ensureReady`）刷新：`permissionManager.load()` + `setMcpTools(this.activeMcp)`；设置页保存或永久决策写回后 reload 自然生效 |
 
 ### 3.2 配置 schema
 
@@ -79,9 +81,9 @@
 |------|--------------|------|----------|
 | `default` | 命中规则或询问 | 命中规则或询问 | 命中规则或询问 |
 | `acceptEdits` | **自动允许**（仍受 deny 约束） | 命中规则或询问 | 命中规则或询问 |
-| `bypassPermissions` | **全部放行** | **全部放行** | **全部放行** |
+| `bypassPermissions` | **放行**（deny 除外） | **放行**（deny 除外） | **放行**（deny 除外） |
 
-- `bypassPermissions` 完全跳过权限系统（含 deny 与弹窗）；会话级"允许全部"（`allowAll`）等同会话级 `bypassPermissions`（见 §3.4）。
+- `bypassPermissions` 跳过 allow/ask 规则与弹窗，但 **deny 规则仍生效**（保护 `.env` 等敏感路径）；会话级"允许全部"（`allowAll`）同样先查 deny（见 §3.4）。
 - `ask` 规则在 `default` / `acceptEdits` 下强制弹窗（覆盖 allow 或 acceptEdits 的自动放行）。
 
 ### 3.4 规则引擎
@@ -102,18 +104,20 @@
 **判定顺序**（`permissionManager.evaluate`）：
 
 ```
+if matchRule(deny):                                  return deny    # deny 先于一切（含 bypass）
 mode = defaultMode
-if mode == bypassPermissions:                       return allow   # 完全跳过规则与弹窗
-if tool in EXEMPT_TOOLS:                            return allow   # 豁免集，永不询问
-if tool not in GATED_BUILTIN_TOOLS and not mcp:     return allow   # 未知/未来内置工具默认放行
-kind = matchRule(deny) ? deny : matchRule(ask) ? ask : matchRule(allow) ? allow : null
-if kind:                                            return kind    # 同类规则取参数最长者
-if mode == acceptEdits and tool in { write, edit }: return allow
+if mode == bypassPermissions:                        return allow    # 仅 allow 语义跳过（deny 仍生效）
+if tool in EXEMPT_TOOLS:                             return allow    # 豁免集，永不询问
+if tool not in GATED_BUILTIN_TOOLS and not mcp:      return allow    # 未知/未来内置工具默认放行
+kind = matchRule(ask) ? ask : matchRule(allow) ? allow : null
+if kind:                                             return kind     # 同类规则取参数最长者
+if mode == acceptEdits and tool in { write, edit }:  return allow
 return ask
 ```
 
+- **deny 优先于一切**：deny 规则在 `bypassPermissions` 与会话级 allowAll 下仍生效（保护敏感路径）；对豁免集 / 未知工具同样生效（deny 是硬拦截）。
 - **未知工具默认**：非门控集且非豁免集的工具（如未来新增内置工具）默认放行——仅放行本地只读类；若未来新增有副作用内置工具，需在门控集显式登记。
-- **会话级"允许全部"（allowAll）**：在 `gate` 入口、`evaluate` 之前短路——`sessionAllowAll.has(sessionId)` 直接放行，跳过所有规则（含 deny）与弹窗，等同会话级 `bypassPermissions`；仅内存态，随会话切换重置。
+- **会话级"允许全部"（allowAll）**：在 `gate` 入口、`evaluate` 之前短路——`sessionAllowAll.has(sessionId)` 时**先查 deny**（命中直接 block），否则放行，跳过其余规则与弹窗；仅内存态，随会话切换重置。
 - 全部匹配在 main 进程同步完成（规则量小，无性能问题）。
 
 ### 3.5 架构与数据流
@@ -145,13 +149,13 @@ flowchart TD
 - `PermissionRequestPanel`：复用命令面板定位渲染于 `AgentInput` 输入框上方；折叠态仅一行权限图标浮层（右对齐）。
 - 展示：工具名 badge、参数摘要（`summary`）、模式、风险文案。
 - 交互：键盘（↑↓ 循环选择、Enter 选中、Esc 拒绝）由 `AgentInput` 接管；鼠标支持悬停切换高亮与点击选中。面板打开期间独占键盘，`/` `@` `/model` 面板隐藏，Enter 不发送消息。
-- **选择态选项**：允许（默认高亮）/ 允许本次会话（`rememberForSession`）/ 拒绝 / 允许全部（`allowAll`）。
-- **允许全部二次确认**：选中后面板切换确认态（"确认允许全部 / 返回"，默认停"返回"）防误触。
+- **选择态选项**：允许（默认高亮）/ 允许本次会话（`rememberForSession`）/ **永久允许**（写回 `allow[]`）/ 拒绝 / **永久拒绝**（写回 `deny[]`）/ 允许全部（`allowAll`）。
+- **允许全部二次确认**：选中后面板切换确认态（"确认允许全部 / 返回"，默认停"返回"）防误触；永久允许/永久拒绝**直接发送**（写回配置，无二次确认，区别于 allowAll）。
 - 关闭时机：`agent_end`（含中止）自动关闭；`Escape` 按拒绝处理（fail-safe）。
 
 ### 3.7 持久化与装配
 
-- `permissionManager`：`load()` 读配置并解析规则、`setMcpTools(names)` 注入 MCP 门控集、`evaluate(toolName, args)`、`gate`、`respond`、`rememberForSession(sessionId, toolName)`、`clearSession(sessionId)`（清理内存态 + 挂起请求按拒绝）。
+- `permissionManager`：`load()` 读配置并解析规则、`setMcpTools(names)` 注入 MCP 门控集、`evaluate(toolName, args)`、`gate`、`respond`（含**永久决策写回分支**：`persistRule` 追加精确参数规则 + `savePermissionSettings` + 重载）、`rememberForSession(sessionId, toolName)`、`clearSession(sessionId)`（清理内存态 + 挂起请求按拒绝）。
 - `rule.ts`：`parseRule(str)` / `matchRule(rules, toolName, args)`，`GATED_BUILTIN_TOOLS` / `EXEMPT_TOOLS` 常量。
 - 装配：`agentRunner.ensureReady()` 创建 Agent 时传 `beforeToolCall: (ctx, signal) => permissionManager.gate(ctx, this.currentSessionId, signal)`；`setSessionId` 切换时 `clearSession(旧 id)`。
 - 持久化写入：`settingsService` 的 `getPermissionSettings()` / `savePermissionSettings()`——`readRawConfig` → 合并 `agent.permissions` → tmp + rename 原子写，**保留 `agent.mcp`**。
@@ -165,16 +169,14 @@ flowchart TD
 | 用户中止 run | `signal.abort()` → 挂起请求按拒绝处理，run 结束，面板自动关闭 |
 | 配置损坏 | 非法条目跳过并记警告；`defaultMode` 非法回退 `default`；不抛错 |
 | 未知 requestId | `{ ok: false }`，忽略 |
-| `bypassPermissions` | 不产生挂起请求、不弹窗；会话内记忆不写入 |
+| `bypassPermissions` | 不产生挂起请求、不弹窗；会话内记忆不写入；**deny 规则仍拦截命中命令** |
 
 ## 4. 明确不做（及理由）
 
 - **run 恢复（resume）**：进程崩溃后恢复进行中的 run 需要操作日志（harness entries），复杂且低频。
-- **refs / 多分支并行**：桌面单会话 UI 无此需求。
+- **refs 多分支树 / 跨分支并行**：fork 已提供"从一个会话长出多个分支"能力（见 §2 已落地），但分支可视化 / 跨分支对比 / 并行 UI 不做。
 - **compaction / 上下文窗口管理**：首版全量上下文续接；超长上下文压缩（summary）属 harness 编排职责。
 - **`plan` 模式**（只读模式）：桌面 Agent 无手工阶段，不做。
-- **永久允许/拒绝写回配置**：面板决策仅会话内记忆；规则列表必须由设置页显式配置。
-- **`bypassPermissions` / allowAll 下的 deny 特例**（如保护 `.env`）：留口（§3.4 注），首版不做。
 - **工具级 `beforeToolCall` 用户自定义钩子**：首版只挂内置 permissionManager，自定义钩子后续接入。
 - **MCP remote / OAuth、跨进程/多窗口权限共享**：均留口，不做。
 
