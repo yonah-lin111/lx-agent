@@ -1,4 +1,4 @@
-import { Boxes, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
+import { Boxes, BrushCleaning, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
@@ -94,6 +94,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
   const recentIds = useRecentItemsStore((state) => state.ids)
   const removeRecent = useRecentItemsStore((state) => state.remove)
   const moveRecent = useRecentItemsStore((state) => state.move)
+  const clearRecent = useRecentItemsStore((state) => state.clear)
   const version = useProjectItemsVersionStore((state) => state.version)
   const [cards, setCards] = useState<RecentItemCard[] | null>(null)
   const draggingIdRef = useRef<string | null>(null)
@@ -263,6 +264,19 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
           })
         )}
       </div>
+      <LxIconButton
+        aria-label="清除最近打开记录"
+        disabled={recentIds.length === 0}
+        size="small"
+        title={{
+          content: "清除后无法恢复，确定清除所有最近打开记录吗？",
+          placement: "bottom",
+          title: "清除最近记录",
+          onConfirm: clearRecent,
+        }}
+      >
+        <BrushCleaning className="h-3.5 w-3.5" />
+      </LxIconButton>
       <LxIconButton
         aria-label="向右滚动"
         disabled={!canScrollRight}
