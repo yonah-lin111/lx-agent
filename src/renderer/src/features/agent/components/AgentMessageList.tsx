@@ -7,8 +7,8 @@ import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessa
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
 import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
-import { rightSidebarStore } from "@/lib/rightSidebarStore"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
 // 子代理调用块类型（点击 label 打开面板）。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -115,6 +115,16 @@ export const AgentMessageList = ({
     if (!isRestoring) return
     stickToBottomRef.current = true
   }, [isRestoring])
+
+  // 新建对话（消息列表清空）后复位滚动状态：下一条消息挂载时重新吸底，
+  // 避免上一会话遗留的"已上滑"状态让回到底部按钮在流式开始时误现 loading。
+  useEffect(() => {
+    if (messages.length !== 0) return
+    stickToBottomRef.current = true
+    setShowScrollToBottom(false)
+    setScrollButtonRendered(false)
+    setScrollButtonAnimatingOut(false)
+  }, [messages])
 
   // 侧栏首次展开（进入页面）时消息列表吸底：折叠期间容器不可见、滚动位置无法建立，
   // 展开后布局生效，需重新滚动到底部。仅首次生效，之后展开不打断用户的浏览位置。

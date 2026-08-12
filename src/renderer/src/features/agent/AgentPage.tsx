@@ -55,8 +55,14 @@ export const AgentPage = ({
     editMessage,
   } = useAgentChat(context)
 
-  const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
-    useAgentModelSelect()
+  const {
+    selectedModel,
+    selectedSelection,
+    hasModelOptions,
+    selectOptions,
+    handleModelChange,
+    suggestedQuestionsEnabled,
+  } = useAgentModelSelect()
   const currentSessionPath = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionPath,
@@ -115,6 +121,8 @@ export const AgentPage = ({
 
   // 生成建议问题所需的完整会话上下文（跳过工具结果，仅用户与助手文本）。
   const suggestedQuestionContext = useMemo<SuggestedQuestionContextMessage[]>(() => {
+    // 设置中停用推荐问题时直接返回空：不构建上下文，也不触发生成请求与加载占位。
+    if (!suggestedQuestionsEnabled) return []
     const result: SuggestedQuestionContextMessage[] = []
     for (const message of messages) {
       if (message.role !== "user" && message.role !== "assistant") continue
@@ -125,7 +133,7 @@ export const AgentPage = ({
       if (content.trim()) result.push({ role: message.role, content })
     }
     return result
-  }, [messages])
+  }, [messages, suggestedQuestionsEnabled])
 
   // 回显建议问题到输入框：覆盖内容、光标聚焦末尾。
   const echoToInput = useCallback(

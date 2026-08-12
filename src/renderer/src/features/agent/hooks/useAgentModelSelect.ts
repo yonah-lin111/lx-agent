@@ -118,11 +118,15 @@ export const useAgentModelSelect = () => {
     }
   }, [])
 
+  // 推荐问题开关：设置页停用后不再触发生成请求；设置加载完成前按启用处理（保持原行为）。
+  const suggestedQuestionsEnabled = settings?.suggestedQuestionsEnabled !== false
+
   return {
     selectedModel,
     selectedSelection,
     hasModelOptions,
     selectOptions,
     handleModelChange,
+    suggestedQuestionsEnabled,
   }
 }
