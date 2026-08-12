@@ -177,10 +177,12 @@ export interface PermissionRequest {
 
 // 权限决策（不含 requestId；主进程挂起请求的内部语义）。
 // allowAll：会话级"允许全部工具"，跳过规则与弹窗，随会话切换重置。
+// permanent：写回配置 allow[]/deny[]（精确参数），同工具同参数后续不再询问/直接拒绝。
 export type PermissionDecision = {
   decision: "allow" | "deny"
   rememberForSession?: boolean
   allowAll?: boolean
+  permanent?: boolean
 }
 
 // 权限决策（renderer → main 响应负载）。
@@ -189,6 +191,8 @@ export interface PermissionResponse {
   decision: "allow" | "deny"
   rememberForSession?: boolean
   allowAll?: boolean
+  // 永久允许/拒绝写回配置（allowAll 不写回）。
+  permanent?: boolean
 }
 
 // 助手消息流式增量事件。
@@ -280,6 +284,9 @@ export type AgentSendResult = { ok: true; sessionId: string } | { ok: false; err
 // 切换会话工作区（/gitWorktree）的返回结果。
 export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
 
+// 会话分支（fork）的返回结果；ok 时携带新会话 id（创建后自动切换）。
+export type AgentForkResult = { ok: true; sessionId: string } | { ok: false; error: string }
+
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
@@ -300,6 +307,8 @@ export interface AgentApi {
     deleteSession: (sessionId: string) => Promise<void>
     // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
     deleteMessageTurn: (sessionId: string, userMessageTimestamp: number) => Promise<void>
+    // 会话分支：从指定用户轮（timestamp 定位）切割复制历史到新会话；不传 timestamp = 整会话复制（v1 UI 不暴露）。
+    forkSession: (sessionId: string, userMessageTimestamp?: number) => Promise<AgentForkResult>
     // 获取全部 MCP server 的连接状态。
     getMcpStatus: () => Promise<McpServerStatusItem[]>
     // 为最后一条 AI 回答生成后续建议问题。

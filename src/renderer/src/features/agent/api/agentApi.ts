@@ -32,6 +32,11 @@ export const agentApi = {
   deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
+  forkSession: (
+    sessionId: string,
+    userMessageTimestamp?: number,
+  ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
+    window.api.agent.forkSession(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
   suggestedQuestions: (
     messages: SuggestedQuestionContextMessage[],

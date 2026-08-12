@@ -14,11 +14,23 @@ export interface PermissionPanelOption {
   tone?: "default" | "allow" | "danger" | "warn"
 }
 
-// 选择态：允许 / 允许本次会话 / 拒绝 / 允许全部。
+// 选择态：允许 / 允许本次会话 / 永久允许 / 拒绝 / 永久拒绝 / 允许全部。
 export const PERMISSION_SELECT_OPTIONS: PermissionPanelOption[] = [
   { key: "allow", label: "允许", description: "本次放行该操作", tone: "allow" },
   { key: "session", label: "允许本次会话", description: "本次会话内不再询问同类操作" },
+  {
+    key: "permanentAllow",
+    label: "永久允许",
+    description: "写回配置，相同操作不再询问",
+    tone: "allow",
+  },
   { key: "deny", label: "拒绝", description: "拒绝该操作，交由模型解释调整", tone: "danger" },
+  {
+    key: "permanentDeny",
+    label: "永久拒绝",
+    description: "写回配置，相同操作直接拒绝",
+    tone: "danger",
+  },
   { key: "allowAll", label: "允许全部", description: "允许当前对话全部工具与 MCP", tone: "warn" },
 ]
 
@@ -101,7 +113,8 @@ const useActiveItemScrollIntoView = (
 
 /**
  * 工具权限确认命令面板：输入框上方弹出，替代权限弹窗。
- * 选择态（允许/本次会话/拒绝/允许全部）→ 选中"允许全部"进入确认态（确认/返回）。
+ * 选择态（允许/本次会话/永久允许/拒绝/永久拒绝/允许全部）→ 选中"允许全部"进入确认态（确认/返回）。
+ * 永久允许/永久拒绝直接发送（写回配置，无需二次确认，区别于 allowAll）。
  * 键盘由 AgentInput 接管（↑↓/Enter/Esc），本组件负责渲染与鼠标交互。
  * 折叠态：仅一行权限图标浮层（右对齐，后续可继续追加图标），点击展开；无动画直接切换。
  */

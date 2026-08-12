@@ -75,7 +75,9 @@ const isValidPermissionResponse = (value: unknown): value is PermissionResponse 
   if (typeof response.requestId !== "string" || !response.requestId) return false
   if (response.decision !== "allow" && response.decision !== "deny") return false
   return (
-    response.rememberForSession === undefined || typeof response.rememberForSession === "boolean"
+    (response.rememberForSession === undefined ||
+      typeof response.rememberForSession === "boolean") &&
+    (response.permanent === undefined || typeof response.permanent === "boolean")
   )
 }
 
@@ -190,6 +192,16 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       throw new Error("INVALID_MESSAGE_TIMESTAMP")
     }
     agentRunner.deleteMessageTurn(sessionId, timestamp)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.forkSession, (_, sessionId: unknown, timestamp: unknown) => {
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      throw new Error("INVALID_SESSION_ID")
+    }
+    if (timestamp !== undefined && (typeof timestamp !== "number" || !Number.isFinite(timestamp))) {
+      throw new Error("INVALID_MESSAGE_TIMESTAMP")
+    }
+    return agentRunner.forkSession(sessionId, timestamp as number | undefined)
   })
 
   ipcMain.handle(AGENT_CHANNELS.permissionResponse, (_, response: unknown) => {

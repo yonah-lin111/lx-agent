@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AgentSessionSummary } from "@shared/contracts/agent"
+import type { AgentMessage, AgentSessionSummary } from "@shared/contracts/agent"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
 
@@ -181,6 +181,118 @@ export const createAgentSessionService = (getConnection: () => Database.Database
     })()
   },
 
+  // 会话分支：复制 forkSeq 之前的历史（切割点用户轮不包含）到新会话，保持原始 seq / parent_id 关系。
+  // 同一事务内复制 session + entries + snapshots；不复制 agent_call（renderer 展示依赖 entry payload，是派生视图）。
+  // 无 forkSeq = 整会话复制（v1 UI 不暴露，留口）。
+  forkSession(
+    sessionId: string,
+    forkSeq?: number,
+  ): { ok: true; session: AgentSessionSummary } | { ok: false; error: string } {
+    const source = this.getSession(sessionId)
+    if (!source) {
+      return { ok: false, error: "会话不存在。" }
+    }
+
+    // 切割点定位：forkSeq 对应 entry 必须是 user 消息轮，否则拒绝（对齐 pi invalid_fork_target）。
+    let forkUserTimestamp: number | undefined
+    if (forkSeq !== undefined) {
+      const forkEntry = this.listEntries(sessionId).find((entry) => entry.seq === forkSeq)
+      if (!forkEntry || forkEntry.type !== "message") {
+        return { ok: false, error: "只能从用户消息轮创建分支。" }
+      }
+      let message: AgentMessage | undefined
+      try {
+        message = JSON.parse(forkEntry.payload) as AgentMessage
+      } catch {
+        return { ok: false, error: "只能从用户消息轮创建分支。" }
+      }
+      if (message.role !== "user") {
+        return { ok: false, error: "只能从用户消息轮创建分支。" }
+      }
+      forkUserTimestamp = message.timestamp
+    }
+
+    const now = new Date().toISOString()
+    const forkTitle = getForkedTitle(source.title)
+    const newSessionId = createExternalId()
+
+    try {
+      this.transaction(() => {
+        this.insertSession({
+          externalId: newSessionId,
+          projectItemId: source.project_item_id,
+          projectId: source.project_id,
+          page: source.page,
+          title: forkTitle,
+          cwd: source.cwd,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        // entries：重写 external_id（parent_id 经映射指向新 id），seq 原样保持。
+        const condition = forkSeq !== undefined ? "AND seq < ?" : ""
+        const params = forkSeq !== undefined ? [sessionId, forkSeq] : [sessionId]
+        const entryRows = getConnection()
+          .prepare(
+            `SELECT * FROM agent_session_entry WHERE session_id = ? ${condition} ORDER BY seq ASC`,
+          )
+          .all(...params) as AgentSessionEntryRecord[]
+        const idMap = new Map<string, string>()
+        for (const entry of entryRows) {
+          const newExternalId = createExternalId()
+          idMap.set(entry.external_id, newExternalId)
+          this.insertEntry({
+            externalId: newExternalId,
+            sessionId: newSessionId,
+            seq: entry.seq,
+            parentId: entry.parent_id ? (idMap.get(entry.parent_id) ?? entry.parent_id) : null,
+            type: entry.type,
+            payload: entry.payload,
+            createdAt: entry.created_at,
+          })
+        }
+
+        // snapshots：继承切割点轮（含）之前的快照，新分支共享同一 cwd / git tree，hash 直接有效。
+        type SnapshotRow = {
+          external_id: string
+          user_message_timestamp: number
+          hash_start: string
+          hash_end: string
+          files_changed: string
+          created_at: string
+        }
+        const snapshotRows = getConnection()
+          .prepare(
+            `SELECT * FROM agent_snapshot
+             WHERE session_id = ? ${forkUserTimestamp !== undefined ? "AND user_message_timestamp <= ?" : ""}
+             ORDER BY user_message_timestamp ASC`,
+          )
+          .all(
+            forkUserTimestamp !== undefined ? [sessionId, forkUserTimestamp] : [sessionId],
+          ) as SnapshotRow[]
+        for (const snapshot of snapshotRows) {
+          this.insertSnapshot({
+            externalId: createExternalId(),
+            sessionId: newSessionId,
+            userMessageTimestamp: snapshot.user_message_timestamp,
+            hashStart: snapshot.hash_start,
+            hashEnd: snapshot.hash_end,
+            filesChanged: snapshot.files_changed,
+            createdAt: snapshot.created_at,
+          })
+        }
+      })
+    } catch {
+      // 复制异常整体回滚（同一事务），对调用方返回失败。
+      return { ok: false, error: "创建分支失败。" }
+    }
+
+    const created = this.getSession(newSessionId)
+    return created
+      ? { ok: true, session: toSummary(created) }
+      : { ok: false, error: "创建分支失败。" }
+  },
+
   insertCall(input: {
     sessionId: string
     externalId: string
@@ -296,6 +408,15 @@ export const createAgentSessionService = (getConnection: () => Database.Database
 
 // 生成业务键（供 agent_session / entry / call 使用）。
 export const createExternalId = (): string => randomUUID()
+
+// 分支会话标题：探测源标题的 `(fork #N)` 后缀递增，否则追加 `(fork #1)`（对齐 opencode getForkedTitle）。
+export const getForkedTitle = (title: string): string => {
+  const match = /^(.*?)\s*\(fork #(\d+)\)$/.exec(title)
+  if (match) {
+    return `${match[1]} (fork #${Number.parseInt(match[2], 10) + 1})`
+  }
+  return `${title} (fork #1)`
+}
 
 // 生产环境使用的 Agent 会话数据服务。
 export const agentSessionService = createAgentSessionService(getDatabase)

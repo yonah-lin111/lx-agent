@@ -92,6 +92,24 @@ export const AgentPage = ({
     [success, error],
   )
 
+  // 会话分支：从指定用户轮切割复制历史到新会话，创建后自动切换（输入框留空直接重写）。
+  const handleFork = useCallback(
+    (userMessageTimestamp: number): void => {
+      const sessionId = sessionListStore.getCurrentSessionId()
+      if (!sessionId) return
+      void agentApi.forkSession(sessionId, userMessageTimestamp).then((result) => {
+        if (result.ok) {
+          success("已创建分支会话")
+          void sessionListStore.refresh()
+          restoreChat(result.sessionId)
+        } else {
+          error(result.error)
+        }
+      })
+    },
+    [success, error, restoreChat],
+  )
+
   // 建议问题输入框聚焦引用（回显后定位光标）。
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -138,9 +156,14 @@ export const AgentPage = ({
     return unsubscribe
   }, [])
 
-  // 权限决策：回传 main；允许全部由 main 侧记录为会话级放行。
+  // 权限决策：回传 main；允许全部由 main 侧记录为会话级放行；永久允许/拒绝写回配置。
   const respondPermission = useCallback(
-    (decision: "allow" | "deny", rememberForSession?: boolean, allowAll?: boolean): void => {
+    (
+      decision: "allow" | "deny",
+      rememberForSession?: boolean,
+      allowAll?: boolean,
+      permanent?: boolean,
+    ): void => {
       const current = pendingRequest
       if (!current) return
       setPendingRequest(null)
@@ -149,6 +172,7 @@ export const AgentPage = ({
         decision,
         rememberForSession,
         allowAll,
+        permanent,
       })
     },
     [pendingRequest],
@@ -188,6 +212,7 @@ export const AgentPage = ({
           onEditMessage={editMessage}
           onDeleteMessage={deleteTurn}
           onOpenSubagent={openSubagent}
+          onFork={handleFork}
           isSubagentPanelOpen={activeSubagent !== null}
           subagentScrollRef={subagentScrollRef}
           canContinue={canContinue}

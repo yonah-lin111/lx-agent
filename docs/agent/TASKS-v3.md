@@ -36,7 +36,7 @@
 
 | # | 决策 | 结论 |
 |---|------|------|
-| 1 | 切割语义 | **从任意用户轮截断**：复制 `seq <= forkSeq` 的 entry；UI 在消息 hover 区提供"从此分支"入口；service 层 `forkSession(sessionId, forkSeq?)` 支持无 forkSeq 整会话复制（v1 UI 不暴露该入口，留口） |
+| 1 | 切割语义 | **从任意用户轮截断**：复制 `seq < forkSeq` 的 entry（forkSeq = 切割轮用户消息的 seq，不包含该轮，见 #2）；UI 在消息 hover 区提供"从此分支"入口；service 层 `forkSession(sessionId, forkSeq?)` 支持无 forkSeq 整会话复制（v1 UI 不暴露该入口，留口） |
 | 2 | 包含语义 | 切割点**不包含该轮**（复制该轮之前历史，从该轮重写）——对齐 opencode `id >= messageID` break / pi `before_user_message` 读 target.parentId |
 | 3 | UI 切换 | 创建后**自动切换**新会话，输入框留空直接重写（复用既有 `restoreChat` + `sessionListStore.refresh`） |
 | 4 | compaction 交互 | 切割点 `seq < firstKeptSeq`（落压缩区）→ **拒绝** + 提示选择 `firstKeptSeq` 之后的轮；对齐 pi `invalid_fork_target` 拒绝语义 |
@@ -52,16 +52,16 @@
 
 - **service 层**：`agentSessionService.forkSession(sessionId, forkSeq?)`——
   1. 读源 session（`cwd`、`title`），生成新 `external_id` + fork title。
-  2. `SELECT * FROM agent_session_entry WHERE session_id = ? AND seq <= forkSeq ORDER BY seq`（无 forkSeq 则全量）。
-  3. 重写 entry `external_id` 后 `INSERT` 新 session（保持 seq、`parent_id` 原样）。
+  2. `SELECT * FROM agent_session_entry WHERE session_id = ? AND seq < forkSeq ORDER BY seq`（无 forkSeq 则全量）。
+  3. 重写 entry `external_id`（`parent_id` 经 id 映射指向新 id）后 `INSERT` 新 session（保持 seq 原样）。
   4. 切割点定位：forkSeq 对应 entry 必须 `type='message'` 且 payload 内 role 为 `user`，否则拒绝（对齐 pi `invalid_fork_target`）。
   5. snapshot：`SELECT * FROM agent_snapshot WHERE session_id = ? AND user_message_timestamp <= 切割点轮 timestamp` → 重写 session_id 后 `INSERT`。
   6. 全部同一事务。
-- **runner 层**：`agentRunner.forkSession(sessionId, forkSeq?)`——busy 拒绝；读 `type='compaction'` entry 得 `firstKeptSeq`，`forkSeq < firstKeptSeq` 拒绝；调用 service；返回新 session summary。
-- **IPC 三层**：`src/shared/ipc/agentChannels.ts` 新增 `agent:forkSession`（invoke，`{ sessionId, forkSeq? }`）→ `src/main/ipc/agentHandlers.ts` 薄转发 → `src/preload/api/agent.ts` 暴露。
+- **runner 层**：`agentRunner.forkSession(sessionId, userMessageTimestamp?)`——busy 拒绝；timestamp → 用户消息 entry seq（未命中 = 幽灵轮拒绝）；读 `type='compaction'` entry 得 `firstKeptSeq`，`forkSeq < firstKeptSeq` 拒绝；调用 service；返回新 session id。
+- **IPC 三层**：`src/shared/ipc/agentChannels.ts` 新增 `agent:forkSession`（invoke，`(sessionId, userMessageTimestamp?)`——renderer 只掌握用户消息 timestamp，seq 由 runner 解析）→ `src/main/ipc/agentHandlers.ts` 薄转发 → `src/preload/api/agent.ts` 暴露。
 - **renderer**：
-  - `AgentMessageItem.tsx`：user 轮消息 hover 操作区新增"从此分支"按钮（assistant / toolResult 消息不显示）。
-  - `useAgentChat.ts` 或 `AgentPage`：`handleFork(forkSeq)` → `agentApi.forkSession` → 成功 `sessionListStore.refresh()` + `restoreChat(新 id)`；失败 toast 明示原因（compaction 区 / busy）。
+  - `AgentMessageItem.tsx`：user 轮消息 hover 操作区新增"从此分支"按钮（assistant / toolResult 消息不显示；**仅当会话含 ≥2 个 QA 对时展示**——单对时切割点之前无历史，fork 无意义）。
+  - `AgentPage`：`handleFork(userMessageTimestamp)` → `agentApi.forkSession` → 成功 `sessionListStore.refresh()` + `restoreChat(新 id)`；失败 toast 明示原因（compaction 区 / busy）。
   - 输入框留空（新会话初始无内容）。
 
 ## 3. 权限收尾（G5 + G6）

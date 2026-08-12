@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import type {
   AgentCapabilitySnapshot,
   AgentEvent,
+  AgentForkResult,
   AgentMessage,
   AgentRestoredSession,
   AgentSendContext,
@@ -646,6 +647,44 @@ class AgentRunner {
   renameSession(sessionId: string, title: string): void {
     if (!agentSessionService.getSession(sessionId)) return
     agentSessionService.renameSession(sessionId, title, new Date().toISOString())
+  }
+
+  // 会话分支：从指定用户轮（timestamp 定位）切割复制历史到新会话，返回新会话 id。
+  // busy（流式/挂起权限请求）拒绝；切割点在已压缩区域（< firstKeptSeq）拒绝。
+  forkSession(sessionId: string, userMessageTimestamp?: number): AgentForkResult {
+    if (this.agent?.state.isStreaming) {
+      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    }
+    if (!agentSessionService.getSession(sessionId)) {
+      return { ok: false, error: "会话不存在。" }
+    }
+    // 切割点定位：timestamp → 用户消息 entry seq（未命中 = UI 幽灵轮）。
+    let forkSeq: number | undefined
+    if (userMessageTimestamp !== undefined) {
+      const forkEntry = agentSessionService.listMessageEntries(sessionId).find((entry) => {
+        try {
+          const message = JSON.parse(entry.payload) as AgentMessage
+          return message.role === "user" && message.timestamp === userMessageTimestamp
+        } catch {
+          return false
+        }
+      })
+      if (!forkEntry) {
+        return { ok: false, error: "未找到该轮用户消息。" }
+      }
+      forkSeq = forkEntry.seq
+      // 切割点在已压缩区域：拒绝（对齐 pi invalid_fork_target 拒绝语义）。
+      const boundary = this.readCompactionEntry(sessionId)
+      if (boundary && forkSeq < boundary.firstKeptSeq) {
+        return {
+          ok: false,
+          error: "该轮位于已压缩区域，无法从此分支。请选择压缩摘要之后的消息。",
+        }
+      }
+    }
+    const result = agentSessionService.forkSession(sessionId, forkSeq)
+    if (!result.ok) return result
+    return { ok: true, sessionId: result.session.id }
   }
 
   // 切换当前会话工作区（/gitWorktree）：streaming 中拒绝；更新装配目标并持久化会话 cwd。

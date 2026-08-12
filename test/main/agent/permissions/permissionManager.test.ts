@@ -20,6 +20,10 @@ const holder = vi.hoisted(() => ({
 
 vi.mock("@/services/settingsService", () => ({
   getPermissionSettings: () => holder.permissionSettings,
+  savePermissionSettings: (input: PermissionSettings) => {
+    holder.permissionSettings = input
+    return input
+  },
 }))
 
 import { permissionManager } from "@/agent/permissions/permissionManager"
@@ -140,14 +144,18 @@ describe("permissionManager.evaluate", () => {
     expect(permissionManager.evaluate("bash", { command: "ls" })).toBe("ask")
   })
 
-  it("bypassPermissions 全部放行，忽略规则", () => {
+  it("bypassPermissions：deny 规则仍生效，仅 allow 语义跳过", () => {
     applySettings({
       defaultMode: "bypassPermissions",
       allow: [],
       deny: ["Bash(rm *)"],
       ask: [],
     })
-    expect(permissionManager.evaluate("bash", { command: "rm -rf /tmp/x" })).toBe("allow")
+    // 命中 deny 的敏感命令在 bypass 下仍拦截（保护敏感路径）。
+    expect(permissionManager.evaluate("bash", { command: "rm -rf /tmp/x" })).toBe("deny")
+    // 未命中 deny 的命令全部放行。
+    expect(permissionManager.evaluate("bash", { command: "ls" })).toBe("allow")
+    expect(permissionManager.evaluate("edit", { path: "a.ts" })).toBe("allow")
   })
 
   it("allow 规则命中即放行", () => {
@@ -279,7 +287,7 @@ describe("permissionManager.gate", () => {
     expect(result).toEqual({ block: true, reason: "用户已拒绝该操作" })
   })
 
-  it("allowAll：会话级放行全部工具（跳过 deny 规则），新会话恢复询问", async () => {
+  it("allowAll：会话级放行全部工具，但 deny 规则仍拦截，新会话恢复询问", async () => {
     applySettings({ defaultMode: "default", allow: [], deny: ["Bash(rm *)"], ask: [] })
     // 首次触发 ask：不命中 deny 的命令。
     const first = permissionManager.gate(gateContext("bash", { command: "npm install" }), "s1")
@@ -292,9 +300,14 @@ describe("permissionManager.gate", () => {
     })
     expect(await first).toBeUndefined()
 
-    // 同会话：deny 规则也被跳过（rm -rf 直接放行），不弹窗。
-    const second = permissionManager.gate(gateContext("bash", { command: "rm -rf /tmp" }), "s1")
+    // 同会话 allowAll：不命中 deny 的命令放行不弹窗。
+    const second = permissionManager.gate(gateContext("bash", { command: "npm run build" }), "s1")
     expect(await second).toBeUndefined()
+    expect(holder.capturedRequests).toHaveLength(1)
+
+    // 同会话 allowAll：命中 deny 的命令仍拦截（保护敏感路径）。
+    const denied = permissionManager.gate(gateContext("bash", { command: "rm -rf /tmp" }), "s1")
+    expect(await denied).toEqual({ block: true, reason: "该操作已由权限规则拒绝" })
     expect(holder.capturedRequests).toHaveLength(1)
 
     // 新会话：恢复询问（不命中 deny 的命令）。
@@ -331,5 +344,99 @@ describe("permissionManager.gate", () => {
       decision: "allow",
     })
     expect(await second).toBeUndefined()
+  })
+})
+
+describe("permissionManager 永久决策写回（G5）", () => {
+  beforeEach(() => {
+    resetManager()
+    permissionManager.attachSender((request) => {
+      holder.capturedRequests.push({
+        requestId: request.requestId,
+        toolName: request.toolName,
+        summary: request.summary,
+        mode: request.mode,
+      })
+    })
+  })
+
+  it("永久允许：精确参数写回 allow[]，写回后重载直接放行", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(gateContext("edit", { path: "src/a.ts" }), "s1")
+    expect(holder.capturedRequests).toHaveLength(1)
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+
+    expect(holder.permissionSettings.allow).toEqual(["Edit(src/a.ts)"])
+    expect(holder.permissionSettings.deny).toEqual([])
+    // 重载后相同调用直接 allow，不再弹窗。
+    expect(permissionManager.evaluate("edit", { path: "src/a.ts" })).toBe("allow")
+    expect(permissionManager.evaluate("edit", { path: "src/b.ts" })).toBe("ask")
+  })
+
+  it("永久允许 bash：命令规则写回 allow[]", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(
+      gateContext("bash", { command: "git status --short" }),
+      "s1",
+    )
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual(["Bash(git status --short)"])
+  })
+
+  it("永久拒绝：精确参数写回 deny[]", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(gateContext("bash", { command: "rm -rf /tmp/x" }), "s1")
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "deny",
+      permanent: true,
+    })
+    expect(await pending).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(holder.permissionSettings.deny).toEqual(["Bash(rm -rf /tmp/x)"])
+    expect(holder.permissionSettings.allow).toEqual([])
+    // 重载后相同命令直接拒绝。
+    expect(permissionManager.evaluate("bash", { command: "rm -rf /tmp/x" })).toBe("deny")
+  })
+
+  it("永久写回去重：同规则已存在时不重复追加", async () => {
+    // 规则同时存在于 ask 与 allow：ask 优先弹窗，永久允许时 allow 已有同规则则跳过追加。
+    applySettings({
+      defaultMode: "default",
+      allow: ["Edit(src/a.ts)"],
+      deny: [],
+      ask: ["Edit(src/a.ts)"],
+    })
+    const pending = permissionManager.gate(gateContext("edit", { path: "src/a.ts" }), "s1")
+    expect(holder.capturedRequests).toHaveLength(1)
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual(["Edit(src/a.ts)"])
+  })
+
+  it("允许全部不写回配置（仅会话级内存态）", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(gateContext("bash", { command: "npm install" }), "s1")
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      allowAll: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual([])
+    expect(holder.permissionSettings.deny).toEqual([])
   })
 })

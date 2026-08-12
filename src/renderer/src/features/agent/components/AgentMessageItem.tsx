@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  GitBranch,
   Locate,
   Pencil,
   RefreshCw,
@@ -104,6 +105,8 @@ interface AgentMessageItemProps {
   onCancelEdit?: () => void
   onEdit?: (id: string, newContent: string) => void
   onDelete?: (messageId: string) => void
+  // 点击"从此分支"：从该用户轮切割复制历史到新会话（assistant / toolResult 消息不显示）。
+  onFork?: (userMessageTimestamp: number) => void
   // 吸顶状态下点击"定位"：滚动回该消息在自然流中的原始位置（消息顶对齐列表视口顶部）。
   onLocate?: () => void
   // 点击子代理 label 打开面板弹窗。
@@ -132,6 +135,7 @@ export const AgentMessageItem = ({
   onCancelEdit,
   onEdit,
   onDelete,
+  onFork,
   onLocate,
   onOpenSubagent,
   readOnly = false,
@@ -140,6 +144,8 @@ export const AgentMessageItem = ({
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
+  // 用户消息时间戳（fork 定位切割轮；const 捕获便于闭包内保持收窄）。
+  const messageTimestamp = message.timestamp
   // 子代理面板（readOnly）内气泡使用独立配色，与主消息列表区分。
   const userBubbleClass = readOnly ? "bg-[#33517a]" : "bg-user-bubble"
   const assistantBubbleClass = readOnly ? "bg-[#363e4c]" : "bg-[#303030]"
@@ -714,6 +720,16 @@ export const AgentMessageItem = ({
                   ) : (
                     <ChevronDown className="h-3 w-3" />
                   )}
+                </LxIconButton>
+              )}
+              {!readOnly && typeof messageTimestamp === "number" && onFork && (
+                <LxIconButton
+                  size="small"
+                  aria-label="从此分支"
+                  title={{ content: "从此分支", placement: "top" }}
+                  onClick={() => onFork(messageTimestamp)}
+                >
+                  <GitBranch className="h-3 w-3" />
                 </LxIconButton>
               )}
               {!readOnly && (
