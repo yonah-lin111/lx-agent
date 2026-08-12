@@ -120,6 +120,19 @@ const markdownSlashCommands: MarkdownSlashCommand[] = [
   gitWorktreeCommand,
 ]
 
+// 斜杠命令名称的大小写不敏感子序列匹配。
+const isFuzzyMatch = (query: string, keyword: string): boolean => {
+  const normalizedQuery = query.toLowerCase()
+  if (!normalizedQuery) return true
+
+  let queryIndex = 0
+  for (const character of keyword.toLowerCase()) {
+    if (character === normalizedQuery[queryIndex]) queryIndex += 1
+    if (queryIndex === normalizedQuery.length) return true
+  }
+  return false
+}
+
 /**
  * 判定光标行为已武装的斜杠命令行，返回对应命令：
  * - 确认型：行内容与某个确认命令标签完全一致且位于模板块内；
@@ -193,7 +206,7 @@ export const getMarkdownSlashCommands = (
   return markdownSlashCommands.filter(
     (command) =>
       (command.scope === expectedScope || command.scope === "both") &&
-      command.id.includes(query) &&
+      isFuzzyMatch(query, command.id) &&
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )
 }

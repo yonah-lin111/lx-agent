@@ -32,6 +32,12 @@ describe("Markdown 斜杠命令", () => {
     ])
   })
 
+  it("支持大小写不敏感的子序列模糊匹配", () => {
+    expect(getMarkdownSlashCommands("/GWT", false).map((c) => c.id)).toEqual(["gitWorktree"])
+    expect(getMarkdownSlashCommands("/adT", false).map((c) => c.id)).toEqual(["addTemplate"])
+    expect(getMarkdownSlashCommands("/zzz", false)).toEqual([])
+  })
+
   it("模板块内匹配 AI 总结命令与全局工作区命令", () => {
     expect(getMarkdownSlashCommands("/sum", true).map((c) => c.id)).toEqual(["summaryTitle"])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
