@@ -1,32 +1,34 @@
 /**
  * 渲染页面顶部栏。
  */
-import { ChevronDown, ChevronUp, MousePointer2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Tags } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
+import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
-interface HeaderSideBarProps {
-  isExpanded: boolean
-  onExpandedChange: (isExpanded: boolean) => void
-  children?: React.ReactNode
-}
-
-// localStorage 中保存"悬停自动展开"开关的键。
-const HOVER_EXPAND_STORAGE_KEY = "lx-header-hover-expand-enabled"
+// tag 栏退场动画时长，与面包屑入场动画时长一致。
+const TAGS_LEAVE_DURATION = 300
 
 // 项目页面包屑名称。
 interface ProjectBreadcrumb {
   projectName: string
   folderName: string
   itemName: string
+}
+
+// 顶部栏属性。
+interface HeaderSideBarProps {
+  isExpanded: boolean
+  onExpandedChange: (isExpanded: boolean) => void
+  children?: React.ReactNode
 }
 
 export const HeaderSideBar = ({
@@ -40,13 +42,14 @@ export const HeaderSideBar = ({
   const settingsSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const uiSection = searchParams.get("section") ?? UI_SECTIONS[0].id
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
-  const [isHoverExpandEnabled, setIsHoverExpandEnabled] = useState<boolean>(
-    () => localStorage.getItem(HOVER_EXPAND_STORAGE_KEY) === "1",
-  )
+  // 是否将顶部行从面包屑切换为最近打开 tag 栏。
+  const [showRecentTags, setShowRecentTags] = useState(false)
+  // tag 栏退场动画播放期间仍保留渲染，结束后卸载。
+  const [isTagsLeaving, setIsTagsLeaving] = useState(false)
+  const tagsLeaveTimerRef = useRef<number | null>(null)
+  const renderTags = showRecentTags || isTagsLeaving
   const breadcrumbToasts = useLxBreadcrumbToast()
   const hasBreadcrumbToast = breadcrumbToasts.length > 0
-  const expandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeNavigationItem =
     PRIMARY_NAVIGATION_ITEMS.find((item) => item.path === pathname) ?? PRIMARY_NAVIGATION_ITEMS[0]
 
@@ -105,44 +108,33 @@ export const HeaderSideBar = ({
     }
   }, [itemId, pathname])
 
-  const handleHoverExpandToggle = (): void => {
-    setIsHoverExpandEnabled((enabled) => {
-      const next = !enabled
-      localStorage.setItem(HOVER_EXPAND_STORAGE_KEY, next ? "1" : "0")
-      return next
-    })
-  }
-
-  const handleHeaderMouseEnter = (): void => {
-    if (!isHoverExpandEnabled || isExpanded) return
-    if (collapseTimeoutRef.current) {
-      clearTimeout(collapseTimeoutRef.current)
-      collapseTimeoutRef.current = null
+  // 切换 tag 栏显示：关闭时先播放退场动画，结束后再卸载。
+  const handleToggleRecentTags = (): void => {
+    const next = !showRecentTags
+    setShowRecentTags(next)
+    if (next) {
+      if (tagsLeaveTimerRef.current !== null) {
+        window.clearTimeout(tagsLeaveTimerRef.current)
+        tagsLeaveTimerRef.current = null
+      }
+      setIsTagsLeaving(false)
+      return
     }
-    if (expandTimeoutRef.current) return
-    expandTimeoutRef.current = setTimeout(() => {
-      expandTimeoutRef.current = null
-      onExpandedChange(true)
-    }, 200)
-  }
-
-  const handleHeaderMouseLeave = (): void => {
-    if (!isHoverExpandEnabled || !isExpanded) return
-    if (expandTimeoutRef.current) {
-      clearTimeout(expandTimeoutRef.current)
-      expandTimeoutRef.current = null
+    if (tagsLeaveTimerRef.current === null) {
+      setIsTagsLeaving(true)
+      tagsLeaveTimerRef.current = window.setTimeout(() => {
+        tagsLeaveTimerRef.current = null
+        setIsTagsLeaving(false)
+      }, TAGS_LEAVE_DURATION)
     }
-    if (collapseTimeoutRef.current) return
-    collapseTimeoutRef.current = setTimeout(() => {
-      collapseTimeoutRef.current = null
-      onExpandedChange(false)
-    }, 200)
   }
 
+  // 卸载时清理退场定时器。
   useEffect(() => {
     return () => {
-      if (expandTimeoutRef.current) clearTimeout(expandTimeoutRef.current)
-      if (collapseTimeoutRef.current) clearTimeout(collapseTimeoutRef.current)
+      if (tagsLeaveTimerRef.current !== null) {
+        window.clearTimeout(tagsLeaveTimerRef.current)
+      }
     }
   }, [])
 
@@ -165,21 +157,33 @@ export const HeaderSideBar = ({
 
   return (
     <header
-      onMouseEnter={handleHeaderMouseEnter}
-      onMouseLeave={handleHeaderMouseLeave}
       className={`mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
         isExpanded ? "h-[300px] min-h-[300px] max-h-[300px]" : "h-[40px] min-h-[40px] max-h-[40px]"
       }`}
     >
       <div className="relative h-full w-full">
         <div
-          key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
-          className="absolute left-0 top-0 flex h-6 max-w-[calc(100%-48px)] items-center gap-2 truncate text-xs font-mono"
+          className={`absolute left-0 top-0 flex h-6 items-center gap-2 text-xs font-mono ${
+            renderTags ? "max-w-[calc(100%-72px)]" : "max-w-[calc(100%-48px)]"
+          }`}
         >
-          {hasBreadcrumbToast ? (
+          {renderTags ? (
+            <div
+              className={`flex min-w-0 flex-1 items-center ${
+                isTagsLeaving
+                  ? "animate-header-breadcrumb-out pointer-events-none"
+                  : "animate-header-breadcrumb-in"
+              }`}
+            >
+              <ProjectRecentItemsTags />
+            </div>
+          ) : hasBreadcrumbToast ? (
             <LxBreadcrumbToast />
           ) : (
-            <div className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in">
+            <div
+              key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
+              className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in"
+            >
               <span className="text-white/30">//</span>
               {breadcrumbParts.map((part, index) => (
                 <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-2 truncate">
@@ -209,15 +213,15 @@ export const HeaderSideBar = ({
           }`}
         >
           <LxIconButton
-            aria-label="悬停自动展开"
-            highlighted={isHoverExpandEnabled}
+            aria-label="显示最近打开标签"
+            highlighted={showRecentTags}
             title={{
-              content: isHoverExpandEnabled ? "关闭悬停自动展开" : "开启悬停自动展开",
+              content: showRecentTags ? "隐藏最近打开标签" : "显示最近打开标签",
               placement: "bottom",
             }}
-            onClick={handleHoverExpandToggle}
+            onClick={handleToggleRecentTags}
           >
-            <MousePointer2 className="h-4 w-4" />
+            <Tags className="h-4 w-4" />
           </LxIconButton>
           <LxIconButton
             aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}

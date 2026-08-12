@@ -106,6 +106,8 @@ export const useProjectNavigationActions = (
         else if (folder) await projectNavigationApi.updateFolder(id, { name })
         else await projectNavigationApi.updateItem(id, { name })
         await refreshProjects()
+        // 递增版本号，通知侧边栏与最近打开栏重新加载。
+        useProjectItemsVersionStore.getState().bump()
         return true
       } catch {
         return false
@@ -121,6 +123,8 @@ export const useProjectNavigationActions = (
         if (projectId) {
           await projectNavigationApi.updateProject(projectId, { name, path: path ?? "", type })
           await refreshProjects()
+          // 递增版本号，通知侧边栏与最近打开栏重新加载。
+          useProjectItemsVersionStore.getState().bump()
           return projectId
         }
         const project = await projectNavigationApi.createProject({ name, path, type })

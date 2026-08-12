@@ -3,6 +3,7 @@ import type React from "react"
 import { useState } from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
   ProjectNavigationMenuType,
@@ -53,20 +54,6 @@ interface ProjectNavigationListProps {
     projectId?: string,
   ) => void
 }
-
-/**
- * 树形结构的直角分支图标。
- */
-const TreeBranchIcon = (): React.JSX.Element => (
-  <svg
-    className="h-3.5 w-3.5 shrink-0 stroke-current text-white/30"
-    viewBox="0 0 12 12"
-    fill="none"
-    aria-hidden="true"
-  >
-    <path d="M3 1v5h7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
 
 /**
  * 展示项目、文件夹和条目树，并管理文件夹内已完成条目的折叠状态。
