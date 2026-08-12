@@ -27,6 +27,12 @@ export const sessionListStore = {
 
   getCurrentSessionId: (): string | null => currentSessionId,
 
+  // 当前会话的工具执行目录；新会话尚未落库时返回 undefined。
+  getCurrentSessionPath: (): string | undefined => {
+    if (!currentSessionId) return undefined
+    return sessions.find((session) => session.id === currentSessionId)?.cwd
+  },
+
   // 当前标题生成中的会话 id（占位 pulse 判定）。
   getPendingSessionIds: (): Set<string> => pendingSessionIds,
 

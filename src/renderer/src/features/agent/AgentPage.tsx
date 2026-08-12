@@ -4,10 +4,12 @@ import type {
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import type React from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
+import { AgentStatusBar } from "./components/AgentStatusBar"
+import { sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 import type { ChatBlock } from "./types"
@@ -49,6 +51,11 @@ export const AgentPage = ({
 
   const { selectedModel, selectedSelection, hasModelOptions, selectOptions, handleModelChange } =
     useAgentModelSelect()
+  const currentSessionPath = useSyncExternalStore(
+    sessionListStore.subscribe,
+    sessionListStore.getCurrentSessionPath,
+  )
+  const statusBarPath = currentSessionPath ?? currentProjectPath
 
   // 建议问题输入框聚焦引用（回显后定位光标）。
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -156,6 +163,7 @@ export const AgentPage = ({
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />
+      <AgentStatusBar projectPath={statusBarPath} />
     </div>
   )
 }

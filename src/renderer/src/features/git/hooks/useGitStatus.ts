@@ -1,5 +1,6 @@
 import type { GitStatus } from "@shared/contracts/git"
 import { useEffect, useState } from "react"
+import { gitApi } from "@/features/git/api/gitApi"
 
 // 工作区变更属低频事件，轮询间隔 10s 足够感知；窗口重新聚焦时立即刷新。
 const POLL_INTERVAL_MS = 10_000
@@ -22,7 +23,7 @@ export const useGitStatus = (directory: string | undefined): GitStatus | null =>
     let timer: number | null = null
 
     const load = (): void => {
-      void window.api.git.getStatus(directory).then((result) => {
+      void gitApi.getStatus(directory).then((result) => {
         if (isCurrent) setStatus(result)
       })
     }

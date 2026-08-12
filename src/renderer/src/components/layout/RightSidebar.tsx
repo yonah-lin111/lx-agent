@@ -279,7 +279,7 @@ export const RightSideBar = (): React.JSX.Element => {
         isResizing
           ? "transition-none"
           : "transition-[width,min-width,max-width] duration-300 ease-in-out"
-      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-2"}`}
+      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-2 pb-0"}`}
       style={
         isCollapsed
           ? undefined
