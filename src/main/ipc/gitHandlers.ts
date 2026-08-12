@@ -14,4 +14,8 @@ export const registerGitHandlers = (): void => {
     if (!isValidDirectory(directory)) return null
     return gitStatusService.getStatus(directory)
   })
+  ipcMain.handle(GIT_CHANNELS.listWorktrees, (_event, directory: unknown) => {
+    if (!isValidDirectory(directory)) return null
+    return gitStatusService.listWorktrees(directory)
+  })
 }

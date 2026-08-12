@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import type { GitStatus } from "@shared/contracts/git"
+import type { GitStatus, GitWorktreeEntry } from "@shared/contracts/git"
 
 /**
  * Git 工作区只读状态服务。
@@ -48,6 +48,32 @@ export class GitStatusService {
     }
 
     return { branch, changes: { staged, unstaged, untracked } }
+  }
+
+  /**
+   * 列出目录所在仓库的全部工作区；非 git 仓库返回 null。
+   *
+   * --porcelain 每条工作区以 worktree 行开始，branch/detached 行描述检出状态；
+   * 首个条目为主工作区（仓库根，即「默认工作区」）。
+   */
+  listWorktrees(cwd: string): GitWorktreeEntry[] | null {
+    const output = this.run(cwd, ["worktree", "list", "--porcelain"])
+    if (output === null) return null
+
+    const rawEntries: Array<{ path: string; branch: string | null }> = []
+    let current: { path: string; branch: string | null } | null = null
+    for (const line of output.split("\n")) {
+      if (line.startsWith("worktree ")) {
+        if (current) rawEntries.push(current)
+        current = { path: line.slice("worktree ".length), branch: null }
+      } else if (line.startsWith("branch refs/heads/")) {
+        if (current) current.branch = line.slice("branch refs/heads/".length)
+      }
+    }
+    if (current) rawEntries.push(current)
+
+    // 首个条目为主工作区。
+    return rawEntries.map((entry, index) => ({ ...entry, isDefault: index === 0 }))
   }
 }
 

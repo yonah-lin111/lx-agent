@@ -6,13 +6,16 @@ export type MarkdownTemplateCommandId =
   | "commonTemplate"
 
 // Markdown 斜杠命令标识。
-export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summaryTitle"
+export type MarkdownSlashCommandId = MarkdownTemplateCommandId | "summaryTitle" | "gitWorktree"
 
-// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内。
-export type MarkdownSlashCommandScope = "normal" | "template"
+// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，both = 两者皆可。
+export type MarkdownSlashCommandScope = "normal" | "template" | "both"
 
-// Markdown 斜杠命令触发类型：direct = 面板选中即插入内容，confirm = 回显命令文本、二次回车触发。
-export type MarkdownSlashCommandKind = "direct" | "confirm"
+// Markdown 斜杠命令触发类型：
+// - direct = 面板选中即插入内容；
+// - confirm = 回显命令文本、二次回车触发；
+// - select = 回显命令文本后打开二级选择面板，选中回显值、再回车触发。
+export type MarkdownSlashCommandKind = "direct" | "confirm" | "select"
 
 // Markdown 斜杠命令配置。
 export interface MarkdownSlashCommand {
@@ -99,22 +102,64 @@ const summaryTitleCommand: MarkdownSlashCommand = {
   cursorOffset: "/summaryTitle ".length,
 }
 
-// 全部斜杠命令（含确认型），供 armed 判定使用。
-const markdownSlashCommands: MarkdownSlashCommand[] = [...templateCommands, summaryTitleCommand]
+// 模板块内外的 git 工作区切换命令：选择型（回显 /gitWorktree、打开二级工作区面板，选中回显分支名、回车触发切换）。
+const gitWorktreeCommand: MarkdownSlashCommand = {
+  id: "gitWorktree",
+  label: "/gitWorktree",
+  description: "切换当前 git 工作区",
+  scope: "both",
+  kind: "select",
+  content: "/gitWorktree ",
+  cursorOffset: "/gitWorktree ".length,
+}
+
+// 全部斜杠命令（含确认型与选择型），供 armed 判定使用。
+const markdownSlashCommands: MarkdownSlashCommand[] = [
+  ...templateCommands,
+  summaryTitleCommand,
+  gitWorktreeCommand,
+]
 
 /**
- * 判定光标行是否为已武装的确认命令行：行内容与某个确认命令标签完全一致且位于模板块内。
- * 此状态下命令面板不弹出，Enter 直接触发该命令。
+ * 判定光标行为已武装的斜杠命令行，返回对应命令：
+ * - 确认型：行内容与某个确认命令标签完全一致且位于模板块内；
+ * - 选择型：行以「/命令 值」形态存在（标签后带非空值），等待回车触发；
+ * 已武装状态下命令面板不弹出，Enter 直接触发该命令。
  */
+export const getMarkdownArmedSlashCommand = (
+  lineValue: string,
+  isInsideTemplateBlock: boolean,
+): MarkdownSlashCommand | null => {
+  const value = lineValue.trim()
+  return (
+    markdownSlashCommands.find((command) => {
+      if (command.kind === "confirm") {
+        return isInsideTemplateBlock && command.label === value
+      }
+      if (command.kind === "select") {
+        return value.startsWith(`${command.label} `) && value.length > command.label.length + 1
+      }
+      return false
+    }) ?? null
+  )
+}
+
+// 已武装的确认/选择命令行判定（兼容旧调用方）。
 export const isMarkdownConfirmCommandArmed = (
   lineValue: string,
   isInsideTemplateBlock: boolean,
-): boolean => {
-  if (!isInsideTemplateBlock) return false
+): boolean => getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock) !== null
+
+// 提取选择型命令行携带的值（标签后的首个词）；非选择型或缺失时返回 null。
+export const getMarkdownSelectCommandValue = (
+  lineValue: string,
+  isInsideTemplateBlock: boolean,
+): string | null => {
+  const command = getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock)
+  if (!command || command.kind !== "select") return null
   const value = lineValue.trim()
-  return markdownSlashCommands.some(
-    (command) => command.kind === "confirm" && command.label === value,
-  )
+  const rest = value.slice(command.label.length).trim()
+  return rest.length > 0 ? rest : null
 }
 
 /**
@@ -133,10 +178,12 @@ export const getMarkdownSlashCommandLine = (
 
 /**
  * 获取与当前斜杠命令匹配的候选项；按光标所在上下文（模板块内/外）过滤命令可用范围。
+ * isGitWorktreeAvailable 为 false 时排除 git 工作区切换命令（如 virtual 项目无 git 上下文）。
  */
 export const getMarkdownSlashCommands = (
   value: string,
   isInsideTemplateBlock = false,
+  isGitWorktreeAvailable = true,
 ): MarkdownSlashCommand[] => {
   const match = /^\/(\w*)$/i.exec(value)
   if (!match) return []
@@ -144,6 +191,9 @@ export const getMarkdownSlashCommands = (
   const query = match[1].toLowerCase()
   const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
   return markdownSlashCommands.filter(
-    (command) => command.scope === expectedScope && command.id.includes(query),
+    (command) =>
+      (command.scope === expectedScope || command.scope === "both") &&
+      command.id.includes(query) &&
+      (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )
 }

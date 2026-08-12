@@ -22,4 +22,6 @@ export const projectApi = {
     window.api.project.projects.searchFiles(projectId, query),
   searchReferencedFiles: (projectPaths: string[], query: string) =>
     window.api.project.projects.searchReferencedFiles(projectPaths, query),
+  searchDirectoryFiles: (directory: string, query: string) =>
+    window.api.project.projects.searchDirectoryFiles(directory, query),
 }

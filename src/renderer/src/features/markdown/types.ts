@@ -42,6 +42,8 @@ export type MarkdownFileMentionEntry = ProjectFileEntry & {
   mentionPath: string
   projectPath?: string
   source: "current" | "reference"
+  // 当前项目条目所在 git 工作区显示名（分支名优先）；@ 面板用于展示工作区 tag。
+  worktreeName?: string
   // 模板块文件快捷输入的候选来源类型（@ 提及面板不使用）。
   templateKind?: MarkdownTemplateFileKind
 }
@@ -68,10 +70,17 @@ export interface LxMarkdownEditorProps {
     projectPaths: string[],
     query: string,
   ) => Promise<Array<ProjectFileEntry & { projectPath: string }>>
+  // 按绝对目录搜索文件（git 工作区上下文下的 @ 提及用）。
+  onSearchDirectoryFiles?: (directory: string, query: string) => Promise<ProjectFileEntry[]>
   // 已启用（参与 @ 搜索）的共享文件夹绝对路径。
   referencedProjectPaths?: string[]
   // 当前项目文件系统路径；virtual 项目或缺省时底部状态栏不渲染。
   projectPath?: string
+  // 当前条目全局绑定的 git 工作区绝对路径；缺省表示使用项目路径（默认工作区）。
+  worktreePath?: string
+  // 全局工作区绑定变更回调（切换成功/解除绑定时调用，path 为 null 表示回到默认工作区）；
+  // 返回是否持久化成功，供编辑器据实提示。
+  onWorktreePathChange?: (path: string | null) => Promise<boolean> | void
   showLineNumbers?: boolean
   showFolding?: boolean
 }

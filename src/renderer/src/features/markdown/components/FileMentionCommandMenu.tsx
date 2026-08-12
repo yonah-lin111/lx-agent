@@ -166,6 +166,15 @@ export const FileMentionCommandMenu = ({
                   {referenceProjectName ?? "refer-project"}
                 </LxTag>
               )}
+              {file.source === "current" && file.worktreeName && (
+                <LxTag
+                  bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                  className="pointer-events-none ml-6 mt-0.5"
+                  size="small"
+                >
+                  {file.worktreeName}
+                </LxTag>
+              )}
             </div>
           </div>
         )

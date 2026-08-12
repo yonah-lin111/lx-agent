@@ -9,8 +9,11 @@ import {
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
   getMarkdownTemplateStatuses,
+  getMarkdownTemplateWorktree,
+  getMarkdownTemplateWtRanges,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
+  setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
 
@@ -203,6 +206,74 @@ describe("模板块 id", () => {
     expect(getMarkdownTemplateIdRanges(doc)).toEqual([
       { from: endLineId, to: endLineId + `{id:${id}}`.length },
       { from: todoLineId, to: todoLineId + "{id:11111111111111111111111111111111}".length },
+    ])
+  })
+})
+
+describe("模板块工作区绑定 {wt:}", () => {
+  const id = "0123456789abcdef0123456789abcdef"
+
+  it("带 wt 的结束行仍能识别并关闭模板块，且状态解析正常", () => {
+    expect(isInsideMarkdownTemplateBlock(`&&& addTemplate\n内容\n&&& {wt:feature-x}\n`)).toBe(false)
+    expect(isInsideMarkdownTemplateBlock(`&&& addTemplate\n内容\n&&& done {wt:feature-x}\n`)).toBe(
+      false,
+    )
+    expect(getMarkdownTemplateStatus(`&&& {wt:feature-x}`)).toBe("todo")
+    expect(getMarkdownTemplateStatus(`&&& done {id:${id}} {wt:feature-x}`)).toBe("done")
+  })
+
+  it("读取结束行的工作区绑定分支", () => {
+    expect(getMarkdownTemplateWorktree(`&&& {wt:feature-x}`)).toBe("feature-x")
+    expect(getMarkdownTemplateWorktree(`&&& done {id:${id}} {wt:feature-x}`)).toBe("feature-x")
+    expect(getMarkdownTemplateWorktree(`&&& done {id:${id}}`)).toBeNull()
+    expect(getMarkdownTemplateWorktree(`&&& addTemplate`)).toBeNull()
+    expect(getMarkdownTemplateWorktree("普通文本")).toBeNull()
+  })
+
+  it("写入工作区绑定，保留状态与 id", () => {
+    expect(setMarkdownTemplateWorktree(`&&&`, "feature-x")).toBe("&&& {wt:feature-x}")
+    expect(setMarkdownTemplateWorktree(`&&& done {id:${id}}`, "feature-x")).toBe(
+      `&&& done {id:${id}} {wt:feature-x}`,
+    )
+    expect(setMarkdownTemplateWorktree(`&&& in_progress {wt:old}`, "feature-x")).toBe(
+      "&&& in_progress {wt:feature-x}",
+    )
+    expect(setMarkdownTemplateWorktree(`&&& done {id:${id}} {wt:feature-x}`, null)).toBe(
+      `&&& done {id:${id}}`,
+    )
+    expect(setMarkdownTemplateWorktree("普通文本", "feature-x")).toBe("普通文本")
+  })
+
+  it("循环切换状态时保留 wt", () => {
+    expect(cycleMarkdownTemplateStatus(`&&& {wt:feature-x}`)).toBe("&&& in_progress {wt:feature-x}")
+    expect(cycleMarkdownTemplateStatus(`&&& in_progress {wt:feature-x}`)).toBe(
+      "&&& done {wt:feature-x}",
+    )
+    expect(cycleMarkdownTemplateStatus(`&&& done {wt:feature-x}`)).toBe("&&& {wt:feature-x}")
+  })
+
+  it("扫描带 wt 模板块的状态", () => {
+    expect(getMarkdownTemplateStatuses(`&&& addTemplate\n内容\n&&& done {wt:feature-x}`)).toEqual([
+      "done",
+    ])
+  })
+
+  it("定位全部模板块 wt 的源码范围，仅限结束行", () => {
+    const doc = [
+      "前文 {wt:feature-x}",
+      "&&& addTemplate",
+      "- 内容",
+      "&&& done {wt:feature-x}",
+      "正文 {wt:feature-x}",
+      "&&& bugTemplate",
+      "&&& {wt:other/branch}",
+    ].join("\n")
+
+    const firstWt = doc.indexOf("{wt:feature-x}", doc.indexOf("&&& done"))
+    const secondWt = doc.indexOf("{wt:other/branch}")
+    expect(getMarkdownTemplateWtRanges(doc)).toEqual([
+      { from: firstWt, to: firstWt + "{wt:feature-x}".length },
+      { from: secondWt, to: secondWt + "{wt:other/branch}".length },
     ])
   })
 })

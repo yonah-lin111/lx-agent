@@ -1,0 +1,69 @@
+import type { GitStatus, GitWorktreeEntry } from "@shared/contracts/git"
+import { useEffect, useRef, useState } from "react"
+
+/**
+ * 加载目录所在仓库的工作区列表与当前分支，供 /gitWorktree 二级面板与 @ 搜索上下文解析共用。
+ *
+ * projectPath 变化时重新拉取；目录缺失或非 git 仓库时列表为 null。
+ */
+export const useGitWorktrees = (projectPath: string | undefined) => {
+  const [worktrees, setWorktrees] = useState<GitWorktreeEntry[] | null>(null)
+  const [status, setStatus] = useState<GitStatus | null>(null)
+  const requestRef = useRef(0)
+  const projectPathRef = useRef(projectPath)
+
+  useEffect(() => {
+    projectPathRef.current = projectPath
+  }, [projectPath])
+
+  // 主动重拉工作区（打开 /gitWorktree 二级面板时若尚未加载则调用）。
+  const reload = (): void => {
+    const currentPath = projectPathRef.current
+    if (!currentPath) return
+    const requestId = requestRef.current + 1
+    requestRef.current = requestId
+    void Promise.all([
+      window.api.git.listWorktrees(currentPath),
+      window.api.git.getStatus(currentPath),
+    ]).then(([worktreeList, gitStatus]) => {
+      if (requestRef.current !== requestId) return
+      setWorktrees(worktreeList)
+      setStatus(gitStatus)
+    })
+  }
+
+  useEffect(() => {
+    if (!projectPath) {
+      setWorktrees(null)
+      setStatus(null)
+      return
+    }
+
+    const requestId = requestRef.current + 1
+    requestRef.current = requestId
+    let isCurrent = true
+
+    const load = (): void => {
+      void Promise.all([
+        window.api.git.listWorktrees(projectPath),
+        window.api.git.getStatus(projectPath),
+      ]).then(([worktreeList, gitStatus]) => {
+        if (!isCurrent || requestRef.current !== requestId) return
+        setWorktrees(worktreeList)
+        setStatus(gitStatus)
+      })
+    }
+
+    load()
+    window.addEventListener("focus", load)
+    return () => {
+      isCurrent = false
+      window.removeEventListener("focus", load)
+    }
+  }, [projectPath])
+
+  // 当前项目分支（默认工作区展示名）。默认工作区 = 项目路径，无 git 上下文时为 null。
+  const projectBranch = status?.branch ?? null
+
+  return { worktrees, status, projectBranch, reload }
+}

@@ -25,6 +25,8 @@ const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi & Gi
         ipcRenderer.invoke(PROJECT_CHANNELS.searchProjectFiles, projectId, query),
       searchReferencedFiles: (projectPaths: string[], query: string) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.searchReferencedProjectFiles, projectPaths, query),
+      searchDirectoryFiles: (directory: string, query: string) =>
+        ipcRenderer.invoke(PROJECT_CHANNELS.searchDirectoryFiles, directory, query),
     },
     folders: {
       list: (projectId?: string) => ipcRenderer.invoke(PROJECT_CHANNELS.listFolders, projectId),

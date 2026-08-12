@@ -36,6 +36,7 @@ export const createProjectTables = (database: Database.Database): void => {
       name TEXT NOT NULL,
       item_data TEXT,
       enabled_folder_paths TEXT NOT NULL DEFAULT '[]',
+      worktree_path TEXT,
       status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed')),
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL,
@@ -47,4 +48,12 @@ export const createProjectTables = (database: Database.Database): void => {
     CREATE INDEX IF NOT EXISTS idx_project_item_project_id ON project_item(project_id);
     CREATE INDEX IF NOT EXISTS idx_project_item_folder_id ON project_item(project_folder_id);
   `)
+
+  // 旧库迁移：为已存在的 project_item 表补充 worktree_path 列（CREATE TABLE IF NOT EXISTS 不会改动既有表）。
+  const itemColumns = database
+    .prepare("PRAGMA table_info(project_item)")
+    .all() as Array<{ name: string }>
+  if (!itemColumns.some((column) => column.name === "worktree_path")) {
+    database.exec("ALTER TABLE project_item ADD COLUMN worktree_path TEXT")
+  }
 }

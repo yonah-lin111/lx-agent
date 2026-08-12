@@ -34,6 +34,8 @@ export const useProjectEditor = (
   isSaved: boolean
   loadedItemId: string | null
   projectId: string | null
+  worktreePath: string | null
+  setWorktreePath: (path: string | null) => void
   save: () => void
   setContent: (content: string) => void
   setPages: (pages: MarkdownPage[]) => void
@@ -45,11 +47,16 @@ export const useProjectEditor = (
   const [isSaved, setIsSaved] = useState(true)
   const [loadedItemId, setLoadedItemId] = useState<string | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
+  const [worktreePath, setWorktreePathState] = useState<string | null>(null)
   const contentRef = useRef(content)
   const pagesRef = useRef(pages)
   const savedContentRef = useRef("")
   const saveRequestRef = useRef(0)
   const itemStatusRef = useRef<ProjectItemStatus>("todo")
+
+  const setWorktreePath = useCallback((path: string | null): void => {
+    setWorktreePathState(path)
+  }, [])
 
   const setPages = useCallback((nextPages: MarkdownPage[]): void => {
     pagesRef.current = nextPages
@@ -86,6 +93,7 @@ export const useProjectEditor = (
       setIsLoading(true)
       setHasItem(false)
       setProjectId(null)
+      setWorktreePathState(null)
       try {
         const item = itemId
           ? (await projectApi.list()).find((entry) => entry.id === itemId)
@@ -102,6 +110,7 @@ export const useProjectEditor = (
         setContentState(nextContent)
         setHasItem(item !== undefined)
         setProjectId(item?.projectId ?? null)
+        setWorktreePathState(item?.worktreePath ?? null)
         setIsSaved(true)
         setLoadedItemId(itemId)
       } catch (error) {
@@ -176,6 +185,8 @@ export const useProjectEditor = (
     isSaved,
     loadedItemId,
     projectId,
+    worktreePath,
+    setWorktreePath,
     save,
     setContent,
     setPages,

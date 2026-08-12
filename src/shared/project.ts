@@ -36,6 +36,8 @@ export type ProjectItem = {
   itemData: string
   // 该条目启用的共享文件夹路径。新增共享文件夹默认禁用，不在此集合中。
   enabledFolderPaths: string[]
+  // 全局 git 工作区绑定（绝对路径）。缺省时使用项目路径（默认工作区）。
+  worktreePath?: string
   status: ProjectItemStatus
   sortOrder: number
   createdAt: string
@@ -76,6 +78,8 @@ export type UpdateProjectItemInput = {
   itemData?: string
   status?: ProjectItemStatus
   enabledFolderPaths?: string[]
+  // 全局 git 工作区绑定；null 表示解除绑定（回到项目路径）。
+  worktreePath?: string | null
 }
 
 // 渲染进程可调用的项目 IPC 接口。
@@ -92,6 +96,7 @@ export interface ProjectApi {
         projectPaths: string[],
         query: string,
       ) => Promise<ReferencedProjectFileEntry[]>
+      searchDirectoryFiles: (directory: string, query: string) => Promise<ProjectFileEntry[]>
     }
     folders: {
       list: (projectId?: string) => Promise<ProjectFolder[]>

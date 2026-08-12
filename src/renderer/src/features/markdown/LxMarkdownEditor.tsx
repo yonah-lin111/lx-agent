@@ -27,18 +27,27 @@ import { useLxToast } from "@/components/ui/LxToast"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
+  getMarkdownTemplateWtRanges,
   isInsideMarkdownTemplateBlock,
   setMarkdownTemplateTitle,
+  setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import { resolveGitWorktreeTarget } from "@/features/markdown/commands/markdownGitWorktreeCommands"
 import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
-import { isMarkdownConfirmCommandArmed } from "@/features/markdown/commands/markdownSlashCommands"
+import {
+  getMarkdownArmedSlashCommand,
+  getMarkdownSelectCommandValue,
+} from "@/features/markdown/commands/markdownSlashCommands"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
+import { GitWorktreeCommandMenu } from "@/features/markdown/components/GitWorktreeCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
+import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
 import {
   createMarkdownTable,
   editorTheme,
@@ -55,9 +64,9 @@ import {
   markdownHeadingFolding,
 } from "@/features/markdown/extensions/markdownFolding"
 import { useEditorScrollSync } from "@/features/markdown/hooks/useEditorScrollSync"
+import { useGitWorktrees } from "@/features/markdown/hooks/useGitWorktrees"
 import { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import { LxMarkdownPreview } from "@/features/markdown/LxMarkdownPreview"
-import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
 import type {
   LxMarkdownEditorProps,
   MarkdownPreviewMode,
@@ -151,8 +160,11 @@ export const LxMarkdownEditor = ({
   projectId,
   onSearchFiles,
   onSearchReferencedFiles,
+  onSearchDirectoryFiles,
   referencedProjectPaths,
   projectPath,
+  worktreePath,
+  onWorktreePathChange,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -175,11 +187,13 @@ export const LxMarkdownEditor = ({
   )
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
-  const { warning } = useLxToast()
+  const { success, warning, error } = useLxToast()
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
     rightSidebarStore.isCollapsed,
   )
+  // 项目仓库工作区列表（/gitWorktree 二级面板与 @ 搜索上下文共用）。
+  const { worktrees, projectBranch, reload: reloadWorktrees } = useGitWorktrees(projectPath)
   pagesRef.current = pages
   activePageIndexRef.current = activePageIndex
   onPagesChangeRef.current = onPagesChange
@@ -272,19 +286,26 @@ export const LxMarkdownEditor = ({
     activeBlockCommandIndex,
     slashCommandPanel,
     activeSlashCommandIndex,
+    gitWorktreePanel,
+    activeGitWorktreeIndex,
     fileMentionPanel,
     activeFileMentionIndex,
     blockCommandPanelRef,
     activeBlockCommandIndexRef,
     slashCommandPanelRef,
     activeSlashCommandIndexRef,
+    gitWorktreePanelRef,
+    activeGitWorktreeIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
+    closeGitWorktreePanel,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,
+    selectGitWorktree,
+    handleGitWorktreeKey,
     syncFileMentionPanel,
     selectFileMention,
     handleFileMentionKey,
@@ -305,7 +326,13 @@ export const LxMarkdownEditor = ({
     projectId,
     onSearchFiles,
     onSearchReferencedFiles,
+    onSearchDirectoryFiles,
     referencedProjectPaths,
+    projectPath,
+    worktreePath,
+    worktrees,
+    projectBranch,
+    reloadWorktrees,
   })
 
   const { captureScrollAnchor } = useEditorScrollSync({
@@ -608,6 +635,77 @@ export const LxMarkdownEditor = ({
     )
   }
 
+  /**
+   * 触发 git 工作区切换：解析 /gitWorktree <分支名> 命令行。
+   * 模板块内为局部切换（写/移除当前块结束行 {wt:}）；块外为全局切换（回调 onWorktreePathChange 持久化）。
+   * 成功后清除命令行并提示；目标工作区不存在时保留命令行并提示错误。
+   */
+  const runGitWorktreeSwitch = (view: EditorView): void => {
+    const docText = view.state.doc.toString()
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const isInsideTemplate = isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
+    const branch = getMarkdownSelectCommandValue(line.text, isInsideTemplate)
+    if (branch === null || !projectPath) return
+
+    const target = resolveGitWorktreeTarget(branch, worktrees, projectPath, projectBranch)
+    if (!target) {
+      error(`未找到工作区或分支：${branch}`)
+      return
+    }
+
+    // 清除命令行（保留行），避免切换成功/失败后残留命令文本。
+    const clearCommandLine = (): void => {
+      const commandLine = view.state.doc.lineAt(cursor)
+      if (commandLine.text.trim() === "") return
+      view.dispatch({
+        changes: { from: commandLine.from, to: commandLine.to, insert: "" },
+        selection: { anchor: commandLine.from },
+      })
+    }
+
+    if (isInsideTemplate) {
+      // 模板块局部切换：写/移除当前块结束行的 {wt:分支名}。
+      const endLineNumber = getMarkdownTemplateBlockEndLine(docText, cursor)
+      if (endLineNumber === null) return
+      const endDocLine = view.state.doc.line(endLineNumber)
+      const nextEndText = setMarkdownTemplateWorktree(
+        endDocLine.text,
+        target.isDefault ? null : branch,
+      )
+      if (nextEndText !== endDocLine.text) {
+        view.dispatch({
+          changes: { from: endDocLine.from, to: endDocLine.to, insert: nextEndText },
+        })
+      }
+      clearCommandLine()
+      success(target.isDefault ? "已切换回默认工作区" : `模板块已绑定工作区 ${branch}`)
+      view.focus()
+      return
+    }
+
+    // 全局切换：回调持久化到条目；默认工作区传 null 解除绑定。等待结果据实提示。
+    clearCommandLine()
+    const result = onWorktreePathChange?.(target.isDefault ? null : target.path)
+    if (result instanceof Promise) {
+      void result.then(
+        (persisted) => {
+          if (persisted) {
+            success(target.isDefault ? "已切换回默认工作区" : `已切换到工作区 ${branch}`)
+          } else {
+            error(`切换工作区失败：${branch}`)
+          }
+        },
+        () => {
+          error(`切换工作区失败：${branch}`)
+        },
+      )
+    } else {
+      success(target.isDefault ? "已切换回默认工作区" : `已切换到工作区 ${branch}`)
+    }
+    view.focus()
+  }
+
   useEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
@@ -628,20 +726,23 @@ export const LxMarkdownEditor = ({
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
           : []),
-        // 模板块 id 只读：阻止对 id 文本的局部修改。零宽变更仅在光标位于 id 内部时阻止；
-        // 非零宽变更仅当其范围完全落在 id 内时阻止，因此状态循环、整行/整块删除、整篇格式化等
-        // 跨越 id 边界的合法操作不受影响，撤销（整行替换）同样放行。
+        // 模板块 id / 工作区绑定只读：阻止对 {id:...} 与 {wt:...} 文本的局部修改。零宽变更仅在光标
+        // 位于其内部时阻止；非零宽变更仅当其范围完全落在其内部时阻止，因此状态循环、整行/整块删除、
+        // 整篇格式化等跨越边界的合法操作不受影响，撤销（整行替换）同样放行。
         EditorState.transactionFilter.of((tr) => {
           if (!tr.docChanged) return tr
           const source = tr.startState.doc.toString()
-          if (!source.includes("{id:")) return tr
-          const idRanges = getMarkdownTemplateIdRanges(source)
-          if (idRanges.length === 0) return tr
+          if (!source.includes("{id:") && !source.includes("{wt:")) return tr
+          const protectedRanges = [
+            ...getMarkdownTemplateIdRanges(source),
+            ...getMarkdownTemplateWtRanges(source),
+          ]
+          if (protectedRanges.length === 0) return tr
 
           let blocked = false
           tr.changes.iterChanges((from, to) => {
             if (blocked) return
-            for (const range of idRanges) {
+            for (const range of protectedRanges) {
               if (from === to) {
                 if (from > range.from && from < range.to) {
                   blocked = true
@@ -665,6 +766,7 @@ export const LxMarkdownEditor = ({
               key: "ArrowDown",
               run: () =>
                 handleFileMentionKey("ArrowDown") ||
+                handleGitWorktreeKey(1) ||
                 handleSlashCommandKey(1) ||
                 handleBlockCommandKey(1) ||
                 handleTemplateFileKey(1),
@@ -673,6 +775,7 @@ export const LxMarkdownEditor = ({
               key: "ArrowUp",
               run: () =>
                 handleFileMentionKey("ArrowUp") ||
+                handleGitWorktreeKey(-1) ||
                 handleSlashCommandKey(-1) ||
                 handleBlockCommandKey(-1) ||
                 handleTemplateFileKey(-1),
@@ -684,6 +787,15 @@ export const LxMarkdownEditor = ({
                 if (fileMention) {
                   selectFileMention(
                     fileMention.files[activeFileMentionIndexRef.current] ?? fileMention.files[0],
+                  )
+                  return true
+                }
+
+                const gitWorktree = gitWorktreePanelRef.current
+                if (gitWorktree) {
+                  selectGitWorktree(
+                    gitWorktree.options[activeGitWorktreeIndexRef.current] ??
+                      gitWorktree.options[0],
                   )
                   return true
                 }
@@ -716,26 +828,25 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
+                const isInsideTemplate = isInsideMarkdownTemplateBlock(
+                  view.state.doc.sliceString(0, line.from),
+                )
 
-                // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成。
-                if (
-                  isMarkdownConfirmCommandArmed(
-                    line.text,
-                    isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from)),
-                  )
-                ) {
-                  runTemplateTitleGeneration(view)
+                // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成；/gitWorktree 命令行触发工作区切换。
+                const armedCommand = getMarkdownArmedSlashCommand(line.text, isInsideTemplate)
+                if (armedCommand) {
+                  if (armedCommand.kind === "select") {
+                    runGitWorktreeSwitch(view)
+                  } else {
+                    runTemplateTitleGeneration(view)
+                  }
                   return true
                 }
                 const templateEndMatch =
-                  /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?\s*$/.exec(
+                  /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.exec(
                     line.text,
                   )
-                if (
-                  cursor === line.to &&
-                  templateEndMatch &&
-                  isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
-                ) {
+                if (cursor === line.to && templateEndMatch && isInsideTemplate) {
                   const currentIndent = templateEndMatch[1] ?? ""
                   const insertText = `\n${currentIndent}`
                   view.dispatch({
@@ -785,6 +896,10 @@ export const LxMarkdownEditor = ({
                 }
                 if (slashCommandPanelRef.current) {
                   closeSlashCommandPanel()
+                  return true
+                }
+                if (gitWorktreePanelRef.current) {
+                  closeGitWorktreePanel()
                   return true
                 }
                 if (blockCommandPanelRef.current) {
@@ -1025,7 +1140,7 @@ export const LxMarkdownEditor = ({
           />
         )}
       </div>
-      <MarkdownStatusBar projectPath={projectPath} />
+      <MarkdownStatusBar projectPath={worktreePath ?? projectPath} />
       <MarkdownBlockCommandMenu
         activeIndex={activeBlockCommandIndex}
         commands={blockCommandPanel?.commands}
@@ -1037,6 +1152,12 @@ export const LxMarkdownEditor = ({
         commands={slashCommandPanel?.commands}
         position={slashCommandPanel?.position}
         visible={Boolean(slashCommandPanel)}
+      />
+      <GitWorktreeCommandMenu
+        activeIndex={activeGitWorktreeIndex}
+        options={gitWorktreePanel?.options}
+        position={gitWorktreePanel?.position}
+        visible={Boolean(gitWorktreePanel)}
       />
       <FileMentionCommandMenu
         activeIndex={activeFileMentionIndex}

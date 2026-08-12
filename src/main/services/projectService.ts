@@ -59,6 +59,7 @@ type ProjectItemRow = {
   name: string
   item_data: string | null
   enabled_folder_paths: string | null
+  worktree_path: string | null
   status: ProjectItemStatus
   sort_order: number
   created_at: string
@@ -182,6 +183,7 @@ const toItem = (row: ProjectItemRow): ProjectItem => ({
   name: row.name,
   itemData: row.item_data ?? "",
   enabledFolderPaths: getEnabledFolderPaths(row.enabled_folder_paths),
+  worktreePath: row.worktree_path ?? undefined,
   status: row.status,
   sortOrder: row.sort_order,
   createdAt: row.created_at,
@@ -287,6 +289,15 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       }
     }),
 
+  // 按任意绝对目录搜索文件（供 git 工作区上下文的 @ 提及使用）；目录不存在返回 []。
+  searchDirectoryFiles: (directory: string, query: string) => {
+    try {
+      return searchProjectFiles(directory, query)
+    } catch {
+      return []
+    }
+  },
+
   listFolders: (projectId?: string): ProjectFolder[] => {
     const database = getConnection()
     const rows = projectId
@@ -385,7 +396,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
 
   updateItem: (id: string, input: UpdateProjectItemInput): void => {
     const updates: string[] = []
-    const values: string[] = []
+    const values: Array<string | null> = []
 
     if (input.name !== undefined) {
       updates.push("name = ?")
@@ -408,6 +419,10 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       }
       updates.push("enabled_folder_paths = ?")
       values.push(JSON.stringify(normalizeEnabledFolderPaths(input.enabledFolderPaths)))
+    }
+    if (input.worktreePath !== undefined) {
+      updates.push("worktree_path = ?")
+      values.push(input.worktreePath?.trim() || null)
     }
     if (updates.length === 0) return
 
