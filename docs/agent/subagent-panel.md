@@ -64,3 +64,16 @@ interface SubagentPanelData {
 - **工作区**：确认后在 `.worktrees` 新建 worktree（命名 `时间戳-subagent-panel`），在 worktree 内执行全部代码改动；完成 + 自测后询问是否合并回 `dev`。
 - **精确校验**：`pnpm typecheck` + Biome format 受影响文件；跑现有 vitest（main/shared/preload 应仍 209 通过，无回归）；task.ts 桥接改动补 main 侧单测（步骤捕获/快照回传）。
 - 完成检查：无遗留旧导入（`progress` 字段、`AgentToolCallBlock` 的 task 分支、`Bot` icon）、无重复 DTO。
+
+## 7. 实现更新（2026-08-12，dev 已合入 `subagent-block` 分支后）
+
+实际落地与上述计划存在以下差异（代码优先于本文）：
+
+- **面板形态**：改为 **`AgentSubagentPanel` 顶部展开面板**（`AgentPage` 持有 `activeSubagent` 状态，点击 `AgentSubagentBlock` 顶部 label 触发；从头部下方 `translateY(-100% → 0)` 向下展开，恰好覆盖消息列表区域，消息列表保持挂载不卸载，输入框不受遮挡）。面板主体复用 `AgentMessageItem`（`readOnly` 只读模式）渲染子代理完整内部消息时间轴（工具/MCP/skill/文本/思考均可见）。`LxModal` 恢复原状（无 `width` 属性改动）。
+- **面板头部统计**：底部 token 用量 footer 移除，改为头部关闭按钮左侧的统计 icon（`BarChart3`），hover `LxTooltip` 显示 3 行（输入/输出/总计 tokens，一行一个类型）；无快照时不展示统计 icon。面板不再展示任务描述行。
+- **AI 消息聚合**：面板内部消息与 `AgentMessageList` 用同一套分组（`groupAgentMessages` + `buildQaGroups`，已抽离至 `features/agent/messageGrouping.ts` 复用）——一次子代理运行的助手消息 + 工具结果 + 续写合并进**一个** `AgentMessageItem`（`continuationMessages`），不再每条消息一个组件。
+- **滚动按钮接管**：`AgentMessageList` 的滚动到底部按钮新增 `isSubagentPanelOpen` + `subagentScrollRef`（面板消息列表滚动容器）两 prop；面板打开时按钮目标切换为面板消息列表，可见性也改由面板列表滚动位置驱动，关闭后恢复主列表驱动。
+- **用户消息吸顶**：主消息列表吸顶逻辑抽离为 `useMessagePin` hook（`features/agent/hooks/useMessagePin.ts`），`AgentMessageList` 与 `AgentSubagentPanel` 复用——用户消息完全滚出各自视口顶部后 sticky 钉在顶部，面板内同样生效。
+- **快照内容扩展**：`SubagentData` 含 `name` / `description` / `prompt` / `messages`（完整内部上下文）/ `steps` / `usage` / `filePath`。`task` 工具输入新增可选 `name`（AI 分发），顶部 label 展示 `Subagent - {name}(task)`。
+- **持久化已实现**：快照经 `details.subagent` 随 **`ToolResultMessage.subagent`** 落库（复用 `agent_session_entry` 真相源，无需新表）；恢复会话时 renderer 侧 `mergeSubagentSnapshots` 把快照回填到对应 `toolCall` 块，弹窗内容恢复可见。§5「内部步骤落库 v1 内存态」已不再成立。
+- **步骤时间轴**：`AgentSubagentBlock` 第二个直角 icon 行按 `AgentExecutionGroup` 逻辑静态展示 Tool/Thought/MCP/Web Search 计数（不展开）；第三个直角 icon 行展示子代理当前状态（`Idle`/`Working`/`Done`/`Error` 英文文本，按 `toolCall.status` + 快照有无推导）。点击顶部 label 直接打开面板弹窗。

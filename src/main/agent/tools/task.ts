@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import type { AgentMessage, AssistantMessage, TextContent, Usage } from "@shared/contracts/agent"
+import type {
+  AgentMessage,
+  AssistantMessage,
+  SubagentData,
+  SubagentStep,
+  TextContent,
+  Usage,
+} from "@shared/contracts/agent"
 import { z } from "zod"
 import { getAppDataRoot } from "@/paths"
 import { Agent } from "../core/agent"
@@ -21,15 +28,32 @@ const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
 // task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
+  name: z
+    .string()
+    .max(50)
+    .optional()
+    .describe("子代理名称（供 UI 展示；AI 分发时填写，缺失回退 task）"),
   description: z.string().min(1).max(500).describe("子任务说明（供父模型判断是否适合委托）"),
   prompt: z.string().min(1).max(4000).describe("委托给子代理的任务文本"),
 })
 
 // 子代理执行细节（UI/审计用，不进模型上下文）。
 interface SubagentDetails {
-  usage: Usage
-  messageCount: number
-  filePath?: string
+  subagent: SubagentData
+}
+
+// 工具执行结果 → 摘要文本（供步骤时间轴展示）。
+const summarizeToolResult = (result: unknown): string | undefined => {
+  if (!result || typeof result !== "object") return undefined
+  const content = (result as { content?: Array<{ type?: string; text?: string }> }).content
+  const text = content
+    ?.filter((block) => block.type === "text")
+    .map((block) => block.text ?? "")
+    .join("")
+    .trim()
+    .replace(/\s+/g, " ")
+  if (!text) return undefined
+  return text.length > 96 ? `${text.slice(0, 96)}…` : text
 }
 
 // task 工具依赖（agentRunner 装配时注入；execute 时解析）。
@@ -98,7 +122,8 @@ const aggregateUsage = (messages: AgentMessage[]): Usage => {
  * 创建 task 工具：委托独立子任务到进程内嵌套 Agent。
  *
  * 子代理在同一 cwd 内以独立上下文运行自己的工具循环（复用父权限门控），
- * 流式文本经 onUpdate 桥接回父工具（renderer 经 tool_execution_update 展示进度），
+ * 内部消息/工具步骤聚合为 SubagentData 快照，经 onUpdate 与 tool 结果回传
+ * （renderer 展示时间轴 + 弹窗；随 ToolResultMessage 落库，恢复后重建），
  * 最终文本有界回传；父 run abort 级联中止子代理。
  */
 export const createTaskTool = (
@@ -126,15 +151,67 @@ export const createTaskTool = (
         },
       })
 
-      // 子代理流式文本增量桥接回父 task 工具（renderer 经 tool_execution_update 实时可见进度）。
+      // 子代理名（AI 分发；缺失回退 "task"）。
+      const subagentName = params.name?.trim() || "task"
+      // 工具步骤（按 toolCallId 定位，start 推 running / end 更新状态与结果）。
+      const steps = new Map<string, SubagentStep>()
+
+      // 聚合子代理完整上下文（已提交 + 正在流式消息）。
+      const collectMessages = (): AgentMessage[] => {
+        const messages = subAgent.state.messages.slice()
+        const streaming = subAgent.state.streamingMessage
+        if (streaming) messages.push(streaming)
+        return messages
+      }
+
+      // 构建 SubagentData 快照（每次子代理事件推一次，renderer 覆盖不做增量合并）。
+      const buildSubagentData = (filePath?: string): SubagentData => ({
+        name: subagentName,
+        description: params.description,
+        prompt: params.prompt,
+        messages: collectMessages(),
+        steps: [...steps.values()],
+        usage: aggregateUsage(subAgent.state.messages),
+        ...(filePath ? { filePath } : {}),
+      })
+
+      // 子代理事件 → 快照桥接：内部步骤始终捕获，onUpdate 存在时回传快照。
       const unsubscribe = subAgent.subscribe((event) => {
-        if (event.type !== "message_update" || !onUpdate) return
-        if (event.message.role !== "assistant") return
-        const text = event.message.content
-          .filter((block): block is TextContent => block.type === "text")
-          .map((block) => block.text)
-          .join("")
-        if (text) onUpdate({ content: [{ type: "text", text }] })
+        let progress: TextContent | undefined
+        switch (event.type) {
+          case "message_update":
+            // 流式文本增量（父消息流进度文本；子代理面板以 messages 为准）。
+            if (event.message.role === "assistant") {
+              const text = event.message.content
+                .filter((block): block is TextContent => block.type === "text")
+                .map((block) => block.text)
+                .join("")
+              if (text) progress = { type: "text", text }
+            }
+            break
+
+          case "tool_execution_start":
+            steps.set(event.toolCallId, {
+              toolName: event.toolName,
+              args: (event.args as Record<string, unknown>) ?? {},
+              status: "running",
+            })
+            break
+
+          case "tool_execution_end": {
+            const step = steps.get(event.toolCallId)
+            if (step) {
+              step.status = event.isError ? "error" : "done"
+              step.result = summarizeToolResult(event.result)
+            }
+            break
+          }
+        }
+        if (!onUpdate) return
+        onUpdate({
+          content: progress ? [progress] : [],
+          details: { subagent: buildSubagentData() },
+        })
       })
       // 父 run abort → 子代理级联中止。
       const onAbort = (): void => subAgent.abort()
@@ -147,16 +224,12 @@ export const createTaskTool = (
       }
 
       const { text, error } = extractSubagentResult(subAgent.state.messages)
-      const details: SubagentDetails = {
-        usage: aggregateUsage(subAgent.state.messages),
-        messageCount: subAgent.state.messages.filter((message) => message.role === "assistant")
-          .length,
-      }
+      const details: SubagentDetails = { subagent: buildSubagentData() }
       let content: string
       if (text) {
         const bounded = boundSubagentOutput(text)
         content = bounded.content
-        if (bounded.filePath) details.filePath = bounded.filePath
+        if (bounded.filePath) details.subagent.filePath = bounded.filePath
       } else if (error) {
         content = `子代理执行失败：${error}`
       } else {

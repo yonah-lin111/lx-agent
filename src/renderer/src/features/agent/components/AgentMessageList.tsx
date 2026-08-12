@@ -5,7 +5,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
-import type { ChatMessage } from "@/features/agent/types"
+import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
+import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
+import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+
+// 子代理调用块类型（点击 label 打开面板）。
+type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
 interface AgentMessageListProps {
   messages: ChatMessage[]
@@ -20,8 +25,14 @@ interface AgentMessageListProps {
   // 点击建议问题回显到输入框并聚焦。
   onEchoToInput?: (question: string) => void
   onSelectPrompt: (prompt: string) => void
-  onEditMessage?: (id: string, newContent: string) => void
+  onEditMessage?: (messageId: string, newContent: string) => void
   onDeleteMessage?: (messageId: string) => void
+  // 点击子代理 label 打开面板弹窗。
+  onOpenSubagent?: (toolCall: ToolCallBlock) => void
+  // 子代理面板是否打开（打开时滚动按钮接管面板消息列表滚动）。
+  isSubagentPanelOpen?: boolean
+  // 子代理面板消息列表滚动容器（滚动按钮的目标）。
+  subagentScrollRef?: React.RefObject<HTMLDivElement | null>
   // 最后一条 AI 回答被截断/中止时，"继续生成"可用（仅最后一条展示按钮）。
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
@@ -29,54 +40,6 @@ interface AgentMessageListProps {
 }
 
 const NEAR_BOTTOM_THRESHOLD = 40
-
-// AI 消息与同一轮后续消息的展示条目。
-interface AgentMessageListEntry {
-  message: ChatMessage
-  continuationMessages: ChatMessage[]
-}
-
-// QA 对展示组：用户消息作为组头吸顶，紧随其后的 AI 条目作为回复。
-interface AgentMessageListGroup {
-  // 组头用户消息（可能为空的孤立 AI 条目）。
-  userMessage: ChatMessage | null
-  // 紧随其后的 AI 回复条目（可能缺失，如用户消息尚无回复）。
-  assistant: AgentMessageListEntry | null
-}
-
-const groupAgentMessages = (messages: ChatMessage[]): AgentMessageListEntry[] =>
-  messages.reduce<AgentMessageListEntry[]>((entries, message) => {
-    const previousEntry = entries.at(-1)
-
-    if (
-      message.role !== "user" &&
-      message.role !== "compactionSummary" &&
-      previousEntry?.message.role === "assistant"
-    ) {
-      previousEntry.continuationMessages.push(message)
-      return entries
-    }
-
-    entries.push({ message, continuationMessages: [] })
-    return entries
-  }, [])
-
-const buildQaGroups = (entries: AgentMessageListEntry[]): AgentMessageListGroup[] => {
-  const groups: AgentMessageListGroup[] = []
-  for (const entry of entries) {
-    if (entry.message.role === "user") {
-      groups.push({ userMessage: entry.message, assistant: null })
-      continue
-    }
-    const lastGroup = groups.at(-1)
-    if (lastGroup?.userMessage && !lastGroup.assistant) {
-      lastGroup.assistant = entry
-    } else {
-      groups.push({ userMessage: null, assistant: entry })
-    }
-  }
-  return groups
-}
 
 export const AgentMessageList = ({
   messages,
@@ -88,6 +51,9 @@ export const AgentMessageList = ({
   onSelectPrompt,
   onEditMessage,
   onDeleteMessage,
+  onOpenSubagent,
+  isSubagentPanelOpen = false,
+  subagentScrollRef,
   canContinue,
   onContinue,
 }: AgentMessageListProps): React.JSX.Element => {
@@ -111,10 +77,7 @@ export const AgentMessageList = ({
     }
     return -1
   }, [messageGroups])
-  // 当前钉住的用户问题 id。
-  const [pinnedUserMessageId, setPinnedUserMessageId] = useState<string | null>(null)
-  // 各用户消息自然流结束位置的 DOM 引用（按用户消息 id 索引）。
-  const userMessageEndRefs = useRef(new Map<string, HTMLDivElement>())
+  const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
   // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。吸顶定位需读取组顶（= 用户消息自然流顶部）。
   const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
 
@@ -123,36 +86,6 @@ export const AgentMessageList = ({
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD
   }
-
-  // 用户消息在自然流中的底部已完全越过消息列表视口顶部。
-  const hasUserMessageFullyScrolledPast = (
-    messageEnd: HTMLDivElement,
-    container: HTMLDivElement,
-  ): boolean => {
-    if (container.scrollTop <= 0.5) return false
-    const containerTop = container.getBoundingClientRect().top
-    return messageEnd.getBoundingClientRect().top <= containerTop
-  }
-
-  // 仅在用户消息完全离开视口后启用吸顶。
-  const updatePinnedQuestion = (): void => {
-    const container = scrollRef.current
-    if (!container) return
-    let pinnedId: string | null = null
-    for (const [id, messageEnd] of userMessageEndRefs.current) {
-      if (hasUserMessageFullyScrolledPast(messageEnd, container)) {
-        pinnedId = id
-      }
-    }
-    setPinnedUserMessageId(pinnedId)
-  }
-
-  const attachUserMessageEndRef =
-    (messageId: string) =>
-    (el: HTMLDivElement | null): void => {
-      if (el) userMessageEndRefs.current.set(messageId, el)
-      else userMessageEndRefs.current.delete(messageId)
-    }
 
   const attachMessageGroupRef =
     (groupId: string) =>
@@ -165,7 +98,7 @@ export const AgentMessageList = ({
     const nearBottom = isNearBottom()
     stickToBottomRef.current = nearBottom
     setShowScrollToBottom(!nearBottom)
-    updatePinnedQuestion()
+    updatePinnedQuestion(scrollRef.current)
   }
 
   // 会话恢复开始时强制回到吸底，确保骨架屏期间滚动贴底。
@@ -198,7 +131,8 @@ export const AgentMessageList = ({
   }, [showScrollToBottom, scrollButtonRendered])
 
   const scrollToBottom = (): void => {
-    const el = scrollRef.current
+    // 面板打开时滚动面板消息列表，否则滚动主消息列表。
+    const el = isSubagentPanelOpen ? subagentScrollRef?.current : scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }
 
@@ -214,6 +148,28 @@ export const AgentMessageList = ({
     const delta = groupRect.top - (containerRect.top + paddingTop)
     el.scrollTo({ top: el.scrollTop + delta, behavior: "smooth" })
   }
+
+  // 面板打开时，滚动按钮的可见性改由面板消息列表的滚动位置驱动。
+  useEffect(() => {
+    const el = isSubagentPanelOpen ? subagentScrollRef?.current : null
+    if (!el) return
+    const handlePanelScroll = (): void => {
+      setShowScrollToBottom(
+        el.scrollHeight - el.scrollTop - el.clientHeight >= NEAR_BOTTOM_THRESHOLD,
+      )
+    }
+    el.addEventListener("scroll", handlePanelScroll)
+    handlePanelScroll()
+    return () => el.removeEventListener("scroll", handlePanelScroll)
+  }, [isSubagentPanelOpen, subagentScrollRef])
+
+  // 面板关闭后恢复由主消息列表驱动。
+  useEffect(() => {
+    if (isSubagentPanelOpen) return
+    const el = scrollRef.current
+    if (!el) return
+    setShowScrollToBottom(el.scrollHeight - el.scrollTop - el.clientHeight >= NEAR_BOTTOM_THRESHOLD)
+  }, [isSubagentPanelOpen])
 
   // 用户发送新消息后平滑滚动到底部（以 prev 快照判定追加新增）。
   const prevMessagesRef = useRef<ChatMessage[]>(messages)
@@ -296,6 +252,7 @@ export const AgentMessageList = ({
                             setEditingMessageId(null)
                           }}
                           onDelete={onDeleteMessage}
+                          onOpenSubagent={onOpenSubagent}
                         />
                       </div>
                       <div
@@ -318,6 +275,7 @@ export const AgentMessageList = ({
                       onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
                       // 仅最后一组 QA 展示删除入口。
                       onDelete={isLastGroupAi ? onDeleteMessage : undefined}
+                      onOpenSubagent={onOpenSubagent}
                       canContinue={isLastGroupAi ? canContinue : false}
                       onContinue={isLastGroupAi ? onContinue : undefined}
                     />

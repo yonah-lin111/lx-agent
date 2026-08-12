@@ -1,4 +1,4 @@
-import type { AgentMessage } from "@shared/contracts/agent"
+import type { AgentMessage, SubagentData } from "@shared/contracts/agent"
 import type { ChatBlock, ChatMessage } from "./types"
 
 // 提取助手消息的错误信息。
@@ -14,6 +14,13 @@ export const extractToolProgressText = (partialResult: unknown): string | undefi
     .map((block) => block.text ?? "")
     .join("")
   return text || undefined
+}
+
+// 提取工具执行的子代理面板快照（partialResult/result 的 details.subagent）。
+export const extractSubagentData = (partialResult: unknown): SubagentData | undefined => {
+  if (!partialResult || typeof partialResult !== "object") return undefined
+  const details = (partialResult as { details?: { subagent?: SubagentData } }).details
+  return details?.subagent
 }
 
 // 将 shared AgentMessage 转换为展示条目。
@@ -59,6 +66,7 @@ export const toChatMessage = (
             .join("\n"),
           isError: message.isError,
           ...(message.diff ? { diff: message.diff } : {}),
+          ...(message.subagent ? { subagent: message.subagent } : {}),
         },
       ],
       isStreaming: false,
@@ -120,6 +128,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           content: [{ type: "text", text: block.text }],
           isError: block.isError,
           timestamp: Date.now(),
+          ...(block.subagent ? { subagent: block.subagent } : {}),
         },
       ]
     }

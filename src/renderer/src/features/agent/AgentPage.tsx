@@ -9,10 +9,14 @@ import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
 import { AgentStatusBar } from "./components/AgentStatusBar"
+import { AgentSubagentPanel } from "./components/AgentSubagentPanel"
 import { sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 import type { ChatBlock } from "./types"
+
+// 子代理调用块类型（点击 label 打开面板弹窗）。
+type SubagentToolCall = Extract<ChatBlock, { kind: "toolCall" }>
 
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
@@ -119,6 +123,14 @@ export const AgentPage = ({
     [pendingRequest],
   )
 
+  // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
+  const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
+  const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
+    setActiveSubagent(toolCall)
+  }, [])
+  // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
+  const subagentScrollRef = useRef<HTMLDivElement>(null)
+
   if (onNewChatRef) {
     onNewChatRef(createNewChat)
   }
@@ -128,23 +140,35 @@ export const AgentPage = ({
 
   return (
     <div
-      className={`flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent ${
+      className={`relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent ${
         pendingRequest ? "permission-pending" : ""
       }`}
     >
-      <AgentMessageList
-        messages={messages}
-        isStreaming={isStreaming}
-        isRestoring={isRestoring}
-        suggestedQuestionContext={suggestedQuestionContext}
-        onSendSuggestedQuestion={(question) => sendMessage(question, selectedSelection)}
-        onEchoToInput={echoToInput}
-        onSelectPrompt={(prompt) => sendMessage(prompt)}
-        onEditMessage={editMessage}
-        onDeleteMessage={deleteTurn}
-        canContinue={canContinue}
-        onContinue={continueChat}
-      />
+      {/* 消息列表容器：子代理面板从容器顶部向下展开、恰好覆盖消息列表（列表保持挂载不隐藏）。 */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <AgentMessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          isRestoring={isRestoring}
+          suggestedQuestionContext={suggestedQuestionContext}
+          onSendSuggestedQuestion={(question) => sendMessage(question, selectedSelection)}
+          onEchoToInput={echoToInput}
+          onSelectPrompt={(prompt) => sendMessage(prompt)}
+          onEditMessage={editMessage}
+          onDeleteMessage={deleteTurn}
+          onOpenSubagent={openSubagent}
+          isSubagentPanelOpen={activeSubagent !== null}
+          subagentScrollRef={subagentScrollRef}
+          canContinue={canContinue}
+          onContinue={continueChat}
+        />
+        {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
+        <AgentSubagentPanel
+          toolCall={activeSubagent}
+          onClose={() => setActiveSubagent(null)}
+          scrollRef={subagentScrollRef}
+        />
+      </div>
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
