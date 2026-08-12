@@ -148,24 +148,15 @@ export const FileMentionCommandMenu = ({
             <div className="min-w-0 flex-1">
               <div className="flex min-h-8 items-center gap-2">
                 <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} />
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <div
-                    className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
-                  >
+                <div className="min-w-0 flex-1">
+                  <div className={`truncate ${isActive ? "text-white" : "text-white/75"}`}>
                     {file.isDirectory ? `${name}/` : name}
                   </div>
-                  {file.source === "current" && file.worktreeName && (
-                    <LxTag
-                      bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                      className="pointer-events-none shrink-0"
-                      size="small"
-                    >
-                      {file.worktreeName}
-                    </LxTag>
+                  {directory && (
+                    <div className="truncate text-[12px] text-white/40">{directory}</div>
                   )}
                 </div>
               </div>
-              {directory && <div className="truncate text-[12px] text-white/40">{directory}</div>}
               {file.source === "reference" && (
                 <LxTag
                   bgClass="border-violet-400/20 bg-violet-400/10 text-violet-300"
@@ -173,6 +164,15 @@ export const FileMentionCommandMenu = ({
                   size="small"
                 >
                   {referenceProjectName ?? "refer-project"}
+                </LxTag>
+              )}
+              {file.source === "current" && file.worktreeName && (
+                <LxTag
+                  bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                  className="pointer-events-none ml-6 mt-0.5"
+                  size="small"
+                >
+                  {file.worktreeName}
                 </LxTag>
               )}
             </div>
