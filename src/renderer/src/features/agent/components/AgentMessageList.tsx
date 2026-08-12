@@ -7,6 +7,7 @@ import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessa
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
 import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
+import { rightSidebarStore } from "@/lib/rightSidebarStore"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
 // 子代理调用块类型（点击 label 打开面板）。
@@ -106,6 +107,20 @@ export const AgentMessageList = ({
     if (!isRestoring) return
     stickToBottomRef.current = true
   }, [isRestoring])
+
+  // 侧栏首次展开（进入页面）时消息列表吸底：折叠期间容器不可见、滚动位置无法建立，
+  // 展开后布局生效，需重新滚动到底部。仅首次生效，之后展开不打断用户的浏览位置。
+  useEffect(() => {
+    const unsubscribe = rightSidebarStore.subscribe(() => {
+      if (rightSidebarStore.isCollapsed()) return
+      stickToBottomRef.current = true
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+      setShowScrollToBottom(false)
+      unsubscribe()
+    })
+    return unsubscribe
+  }, [])
 
   // 吸底或骨架屏期间内容变化后同步跳到列表底部。
   useLayoutEffect(() => {
