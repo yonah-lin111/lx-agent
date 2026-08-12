@@ -1,5 +1,6 @@
 import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
+import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
@@ -7,9 +8,10 @@ import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { agentApi } from "./api/agent"
+import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
 
-const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi = {
+const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi & GitApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
@@ -51,6 +53,7 @@ const api: ProjectApi & ClipboardApi & SettingsApi & AgentApi & MarkdownApi = {
   },
   agent: agentApi,
   markdown: markdownApi,
+  git: gitApi,
 }
 
 contextBridge.exposeInMainWorld("api", api)

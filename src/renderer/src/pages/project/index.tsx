@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxMarkdownEditor } from "@/features/markdown"
@@ -17,11 +18,29 @@ export const ProjectPage = (): React.JSX.Element => {
   const { hasItem, isLoading, isSaved, loadedItemId, pages, projectId, save, setPages } =
     useProjectEditor(itemId)
   const isItemLoading = isLoading || (itemId !== null && loadedItemId !== itemId)
+  const [projectPath, setProjectPath] = useState<string | undefined>()
   const enabledReferencedFolderPaths = useProjectReferencedFoldersStore((state) =>
     itemId
       ? (state.enabledPathsByItemId[itemId] ?? EMPTY_ENABLED_FOLDER_PATHS)
       : EMPTY_ENABLED_FOLDER_PATHS,
   )
+
+  // 解析当前项目文件系统路径供底部状态栏展示；virtual 项目 path 为空则状态栏整体隐藏。
+  useEffect(() => {
+    if (!projectId) {
+      setProjectPath(undefined)
+      return
+    }
+    let isCurrent = true
+    void projectApi.listProjects().then((projects) => {
+      if (!isCurrent) return
+      const project = projects.find((entry) => entry.id === projectId)
+      setProjectPath(project?.type === "filesystem" ? project.path : undefined)
+    })
+    return () => {
+      isCurrent = false
+    }
+  }, [projectId])
 
   return (
     <div className="relative flex min-w-0 flex-1">
@@ -39,6 +58,7 @@ export const ProjectPage = (): React.JSX.Element => {
           onSearchReferencedFiles={projectApi.searchReferencedFiles}
           onSave={save}
           referencedProjectPaths={enabledReferencedFolderPaths}
+          projectPath={projectPath}
           showFolding={true}
         />
       )}

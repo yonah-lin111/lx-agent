@@ -57,6 +57,7 @@ import {
 import { useEditorScrollSync } from "@/features/markdown/hooks/useEditorScrollSync"
 import { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import { LxMarkdownPreview } from "@/features/markdown/LxMarkdownPreview"
+import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
 import type {
   LxMarkdownEditorProps,
   MarkdownPreviewMode,
@@ -151,6 +152,7 @@ export const LxMarkdownEditor = ({
   onSearchFiles,
   onSearchReferencedFiles,
   referencedProjectPaths,
+  projectPath,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -1023,6 +1025,7 @@ export const LxMarkdownEditor = ({
           />
         )}
       </div>
+      <MarkdownStatusBar projectPath={projectPath} />
       <MarkdownBlockCommandMenu
         activeIndex={activeBlockCommandIndex}
         commands={blockCommandPanel?.commands}

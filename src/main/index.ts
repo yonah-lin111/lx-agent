@@ -6,6 +6,7 @@ import { app, BrowserWindow, nativeImage, protocol } from "electron"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
+import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
@@ -56,6 +57,7 @@ app.whenReady().then(() => {
   registerProjectHandlers()
   registerSettingsHandlers()
   registerMarkdownHandlers()
+  registerGitHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   // MCP server 连接（幂等；失败降级不阻塞），退出时断开避免残留子进程。
