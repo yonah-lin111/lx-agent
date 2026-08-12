@@ -150,6 +150,9 @@ export const AgentMessageItem = ({
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
   )
+  // 吸顶时消息压缩为 1 行，吸顶移除后恢复默认 3 行。
+  const clampLineCount = isPinned ? 1 : 3
+  const clampLineClass = isPinned ? "line-clamp-1" : "line-clamp-3"
 
   // 吸顶居中所需的水平位移 =(容器宽 - 气泡宽)/ 2。flex 对齐不可动画，用 transform 表达，进入/退出双向都能过渡。
   const outerRef = useRef<HTMLDivElement>(null)
@@ -455,9 +458,11 @@ export const AgentMessageItem = ({
     if (!content) return
 
     // 临时移除 line-clamp 以准确测量完整高度
-    const wasClamped = content.classList.contains("line-clamp-3")
+    const wasClamped =
+      content.classList.contains("line-clamp-3") || content.classList.contains("line-clamp-1")
     if (wasClamped) {
       content.classList.remove("line-clamp-3")
+      content.classList.remove("line-clamp-1")
     }
 
     // 显式 height 会覆盖 -webkit-line-clamp 的盒高（clientHeight 返回完整高度而非 3 行高度）。
@@ -465,14 +470,14 @@ export const AgentMessageItem = ({
     const savedHeight = content.style.height
     content.style.height = ""
 
-    content.classList.add("line-clamp-3")
+    content.classList.add(clampLineClass)
     const collapsedHeight = content.clientHeight
-    content.classList.remove("line-clamp-3")
+    content.classList.remove(clampLineClass)
     const fullHeight = content.scrollHeight
     content.style.height = savedHeight
 
     if (wasClamped && !isExpanded) {
-      content.classList.add("line-clamp-3")
+      content.classList.add(clampLineClass)
     }
 
     if (fullHeight > collapsedHeight + 1) {
@@ -486,7 +491,7 @@ export const AgentMessageItem = ({
       setIsClamped(false)
       content.style.height = ""
     }
-  }, [isExpanded])
+  }, [isExpanded, isPinned])
 
   useLayoutEffect(() => {
     if (!isUser || isEditing) return
@@ -519,9 +524,9 @@ export const AgentMessageItem = ({
       setIsClamped(false)
       content.style.height = ""
     } else {
-      // 折叠：恢复 3 行截断高度并挂 line-clamp，无动画瞬时切换。
+      // 折叠：恢复行数截断高度并挂 line-clamp，无动画瞬时切换。
       const lineHeight = Number.parseFloat(window.getComputedStyle(content).lineHeight) || 20
-      content.style.height = `${lineHeight * 3}px`
+      content.style.height = `${lineHeight * clampLineCount}px`
       setIsClamped(true)
     }
     setIsExpanded(nextIsExpanded)
@@ -663,7 +668,7 @@ export const AgentMessageItem = ({
                 ref={userContentRef}
                 className={
                   isClamped
-                    ? "line-clamp-3 overflow-hidden"
+                    ? `${clampLineClass} overflow-hidden`
                     : "custom-scrollbar max-h-[50vh] overflow-y-auto"
                 }
               >
