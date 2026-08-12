@@ -25,6 +25,7 @@ import {
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import {
   MarkdownActionCopyButton,
+  MarkdownActionDeleteButton,
   MarkdownActionFoldButton,
   TemplateStatusButton,
 } from "@/features/markdown/extensions/markdownActionWidgets"
@@ -521,6 +522,8 @@ class CodeBlockActionWidget extends WidgetType {
     readonly foldTitle = "折叠代码块",
     readonly unfoldTitle = "展开代码块",
     readonly templateStatus: TemplateStatusAction | null = null,
+    readonly templateStartLine: number | null = null,
+    readonly onDeleteTemplate: (() => void) | null = null,
   ) {
     super()
   }
@@ -532,7 +535,8 @@ class CodeBlockActionWidget extends WidgetType {
       this.showFoldBtn === other.showFoldBtn &&
       this.actionClassName === other.actionClassName &&
       this.templateStatus?.line === other.templateStatus?.line &&
-      this.templateStatus?.status === other.templateStatus?.status
+      this.templateStatus?.status === other.templateStatus?.status &&
+      this.templateStartLine === other.templateStartLine
     )
   }
 
@@ -559,6 +563,11 @@ class CodeBlockActionWidget extends WidgetType {
           status: this.templateStatus.status,
           onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
         }),
+      )
+    }
+    if (this.templateStatus && this.onDeleteTemplate) {
+      actionNodes.push(
+        createElement(MarkdownActionDeleteButton, { onDelete: this.onDeleteTemplate }),
       )
     }
     actionNodes.push(
@@ -613,6 +622,7 @@ export const markdownMarkerHighlight = (
           (line) => this.cycleTemplateStatus(view, line),
           showFolding,
           getReferencedProjectNames,
+          (startLine, endLine) => this.deleteTemplateBlock(view, startLine, endLine),
         )
       }
 
@@ -652,6 +662,7 @@ export const markdownMarkerHighlight = (
           (line) => this.cycleTemplateStatus(update.view, line),
           showFolding,
           getReferencedProjectNames,
+          (startLine, endLine) => this.deleteTemplateBlock(update.view, startLine, endLine),
         )
       }
 
@@ -680,6 +691,21 @@ export const markdownMarkerHighlight = (
 
         view.dispatch({ changes: { from: docLine.from, to: docLine.to, insert: nextLineText } })
       }
+
+      deleteTemplateBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        // 未闭合模板块（无结束行）视为延伸到文档末尾。
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const startDocLine = doc.line(startLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
     },
     { decorations: (plugin) => plugin.decorations },
   )
@@ -699,6 +725,7 @@ const buildMarkdownMarkerDecorations = (
   onCycleTemplateStatus: (line: number) => void = () => {},
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
+  onDeleteTemplateBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -909,6 +936,8 @@ const buildMarkdownMarkerDecorations = (
             status: templateEndStatus,
             onToggle: onCycleTemplateStatus,
           },
+          i,
+          () => onDeleteTemplateBlock(i, templateEndIndex),
         ),
       })
       allDecos.push({

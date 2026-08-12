@@ -1,4 +1,13 @@
-import { Check, CheckCircle2, ChevronDown, ChevronUp, Circle, CircleDot, Copy } from "lucide-react"
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  CircleDot,
+  Copy,
+  Trash2,
+} from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { MarkdownTemplateStatus } from "@/features/markdown/commands/markdownBlockCommands"
@@ -79,6 +88,27 @@ export const MarkdownActionCopyButton = ({
     </LxTooltip>
   )
 }
+
+// 删除按钮：点击后弹出二次确认，确认后删除当前模板块。
+export const MarkdownActionDeleteButton = ({
+  onDelete,
+}: {
+  onDelete: () => void
+}): React.JSX.Element => (
+  <LxTooltip content="确定删除该模板块？" placement="bottom" onConfirm={onDelete}>
+    <button
+      aria-label="删除模板块"
+      type="button"
+      style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  </LxTooltip>
+)
 
 // 折叠按钮：切换代码块/模板块内容的折叠状态。
 export const MarkdownActionFoldButton = ({
