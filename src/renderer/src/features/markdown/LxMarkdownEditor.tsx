@@ -199,6 +199,18 @@ export const LxMarkdownEditor = ({
   onPagesChangeRef.current = onPagesChange
   const pageModeRef = useRef(pageMode)
   pageModeRef.current = pageMode
+  // git 工作区切换依赖的可变值：EditorState keymap 闭包在首次渲染创建后不再更新，
+  // 通过 ref 持有最新值，供回车触发的 runGitWorktreeSwitch 读取。
+  const worktreesRef = useRef(worktrees)
+  const projectBranchRef = useRef(projectBranch)
+  const projectPathRef = useRef(projectPath)
+  const worktreePathRef = useRef(worktreePath)
+  const onWorktreePathChangeRef = useRef(onWorktreePathChange)
+  worktreesRef.current = worktrees
+  projectBranchRef.current = projectBranch
+  projectPathRef.current = projectPath
+  worktreePathRef.current = worktreePath
+  onWorktreePathChangeRef.current = onWorktreePathChange
   // 模板块标题生成进行中标记，防止并发重复触发。
   const isGeneratingTitleRef = useRef(false)
 
@@ -646,9 +658,16 @@ export const LxMarkdownEditor = ({
     const line = view.state.doc.lineAt(cursor)
     const isInsideTemplate = isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
     const branch = getMarkdownSelectCommandValue(line.text, isInsideTemplate)
-    if (branch === null || !projectPath) return
+    // keymap 闭包为首次渲染捕获，这里必须从 ref 读取最新工作区数据。
+    const currentProjectPath = projectPathRef.current
+    if (branch === null || !currentProjectPath) return
 
-    const target = resolveGitWorktreeTarget(branch, worktrees, projectPath, projectBranch)
+    const target = resolveGitWorktreeTarget(
+      branch,
+      worktreesRef.current,
+      currentProjectPath,
+      projectBranchRef.current,
+    )
     if (!target) {
       error(`未找到工作区或分支：${branch}`)
       return
@@ -686,7 +705,7 @@ export const LxMarkdownEditor = ({
 
     // 全局切换：回调持久化到条目；默认工作区传 null 解除绑定。等待结果据实提示。
     clearCommandLine()
-    const result = onWorktreePathChange?.(target.isDefault ? null : target.path)
+    const result = onWorktreePathChangeRef.current?.(target.isDefault ? null : target.path)
     if (result instanceof Promise) {
       void result.then(
         (persisted) => {
