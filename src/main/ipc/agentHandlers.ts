@@ -114,6 +114,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   ipcMain.handle(AGENT_CHANNELS.continue, async () => agentRunner.continue())
 
+  ipcMain.handle(AGENT_CHANNELS.switchWorktree, (_, path: unknown) => {
+    if (typeof path !== "string" || !path.trim()) {
+      return { ok: false, error: "工作区路径无效。" }
+    }
+    return agentRunner.switchWorktree(path.trim())
+  })
+
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()
   })

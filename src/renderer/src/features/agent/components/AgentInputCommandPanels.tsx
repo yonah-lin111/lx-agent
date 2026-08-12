@@ -5,7 +5,7 @@ import type { CSSProperties } from "react"
 import { useLayoutEffect, useRef } from "react"
 
 export interface AgentInputCommand {
-  id: "clear" | "undo" | "model"
+  id: "clear" | "undo" | "model" | "gitWorktree"
   name: string
   description: string
 }

@@ -8,6 +8,7 @@ import type {
   AgentSendContext,
   AgentSendResult,
   AgentSessionSummary,
+  AgentSwitchWorktreeResult,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
@@ -645,6 +646,20 @@ class AgentRunner {
   renameSession(sessionId: string, title: string): void {
     if (!agentSessionService.getSession(sessionId)) return
     agentSessionService.renameSession(sessionId, title, new Date().toISOString())
+  }
+
+  // 切换当前会话工作区（/gitWorktree）：streaming 中拒绝；更新装配目标并持久化会话 cwd。
+  // 已落库会话直接改 cwd；空白新会话仅更新 requestedCwd（下次 send 创建会话时生效）。
+  // 下次 send 的 ensureReady 检测到 cwd 变化后按新目录重建工具集与 skill 注入。
+  switchWorktree(path: string): AgentSwitchWorktreeResult {
+    if (this.agent?.state.isStreaming) {
+      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    }
+    this.requestedCwd = path
+    if (this.currentSessionId) {
+      agentSessionService.updateSessionCwd(this.currentSessionId, path, new Date().toISOString())
+    }
+    return { ok: true }
   }
 
   // 删除整个会话（含消息与调用）；若是当前会话则脱离，避免残留事件写入已删会话。

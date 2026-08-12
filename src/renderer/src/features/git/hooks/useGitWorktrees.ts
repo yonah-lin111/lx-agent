@@ -1,5 +1,6 @@
 import type { GitStatus, GitWorktreeEntry } from "@shared/contracts/git"
 import { useEffect, useRef, useState } from "react"
+import { gitApi } from "@/features/git/api/gitApi"
 
 /**
  * 加载目录所在仓库的工作区列表与当前分支，供 /gitWorktree 二级面板与 @ 搜索上下文解析共用。
@@ -22,14 +23,13 @@ export const useGitWorktrees = (projectPath: string | undefined) => {
     if (!currentPath) return
     const requestId = requestRef.current + 1
     requestRef.current = requestId
-    void Promise.all([
-      window.api.git.listWorktrees(currentPath),
-      window.api.git.getStatus(currentPath),
-    ]).then(([worktreeList, gitStatus]) => {
-      if (requestRef.current !== requestId) return
-      setWorktrees(worktreeList)
-      setStatus(gitStatus)
-    })
+    void Promise.all([gitApi.listWorktrees(currentPath), gitApi.getStatus(currentPath)]).then(
+      ([worktreeList, gitStatus]) => {
+        if (requestRef.current !== requestId) return
+        setWorktrees(worktreeList)
+        setStatus(gitStatus)
+      },
+    )
   }
 
   useEffect(() => {
@@ -44,14 +44,13 @@ export const useGitWorktrees = (projectPath: string | undefined) => {
     let isCurrent = true
 
     const load = (): void => {
-      void Promise.all([
-        window.api.git.listWorktrees(projectPath),
-        window.api.git.getStatus(projectPath),
-      ]).then(([worktreeList, gitStatus]) => {
-        if (!isCurrent || requestRef.current !== requestId) return
-        setWorktrees(worktreeList)
-        setStatus(gitStatus)
-      })
+      void Promise.all([gitApi.listWorktrees(projectPath), gitApi.getStatus(projectPath)]).then(
+        ([worktreeList, gitStatus]) => {
+          if (!isCurrent || requestRef.current !== requestId) return
+          setWorktrees(worktreeList)
+          setStatus(gitStatus)
+        },
+      )
     }
 
     load()

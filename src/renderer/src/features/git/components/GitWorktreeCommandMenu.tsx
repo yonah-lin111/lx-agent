@@ -1,7 +1,7 @@
 import { GitBranch } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
-import type { GitWorktreeOption } from "@/features/markdown/commands/markdownGitWorktreeCommands"
+import type { GitWorktreeOption } from "@/features/git"
 
 // git 工作区选择面板属性。
 interface GitWorktreeCommandMenuProps {

@@ -5,6 +5,8 @@ import type {
 } from "@shared/contracts/agent"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useLxToast } from "@/components/ui/LxToast"
+import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
@@ -60,6 +62,35 @@ export const AgentPage = ({
     sessionListStore.getCurrentSessionPath,
   )
   const statusBarPath = currentSessionPath ?? currentProjectPath
+
+  // git 工作区列表（/gitWorktree 二级面板数据源；当前会话 cwd 即工作区绑定）。
+  const { worktrees, projectBranch } = useGitWorktrees(currentProjectPath)
+  const worktreeOptions = useMemo(() => {
+    if (!currentProjectPath || worktrees == null) return null
+    return buildGitWorktreeOptions({
+      worktrees,
+      projectPath: currentProjectPath,
+      projectBranch,
+      worktreePath: currentSessionPath,
+    })
+  }, [worktrees, projectBranch, currentProjectPath, currentSessionPath])
+
+  const { success, error } = useLxToast()
+
+  // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
+  const handleWorktreeSelect = useCallback(
+    (path: string): void => {
+      void agentApi.switchWorktree(path).then((result) => {
+        if (result.ok) {
+          success("已切换工作区")
+          void sessionListStore.refresh()
+        } else {
+          error(result.error)
+        }
+      })
+    },
+    [success, error],
+  )
 
   // 建议问题输入框聚焦引用（回显后定位光标）。
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -186,6 +217,8 @@ export const AgentPage = ({
         inputTextareaRef={inputTextareaRef}
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
+        worktreeOptions={worktreeOptions}
+        onWorktreeSelect={handleWorktreeSelect}
       />
       <AgentStatusBar projectPath={statusBarPath} />
     </div>

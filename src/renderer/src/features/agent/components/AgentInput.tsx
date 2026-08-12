@@ -5,6 +5,8 @@ import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import type { GitWorktreeOption } from "@/features/git"
+import { GitWorktreeCommandMenu } from "@/features/git"
 import { projectApi } from "@/features/project/api/projectApi"
 import {
   type AgentInputCommand,
@@ -45,12 +47,17 @@ interface AgentInputProps {
     rememberForSession?: boolean,
     allowAll?: boolean,
   ) => void
+  // git 工作区选项（/gitWorktree 二级面板；null = 无 git 上下文或非 git 仓库）。
+  worktreeOptions: GitWorktreeOption[] | null
+  // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
+  onWorktreeSelect: (path: string) => void
 }
 
 const INPUT_COMMANDS: AgentInputCommand[] = [
   { id: "clear", name: "/clear", description: "清空当前对话" },
   { id: "undo", name: "/undo", description: "撤销上一轮对话" },
   { id: "model", name: "/model", description: "切换 AI 模型" },
+  { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区" },
 ]
 
 const isFuzzyMatch = (query: string, keyword: string): boolean => {
@@ -104,6 +111,8 @@ export const AgentInput = ({
   projectPath,
   pendingRequest,
   onPermissionRespond,
+  worktreeOptions,
+  onWorktreeSelect,
 }: AgentInputProps): React.JSX.Element => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -123,8 +132,11 @@ export const AgentInput = ({
   const [commandIndex, setCommandIndex] = useState(0)
   const [fileIndex, setFileIndex] = useState(0)
   const [modelIndex, setModelIndex] = useState(0)
+  const [worktreeIndex, setWorktreeIndex] = useState(0)
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
-  const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | null>(null)
+  const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | "worktree" | null>(
+    null,
+  )
   // 权限面板状态：选择态 → 确认态（允许全部二次确认）。
   const [permissionPhase, setPermissionPhase] = useState<PermissionPanelPhase>("select")
   const [permissionIndex, setPermissionIndex] = useState(0)
@@ -148,9 +160,21 @@ export const AgentInput = ({
       })
       .filter((model) => !query || `${model.label} ${model.provider}`.toLowerCase().includes(query))
   }, [inputText, modelOptions])
+  const matchedWorktrees = useMemo<GitWorktreeOption[]>(() => {
+    if (!worktreeOptions || worktreeOptions.length === 0 || !inputText.startsWith("/gitWorktree"))
+      return []
+    const query = inputText.slice("/gitWorktree".length).trim().toLowerCase()
+    return worktreeOptions.filter(
+      (option) =>
+        !query ||
+        option.name.toLowerCase().includes(query) ||
+        option.path.toLowerCase().includes(query),
+    )
+  }, [inputText, worktreeOptions])
   const isCommandMode = activeMode === "command" && matchedCommands.length > 0
   const isFileMode = activeMode === "file" && files.length > 0
   const isModelMode = activeMode === "model" && matchedModels.length > 0
+  const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
   // 权限请求挂起时面板独占键盘与其他面板。
   const isPermissionMode = pendingRequest != null
 
@@ -165,7 +189,7 @@ export const AgentInput = ({
         ? "command"
         : isFileMode
           ? "file"
-          : isCommandMode || isModelMode
+          : isCommandMode || isModelMode || isWorktreeMode
             ? "command"
             : null
       if (!kind) {
@@ -198,7 +222,7 @@ export const AgentInput = ({
       window.removeEventListener("resize", scheduleUpdate)
       viewport?.removeEventListener("resize", scheduleUpdate)
     }
-  }, [isPermissionMode, isCommandMode, isFileMode, isModelMode])
+  }, [isPermissionMode, isCommandMode, isFileMode, isModelMode, isWorktreeMode])
 
   useEffect(() => {
     if (!projectId || !projectPath || activeMode !== "file") {
@@ -228,6 +252,14 @@ export const AgentInput = ({
       if (isModelInput) {
         setActiveMode("model")
         setModelIndex(0)
+        setFiles([])
+        return
+      }
+
+      const isWorktreeInput = value === "/gitWorktree" || value.startsWith("/gitWorktree ")
+      if (isWorktreeInput) {
+        setActiveMode("worktree")
+        setWorktreeIndex(0)
         setFiles([])
         return
       }
@@ -294,9 +326,18 @@ export const AgentInput = ({
       onClear()
     } else if (command.id === "undo") {
       onUndo()
-    } else {
+    } else if (command.id === "model") {
       onInputChange("/model ")
+    } else {
+      onInputChange("/gitWorktree ")
     }
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }
+
+  const selectWorktree = (option: GitWorktreeOption): void => {
+    onWorktreeSelect(option.path)
+    onInputChange("")
+    setActiveMode(null)
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
@@ -397,6 +438,28 @@ export const AgentInput = ({
         event.preventDefault()
         const model = matchedModels[modelIndex] ?? matchedModels[0]
         if (model) selectModel(model)
+        return
+      }
+    }
+
+    if (isWorktreeMode) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault()
+        setWorktreeIndex((index) => {
+          const offset = event.key === "ArrowDown" ? 1 : -1
+          return (index + offset + matchedWorktrees.length) % matchedWorktrees.length
+        })
+        return
+      }
+      if (event.key === "Escape") {
+        event.preventDefault()
+        setActiveMode(null)
+        return
+      }
+      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+        event.preventDefault()
+        const option = matchedWorktrees[worktreeIndex] ?? matchedWorktrees[0]
+        if (option) selectWorktree(option)
         return
       }
     }
@@ -526,6 +589,12 @@ export const AgentInput = ({
               position={panelPosition}
               models={matchedModels}
               activeIndex={modelIndex}
+            />
+            <GitWorktreeCommandMenu
+              visible={isWorktreeMode}
+              position={panelPosition ?? undefined}
+              options={matchedWorktrees}
+              activeIndex={worktreeIndex}
             />
             <AgentInputFilePanel
               isOpen={isFileMode}

@@ -5,7 +5,7 @@ import {
   getGitWorktreeDirName,
   getGitWorktreeDisplayName,
   resolveGitWorktreeTarget,
-} from "@/features/markdown/commands/markdownGitWorktreeCommands"
+} from "@/features/git"
 
 // 主工作区 + 关联工作区样例。
 const worktrees: GitWorktreeEntry[] = [

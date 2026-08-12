@@ -20,6 +20,8 @@ export const agentApi = {
     window.api.agent.send(text, selection, context),
   continue: (): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
     window.api.agent.continue(),
+  switchWorktree: (path: string): Promise<{ ok: true } | { ok: false; error: string }> =>
+    window.api.agent.switchWorktree(path),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
   listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),

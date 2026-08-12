@@ -3,6 +3,7 @@ export const AGENT_CHANNELS = {
   send: "agent:send",
   continue: "agent:continue",
   abort: "agent:abort",
+  switchWorktree: "agent:switchWorktree",
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",

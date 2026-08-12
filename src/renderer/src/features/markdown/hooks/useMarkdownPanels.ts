@@ -3,6 +3,12 @@ import type { GitWorktreeEntry } from "@shared/contracts/git"
 import type { ProjectFileEntry, ReferencedProjectFileEntry } from "@shared/project"
 import type { CSSProperties, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
+import {
+  buildGitWorktreeOptions,
+  type GitWorktreeOption,
+  getGitWorktreeDirName,
+  getGitWorktreeDisplayName,
+} from "@/features/git"
 import type {
   MarkdownBlockCommand,
   MarkdownBlockTrigger,
@@ -18,12 +24,6 @@ import {
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
-import {
-  buildGitWorktreeOptions,
-  type GitWorktreeOption,
-  getGitWorktreeDirName,
-  getGitWorktreeDisplayName,
-} from "@/features/markdown/commands/markdownGitWorktreeCommands"
 import { getMarkdownReferenceProjectPaths } from "@/features/markdown/commands/markdownReferenceCommands"
 import type {
   MarkdownSlashCommand,

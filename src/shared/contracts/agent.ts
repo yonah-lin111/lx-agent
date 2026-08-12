@@ -277,6 +277,9 @@ export interface AgentRestoredSession {
 // 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。
 export type AgentSendResult = { ok: true; sessionId: string } | { ok: false; error: string }
 
+// 切换会话工作区（/gitWorktree）的返回结果。
+export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
+
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
@@ -287,6 +290,8 @@ export interface AgentApi {
     ) => Promise<AgentSendResult>
     // 继续生成：续写被截断/中止的上一轮输出（busy 时返回 { ok: false }）。
     continue: () => Promise<AgentSendResult>
+    // 切换当前会话工作区：更新会话工具执行目录（cwd），下次装配按新目录重建工具集。
+    switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
     listSessions: () => Promise<AgentSessionSummary[]>

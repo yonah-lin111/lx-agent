@@ -6,7 +6,6 @@ import {
   Copy,
   Folder,
   FolderPlus,
-  LoaderCircle,
   Pin,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -362,12 +361,24 @@ export const ProjectBottomSideBar = ({
         >
           {isLoading ? (
             <div
-              className={`flex items-center gap-1.5 text-xs text-white/40 transition-opacity duration-300 ease-out ${
+              className={`flex items-center gap-1.5 transition-opacity duration-300 ease-out ${
                 isFadingOut ? "opacity-0" : "opacity-100"
               }`}
             >
-              <LoaderCircle className="h-3.5 w-3.5 animate-spin text-amber-400/80" />
-              <span>加载中...</span>
+              {Array.from({ length: 3 }, (_, index) => (
+                <div
+                  key={index}
+                  className="flex animate-pulse items-center gap-1 rounded-[6px] border border-white/5 bg-white/[0.03] px-2 py-1"
+                >
+                  <div className="h-3 w-3 shrink-0 rounded-[4px] bg-white/10" />
+                  <div
+                    className={`h-3 rounded-[4px] bg-white/10 ${
+                      ["w-16", "w-24", "w-20"][index] ?? "w-20"
+                    }`}
+                  />
+                  <div className="h-2.5 w-2.5 shrink-0 rounded-[4px] bg-white/[0.06]" />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="animate-fade-in flex min-w-0 items-center gap-1">

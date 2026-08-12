@@ -140,6 +140,13 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .run(title, updatedAt, sessionId)
   },
 
+  // 更新会话工具执行目录（/gitWorktree 切换，同步 updated_at）。
+  updateSessionCwd(sessionId: string, cwd: string, updatedAt: string): void {
+    getConnection()
+      .prepare("UPDATE agent_session SET cwd = ?, updated_at = ? WHERE external_id = ?")
+      .run(cwd, updatedAt, sessionId)
+  },
+
   // 批量删除引用指定 entry 的调用记录（entry_id 无级联，必须先删调用再删 entry）。
   deleteCallsByEntryIds(entryIds: string[]): void {
     if (entryIds.length === 0) return

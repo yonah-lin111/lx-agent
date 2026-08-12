@@ -1,5 +1,5 @@
 import type { ProjectItemStatus } from "@shared/project"
-import { Boxes, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
+import { Boxes, BrushCleaning, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -336,11 +336,33 @@ export const ProjectRecentItemsTabs = ({
     setDraggingId(null)
   }, [])
 
+  // 清空最近打开记录。
+  const clearRecentItems = useCallback((): void => {
+    setRecentIds([])
+    writeRecentItemIds([])
+    setCards([])
+  }, [])
+
   if (!isExpanded) return null
 
   return (
     <div className="flex h-full w-full flex-col gap-1 pt-1">
-      <span className="shrink-0 pl-1 text-xs tracking-wide text-white/40">最近打开</span>
+      <div className="flex shrink-0 items-center justify-between pl-1">
+        <span className="text-xs tracking-wide text-white/40">最近打开</span>
+        <LxIconButton
+          aria-label="清除最近打开记录"
+          disabled={recentIds.length === 0}
+          size="small"
+          title={{
+            content: "清除后无法恢复，确定清除所有最近打开记录吗？",
+            placement: "top",
+            title: "清除最近记录",
+            onConfirm: clearRecentItems,
+          }}
+        >
+          <BrushCleaning className="h-3.5 w-3.5" />
+        </LxIconButton>
+      </div>
       <div className="flex min-w-0 items-center gap-1">
         <LxIconButton
           aria-label="向左滚动"

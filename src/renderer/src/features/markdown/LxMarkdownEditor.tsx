@@ -24,6 +24,7 @@ import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
+import { GitWorktreeCommandMenu, resolveGitWorktreeTarget, useGitWorktrees } from "@/features/git"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateBlockContent,
@@ -36,14 +37,12 @@ import {
   setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
-import { resolveGitWorktreeTarget } from "@/features/markdown/commands/markdownGitWorktreeCommands"
 import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import {
   getMarkdownArmedSlashCommand,
   getMarkdownSelectCommandValue,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
-import { GitWorktreeCommandMenu } from "@/features/markdown/components/GitWorktreeCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
@@ -64,7 +63,6 @@ import {
   markdownHeadingFolding,
 } from "@/features/markdown/extensions/markdownFolding"
 import { useEditorScrollSync } from "@/features/markdown/hooks/useEditorScrollSync"
-import { useGitWorktrees } from "@/features/markdown/hooks/useGitWorktrees"
 import { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import { LxMarkdownPreview } from "@/features/markdown/LxMarkdownPreview"
 import type {
