@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
+  Braces,
   ChevronDown,
   Clock,
   CornerDownRight,
@@ -15,8 +16,9 @@ import {
 import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
-import type { AgentDiff, AgentDiffLine, ChatBlock } from "@/features/agent/types"
+import type { AgentDiff, AgentDiffLine, ChatBlock, LspToolDetails } from "@/features/agent/types"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
+import { AgentLspBlock } from "./AgentLspBlock"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -34,6 +36,8 @@ interface AgentToolCallBlockProps {
   toolResult?: ToolResultBlock
   // 写/编辑工具的结构化 diff（随 toolCall 配套传入，用于折叠展示）。
   diff?: AgentDiff
+  // lsp 工具的检索结果（合并组内每个调用一份；流式中尚未返回时缺省）。
+  lspDetails?: LspToolDetails[]
   // 流式输出中默认展开（AI 实时输出可见变更），历史回看默认折叠。
   defaultExpanded?: boolean
 }
@@ -154,6 +158,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   edit: Pencil,
   write: PenLine,
   time: Clock,
+  lsp: Braces,
 }
 
 // 未映射工具使用的兜底图标。
@@ -201,6 +206,7 @@ export const AgentToolCallBlock = ({
   toolCalls,
   toolResult,
   diff,
+  lspDetails,
   defaultExpanded = false,
 }: AgentToolCallBlockProps): React.JSX.Element | null => {
   // diff 折叠状态与展开态内容高度（仅写/编辑工具使用）。
@@ -240,6 +246,11 @@ export const AgentToolCallBlock = ({
   }, [resolvedDiff, isDiffExpanded])
 
   if (!toolCall && !toolCalls?.length && !toolResult) return null
+
+  // lsp 专用结果块：可点击位置行 / hover 文本 / 无结果摘要（对齐 read 的专用分支）。
+  if (toolName === "lsp") {
+    return <AgentLspBlock toolCalls={resolvedToolCalls} details={lspDetails} />
+  }
 
   const displayToolName = toolName.charAt(0).toUpperCase() + toolName.slice(1)
   const readPaths = getToolCallPaths(resolvedToolCalls)

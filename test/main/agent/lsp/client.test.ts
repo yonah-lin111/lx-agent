@@ -1,0 +1,55 @@
+import { fileURLToPath } from "node:url"
+import { describe, expect, it } from "vitest"
+import { LspClient } from "@/agent/lsp/client"
+import type { LspServerSpec } from "@/agent/lsp/server"
+
+// fake LSP server 绝对路径（随测试文件走 node_modules 解析）。
+const FAKE_SERVER = fileURLToPath(new URL("./fixtures/fake-server.mjs", import.meta.url))
+
+const fakeSpec = (): LspServerSpec => ({
+  language: "typescript",
+  command: process.execPath,
+  args: [FAKE_SERVER],
+  rootMarkers: [],
+})
+
+describe("LspClient", () => {
+  it("initialize + 请求往返：位置参数 0-based 原样透传（工具层负责转换）", async () => {
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    await client.initialize("file:///tmp/root")
+    const result = await client.goToDefinition("/tmp/a.ts", 4, 2)
+    // fake server 回显 textDocument.uri 与 position。
+    expect(result).toEqual({
+      uri: "file:///tmp/a.ts",
+      range: { start: { line: 4, character: 2 }, end: { line: 4, character: 3 } },
+    })
+    await client.shutdown()
+  })
+
+  it("spawn 失败（命令不存在）时 initialize 立即 reject", async () => {
+    const client = new LspClient(
+      { language: "typescript", command: "lx-no-such-lsp-binary", args: [], rootMarkers: [] },
+      { initTimeoutMs: 5_000 },
+    )
+    await expect(client.initialize("file:///tmp/root")).rejects.toThrow(/lx-no-such-lsp-binary/)
+    expect(client.isCrashed).toBe(true)
+    await client.shutdown()
+  })
+
+  it("server 不响应时请求超时 reject", async () => {
+    // 经 process.env 传给子进程（LspClient 构造时复制 env）。
+    process.env.FAKE_LSP_HANG = "1"
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 100 })
+    delete process.env.FAKE_LSP_HANG
+    await client.initialize("file:///tmp/root")
+    await expect(client.goToDefinition("/tmp/a.ts", 1, 1)).rejects.toThrow(/超时/)
+    await client.shutdown()
+  })
+
+  it("shutdown 幂等（重复调用不抛错）", async () => {
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    await client.initialize("file:///tmp/root")
+    await client.shutdown()
+    await client.shutdown()
+  })
+})

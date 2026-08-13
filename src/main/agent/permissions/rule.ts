@@ -13,6 +13,7 @@ export const EXEMPT_TOOLS = new Set([
   "time",
   "read_skill",
   "question",
+  "lsp",
 ])
 
 // 规则类别。

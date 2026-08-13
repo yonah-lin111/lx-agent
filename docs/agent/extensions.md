@@ -1,6 +1,6 @@
 # 扩展点设计：工具 / MCP / Skill / 联网搜索
 
-本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、MCP 工具与 Skill 的接入形态、联网搜索、任务清单。内置工具为对齐 pi coding-agent 的十二个：`read` / `ls` / `grep` / `find` / `write` / `edit` / `bash` / `time` / `todowrite` / `web_search` / `webfetch` / `question`；MCP 与 Skill 接入均已实现。
+本文定义 LX Agent Agent 能力的扩展体系：内置工具契约、工具注册机制、MCP 工具与 Skill 的接入形态、联网搜索、任务清单。内置工具为对齐 pi coding-agent 的十四个：`read` / `ls` / `grep` / `find` / `write` / `edit` / `bash` / `time` / `todowrite` / `web_search` / `webfetch` / `task` / `question` / `lsp`；MCP 与 Skill 接入均已实现。
 
 ## 1. AgentTool 契约（对齐 pi）
 
@@ -49,10 +49,10 @@ interface ToolRegistry {
 }
 ```
 
-装配（`agentRunner.createRegistry(cwd, activeTools, mcpToolNames, withReadSkill)`）：
+装配（`agentRunner.createRegistry(cwd, activeTools, mcpToolNames, withReadSkill, taskDeps?, questionDeps?, lspDeps?)`）：
 
-- **注册全集，按能力集激活**：先注册全部内置工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`/`todowrite`/`web_search`/`webfetch`/`question`）+ 已连接 MCP 工具（`wrapMcpTool`，仅命中 `activeMcp` 的注册）+ 条件注册 `read_skill`（存在可用 skill 时）；再 `setActive` 过滤 `ALL_TOOL_NAMES` + 实际注册的 MCP 全名 + `read_skill`。
-- `ALL_TOOL_NAMES` = 内置十二工具（不含 `read_skill`，后者按 `withReadSkill` 单独处理）。
+- **注册全集，按能力集激活**：先注册全部内置工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`/`todowrite`/`web_search`/`webfetch`/`task`/`question`/`lsp`）+ 已连接 MCP 工具（`wrapMcpTool`，仅命中 `activeMcp` 的注册）+ 条件注册 `read_skill`（存在可用 skill 时）；再 `setActive` 过滤 `ALL_TOOL_NAMES` + 实际注册的 MCP 全名 + `read_skill`。
+- `ALL_TOOL_NAMES` = 内置十四工具（不含 `read_skill`，后者按 `withReadSkill` 单独处理）。
 - cwd 来自会话冻结的项目目录（`freezeNewSession`），工具创建时注入；路径类工具统一经 `resolveToCwd` 解析。
 - 能力指纹（`activeCapabilities` + `activeMcp` + 注入 skill 名）任一变化即重建装配（`ensureReady` 内比对 `builtSignature`）。
 
@@ -72,6 +72,7 @@ interface ToolRegistry {
 | `web_search` | `{ query; numResults?; type? }` | 联网搜索公开互联网。Exa 优先、Tavily 兜底；Key 配于 `~/.lx/config.json` 的 `ai.webSearch`；无 Key 保留匿名直连。详见 §5 |
 | `webfetch` | `{ url; format?; timeout? }` | 抓取 URL 原文（HTML→markdown/text）。仅 http/https 公网地址（私网阻断，独立于门控）；**进门控集**；5MB 响应上限；turndown + htmlparser2 转换；渲染并入 webSearch 分组。详见 §5.1 |
 | `question` | `{ questions: { question; content?; header?; options?; multiSelect? }[] }` | 模型执行中向用户提问（选择题/自由文本，question 为纯文本提问，content 为可选 markdown 可含 mermaid，仅交互表单展示）。归**豁免集**；`executionMode: sequential`；消息流内联渲染（`AgentQuestionBlock`），答案经 `question_request` 事件 + `questionResponse` invoke 回灌。详见 [TASKS-v5.md](./TASKS-v5.md) §2 |
+| `lsp` | `{ operation; filePath; line?; character?; query? }` | 基于语言服务器的语义检索（9 操作：goToDefinition/findReferences/hover/documentSymbol/workspaceSymbol/goToImplementation/prepareCallHierarchy/incomingCalls/outgoingCalls）。`line`/`character` 1-based（LSP 0-based 由工具层转换）；`workspaceSymbol` 需 `query`。仅 TS/JS/JSON/HTML/CSS/Python 配启动器（其余语言扩展名映射存在但报"无启动器"）；server 命令缺失时报错并附安装提示，**不自动下载**。归**豁免集**；`executionMode: parallel`；结果落 `details`（`LspToolDetails`，含可点击跳转位置）随消息落库，渲染走 `AgentLspBlock`，点击经 `agent:openFileAt` 用系统编辑器打开。详见 [TASKS-v6.md](./TASKS-v6.md) |
 
 说明：
 

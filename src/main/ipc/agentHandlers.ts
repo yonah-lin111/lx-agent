@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process"
+import { existsSync } from "node:fs"
 import type {
   AgentEvent,
   AgentMessage,
@@ -9,7 +11,7 @@ import type {
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
-import { ipcMain, type WebContents } from "electron"
+import { ipcMain, shell, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
@@ -99,6 +101,37 @@ const isValidQuestionResponse = (value: unknown): value is QuestionResponse => {
       item.answer.every((entry) => typeof entry === "string")
     )
   })
+}
+
+// 命令是否存在于 PATH（跨平台分隔符）。
+const isExecutableOnPath = (command: string): boolean => {
+  const separator = process.platform === "win32" ? ";" : ":"
+  const pathEntries = (process.env.PATH ?? "").split(separator).filter(Boolean)
+  return pathEntries.some((dir) => existsSync(`${dir}/${command}`))
+}
+
+// 系统默认编辑器打开文件（openPath 不支持定位行；失败返回 ok:false）。
+const openWithShell = async (filePath: string): Promise<{ ok: boolean }> => {
+  try {
+    const error = await shell.openPath(filePath)
+    return { ok: error === "" }
+  } catch {
+    return { ok: false }
+  }
+}
+
+// 打开文件并定位行：优先 VS Code CLI（code -g file:line），回退系统默认编辑器。
+const openFileAt = (filePath: string, line: number): Promise<{ ok: boolean }> => {
+  if (isExecutableOnPath("code")) {
+    return new Promise((resolve) => {
+      const child = spawn("code", ["-g", `${filePath}:${line}`], { stdio: "ignore" })
+      child.on("error", () => {
+        void openWithShell(filePath).then(resolve)
+      })
+      child.on("exit", () => resolve({ ok: true }))
+    })
+  }
+  return openWithShell(filePath)
 }
 
 /**
@@ -235,5 +268,12 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     if (!isValidQuestionResponse(response)) return { ok: false }
     const answers = "answers" in response ? response.answers : null
     return { ok: questionManager.respond(response.requestId, answers) }
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.openFileAt, (_, filePath: unknown, line: unknown) => {
+    if (typeof filePath !== "string" || !filePath || typeof line !== "number") {
+      return { ok: false }
+    }
+    return openFileAt(filePath, line)
   })
 }

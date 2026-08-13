@@ -38,7 +38,7 @@
 | # | 决策 | 结论 |
 |---|------|------|
 | 1 | 模式集 | **三态**：`default`（按规则逐次询问）/ `acceptEdits`（write/edit 自动允许）/ `bypassPermissions`（全部放行）。不做 `plan` |
-| 2 | 门控工具 | **`bash` / `write` / `edit` / `task` / `webfetch` + 全部 MCP 工具**（有副作用或可外发数据）；豁免集 `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `web_search` / `question` 永不询问 |
+| 2 | 门控工具 | **`bash` / `write` / `edit` / `task` / `webfetch` + 全部 MCP 工具**（有副作用或可外发数据）；豁免集 `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `web_search` / `question` / `lsp` 永不询问 |
 | 3 | 配置位置 | `~/.lx/config.json` 的 **`agent.permissions`** 节点；设置页"权限"分区读写 |
 | 4 | 规则语法 | 对齐 CC：`ToolName(arg)`，参数支持 glob；优先级 **deny > ask > allow > 模式默认值** |
 | 5 | 评估执行位置 | main 进程 `permissionManager` 单例，挂 **`beforeToolCall` 钩子**（agent-loop 已 `await`，返回 `{ block, reason }` 即阻止） |

@@ -8,6 +8,7 @@ export const TOOL_GROUP_SEPARATORS: Record<string, string> = {
   grep: " | ",
   find: " , ",
   bash: " & ",
+  lsp: " · ",
 }
 
 // 默认预设提示词列表。

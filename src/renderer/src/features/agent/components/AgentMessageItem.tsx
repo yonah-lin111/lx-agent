@@ -32,7 +32,7 @@ import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchB
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
-import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
@@ -252,6 +252,23 @@ export const AgentMessageItem = ({
             } => item.block.kind === "toolResult" && item.block.diff !== undefined,
           )
           .map((item) => [item.block.toolCallId, item.block.diff]),
+      ),
+    [displayBlocks],
+  )
+  // lsp 工具结果（details.lsp）按 toolCallId 索引，供合并组渲染跳转块。
+  const lspDetailsByToolCallId = useMemo(
+    () =>
+      new Map(
+        displayBlocks
+          .filter(
+            (
+              item,
+            ): item is {
+              block: Extract<ChatBlock, { kind: "toolResult" }>
+              isStreaming: boolean
+            } => item.block.kind === "toolResult" && item.block.lsp !== undefined,
+          )
+          .map((item) => [item.block.toolCallId, item.block.lsp]),
       ),
     [displayBlocks],
   )
@@ -902,6 +919,18 @@ export const AgentMessageItem = ({
                 if (block.toolName in TOOL_GROUP_SEPARATORS) {
                   const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
                   if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
+                  // lsp 组：附带合并组内每份检索结果（渲染块复用跳转）。
+                  if (toolGroup[0]?.toolName === "lsp") {
+                    const lspDetails = toolGroup
+                      .map((call) => lspDetailsByToolCallId.get(call.toolCallId))
+                      .filter((entry): entry is LspToolDetails => entry !== undefined)
+                    return [
+                      {
+                        kind: "tool" as const,
+                        node: <AgentToolCallBlock toolCalls={toolGroup} lspDetails={lspDetails} />,
+                      },
+                    ]
+                  }
                   return [
                     { kind: "tool" as const, node: <AgentToolCallBlock toolCalls={toolGroup} /> },
                   ]
