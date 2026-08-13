@@ -1,6 +1,7 @@
 import type {
   AgentDiff,
   AgentMessage,
+  QuestionAnswer,
   QuestionRequest,
   StopReason,
   SubagentData,
@@ -12,6 +13,7 @@ export type {
   AgentEvent,
   AgentMessage,
   DiffLinePart,
+  QuestionAnswer,
   QuestionRequest,
   StopReason,
   SubagentData,
@@ -35,6 +37,8 @@ export type ChatBlock =
       subagent?: SubagentData
       // 挂起的模型提问（question 工具；question_request 事件回填，作答后清除）。
       question?: QuestionRequest
+      // question 工具的用户作答（随消息落库/事件回填，只读展示用）。
+      answers?: QuestionAnswer[]
     }
   | {
       kind: "toolResult"

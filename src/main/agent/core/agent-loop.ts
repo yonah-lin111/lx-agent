@@ -7,7 +7,9 @@ import type {
   AgentDiff,
   AgentMessage,
   AssistantMessage,
+  QuestionAnswer,
   SubagentData,
+  ToolCall,
   ToolResultMessage,
 } from "@shared/contracts/agent"
 import { getDefaultStreamFn } from "./stream-fn"
@@ -467,6 +469,7 @@ async function executeToolCallsParallel(
         config,
         signal,
       )
+      attachQuestionAnswers(assistantMessage, finalized)
       await emitToolExecutionEnd(finalized, emit)
       return finalized
     })
@@ -701,6 +704,20 @@ async function emitToolExecutionEnd(
     result: finalized.result,
     isError: finalized.isError,
   })
+}
+
+// 将 question 工具的用户作答回填到 assistant message 的 toolCall block（随消息落库持久化）。
+const attachQuestionAnswers = (
+  assistantMessage: AssistantMessage,
+  finalized: FinalizedToolCallOutcome,
+): void => {
+  const details = finalized.result.details as { answers?: QuestionAnswer[] } | undefined
+  const answers = details?.answers
+  if (!answers || answers.length === 0) return
+  const block = assistantMessage.content.find(
+    (entry): entry is ToolCall => entry.type === "toolCall" && entry.id === finalized.toolCall.id,
+  )
+  if (block) block.answers = answers
 }
 
 // 由工具执行结果构造 ToolResultMessage。

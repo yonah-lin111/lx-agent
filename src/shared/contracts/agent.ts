@@ -25,6 +25,8 @@ export interface ToolCall {
   id: string
   name: string
   arguments: Record<string, unknown>
+  // question 工具的用户作答（执行完成时回填；随消息落库，供只读展示）。
+  answers?: QuestionAnswer[]
 }
 
 // 模型停止原因。

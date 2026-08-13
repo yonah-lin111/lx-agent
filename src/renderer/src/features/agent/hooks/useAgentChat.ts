@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
 import type { ChatMessage } from "../types"
 import {
+  extractQuestionAnswers,
   extractSubagentData,
   extractToolProgressText,
   toAgentMessages,
@@ -149,6 +150,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
         case "tool_execution_end": {
           // 最终快照（含聚合 usage）随结果回传，覆盖流式期间的中间快照。
           const subagent = extractSubagentData(event.result)
+          const answers = extractQuestionAnswers(event.result)
           setMessages((prev) =>
             prev.map((message) => ({
               ...message,
@@ -157,8 +159,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
                   ? {
                       ...block,
                       status: event.isError ? "error" : "done",
-                      // question 作答完成：清除挂起请求，块退回只读清单。
+                      // question 作答完成：清除挂起请求，块退回只读清单；答案随 block 回填。
                       ...(event.toolName === "question" ? { question: undefined } : {}),
+                      ...(answers !== undefined ? { answers } : {}),
                       ...(subagent !== undefined ? { subagent } : {}),
                     }
                   : block,

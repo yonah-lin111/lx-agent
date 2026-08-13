@@ -64,7 +64,7 @@ export const LxRadio = ({
       />
       <span
         aria-hidden="true"
-        className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/25 bg-black transition-colors before:h-1.5 before:w-1.5 before:rounded-full before:bg-black before:opacity-0 before:transition-opacity peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40"
+        className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/25 transition-colors before:h-1.5 before:w-1.5 before:rounded-full before:bg-black before:opacity-0 before:transition-opacity peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40"
       />
       <span>{label}</span>
     </label>

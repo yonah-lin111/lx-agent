@@ -23,7 +23,7 @@ const questionInputSchema = z.object({
 
 // question 工具依赖（agentRunner 装配时注入；execute 时解析）。
 export interface QuestionToolDeps {
-  // 挂起等待用户作答；返回 null 表示用户未回答（dismiss/abort/超时）。
+  // 挂起等待用户作答；返回 null 表示用户未回答（dismiss/abort）。
   askQuestion: (
     questions: QuestionPrompt[],
     toolCallId: string,
@@ -44,7 +44,7 @@ const formatAnswers = (answers: QuestionAnswer[]): string => {
  * 创建 question 工具：模型执行中向用户提问（选择题或自由文本），答案作为 toolResult 回灌。
  *
  * 纯交互无副作用，归豁免集（EXEMPT_TOOLS）；executionMode: sequential 阻塞交互独占，
- * 避免与同批其它工具并发导致多面板并存。用户 dismiss/abort/超时 → 抛错 → error toolResult → 模型继续。
+ * 避免与同批其它工具并发导致多面板并存。用户 dismiss/abort → 抛错 → error toolResult → 模型继续。
  */
 export const createQuestionTool = (
   deps: QuestionToolDeps,

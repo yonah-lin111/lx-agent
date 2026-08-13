@@ -1,8 +1,5 @@
 import type { QuestionAnswer, QuestionPrompt, QuestionRequest } from "@shared/contracts/agent"
 
-// 提问挂起超时（ms）：超时按"用户未回答"处理，解除挂起让模型自行收尾。
-const QUESTION_TIMEOUT_MS = 5 * 60 * 1000
-
 // 提问请求的待挂起项。
 interface PendingQuestion {
   finish: (answers: QuestionAnswer[] | null) => void
@@ -12,7 +9,7 @@ interface PendingQuestion {
  * 模型执行中提问管理器（main 进程单例）。
  *
  * question 工具执行时挂起：ask 推 question_request 事件到 renderer 命令面板，
- * 等待用户作答（respond）或 dismiss；run abort / 关闭 / 超时均按"用户未回答"（null）
+ * 等待用户作答（respond）或 dismiss；run abort / 关闭均按"用户未回答"（null）
  * 解除挂起——工具据此返回 error toolResult，模型继续自行收尾，对齐 permission fail-safe。
  * 父/子代理共用同一单例（question 为 sequential，天然与 permission 互斥）。
  */
@@ -29,7 +26,7 @@ class QuestionManager {
   }
 
   /**
-   * 挂起一次提问，等待用户作答；返回 null 表示用户未回答（dismiss/abort/超时）。
+   * 挂起一次提问，等待用户作答；返回 null 表示用户未回答（dismiss/abort）。
    */
   ask(
     questions: QuestionPrompt[],
@@ -40,12 +37,10 @@ class QuestionManager {
     const requestId = `${sessionId ?? "global"}:${++this.requestSequence}`
     return new Promise((resolve) => {
       let settled = false
-      const timeout = setTimeout(() => finish(null), QUESTION_TIMEOUT_MS)
       const onAbort = (): void => finish(null)
       const finish = (answers: QuestionAnswer[] | null): void => {
         if (settled) return
         settled = true
-        clearTimeout(timeout)
         signal?.removeEventListener("abort", onAbort)
         this.pending.delete(requestId)
         resolve(answers)

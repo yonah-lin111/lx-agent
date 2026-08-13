@@ -1,5 +1,5 @@
 import type { QuestionAnswer, QuestionPrompt, QuestionRequest } from "@shared/contracts/agent"
-import { CircleHelp, Send } from "lucide-react"
+import { CircleHelp, CornerDownRight, Send } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
@@ -56,7 +56,6 @@ export const AgentQuestionBlock = ({
   const [activeIndex, setActiveIndex] = useState(0)
   const [selections, setSelections] = useState<string[][]>(() => questions.map(() => []))
   const [customTexts, setCustomTexts] = useState<string[]>(() => questions.map(() => ""))
-  const [submitted, setSubmitted] = useState(false)
 
   const requestId = pending?.requestId
 
@@ -65,30 +64,45 @@ export const AgentQuestionBlock = ({
     setActiveIndex(0)
     setSelections(questions.map(() => []))
     setCustomTexts(questions.map(() => ""))
-    setSubmitted(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId])
 
   // 无挂起请求：已作答（done）或请求尚未到达（running 瞬间）——展示只读问题清单。
   if (!pending) {
+    // 按问题文本定位答案（答案随 toolCall 回填/落库恢复）。
+    const answersByQuestion = new Map(
+      (toolCall.answers ?? []).map((answer) => [answer.question, answer.answer]),
+    )
     return (
       <div className="my-0.5 min-w-0">
         <div className="flex items-center gap-1">
           <CircleHelp className="h-3.5 w-3.5 shrink-0 text-sky-300" />
           <span className="font-mono text-[12px] font-bold text-sky-300">Question</span>
-          {submitted && <span className="text-[12px] text-white/45"> · 已提交</span>}
         </div>
         <div className="mt-1 flex min-w-0 flex-col gap-1.5 pl-1">
-          {questions.map((question, index) => (
-            <div key={index} className="min-w-0">
-              {question.header && (
-                <span className="mb-0.5 block w-fit max-w-full truncate rounded-[4px] bg-sky-300/10 px-1.5 py-0.5 text-[12px] text-sky-300">
-                  {question.header}
-                </span>
-              )}
-              <QuestionMarkdown content={question.question} />
-            </div>
-          ))}
+          {questions.map((question, index) => {
+            const answers = answersByQuestion.get(question.question) ?? []
+            return (
+              <div key={index} className="min-w-0">
+                <div className="flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/75">
+                  <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+                  <span className="min-w-0 break-words">{question.question}</span>
+                </div>
+                {answers.length > 0 && (
+                  <div className="ml-4 mt-0.5 flex flex-col gap-0.5">
+                    {answers.map((answer) => (
+                      <div
+                        key={answer}
+                        className="min-w-0 break-words text-[12px] leading-relaxed text-white/50"
+                      >
+                        {answer}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
@@ -144,7 +158,6 @@ export const AgentQuestionBlock = ({
       }
       return { question: question.question, answer }
     })
-    setSubmitted(true)
     void agentApi.questionRespond({ requestId: pending.requestId, answers })
   }
 
@@ -154,124 +167,129 @@ export const AgentQuestionBlock = ({
         <CircleHelp className="h-3.5 w-3.5 shrink-0 text-sky-300" />
         <span className="font-mono text-[12px] font-bold text-sky-300">Question</span>
       </div>
-      <div className="mt-1 min-w-0 pl-1">
-        {/* 多问题 tab 切换。 */}
-        {questions.length > 1 && (
-          <div className="mb-1.5 flex flex-wrap gap-1 border-b border-white/10 pb-1.5">
-            {questions.map((question, index) => {
-              const isActive = index === activeIndex
-              const answered =
-                selections[index]!.length > 0 || customTexts[index]!.trim().length > 0
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={`flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[12px] transition-colors ${
-                    isActive
-                      ? "border-sky-300/40 bg-sky-300/15 text-sky-200"
-                      : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
-                  }`}
-                >
-                  <span className="truncate">{question.header || `问题 ${index + 1}`}</span>
-                  {answered && <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* 当前问题：markdown + 选项/自定义输入。 */}
-        <div className="min-w-0">
-          {activeQuestion.header && questions.length <= 1 && (
-            <span className="mb-1 block w-fit max-w-full truncate rounded-[4px] bg-sky-300/10 px-1.5 py-0.5 text-[12px] text-sky-300">
-              {activeQuestion.header}
-            </span>
+      <div className="mt-1 flex min-w-0 items-start gap-1 pl-1">
+        <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+        <div className="min-w-0 flex-1">
+          {/* 多问题 tab 切换。 */}
+          {questions.length > 1 && (
+            <div className="mb-1.5 flex flex-wrap gap-1 border-b border-white/10 pb-1.5">
+              {questions.map((question, index) => {
+                const isActive = index === activeIndex
+                const answered =
+                  selections[index]!.length > 0 || customTexts[index]!.trim().length > 0
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setActiveIndex(index)}
+                    className={`flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[12px] transition-colors ${
+                      isActive
+                        ? "border-sky-300/40 bg-sky-300/15 text-sky-200"
+                        : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="truncate">{question.header || `问题 ${index + 1}`}</span>
+                    {answered && <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />}
+                  </button>
+                )
+              })}
+            </div>
           )}
-          <QuestionMarkdown content={activeQuestion.question} />
 
-          {activeQuestion.options ? (
-            <>
-              {activeQuestion.multiSelect ? (
-                <div className="mt-1.5 flex flex-col gap-1">
-                  {activeQuestion.options.map((option) => {
-                    const checked = selections[activeIndex]!.includes(option.label)
-                    return (
-                      <label
-                        key={option.label}
-                        className="flex cursor-pointer items-start gap-2 text-[12px] text-white/75"
-                      >
-                        <LxCheckbox
-                          checked={checked}
-                          onChange={(next) => toggleOption(option.label, next)}
-                          aria-label={option.label}
-                        />
-                        <span className="flex min-w-0 flex-col">
-                          <span className="leading-none">{option.label}</span>
-                          {option.description && (
-                            <span className="mt-0.5 text-[10px] leading-none text-white/40">
-                              {option.description}
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-              ) : (
-                <LxRadioGroup
-                  name={`question-${pending.requestId}-${activeIndex}`}
-                  value={selections[activeIndex]![0] ?? ""}
-                  onChange={setSelection}
-                  className="mt-1.5 flex flex-col gap-1"
-                >
-                  {activeQuestion.options.map((option) => (
-                    <LxRadio
-                      key={option.label}
-                      value={option.label}
-                      label={
-                        option.description ? (
+          {/* 当前问题：markdown + 选项/自定义输入。 */}
+          <div className="min-w-0">
+            {activeQuestion.header && questions.length <= 1 && (
+              <span className="mb-1 block w-fit max-w-full truncate rounded-[4px] bg-sky-300/10 px-1.5 py-0.5 text-[12px] text-sky-300">
+                {activeQuestion.header}
+              </span>
+            )}
+            <QuestionMarkdown content={activeQuestion.question} />
+
+            {activeQuestion.options ? (
+              <>
+                {activeQuestion.multiSelect ? (
+                  <div className="mt-1.5 flex flex-col gap-1">
+                    {activeQuestion.options.map((option) => {
+                      const checked = selections[activeIndex]!.includes(option.label)
+                      return (
+                        <label
+                          key={option.label}
+                          className="flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] text-white/75 transition-colors hover:bg-white/[0.04]"
+                        >
+                          <LxCheckbox
+                            checked={checked}
+                            onChange={(next) => toggleOption(option.label, next)}
+                            aria-label={option.label}
+                          />
                           <span className="flex min-w-0 flex-col">
                             <span>{option.label}</span>
-                            <span className="text-[10px] text-white/40">{option.description}</span>
+                            {option.description && (
+                              <span className="mt-0.5 text-[10px] text-white/40">
+                                {option.description}
+                              </span>
+                            )}
                           </span>
-                        ) : (
-                          option.label
-                        )
-                      }
-                    />
-                  ))}
-                </LxRadioGroup>
-              )}
-              <input
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <LxRadioGroup
+                    name={`question-${pending.requestId}-${activeIndex}`}
+                    value={selections[activeIndex]![0] ?? ""}
+                    onChange={setSelection}
+                    className="mt-1.5 flex flex-col gap-1"
+                  >
+                    {activeQuestion.options.map((option) => (
+                      <LxRadio
+                        key={option.label}
+                        value={option.label}
+                        label={
+                          option.description ? (
+                            <span className="flex min-w-0 flex-col">
+                              <span>{option.label}</span>
+                              <span className="text-[10px] text-white/40">
+                                {option.description}
+                              </span>
+                            </span>
+                          ) : (
+                            option.label
+                          )
+                        }
+                      />
+                    ))}
+                  </LxRadioGroup>
+                )}
+                <input
+                  value={customTexts[activeIndex]}
+                  onChange={(event) => setCustomText(event.target.value)}
+                  placeholder="其他（自定义输入）"
+                  className="mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                />
+              </>
+            ) : (
+              <textarea
                 value={customTexts[activeIndex]}
                 onChange={(event) => setCustomText(event.target.value)}
-                placeholder="其他（自定义输入）"
-                className="mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                rows={2}
+                placeholder="输入回答..."
+                className="mt-1.5 min-h-[40px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-[12px] leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
               />
-            </>
-          ) : (
-            <textarea
-              value={customTexts[activeIndex]}
-              onChange={(event) => setCustomText(event.target.value)}
-              rows={2}
-              placeholder="输入回答..."
-              className="mt-1.5 min-h-[40px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-[12px] leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
-            />
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* 提交。 */}
-        <div className="mt-1.5 flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            disabled={!isComplete}
-            onClick={handleSubmit}
-            className="flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
-          >
-            <Send className="h-3 w-3" />
-            提交
-          </button>
+          {/* 提交。 */}
+          <div className="mt-1.5 flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              disabled={!isComplete}
+              onClick={handleSubmit}
+              className="flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
+            >
+              <Send className="h-3 w-3" />
+              提交
+            </button>
+          </div>
         </div>
       </div>
     </div>
