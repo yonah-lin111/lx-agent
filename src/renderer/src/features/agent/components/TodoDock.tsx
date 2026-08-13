@@ -1,44 +1,13 @@
-import type { TodoItem, TodoList } from "@shared/contracts/agent"
-import { ListTodo, Minus, Square, SquareCheckBig } from "lucide-react"
+import type { TodoList } from "@shared/contracts/agent"
+import { ListTodo, Minus } from "lucide-react"
 import type { CSSProperties } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-
-// 状态 icon：方形样式（对齐 checkbox 视觉）——completed=绿勾方 / in_progress=amber 实心方 / pending=空心方。
-// cancelled 按完成语义展示（灰勾方，区别于 completed 的绿色）。
-const TodoStatusIcon = ({
-  status,
-  className = "",
-}: {
-  status: TodoItem["status"]
-  className?: string
-}): React.JSX.Element => {
-  if (status === "completed") {
-    return <SquareCheckBig className={`h-3.5 w-3.5 shrink-0 ${className} text-emerald-400/80`} />
-  }
-  if (status === "in_progress") {
-    return (
-      <span
-        aria-hidden="true"
-        className={`h-3.5 w-3.5 shrink-0 rounded-[2px] bg-amber-400/80 ${className}`}
-      />
-    )
-  }
-  if (status === "cancelled") {
-    return <SquareCheckBig className={`h-3.5 w-3.5 shrink-0 ${className} text-white/30`} />
-  }
-  return <Square className={`h-3.5 w-3.5 shrink-0 ${className} text-white/30`} />
-}
-
-// 已完成/已取消项内容划线（cancelled 按完成语义展示）。
-const isDone = (status: TodoItem["status"]): boolean =>
-  status === "completed" || status === "cancelled"
+import { isTodoDone, TodoStatusIcon } from "@/features/agent/components/TodoStatusIcon"
 
 // 折叠胶囊配色（实心不透明）：全部完成 → 绿；有进行中 → 黄；其余 → 当前深灰。
-const getCapsuleClasses = (
-  todos: TodoList,
-): { bg: string; hoverBg: string; content: string } => {
+const getCapsuleClasses = (todos: TodoList): { bg: string; hoverBg: string; content: string } => {
   const hasInProgress = todos.some((todo) => todo.status === "in_progress")
-  const allDone = todos.every((todo) => isDone(todo.status))
+  const allDone = todos.every((todo) => isTodoDone(todo.status))
   const bg = allDone ? "bg-emerald-400" : hasInProgress ? "bg-amber-400" : "bg-[#303030]"
   const hoverBg = allDone
     ? "hover:bg-emerald-500"
@@ -62,7 +31,7 @@ export const TodoDockButton = ({
   onClick: () => void
 }): React.JSX.Element | null => {
   if (todos.length === 0) return null
-  const done = todos.filter((todo) => isDone(todo.status)).length
+  const done = todos.filter((todo) => isTodoDone(todo.status)).length
   const { bg, hoverBg, content } = getCapsuleClasses(todos)
 
   return (
@@ -100,7 +69,7 @@ export const TodoDock = ({
   onToggleExpanded: (expanded: boolean) => void
 }): React.JSX.Element | null => {
   if (todos.length === 0 || !position || !expanded) return null
-  const done = todos.filter((todo) => isDone(todo.status)).length
+  const done = todos.filter((todo) => isTodoDone(todo.status)).length
 
   return (
     <div
@@ -135,7 +104,7 @@ export const TodoDock = ({
             <TodoStatusIcon status={todo.status} className="mt-[3px]" />
             <span
               className={`min-w-0 flex-1 whitespace-pre-wrap break-words text-[13px] leading-[20px] ${
-                isDone(todo.status) ? "text-white/40 line-through" : "text-white/90"
+                isTodoDone(todo.status) ? "text-white/40 line-through" : "text-white/90"
               }`}
             >
               {todo.content}
