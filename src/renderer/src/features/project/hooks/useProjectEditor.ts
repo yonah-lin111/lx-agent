@@ -2,6 +2,7 @@ import type { MarkdownPage, ProjectItemStatus } from "@shared/project"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useRecentItemsStore } from "@/features/project/recentItemsStore"
 import { parseMarkdownPages } from "@/features/project/utils"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 
@@ -84,6 +85,12 @@ export const useProjectEditor = (
     setContentState(nextContent)
     setIsSaved(nextContent === savedContentRef.current)
   }, [])
+
+  // 打开条目时按 MRU 记录到最近打开列表（不订阅 store，避免无谓重渲染）。
+  useEffect(() => {
+    if (!itemId) return
+    useRecentItemsStore.getState().push(itemId)
+  }, [itemId])
 
   useEffect(() => {
     let isCurrent = true
