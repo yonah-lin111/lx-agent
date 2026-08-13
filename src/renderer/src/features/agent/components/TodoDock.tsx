@@ -34,7 +34,9 @@ const isDone = (status: TodoItem["status"]): boolean =>
   status === "completed" || status === "cancelled"
 
 // 折叠胶囊配色（实心不透明）：全部完成 → 绿；有进行中 → 黄；其余 → 当前深灰。
-const getCapsuleClasses = (todos: TodoList): { bg: string; hoverBg: string; content: string } => {
+const getCapsuleClasses = (
+  todos: TodoList,
+): { bg: string; hoverBg: string; content: string } => {
   const hasInProgress = todos.some((todo) => todo.status === "in_progress")
   const allDone = todos.every((todo) => isDone(todo.status))
   const bg = allDone ? "bg-emerald-400" : hasInProgress ? "bg-amber-400" : "bg-[#303030]"
