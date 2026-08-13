@@ -8,6 +8,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { projectApi } from "@/features/project/api/projectApi"
+import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
@@ -95,6 +96,22 @@ const getMentionQuery = (
   return { start, query }
 }
 
+// 光标是否位于首行（历史浏览只在首行触发行首/空的 ↑）。
+const isOnFirstLine = (cursor: number, text: string): boolean => {
+  const firstLineBreak = text.indexOf("\n")
+  return firstLineBreak === -1 || cursor <= firstLineBreak
+}
+
+// 光标是否位于某行第 0 列（行首）。
+const isAtLineStart = (cursor: number, text: string): boolean =>
+  cursor === 0 || (cursor > 0 && text[cursor - 1] === "\n")
+
+// 光标是否位于末行（历史浏览时 ↓ 只在末行退出/前进）。
+const isOnLastLine = (cursor: number, text: string): boolean => {
+  const lastLineBreak = text.lastIndexOf("\n")
+  return lastLineBreak === -1 || cursor > lastLineBreak
+}
+
 /**
  * Agent 聊天底栏输入框组件。
  */
@@ -152,6 +169,8 @@ export const AgentInput = ({
   const [permissionCollapsed, setPermissionCollapsed] = useState(false)
   // 任务清单展开态：折叠时由右上角图标栏的 TodoDockButton 承载。
   const [todoExpanded, setTodoExpanded] = useState(false)
+  // 历史提示词浏览（全局共享；无面板模式时 ↑↓ 触发）。
+  const { browsing, record, reset, navigate } = usePromptHistory()
   const matchedCommands = useMemo(() => getMatchedCommands(inputText), [inputText])
   const matchedModels = useMemo<AgentInputModel[]>(() => {
     if (!inputText.startsWith("/model")) return []
@@ -368,6 +387,14 @@ export const AgentInput = ({
     refreshPanels(value, event.target.selectionStart)
   }
 
+  // 发送前记录历史提示词（仅输入框发送路径），并退出历史浏览。
+  const handleSend = (): void => {
+    reset()
+    if (!inputText.trim() || isStreaming) return
+    record(inputText)
+    onSend()
+  }
+
   const executeCommand = (command: AgentInputCommand): void => {
     setActiveMode(null)
     if (isStreaming) return
@@ -553,9 +580,34 @@ export const AgentInput = ({
       }
     }
 
+    // 历史提示词浏览（pi 风格）：↑ 在首行行首（或空/浏览中）进入历史，↓ 在末行退出/前进；未命中放行默认光标行为。
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      const cursor = textareaRef.current?.selectionStart ?? inputText.length
+      const direction = event.key === "ArrowUp" ? "up" : "down"
+      const atLineStart = isAtLineStart(cursor, inputText)
+      const canUp =
+        isOnFirstLine(cursor, inputText) && (inputText.length === 0 || browsing || atLineStart)
+      const canDown = browsing && isOnLastLine(cursor, inputText)
+      if ((direction === "up" && canUp) || (direction === "down" && canDown)) {
+        const result = navigate(direction, inputText)
+        if (result) {
+          event.preventDefault()
+          onInputChange(result.text)
+          requestAnimationFrame(() => {
+            const textarea = textareaRef.current
+            if (!textarea) return
+            const nextCursor = result.cursor === "start" ? 0 : result.text.length
+            textarea.setSelectionRange(nextCursor, nextCursor)
+            textarea.focus()
+          })
+          return
+        }
+      }
+    }
+
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
-      if (inputText.trim() && !isStreaming) onSend()
+      handleSend()
     }
   }
 
@@ -594,7 +646,7 @@ export const AgentInput = ({
       shape="circle"
       aria-label="发送消息"
       title={{ content: "发送消息 (Enter)", placement: "top" }}
-      onClick={onSend}
+      onClick={handleSend}
       disabled={!inputText.trim()}
       hoverBgClass="hover:bg-white/90"
       className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"

@@ -13,6 +13,11 @@ export const getAppDataRoot = (): string => join(homedir(), ".lx")
 export const getConfigPath = (): string => join(getAppDataRoot(), "config.json")
 
 /**
+ * 获取提示词历史 JSON 文件路径。
+ */
+export const getPromptHistoryPath = (): string => join(getAppDataRoot(), "prompt-history.json")
+
+/**
  * 获取 SQLite 数据库存储目录。
  */
 export const getDatabaseDir = (): string => join(getAppDataRoot(), "db")
