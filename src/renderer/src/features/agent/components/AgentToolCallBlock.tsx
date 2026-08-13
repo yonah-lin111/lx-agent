@@ -92,6 +92,16 @@ const getSimpleToolSummary = (toolName: string): string | null => {
   return null
 }
 
+// bash 命令最多展示行数，超出部分折叠为省略号。
+const MAX_BASH_LINES = 4
+
+// 将 bash 命令截断为最多 4 行，超出行折叠为省略号。
+const truncateBashCommand = (command: string): string => {
+  const lines = command.split("\n")
+  if (lines.length <= MAX_BASH_LINES) return command
+  return `${lines.slice(0, MAX_BASH_LINES).join("\n")}\n…`
+}
+
 // 收缩路径中间段，保留根目录与最后两个路径段。
 const compactPath = (path: string): string => {
   const isAbsolute = path.startsWith("/")
@@ -123,7 +133,10 @@ const formatToolCommand = (toolName: string, args: Record<string, unknown>): str
   if (toolName === "find") return `find ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "grep") return `grep ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "ls") return `ls ${path}`.trim()
-  if (toolName === "bash") return typeof args.command === "string" ? args.command : "bash"
+  if (toolName === "bash") {
+    const command = typeof args.command === "string" ? args.command : "bash"
+    return truncateBashCommand(command)
+  }
   return null
 }
 
@@ -142,7 +155,10 @@ const formatToolGroupSummary = (toolName: string, toolCalls: ToolCallBlock[]): s
     if (toolName === "find" || toolName === "grep") {
       return `${String(args.pattern ?? "")} ${path ?? "."}`.trim()
     }
-    if (toolName === "bash") return typeof args.command === "string" ? args.command : "bash"
+    if (toolName === "bash") {
+      const command = typeof args.command === "string" ? args.command : "bash"
+      return truncateBashCommand(command)
+    }
     return JSON.stringify(args)
   })
   return entries.join(separator)
