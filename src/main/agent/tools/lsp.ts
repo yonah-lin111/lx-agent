@@ -195,6 +195,8 @@ const collectDocumentSymbols = async (
       visitDocumentSymbol(symbol, 0)
     } else {
       const info = symbol as SymbolInformation
+      // vscode-css-language-server 对 @import/@keyframes 等符号不返回 location，跳过。
+      if (!info.location) continue
       const start = info.location.range.start
       const label = info.containerName
         ? `${info.name} (${kindName(info.kind)}, ${info.containerName})`
@@ -453,6 +455,8 @@ const collectWorkspaceSymbols = async (
   const results: LspLocationResult[] = []
   const lines: string[] = []
   for (const info of symbols ?? []) {
+    // workspace/symbol 同样可能返回缺 location 的符号，跳过避免崩溃。
+    if (!info.location) continue
     const start = info.location.range.start
     const label = info.containerName
       ? `${info.name} (${kindName(info.kind)}, ${info.containerName})`

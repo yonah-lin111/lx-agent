@@ -66,6 +66,18 @@ describe("LspClient", () => {
     await client.shutdown()
   })
 
+  it("“No Project” 连续多次仍自动重试成功（指数退避窗口）", async () => {
+    const filePath = makeTempFile("a.ts", "export function source() {}\n")
+    // 前两次 documentSymbol 抛 "No Project"（重试 2 次后成功），覆盖多次重试路径。
+    process.env.FAKE_LSP_NOPROJECT = "2"
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    delete process.env.FAKE_LSP_NOPROJECT
+    await client.initialize("file:///tmp/root")
+    const symbols = await client.documentSymbol(filePath)
+    expect((symbols as Array<{ name: string }>)[0]?.name).toBe("opened-symbol")
+    await client.shutdown()
+  })
+
   it("spawn 失败（命令不存在）时 initialize 立即 reject", async () => {
     const client = new LspClient(
       { language: "typescript", command: "lx-no-such-lsp-binary", args: [], rootMarkers: [] },

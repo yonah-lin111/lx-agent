@@ -47,8 +47,9 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise
   })
 
 // "No Project" 错误重试上限（tsserver 首连项目加载竞态，重试即可成功）。
-const MAX_NO_PROJECT_RETRIES = 3
-// 重试间隔基数（ms），随重试次数线性放大。
+// 大项目首次加载可能数秒，线性退避窗口不足，改指数退避覆盖。
+const MAX_NO_PROJECT_RETRIES = 5
+// 重试间隔基数（ms），指数退避放大：150 → 300 → 600 → 1200 → 2400（累计 ~4.6s）。
 const NO_PROJECT_RETRY_BASE_MS = 150
 
 // 判断是否为 tsserver 项目未就绪错误（首连并行时偶发）。
@@ -209,7 +210,7 @@ export class LspClient {
         return result
       } catch (error) {
         if (attempt < MAX_NO_PROJECT_RETRIES && isNoProjectError(error)) {
-          await sleep(NO_PROJECT_RETRY_BASE_MS * (attempt + 1))
+          await sleep(NO_PROJECT_RETRY_BASE_MS * 2 ** attempt)
           continue
         }
         throw error

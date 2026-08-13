@@ -23,10 +23,10 @@ class RecordingClient {
     return this.result as never
   }
   async documentSymbol() {
-    return null
+    return this.result as never
   }
   async workspaceSymbol() {
-    return null
+    return this.result as never
   }
   async goToImplementation() {
     return null
@@ -235,5 +235,76 @@ describe("createLspTool", () => {
     })
     expect((result.content[0] as { text: string }).text).toContain("boom")
     expect((result.details as { error: string }).error).toBe("boom")
+  })
+
+  it("documentSymbol：location 缺失的符号跳过（CSS @import 等），不崩溃", async () => {
+    const cwd = makeTempCwd()
+    writeFileSync(join(cwd, "a.css"), "@import url(x.css);\n.rule { color: red; }\n")
+    const client = new RecordingClient()
+    // 混合：一个无 location 的符号（CSS server 对 @import 等返回 undefined）+ 一个正常符号。
+    client.result = [
+      { name: "import", kind: 21, location: undefined },
+      {
+        name: "rule",
+        kind: 7,
+        location: {
+          uri: pathToFileURL(join(cwd, "a.css")).toString(),
+          range: { start: { line: 1, character: 1 }, end: { line: 1, character: 22 } },
+        },
+      },
+    ]
+    const manager = {
+      getClient: async (): Promise<LspClientResult> => ({ client: client as unknown as LspClient }),
+    }
+    const tool = createLspTool({
+      lspManager: manager as unknown as LspManager,
+      getSessionId: () => "s1",
+      cwd,
+    } satisfies LspToolDeps)
+    const result = await tool.execute("1", {
+      operation: "documentSymbol",
+      filePath: "a.css",
+      line: 1,
+      character: 1,
+    })
+    // 只保留有 location 的符号，无 location 的被跳过而非崩溃。
+    const text = (result.content[0] as { text: string }).text
+    expect(text).toContain("rule")
+    expect(text).not.toContain("import")
+    expect((result.details as { results: unknown[] }).results.length).toBe(1)
+  })
+
+  it("workspaceSymbol：location 缺失的符号跳过", async () => {
+    const cwd = makeTempCwd()
+    writeFileSync(join(cwd, "a.css"), ".rule { color: red; }\n")
+    const client = new RecordingClient()
+    client.result = [
+      { name: "orphan", kind: 21, location: undefined },
+      {
+        name: "rule",
+        kind: 7,
+        location: {
+          uri: pathToFileURL(join(cwd, "a.css")).toString(),
+          range: { start: { line: 0, character: 1 }, end: { line: 0, character: 22 } },
+        },
+      },
+    ]
+    const manager = {
+      getClient: async (): Promise<LspClientResult> => ({ client: client as unknown as LspClient }),
+    }
+    const tool = createLspTool({
+      lspManager: manager as unknown as LspManager,
+      getSessionId: () => "s1",
+      cwd,
+    } satisfies LspToolDeps)
+    const result = await tool.execute("1", {
+      operation: "workspaceSymbol",
+      filePath: "a.css",
+      query: "rule",
+    })
+    const text = (result.content[0] as { text: string }).text
+    expect(text).toContain("rule")
+    expect(text).not.toContain("orphan")
+    expect((result.details as { results: unknown[] }).results.length).toBe(1)
   })
 })
