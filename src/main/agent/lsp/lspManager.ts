@@ -1,16 +1,52 @@
+import { spawn } from "node:child_process"
 import { extname } from "node:path"
 import { pathToFileURL } from "node:url"
 import { LspClient } from "./client"
 import { LANGUAGE_EXTENSIONS } from "./language"
 import { findWorkspaceRoot, type LspServerSpec, resolveServer } from "./server"
 
-// server 命令 → 安装提示（spawn 失败回灌给模型）。
-const INSTALL_HINTS: Record<string, string> = {
-  "typescript-language-server": "npm install -g typescript-language-server",
-  "vscode-json-language-server": "npm install -g vscode-langservers-extracted",
-  "vscode-html-language-server": "npm install -g vscode-langservers-extracted",
-  "vscode-css-language-server": "npm install -g vscode-langservers-extracted",
-  "pyright-langserver": "npm install -g pyright",
+// server 命令 → 安装的 npm 包（懒安装与手动安装提示共用）。
+const SERVER_PACKAGES: Record<string, string> = {
+  "typescript-language-server": "typescript-language-server",
+  "vscode-json-language-server": "vscode-langservers-extracted",
+  "vscode-html-language-server": "vscode-langservers-extracted",
+  "vscode-css-language-server": "vscode-langservers-extracted",
+  "pyright-langserver": "pyright",
+}
+
+// 懒安装超时（npm install -g 可能拉取较大包）。
+const LSP_INSTALL_TIMEOUT_MS = 120_000
+
+// 判断是否为命令缺失（spawn ENOENT）——懒安装触发条件；其他启动失败不触发。
+const isMissingCommandError = (error: unknown): boolean =>
+  (error as NodeJS.ErrnoException)?.code === "ENOENT"
+
+// 包安装器（测试注入桩替换真实 npm）。
+export type PackageInstaller = (packageName: string) => Promise<boolean>
+
+// 默认安装器：npm install -g <package>；成功返回 true，失败/超时返回 false。
+const installWithNpm: PackageInstaller = async (packageName) => {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn("npm", ["install", "-g", packageName], { stdio: "ignore" })
+      const timer = setTimeout(() => {
+        child.kill()
+        reject(new Error("安装超时"))
+      }, LSP_INSTALL_TIMEOUT_MS)
+      child.on("error", (error) => {
+        clearTimeout(timer)
+        reject(error)
+      })
+      child.on("exit", (code) => {
+        clearTimeout(timer)
+        if (code === 0) resolve()
+        else reject(new Error(`npm install 退出码 ${code}`))
+      })
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 // getClient 结果：可用 client 或错误信息（不支持语言/无启动器/启动失败）。
@@ -23,13 +59,21 @@ export type LspClientFactory = (spec: LspServerSpec) => LspClient
  * 会话级 LSP server 缓存（对齐 permissionManager 单例）：
  * sessionId → (language → LspClient)。首次调用 spawn + initialize 后缓存复用，
  * 切换会话/应用退出时 clearSession kill 全部进程。
+ * 懒安装：命令缺失（ENOENT）时自动 npm 安装后重建 client 重试一次。
  */
 export class LspManager {
   private readonly sessions = new Map<string, Map<string, LspClient>>()
   private readonly clientFactory: LspClientFactory
+  private readonly installer: PackageInstaller
+  // 并发安装去重：package → 进行中的安装 Promise。
+  private readonly installsInFlight = new Map<string, Promise<boolean>>()
 
-  constructor(clientFactory: LspClientFactory = (spec) => new LspClient(spec)) {
+  constructor(
+    clientFactory: LspClientFactory = (spec) => new LspClient(spec),
+    installer: PackageInstaller = installWithNpm,
+  ) {
     this.clientFactory = clientFactory
+    this.installer = installer
   }
 
   // 获取会话内指定文件的 LSP client；首次调用时按语言解析 server 并 spawn。
@@ -56,18 +100,60 @@ export class LspManager {
     let client = languageClients.get(language)
     if (!client) {
       const root = findWorkspaceRoot(filePath, spec.rootMarkers, cwd)
-      client = this.clientFactory(spec)
-      try {
-        await client.initialize(pathToFileURL(root).toString())
-      } catch (error) {
-        await client.shutdown()
-        const reason = error instanceof Error ? error.message : String(error)
-        const hint = INSTALL_HINTS[spec.command]
-        return { error: hint ? `${reason}。请安装：${hint}` : reason }
-      }
+      const result = await this.initClient(spec, root)
+      if ("error" in result) return result
+      client = result.client
       languageClients.set(language, client)
     }
     return { client }
+  }
+
+  // 首次 spawn + initialize；命令缺失（ENOENT）时懒安装后重建重试一次。
+  private async initClient(spec: LspServerSpec, root: string): Promise<LspClientResult> {
+    const rootUri = pathToFileURL(root).toString()
+    let client = this.clientFactory(spec)
+    try {
+      await client.initialize(rootUri)
+      return { client }
+    } catch (error) {
+      await client.shutdown()
+      if (!isMissingCommandError(error)) {
+        return { error: this.describeError(spec, error) }
+      }
+    }
+
+    // 懒安装：命令缺失 → 安装 → 重建 client 重试；安装失败回退手动安装提示。
+    const packageName = SERVER_PACKAGES[spec.command]
+    if (!packageName || !(await this.ensureInstalled(packageName))) {
+      return {
+        error: `LSP server 未安装（${spec.command}）且自动安装失败。请手动执行：npm install -g ${packageName ?? spec.command}`,
+      }
+    }
+    client = this.clientFactory(spec)
+    try {
+      await client.initialize(rootUri)
+      return { client }
+    } catch (error) {
+      await client.shutdown()
+      return { error: this.describeError(spec, error) }
+    }
+  }
+
+  // 并发去重安装：同一包只发起一次安装（其余调用复用进行中的 Promise）。
+  private ensureInstalled(packageName: string): Promise<boolean> {
+    let install = this.installsInFlight.get(packageName)
+    if (!install) {
+      install = this.installer(packageName).finally(() => this.installsInFlight.delete(packageName))
+      this.installsInFlight.set(packageName, install)
+    }
+    return install
+  }
+
+  // 启动失败原因 + 手动安装提示。
+  private describeError(spec: LspServerSpec, error: unknown): string {
+    const reason = error instanceof Error ? error.message : String(error)
+    const packageName = SERVER_PACKAGES[spec.command]
+    return packageName ? `${reason}。请安装：npm install -g ${packageName}` : reason
   }
 
   // 清空会话缓存并回收进程（会话切换/关闭/删除时调用）。
