@@ -24,7 +24,7 @@ interface AgentQuestionBlockProps {
   toolCall: ToolCallBlock
 }
 
-// 单条问题 markdown 内容（每问独立 previewRef，mermaid 经 fence 规则自动成图）。
+// 提问附加 markdown 内容（content 字段；每问独立 previewRef，mermaid 经 fence 规则自动成图）。
 const QuestionMarkdown = ({ content }: { content: string }): React.JSX.Element => {
   const previewRef = useRef<HTMLDivElement>(null)
   return (
@@ -246,14 +246,21 @@ export const AgentQuestionBlock = ({
             </div>
           )}
 
-          {/* 当前问题：markdown + 选项/自定义输入。 */}
+          {/* 当前问题：纯文本提问 + 独立 md 内容 + 选项/自定义输入。 */}
           <div className="min-w-0">
             {activeQuestion.header && questions.length <= 1 && (
               <span className="mb-1 block w-fit max-w-full truncate rounded-[4px] bg-sky-300/10 px-1.5 py-0.5 text-[12px] text-sky-300">
                 {activeQuestion.header}
               </span>
             )}
-            <QuestionMarkdown content={activeQuestion.question} />
+            <div className="text-[13px] leading-relaxed text-white/85">
+              {activeQuestion.question}
+            </div>
+            {activeQuestion.content && (
+              <div className="mt-1">
+                <QuestionMarkdown content={activeQuestion.content} />
+              </div>
+            )}
 
             {activeQuestion.options ? (
               <>

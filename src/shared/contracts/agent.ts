@@ -224,9 +224,12 @@ export interface QuestionOption {
   description?: string
 }
 
-// 单个提问（question 工具；内容为 markdown，可含 mermaid 图自动渲染）。
+// 单个提问（question 工具）。
 export interface QuestionPrompt {
+  // 简短纯文本提问（提交列表只读展示与答案回灌）。
   question: string
+  // 附加 markdown 内容（可含 mermaid 图自动渲染），仅交互表单展示，不在已提交问题列表重复出现。
+  content?: string
   // 短标签 chip（≤12 字符），UI 展示用。
   header?: string
   // 选择题候选（2..4 个）；缺省为自由文本输入。

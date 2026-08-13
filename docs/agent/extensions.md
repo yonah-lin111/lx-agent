@@ -71,7 +71,7 @@ interface ToolRegistry {
 | `todowrite` | `{ todos: { content; status }[] }` | 维护当前任务清单：**整表替换**（模型每次传完整 `todos` 数组，非增量）。纯会话状态（无文件/网络副作用），**不进权限门控集**；工具不碰持久化，由 runner 在 `tool_execution_end` 解析 `details.todos` 追加落 `todo` entry。多步任务自动建清单（DEFAULT_SYSTEM_PROMPT 指引）。详见 [TASKS-v4.md](./TASKS-v4.md) §2 |
 | `web_search` | `{ query; numResults?; type? }` | 联网搜索公开互联网。Exa 优先、Tavily 兜底；Key 配于 `~/.lx/config.json` 的 `ai.webSearch`；无 Key 保留匿名直连。详见 §5 |
 | `webfetch` | `{ url; format?; timeout? }` | 抓取 URL 原文（HTML→markdown/text）。仅 http/https 公网地址（私网阻断，独立于门控）；**进门控集**；5MB 响应上限；turndown + htmlparser2 转换；渲染并入 webSearch 分组。详见 §5.1 |
-| `question` | `{ questions: { question; header?; options?; multiSelect? }[] }` | 模型执行中向用户提问（选择题/自由文本，markdown 可含 mermaid）。归**豁免集**；`executionMode: sequential`；消息流内联渲染（`AgentQuestionBlock`），答案经 `question_request` 事件 + `questionResponse` invoke 回灌。详见 [TASKS-v5.md](./TASKS-v5.md) §2 |
+| `question` | `{ questions: { question; content?; header?; options?; multiSelect? }[] }` | 模型执行中向用户提问（选择题/自由文本，question 为纯文本提问，content 为可选 markdown 可含 mermaid，仅交互表单展示）。归**豁免集**；`executionMode: sequential`；消息流内联渲染（`AgentQuestionBlock`），答案经 `question_request` 事件 + `questionResponse` invoke 回灌。详见 [TASKS-v5.md](./TASKS-v5.md) §2 |
 
 说明：
 
