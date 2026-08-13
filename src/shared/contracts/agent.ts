@@ -366,6 +366,15 @@ export interface McpServerStatusItem {
   status: "connected" | "disabled" | "failed"
 }
 
+// LSP server 包安装状态（状态栏指示；按 npm 包粒度）。
+export interface LspServerStatusItem {
+  packageName: string
+  installed: boolean
+}
+
+// 批量安装缺失 LSP server 的结果。
+export type LspInstallResult = { installed: string[]; failed: string[] }
+
 // 会话摘要（历史列表展示，不含消息体）。
 export interface AgentSessionSummary {
   id: string
@@ -418,6 +427,10 @@ export interface AgentApi {
     forkSession: (sessionId: string, userMessageTimestamp?: number) => Promise<AgentForkResult>
     // 获取全部 MCP server 的连接状态。
     getMcpStatus: () => Promise<McpServerStatusItem[]>
+    // 获取各 LSP server 包的安装状态。
+    getLspStatus: () => Promise<LspServerStatusItem[]>
+    // 安装缺失的 LSP server 包（npm install -g）。
+    installLspServers: () => Promise<LspInstallResult>
     // 为最后一条 AI 回答生成后续建议问题。
     suggestedQuestions: (
       messages: SuggestedQuestionContextMessage[],

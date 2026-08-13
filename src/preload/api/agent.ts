@@ -29,6 +29,8 @@ export const agentApi: AgentApi["agent"] = {
   forkSession: (sessionId: string, userMessageTimestamp?: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.forkSession, sessionId, userMessageTimestamp),
   getMcpStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getMcpStatus),
+  getLspStatus: () => ipcRenderer.invoke(AGENT_CHANNELS.getLspStatus),
+  installLspServers: () => ipcRenderer.invoke(AGENT_CHANNELS.installLspServers),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
   permissionRespond: (response: PermissionResponse) =>
