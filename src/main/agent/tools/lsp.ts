@@ -389,7 +389,10 @@ export const createLspTool = ({
         }
         case "workspaceSymbol": {
           const query = params.query ?? ""
-          const collected = await collectWorkspaceSymbols(await client.workspaceSymbol(query), cwd)
+          const collected = await collectWorkspaceSymbols(
+            await client.workspaceSymbol(query, absolutePath),
+            cwd,
+          )
           text = formatRows(`workspaceSymbol ${query ? `"${query}" ` : ""}`, collected, "")
           details = { ...baseDetails(params, absolutePath, collected.results), query }
           break
@@ -447,7 +450,7 @@ export const createLspTool = ({
   },
 })
 
-// workspaceSymbol：无 filePath（workspace/symbol 请求不带文本）。
+// workspaceSymbol 结果收集：符号自带 location，无需额外文件参数。
 const collectWorkspaceSymbols = async (
   symbols: SymbolInformation[] | null,
   cwd: string,

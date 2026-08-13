@@ -78,6 +78,17 @@ describe("LspClient", () => {
     await client.shutdown()
   })
 
+  it("首连 workspaceSymbol：先打开文件触发项目创建（避免 navto No Project）", async () => {
+    const filePath = makeTempFile("a.ts", "export function source() {}\n")
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    await client.initialize("file:///tmp/root")
+    // 首连直接 workspaceSymbol：ensureOpened 发送 didOpen 创建项目，server 才响应
+    // （fake server 对无 didOpen 的 workspace/symbol 抛 "No Project"）。
+    const symbols = await client.workspaceSymbol("source", filePath)
+    expect((symbols as Array<{ name: string }>)[0]?.name).toBe("ws-symbol")
+    await client.shutdown()
+  })
+
   it("spawn 失败（命令不存在）时 initialize 立即 reject", async () => {
     const client = new LspClient(
       { language: "typescript", command: "lx-no-such-lsp-binary", args: [], rootMarkers: [] },

@@ -286,7 +286,10 @@ export class LspClient {
     })
   }
 
-  async workspaceSymbol(query: string): Promise<SymbolInformation[] | null> {
+  // workspaceSymbol 为 workspace 级检索，但 tsserver 须先有 didOpen 创建项目才响应
+  // （否则 navto 必抛 "No Project"，重试无效）；故先打开传入的文件触发项目创建。
+  async workspaceSymbol(query: string, filePath: string): Promise<SymbolInformation[] | null> {
+    await this.ensureOpened(filePath)
     return this.request("workspace/symbol", { query })
   }
 
