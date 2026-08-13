@@ -665,7 +665,7 @@ export const AgentInput = ({
         {dockPosition && (showTodoCapsule || showPermissionShield) && (
           <div
             aria-label="浮动图标栏"
-            className="pointer-events-none fixed z-40 flex h-7 items-center justify-end gap-1.5 px-2"
+            className="pointer-events-none fixed z-30 flex h-7 items-center justify-end gap-1.5 px-2"
             style={{ ...dockPosition, overflow: "hidden" }}
           >
             <TodoDockButton todos={todos} onClick={() => setTodoExpanded(true)} />
