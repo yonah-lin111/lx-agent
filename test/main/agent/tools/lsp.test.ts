@@ -80,6 +80,24 @@ describe("createLspTool", () => {
     expect((result.content[0] as { text: string }).text).toContain("拒绝访问项目目录之外的文件")
   })
 
+  it("目标文件不存在显式报错（而非静默 0 处）", async () => {
+    const cwd = makeTempCwd()
+    const manager = { getClient: async (): Promise<LspClientResult> => ({ error: "unused" }) }
+    const tool = createLspTool({
+      lspManager: manager as unknown as LspManager,
+      getSessionId: () => "s1",
+      cwd,
+    } satisfies LspToolDeps)
+    const result = await tool.execute("1", {
+      operation: "documentSymbol",
+      filePath: "missing.ts",
+      line: 1,
+      character: 1,
+    })
+    expect((result.content[0] as { text: string }).text).toContain("文件不存在")
+    expect((result.details as { error?: string }).error).toContain("文件不存在")
+  })
+
   it("无活动会话返回错误", async () => {
     const { tool } = makeTool({ error: "unused" }, () => null)
     const result = await tool.execute("1", {
@@ -92,7 +110,19 @@ describe("createLspTool", () => {
   })
 
   it("不支持语言 / 无启动器错误回灌", async () => {
-    const { tool } = makeTool({ error: "语言 go 仅有扩展名映射，未提供 LSP server 启动器" })
+    // 目标文件需真实存在才能通过存在性校验、走到 manager 的语言判定。
+    const cwd = makeTempCwd()
+    writeFileSync(join(cwd, "a.go"), "package main\n")
+    const manager = {
+      getClient: async (): Promise<LspClientResult> => ({
+        error: "语言 go 仅有扩展名映射，未提供 LSP server 启动器",
+      }),
+    }
+    const tool = createLspTool({
+      lspManager: manager as unknown as LspManager,
+      getSessionId: () => "s1",
+      cwd,
+    } satisfies LspToolDeps)
     const result = await tool.execute("1", {
       operation: "goToDefinition",
       filePath: "a.go",

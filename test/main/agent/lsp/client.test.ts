@@ -53,6 +53,19 @@ describe("LspClient", () => {
     await client.shutdown()
   })
 
+  it("首连 “No Project” 竞态自动重试成功", async () => {
+    const filePath = makeTempFile("a.ts", "export function source() {}\n")
+    // 经 process.env 传给子进程（LspClient 构造时复制 env）。
+    process.env.FAKE_LSP_NOPROJECT = "1"
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    delete process.env.FAKE_LSP_NOPROJECT
+    await client.initialize("file:///tmp/root")
+    // 第一次 documentSymbol 抛 "No Project"，客户端重试后返回符号。
+    const symbols = await client.documentSymbol(filePath)
+    expect((symbols as Array<{ name: string }>)[0]?.name).toBe("opened-symbol")
+    await client.shutdown()
+  })
+
   it("spawn 失败（命令不存在）时 initialize 立即 reject", async () => {
     const client = new LspClient(
       { language: "typescript", command: "lx-no-such-lsp-binary", args: [], rootMarkers: [] },

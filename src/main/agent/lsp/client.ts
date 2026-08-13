@@ -46,10 +46,23 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise
     )
   })
 
+// "No Project" 错误重试上限（tsserver 首连项目加载竞态，重试即可成功）。
+const MAX_NO_PROJECT_RETRIES = 3
+// 重试间隔基数（ms），随重试次数线性放大。
+const NO_PROJECT_RETRY_BASE_MS = 150
+
+// 判断是否为 tsserver 项目未就绪错误（首连并行时偶发）。
+const isNoProjectError = (error: unknown): boolean =>
+  error instanceof Error && error.message.includes("No Project")
+
+// 延时。
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
 /**
  * 单个 LSP server 客户端：spawn 子进程 + vscode-jsonrpc 连接 + 9 操作请求封装。
  * 位置参数按 LSP 约定为 0-based；调用方（工具层）负责从 1-based 转换。
  * 生命周期由 lspManager 管理：会话内缓存复用，会话切换/应用退出时 shutdown。
+ * 可靠性：首连项目就绪前请求串行化（避免并行触发 "No Project" 竞态），就绪后并行。
  */
 // 关闭流程中等待子进程自然退出的上限（exit 通知后）。
 const LSP_EXIT_WAIT_MS = 1_000
@@ -74,6 +87,10 @@ export class LspClient {
   private readonly languageId: string
   // 文件 → didOpen 版本号（每次打开自增，保证 server 视图新鲜）。
   private readonly openVersions = new Map<string, number>()
+  // 项目是否就绪（首个成功请求置位）；就绪前请求串行化，规避 tsserver "No Project" 竞态。
+  private projectReady = false
+  // 首连串行链：项目就绪前新请求排队等前一个完成。
+  private startupChain: Promise<void> = Promise.resolve()
 
   constructor(spec: LspServerSpec, options: LspClientOptions = {}) {
     this.languageId = spec.language
@@ -159,14 +176,45 @@ export class LspClient {
   }
 
   // 请求前等待就绪；运行中崩溃直接抛错。
+  // 项目就绪前串行化（首个成功请求置位后并行），并统一对 "No Project" 竞态重试。
   private async request<T>(method: string, params: unknown): Promise<T> {
     await this.ready
     if (this.crashed) throw new Error("LSP server 已崩溃")
-    return withTimeout(
-      this.connection.sendRequest<T>(method, params),
-      this.requestTimeoutMs,
-      method,
-    )
+    if (!this.projectReady) {
+      const prior = this.startupChain.catch(() => {})
+      let release!: () => void
+      this.startupChain = new Promise((resolve) => {
+        release = resolve
+      })
+      await prior
+      try {
+        return await this.sendWithNoProjectRetry(method, params)
+      } finally {
+        release()
+      }
+    }
+    return this.sendWithNoProjectRetry(method, params)
+  }
+
+  // 发送请求；tsserver 项目未就绪（"No Project"）时线性退避重试，其他错误原样抛出。
+  private async sendWithNoProjectRetry<T>(method: string, params: unknown): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const result = await withTimeout(
+          this.connection.sendRequest<T>(method, params),
+          this.requestTimeoutMs,
+          method,
+        )
+        this.projectReady = true
+        return result
+      } catch (error) {
+        if (attempt < MAX_NO_PROJECT_RETRIES && isNoProjectError(error)) {
+          await sleep(NO_PROJECT_RETRY_BASE_MS * (attempt + 1))
+          continue
+        }
+        throw error
+      }
+    }
   }
 
   private uriFor(filePath: string): string {
