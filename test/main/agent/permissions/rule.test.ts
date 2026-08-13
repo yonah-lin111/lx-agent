@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { matchRule, type ParsedRule, parseRule } from "@/agent/permissions/rule"
+import { EXEMPT_TOOLS, matchRule, type ParsedRule, parseRule } from "@/agent/permissions/rule"
 
 // 解析规则列表（测试内保证全部合法，非法即抛错）。
 const parsed = (sources: string[]): ParsedRule[] =>
@@ -8,6 +8,12 @@ const parsed = (sources: string[]): ParsedRule[] =>
     if (!rule) throw new Error(`非法规则: ${source}`)
     return rule
   })
+
+describe("EXEMPT_TOOLS", () => {
+  it("lsp 归入豁免集（只读检索永不询问）", () => {
+    expect(EXEMPT_TOOLS.has("lsp")).toBe(true)
+  })
+})
 
 describe("parseRule", () => {
   it("解析 ToolName(arg)", () => {

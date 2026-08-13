@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, nativeImage, protocol } from "electron"
+import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
@@ -66,6 +67,8 @@ app.whenReady().then(() => {
   void mcpManager.ensureConnected()
   app.on("will-quit", () => {
     void mcpManager.disconnectAll()
+    // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。
+    void lspManager.dispose()
   })
 
   app.on("browser-window-created", (_, window) => {

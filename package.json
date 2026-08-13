@@ -62,6 +62,8 @@
     "react-router-dom": "^7.18.1",
     "tailwind-merge": "^3.4.0",
     "turndown": "^7.2.4",
+    "vscode-jsonrpc": "^9.0.1",
+    "vscode-languageserver-types": "^3.18.0",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"
   },

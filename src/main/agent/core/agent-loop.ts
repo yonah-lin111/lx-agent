@@ -7,6 +7,7 @@ import type {
   AgentDiff,
   AgentMessage,
   AssistantMessage,
+  LspToolDetails,
   QuestionAnswer,
   SubagentData,
   ToolCall,
@@ -723,10 +724,11 @@ const attachQuestionAnswers = (
 // 由工具执行结果构造 ToolResultMessage。
 function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
   const details = finalized.result.details as
-    | { diff?: AgentDiff; subagent?: SubagentData }
+    | { diff?: AgentDiff; subagent?: SubagentData; lsp?: LspToolDetails }
     | undefined
   const diff = details?.diff
   const subagent = details?.subagent
+  const lsp = details?.lsp
   return {
     role: "toolResult",
     toolCallId: finalized.toolCall.id,
@@ -736,6 +738,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     timestamp: Date.now(),
     ...(diff ? { diff } : {}),
     ...(subagent ? { subagent } : {}),
+    ...(lsp ? { lsp } : {}),
   }
 }
 

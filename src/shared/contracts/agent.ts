@@ -149,6 +149,43 @@ export interface SubagentData {
   filePath?: string
 }
 
+// LSP 语义检索操作（lsp 工具）。
+export type LspOperation =
+  | "goToDefinition"
+  | "findReferences"
+  | "hover"
+  | "documentSymbol"
+  | "workspaceSymbol"
+  | "goToImplementation"
+  | "prepareCallHierarchy"
+  | "incomingCalls"
+  | "outgoingCalls"
+
+// LSP 结果位置（供渲染跳转；行/列为 1 起始，filePath 为绝对路径）。
+export interface LspLocationResult {
+  filePath: string
+  line: number
+  character: number
+  // 签名或符号名（位置型结果无自然名称时为空串）。
+  label: string
+}
+
+// lsp 工具结构化结果（随 ToolResultMessage 落库，恢复后渲染块复用跳转）。
+export interface LspToolDetails {
+  operation: LspOperation
+  // 请求目标文件（绝对路径）。
+  filePath: string
+  // 请求位置（1 起始）。
+  line: number
+  character: number
+  // workspaceSymbol 的搜索查询。
+  query?: string
+  // hover 等文本型结果的正文（无位置行时 results 为空数组）。
+  text?: string
+  results: LspLocationResult[]
+  error?: string
+}
+
 // 工具结果消息。
 export interface ToolResultMessage {
   role: "toolResult"
@@ -161,6 +198,8 @@ export interface ToolResultMessage {
   diff?: AgentDiff
   // 子代理面板数据（task 工具产物，供渲染与落库）。
   subagent?: SubagentData
+  // LSP 检索结果（lsp 工具产物，供渲染与落库）。
+  lsp?: LspToolDetails
 }
 
 // Agent 消息联合类型。
@@ -388,6 +427,8 @@ export interface AgentApi {
     permissionRespond: (response: PermissionResponse) => Promise<{ ok: boolean }>
     // 响应提问请求（requestId 匹配 main 侧挂起的提问；answers 或 dismissed）。
     questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
+    // 用系统默认编辑器打开文件并定位到行（LSP 结果跳转）。
+    openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

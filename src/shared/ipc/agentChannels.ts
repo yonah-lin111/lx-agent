@@ -17,5 +17,7 @@ export const AGENT_CHANNELS = {
   permissionResponse: "agent:permissionResponse",
   // 提问请求经 event 通道以 question_request 事件推送（见 AgentEvent）。
   questionResponse: "agent:questionResponse",
+  // LSP 结果跳转：系统默认编辑器打开文件并定位行。
+  openFileAt: "agent:openFileAt",
   event: "agent:event",
 } as const

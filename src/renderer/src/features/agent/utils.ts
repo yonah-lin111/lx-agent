@@ -74,6 +74,7 @@ export const toChatMessage = (
           isError: message.isError,
           ...(message.diff ? { diff: message.diff } : {}),
           ...(message.subagent ? { subagent: message.subagent } : {}),
+          ...(message.lsp ? { lsp: message.lsp } : {}),
         },
       ],
       isStreaming: false,
@@ -148,6 +149,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           isError: block.isError,
           timestamp: Date.now(),
           ...(block.subagent ? { subagent: block.subagent } : {}),
+          ...(block.lsp ? { lsp: block.lsp } : {}),
         },
       ]
     }

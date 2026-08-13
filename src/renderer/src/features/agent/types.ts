@@ -1,6 +1,7 @@
 import type {
   AgentDiff,
   AgentMessage,
+  LspToolDetails,
   QuestionAnswer,
   QuestionRequest,
   StopReason,
@@ -13,6 +14,7 @@ export type {
   AgentEvent,
   AgentMessage,
   DiffLinePart,
+  LspToolDetails,
   QuestionAnswer,
   QuestionRequest,
   StopReason,
@@ -49,6 +51,8 @@ export type ChatBlock =
       diff?: AgentDiff
       // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
       subagent?: SubagentData
+      // LSP 检索结果（随 lsp 工具结果落库，恢复后渲染块复用跳转）。
+      lsp?: LspToolDetails
     }
 
 // 消息展示条目（由 AgentEvent 驱动生成）。

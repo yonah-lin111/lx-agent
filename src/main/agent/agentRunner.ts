@@ -34,6 +34,7 @@ import {
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { formatInstructions, loadInstructions } from "./instructionLoader"
+import { lspManager } from "./lsp/lspManager"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { questionManager } from "./question/questionManager"
@@ -52,6 +53,7 @@ import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
 import { createGrepTool } from "./tools/grep"
 import { createLsTool } from "./tools/ls"
+import { createLspTool, type LspToolDeps } from "./tools/lsp"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
@@ -87,6 +89,7 @@ const ALL_TOOL_NAMES = new Set([
   "webfetch",
   "task",
   "question",
+  "lsp",
 ])
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
@@ -101,7 +104,7 @@ const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
-// 装配会话工具集：注册内置工具全集 + task + MCP 包装工具 + read_skill，按能力集激活。
+// 装配会话工具集：注册内置工具全集 + task + MCP 包装工具 + read_skill + lsp，按能力集激活。
 const createRegistry = (
   cwd: string,
   activeTools: string[],
@@ -109,6 +112,7 @@ const createRegistry = (
   withReadSkill: boolean,
   taskDeps?: TaskToolDeps,
   questionDeps?: QuestionToolDeps,
+  lspDeps?: LspToolDeps,
 ): ToolRegistry => {
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd))
@@ -122,6 +126,9 @@ const createRegistry = (
   registry.register(createTodoTool())
   registry.register(createWebSearchTool())
   registry.register(createWebFetchTool())
+  if (lspDeps) {
+    registry.register(createLspTool(lspDeps))
+  }
   if (questionDeps) {
     registry.register(createQuestionTool(questionDeps))
   }
@@ -263,12 +270,13 @@ class AgentRunner {
     this.eventSink = sink
   }
 
-  // 切换当前会话 id：旧会话的权限内存态与挂起的提问随之清理。
+  // 切换当前会话 id：旧会话的权限内存态、挂起的提问与 LSP server 进程随之清理。
   private setSessionId(sessionId: string | null): void {
     if (this.currentSessionId === sessionId) return
     if (this.currentSessionId) {
       permissionManager.clearSession(this.currentSessionId)
       questionManager.clearSession(this.currentSessionId)
+      lspManager.clearSession(this.currentSessionId)
     }
     this.currentSessionId = sessionId
   }
@@ -331,6 +339,11 @@ class AgentRunner {
         {
           askQuestion: (questions, toolCallId, signal) =>
             questionManager.ask(questions, this.currentSessionId, toolCallId, signal),
+        },
+        {
+          lspManager,
+          getSessionId: () => this.currentSessionId,
+          cwd,
         },
       )
       const previousMessages = this.agent?.state.messages ?? []

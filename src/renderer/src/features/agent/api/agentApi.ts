@@ -47,6 +47,8 @@ export const agentApi = {
     window.api.agent.permissionRespond(response),
   questionRespond: (response: QuestionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.questionRespond(response),
+  openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
+    window.api.agent.openFileAt(filePath, line),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }
