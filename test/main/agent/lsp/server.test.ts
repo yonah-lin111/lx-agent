@@ -16,41 +16,38 @@ afterEach(() => {
 })
 
 describe("resolveServer", () => {
-  const cwd = makeTempDir()
-
   it("TS/JS 系列 → typescript-language-server + --stdio", () => {
     for (const language of ["typescript", "typescriptreact", "javascript", "javascriptreact"]) {
-      const spec = resolveServer(language, cwd)
+      const spec = resolveServer(language)
       expect(spec?.command).toBe("typescript-language-server")
       expect(spec?.args[0]).toBe("--stdio")
     }
   })
 
-  it("本地存在 typescript/lib/tsserver.js 时追加 --tsserver-path", () => {
+  it("本地存在 typescript/lib/tsserver.js 时仍只传 --stdio（v5 已移除 --tsserver-path）", () => {
     const dir = makeTempDir()
     mkdirSync(join(dir, "node_modules", "typescript", "lib"), { recursive: true })
     writeFileSync(join(dir, "node_modules", "typescript", "lib", "tsserver.js"), "")
-    const spec = resolveServer("typescript", dir)
-    expect(spec?.args).toContain("--tsserver-path")
-    expect(spec?.args).toContain(join(dir, "node_modules", "typescript", "lib", "tsserver.js"))
+    const spec = resolveServer("typescript")
+    expect(spec?.args).toEqual(["--stdio"])
   })
 
   it("JSON/HTML/CSS 系列 → vscode-langservers-extracted 各子命令", () => {
-    expect(resolveServer("json", cwd)?.command).toBe("vscode-json-language-server")
-    expect(resolveServer("html", cwd)?.command).toBe("vscode-html-language-server")
-    expect(resolveServer("css", cwd)?.command).toBe("vscode-css-language-server")
-    expect(resolveServer("scss", cwd)?.command).toBe("vscode-css-language-server")
-    expect(resolveServer("less", cwd)?.command).toBe("vscode-css-language-server")
+    expect(resolveServer("json")?.command).toBe("vscode-json-language-server")
+    expect(resolveServer("html")?.command).toBe("vscode-html-language-server")
+    expect(resolveServer("css")?.command).toBe("vscode-css-language-server")
+    expect(resolveServer("scss")?.command).toBe("vscode-css-language-server")
+    expect(resolveServer("less")?.command).toBe("vscode-css-language-server")
   })
 
   it("Python → pyright-langserver", () => {
-    expect(resolveServer("python", cwd)?.command).toBe("pyright-langserver")
+    expect(resolveServer("python")?.command).toBe("pyright-langserver")
   })
 
   it("无启动器语言（go/rust 等）返回 null", () => {
-    expect(resolveServer("go", cwd)).toBeNull()
-    expect(resolveServer("rust", cwd)).toBeNull()
-    expect(resolveServer("vue", cwd)).toBeNull()
+    expect(resolveServer("go")).toBeNull()
+    expect(resolveServer("rust")).toBeNull()
+    expect(resolveServer("vue")).toBeNull()
   })
 })
 

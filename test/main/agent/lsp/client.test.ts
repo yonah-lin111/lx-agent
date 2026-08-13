@@ -1,5 +1,8 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { LspClient } from "@/agent/lsp/client"
 import type { LspServerSpec } from "@/agent/lsp/server"
 
@@ -13,6 +16,19 @@ const fakeSpec = (): LspServerSpec => ({
   rootMarkers: [],
 })
 
+// didOpen 测试需要真实文件（客户端读取内容发送）。
+const tempDirs: string[] = []
+const makeTempFile = (name: string, content: string): string => {
+  const dir = mkdtempSync(join(tmpdir(), "lx-lsp-client-test-"))
+  tempDirs.push(dir)
+  const filePath = join(dir, name)
+  writeFileSync(filePath, content)
+  return filePath
+}
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+})
+
 describe("LspClient", () => {
   it("initialize + 请求往返：位置参数 0-based 原样透传（工具层负责转换）", async () => {
     const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
@@ -23,6 +39,17 @@ describe("LspClient", () => {
       uri: "file:///tmp/a.ts",
       range: { start: { line: 4, character: 2 }, end: { line: 4, character: 3 } },
     })
+    await client.shutdown()
+  })
+
+  it("文档请求前自动发送 didOpen（无 didOpen 时服务器返回空）", async () => {
+    const filePath = makeTempFile("a.ts", "export function source() {}\n")
+    const client = new LspClient(fakeSpec(), { requestTimeoutMs: 2_000 })
+    await client.initialize("file:///tmp/root")
+    // fake server 仅对 didOpen 过的文档返回符号。
+    const symbols = await client.documentSymbol(filePath)
+    expect(Array.isArray(symbols) && symbols.length > 0).toBe(true)
+    expect((symbols as Array<{ name: string }>)[0]?.name).toBe("opened-symbol")
     await client.shutdown()
   })
 

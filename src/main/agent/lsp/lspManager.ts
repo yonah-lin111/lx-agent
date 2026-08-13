@@ -41,7 +41,7 @@ export class LspManager {
         error: extension ? `不支持的文件类型：${extension}` : `无法识别文件类型：${filePath}`,
       }
     }
-    const spec = resolveServer(language, cwd)
+    const spec = resolveServer(language)
     if (!spec) {
       return {
         error: `语言 ${language} 仅有扩展名映射，未提供 LSP server 启动器（当前仅支持 TS/JS/JSON/HTML/CSS/Python）`,
