@@ -33,8 +33,10 @@ import {
 } from "./compaction"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
+import { formatInstructions, loadInstructions } from "./instructionLoader"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
+import { questionManager } from "./question/questionManager"
 import { createReadSkillTool } from "./skills/readSkillTool"
 import {
   formatSkillsForPrompt,
@@ -50,12 +52,14 @@ import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
 import { createGrepTool } from "./tools/grep"
 import { createLsTool } from "./tools/ls"
+import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
 import { type ChildCallInput, createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
+import { createWebFetchTool } from "./tools/webfetch"
 import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
 
@@ -80,7 +84,9 @@ const ALL_TOOL_NAMES = new Set([
   "time",
   "todowrite",
   "web_search",
+  "webfetch",
   "task",
+  "question",
 ])
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
@@ -95,13 +101,14 @@ const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
-// 装配会话工具集：注册八工具全集 + task + MCP 包装工具 + read_skill，按能力集激活。
+// 装配会话工具集：注册内置工具全集 + task + MCP 包装工具 + read_skill，按能力集激活。
 const createRegistry = (
   cwd: string,
   activeTools: string[],
   mcpToolNames: string[],
   withReadSkill: boolean,
   taskDeps?: TaskToolDeps,
+  questionDeps?: QuestionToolDeps,
 ): ToolRegistry => {
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd))
@@ -114,6 +121,10 @@ const createRegistry = (
   registry.register(createTimeTool())
   registry.register(createTodoTool())
   registry.register(createWebSearchTool())
+  registry.register(createWebFetchTool())
+  if (questionDeps) {
+    registry.register(createQuestionTool(questionDeps))
+  }
   // task 子代理工具：execute 时从注册表当前激活集派生子代理工具集（去掉 task 斩断递归）。
   if (taskDeps) {
     registry.register(
@@ -252,11 +263,12 @@ class AgentRunner {
     this.eventSink = sink
   }
 
-  // 切换当前会话 id：旧会话的权限内存态（含挂起请求）随之清理。
+  // 切换当前会话 id：旧会话的权限内存态与挂起的提问随之清理。
   private setSessionId(sessionId: string | null): void {
     if (this.currentSessionId === sessionId) return
     if (this.currentSessionId) {
       permissionManager.clearSession(this.currentSessionId)
+      questionManager.clearSession(this.currentSessionId)
     }
     this.currentSessionId = sessionId
   }
@@ -297,19 +309,28 @@ class AgentRunner {
       this.mcpServerByToolName = new Map(
         mcpManager.getTools().map((handle) => [handle.fullName, handle.server]),
       )
+      // 会话 system prompt = 基础提示词 + skill 注入块 + 指令文件注入块（装配时一次性拼好）。
+      const systemPrompt =
+        DEFAULT_SYSTEM_PROMPT +
+        formatSkillsForPrompt(this.activeSkills) +
+        formatInstructions(loadInstructions(cwd))
       const registry = createRegistry(
         cwd,
         this.activeCapabilities,
         this.activeMcp,
         this.activeSkills.length > 0,
         {
-          systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
+          systemPrompt,
           model: modelResult.model,
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal),
           getSignal: () => this.agent?.signal,
           recordChildCall: (parentToolCallId, child) =>
             this.recordChildCall(parentToolCallId, child),
+        },
+        {
+          askQuestion: (questions, toolCallId, signal) =>
+            questionManager.ask(questions, this.currentSessionId, toolCallId, signal),
         },
       )
       const previousMessages = this.agent?.state.messages ?? []
@@ -334,7 +355,7 @@ class AgentRunner {
           ]
         },
         initialState: {
-          systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
+          systemPrompt,
           model: modelResult.model,
           tools: registry.getActive(),
         },

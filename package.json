@@ -50,6 +50,7 @@
     "echarts": "^6.1.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
+    "htmlparser2": "^12.0.0",
     "ignore": "^7.0.6",
     "lucide-react": "^0.561.0",
     "markdown-it": "^14.3.0",
@@ -60,6 +61,7 @@
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.18.1",
     "tailwind-merge": "^3.4.0",
+    "turndown": "^7.2.4",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"
   },
@@ -76,6 +78,7 @@
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^5.1.2",
     "code-inspector-plugin": "^1.5.1",
     "electron": "^39.2.7",

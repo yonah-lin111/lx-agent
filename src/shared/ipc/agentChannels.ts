@@ -15,5 +15,7 @@ export const AGENT_CHANNELS = {
   suggestedQuestions: "agent:suggestedQuestions",
   // 权限请求经 event 通道以 permission_request 事件推送（见 AgentEvent）。
   permissionResponse: "agent:permissionResponse",
+  // 提问请求经 event 通道以 question_request 事件推送（见 AgentEvent）。
+  questionResponse: "agent:questionResponse",
   event: "agent:event",
 } as const

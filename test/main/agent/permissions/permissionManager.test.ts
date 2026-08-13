@@ -110,6 +110,16 @@ describe("permissionManager.evaluate", () => {
     expect(permissionManager.evaluate("edit", { path: "a.ts" })).toBe("ask")
   })
 
+  it("webfetch 进门控集：default 模式未命中规则 → ask", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("webfetch", { url: "https://example.com" })).toBe("ask")
+  })
+
+  it("question 归豁免集：永不询问", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("question", { questions: [{ question: "q" }] })).toBe("allow")
+  })
+
   it("已注册 MCP 工具 → ask；未注册同名 → 放行", () => {
     applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
     permissionManager.setMcpTools(["codegraph_codegraph_search"])
@@ -391,6 +401,28 @@ describe("permissionManager 永久决策写回（G5）", () => {
     })
     expect(await pending).toBeUndefined()
     expect(holder.permissionSettings.allow).toEqual(["Bash(git status --short)"])
+  })
+
+  it("永久允许 webfetch：URL 规则写回 allow[]，重载后同前缀 URL 放行", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(
+      gateContext("webfetch", { url: "https://api.example.com/v1" }),
+      "s1",
+    )
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual(["WebFetch(https://api.example.com/v1)"])
+    // 重载后同前缀 URL 直接 allow（url.startsWith 语义），不同前缀仍 ask。
+    expect(
+      permissionManager.evaluate("webfetch", { url: "https://api.example.com/v1/deeper" }),
+    ).toBe("allow")
+    expect(permissionManager.evaluate("webfetch", { url: "https://api.example.com/v2" })).toBe(
+      "ask",
+    )
   })
 
   it("永久拒绝：精确参数写回 deny[]", async () => {

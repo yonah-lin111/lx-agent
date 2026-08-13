@@ -1,9 +1,9 @@
 import { globToRegExp } from "@/agent/tools/search"
 
-// 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn）。
-export const GATED_BUILTIN_TOOLS = new Set(["bash", "write", "edit", "task"])
+// 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn；webfetch 拉取外网原文）。
+export const GATED_BUILTIN_TOOLS = new Set(["bash", "write", "edit", "task", "webfetch"])
 
-// 豁免工具集：永不询问（纯公开检索 + 本地只读）。
+// 豁免工具集：永不询问（纯公开检索 + 本地只读 + 纯交互无副作用）。
 export const EXEMPT_TOOLS = new Set([
   "web_search",
   "read",
@@ -12,6 +12,7 @@ export const EXEMPT_TOOLS = new Set([
   "find",
   "time",
   "read_skill",
+  "question",
 ])
 
 // 规则类别。
@@ -75,6 +76,10 @@ const matchArgs = (rule: ParsedRule, toolName: string, args: unknown): boolean =
   if (toolName === "write" || toolName === "edit") {
     const path = isRecord(args) && typeof args.path === "string" ? args.path : ""
     return matchPathArg(rule.arg, path)
+  }
+  if (toolName === "webfetch") {
+    const url = isRecord(args) && typeof args.url === "string" ? args.url : ""
+    return matchBashArg(rule.arg, url)
   }
   // MCP 工具：参数 JSON 子串匹配（宽松）。
   return JSON.stringify(args ?? {}).includes(rule.arg)

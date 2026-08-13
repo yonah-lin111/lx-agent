@@ -32,15 +32,18 @@ flowchart TD
     Agent --> Adapter[streamFn 适配器<br/>stream/aiSdkStreamFn.ts]
     Adapter --> AI[AI SDK streamText<br/>toModelMessages + toAiTools]
     AI --> Provider[createOpenAI / createAnthropic /<br/>createGoogleGenerativeAI / createOpenAICompatible]
-    Agent --> Tools[ToolRegistry<br/>九内置工具 + MCP 包装 + read_skill]
+    Agent --> Tools[ToolRegistry<br/>十二内置工具 + MCP 包装 + read_skill]
     Tools --> FS[(node:fs cwd)]
-    Tools --> WebSearch[web_search<br/>Exa MCP + Tavily 兜底]
-    WebSearch --> Ext[(mcp.exa.ai / api.tavily.com)]
+    Tools --> WebSearch[web_search + webfetch<br/>Exa MCP + Tavily 兜底 / turndown + htmlparser2]
+    WebSearch --> Ext[(mcp.exa.ai / api.tavily.com / 任意公网 URL)]
     Runner --> MCP[mcpManager<br/>spawn + connect + listTools + 状态]
     MCP --> McpSrv[(MCP stdio servers)]
     Runner --> Skills[skillLoader<br/>~/.lx/skills + cwd/.lx/skills]
     Skills --> SkillFiles[(SKILL.md)]
+    Runner --> Instr[instructionLoader<br/>~/.lx/AGENTS.md + cwd/AGENTS.md 或 CLAUDE.md]
+    Instr --> InstrFiles[(AGENTS.md / CLAUDE.md)]
     Runner --> Perm[permissionManager<br/>gate → beforeToolCall]
+    Runner --> QM[questionManager<br/>ask → question_request / questionResponse]
     Runner --> Settings[settingsService<br/>模型 provider + agent.permissions]
     Runner --> Title[titleGenerator<br/>session_title 事件]
     Runner --> SQ[suggestedQuestionsGenerator<br/>agent:suggestedQuestions]
@@ -79,8 +82,12 @@ src/main/agent/                  # 仅主进程可运行的 Agent 能力
     file-mutation-queue.ts       # withFileMutationQueue：同文件写串行化（edit/write 内部使用）
     search.ts                    # walkFiles/globToRegExp/readFileText（grep/find 纯 Node 降级共享）
     diff.ts                      # generateStructuredDiff：行级 + 词级高亮可视化 diff（edit/write 产物）
-    read.ts / ls.ts / grep.ts / find.ts / write.ts / edit.ts / bash.ts / time.ts
+    read.ts / ls.ts / grep.ts / find.ts / write.ts / edit.ts / bash.ts / time.ts / todowrite.ts
     webSearch.ts                 # createWebSearchTool（Exa 优先 / Tavily 兜底）
+    webfetch.ts                  # createWebFetchTool（URL 原文抓取，turndown + htmlparser2）
+    question.ts                  # createQuestionTool（执行中向用户提问）
+  question/
+    questionManager.ts           # ask/respond/clearSession（挂起提问，question_request 推送）
   mcp/                           # MCP 工具接入（见 extensions.md §6）
     mcpManager.ts                # server 生命周期：spawn stdio / connect / listTools / 状态 / 断开
     jsonSchemaToZod.ts           # MCP JSON Schema → zod（无损受限，兜底宽松 schema）
@@ -90,6 +97,7 @@ src/main/agent/                  # 仅主进程可运行的 Agent 能力
   permissions/                   # 信任模型（见 harness.md §3）
     permissionManager.ts         # gate/evaluate/respond/会话记忆（挂 beforeToolCall）
     rule.ts                      # parseRule/matchRule + 门控集/豁免集
+  instructionLoader.ts           # 指令文件加载（user + 项目 AGENTS.md/CLAUDE.md）+ formatInstructions
   agentRunner.ts                 # 会话级装配：Agent + 工具 + 事件转发 + 落盘缓冲 + 标题触发
   titleGenerator.ts              # generateSessionTitle / generateTemplateTitle（纯生成，不进事件流）
   suggestedQuestionsGenerator.ts # generateSuggestedQuestions（建议问题）
@@ -159,6 +167,7 @@ type AgentEvent =
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }       // MCP 连接状态变更
   | { type: "session_title"; sessionId: string; title: string | null }   // 标题生成：null=pending
   | { type: "permission_request"; request: PermissionRequest }           // 权限确认请求
+  | { type: "question_request"; request: QuestionRequest }               // 模型提问请求
 ```
 
 `assistantMessageEvent`（流式增量，适配器产出）：`start` / `text_start|delta|end` / `thinking_start|delta|end` / `toolcall_start|delta|end` / `done` / `error`，均携带 `partial`（合成中的 AssistantMessage）。
@@ -168,7 +177,7 @@ renderer 订阅规则：
 - `message_update` 只更新"正在流式生成"的那条 assistant 消息（按 `turn` 内最后一条 assistant 定位）。
 - `tool_execution_start/end` 驱动 toolCall 行的状态（运行中 / 完成 / 错误）。
 - `agent_end` 结束本次 run，清空 isStreaming。
-- `mcp_status_changed` / `session_title` / `permission_request` 为独立事件，renderer 按 type 分发（未知类型忽略，向后兼容）。
+- `mcp_status_changed` / `session_title` / `permission_request` / `question_request` 为独立事件，renderer 按 type 分发（未知类型忽略，向后兼容）。
 
 ## 6. StreamFn 契约与 AI SDK 适配器
 
@@ -231,7 +240,7 @@ stopReason 映射：`stop → stop`、`length → length`、`tool-calls → tool
 
 ## 7. IPC 契约
 
-`src/shared/ipc/agentChannels.ts` —— 共 12 个 channel：
+`src/shared/ipc/agentChannels.ts` —— 共 13 个 channel：
 
 ```ts
 AGENT_CHANNELS = {
@@ -246,6 +255,7 @@ AGENT_CHANNELS = {
   getMcpStatus:      "agent:getMcpStatus",      // invoke: () → McpServerStatusItem[]
   suggestedQuestions:"agent:suggestedQuestions",// invoke: (messages, excluded?) → string[]
   permissionResponse:"agent:permissionResponse",// invoke: (PermissionResponse) → { ok }
+  questionResponse:  "agent:questionResponse",  // invoke: (QuestionResponse) → { ok }
   event:             "agent:event",             // main → renderer: webContents.send(AGENT_CHANNELS.event, AgentEvent)
 }
 ```
@@ -253,8 +263,8 @@ AGENT_CHANNELS = {
 - main 持有会话级 agent runner 单例（当前激活会话）；`agent:send` 时若上一 run 未结束返回 `{ ok: false, error: "busy" }`。
 - 事件推送绑定到发起窗口的 `webContents`；renderer 侧 `ipcRenderer.on(AGENT_CHANNELS.event)` 订阅。
 - `agent:abort` → `agent.abort()`（AbortController 传播至 streamText 与工具 signal）。
-- 权限确认请求不单独占 channel，作为 `permission_request` 事件经 `agent:event` 推送；`permissionResponse` handler 校验 `requestId` 存在（未知/过期返回 `{ ok: false }`）。
-- `agentHandlers` 对所有 IPC 输入做边界校验（`isValidAgentMessage` / `isValidModelSelection` / `isValidSendContext` / `isValidSuggestedQuestionContext` / `isValidPermissionResponse`），非法输入返回错误或抛 `INVALID_*`。
+- 权限确认请求不单独占 channel，作为 `permission_request` 事件经 `agent:event` 推送；`permissionResponse` handler 校验 `requestId` 存在（未知/过期返回 `{ ok: false }`）。模型提问同理：`question_request` 事件 + `questionResponse` invoke（answers 或 dismissed）。
+- `agentHandlers` 对所有 IPC 输入做边界校验（`isValidAgentMessage` / `isValidModelSelection` / `isValidSendContext` / `isValidSuggestedQuestionContext` / `isValidPermissionResponse` / `isValidQuestionResponse`），非法输入返回错误或抛 `INVALID_*`。
 
 ## 8. 工具模型
 
@@ -286,6 +296,9 @@ type AgentToolResult<TDetails> = { content: (TextContent | ImageContent)[]; deta
   - **Skill**（`read_skill`）独立 `AgentSkillCallBlock`（violet、`Load_skill` 标签）；
   - **MCP** 调用 `AgentMcpCallBlock`（cyan，按 server 分组）；
   - **联网搜索** `AgentWebSearchBlock`（emerald，`[条件], [条件]`，全失败标注 `· Web search failed`）；
+  - **子代理**（`task`）独立 `AgentSubagentBlock`（blue，展示名称/描述/统计/状态，点击打开面板）；
+  - **任务清单**（`todowrite`）独立 `AgentTodoCallBlock`（orange，逐条展示清单）；
+  - **模型提问**（`question`）独立 `AgentQuestionBlock`（sky，消息流内联作答：多问题 tab 切换 + 单选 `LxRadio` / 多选 `LxCheckbox` 竖直排列 + 自定义输入）；
   - 错误消息红色提示。
 - **建议问题**：最后一条 AI 回答正常结束后展示 `SuggestedQuestions`（lime，可直接发送或回显输入框，`agent:suggestedQuestions` 异步生成）。
 - `AgentPage.tsx` 组装逻辑不变；`ChatHistoryPanel`（右侧栏历史）全量列出所有会话，搜索 + 项目 tag（`All / Project / Current Project` 英文单选）+ `LxSelect` 选具体项目；标题生成中该会话标题位显示 pulse 占位。

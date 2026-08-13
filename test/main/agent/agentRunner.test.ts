@@ -206,7 +206,9 @@ describe("agentRunner 持久化", () => {
         "time",
         "todowrite",
         "web_search",
+        "webfetch",
         "task",
+        "question",
       ],
       mcp: [],
       skills: [],
@@ -268,7 +270,9 @@ describe("agentRunner 持久化", () => {
       "time",
       "todowrite",
       "web_search",
+      "webfetch",
       "task",
+      "question",
     ])
   })
 

@@ -6,6 +6,7 @@ import type {
   AgentSessionSummary,
   McpServerStatusItem,
   PermissionResponse,
+  QuestionResponse,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
@@ -44,6 +45,8 @@ export const agentApi = {
   ): Promise<string[]> => window.api.agent.suggestedQuestions(messages, excludedQuestions),
   permissionRespond: (response: PermissionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.permissionRespond(response),
+  questionRespond: (response: QuestionResponse): Promise<{ ok: boolean }> =>
+    window.api.agent.questionRespond(response),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }

@@ -243,7 +243,8 @@ class PermissionManager {
 }
 
 // 永久写回的规则串：精确参数原样（不做 Tool() 无参放大）——换参数/换文件回到正常确认流。
-// bash → `Bash(command)`；write/edit → `Write(path)`/`Edit(path)`；其余（task/MCP）→ `Tool(args JSON)`。
+// bash → `Bash(command)`；write/edit → `Write(path)`/`Edit(path)`；webfetch → `WebFetch(url)`；
+// 其余（task/MCP）→ `Tool(args JSON)`。
 const formatRule = (toolName: string, args: unknown): string => {
   const record = isRecord(args) ? args : {}
   const capitalized = toolName.charAt(0).toUpperCase() + toolName.slice(1)
@@ -252,6 +253,9 @@ const formatRule = (toolName: string, args: unknown): string => {
   }
   if ((toolName === "write" || toolName === "edit") && typeof record.path === "string") {
     return `${capitalized}(${record.path})`
+  }
+  if (toolName === "webfetch" && typeof record.url === "string") {
+    return `WebFetch(${record.url})`
   }
   return `${capitalized}(${JSON.stringify(args ?? {})})`
 }
