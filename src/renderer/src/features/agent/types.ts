@@ -1,4 +1,10 @@
-import type { AgentDiff, AgentMessage, StopReason, SubagentData } from "@shared/contracts/agent"
+import type {
+  AgentDiff,
+  AgentMessage,
+  QuestionRequest,
+  StopReason,
+  SubagentData,
+} from "@shared/contracts/agent"
 
 export type {
   AgentDiff,
@@ -6,6 +12,7 @@ export type {
   AgentEvent,
   AgentMessage,
   DiffLinePart,
+  QuestionRequest,
   StopReason,
   SubagentData,
   SubagentStep,
@@ -26,6 +33,8 @@ export type ChatBlock =
       progress?: string
       // 子代理面板数据（task 流式快照/落库重建；驱动弹窗与时间轴）。
       subagent?: SubagentData
+      // 挂起的模型提问（question 工具；question_request 事件回填，作答后清除）。
+      question?: QuestionRequest
     }
   | {
       kind: "toolResult"

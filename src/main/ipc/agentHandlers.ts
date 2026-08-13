@@ -4,6 +4,7 @@ import type {
   AgentSendContext,
   McpServerStatusItem,
   PermissionResponse,
+  QuestionResponse,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
@@ -12,6 +13,7 @@ import { ipcMain, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
+import { questionManager } from "@/agent/question/questionManager"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
@@ -81,6 +83,24 @@ const isValidPermissionResponse = (value: unknown): value is PermissionResponse 
   )
 }
 
+// 校验提问响应为合法 QuestionResponse（IPC 输入边界）：answers 数组或 dismissed 标志。
+const isValidQuestionResponse = (value: unknown): value is QuestionResponse => {
+  if (!value || typeof value !== "object") return false
+  const response = value as Record<string, unknown>
+  if (typeof response.requestId !== "string" || !response.requestId) return false
+  if (response.dismissed === true) return true
+  if (!Array.isArray(response.answers)) return false
+  return response.answers.every((answer) => {
+    if (!answer || typeof answer !== "object") return false
+    const item = answer as Record<string, unknown>
+    return (
+      typeof item.question === "string" &&
+      Array.isArray(item.answer) &&
+      item.answer.every((entry) => typeof entry === "string")
+    )
+  })
+}
+
 /**
  * 注册 Agent 对话 IPC 处理器，并把 Agent 事件推送到目标窗口。
  */
@@ -97,6 +117,8 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   permissionManager.attachSender((request) =>
     sendToRenderer({ type: "permission_request", request }),
   )
+  // 模型提问请求经事件流推送到 renderer 命令面板。
+  questionManager.attachSender((request) => sendToRenderer({ type: "question_request", request }))
 
   ipcMain.handle(
     AGENT_CHANNELS.send,
@@ -207,5 +229,11 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(AGENT_CHANNELS.permissionResponse, (_, response: unknown) => {
     if (!isValidPermissionResponse(response)) return { ok: false }
     return { ok: permissionManager.respond(response) }
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.questionResponse, (_, response: unknown) => {
+    if (!isValidQuestionResponse(response)) return { ok: false }
+    const answers = "answers" in response ? response.answers : null
+    return { ok: questionManager.respond(response.requestId, answers) }
   })
 }

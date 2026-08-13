@@ -216,6 +216,43 @@ export interface PermissionResponse {
   permanent?: boolean
 }
 
+// 提问选项（question 工具选择题的候选项）。
+export interface QuestionOption {
+  label: string
+  description?: string
+}
+
+// 单个提问（question 工具；内容为 markdown，可含 mermaid 图自动渲染）。
+export interface QuestionPrompt {
+  question: string
+  // 短标签 chip（≤12 字符），UI 展示用。
+  header?: string
+  // 选择题候选（2..4 个）；缺省为自由文本输入。
+  options?: QuestionOption[]
+  // 多选（仅选择题生效）。
+  multiSelect?: boolean
+}
+
+// 提问请求（main → renderer，渲染于消息流内的 question 工具调用块）。
+export interface QuestionRequest {
+  requestId: string
+  // 触发本提问的 question 工具调用 id（renderer 据此定位消息流内的工具块）。
+  toolCallId: string
+  questions: QuestionPrompt[]
+  sessionId: string | null
+}
+
+// 单个提问的答案（answer 恒数组：单选/自由文本长度 1，多选多值）。
+export interface QuestionAnswer {
+  question: string
+  answer: string[]
+}
+
+// 提问响应（renderer → main；dismissed=true 表示用户关闭未作答）。
+export type QuestionResponse =
+  | { requestId: string; answers: QuestionAnswer[] }
+  | { requestId: string; dismissed: true }
+
 // 助手消息流式增量事件。
 export type AssistantMessageEvent =
   | { type: "start"; partial: AssistantMessage }
@@ -258,6 +295,7 @@ export type AgentEvent =
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
   | { type: "session_title"; sessionId: string; title: string | null }
   | { type: "permission_request"; request: PermissionRequest }
+  | { type: "question_request"; request: QuestionRequest }
   // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
   | { type: "compaction_summary"; message: CompactionSummaryMessage }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
@@ -343,6 +381,8 @@ export interface AgentApi {
     ) => Promise<string[]>
     // 响应权限确认请求（requestId 匹配 main 侧挂起的请求）。
     permissionRespond: (response: PermissionResponse) => Promise<{ ok: boolean }>
+    // 响应提问请求（requestId 匹配 main 侧挂起的提问；answers 或 dismissed）。
+    questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

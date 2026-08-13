@@ -38,7 +38,7 @@
 | # | 决策 | 结论 |
 |---|------|------|
 | 1 | 模式集 | **三态**：`default`（按规则逐次询问）/ `acceptEdits`（write/edit 自动允许）/ `bypassPermissions`（全部放行）。不做 `plan` |
-| 2 | 门控工具 | **`bash` / `write` / `edit` + 全部 MCP 工具**（有副作用或可外发数据）；豁免集 `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `web_search` 永不询问 |
+| 2 | 门控工具 | **`bash` / `write` / `edit` / `task` / `webfetch` + 全部 MCP 工具**（有副作用或可外发数据）；豁免集 `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `web_search` / `question` 永不询问 |
 | 3 | 配置位置 | `~/.lx/config.json` 的 **`agent.permissions`** 节点；设置页"权限"分区读写 |
 | 4 | 规则语法 | 对齐 CC：`ToolName(arg)`，参数支持 glob；优先级 **deny > ask > allow > 模式默认值** |
 | 5 | 评估执行位置 | main 进程 `permissionManager` 单例，挂 **`beforeToolCall` 钩子**（agent-loop 已 `await`，返回 `{ block, reason }` 即阻止） |
@@ -98,6 +98,7 @@
 |------|---------|
 | `Bash(arg)` | **命令前缀匹配**（CC 语义）：`Bash(git status)` 命中 `git status --short`；含 `*` 时命令 glob 全匹配（`*` → `.*`，跨斜杠——命令非路径）；空参命中全部 |
 | `Write(path)` / `Edit(path)` | **路径 glob 匹配**（相对会话 cwd，复用 `globToRegExp`）：`Write(src/**)` 命中 `src/a.ts`；`*` 不跨 `/`、`**` 跨目录、`?` 单字符；空参命中全部 |
+| `WebFetch(url)` | **URL 前缀匹配**（同 bash 前缀语义）：`WebFetch(https://api.example.com)` 命中该前缀下任意路径；含 `*` 时 URL glob 全匹配；空参命中全部 |
 | `web_search` | 不参与评估（豁免） |
 | MCP 工具 | 参数 `JSON.stringify` 后**子串匹配**（宽松）；空参命中全部 |
 

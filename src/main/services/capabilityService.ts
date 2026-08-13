@@ -1,6 +1,6 @@
 import type { AgentCapabilitySnapshot } from "@shared/contracts/agent"
 
-// 全量内置工具集（含联网搜索与子代理委托）：所有会话一律启用，无页面/项目裁剪。
+// 全量内置工具集（含联网搜索、原文抓取、提问与子代理委托）：所有会话一律启用，无页面/项目裁剪。
 export const DEFAULT_TOOLS = [
   "read",
   "ls",
@@ -12,7 +12,9 @@ export const DEFAULT_TOOLS = [
   "time",
   "todowrite",
   "web_search",
+  "webfetch",
   "task",
+  "question",
 ]
 
 /**

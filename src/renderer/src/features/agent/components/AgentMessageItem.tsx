@@ -22,6 +22,7 @@ import {
   type ExecutionGroupItem,
 } from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
+import { AgentQuestionBlock } from "@/features/agent/components/AgentQuestionBlock"
 import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
 import { AgentSubagentBlock } from "@/features/agent/components/AgentSubagentBlock"
 import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
@@ -61,11 +62,14 @@ type DisplayGroup =
   | { kind: "subagent"; block: ToolCallBlock; isStreaming: boolean }
   // 任务清单调用独立组（不参与执行折叠，逐条展示清单）。
   | { kind: "todo"; block: ToolCallBlock; isStreaming: boolean }
+  // 模型提问调用独立组（不参与执行折叠，内联作答）。
+  | { kind: "question"; block: ToolCallBlock; isStreaming: boolean }
 
 const SKILL_TOOL_NAME = "read_skill"
 const WEB_SEARCH_TOOL_NAME = "web_search"
 const SUBAGENT_TOOL_NAME = "task"
 const TODO_TOOL_NAME = "todowrite"
+const QUESTION_TOOL_NAME = "question"
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
 const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []
@@ -81,6 +85,9 @@ const isSubagentToolCall = (toolName: string): boolean => toolName === SUBAGENT_
 
 // 判断是否为任务清单（todowrite 工具）调用。
 const isTodoToolCall = (toolName: string): boolean => toolName === TODO_TOOL_NAME
+
+// 判断是否为模型提问（question 工具）调用。
+const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
 
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，内置工具名不含下划线）。
 const isMcpToolCall = (toolName: string): boolean =>
@@ -393,6 +400,12 @@ export const AgentMessageItem = ({
       if (isTodoToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "todo", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      // 模型提问调用独立成组：切断执行组并永不参与折叠，下方内联作答。
+      if (isQuestionToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "question", block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isWebSearchToolCall(toolName)) {
@@ -828,6 +841,10 @@ export const AgentMessageItem = ({
 
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
+            }
+
+            if (group.kind === "question") {
+              return <AgentQuestionBlock key={groupIndex} toolCall={group.block} />
             }
 
             const toolCount = group.blocks.filter(

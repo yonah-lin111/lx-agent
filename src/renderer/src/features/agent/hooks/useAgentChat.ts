@@ -157,6 +157,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
                   ? {
                       ...block,
                       status: event.isError ? "error" : "done",
+                      // question 作答完成：清除挂起请求，块退回只读清单。
+                      ...(event.toolName === "question" ? { question: undefined } : {}),
                       ...(subagent !== undefined ? { subagent } : {}),
                     }
                   : block,
@@ -190,6 +192,20 @@ export const useAgentChat = (context?: AgentSendContext) => {
         case "todo_updated":
           // 任务清单整表替换（模型经 todowrite 更新；驱动 TodoDock）。
           setTodos(event.todos)
+          break
+
+        case "question_request":
+          // 模型提问挂起：把请求回填到对应 question 工具调用块，驱动内联提问表单。
+          setMessages((prev) =>
+            prev.map((message) => ({
+              ...message,
+              blocks: message.blocks.map((block) =>
+                block.kind === "toolCall" && block.toolCallId === event.request.toolCallId
+                  ? { ...block, question: event.request }
+                  : block,
+              ),
+            })),
+          )
           break
 
         default:

@@ -65,6 +65,14 @@ describe("matchRule", () => {
     expect(matchRule(rules, "write", { path: "lib/a.ts" })).toBe(false)
   })
 
+  it("webfetch URL 前缀匹配（同 bash 前缀语义）", () => {
+    const rules = parsed(["WebFetch(https://api.example.com)"])
+    expect(matchRule(rules, "webfetch", { url: "https://api.example.com/v1/x" })).toBe(true)
+    expect(matchRule(rules, "webfetch", { url: "https://api.example.com" })).toBe(true)
+    expect(matchRule(rules, "webfetch", { url: "https://other.com" })).toBe(false)
+    expect(matchRule(rules, "webfetch", {})).toBe(false)
+  })
+
   it("空参命中全部调用", () => {
     const rules = parsed(["Bash()"])
     expect(matchRule(rules, "bash", { command: "anything" })).toBe(true)
