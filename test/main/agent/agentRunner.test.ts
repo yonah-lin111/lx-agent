@@ -195,7 +195,19 @@ describe("agentRunner 持久化", () => {
     ])
     // 全量能力快照（无页面/项目裁剪）。
     expect(JSON.parse(entries[0].payload)).toEqual({
-      tools: ["read", "ls", "grep", "find", "write", "edit", "bash", "time", "web_search", "task"],
+      tools: [
+        "read",
+        "ls",
+        "grep",
+        "find",
+        "write",
+        "edit",
+        "bash",
+        "time",
+        "todowrite",
+        "web_search",
+        "task",
+      ],
       mcp: [],
       skills: [],
     })
@@ -254,6 +266,7 @@ describe("agentRunner 持久化", () => {
       "edit",
       "bash",
       "time",
+      "todowrite",
       "web_search",
       "task",
     ])

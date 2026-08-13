@@ -74,6 +74,17 @@ export const toChatMessage = (
     }
   }
 
+  if (message.role === "todoState") {
+    // 任务清单不进消息流渲染（UI 走独立 TodoDock）；此分支不可达（state.messages 不含 todoState）。
+    return {
+      id,
+      role: "assistant",
+      blocks: [],
+      isStreaming: false,
+      timestamp: message.timestamp,
+    }
+  }
+
   const blocks: ChatBlock[] = message.content.map((block) => {
     if (block.type === "text") {
       return { kind: "text", text: block.text }

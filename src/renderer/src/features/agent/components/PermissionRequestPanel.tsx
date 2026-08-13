@@ -153,8 +153,8 @@ export const PermissionRequestPanel = ({
           shape="circle"
           aria-label="展开权限确认"
           title={{ content: "展开权限面板", placement: "top" }}
-          className="pointer-events-auto bg-white/10 !text-amber-300"
-          hoverBgClass="hover:bg-white/20"
+          className="pointer-events-auto border border-white/10 bg-[#303030] !text-amber-300"
+          hoverBgClass="hover:bg-[#3a3a3a]"
           hoverTextClass="hover:text-amber-300"
           onClick={onToggleCollapse}
         >
@@ -203,8 +203,9 @@ export const PermissionRequestPanel = ({
             </p>
           )}
         </div>
-        {/* 选项区：仅此区域可滚动；ref 用于上下键滚动定位（参考 / @ 命令面板）。 */}
-        <div ref={panelRef} className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto">
+        {/* 选项区：仅此区域可滚动；ref 用于上下键滚动定位（参考 / @ 命令面板）。
+            py-1 提供上下内边距，与 todo 清单区一致（不贴标题栏边框）。 */}
+        <div ref={panelRef} className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto py-1">
           {options.map((option, index) => (
             <div
               key={option.key}
@@ -213,7 +214,7 @@ export const PermissionRequestPanel = ({
               aria-selected={index === activeIndex}
               onMouseEnter={() => onHoverIndex(index)}
               onClick={() => onSelect(index)}
-              className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${toneClass(
+              className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${toneClass(
                 option.tone,
                 index === activeIndex,
               )}`}

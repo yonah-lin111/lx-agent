@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentSendContext, SubagentData } from "@shared/contracts/agent"
+import type { AgentEvent, AgentSendContext, SubagentData, TodoList } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
@@ -47,6 +47,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [isStreaming, setIsStreaming] = useState(false)
   // 历史会话恢复是否进行中（驱动消息列表骨架屏）。
   const [isRestoring, setIsRestoring] = useState(false)
+  // 任务清单（TodoDock 数据源：订阅 todo_updated / 恢复时提取；空数组 = dock 不渲染）。
+  const [todos, setTodos] = useState<TodoList>([])
   const messagesRef = useRef(messages)
   messagesRef.current = messages
   // 当前流式条目引用（message_update 定位）。
@@ -185,6 +187,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
           ])
           break
 
+        case "todo_updated":
+          // 任务清单整表替换（模型经 todowrite 更新；驱动 TodoDock）。
+          setTodos(event.todos)
+          break
+
         default:
           break
       }
@@ -211,6 +218,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     setIsRestoring(false)
     setMessages([])
     setInputText("")
+    setTodos([])
     sessionListStore.setCurrentSessionId(null)
     void agentApi.restore([])
   }, [stopStreaming])
@@ -284,6 +292,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
             toChatMessage(message, false, `m${++messageSequence}`),
           )
           setMessages(mergeSubagentSnapshots(chatMessages))
+          setTodos(restored.todos ?? [])
           setInputText("")
           sessionListStore.setCurrentSessionId(sessionId)
         })
@@ -351,6 +360,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
 
   return {
     messages,
+    todos,
     inputText,
     setInputText,
     isStreaming,

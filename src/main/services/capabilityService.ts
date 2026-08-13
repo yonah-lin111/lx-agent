@@ -10,6 +10,7 @@ export const DEFAULT_TOOLS = [
   "edit",
   "bash",
   "time",
+  "todowrite",
   "web_search",
   "task",
 ]

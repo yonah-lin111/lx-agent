@@ -1,4 +1,4 @@
-import type { PermissionRequest } from "@shared/contracts/agent"
+import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import { Send, Square } from "lucide-react"
 import type React from "react"
@@ -23,6 +23,7 @@ import {
   type PermissionPanelPhase,
   PermissionRequestPanel,
 } from "./PermissionRequestPanel"
+import { TodoDock } from "./TodoDock"
 
 interface AgentInputProps {
   inputText: string
@@ -42,6 +43,8 @@ interface AgentInputProps {
   projectPath?: string
   // 挂起的权限请求（非空时权限面板独占键盘）。
   pendingRequest: PermissionRequest | null
+  // 任务清单（模型经 todowrite 维护；驱动输入框上方 TodoDock 浮层）。
+  todos: TodoList
   onPermissionRespond: (
     decision: "allow" | "deny",
     rememberForSession?: boolean,
@@ -111,6 +114,7 @@ export const AgentInput = ({
   projectId,
   projectPath,
   pendingRequest,
+  todos,
   onPermissionRespond,
   worktreeOptions,
   onWorktreeSelect,
@@ -130,6 +134,8 @@ export const AgentInput = ({
     [inputTextareaRef],
   )
   const [panelPosition, setPanelPosition] = useState<CSSProperties | null>(null)
+  // TodoDock 浮层定位：输入框容器上方（bottom 对齐输入框顶部）；宽度由折叠/展开态内部决定。
+  const [todoPosition, setTodoPosition] = useState<CSSProperties | null>(null)
   const [commandIndex, setCommandIndex] = useState(0)
   const [fileIndex, setFileIndex] = useState(0)
   const [modelIndex, setModelIndex] = useState(0)
@@ -224,6 +230,40 @@ export const AgentInput = ({
       viewport?.removeEventListener("resize", scheduleUpdate)
     }
   }, [isPermissionMode, isCommandMode, isFileMode, isModelMode, isWorktreeMode])
+
+  // TodoDock 定位（独立于输入模式）：容器上方 bottom 对齐，left/width 取容器（宽度由 TodoDock 决定是否全宽）。
+  useLayoutEffect(() => {
+    const update = (): void => {
+      const container = containerRef.current
+      if (!container) {
+        setTodoPosition(null)
+        return
+      }
+      const rect = container.getBoundingClientRect()
+      const offset = 6
+      setTodoPosition({
+        left: Math.max(rect.left, 8),
+        width: rect.width,
+        top: "auto",
+        bottom: window.innerHeight - rect.top + offset,
+        maxHeight: Math.max(rect.top - offset - 8, 0),
+      })
+    }
+
+    update()
+    const container = containerRef.current
+    if (!container) return
+    const resizeObserver = new ResizeObserver(update)
+    resizeObserver.observe(container)
+    const viewport = window.visualViewport
+    window.addEventListener("resize", update)
+    viewport?.addEventListener("resize", update)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", update)
+      viewport?.removeEventListener("resize", update)
+    }
+  }, [])
 
   useEffect(() => {
     if (!projectId || !projectPath || activeMode !== "file") {
@@ -609,6 +649,8 @@ export const AgentInput = ({
             />
           </>
         )}
+        {/* 任务清单浮层：输入框上方，折叠态左侧小块 / 展开态全宽（与命令面板同风格）。 */}
+        <TodoDock todos={todos} position={todoPosition} />
         <textarea
           ref={mergedTextareaRef}
           value={inputText}

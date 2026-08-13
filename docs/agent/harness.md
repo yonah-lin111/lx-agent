@@ -25,6 +25,8 @@
 - **权限收尾（G5/G6）**：面板新增"永久允许 / 永久拒绝"，精确参数写回 `allow[]`/`deny[]`；`bypassPermissions` 与会话级 `allowAll` 下 deny 规则仍生效（保护敏感路径）。
 - **会话分支（fork）**：从任意用户轮切割复制历史到新会话，自动切换，共享 cwd / 文件状态（快照可回滚）；详见 [TASKS-v3.md](./TASKS-v3.md) §2。
 - **MCP 状态推送**：`mcp_status_changed` 事件 + `agent:getMcpStatus` 已实现。
+- **任务清单（todo）**：`todowrite` 工具（整表替换）+ `todo` entry 落库 + `todo_updated` 事件 + 恢复携带 `todos` + transformContext 注入 `[任务清单]` + 输入框上方 TodoDock（折叠一行当前项/点击展开）已实现；详见 [TASKS-v4.md](./TASKS-v4.md) §2。
+- **调用记录收尾（kind/provenance）**：`agent_call.kind` 四分类（mcp/subagent/skill/builtin）+ `mcp_server` 反查 + 子代理内部调用以 `parent_call_id` 指向父 task 调用行落库已实现；详见 [TASKS-v4.md](./TASKS-v4.md) §3/§4。
 - **steer / followUp 队列**：`Agent` 已具备（`PendingMessageQueue`），但 IPC/UI 未暴露——后续按需接线。
 
 ## 3. 信任模型（权限确认）
