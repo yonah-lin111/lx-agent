@@ -2,7 +2,7 @@ import type { AgentEvent, AgentSendContext, SubagentData, TodoList } from "@shar
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "../api/agentApi"
-import type { ChatMessage } from "../types"
+import type { ChatBlock, ChatMessage } from "../types"
 import {
   extractQuestionAnswers,
   extractSubagentData,
@@ -275,11 +275,17 @@ export const useAgentChat = (context?: AgentSendContext) => {
   }, [])
 
   // 撤销上一轮对话：删除最近一轮（含问题/回答/工具调用）并同步 main 侧与 DB。
+  // 被撤销的用户消息回显到输入框，便于修改后重新发送。
   const undoLastTurn = useCallback(() => {
     if (isStreaming) return
-    const lastUserIndex = messagesRef.current.findLastIndex((message) => message.role === "user")
+    const list = messagesRef.current
+    const lastUserIndex = list.findLastIndex((message) => message.role === "user")
     if (lastUserIndex < 0) return
-    setInputText("")
+    const echoed = list[lastUserIndex].blocks
+      .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+      .map((block) => block.text)
+      .join("\n")
+    setInputText(echoed)
     removeTurn(lastUserIndex)
   }, [isStreaming, removeTurn])
 
