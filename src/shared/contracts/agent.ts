@@ -66,6 +66,26 @@ export interface CompactionSummaryMessage {
   timestamp: number
 }
 
+// todo 清单项状态（对齐 Claude Code 四态）。
+export type TodoStatus = "pending" | "in_progress" | "completed" | "cancelled"
+
+// 单个 todo 清单项。
+export interface TodoItem {
+  content: string
+  status: TodoStatus
+}
+
+// todo 清单：整表替换语义（模型每次传完整数组，非增量 add/update）。
+export type TodoList = TodoItem[]
+
+// 任务清单状态消息：transformContext 每轮注入（模型上下文可见）。
+// 不进入 state.messages（不落库、不渲染）；UI 走 todo_updated 事件 + restore 的 todos 字段。
+export interface TodoStateMessage {
+  role: "todoState"
+  todos: TodoList
+  timestamp: number
+}
+
 // 词级 diff 片段：文本 + 是否变更（变更片段渲染为逆色高亮）。
 export interface DiffLinePart {
   text: string
@@ -146,6 +166,7 @@ export type AgentMessage =
   | UserMessage
   | AssistantMessage
   | CompactionSummaryMessage
+  | TodoStateMessage
   | ToolResultMessage
 
 // 建议问题生成请求的对话上下文消息。
@@ -239,6 +260,8 @@ export type AgentEvent =
   | { type: "permission_request"; request: PermissionRequest }
   // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
   | { type: "compaction_summary"; message: CompactionSummaryMessage }
+  // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
+  | { type: "todo_updated"; todos: TodoList }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
@@ -276,6 +299,8 @@ export interface AgentSessionSummary {
 export interface AgentRestoredSession {
   messages: AgentMessage[]
   activeCapabilities: AgentCapabilitySnapshot
+  // 任务清单（最后一条 todo entry 快照；空数组 = 无清单）。
+  todos: TodoList
 }
 
 // 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。

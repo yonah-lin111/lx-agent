@@ -40,6 +40,7 @@ export const AgentPage = ({
 }: AgentPageProps): React.JSX.Element => {
   const {
     messages,
+    todos,
     inputText,
     setInputText,
     isStreaming,
@@ -233,6 +234,7 @@ export const AgentPage = ({
           scrollRef={subagentScrollRef}
         />
       </div>
+      {/* 任务清单由 AgentInput 上方浮层展示（TodoDock：折叠左侧小块 / 展开全宽）。 */}
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
@@ -249,6 +251,7 @@ export const AgentPage = ({
         projectPath={currentProjectPath}
         inputTextareaRef={inputTextareaRef}
         pendingRequest={pendingRequest}
+        todos={todos}
         onPermissionRespond={respondPermission}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}

@@ -74,6 +74,9 @@ const messageCharCount = (message: AgentMessage): number => {
         .join("\n").length
     case "compactionSummary":
       return message.summary.length
+    case "todoState":
+      // 任务清单消息仅存在于 transformContext 输出（不进 state.messages），不参与上下文估计。
+      return 0
   }
 }
 
@@ -134,6 +137,8 @@ export const findCutPoint = (messages: AgentMessage[], keepRecentTokens: number)
 const extractConversationText = (messages: AgentMessage[]): string => {
   const parts: string[] = []
   for (const message of messages) {
+    // todoState 仅存在于 transformContext 输出（不进 state.messages），不参与压缩摘要。
+    if (message.role === "todoState") continue
     const prefix =
       message.role === "user"
         ? "用户"

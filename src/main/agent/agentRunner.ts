@@ -10,9 +10,15 @@ import type {
   AgentSendResult,
   AgentSessionSummary,
   AgentSwitchWorktreeResult,
+  TodoList,
+  TodoStateMessage,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
-import { agentSessionService, createExternalId } from "@/services/agentSessionService"
+import {
+  type AgentCallKind,
+  agentSessionService,
+  createExternalId,
+} from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { projectService } from "@/services/projectService"
@@ -46,8 +52,9 @@ import { createGrepTool } from "./tools/grep"
 import { createLsTool } from "./tools/ls"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
-import { createTaskTool, type TaskToolDeps } from "./tools/task"
+import { type ChildCallInput, createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
+import { createTodoTool } from "./tools/todowrite"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
 import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
@@ -58,6 +65,7 @@ const DEFAULT_SYSTEM_PROMPT = [
   "你可以使用工具读取、搜索、写入和编辑项目目录内的文件，并在项目根目录执行命令。",
   "修改文件前先读取确认目标内容；执行有副作用的命令前说明你的意图。",
   "回答使用简体中文，代码与专有名词保留原文。",
+  "面对多步骤任务（≥2 步、需要工具调用）时，用 todowrite 工具建立任务清单，并随进度更新；单步任务或闲聊不需要。",
 ].join("\n")
 
 // 可装配的内置工具全集（注册全集，按能力快照激活子集）。
@@ -70,6 +78,7 @@ const ALL_TOOL_NAMES = new Set([
   "edit",
   "bash",
   "time",
+  "todowrite",
   "web_search",
   "task",
 ])
@@ -103,6 +112,7 @@ const createRegistry = (
   registry.register(createEditTool(cwd))
   registry.register(createBashTool(cwd))
   registry.register(createTimeTool())
+  registry.register(createTodoTool())
   registry.register(createWebSearchTool())
   // task 子代理工具：execute 时从注册表当前激活集派生子代理工具集（去掉 task 斩断递归）。
   if (taskDeps) {
@@ -152,15 +162,26 @@ const truncateForStore = (value: unknown): string | null => {
   }
 }
 
+// 构造任务清单状态消息（transformContext 注入；不进 state.messages）。
+const createTodoStateMessage = (todos: TodoList): TodoStateMessage => ({
+  role: "todoState",
+  todos,
+  timestamp: Date.now(),
+})
+
 // 待落盘的调用记录（tool 事件缓冲）。
 type PendingCall = {
   toolCallId: string
+  // 落库 external_id：tool_execution_start 预生成，供子代理内部调用引用（parent_call_id）。
+  externalId: string
   toolName: string
   args: string | null
   status: "running" | "success" | "error" | "aborted"
   result: string | null
   startedAt: number
   finishedAt: number | null
+  // 子代理 provenance：触发本调用的父 task 调用行 external_id（普通调用为 null）。
+  parentCallId: string | null
 }
 
 // 会话归属上下文。
@@ -198,6 +219,8 @@ class AgentRunner {
   private activeCapabilities: string[] = getDefaultCapabilities().tools
   // 当前会话生效的 MCP 工具（全名）与注入 skill（随能力快照刷新）。
   private activeMcp: string[] = []
+  // MCP 工具全名 → server 名反查（agent_call 落库 mcp_server 用；随装配刷新）。
+  private mcpServerByToolName = new Map<string, string>()
   private activeSkills: LoadedSkill[] = []
   // 最近一次装配的能力指纹；cwd/模型不变且能力未变时跳过重建。
   private builtSignature = ""
@@ -216,6 +239,11 @@ class AgentRunner {
   private runMessages: AgentMessage[] = []
   // 本次 run 的工具调用缓冲。
   private pendingCalls = new Map<string, PendingCall>()
+  // 子代理内部工具调用缓冲（provenance：parent_call_id 指向父 task 调用行；随父 turn 落库）。
+  private pendingChildCalls = new Map<string, PendingCall>()
+  // 任务清单：当前生效（transformContext 注入）；pendingTodo 为本轮待落库的整表快照。
+  private todoList: TodoList = []
+  private pendingTodo: TodoList | null = null
   // run 代数：负值表示当前无活动 run（已丢弃/已结束），残留事件不再落盘。
   private currentRunGeneration = -1
 
@@ -265,6 +293,10 @@ class AgentRunner {
       this.agent.state.model.provider !== modelResult.model.provider ||
       this.agent.state.model.id !== modelResult.model.id
     ) {
+      // MCP 工具全名 → server 名反查（flushTurn 落库 mcp_server/kind 分类用）。
+      this.mcpServerByToolName = new Map(
+        mcpManager.getTools().map((handle) => [handle.fullName, handle.server]),
+      )
       const registry = createRegistry(
         cwd,
         this.activeCapabilities,
@@ -276,6 +308,8 @@ class AgentRunner {
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal),
           getSignal: () => this.agent?.signal,
+          recordChildCall: (parentToolCallId, child) =>
+            this.recordChildCall(parentToolCallId, child),
         },
       )
       const previousMessages = this.agent?.state.messages ?? []
@@ -283,14 +317,21 @@ class AgentRunner {
         streamFn: createAiSdkStreamFn(),
         beforeToolCall: (context, signal) =>
           permissionManager.gate(context, this.currentSessionId, signal),
-        // 上下文压缩：模型请求边界构造 [摘要] + 保留尾部；state.messages 保持全量（UI/DB 真相源）。
+        // 上下文变换：todo 清单（非空时）注入头部 + 压缩边界构造 [摘要] + 保留尾部；
+        // state.messages 保持全量（UI/DB 真相源）。
         transformContext: async (messages) => {
+          const todoMessage =
+            this.todoList.length > 0 ? [createTodoStateMessage(this.todoList)] : []
           const boundary = this.contextBoundary
-          if (!boundary) return messages
+          if (!boundary) return [...todoMessage, ...messages]
           const kept = messages.filter(
             (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
           )
-          return [createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore), ...kept]
+          return [
+            ...todoMessage,
+            createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore),
+            ...kept,
+          ]
         },
         initialState: {
           systemPrompt: DEFAULT_SYSTEM_PROMPT + formatSkillsForPrompt(this.activeSkills),
@@ -508,6 +549,8 @@ class AgentRunner {
       this.setSessionId(null)
       this.sessionBinding = null
       this.contextBoundary = null
+      this.todoList = []
+      this.pendingTodo = null
     }
   }
 
@@ -517,7 +560,7 @@ class AgentRunner {
     if (!session) {
       throw new Error("SESSION_NOT_FOUND")
     }
-    const { messages, seqs, capabilities } = this.readSessionEntries(sessionId)
+    const { messages, seqs, capabilities, todos } = this.readSessionEntries(sessionId)
 
     this.discardPendingTurn()
     this.agent?.abort()
@@ -533,6 +576,7 @@ class AgentRunner {
     this.requestedCwd = session.cwd
     this.activeMcp = this.resolveMcpTools()
     this.activeSkills = this.resolveInjectedSkills(session.cwd)
+    this.todoList = todos
 
     const ready = this.ensureReady()
     if ("error" in ready) {
@@ -542,18 +586,25 @@ class AgentRunner {
     this.messageSeqs = seqs
     this.contextBoundary = this.readCompactionEntry(sessionId)
     // state.messages 保持全量；返回给 renderer 的消息列表插入可见摘要块（UI 位置与压缩边界一致）。
-    return { messages: this.withCompactionSummary(messages), activeCapabilities: capabilities }
+    return {
+      messages: this.withCompactionSummary(messages),
+      activeCapabilities: capabilities,
+      todos,
+    }
   }
 
-  // 按 seq 读取会话，重建消息列表、消息 → seq 对齐与最近的能力快照。
+  // 按 seq 读取会话，重建消息列表、消息 → seq 对齐、最近的能力快照与任务清单。
   private readSessionEntries(sessionId: string): {
     messages: AgentMessage[]
     seqs: number[]
     capabilities: AgentCapabilitySnapshot
+    todos: TodoList
   } {
     const messages: AgentMessage[] = []
     const seqs: number[] = []
     let capabilities: AgentCapabilitySnapshot = { tools: [], mcp: [], skills: [] }
+    // 最后一条 todo entry（整表替换语义；后写覆盖前写）。
+    let todos: TodoList = []
 
     for (const entry of agentSessionService.listEntries(sessionId)) {
       if (entry.type === "message") {
@@ -570,9 +621,16 @@ class AgentRunner {
           mcp: Array.isArray(parsed.mcp) ? parsed.mcp : [],
           skills: Array.isArray(parsed.skills) ? parsed.skills : [],
         }
+      } else if (entry.type === "todo") {
+        try {
+          const parsed = JSON.parse(entry.payload) as unknown
+          if (Array.isArray(parsed)) todos = parsed as TodoList
+        } catch {
+          // 损坏的 todo entry 跳过，保留前一条。
+        }
       }
     }
-    return { messages, seqs, capabilities }
+    return { messages, seqs, capabilities, todos }
   }
 
   // 历史会话列表（全量，客户端过滤）。
@@ -583,40 +641,56 @@ class AgentRunner {
   // 删除一轮对话：以该轮用户消息 timestamp 定位，删除用户消息 + 后续 AI/toolResult 消息及关联调用。
   // 删除后会话无剩余消息则整体删除会话（保持"空会话不入库"不变量）。
   deleteMessageTurn(sessionId: string, userMessageTimestamp: number): void {
-    const parsed = agentSessionService.listMessageEntries(sessionId).map((entry) => {
-      let message: AgentMessage | undefined
-      try {
-        message = JSON.parse(entry.payload) as AgentMessage
-      } catch {
-        // 损坏的 entry 跳过，不参与边界判定。
-      }
-      return { entry, message }
-    })
+    // 全量 entries（seq 升序）：message 与 todo 交错，需按 seq 边界定位整轮删除区间。
+    const allEntries = agentSessionService.listEntries(sessionId)
 
-    let startIndex = -1
-    for (let index = 0; index < parsed.length; index++) {
-      const message = parsed[index].message
-      if (message?.role === "user" && message.timestamp === userMessageTimestamp) {
-        startIndex = index
-        break
+    // 目标用户消息 entry 的 seq（timestamp 定位；未命中 = UI-only 幽灵轮，无需写库）。
+    let startSeq: number | undefined
+    for (const entry of allEntries) {
+      if (entry.type !== "message") continue
+      try {
+        const message = JSON.parse(entry.payload) as AgentMessage
+        if (message.role === "user" && message.timestamp === userMessageTimestamp) {
+          startSeq = entry.seq
+          break
+        }
+      } catch {
+        // 损坏的 entry 跳过。
       }
     }
-    // 未命中（UI-only 幽灵轮）：无需写库。
-    if (startIndex < 0) return
+    if (startSeq === undefined) return
 
+    // 删除区间 = [startSeq, 下一个用户消息 entry)：message 与 todo 随轮删除；
+    // compaction / active_capabilities 是独立边界，不随轮删（恢复仍可重建压缩摘要）。
     const turnEntryIds: string[] = []
-    for (let index = startIndex; index < parsed.length; index++) {
-      const { entry, message } = parsed[index]
-      // 遇到下一个用户消息即为一轮结束，不纳入本轮删除范围。
-      if (index > startIndex && message?.role === "user") break
-      turnEntryIds.push(entry.external_id)
+    for (const entry of allEntries) {
+      if (entry.seq < startSeq) continue
+      if (entry.seq > startSeq && entry.type === "message") {
+        let isUser = false
+        try {
+          isUser = (JSON.parse(entry.payload) as AgentMessage).role === "user"
+        } catch {
+          // 损坏 entry 不参与边界判定。
+        }
+        if (isUser) break
+      }
+      if (entry.type === "message" || entry.type === "todo") {
+        turnEntryIds.push(entry.external_id)
+      }
     }
 
     // 文件快照回滚：仅当被删轮是最后一条用户消息轮时回滚文件（中段轮删除维持只删消息，
     // 避免与后续轮引用/修改的文件状态冲突；完整 revert-and-cleanup 留 v2）。
     let isLastUserTurn = true
-    for (let index = startIndex + 1; index < parsed.length; index++) {
-      if (parsed[index].message?.role === "user") {
+    for (const entry of allEntries) {
+      if (entry.seq <= startSeq || entry.type !== "message") continue
+      let isUser = false
+      try {
+        isUser = (JSON.parse(entry.payload) as AgentMessage).role === "user"
+      } catch {
+        // 损坏 entry 不参与判定。
+      }
+      if (isUser) {
         isLastUserTurn = false
         break
       }
@@ -626,6 +700,8 @@ class AgentRunner {
     }
 
     const now = new Date().toISOString()
+    // 删除区间可能带走最新 todo entry：事务后按会话存续状态同步内存清单。
+    const wasCurrent = this.currentSessionId === sessionId
     agentSessionService.transaction(() => {
       agentSessionService.deleteCallsByEntryIds(turnEntryIds)
       agentSessionService.deleteEntries(turnEntryIds)
@@ -641,6 +717,17 @@ class AgentRunner {
         agentSessionService.touchSession(sessionId, now)
       }
     })
+    if (wasCurrent) {
+      if (this.currentSessionId === sessionId) {
+        // 会话仍在：重读最后一条 todo entry（删除区间可能带走最新清单）。
+        this.todoList = this.readLastTodoEntry(sessionId)
+      } else {
+        // 会话被整体删除：todo 随会话清空。
+        this.todoList = []
+        this.pendingTodo = null
+      }
+      this.eventSink?.({ type: "todo_updated", todos: this.todoList })
+    }
   }
 
   // 重命名会话标题（仅当会话存在）。
@@ -708,6 +795,9 @@ class AgentRunner {
     if (this.currentSessionId === sessionId) {
       this.setSessionId(null)
       this.sessionBinding = null
+      this.todoList = []
+      this.pendingTodo = null
+      this.eventSink?.({ type: "todo_updated", todos: [] })
     }
     agentSessionService.deleteSession(sessionId)
   }
@@ -727,6 +817,7 @@ class AgentRunner {
     this.currentRunGeneration += 1
     this.runMessages = []
     this.pendingCalls.clear()
+    this.pendingChildCalls.clear()
     this.sessionInput = {
       binding: this.sessionBinding ?? {},
       cwd: this.cwd ?? "",
@@ -744,6 +835,7 @@ class AgentRunner {
     this.sessionInput = null
     this.runMessages = []
     this.pendingCalls.clear()
+    this.pendingChildCalls.clear()
     this.currentRunGeneration = -1
     this.pendingSnapshotStart = null
   }
@@ -764,12 +856,15 @@ class AgentRunner {
       case "tool_execution_start":
         this.pendingCalls.set(event.toolCallId, {
           toolCallId: event.toolCallId,
+          // 预生成落库 id：子代理内部调用以它为 parent_call_id（父 task 调用行 id 提前可知）。
+          externalId: createExternalId(),
           toolName: event.toolName,
           args: truncateForStore(event.args),
           status: "running",
           result: null,
           startedAt: Date.now(),
           finishedAt: null,
+          parentCallId: null,
         })
         break
 
@@ -780,6 +875,16 @@ class AgentRunner {
           call.result = truncateForStore(event.result)
           call.finishedAt = Date.now()
         }
+        // todowrite：解析整表清单 → 更新内存 + 推送事件（清单由 flushTurn 同事务落 todo entry）。
+        if (event.toolName === "todowrite" && !event.isError) {
+          const details = (event.result as { details?: { todos?: TodoList } }).details
+          const todos = details?.todos
+          if (Array.isArray(todos)) {
+            this.todoList = todos
+            this.pendingTodo = todos
+            this.eventSink?.({ type: "todo_updated", todos })
+          }
+        }
         break
       }
 
@@ -787,6 +892,35 @@ class AgentRunner {
         this.flushTurn()
         break
     }
+  }
+
+  // agent_call kind 分类：mcp（工具名 ∈ MCP 全名）/ subagent（task）/ skill（read_skill）/ builtin。
+  private classifyCall(toolName: string): AgentCallKind {
+    if (toolName === "task") return "subagent"
+    if (toolName === "read_skill") return "skill"
+    if (this.mcpServerByToolName.has(toolName)) return "mcp"
+    return "builtin"
+  }
+
+  // 记录子代理内部工具调用（provenance）：parent_call_id 指向触发它的父 task 调用行；
+  // 与父 turn 同事务落库（entry_id 恒 null；UI 不展示，供查询/审计）。
+  private recordChildCall(parentToolCallId: string, child: ChildCallInput): void {
+    const parent = this.pendingCalls.get(parentToolCallId)
+    if (!parent) return // 父调用未在缓冲（如 turn 已丢弃）：忽略，不落孤儿行。
+    const existing = this.pendingChildCalls.get(child.toolCallId)
+    this.pendingChildCalls.set(child.toolCallId, {
+      toolCallId: child.toolCallId,
+      // start 已预生成 id；end 更新复用（同一次调用一条记录）。
+      externalId: existing?.externalId ?? createExternalId(),
+      toolName: child.toolName,
+      args: truncateForStore(child.args),
+      status: child.status,
+      result: truncateForStore(child.result),
+      // 保留 start 时刻的真实起始时间（end 事件不覆盖）。
+      startedAt: existing?.startedAt ?? child.startedAt,
+      finishedAt: child.finishedAt,
+      parentCallId: parent.externalId,
+    })
   }
 
   // 会话不存在时创建会话行 + 能力快照；已存在则直接返回（须在事务内调用）。
@@ -824,14 +958,18 @@ class AgentRunner {
     return agentSessionService.listMessageEntries(sessionId).length > 0
   }
 
-  // 一个 turn 落库：会话创建（含能力/模型快照）+ 消息 entries + 调用记录，一个事务。
+  // 一个 turn 落库：会话创建（含能力/模型快照）+ 消息 entries + 调用记录 + todo 清单，一个事务。
   private flushTurn(): void {
     const input = this.sessionInput
     const messages = this.runMessages
     const calls = [...this.pendingCalls.values()]
+    const childCalls = [...this.pendingChildCalls.values()]
+    const pendingTodo = this.pendingTodo
     this.sessionInput = null
     this.runMessages = []
     this.pendingCalls.clear()
+    this.pendingChildCalls.clear()
+    this.pendingTodo = null
     this.currentRunGeneration = -1
 
     if (!input || messages.length === 0) {
@@ -881,13 +1019,13 @@ class AgentRunner {
         const finishedAt = call.finishedAt
         agentSessionService.insertCall({
           sessionId,
-          externalId: createExternalId(),
+          externalId: call.externalId,
           entryId: entryIdByToolCallId.get(call.toolCallId) ?? null,
-          parentCallId: null,
-          // task 调用落 kind=subagent（子代理内部工具 v1 不单独落库）。
-          kind: call.toolName === "task" ? "subagent" : "builtin",
+          parentCallId: call.parentCallId,
+          // kind 分类：mcp（工具名 ∈ MCP 全名）/ subagent（task）/ skill（read_skill）/ builtin。
+          kind: this.classifyCall(call.toolName),
           name: call.toolName,
-          mcpServer: null,
+          mcpServer: this.mcpServerByToolName.get(call.toolName) ?? null,
           status: call.status,
           args: call.args,
           result: call.result,
@@ -897,6 +1035,41 @@ class AgentRunner {
           createdAt: now,
           updatedAt: now,
         })
+      }
+
+      // 子代理内部调用：entry_id 恒 null（非 turn 消息产物），parent_call_id 指触发它的父 task 调用行。
+      for (const child of childCalls) {
+        const finishedAt = child.finishedAt
+        agentSessionService.insertCall({
+          sessionId,
+          externalId: child.externalId,
+          entryId: null,
+          parentCallId: child.parentCallId,
+          kind: this.classifyCall(child.toolName),
+          name: child.toolName,
+          mcpServer: this.mcpServerByToolName.get(child.toolName) ?? null,
+          status: child.status,
+          args: child.args,
+          result: child.result,
+          durationMs: finishedAt !== null ? finishedAt - child.startedAt : null,
+          startedAt: new Date(child.startedAt).toISOString(),
+          finishedAt: finishedAt !== null ? new Date(finishedAt).toISOString() : null,
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+
+      // todo 清单（本轮整表替换）：追加型 entry，payload = JSON(TodoList)；恢复/回退读最后一条。
+      if (pendingTodo) {
+        agentSessionService.insertEntry({
+          externalId: createExternalId(),
+          sessionId,
+          seq,
+          type: "todo",
+          payload: JSON.stringify(pendingTodo),
+          createdAt: now,
+        })
+        seq += 1
       }
 
       agentSessionService.touchSession(sessionId, now)
@@ -1013,6 +1186,21 @@ class AgentRunner {
       }
     }
     return null
+  }
+
+  // 读取会话最后一条 todo entry（整表替换语义：后写覆盖前写；无则空清单）。
+  private readLastTodoEntry(sessionId: string): TodoList {
+    const entries = agentSessionService.listEntries(sessionId)
+    for (let index = entries.length - 1; index >= 0; index--) {
+      if (entries[index].type !== "todo") continue
+      try {
+        const parsed = JSON.parse(entries[index].payload) as unknown
+        if (Array.isArray(parsed)) return parsed as TodoList
+      } catch {
+        // 损坏 entry 继续往前找。
+      }
+    }
+    return []
   }
 
   // 在返回给 renderer 的消息列表中，于压缩边界处插入可见摘要块（UI 展示全量历史 + 摘要）。

@@ -95,6 +95,8 @@ export interface LxIconButtonProps
   highlighted?: boolean
   hoverBgClass?: string
   hoverTextClass?: string
+  // 前置 icon：提供时渲染「icon + 文字内容」布局（容器自适应宽度、icon 与文字间留 gap）。
+  icon?: React.ReactNode
   iconOnly?: boolean
   // 是否显示悬停背景颜色，默认为显示。
   showHoverBg?: boolean
@@ -117,6 +119,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       highlighted = false,
       hoverBgClass,
       hoverTextClass,
+      icon,
       iconOnly = true,
       preset,
       shape = "square",
@@ -128,10 +131,13 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     },
     ref,
   ): React.JSX.Element => {
+    // icon + 文字布局：icon 提供且 children 非空时容器自适应宽度、icon 与文字 gap。
+    const hasIconAndLabel = icon != null && children != null
     const baseStyles =
       "flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
     const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
-    const sizeStyles = iconOnly ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
+    const sizeStyles =
+      iconOnly && !hasIconAndLabel ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
     const finalHoverBg = showHoverBg
       ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5"))
       : ""
@@ -151,7 +157,14 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     let renderContent = children
     const PresetIcon = preset ? PRESET_ICONS[preset] : null
 
-    if (PresetIcon && !iconOnly && children) {
+    if (icon != null) {
+      renderContent = (
+        <>
+          {icon}
+          {children}
+        </>
+      )
+    } else if (PresetIcon && !iconOnly && children) {
       renderContent = (
         <>
           <PresetIcon className={`${SIZE_CHIP_ICON_CLASSES[size]} flex-shrink-0`} />
@@ -169,7 +182,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       <button
         ref={ref}
         type={type}
-        className={`${baseStyles} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${hasIconAndLabel ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >

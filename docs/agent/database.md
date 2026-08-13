@@ -10,7 +10,7 @@
 |---|------|------|
 | 1 | 存储形态 | **混合**：`agent_session_entry` 树存完整会话上下文（恢复/续接的真相源），独立 `agent_call` 表存工具调用记录（查询/统计/审计视图） |
 | 2 | session 归属 | **全局会话**：不按页面/项目分桶。会话归属（`project_item_id`/`project_id`/`page`）在建会话时**冻结**，导航不改变既有会话；归属列仅作历史「项目/当前项目」tag 的筛选依据。`page` 列 + 可空 FK + CHECK 约束保留 |
-| 3 | 调用记录 | 统一 `agent_call` 表 + `kind` 列（builtin/mcp/subagent/skill）；**v1 落盘恒为 `builtin`**（见 §2.3）；subagent 嵌套用 `parent_call_id` 同表自关联表达（v1 未用） |
+| 3 | 调用记录 | 统一 `agent_call` 表 + `kind` 列（builtin/mcp/subagent/skill）按工具名分类落库（见 §2.3）；subagent 嵌套用 `parent_call_id` 同表自关联（子代理内部调用已落库） |
 | 4 | 能力快照 | 激活能力集（tools/mcp/skills）作为 entry type `active_capabilities` 落盘随会话冻结；`config.json` 仅作**新建会话**的默认装配源 |
 | 5 | id/时间规范 | 沿用现有规范：`id INTEGER PRIMARY KEY` + `external_id TEXT UNIQUE` + `created_at/updated_at TIMESTAMP`，FK 引用 `external_id` |
 | 6 | 表管理 | 沿用 `exec("CREATE TABLE IF NOT EXISTS ...")`，`createAgentTables` 与 `createProjectTables` 同风格同 `initDatabase` 入口；迁移框架写演进预案（见 §7） |
@@ -88,8 +88,9 @@ CREATE INDEX IF NOT EXISTS idx_agent_session_entry_parent
 |------|----------------|------|
 | `message` | `AgentMessage` 原样 | 纯 JSON 可序列化（含 text/thinking/toolCall/toolResult content blocks），是恢复续接的输入 |
 | `active_capabilities` | `{ tools: string[]; mcp: string[]; skills: string[] }` | 能力快照，随会话冻结；对齐 pi `active_tools_change` |
+| `todo` | `TodoList`（整表替换） | 任务清单快照：模型每次经 `todowrite` 传完整数组，追加型 entry（后写覆盖前写），恢复读最后一条；随轮删除回退 |
 
-首版会话在**创建事务**内写入首条 `active_capabilities`，其后每次 turn 追加消息；`active_capabilities` 仅在能力集实际变化时追加。`compaction / label / leaf / branch_summary / custom` 等 pi entry type 为 harness v3/v4 预留，v1 不写。
+首版会话在**创建事务**内写入首条 `active_capabilities`，其后每次 turn 追加消息；`active_capabilities` 仅在能力集实际变化时追加。`compaction` entry 存压缩边界（摘要化早期历史）；`todo` entry 在 `todowrite` 调用所在 turn 的同一事务内追加。`label / leaf / branch_summary / custom` 等 pi entry type 为 harness v3/v4 预留，v1 不写。
 
 ### 2.3 agent_call —— 调用记录（查询/审计视图）
 
@@ -132,11 +133,11 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
   ON agent_call(entry_id);
 ```
 
-**v1 落盘实现说明**：
+**落盘实现说明**：
 
-- 表结构 `kind` 支持 `builtin/mcp/subagent/skill` 四种，但 **`agentRunner.flushTurn()` 落库时 `kind` 恒为 `"builtin"`**、`mcp_server` 恒为 `null`、`parent_call_id` 恒为 `null`——即 v1 不区分工具类别，`name` 直接记工具名（MCP 工具记前缀全名如 `codegraph_codegraph_search`）。`kind` 枚举与 `parent_call_id` 为后续 subagent/skill 区分预留。
+- **`kind` 分类**（`flushTurn` 按工具名判定）：`subagent`（`task`）→ `skill`（`read_skill`）→ `mcp`（工具名 ∈ 已连接 MCP 全名，`mcp_server` 经 fullName→server 反查填充）→ 其余 `builtin`。`name` 直接记工具名（MCP 记前缀全名如 `codegraph_codegraph_search`）。
 - **双向互跳**：`entryIdByToolCallId` 由触发调用的 assistant message entry 的 toolCall block.id 映射 `entry_id`（`flushTurn` 内构建），`entry_id` 从查询视图跳到上下文真相；反向由 message entry 内 toolCall block 的 id 对回调用行。
-- **subagent 嵌套机制（预留）**：子代理对父会话就是一次普通调用（`kind='subagent'`），其内部每个 tool/mcp/skill 调用写同一张表、同一 `session_id`，`parent_call_id` 指回子代理那行；任意深度自然成立。子代理内部消息不进父会话 entries 树，父树只落一个 toolCall/toolResult 对；内部步骤仅靠 `agent_call` 留存 provenance。查询子树用递归 CTE 沿 `parent_call_id` 遍历。
+- **subagent provenance（已启用）**：子代理对父会话就是一次普通调用（`kind='subagent'`），其内部每个 tool/mcp/skill 调用写同一张表、同一 `session_id`，`parent_call_id` 指回子代理那行（顶层 `task` 调用行的 `external_id`）、`entry_id` 恒 `null`（非父树消息产物）；任意深度自然成立。子代理内部消息不进父会话 entries 树，父树只落一个 toolCall/toolResult 对；内部步骤仅靠 `agent_call` 留存 provenance。查询子树用递归 CTE 沿 `parent_call_id` 遍历。
 
 ## 3. 能力装配：全量默认（不再按页面裁剪）
 
@@ -176,7 +177,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 
 **会话删除**（`agentSessionService.deleteSession`）：级联删除 entries / calls（FK `ON DELETE CASCADE`）；若为当前会话则先脱离（`setSessionId(null)`），避免残留事件写入已删会话。
 
-**删除一轮对话**（`agentRunner.deleteMessageTurn`）：以该轮用户消息 `timestamp` 定位其 `message` entry，删除它到下一个用户消息（不含）之间的全部 entry（`deleteEntries`）及 `entry_id` 落在其内的 `agent_call` 行（`deleteCallsByEntryIds`）；未命中（UI-only 幽灵轮）仅本地移除、不写库；删除后会话无剩余消息则连会话行一并删除（维持"空会话不入库"）。`seq` 保留空洞不重排，`nextSeq` 取 `MAX(seq)+1` 不受影响。
+**删除一轮对话**（`agentRunner.deleteMessageTurn`）：以该轮用户消息 `timestamp` 定位其 `message` entry，删除它到下一个用户消息（不含）之间的全部 `message` 与 `todo` entry（`deleteEntries`）及 `entry_id` 落在其内的 `agent_call` 行（`deleteCallsByEntryIds`）；`compaction` 是独立边界不随轮删。删除后内存清单重读最后一条 `todo` entry 同步（删除区间可能带走最新清单）。未命中（UI-only 幽灵轮）仅本地移除、不写库；删除后会话无剩余消息则连会话行一并删除（维持"空会话不入库"）。`seq` 保留空洞不重排，`nextSeq` 取 `MAX(seq)+1` 不受影响。
 
 写入均由 main 进程 better-sqlite3 同步执行，单写者，无锁冲突。
 
@@ -216,7 +217,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 |----|------|
 | 级联删除 | `agent_session → entries/calls` 全随 `project_item` 级联删除。若后续要"项目删除但保留会话审计"，需改软删/归档，届时再评估 |
 | 同 session 并发 append | v1 单会话单 runner（busy 拒绝），无双写者；多窗口共写同一 session 属 harness 后续关注 |
-| `kind` 未区分 | v1 落库恒 `builtin`，MCP 调用也记 builtin（`name` 为前缀全名）；统计/审计需按 `name` 前缀或后续填充 `kind` |
 | 敏感数据 | `args/result` 可能含敏感内容，本地单机库明文接受（与 config.json 存 apiKey 一致）；不加密 |
 | cwd 冗余 | `agent_session.cwd` 复制自 `project.path`，恢复不依赖 project 表存在；项目改名/移动路径后旧会话 cwd 可能失效，属可接受 |
 | 启动竞态 | 挂载时 `listSessions` + 恢复为异步：IPC 失败或竞态时保持空展示，不闪断当前会话 |

@@ -29,8 +29,8 @@ import type {
 export type { QueueMode } from "./types"
 
 // 默认消息转换：仅透传标准 LLM 角色消息。
-// 压缩摘要消息（compactionSummary）在 LLM 协议层映射为带标记的 user 文本（协议无此角色，
-// 单独转换不混淆；UI 侧仍以专属 compactionSummary 块展示）。
+// 压缩摘要消息（compactionSummary）与任务清单消息（todoState）在 LLM 协议层映射为
+// 带标记的 user 文本（协议无此角色，单独转换不混淆；UI 侧分别走专属块/dock 展示）。
 function defaultConvertToLlm(messages: AgentMessage[]): LlmMessage[] {
   return messages.flatMap((message): LlmMessage[] => {
     if (message.role === "compactionSummary") {
@@ -38,6 +38,17 @@ function defaultConvertToLlm(messages: AgentMessage[]): LlmMessage[] {
         {
           role: "user",
           content: `[上下文压缩摘要]\n${message.summary}`,
+        },
+      ]
+    }
+    if (message.role === "todoState") {
+      const lines = message.todos.map(
+        (todo, index) => `#${index + 1} [${todo.status}] ${todo.content}`,
+      )
+      return [
+        {
+          role: "user",
+          content: `[任务清单]\n${lines.join("\n")}`,
         },
       ]
     }

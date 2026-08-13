@@ -56,6 +56,17 @@ const summarizeToolResult = (result: unknown): string | undefined => {
   return text.length > 96 ? `${text.slice(0, 96)}…` : text
 }
 
+// 子代理内部工具调用记录输入（provenance 落库；runner 负责截断与写库）。
+export interface ChildCallInput {
+  toolCallId: string
+  toolName: string
+  args: unknown
+  status: "running" | "success" | "error" | "aborted"
+  result?: unknown
+  startedAt: number
+  finishedAt: number | null
+}
+
 // task 工具依赖（agentRunner 装配时注入；execute 时解析）。
 export interface TaskToolDeps {
   // 父系统提示词（子代理在其后追加子代理前缀）。
@@ -69,6 +80,8 @@ export interface TaskToolDeps {
   ) => Promise<BeforeToolCallResult | undefined>
   // 父 run 的 abort signal（级联中止子代理）。
   getSignal: () => AbortSignal | undefined
+  // 记录子代理内部工具调用（parent_call_id 指向触发它的父 task 调用行；与父 turn 同事务落库）。
+  recordChildCall: (parentToolCallId: string, child: ChildCallInput) => void
 }
 
 // 子代理最终文本有界化：未超限原样返回；超限截断 + 完整内容写 tool-output 文件。
@@ -139,7 +152,7 @@ export const createTaskTool = (
       "子代理在独立上下文中运行自己的工具循环，最终文本作为结果返回。" +
       "当任务可分解为互不依赖的子任务时使用；需要父上下文决策的任务不要委托。",
     inputSchema: TASK_INPUT_SCHEMA,
-    execute: async (_toolCallId, params, signal, onUpdate) => {
+    execute: async (toolCallId, params, signal, onUpdate) => {
       const subAgent = new Agent({
         streamFn: createAiSdkStreamFn(),
         beforeToolCall: deps.beforeToolCall,
@@ -190,13 +203,23 @@ export const createTaskTool = (
             }
             break
 
-          case "tool_execution_start":
+          case "tool_execution_start": {
             steps.set(event.toolCallId, {
               toolName: event.toolName,
               args: (event.args as Record<string, unknown>) ?? {},
               status: "running",
             })
+            // provenance：子代理内部调用写 agent_call（parent_call_id 指父 task 调用行）。
+            deps.recordChildCall(toolCallId, {
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              args: event.args,
+              status: "running",
+              startedAt: Date.now(),
+              finishedAt: null,
+            })
             break
+          }
 
           case "tool_execution_end": {
             const step = steps.get(event.toolCallId)
@@ -204,6 +227,16 @@ export const createTaskTool = (
               step.status = event.isError ? "error" : "done"
               step.result = summarizeToolResult(event.result)
             }
+            deps.recordChildCall(toolCallId, {
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              // end 事件不带 args：复用 start 时缓存的步骤参数。
+              args: step?.args ?? {},
+              status: event.isError ? "error" : "success",
+              result: event.result,
+              startedAt: Date.now(),
+              finishedAt: Date.now(),
+            })
             break
           }
         }

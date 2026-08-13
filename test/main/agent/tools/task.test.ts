@@ -66,6 +66,7 @@ describe("task 子代理工具", () => {
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
       getSignal: () => undefined,
+      recordChildCall: vi.fn(),
       getTools: () => [mockTool],
     })
 
@@ -124,6 +125,7 @@ describe("task 子代理工具", () => {
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
       getSignal: () => undefined,
+      recordChildCall: vi.fn(),
       getTools: () => [failingTool],
     })
 
