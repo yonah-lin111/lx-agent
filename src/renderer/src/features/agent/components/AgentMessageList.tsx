@@ -327,22 +327,11 @@ export const AgentMessageList = ({
                 type="button"
                 aria-label="滚动到底部"
                 onClick={scrollToBottom}
-                className={`relative flex items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-                  isStreaming
-                    ? "h-10 w-10 bg-transparent"
-                    : "h-8 w-8 border border-white/10 bg-[#303030] text-white/60 hover:bg-[#4a4a4a] hover:text-white"
-                } ${scrollButtonAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"}`}
+                className={`relative flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#303030] text-white/60 shadow-lg transition-all hover:bg-[#4a4a4a] hover:text-white active:scale-95 ${
+                  scrollButtonAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+                }`}
               >
-                {isStreaming ? (
-                  <>
-                    <div className="lx-liquid-loader lx-liquid-loader-lg">
-                      <span className="lx-liquid-blob" />
-                    </div>
-                    <ChevronDown className="absolute h-4 w-4 text-[#212121]" />
-                  </>
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                <ChevronDown className="h-4 w-4" />
               </button>
             </div>
           )}
