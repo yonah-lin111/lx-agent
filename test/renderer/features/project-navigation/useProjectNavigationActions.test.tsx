@@ -10,8 +10,18 @@ const projects: ProjectNavigationProject[] = [
   {
     id: "project-1",
     name: "LX Agent",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     projectFolders: [],
-    prompts: [{ id: "item-1", name: "Navigation", status: "todo" }],
+    prompts: [
+      {
+        id: "item-1",
+        name: "Navigation",
+        status: "todo",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
   },
 ]
 

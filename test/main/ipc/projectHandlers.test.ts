@@ -20,7 +20,6 @@ vi.mock("@/services/projectService", () => ({
     listItems: vi.fn(),
     createItem: vi.fn(),
     updateItem: vi.fn(),
-    sortItems: vi.fn(),
     deleteItem: vi.fn(),
   },
 }))

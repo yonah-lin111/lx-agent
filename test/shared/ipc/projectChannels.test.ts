@@ -5,7 +5,7 @@ describe("PROJECT_CHANNELS", () => {
   it("为每个项目 IPC 操作提供唯一 channel", () => {
     const channels = Object.values(PROJECT_CHANNELS)
 
-    expect(channels).toHaveLength(17)
+    expect(channels).toHaveLength(16)
     expect(new Set(channels)).toHaveLength(channels.length)
   })
 })

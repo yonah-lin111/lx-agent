@@ -3,6 +3,8 @@ import type {
   ProjectNavigationFilterScope,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
+  ProjectNavigationSortDirection,
+  ProjectNavigationSortKey,
 } from "@/features/project-navigation/types"
 
 /**
@@ -17,19 +19,86 @@ export const createProjectNavigationTree = (
     id: project.id,
     name: project.name,
     path: project.path,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
     projectFolders: folderRecords
       .filter((folder) => folder.projectId === project.id)
       .map((folder) => ({
         id: folder.id,
         name: folder.name,
+        createdAt: folder.createdAt,
+        updatedAt: folder.updatedAt,
         prompts: itemRecords
           .filter((item) => item.projectFolderId === folder.id)
-          .map((item) => ({ id: item.id, name: item.name, status: item.status })),
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            status: item.status,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+          })),
       })),
     prompts: itemRecords
       .filter((item) => item.projectId === project.id && !item.projectFolderId)
-      .map((item) => ({ id: item.id, name: item.name, status: item.status })),
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        status: item.status,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
   }))
+
+/**
+ * 按指定键与方向比较两个同名同字段节点。
+ */
+const compareBySortKey = (
+  left: { name: string; createdAt: string; updatedAt: string },
+  right: { name: string; createdAt: string; updatedAt: string },
+  sortKey: ProjectNavigationSortKey,
+  direction: ProjectNavigationSortDirection,
+): number => {
+  const result = left[sortKey].localeCompare(right[sortKey], "zh-Hans-CN")
+  return direction === "asc" ? result : -result
+}
+
+/**
+ * 排序条目：未完成/进行中在前，已完成置底；组内按排序键排列。
+ */
+const sortPrompts = (
+  prompts: ProjectNavigationPrompt[],
+  sortKey: ProjectNavigationSortKey,
+  direction: ProjectNavigationSortDirection,
+): ProjectNavigationPrompt[] => {
+  const statusOrder = (prompt: ProjectNavigationPrompt): number =>
+    prompt.status === "completed" ? 1 : 0
+
+  return [...prompts].sort(
+    (left, right) =>
+      statusOrder(left) - statusOrder(right) || compareBySortKey(left, right, sortKey, direction),
+  )
+}
+
+/**
+ * 按当前排序键与方向重排项目树：项目、文件夹按键排序，条目在状态分组后按键排序。
+ */
+export const sortProjectNavigationTree = (
+  projects: ProjectNavigationProject[],
+  sortKey: ProjectNavigationSortKey,
+  direction: ProjectNavigationSortDirection,
+): ProjectNavigationProject[] =>
+  [...projects]
+    .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
+    .map((project) => ({
+      ...project,
+      projectFolders: [...project.projectFolders]
+        .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
+        .map((folder) => ({
+          ...folder,
+          prompts: sortPrompts(folder.prompts, sortKey, direction),
+        })),
+      prompts: sortPrompts(project.prompts, sortKey, direction),
+    }))
 
 /**
  * 根据关键词过滤项目树，同时保留匹配节点的父级层次。

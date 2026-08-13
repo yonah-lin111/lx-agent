@@ -15,6 +15,5 @@ export const PROJECT_CHANNELS = {
   listItems: "project:items:list",
   createItem: "project:items:create",
   updateItem: "project:items:update",
-  sortItems: "project:items:sort",
   deleteItem: "project:items:delete",
 } as const

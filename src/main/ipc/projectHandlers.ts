@@ -60,6 +60,5 @@ export const registerProjectHandlers = (): void => {
   ipcMain.handle(PROJECT_CHANNELS.updateItem, (_, id, input) =>
     projectService.updateItem(id, input),
   )
-  ipcMain.handle(PROJECT_CHANNELS.sortItems, (_, ids) => projectService.sortItems(ids))
   ipcMain.handle(PROJECT_CHANNELS.deleteItem, (_, id) => projectService.deleteItem(id))
 }

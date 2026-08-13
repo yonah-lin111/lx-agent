@@ -10,30 +10,6 @@ import type {
 // 消息提示接口。
 type Toast = { success: (message: string) => void; error: (message: string) => void }
 
-// 条目状态排序权重。
-const PROMPT_STATUS_SORT_ORDER: Record<PromptStatus, number> = {
-  in_progress: 0,
-  todo: 1,
-  completed: 2,
-}
-
-/**
- * 按状态稳定排序项目树中的全部条目。
- */
-export const getSortedPromptIds = (projects: ProjectNavigationProject[]): string[] =>
-  projects
-    .flatMap((project) => [
-      ...project.projectFolders.flatMap((folder) => folder.prompts),
-      ...project.prompts,
-    ])
-    .map((prompt, index) => ({ prompt, index }))
-    .sort(
-      (left, right) =>
-        PROMPT_STATUS_SORT_ORDER[left.prompt.status] -
-          PROMPT_STATUS_SORT_ORDER[right.prompt.status] || left.index - right.index,
-    )
-    .map(({ prompt }) => prompt.id)
-
 /**
  * 提供项目导航中可独立于视图调用的条目操作。
  */
@@ -42,7 +18,6 @@ export const useProjectNavigationActions = (
   refreshProjects: () => Promise<void>,
   toast: Toast,
 ): {
-  sortPromptsByStatus: () => Promise<void>
   updatePromptStatus: (id: string, status: PromptStatus) => Promise<void>
   createMenuItem: (
     menu: ProjectNavigationMenuTarget,
@@ -53,11 +28,6 @@ export const useProjectNavigationActions = (
   importProject: () => Promise<string | null>
   deleteItem: (menu: ProjectNavigationMenuTarget) => Promise<boolean>
 } => {
-  const sortPromptsByStatus = useCallback(async (): Promise<void> => {
-    await projectNavigationApi.sortItems(getSortedPromptIds(projects))
-    await refreshProjects()
-  }, [projects, refreshProjects])
-
   const updatePromptStatus = useCallback(
     async (id: string, status: PromptStatus): Promise<void> => {
       try {
@@ -185,7 +155,6 @@ export const useProjectNavigationActions = (
   )
 
   return {
-    sortPromptsByStatus,
     updatePromptStatus,
     createMenuItem,
     renameItem,

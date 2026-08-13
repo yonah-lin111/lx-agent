@@ -48,7 +48,6 @@ const api: ProjectApi &
       create: (input: unknown) => ipcRenderer.invoke(PROJECT_CHANNELS.createItem, input),
       update: (id: string, input: unknown) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.updateItem, id, input),
-      sort: (ids: string[]) => ipcRenderer.invoke(PROJECT_CHANNELS.sortItems, ids),
       delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteItem, id),
     },
   },

@@ -39,7 +39,6 @@ export type ProjectItem = {
   // 全局 git 工作区绑定（绝对路径）。缺省时使用项目路径（默认工作区）。
   worktreePath?: string
   status: ProjectItemStatus
-  sortOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -108,7 +107,6 @@ export interface ProjectApi {
       list: (projectId?: string) => Promise<ProjectItem[]>
       create: (input: CreateProjectItemInput) => Promise<ProjectItem>
       update: (id: string, input: UpdateProjectItemInput) => Promise<void>
-      sort: (ids: string[]) => Promise<ProjectItem[]>
       delete: (id: string) => Promise<void>
     }
   }

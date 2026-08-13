@@ -61,7 +61,6 @@ type ProjectItemRow = {
   enabled_folder_paths: string | null
   worktree_path: string | null
   status: ProjectItemStatus
-  sort_order: number
   created_at: string
   updated_at: string
 }
@@ -185,7 +184,6 @@ const toItem = (row: ProjectItemRow): ProjectItem => ({
   enabledFolderPaths: getEnabledFolderPaths(row.enabled_folder_paths),
   worktreePath: row.worktree_path ?? undefined,
   status: row.status,
-  sortOrder: row.sort_order,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -343,11 +341,11 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     const rows = projectId
       ? (database
           .prepare(
-            "SELECT * FROM project_item WHERE project_id = ? ORDER BY sort_order ASC, created_at ASC, id ASC",
+            "SELECT * FROM project_item WHERE project_id = ? ORDER BY created_at ASC, id ASC",
           )
           .all(projectId) as ProjectItemRow[])
       : (database
-          .prepare("SELECT * FROM project_item ORDER BY sort_order ASC, created_at ASC, id ASC")
+          .prepare("SELECT * FROM project_item ORDER BY created_at ASC, id ASC")
           .all() as ProjectItemRow[])
 
     return rows.map(toItem)
@@ -358,15 +356,10 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     const now = new Date().toISOString()
     const id = randomUUID()
     const name = requireName(input.name)
-    const sortOrder = database
-      .prepare(
-        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS sort_order FROM project_item WHERE project_id = ?",
-      )
-      .get(input.projectId) as { sort_order: number }
 
     database
       .prepare(
-        "INSERT INTO project_item (external_id, project_id, project_folder_id, name, item_data, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO project_item (external_id, project_id, project_folder_id, name, item_data, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         id,
@@ -375,7 +368,6 @@ export const createProjectService = (getConnection: () => Database.Database) => 
         name,
         input.itemData ?? "",
         "todo",
-        sortOrder.sort_order,
         now,
         now,
       )
@@ -388,7 +380,6 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       itemData: input.itemData ?? "",
       enabledFolderPaths: [],
       status: "todo",
-      sortOrder: sortOrder.sort_order,
       createdAt: now,
       updatedAt: now,
     }
@@ -431,20 +422,6 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     getConnection()
       .prepare(`UPDATE project_item SET ${updates.join(", ")} WHERE external_id = ?`)
       .run(...values)
-  },
-
-  sortItems: (ids: string[]): ProjectItem[] => {
-    const database = getConnection()
-    const updateSortOrder = database.prepare(
-      "UPDATE project_item SET sort_order = ?, updated_at = ? WHERE external_id = ?",
-    )
-
-    database.transaction(() => {
-      const now = new Date().toISOString()
-      ids.forEach((id, index) => updateSortOrder.run(index, now, id))
-    })()
-
-    return createProjectService(getConnection).listItems()
   },
 
   deleteItem: (id: string): void => {

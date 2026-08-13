@@ -33,6 +33,5 @@ export const projectNavigationApi = {
     window.api.project.items.create(input),
   updateItem: (id: string, input: UpdateProjectItemInput): Promise<void> =>
     window.api.project.items.update(id, input),
-  sortItems: (ids: string[]): Promise<ProjectItem[]> => window.api.project.items.sort(ids),
   deleteItem: (id: string): Promise<void> => window.api.project.items.delete(id),
 }

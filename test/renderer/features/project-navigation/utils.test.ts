@@ -1,9 +1,9 @@
 import type { Project, ProjectFolder, ProjectItem } from "@shared/project"
 import { describe, expect, it } from "vitest"
-import { getSortedPromptIds } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import {
   createProjectNavigationTree,
   filterProjectNavigationTree,
+  sortProjectNavigationTree,
 } from "@/features/project-navigation/utils"
 
 const project: Project = {
@@ -23,30 +23,27 @@ const folder: ProjectFolder = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 }
 
+const makeItem = (
+  overrides: Partial<ProjectItem> & Pick<ProjectItem, "id" | "name">,
+): ProjectItem => ({
+  projectId: project.id,
+  projectFolderId: folder.id,
+  itemData: "",
+  enabledFolderPaths: [],
+  status: "todo",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+})
+
 const items: ProjectItem[] = [
-  {
-    id: "item-1",
-    projectId: project.id,
-    projectFolderId: folder.id,
-    name: "Navigation",
-    itemData: "",
-    enabledFolderPaths: [],
-    status: "todo",
-    sortOrder: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
+  makeItem({ id: "item-1", name: "Navigation" }),
+  makeItem({
     id: "item-2",
-    projectId: project.id,
     name: "Project setup",
-    itemData: "",
-    enabledFolderPaths: [],
+    projectFolderId: undefined,
     status: "completed",
-    sortOrder: 1,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
+  }),
 ]
 
 describe("project navigation utils", () => {
@@ -70,10 +67,63 @@ describe("project navigation utils", () => {
     ])
   })
 
-  it("按状态稳定排序条目", () => {
-    expect(getSortedPromptIds(createProjectNavigationTree([project], [folder], items))).toEqual([
-      "item-1",
-      "item-2",
-    ])
+  describe("sortProjectNavigationTree", () => {
+    it("按首字母升序排序且已完成置底", () => {
+      const tree = createProjectNavigationTree(
+        [project],
+        [folder],
+        [
+          makeItem({ id: "zebra", name: "Zebra", status: "todo" }),
+          makeItem({ id: "alpha", name: "Alpha", status: "completed" }),
+          makeItem({ id: "mid", name: "Mid", status: "in_progress" }),
+        ],
+      )
+      const [result] = sortProjectNavigationTree(tree, "name", "asc")
+      expect(result.projectFolders[0].prompts.map((prompt) => prompt.id)).toEqual([
+        "mid",
+        "zebra",
+        "alpha",
+      ])
+    })
+
+    it("按创建时间升序排序", () => {
+      const tree = createProjectNavigationTree(
+        [project],
+        [folder],
+        [
+          makeItem({ id: "new", name: "New", createdAt: "2026-03-01T00:00:00.000Z" }),
+          makeItem({ id: "old", name: "Old", createdAt: "2026-01-01T00:00:00.000Z" }),
+        ],
+      )
+      const [result] = sortProjectNavigationTree(tree, "createdAt", "asc")
+      expect(result.projectFolders[0].prompts.map((prompt) => prompt.id)).toEqual(["old", "new"])
+    })
+
+    it("按修改时间降序排序", () => {
+      const tree = createProjectNavigationTree(
+        [project],
+        [folder],
+        [
+          makeItem({ id: "stale", name: "Stale", updatedAt: "2026-01-01T00:00:00.000Z" }),
+          makeItem({ id: "fresh", name: "Fresh", updatedAt: "2026-03-01T00:00:00.000Z" }),
+        ],
+      )
+      const [result] = sortProjectNavigationTree(tree, "updatedAt", "desc")
+      expect(result.projectFolders[0].prompts.map((prompt) => prompt.id)).toEqual([
+        "fresh",
+        "stale",
+      ])
+    })
+
+    it("按名称排序项目与文件夹", () => {
+      const otherProject: Project = {
+        ...project,
+        id: "project-2",
+        name: "Aardvark",
+      }
+      const tree = createProjectNavigationTree([project, otherProject], [folder], [])
+      const result = sortProjectNavigationTree(tree, "name", "asc")
+      expect(result.map((current) => current.id)).toEqual(["project-2", "project-1"])
+    })
   })
 })

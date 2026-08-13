@@ -9,17 +9,27 @@ export type ProjectNavigationFilterScope = "current" | "all"
 // 项目导航展示的条目状态。
 export type PromptStatus = ProjectItemStatus
 
+// 项目导航排序键。
+export type ProjectNavigationSortKey = "name" | "createdAt" | "updatedAt"
+
+// 项目导航排序方向。
+export type ProjectNavigationSortDirection = "asc" | "desc"
+
 // 项目导航展示的条目数据。
 export interface ProjectNavigationPrompt {
   id: string
   name: string
   status: PromptStatus
+  createdAt: string
+  updatedAt: string
 }
 
 // 项目导航展示的文件夹数据。
 export interface ProjectNavigationFolder {
   id: string
   name: string
+  createdAt: string
+  updatedAt: string
   prompts: ProjectNavigationPrompt[]
 }
 
@@ -28,6 +38,8 @@ export interface ProjectNavigationProject {
   id: string
   name: string
   path?: string
+  createdAt: string
+  updatedAt: string
   projectFolders: ProjectNavigationFolder[]
   prompts: ProjectNavigationPrompt[]
 }

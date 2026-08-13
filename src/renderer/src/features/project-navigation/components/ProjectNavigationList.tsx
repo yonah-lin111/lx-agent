@@ -1,6 +1,5 @@
 import { Boxes, CheckCircle2, ChevronDown, Circle, File, Folder } from "lucide-react"
 import type React from "react"
-import { useState } from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
@@ -56,7 +55,7 @@ interface ProjectNavigationListProps {
 }
 
 /**
- * 展示项目、文件夹和条目树，并管理文件夹内已完成条目的折叠状态。
+ * 展示项目、文件夹和条目树，条目顺序由父组件按状态分组与排序键预先排好。
  */
 export const ProjectNavigationList = ({
   projects,
@@ -74,20 +73,6 @@ export const ProjectNavigationList = ({
   onProjectFolderToggle,
   onOpenMenu,
 }: ProjectNavigationListProps): React.JSX.Element => {
-  const [collapsedCompletedPromptGroups, setCollapsedCompletedPromptGroups] = useState<
-    Record<string, boolean>
-  >({})
-
-  /**
-   * 切换指定文件夹内已完成条目分组的展开状态。
-   */
-  const toggleCompletedPromptGroup = (projectFolderId: string): void => {
-    setCollapsedCompletedPromptGroups((currentValue) => ({
-      ...currentValue,
-      [projectFolderId]: !(currentValue[projectFolderId] ?? true),
-    }))
-  }
-
   /**
    * 渲染条目状态图标，点击可循环切换状态。
    */
@@ -195,50 +180,11 @@ export const ProjectNavigationList = ({
   )
 
   /**
-   * 渲染文件夹内未完成与已完成条目，已完成项默认折叠。
+   * 渲染文件夹内条目，顺序由父组件按状态分组与排序键预先排好。
    */
   const renderFolderPrompts = (
     prompts: ProjectNavigationProject["projectFolders"][number]["prompts"],
-    projectFolderId: string,
-  ): React.JSX.Element[] => {
-    const unfinishedPrompts = prompts.filter((prompt) => prompt.status !== "completed")
-    const completedPrompts = prompts.filter((prompt) => prompt.status === "completed")
-    const shouldAutoExpand =
-      searchKeyword.length > 0 || completedPrompts.some((prompt) => prompt.id === activePromptId)
-    const isCompletedGroupCollapsed = shouldAutoExpand
-      ? false
-      : (collapsedCompletedPromptGroups[projectFolderId] ?? true)
-    const showCompletedGroupBranch = unfinishedPrompts.length === 0
-
-    return [
-      ...unfinishedPrompts.map((prompt, index) => renderPrompt(prompt, true, index === 0)),
-      ...(completedPrompts.length > 0
-        ? [
-            <div key={`${projectFolderId}:completed`} className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-1.5 pl-1">
-                {showCompletedGroupBranch ? (
-                  <TreeBranchIcon />
-                ) : (
-                  <span aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                )}
-                <button
-                  type="button"
-                  className="cursor-pointer select-none text-sm font-medium text-white/35 transition-colors hover:text-white/60"
-                  aria-expanded={!isCompletedGroupCollapsed}
-                  onClick={() => toggleCompletedPromptGroup(projectFolderId)}
-                >
-                  {isCompletedGroupCollapsed
-                    ? `显示 ${completedPrompts.length} 个已完成项...`
-                    : `收起 ${completedPrompts.length} 个已完成项`}
-                </button>
-              </div>
-              {!isCompletedGroupCollapsed &&
-                completedPrompts.map((prompt) => renderPrompt(prompt, true, false))}
-            </div>,
-          ]
-        : []),
-    ]
-  }
+  ): React.JSX.Element[] => prompts.map((prompt, index) => renderPrompt(prompt, true, index === 0))
 
   return (
     <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]">
@@ -314,7 +260,7 @@ export const ProjectNavigationList = ({
                             <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
                           )}
                         </div>
-                        {!isFolderCollapsed && renderFolderPrompts(folder.prompts, folder.id)}
+                        {!isFolderCollapsed && renderFolderPrompts(folder.prompts)}
                       </div>
                     )
                   })}

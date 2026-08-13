@@ -1,4 +1,6 @@
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   ChevronsDownUp,
   ChevronsUpDown,
@@ -35,10 +37,15 @@ import {
 } from "@/features/project-navigation/components/ProjectNavigationMenu"
 import { useProjectNavigationActions } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
-import type { ProjectNavigationFilterScope } from "@/features/project-navigation/types"
+import type {
+  ProjectNavigationFilterScope,
+  ProjectNavigationSortDirection,
+  ProjectNavigationSortKey,
+} from "@/features/project-navigation/types"
 import {
   filterProjectNavigationTree,
   filterProjectNavigationTreeByStatus,
+  sortProjectNavigationTree,
 } from "@/features/project-navigation/utils"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
@@ -88,6 +95,47 @@ const clearLastOperatedItemId = (): void => {
   }
 }
 
+// 当前排序偏好。
+type ProjectNavigationSort = {
+  key: ProjectNavigationSortKey
+  direction: ProjectNavigationSortDirection
+}
+
+// 默认排序偏好：创建时间升序。
+const DEFAULT_SORT: ProjectNavigationSort = { key: "createdAt", direction: "asc" }
+
+// localStorage 中保存排序偏好的键。
+const SORT_STORAGE_KEY = "project-navigation-sort"
+
+// 读取排序偏好，缺失或损坏时回退到默认值。
+const readSortPreference = (): ProjectNavigationSort => {
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(SORT_STORAGE_KEY) ?? "",
+    ) as Partial<ProjectNavigationSort>
+    const isSortKey = (key: string | undefined): key is ProjectNavigationSortKey =>
+      key === "name" || key === "createdAt" || key === "updatedAt"
+    const isDirection = (
+      direction: string | undefined,
+    ): direction is ProjectNavigationSortDirection => direction === "asc" || direction === "desc"
+    if (isSortKey(parsed.key) && isDirection(parsed.direction)) {
+      return { key: parsed.key, direction: parsed.direction }
+    }
+  } catch {
+    // JSON 解析失败时回退到默认值。
+  }
+  return DEFAULT_SORT
+}
+
+// 保存排序偏好。
+const saveSortPreference = (sort: ProjectNavigationSort): void => {
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
+  } catch {
+    // 忽略可能存在的 Storage 写入异常。
+  }
+}
+
 /**
  * 页面左侧栏，展示可搜索的持久化项目与条目层级。
  */
@@ -108,20 +156,14 @@ export const ProjectNavigation = (): React.JSX.Element => {
   )
   const [statusFilter, setStatusFilter] = useState<PromptStatus[]>([])
   const [filterScope, setFilterScope] = useState<ProjectNavigationFilterScope>("all")
+  const [sort, setSort] = useState<ProjectNavigationSort>(readSortPreference)
   // 筛选激活前的折叠状态快照，取消筛选时用于恢复。
   const collapseSnapshotRef = useRef<{
     collapsedProjects: Record<string, boolean>
     collapsedProjectFolders: Record<string, boolean>
   } | null>(null)
-  const {
-    createMenuItem,
-    deleteItem,
-    renameItem,
-    saveProject,
-    importProject,
-    sortPromptsByStatus,
-    updatePromptStatus,
-  } = useProjectNavigationActions(projects, refreshProjects, toast)
+  const { createMenuItem, deleteItem, renameItem, saveProject, importProject, updatePromptStatus } =
+    useProjectNavigationActions(projects, refreshProjects, toast)
 
   // 当前激活条目所属的项目 id，用于"当前项目"范围筛选。
   const activeProjectId = useMemo(() => {
@@ -135,17 +177,26 @@ export const ProjectNavigation = (): React.JSX.Element => {
     )?.id
   }, [activePromptId, projects])
 
-  // 先按关键词过滤，再按状态与范围过滤项目树。
+  // 先按关键词过滤，再按状态与范围过滤项目树，最后按当前排序偏好重排。
   const filteredProjects = useMemo(
     () =>
-      filterProjectNavigationTreeByStatus(
-        filterProjectNavigationTree(projects, searchKeyword),
-        statusFilter,
-        filterScope,
-        activeProjectId,
+      sortProjectNavigationTree(
+        filterProjectNavigationTreeByStatus(
+          filterProjectNavigationTree(projects, searchKeyword),
+          statusFilter,
+          filterScope,
+          activeProjectId,
+        ),
+        sort.key,
+        sort.direction,
       ),
-    [projects, searchKeyword, statusFilter, filterScope, activeProjectId],
+    [projects, searchKeyword, statusFilter, filterScope, activeProjectId, sort],
   )
+
+  // 排序偏好变更时持久化到 localStorage。
+  useEffect(() => {
+    saveSortPreference(sort)
+  }, [sort])
 
   /**
    * 打开指定层级节点的右键菜单。
@@ -485,6 +536,50 @@ export const ProjectNavigation = (): React.JSX.Element => {
     </div>
   )
 
+  // 排序选项（单选），同一键重复点击切换升/降序。
+  const sortOptions: { key: ProjectNavigationSortKey; label: string }[] = [
+    { key: "name", label: "首字母" },
+    { key: "createdAt", label: "创建时间" },
+    { key: "updatedAt", label: "修改时间" },
+  ]
+
+  /**
+   * 切换排序键或方向：点击新键切到升序，重复点击当前键切换升降序。
+   */
+  const toggleSort = (key: ProjectNavigationSortKey): void => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" },
+    )
+  }
+
+  const sortPanel = (
+    <div className="flex w-44 flex-col gap-1.5" aria-label="排序项目条目">
+      {sortOptions.map(({ key, label }) => {
+        const isSelected = sort.key === key
+        return (
+          <LxTag
+            key={key}
+            highlighted={isSelected}
+            suffix={
+              isSelected ? (
+                sort.direction === "asc" ? (
+                  <ArrowUp className="h-2.5 w-2.5" />
+                ) : (
+                  <ArrowDown className="h-2.5 w-2.5" />
+                )
+              ) : undefined
+            }
+            onClick={() => toggleSort(key)}
+          >
+            {label}
+          </LxTag>
+        )
+      })}
+    </div>
+  )
+
   // 已自动定位过的条目 id，保证每次进入页面仅定位一次。
   const locatedPromptIdRef = useRef<string>("")
 
@@ -589,13 +684,16 @@ export const ProjectNavigation = (): React.JSX.Element => {
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
-            <LxIconButton
-              aria-label="按状态排序"
-              title={{ content: "按状态排序", placement: "bottom" }}
-              onClick={sortPromptsByStatus}
+            <LxTooltip
+              content={sortPanel}
+              contentClassName="!p-2"
+              placement="bottom"
+              trigger="hover"
             >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-            </LxIconButton>
+              <LxIconButton aria-label="排序条目">
+                <ArrowUpDown className="h-3.5 w-3.5" />
+              </LxIconButton>
+            </LxTooltip>
             <LxTooltip
               content={addPanel}
               contentClassName="!p-1"
