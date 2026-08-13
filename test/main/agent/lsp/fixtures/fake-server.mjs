@@ -3,6 +3,7 @@
 // - textDocument/definition 回显收到的文本与位置（校验 0-based 透传与 URI）
 // - textDocument/documentSymbol 仅对 didOpen 过的文档返回符号（校验 didOpen 发送）
 // - FAKE_LSP_HANG=1 时 definition 挂起（触发客户端请求超时）
+// - FAKE_LSP_NOPROJECT=N 时前 N 次 documentSymbol 抛 "No Project"（校验客户端重试）
 import {
   createMessageConnection,
   StreamMessageReader,
@@ -16,6 +17,7 @@ const connection = createMessageConnection(
 connection.listen()
 
 const openedUris = new Set()
+let noProjectLeft = Number.parseInt(process.env.FAKE_LSP_NOPROJECT ?? "0", 10)
 
 connection.onRequest("initialize", () => ({ capabilities: {} }))
 connection.onNotification("initialized", () => {})
@@ -36,6 +38,10 @@ if (process.env.FAKE_LSP_HANG === "1") {
 }
 
 connection.onRequest("textDocument/documentSymbol", (params) => {
+  if (noProjectLeft > 0) {
+    noProjectLeft--
+    throw new Error("No Project.")
+  }
   if (!openedUris.has(params.textDocument.uri)) return []
   const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }
   return [{ name: "opened-symbol", kind: 5, range, selectionRange: range }]

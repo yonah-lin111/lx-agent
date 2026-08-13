@@ -17,7 +17,7 @@ import { z } from "zod"
 import type { AgentTool } from "../core/types"
 import type { LspManager } from "../lsp/lspManager"
 import { displayPath } from "../lsp/server"
-import { resolveToCwd } from "./path-utils"
+import { pathExists, resolveToCwd } from "./path-utils"
 
 // 位置型结果最多展示行数（超出截断并标注省略）。
 const MAX_RESULT_ROWS = 50
@@ -277,6 +277,27 @@ export const createLspTool = ({
       return {
         content: [{ type: "text", text: `lsp ${params.operation} 失败: 无活动会话` }],
         details: { refused: true },
+      }
+    }
+    // 文档型操作（workspaceSymbol 为 workspace 级检索，不需目标文件存在）：
+    // 目标文件不存在时显式报错，避免静默返回"0 处"误导。
+    if (params.operation !== "workspaceSymbol" && !(await pathExists(absolutePath))) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `lsp ${params.operation} 失败: 文件不存在: ${params.filePath}`,
+          },
+        ],
+        details: {
+          operation: params.operation,
+          filePath: absolutePath,
+          line: params.line ?? 1,
+          character: params.character ?? 1,
+          query: params.query,
+          results: [],
+          error: `文件不存在: ${params.filePath}`,
+        },
       }
     }
     const clientResult = await manager.getClient(sessionId, absolutePath, cwd)
