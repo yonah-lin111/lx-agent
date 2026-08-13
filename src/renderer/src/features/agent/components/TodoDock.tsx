@@ -104,7 +104,7 @@ export const TodoDock = ({
             <TodoStatusIcon status={todo.status} className="mt-[3px]" />
             <span
               className={`min-w-0 flex-1 whitespace-pre-wrap break-words text-[13px] leading-[20px] ${
-                isTodoDone(todo.status) ? "text-white/40 line-through" : "text-white/90"
+                isTodoDone(todo.status) ? "text-orange-300/40 line-through" : "text-orange-300"
               }`}
             >
               {todo.content}
