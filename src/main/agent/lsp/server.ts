@@ -34,34 +34,18 @@ export const findWorkspaceRoot = (filePath: string, markers: string[], cwd: stri
   return cwd
 }
 
-// 定位本地 typescript/lib/tsserver.js：从 cwd 向上逐级找 node_modules（与项目 TS 版本对齐）。
-const resolveLocalTsserver = (cwd: string): string | null => {
-  let directory = cwd
-  for (;;) {
-    const candidate = join(directory, "node_modules", "typescript", "lib", "tsserver.js")
-    if (existsSync(candidate)) return candidate
-    const parent = dirname(directory)
-    if (parent === directory) return null
-    directory = parent
-  }
-}
-
 // 解析语言 → server 启动器；无启动器的语言返回 null（错误由调用方回灌）。
-export const resolveServer = (language: string, cwd: string): LspServerSpec | null => {
+export const resolveServer = (language: string): LspServerSpec | null => {
   switch (language) {
     case "typescript":
     case "typescriptreact":
     case "javascript":
     case "javascriptreact": {
-      const args = ["--stdio"]
-      const tsserver = resolveLocalTsserver(cwd)
-      if (tsserver) {
-        args.push("--tsserver-path", tsserver)
-      }
+      // typescript-language-server v5 已移除 --tsserver-path，改为从 workspace root 自动探测本地 tsserver。
       return {
         language,
         command: "typescript-language-server",
-        args,
+        args: ["--stdio"],
         rootMarkers: SERVER_ROOT_MARKERS.typescript,
       }
     }

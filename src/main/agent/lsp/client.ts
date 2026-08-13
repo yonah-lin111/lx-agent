@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process"
+import { readFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 import {
   createMessageConnection,
@@ -69,8 +70,13 @@ export class LspClient {
   private readonly requestTimeoutMs: number
   // spawn 成败（命令缺失等立即失败）；initialize 前先等它，避免向已销毁的流写请求。
   private readonly spawnResult: Promise<void>
+  // 语言 id（didOpen 用；随 server spec 语言名，兼容 LSP languageId）。
+  private readonly languageId: string
+  // 文件 → didOpen 版本号（每次打开自增，保证 server 视图新鲜）。
+  private readonly openVersions = new Map<string, number>()
 
   constructor(spec: LspServerSpec, options: LspClientOptions = {}) {
+    this.languageId = spec.language
     this.initTimeoutMs = options.initTimeoutMs ?? LSP_INIT_TIMEOUT_MS
     this.requestTimeoutMs = options.requestTimeoutMs ?? LSP_REQUEST_TIMEOUT_MS
     this.ready = new Promise((resolve, reject) => {
@@ -167,6 +173,22 @@ export class LspClient {
     return pathToFileURL(filePath).toString()
   }
 
+  // 打开文档：LSP 服务器须先收到 didOpen 才会响应文档请求（tsserver 无 didOpen 返回空）。
+  // 每次请求前重开（版本自增），保证文件被编辑后视图新鲜；读失败降级空文本。
+  private async ensureOpened(filePath: string): Promise<void> {
+    const version = (this.openVersions.get(filePath) ?? 0) + 1
+    this.openVersions.set(filePath, version)
+    let text: string
+    try {
+      text = await readFile(filePath, "utf8")
+    } catch {
+      text = ""
+    }
+    this.connection.sendNotification("textDocument/didOpen", {
+      textDocument: { uri: this.uriFor(filePath), languageId: this.languageId, version, text },
+    })
+  }
+
   // textDocument 参数（文本 + 0-based 位置）。
   private textPosition(
     filePath: string,
@@ -187,6 +209,7 @@ export class LspClient {
     line0: number,
     character0: number,
   ): Promise<Location | Location[] | LocationLink[] | null> {
+    await this.ensureOpened(filePath)
     return this.request("textDocument/definition", this.textPosition(filePath, line0, character0))
   }
 
@@ -195,6 +218,7 @@ export class LspClient {
     line0: number,
     character0: number,
   ): Promise<Location[] | null> {
+    await this.ensureOpened(filePath)
     return this.request("textDocument/references", {
       ...this.textPosition(filePath, line0, character0),
       context: { includeDeclaration: true },
@@ -202,10 +226,12 @@ export class LspClient {
   }
 
   async hover(filePath: string, line0: number, character0: number): Promise<Hover | null> {
+    await this.ensureOpened(filePath)
     return this.request("textDocument/hover", this.textPosition(filePath, line0, character0))
   }
 
   async documentSymbol(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[] | null> {
+    await this.ensureOpened(filePath)
     return this.request("textDocument/documentSymbol", {
       textDocument: { uri: this.uriFor(filePath) },
     })
@@ -220,6 +246,7 @@ export class LspClient {
     line0: number,
     character0: number,
   ): Promise<Location | Location[] | LocationLink[] | null> {
+    await this.ensureOpened(filePath)
     return this.request(
       "textDocument/implementation",
       this.textPosition(filePath, line0, character0),
@@ -232,6 +259,7 @@ export class LspClient {
     line0: number,
     character0: number,
   ): Promise<CallHierarchyItem[] | null> {
+    await this.ensureOpened(filePath)
     return this.request(
       "textDocument/prepareCallHierarchy",
       this.textPosition(filePath, line0, character0),
