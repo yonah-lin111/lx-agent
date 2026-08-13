@@ -40,8 +40,11 @@ const renderList = () => {
   ]
   const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
   const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
-  const stickyEls = container.querySelectorAll(".sticky")
-  return { scrollEl, stickyEls }
+  // 吸顶判定锚点：用户消息自然流结束位置（useMessagePin 据此判定是否完全滚出视口）。
+  const anchorEls = Array.from(container.querySelectorAll('[aria-hidden="true"]'))
+  // 吸顶容器仅在钉住时挂 .sticky class。
+  const stickyContainerEls = Array.from(container.querySelectorAll(".top-0.z-20"))
+  return { scrollEl, anchorEls, stickyContainerEls }
 }
 
 // 读取最近一次渲染时某条消息收到的 isPinned 状态。
@@ -56,13 +59,13 @@ describe("AgentMessageList 吸顶判定", () => {
   })
 
   it("滚动回顶部（scrollTop=0）时，首条自然贴顶的消息不被判为吸顶", () => {
-    const { scrollEl, stickyEls } = renderList()
+    const { scrollEl, anchorEls } = renderList()
 
     Object.defineProperty(scrollEl, "scrollTop", { value: 0, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
-    // 首条消息自然位置就在容器顶部（内边距 4px 处）。
-    vi.spyOn(stickyEls[0], "getBoundingClientRect").mockReturnValue(rect(4, 34))
-    vi.spyOn(stickyEls[1], "getBoundingClientRect").mockReturnValue(rect(300, 330))
+    // 首条消息自然位置就在容器顶部（锚点亦贴顶）。
+    vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(4, 34))
+    vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(300, 330))
 
     fireEvent.scroll(scrollEl)
 
@@ -71,13 +74,13 @@ describe("AgentMessageList 吸顶判定", () => {
   })
 
   it("滚动中贴住容器顶部的消息被钉住居中，滚出视口的消息不再钉住", () => {
-    const { scrollEl, stickyEls } = renderList()
+    const { scrollEl, anchorEls } = renderList()
 
     Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
-    // q1 已滚出视口顶部，q2 吸顶贴住容器顶部。
-    vi.spyOn(stickyEls[0], "getBoundingClientRect").mockReturnValue(rect(-60, -30))
-    vi.spyOn(stickyEls[1], "getBoundingClientRect").mockReturnValue(rect(0, 30))
+    // q1 已滚出视口顶部，q2 锚点贴住容器顶部。
+    vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
+    vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(0, 30))
 
     fireEvent.scroll(scrollEl)
 
@@ -85,27 +88,32 @@ describe("AgentMessageList 吸顶判定", () => {
     expect(pinState("q2")).toBe(true)
   })
 
-  it("吸顶期间已钉住的消息保持居中（滞回），直至其滚出视口", () => {
-    const { scrollEl, stickyEls } = renderList()
+  it("吸顶期间持续滚动保持钉住，直至消息滚回视口内解除", () => {
+    const { scrollEl, anchorEls } = renderList()
 
     // 第一阶段：q2 吸顶。
     Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
-    vi.spyOn(stickyEls[0], "getBoundingClientRect").mockReturnValue(rect(-60, -30))
-    vi.spyOn(stickyEls[1], "getBoundingClientRect").mockReturnValue(rect(0, 30))
+    vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
+    vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(0, 30))
     fireEvent.scroll(scrollEl)
+    expect(pinState("q2")).toBe(true)
     mockMessageItemProps.length = 0
 
-    // 第二阶段：继续滚动，q2 仍贴顶（rect 略微抖动仍在容差内），应保持钉住。
-    // 滞回生效时 pinnedUserMessageId 不变，React 对相同 state bail out、不触发 re-render，
+    // 第二阶段：继续滚动，q2 仍在视口上方（锚点保持越过容器顶部），应保持钉住。
+    // 钉住状态不变时 React 对相同 state bail out、不触发 re-render，
     // 因此没有新的 props 记录 —— 这即"状态未翻转"的证据。
-    vi.spyOn(stickyEls[1], "getBoundingClientRect").mockReturnValue(rect(2, 32))
+    Object.defineProperty(scrollEl, "scrollTop", { value: 600, configurable: true })
+    vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-260, -230))
+    vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(-200, -170))
     fireEvent.scroll(scrollEl)
     expect(mockMessageItemProps).toHaveLength(0)
 
-    // 第三阶段：q2 滚出视口，应解除钉住。
+    // 第三阶段：回滚使 q2 锚点回到容器顶部以下（消息重新可见），应解除钉住。
     mockMessageItemProps.length = 0
-    vi.spyOn(stickyEls[1], "getBoundingClientRect").mockReturnValue(rect(-40, -10))
+    Object.defineProperty(scrollEl, "scrollTop", { value: 100, configurable: true })
+    vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(160, 190))
+    vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(220, 250))
     fireEvent.scroll(scrollEl)
     expect(pinState("q2")).toBe(false)
   })

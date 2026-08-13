@@ -43,31 +43,23 @@ const renderPanel = (props: Partial<PanelProps> = {}) =>
 describe("PermissionRequestPanel", () => {
   afterEach(cleanup)
 
-  it("选择态：展示工具信息与四选项，默认高亮第一项（允许）", () => {
+  it("选择态：展示工具信息与六选项，默认高亮第一项（允许）", () => {
     renderPanel()
 
     expect(screen.getByText("bash")).not.toBeNull()
     expect(screen.queryByText("ls")).toBeNull()
     expect(screen.getByText("允许")).not.toBeNull()
     expect(screen.getByText("允许本次会话")).not.toBeNull()
+    expect(screen.getByText("永久允许")).not.toBeNull()
     expect(screen.getByText("拒绝")).not.toBeNull()
+    expect(screen.getByText("永久拒绝")).not.toBeNull()
     expect(screen.getByText("允许全部")).not.toBeNull()
-    expect(screen.queryByText("default")).toBeNull()
+    expect(screen.getByText("default")).not.toBeNull()
     expect(screen.queryByText("该操作将在项目目录执行命令，可能产生副作用。")).toBeNull()
 
     const options = screen.getAllByRole("option")
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(6)
     expect(options[0]!.getAttribute("aria-selected")).toBe("true")
-  })
-
-  it("参数图标悬停展示请求参数", async () => {
-    renderPanel()
-
-    fireEvent.mouseEnter(screen.getByRole("img", { name: "查看命令参数" }))
-    const tooltip = await screen.findByRole("tooltip")
-
-    expect(tooltip.textContent).toContain("command")
-    expect(tooltip.textContent).toContain("ls")
   })
 
   it("确认态：展示确认文案与确认/返回两选项", () => {
@@ -92,7 +84,7 @@ describe("PermissionRequestPanel", () => {
     renderPanel({ onSelect })
 
     fireEvent.click(screen.getByText("拒绝"))
-    expect(onSelect).toHaveBeenCalledWith(2)
+    expect(onSelect).toHaveBeenCalledWith(3)
   })
 
   it("isOpen=false 或 position=null 时不渲染", () => {
@@ -104,27 +96,25 @@ describe("PermissionRequestPanel", () => {
     expect(screen.queryByRole("listbox")).toBeNull()
   })
 
-  it("折叠态：显示 Permission 文案，无工具名/摘要/选项与展开按钮，点击面板触发展开", () => {
+  it("折叠态：面板整体不渲染（由 AgentInput 图标栏统一接管）", () => {
     const onToggleCollapse = vi.fn()
     renderPanel({ isCollapsed: true, onToggleCollapse })
 
-    expect(screen.getByText("Permission")).not.toBeNull()
+    expect(screen.queryByRole("listbox")).toBeNull()
+    expect(screen.queryByText("Permission")).toBeNull()
     expect(screen.queryByText("bash")).toBeNull()
     expect(screen.queryByText("default")).toBeNull()
     expect(screen.queryByText("ls")).toBeNull()
     expect(screen.queryAllByRole("option")).toHaveLength(0)
     expect(screen.queryByRole("button")).toBeNull()
-    expect(screen.getByRole("listbox").style.height).toBe("36px")
-
-    fireEvent.click(screen.getByRole("listbox"))
-    expect(onToggleCollapse).toHaveBeenCalledTimes(1)
+    expect(onToggleCollapse).not.toHaveBeenCalled()
   })
 
   it("展开态点击折叠按钮触发 onToggleCollapse", () => {
     const onToggleCollapse = vi.fn()
     renderPanel({ onToggleCollapse })
 
-    fireEvent.click(screen.getByRole("button", { name: "折叠权限确认" }))
+    fireEvent.click(screen.getByRole("button", { name: "最小化权限确认" }))
     expect(onToggleCollapse).toHaveBeenCalledTimes(1)
   })
 })

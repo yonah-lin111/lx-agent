@@ -4,6 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentMessageList } from "@/features/agent/components/AgentMessageList"
 import type { ChatMessage } from "@/features/agent/types"
 
+// jsdom 未实现 ResizeObserver（用户消息折叠重测依赖它），用空实现代替。
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe = (): void => undefined
+    unobserve = (): void => undefined
+    disconnect = (): void => undefined
+  },
+)
+
 // 构造用户消息展示条目。
 const userMessage = (id: string, text: string): ChatMessage => ({
   id,
@@ -115,9 +125,11 @@ describe("AgentMessageList", () => {
 
     const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    const sticky = container.querySelector(".sticky")
-    expect(sticky).not.toBeNull()
-    expect(sticky?.textContent).toContain("问题一")
+    // 吸顶容器（条件渲染 .sticky）始终存在，未吸顶时无 .sticky class。
+    const stickyContainer = container.querySelector(".top-0.z-20")
+    expect(stickyContainer).not.toBeNull()
+    expect(stickyContainer?.textContent).toContain("问题一")
+    expect(container.querySelector(".sticky")).toBeNull()
     // 回复不进入吸顶容器，仍在 QA 对内正常渲染。
     expect(screen.getByText("回答一")).not.toBeNull()
   })
