@@ -239,7 +239,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                   className={`flex shrink-0 cursor-grab items-center ${isDragging ? "opacity-40" : ""}`}
                 >
                   <LxTag
-                    size="small"
+                    size="default"
                     highlighted={isActive}
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
                     suffix={

@@ -16,6 +16,7 @@ import { LxMenuItem } from "@/components/ui/LxMenu"
 import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useRecentItemsStore } from "@/features/project/recentItemsStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import {
   ProjectModal,
@@ -96,6 +97,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const activePromptId = searchParams.get("itemId") ?? ""
+  const pushRecentItem = useRecentItemsStore((state) => state.push)
   const { projects, refreshProjects } = useProjectNavigationData()
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null)
@@ -204,6 +206,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         setCollapsedProjects((value) => ({ ...value, [menu.id]: true }))
       }
       if (itemType === "prompt") {
+        pushRecentItem(id)
         navigate(`${PAGE_ROUTES.project}?itemId=${id}`)
       }
       setEditingItem({ id, name })
@@ -630,7 +633,10 @@ export const ProjectNavigation = (): React.JSX.Element => {
           onEditingItemCancel={cancelEditingItem}
           onEditingItemChange={setEditingItem}
           onEditingItemCommit={commitEditingItem}
-          onItemOpen={(itemId) => navigate(`${PAGE_ROUTES.project}?itemId=${itemId}`)}
+          onItemOpen={(itemId) => {
+            pushRecentItem(itemId)
+            navigate(`${PAGE_ROUTES.project}?itemId=${itemId}`)
+          }}
           onProjectFolderToggle={toggleProjectFolder}
           onOpenMenu={openMenu}
           onProjectToggle={toggleProject}
