@@ -1,4 +1,13 @@
-import { Lock, Maximize2, RotateCcw, Unlock, ZoomIn, ZoomOut } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Maximize2,
+  RotateCcw,
+  Unlock,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react"
 import mermaid from "mermaid"
 import { useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -79,10 +88,13 @@ const renderMermaid = (id: string, source: string) => {
 export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Element => {
   const diagramIdRef = useRef(`mermaid-diagram-${diagramSequence++}`)
   const renderTargetRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const pointerIdRef = useRef<number | null>(null)
   const pointerPositionRef = useRef({ x: 0, y: 0 })
   const [transform, setTransform] = useState<MermaidTransform>(INITIAL_TRANSFORM)
   const [isLocked, setIsLocked] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -146,15 +158,37 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
     event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>): void => {
-    if (isLocked) return
+  const toggleContent = (): void => {
+    const section = sectionRef.current
+    const content = contentRef.current
+    if (!section || !content) return
 
-    event.preventDefault()
-    changeScale(event.deltaY > 0 ? -SCALE_STEP : SCALE_STEP)
+    const nextIsExpanded = !isExpanded
+    content.style.height = `${content.scrollHeight}px`
+    section.classList.toggle("is-collapsed", !nextIsExpanded)
+
+    requestAnimationFrame(() => {
+      content.style.height = nextIsExpanded ? `${content.scrollHeight}px` : "0px"
+    })
+
+    if (nextIsExpanded) {
+      content.addEventListener(
+        "transitionend",
+        () => {
+          if (!section.classList.contains("is-collapsed")) content.style.height = ""
+        },
+        { once: true },
+      )
+    }
+
+    setIsExpanded(nextIsExpanded)
   }
 
   return (
-    <section className="my-4 overflow-hidden rounded-[6px] border border-white/10 bg-[#171717]">
+    <section
+      ref={sectionRef}
+      className="my-4 overflow-hidden rounded-[6px] border border-white/10 bg-[#171717]"
+    >
       <div className="flex h-10 items-center justify-between border-b border-white/10 bg-[#212121] px-2">
         <span className="text-[12px] text-white/50">Mermaid</span>
         <div className="flex items-center gap-0.5" aria-label="图表视图控制">
@@ -194,35 +228,49 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
           >
             {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
           </LxIconButton>
+          <LxIconButton
+            aria-label={isExpanded ? "折叠内容" : "展开内容"}
+            aria-expanded={isExpanded}
+            size="small"
+            title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+            onClick={toggleContent}
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+          </LxIconButton>
         </div>
       </div>
-      <div
-        aria-label={isLocked ? "已锁定的 Mermaid 图表" : "可拖动和缩放的 Mermaid 图表"}
-        className={`relative flex min-h-56 items-center justify-center overflow-hidden ${
-          isLocked ? "cursor-default" : "cursor-grab touch-none active:cursor-grabbing"
-        }`}
-        role="region"
-        onPointerCancel={releasePointer}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={releasePointer}
-        onWheel={handleWheel}
-      >
+      <div ref={contentRef} className="markdown-mermaid-content">
         <div
-          ref={renderTargetRef}
-          className="flex max-w-none items-center justify-center p-8 transition-transform duration-150 motion-reduce:transition-none [&_svg]:max-w-none"
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-          }}
-        />
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#171717] px-4 text-center text-[13px] text-rose-300">
-            {error}
+          aria-label={isLocked ? "已锁定的 Mermaid 图表" : "可拖动和缩放的 Mermaid 图表"}
+          className={`relative flex min-h-56 items-center justify-center overflow-hidden ${
+            isLocked ? "cursor-default" : "cursor-grab touch-none active:cursor-grabbing"
+          }`}
+          role="region"
+          onPointerCancel={releasePointer}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={releasePointer}
+        >
+          <div
+            ref={renderTargetRef}
+            className="flex max-w-none items-center justify-center p-8 transition-transform duration-150 motion-reduce:transition-none [&_svg]:max-w-none"
+            style={{
+              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+            }}
+          />
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#171717] px-4 text-center text-[13px] text-rose-300">
+              {error}
+            </div>
+          )}
+          <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[4px] bg-black/55 px-2 py-1 text-[11px] text-white/45">
+            <Maximize2 className="h-3 w-3" />
+            <span>{Math.round(transform.scale * 100)}%</span>
           </div>
-        )}
-        <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[4px] bg-black/55 px-2 py-1 text-[11px] text-white/45">
-          <Maximize2 className="h-3 w-3" />
-          <span>{Math.round(transform.scale * 100)}%</span>
         </div>
       </div>
     </section>

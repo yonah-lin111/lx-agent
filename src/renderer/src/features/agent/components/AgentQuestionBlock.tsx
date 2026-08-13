@@ -1,7 +1,14 @@
 import type { QuestionAnswer, QuestionPrompt, QuestionRequest } from "@shared/contracts/agent"
-import { CircleHelp, CornerDownRight, Send } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  CornerDownRight,
+  Send,
+} from "lucide-react"
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
@@ -56,6 +63,10 @@ export const AgentQuestionBlock = ({
   const [activeIndex, setActiveIndex] = useState(0)
   const [selections, setSelections] = useState<string[][]>(() => questions.map(() => []))
   const [customTexts, setCustomTexts] = useState<string[]>(() => questions.map(() => ""))
+  // 已作答（非 pending）块的折叠态：仅作答完成后可折叠，默认折叠。
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [contentHeight, setContentHeight] = useState<number | null>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
 
   const requestId = pending?.requestId
 
@@ -67,6 +78,22 @@ export const AgentQuestionBlock = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId])
 
+  // 展开时测量内容高度，支撑平滑折叠动画（对齐 Thinking 块实现）。
+  useLayoutEffect(() => {
+    const element = innerRef.current
+    if (!element || !isExpanded) {
+      setContentHeight(null)
+      return undefined
+    }
+
+    const updateHeight = (): void => setContentHeight(element.scrollHeight)
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [isExpanded, toolCall.answers, questions])
+
   // 无挂起请求：已作答（done）或请求尚未到达（running 瞬间）——展示只读问题清单。
   if (!pending) {
     // 按问题文本定位答案（答案随 toolCall 回填/落库恢复）。
@@ -75,34 +102,57 @@ export const AgentQuestionBlock = ({
     )
     return (
       <div className="my-0.5 min-w-0">
-        <div className="flex items-center gap-1">
+        <button
+          type="button"
+          aria-label="已作答问题"
+          aria-expanded={isExpanded}
+          className="flex h-5 w-fit items-center gap-1 pr-2 text-[12px] transition-all duration-200 hover:text-white/70 focus:outline-none"
+          onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
+        >
           <CircleHelp className="h-3.5 w-3.5 shrink-0 text-sky-300" />
           <span className="font-mono text-[12px] font-bold text-sky-300">Question</span>
-        </div>
-        <div className="mt-1 flex min-w-0 flex-col gap-1.5 pl-1">
-          {questions.map((question, index) => {
-            const answers = answersByQuestion.get(question.question) ?? []
-            return (
-              <div key={index} className="min-w-0">
-                <div className="flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/75">
-                  <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
-                  <span className="min-w-0 break-words">{question.question}</span>
-                </div>
-                {answers.length > 0 && (
-                  <div className="ml-4 mt-0.5 flex flex-col gap-0.5">
-                    {answers.map((answer) => (
-                      <div
-                        key={answer}
-                        className="min-w-0 break-words text-[12px] leading-relaxed text-white/50"
-                      >
-                        {answer}
-                      </div>
-                    ))}
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
+          />
+        </button>
+        <div
+          style={{
+            maxHeight: isExpanded
+              ? contentHeight !== null
+                ? `${contentHeight}px`
+                : `${innerRef.current?.scrollHeight ?? 0}px`
+              : "0px",
+            opacity: isExpanded ? 1 : 0,
+            transition:
+              "max-height 0.25s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0.85, 0.2, 1)",
+          }}
+          className="overflow-hidden"
+        >
+          <div ref={innerRef} className="mt-1 flex min-w-0 flex-col gap-1.5 pl-1">
+            {questions.map((question, index) => {
+              const answers = answersByQuestion.get(question.question) ?? []
+              return (
+                <div key={index} className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/75">
+                    <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+                    <span className="min-w-0 break-words">{question.question}</span>
                   </div>
-                )}
-              </div>
-            )
-          })}
+                  {answers.length > 0 && (
+                    <div className="ml-4 mt-0.5 flex flex-col gap-0.5">
+                      {answers.map((answer) => (
+                        <div
+                          key={answer}
+                          className="min-w-0 break-words text-[12px] leading-relaxed text-white/50"
+                        >
+                          {answer}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     )
@@ -184,12 +234,12 @@ export const AgentQuestionBlock = ({
                     onClick={() => setActiveIndex(index)}
                     className={`flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[12px] transition-colors ${
                       isActive
-                        ? "border-sky-300/40 bg-sky-300/15 text-sky-200"
+                        ? "border-white/20 bg-white/15 text-white"
                         : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
                     }`}
                   >
                     <span className="truncate">{question.header || `问题 ${index + 1}`}</span>
-                    {answered && <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />}
+                    {answered && <span className="h-1.5 w-1.5 rounded-full bg-white/60" />}
                   </button>
                 )
               })}
@@ -278,8 +328,34 @@ export const AgentQuestionBlock = ({
             )}
           </div>
 
-          {/* 提交。 */}
+          {/* 底部操作：多问题时 Prev/Next 切换 tab，右侧 Submit 提交。 */}
           <div className="mt-1.5 flex items-center justify-end gap-1.5">
+            {questions.length > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Previous question"
+                  disabled={activeIndex === 0}
+                  onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
+                  className="flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next question"
+                  disabled={activeIndex === questions.length - 1}
+                  onClick={() =>
+                    setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
+                  }
+                  className="flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <button
               type="button"
               disabled={!isComplete}
@@ -287,7 +363,7 @@ export const AgentQuestionBlock = ({
               className="flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
             >
               <Send className="h-3 w-3" />
-              提交
+              Submit
             </button>
           </div>
         </div>
