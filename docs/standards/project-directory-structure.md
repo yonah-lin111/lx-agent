@@ -9,9 +9,9 @@ src/
   main/
     index.ts                    应用生命周期、窗口创建、启动编排
     db/
-      connection.ts             数据库连接与初始化
-      schema/                   当前表结构定义
-      migrations/               独立迁移文件，仅在迁移时创建
+      connection.ts             数据库连接与初始化（含迁移执行）
+      migrate.ts                迁移运行器
+      migrations/               版本化迁移文件，唯一 DDL 来源
       index.ts                  db 公共导出
     ipc/                        IPC handler 注册
     services/                   领域服务、持久化规则和业务校验

@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto"
 import Database from "better-sqlite3"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { createAgentTables } from "@/db/schema/agentSchema"
-import { createProjectTables } from "@/db/schema/projectSchema"
+import { runMigrations } from "@/db"
 import { createAgentSessionService, getForkedTitle } from "@/services/agentSessionService"
 
 let database: Database.Database
@@ -11,8 +10,7 @@ let service: ReturnType<typeof createAgentSessionService>
 beforeEach(() => {
   database = new Database(":memory:")
   database.pragma("foreign_keys = ON")
-  createProjectTables(database)
-  createAgentTables(database)
+  runMigrations(database)
   service = createAgentSessionService(() => database)
   // 项目条目 FK 目标。
   const now = new Date().toISOString()
@@ -23,7 +21,7 @@ beforeEach(() => {
     .run(now, now)
   database
     .prepare(
-      "INSERT INTO project_item (external_id, project_id, name, item_data, enabled_folder_paths, status, sort_order, created_at, updated_at) VALUES ('item1', 'p1', 'item', '', '[]', 'todo', 0, ?, ?)",
+      "INSERT INTO project_item (external_id, project_id, name, item_data, enabled_folder_paths, status, created_at, updated_at) VALUES ('item1', 'p1', 'item', '', '[]', 'todo', ?, ?)",
     )
     .run(now, now)
 })

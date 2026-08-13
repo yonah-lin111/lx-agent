@@ -19,7 +19,7 @@
 - 每个 IPC 领域应有 main handler、preload API 和 renderer feature API 三层。
 - 需要校验外部输入时，在 main handler 或 service 边界使用运行时校验；TypeScript 类型不等于运行时校验。
 - 数据库 schema 变更必须新增独立迁移文件，不能修改既有迁移以伪造历史。
-- 数据迁移必须是独立 TypeScript 文件，禁止混入 schema、建表初始化或数据库连接文件。
+- 数据迁移必须是独立 TypeScript 文件，禁止混入 schema、建表初始化或数据库连接文件。详细机制见 `docs/standards/database-migrations.md`。
 - 禁止在 main、preload、renderer 三处重复硬编码 IPC channel 或 DTO。
 
 ## 拆分规则

@@ -64,16 +64,14 @@ vi.mock("@/services/projectService", () => ({
 vi.mock("@/services/agentSessionService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/agentSessionService")>()
   const Database = (await import("better-sqlite3")).default
-  const { createAgentTables } = await import("@/db/schema/agentSchema")
-  const { createProjectTables } = await import("@/db/schema/projectSchema")
+  const { runMigrations } = await import("@/db")
   return {
     ...actual,
     agentSessionService: actual.createAgentSessionService(() => {
       if (!holder.db) {
         const db = new Database(":memory:")
         db.pragma("foreign_keys = ON")
-        createProjectTables(db)
-        createAgentTables(db)
+        runMigrations(db)
         holder.db = db
       }
       return holder.db

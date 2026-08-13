@@ -1,6 +1,6 @@
 import Database from "better-sqlite3"
 import { afterEach, describe, expect, it } from "vitest"
-import { createAgentTables, createProjectTables } from "@/db"
+import { runMigrations } from "@/db"
 
 // 测试使用的内存数据库。
 let database: Database.Database | null = null
@@ -10,12 +10,12 @@ afterEach(() => {
   database = null
 })
 
-describe("createAgentTables", () => {
-  it("创建 agent 三表与索引", () => {
+describe("agent 表结构与约束", () => {
+  it("迁移后创建 agent 四表与索引", () => {
     database = new Database(":memory:")
     database.pragma("foreign_keys = ON")
 
-    createAgentTables(database)
+    runMigrations(database)
 
     const tableNames = database
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -27,10 +27,14 @@ describe("createAgentTables", () => {
       .map((row) => (row as { name: string }).name)
 
     expect(tableNames).toEqual([
+      "_migrations",
       "agent_call",
       "agent_session",
       "agent_session_entry",
       "agent_snapshot",
+      "project",
+      "project_folder",
+      "project_item",
     ])
     expect(indexNames).toEqual(
       expect.arrayContaining([
@@ -53,8 +57,7 @@ describe("createAgentTables", () => {
   it("会话归属互斥：item 与 page 不能同时为空或同时存在", () => {
     database = new Database(":memory:")
     database.pragma("foreign_keys = ON")
-    createProjectTables(database)
-    createAgentTables(database)
+    runMigrations(database)
     const now = new Date().toISOString()
     // FK 目标：项目与条目行。
     database
@@ -65,7 +68,7 @@ describe("createAgentTables", () => {
     for (const itemId of ["item1", "item2"]) {
       database
         .prepare(
-          "INSERT INTO project_item (external_id, project_id, name, item_data, enabled_folder_paths, status, sort_order, created_at, updated_at) VALUES (?, 'p', 'item', '', '[]', 'todo', 0, ?, ?)",
+          "INSERT INTO project_item (external_id, project_id, name, item_data, enabled_folder_paths, status, created_at, updated_at) VALUES (?, 'p', 'item', '', '[]', 'todo', ?, ?)",
         )
         .run(itemId, now, now)
     }

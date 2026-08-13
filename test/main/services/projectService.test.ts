@@ -1,6 +1,6 @@
 import Database from "better-sqlite3"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { createProjectTables } from "@/db"
+import { runMigrations } from "@/db"
 import { getProjectFileMatchScore } from "@/lib/fileSystem"
 import { createProjectService } from "@/services/projectService"
 
@@ -10,7 +10,7 @@ let database: Database.Database
 beforeEach(() => {
   database = new Database(":memory:")
   database.pragma("foreign_keys = ON")
-  createProjectTables(database)
+  runMigrations(database)
 })
 
 afterEach(() => {

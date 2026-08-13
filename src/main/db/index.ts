@@ -1,3 +1,3 @@
 export { getDatabase, initDatabase } from "@/db/connection"
-export { createAgentTables } from "@/db/schema/agentSchema"
-export { createProjectTables } from "@/db/schema/projectSchema"
+export { runMigrations } from "@/db/migrate"
+export type { Migration } from "@/db/migrations/types"
