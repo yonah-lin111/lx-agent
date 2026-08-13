@@ -1,6 +1,7 @@
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { extname } from "node:path"
 import { pathToFileURL } from "node:url"
+import type { LspInstallResult, LspServerStatusItem } from "@shared/contracts/agent"
 import { LspClient } from "./client"
 import { LANGUAGE_EXTENSIONS } from "./language"
 import { findWorkspaceRoot, type LspServerSpec, resolveServer } from "./server"
@@ -12,6 +13,19 @@ const SERVER_PACKAGES: Record<string, string> = {
   "vscode-html-language-server": "vscode-langservers-extracted",
   "vscode-css-language-server": "vscode-langservers-extracted",
   "pyright-langserver": "pyright",
+}
+
+// 包 → PATH 检测 bin（npm 全局安装后 bin 进 PATH；状态栏据此判定安装与否）。
+const PACKAGE_BINS: Record<string, string> = {
+  "typescript-language-server": "typescript-language-server",
+  "vscode-langservers-extracted": "vscode-json-language-server",
+  pyright: "pyright-langserver",
+}
+
+// 检测 bin 是否在 PATH（which / where 按平台选择）。
+const binOnPath = (bin: string): boolean => {
+  const cmd = process.platform === "win32" ? "where" : "which"
+  return spawnSync(cmd, [bin], { stdio: "ignore" }).status === 0
 }
 
 // 懒安装超时（npm install -g 可能拉取较大包）。
@@ -147,6 +161,32 @@ export class LspManager {
       this.installsInFlight.set(packageName, install)
     }
     return install
+  }
+
+  // 各 LSP server 包安装状态（PATH 检测；状态栏指示）。
+  getStatus(): LspServerStatusItem[] {
+    return Object.entries(PACKAGE_BINS).map(([packageName, bin]) => ({
+      packageName,
+      installed: binOnPath(bin),
+    }))
+  }
+
+  // 安装指定包（复用懒安装的并发去重与安装器）。
+  installServer(packageName: string): Promise<boolean> {
+    return this.ensureInstalled(packageName)
+  }
+
+  // 安装全部未安装的包（状态栏"一键安装"入口）。
+  async installMissingServers(): Promise<LspInstallResult> {
+    const installed: string[] = []
+    const failed: string[] = []
+    for (const { packageName, installed: isInstalled } of this.getStatus()) {
+      if (isInstalled) continue
+      ;(await this.installServer(packageName))
+        ? installed.push(packageName)
+        : failed.push(packageName)
+    }
+    return { installed, failed }
   }
 
   // 启动失败原因 + 手动安装提示。

@@ -13,6 +13,7 @@ import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, shell, type WebContents } from "electron"
 import { agentRunner } from "@/agent/agentRunner"
+import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
 import { questionManager } from "@/agent/question/questionManager"
@@ -190,6 +191,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   })
 
   ipcMain.handle(AGENT_CHANNELS.getMcpStatus, () => mcpManager.getStatus())
+
+  // LSP server 安装状态与一键安装（状态栏指示；安装复用懒安装器）。
+  ipcMain.handle(AGENT_CHANNELS.getLspStatus, () => lspManager.getStatus())
+  ipcMain.handle(AGENT_CHANNELS.installLspServers, () => lspManager.installMissingServers())
 
   ipcMain.handle(
     AGENT_CHANNELS.suggestedQuestions,

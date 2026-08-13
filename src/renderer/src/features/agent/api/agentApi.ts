@@ -4,6 +4,8 @@ import type {
   AgentRestoredSession,
   AgentSendContext,
   AgentSessionSummary,
+  LspInstallResult,
+  LspServerStatusItem,
   McpServerStatusItem,
   PermissionResponse,
   QuestionResponse,
@@ -39,6 +41,8 @@ export const agentApi = {
   ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
     window.api.agent.forkSession(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
+  getLspStatus: (): Promise<LspServerStatusItem[]> => window.api.agent.getLspStatus(),
+  installLspServers: (): Promise<LspInstallResult> => window.api.agent.installLspServers(),
   suggestedQuestions: (
     messages: SuggestedQuestionContextMessage[],
     excludedQuestions?: string[],

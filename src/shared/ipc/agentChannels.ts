@@ -12,6 +12,8 @@ export const AGENT_CHANNELS = {
   deleteMessageTurn: "agent:deleteMessageTurn",
   forkSession: "agent:forkSession",
   getMcpStatus: "agent:getMcpStatus",
+  getLspStatus: "agent:getLspStatus",
+  installLspServers: "agent:installLspServers",
   suggestedQuestions: "agent:suggestedQuestions",
   // 权限请求经 event 通道以 permission_request 事件推送（见 AgentEvent）。
   permissionResponse: "agent:permissionResponse",

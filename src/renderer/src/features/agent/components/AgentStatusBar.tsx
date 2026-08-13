@@ -1,3 +1,4 @@
+import { LspStatusButton } from "@/components/layout/LspStatusButton"
 import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { GitStatusBar } from "@/features/git"
 
@@ -23,6 +24,7 @@ export const AgentStatusBar = ({ projectPath }: AgentStatusBarProps): React.JSX.
           <div aria-hidden className="h-[25px] shrink-0" />
         )}
       </div>
+      <LspStatusButton />
       <McpStatusButton />
     </div>
   )
