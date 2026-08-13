@@ -1,6 +1,6 @@
 import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Send, Square } from "lucide-react"
+import { Send, ShieldAlert, Square } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -23,7 +23,7 @@ import {
   type PermissionPanelPhase,
   PermissionRequestPanel,
 } from "./PermissionRequestPanel"
-import { TodoDock } from "./TodoDock"
+import { TodoDock, TodoDockButton } from "./TodoDock"
 
 interface AgentInputProps {
   inputText: string
@@ -134,8 +134,8 @@ export const AgentInput = ({
     [inputTextareaRef],
   )
   const [panelPosition, setPanelPosition] = useState<CSSProperties | null>(null)
-  // TodoDock 浮层定位：输入框容器上方（bottom 对齐输入框顶部）；宽度由折叠/展开态内部决定。
-  const [todoPosition, setTodoPosition] = useState<CSSProperties | null>(null)
+  // 右上角浮层定位：输入框容器上方（bottom 对齐输入框顶部），供图标栏与展开面板共用。
+  const [dockPosition, setDockPosition] = useState<CSSProperties | null>(null)
   const [commandIndex, setCommandIndex] = useState(0)
   const [fileIndex, setFileIndex] = useState(0)
   const [modelIndex, setModelIndex] = useState(0)
@@ -150,6 +150,8 @@ export const AgentInput = ({
   const [permissionKeyboardNavigationVersion, setPermissionKeyboardNavigationVersion] = useState(0)
   // 面板折叠态（仅当前请求记忆）：折叠后键盘决策降级。
   const [permissionCollapsed, setPermissionCollapsed] = useState(false)
+  // 任务清单展开态：折叠时由右上角图标栏的 TodoDockButton 承载。
+  const [todoExpanded, setTodoExpanded] = useState(false)
   const matchedCommands = useMemo(() => getMatchedCommands(inputText), [inputText])
   const matchedModels = useMemo<AgentInputModel[]>(() => {
     if (!inputText.startsWith("/model")) return []
@@ -184,6 +186,9 @@ export const AgentInput = ({
   const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
   // 权限请求挂起时面板独占键盘与其他面板。
   const isPermissionMode = pendingRequest != null
+  // 右上角图标栏成员（右对齐，条件渲染自动右对齐收缩；后续新增图标在此追加）。
+  const showTodoCapsule = todos.length > 0 && !todoExpanded
+  const showPermissionShield = isPermissionMode && permissionCollapsed
 
   useLayoutEffect(() => {
     const update = (): void => {
@@ -236,12 +241,12 @@ export const AgentInput = ({
     const update = (): void => {
       const container = containerRef.current
       if (!container) {
-        setTodoPosition(null)
+        setDockPosition(null)
         return
       }
       const rect = container.getBoundingClientRect()
       const offset = 6
-      setTodoPosition({
+      setDockPosition({
         left: Math.max(rect.left, 8),
         width: rect.width,
         top: "auto",
@@ -649,8 +654,36 @@ export const AgentInput = ({
             />
           </>
         )}
-        {/* 任务清单浮层：输入框上方，折叠态左侧小块 / 展开态全宽（与命令面板同风格）。 */}
-        <TodoDock todos={todos} position={todoPosition} />
+        {/* 任务清单展开面板：输入框上方全宽（折叠态由下方图标栏的 TodoDockButton 承载）。 */}
+        <TodoDock
+          todos={todos}
+          position={dockPosition}
+          expanded={todoExpanded}
+          onToggleExpanded={setTodoExpanded}
+        />
+        {/* 右上角图标栏：todo/权限等折叠 icon 共享容器，右对齐；成员条件渲染自动右对齐收缩（如 c b a → c b）。 */}
+        {dockPosition && (showTodoCapsule || showPermissionShield) && (
+          <div
+            aria-label="浮动图标栏"
+            className="pointer-events-none fixed z-40 flex h-7 items-center justify-end gap-1.5 px-2"
+            style={{ ...dockPosition, overflow: "hidden" }}
+          >
+            <TodoDockButton todos={todos} onClick={() => setTodoExpanded(true)} />
+            {showPermissionShield && (
+              <LxIconButton
+                shape="circle"
+                aria-label="展开权限确认"
+                title={{ content: "展开权限面板", placement: "top" }}
+                className="pointer-events-auto border border-white/10 bg-[#303030] !text-amber-300"
+                hoverBgClass="hover:bg-[#3a3a3a]"
+                hoverTextClass="hover:text-amber-300"
+                onClick={() => setPermissionCollapsed(false)}
+              >
+                <ShieldAlert className="h-4 w-4" />
+              </LxIconButton>
+            )}
+          </div>
+        )}
         <textarea
           ref={mergedTextareaRef}
           value={inputText}

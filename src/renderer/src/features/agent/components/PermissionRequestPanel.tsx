@@ -61,9 +61,6 @@ interface PermissionRequestPanelProps {
   onSelect: (index: number) => void
 }
 
-// 折叠态浮层高度（与底栏图标按钮 medium 一致）。
-const COLLAPSED_HEIGHT = 28
-
 // 面板容器：与命令面板同风格，但允许鼠标交互（pointer-events-auto）。
 const panelClassName =
   "scrollbar-hidden fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
@@ -116,7 +113,7 @@ const useActiveItemScrollIntoView = (
  * 选择态（允许/本次会话/永久允许/拒绝/永久拒绝/允许全部）→ 选中"允许全部"进入确认态（确认/返回）。
  * 永久允许/永久拒绝直接发送（写回配置，无需二次确认，区别于 allowAll）。
  * 键盘由 AgentInput 接管（↑↓/Enter/Esc），本组件负责渲染与鼠标交互。
- * 折叠态：仅一行权限图标浮层（右对齐，后续可继续追加图标），点击展开；无动画直接切换。
+ * 折叠态本组件不渲染，右上角展开图标由 AgentInput 的图标栏统一承载（与 todo 等图标右对齐）。
  */
 export const PermissionRequestPanel = ({
   isOpen,
@@ -139,30 +136,7 @@ export const PermissionRequestPanel = ({
     keyboardNavigationVersion,
   )
 
-  if (!isOpen || !position) return null
-
-  // 折叠态：透明浮层（宽度沿用输入框），图标右对齐；容器不拦截指针，仅图标可点。
-  if (isCollapsed) {
-    return (
-      <div
-        aria-label="权限确认（已折叠）"
-        className="pointer-events-none fixed z-50 flex items-center justify-end px-2"
-        style={{ ...position, height: COLLAPSED_HEIGHT, overflow: "hidden" }}
-      >
-        <LxIconButton
-          shape="circle"
-          aria-label="展开权限确认"
-          title={{ content: "展开权限面板", placement: "top" }}
-          className="pointer-events-auto border border-white/10 bg-[#303030] !text-amber-300"
-          hoverBgClass="hover:bg-[#3a3a3a]"
-          hoverTextClass="hover:text-amber-300"
-          onClick={onToggleCollapse}
-        >
-          <ShieldAlert className="h-4 w-4" />
-        </LxIconButton>
-      </div>
-    )
-  }
+  if (!isOpen || !position || isCollapsed) return null
 
   // 高度由内容决定，maxHeight 沿用 position（视口空间动态计算），顶部固定、仅选项区滚动。
   const containerStyle: CSSProperties = { ...position, overflow: "hidden" }
