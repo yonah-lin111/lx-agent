@@ -10,7 +10,13 @@ const questionOptionSchema = z.object({
 
 // 单个提问 schema。
 const questionPromptSchema = z.object({
-  question: z.string().min(1).max(2000).describe("向用户提问的 markdown 内容（可含 mermaid 图）"),
+  question: z.string().min(1).max(500).describe("简短纯文本提问"),
+  content: z
+    .string()
+    .min(1)
+    .max(2000)
+    .optional()
+    .describe("附加 markdown 内容（可含 mermaid 图），仅交互表单展示"),
   header: z.string().max(12).optional().describe("短标签（≤12 字符）"),
   options: z.array(questionOptionSchema).min(2).max(4).optional().describe("选择题候选（2..4 个）"),
   multiSelect: z.boolean().optional().describe("是否多选（仅选择题生效）"),
@@ -53,7 +59,7 @@ export const createQuestionTool = (
   label: "提问",
   description:
     "向用户提问以澄清需求或确认选择。当信息不足以继续、需要用户在若干选项间做决定或补充说明时使用。" +
-    "question 为 markdown 内容，可内嵌 mermaid 图；options 提供选择题（可多选），缺省为自由文本输入。" +
+    "question 为简短纯文本提问；content 为可选 markdown 内容（可含 mermaid 图）供用户理解；options 提供选择题（可多选），缺省为自由文本输入。" +
     "用户未作答时工具报错，据此调整或跳过。",
   inputSchema: questionInputSchema,
   executionMode: "sequential",
