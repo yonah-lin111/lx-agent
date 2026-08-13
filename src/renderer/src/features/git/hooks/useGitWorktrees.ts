@@ -2,6 +2,9 @@ import type { GitStatus, GitWorktreeEntry } from "@shared/contracts/git"
 import { useEffect, useRef, useState } from "react"
 import { gitApi } from "@/features/git/api/gitApi"
 
+// 工作区与分支属低频事件，轮询间隔 10s 足够感知；窗口重新聚焦时立即刷新。
+const POLL_INTERVAL_MS = 10_000
+
 /**
  * 加载目录所在仓库的工作区列表与当前分支，供 /gitWorktree 二级面板与 @ 搜索上下文解析共用。
  *
@@ -54,9 +57,11 @@ export const useGitWorktrees = (projectPath: string | undefined) => {
     }
 
     load()
+    const timer = window.setInterval(load, POLL_INTERVAL_MS)
     window.addEventListener("focus", load)
     return () => {
       isCurrent = false
+      window.clearInterval(timer)
       window.removeEventListener("focus", load)
     }
   }, [projectPath])
