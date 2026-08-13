@@ -47,6 +47,14 @@ connection.onRequest("textDocument/documentSymbol", (params) => {
   return [{ name: "opened-symbol", kind: 5, range, selectionRange: range }]
 })
 
+// workspace/symbol：模拟 tsserver navto——无 didOpen 的项目（无已打开文档）抛 "No Project"，
+// 有项目后返回符号。校验客户端 workspaceSymbol 先打开文件触发项目创建。
+connection.onRequest("workspace/symbol", () => {
+  if (openedUris.size === 0) throw new Error("No Project.")
+  const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }
+  return [{ name: "ws-symbol", kind: 5, containerName: undefined, location: { uri: null, range } }]
+})
+
 connection.onRequest("shutdown", () => null)
 connection.onNotification("exit", () => {
   connection.dispose()
