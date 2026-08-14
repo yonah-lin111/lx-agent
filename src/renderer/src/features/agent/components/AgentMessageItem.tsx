@@ -806,6 +806,13 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
+      {!readOnly && message.model && (
+        <LxTooltip placement="top" content={`${message.provider} / ${message.model}`}>
+          <span className="flex w-fit select-text items-center text-[11px] leading-none text-white/40">
+            {message.model}
+          </span>
+        </LxTooltip>
+      )}
       <div
         className={`relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
       >

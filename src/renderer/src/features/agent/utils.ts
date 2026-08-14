@@ -118,6 +118,8 @@ export const toChatMessage = (
     timestamp: message.timestamp,
     error: message.errorMessage,
     stopReason: message.stopReason,
+    model: message.model,
+    provider: message.provider,
   }
 }
 

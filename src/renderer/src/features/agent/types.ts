@@ -66,6 +66,9 @@ export interface ChatMessage {
   error?: string
   // 助手消息的停止原因（判断"继续生成"可用性）。
   stopReason?: StopReason
+  // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
+  model?: string
+  provider?: string
 }
 
 // 预设提示词卡片。

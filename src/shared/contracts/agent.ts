@@ -342,6 +342,8 @@ export type AgentEvent =
   | { type: "question_request"; request: QuestionRequest }
   // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
   | { type: "compaction_summary"; message: CompactionSummaryMessage }
+  // 上下文容量：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
+  | { type: "context_usage"; tokens: number; contextWindow: number }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
   | { type: "todo_updated"; todos: TodoList }
 
