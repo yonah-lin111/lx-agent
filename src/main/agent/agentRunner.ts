@@ -26,6 +26,7 @@ import { getCompactionSettings } from "@/services/settingsService"
 import {
   type CompactionBoundary,
   createCompactionSummaryMessage,
+  estimateCompactedContextTokens,
   estimateContextTokens,
   findCutPoint,
   generateCompactionSummary,
@@ -586,6 +587,8 @@ class AgentRunner {
       this.todoList = []
       this.pendingTodo = null
     }
+    // 删除轮/新建会话后同步容量快照（删除回落、新建归零）。
+    this.emitContextUsage()
   }
 
   // 恢复历史会话：从 DB 读取 entries 重建上下文、能力快照与模型；MCP/skill 按当前配置重载。
@@ -619,6 +622,8 @@ class AgentRunner {
     ready.agent.state.messages = [...messages]
     this.messageSeqs = seqs
     this.contextBoundary = this.readCompactionEntry(sessionId)
+    // 恢复历史会话：容量按当前压缩边界估算后推送（有边界走摘要+保留尾部）。
+    this.emitContextUsage()
     // state.messages 保持全量；返回给 renderer 的消息列表插入可见摘要块（UI 位置与压缩边界一致）。
     return {
       messages: this.withCompactionSummary(messages),
@@ -874,6 +879,29 @@ class AgentRunner {
     this.pendingSnapshotStart = null
   }
 
+  // 当前会话待发送上下文的 token 估计：有压缩边界按摘要+保留尾部（char/4），否则全量估计。
+  private currentContextTokens(): number {
+    const messages = this.agent?.state.messages ?? []
+    const boundary = this.contextBoundary
+    if (!boundary) return estimateContextTokens(messages)
+    const kept = messages.filter(
+      (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
+    )
+    return estimateCompactedContextTokens(
+      createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore),
+      kept,
+    )
+  }
+
+  // 上下文容量快照：当前上下文估计 token / 压缩窗口，驱动状态栏百分比。
+  private emitContextUsage(): void {
+    this.eventSink?.({
+      type: "context_usage",
+      tokens: this.currentContextTokens(),
+      contextWindow: getCompactionSettings().contextWindow,
+    })
+  }
+
   // Agent 事件 → 持久化缓冲（转发渲染的事件由调用方处理）。
   private handleEvent(event: AgentEvent): void {
     if (this.currentRunGeneration < 0) return
@@ -924,6 +952,8 @@ class AgentRunner {
 
       case "agent_end":
         this.flushTurn()
+        // turn 结束（正常/错误/中止均触发）：上下文定型后推送容量快照。
+        this.emitContextUsage()
         break
     }
   }
@@ -1298,6 +1328,8 @@ class AgentRunner {
       type: "compaction_summary",
       message: createCompactionSummaryMessage(summary, tokensBefore),
     })
+    // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
+    this.emitContextUsage()
     return true
   }
 

@@ -70,6 +70,9 @@ export interface ChatMessage {
   stopReason?: StopReason
   // 助手消息的 token 用量（本轮 QA 底部展示；user/toolResult 无此字段）。
   usage?: Usage
+  // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
+  model?: string
+  provider?: string
 }
 
 // 预设提示词卡片。

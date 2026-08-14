@@ -50,6 +50,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [isRestoring, setIsRestoring] = useState(false)
   // 任务清单（TodoDock 数据源：订阅 todo_updated / 恢复时提取；空数组 = dock 不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
+  // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
+  const [contextUsage, setContextUsage] = useState<{
+    tokens: number
+    contextWindow: number
+  } | null>(null)
   const messagesRef = useRef(messages)
   messagesRef.current = messages
   // 当前流式条目引用（message_update 定位）。
@@ -209,6 +214,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
               ),
             })),
           )
+          break
+
+        case "context_usage":
+          // 上下文容量快照（agent_end / 压缩 / 删除 / 恢复后推送）。
+          setContextUsage({ tokens: event.tokens, contextWindow: event.contextWindow })
           break
 
         default:
@@ -386,6 +396,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   return {
     messages,
     todos,
+    contextUsage,
     inputText,
     setInputText,
     isStreaming,
