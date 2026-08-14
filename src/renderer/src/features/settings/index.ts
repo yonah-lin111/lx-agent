@@ -6,6 +6,7 @@ export * from "./constants"
 export * from "./hooks/usePermissionSettings"
 export * from "./hooks/useSettingsData"
 export * from "./hooks/useSettingsMutations"
+export * from "./settingsChangeNotifier"
 export type {
   ModelProvider,
   ModelProviderModel,

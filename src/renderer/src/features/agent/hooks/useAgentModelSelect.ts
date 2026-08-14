@@ -1,6 +1,7 @@
 import type { ModelSelection } from "@shared/settings"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
+import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import type { ModelProviderSettingsData } from "@/features/settings/types"
 import { modelsApi } from "../api/modelsApi"
 
@@ -45,13 +46,13 @@ export const useAgentModelSelect = () => {
   const [settings, setSettings] = useState<ModelProviderSettingsData | null>(null)
   const [selectedModel, setSelectedModel] = useState<string>("")
 
-  useEffect(() => {
-    let isMounted = true
-
+  // 拉取已启用 Provider 并恢复/回退模型选择；配置变更（设置页保存）时重新执行。
+  const mountedRef = useRef(true)
+  const loadProviders = useCallback(() => {
     modelsApi
       .getProviders()
       .then((data) => {
-        if (!isMounted) return
+        if (!mountedRef.current) return
         setSettings(data)
         const saved = readSavedSelection()
         if (saved && isValidSelection(saved, data)) {
@@ -61,15 +62,21 @@ export const useAgentModelSelect = () => {
         }
       })
       .catch(() => {
-        if (!isMounted) return
+        if (!mountedRef.current) return
         setSettings(null)
         setSelectedModel("")
       })
-
-    return () => {
-      isMounted = false
-    }
   }, [])
+
+  useEffect(() => {
+    mountedRef.current = true
+    loadProviders()
+    const unsubscribe = subscribeSettingsChanged("models", loadProviders)
+    return () => {
+      mountedRef.current = false
+      unsubscribe()
+    }
+  }, [loadProviders])
 
   // 已启用 Provider 下的分组模型选项。
   const selectOptions = useMemo<(LxSelectOption<string> | LxSelectGroup<string>)[]>(() => {

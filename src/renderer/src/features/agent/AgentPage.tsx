@@ -7,6 +7,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
+import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
@@ -73,6 +74,15 @@ export const AgentPage = ({
   useEffect(() => {
     refreshContextUsage(selectedSelection)
   }, [selectedSelection, refreshContextUsage])
+
+  // 配置变更（设置页保存）后刷新状态栏上下文窗口，无需刷新页面。
+  const selectedSelectionRef = useRef(selectedSelection)
+  selectedSelectionRef.current = selectedSelection
+
+  useEffect(() => {
+    const refresh = (): void => refreshContextUsage(selectedSelectionRef.current)
+    return subscribeSettingsChanged("models", refresh)
+  }, [refreshContextUsage])
 
   const currentSessionPath = useSyncExternalStore(
     sessionListStore.subscribe,

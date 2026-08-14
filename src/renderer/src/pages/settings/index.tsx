@@ -7,6 +7,7 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   ModelProviderSettings,
   ModelSettings,
+  notifySettingsChanged,
   PermissionSettings,
   SETTINGS_SECTIONS,
   settingsApi,
@@ -56,8 +57,9 @@ export const SettingsPage = (): React.JSX.Element => {
       setSettings(saved)
       setPermissionSettings(savedPermission)
       setLastSavedSettings(JSON.stringify({ models: saved, permissions: savedPermission }))
+      notifySettingsChanged("models")
+      notifySettingsChanged("permissions")
       toast.success("保存配置成功")
-      window.location.reload()
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : "保存配置失败"
       setError(errorMessage)
@@ -85,7 +87,7 @@ export const SettingsPage = (): React.JSX.Element => {
             aria-label="保存配置"
             title={{
               title: "确认保存配置？",
-              content: "保存后将刷新页面",
+              content: "保存后立即生效,无需刷新",
               placement: "bottom",
               onConfirm: () => void save(),
             }}
