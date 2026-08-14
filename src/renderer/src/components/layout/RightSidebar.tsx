@@ -16,8 +16,7 @@ const MIN_WIDTH_VW = 30
 const MAX_WIDTH_VW = 40
 
 // 约束宽度到 [30vw, 40vw]。
-const clampWidth = (value: number): number =>
-  Math.min(Math.max(value, MIN_WIDTH_VW), MAX_WIDTH_VW)
+const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH_VW), MAX_WIDTH_VW)
 
 /**
  * 右侧栏 (集成 Agent 页面与控制按钮)
@@ -145,7 +144,7 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [isResizing])
 
-      // 窗口尺寸变化（含全屏切换）后宽度随 vw 自动重算，无需额外处理。
+  // 窗口尺寸变化（含全屏切换）后宽度随 vw 自动重算，无需额外处理。
   // 会话归属上下文：项目 item 会话或页面会话（item 解析中返回 undefined，避免误建桶）。
   const context = useMemo<AgentSendContext | undefined>(() => {
     const itemId = searchParams.get("itemId")
@@ -328,7 +327,14 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
         </div>
       ) : (
-        <div className="mb-2 flex w-full items-center justify-between border-b border-white/5">
+        <div
+          className="mb-2 flex shrink-0 items-center justify-between border-b border-white/5"
+          style={{
+            width: `calc(${width}vw - 16px)`,
+            minWidth: `calc(${width}vw - 16px)`,
+            maxWidth: `calc(${width}vw - 16px)`,
+          }}
+        >
           <div className="flex min-w-0 items-center gap-1">
             {newChatButton}
 
@@ -381,7 +387,22 @@ export const RightSideBar = (): React.JSX.Element => {
         </div>
       )}
 
-      <div className={isCollapsed ? "hidden" : "flex-1 min-h-0 overflow-hidden"}>{agentPage}</div>
+      {/* 内部内容区保持恒定展开宽度（宽度减去左右各 8px padding），
+          避免 300ms 宽度过渡动画期间消息文本被挤压换行引起 scrollHeight 剧烈波动与滚动条上下窜动 */}
+      <div
+        className={isCollapsed ? "hidden" : "flex-1 min-h-0 overflow-hidden"}
+        style={
+          isCollapsed
+            ? undefined
+            : {
+                width: `calc(${width}vw - 16px)`,
+                minWidth: `calc(${width}vw - 16px)`,
+                maxWidth: `calc(${width}vw - 16px)`,
+              }
+        }
+      >
+        {agentPage}
+      </div>
     </aside>
   )
 }

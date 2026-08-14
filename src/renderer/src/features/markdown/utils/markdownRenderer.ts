@@ -462,3 +462,19 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
 
   return `<section class="markdown-template-block${statusClass}"${lineAttribute}${endLineAttribute} data-template-command="${command}" data-template-status="${status}" data-template-content="${encodedContent}"><header class="markdown-template-block-header"><span class="markdown-template-titles"><span class="markdown-template-command">${command}</span>${titleHtml}</span><span class="markdown-template-actions"><span class="markdown-template-status"></span><span class="markdown-template-copy"></span><span class="markdown-template-collapse"></span></span></header><div class="markdown-template-content">${contentHtml}</div></section>`
 }
+
+// 无 env 的 render 结果按源文本缓存：消息块只追加不突变，同一文本渲染结果稳定。
+// 避免流式/滚动引发的重复渲染反复执行 markdown-it 解析与 highlight.js 高亮。
+// 带 env 的调用（如编辑器）不参与缓存，避免 env 影响输出的场景命中错误缓存。
+const markdownRenderCache = new Map<string, string>()
+const markdownRenderRaw = markdownRenderer.render.bind(markdownRenderer)
+markdownRenderer.render = (src, env) => {
+  if (env !== undefined) return markdownRenderRaw(src, env)
+  const cached = markdownRenderCache.get(src)
+  if (cached !== undefined) return cached
+  const html = markdownRenderRaw(src, env)
+  // 容量上限：超出整体清空重建（会话消息文本数量有限，偶发重建成本可接受）。
+  if (markdownRenderCache.size >= 200) markdownRenderCache.clear()
+  markdownRenderCache.set(src, html)
+  return html
+}

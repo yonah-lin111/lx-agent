@@ -1,7 +1,7 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import { ChevronDown, Sparkles } from "lucide-react"
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react"
 import type React from "react"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
@@ -43,6 +43,28 @@ interface AgentMessageListProps {
 }
 
 const NEAR_BOTTOM_THRESHOLD = 250
+const LOAD_MORE_TOP_THRESHOLD = 150
+// 初始窗口大小：展示最新的 25 个 QA 组（通常覆盖 3~5 屏，DOM 节点少且响应快）。
+const WINDOW_INITIAL_SIZE = 25
+// 向上滚动触发加载时，每次追加的历史组数。
+const WINDOW_PAGE_SIZE = 20
+
+// 仅比较数据 props 的 memo：流式时 useAgentChat 只替换当前消息对象，其余消息引用不变，
+// 借此跳过所有未变化消息的重渲染（其 markdown 渲染成本不再每 tick 重跑）。
+const AgentMessageItemMemo = memo(AgentMessageItem, (prev, next) => {
+  return (
+    prev.message === next.message &&
+    prev.continuationMessages === next.continuationMessages &&
+    prev.isLoading === next.isLoading &&
+    prev.isPinned === next.isPinned &&
+    prev.isEditing === next.isEditing &&
+    prev.isLastAssistant === next.isLastAssistant &&
+    prev.readOnly === next.readOnly &&
+    prev.showScrollToBottom === next.showScrollToBottom &&
+    prev.canContinue === next.canContinue &&
+    prev.suggestedQuestionContext === next.suggestedQuestionContext
+  )
+})
 
 export const AgentMessageList = ({
   messages,
@@ -67,15 +89,55 @@ export const AgentMessageList = ({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [scrollButtonRendered, setScrollButtonRendered] = useState(false)
   const [scrollButtonAnimatingOut, setScrollButtonAnimatingOut] = useState(false)
+
+  // 记录是否已完成会话的首次初始吸底定位。
+  // 仅在首次进入会话时自动滚到底部；后续折叠与再次展开均严格保留用户之前的浏览位置。
+  const hasInitialScrolledRef = useRef(false)
+  // 实时记录用户在可见状态下的有效浏览位置与视口顶部的锚点消息（避免挤压/宽度过渡造成偏移）。
+  const activeScrollTopRef = useRef<number | null>(null)
+  const anchorMessageRef = useRef<{ groupKey: string; offsetFromTop: number } | null>(null)
+
   const messageEntries = useMemo(() => groupAgentMessages(messages), [messages])
   const messageGroups = useMemo(() => buildQaGroups(messageEntries), [messageEntries])
+
+  // --- Telegram 风格 Sliding Window (滑动窗口) ---
+  // 窗口起始索引：从该索引到末尾的 QA 组实际渲染到 DOM 中。
+  const [windowStartIndex, setWindowStartIndex] = useState<number>(() =>
+    Math.max(0, messageGroups.length - WINDOW_INITIAL_SIZE),
+  )
+
+  // 记录滚动位置与高度，供上滑追加历史后做滚动高度差补偿。
+  const scrollCompensationRef = useRef<{ prevScrollHeight: number; prevScrollTop: number } | null>(
+    null,
+  )
+
+  // 待跳转定位的目标用户消息 ID（当定位目标在当前窗口之外时暂存）。
+  const pendingLocateMessageIdRef = useRef<string | null>(null)
+
+  // 会话切换（消息列表重置或恢复）时，重置滑动窗口与初次吸底标记。
+  const prevMessagesLengthRef = useRef(messages.length)
+  useEffect(() => {
+    // 仅在消息列表被清空或大幅变动（如切换会话）时重置。
+    if (messages.length === 0 || Math.abs(messages.length - prevMessagesLengthRef.current) > 5) {
+      setWindowStartIndex(Math.max(0, messageGroups.length - WINDOW_INITIAL_SIZE))
+      hasInitialScrolledRef.current = false
+    }
+    prevMessagesLengthRef.current = messages.length
+  }, [messages.length, messageGroups.length])
+
+  // 当前切片内的可见 QA 组。
+  const visibleGroups = useMemo(
+    () => messageGroups.slice(windowStartIndex),
+    [messageGroups, windowStartIndex],
+  )
+
   const lastGroup = messageGroups.at(-1)
   // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
   const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
-  // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。吸顶定位需读取组顶（= 用户消息自然流顶部）。
+  // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。
   const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
-  // 仅当存在 ≥2 个 QA 对时展示"从此分支"（单对时切割点之前无历史，fork 无意义）。
+  // 仅当存在 ≥2 个 QA 对时展示"从此分支"。
   const canFork = useMemo(
     () => messages.filter((message) => message.role === "user").length > 1,
     [messages],
@@ -94,50 +156,163 @@ export const AgentMessageList = ({
       else messageGroupRefs.current.delete(groupId)
     }
 
+  // 向上加载更多历史：扩展窗口起始索引，并在渲染后无缝补偿滚动位置。
+  const loadMoreHistory = useCallback((): void => {
+    if (windowStartIndex <= 0) return
+    const el = scrollRef.current
+    if (el) {
+      scrollCompensationRef.current = {
+        prevScrollHeight: el.scrollHeight,
+        prevScrollTop: el.scrollTop,
+      }
+    }
+    setWindowStartIndex((prev) => Math.max(0, prev - WINDOW_PAGE_SIZE))
+  }, [windowStartIndex])
+
+  // 上滑追加历史后，立即做滚动高度差补偿，确保当前视野内容完全静止、无任何跳跃。
+  useLayoutEffect(() => {
+    const compensation = scrollCompensationRef.current
+    if (!compensation) return
+    const el = scrollRef.current
+    if (el) {
+      const heightDiff = el.scrollHeight - compensation.prevScrollHeight
+      el.scrollTop = compensation.prevScrollTop + heightDiff
+    }
+    scrollCompensationRef.current = null
+  }, [visibleGroups])
+
+  // 处理滚动事件：吸底状态检测、吸顶问题更新、触顶自动扩展历史。
   const handleScroll = (): void => {
+    const el = scrollRef.current
+    if (!el || el.clientHeight <= 0) return
+
     const nearBottom = isNearBottom()
     stickToBottomRef.current = nearBottom
+    // 仅在真实可见并渲染时，实时记录用户的有效浏览像素位置
+    activeScrollTopRef.current = el.scrollTop
+
+    // 记录视口顶部的消息锚点：寻找当前最贴近视口顶部的消息组，供展开后精确锚定
+    if (!nearBottom) {
+      const containerRect = el.getBoundingClientRect()
+      let bestKey: string | null = null
+      let bestOffset = -Infinity
+      for (const [key, groupEl] of messageGroupRefs.current) {
+        const offset = groupEl.getBoundingClientRect().top - containerRect.top
+        // 寻找顶部在视口顶上方最近或刚进入视口顶部的消息
+        if (offset <= 100 && offset > bestOffset) {
+          bestKey = key
+          bestOffset = offset
+        }
+      }
+      if (bestKey) {
+        anchorMessageRef.current = { groupKey: bestKey, offsetFromTop: bestOffset }
+      }
+    } else {
+      anchorMessageRef.current = null
+    }
+
     setShowScrollToBottom(!nearBottom)
-    updatePinnedQuestion(scrollRef.current)
+    updatePinnedQuestion(el)
+
+    // 向上滑动接近顶部时，自动拉取上一页历史并无感补偿滚动。
+    if (el.scrollTop < LOAD_MORE_TOP_THRESHOLD && windowStartIndex > 0) {
+      loadMoreHistory()
+    }
   }
 
-  // 会话恢复开始时强制回到吸底，确保骨架屏期间滚动贴底。
+  // 会话恢复开始时重置为需要吸底。
   useEffect(() => {
     if (!isRestoring) return
+    hasInitialScrolledRef.current = false
     stickToBottomRef.current = true
+    activeScrollTopRef.current = null
+    anchorMessageRef.current = null
   }, [isRestoring])
 
-  // 新建对话（消息列表清空）后复位滚动状态：下一条消息挂载时重新吸底，
-  // 避免上一会话遗留的"已上滑"状态让回到底部按钮在流式开始时误现 loading。
+  // 新建对话后复位滚动状态。
   useEffect(() => {
     if (messages.length !== 0) return
+    hasInitialScrolledRef.current = false
     stickToBottomRef.current = true
+    activeScrollTopRef.current = null
+    anchorMessageRef.current = null
     setShowScrollToBottom(false)
     setScrollButtonRendered(false)
     setScrollButtonAnimatingOut(false)
+    setWindowStartIndex(0)
   }, [messages])
 
-  // 侧栏首次展开（进入页面）时消息列表吸底：折叠期间容器不可见、滚动位置无法建立，
-  // 展开后布局生效，需重新滚动到底部。仅首次生效，之后展开不打断用户的浏览位置。
+  // 监听侧边栏折叠与展开：
+  // 1. 展开时：若为首次进入则吸底并置 true；
+  // 2. 若此前已在该会话中浏览：根据锚点消息精确对齐视口（完全无视宽度过渡过程中的挤压变形）！
   useEffect(() => {
+    let timer: number | undefined
     const unsubscribe = rightSidebarStore.subscribe(() => {
-      if (rightSidebarStore.isCollapsed()) return
-      stickToBottomRef.current = true
-      const el = scrollRef.current
-      if (el) el.scrollTop = el.scrollHeight
-      setShowScrollToBottom(false)
-      unsubscribe()
+      const isCollapsed = rightSidebarStore.isCollapsed()
+      if (isCollapsed) return
+
+      const restoreScrollPosition = (): void => {
+        const targetEl = scrollRef.current
+        if (!targetEl || targetEl.clientHeight <= 0) return
+
+        if (!hasInitialScrolledRef.current) {
+          // 首次进入该会话：吸底
+          targetEl.scrollTop = targetEl.scrollHeight
+          hasInitialScrolledRef.current = true
+          stickToBottomRef.current = true
+          setShowScrollToBottom(false)
+        } else if (stickToBottomRef.current) {
+          // 折叠前用户处于底部：继续贴底
+          targetEl.scrollTop = targetEl.scrollHeight
+          setShowScrollToBottom(false)
+        } else if (anchorMessageRef.current) {
+          // 折叠前用户在浏览历史：优先通过锚点消息几何位置精准对齐
+          const { groupKey, offsetFromTop } = anchorMessageRef.current
+          const groupEl = messageGroupRefs.current.get(groupKey)
+          if (groupEl) {
+            const currentOffset =
+              groupEl.getBoundingClientRect().top - targetEl.getBoundingClientRect().top
+            const diff = currentOffset - offsetFromTop
+            targetEl.scrollTop += diff
+            setShowScrollToBottom(true)
+          } else if (activeScrollTopRef.current !== null) {
+            targetEl.scrollTop = activeScrollTopRef.current
+            setShowScrollToBottom(true)
+          }
+        } else if (activeScrollTopRef.current !== null) {
+          targetEl.scrollTop = activeScrollTopRef.current
+          setShowScrollToBottom(true)
+        }
+      }
+
+      // 展开时立即执行一次对齐，宽度过渡（300ms）结束后再次精准对齐
+      restoreScrollPosition()
+      timer = window.setTimeout(restoreScrollPosition, 320)
     })
-    return unsubscribe
+
+    return () => {
+      unsubscribe()
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
   }, [])
 
-  // 吸底或骨架屏期间内容变化后同步跳到列表底部。
+  // 消息加载完成或流式新增时：仅首次进入或用户主动处于贴底状态时跟随贴底。
   useLayoutEffect(() => {
-    if (!isRestoring && !stickToBottomRef.current) return
     const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-    setShowScrollToBottom(false)
-  }, [messages, isRestoring])
+    if (!el || el.clientHeight <= 0) return
+
+    if (!hasInitialScrolledRef.current && visibleGroups.length > 0) {
+      el.scrollTop = el.scrollHeight
+      hasInitialScrolledRef.current = true
+      setShowScrollToBottom(false)
+      return
+    }
+
+    if (isRestoring || stickToBottomRef.current) {
+      el.scrollTop = el.scrollHeight
+      setShowScrollToBottom(false)
+    }
+  }, [visibleGroups, isRestoring])
 
   useEffect(() => {
     if (showScrollToBottom) {
@@ -160,18 +335,43 @@ export const AgentMessageList = ({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }
 
-  // 定位吸顶的用户消息：滚动到其在自然流中的位置（消息顶部对齐列表视口内容区顶部，即吸顶解除的临界点）。
-  const handleLocateMessage = (messageId: string): void => {
+  // 定位吸顶的用户消息：滚动到其在自然流中的位置。
+  const performLocate = (messageId: string): void => {
     const el = scrollRef.current
     const group = messageGroupRefs.current.get(messageId)
     if (!el || !group) return
     const containerRect = el.getBoundingClientRect()
     const groupRect = group.getBoundingClientRect()
     const paddingTop = Number.parseFloat(window.getComputedStyle(el).paddingTop) || 0
-    // 组顶 = 用户消息自然流顶，吸顶视觉位置 = 视口内容区顶部；二者位移差即需滚动的距离。
     const delta = groupRect.top - (containerRect.top + paddingTop)
-    el.scrollTo({ top: el.scrollTop + delta, behavior: "smooth" })
+    const nextScrollTop = el.scrollTop + delta
+    el.scrollTo({ top: nextScrollTop, behavior: "smooth" })
+    stickToBottomRef.current = false
+    activeScrollTopRef.current = nextScrollTop
+    setShowScrollToBottom(true)
   }
+
+  // 定位用户消息入口：如果目标在当前滑动窗口之前，先扩展窗口再在 layoutEffect 中精确定位。
+  const handleLocateMessage = (messageId: string): void => {
+    const targetIndex = messageGroups.findIndex((group) => group.userMessage?.id === messageId)
+    if (targetIndex === -1) return
+
+    if (targetIndex < windowStartIndex) {
+      pendingLocateMessageIdRef.current = messageId
+      setWindowStartIndex(Math.max(0, targetIndex - 5))
+      return
+    }
+
+    performLocate(messageId)
+  }
+
+  // 暂存的定位请求在 DOM 挂载更新后执行。
+  useLayoutEffect(() => {
+    const pendingId = pendingLocateMessageIdRef.current
+    if (!pendingId) return
+    performLocate(pendingId)
+    pendingLocateMessageIdRef.current = null
+  }, [visibleGroups])
 
   // 面板打开时，滚动按钮的可见性改由面板消息列表的滚动位置驱动。
   useEffect(() => {
@@ -195,8 +395,7 @@ export const AgentMessageList = ({
     setShowScrollToBottom(el.scrollHeight - el.scrollTop - el.clientHeight >= NEAR_BOTTOM_THRESHOLD)
   }, [isSubagentPanelOpen])
 
-  // 用户发送新消息后平滑滚动到底部（以 prev 快照判定追加新增）。
-  // 队列 drain 自动发送的 user 消息不触发（isQueuedDrain：非用户主动发送，保持阅读位置）。
+  // 用户发送新消息后平滑滚动到底部。
   const prevMessagesRef = useRef<ChatMessage[]>(messages)
   useEffect(() => {
     const prev = prevMessagesRef.current
@@ -211,6 +410,8 @@ export const AgentMessageList = ({
     const el = scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [messages, isRestoring])
+
+  const hasHiddenHistory = windowStartIndex > 0
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -248,18 +449,30 @@ export const AgentMessageList = ({
             onScroll={handleScroll}
             className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-1 [scrollbar-gutter:stable]"
           >
-            {messageGroups.map((group, index) => {
+            {/* 滑动窗口：顶部存在折叠历史时，展示加载入口与未展开条数 */}
+            {hasHiddenHistory && (
+              <div className="flex w-full justify-center pt-1 pb-2">
+                <button
+                  type="button"
+                  onClick={loadMoreHistory}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                >
+                  <ChevronUp className="h-3 w-3" />
+                  <span>加载更早消息 ({windowStartIndex} 条未展开)</span>
+                </button>
+              </div>
+            )}
+
+            {visibleGroups.map((group, index) => {
               const userMessage = group.userMessage
               const assistant = group.assistant
               const groupKey = userMessage?.id ?? assistant?.message.id
-              // mb-16 仅作用于真正位于末位的消息组（末位真实助手留白给建议问题 / 末位压缩摘要留白给输入区）。
-              // 后接压缩摘要的真实助手用正常组间距，避免与摘要之间出现异常大间隙。
-              const isLastGroupAi =
-                index === messageGroups.length - 1 &&
-                assistant?.message.role !== "compactionSummary"
+              const isLastGroup = index === visibleGroups.length - 1
+              const isLastGroupAi = isLastGroup && assistant?.message.role !== "compactionSummary"
               const isLastGroupCompaction =
-                index === messageGroups.length - 1 && assistant?.message.role === "compactionSummary"
+                isLastGroup && assistant?.message.role === "compactionSummary"
               const isUserPinned = pinnedUserMessageId === userMessage?.id
+
               return (
                 <div
                   key={groupKey}
@@ -270,7 +483,7 @@ export const AgentMessageList = ({
                     <>
                       {/* 用户消息完全离开视口后，才将问题钉住视口顶部。 */}
                       <div className={`top-0 z-20 mb-4 w-full ${isUserPinned ? "sticky" : ""}`}>
-                        <AgentMessageItem
+                        <AgentMessageItemMemo
                           message={userMessage}
                           isPinned={isUserPinned}
                           onLocate={
@@ -300,10 +513,10 @@ export const AgentMessageList = ({
                     </>
                   )}
                   {assistant && (
-                    <AgentMessageItem
+                    <AgentMessageItemMemo
                       message={assistant.message}
                       continuationMessages={assistant.continuationMessages}
-                      isLoading={index === messageGroups.length - 1 && isLastGroupLoading}
+                      isLoading={isLastGroup && isLastGroupLoading}
                       showScrollToBottom={showScrollToBottom}
                       isLastAssistant={isLastGroupAi}
                       suggestedQuestionContext={
@@ -311,7 +524,6 @@ export const AgentMessageList = ({
                       }
                       onSendSuggestedQuestion={isLastGroupAi ? onSendSuggestedQuestion : undefined}
                       onEchoToInput={isLastGroupAi ? onEchoToInput : undefined}
-                      // 仅最后一组 QA 展示删除入口。
                       onDelete={isLastGroupAi ? onDeleteMessage : undefined}
                       onOpenSubagent={onOpenSubagent}
                       canContinue={isLastGroupAi ? canContinue : false}
@@ -324,7 +536,6 @@ export const AgentMessageList = ({
           </div>
 
           {scrollButtonRendered && (
-            // z-30 高于吸顶问题(z-20)与代码块/模板块头部，避免被遮挡而无法点击。
             <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
               <button
                 type="button"
