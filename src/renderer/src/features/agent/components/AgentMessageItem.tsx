@@ -259,7 +259,7 @@ export const AgentMessageItem = ({
       hasUsage = true
       input += currentMessage.usage.input
       output += currentMessage.usage.output
-      cacheRead += currentMessage.usage.cacheRead
+      cacheRead += currentMessage.usage.cacheRead ?? 0
       totalTokens += currentMessage.usage.totalTokens
     }
     if (!hasUsage) return null
