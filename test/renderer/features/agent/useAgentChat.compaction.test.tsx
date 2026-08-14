@@ -128,6 +128,7 @@ describe("useAgentChat 压缩事件消息流", () => {
     await act(async () => {})
 
     expect(agentApi.undoCompaction).toHaveBeenCalledTimes(1)
+    expect(agentApi.restore).toHaveBeenCalledTimes(1)
     expect(result.current.messages).toHaveLength(2)
     expect(result.current.messages.some((m) => m.role === "compactionSummary")).toBe(false)
     expect(result.current.inputText).toBe("")

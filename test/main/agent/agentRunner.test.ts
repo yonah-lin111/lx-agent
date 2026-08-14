@@ -207,6 +207,7 @@ describe("agentRunner 持久化", () => {
         "webfetch",
         "task",
         "question",
+        "lsp",
       ],
       mcp: [],
       skills: [],
@@ -271,6 +272,7 @@ describe("agentRunner 持久化", () => {
       "webfetch",
       "task",
       "question",
+      "lsp",
     ])
   })
 
@@ -664,6 +666,42 @@ describe("agentRunner 持久化", () => {
     expect(
       restored.messages.filter((message) => message.role === "compactionSummary"),
     ).toHaveLength(1)
+  })
+
+  it("多次压缩时 readCompactionEntry 正确读取最新的一条 compaction entry", async () => {
+    const { agentRunner } = await importRunner()
+    holder.compaction = {
+      enabled: true,
+      contextWindow: 1000,
+      keepRecentTokens: 10,
+      reserveTokens: 0,
+    }
+    holder.streamResponses = [assistant([{ type: "text", text: "第一轮回答" }])]
+    const first = await agentRunner.send("第一轮问题", undefined, { page: "/", cwd: "/tmp" })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    // 第一次：手动压缩摘要 1 (manual=true)
+    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动摘要1") } as never)
+    await agentRunner.compact()
+
+    // 第二轮 QA
+    holder.streamResponses = [assistant([{ type: "text", text: "第二轮回答" }])]
+    await agentRunner.send("第二轮问题", undefined, { page: "/", cwd: "/tmp" })
+
+    // 第二次：手动压缩摘要 2 (manual=true)
+    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动摘要2") } as never)
+    await agentRunner.compact()
+
+    // restoreSession 应读取到最新的手动摘要2
+    const restored = await agentRunner.restoreSession(first.sessionId)
+    const summaries = restored.messages.filter((message) => message.role === "compactionSummary")
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]).toMatchObject({ summary: "手动摘要2", manual: true })
+
+    // 撤销应删除最新的手动摘要2
+    const undone = await agentRunner.undoCompaction()
+    expect(undone.ok).toBe(true)
   })
 
   // 从 toolResult 消息提取文本内容。

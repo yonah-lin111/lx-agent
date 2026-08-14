@@ -346,14 +346,18 @@ export const useAgentChat = (context?: AgentSendContext) => {
     }
   }, [])
 
-  // 撤销最后一次手动压缩（/undo 对压缩摘要触发）：清 main 侧边界/entry 后移除可见摘要。
+  // 撤销最后一次手动压缩（/undo 对压缩摘要触发）：清 main 侧边界/entry 后移除可见摘要，并同步 main 侧消息列表。
   // 自动压缩摘要不可撤销，不进入此路径。
   const undoManualCompaction = useCallback(() => {
     void agentApi.undoCompaction().then((result) => {
       if (result.ok) {
-        setMessages((prev) =>
-          prev.filter((message) => !(message.role === "compactionSummary" && message.isManual)),
-        )
+        setMessages((prev) => {
+          const nextMessages = prev.filter(
+            (message) => !(message.role === "compactionSummary" && message.isManual),
+          )
+          void agentApi.restore(toAgentMessages(nextMessages))
+          return nextMessages
+        })
       } else {
         errorToast(result.error)
       }

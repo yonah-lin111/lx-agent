@@ -681,7 +681,13 @@ export const AgentMessageItem = ({
   // 上下文压缩摘要块：非交互（不可编辑/删除），诚实地标注"此处已压缩"；压缩中展示 loading 占位。
   if (message.role === "compactionSummary") {
     const summary = message.blocks.find((block) => block.kind === "text")?.text ?? ""
-    return <AgentCompactionSummary summary={summary} isLoading={message.isCompacting} />
+    return (
+      <AgentCompactionSummary
+        summary={summary}
+        isLoading={message.isCompacting}
+        isManual={message.isManual}
+      />
+    )
   }
 
   if (isUser) {

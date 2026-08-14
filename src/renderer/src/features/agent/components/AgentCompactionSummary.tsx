@@ -10,6 +10,8 @@ interface AgentCompactionSummaryProps {
   summary: string
   // 压缩进行中：渲染 loading 占位（摘要生成完成前展示）。
   isLoading?: boolean
+  // 是否为手动触发的压缩（/compact），用于区分文案与折叠标题。
+  isManual?: boolean
 }
 
 /**
@@ -18,6 +20,7 @@ interface AgentCompactionSummaryProps {
 export const AgentCompactionSummary = ({
   summary,
   isLoading = false,
+  isManual = false,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
@@ -44,21 +47,27 @@ export const AgentCompactionSummary = ({
     return (
       <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        <span className="italic">Compressing context</span>
+        <span className="italic">
+          {isManual ? "Compressing context manually" : "Compressing context"}
+        </span>
       </div>
     )
   }
+
+  const titleText = isManual
+    ? "Conversation manually compressed into summary"
+    : "Conversation compressed into summary"
 
   return (
     <div className="my-1.5 w-full max-w-full select-none">
       <button
         type="button"
-        aria-label="Compressed summary"
+        aria-label={titleText}
         aria-expanded={isExpanded}
         className="mb-1 flex h-5 w-full items-center gap-1.5 text-[11px] font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
         onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
       >
-        <span className="italic">Conversation compressed into summary</span>
+        <span className="italic">{titleText}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${
             isExpanded ? "" : "-rotate-90"

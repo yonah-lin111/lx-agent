@@ -1364,7 +1364,9 @@ class AgentRunner {
 
   // 读取会话最近的 compaction entry，重建压缩边界（无/无效则 null）。
   private readCompactionEntry(sessionId: string): CompactionBoundary | null {
-    for (const entry of agentSessionService.listEntries(sessionId)) {
+    const entries = agentSessionService.listEntries(sessionId)
+    for (let index = entries.length - 1; index >= 0; index--) {
+      const entry = entries[index]
       if (entry.type !== "compaction") continue
       try {
         const parsed = JSON.parse(entry.payload) as Partial<CompactionBoundary>
@@ -1384,7 +1386,7 @@ class AgentRunner {
           }
         }
       } catch {
-        // 损坏 entry 跳过。
+        // 损坏 entry 跳过，继续往前找。
       }
     }
     return null
