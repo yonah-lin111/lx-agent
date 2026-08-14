@@ -9,7 +9,6 @@ import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
-import { registerNoteCardHandlers } from "@/ipc/noteCardHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
@@ -60,7 +59,6 @@ app.whenReady().then(() => {
   registerProjectHandlers()
   registerSettingsHandlers()
   registerMarkdownHandlers()
-  registerNoteCardHandlers()
   registerGitHandlers()
   registerPromptHistoryHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)

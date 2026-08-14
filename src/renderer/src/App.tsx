@@ -7,7 +7,6 @@ import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSidebar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
-import { NoteCardList } from "@/features/note-card"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { ProjectBottomSideBar } from "@/pages/project/components/ProjectBottomSideBar"
@@ -70,9 +69,7 @@ export const App = () => {
               <HeaderSideBar
                 isExpanded={isHeaderExpanded}
                 onExpandedChange={handleHeaderExpandedChange}
-              >
-                <NoteCardList />
-              </HeaderSideBar>
+              />
               <PageContent>
                 <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <PageRouter />

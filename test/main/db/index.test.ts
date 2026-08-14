@@ -27,7 +27,6 @@ describe("runMigrations", () => {
       "agent_session",
       "agent_session_entry",
       "agent_snapshot",
-      "note_card",
       "project",
       "project_folder",
       "project_item",
@@ -36,7 +35,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3])
+    expect(versions).toEqual([1, 2, 3, 6])
   })
 
   it("迁移后 project_item 移除 sort_order 并保留 worktree_path", () => {
@@ -79,7 +78,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3])
+    expect(versions).toEqual([1, 2, 3, 6])
     const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
@@ -95,6 +94,6 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3])
+    expect(versions).toEqual([1, 2, 3, 6])
   })
 })

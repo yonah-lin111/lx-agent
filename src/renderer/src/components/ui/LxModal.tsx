@@ -10,8 +10,20 @@ interface LxModalProps {
   title: string
   children: React.ReactNode
   onClose: () => void
-  // 弹窗内容宽度，默认 320px。
-  width?: number
+  // 弹窗宽度，默认 320px；数字按 px，字符串按原样支持任意 CSS 单位。
+  width?: number | string
+  // 弹窗高度，默认由内容决定；数字按 px，字符串按原样支持任意 CSS 单位。
+  height?: number | string
+  // 弹窗最小宽度，默认不设。
+  minWidth?: number | string
+  // 弹窗最大宽度，默认 90vw。
+  maxWidth?: number | string
+  // 弹窗最小高度，默认不设。
+  minHeight?: number | string
+  // 弹窗最大高度，默认视口高度减 32px（calc(100vh - 32px)）。
+  maxHeight?: number | string
+  // 标题行右侧、关闭按钮左侧的操作插槽。
+  headerActions?: React.ReactNode
 }
 
 /**
@@ -23,6 +35,12 @@ export const LxModal = ({
   children,
   onClose,
   width = 320,
+  height,
+  minWidth,
+  maxWidth = "90vw",
+  minHeight,
+  maxHeight = "calc(100vh - 32px)",
+  headerActions,
 }: LxModalProps): React.JSX.Element | null => {
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
@@ -96,16 +114,19 @@ export const LxModal = ({
     >
       <section
         aria-labelledby="lx-modal-title"
-        className={`relative z-[999999] rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
-        style={{ width, maxWidth: "90vw" }}
+        className={`relative z-[999999] flex flex-col overflow-hidden rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
+        style={{ width, height, minWidth, maxWidth, minHeight, maxHeight }}
       >
-        <header className="mb-3 flex items-center justify-between gap-3">
+        <header className="mb-3 flex shrink-0 items-center justify-between gap-3">
           <h2 id="lx-modal-title" className="text-sm font-semibold text-white/90">
             {title}
           </h2>
-          <LxIconButton aria-label="关闭弹窗" preset="close" size="small" onClick={handleClose} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            {headerActions}
+            <LxIconButton aria-label="关闭弹窗" preset="close" size="small" onClick={handleClose} />
+          </div>
         </header>
-        {children}
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">{children}</div>
       </section>
     </div>,
     document.body,

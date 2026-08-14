@@ -10,6 +10,8 @@ import { isMacOS } from "@/lib/platform"
 interface MarkdownEditorToolbarProps {
   actions: MarkdownToolbarAction[]
   isSaved: boolean
+  // 是否显示保存状态圆点；隐藏时同步过滤 Cmd/Ctrl+S 快捷键说明。
+  showSaveStatus: boolean
   onInsertTable: (size: MarkdownTableSize) => void
 }
 
@@ -43,20 +45,30 @@ const markdownShortcuts = [
 export const MarkdownEditorToolbar = ({
   actions,
   isSaved,
+  showSaveStatus,
   onInsertTable,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
 
+  // 隐藏保存状态时移除 Cmd/Ctrl+S 快捷键说明。
+  const availableShortcuts = useMemo(
+    () =>
+      showSaveStatus
+        ? markdownShortcuts
+        : markdownShortcuts.filter(({ keys }) => keys !== "Cmd / Ctrl + S"),
+    [showSaveStatus],
+  )
+
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
     const query = shortcutQuery.trim().toLocaleLowerCase()
-    if (!query) return markdownShortcuts
+    if (!query) return availableShortcuts
 
-    return markdownShortcuts.filter(({ keys, description }) =>
+    return availableShortcuts.filter(({ keys, description }) =>
       `${keys} ${description}`.toLocaleLowerCase().includes(query),
     )
-  }, [shortcutQuery])
+  }, [availableShortcuts, shortcutQuery])
 
   /**
    * 将跨平台快捷键转换为当前系统对应的修饰键显示。
@@ -192,13 +204,15 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       ))}
 
-      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
-        <span
-          aria-label={isSaved ? "已保存" : "未保存"}
-          className={`mx-1.5 h-2 w-2 shrink-0 rounded-full ${isSaved ? "bg-emerald-400" : "bg-amber-400"}`}
-          role="status"
-        />
-      </LxTooltip>
+      {showSaveStatus && (
+        <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+          <span
+            aria-label={isSaved ? "已保存" : "未保存"}
+            className={`mx-1.5 h-2 w-2 shrink-0 rounded-full ${isSaved ? "bg-emerald-400" : "bg-amber-400"}`}
+            role="status"
+          />
+        </LxTooltip>
+      )}
     </div>
   )
 }

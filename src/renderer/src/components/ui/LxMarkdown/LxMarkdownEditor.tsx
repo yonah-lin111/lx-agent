@@ -55,6 +55,10 @@ export const LxMarkdownEditor = ({
   onChange,
   onSave,
   isSaved = true,
+  showSaveStatus = false,
+  showToolbar = true,
+  height,
+  autoHeight = false,
   showLineNumbers = false,
   showFolding = false,
 }: LxMarkdownEditorProps): React.JSX.Element => {
@@ -245,6 +249,16 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
+        ...(autoHeight
+          ? [
+              EditorView.theme({
+                // 高度随内容伸缩；基主题的 35vh 底部留白是给可滚动编辑器用的，自适应时去掉。
+                "&": { height: "auto" },
+                ".cm-scroller": { height: "auto", overflow: "hidden" },
+                ".cm-content": { paddingBottom: "24px" },
+              }),
+            ]
+          : []),
         markdownMarkerHighlight(showFolding),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
@@ -286,13 +300,17 @@ export const LxMarkdownEditor = ({
             },
           },
           { key: "Mod-a", run: selectAllPreservingScrollPosition },
-          {
-            key: "Mod-s",
-            run: () => {
-              onSaveRef.current?.()
-              return true
-            },
-          },
+          ...(showSaveStatus
+            ? [
+                {
+                  key: "Mod-s",
+                  run: () => {
+                    onSaveRef.current?.()
+                    return true
+                  },
+                },
+              ]
+            : []),
           { key: "Tab", run: indentMore },
           { key: "Shift-Tab", run: indentLess },
           { key: "Mod-d", run: deleteLine },
@@ -368,16 +386,26 @@ export const LxMarkdownEditor = ({
   ]
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
-      <MarkdownEditorToolbar
-        actions={actions}
-        isSaved={isSaved}
-        onInsertTable={(size) => insertText(createMarkdownTable(size))}
-      />
-      <div className="min-h-0 flex flex-1 text-sm">
+    <section
+      className={`flex min-w-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+        autoHeight ? "" : height === undefined ? "flex-1" : ""
+      }`}
+      style={autoHeight || height === undefined ? undefined : { height }}
+    >
+      {showToolbar && (
+        <MarkdownEditorToolbar
+          actions={actions}
+          isSaved={isSaved}
+          showSaveStatus={showSaveStatus}
+          onInsertTable={(size) => insertText(createMarkdownTable(size))}
+        />
+      )}
+      <div className={`min-h-0 flex text-sm ${autoHeight ? "" : "flex-1"}`}>
         <div
           ref={editorContainerRef}
-          className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
+          className={`min-w-0 ${autoHeight ? "" : "custom-scrollbar min-h-0 flex-1"} ${
+            previewMode === "preview" ? "hidden" : ""
+          }`}
         />
         {previewMode !== "edit" && (
           <LxMarkdownPreview html={previewHtml} previewMode={previewMode} previewRef={previewRef} />

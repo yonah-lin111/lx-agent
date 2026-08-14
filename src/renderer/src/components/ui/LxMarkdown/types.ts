@@ -41,6 +41,14 @@ export interface LxMarkdownEditorProps {
   onChange?: (content: string) => void
   onSave?: () => void
   isSaved?: boolean
+  // 是否显示右上角保存状态圆点并启用 Cmd/Ctrl+S 保存，默认隐藏与禁用。
+  showSaveStatus?: boolean
+  // 是否显示格式化工具栏，默认显示。
+  showToolbar?: boolean
+  // 编辑器整体高度（px）；不设置时随父容器 flex 撑满。
+  height?: number
+  // 高度自适应内容：编辑/预览区随内容伸缩，不内部滚动，超出时由外层容器滚动。
+  autoHeight?: boolean
   showLineNumbers?: boolean
   showFolding?: boolean
 }

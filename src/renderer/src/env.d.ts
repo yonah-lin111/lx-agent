@@ -4,7 +4,6 @@ import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
-import type { NoteCardApi } from "@shared/contracts/noteCard"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
@@ -17,8 +16,7 @@ declare global {
       AgentApi &
       MarkdownApi &
       GitApi &
-      PromptHistoryApi &
-      NoteCardApi
+      PromptHistoryApi
   }
 }
 

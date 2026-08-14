@@ -240,6 +240,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                 >
                   <LxTag
                     size="default"
+                    color={card.inProgress > 0 ? "amber" : "default"}
                     highlighted={isActive}
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
                     suffix={
