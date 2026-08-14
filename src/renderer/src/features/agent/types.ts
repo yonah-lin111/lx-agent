@@ -70,8 +70,10 @@ export interface ChatMessage {
   stopReason?: StopReason
   // 队列 drain 自动发送的 user 消息（流式中排队，run 结束后自动发送；列表据此跳过"用户发送→滚动到底"）。
   isQueuedDrain?: boolean
-  // 上下文压缩 loading 占位（compaction_start 插入、compaction_summary/failed 移除）。
+  // 上下文压缩 loading 占位（compaction_start 插入、同 compactionId 的 summary/failed 替换或移除）。
   isCompacting?: boolean
+  // 单次压缩事件标识（只用于将 renderer 的 loading 占位与终态事件关联）。
+  compactionId?: string
   // 压缩摘要是否手动触发（/compact）；手动摘要可被 /undo 撤销，自动不可。
   isManual?: boolean
   // 助手消息的 token 用量（本轮 QA 底部展示；user/toolResult 无此字段）。

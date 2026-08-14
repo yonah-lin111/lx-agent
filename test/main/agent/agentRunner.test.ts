@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
+  AgentEvent,
   AssistantMessage,
   StopReason,
   ToolResultMessage,
@@ -615,9 +616,21 @@ describe("agentRunner 持久化", () => {
     if (!second.ok) return
 
     // 手动压缩：摘要生成成功，返回 compacted: true。
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((event) => events.push(event))
     streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动压缩摘要") } as never)
     const compacted = await agentRunner.compact()
     expect(compacted).toEqual({ ok: true, compacted: true })
+    const start = events.find((event) => event.type === "compaction_start")
+    const summaryEvent = events.find((event) => event.type === "compaction_summary")
+    expect(start).toMatchObject({ type: "compaction_start", manual: true })
+    expect(summaryEvent).toMatchObject({
+      type: "compaction_summary",
+      message: { manual: true },
+    })
+    if (start?.type === "compaction_start" && summaryEvent?.type === "compaction_summary") {
+      expect(summaryEvent.compactionId).toBe(start.compactionId)
+    }
     if (!compacted.ok) return
 
     // compaction entry 落库且带 manual=true。

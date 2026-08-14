@@ -174,7 +174,7 @@ describe("AgentMessageList", () => {
     expect(scrollTo).toHaveBeenCalledTimes(1)
   })
 
-  it("压缩摘要消息渲染为可展开摘要块（末位摘要保留）", () => {
+  it("手动压缩摘要渲染为默认折叠的可展开摘要块", () => {
     const messages: ChatMessage[] = [
       userMessage("msg-1", "问题"),
       {
@@ -186,7 +186,14 @@ describe("AgentMessageList", () => {
       },
     ]
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
-    expect(screen.getByLabelText("Compressed summary")).toBeTruthy()
+
+    const summary = screen.getByRole("button", {
+      name: "Conversation manually compressed into summary",
+    })
+    expect(summary.getAttribute("aria-expanded")).toBe("false")
+
+    fireEvent.click(summary)
+    expect(summary.getAttribute("aria-expanded")).toBe("true")
     expect(screen.getByText("对话摘要内容")).toBeTruthy()
   })
 })

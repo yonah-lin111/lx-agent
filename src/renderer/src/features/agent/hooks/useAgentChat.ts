@@ -70,6 +70,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 队列计数递减（一条消息出队）→ 下一条 user 消息即队列 drain 的自动发送（抑制滚动）。
   const drainIncomingRef = useRef(false)
   const prevQueueLengthRef = useRef(0)
+  // 进行中的压缩事件集合：终态事件仅结束同 compactionId 的压缩，避免陈旧事件错误解锁输入。
+  const activeCompactionIdsRef = useRef(new Set<string>())
 
   // 按 toolCallId 更新消息内工具块状态。
   const updateToolStatus = useCallback(
@@ -206,18 +208,26 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
 
         case "compaction_summary": {
-          // 上下文压缩完成：移除旧摘要块与 loading 占位，把新摘要追加到消息列表底部（按列表顺序渲染）。
-          setIsCompacting(false)
-          const summary = toChatMessage(event.message, false, `m${++messageSequence}`)
-          setMessages((prev) => [
-            ...prev.filter((message) => message.role !== "compactionSummary"),
-            summary,
-          ])
+          // 上下文压缩完成：仅替换同一次压缩的 loading 占位，避免旧摘要或并行事件被误删。
+          activeCompactionIdsRef.current.delete(event.compactionId)
+          setIsCompacting(activeCompactionIdsRef.current.size > 0)
+          const summary = {
+            ...toChatMessage(event.message, false, `m${++messageSequence}`),
+            compactionId: event.compactionId,
+          }
+          setMessages((prev) => {
+            const placeholderIndex = prev.findIndex(
+              (message) => message.isCompacting && message.compactionId === event.compactionId,
+            )
+            if (placeholderIndex < 0) return [...prev, summary]
+            return prev.map((message, index) => (index === placeholderIndex ? summary : message))
+          })
           break
         }
 
         case "compaction_start": {
           // 上下文压缩开始（摘要生成耗时数秒）：在消息列表底部追加 loading 占位并禁止发送。
+          activeCompactionIdsRef.current.add(event.compactionId)
           setIsCompacting(true)
           const placeholder: ChatMessage = {
             id: `m${++messageSequence}`,
@@ -225,15 +235,22 @@ export const useAgentChat = (context?: AgentSendContext) => {
             blocks: [],
             isStreaming: false,
             isCompacting: true,
+            compactionId: event.compactionId,
+            isManual: event.manual,
           }
           setMessages((prev) => [...prev, placeholder])
           break
         }
 
         case "compaction_failed": {
-          // 上下文压缩失败（摘要生成失败/超时）：移除 loading 占位并恢复发送。
-          setIsCompacting(false)
-          setMessages((prev) => prev.filter((message) => !message.isCompacting))
+          // 上下文压缩失败（摘要生成失败/超时）：仅移除对应 loading 占位并恢复发送。
+          activeCompactionIdsRef.current.delete(event.compactionId)
+          setIsCompacting(activeCompactionIdsRef.current.size > 0)
+          setMessages((prev) =>
+            prev.filter(
+              (message) => !(message.isCompacting && message.compactionId === event.compactionId),
+            ),
+          )
           break
         }
 
@@ -297,6 +314,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
   const createNewChat = useCallback(() => {
     stopStreaming()
+    activeCompactionIdsRef.current.clear()
     setIsCompacting(false)
     setIsRestoring(false)
     setMessages([])
@@ -351,13 +369,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const undoManualCompaction = useCallback(() => {
     void agentApi.undoCompaction().then((result) => {
       if (result.ok) {
-        setMessages((prev) => {
-          const nextMessages = prev.filter(
-            (message) => !(message.role === "compactionSummary" && message.isManual),
-          )
-          void agentApi.restore(toAgentMessages(nextMessages))
-          return nextMessages
-        })
+        const nextMessages = messagesRef.current.filter(
+          (message) => !(message.role === "compactionSummary" && message.isManual),
+        )
+        setMessages(nextMessages)
+        void agentApi.restore(toAgentMessages(nextMessages))
       } else {
         errorToast(result.error)
       }
@@ -431,6 +447,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const restoreChat = useCallback(
     (sessionId: string) => {
       stopStreaming()
+      activeCompactionIdsRef.current.clear()
       setIsCompacting(false)
       setIsRestoring(true)
       void agentApi

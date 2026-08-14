@@ -39,30 +39,32 @@ describe("useAgentChat 压缩事件消息流", () => {
       eventHandler = handler
       return () => {}
     })
+    vi.mocked(agentApi.restore).mockReset()
     vi.mocked(agentApi.undoCompaction).mockReset()
   })
 
-  it("compaction_start 追加 loading 占位，compaction_summary 替换为真实摘要", async () => {
+  it("手动 compaction_start 追加 loading 占位，匹配 summary 替换为手动摘要", async () => {
     const { result } = renderHook(() => useAgentChat())
     await act(async () => {})
 
     act(() => {
       eventHandler({ type: "message_start", message: user })
       eventHandler({ type: "message_start", message: assistant })
-    })
-    expect(result.current.messages).toHaveLength(2)
-
-    act(() => {
-      eventHandler({ type: "compaction_start" })
+      eventHandler({ type: "compaction_start", compactionId: "compact-1", manual: true })
     })
     expect(result.current.messages).toHaveLength(3)
-    expect(result.current.messages[2].role).toBe("compactionSummary")
-    expect(result.current.messages[2].isCompacting).toBe(true)
+    expect(result.current.messages[2]).toMatchObject({
+      role: "compactionSummary",
+      isCompacting: true,
+      compactionId: "compact-1",
+      isManual: true,
+    })
     expect(result.current.isCompacting).toBe(true)
 
     act(() => {
       eventHandler({
         type: "compaction_summary",
+        compactionId: "compact-1",
         message: {
           role: "compactionSummary",
           summary: "摘要内容",
@@ -74,29 +76,78 @@ describe("useAgentChat 压缩事件消息流", () => {
     })
     expect(result.current.messages).toHaveLength(3)
     const summary = result.current.messages[2]
-    expect(summary.role).toBe("compactionSummary")
+    expect(summary).toMatchObject({
+      role: "compactionSummary",
+      compactionId: "compact-1",
+      isManual: true,
+    })
     expect(summary.isCompacting).toBeUndefined()
     expect(summary.blocks).toEqual([{ kind: "text", text: "摘要内容" }])
     expect(result.current.isCompacting).toBe(false)
   })
 
-  it("compaction_start 后 compaction_failed 移除占位且不残留", async () => {
+  it("完成和失败仅影响同 compactionId 的 loading 占位", async () => {
     const { result } = renderHook(() => useAgentChat())
     await act(async () => {})
 
     act(() => {
-      eventHandler({ type: "message_start", message: user })
-      eventHandler({ type: "message_start", message: assistant })
-      eventHandler({ type: "compaction_start" })
+      eventHandler({ type: "compaction_start", compactionId: "compact-1", manual: false })
+      eventHandler({ type: "compaction_start", compactionId: "compact-2", manual: true })
+      eventHandler({ type: "compaction_failed", compactionId: "compact-1", manual: false })
     })
-    expect(result.current.messages).toHaveLength(3)
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0]).toMatchObject({
+      isCompacting: true,
+      compactionId: "compact-2",
+      isManual: true,
+    })
 
     act(() => {
-      eventHandler({ type: "compaction_failed" })
+      eventHandler({
+        type: "compaction_summary",
+        compactionId: "compact-2",
+        message: {
+          role: "compactionSummary",
+          summary: "手动摘要",
+          tokensBefore: 100,
+          timestamp: 3,
+          manual: true,
+        },
+      })
     })
-    expect(result.current.messages).toHaveLength(2)
-    expect(result.current.messages.every((m) => !m.isCompacting)).toBe(true)
-    expect(result.current.isCompacting).toBe(false)
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0]).toMatchObject({
+      role: "compactionSummary",
+      compactionId: "compact-2",
+      isManual: true,
+    })
+    expect(result.current.messages[0]?.isCompacting).toBeUndefined()
+  })
+
+  it("未收到 start 的摘要仍追加到消息列表", async () => {
+    const { result } = renderHook(() => useAgentChat())
+    await act(async () => {})
+
+    act(() => {
+      eventHandler({
+        type: "compaction_summary",
+        compactionId: "compact-missing-start",
+        message: {
+          role: "compactionSummary",
+          summary: "补偿摘要",
+          tokensBefore: 100,
+          timestamp: 3,
+          manual: false,
+        },
+      })
+    })
+
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0]).toMatchObject({
+      compactionId: "compact-missing-start",
+      isManual: false,
+      blocks: [{ kind: "text", text: "补偿摘要" }],
+    })
   })
 
   it("末条为手动压缩摘要时 /undo 撤销压缩并移除摘要", async () => {
@@ -109,6 +160,7 @@ describe("useAgentChat 压缩事件消息流", () => {
       eventHandler({ type: "message_start", message: assistant })
       eventHandler({
         type: "compaction_summary",
+        compactionId: "compact-1",
         message: {
           role: "compactionSummary",
           summary: "手动摘要",
@@ -161,6 +213,7 @@ describe("useAgentChat 压缩事件消息流", () => {
       eventHandler({ type: "message_start", message: assistant })
       eventHandler({
         type: "compaction_summary",
+        compactionId: "compact-1",
         message: {
           role: "compactionSummary",
           summary: "自动摘要",

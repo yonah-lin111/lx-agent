@@ -1012,7 +1012,8 @@ class AgentRunner {
     const settings = getModelProviderSettings()
     const activeSelection = selection ?? this.requestedModel
     const modelWindow = activeSelection
-      ? settings.providers[activeSelection.provider]?.models?.[activeSelection.model]?.limit?.context
+      ? settings.providers[activeSelection.provider]?.models?.[activeSelection.model]?.limit
+          ?.context
       : this.agent?.state.model
         ? settings.providers[this.agent.state.model.provider]?.models?.[this.agent.state.model.id]
             ?.limit?.context
@@ -1465,12 +1466,13 @@ class AgentRunner {
     if (effectiveCut <= 1 && !manual) return false
     if (effectiveCut <= 0) return false
     const compacted = messages.slice(0, effectiveCut)
+    const compactionId = createExternalId()
     // 摘要生成是压缩的主要耗时（慢 LLM 调用）：先推送开始事件，renderer 追加 loading 占位并禁止发送。
-    this.eventSink?.({ type: "compaction_start" })
+    this.eventSink?.({ type: "compaction_start", compactionId, manual })
     const summary = await generateCompactionSummary(compacted)
     if (!summary) {
       // 失败：推送失败事件让 renderer 移除 loading 占位（不建立坏边界，下轮再试）。
-      this.eventSink?.({ type: "compaction_failed" })
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual })
       return false
     }
     const tokensBefore = estimateContextTokens(compacted)
@@ -1479,7 +1481,7 @@ class AgentRunner {
     // 否则 transformContext 会保留全部消息（压缩失效）且恢复时摘要被插到列表顶部。
     if (firstKeptSeq < 0) {
       // 摘要已生成但无法落位：通知 renderer 移除 loading 占位（否则会卡在压缩中）。
-      this.eventSink?.({ type: "compaction_failed" })
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual })
       return false
     }
     const boundary: CompactionBoundary = {
@@ -1492,9 +1494,10 @@ class AgentRunner {
     if (this.currentSessionId) {
       this.persistCompaction(this.currentSessionId, boundary)
     }
-    // 推送可见摘要消息（renderer 追加到消息列表底部）。
+    // 推送可见摘要消息（renderer 以 compactionId 替换对应 loading 占位）。
     this.eventSink?.({
       type: "compaction_summary",
+      compactionId,
       message: createCompactionSummaryMessage(summary, tokensBefore, manual),
     })
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
