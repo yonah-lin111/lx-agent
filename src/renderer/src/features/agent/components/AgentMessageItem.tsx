@@ -17,6 +17,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentCompactionSummary } from "@/features/agent/components/AgentCompactionSummary"
 import {
   AgentExecutionGroup,
   type ExecutionGroupItem,
@@ -680,17 +681,7 @@ export const AgentMessageItem = ({
   // 上下文压缩摘要块：非交互（不可编辑/删除），诚实地标注"此处已压缩"。
   if (message.role === "compactionSummary") {
     const summary = message.blocks.find((block) => block.kind === "text")?.text ?? ""
-    return (
-      <div className="my-1.5 w-full max-w-full select-none">
-        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-white/35">
-          <span className="rounded-[4px] bg-white/10 px-1 py-px">已压缩</span>
-          <span>此处之前的对话已压缩为摘要</span>
-        </div>
-        <div className="rounded-[6px] border border-white/10 bg-white/[0.03] px-2 py-1 text-xs leading-relaxed text-white/50 whitespace-pre-wrap break-words">
-          {summary}
-        </div>
-      </div>
-    )
+    return <AgentCompactionSummary summary={summary} />
   }
 
   if (isUser) {
