@@ -13,13 +13,13 @@ interface AgentCompactionSummaryProps {
 }
 
 /**
- * 渲染可折叠的上下文压缩摘要，默认展开展示内容（压缩完成后摘要需清晰可见）。
+ * 渲染可折叠的上下文压缩摘要，默认折叠展示。
  */
 export const AgentCompactionSummary = ({
   summary,
   isLoading = false,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
