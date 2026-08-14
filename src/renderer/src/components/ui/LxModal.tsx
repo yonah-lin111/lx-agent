@@ -10,6 +10,8 @@ interface LxModalProps {
   title: string
   children: React.ReactNode
   onClose: () => void
+  // 弹窗内容宽度，默认 320px。
+  width?: number
 }
 
 /**
@@ -20,6 +22,7 @@ export const LxModal = ({
   title,
   children,
   onClose,
+  width = 320,
 }: LxModalProps): React.JSX.Element | null => {
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
@@ -93,7 +96,8 @@ export const LxModal = ({
     >
       <section
         aria-labelledby="lx-modal-title"
-        className={`relative z-[999999] w-[320px] max-w-[90vw] rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
+        className={`relative z-[999999] rounded-[6px] bg-[#303030] p-4 text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)] select-text ${animationClass}`}
+        style={{ width, maxWidth: "90vw" }}
       >
         <header className="mb-3 flex items-center justify-between gap-3">
           <h2 id="lx-modal-title" className="text-sm font-semibold text-white/90">
