@@ -110,6 +110,17 @@ export const estimateContextTokens = (messages: AgentMessage[]): number => {
 }
 
 /**
+ * 估计压缩后待发送上下文的 token 数 = 摘要 + 保留尾部（逐条 char/4）。
+ * 不复用 estimateContextTokens：保留尾的 usage 锚点为压缩前全量旧值，会让压缩后的容量虚高。
+ */
+export const estimateCompactedContextTokens = (
+  summary: CompactionSummaryMessage,
+  kept: AgentMessage[],
+): number =>
+  estimateMessageTokens(summary) +
+  kept.reduce((total, message) => total + estimateMessageTokens(message), 0)
+
+/**
  * 计算切割点：从尾部向前累计 token 至 keepRecentTokens 预算满足，返回保留起点的消息索引
  * （该索引及之后保留，之前压缩）。只切在完整 turn 边界——保留部分第一条不能是 toolResult。
  * 返回 messages.length 表示全部保留（无需压缩）。

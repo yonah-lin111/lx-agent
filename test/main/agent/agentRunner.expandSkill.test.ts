@@ -97,7 +97,7 @@ vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   }
 })
 
-const EMPTY_USAGE: Usage = { input: 0, output: 0, totalTokens: 0 }
+const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
 
 const assistant = (stopReason: StopReason = "stop"): AssistantMessage => ({
   role: "assistant",

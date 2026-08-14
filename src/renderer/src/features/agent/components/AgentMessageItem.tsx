@@ -101,6 +101,14 @@ const getMcpServerName = (toolName: string): string => {
 // 判断是否为写操作工具（文件修改，独立展示且不参与执行折叠）。
 const isWriteToolCall = (toolName: string): boolean => toolName === "edit" || toolName === "write"
 
+// token 千位紧凑缩写（英文 K/M）。
+const formatTokensShort = (count: number): string => {
+  if (count < 1000) return count.toString()
+  if (count < 10000) return `${(count / 1000).toFixed(1)}k`
+  if (count < 1000000) return `${Math.round(count / 1000)}k`
+  return `${(count / 1000000).toFixed(1)}M`
+}
+
 interface AgentMessageItemProps {
   message: ChatMessage
   continuationMessages?: ChatMessage[]
@@ -239,6 +247,24 @@ export const AgentMessageItem = ({
       ),
     [continuationMessages, message],
   )
+  // 本轮 QA 聚合 token 用量：message + continuationMessages 中所有 assistant 消息逐字段求和（底部指标展示）。
+  const qaUsage = useMemo(() => {
+    let input = 0
+    let output = 0
+    let cacheRead = 0
+    let totalTokens = 0
+    let hasUsage = false
+    for (const currentMessage of [message, ...continuationMessages]) {
+      if (currentMessage.role !== "assistant" || !currentMessage.usage) continue
+      hasUsage = true
+      input += currentMessage.usage.input
+      output += currentMessage.usage.output
+      cacheRead += currentMessage.usage.cacheRead ?? 0
+      totalTokens += currentMessage.usage.totalTokens
+    }
+    if (!hasUsage) return null
+    return { input, output, cacheRead, totalTokens }
+  }, [message, continuationMessages])
   const diffByToolCallId = useMemo(
     () =>
       new Map(
@@ -806,8 +832,15 @@ export const AgentMessageItem = ({
 
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
+      {!readOnly && message.model && (
+        <LxTooltip placement="top" content={`${message.provider} / ${message.model}`}>
+          <span className="flex w-fit select-text items-center text-[11px] leading-none text-white/40">
+            {message.model}
+          </span>
+        </LxTooltip>
+      )}
       <div
-        className={`relative min-w-0 w-fit max-w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
+        className={`relative min-w-0 w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
       >
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
@@ -986,20 +1019,47 @@ export const AgentMessageItem = ({
         />
       )}
       {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
-        <div className="mt-1 flex items-center gap-1 justify-start opacity-0 transition-opacity group-hover:opacity-100">
-          <LxIconButton
-            size="small"
-            aria-label="复制消息"
-            title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
-            onClick={copyMessageContent}
-          >
-            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-          </LxIconButton>
-          {!readOnly && onDelete && (
-            <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
-              <LxIconButton size="small" aria-label="删除消息">
-                <Trash2 className="h-3 w-3" />
-              </LxIconButton>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <LxIconButton
+              size="small"
+              aria-label="复制消息"
+              title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+              onClick={copyMessageContent}
+            >
+              {copied ? (
+                <Check className="h-3 w-3 text-emerald-400" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </LxIconButton>
+            {!readOnly && onDelete && (
+              <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
+                <LxIconButton size="small" aria-label="删除消息">
+                  <Trash2 className="h-3 w-3" />
+                </LxIconButton>
+              </LxTooltip>
+            )}
+          </div>
+          {qaUsage && (
+            <LxTooltip
+              placement="top"
+              multiline
+              content={
+                <div className="flex flex-col gap-0.5">
+                  <span>Input: {qaUsage.input.toLocaleString()}</span>
+                  <span>Output: {qaUsage.output.toLocaleString()}</span>
+                  <span>Cache read: {qaUsage.cacheRead.toLocaleString()}</span>
+                </div>
+              }
+            >
+              <span className="flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+                <span>IN {formatTokensShort(qaUsage.input)}</span>
+                <span aria-hidden="true">·</span>
+                <span>OUT {formatTokensShort(qaUsage.output)}</span>
+                <span aria-hidden="true">·</span>
+                <span>CACHE {formatTokensShort(qaUsage.cacheRead)}</span>
+              </span>
             </LxTooltip>
           )}
         </div>

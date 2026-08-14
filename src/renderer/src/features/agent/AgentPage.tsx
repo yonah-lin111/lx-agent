@@ -43,6 +43,7 @@ export const AgentPage = ({
     todos,
     queuedCount,
     queuedMessages,
+    contextUsage,
     inputText,
     setInputText,
     isStreaming,
@@ -268,7 +269,7 @@ export const AgentPage = ({
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
       />
-      <AgentStatusBar projectPath={statusBarPath} />
+      <AgentStatusBar projectPath={statusBarPath} contextUsage={contextUsage} />
     </div>
   )
 }

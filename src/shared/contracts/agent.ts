@@ -36,6 +36,8 @@ export type StopReason = "pending" | "stop" | "length" | "toolUse" | "error" | "
 export interface Usage {
   input: number
   output: number
+  // 缓存命中读取的输入 token（Anthropic cache_read_input_tokens）。
+  cacheRead: number
   totalTokens: number
 }
 
@@ -342,6 +344,8 @@ export type AgentEvent =
   | { type: "question_request"; request: QuestionRequest }
   // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
   | { type: "compaction_summary"; message: CompactionSummaryMessage }
+  // 上下文容量：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
+  | { type: "context_usage"; tokens: number; contextWindow: number }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
   | { type: "todo_updated"; todos: TodoList }
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
