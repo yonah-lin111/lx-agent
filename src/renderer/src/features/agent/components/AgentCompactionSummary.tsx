@@ -19,7 +19,7 @@ export const AgentCompactionSummary = ({
   summary,
   isLoading = false,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
