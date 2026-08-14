@@ -44,7 +44,7 @@ const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
  * 历史会话的持久化与恢复均由 main 进程 DB 承载。
  */
 export const useAgentChat = (context?: AgentSendContext) => {
-  const { error: errorToast } = useLxToast()
+  const { success: successToast, error: errorToast } = useLxToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
@@ -54,6 +54,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [queuedMessages, setQueuedMessages] = useState<string[]>([])
   // 历史会话恢复是否进行中（驱动消息列表骨架屏）。
   const [isRestoring, setIsRestoring] = useState(false)
+  // 上下文压缩进行中（compaction_start/failed/summary 事件驱动；期间禁止发送消息）。
+  const [isCompacting, setIsCompacting] = useState(false)
   // 任务清单（TodoDock 数据源：订阅 todo_updated / 恢复时提取；空数组 = dock 不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
   // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
@@ -204,19 +206,34 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
 
         case "compaction_summary": {
-          // 上下文压缩完成：先移除旧摘要块，再把新摘要插到压缩边界（被压缩的旧消息之后、保留消息之前）。
+          // 上下文压缩完成：移除旧摘要块与 loading 占位，把新摘要追加到消息列表底部（按列表顺序渲染）。
+          setIsCompacting(false)
           const summary = toChatMessage(event.message, false, `m${++messageSequence}`)
-          setMessages((prev) => {
-            const withoutSummaries = prev.filter(
-              (message) => message.role !== "compactionSummary",
-            )
-            const insertIndex = Math.min(Math.max(event.insertIndex, 0), withoutSummaries.length)
-            return [
-              ...withoutSummaries.slice(0, insertIndex),
-              summary,
-              ...withoutSummaries.slice(insertIndex),
-            ]
-          })
+          setMessages((prev) => [
+            ...prev.filter((message) => message.role !== "compactionSummary"),
+            summary,
+          ])
+          break
+        }
+
+        case "compaction_start": {
+          // 上下文压缩开始（摘要生成耗时数秒）：在消息列表底部追加 loading 占位并禁止发送。
+          setIsCompacting(true)
+          const placeholder: ChatMessage = {
+            id: `m${++messageSequence}`,
+            role: "compactionSummary",
+            blocks: [],
+            isStreaming: false,
+            isCompacting: true,
+          }
+          setMessages((prev) => [...prev, placeholder])
+          break
+        }
+
+        case "compaction_failed": {
+          // 上下文压缩失败（摘要生成失败/超时）：移除 loading 占位并恢复发送。
+          setIsCompacting(false)
+          setMessages((prev) => prev.filter((message) => !message.isCompacting))
           break
         }
 
@@ -280,6 +297,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
   const createNewChat = useCallback(() => {
     stopStreaming()
+    setIsCompacting(false)
     setIsRestoring(false)
     setMessages([])
     setInputText("")
@@ -300,7 +318,15 @@ export const useAgentChat = (context?: AgentSendContext) => {
         break
       }
     }
-    const nextMessages = [...list.slice(0, userIndex), ...list.slice(nextUserIndex)]
+    // 保留被移除范围内的压缩摘要（自动压缩不可随轮撤销消失；手动摘要由撤销压缩路径单独处理）。
+    const keptSummaries = list
+      .slice(userIndex, nextUserIndex)
+      .filter((message) => message.role === "compactionSummary")
+    const nextMessages = [
+      ...list.slice(0, userIndex),
+      ...keptSummaries,
+      ...list.slice(nextUserIndex),
+    ]
     setMessages(nextMessages)
     void agentApi.restore(toAgentMessages(nextMessages))
     const sessionId = sessionListStore.getCurrentSessionId()
@@ -320,11 +346,37 @@ export const useAgentChat = (context?: AgentSendContext) => {
     }
   }, [])
 
+  // 撤销最后一次手动压缩（/undo 对压缩摘要触发）：清 main 侧边界/entry 后移除可见摘要。
+  // 自动压缩摘要不可撤销，不进入此路径。
+  const undoManualCompaction = useCallback(() => {
+    void agentApi.undoCompaction().then((result) => {
+      if (result.ok) {
+        setMessages((prev) =>
+          prev.filter((message) => !(message.role === "compactionSummary" && message.isManual)),
+        )
+      } else {
+        errorToast(result.error)
+      }
+    })
+  }, [errorToast])
+
   // 撤销上一轮对话：删除最近一轮（含问题/回答/工具调用）并同步 main 侧与 DB。
   // 被撤销的用户消息回显到输入框，便于修改后重新发送。
   const undoLastTurn = useCallback(() => {
-    if (isStreaming) return
+    if (isStreaming || isCompacting) return
     const list = messagesRef.current
+    const last = list.at(-1)
+    // 末条为压缩摘要：手动可撤销，自动不可撤销（提示并阻止误撤其下轮）。
+    if (last?.role === "compactionSummary") {
+      // 压缩摘要撤销清空输入框（命令文本不残留）；QA 撤销仍回显（见下）。
+      setInputText("")
+      if (last.isManual) {
+        undoManualCompaction()
+      } else {
+        errorToast("自动压缩不可撤销。")
+      }
+      return
+    }
     const lastUserIndex = list.findLastIndex((message) => message.role === "user")
     if (lastUserIndex < 0) return
     const echoed = list[lastUserIndex].blocks
@@ -333,7 +385,27 @@ export const useAgentChat = (context?: AgentSendContext) => {
       .join("\n")
     setInputText(echoed)
     removeTurn(lastUserIndex)
-  }, [isStreaming, removeTurn])
+  }, [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast])
+
+  // 手动压缩上下文（/compact 命令触发）：流式时阻塞提示；其余情况调用 main 侧强制压缩。
+  // compacted=false 覆盖无可压缩内容/摘要生成失败；ok:false（设置禁用/忙态竞态）直接提示原因。
+  const compactChat = useCallback(() => {
+    if (isStreaming) {
+      errorToast("当前正在生成回复，请等待回复完成后手动压缩。")
+      return
+    }
+    void agentApi.compact().then((result) => {
+      if (!result.ok) {
+        errorToast(result.error)
+        return
+      }
+      if (result.compacted) {
+        successToast("已压缩上下文，早期历史已摘要化。")
+      } else {
+        errorToast("暂无可压缩内容或压缩失败。")
+      }
+    })
+  }, [isStreaming, errorToast, successToast])
 
   // 删除指定 AI 消息所在的一轮对话。
   const deleteTurn = useCallback(
@@ -355,6 +427,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const restoreChat = useCallback(
     (sessionId: string) => {
       stopStreaming()
+      setIsCompacting(false)
       setIsRestoring(true)
       void agentApi
         .restoreSession(sessionId)
@@ -383,6 +456,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
     (contentToSend?: string, selection?: ModelSelection) => {
       const text = (contentToSend ?? inputText).trim()
       if (!text) return
+      // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
+      if (isCompacting) {
+        errorToast("正在压缩上下文，请稍候。")
+        return
+      }
       // 上下文 100%：拒绝发送（无法在溢出前压缩腾出空间，继续发送会超出模型窗口），提示新建对话。
       if (contextUsage && contextUsage.tokens >= contextUsage.contextWindow) {
         errorToast(
@@ -404,7 +482,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
         }
       })
     },
-    [inputText, context, contextUsage, errorToast],
+    [inputText, context, contextUsage, errorToast, isCompacting],
   )
 
   // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。
@@ -460,6 +538,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     inputText,
     setInputText,
     isStreaming,
+    isCompacting,
     isRestoring,
     sendMessage,
     continueChat,
@@ -467,6 +546,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     stopStreaming,
     createNewChat,
     undoLastTurn,
+    compactChat,
     deleteTurn,
     restoreChat,
     editMessage,

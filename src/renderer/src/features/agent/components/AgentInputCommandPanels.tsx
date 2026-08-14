@@ -7,7 +7,7 @@ import { LxTag } from "@/components/ui/LxTag"
 import { getMentionDirectoryTag } from "@/features/project/utils"
 
 export interface AgentInputCommand {
-  id: "clear" | "undo" | "model" | "gitWorktree"
+  id: "clear" | "undo" | "model" | "gitWorktree" | "compact"
   name: string
   description: string
 }

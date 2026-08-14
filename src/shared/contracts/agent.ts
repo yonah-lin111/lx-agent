@@ -68,6 +68,8 @@ export interface CompactionSummaryMessage {
   // 被压缩部分的估计 token 数（展示"压缩了多少"）。
   tokensBefore: number
   timestamp: number
+  // 是否手动触发（/compact）；自动压缩不可经 /undo 撤销。
+  manual: boolean
 }
 
 // todo 清单项状态（对齐 Claude Code 四态）。
@@ -342,8 +344,12 @@ export type AgentEvent =
   | { type: "session_title"; sessionId: string; title: string | null }
   | { type: "permission_request"; request: PermissionRequest }
   | { type: "question_request"; request: QuestionRequest }
-  // 上下文压缩完成：推送可见摘要消息（renderer 在 insertIndex 处插入为非交互块；不落 message entry）。
-  | { type: "compaction_summary"; message: CompactionSummaryMessage; insertIndex: number }
+  // 上下文压缩完成：推送可见摘要消息（renderer 追加到消息列表底部为非交互块；不落 message entry）。
+  | { type: "compaction_summary"; message: CompactionSummaryMessage }
+  // 上下文压缩开始（摘要生成进行中，耗时数秒）：renderer 追加 loading 占位并禁止发送。
+  | { type: "compaction_start" }
+  // 上下文压缩失败（摘要生成失败/超时）：renderer 移除 loading 占位并恢复发送。
+  | { type: "compaction_failed" }
   // 上下文容量快照：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
   | { type: "context_usage"; tokens: number; contextWindow: number }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
@@ -410,6 +416,12 @@ export type AgentSendResult =
 // 切换会话工作区（/gitWorktree）的返回结果。
 export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
 
+// 手动压缩（/compact）的返回结果；compacted 表示是否实际压缩（无可压缩内容/摘要生成失败均为 false）。
+export type AgentCompactResult = { ok: true; compacted: boolean } | { ok: false; error: string }
+
+// 撤销手动压缩（/undo 对压缩摘要触发）的返回结果；自动压缩不可撤销。
+export type AgentUndoCompactionResult = { ok: true } | { ok: false; error: string }
+
 // 会话分支（fork）的返回结果；ok 时携带新会话 id（创建后自动切换）。
 export type AgentForkResult = { ok: true; sessionId: string } | { ok: false; error: string }
 
@@ -431,6 +443,10 @@ export interface AgentApi {
     continue: () => Promise<AgentSendResult>
     // 切换当前会话工作区：更新会话工具执行目录（cwd），下次装配按新目录重建工具集。
     switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
+    // 手动触发上下文压缩（/compact）：摘要化早期历史并建立新边界；设置禁用/无可压缩内容时返回原因。
+    compact: () => Promise<AgentCompactResult>
+    // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。
+    undoCompaction: () => Promise<AgentUndoCompactionResult>
     abort: () => Promise<void>
     restore: (messages: AgentMessage[]) => Promise<void>
     listSessions: () => Promise<AgentSessionSummary[]>

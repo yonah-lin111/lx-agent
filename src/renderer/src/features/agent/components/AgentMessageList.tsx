@@ -72,15 +72,6 @@ export const AgentMessageList = ({
   const lastGroup = messageGroups.at(-1)
   // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
-  // 最后一条真实 AI 回答所在 group 索引（压缩摘要块不占用"最后一条"位置，避免建议问题错位）。
-  const lastRealAssistantIndex = useMemo(() => {
-    for (let index = messageGroups.length - 1; index >= 0; index--) {
-      if (messageGroups[index]?.assistant?.message.role !== "compactionSummary") {
-        return index
-      }
-    }
-    return -1
-  }, [messageGroups])
   const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
   // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。吸顶定位需读取组顶（= 用户消息自然流顶部）。
   const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
@@ -261,13 +252,19 @@ export const AgentMessageList = ({
               const userMessage = group.userMessage
               const assistant = group.assistant
               const groupKey = userMessage?.id ?? assistant?.message.id
-              const isLastGroupAi = lastRealAssistantIndex >= 0 && index === lastRealAssistantIndex
+              // mb-16 仅作用于真正位于末位的消息组（末位真实助手留白给建议问题 / 末位压缩摘要留白给输入区）。
+              // 后接压缩摘要的真实助手用正常组间距，避免与摘要之间出现异常大间隙。
+              const isLastGroupAi =
+                index === messageGroups.length - 1 &&
+                assistant?.message.role !== "compactionSummary"
+              const isLastGroupCompaction =
+                index === messageGroups.length - 1 && assistant?.message.role === "compactionSummary"
               const isUserPinned = pinnedUserMessageId === userMessage?.id
               return (
                 <div
                   key={groupKey}
                   ref={groupKey ? attachMessageGroupRef(groupKey) : undefined}
-                  className={isLastGroupAi ? "mb-16" : ""}
+                  className={isLastGroupAi || isLastGroupCompaction ? "mb-16" : ""}
                 >
                   {userMessage && (
                     <>

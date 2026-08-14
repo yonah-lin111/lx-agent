@@ -97,6 +97,24 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
               </LxRadioGroup>
             </div>
           </section>
+          <section>
+            <h4 className="text-xs text-white/60">上下文压缩</h4>
+            <div className="mt-2 flex items-center">
+              <LxRadioGroup
+                className="flex gap-2"
+                name="context-compaction"
+                value={settings.compactionEnabled ? "enabled" : "disabled"}
+                onChange={(value) =>
+                  setSettings((current) =>
+                    current ? { ...current, compactionEnabled: value === "enabled" } : current,
+                  )
+                }
+              >
+                <LxRadio value="enabled" label="启用" />
+                <LxRadio value="disabled" label="停用" />
+              </LxRadioGroup>
+            </div>
+          </section>
         </div>
       </div>
     </div>
