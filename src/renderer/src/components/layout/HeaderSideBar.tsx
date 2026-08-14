@@ -167,7 +167,9 @@ export const HeaderSideBar = ({
             renderTags ? "max-w-[calc(100%-72px)]" : "max-w-[calc(100%-48px)]"
           }`}
         >
-          {renderTags ? (
+          {hasBreadcrumbToast ? (
+            <LxBreadcrumbToast />
+          ) : renderTags ? (
             <div
               className={`flex min-w-0 flex-1 items-center ${
                 isTagsLeaving
@@ -177,8 +179,6 @@ export const HeaderSideBar = ({
             >
               <ProjectRecentItemsTags />
             </div>
-          ) : hasBreadcrumbToast ? (
-            <LxBreadcrumbToast />
           ) : (
             <div
               key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
