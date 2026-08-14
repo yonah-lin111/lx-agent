@@ -16,6 +16,8 @@ export interface CompactionBoundary {
   firstKeptSeq: number
   // 被压缩部分的估计 token 数。
   tokensBefore: number
+  // 是否手动触发（/compact）；自动压缩不可经 /undo 撤销。
+  manual: boolean
 }
 
 export { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS }
@@ -24,11 +26,13 @@ export { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS }
 export const createCompactionSummaryMessage = (
   summary: string,
   tokensBefore: number,
+  manual: boolean,
 ): CompactionSummaryMessage => ({
   role: "compactionSummary",
   summary,
   tokensBefore,
   timestamp: Date.now(),
+  manual,
 })
 
 // context-overflow 错误签名（各 provider 的上下文超限错误文案）。

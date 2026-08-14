@@ -45,6 +45,7 @@ describe("todoState → LLM 消息映射", () => {
         summary: "早期历史摘要",
         tokensBefore: 1200,
         timestamp: 2,
+        manual: true,
       },
       { role: "user", content: "继续", timestamp: 3 },
     ])

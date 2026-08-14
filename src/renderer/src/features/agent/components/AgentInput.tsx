@@ -30,6 +30,8 @@ import { TodoDock, TodoDockButton } from "./TodoDock"
 interface AgentInputProps {
   inputText: string
   isStreaming: boolean
+  // 上下文压缩进行中：发送按钮禁用并显示 loading（压缩期间不可发送消息）。
+  isCompacting: boolean
   // 排队消息计数（流式输出期间发送的消息数；>0 时输入区上方展示提示条）。
   queuedCount: number
   // 排队消息原文（提示条 hover 时 tooltip 展示各条问题）。
@@ -39,6 +41,7 @@ interface AgentInputProps {
   onStop: () => void
   onClear: () => void
   onUndo: () => void
+  onCompact: () => void
   selectedModel: string
   onModelChange: (value: string) => void
   modelOptions: AgentModelSelectProps["options"]
@@ -68,6 +71,7 @@ const INPUT_COMMANDS: AgentInputCommand[] = [
   { id: "undo", name: "/undo", description: "撤销上一轮对话" },
   { id: "model", name: "/model", description: "切换 AI 模型" },
   { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区" },
+  { id: "compact", name: "/compact", description: "压缩当前会话上下文" },
 ]
 
 const isFuzzyMatch = (query: string, keyword: string): boolean => {
@@ -123,6 +127,7 @@ const isOnLastLine = (cursor: number, text: string): boolean => {
 export const AgentInput = ({
   inputText,
   isStreaming,
+  isCompacting,
   queuedCount,
   queuedMessages,
   onInputChange,
@@ -130,6 +135,7 @@ export const AgentInput = ({
   onStop,
   onClear,
   onUndo,
+  onCompact,
   selectedModel,
   onModelChange,
   modelOptions,
@@ -405,7 +411,7 @@ export const AgentInput = ({
 
   const executeCommand = (command: AgentInputCommand): void => {
     setActiveMode(null)
-    // 流式中 /clear 可执行（createNewChat 会 stopStreaming 中止 run 并清空队列）；/undo 由 hook 侧 isStreaming 守卫兜底。
+    // 流式中 /clear 可执行（createNewChat 会 stopStreaming 中止 run 并清空队列）；/undo 与 /compact 由 hook 侧 isStreaming 守卫兜底。
     if (command.id === "clear") {
       onInputChange("")
       onClear()
@@ -413,8 +419,12 @@ export const AgentInput = ({
       onUndo()
     } else if (command.id === "model") {
       onInputChange("/model ")
-    } else {
+    } else if (command.id === "gitWorktree") {
       onInputChange("/gitWorktree ")
+    } else {
+      // /compact 直接触发：清空输入（对齐 /clear /undo，不残留文本被误发送/记录历史）。
+      onInputChange("")
+      onCompact()
     }
     requestAnimationFrame(() => textareaRef.current?.focus())
   }
@@ -648,6 +658,16 @@ export const AgentInput = ({
       className="bg-white !text-black shadow-sm"
     >
       <Square className="h-3 w-3 fill-current" />
+    </LxIconButton>
+  ) : isCompacting ? (
+    <LxIconButton
+      shape="circle"
+      aria-label="上下文压缩中"
+      title={{ content: "正在压缩上下文", placement: "top" }}
+      disabled
+      className="bg-white/15 !text-white/30"
+    >
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
     </LxIconButton>
   ) : (
     <LxIconButton

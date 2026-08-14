@@ -56,6 +56,7 @@ export const toChatMessage = (
       blocks: [{ kind: "text", text: message.summary }],
       isStreaming: false,
       timestamp: message.timestamp,
+      isManual: message.manual,
     }
   }
 

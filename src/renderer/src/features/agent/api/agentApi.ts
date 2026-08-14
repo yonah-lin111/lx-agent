@@ -1,10 +1,12 @@
 import type {
+  AgentCompactResult,
   AgentContextUsage,
   AgentEvent,
   AgentMessage,
   AgentRestoredSession,
   AgentSendContext,
   AgentSessionSummary,
+  AgentUndoCompactionResult,
   LspInstallResult,
   LspServerStatusItem,
   McpServerStatusItem,
@@ -24,6 +26,8 @@ export const agentApi = {
     window.api.agent.send(text, selection, context),
   continue: (): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
     window.api.agent.continue(),
+  compact: (): Promise<AgentCompactResult> => window.api.agent.compact(),
+  undoCompaction: (): Promise<AgentUndoCompactionResult> => window.api.agent.undoCompaction(),
   switchWorktree: (path: string): Promise<{ ok: true } | { ok: false; error: string }> =>
     window.api.agent.switchWorktree(path),
   abort: (): Promise<void> => window.api.agent.abort(),
