@@ -172,6 +172,12 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   ipcMain.handle(AGENT_CHANNELS.continue, async () => agentRunner.continue())
 
+  // 手动压缩（/compact）：renderer 侧已守卫流式；main 侧兜底禁用/忙态/无可压缩内容。
+  ipcMain.handle(AGENT_CHANNELS.compact, () => agentRunner.compact())
+
+  // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。
+  ipcMain.handle(AGENT_CHANNELS.undoCompaction, () => agentRunner.undoCompaction())
+
   ipcMain.handle(AGENT_CHANNELS.switchWorktree, (_, path: unknown) => {
     if (typeof path !== "string" || !path.trim()) {
       return { ok: false, error: "工作区路径无效。" }

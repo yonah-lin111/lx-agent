@@ -173,4 +173,20 @@ describe("AgentMessageList", () => {
     )
     expect(scrollTo).toHaveBeenCalledTimes(1)
   })
+
+  it("压缩摘要消息渲染为可展开摘要块（末位摘要保留）", () => {
+    const messages: ChatMessage[] = [
+      userMessage("msg-1", "问题"),
+      {
+        id: "summary-1",
+        role: "compactionSummary",
+        blocks: [{ kind: "text", text: "对话摘要内容" }],
+        isStreaming: false,
+        isManual: true,
+      },
+    ]
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+    expect(screen.getByLabelText("Compressed summary")).toBeTruthy()
+    expect(screen.getByText("对话摘要内容")).toBeTruthy()
+  })
 })

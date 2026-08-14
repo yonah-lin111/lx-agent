@@ -589,6 +589,83 @@ describe("agentRunner 持久化", () => {
     ).toHaveLength(1)
   })
 
+  it("手动 compact() 落 manual 边界，恢复摘要带 manual，undoCompaction 可撤销", async () => {
+    const { agentRunner } = await importRunner()
+    holder.compaction = {
+      enabled: true,
+      contextWindow: 1000,
+      keepRecentTokens: 10,
+      reserveTokens: 0,
+    }
+    holder.streamResponses = [assistant([{ type: "text", text: "第一轮回答".repeat(20) }])]
+    const first = await agentRunner.send("第一轮问题".repeat(20), undefined, {
+      page: "/",
+      cwd: "/tmp",
+    })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+    holder.streamResponses = [assistant([{ type: "text", text: "第二轮回答".repeat(20) }])]
+    const second = await agentRunner.send("第二轮问题".repeat(20), undefined, {
+      page: "/",
+      cwd: "/tmp",
+    })
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+
+    // 手动压缩：摘要生成成功，返回 compacted: true。
+    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动压缩摘要") } as never)
+    const compacted = await agentRunner.compact()
+    expect(compacted).toEqual({ ok: true, compacted: true })
+    if (!compacted.ok) return
+
+    // compaction entry 落库且带 manual=true。
+    const rows = holder
+      .db!.prepare(
+        "SELECT payload FROM agent_session_entry WHERE session_id = ? AND type = 'compaction'",
+      )
+      .all(second.sessionId) as Array<{ payload: string }>
+    expect(rows).toHaveLength(1)
+    expect(JSON.parse(rows[0].payload)).toMatchObject({ manual: true })
+
+    // 恢复会话：摘要追加到消息底部且带 manual=true。
+    const restored = await agentRunner.restoreSession(second.sessionId)
+    const summaries = restored.messages.filter((message) => message.role === "compactionSummary")
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]).toMatchObject({ manual: true })
+
+    // 撤销手动压缩：清边界/删 entry，恢复后不再有摘要。
+    const undone = await agentRunner.undoCompaction()
+    expect(undone.ok).toBe(true)
+    const restoredAfterUndo = await agentRunner.restoreSession(second.sessionId)
+    expect(
+      restoredAfterUndo.messages.filter((message) => message.role === "compactionSummary"),
+    ).toHaveLength(0)
+  })
+
+  it("短对话手动 compact() 也强制产生摘要（切分点 ≤1 时压缩首条）", async () => {
+    const { agentRunner } = await importRunner()
+    holder.compaction = {
+      enabled: true,
+      contextWindow: 1000,
+      keepRecentTokens: 10,
+      reserveTokens: 0,
+    }
+    holder.streamResponses = [assistant([{ type: "text", text: "回答".repeat(20) }])]
+    const first = await agentRunner.send("问题".repeat(20), undefined, { page: "/", cwd: "/tmp" })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    // 单轮（2 条消息）标准切分点 ≤1，手动压缩回退到压缩首条，仍产生摘要。
+    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("短对话摘要") } as never)
+    const compacted = await agentRunner.compact()
+    expect(compacted).toEqual({ ok: true, compacted: true })
+
+    const restored = await agentRunner.restoreSession(first.sessionId)
+    expect(
+      restored.messages.filter((message) => message.role === "compactionSummary"),
+    ).toHaveLength(1)
+  })
+
   // 从 toolResult 消息提取文本内容。
   const toolResultText = (message: ToolResultMessage): string =>
     message.content.map((block) => (block.type === "text" ? block.text : "")).join("")

@@ -70,6 +70,10 @@ export interface ChatMessage {
   stopReason?: StopReason
   // 队列 drain 自动发送的 user 消息（流式中排队，run 结束后自动发送；列表据此跳过"用户发送→滚动到底"）。
   isQueuedDrain?: boolean
+  // 上下文压缩 loading 占位（compaction_start 插入、compaction_summary/failed 移除）。
+  isCompacting?: boolean
+  // 压缩摘要是否手动触发（/compact）；手动摘要可被 /undo 撤销，自动不可。
+  isManual?: boolean
   // 助手消息的 token 用量（本轮 QA 底部展示；user/toolResult 无此字段）。
   usage?: Usage
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。

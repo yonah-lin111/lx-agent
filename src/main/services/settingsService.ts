@@ -250,6 +250,7 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
     titleSummary: normalizeSelection(settings.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(settings.suggestedQuestions, providers, defaultModel),
     suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled === true,
+    compactionEnabled: settings.compactionEnabled !== false,
   }
 }
 
@@ -274,6 +275,7 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
     titleSummary: normalizeSelection(rawAi.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(rawAi.suggestedQuestions, providers, defaultModel),
     suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled === true,
+    compactionEnabled: getCompactionSettings().enabled,
   }
 }
 
@@ -289,6 +291,8 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
 
   const rawAiObj = isRecord(rawConfig.ai) ? { ...rawConfig.ai } : {}
   delete rawAiObj.weeklySummary
+  // 保留 compaction 节点的未由设置页管理的字段（阈值等），仅覆盖 enabled。
+  const rawCompaction = isRecord(rawAiObj.compaction) ? { ...rawAiObj.compaction } : {}
 
   const nextConfig: RawConfig = {
     ...rawConfig,
@@ -300,6 +304,7 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
       titleSummary: settings.titleSummary,
       suggestedQuestions: settings.suggestedQuestions,
       suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled,
+      compaction: { ...rawCompaction, enabled: settings.compactionEnabled },
     },
   }
   const temporaryPath = `${configPath}.tmp`

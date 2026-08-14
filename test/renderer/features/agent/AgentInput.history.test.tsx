@@ -32,6 +32,7 @@ const renderInput = async (history: string[]) => {
       <AgentInput
         inputText={text}
         isStreaming={false}
+        isCompacting={false}
         queuedCount={0}
         queuedMessages={[]}
         onInputChange={setText}
@@ -39,6 +40,7 @@ const renderInput = async (history: string[]) => {
         onStop={vi.fn()}
         onClear={vi.fn()}
         onUndo={vi.fn()}
+        onCompact={vi.fn()}
         selectedModel="m"
         onModelChange={vi.fn()}
         modelOptions={[{ label: "M", options: [{ label: "m", value: "m" }] }]}

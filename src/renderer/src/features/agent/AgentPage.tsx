@@ -48,6 +48,7 @@ export const AgentPage = ({
     inputText,
     setInputText,
     isStreaming,
+    isCompacting,
     isRestoring,
     sendMessage,
     continueChat,
@@ -55,6 +56,7 @@ export const AgentPage = ({
     stopStreaming,
     createNewChat,
     undoLastTurn,
+    compactChat,
     deleteTurn,
     restoreChat,
     editMessage,
@@ -266,6 +268,7 @@ export const AgentPage = ({
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
+        isCompacting={isCompacting}
         queuedCount={queuedCount}
         queuedMessages={queuedMessages}
         onInputChange={setInputText}
@@ -273,6 +276,7 @@ export const AgentPage = ({
         onStop={handleStop}
         onClear={createNewChat}
         onUndo={undoLastTurn}
+        onCompact={compactChat}
         selectedModel={selectedModel}
         onModelChange={handleModelChange}
         modelOptions={selectOptions}

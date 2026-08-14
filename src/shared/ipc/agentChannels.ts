@@ -2,6 +2,8 @@
 export const AGENT_CHANNELS = {
   send: "agent:send",
   continue: "agent:continue",
+  compact: "agent:compact",
+  undoCompaction: "agent:undoCompaction",
   abort: "agent:abort",
   switchWorktree: "agent:switchWorktree",
   restore: "agent:restore",

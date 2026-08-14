@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Loader2 } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
@@ -8,6 +8,8 @@ import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRende
 interface AgentCompactionSummaryProps {
   // Markdown 格式的压缩摘要内容。
   summary: string
+  // 压缩进行中：渲染 loading 占位（摘要生成完成前展示）。
+  isLoading?: boolean
 }
 
 /**
@@ -15,6 +17,7 @@ interface AgentCompactionSummaryProps {
  */
 export const AgentCompactionSummary = ({
   summary,
+  isLoading = false,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
@@ -35,6 +38,16 @@ export const AgentCompactionSummary = ({
 
     return () => observer.disconnect()
   }, [summary, isExpanded])
+
+  // 压缩进行中：仅转圈 + 文字（无气泡 loading 效果）。
+  if (isLoading) {
+    return (
+      <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <span className="italic">Compressing context</span>
+      </div>
+    )
+  }
 
   return (
     <div className="my-1.5 w-full max-w-full select-none">
@@ -77,7 +90,6 @@ export const AgentCompactionSummary = ({
           </div>
         </div>
       </div>
-      <div className="mt-1 border-b-4 border-double border-white/10" aria-hidden="true" />
     </div>
   )
 }
