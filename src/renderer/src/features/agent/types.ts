@@ -66,6 +66,8 @@ export interface ChatMessage {
   error?: string
   // 助手消息的停止原因（判断"继续生成"可用性）。
   stopReason?: StopReason
+  // 队列 drain 自动发送的 user 消息（流式中排队，run 结束后自动发送；列表据此跳过"用户发送→滚动到底"）。
+  isQueuedDrain?: boolean
 }
 
 // 预设提示词卡片。

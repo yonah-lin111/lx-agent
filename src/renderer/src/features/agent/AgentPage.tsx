@@ -41,6 +41,8 @@ export const AgentPage = ({
   const {
     messages,
     todos,
+    queuedCount,
+    queuedMessages,
     inputText,
     setInputText,
     isStreaming,
@@ -83,6 +85,14 @@ export const AgentPage = ({
   }, [worktrees, projectBranch, currentProjectPath, currentSessionPath])
 
   const { success, error } = useLxToast()
+
+  // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
+  const handleStop = useCallback(() => {
+    if (queuedCount > 0) {
+      success(`已丢弃 ${queuedCount} 条排队消息`)
+    }
+    stopStreaming()
+  }, [queuedCount, stopStreaming, success])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -238,9 +248,11 @@ export const AgentPage = ({
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
+        queuedCount={queuedCount}
+        queuedMessages={queuedMessages}
         onInputChange={setInputText}
         onSend={() => sendMessage(undefined, selectedSelection)}
-        onStop={stopStreaming}
+        onStop={handleStop}
         onClear={createNewChat}
         onUndo={undoLastTurn}
         selectedModel={selectedModel}

@@ -142,4 +142,35 @@ describe("AgentMessageList", () => {
     expect(screen.getByRole("button", { name: "编辑消息" })).not.toBeNull()
     expect(screen.getByText("待回复问题")).not.toBeNull()
   })
+
+  it("队列 drain 自动发送的 user 消息（isQueuedDrain）不触发平滑滚动到底，用户主动发送仍触发", () => {
+    const scrollTo = vi.fn()
+    window.HTMLElement.prototype.scrollTo = scrollTo
+    const messages = [userMessage("q1", "第一问")]
+
+    const { rerender } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+    scrollTo.mockClear()
+
+    // 追加一条队列 drain 自动发送的 user 消息：不滚动。
+    rerender(
+      <AgentMessageList
+        messages={[...messages, { ...userMessage("q2", "排队问题"), isQueuedDrain: true }]}
+        onSelectPrompt={vi.fn()}
+      />,
+    )
+    expect(scrollTo).not.toHaveBeenCalled()
+
+    // 追加一条用户主动发送的 user 消息：平滑滚动到底。
+    rerender(
+      <AgentMessageList
+        messages={[
+          ...messages,
+          { ...userMessage("q2", "排队问题"), isQueuedDrain: true },
+          userMessage("q3", "主动发送"),
+        ]}
+        onSelectPrompt={vi.fn()}
+      />,
+    )
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+  })
 })

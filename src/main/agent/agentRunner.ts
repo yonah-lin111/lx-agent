@@ -95,6 +95,9 @@ const ALL_TOOL_NAMES = new Set([
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
 const MAX_INJECTED_SKILLS = 50
 
+// 排队消息上限（流式中入队；超限明确报错，不覆盖、不静默丢）。
+const MAX_QUEUE = 20
+
 // 解析 Agent 会话 cwd：最近更新的文件系统项目目录。
 const resolveCwd = (): string | undefined => {
   const projects = projectService.listProjects()
@@ -264,6 +267,10 @@ class AgentRunner {
   private pendingTodo: TodoList | null = null
   // run 代数：负值表示当前无活动 run（已丢弃/已结束），残留事件不再落盘。
   private currentRunGeneration = -1
+  // 流式输出期间排队待发的消息（FIFO，内存态不落库；当前 run 结束后逐条自动发送）。
+  private messageQueue: string[] = []
+  // 队列是否正在被 drain 循环处理（防重入；drain 期间新 send 一律入队保持 FIFO）。
+  private draining = false
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
   attachEventSink(sink: (event: AgentEvent) => void): void {
@@ -432,6 +439,63 @@ class AgentRunner {
     return args ? `${skillBlock}\n\n${args}` : skillBlock
   }
 
+  // 当前是否有活动 run 或排队消息：流式输出 / 正在 drain / 队列非空均为 busy。
+  private isBusy(): boolean {
+    return Boolean(this.agent?.state.isStreaming || this.draining || this.messageQueue.length > 0)
+  }
+
+  // 流式中入队（deferred queue）：返回 { ok:true, queued:true, queueLength, sessionId }；超限明确报错。
+  private enqueueMessage(text: string): AgentSendResult {
+    if (this.messageQueue.length >= MAX_QUEUE) {
+      return {
+        ok: false,
+        error: `消息队列已满（最多 ${MAX_QUEUE} 条），请等待当前回复完成后发送。`,
+      }
+    }
+    this.messageQueue.push(text)
+    this.emitQueueChanged()
+    // 流式必有会话：入队消息将处理于当前会话。
+    return {
+      ok: true,
+      queued: true,
+      queueLength: this.messageQueue.length,
+      sessionId: this.currentSessionId ?? "",
+    }
+  }
+
+  // 队列长度与内容变更事件（入队/每条出队/清空时推送；renderer 订阅维护权威计数与 tooltip 内容）。
+  private emitQueueChanged(): void {
+    this.eventSink?.({
+      type: "queue_changed",
+      length: this.messageQueue.length,
+      messages: [...this.messageQueue],
+    })
+  }
+
+  // 清空排队消息（停止 / 会话上下文切换）；空队列不发事件。
+  private clearQueue(): void {
+    if (this.messageQueue.length === 0) return
+    this.messageQueue = []
+    this.emitQueueChanged()
+  }
+
+  // drain 循环：当前 run 结束后逐条发送排队消息（每条约独立 user turn，走 beginSessionTurn/flushTurn 落库）。
+  // 单轮错误仅结束该轮（错误消息经事件流作为独立气泡暴露），不中断队列；draining 防重入。
+  private async kickDrain(): Promise<void> {
+    if (this.draining) return
+    this.draining = true
+    try {
+      while (this.messageQueue.length > 0) {
+        const text = this.messageQueue.shift()!
+        this.emitQueueChanged()
+        await this.runOne(text)
+        // 会话切换守卫：drain 期间会话被切换/停止会清空队列 → 循环条件自然退出。
+      }
+    } finally {
+      this.draining = false
+    }
+  }
+
   // 发送一条用户消息并驱动 Agent 运行。
   async send(
     text: string,
@@ -446,13 +510,25 @@ class AgentRunner {
     if (context !== undefined) {
       this.freezeNewSession(context)
     }
+    // 流式输出 / 正在 drain / 队列非空：入队，当前 run 结束后自动发送（不 busy 拒绝、不静默丢）。
+    if (this.isBusy()) {
+      return this.enqueueMessage(text)
+    }
     const ready = this.ensureReady()
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
-    const { agent } = ready
-    if (agent.state.isStreaming) {
-      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    const result = await this.runOne(text)
+    // 本轮 run 结束后续发排队消息（队列为空则立即返回）。
+    void this.kickDrain()
+    return result
+  }
+
+  // 驱动一轮独立 run（send 空闲分派与 drain 循环共用；调用方保证非 busy）。
+  private async runOne(text: string): Promise<AgentSendResult> {
+    const agent = this.agent
+    if (!agent) {
+      return { ok: false, error: "Agent 尚未就绪，请重试。" }
     }
     // 新会话：从空上下文开始（旧会话已在 DB 落盘，由恢复流程重建）。
     const isNewSession = !this.currentSessionId
@@ -523,14 +599,14 @@ class AgentRunner {
   // 使被中断的输出得以续写；续写消息走既有事件流与落库（作为 user 气泡如实展示）。
   async continue(): Promise<AgentSendResult> {
     await mcpManager.ensureConnected()
+    if (this.isBusy()) {
+      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    }
     const ready = this.ensureReady()
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
     const { agent } = ready
-    if (agent.state.isStreaming) {
-      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
-    }
     if (!this.currentSessionId) {
       return { ok: false, error: "没有可继续的会话。" }
     }
@@ -562,18 +638,23 @@ class AgentRunner {
       this.discardPendingTurn()
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
+    // 续写 run 结束后续发排队消息。
+    void this.kickDrain()
     return { ok: true, sessionId: this.currentSessionId }
   }
 
-  // 中止当前 run。
+  // 中止当前 run 并清空排队消息（stop = 终止一切生成，干净可预期）。
   abort(): void {
     this.agent?.abort()
+    this.clearQueue()
   }
 
   // 恢复会话上下文（renderer 新建对话/撤销时调用；空消息 = 脱离当前会话）。
   restoreMessages(messages: AgentMessage[]): void {
     this.discardPendingTurn()
     this.agent?.abort()
+    // 上下文切换：清空排队消息（队列强绑定当前会话）。
+    this.clearQueue()
     const ready = this.ensureReady()
     if ("error" in ready) return
     ready.agent.state.messages = [...messages]
@@ -598,6 +679,8 @@ class AgentRunner {
 
     this.discardPendingTurn()
     this.agent?.abort()
+    // 会话切换：清空排队消息（队列强绑定当前会话上下文）。
+    this.clearQueue()
     await mcpManager.ensureConnected()
     this.setSessionId(session.external_id)
     this.sessionBinding = {
@@ -773,12 +856,14 @@ class AgentRunner {
   // 会话分支：从指定用户轮（timestamp 定位）切割复制历史到新会话，返回新会话 id。
   // busy（流式/挂起权限请求）拒绝；切割点在已压缩区域（< firstKeptSeq）拒绝。
   forkSession(sessionId: string, userMessageTimestamp?: number): AgentForkResult {
-    if (this.agent?.state.isStreaming) {
+    if (this.isBusy()) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
     if (!agentSessionService.getSession(sessionId)) {
       return { ok: false, error: "会话不存在。" }
     }
+    // 会话分支：队列强绑定当前会话，分支即上下文切换，清空排队消息。
+    this.clearQueue()
     // 切割点定位：timestamp → 用户消息 entry seq（未命中 = UI 幽灵轮）。
     let forkSeq: number | undefined
     if (userMessageTimestamp !== undefined) {
@@ -812,9 +897,11 @@ class AgentRunner {
   // 已落库会话直接改 cwd；空白新会话仅更新 requestedCwd（下次 send 创建会话时生效）。
   // 下次 send 的 ensureReady 检测到 cwd 变化后按新目录重建工具集与 skill 注入。
   switchWorktree(path: string): AgentSwitchWorktreeResult {
-    if (this.agent?.state.isStreaming) {
+    if (this.isBusy()) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
     }
+    // 工作区切换：队列强绑定当前会话上下文，切换即清空排队消息。
+    this.clearQueue()
     this.requestedCwd = path
     if (this.currentSessionId) {
       agentSessionService.updateSessionCwd(this.currentSessionId, path, new Date().toISOString())
@@ -826,6 +913,8 @@ class AgentRunner {
   deleteSession(sessionId: string): void {
     this.discardPendingTurn()
     this.agent?.abort()
+    // 会话删除：清空排队消息（队列强绑定当前会话上下文）。
+    this.clearQueue()
     if (this.currentSessionId === sessionId) {
       this.setSessionId(null)
       this.sessionBinding = null

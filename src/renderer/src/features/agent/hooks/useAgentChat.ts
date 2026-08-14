@@ -46,6 +46,10 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
+  // 排队消息计数（流式输出期间发送的消息；订阅 queue_changed 维护权威值）。
+  const [queuedCount, setQueuedCount] = useState(0)
+  // 排队消息原文（queue_changed 携带；输入区排队提示条 tooltip 展示）。
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([])
   // 历史会话恢复是否进行中（驱动消息列表骨架屏）。
   const [isRestoring, setIsRestoring] = useState(false)
   // 任务清单（TodoDock 数据源：订阅 todo_updated / 恢复时提取；空数组 = dock 不渲染）。
@@ -54,6 +58,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
   messagesRef.current = messages
   // 当前流式条目引用（message_update 定位）。
   const streamingRef = useRef<ChatMessage | null>(null)
+  // 队列计数递减（一条消息出队）→ 下一条 user 消息即队列 drain 的自动发送（抑制滚动）。
+  const drainIncomingRef = useRef(false)
+  const prevQueueLengthRef = useRef(0)
 
   // 按 toolCallId 更新消息内工具块状态。
   const updateToolStatus = useCallback(
@@ -95,6 +102,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
           const message = event.message
           const streaming = message.role === "assistant" && message.stopReason === "pending"
           const item = toChatMessage(message, streaming, `m${++messageSequence}`)
+          // 队列 drain 自动发送的消息：标记后供列表跳过"用户发送→滚动到底"（drain 前 queue_changed 已置位）。
+          if (drainIncomingRef.current) {
+            drainIncomingRef.current = false
+            if (message.role === "user") item.isQueuedDrain = true
+          }
           if (streaming) {
             streamingRef.current = item
           }
@@ -197,6 +209,17 @@ export const useAgentChat = (context?: AgentSendContext) => {
           setTodos(event.todos)
           break
 
+        case "queue_changed":
+          // 排队消息计数与内容（入队/出队/清空时 main 推送；stop 后归零自动复位）。
+          setQueuedCount(event.length)
+          setQueuedMessages(event.messages)
+          // 计数递减 = 一条消息出队开始 drain：下一条 user 消息为自动发送，不触发"用户发送→滚动到底"。
+          if (event.length < prevQueueLengthRef.current) {
+            drainIncomingRef.current = true
+          }
+          prevQueueLengthRef.current = event.length
+          break
+
         case "question_request":
           // 模型提问挂起：把请求回填到对应 question 工具调用块，驱动内联提问表单。
           setMessages((prev) =>
@@ -224,11 +247,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
     return unsubscribe
   }, [dispatchEvent])
 
-  // 停止流式生成：中止 main 侧 run。
+  // 停止流式生成：中止 main 侧 run（排队消息由 main 清空并推 queue_changed{0}，此处先本地归零）。
   const stopStreaming = useCallback(() => {
     void agentApi.abort()
     setIsStreaming(false)
     streamingRef.current = null
+    setQueuedCount(0)
+    setQueuedMessages([])
   }, [])
 
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
@@ -332,19 +357,26 @@ export const useAgentChat = (context?: AgentSendContext) => {
   )
 
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
+  // 流式输出期间发送 → main 侧入队（deferred queue），当前 run 结束后自动发送；输入框立即清空。
   const sendMessage = useCallback(
     (contentToSend?: string, selection?: ModelSelection) => {
       const text = (contentToSend ?? inputText).trim()
-      if (!text || isStreaming) return
+      if (!text) return
       setInputText("")
       void agentApi.send(text, selection, context).then((result) => {
         if (result.ok) {
-          sessionListStore.setCurrentSessionId(result.sessionId)
-          void sessionListStore.refresh()
+          // 入队消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
+          if (result.sessionId && !("queued" in result)) {
+            sessionListStore.setCurrentSessionId(result.sessionId)
+            void sessionListStore.refresh()
+          }
+        } else if (contentToSend === undefined) {
+          // 发送失败（如队列已满）：回显输入，便于修改后重发。
+          setInputText(text)
         }
       })
     },
-    [inputText, isStreaming, context],
+    [inputText, context],
   )
 
   // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。
@@ -360,7 +392,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const continueChat = useCallback(() => {
     if (!canContinue) return
     void agentApi.continue().then((result) => {
-      if (result.ok) {
+      if (result.ok && result.sessionId) {
         sessionListStore.setCurrentSessionId(result.sessionId)
         void sessionListStore.refresh()
       }
@@ -386,6 +418,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   return {
     messages,
     todos,
+    queuedCount,
+    queuedMessages,
     inputText,
     setInputText,
     isStreaming,

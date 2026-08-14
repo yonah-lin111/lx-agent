@@ -205,12 +205,18 @@ export const AgentMessageList = ({
   }, [isSubagentPanelOpen])
 
   // 用户发送新消息后平滑滚动到底部（以 prev 快照判定追加新增）。
+  // 队列 drain 自动发送的 user 消息不触发（isQueuedDrain：非用户主动发送，保持阅读位置）。
   const prevMessagesRef = useRef<ChatMessage[]>(messages)
   useEffect(() => {
     const prev = prevMessagesRef.current
     prevMessagesRef.current = messages
     if (isRestoring) return
-    if (!messages.slice(prev.length).some((message) => message.role === "user")) return
+    if (
+      !messages
+        .slice(prev.length)
+        .some((message) => message.role === "user" && !message.isQueuedDrain)
+    )
+      return
     const el = scrollRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
   }, [messages, isRestoring])

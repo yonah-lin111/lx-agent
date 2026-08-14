@@ -32,6 +32,8 @@ const renderInput = async (history: string[]) => {
       <AgentInput
         inputText={text}
         isStreaming={false}
+        queuedCount={0}
+        queuedMessages={[]}
         onInputChange={setText}
         onSend={onSend}
         onStop={vi.fn()}

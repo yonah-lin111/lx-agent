@@ -1,10 +1,11 @@
 import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Send, ShieldAlert, Square } from "lucide-react"
+import { Loader2, Send, ShieldAlert, Square } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { projectApi } from "@/features/project/api/projectApi"
@@ -29,6 +30,10 @@ import { TodoDock, TodoDockButton } from "./TodoDock"
 interface AgentInputProps {
   inputText: string
   isStreaming: boolean
+  // 排队消息计数（流式输出期间发送的消息数；>0 时输入区上方展示提示条）。
+  queuedCount: number
+  // 排队消息原文（提示条 hover 时 tooltip 展示各条问题）。
+  queuedMessages: string[]
   onInputChange: (text: string) => void
   onSend: () => void
   onStop: () => void
@@ -118,6 +123,8 @@ const isOnLastLine = (cursor: number, text: string): boolean => {
 export const AgentInput = ({
   inputText,
   isStreaming,
+  queuedCount,
+  queuedMessages,
   onInputChange,
   onSend,
   onStop,
@@ -388,16 +395,17 @@ export const AgentInput = ({
   }
 
   // 发送前记录历史提示词（仅输入框发送路径），并退出历史浏览。
+  // 流式输出期间 Enter 仍可发送：main 侧入队，当前回复结束后自动发送。
   const handleSend = (): void => {
     reset()
-    if (!inputText.trim() || isStreaming) return
+    if (!inputText.trim()) return
     record(inputText)
     onSend()
   }
 
   const executeCommand = (command: AgentInputCommand): void => {
     setActiveMode(null)
-    if (isStreaming) return
+    // 流式中 /clear 可执行（createNewChat 会 stopStreaming 中止 run 并清空队列）；/undo 由 hook 侧 isStreaming 守卫兜底。
     if (command.id === "clear") {
       onInputChange("")
       onClear()
@@ -657,6 +665,32 @@ export const AgentInput = ({
 
   return (
     <div className="bg-transparent p-0.5 pt-1 pb-0">
+      {/* 排队消息提示：流式输出期间发送的消息等待当前回复结束后自动发送；hover 展示排队问题列表。 */}
+      {queuedCount > 0 && (
+        <LxTooltip
+          title={`已排队 ${queuedCount} 条消息`}
+          placement="top"
+          multiline
+          content={
+            <div className="flex max-h-[40vh] max-w-[min(360px,60vw)] flex-col gap-1 overflow-y-auto py-0.5">
+              {queuedMessages.map((text, index) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-1.5 text-xs leading-[18px] text-white/75"
+                >
+                  <span className="mt-px shrink-0 text-white/35">{index + 1}.</span>
+                  <span className="min-w-0 break-words">{text}</span>
+                </div>
+              ))}
+            </div>
+          }
+        >
+          <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+            <span className="truncate">已排队 {queuedCount} 条消息，当前回复结束后自动发送</span>
+          </div>
+        </LxTooltip>
+      )}
       <div
         ref={containerRef}
         className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"

@@ -344,6 +344,8 @@ export type AgentEvent =
   | { type: "compaction_summary"; message: CompactionSummaryMessage }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
   | { type: "todo_updated"; todos: TodoList }
+  // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
+  | { type: "queue_changed"; length: number; messages: string[] }
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
@@ -395,7 +397,11 @@ export interface AgentRestoredSession {
 }
 
 // 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。
-export type AgentSendResult = { ok: true; sessionId: string } | { ok: false; error: string }
+// queued 变体：流式输出期间消息已入队，当前 run 结束后自动发送；会话 id 即当前会话（流式中必有会话）。
+export type AgentSendResult =
+  | { ok: true; sessionId: string }
+  | { ok: true; queued: true; queueLength: number; sessionId: string }
+  | { ok: false; error: string }
 
 // 切换会话工作区（/gitWorktree）的返回结果。
 export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
