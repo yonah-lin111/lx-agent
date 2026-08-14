@@ -45,7 +45,7 @@ export const AgentTodoCallBlock = ({
     <div className="my-0.5 min-w-0">
       <div className="flex items-center gap-1">
         <ListTodo className="h-3.5 w-3.5 shrink-0 text-orange-300" />
-        <span className="text-[12px] font-bold text-orange-300">任务清单</span>
+        <span className="text-[12px] font-bold text-orange-300">Todos</span>
       </div>
       <div className="mt-1 flex min-w-0 items-start gap-1.5 pl-1">
         <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
