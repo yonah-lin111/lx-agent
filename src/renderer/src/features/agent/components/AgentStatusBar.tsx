@@ -1,3 +1,4 @@
+import { Layers } from "lucide-react"
 import { LspStatusButton } from "@/components/layout/LspStatusButton"
 import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -50,7 +51,8 @@ export const AgentStatusBar = ({
             aria-label="上下文容量"
             className={`flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
           >
-            上下文 <span className="tabular-nums">{percent}%</span>
+            <Layers className="h-3 w-3 shrink-0" />
+            <span className="tabular-nums">{percent}%</span>
           </span>
         </LxTooltip>
       )}
