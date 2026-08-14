@@ -72,7 +72,7 @@ const gateContext = (toolName: string, args: unknown): BeforeToolCallContext => 
     ],
     provider: "p",
     model: "m",
-    usage: { input: 0, output: 0, totalTokens: 0 },
+    usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
     stopReason: "toolUse",
     timestamp: 0,
   },

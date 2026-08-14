@@ -6,6 +6,7 @@ import type {
   QuestionRequest,
   StopReason,
   SubagentData,
+  Usage,
 } from "@shared/contracts/agent"
 
 export type {
@@ -21,6 +22,7 @@ export type {
   SubagentData,
   SubagentStep,
   ToolResultMessage,
+  Usage,
 } from "@shared/contracts/agent"
 
 // 消息内容块渲染视图。
@@ -66,6 +68,8 @@ export interface ChatMessage {
   error?: string
   // 助手消息的停止原因（判断"继续生成"可用性）。
   stopReason?: StopReason
+  // 助手消息的 token 用量（本轮 QA 底部展示；user/toolResult 无此字段）。
+  usage?: Usage
 }
 
 // 预设提示词卡片。

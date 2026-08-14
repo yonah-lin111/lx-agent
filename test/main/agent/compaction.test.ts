@@ -35,7 +35,7 @@ import {
 
 const streamTextMock = vi.mocked(streamText)
 
-const EMPTY_USAGE: Usage = { input: 0, output: 0, totalTokens: 0 }
+const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
 
 // 构造消息。
 const user = (text: string): AgentMessage => ({ role: "user", content: text, timestamp: 0 })
@@ -66,7 +66,7 @@ describe("estimateContextTokens", () => {
   it("复用最后一条 assistant 的 usage.totalTokens 作锚点，其后消息按 char/4 累加", () => {
     const messages: AgentMessage[] = [
       user("问题"),
-      assistant("回答", { input: 800, output: 200, totalTokens: 1000 }),
+      assistant("回答", { input: 800, output: 200, cacheRead: 0, totalTokens: 1000 }),
       toolResult("grep", "匹配结果"),
     ]
     // 锚点 1000 + toolResult（5 字符 → ceil(5/4)=2）。

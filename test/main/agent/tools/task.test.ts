@@ -4,7 +4,7 @@ import { z } from "zod"
 import type { AgentTool } from "@/agent/core/types"
 import { createTaskTool } from "@/agent/tools/task"
 
-const EMPTY_USAGE: Usage = { input: 0, output: 0, totalTokens: 0 }
+const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
 
 const TEST_TOOL_SCHEMA = z.object({ path: z.string().optional() })
 

@@ -45,7 +45,7 @@ const assistant = (blocks: (TextContent | ThinkingContent)[]): AssistantMessage 
   content: blocks,
   provider: "p",
   model: "m",
-  usage: { input: 0, output: 0, totalTokens: 0 },
+  usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
   stopReason: "stop",
   timestamp: 0,
 })

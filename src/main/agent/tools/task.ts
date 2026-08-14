@@ -125,9 +125,10 @@ const aggregateUsage = (messages: AgentMessage[]): Usage => {
       (total, message) => ({
         input: total.input + message.usage.input,
         output: total.output + message.usage.output,
+        cacheRead: total.cacheRead + message.usage.cacheRead,
         totalTokens: total.totalTokens + message.usage.totalTokens,
       }),
-      { input: 0, output: 0, totalTokens: 0 },
+      { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
     )
 }
 

@@ -36,6 +36,8 @@ export type StopReason = "pending" | "stop" | "length" | "toolUse" | "error" | "
 export interface Usage {
   input: number
   output: number
+  // 缓存命中读取的输入 token（Anthropic cache_read_input_tokens）。
+  cacheRead: number
   totalTokens: number
 }
 

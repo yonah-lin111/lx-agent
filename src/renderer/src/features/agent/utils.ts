@@ -118,6 +118,7 @@ export const toChatMessage = (
     timestamp: message.timestamp,
     error: message.errorMessage,
     stopReason: message.stopReason,
+    usage: message.usage,
   }
 }
 
@@ -178,7 +179,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         content: blocks,
         provider: "local",
         model: "local",
-        usage: { input: 0, output: 0, totalTokens: 0 },
+        usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
         stopReason: "stop",
         timestamp: Date.now(),
       },

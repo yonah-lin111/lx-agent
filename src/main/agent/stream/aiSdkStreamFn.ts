@@ -29,7 +29,7 @@ const mapStopReason = (reason: string): StopReason => {
   }
 }
 
-const EMPTY_USAGE: Usage = { input: 0, output: 0, totalTokens: 0 }
+const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
 
 // 构造空助手消息。
 const createEmptyAssistant = (model: Model): AssistantMessage => ({
@@ -167,6 +167,8 @@ export const createAiSdkStreamFn = (): StreamFn => {
               const usage: Usage = {
                 input: part.totalUsage.inputTokens ?? 0,
                 output: part.totalUsage.outputTokens ?? 0,
+                // 缓存命中读取的输入 token（非 Anthropic provider 未填充时回落 0）。
+                cacheRead: part.totalUsage.inputTokenDetails?.cacheReadTokens ?? 0,
                 totalTokens: part.totalUsage.totalTokens ?? 0,
               }
               const finalMessage: AssistantMessage = {
