@@ -77,7 +77,6 @@ export const AgentCompactionSummary = ({
           </div>
         </div>
       </div>
-      <div className="mt-1 border-b-4 border-double border-white/10" aria-hidden="true" />
     </div>
   )
 }
