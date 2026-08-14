@@ -73,10 +73,7 @@ export const getFileMentionDeletionRange = (
   if (ranges.some((range) => range.end === cursor)) return null
 
   if (/[ \t]/.test(value[cursor - 1] ?? "")) {
-    let index = cursor - 1
-    while (index >= 0 && /[ \t]/.test(value[index])) index -= 1
-
-    const range = ranges.find((item) => item.end === index + 1)
+    const range = ranges.find((item) => item.end === cursor - 1)
     if (range) return { start: range.start, end: cursor }
   }
 

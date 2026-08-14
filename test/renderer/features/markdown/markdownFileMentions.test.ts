@@ -8,19 +8,34 @@ describe("getFileMentionDeletionRange", () => {
     expect(getFileMentionDeletionRange(content, content.length)).toBeNull()
   })
 
-  it("删除文件提及后的连续水平空白", () => {
-    const content = "读取 @src/main/index.ts  "
+  it("仅在文件提及后恰好紧邻一个空格且光标在其后时整块删除", () => {
+    const content = "读取 @src/main/index.ts "
 
-    expect(getFileMentionDeletionRange(content, content.length)).toEqual({ start: 3, end: 23 })
+    expect(getFileMentionDeletionRange(content, content.length)).toEqual({
+      start: 3,
+      end: content.length,
+    })
   })
 
-  it("删除 Markdown 文件引用后的连续水平空白", () => {
+  it("文件提及后有多个空格时，光标在末尾不应整块删除提及", () => {
+    const content = "读取 @src/main/index.ts  "
+
+    expect(getFileMentionDeletionRange(content, content.length)).toBeNull()
+  })
+
+  it("删除 Markdown 文件引用后紧邻的一个空格", () => {
     const content = "读取 @[refer-file](/Users/test/My File.txt) "
 
     expect(getFileMentionDeletionRange(content, content.length)).toEqual({
       start: 3,
       end: content.length,
     })
+  })
+
+  it("Markdown 文件引用后有多个空格时，光标在末尾不应整块删除引用", () => {
+    const content = "读取 @[refer-file](/Users/test/My File.txt)  "
+
+    expect(getFileMentionDeletionRange(content, content.length)).toBeNull()
   })
 
   it("不会跨行删除文件提及", () => {
