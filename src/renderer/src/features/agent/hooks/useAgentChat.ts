@@ -1,6 +1,7 @@
 import type { AgentEvent, AgentSendContext, SubagentData, TodoList } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "../api/agentApi"
 import type { ChatBlock, ChatMessage } from "../types"
 import {
@@ -43,6 +44,7 @@ const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
  * 历史会话的持久化与恢复均由 main 进程 DB 承载。
  */
 export const useAgentChat = (context?: AgentSendContext) => {
+  const { error: errorToast } = useLxToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
@@ -201,13 +203,22 @@ export const useAgentChat = (context?: AgentSendContext) => {
           }
           break
 
-        case "compaction_summary":
-          // 上下文压缩完成：追加可见摘要块（非交互，标注"此处已压缩"）。
-          setMessages((prev) => [
-            ...prev,
-            toChatMessage(event.message, false, `m${++messageSequence}`),
-          ])
+        case "compaction_summary": {
+          // 上下文压缩完成：先移除旧摘要块，再把新摘要插到压缩边界（被压缩的旧消息之后、保留消息之前）。
+          const summary = toChatMessage(event.message, false, `m${++messageSequence}`)
+          setMessages((prev) => {
+            const withoutSummaries = prev.filter(
+              (message) => message.role !== "compactionSummary",
+            )
+            const insertIndex = Math.min(Math.max(event.insertIndex, 0), withoutSummaries.length)
+            return [
+              ...withoutSummaries.slice(0, insertIndex),
+              summary,
+              ...withoutSummaries.slice(insertIndex),
+            ]
+          })
           break
+        }
 
         case "todo_updated":
           // 任务清单整表替换（模型经 todowrite 更新；驱动 TodoDock）。
@@ -372,6 +383,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
     (contentToSend?: string, selection?: ModelSelection) => {
       const text = (contentToSend ?? inputText).trim()
       if (!text) return
+      // 上下文 100%：拒绝发送（无法在溢出前压缩腾出空间，继续发送会超出模型窗口），提示新建对话。
+      if (contextUsage && contextUsage.tokens >= contextUsage.contextWindow) {
+        errorToast(
+          "上下文已满（100%）：当前会话可压缩的历史不足以腾出空间，继续发送会超出模型窗口。请新建对话。",
+        )
+        return
+      }
       setInputText("")
       void agentApi.send(text, selection, context).then((result) => {
         if (result.ok) {
@@ -386,7 +404,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
         }
       })
     },
-    [inputText, context],
+    [inputText, context, contextUsage, errorToast],
   )
 
   // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。
@@ -425,6 +443,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
     )
   }, [])
 
+  // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。
+  // 无会话（prev 为 null）时保持不显示，避免状态栏误现 0%。
+  const refreshContextUsage = useCallback((selection?: ModelSelection) => {
+    void agentApi.getContextUsage(selection).then((usage) => {
+      setContextUsage((prev) => (prev === null ? null : usage))
+    })
+  }, [])
+
   return {
     messages,
     todos,
@@ -444,5 +470,6 @@ export const useAgentChat = (context?: AgentSendContext) => {
     deleteTurn,
     restoreChat,
     editMessage,
+    refreshContextUsage,
   }
 }

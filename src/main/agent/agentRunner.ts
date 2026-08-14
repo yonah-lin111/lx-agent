@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import type {
   AgentCapabilitySnapshot,
+  AgentContextUsage,
   AgentEvent,
   AgentForkResult,
   AgentMessage,
@@ -22,7 +23,7 @@ import {
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { projectService } from "@/services/projectService"
-import { getCompactionSettings } from "@/services/settingsService"
+import { getCompactionSettings, getModelProviderSettings } from "@/services/settingsService"
 import {
   type CompactionBoundary,
   createCompactionSummaryMessage,
@@ -366,9 +367,11 @@ class AgentRunner {
             this.todoList.length > 0 ? [createTodoStateMessage(this.todoList)] : []
           const boundary = this.contextBoundary
           if (!boundary) return [...todoMessage, ...messages]
-          const kept = messages.filter(
-            (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
-          )
+          const kept = messages.filter((_, index) => {
+            const seq = this.messageSeqs[index] ?? -1
+            // 幽灵消息（-1，未落库/未匹配）恒保留：被压缩边界误剔除会导致模型上下文丢失历史。
+            return seq < 0 || seq >= boundary.firstKeptSeq
+          })
           return [
             ...todoMessage,
             createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore),
@@ -667,6 +670,12 @@ class AgentRunner {
       this.contextBoundary = null
       this.todoList = []
       this.pendingTodo = null
+    } else if (this.contextBoundary) {
+      // 撤销/删除轮次可能清空保留区（seq >= firstKeptSeq）：边界失效则清除，
+      // 否则模型上下文只剩摘要、历史被剔除（表现为"上下文清空"）。
+      const boundary = this.contextBoundary
+      const keptExists = this.messageSeqs.some((seq) => seq >= boundary.firstKeptSeq)
+      if (!keptExists) this.contextBoundary = null
     }
     // 删除轮/新建会话后同步容量快照（删除回落、新建归零）。
     this.emitContextUsage()
@@ -982,13 +991,39 @@ class AgentRunner {
     )
   }
 
-  // 上下文容量快照：当前上下文估计 token / 压缩窗口，驱动状态栏百分比。
+  // 上下文容量快照：当前上下文估计 token / 模型实际窗口，驱动状态栏百分比。
   private emitContextUsage(): void {
     this.eventSink?.({
       type: "context_usage",
       tokens: this.currentContextTokens(),
-      contextWindow: getCompactionSettings().contextWindow,
+      contextWindow: this.resolveContextWindow(),
     })
+  }
+
+  // 解析状态栏显示的上下文窗口：优先显式 selection / UI 同步的 requestedModel / 当前会话模型
+  // 的 limit.context（反映真实容量），模型未声明窗口时回退压缩配置窗口。
+  private resolveContextWindow(selection?: ModelSelection): number {
+    const settings = getModelProviderSettings()
+    const activeSelection = selection ?? this.requestedModel
+    const modelWindow = activeSelection
+      ? settings.providers[activeSelection.provider]?.models?.[activeSelection.model]?.limit?.context
+      : this.agent?.state.model
+        ? settings.providers[this.agent.state.model.provider]?.models?.[this.agent.state.model.id]
+            ?.limit?.context
+        : undefined
+    return modelWindow ?? getCompactionSettings().contextWindow
+  }
+
+  // 查询当前会话上下文容量（模型切换后 renderer 主动刷新状态栏用）。
+  // 携带 selection 时同时同步 requestedModel，使后续 context_usage 推送（恢复/压缩/agent_end）统一按 UI 选择的模型窗口展示。
+  getContextUsage(selection?: ModelSelection): AgentContextUsage {
+    if (selection) {
+      this.requestedModel = selection
+    }
+    return {
+      tokens: this.currentContextTokens(),
+      contextWindow: this.resolveContextWindow(selection),
+    }
   }
 
   // Agent 事件 → 持久化缓冲（转发渲染的事件由调用方处理）。
@@ -1321,15 +1356,17 @@ class AgentRunner {
     )
   }
 
-  // 读取会话最近的 compaction entry，重建压缩边界（无则 null）。
+  // 读取会话最近的 compaction entry，重建压缩边界（无/无效则 null）。
   private readCompactionEntry(sessionId: string): CompactionBoundary | null {
     for (const entry of agentSessionService.listEntries(sessionId)) {
       if (entry.type !== "compaction") continue
       try {
         const parsed = JSON.parse(entry.payload) as Partial<CompactionBoundary>
+        // firstKeptSeq < 0 的边界无效（保留起点无法定位）：忽略，避免恢复时摘要被插到列表顶部。
         if (
           typeof parsed.summary === "string" &&
           typeof parsed.firstKeptSeq === "number" &&
+          parsed.firstKeptSeq >= 0 &&
           typeof parsed.tokensBefore === "number"
         ) {
           return parsed as CompactionBoundary
@@ -1356,7 +1393,7 @@ class AgentRunner {
     return []
   }
 
-  // 在返回给 renderer 的消息列表中，于压缩边界处插入可见摘要块（UI 展示全量历史 + 摘要）。
+  // 在返回给 renderer 的消息列表中，于压缩边界处插入可见摘要块（位于被压缩的旧消息与保留消息之间）。
   private withCompactionSummary(messages: AgentMessage[]): AgentMessage[] {
     const boundary = this.contextBoundary
     if (!boundary) return messages
@@ -1392,30 +1429,40 @@ class AgentRunner {
     if (!agent) return false
     const messages = agent.state.messages
     if (messages.length === 0) return false
+    // 压缩窗口随当前模型 limit.context 动态（模型切换自动适配，无需手动配固定窗口）。
+    // 保留/预留预算受模型窗口约束：配置值超过模型窗口时按比例收敛，避免触发阈值非正导致每轮都压缩。
+    const contextWindow = this.resolveContextWindow()
+    const reserveTokens = Math.min(config.reserveTokens, Math.floor(contextWindow * 0.2))
+    const keepRecentTokens = Math.min(config.keepRecentTokens, Math.floor(contextWindow * 0.4))
     if (!force) {
       const estimated = estimateContextTokens(messages)
-      if (estimated <= config.contextWindow - config.reserveTokens) return false
+      if (estimated <= contextWindow - reserveTokens) return false
     }
-    const cutIndex = findCutPoint(messages, config.keepRecentTokens)
+    const cutIndex = findCutPoint(messages, keepRecentTokens)
     // 全部保留或压缩无收益（保留起点 ≤ 1）时不压缩。
     if (cutIndex >= messages.length || cutIndex <= 1) return false
     const compacted = messages.slice(0, cutIndex)
     const summary = await generateCompactionSummary(compacted)
     if (!summary) return false
     const tokensBefore = estimateContextTokens(compacted)
+    const firstKeptSeq = this.messageSeqs[cutIndex] ?? -1
+    // 保留起点无有效 DB seq（删除轮次后对齐被破坏等）：不建立坏边界，
+    // 否则 transformContext 会保留全部消息（压缩失效）且恢复时摘要被插到列表顶部。
+    if (firstKeptSeq < 0) return false
     const boundary: CompactionBoundary = {
       summary,
-      firstKeptSeq: this.messageSeqs[cutIndex] ?? -1,
+      firstKeptSeq,
       tokensBefore,
     }
     this.contextBoundary = boundary
     if (this.currentSessionId) {
       this.persistCompaction(this.currentSessionId, boundary)
     }
-    // 推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
+    // 推送可见摘要消息（renderer 插在压缩边界：被压缩的旧消息之后、保留消息之前）。
     this.eventSink?.({
       type: "compaction_summary",
       message: createCompactionSummaryMessage(summary, tokensBefore),
+      insertIndex: cutIndex,
     })
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
     this.emitContextUsage()

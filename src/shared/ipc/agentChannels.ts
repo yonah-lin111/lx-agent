@@ -15,6 +15,8 @@ export const AGENT_CHANNELS = {
   getLspStatus: "agent:getLspStatus",
   installLspServers: "agent:installLspServers",
   suggestedQuestions: "agent:suggestedQuestions",
+  // 查询当前会话上下文容量（模型切换后状态栏主动刷新）。
+  getContextUsage: "agent:getContextUsage",
   // 权限请求经 event 通道以 permission_request 事件推送（见 AgentEvent）。
   permissionResponse: "agent:permissionResponse",
   // 提问请求经 event 通道以 question_request 事件推送（见 AgentEvent）。

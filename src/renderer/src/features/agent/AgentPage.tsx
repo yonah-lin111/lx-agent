@@ -57,6 +57,7 @@ export const AgentPage = ({
     deleteTurn,
     restoreChat,
     editMessage,
+    refreshContextUsage,
   } = useAgentChat(context)
 
   const {
@@ -67,6 +68,12 @@ export const AgentPage = ({
     handleModelChange,
     suggestedQuestionsEnabled,
   } = useAgentModelSelect()
+
+  // 模型切换后立即刷新状态栏上下文窗口（不必等下一 turn 的 context_usage 推送；无会话时保持不显示）。
+  useEffect(() => {
+    refreshContextUsage(selectedSelection)
+  }, [selectedSelection, refreshContextUsage])
+
   const currentSessionPath = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionPath,

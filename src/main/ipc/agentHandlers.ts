@@ -281,4 +281,11 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
     return openFileAt(filePath, line)
   })
+
+  ipcMain.handle(AGENT_CHANNELS.getContextUsage, (_, selection: unknown) => {
+    if (selection !== undefined && !isValidModelSelection(selection)) {
+      throw new Error("INVALID_MODEL_SELECTION")
+    }
+    return agentRunner.getContextUsage(selection as ModelSelection | undefined)
+  })
 }

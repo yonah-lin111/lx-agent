@@ -1,4 +1,5 @@
 import type {
+  AgentContextUsage,
   AgentEvent,
   AgentMessage,
   AgentRestoredSession,
@@ -53,6 +54,8 @@ export const agentApi = {
     window.api.agent.questionRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
+  getContextUsage: (selection?: ModelSelection): Promise<AgentContextUsage> =>
+    window.api.agent.getContextUsage(selection),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }

@@ -135,7 +135,9 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
         .map((block) => block.text)
         .join("\n")
-      return [{ role: "user", content: text, timestamp: Date.now() }]
+      // 保留原始 timestamp：删除轮次后 main 按 timestamp 匹配 DB seq 重建对齐，
+      // 重置为 Date.now() 会让 syncMessageSeqs 全部落空为 -1，污染压缩边界（firstKeptSeq = -1）。
+      return [{ role: "user", content: text, timestamp: message.timestamp ?? Date.now() }]
     }
 
     if (message.role === "toolResult") {
@@ -150,7 +152,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           toolName: block.toolName,
           content: [{ type: "text", text: block.text }],
           isError: block.isError,
-          timestamp: Date.now(),
+          timestamp: message.timestamp ?? Date.now(),
           ...(block.subagent ? { subagent: block.subagent } : {}),
           ...(block.lsp ? { lsp: block.lsp } : {}),
         },
@@ -179,11 +181,14 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
       {
         role: "assistant",
         content: blocks,
-        provider: "local",
-        model: "local",
-        usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
-        stopReason: "stop",
-        timestamp: Date.now(),
+        // 保留 usage/model 等元数据：undo 后 main 侧 estimateContextTokens 以最后一条
+        // assistant 的 usage.totalTokens 为锚点，重置为 0 会让状态栏上下文误归零。
+        provider: message.provider ?? "local",
+        model: message.model ?? "local",
+        usage: message.usage ?? { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
+        stopReason: message.stopReason ?? "stop",
+        errorMessage: message.error,
+        timestamp: message.timestamp ?? Date.now(),
       },
     ]
   })

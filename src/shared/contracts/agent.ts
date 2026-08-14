@@ -342,9 +342,9 @@ export type AgentEvent =
   | { type: "session_title"; sessionId: string; title: string | null }
   | { type: "permission_request"; request: PermissionRequest }
   | { type: "question_request"; request: QuestionRequest }
-  // 上下文压缩完成：推送可见摘要消息（renderer 插入为非交互块；不落 message entry）。
-  | { type: "compaction_summary"; message: CompactionSummaryMessage }
-  // 上下文容量：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
+  // 上下文压缩完成：推送可见摘要消息（renderer 在 insertIndex 处插入为非交互块；不落 message entry）。
+  | { type: "compaction_summary"; message: CompactionSummaryMessage; insertIndex: number }
+  // 上下文容量快照：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
   | { type: "context_usage"; tokens: number; contextWindow: number }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
   | { type: "todo_updated"; todos: TodoList }
@@ -413,6 +413,12 @@ export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: strin
 // 会话分支（fork）的返回结果；ok 时携带新会话 id（创建后自动切换）。
 export type AgentForkResult = { ok: true; sessionId: string } | { ok: false; error: string }
 
+// 上下文容量快照（状态栏展示：估计 token / 模型窗口）。
+export interface AgentContextUsage {
+  tokens: number
+  contextWindow: number
+}
+
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
@@ -452,6 +458,8 @@ export interface AgentApi {
     questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
     // 用系统默认编辑器打开文件并定位到行（LSP 结果跳转）。
     openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
+    // 查询当前会话上下文容量（模型切换后状态栏主动刷新；selection 指定要显示的模型窗口）。
+    getContextUsage: (selection?: ModelSelection) => Promise<AgentContextUsage>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }
