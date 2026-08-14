@@ -2,7 +2,9 @@ import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { NoteCardApi } from "@shared/contracts/noteCard"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
+import { NOTE_CARD_CHANNELS } from "@shared/ipc/noteCardChannels"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
 import type { ProjectApi } from "@shared/project"
@@ -19,7 +21,8 @@ const api: ProjectApi &
   AgentApi &
   MarkdownApi &
   GitApi &
-  PromptHistoryApi = {
+  PromptHistoryApi &
+  NoteCardApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
@@ -64,6 +67,13 @@ const api: ProjectApi &
   markdown: markdownApi,
   git: gitApi,
   promptHistory: promptHistoryApi,
+  noteCard: {
+    list: () => ipcRenderer.invoke(NOTE_CARD_CHANNELS.list),
+    create: (input: unknown) => ipcRenderer.invoke(NOTE_CARD_CHANNELS.create, input),
+    update: (id: string, input: unknown) =>
+      ipcRenderer.invoke(NOTE_CARD_CHANNELS.update, id, input),
+    delete: (id: string) => ipcRenderer.invoke(NOTE_CARD_CHANNELS.delete, id),
+  },
 }
 
 contextBridge.exposeInMainWorld("api", api)
