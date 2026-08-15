@@ -1,6 +1,7 @@
 import type {
   AgentDiff,
   AgentMessage,
+  CompactionUsage,
   LspToolDetails,
   QuestionAnswer,
   QuestionRequest,
@@ -14,6 +15,7 @@ export type {
   AgentDiffLine,
   AgentEvent,
   AgentMessage,
+  CompactionUsage,
   DiffLinePart,
   LspToolDetails,
   QuestionAnswer,
@@ -79,6 +81,10 @@ export interface ChatMessage {
   isManual?: boolean
   // 助手消息的 token 用量（本轮 QA 底部展示；user/toolResult 无此字段）。
   usage?: Usage
+  // 压缩摘要消息的 token 用量（compactionSummary 专用：发给压缩模型的输入与摘要输出）。
+  compactionUsage?: CompactionUsage
+  // 压缩摘要本身的估计 token 数（compactionSummary 专用，压缩后上下文规模）。
+  summaryTokens?: number
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
   model?: string
   provider?: string

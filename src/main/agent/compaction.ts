@@ -1,4 +1,8 @@
-import type { AgentMessage, CompactionSummaryMessage } from "@shared/contracts/agent"
+import type {
+  AgentMessage,
+  CompactionSummaryMessage,
+  CompactionUsage,
+} from "@shared/contracts/agent"
 import {
   type CompactionSettings,
   DEFAULT_COMPACTION_SETTINGS,
@@ -24,9 +28,15 @@ export interface CompactionBoundary {
   manual: boolean
   // 压缩所使用的模型。
   model?: string
+  // 压缩摘要生成调用的实际 token 用量（持久化供恢复后展示）。
+  usage?: CompactionUsage
 }
 
 export { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS }
+
+// 摘要自身的 token 估计（压缩后的上下文规模；char/4 与 estimateMessageTokens 对齐）。
+export const estimateSummaryTokens = (summary: string): number =>
+  Math.max(1, Math.ceil(summary.length / 4))
 
 // 构造可见的压缩摘要消息（UI 与模型上下文共用同一份）。
 export const createCompactionSummaryMessage = (
@@ -34,6 +44,7 @@ export const createCompactionSummaryMessage = (
   tokensBefore: number,
   manual: boolean,
   model?: string,
+  usage?: CompactionUsage,
 ): CompactionSummaryMessage => ({
   role: "compactionSummary",
   summary,
@@ -41,6 +52,8 @@ export const createCompactionSummaryMessage = (
   timestamp: Date.now(),
   manual,
   model,
+  usage,
+  summaryTokens: estimateSummaryTokens(summary),
 })
 
 /**
@@ -220,7 +233,7 @@ const cleanSummary = (raw: string): string | null => {
 export const generateCompactionSummary = async (
   messages: AgentMessage[],
   sessionModel?: ModelSelection,
-): Promise<{ summary: string; model: string } | null> => {
+): Promise<{ summary: string; model: string; usage: CompactionUsage } | null> => {
   try {
     const settings = getModelProviderSettings()
     const selection =
@@ -261,7 +274,12 @@ export const generateCompactionSummary = async (
     })
     const summary = cleanSummary(await result.text)
     if (!summary) return null
-    return { summary, model: resolved.model.id }
+    const usage = await result.usage
+    return {
+      summary,
+      model: resolved.model.id,
+      usage: { input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 },
+    }
   } catch {
     // 无响应 provider / 网络错误 / 超时：静默返回 null，保留旧边界，下轮再试。
     return null

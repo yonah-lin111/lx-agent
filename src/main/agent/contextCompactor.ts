@@ -76,6 +76,7 @@ export class ContextCompactor {
             tokensBefore: parsed.tokensBefore,
             manual: parsed.manual === true,
             model: parsed.model,
+            usage: parsed.usage,
           }
         }
       } catch {
@@ -99,6 +100,7 @@ export class ContextCompactor {
         boundary.tokensBefore,
         boundary.manual,
         boundary.model,
+        boundary.usage,
       ),
       kept,
     )
@@ -147,6 +149,7 @@ export class ContextCompactor {
       boundary.tokensBefore,
       boundary.manual,
       boundary.model,
+      boundary.usage,
     )
     return [...messages, summary]
   }
@@ -218,7 +221,7 @@ export class ContextCompactor {
       this.deps.emit({ type: "compaction_failed", compactionId, manual: false })
       return false
     }
-    const { summary, model } = compactionResult
+    const { summary, model, usage } = compactionResult
     const tokensBefore = estimateContextTokens(compacted)
     const firstKeptSeq = this.deps.getMessageSeqs()[cutIndex] ?? -1
     // 保留起点无有效 DB seq（删除轮次后对齐被破坏等）：不建立坏边界，
@@ -234,6 +237,7 @@ export class ContextCompactor {
       tokensBefore,
       manual: false,
       model,
+      usage,
     }
     this.boundary = boundary
     const sessionId = this.deps.getSessionId()
@@ -244,7 +248,7 @@ export class ContextCompactor {
     this.deps.emit({
       type: "compaction_summary",
       compactionId,
-      message: createCompactionSummaryMessage(summary, tokensBefore, false, model),
+      message: createCompactionSummaryMessage(summary, tokensBefore, false, model, usage),
     })
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
     this.emitUsage()
@@ -295,7 +299,7 @@ export class ContextCompactor {
       this.deps.emit({ type: "compaction_failed", compactionId, manual: true })
       return { ok: false, error: "模型生成摘要失败或超时，请稍后重试。" }
     }
-    const { summary, model } = compactionResult
+    const { summary, model, usage } = compactionResult
     const tokensBefore = estimateContextTokens(compacted)
     const firstKeptSeq = this.deps.getMessageSeqs()[effectiveCut] ?? -1
     if (firstKeptSeq < 0) {
@@ -308,6 +312,7 @@ export class ContextCompactor {
       tokensBefore,
       manual: true,
       model,
+      usage,
     }
     this.boundary = boundary
     const sessionId = this.deps.getSessionId()
@@ -317,7 +322,7 @@ export class ContextCompactor {
     this.deps.emit({
       type: "compaction_summary",
       compactionId,
-      message: createCompactionSummaryMessage(summary, tokensBefore, true, model),
+      message: createCompactionSummaryMessage(summary, tokensBefore, true, model, usage),
     })
     this.emitUsage()
     return { ok: true }

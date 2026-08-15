@@ -1,8 +1,17 @@
+import type { CompactionUsage } from "@shared/contracts/agent"
 import { ChevronDown, Loader2 } from "lucide-react"
 import type React from "react"
-import { useLayoutEffect, useRef, useState } from "react"
+import { Fragment, useLayoutEffect, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+
+// token 千位紧凑缩写（英文 K/M）。
+const formatTokensShort = (count: number): string => {
+  if (count < 1000) return count.toString()
+  if (count < 10000) return `${(count / 1000).toFixed(1)}k`
+  if (count < 1000000) return `${Math.round(count / 1000)}k`
+  return `${(count / 1000000).toFixed(1)}M`
+}
 
 // 压缩摘要组件属性类型。
 interface AgentCompactionSummaryProps {
@@ -12,8 +21,12 @@ interface AgentCompactionSummaryProps {
   isLoading?: boolean
   // 是否为手动触发的压缩（/compact），用于区分文案与折叠标题。
   isManual?: boolean
-  // 压缩所使用的模型。
+  // 压缩所使用的模型（指标行展示）。
   modelName?: string
+  // 压缩调用的实际 token 用量（输入=发给压缩模型的上下文，输出=压缩模型输出）。
+  usage?: CompactionUsage
+  // 摘要本身的估计 token 数（压缩后的上下文规模）。
+  summaryTokens?: number
 }
 
 /**
@@ -24,6 +37,8 @@ export const AgentCompactionSummary = ({
   isLoading = false,
   isManual = false,
   modelName,
+  usage,
+  summaryTokens,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
@@ -47,10 +62,9 @@ export const AgentCompactionSummary = ({
 
   // 压缩进行中：仅转圈 + 文字（无气泡 loading 效果）。
   if (isLoading) {
-    const baseLoadingText = isManual
+    const loadingText = isManual
       ? "Compressing context manually..."
       : "Compressing context automatically..."
-    const loadingText = modelName ? `${baseLoadingText} (by ${modelName})` : baseLoadingText
     return (
       <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -59,10 +73,22 @@ export const AgentCompactionSummary = ({
     )
   }
 
-  const baseTitleText = isManual
+  const titleText = isManual
     ? "Conversation manually compressed into summary"
     : "Conversation compressed into summary"
-  const titleText = modelName ? `${baseTitleText} (by ${modelName})` : baseTitleText
+
+  // 指标行片段（模型 / 发给压缩模型的输入 / 压缩模型输出 / 压缩后上下文）。
+  const metricSegments: React.ReactNode[] = []
+  if (modelName) metricSegments.push(<span key="model">MODEL {modelName}</span>)
+  if (usage && (usage.input > 0 || usage.output > 0)) {
+    metricSegments.push(<span key="input">IN {formatTokensShort(usage.input)}</span>)
+    metricSegments.push(<span key="output">OUT {formatTokensShort(usage.output)}</span>)
+  }
+  if (summaryTokens !== undefined) {
+    metricSegments.push(
+      <span key="summary">COMPACT CONTEXT {formatTokensShort(summaryTokens)}</span>,
+    )
+  }
 
   return (
     <div className="my-1.5 w-full max-w-full select-none">
@@ -80,6 +106,16 @@ export const AgentCompactionSummary = ({
           }`}
         />
       </button>
+      {metricSegments.length > 0 && (
+        <div className="mb-1 flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+          {metricSegments.map((segment, index) => (
+            <Fragment key={index}>
+              {index > 0 && <span aria-hidden="true">·</span>}
+              {segment}
+            </Fragment>
+          ))}
+        </div>
+      )}
       <div
         style={{
           maxHeight: isExpanded

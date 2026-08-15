@@ -59,6 +59,8 @@ export const toChatMessage = (
       timestamp: message.timestamp,
       isManual: message.manual,
       model: message.model,
+      compactionUsage: message.usage,
+      summaryTokens: message.summaryTokens,
     }
   }
 

@@ -41,6 +41,12 @@ export interface Usage {
   totalTokens: number
 }
 
+// 压缩摘要生成调用的 token 用量（输入=发给压缩模型的上下文，输出=摘要输出）。
+export interface CompactionUsage {
+  input: number
+  output: number
+}
+
 // 用户消息。
 export interface UserMessage {
   role: "user"
@@ -79,6 +85,10 @@ export interface CompactionSummaryMessage {
   manual: boolean
   // 压缩所使用的模型。
   model?: string
+  // 压缩摘要生成调用的实际 token 用量（输入=发给压缩模型的上下文，输出=压缩模型输出）。
+  usage?: CompactionUsage
+  // 摘要本身的估计 token 数（压缩后的上下文规模）。
+  summaryTokens?: number
 }
 
 // todo 清单项状态（对齐 Claude Code 四态）。
