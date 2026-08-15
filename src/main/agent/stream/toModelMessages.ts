@@ -1,4 +1,5 @@
-import type { ImageContent, TextContent } from "@shared/contracts/agent"
+import { readFileSync } from "node:fs"
+import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
 import type { ModelMessage } from "ai"
 import { tool as aiTool } from "ai"
 import type { AgentTool, LlmMessage } from "../core/types"
@@ -22,14 +23,78 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] =>
   messages.flatMap((message): ModelMessage[] => {
     switch (message.role) {
       case "user": {
-        const content = Array.isArray(message.content)
-          ? message.content.map((block) =>
-              block.type === "image"
-                ? { type: "image" as const, image: `data:${block.mimeType};base64,${block.data}` }
-                : { type: "text" as const, text: block.text },
-            )
-          : message.content
-        return [{ role: "user", content }] as ModelMessage[]
+        const agentMsg = message as unknown as AgentMessage
+        const contentArray: any[] = []
+
+        // 1. 获取并转换原本已存在于 content 中的内容块（保持对标准多模态数组和纯字符串的完全向下兼容）
+        if (Array.isArray(message.content)) {
+          for (const block of message.content) {
+            if (block.type === "image") {
+              contentArray.push({
+                type: "image" as const,
+                image: `data:${block.mimeType};base64,${block.data}`,
+              })
+            } else if (block.type === "text" && block.text) {
+              contentArray.push({
+                type: "text" as const,
+                text: block.text,
+              })
+            }
+          }
+        } else if (typeof message.content === "string" && message.content) {
+          contentArray.push({
+            type: "text" as const,
+            text: message.content,
+          })
+        }
+
+        // 2. 动态读取并追加附件（图片转为 base64, 文本文件作为文本追加）
+        if (agentMsg.role === "user" && agentMsg.files) {
+          for (const file of agentMsg.files) {
+            if (file.type === "image") {
+              try {
+                const base64Data = readFileSync(file.path).toString("base64")
+                const ext = file.name.split(".").pop()?.toLowerCase() || ""
+                let mimeType = "image/png"
+                if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg"
+                else if (ext === "gif") mimeType = "image/gif"
+                else if (ext === "webp") mimeType = "image/webp"
+                else if (ext === "svg") mimeType = "image/svg+xml"
+                else if (ext === "avif") mimeType = "image/avif"
+                else if (ext === "bmp") mimeType = "image/bmp"
+
+                contentArray.push({
+                  type: "image" as const,
+                  image: `data:${mimeType};base64,${base64Data}`,
+                })
+              } catch (err) {
+                console.error(`Failed to read image for LLM: ${file.path}`, err)
+              }
+            } else if (file.type === "text") {
+              try {
+                const fileContent = readFileSync(file.path, "utf8")
+                contentArray.push({
+                  type: "text" as const,
+                  text: `\n\n<document path="${file.name}">\n${fileContent}\n</document>`,
+                })
+              } catch (err) {
+                console.error(`Failed to read text file for LLM: ${file.path}`, err)
+              }
+            }
+          }
+        }
+
+        return [
+          {
+            role: "user",
+            content:
+              contentArray.length > 0
+                ? contentArray.length === 1 && contentArray[0].type === "text"
+                  ? contentArray[0].text
+                  : contentArray
+                : "",
+          },
+        ] as ModelMessage[]
       }
       case "assistant": {
         const parts = message.content.map((block) => {

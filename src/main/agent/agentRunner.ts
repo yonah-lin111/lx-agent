@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -27,6 +27,7 @@ import { getDefaultCapabilities } from "@/services/capabilityService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { projectService } from "@/services/projectService"
 import { getCompactionSettings, getModelProviderSettings } from "@/services/settingsService"
+import { getAppDataRoot } from "../paths"
 import {
   type CompactionBoundary,
   createCompactionSummaryMessage,
@@ -241,6 +242,8 @@ class AgentRunner {
   // 当前落库会话与归属（null = 尚未建立/已脱离）。
   private currentSessionId: string | null = null
   private sessionBinding: SessionBinding | null = null
+  // 当前 turn 复制完成后的附件文件列表（写入 user message payloads 的 files 属性中）。
+  private pendingCopiedFiles: { name: string; path: string; type: "image" | "text" }[] | null = null
   // 当前会话的能力快照（激活工具集；随会话冻结）。
   private activeCapabilities: string[] = getDefaultCapabilities().tools
   // 当前会话生效的 MCP 工具（全名）与注入 skill（随能力快照刷新）。
@@ -529,14 +532,68 @@ class AgentRunner {
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
-    const result = await this.runOne(text)
+    const result = await this.runOne(text, context?.files)
     // 本轮 run 结束后续发排队消息（队列为空则立即返回）。
     void this.kickDrain()
     return result
   }
 
+  // 复制附件文件到 ~/.lx/session/<sessionId>/<image|text>/ 目录并返回新属性。
+  private processPendingFiles(
+    sessionId: string,
+    files: {
+      name: string
+      path: string
+      type: "image" | "text"
+      size?: string
+      extension?: string
+    }[],
+  ): { name: string; path: string; type: "image" | "text"; size?: string; extension?: string }[] {
+    const copied: {
+      name: string
+      path: string
+      type: "image" | "text"
+      size?: string
+      extension?: string
+    }[] = []
+    const sessionDir = join(getAppDataRoot(), "session", sessionId)
+
+    for (const file of files) {
+      const subFolder = file.type === "image" ? "image" : "text"
+      const destFolder = join(sessionDir, subFolder)
+
+      if (!existsSync(destFolder)) {
+        mkdirSync(destFolder, { recursive: true })
+      }
+
+      const destPath = join(destFolder, file.name)
+      try {
+        copyFileSync(file.path, destPath)
+        copied.push({
+          name: file.name,
+          path: destPath,
+          type: file.type,
+          size: file.size,
+          extension: file.extension,
+        })
+      } catch (err) {
+        console.error(`Failed to copy attachment file: ${file.path} to ${destPath}`, err)
+      }
+    }
+    return copied
+  }
+
   // 驱动一轮独立 run（send 空闲分派与 drain 循环共用；调用方保证非 busy）。
-  private async runOne(text: string): Promise<AgentSendResult> {
+  private async runOne(
+    text: string,
+    files?: {
+      name: string
+      path: string
+      type: "image" | "text"
+      size?: string
+      extension?: string
+    }[],
+  ): Promise<AgentSendResult> {
     const agent = this.agent
     if (!agent) {
       return { ok: false, error: "Agent 尚未就绪，请重试。" }
@@ -550,7 +607,7 @@ class AgentRunner {
       this.overflowDetected = false
     }
     // 显式 /skill: 触发在 main 侧展开正文（未命中原样透传）。
-    const expanded = this._expandSkillCommand(text)
+    let expanded = this._expandSkillCommand(text)
     this.beginSessionTurn(text)
     // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
     this.pendingSnapshotStart = this.captureSnapshot()
@@ -563,6 +620,18 @@ class AgentRunner {
         this.generateTitle(this.currentSessionId, text)
       }
     }
+
+    // 复制和处理待发送的文件/图片
+    let copiedFiles:
+      | { name: string; path: string; type: "image" | "text"; size?: string; extension?: string }[]
+      | null = null
+    if (files && files.length > 0 && this.currentSessionId) {
+      copiedFiles = this.processPendingFiles(this.currentSessionId, files)
+      this.pendingCopiedFiles = copiedFiles
+    } else {
+      this.pendingCopiedFiles = null
+    }
+
     try {
       await agent.prompt(expanded)
       // context-overflow 自动压缩重试一次（决策 9）：移除错误消息 → 强制压缩 → 续跑重试。
@@ -593,9 +662,23 @@ class AgentRunner {
         this.currentSessionId &&
         !this.hasSessionMessages(this.currentSessionId)
       ) {
-        agentSessionService.deleteSession(this.currentSessionId)
+        const sessionIdToDelete = this.currentSessionId
+        agentSessionService.deleteSession(sessionIdToDelete)
         this.setSessionId(null)
         this.sessionBinding = null
+
+        // 级联清理对应的物理附件文件夹
+        try {
+          const sessionDir = join(getAppDataRoot(), "session", sessionIdToDelete)
+          if (existsSync(sessionDir)) {
+            rmSync(sessionDir, { recursive: true, force: true })
+          }
+        } catch (err) {
+          console.error(
+            `Failed to clean up failed session attachments directory: ${sessionIdToDelete}`,
+            err,
+          )
+        }
       }
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
@@ -814,6 +897,22 @@ class AgentRunner {
       }
       if (entry.type === "message" || entry.type === "todo") {
         turnEntryIds.push(entry.external_id)
+
+        // 检测并删除附件文件
+        if (entry.type === "message") {
+          try {
+            const msg = JSON.parse(entry.payload) as AgentMessage
+            if (msg.role === "user" && msg.files) {
+              for (const file of msg.files) {
+                if (existsSync(file.path)) {
+                  rmSync(file.path, { force: true })
+                }
+              }
+            }
+          } catch {
+            // 忽略损坏的消息 payload
+          }
+        }
       }
     }
 
@@ -866,6 +965,22 @@ class AgentRunner {
       }
       this.eventSink?.({ type: "todo_updated", todos: this.todoList })
     }
+
+    // 删除区间文件后清理空文件夹
+    try {
+      const sessionDir = join(getAppDataRoot(), "session", sessionId)
+      const cleanEmptyDir = (dir: string) => {
+        if (existsSync(dir)) {
+          const filesList = readdirSync(dir)
+          if (filesList.length === 0) {
+            rmSync(dir, { recursive: true, force: true })
+          }
+        }
+      }
+      cleanEmptyDir(join(sessionDir, "image"))
+      cleanEmptyDir(join(sessionDir, "text"))
+      cleanEmptyDir(sessionDir)
+    } catch {}
   }
 
   // 重命名会话标题（仅当会话存在）。
@@ -944,6 +1059,16 @@ class AgentRunner {
       this.eventSink?.({ type: "todo_updated", todos: [] })
     }
     agentSessionService.deleteSession(sessionId)
+
+    // 删除会话附件文件夹
+    try {
+      const sessionDir = join(getAppDataRoot(), "session", sessionId)
+      if (existsSync(sessionDir)) {
+        rmSync(sessionDir, { recursive: true, force: true })
+      }
+    } catch (err) {
+      console.error(`Failed to delete session attachments directory for session: ${sessionId}`, err)
+    }
   }
 
   // 当前会话上下文。
@@ -1038,11 +1163,20 @@ class AgentRunner {
   private handleEvent(event: AgentEvent): void {
     if (this.currentRunGeneration < 0) return
     switch (event.type) {
+      case "message_start":
+        if (event.message.role === "user" && this.pendingCopiedFiles) {
+          event.message.files = this.pendingCopiedFiles
+        }
+        break
+
       case "message_end":
         // context-overflow 错误轮不落库：标记后由 send 自动压缩重试，避免污染真相源。
         if (this.isOverflowFailure(event.message)) {
           this.overflowDetected = true
         } else {
+          if (event.message.role === "user" && this.pendingCopiedFiles) {
+            event.message.files = this.pendingCopiedFiles
+          }
           this.runMessages.push(event.message)
         }
         break

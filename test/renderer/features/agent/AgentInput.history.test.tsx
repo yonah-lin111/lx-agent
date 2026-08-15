@@ -50,6 +50,9 @@ const renderInput = async (history: string[]) => {
         onPermissionRespond={vi.fn()}
         worktreeOptions={null}
         onWorktreeSelect={vi.fn()}
+        selectedFiles={[]}
+        onFilesChange={vi.fn()}
+        supportsImages={false}
         projectId="proj-1"
         projectPath="/proj"
       />

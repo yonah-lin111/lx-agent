@@ -135,5 +135,6 @@ export const useAgentModelSelect = () => {
     selectOptions,
     handleModelChange,
     suggestedQuestionsEnabled,
+    settings,
   }
 }

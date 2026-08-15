@@ -46,6 +46,13 @@ export interface UserMessage {
   role: "user"
   content: string | (TextContent | ImageContent)[]
   timestamp: number
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
 }
 
 // 助手消息。
@@ -367,6 +374,13 @@ export interface AgentSendContext {
   projectId?: string // 冗余：项目 id（聚合某项目全部 item 会话）
   page?: string // 非 item 会话的路由（'/' | '/project' | '/settings' …）
   cwd?: string // 工具执行目录（项目页 = project.path；独立页可省略，回退主目录）
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
 }
 
 // 会话能力快照（随会话冻结）。

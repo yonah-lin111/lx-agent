@@ -46,6 +46,7 @@ export const toChatMessage = (
       blocks: [{ kind: "text", text }],
       isStreaming: false,
       timestamp: message.timestamp,
+      files: message.files,
     }
   }
 

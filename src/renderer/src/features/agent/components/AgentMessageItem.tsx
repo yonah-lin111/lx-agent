@@ -23,6 +23,7 @@ import {
   type ExecutionGroupItem,
 } from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
+import { AgentMessageFiles } from "@/features/agent/components/AgentMessageFiles"
 import { AgentQuestionBlock } from "@/features/agent/components/AgentQuestionBlock"
 import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
 import { AgentSubagentBlock } from "@/features/agent/components/AgentSubagentBlock"
@@ -740,21 +741,24 @@ export const AgentMessageItem = ({
               </div>
             </div>
           ) : (
-            <div
-              className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
-              onCopy={handleBubbleCopy}
-            >
+            <>
+              {message.files && !isPinned && <AgentMessageFiles files={message.files} />}
               <div
-                ref={userContentRef}
-                className={
-                  isClamped
-                    ? `${clampLineClass} overflow-hidden`
-                    : "custom-scrollbar max-h-[50vh] overflow-y-auto"
-                }
+                className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
+                onCopy={handleBubbleCopy}
               >
-                {userText}
+                <div
+                  ref={userContentRef}
+                  className={
+                    isClamped
+                      ? `${clampLineClass} overflow-hidden`
+                      : "custom-scrollbar max-h-[50vh] overflow-y-auto"
+                  }
+                >
+                  {userText}
+                </div>
               </div>
-            </div>
+            </>
           )}
           {isEditing ? (
             <div className="mt-1 h-5" aria-hidden="true" />

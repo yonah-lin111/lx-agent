@@ -63,6 +63,7 @@ export interface ChatMessage {
   role: AgentMessage["role"]
   blocks: ChatBlock[]
   isStreaming: boolean
+  files?: { name: string; path: string; type: "image" | "text" }[]
   // 原始消息时间戳（删除一轮对话时定位 DB entry 用）。
   timestamp?: number
   error?: string

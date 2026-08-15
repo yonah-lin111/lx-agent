@@ -3,6 +3,7 @@ import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "../api/agentApi"
+import type { AgentInputFile } from "../components/AgentInputFiles"
 import type { ChatBlock, ChatMessage } from "../types"
 import {
   extractQuestionAnswers,
@@ -47,6 +48,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const { success: successToast, error: errorToast } = useLxToast()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<AgentInputFile[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   // 排队消息计数（流式输出期间发送的消息；订阅 queue_changed 维护权威值）。
   const [queuedCount, setQueuedCount] = useState(0)
@@ -480,7 +482,10 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 流式输出期间发送 → main 侧入队（deferred queue），当前 run 结束后自动发送；输入框立即清空。
   const sendMessage = useCallback(
     (contentToSend?: string, selection?: ModelSelection) => {
-      const text = (contentToSend ?? inputText).trim()
+      let text = (contentToSend ?? inputText).trim()
+      if (!text && selectedFiles.length > 0) {
+        text = `[发送了 ${selectedFiles.length} 个附件]`
+      }
       if (!text) return
       // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
       if (isCompacting) {
@@ -496,8 +501,22 @@ export const useAgentChat = (context?: AgentSendContext) => {
         )
         return
       }
+
+      const sendContext: AgentSendContext = {
+        ...context,
+        files: selectedFiles.map((file) => ({
+          name: file.name,
+          path: file.path,
+          type: file.type,
+          size: file.size,
+          extension: file.extension,
+        })),
+      }
+
       setInputText("")
-      void agentApi.send(text, selection, context).then((result) => {
+      setSelectedFiles([])
+
+      void agentApi.send(text, selection, sendContext).then((result) => {
         if (result.ok) {
           // 入队消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
           if (result.sessionId && !("queued" in result)) {
@@ -507,10 +526,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
         } else if (contentToSend === undefined) {
           // 发送失败（如队列已满）：回显输入，便于修改后重发。
           setInputText(text)
+          setSelectedFiles(
+            sendContext.files ? sendContext.files.map((f, i) => ({ id: `err-${i}`, ...f })) : [],
+          )
         }
       })
     },
-    [inputText, context, contextUsage, errorToast, isCompacting, isCompactingManual],
+    [inputText, selectedFiles, context, contextUsage, errorToast, isCompacting, isCompactingManual],
   )
 
   // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。
@@ -565,6 +587,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
     contextUsage,
     inputText,
     setInputText,
+    selectedFiles,
+    setSelectedFiles,
     isStreaming,
     isCompacting,
     isCompactingManual,

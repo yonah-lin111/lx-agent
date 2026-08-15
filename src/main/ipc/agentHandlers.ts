@@ -52,11 +52,27 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
   if (value === undefined) return true
   if (!value || typeof value !== "object") return false
   const context = value as Record<string, unknown>
+
+  const filesValid =
+    context.files === undefined ||
+    (Array.isArray(context.files) &&
+      context.files.every(
+        (f) =>
+          f &&
+          typeof f === "object" &&
+          typeof f.name === "string" &&
+          typeof f.path === "string" &&
+          (f.type === "image" || f.type === "text") &&
+          (f.size === undefined || typeof f.size === "string") &&
+          (f.extension === undefined || typeof f.extension === "string"),
+      ))
+
   return (
     isOptionalString(context.projectItemId) &&
     isOptionalString(context.projectId) &&
     isOptionalString(context.page) &&
-    isOptionalString(context.cwd)
+    isOptionalString(context.cwd) &&
+    filesValid
   )
 }
 

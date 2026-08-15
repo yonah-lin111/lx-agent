@@ -47,6 +47,8 @@ export const AgentPage = ({
     contextUsage,
     inputText,
     setInputText,
+    selectedFiles,
+    setSelectedFiles,
     isStreaming,
     isCompacting,
     isCompactingManual,
@@ -71,7 +73,23 @@ export const AgentPage = ({
     selectOptions,
     handleModelChange,
     suggestedQuestionsEnabled,
+    settings,
   } = useAgentModelSelect()
+
+  const supportsImages = useMemo(() => {
+    if (!selectedSelection) return false
+    const modelId = selectedSelection.model.toLowerCase()
+
+    // 如果 settings 存在，并且对应的模型配置存在，优先使用 modalities.input 进行校验
+    const modelConfig =
+      settings?.providers[selectedSelection.provider]?.models?.[selectedSelection.model]
+    if (modelConfig?.modalities?.input) {
+      return modelConfig.modalities.input.includes("image")
+    }
+
+    // 兜底智能判定：支持多模态的常见模型前缀/名字关键字
+    return modelId.includes("gpt-4o") || modelId.includes("claude-3") || modelId.includes("gemini")
+  }, [settings, selectedSelection])
 
   // 模型切换后立即刷新状态栏上下文窗口（不必等下一 turn 的 context_usage 推送；无会话时保持不显示）。
   useEffect(() => {
@@ -299,6 +317,9 @@ export const AgentPage = ({
         onPermissionRespond={respondPermission}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
+        selectedFiles={selectedFiles}
+        onFilesChange={setSelectedFiles}
+        supportsImages={supportsImages}
       />
       <AgentStatusBar projectPath={statusBarPath} contextUsage={contextUsage} />
     </div>

@@ -5,6 +5,7 @@ import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
@@ -18,6 +19,7 @@ import {
   AgentInputModelPanel,
   getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
+import { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
 import {
   PERMISSION_CONFIRM_OPTIONS,
@@ -66,6 +68,9 @@ interface AgentInputProps {
   worktreeOptions: GitWorktreeOption[] | null
   // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
   onWorktreeSelect: (path: string) => void
+  selectedFiles: AgentInputFile[]
+  onFilesChange: (files: AgentInputFile[]) => void
+  supportsImages: boolean
 }
 
 const INPUT_COMMANDS: AgentInputCommand[] = [
@@ -151,9 +156,70 @@ export const AgentInput = ({
   onPermissionRespond,
   worktreeOptions,
   onWorktreeSelect,
+  selectedFiles,
+  onFilesChange,
+  supportsImages,
 }: AgentInputProps): React.JSX.Element => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { error: errorToast } = useLxToast()
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const list = event.target.files
+    if (!list || list.length === 0) return
+
+    const nextFiles = [...selectedFiles]
+    for (let i = 0; i < list.length; i++) {
+      const file = list.item(i)
+      if (!file) continue
+
+      const path = window.api.getPathForFile(file)
+      if (!path) continue
+
+      // Check if file is already added
+      if (nextFiles.some((f) => f.path === path)) continue
+
+      // Classify type based on extension
+      const ext = file.name.split(".").pop()?.toLowerCase() || ""
+      const isImage = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg"].includes(ext)
+      const type: "image" | "text" = isImage ? "image" : "text"
+
+      // Check image modality support
+      if (type === "image" && !supportsImages) {
+        errorToast("当前所选模型不支持图片多模态输入，请切换模型。")
+        continue
+      }
+
+      // Calculate formatted size
+      const sizeBytes = file.size
+      let sizeStr = "0 B"
+      if (sizeBytes >= 1024 * 1024) {
+        sizeStr = `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+      } else if (sizeBytes >= 1024) {
+        sizeStr = `${(sizeBytes / 1024).toFixed(1)} KB`
+      } else {
+        sizeStr = `${sizeBytes} B`
+      }
+
+      nextFiles.push({
+        id: `f-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+        name: file.name,
+        path,
+        type,
+        size: sizeStr,
+        extension: ext.toUpperCase(),
+      })
+    }
+
+    onFilesChange(nextFiles)
+    // Clear input so same files can be re-selected if removed
+    event.target.value = ""
+  }
+
+  const handleRemoveFile = (id: string): void => {
+    onFilesChange(selectedFiles.filter((f) => f.id !== id))
+  }
   // 合并内部 ref 与外部 ref，父级可聚焦/回显输入框。
   const mergedTextareaRef = useCallback(
     (node: HTMLTextAreaElement | null): void => {
@@ -640,15 +706,25 @@ export const AgentInput = ({
   }
 
   const addButton = (
-    <LxIconButton
-      shape="circle"
-      preset="add"
-      aria-label="添加附件"
-      title={{ content: "添加附件", placement: "top" }}
-      hoverBgClass="hover:bg-white/20"
-      hoverTextClass="hover:text-white"
-      className="bg-white/10 !text-white/70"
-    />
+    <>
+      <input
+        type="file"
+        multiple
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <LxIconButton
+        shape="circle"
+        preset="add"
+        aria-label="添加附件"
+        title={{ content: "添加附件", placement: "top" }}
+        hoverBgClass="hover:bg-white/20"
+        hoverTextClass="hover:text-white"
+        className="bg-white/10 !text-white/70"
+        onClick={() => fileInputRef.current?.click()}
+      />
+    </>
   )
 
   const actionButton = isStreaming ? (
@@ -681,7 +757,7 @@ export const AgentInput = ({
       aria-label="发送消息"
       title={{ content: "发送消息 (Enter)", placement: "top" }}
       onClick={handleSend}
-      disabled={!inputText.trim()}
+      disabled={!inputText.trim() && selectedFiles.length === 0}
       hoverBgClass="hover:bg-white/90"
       className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
     >
@@ -717,6 +793,7 @@ export const AgentInput = ({
           </div>
         </LxTooltip>
       )}
+      <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
         className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"

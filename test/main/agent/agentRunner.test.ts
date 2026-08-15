@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -833,6 +833,67 @@ describe("agentRunner 持久化", () => {
       ).toHaveLength(0)
     } finally {
       rmSync(gitDir, { recursive: true, force: true })
+    }
+  })
+
+  it("发送附件文件并写入 message.files，并在删除消息轮时一并清理物理文件和文件夹", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "你好" }])]
+
+    // 创建测试临时文件
+    const srcFileDir = mkdtempSync(join(tmpdir(), "lx-src-attachment-"))
+    const srcFilePath = join(srcFileDir, "test-attachment.txt")
+    writeFileSync(srcFilePath, "附件正文内容")
+
+    try {
+      const result = await agentRunner.send("hello with attachments", undefined, {
+        page: "/",
+        cwd: "/tmp",
+        files: [
+          {
+            name: "test-attachment.txt",
+            path: srcFilePath,
+            type: "text",
+          },
+        ],
+      })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      // 验证物理文件是否成功复制到 ~/.lx/session/<sessionId>/text/ 目录中
+      const destDir = join(holder.appDataRoot, "session", result.sessionId)
+      const destFilePath = join(destDir, "text", "test-attachment.txt")
+      expect(existsSync(destFilePath)).toBe(true)
+      expect(readFileSync(destFilePath, "utf8")).toBe("附件正文内容")
+
+      // 验证数据库中 payload 存储了 files 列表
+      const entries = holder
+        .db!.prepare(
+          "SELECT * FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+        )
+        .all(result.sessionId) as Array<{ type: string; payload: string }>
+
+      const userMsgEntry = entries.find((e) => {
+        const p = JSON.parse(e.payload)
+        return p.role === "user"
+      })
+      expect(userMsgEntry).toBeDefined()
+      const payload = JSON.parse(userMsgEntry!.payload)
+      expect(payload.files).toBeDefined()
+      expect(payload.files[0]).toMatchObject({
+        name: "test-attachment.txt",
+        type: "text",
+        path: destFilePath,
+      })
+
+      // 验证删除消息轮时，附件文件和空目录被清理
+      const userTimestamps = readUserTimestamps(result.sessionId)
+      expect(userTimestamps).toHaveLength(1)
+      agentRunner.deleteMessageTurn(result.sessionId, userTimestamps[0]!)
+      expect(existsSync(destFilePath)).toBe(false)
+      expect(existsSync(destDir)).toBe(false) // 空目录应当一并被清理
+    } finally {
+      rmSync(srcFileDir, { recursive: true, force: true })
     }
   })
 })
