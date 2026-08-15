@@ -116,7 +116,8 @@ export const AgentInputFiles = ({
                   color={isImage ? "blue" : "teal"}
                   prefix={prefixIcon}
                   onClose={() => onRemove(file.id)}
-                  closeTooltipContent="确认移除此文件？"
+                  confirmClose={false}
+                  closeTooltipContent="移除此文件"
                 >
                   {file.name}
                 </LxTag>

@@ -1,6 +1,27 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 import type { AgentTool, LlmMessage } from "@/agent/core/types"
+
+// 模拟 electron 及其 nativeImage 原生压缩方法
+vi.mock("electron", () => {
+  const mockSize = { width: 2000, height: 1000 }
+  const mockBuffer = Buffer.from("compressed-image-data")
+  const resizeMock = vi.fn().mockImplementation(() => ({
+    toJPEG: vi.fn().mockReturnValue(mockBuffer),
+  }))
+  const isEmptyMock = vi.fn().mockReturnValue(false)
+
+  return {
+    nativeImage: {
+      createFromPath: vi.fn().mockImplementation(() => ({
+        isEmpty: isEmptyMock,
+        getSize: () => mockSize,
+        resize: resizeMock,
+      })),
+    },
+  }
+})
+
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
 
 // 构造 LlmMessage 列表：user + 带工具调用的 assistant + toolResult。
@@ -90,6 +111,30 @@ describe("toModelMessages", () => {
     expect(result[0]).toEqual({
       role: "user",
       content: [{ type: "image", image: "data:image/png;base64,aGVsbG8=" }],
+    })
+  })
+
+  it("user 消息携带 files 图片附件时，应用 nativeImage 比例缩放与 JPEG 压缩", () => {
+    const result = toModelMessages([
+      {
+        role: "user",
+        content: "附带图片的测试",
+        files: [
+          {
+            name: "test.png",
+            path: "/path/to/test.png",
+            type: "image",
+          },
+        ],
+      } as any,
+    ])
+
+    expect(result[0]).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: "附带图片的测试" },
+        { type: "image", image: "data:image/jpeg;base64,Y29tcHJlc3NlZC1pbWFnZS1kYXRh" },
+      ],
     })
   })
 })

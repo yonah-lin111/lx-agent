@@ -29,6 +29,7 @@ export interface LxTagProps {
   highlighted?: boolean
   onClick?: (event: React.MouseEvent<HTMLSpanElement>) => void
   onClose?: () => void
+  confirmClose?: boolean
   closeTooltipContent?: React.ReactNode
   color?: LxTagColor
   bgClass?: string
@@ -126,6 +127,7 @@ export const LxTag = ({
   highlighted = false,
   onClick,
   onClose,
+  confirmClose = true,
   closeTooltipContent = "确认删除此标签？",
   color = "default",
   bgClass,
@@ -159,16 +161,32 @@ export const LxTag = ({
         <span className="flex shrink-0 items-center gap-0.5">
           {suffix}
           {onClose && (
-            <LxTooltip content={closeTooltipContent} onConfirm={onClose} placement="top">
-              <span
-                aria-label="删除标签"
-                className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
-                role="button"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <X className={currentStyles.closeIconSize} />
-              </span>
-            </LxTooltip>
+            confirmClose ? (
+              <LxTooltip content={closeTooltipContent} onConfirm={onClose} placement="top">
+                <span
+                  aria-label="删除标签"
+                  className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
+                  role="button"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <X className={currentStyles.closeIconSize} />
+                </span>
+              </LxTooltip>
+            ) : (
+              <LxTooltip content={closeTooltipContent} placement="top">
+                <span
+                  aria-label="删除标签"
+                  className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
+                  role="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onClose()
+                  }}
+                >
+                  <X className={currentStyles.closeIconSize} />
+                </span>
+              </LxTooltip>
+            )
           )}
         </span>
       )}

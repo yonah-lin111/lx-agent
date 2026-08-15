@@ -1,3 +1,4 @@
+import { nativeImage } from "electron"
 import { readFileSync } from "node:fs"
 import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
 import type { ModelMessage } from "ai"
@@ -53,15 +54,41 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] =>
           for (const file of agentMsg.files) {
             if (file.type === "image") {
               try {
-                const base64Data = readFileSync(file.path).toString("base64")
-                const ext = file.name.split(".").pop()?.toLowerCase() || ""
-                let mimeType = "image/png"
-                if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg"
-                else if (ext === "gif") mimeType = "image/gif"
-                else if (ext === "webp") mimeType = "image/webp"
-                else if (ext === "svg") mimeType = "image/svg+xml"
-                else if (ext === "avif") mimeType = "image/avif"
-                else if (ext === "bmp") mimeType = "image/bmp"
+                let base64Data: string
+                let mimeType = "image/jpeg" // 压缩为 JPEG 格式
+
+                const img = nativeImage.createFromPath(file.path)
+                if (!img.isEmpty()) {
+                  const size = img.getSize()
+                  const maxDim = 1024
+                  let width = size.width
+                  let height = size.height
+
+                  if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                      height = Math.round((height * maxDim) / width)
+                      width = maxDim
+                    } else {
+                      width = Math.round((width * maxDim) / height)
+                      height = maxDim
+                    }
+                  }
+
+                  const resizedImg = img.resize({ width, height, quality: "better" })
+                  const jpegBuffer = resizedImg.toJPEG(80)
+                  base64Data = jpegBuffer.toString("base64")
+                } else {
+                  // 兜底降级：如果 nativeImage 加载失败，则读取原文件字节并判定 MIME 类型
+                  base64Data = readFileSync(file.path).toString("base64")
+                  const ext = file.name.split(".").pop()?.toLowerCase() || ""
+                  mimeType = "image/png"
+                  if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg"
+                  else if (ext === "gif") mimeType = "image/gif"
+                  else if (ext === "webp") mimeType = "image/webp"
+                  else if (ext === "svg") mimeType = "image/svg+xml"
+                  else if (ext === "avif") mimeType = "image/avif"
+                  else if (ext === "bmp") mimeType = "image/bmp"
+                }
 
                 contentArray.push({
                   type: "image" as const,
