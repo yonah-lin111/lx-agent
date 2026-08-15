@@ -265,6 +265,15 @@ export const MarkdownEditorToolbar = ({
   const [pageListQuery, setPageListQuery] = useState("")
   const pageNameBeforeEditRef = useRef(pageName)
 
+  // Auto-focus and edit page name when a new page is created
+  const prevPagesLengthRef = useRef(pages.length)
+  useEffect(() => {
+    if (pages.length > prevPagesLengthRef.current) {
+      setIsEditingPageName(true)
+    }
+    prevPagesLengthRef.current = pages.length
+  }, [pages.length])
+
   // --- TOC DIRECTORY STATE & PARSING ---
   const [tocTab, setTocTab] = useState<"template" | "heading">("template")
   const [tocQuery, setTocQuery] = useState("")

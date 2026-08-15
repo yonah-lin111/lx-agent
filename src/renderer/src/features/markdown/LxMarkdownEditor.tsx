@@ -188,6 +188,7 @@ const lineFlashField = StateField.define<DecorationSet>({
  * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
  */
 export const LxMarkdownEditor = ({
+  itemId,
   initialContent = "",
   pages,
   onChange,
@@ -215,14 +216,37 @@ export const LxMarkdownEditor = ({
   const activePageIndexRef = useRef(0)
   const onPagesChangeRef = useRef(onPagesChange)
 
-  const [content, setContent] = useState(() =>
-    pageMode && pages?.length
-      ? (pages[pages.length - 1]?.content ?? initialContent)
-      : initialContent,
-  )
-  const [activePageIndex, setActivePageIndex] = useState(() =>
-    pageMode && pages?.length ? pages.length - 1 : 0,
-  )
+  const [content, setContent] = useState(() => {
+    if (pageMode && pages?.length) {
+      let index = pages.length - 1
+      if (itemId) {
+        const saved = localStorage.getItem(`lx-md-active-page-${itemId}`)
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10)
+          if (parsed >= 0 && parsed < pages.length) {
+            index = parsed
+          }
+        }
+      }
+      return pages[index]?.content ?? initialContent
+    }
+    return initialContent
+  })
+  const [activePageIndex, setActivePageIndex] = useState(() => {
+    if (pageMode && pages?.length) {
+      if (itemId) {
+        const saved = localStorage.getItem(`lx-md-active-page-${itemId}`)
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10)
+          if (parsed >= 0 && parsed < pages.length) {
+            return parsed
+          }
+        }
+      }
+      return pages.length - 1
+    }
+    return 0
+  })
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [activeLine, setActiveLine] = useState(1)
@@ -321,6 +345,9 @@ export const LxMarkdownEditor = ({
   const switchPage = (index: number): void => {
     if (!pages || index < 0 || index >= pages.length || index === activePageIndex) return
     setActivePageIndex(index)
+    if (itemId) {
+      localStorage.setItem(`lx-md-active-page-${itemId}`, index.toString())
+    }
   }
 
   /**
@@ -334,7 +361,11 @@ export const LxMarkdownEditor = ({
     }
     const nextPages = [...(pages ?? []), nextPage]
     onPagesChangeRef.current?.(nextPages)
-    setActivePageIndex(nextPages.length - 1)
+    const nextIndex = nextPages.length - 1
+    setActivePageIndex(nextIndex)
+    if (itemId) {
+      localStorage.setItem(`lx-md-active-page-${itemId}`, nextIndex.toString())
+    }
   }
 
   /**
@@ -355,7 +386,11 @@ export const LxMarkdownEditor = ({
     if (!pages || pages.length <= 1) return
     const nextPages = pages.filter((_, index) => index !== activePageIndex)
     onPagesChangeRef.current?.(nextPages)
-    setActivePageIndex(Math.min(activePageIndex, nextPages.length - 1))
+    const nextIndex = Math.min(activePageIndex, nextPages.length - 1)
+    setActivePageIndex(nextIndex)
+    if (itemId) {
+      localStorage.setItem(`lx-md-active-page-${itemId}`, nextIndex.toString())
+    }
   }
 
   const switchPageRef = useRef(switchPage)

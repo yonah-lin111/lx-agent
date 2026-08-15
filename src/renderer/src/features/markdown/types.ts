@@ -57,6 +57,7 @@ export interface MarkdownPage {
 
 // Markdown 编辑器属性。
 export interface LxMarkdownEditorProps {
+  itemId?: string
   initialContent?: string
   pages?: MarkdownPage[]
   onChange?: (content: string) => void

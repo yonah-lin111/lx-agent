@@ -72,6 +72,7 @@ export const ProjectPage = (): React.JSX.Element => {
       {!isItemLoading && hasItem && (
         <LxMarkdownEditor
           key={itemId}
+          itemId={itemId ?? undefined}
           initialContent={pages[0]?.content ?? ""}
           pages={pages}
           pageMode
