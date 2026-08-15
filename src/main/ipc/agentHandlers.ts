@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import type {
   AgentEvent,
   AgentMessage,
@@ -212,6 +214,8 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       return generateSuggestedQuestions(messages, excluded)
     },
   )
+
+  ipcMain.handle(AGENT_CHANNELS.getDefaultPath, () => join(homedir(), "Desktop"))
 
   ipcMain.handle(AGENT_CHANNELS.restore, (_, messages: unknown) => {
     if (!Array.isArray(messages) || !messages.every(isValidAgentMessage)) {

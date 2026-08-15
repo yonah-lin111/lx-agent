@@ -472,6 +472,8 @@ export interface AgentApi {
       messages: SuggestedQuestionContextMessage[],
       excludedQuestions?: string[],
     ) => Promise<string[]>
+    // 获取系统默认的桌面路径（做梦的路径）
+    getDefaultPath: () => Promise<string>
     // 响应权限确认请求（requestId 匹配 main 侧挂起的请求）。
     permissionRespond: (response: PermissionResponse) => Promise<{ ok: boolean }>
     // 响应提问请求（requestId 匹配 main 侧挂起的提问；answers 或 dismissed）。

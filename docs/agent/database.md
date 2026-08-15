@@ -154,7 +154,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_call_entry
 ```
 
 - 能力快照：`active_capabilities` entry 随会话落库；装配时默认能力集 = `capabilityService.getDefaultCapabilities()`（`DEFAULT_TOOLS` 九工具，MCP/skill 为空——实际装配由 runner 从管理器**全量**取）。
-- `cwd`：建会话时冻结（item 会话 = 项目路径；页面会话 = `os.homedir()`）；恢复会话沿用快照 `cwd`（`agent_session.cwd`）。
+- `cwd`：建会话时冻结（item 会话 = 项目路径；页面会话 = 桌面路径 `join(os.homedir(), "Desktop")`）；恢复会话沿用快照 `cwd`（`agent_session.cwd`）。
 
 ## 4. 数据流与写入时机
 

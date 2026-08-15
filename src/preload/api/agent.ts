@@ -35,6 +35,7 @@ export const agentApi: AgentApi["agent"] = {
   installLspServers: () => ipcRenderer.invoke(AGENT_CHANNELS.installLspServers),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
+  getDefaultPath: () => ipcRenderer.invoke(AGENT_CHANNELS.getDefaultPath),
   permissionRespond: (response: PermissionResponse) =>
     ipcRenderer.invoke(AGENT_CHANNELS.permissionResponse, response),
   questionRespond: (response: QuestionResponse) =>

@@ -10,7 +10,7 @@
 |---|------|------|
 | 1 | Agent 核心运行位置 | **main 进程**：LLM 调用、工具执行、会话状态全部在 main；renderer 纯 UI，经 IPC 订阅事件流 |
 | 2 | 实现路径 | **移植 pi agent-core**（`types.ts` / `agent.ts` / `agent-loop.ts` / `stream-fn.ts` / `event-stream.ts` / `validate.ts`），schema 体系由 typebox 换为 **zod**；LLM 调用经 **AI SDK streamFn 适配器**注入；harness 不搬代码，仅留口（见 [harness.md](./harness.md)） |
-| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd；路径类工具统一经 `resolveToCwd` 只允许 cwd 内路径（越界拒绝）；内置工具全集（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`/`web_search`）；写工具经 file-mutation-queue 串行化，bash 超时 + cwd 限制 + 进程树清理 |
+| 3 | 工具权限 | 会话绑定**激活项目目录**为 cwd（新对话默认为系统桌面路径）；路径类工具统一经 `resolveToCwd` 优先以 cwd 解析（不限制在项目目录内）；内置工具全集（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`/`web_search`）；写工具经 file-mutation-queue 串行化，bash 超时 + 进程树清理 |
 | 3.1 | 工具范围演进 | v1 曾定"首版纯只读"；已升级为**全内置工具集**（含写工具），只读约束取消；安全边界见 [harness.md](./harness.md) 信任模型 |
 | 3.2 | 联网搜索 | `web_search` 复用 memory-curator-agent 方案：**Exa 优先、Tavily 兜底**，Key 配于 `~/.lx/config.json` 的 `ai.webSearch`，无 Key 保留匿名直连；详见 [extensions.md](./extensions.md) §5 |
 | 3.3 | 页面能力限制 | **已移除**：所有会话一律**全量能力**（内置九工具 + 全部已连接 MCP + 全部可用 skill）；`config.json` 的 `agent.pages` 配置废弃（见 [database.md](./database.md) §3） |
@@ -79,7 +79,7 @@ src/main/agent/                  # 仅主进程可运行的 Agent 能力
     toModelMessages.ts           # LlmMessage → AI SDK ModelMessage + toAiTools（AgentTool → SDK tool）
   tools/
     registry.ts                  # ToolRegistry：注册、激活、cwd 绑定、名字冲突检测
-    path-utils.ts                # resolveToCwd/pathExists：路径安全解析（`..` 逃逸/越界拒绝）
+    path-utils.ts                # resolveToCwd/pathExists：路径优先以 cwd 解析（不限制在项目目录内）
     truncate.ts                  # DEFAULT_MAX_LINES/BYTES/GREP_MAX_LINE_LENGTH + 截断工具
     file-mutation-queue.ts       # withFileMutationQueue：同文件写串行化（edit/write 内部使用）
     search.ts                    # walkFiles/globToRegExp/readFileText（grep/find 纯 Node 降级共享）

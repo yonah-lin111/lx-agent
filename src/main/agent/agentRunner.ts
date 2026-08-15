@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
+import { join } from "node:path"
 import type {
   AgentCapabilitySnapshot,
   AgentCompactResult,
@@ -415,7 +416,7 @@ class AgentRunner {
       projectId: context.projectId,
       page: context.page,
     }
-    const cwd = context.cwd ?? (context.projectItemId ? resolveCwd() : homedir())
+    const cwd = context.cwd ?? (context.projectItemId ? resolveCwd() : join(homedir(), "Desktop"))
     if (cwd) this.requestedCwd = cwd
     const snapshot = getDefaultCapabilities()
     this.activeCapabilities = snapshot.tools

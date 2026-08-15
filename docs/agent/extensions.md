@@ -53,14 +53,14 @@ interface ToolRegistry {
 
 - **注册全集，按能力集激活**：先注册全部内置工具（`read`/`ls`/`grep`/`find`/`write`/`edit`/`bash`/`time`/`todowrite`/`web_search`/`webfetch`/`task`/`question`/`lsp`）+ 已连接 MCP 工具（`wrapMcpTool`，仅命中 `activeMcp` 的注册）+ 条件注册 `read_skill`（存在可用 skill 时）；再 `setActive` 过滤 `ALL_TOOL_NAMES` + 实际注册的 MCP 全名 + `read_skill`。
 - `ALL_TOOL_NAMES` = 内置十四工具（不含 `read_skill`，后者按 `withReadSkill` 单独处理）。
-- cwd 来自会话冻结的项目目录（`freezeNewSession`），工具创建时注入；路径类工具统一经 `resolveToCwd` 解析。
+- cwd 来自会话冻结的项目目录（`freezeNewSession`，未设置时默认为系统桌面路径），工具创建时注入；路径类工具统一经 `resolveToCwd` 解析。
 - 能力指纹（`activeCapabilities` + `activeMcp` + 注入 skill 名）任一变化即重建装配（`ensureReady` 内比对 `builtSignature`）。
 
 ## 3. 内置工具清单
 
 | 工具 | 参数 schema | 说明 |
 |------|-------------|------|
-| `read` | `{ path: string; offset?: number; limit?: number }` | 读取 cwd 内文件。相对路径解析，`..` 逃逸或绝对路径越界拒绝；`offset`/`limit` 行号分页（1 起始）；输出截断 `DEFAULT_MAX_LINES` 行或 `DEFAULT_MAX_BYTES` 字节；二进制返回文件信息 |
+| `read` | `{ path: string; offset?: number; limit?: number }` | 读取文件。优先相对当前 cwd（当前目录）解析，不限制在项目目录内；`offset`/`limit` 行号分页（1 起始）；输出截断 `DEFAULT_MAX_LINES` 行或 `DEFAULT_MAX_BYTES` 字节；二进制返回文件信息 |
 | `ls` | `{ path?: string; limit?: number }` | 列出目录条目。字母序（大小写不敏感）、目录加 `/` 后缀、含 dotfiles；默认 `limit=500`；超限注明 |
 | `grep` | `{ pattern; path?; glob?; ignoreCase?; literal?; context?; limit? }` | 内容搜索。优先系统 `rg`，缺失降级纯 Node 正则扫描（均忽略 `node_modules`/`.git`）；默认 `limit=100`；单行超 `GREP_MAX_LINE_LENGTH` 截断 |
 | `find` | `{ pattern; path?; limit? }` | glob 文件搜索。优先系统 `fd`，缺失降级纯 Node `readdir` 递归 + glob；默认 `limit=1000`；相对搜索根输出 |
@@ -76,7 +76,7 @@ interface ToolRegistry {
 
 说明：
 
-- **路径安全**：所有涉及文件路径的工具统一经 `resolveToCwd` 解析，`..` 逃逸或绝对路径越界拒绝。
+- **路径解析**：所有涉及文件路径的工具统一经 `resolveToCwd` 解析，相对路径优先以当前目录 cwd 展开，但不限制在项目目录内，允许访问其它外部路径。
 - **输出上限**：`DEFAULT_MAX_LINES = 2000`、`DEFAULT_MAX_BYTES = 50KB`、`GREP_MAX_LINE_LENGTH = 500`；超限结果注明截断。
 - **bash 安全边界**：仅强制超时 + cwd 限制 + 进程树清理；执行前确认归 harness 信任模型（见 [harness.md](./harness.md) §3）。
 - **grep/find 混合依赖**：优先系统 `rg`/`fd`（性能），缺失时降级纯 Node；不捆绑二进制，跨平台零部署成本。

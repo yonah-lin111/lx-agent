@@ -52,6 +52,7 @@ export const agentApi = {
     messages: SuggestedQuestionContextMessage[],
     excludedQuestions?: string[],
   ): Promise<string[]> => window.api.agent.suggestedQuestions(messages, excludedQuestions),
+  getDefaultPath: (): Promise<string> => window.api.agent.getDefaultPath(),
   permissionRespond: (response: PermissionResponse): Promise<{ ok: boolean }> =>
     window.api.agent.permissionRespond(response),
   questionRespond: (response: QuestionResponse): Promise<{ ok: boolean }> =>

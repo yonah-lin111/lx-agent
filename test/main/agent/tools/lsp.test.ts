@@ -68,7 +68,7 @@ const makeTool = (
 }
 
 describe("createLspTool", () => {
-  it("越界路径拒绝", async () => {
+  it("越界路径不拒绝并正常寻找", async () => {
     const { tool } = makeTool({ error: "unused" })
     const result = await tool.execute("1", {
       operation: "goToDefinition",
@@ -77,7 +77,7 @@ describe("createLspTool", () => {
       character: 1,
     })
     expect(result.content[0]).toMatchObject({ type: "text" })
-    expect((result.content[0] as { text: string }).text).toContain("拒绝访问项目目录之外的文件")
+    expect((result.content[0] as { text: string }).text).toContain("文件不存在: ../escape.ts")
   })
 
   it("目标文件不存在显式报错（而非静默 0 处）", async () => {

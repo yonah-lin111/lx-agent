@@ -87,11 +87,19 @@ export const AgentPage = ({
     return subscribeSettingsChanged("models", refresh)
   }, [refreshContextUsage])
 
+  const [defaultPath, setDefaultPath] = useState<string>("")
+
+  useEffect(() => {
+    void agentApi.getDefaultPath().then((path) => {
+      setDefaultPath(path)
+    })
+  }, [])
+
   const currentSessionPath = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionPath,
   )
-  const statusBarPath = currentSessionPath ?? currentProjectPath
+  const statusBarPath = currentSessionPath ?? currentProjectPath ?? defaultPath
 
   // git 工作区列表（/gitWorktree 二级面板数据源；当前会话 cwd 即工作区绑定）。
   const { worktrees, projectBranch } = useGitWorktrees(currentProjectPath)

@@ -80,11 +80,17 @@ describe("read / write / edit", () => {
     expect(toolText(r)).toMatch(/offset=5/)
   })
 
-  it("read 拒绝越界路径", async () => {
+  it("read 允许越界路径（操作其他目录内容）", async () => {
     const cwd = await makeTmp()
-    const read = createReadTool(cwd)
-    const r = await read.execute("t1", { path: "../outside" })
-    expect(toolText(r)).toMatch(/拒绝访问/)
+    const outsidePath = join(cwd, "../outside.txt")
+    await writeFile(outsidePath, "outside content", "utf-8")
+    try {
+      const read = createReadTool(cwd)
+      const r = await read.execute("t1", { path: "../outside.txt" })
+      expect(toolText(r)).toContain("outside content")
+    } finally {
+      await rm(outsidePath, { force: true })
+    }
   })
 
   it("edit 替换并产出结构化 diff", async () => {
