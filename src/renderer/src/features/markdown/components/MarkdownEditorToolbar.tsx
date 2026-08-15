@@ -1,9 +1,21 @@
-import { ChevronLeft, ChevronRight, Keyboard, Plus, Search, Table2, Trash2 } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Keyboard,
+  List,
+  Plus,
+  Search,
+  Table2,
+  Trash2,
+} from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  getMarkdownTemplateStatus,
+  getMarkdownTemplateStatuses,
+} from "@/features/markdown/commands/markdownBlockCommands"
 import type {
   MarkdownPage,
   MarkdownTableSize,
@@ -24,6 +36,179 @@ interface MarkdownEditorToolbarProps {
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
   onDeletePage?: () => void
+  content?: string
+  activeLine?: number
+  onScrollToLine?: (line: number) => void
+}
+
+interface MarkdownEditorTOCProps {
+  tocTab: "template" | "heading"
+  setTocTab: (tab: "template" | "heading") => void
+  tocQuery: string
+  setTocQuery: (query: string) => void
+  filteredTemplates: any[]
+  filteredHeadings: any[]
+  activeTemplate: any | null
+  activeHeading: any | null
+  getTemplateItemClass: (status: "todo" | "in_progress" | "done", isActive: boolean) => string
+  getHeadingItemClass: (isActive: boolean) => string
+  onScrollToLine?: (line: number) => void
+  onClose: () => void
+}
+
+const MarkdownEditorTOC = ({
+  tocTab,
+  setTocTab,
+  tocQuery,
+  setTocQuery,
+  filteredTemplates,
+  filteredHeadings,
+  activeTemplate,
+  activeHeading,
+  getTemplateItemClass,
+  getHeadingItemClass,
+  onScrollToLine,
+  onClose,
+}: MarkdownEditorTOCProps): React.JSX.Element => {
+  const listboxRef = useRef<HTMLDivElement>(null)
+  const [isReady, setIsReady] = useState(false)
+
+  const handleTabChange = (tab: "template" | "heading") => {
+    setIsReady(false)
+    setTocTab(tab)
+    setTocQuery("")
+  }
+
+  useEffect(() => {
+    const listbox = listboxRef.current
+    if (!listbox) return
+
+    const activeEl = listbox.querySelector('[data-active="true"]') as HTMLElement | null
+    if (!activeEl) {
+      setIsReady(true)
+      return
+    }
+
+    // Centered scrollbar immediately while invisible
+    listbox.scrollTop = activeEl.offsetTop - listbox.clientHeight / 2 + activeEl.clientHeight / 2
+
+    // Fade in beautifully once layout commits
+    const timer = setTimeout(() => {
+      setIsReady(true)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [tocTab])
+
+  return (
+    <div className="flex w-64 flex-col gap-2" aria-label="页面大纲列表">
+      <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5">
+        <button
+          type="button"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] px-2 py-1 text-xs transition-colors ${
+            tocTab === "template"
+              ? "bg-white/10 text-white font-semibold"
+              : "text-white/70 hover:bg-white/5 hover:text-white"
+          }`}
+          onClick={() => handleTabChange("template")}
+        >
+          <span>模版块目录</span>
+        </button>
+
+        <button
+          type="button"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] px-2 py-1 text-xs transition-colors ${
+            tocTab === "heading"
+              ? "bg-white/10 text-white font-semibold"
+              : "text-white/70 hover:bg-white/5 hover:text-white"
+          }`}
+          onClick={() => handleTabChange("heading")}
+        >
+          <span>标题目录</span>
+        </button>
+      </div>
+
+      <LxInput
+        aria-label="搜索大纲"
+        placeholder={tocTab === "template" ? "搜索模版块..." : "搜索标题..."}
+        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+        size="xs"
+        value={tocQuery}
+        onChange={(event) => setTocQuery(event.target.value)}
+      />
+
+      <div
+        ref={listboxRef}
+        className={`relative max-h-60 overflow-y-auto custom-scrollbar transition-opacity duration-150 ${
+          isReady ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div className="space-y-0.5">
+          {tocTab === "template" ? (
+            <>
+              {filteredTemplates.map((t) => {
+                const isActive = activeTemplate?.id === t.id
+                const TEMPLATE_COMMAND_COLORS: Record<string, string> = {
+                  addTemplate: "#34d399",
+                  bugTemplate: "#fb7185",
+                  refactorTemplate: "#c084fc",
+                  commonTemplate: "#38bdf8",
+                }
+                const textStyle = t.hasCustomTitle
+                  ? { color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.6)" }
+                  : { color: TEMPLATE_COMMAND_COLORS[t.command] || "rgba(255, 255, 255, 0.7)" }
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    data-active={isActive ? "true" : undefined}
+                    className={getTemplateItemClass(t.status, isActive)}
+                    onClick={() => {
+                      onScrollToLine?.(t.line)
+                      onClose()
+                    }}
+                  >
+                    <span className="min-w-0 truncate" style={textStyle}>
+                      {t.title}
+                    </span>
+                    <span className="ml-auto text-[10px] opacity-40 shrink-0">L{t.line}</span>
+                  </button>
+                )
+              })}
+              {filteredTemplates.length === 0 && (
+                <div className="py-4 text-center text-xs text-white/45">未找到匹配的模版块</div>
+              )}
+            </>
+          ) : (
+            <>
+              {filteredHeadings.map((h) => {
+                const isActive = activeHeading?.id === h.id
+                const indent = (h.level - 1) * 8 + 8
+                return (
+                  <button
+                    key={h.id}
+                    type="button"
+                    data-active={isActive ? "true" : undefined}
+                    style={{ paddingLeft: `${indent}px` }}
+                    className={getHeadingItemClass(isActive)}
+                    onClick={() => {
+                      onScrollToLine?.(h.line)
+                      onClose()
+                    }}
+                  >
+                    <span className="min-w-0 truncate">{h.title}</span>
+                    <span className="ml-auto text-[10px] opacity-40 shrink-0">L{h.line}</span>
+                  </button>
+                )
+              })}
+              {filteredHeadings.length === 0 && (
+                <div className="py-4 text-center text-xs text-white/45">未找到匹配的标题</div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const markdownShortcuts = [
@@ -68,6 +253,9 @@ export const MarkdownEditorToolbar = ({
   onPageNameChange,
   onCreatePage,
   onDeletePage,
+  content = "",
+  activeLine = 1,
+  onScrollToLine,
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
@@ -76,6 +264,212 @@ export const MarkdownEditorToolbar = ({
   const [isPageListOpen, setIsPageListOpen] = useState(false)
   const [pageListQuery, setPageListQuery] = useState("")
   const pageNameBeforeEditRef = useRef(pageName)
+
+  // --- TOC DIRECTORY STATE & PARSING ---
+  const [tocTab, setTocTab] = useState<"template" | "heading">("template")
+  const [tocQuery, setTocQuery] = useState("")
+  const [isTocOpen, setIsTocOpen] = useState(false)
+
+  // 1. Parse templates
+  interface TemplateBlockInfo {
+    title: string
+    command: string
+    status: "todo" | "in_progress" | "done"
+    line: number
+    id: string
+    hasCustomTitle: boolean
+  }
+
+  const templates = useMemo<TemplateBlockInfo[]>(() => {
+    if (!content) return []
+    const lines = content.split("\n")
+    const result: TemplateBlockInfo[] = []
+    let currentStart: {
+      line: number
+      command: string
+      title: string
+      hasCustomTitle: boolean
+    } | null = null
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const startMatch = line.match(
+        /^\s*&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:([^」\n]*)」)?\s*$/,
+      )
+      if (startMatch) {
+        const command = startMatch[1]
+        const titleMatch = line.match(/「title:([^」\n]*)」/)
+        const parsedTitle = titleMatch ? titleMatch[1].trim() : ""
+        const hasCustomTitle = !!parsedTitle
+        const title = hasCustomTitle ? parsedTitle : command
+        currentStart = { line: i + 1, command, title, hasCustomTitle }
+        continue
+      }
+
+      const endMatch = line.match(
+        /^\s*&&&(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
+      )
+      if (endMatch && currentStart) {
+        const status = getMarkdownTemplateStatus(line) ?? "todo"
+        const id = endMatch[2] || `temp-${currentStart.line}`
+        result.push({
+          title: currentStart.title,
+          command: currentStart.command,
+          status,
+          line: currentStart.line,
+          id,
+          hasCustomTitle: currentStart.hasCustomTitle,
+        })
+        currentStart = null
+      }
+    }
+    return result
+  }, [content])
+
+  // 2. Parse headings (ATX headings, ignore inside code fences)
+  interface HeadingItem {
+    level: number
+    title: string
+    line: number
+    id: string
+  }
+
+  const headings = useMemo<HeadingItem[]>(() => {
+    if (!content) return []
+    const lines = content.split("\n")
+    const result: HeadingItem[] = []
+    let inCodeFence = false
+    let inTemplateBlock = false
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.match(/^\s*([`~]{3,})/)) {
+        inCodeFence = !inCodeFence
+        continue
+      }
+
+      // Check if entering/exiting a template block
+      const startMatch = line.match(
+        /^\s*&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:([^」\n]*)」)?\s*$/,
+      )
+      if (startMatch) {
+        inTemplateBlock = true
+        continue
+      }
+
+      const endMatch = line.match(
+        /^\s*&&&(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
+      )
+      if (endMatch) {
+        inTemplateBlock = false
+        continue
+      }
+
+      if (inCodeFence || inTemplateBlock) continue
+
+      const headingMatch = line.match(/^(#{1,6})\s+(.+)$/)
+      if (headingMatch) {
+        const level = headingMatch[1].length
+        const title = headingMatch[2].trim()
+        result.push({
+          level,
+          title,
+          line: i + 1,
+          id: `heading-${i + 1}`,
+        })
+      }
+    }
+    return result
+  }, [content])
+
+  // 3. Determine active items
+  const activeTemplate = useMemo(() => {
+    let active: TemplateBlockInfo | null = null
+    for (const t of templates) {
+      if (t.line <= activeLine) {
+        active = t
+      } else {
+        break
+      }
+    }
+    return active
+  }, [templates, activeLine])
+
+  const activeHeading = useMemo(() => {
+    let active: HeadingItem | null = null
+    for (const h of headings) {
+      if (h.line <= activeLine) {
+        active = h
+      } else {
+        break
+      }
+    }
+    return active
+  }, [headings, activeLine])
+
+  // 4. Filtering
+  const filteredTemplates = useMemo(() => {
+    const query = tocQuery.trim().toLowerCase()
+    if (!query) return templates
+    return templates.filter((t) => t.title.toLowerCase().includes(query))
+  }, [templates, tocQuery])
+
+  const filteredHeadings = useMemo(() => {
+    const query = tocQuery.trim().toLowerCase()
+    if (!query) return headings
+    return headings.filter((h) => h.title.toLowerCase().includes(query))
+  }, [headings, tocQuery])
+
+  // 5. Stylers
+  const getTemplateItemClass = (status: "todo" | "in_progress" | "done", isActive: boolean) => {
+    const base =
+      "flex min-h-7 w-full items-center gap-2 rounded-[3px] px-2 pr-1.5 text-left text-xs transition-colors cursor-pointer"
+    if (status === "todo") {
+      return `${base} ${
+        isActive
+          ? "bg-white/10 text-white font-semibold"
+          : "text-white/70 hover:bg-white/5 hover:text-white"
+      }`
+    }
+    if (status === "in_progress") {
+      return `${base} ${
+        isActive
+          ? "bg-amber-400/20 text-amber-300 font-semibold"
+          : "bg-amber-400/5 text-amber-400/80 hover:bg-amber-400/10 hover:text-amber-300"
+      }`
+    }
+    return `${base} ${
+      isActive
+        ? "bg-emerald-400/20 text-emerald-300 font-semibold"
+        : "bg-emerald-400/5 text-emerald-400/80 hover:bg-emerald-400/10 hover:text-emerald-300"
+    }`
+  }
+
+  const getHeadingItemClass = (isActive: boolean) => {
+    const base =
+      "flex min-h-7 w-full items-center gap-2 rounded-[3px] px-2 pr-1.5 text-left text-xs transition-colors cursor-pointer"
+    return isActive
+      ? `${base} bg-white/10 text-white font-semibold`
+      : `${base} text-white/60 hover:bg-white/5 hover:text-white`
+  }
+
+  // 6. Tooltip catalog layout JSX
+  const tocList = (
+    <MarkdownEditorTOC
+      tocTab={tocTab}
+      setTocTab={setTocTab}
+      tocQuery={tocQuery}
+      setTocQuery={setTocQuery}
+      filteredTemplates={filteredTemplates}
+      filteredHeadings={filteredHeadings}
+      activeTemplate={activeTemplate}
+      activeHeading={activeHeading}
+      getTemplateItemClass={getTemplateItemClass}
+      getHeadingItemClass={getHeadingItemClass}
+      onScrollToLine={onScrollToLine}
+      onClose={() => setIsTocOpen(false)}
+    />
+  )
 
   // 按快捷键或功能说明筛选，便于在完整列表中快速定位。
   const filteredShortcuts = useMemo(() => {
@@ -463,6 +857,24 @@ export const MarkdownEditorToolbar = ({
           <Icon className="h-3.5 w-3.5" />
         </LxIconButton>
       ))}
+
+      <LxTooltip
+        content={tocList}
+        contentClassName="!p-2"
+        onOpenChange={(isOpen) => {
+          setIsTocOpen(isOpen)
+          if (!isOpen) {
+            setTocQuery("")
+          }
+        }}
+        open={isTocOpen}
+        placement="bottom"
+        trigger="hover"
+      >
+        <LxIconButton aria-label="页面大纲" size="medium">
+          <List className="h-3.5 w-3.5" />
+        </LxIconButton>
+      </LxTooltip>
 
       <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
         <span

@@ -18,11 +18,25 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState, type Line, Prec, Transaction } from "@codemirror/state"
-import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
+import {
+  EditorState,
+  type Line,
+  Prec,
+  StateEffect,
+  StateField,
+  Transaction,
+} from "@codemirror/state"
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { GitWorktreeCommandMenu, resolveGitWorktreeTarget, useGitWorktrees } from "@/features/git"
 import {
@@ -144,6 +158,32 @@ const getClipboardFile = (
   }
 }
 
+// --- CodeMirror Line Flash Highlight State ---
+export const flashLineEffect = StateEffect.define<{ line: number }>()
+
+const lineFlashField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none
+  },
+  update(value, tr) {
+    value = value.map(tr.changes)
+    for (const effect of tr.effects) {
+      if (effect.is(flashLineEffect)) {
+        const lineNum = Math.max(1, Math.min(effect.value.line, tr.state.doc.lines))
+        const line = tr.state.doc.line(lineNum)
+        const deco = Decoration.line({
+          class: "cm-md-line-flash",
+        })
+        value = Decoration.none.update({
+          add: [deco.range(line.from)],
+        })
+      }
+    }
+    return value
+  },
+  provide: (f) => EditorView.decorations.from(f),
+})
+
 /**
  * 渲染可编辑、预览和分栏浏览模式的 Markdown 编辑器。
  */
@@ -185,6 +225,38 @@ export const LxMarkdownEditor = ({
   )
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
+  const [activeLine, setActiveLine] = useState(1)
+
+  const scrollToLine = useCallback((line: number): void => {
+    const view = editorViewRef.current
+    if (!view) return
+    try {
+      const docLines = view.state.doc.lines
+      const safeLine = Math.max(1, Math.min(line, docLines))
+      const lineInfo = view.state.doc.line(safeLine)
+
+      // Move selection/cursor and dispatch the line flash effect
+      view.dispatch({
+        selection: { anchor: lineInfo.from },
+        effects: flashLineEffect.of({ line: safeLine }),
+      })
+
+      // Calculate position for direct instant jump (center-to-upper: 30% from the top of viewport)
+      const block = view.lineBlockAt(lineInfo.from)
+      const containerHeight = view.scrollDOM.clientHeight
+      const targetScrollTop = Math.max(0, block.top - containerHeight * 0.3)
+
+      // Instant jump (no smooth behavior)
+      view.scrollDOM.scrollTo({
+        top: targetScrollTop,
+        behavior: "auto",
+      })
+
+      view.focus()
+    } catch (e) {
+      console.error("Failed to scroll to line", line, e)
+    }
+  }, [])
   const { success, warning, error } = useLxToast()
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
@@ -737,6 +809,7 @@ export const LxMarkdownEditor = ({
         }),
         syntaxHighlighting(markdownHighlightStyle),
         editorTheme,
+        lineFlashField,
         markdownReferenceHover,
         markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
@@ -1092,7 +1165,32 @@ export const LxMarkdownEditor = ({
     const view = new EditorView({ state, parent: container })
     editorViewRef.current = view
 
+    let ticking = false
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (editorViewRef.current) {
+            const { scrollTop } = editorViewRef.current.scrollDOM
+            try {
+              const block = editorViewRef.current.lineBlockAtHeight(scrollTop + 20)
+              const lineNum = editorViewRef.current.state.doc.lineAt(block.from).number
+              setActiveLine(lineNum)
+            } catch (e) {
+              // Ignore layout/metrics errors during transitions
+            }
+          }
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    view.scrollDOM.addEventListener("scroll", handleScroll, { passive: true })
+    // Initialize active line on load
+    handleScroll()
+
     return () => {
+      view.scrollDOM.removeEventListener("scroll", handleScroll)
       editorViewRef.current = null
       view.destroy()
     }
@@ -1142,6 +1240,9 @@ export const LxMarkdownEditor = ({
         onPageNameChange={renamePage}
         onCreatePage={createPage}
         onDeletePage={deletePage}
+        content={content}
+        activeLine={activeLine}
+        onScrollToLine={scrollToLine}
       />
       <div className="min-h-0 flex flex-1 text-sm">
         <div

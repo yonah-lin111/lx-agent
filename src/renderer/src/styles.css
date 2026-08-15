@@ -969,3 +969,24 @@ select {
     opacity: 0.8;
   }
 }
+
+/* CodeMirror 行跳转闪烁高亮（平滑渐变） */
+@keyframes cm-md-line-flash-anim {
+  0%,
+  30%,
+  60%,
+  100% {
+    background-color: transparent;
+  }
+  15%,
+  45% {
+    background-color: rgba(56, 189, 248, 0.32); /* 亮蓝前两闪 */
+  }
+  75% {
+    background-color: rgba(56, 189, 248, 0.2); /* 渐弱第三闪 */
+  }
+}
+
+.cm-md-line-flash {
+  animation: cm-md-line-flash-anim 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
