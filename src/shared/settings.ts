@@ -42,6 +42,7 @@ export type ModelProviderSettings = {
   defaultModel: ModelSelection
   titleSummary: ModelSelection
   suggestedQuestions: ModelSelection
+  compactionModel?: ModelSelection
   suggestedQuestionsEnabled: boolean
   // 上下文压缩开关（ai.compaction.enabled；设置页功能配置区维护）。
   compactionEnabled: boolean

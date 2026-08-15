@@ -687,6 +687,7 @@ export const AgentMessageItem = ({
         summary={summary}
         isLoading={message.isCompacting}
         isManual={message.isManual}
+        modelName={message.model}
       />
     )
   }

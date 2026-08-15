@@ -6,6 +6,7 @@ const MODEL_SELECTIONS = [
   { key: "defaultModel", label: "默认对话模型" },
   { key: "titleSummary", label: "标题总结模型" },
   { key: "suggestedQuestions", label: "推荐问题模型" },
+  { key: "compactionModel", label: "上下文压缩模型" },
 ] as const
 
 export interface ModelSettingsProps {
@@ -24,8 +25,8 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
     setSettings((current) => (current ? { ...current, [key]: selection } : current))
   }
 
-  const providerOptions = (selection: ModelSelection) =>
-    Object.values(settings.providers)
+  const providerOptions = (selection: ModelSelection, isCompaction: boolean) => {
+    const baseOptions = Object.values(settings.providers)
       .filter(
         (provider) =>
           settings.enabledProviders.includes(provider.id) || provider.id === selection.provider,
@@ -35,13 +36,20 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
         label: provider.name || provider.id,
       }))
 
+    if (isCompaction) {
+      return [{ value: "", label: "跟随当前会话模型" }, ...baseOptions]
+    }
+    return baseOptions
+  }
+
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       <div>
         <h3 className="mb-2 text-sm font-medium text-white">默认模型</h3>
         <div className="grid gap-3 lg:grid-cols-2">
           {MODEL_SELECTIONS.map(({ key, label }) => {
-            const selection = settings[key]
+            const isCompaction = key === "compactionModel"
+            const selection = settings[key] || { provider: "", model: "" }
             const models = settings.providers[selection.provider]?.models ?? {}
             return (
               <section key={key}>
@@ -49,12 +57,14 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                 <div className="mt-2 grid gap-2">
                   <LxSelect
                     value={selection.provider}
-                    options={providerOptions(selection)}
-                    disabled={providerOptions(selection).length === 0}
+                    options={providerOptions(selection, isCompaction)}
+                    disabled={providerOptions(selection, isCompaction).length === 0}
                     onChange={(provider) =>
                       updateSelection(key, {
                         provider,
-                        model: Object.keys(settings.providers[provider]?.models ?? {})[0] ?? "",
+                        model: provider
+                          ? (Object.keys(settings.providers[provider]?.models ?? {})[0] ?? "")
+                          : "",
                       })
                     }
                   />
@@ -64,7 +74,7 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                       value: model.id,
                       label: model.name,
                     }))}
-                    disabled={Object.keys(models).length === 0}
+                    disabled={!selection.provider || Object.keys(models).length === 0}
                     onChange={(model) => updateSelection(key, { ...selection, model })}
                   />
                 </div>

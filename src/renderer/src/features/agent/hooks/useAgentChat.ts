@@ -244,6 +244,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
             isCompacting: true,
             compactionId: event.compactionId,
             isManual: event.manual,
+            model: event.model,
           }
           setMessages((prev) => [...prev, placeholder])
           break

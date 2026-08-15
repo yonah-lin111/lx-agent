@@ -5,24 +5,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 // mock ai.streamText：摘要生成返回可控文本，避免真实 LLM 调用。
 vi.mock("ai", () => ({ streamText: vi.fn() }))
 
-// mock settingsService：titleSummary 指向固定模型（摘要生成复用该模型）。
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+// Mock settings with a mutable object so we can change config values in tests.
+const mockSettings = {
+  providers: {
+    p: {
+      id: "p",
+      type: "openai-compatible" as const,
+      name: "p",
+      options: { apiKey: "x", baseURL: "http://localhost" },
+      models: {
+        m: { id: "m", name: "m" },
+        compaction_m: { id: "compaction_m", name: "compaction_m" },
       },
     },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
+  },
+  enabledProviders: ["p"],
+  defaultModel: { provider: "p", model: "m" },
+  titleSummary: { provider: "p", model: "m" },
+  suggestedQuestions: { provider: "p", model: "m" },
+  compactionModel: { provider: "", model: "" },
+  suggestedQuestionsEnabled: true,
+}
+
+// mock settingsService：返回可变的 mockSettings 方便动态测试。
+vi.mock("@/services/settingsService", () => ({
+  getModelProviderSettings: () => mockSettings,
 }))
 
 import {
@@ -31,6 +38,7 @@ import {
   findCutPoint,
   generateCompactionSummary,
   isContextOverflowFailure,
+  resolveCompactionModelId,
 } from "@/agent/compaction"
 
 const streamTextMock = vi.mocked(streamText)
@@ -140,11 +148,14 @@ describe("generateCompactionSummary", () => {
 
   it("为历史消息生成结构化摘要", async () => {
     mockStream("<think>思考</think>\n目标：实现登录。已完成：搭建表单。")
-    const summary = await generateCompactionSummary([
+    const result = await generateCompactionSummary([
       user("实现登录页"),
       assistant("已完成表单搭建"),
     ])
-    expect(summary).toBe("目标：实现登录。已完成：搭建表单。")
+    expect(result).toEqual({
+      summary: "目标：实现登录。已完成：搭建表单。",
+      model: "m",
+    })
   })
 
   it("LLM 抛错返回 null（不抛错）", async () => {
@@ -157,5 +168,55 @@ describe("generateCompactionSummary", () => {
     const summary = await generateCompactionSummary([])
     expect(summary).toBeNull()
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it("当 compactionModel 未配置时，优先使用传入的 sessionModel，若无则回退使用 titleSummary", async () => {
+    // 1. compactionModel 未配置，未传入 sessionModel -> 回退到 titleSummary ("m")
+    mockSettings.compactionModel = { provider: "", model: "" }
+    mockSettings.titleSummary = { provider: "p", model: "m" }
+    mockStream("摘要")
+    await generateCompactionSummary([user("test")])
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ modelId: "m" }),
+      }),
+    )
+
+    // 2. compactionModel 未配置，传入了 sessionModel ("compaction_m") -> 使用 sessionModel
+    mockStream("摘要2")
+    await generateCompactionSummary([user("test")], { provider: "p", model: "compaction_m" })
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ modelId: "compaction_m" }),
+      }),
+    )
+  })
+
+  it("当 compactionModel 配置了具体模型时，应该始终使用 compactionModel", async () => {
+    mockSettings.compactionModel = { provider: "p", model: "compaction_m" }
+    mockStream("摘要")
+    await generateCompactionSummary([user("test")], { provider: "p", model: "m" })
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        model: expect.objectContaining({ modelId: "compaction_m" }),
+      }),
+    )
+  })
+})
+
+describe("resolveCompactionModelId", () => {
+  it("当 compactionModel 未配置时，应根据 sessionModel 和 titleSummary 进行解析", () => {
+    // 1. compactionModel 未配置，且未传入 sessionModel -> 回退到 titleSummary
+    mockSettings.compactionModel = { provider: "", model: "" }
+    mockSettings.titleSummary = { provider: "p", model: "m" }
+    expect(resolveCompactionModelId()).toBe("m")
+
+    // 2. compactionModel 未配置，且传入了 sessionModel -> 使用 sessionModel
+    expect(resolveCompactionModelId({ provider: "p", model: "compaction_m" })).toBe("compaction_m")
+  })
+
+  it("当 compactionModel 配置了具体模型时，应始终解析为 compactionModel", () => {
+    mockSettings.compactionModel = { provider: "p", model: "compaction_m" }
+    expect(resolveCompactionModelId({ provider: "p", model: "m" })).toBe("compaction_m")
   })
 })

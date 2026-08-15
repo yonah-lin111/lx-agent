@@ -58,6 +58,7 @@ export const toChatMessage = (
       isStreaming: false,
       timestamp: message.timestamp,
       isManual: message.manual,
+      model: message.model,
     }
   }
 

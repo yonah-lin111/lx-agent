@@ -12,6 +12,8 @@ interface AgentCompactionSummaryProps {
   isLoading?: boolean
   // 是否为手动触发的压缩（/compact），用于区分文案与折叠标题。
   isManual?: boolean
+  // 压缩所使用的模型。
+  modelName?: string
 }
 
 /**
@@ -21,6 +23,7 @@ export const AgentCompactionSummary = ({
   summary,
   isLoading = false,
   isManual = false,
+  modelName,
 }: AgentCompactionSummaryProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
@@ -44,19 +47,22 @@ export const AgentCompactionSummary = ({
 
   // 压缩进行中：仅转圈 + 文字（无气泡 loading 效果）。
   if (isLoading) {
+    const baseLoadingText = isManual
+      ? "Compressing context manually..."
+      : "Compressing context automatically..."
+    const loadingText = modelName ? `${baseLoadingText} (by ${modelName})` : baseLoadingText
     return (
       <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        <span className="italic">
-          {isManual ? "Compressing context manually..." : "Compressing context automatically..."}
-        </span>
+        <span className="italic">{loadingText}</span>
       </div>
     )
   }
 
-  const titleText = isManual
+  const baseTitleText = isManual
     ? "Conversation manually compressed into summary"
     : "Conversation compressed into summary"
+  const titleText = modelName ? `${baseTitleText} (by ${modelName})` : baseTitleText
 
   return (
     <div className="my-1.5 w-full max-w-full select-none">

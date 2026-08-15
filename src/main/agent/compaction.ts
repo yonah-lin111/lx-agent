@@ -1,5 +1,9 @@
 import type { AgentMessage, CompactionSummaryMessage } from "@shared/contracts/agent"
-import { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS } from "@shared/settings"
+import {
+  type CompactionSettings,
+  DEFAULT_COMPACTION_SETTINGS,
+  type ModelSelection,
+} from "@shared/settings"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
@@ -18,6 +22,8 @@ export interface CompactionBoundary {
   tokensBefore: number
   // 是否手动触发（/compact）；自动压缩不可经 /undo 撤销。
   manual: boolean
+  // 压缩所使用的模型。
+  model?: string
 }
 
 export { type CompactionSettings, DEFAULT_COMPACTION_SETTINGS }
@@ -27,13 +33,29 @@ export const createCompactionSummaryMessage = (
   summary: string,
   tokensBefore: number,
   manual: boolean,
+  model?: string,
 ): CompactionSummaryMessage => ({
   role: "compactionSummary",
   summary,
   tokensBefore,
   timestamp: Date.now(),
   manual,
+  model,
 })
+
+/**
+ * 提前解析压缩所使用的模型 ID。
+ */
+export const resolveCompactionModelId = (sessionModel?: ModelSelection): string | undefined => {
+  const settings = getModelProviderSettings()
+  const selection =
+    settings.compactionModel && settings.compactionModel.provider
+      ? settings.compactionModel
+      : (sessionModel ?? settings.titleSummary)
+  const resolved = resolveModelSelection(selection)
+  if ("error" in resolved) return undefined
+  return resolved.model.id
+}
 
 // context-overflow 错误签名（各 provider 的上下文超限错误文案）。
 const OVERFLOW_SIGNATURES = [
@@ -197,9 +219,15 @@ const cleanSummary = (raw: string): string | null => {
  */
 export const generateCompactionSummary = async (
   messages: AgentMessage[],
-): Promise<string | null> => {
+  sessionModel?: ModelSelection,
+): Promise<{ summary: string; model: string } | null> => {
   try {
-    const selection = getModelProviderSettings().titleSummary
+    const settings = getModelProviderSettings()
+    const selection =
+      settings.compactionModel && settings.compactionModel.provider
+        ? settings.compactionModel
+        : (sessionModel ?? settings.titleSummary)
+
     const resolved = resolveModelSelection(selection)
     if ("error" in resolved) return null
     const languageModel = resolveLanguageModel(resolved.model)
@@ -231,7 +259,9 @@ export const generateCompactionSummary = async (
         },
       ],
     })
-    return cleanSummary(await result.text)
+    const summary = cleanSummary(await result.text)
+    if (!summary) return null
+    return { summary, model: resolved.model.id }
   } catch {
     // 无响应 provider / 网络错误 / 超时：静默返回 null，保留旧边界，下轮再试。
     return null

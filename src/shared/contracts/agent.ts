@@ -77,6 +77,8 @@ export interface CompactionSummaryMessage {
   timestamp: number
   // 是否手动触发（/compact）；自动压缩不可经 /undo 撤销。
   manual: boolean
+  // 压缩所使用的模型。
+  model?: string
 }
 
 // todo 清单项状态（对齐 Claude Code 四态）。
@@ -358,7 +360,7 @@ export type AgentEvent =
       message: CompactionSummaryMessage
     }
   // 上下文压缩开始（摘要生成进行中，耗时数秒）：renderer 追加对应 loading 占位并禁止发送。
-  | { type: "compaction_start"; compactionId: string; manual: boolean }
+  | { type: "compaction_start"; compactionId: string; manual: boolean; model?: string }
   // 上下文压缩失败（摘要生成失败/超时）：renderer 仅移除对应 loading 占位并恢复发送。
   | { type: "compaction_failed"; compactionId: string; manual: boolean }
   // 上下文容量快照：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。

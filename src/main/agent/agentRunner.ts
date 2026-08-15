@@ -36,6 +36,7 @@ import {
   findCutPoint,
   generateCompactionSummary,
   isContextOverflowFailure,
+  resolveCompactionModelId,
 } from "./compaction"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
@@ -384,6 +385,7 @@ class AgentRunner {
               boundary.summary,
               boundary.tokensBefore,
               boundary.manual,
+              boundary.model,
             ),
             ...kept,
           ]
@@ -1118,7 +1120,12 @@ class AgentRunner {
       (_, index) => (this.messageSeqs[index] ?? -1) >= boundary.firstKeptSeq,
     )
     return estimateCompactedContextTokens(
-      createCompactionSummaryMessage(boundary.summary, boundary.tokensBefore, boundary.manual),
+      createCompactionSummaryMessage(
+        boundary.summary,
+        boundary.tokensBefore,
+        boundary.manual,
+        boundary.model,
+      ),
       kept,
     )
   }
@@ -1519,6 +1526,7 @@ class AgentRunner {
             firstKeptSeq: parsed.firstKeptSeq,
             tokensBefore: parsed.tokensBefore,
             manual: parsed.manual === true,
+            model: parsed.model,
           }
         }
       } catch {
@@ -1552,6 +1560,7 @@ class AgentRunner {
       boundary.summary,
       boundary.tokensBefore,
       boundary.manual,
+      boundary.model,
     )
     return [...messages, summary]
   }
@@ -1594,14 +1603,21 @@ class AgentRunner {
     if (cutIndex >= messages.length || cutIndex <= 1) return false
     const compacted = messages.slice(0, cutIndex)
     const compactionId = createExternalId()
+    const compactionModelId = resolveCompactionModelId(this.requestedModel)
     // 摘要生成是压缩的主要耗时（慢 LLM 调用）：先推送开始事件，renderer 追加 loading 占位并禁止发送。
-    this.eventSink?.({ type: "compaction_start", compactionId, manual: false })
-    const summary = await generateCompactionSummary(compacted)
-    if (!summary) {
+    this.eventSink?.({
+      type: "compaction_start",
+      compactionId,
+      manual: false,
+      model: compactionModelId,
+    })
+    const compactionResult = await generateCompactionSummary(compacted, this.requestedModel)
+    if (!compactionResult) {
       // 失败：推送失败事件让 renderer 移除 loading 占位（不建立坏边界，下轮再试）。
       this.eventSink?.({ type: "compaction_failed", compactionId, manual: false })
       return false
     }
+    const { summary, model } = compactionResult
     const tokensBefore = estimateContextTokens(compacted)
     const firstKeptSeq = this.messageSeqs[cutIndex] ?? -1
     // 保留起点无有效 DB seq（删除轮次后对齐被破坏等）：不建立坏边界，
@@ -1616,6 +1632,7 @@ class AgentRunner {
       firstKeptSeq,
       tokensBefore,
       manual: false,
+      model,
     }
     this.contextBoundary = boundary
     if (this.currentSessionId) {
@@ -1625,7 +1642,7 @@ class AgentRunner {
     this.eventSink?.({
       type: "compaction_summary",
       compactionId,
-      message: createCompactionSummaryMessage(summary, tokensBefore, false),
+      message: createCompactionSummaryMessage(summary, tokensBefore, false, model),
     })
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
     this.emitContextUsage()
@@ -1661,12 +1678,19 @@ class AgentRunner {
     }
     const compacted = messages.slice(0, effectiveCut)
     const compactionId = createExternalId()
-    this.eventSink?.({ type: "compaction_start", compactionId, manual: true })
-    const summary = await generateCompactionSummary(compacted)
-    if (!summary) {
+    const compactionModelId = resolveCompactionModelId(this.requestedModel)
+    this.eventSink?.({
+      type: "compaction_start",
+      compactionId,
+      manual: true,
+      model: compactionModelId,
+    })
+    const compactionResult = await generateCompactionSummary(compacted, this.requestedModel)
+    if (!compactionResult) {
       this.eventSink?.({ type: "compaction_failed", compactionId, manual: true })
       return { ok: false, error: "模型生成摘要失败或超时，请稍后重试。" }
     }
+    const { summary, model } = compactionResult
     const tokensBefore = estimateContextTokens(compacted)
     const firstKeptSeq = this.messageSeqs[effectiveCut] ?? -1
     if (firstKeptSeq < 0) {
@@ -1678,6 +1702,7 @@ class AgentRunner {
       firstKeptSeq,
       tokensBefore,
       manual: true,
+      model,
     }
     this.contextBoundary = boundary
     if (this.currentSessionId) {
@@ -1686,7 +1711,7 @@ class AgentRunner {
     this.eventSink?.({
       type: "compaction_summary",
       compactionId,
-      message: createCompactionSummaryMessage(summary, tokensBefore, true),
+      message: createCompactionSummaryMessage(summary, tokensBefore, true, model),
     })
     this.emitContextUsage()
     return { ok: true }

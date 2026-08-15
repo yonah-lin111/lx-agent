@@ -29,6 +29,7 @@ type RawAiConfig = {
   defaultModel?: Partial<ModelSelection>
   titleSummary?: Partial<ModelSelection>
   suggestedQuestions?: Partial<ModelSelection>
+  compactionModel?: Partial<ModelSelection>
   suggestedQuestionsEnabled?: boolean
   enabled_providers?: string[]
   providers?: Record<string, RawProvider>
@@ -130,6 +131,22 @@ const normalizeSelection = (
     value?.model && models[value.model]
       ? value.model
       : (fallback?.model ?? Object.keys(models)[0] ?? "")
+  return { provider, model }
+}
+
+/**
+ * 规范化压缩模型选择。如果未配置（provider 为空）或 provider 不存在，则回退为 { provider: "", model: "" }，代表“跟随当前会话”。
+ */
+const normalizeCompactionSelection = (
+  value: Partial<ModelSelection> | undefined,
+  providers: Record<string, ModelProvider>,
+): ModelSelection => {
+  if (!value || !value.provider || !providers[value.provider]) {
+    return { provider: "", model: "" }
+  }
+  const provider = value.provider
+  const models = providers[provider]?.models ?? {}
+  const model = value.model && models[value.model] ? value.model : (Object.keys(models)[0] ?? "")
   return { provider, model }
 }
 
@@ -249,6 +266,7 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
     defaultModel,
     titleSummary: normalizeSelection(settings.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(settings.suggestedQuestions, providers, defaultModel),
+    compactionModel: normalizeCompactionSelection(settings.compactionModel, providers),
     suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled === true,
     compactionEnabled: settings.compactionEnabled !== false,
   }
@@ -274,6 +292,7 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
     defaultModel,
     titleSummary: normalizeSelection(rawAi.titleSummary, providers, defaultModel),
     suggestedQuestions: normalizeSelection(rawAi.suggestedQuestions, providers, defaultModel),
+    compactionModel: normalizeCompactionSelection(rawAi.compactionModel, providers),
     suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled === true,
     compactionEnabled: getCompactionSettings().enabled,
   }
@@ -303,6 +322,7 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
       defaultModel: settings.defaultModel,
       titleSummary: settings.titleSummary,
       suggestedQuestions: settings.suggestedQuestions,
+      compactionModel: settings.compactionModel,
       suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled,
       compaction: { ...rawCompaction, enabled: settings.compactionEnabled },
     },

@@ -1,8 +1,8 @@
-import { nativeImage } from "electron"
 import { readFileSync } from "node:fs"
 import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
 import type { ModelMessage } from "ai"
 import { tool as aiTool } from "ai"
+import { nativeImage } from "electron"
 import type { AgentTool, LlmMessage } from "../core/types"
 
 // 文本块内容拼接。

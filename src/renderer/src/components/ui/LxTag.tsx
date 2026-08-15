@@ -160,8 +160,8 @@ export const LxTag = ({
       {(suffix || onClose) && (
         <span className="flex shrink-0 items-center gap-0.5">
           {suffix}
-          {onClose && (
-            confirmClose ? (
+          {onClose &&
+            (confirmClose ? (
               <LxTooltip content={closeTooltipContent} onConfirm={onClose} placement="top">
                 <span
                   aria-label="删除标签"
@@ -186,8 +186,7 @@ export const LxTag = ({
                   <X className={currentStyles.closeIconSize} />
                 </span>
               </LxTooltip>
-            )
-          )}
+            ))}
         </span>
       )}
     </span>
