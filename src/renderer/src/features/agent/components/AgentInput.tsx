@@ -32,6 +32,8 @@ interface AgentInputProps {
   isStreaming: boolean
   // 上下文压缩进行中：发送按钮禁用并显示 loading（压缩期间不可发送消息）。
   isCompacting: boolean
+  // 上下文压缩是否为手动触发，用于区分 loading 文案。
+  isCompactingManual?: boolean
   // 排队消息计数（流式输出期间发送的消息数；>0 时输入区上方展示提示条）。
   queuedCount: number
   // 排队消息原文（提示条 hover 时 tooltip 展示各条问题）。
@@ -128,6 +130,7 @@ export const AgentInput = ({
   inputText,
   isStreaming,
   isCompacting,
+  isCompactingManual = false,
   queuedCount,
   queuedMessages,
   onInputChange,
@@ -662,8 +665,11 @@ export const AgentInput = ({
   ) : isCompacting ? (
     <LxIconButton
       shape="circle"
-      aria-label="上下文压缩中"
-      title={{ content: "正在压缩上下文", placement: "top" }}
+      aria-label={isCompactingManual ? "手动压缩上下文中" : "自动压缩上下文中"}
+      title={{
+        content: isCompactingManual ? "正在手动压缩上下文" : "正在自动压缩上下文",
+        placement: "top",
+      }}
       disabled
       className="bg-white/15 !text-white/30"
     >

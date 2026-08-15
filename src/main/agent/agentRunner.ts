@@ -568,7 +568,7 @@ class AgentRunner {
       if (this.overflowDetected) {
         this.overflowDetected = false
         this.removeLastOverflowMessage()
-        const compacted = await this.compactIfNeeded(true, false)
+        const compacted = await this.compactIfNeeded(true)
         if (!compacted) {
           throw new Error("上下文超出模型窗口且自动压缩失败，请新建会话或重试。")
         }
@@ -582,7 +582,7 @@ class AgentRunner {
         }
       } else {
         // 阈值压缩：turn 结束后同步执行（阻塞下一条消息数秒可接受）。
-        await this.compactIfNeeded(false, false)
+        await this.compactIfNeeded(false)
       }
     } catch (error) {
       this.discardPendingTurn()
@@ -643,7 +643,7 @@ class AgentRunner {
         this.removeLastOverflowMessage()
         throw new Error("上下文超出模型窗口，请新建会话或重试。")
       }
-      await this.compactIfNeeded(false, false)
+      await this.compactIfNeeded(false)
     } catch (error) {
       this.discardPendingTurn()
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
@@ -1438,8 +1438,8 @@ class AgentRunner {
 
   // turn 结束后压缩：估计上下文 token 超阈值（或 overflow 强制）时，摘要化早期历史并建立新边界。
   // 返回是否实际压缩；摘要生成失败静默保留旧边界（下轮再试）。
-  // manual：手动 /compact 触发（可被 /undo 撤销）；overflow 重试与阈值自动均为 manual=false。
-  private async compactIfNeeded(force: boolean, manual: boolean): Promise<boolean> {
+  // overflow 重试与阈值自动均为 manual=false。
+  private async compactIfNeeded(force: boolean): Promise<boolean> {
     const config = getCompactionSettings()
     if (!config.enabled) return false
     const agent = this.agent
@@ -1456,39 +1456,31 @@ class AgentRunner {
       if (estimated <= contextWindow - reserveTokens) return false
     }
     const cutIndex = findCutPoint(messages, keepRecentTokens)
-    // 手动压缩：标准切分无收益（全保留 / 仅 1 条）时强制压缩除最后一条外的全部历史，保证产生摘要。
-    const effectiveCut =
-      manual && (cutIndex >= messages.length || cutIndex <= 1)
-        ? Math.max(1, messages.length - 1)
-        : cutIndex
-    // 全部保留不压缩；自动要求切分至少 2 条（压缩无收益时跳过），手动允许仅压缩 1 条。
-    if (effectiveCut >= messages.length) return false
-    if (effectiveCut <= 1 && !manual) return false
-    if (effectiveCut <= 0) return false
-    const compacted = messages.slice(0, effectiveCut)
+    if (cutIndex >= messages.length || cutIndex <= 1) return false
+    const compacted = messages.slice(0, cutIndex)
     const compactionId = createExternalId()
     // 摘要生成是压缩的主要耗时（慢 LLM 调用）：先推送开始事件，renderer 追加 loading 占位并禁止发送。
-    this.eventSink?.({ type: "compaction_start", compactionId, manual })
+    this.eventSink?.({ type: "compaction_start", compactionId, manual: false })
     const summary = await generateCompactionSummary(compacted)
     if (!summary) {
       // 失败：推送失败事件让 renderer 移除 loading 占位（不建立坏边界，下轮再试）。
-      this.eventSink?.({ type: "compaction_failed", compactionId, manual })
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual: false })
       return false
     }
     const tokensBefore = estimateContextTokens(compacted)
-    const firstKeptSeq = this.messageSeqs[effectiveCut] ?? -1
+    const firstKeptSeq = this.messageSeqs[cutIndex] ?? -1
     // 保留起点无有效 DB seq（删除轮次后对齐被破坏等）：不建立坏边界，
     // 否则 transformContext 会保留全部消息（压缩失效）且恢复时摘要被插到列表顶部。
     if (firstKeptSeq < 0) {
       // 摘要已生成但无法落位：通知 renderer 移除 loading 占位（否则会卡在压缩中）。
-      this.eventSink?.({ type: "compaction_failed", compactionId, manual })
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual: false })
       return false
     }
     const boundary: CompactionBoundary = {
       summary,
       firstKeptSeq,
       tokensBefore,
-      manual,
+      manual: false,
     }
     this.contextBoundary = boundary
     if (this.currentSessionId) {
@@ -1498,14 +1490,14 @@ class AgentRunner {
     this.eventSink?.({
       type: "compaction_summary",
       compactionId,
-      message: createCompactionSummaryMessage(summary, tokensBefore, manual),
+      message: createCompactionSummaryMessage(summary, tokensBefore, false),
     })
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
     this.emitContextUsage()
     return true
   }
 
-  // 手动压缩（/compact 命令触发）：尊重设置开关；禁用/忙碌/无可压缩内容时返回原因，否则强制压缩。
+  // 手动压缩（/compact 命令触发）：尊重设置开关；禁用/忙碌/无可压缩内容时返回具体原因，否则强制压缩。
   // 忙碌守卫兜底 renderer 侧流式判断的竞态（drain 队列等 renderer 不知情的忙态）。
   async compact(): Promise<AgentCompactResult> {
     if (!getCompactionSettings().enabled) {
@@ -1514,8 +1506,55 @@ class AgentRunner {
     if (this.isBusy()) {
       return { ok: false, error: "当前正在生成回复，请等待回复完成后手动压缩。" }
     }
-    const compacted = await this.compactIfNeeded(true, true)
-    return { ok: true, compacted }
+    const agent = this.agent
+    if (!agent || agent.state.messages.length === 0) {
+      return { ok: false, error: "当前会话暂无消息，无需压缩。" }
+    }
+    const messages = agent.state.messages
+    if (messages.length <= 1) {
+      return { ok: false, error: "历史消息过短，暂无可压缩内容。" }
+    }
+    const contextWindow = this.resolveContextWindow()
+    const config = getCompactionSettings()
+    const keepRecentTokens = Math.min(config.keepRecentTokens, Math.floor(contextWindow * 0.4))
+    const cutIndex = findCutPoint(messages, keepRecentTokens)
+    const effectiveCut =
+      cutIndex >= messages.length || cutIndex <= 1 ? Math.max(1, messages.length - 1) : cutIndex
+
+    if (effectiveCut <= 0 || effectiveCut >= messages.length) {
+      return { ok: false, error: "暂无可压缩的历史消息。" }
+    }
+    const compacted = messages.slice(0, effectiveCut)
+    const compactionId = createExternalId()
+    this.eventSink?.({ type: "compaction_start", compactionId, manual: true })
+    const summary = await generateCompactionSummary(compacted)
+    if (!summary) {
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual: true })
+      return { ok: false, error: "模型生成摘要失败或超时，请稍后重试。" }
+    }
+    const tokensBefore = estimateContextTokens(compacted)
+    const firstKeptSeq = this.messageSeqs[effectiveCut] ?? -1
+    if (firstKeptSeq < 0) {
+      this.eventSink?.({ type: "compaction_failed", compactionId, manual: true })
+      return { ok: false, error: "压缩边界定位失败，无法落库。" }
+    }
+    const boundary: CompactionBoundary = {
+      summary,
+      firstKeptSeq,
+      tokensBefore,
+      manual: true,
+    }
+    this.contextBoundary = boundary
+    if (this.currentSessionId) {
+      this.persistCompaction(this.currentSessionId, boundary)
+    }
+    this.eventSink?.({
+      type: "compaction_summary",
+      compactionId,
+      message: createCompactionSummaryMessage(summary, tokensBefore, true),
+    })
+    this.emitContextUsage()
+    return { ok: true }
   }
 
   // 撤销最后一次手动压缩（/undo 对压缩摘要触发）：清边界、删 compaction entry。

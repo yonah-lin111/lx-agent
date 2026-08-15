@@ -1,13 +1,5 @@
 import type { ReferencedFolder } from "@shared/project"
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  Folder,
-  FolderPlus,
-  Pin,
-} from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Copy, Folder, FolderPlus, Pin } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"

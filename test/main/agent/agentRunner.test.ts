@@ -615,12 +615,12 @@ describe("agentRunner 持久化", () => {
     expect(second.ok).toBe(true)
     if (!second.ok) return
 
-    // 手动压缩：摘要生成成功，返回 compacted: true。
+    // 手动压缩：摘要生成成功，返回 ok: true。
     const events: AgentEvent[] = []
     agentRunner.attachEventSink((event) => events.push(event))
     streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动压缩摘要") } as never)
     const compacted = await agentRunner.compact()
-    expect(compacted).toEqual({ ok: true, compacted: true })
+    expect(compacted).toEqual({ ok: true })
     const start = events.find((event) => event.type === "compaction_start")
     const summaryEvent = events.find((event) => event.type === "compaction_summary")
     expect(start).toMatchObject({ type: "compaction_start", manual: true })
@@ -673,7 +673,7 @@ describe("agentRunner 持久化", () => {
     // 单轮（2 条消息）标准切分点 ≤1，手动压缩回退到压缩首条，仍产生摘要。
     streamTextMock.mockReturnValueOnce({ text: Promise.resolve("短对话摘要") } as never)
     const compacted = await agentRunner.compact()
-    expect(compacted).toEqual({ ok: true, compacted: true })
+    expect(compacted).toEqual({ ok: true })
 
     const restored = await agentRunner.restoreSession(first.sessionId)
     expect(

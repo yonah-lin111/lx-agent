@@ -48,7 +48,7 @@ export const AgentCompactionSummary = ({
       <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         <span className="italic">
-          {isManual ? "Compressing context manually" : "Compressing context"}
+          {isManual ? "Compressing context manually..." : "Compressing context automatically..."}
         </span>
       </div>
     )

@@ -49,6 +49,7 @@ export const AgentPage = ({
     setInputText,
     isStreaming,
     isCompacting,
+    isCompactingManual,
     isRestoring,
     sendMessage,
     continueChat,
@@ -269,6 +270,7 @@ export const AgentPage = ({
         inputText={inputText}
         isStreaming={isStreaming}
         isCompacting={isCompacting}
+        isCompactingManual={isCompactingManual}
         queuedCount={queuedCount}
         queuedMessages={queuedMessages}
         onInputChange={setInputText}

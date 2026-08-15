@@ -96,7 +96,10 @@ export const AgentExecutionGroup = ({
         onClick={() => setIsExpanded((previous) => !previous)}
       >
         {/* 小圆点置于黑色背景左侧，与展开项圆点同列，hover 颜色随按钮文字联动。 */}
-        <span aria-hidden className="absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current" />
+        <span
+          aria-hidden
+          className="absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current"
+        />
         <span>
           {countSegments.map((segment, index) => (
             <Fragment key={segment.plural}>

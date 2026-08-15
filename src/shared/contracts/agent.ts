@@ -420,8 +420,8 @@ export type AgentSendResult =
 // 切换会话工作区（/gitWorktree）的返回结果。
 export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
 
-// 手动压缩（/compact）的返回结果；compacted 表示是否实际压缩（无可压缩内容/摘要生成失败均为 false）。
-export type AgentCompactResult = { ok: true; compacted: boolean } | { ok: false; error: string }
+// 手动压缩（/compact）的返回结果。
+export type AgentCompactResult = { ok: true } | { ok: false; error: string }
 
 // 撤销手动压缩（/undo 对压缩摘要触发）的返回结果；自动压缩不可撤销。
 export type AgentUndoCompactionResult = { ok: true } | { ok: false; error: string }
