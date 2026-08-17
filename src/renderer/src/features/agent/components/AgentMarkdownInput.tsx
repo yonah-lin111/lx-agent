@@ -5,24 +5,18 @@ import {
 } from "@codemirror/commands"
 import { languages } from "@codemirror/language-data"
 import { markdown } from "@codemirror/lang-markdown"
-import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language"
-import { EditorState, Prec, RangeSetBuilder, type Text } from "@codemirror/state"
+import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language"
+import { EditorState, Prec } from "@codemirror/state"
 import {
-  type DecorationSet,
-  type ViewUpdate,
-  Decoration,
   EditorView,
-  ViewPlugin,
   keymap,
   placeholder,
 } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
-import { tags } from "@lezer/highlight"
 import type { ProjectFileEntry } from "@shared/project"
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
-import type { MarkdownReferenceType } from "@/features/markdown/commands/markdownReferenceCommands"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
@@ -31,7 +25,10 @@ import {
   isInsideMarkdownCodeFence,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
-import { MARKDOWN_FILE_MENTION_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
+import {
+  markdownHighlightStyle,
+  markdownMarkerHighlight,
+} from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
@@ -133,6 +130,7 @@ const agentEditorTheme = EditorView.theme({
   ".cm-line": {
     lineHeight: "20px",
     padding: "0",
+    position: "relative",
   },
   ".cm-scroller": {
     overflow: "auto",
@@ -151,98 +149,254 @@ const agentEditorTheme = EditorView.theme({
   ".cm-activeLine": {
     backgroundColor: "transparent",
   },
-  ".cm-agent-file-mention, .cm-agent-file-mention *": {
-    color: "#eab308",
+  ".cm-md-heading-marker, .cm-md-heading-marker *": {
+    color: "#e9a339 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-strong-marker, .cm-md-strong-marker *": {
+    color: "#fb923c !important",
+    fontWeight: "700",
+  },
+  ".cm-md-emphasis-marker, .cm-md-emphasis-marker *": {
+    color: "#f472b6 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-table-marker, .cm-md-table-marker *": {
+    color: "#38bdf8 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-task-marker, .cm-md-task-marker *": {
+    color: "#a3e635 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-unordered-list-marker, .cm-md-unordered-list-marker *": {
+    color: "#2dd4bf !important",
+    fontWeight: "700",
+  },
+  ".cm-md-ordered-list-marker, .cm-md-ordered-list-marker *": {
+    color: "#c084fc !important",
+    fontWeight: "700",
+  },
+  ".cm-md-code-fence-marker, .cm-md-code-fence-marker *": {
+    color: "#e879f9 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
+    color: "#38bdf8 !important",
+    fontWeight: "700",
+    backgroundColor: "rgba(56, 189, 248, 0.12) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+  },
+  ".cm-md-code-fence-start-line": {
+    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+    borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    borderTopLeftRadius: "6px",
+    borderTopRightRadius: "6px",
+    backgroundColor: "rgba(255, 255, 255, 0.015)",
+    paddingLeft: "6px",
+    paddingTop: "2px",
+    paddingBottom: "2px",
+  },
+  ".cm-md-code-fence-middle-line": {
+    borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.015)",
+    paddingLeft: "6px",
+  },
+  ".cm-md-code-fence-end-line": {
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+    borderBottomLeftRadius: "6px",
+    borderBottomRightRadius: "6px",
+    backgroundColor: "rgba(255, 255, 255, 0.015)",
+    paddingLeft: "6px",
+    paddingBottom: "2px",
+  },
+  ".cm-md-code-fence-hidden-line": {
+    display: "none !important",
+  },
+  ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace": {
+    color: "inherit !important",
+    backgroundColor: "transparent !important",
+    padding: "0 !important",
+    borderRadius: "0 !important",
+  },
+  ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node)": {
+    backgroundColor: "transparent !important",
+    padding: "0 !important",
+    borderRadius: "0 !important",
+  },
+  ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
+    color: "#fb7185 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-quote-marker, .cm-md-quote-marker *": {
+    color: "#a5b4fc !important",
+    fontWeight: "700",
+  },
+  ".cm-md-link-marker, .cm-md-link-marker *": {
+    color: "#86efac !important",
+    fontWeight: "700",
+  },
+  ".cm-md-strike-marker, .cm-md-strike-marker *": {
+    color: "#fda4af !important",
+    fontWeight: "700",
+  },
+  ".cm-md-separator-marker, .cm-md-separator-marker *": {
+    color: "#fde047 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-bracket-content-marker, .cm-md-bracket-content-marker *": {
+    textDecoration: "underline",
+    textDecorationColor: "rgba(255, 255, 255, 0.4)",
+  },
+  ".cm-md-template-marker, .cm-md-template-marker *": {
+    color: "#818cf8 !important",
+    fontWeight: "700",
+  },
+  ".cm-md-template-command, .cm-md-template-command *": {
+    color: "#c4b5fd !important",
+    fontWeight: "700",
+    backgroundColor: "rgba(196, 181, 253, 0.12) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+  },
+  ".cm-md-template-command-addTemplate, .cm-md-template-command-addTemplate *": {
+    color: "#34d399 !important",
+    backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+  },
+  ".cm-md-template-command-bugTemplate, .cm-md-template-command-bugTemplate *": {
+    color: "#fb7185 !important",
+    backgroundColor: "rgba(251, 113, 133, 0.15) !important",
+  },
+  ".cm-md-template-command-refactorTemplate, .cm-md-template-command-refactorTemplate *": {
+    color: "#c084fc !important",
+    backgroundColor: "rgba(192, 132, 252, 0.15) !important",
+  },
+  ".cm-md-template-command-commonTemplate, .cm-md-template-command-commonTemplate *": {
+    color: "#38bdf8 !important",
+    backgroundColor: "rgba(56, 189, 248, 0.15) !important",
+  },
+  ".cm-md-template-title, .cm-md-template-title *": {
+    color: "#fde68a !important",
+    backgroundColor: "rgba(253, 230, 138, 0.18) !important",
+    textDecoration: "underline",
+    textDecorationColor: "rgba(253, 230, 138, 0.6)",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+  },
+  ".cm-md-template-done, .cm-md-template-done *": {
+    color: "#34d399 !important",
+    backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+  },
+  ".cm-md-template-in-progress, .cm-md-template-in-progress *": {
+    color: "#fbbf24 !important",
+    backgroundColor: "rgba(251, 191, 36, 0.15) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+  },
+  ".cm-md-template-id, .cm-md-template-id *": {
+    color: "#f0abfc !important",
+    backgroundColor: "rgba(240, 171, 252, 0.14) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+    fontWeight: "600 !important",
+  },
+  ".cm-md-template-wt, .cm-md-template-wt *": {
+    color: "#22d3ee !important",
+    backgroundColor: "rgba(34, 211, 238, 0.14) !important",
+    padding: "1px 6px !important",
+    borderRadius: "3px !important",
+    fontWeight: "600 !important",
+  },
+  ".cm-md-template-start-line": {
+    borderTop: "1px solid rgba(129, 140, 248, 0.2)",
+    borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+    borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+    borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
+    borderTopLeftRadius: "6px",
+    borderTopRightRadius: "6px",
+    backgroundColor: "rgba(129, 140, 248, 0.03)",
+    paddingLeft: "6px",
+    paddingRight: "96px",
+    boxSizing: "border-box",
+    paddingTop: "2px",
+    paddingBottom: "2px",
+  },
+  ".cm-md-template-middle-line": {
+    borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+    borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+    backgroundColor: "rgba(129, 140, 248, 0.03)",
+    paddingLeft: "6px",
+  },
+  ".cm-md-template-end-line": {
+    borderBottom: "1px solid rgba(129, 140, 248, 0.2)",
+    borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+    borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+    borderBottomLeftRadius: "6px",
+    borderBottomRightRadius: "6px",
+    backgroundColor: "rgba(129, 140, 248, 0.03)",
+    paddingLeft: "6px",
+    paddingBottom: "2px",
+  },
+  ".cm-md-template-comment-line": {
+    borderLeft: "1px solid rgba(129, 140, 248, 0.2)",
+    borderRight: "1px solid rgba(129, 140, 248, 0.2)",
+    backgroundColor: "rgba(129, 140, 248, 0.03)",
+    paddingLeft: "6px",
+  },
+  ".cm-md-template-comment-line, .cm-md-template-comment-line *": {
+    color: "#6b7280 !important",
+    fontStyle: "italic !important",
+  },
+  ".cm-md-template-line-in-progress": {
+    borderColor: "rgba(251, 191, 36, 0.35) !important",
+  },
+  ".cm-md-template-line-done": {
+    borderColor: "rgba(52, 211, 153, 0.35) !important",
+  },
+  ".cm-md-template-hidden-line": {
+    display: "none !important",
+  },
+  ".cm-md-file-mention, .cm-md-file-mention *": {
+    color: "#eab308 !important",
     fontWeight: "500",
     textDecoration: "underline",
     textDecorationColor: "rgba(234, 179, 8, 0.4)",
   },
-  ".cm-agent-reference-project, .cm-agent-reference-project *": {
-    color: "#c4b5fd",
+  ".cm-md-referenced-file-mention, .cm-md-referenced-file-mention *": {
+    color: "#c4b5fd !important",
+    fontWeight: "500",
+    textDecoration: "underline",
+    textDecorationColor: "rgba(196, 181, 253, 0.4)",
+  },
+  ".cm-md-reference-project, .cm-md-reference-project *": {
+    color: "#c4b5fd !important",
     fontWeight: "500",
   },
-  ".cm-agent-reference-folder, .cm-agent-reference-folder *": {
-    color: "#d97706",
+  ".cm-md-reference-folder, .cm-md-reference-folder *": {
+    color: "#d97706 !important",
     fontWeight: "500",
   },
-  ".cm-agent-reference-file, .cm-agent-reference-file *": {
-    color: "#7dd3fc",
+  ".cm-md-reference-file, .cm-md-reference-file *": {
+    color: "#7dd3fc !important",
     fontWeight: "500",
   },
-  ".cm-agent-reference-image, .cm-agent-reference-image *": {
-    color: "#f9a8d4",
+  ".cm-md-reference-image, .cm-md-reference-image *": {
+    color: "#f9a8d4 !important",
     fontWeight: "500",
   },
-  ".cm-agent-reference-common, .cm-agent-reference-common *": {
-    color: "#22d3ee",
+  ".cm-md-reference-common, .cm-md-reference-common *": {
+    color: "#cbd5e1 !important",
     fontWeight: "500",
   },
 })
-
-const markdownHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading, color: "#e9a339", fontWeight: "700" },
-  { tag: tags.strong, color: "#fb923c", fontWeight: "700" },
-  { tag: tags.emphasis, color: "#f472b6", fontStyle: "italic" },
-  { tag: tags.link, color: "#38bdf8", textDecoration: "underline" },
-  { tag: tags.url, color: "#38bdf8" },
-  { tag: tags.monospace, color: "#38bdf8" },
-  { tag: tags.comment, color: "rgba(255, 255, 255, 0.4)" },
-])
-
-// @ 提及高亮样式类（对齐主 Markdown 编辑器的配色）。
-const agentMentionDecorations: Record<"mention" | MarkdownReferenceType, Decoration> = {
-  mention: Decoration.mark({ class: "cm-agent-file-mention" }),
-  project: Decoration.mark({ class: "cm-agent-reference-project" }),
-  folder: Decoration.mark({ class: "cm-agent-reference-folder" }),
-  file: Decoration.mark({ class: "cm-agent-reference-file" }),
-  image: Decoration.mark({ class: "cm-agent-reference-image" }),
-  common: Decoration.mark({ class: "cm-agent-reference-common" }),
-}
-
-// 参考引用 token：@[refer-{type}]({path})，与主 Markdown 编辑器一致。
-const AGENT_MENTION_REFERENCE_PATTERN =
-  /@\[refer-(project|folder|file|image|common)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g
-
-export const buildMentionDecorations = (doc: Text): DecorationSet => {
-  const builder = new RangeSetBuilder<Decoration>()
-  for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber += 1) {
-    const line = doc.line(lineNumber)
-    const from = line.from
-    const lineText = line.text
-
-    MARKDOWN_FILE_MENTION_PATTERN.lastIndex = 0
-    for (const match of lineText.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
-      if (match.index === undefined) continue
-      const fromPos = from + match.index
-      builder.add(fromPos, fromPos + match[0].length, agentMentionDecorations.mention)
-    }
-
-    AGENT_MENTION_REFERENCE_PATTERN.lastIndex = 0
-    for (const match of lineText.matchAll(AGENT_MENTION_REFERENCE_PATTERN)) {
-      if (match.index === undefined) continue
-      const type = match[1] as MarkdownReferenceType
-      const fromPos = from + match.index
-      builder.add(fromPos, fromPos + match[0].length, agentMentionDecorations[type])
-    }
-  }
-  return builder.finish()
-}
-
-// @ 提及/参考引用高亮插件：文档变化时重算装饰。
-const agentMentionHighlight = ViewPlugin.fromClass(
-  class {
-    view: EditorView
-    decorations: DecorationSet
-    constructor(view: EditorView) {
-      this.view = view
-      this.decorations = buildMentionDecorations(view.state.doc)
-    }
-    update(update: ViewUpdate): void {
-      if (update.docChanged) this.decorations = buildMentionDecorations(this.view.state.doc)
-    }
-  },
-  { decorations: (view) => view.decorations },
-)
 
 /**
  * Agent 专用 Markdown 输入框组件，使用 CodeMirror 6 引擎，支持：
@@ -670,7 +824,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           }),
           syntaxHighlighting(markdownHighlightStyle),
           agentEditorTheme,
-          agentMentionHighlight,
+          markdownMarkerHighlight(),
           EditorView.lineWrapping,
           indentOnInput(),
           bracketMatching(),
