@@ -46,7 +46,6 @@ const renderInput = async (history: string[]) => {
         modelOptions={[{ label: "M", options: [{ label: "m", value: "m" }] }]}
         hasModelOptions
         pendingRequest={null}
-        todos={[]}
         onPermissionRespond={vi.fn()}
         worktreeOptions={null}
         onWorktreeSelect={vi.fn()}

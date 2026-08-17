@@ -291,7 +291,7 @@ export const AgentPage = ({
           scrollRef={subagentScrollRef}
         />
       </div>
-      {/* 任务清单由 AgentInput 上方浮层展示（TodoDock：折叠左侧小块 / 展开全宽）。 */}
+      {/* 任务清单由 AgentStatusBar 右侧 todo 指示展示（有未完成任务时显示，hover 查看列表）。 */}
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
@@ -313,7 +313,6 @@ export const AgentPage = ({
         projectPath={currentProjectPath}
         inputTextareaRef={inputTextareaRef}
         pendingRequest={pendingRequest}
-        todos={todos}
         onPermissionRespond={respondPermission}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
@@ -321,7 +320,7 @@ export const AgentPage = ({
         onFilesChange={setSelectedFiles}
         supportsImages={supportsImages}
       />
-      <AgentStatusBar projectPath={statusBarPath} contextUsage={contextUsage} />
+      <AgentStatusBar projectPath={statusBarPath} contextUsage={contextUsage} todos={todos} />
     </div>
   )
 }

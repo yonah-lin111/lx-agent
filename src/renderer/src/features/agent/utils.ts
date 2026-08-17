@@ -88,7 +88,7 @@ export const toChatMessage = (
   }
 
   if (message.role === "todoState") {
-    // 任务清单不进消息流渲染（UI 走独立 TodoDock）；此分支不可达（state.messages 不含 todoState）。
+    // 任务清单不进消息流渲染（UI 走独立 todo 指示）；此分支不可达（state.messages 不含 todoState）。
     return {
       id,
       role: "assistant",

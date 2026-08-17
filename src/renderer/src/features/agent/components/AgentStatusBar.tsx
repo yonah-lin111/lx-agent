@@ -1,7 +1,7 @@
+import type { TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
-import { LspStatusButton } from "@/components/layout/LspStatusButton"
-import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { TodoStatusButton } from "@/features/agent/components/TodoStatusButton"
 import { GitStatusBar } from "@/features/git"
 
 // Agent 状态栏属性。
@@ -10,6 +10,8 @@ interface AgentStatusBarProps {
   projectPath?: string
   // 当前会话上下文容量（估计 token / 压缩窗口；null = 尚无会话数据）。
   contextUsage?: { tokens: number; contextWindow: number } | null
+  // 当前会话任务清单（有未完成任务时状态栏右侧展示 todo 计数 icon）。
+  todos?: TodoList
 }
 
 // 上下文容量文字颜色：≥100% 红（已满）/ >85% 琥珀（接近压缩触发区）/ 其余中性。
@@ -20,7 +22,7 @@ const contextColor = (percent: number): string => {
 }
 
 /**
- * 渲染 Agent 当前会话的路径、分支、上下文容量与工作区状态，最右侧为 MCP 连接状态。
+ * 渲染 Agent 当前会话的路径、分支、上下文容量与任务清单状态，最右侧为 todo 计数。
  *
  * 无 git 上下文（projectPath 缺省）时隐藏 git 部分，但保留等高位占位，
  * 避免输入框位置跳动（高度 = GitStatusBar 的 border-t 1px + py-1 8px + text-xs 行高 16px）。
@@ -28,6 +30,7 @@ const contextColor = (percent: number): string => {
 export const AgentStatusBar = ({
   projectPath,
   contextUsage,
+  todos,
 }: AgentStatusBarProps): React.JSX.Element => {
   const percent = contextUsage
     ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
@@ -56,8 +59,7 @@ export const AgentStatusBar = ({
           </span>
         </LxTooltip>
       )}
-      <LspStatusButton />
-      <McpStatusButton />
+      <TodoStatusButton todos={todos} />
     </div>
   )
 }

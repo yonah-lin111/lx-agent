@@ -33,7 +33,7 @@ const getTodos = (args: Record<string, unknown>): TodoList => {
 
 /**
  * AgentTodoCallBlock - 渲染 todowrite 工具调用：header 展示清单图标，正文逐条渲染当前清单
- * （条目样式与 TodoDock 一致），整表替换语义下每条调用即完整快照，独立成组不参与执行折叠。
+ * （条目样式与状态栏 todo 指示一致），整表替换语义下每条调用即完整快照，独立成组不参与执行折叠。
  */
 export const AgentTodoCallBlock = ({
   toolCall,

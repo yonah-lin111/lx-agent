@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, History, Plus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
+import { LspStatusButton } from "@/components/layout/LspStatusButton"
+import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, ChatHistoryPanel } from "@/features/agent"
@@ -371,6 +373,9 @@ export const RightSideBar = (): React.JSX.Element => {
             </LxTooltip>
 
             {deleteSessionButton}
+
+            <LspStatusButton />
+            <McpStatusButton />
           </div>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1">

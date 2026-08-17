@@ -375,7 +375,7 @@ export type AgentEvent =
   | { type: "compaction_failed"; compactionId: string; manual: boolean }
   // 上下文容量快照：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
   | { type: "context_usage"; tokens: number; contextWindow: number }
-  // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动 TodoDock；不落 message entry）。
+  // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动状态栏 todo 指示；不落 message entry）。
   | { type: "todo_updated"; todos: TodoList }
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
   | { type: "queue_changed"; length: number; messages: string[] }

@@ -60,7 +60,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [isCompacting, setIsCompacting] = useState(false)
   // 上下文压缩是否为手动触发（/compact），驱动 UI 文案区分。
   const [isCompactingManual, setIsCompactingManual] = useState(false)
-  // 任务清单（TodoDock 数据源：订阅 todo_updated / 恢复时提取；空数组 = dock 不渲染）。
+  // 任务清单（状态栏 todo 指示数据源：订阅 todo_updated / 恢复时提取；空数组 = 指示不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
   // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
   const [contextUsage, setContextUsage] = useState<{
@@ -265,7 +265,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
         }
 
         case "todo_updated":
-          // 任务清单整表替换（模型经 todowrite 更新；驱动 TodoDock）。
+          // 任务清单整表替换（模型经 todowrite 更新；驱动状态栏 todo 指示）。
           setTodos(event.todos)
           break
 
