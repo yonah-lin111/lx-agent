@@ -208,7 +208,7 @@ export const AgentPage = ({
     [setInputText],
   )
 
-  // 挂起的权限请求：订阅事件流，驱动 AgentInput 命令面板（替代原弹窗）。
+  // 挂起的权限请求：订阅事件流，驱动状态栏权限 icon tooltip（替代原弹窗）。
   const [pendingRequest, setPendingRequest] = useState<PermissionRequest | null>(null)
 
   useEffect(() => {
@@ -312,15 +312,19 @@ export const AgentPage = ({
         projectId={currentProjectId}
         projectPath={currentProjectPath}
         inputTextareaRef={inputTextareaRef}
-        pendingRequest={pendingRequest}
-        onPermissionRespond={respondPermission}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
         selectedFiles={selectedFiles}
         onFilesChange={setSelectedFiles}
         supportsImages={supportsImages}
       />
-      <AgentStatusBar projectPath={statusBarPath} contextUsage={contextUsage} todos={todos} />
+      <AgentStatusBar
+        projectPath={statusBarPath}
+        contextUsage={contextUsage}
+        todos={todos}
+        pendingRequest={pendingRequest}
+        onPermissionRespond={respondPermission}
+      />
     </div>
   )
 }

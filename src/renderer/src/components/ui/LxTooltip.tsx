@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react"
+import { Check, Minus, X } from "lucide-react"
 import React, { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
@@ -20,6 +20,12 @@ export interface LxTooltipProps {
   className?: string
   // 内容允许多行/列表展示：宽度随内容自适应，超出视口时受限并可换行。
   multiline?: boolean
+  // 是否支持最小化：右上角展示 [-] 按钮，点击关闭/最小化气泡（默认 false）。
+  minimizable?: boolean
+  // 滚动条滚动时是否关闭（默认 true；常驻浮层如权限面板设为 false）。
+  closeOnScroll?: boolean
+  // 点击气泡外区域是否关闭（默认 true；常驻浮层如权限面板设为 false）。
+  closeOnOutsideClick?: boolean
   // 点击气泡内容后自动关闭。
   closeOnContentClick?: boolean
   // 受控显隐。
@@ -54,6 +60,9 @@ export const LxTooltip = ({
   contentClassName = "",
   className = "",
   multiline = false,
+  minimizable = false,
+  closeOnScroll = true,
+  closeOnOutsideClick = true,
   closeOnContentClick = false,
   open,
   onOpenChange,
@@ -198,7 +207,7 @@ export const LxTooltip = ({
   }, [shouldRender, placement])
 
   useEffect(() => {
-    if (!isVisible) return
+    if (!isVisible || !closeOnScroll) return
     // 任意滚动条滚动时关闭气泡，排除气泡自身内部滚动。
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
@@ -209,7 +218,7 @@ export const LxTooltip = ({
     }
     document.addEventListener("scroll", handleScroll, true)
     return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isVisible])
+  }, [isVisible, closeOnScroll])
 
   useEffect(() => {
     if (!isVisible) return
@@ -224,13 +233,13 @@ export const LxTooltip = ({
         syncVisible(false)
       }
     }
-    document.addEventListener("mousedown", handleOutsideClick)
+    if (closeOnOutsideClick) document.addEventListener("mousedown", handleOutsideClick)
     document.addEventListener("keydown", handleEscape)
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick)
+      if (closeOnOutsideClick) document.removeEventListener("mousedown", handleOutsideClick)
       document.removeEventListener("keydown", handleEscape)
     }
-  }, [isVisible])
+  }, [isVisible, closeOnOutsideClick])
 
   useEffect(() => () => clearTimers(), [])
 
@@ -349,7 +358,7 @@ export const LxTooltip = ({
           <div
             ref={tooltipRef}
             role="tooltip"
-            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
+            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
             style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
             onMouseEnter={() => {
               if (hideTimeoutRef.current) {
@@ -365,6 +374,23 @@ export const LxTooltip = ({
               if (closeOnContentClick) syncVisible(false)
             }}
           >
+            {minimizable && (
+              <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
+                {title && (
+                  <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
+                    {title}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  aria-label="最小化"
+                  onClick={() => syncVisible(false)}
+                  className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {isConfirming ? (
               <div className="flex flex-col gap-1.5">
                 {title && <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>}
@@ -394,7 +420,7 @@ export const LxTooltip = ({
                   </button>
                 </div>
               </div>
-            ) : title ? (
+            ) : title && !minimizable ? (
               <div className="flex flex-col gap-1">
                 <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
                   {title}
@@ -402,7 +428,9 @@ export const LxTooltip = ({
                 {content}
               </div>
             ) : (
-              content
+              <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : undefined}>
+                {content}
+              </div>
             )}
             <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
               <path
