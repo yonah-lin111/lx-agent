@@ -52,6 +52,7 @@ export interface AgentMarkdownInputProps {
   onChange: (value: string) => void
   onSend: () => void
   disabled?: boolean
+  isExpanded?: boolean
   placeholder?: string
   // 面板定位锚点：整个输入框容器（含 padding/边框），保证面板宽度与输入框一致。
   // 缺省时回退到内部 CodeMirror 容器。
@@ -108,8 +109,8 @@ const getMentionQuery = (
 
 const agentEditorTheme = EditorView.theme({
   "&": {
-    height: "auto",
-    minHeight: "44px",
+    height: "var(--agent-input-height, auto)",
+    minHeight: "var(--agent-input-height, 44px)",
     maxHeight: "244px",
     backgroundColor: "transparent",
     color: "rgba(255, 255, 255, 0.9)",
@@ -120,7 +121,7 @@ const agentEditorTheme = EditorView.theme({
     outline: "none",
   },
   ".cm-content": {
-    minHeight: "44px",
+    minHeight: "var(--agent-input-height, 44px)",
     maxHeight: "244px",
     padding: "2px 4px",
     caretColor: "#ffffff",
@@ -413,6 +414,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onChange,
       onSend,
       disabled = false,
+      isExpanded = false,
       placeholder: placeholderText = "给 LX Agent 发送消息...",
       projectId,
       projectPath,
@@ -1109,10 +1111,17 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           visible={isBlockCommandOpen}
         />
 
-        {/* CodeMirror 编辑器容器：内容自适应，最大 12 行。 */}
+        {/* CodeMirror 编辑器容器：内容自适应（默认最大 12 行），扩大时固定最大 12 行高度（244px）。 */}
         <div
           ref={containerRef}
-          className={`min-h-[44px] max-h-[244px] w-full overflow-y-auto ${
+          style={
+            isExpanded
+              ? ({ "--agent-input-height": "244px" } as React.CSSProperties)
+              : undefined
+          }
+          className={`${
+            isExpanded ? "h-[244px]" : "min-h-[44px]"
+          } max-h-[244px] w-full overflow-y-auto ${
             disabled ? "pointer-events-none opacity-50" : ""
           }`}
         />

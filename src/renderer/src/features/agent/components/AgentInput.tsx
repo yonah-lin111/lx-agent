@@ -1,6 +1,6 @@
-import { Loader2, Send, Square } from "lucide-react"
+import { Loader2, Maximize2, Minimize2, Send, Square } from "lucide-react"
 import type React from "react"
-import { useImperativeHandle, useRef } from "react"
+import { useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -76,6 +76,7 @@ export const AgentInput = ({
   onFilesChange,
   supportsImages,
 }: AgentInputProps): React.JSX.Element => {
+  const [isExpanded, setIsExpanded] = useState(false)
   const markdownInputRef = useRef<AgentMarkdownInputRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -269,6 +270,7 @@ export const AgentInput = ({
           value={inputText}
           onChange={onInputChange}
           onSend={handleSend}
+          isExpanded={isExpanded}
           panelAnchorRef={containerRef}
           projectId={projectId}
           projectPath={projectPath}
@@ -290,7 +292,27 @@ export const AgentInput = ({
               disabled={!hasModelOptions}
             />
           </div>
-          <div>{actionButton}</div>
+          <div className="flex items-center gap-1.5">
+            <LxIconButton
+              shape="circle"
+              aria-label={isExpanded ? "自适应高度" : "扩大输入框"}
+              title={{
+                content: isExpanded ? "自适应高度" : "扩大输入框",
+                placement: "top",
+              }}
+              onClick={() => setIsExpanded((prev) => !prev)}
+              hoverBgClass="hover:bg-white/20"
+              hoverTextClass="hover:text-white"
+              className="bg-white/10 !text-white/70"
+            >
+              {isExpanded ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+            </LxIconButton>
+            {actionButton}
+          </div>
         </div>
       </div>
     </div>

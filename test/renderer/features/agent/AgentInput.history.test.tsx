@@ -144,4 +144,20 @@ describe("AgentInput 历史提示词键盘", () => {
 
     expect(screen.getByText(PLACEHOLDER)).not.toBeNull()
   })
+
+  it("点击扩大按钮切换扩大/自适应高度", async () => {
+    await renderInput([])
+
+    const expandBtn = screen.getByRole("button", { name: "扩大输入框" })
+    expect(expandBtn).not.toBeNull()
+
+    fireEvent.click(expandBtn)
+
+    const shrinkBtn = screen.getByRole("button", { name: "自适应高度" })
+    expect(shrinkBtn).not.toBeNull()
+
+    fireEvent.click(shrinkBtn)
+
+    expect(screen.getByRole("button", { name: "扩大输入框" })).not.toBeNull()
+  })
 })
