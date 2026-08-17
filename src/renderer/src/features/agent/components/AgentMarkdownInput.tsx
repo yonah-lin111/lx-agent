@@ -7,7 +7,7 @@ import { languages } from "@codemirror/language-data"
 import { markdown } from "@codemirror/lang-markdown"
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language"
 import { EditorState, Prec } from "@codemirror/state"
-import { EditorView, keymap, ViewPlugin } from "@codemirror/view"
+import { EditorView, keymap } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { tags } from "@lezer/highlight"
 import type { ProjectFileEntry } from "@shared/project"
@@ -383,26 +383,31 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             : []
 
         if (matchedBlockCmds.length > 0 && trigger) {
+          // 组件主逻辑在 updateListener 中执行（DOM 已更新，可读布局）；
+          // coordsAtPos 失败时（极端场景/无布局）fallback 到容器定位。
           const measurePos = trigger.kind === "codeBlock" && cursor > line.from ? cursor - 1 : cursor
-          const coords = view.coordsAtPos(measurePos)
-          const container = containerRef.current
           let position: React.CSSProperties | undefined
-          if (coords) {
-            const panelWidth = 320
-            const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
-            position =
-              window.innerHeight - coords.bottom < 240
-                ? { left, top: "auto", bottom: window.innerHeight - coords.top + 6 }
-                : { left, top: coords.bottom + 6, bottom: "auto" }
-          } else if (container) {
-            // coordsAtPos 在输入 update 期间对行尾位置可能返回 null，fallback 到容器定位。
-            position = getAgentPanelPosition("command", container.getBoundingClientRect())
+          try {
+            const coords = view.coordsAtPos(measurePos)
+            if (coords) {
+              const panelWidth = 320
+              const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
+              position =
+                window.innerHeight - coords.bottom < 240
+                  ? { left, top: "auto", bottom: window.innerHeight - coords.top + 6 }
+                  : { left, top: coords.bottom + 6, bottom: "auto" }
+            }
+          } catch {
+            position = undefined
+          }
+          if (!position && containerRef.current) {
+            position = getAgentPanelPosition("command", containerRef.current.getBoundingClientRect())
           }
           if (position) {
             setBlockCommands(matchedBlockCmds)
             setBlockCommandPosition(position)
-            return
           }
+          return
         }
         setBlockCommands([])
         setBlockCommandPosition(undefined)
@@ -759,21 +764,19 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             ]),
           ),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          ViewPlugin.fromClass(
-            class {
-              update(update: { docChanged: boolean; selectionSet: boolean; view: EditorView }): void {
-                if (update.docChanged) {
-                  const newDoc = update.view.state.doc.toString()
-                  onChangeRef.current(newDoc)
-                }
-                if (update.docChanged || update.selectionSet) {
-                  const cursor = update.view.state.selection.main.head
-                  const docText = update.view.state.doc.toString()
-                  syncPanelsRef.current(docText, cursor, update.view)
-                }
-              }
-            },
-          ),
+          // 用 updateListener 而非 viewPlugin：后者在 DOM 更新前调用，读取布局
+          // （coordsAtPos）会抛 "Reading the editor layout isn't allowed during an update"。
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              const newDoc = update.state.doc.toString()
+              onChangeRef.current(newDoc)
+            }
+            if (update.docChanged || update.selectionSet) {
+              const cursor = update.state.selection.main.head
+              const docText = update.state.doc.toString()
+              syncPanelsRef.current(docText, cursor, update.view)
+            }
+          }),
           EditorView.domEventHandlers({
             focus: (_event, view) => {
               const cursor = view.state.selection.main.head
