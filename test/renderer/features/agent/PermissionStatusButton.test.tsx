@@ -45,7 +45,7 @@ describe("PermissionStatusButton", () => {
 
   it("无请求时不渲染", () => {
     const { container } = render(<PermissionStatusButton request={null} onRespond={vi.fn()} />)
-    expect(container.querySelector('[role="button"]')).toBeNull()
+    expect(container.querySelector('[aria-label="权限确认"]')).toBeNull()
   })
 
   it("请求到达自动展开：展示工具名/mode 与选择态六选项", () => {
@@ -101,7 +101,7 @@ describe("PermissionStatusButton", () => {
     fireEvent.keyDown(document, { key: "Escape" })
     flushCloseAnimation()
     expect(screen.queryByText("允许")).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: "权限确认" }))
+    fireEvent.click(screen.getByLabelText("权限确认"))
     expect(screen.getByText("允许")).not.toBeNull()
     vi.useRealTimers()
   })

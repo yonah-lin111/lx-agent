@@ -169,10 +169,11 @@ export const PermissionStatusButton = ({
             key={option.key}
             type="button"
             role="option"
+            tabIndex={-1}
             aria-selected={index === activeIndex}
             onMouseEnter={() => setActiveIndex(index)}
             onClick={() => handleAction(index)}
-            className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${toneClass(
+            className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left outline-none transition-colors focus:outline-none focus-visible:outline-none ${toneClass(
               option.tone,
               index === activeIndex,
             )}`}
@@ -208,16 +209,8 @@ export const PermissionStatusButton = ({
       content={tooltipContent}
     >
       <span
-        role="button"
-        tabIndex={0}
         aria-label="权限确认"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            setIsOpen((open) => !open)
-          }
-        }}
-        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 transition-colors hover:bg-white/5"
+        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
       >
         <ShieldAlert className="h-3 w-3 shrink-0" />
       </span>
