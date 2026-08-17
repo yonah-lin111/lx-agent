@@ -40,6 +40,7 @@ const renderList = () => {
   ]
   const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
   const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
+  Object.defineProperty(scrollEl, "clientHeight", { value: 600, configurable: true })
   // 吸顶判定锚点：用户消息自然流结束位置（useMessagePin 据此判定是否完全滚出视口）。
   const anchorEls = Array.from(container.querySelectorAll('[aria-hidden="true"]'))
   // 吸顶容器仅在钉住时挂 .sticky class。
@@ -116,5 +117,61 @@ describe("AgentMessageList 吸顶判定", () => {
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(220, 250))
     fireEvent.scroll(scrollEl)
     expect(pinState("q2")).toBe(false)
+  })
+
+  it("在底部附近向上滚动时，释放吸底锁，即使触发 visibleGroups 更新也不应自动滚到底部", () => {
+    // 1. Mock HTMLElement prototype to simulate a rendered state with dimensions
+    const clientHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(600)
+    const scrollHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1000)
+    let scrollTopValue = 400
+    const scrollTopGetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "get")
+      .mockImplementation(() => scrollTopValue)
+    const scrollTopSetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "set")
+      .mockImplementation((val) => {
+        scrollTopValue = val
+      })
+
+    const originalScrollTo = window.HTMLElement.prototype.scrollTo
+    window.HTMLElement.prototype.scrollTo = vi.fn()
+
+    try {
+      const messages: ChatMessage[] = [
+        userMessage("q1", "问题一"),
+        assistantMessage("a1", "回答一"),
+      ]
+      const { container, rerender } = render(
+        <AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />,
+      )
+      const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
+
+      // 触发初始滚动（此时在最底部，锁定在底部）
+      fireEvent.scroll(scrollEl)
+
+      // 2. 稍微向上滚动 (scrollTop = 390)，仍在 250px 阈值内
+      scrollTopValue = 390
+      fireEvent.scroll(scrollEl)
+
+      // 3. 追加一条新消息，这会改变 visibleGroups，从而触发 layoutEffect
+      const nextMessages = [...messages, userMessage("q2", "问题二")]
+      rerender(<AgentMessageList messages={nextMessages} onSelectPrompt={vi.fn()} />)
+
+      // 如果吸底锁没有释放，scrollTop 会被强制设置为 scrollHeight (1000)
+      // 如果正确释放了，它应该保持在原来的位置 (390)
+      expect(scrollEl.scrollTop).not.toBe(1000)
+      expect(scrollEl.scrollTop).toBe(390)
+    } finally {
+      // Restore prototype mocks
+      clientHeightSpy.mockRestore()
+      scrollHeightSpy.mockRestore()
+      scrollTopGetSpy.mockRestore()
+      scrollTopSetSpy.mockRestore()
+      window.HTMLElement.prototype.scrollTo = originalScrollTo
+    }
   })
 })

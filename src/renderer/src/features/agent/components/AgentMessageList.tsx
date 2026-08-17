@@ -187,7 +187,15 @@ export const AgentMessageList = ({
     if (!el || el.clientHeight <= 0) return
 
     const nearBottom = isNearBottom()
-    stickToBottomRef.current = nearBottom
+    const prevScrollTop = activeScrollTopRef.current
+    const isScrollingUp = prevScrollTop !== null && prevScrollTop - el.scrollTop > 0.5
+
+    if (isScrollingUp) {
+      stickToBottomRef.current = false
+    } else {
+      stickToBottomRef.current = nearBottom
+    }
+
     // 仅在真实可见并渲染时，实时记录用户的有效浏览像素位置
     activeScrollTopRef.current = el.scrollTop
 

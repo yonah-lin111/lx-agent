@@ -11,22 +11,21 @@ export const useMessagePin = () => {
   // 各用户消息自然流结束位置的 DOM 引用（按用户消息 id 索引）。
   const userMessageEndRefs = useRef(new Map<string, HTMLDivElement>())
 
-  // 用户消息在自然流中的底部已完全越过滚动容器视口顶部。
-  const hasUserMessageFullyScrolledPast = (
-    messageEnd: HTMLDivElement,
-    container: HTMLDivElement,
-  ): boolean => {
-    if (container.scrollTop <= 0.5) return false
-    const containerTop = container.getBoundingClientRect().top
-    return messageEnd.getBoundingClientRect().top <= containerTop
-  }
-
   // 仅在用户消息完全离开视口后启用吸顶。
   const updatePinnedQuestion = (container: HTMLDivElement | null): void => {
     if (!container) return
     let pinnedId: string | null = null
+    const containerTop = container.getBoundingClientRect().top
+
     for (const [id, messageEnd] of userMessageEndRefs.current) {
-      if (hasUserMessageFullyScrolledPast(messageEnd, container)) {
+      const isCurrentlyPinned = pinnedUserMessageId === id
+      const rectTop = messageEnd.getBoundingClientRect().top
+
+      // 滞后（Hysteresis）缓冲区：若当前已处于吸顶状态，释放吸顶（unpin）需要更宽松的阈值（比如往下滚动 64px 以上才解除），
+      // 避免由于吸顶后高度变小、滚动条回弹导致在吸顶临界点产生无限循环抖动。
+      const threshold = isCurrentlyPinned ? containerTop + 64 : containerTop
+
+      if (container.scrollTop > 0.5 && rectTop <= threshold) {
         pinnedId = id
       }
     }
