@@ -51,7 +51,7 @@ describe("useMessagePin", () => {
     expect(result.current.pinnedUserMessageId).toBeNull()
   })
 
-  it("已经吸顶的消息具备滞后（Hysteresis）缓冲区保护，避免临界点无限循环抖动", () => {
+  it("已经吸顶的消息在部分回到视口（即用户消息底部回到 containerTop 以下）时立刻解除吸顶", () => {
     const { result } = renderHook(() => useMessagePin())
     const end = document.createElement("div")
 
@@ -69,16 +69,8 @@ describe("useMessagePin", () => {
     })
     expect(result.current.pinnedUserMessageId).toBe("msg-1")
 
-    // 2. 稍微回滚一小段距离 (比如 rectTop 变为 20px)，由于已经吸顶，阈值为 containerTop + 64 (即 64px)
-    // 20px <= 64px 依然成立，故应保持吸顶
-    rectTop = 20
-    act(() => {
-      result.current.updatePinnedQuestion(makeContainer(10))
-    })
-    expect(result.current.pinnedUserMessageId).toBe("msg-1")
-
-    // 3. 回滚更远距离 (比如 rectTop 变为 80px)，超过 64px 缓冲区，应该解除吸顶
-    rectTop = 80
+    // 2. 稍微回滚（比如 rectTop 变为 1px，消息任何部分进入视口），应立即解除吸顶
+    rectTop = 1
     act(() => {
       result.current.updatePinnedQuestion(makeContainer(10))
     })
