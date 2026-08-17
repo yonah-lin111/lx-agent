@@ -257,4 +257,45 @@ describe("AgentMessageList", () => {
 
     useMessagePinSpy.mockRestore()
   })
+
+  it("触发 steer 后，上一条 AI 消息底部的操作按钮仍显示", async () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", blocks: [{ kind: "text", text: "原始问题" }], isStreaming: false },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "第一轮回复" }],
+        isStreaming: false,
+        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+      },
+      {
+        id: "steer1",
+        role: "user",
+        isSteer: true,
+        blocks: [{ kind: "text", text: "插话内容" }],
+        isStreaming: false,
+      },
+      {
+        id: "a2",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "第二轮回复中" }],
+        isStreaming: true,
+      },
+    ]
+
+    render(
+      <AgentMessageList
+        messages={messages}
+        isStreaming={true}
+        onSelectPrompt={vi.fn()}
+        onSendSuggestedQuestion={vi.fn()}
+        onEchoToInput={vi.fn()}
+      />,
+    )
+    await act(async () => {})
+
+    // 第一条 AI 回复仍在且已定型，其复制操作按钮应渲染（不被 loader 遮盖）。
+    expect(screen.getByText("第一轮回复")).not.toBeNull()
+    expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBeGreaterThan(0)
+  })
 })

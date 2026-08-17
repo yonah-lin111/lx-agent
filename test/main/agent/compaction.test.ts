@@ -65,9 +65,12 @@ const toolResult = (toolName: string, text: string): AgentMessage => ({
   timestamp: 0,
 })
 
-// 模拟 streamText 返回指定文本。
-const mockStream = (text: string): void => {
-  streamTextMock.mockReturnValueOnce({ text: Promise.resolve(text) } as never)
+// 模拟 streamText 返回指定文本与 usage。
+const mockStream = (text: string, usage = { inputTokens: 0, outputTokens: 0 }): void => {
+  streamTextMock.mockReturnValueOnce({
+    text: Promise.resolve(text),
+    usage: Promise.resolve(usage),
+  } as never)
 }
 
 describe("estimateContextTokens", () => {
@@ -147,7 +150,10 @@ describe("generateCompactionSummary", () => {
   })
 
   it("为历史消息生成结构化摘要", async () => {
-    mockStream("<think>思考</think>\n目标：实现登录。已完成：搭建表单。")
+    mockStream("<think>思考</think>\n目标：实现登录。已完成：搭建表单。", {
+      inputTokens: 100,
+      outputTokens: 50,
+    })
     const result = await generateCompactionSummary([
       user("实现登录页"),
       assistant("已完成表单搭建"),
@@ -155,6 +161,7 @@ describe("generateCompactionSummary", () => {
     expect(result).toEqual({
       summary: "目标：实现登录。已完成：搭建表单。",
       model: "m",
+      usage: { input: 100, output: 50 },
     })
   })
 

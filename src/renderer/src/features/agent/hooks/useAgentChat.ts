@@ -1,4 +1,10 @@
-import type { AgentEvent, AgentSendContext, SubagentData, TodoList } from "@shared/contracts/agent"
+import type {
+  AgentEvent,
+  AgentSendContext,
+  AgentSendOptions,
+  SubagentData,
+  TodoList,
+} from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -123,6 +129,16 @@ export const useAgentChat = (context?: AgentSendContext) => {
             if (message.role === "user") item.isQueuedDrain = true
           }
           if (streaming) {
+            // 新流式消息接管前先复位上一个流式条目的 loading 标记：
+            // 防止上一条 AI 消息因 message_end 缺失/乱序而永久停留在 loading（操作按钮被 loader 遮盖）。
+            const previous = streamingRef.current
+            if (previous) {
+              setMessages((prev) =>
+                prev.map((current) =>
+                  current.id === previous.id ? { ...current, isStreaming: false } : current,
+                ),
+              )
+            }
             streamingRef.current = item
           }
           setMessages((prev) => [...prev, item])
@@ -142,6 +158,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
         case "message_end": {
           const streaming = streamingRef.current
           if (!streaming) return
+          // 仅助手消息的 message_end 与流式条目关联；用户/工具结果消息的 end（如 steer 即时插话）
+          // 不会携带流式状态，直接忽略，避免用其内容覆盖正在流式的助手条目。
+          if (event.message.role !== "assistant") return
           const final = toChatMessage(event.message, false, streaming.id)
           streamingRef.current = null
           setMessages((prev) => prev.map((item) => (item.id === final.id ? final : item)))
@@ -319,6 +338,19 @@ export const useAgentChat = (context?: AgentSendContext) => {
     streamingRef.current = null
     setQueuedCount(0)
     setQueuedMessages([])
+    // 中止后立即清除消息列表中的流式标记并标记已取消，避免 AI 消息残留 loading 效果、
+    // 并在气泡底部展示"已取消生成"提示（agent_end/message_end 可能滞后或缺失，不能依赖事件流收尾）。
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.isStreaming
+          ? {
+              ...message,
+              isStreaming: false,
+              ...(message.role === "assistant" ? { stopReason: "aborted" as const } : {}),
+            }
+          : message,
+      ),
+    )
   }, [])
 
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
@@ -480,10 +512,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
   )
 
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
-  // 流式输出期间发送 → main 侧入队（deferred queue），当前 run 结束后自动发送；输入框立即清空。
+  // 流式输出期间发送 → main 侧入队（deferred queue）或即时插话（steer）；输入框立即清空。
   const sendMessage = useCallback(
-    (contentToSend?: string, selection?: ModelSelection) => {
+    (contentToSend?: string, selection?: ModelSelection, options?: AgentSendOptions) => {
       let text = (contentToSend ?? inputText).trim()
+      // 即时插话（steer）：统一剥离 /steer 前缀，气泡与模型只看到内容、不出现命令。
+      if (options?.delivery === "steer" && text.startsWith("/steer")) {
+        text = text.slice(6).trim()
+      }
       if (!text && selectedFiles.length > 0) {
         text = `[发送了 ${selectedFiles.length} 个附件]`
       }
@@ -517,10 +553,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
       setInputText("")
       setSelectedFiles([])
 
-      void agentApi.send(text, selection, sendContext).then((result) => {
+      void agentApi.send(text, selection, sendContext, options).then((result) => {
         if (result.ok) {
-          // 入队消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
-          if (result.sessionId && !("queued" in result)) {
+          if ("steered" in result) {
+            successToast("已发送即时插话，将在当前步骤完成后生效")
+          }
+          // 入队/插话消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
+          if (result.sessionId && !("queued" in result) && !("steered" in result)) {
             sessionListStore.setCurrentSessionId(result.sessionId)
             void sessionListStore.refresh()
           }
@@ -530,10 +569,20 @@ export const useAgentChat = (context?: AgentSendContext) => {
           setSelectedFiles(
             sendContext.files ? sendContext.files.map((f, i) => ({ id: `err-${i}`, ...f })) : [],
           )
+          errorToast(result.error)
         }
       })
     },
-    [inputText, selectedFiles, context, contextUsage, errorToast, isCompacting, isCompactingManual],
+    [
+      inputText,
+      selectedFiles,
+      context,
+      contextUsage,
+      errorToast,
+      successToast,
+      isCompacting,
+      isCompactingManual,
+    ],
   )
 
   // "继续生成"可用性：最后一条助手消息被截断/中止且当前未在流式。

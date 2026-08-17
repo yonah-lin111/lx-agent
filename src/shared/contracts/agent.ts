@@ -52,6 +52,8 @@ export interface UserMessage {
   role: "user"
   content: string | (TextContent | ImageContent)[]
   timestamp: number
+  // 是否为即时插话（steer 消息注入当前 run 的 turn 边界，用于视觉标识与区分）。
+  isSteer?: boolean
   files?: {
     name: string
     path: string
@@ -436,11 +438,19 @@ export interface AgentRestoredSession {
   todos: TodoList
 }
 
+// 发送消息选项。
+// delivery: "queue"（默认，当前 run 结束后排队执行）| "steer"（即时插话，注入当前 run 的 turn 边界即时引导转向）。
+export interface AgentSendOptions {
+  delivery?: "queue" | "steer"
+}
+
 // 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。
 // queued 变体：流式输出期间消息已入队，当前 run 结束后自动发送；会话 id 即当前会话（流式中必有会话）。
+// steered 变体：流式输出期间即时插话，已注入当前 run 的 turn 边界。
 export type AgentSendResult =
   | { ok: true; sessionId: string }
   | { ok: true; queued: true; queueLength: number; sessionId: string }
+  | { ok: true; steered: true; sessionId: string }
   | { ok: false; error: string }
 
 // 切换会话工作区（/gitWorktree）的返回结果。
@@ -468,6 +478,7 @@ export interface AgentApi {
       text: string,
       selection?: ModelSelection,
       context?: AgentSendContext,
+      options?: AgentSendOptions,
     ) => Promise<AgentSendResult>
     // 继续生成：续写被截断/中止的上一轮输出（busy 时返回 { ok: false }）。
     continue: () => Promise<AgentSendResult>

@@ -46,6 +46,7 @@ export const toChatMessage = (
       blocks: [{ kind: "text", text }],
       isStreaming: false,
       timestamp: message.timestamp,
+      isSteer: message.isSteer,
       files: message.files,
     }
   }
@@ -142,7 +143,14 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         .join("\n")
       // 保留原始 timestamp：删除轮次后 main 按 timestamp 匹配 DB seq 重建对齐，
       // 重置为 Date.now() 会让 syncMessageSeqs 全部落空为 -1，污染压缩边界（firstKeptSeq = -1）。
-      return [{ role: "user", content: text, timestamp: message.timestamp ?? Date.now() }]
+      return [
+        {
+          role: "user",
+          content: text,
+          timestamp: message.timestamp ?? Date.now(),
+          ...(message.isSteer ? { isSteer: true } : {}),
+        },
+      ]
     }
 
     if (message.role === "toolResult") {

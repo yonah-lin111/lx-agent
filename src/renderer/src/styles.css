@@ -6,6 +6,8 @@
   --font-size-base: 14px;
   /* 用户消息气泡色 */
   --color-user-bubble: #1f4e79;
+  /* 即时插话（steer）消息气泡色：暖色暗调，与普通用户消息区分 */
+  --color-steer-bubble: #5a4522;
 }
 
 :root {

@@ -2,6 +2,7 @@ import type {
   AgentApi,
   AgentEvent,
   AgentSendContext,
+  AgentSendOptions,
   PermissionResponse,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -12,8 +13,12 @@ import { ipcRenderer } from "electron"
 
 // Agent 领域 preload API：发送/中止/恢复会话 + 会话列表 + 订阅事件流。
 export const agentApi: AgentApi["agent"] = {
-  send: (text: string, selection?: ModelSelection, context?: AgentSendContext) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context),
+  send: (
+    text: string,
+    selection?: ModelSelection,
+    context?: AgentSendContext,
+    options?: AgentSendOptions,
+  ) => ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context, options),
   continue: () => ipcRenderer.invoke(AGENT_CHANNELS.continue),
   compact: () => ipcRenderer.invoke(AGENT_CHANNELS.compact),
   undoCompaction: () => ipcRenderer.invoke(AGENT_CHANNELS.undoCompaction),

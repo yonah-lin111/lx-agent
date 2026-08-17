@@ -171,7 +171,12 @@ export const AgentMessageItem = ({
   // 用户消息时间戳（fork 定位切割轮；const 捕获便于闭包内保持收窄）。
   const messageTimestamp = message.timestamp
   // 子代理面板（readOnly）内气泡使用独立配色，与主消息列表区分。
-  const userBubbleClass = readOnly ? "bg-[#33517a]" : "bg-user-bubble"
+  // 即时插话（steer）用户气泡使用专属底色，与普通用户消息视觉区分。
+  const userBubbleClass = readOnly
+    ? "bg-[#33517a]"
+    : message.isSteer
+      ? "bg-steer-bubble"
+      : "bg-user-bubble"
   const assistantBubbleClass = readOnly ? "bg-[#363e4c]" : "bg-[#303030]"
   const previewRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
@@ -243,14 +248,14 @@ export const AgentMessageItem = ({
     return () => cancelAnimationFrame(raf)
   }, [isEditing, isPinned, measurePinShift])
 
-  const userText = useMemo(
-    () =>
-      message.blocks
-        .filter((block) => block.kind === "text")
-        .map((block) => block.text)
-        .join("\n"),
-    [message.blocks],
-  )
+  const userText = useMemo(() => {
+    const joined = message.blocks
+      .filter((block) => block.kind === "text")
+      .map((block) => block.text)
+      .join("\n")
+    // 防御：即使上游残留 /steer 前缀也剥离，保证气泡只展示内容、不出现命令。
+    return message.isSteer ? joined.replace(/^\s*\/steer\s+/, "") : joined
+  }, [message.blocks, message.isSteer])
 
   const displayBlocks = useMemo(
     () =>
@@ -500,6 +505,16 @@ export const AgentMessageItem = ({
   const hasOutput = displayBlocks.some(
     ({ block }) => block.kind === "text" && block.text.trim() !== "",
   )
+  // 底部操作按钮可展示的内容：文本输出、工具调用或思考（工具型回复也应有复制/用量按钮）。
+  const hasActionableContent =
+    hasOutput ||
+    displayBlocks.some(({ block }) => block.kind === "toolCall" || block.kind === "thinking")
+  // 消息是否被用户中止（停止按钮 / Esc 双击）；用于底部黄色"已取消生成"提示。
+  const isAborted =
+    !isUser &&
+    [message, ...continuationMessages].some(
+      (currentMessage) => currentMessage.stopReason === "aborted",
+    )
   // 建议问题触发条件：最后一条 AI 回答 + 正常完成（非流式、无错误、有文本输出）；压缩摘要块不触发。
   const canSuggestSuggestedQuestions = Boolean(
     message.role !== "compactionSummary" &&
@@ -802,7 +817,8 @@ export const AgentMessageItem = ({
                   )}
                 </LxIconButton>
               )}
-              {!readOnly && typeof messageTimestamp === "number" && onFork && (
+              {/* 即时插话（steer）消息不可分支、不可编辑。 */}
+              {!readOnly && !message.isSteer && typeof messageTimestamp === "number" && onFork && (
                 <LxIconButton
                   size="small"
                   aria-label="从此分支"
@@ -812,7 +828,7 @@ export const AgentMessageItem = ({
                   <GitBranch className="h-3 w-3" />
                 </LxIconButton>
               )}
-              {!readOnly && (
+              {!readOnly && !message.isSteer && (
                 <LxIconButton
                   size="small"
                   aria-label="编辑消息"
@@ -1004,6 +1020,13 @@ export const AgentMessageItem = ({
             </div>
           </div>
         )}
+        {/* 停止生成（停止按钮 / Esc）后：底部黄色提示已取消（错误提示样式，颜色改琥珀色）。 */}
+        {isAborted && !assistantError && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            <div className="border-t border-white/10" />
+            <div className="text-[13px] text-amber-400 italic">Generation cancelled</div>
+          </div>
+        )}
         {(isStreamingNow || isLoading) && !assistantError && !showScrollToBottom && (
           <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
             <div className="lx-liquid-loader">
@@ -1030,7 +1053,7 @@ export const AgentMessageItem = ({
           onEcho={handleEchoSuggestedQuestion}
         />
       )}
-      {!isStreamingNow && !isLoading && (hasOutput || assistantError) && (
+      {!isStreamingNow && !isLoading && (hasActionableContent || assistantError) && (
         <div className="mt-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             <LxIconButton

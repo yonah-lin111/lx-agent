@@ -123,8 +123,12 @@ export const PermissionStatusButton = ({
   useEffect(() => {
     if (!request) return
     const handleKeyDown = (event: KeyboardEvent): void => {
-      const { isOpen: open, phase: currentPhase, activeIndex: currentIndex, handleAction: act } =
-        stateRef.current
+      const {
+        isOpen: open,
+        phase: currentPhase,
+        activeIndex: currentIndex,
+        handleAction: act,
+      } = stateRef.current
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
         event.stopPropagation()

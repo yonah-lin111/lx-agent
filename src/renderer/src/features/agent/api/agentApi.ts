@@ -2,10 +2,14 @@ import type {
   AgentCompactResult,
   AgentContextUsage,
   AgentEvent,
+  AgentForkResult,
   AgentMessage,
   AgentRestoredSession,
   AgentSendContext,
+  AgentSendOptions,
+  AgentSendResult,
   AgentSessionSummary,
+  AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
   LspInstallResult,
   LspServerStatusItem,
@@ -22,13 +26,12 @@ export const agentApi = {
     text: string,
     selection?: ModelSelection,
     context?: AgentSendContext,
-  ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
-    window.api.agent.send(text, selection, context),
-  continue: (): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
-    window.api.agent.continue(),
+    options?: AgentSendOptions,
+  ): Promise<AgentSendResult> => window.api.agent.send(text, selection, context, options),
+  continue: (): Promise<AgentSendResult> => window.api.agent.continue(),
   compact: (): Promise<AgentCompactResult> => window.api.agent.compact(),
   undoCompaction: (): Promise<AgentUndoCompactionResult> => window.api.agent.undoCompaction(),
-  switchWorktree: (path: string): Promise<{ ok: true } | { ok: false; error: string }> =>
+  switchWorktree: (path: string): Promise<AgentSwitchWorktreeResult> =>
     window.api.agent.switchWorktree(path),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
@@ -40,10 +43,7 @@ export const agentApi = {
   deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
   deleteMessageTurn: (sessionId: string, userMessageTimestamp: number): Promise<void> =>
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
-  forkSession: (
-    sessionId: string,
-    userMessageTimestamp?: number,
-  ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> =>
+  forkSession: (sessionId: string, userMessageTimestamp?: number): Promise<AgentForkResult> =>
     window.api.agent.forkSession(sessionId, userMessageTimestamp),
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
   getLspStatus: (): Promise<LspServerStatusItem[]> => window.api.agent.getLspStatus(),

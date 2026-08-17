@@ -131,7 +131,7 @@ export const AgentPage = ({
     })
   }, [worktrees, projectBranch, currentProjectPath, currentSessionPath])
 
-  const { success, error } = useLxToast()
+  const { success, error, warning } = useLxToast()
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
   const handleStop = useCallback(() => {
@@ -140,6 +140,83 @@ export const AgentPage = ({
     }
     stopStreaming()
   }, [queuedCount, stopStreaming, success])
+
+  // 挂起的权限请求：订阅事件流，驱动状态栏权限 icon tooltip（替代原弹窗）。
+  const [pendingRequest, setPendingRequest] = useState<PermissionRequest | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = agentApi.onEvent((event) => {
+      if (event.type === "permission_request") {
+        setPendingRequest(event.request)
+      } else if (event.type === "agent_end") {
+        setPendingRequest(null)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  // 权限决策：回传 main；允许全部由 main 侧记录为会话级放行；永久允许/拒绝写回配置。
+  const respondPermission = useCallback(
+    (
+      decision: "allow" | "deny",
+      rememberForSession?: boolean,
+      allowAll?: boolean,
+      permanent?: boolean,
+    ): void => {
+      const current = pendingRequest
+      if (!current) return
+      setPendingRequest(null)
+      void agentApi.permissionRespond({
+        requestId: current.requestId,
+        decision,
+        rememberForSession,
+        allowAll,
+        permanent,
+      })
+    },
+    [pendingRequest],
+  )
+
+  // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
+  const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
+  const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
+    setActiveSubagent(toolCall)
+  }, [])
+  // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
+  const subagentScrollRef = useRef<HTMLDivElement>(null)
+  // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
+  const escStopRef = useRef(0)
+
+  // 全局 Esc 快捷键：双击 Esc 才停止生成（首按 toast 提示），避免误触打断。
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape") return
+      if (!isStreaming) return
+      // 若处于子代理面板打开状态，让子代理面板优先关闭
+      if (activeSubagent !== null) return
+      // 若有权限面板弹层，不全局截获
+      if (pendingRequest !== null) return
+      // 若当前焦点在 textarea/input 内，由局部 keydown 处理
+      const activeEl = document.activeElement
+      if (activeEl instanceof HTMLTextAreaElement || activeEl instanceof HTMLInputElement) {
+        return
+      }
+      e.preventDefault()
+      const now = Date.now()
+      if (escStopRef.current !== 0 && now - escStopRef.current <= 1000) {
+        escStopRef.current = 0
+        handleStop()
+      } else {
+        escStopRef.current = now
+        warning("再次按 Esc 可停止生成")
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown)
+    }
+  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -208,50 +285,6 @@ export const AgentPage = ({
     [setInputText],
   )
 
-  // 挂起的权限请求：订阅事件流，驱动状态栏权限 icon tooltip（替代原弹窗）。
-  const [pendingRequest, setPendingRequest] = useState<PermissionRequest | null>(null)
-
-  useEffect(() => {
-    const unsubscribe = agentApi.onEvent((event) => {
-      if (event.type === "permission_request") {
-        setPendingRequest(event.request)
-      } else if (event.type === "agent_end") {
-        setPendingRequest(null)
-      }
-    })
-    return unsubscribe
-  }, [])
-
-  // 权限决策：回传 main；允许全部由 main 侧记录为会话级放行；永久允许/拒绝写回配置。
-  const respondPermission = useCallback(
-    (
-      decision: "allow" | "deny",
-      rememberForSession?: boolean,
-      allowAll?: boolean,
-      permanent?: boolean,
-    ): void => {
-      const current = pendingRequest
-      if (!current) return
-      setPendingRequest(null)
-      void agentApi.permissionRespond({
-        requestId: current.requestId,
-        decision,
-        rememberForSession,
-        allowAll,
-        permanent,
-      })
-    },
-    [pendingRequest],
-  )
-
-  // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
-  const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
-  const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
-    setActiveSubagent(toolCall)
-  }, [])
-  // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
-  const subagentScrollRef = useRef<HTMLDivElement>(null)
-
   if (onNewChatRef) {
     onNewChatRef(createNewChat)
   }
@@ -300,7 +333,7 @@ export const AgentPage = ({
         queuedCount={queuedCount}
         queuedMessages={queuedMessages}
         onInputChange={setInputText}
-        onSend={() => sendMessage(undefined, selectedSelection)}
+        onSend={(options) => sendMessage(undefined, selectedSelection, options)}
         onStop={handleStop}
         onClear={createNewChat}
         onUndo={undoLastTurn}

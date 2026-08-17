@@ -641,4 +641,79 @@ describe("AgentMessageItem", () => {
     expect(screen.getByText("Thought")).not.toBeNull()
     expect(screen.getByText("MCP Call")).not.toBeNull()
   })
+
+  it("即时插话（steer）气泡使用专属底色、移除标签、只展示内容（不出现 /steer 命令）", () => {
+    const message: ChatMessage = {
+      id: "steer-1",
+      role: "user",
+      isSteer: true,
+      blocks: [{ kind: "text", text: "/steer 改为直接回答" }],
+      isStreaming: false,
+    }
+
+    const { container } = render(<AgentMessageItem message={message} />)
+
+    // 专属底色（非普通用户气泡色）。
+    expect(container.querySelector(".bg-steer-bubble")).not.toBeNull()
+    // 内容已剥离 /steer 前缀。
+    expect(screen.getByText("改为直接回答")).not.toBeNull()
+    // 不再渲染 Steer 微标签。
+    expect(screen.queryByText(/即时插话/)).toBeNull()
+    expect(screen.queryByText(/Steer/)).toBeNull()
+  })
+
+  it("即时插话（steer）气泡不提供编辑、分支功能", () => {
+    const message: ChatMessage = {
+      id: "steer-2",
+      role: "user",
+      isSteer: true,
+      blocks: [{ kind: "text", text: "继续，跳过 UserAvatar" }],
+      isStreaming: false,
+      timestamp: 1700000000000,
+    }
+
+    render(<AgentMessageItem message={message} onFork={vi.fn()} />)
+
+    expect(screen.queryByRole("button", { name: "编辑消息" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "从此分支" })).toBeNull()
+  })
+
+  it("纯工具调用型助手消息（无文本）也展示底部操作按钮", () => {
+    const message: ChatMessage = {
+      id: "tool-only",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "tool-1",
+          toolName: "grep",
+          args: { query: "foo" },
+          status: "done",
+        },
+      ],
+      isStreaming: false,
+      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.queryByRole("button", { name: "复制消息" })).not.toBeNull()
+    expect(screen.queryByText(/OUT/)).not.toBeNull()
+  })
+
+  it("被中止（aborted）的助手消息底部展示黄色'已取消生成'提示", () => {
+    const message: ChatMessage = {
+      id: "aborted-1",
+      role: "assistant",
+      blocks: [{ kind: "text", text: "部分输出" }],
+      isStreaming: false,
+      stopReason: "aborted",
+      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByText("Generation cancelled")).not.toBeNull()
+    expect(screen.getByText("Generation cancelled").className).toContain("text-amber-400")
+  })
 })

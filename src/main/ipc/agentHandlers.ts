@@ -6,6 +6,7 @@ import type {
   AgentEvent,
   AgentMessage,
   AgentSendContext,
+  AgentSendOptions,
   McpServerStatusItem,
   PermissionResponse,
   QuestionResponse,
@@ -46,6 +47,16 @@ const isValidModelSelection = (value: unknown): value is ModelSelection => {
 // undefined 或字符串（IPC 可选字段校验）。
 const isOptionalString = (value: unknown): value is string =>
   value === undefined || typeof value === "string"
+
+// 校验发送选项为合法 AgentSendOptions（IPC 输入边界）。
+const isValidSendOptions = (value: unknown): value is AgentSendOptions => {
+  if (value === undefined) return true
+  if (!value || typeof value !== "object") return false
+  const options = value as Record<string, unknown>
+  return (
+    options.delivery === undefined || options.delivery === "queue" || options.delivery === "steer"
+  )
+}
 
 // 校验发送上下文为合法 AgentSendContext（IPC 输入边界）。
 const isValidSendContext = (value: unknown): value is AgentSendContext => {
@@ -174,7 +185,7 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   ipcMain.handle(
     AGENT_CHANNELS.send,
-    async (_, text: unknown, selection: unknown, context: unknown) => {
+    async (_, text: unknown, selection: unknown, context: unknown, options: unknown) => {
       if (typeof text !== "string" || !text.trim()) {
         return { ok: false, error: "消息内容不能为空。" }
       }
@@ -184,7 +195,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       if (!isValidSendContext(context)) {
         return { ok: false, error: "会话上下文参数无效。" }
       }
-      return agentRunner.send(text.trim(), selection, context)
+      if (!isValidSendOptions(options)) {
+        return { ok: false, error: "发送选项参数无效。" }
+      }
+      return agentRunner.send(text.trim(), selection, context, options)
     },
   )
 

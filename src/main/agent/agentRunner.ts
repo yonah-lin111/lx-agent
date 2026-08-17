@@ -9,12 +9,14 @@ import type {
   AgentMessage,
   AgentRestoredSession,
   AgentSendContext,
+  AgentSendOptions,
   AgentSendResult,
   AgentSessionSummary,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
   TodoList,
   TodoStateMessage,
+  UserMessage,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
@@ -344,10 +346,12 @@ class AgentRunner {
   }
 
   // 发送一条用户消息并驱动 Agent 运行。
+  // options.delivery === "steer" 时：若当前正在流式运行，则直接作为 steer 即时插话注入 turn 边界。
   async send(
     text: string,
     selection?: ModelSelection,
     context?: AgentSendContext,
+    options?: AgentSendOptions,
   ): Promise<AgentSendResult> {
     if (selection !== undefined) {
       this.requestedModel = selection
@@ -357,6 +361,30 @@ class AgentRunner {
     if (context !== undefined) {
       this.freezeNewSession(context)
     }
+
+    // 即时插话（steer）：在流式生成中直接注入当前 run 的 turn 边界
+    if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
+      const isNewSession = !this.currentSessionId
+      if (!isNewSession && this.currentSessionId) {
+        const expanded = this._expandSkillCommand(text)
+        const steerMessage: UserMessage = {
+          role: "user",
+          content: expanded,
+          timestamp: Date.now(),
+          isSteer: true,
+        }
+        if (context?.files && context.files.length > 0) {
+          steerMessage.files = this.processPendingFiles(this.currentSessionId, context.files)
+        }
+        this.agent.steer(steerMessage)
+        return {
+          ok: true,
+          steered: true,
+          sessionId: this.currentSessionId,
+        }
+      }
+    }
+
     // 流式输出 / 正在 drain / 队列非空：入队，当前 run 结束后自动发送（不 busy 拒绝、不静默丢）。
     if (this.isBusy()) {
       return this.enqueueMessage(text)

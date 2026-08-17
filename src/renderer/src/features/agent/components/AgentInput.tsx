@@ -1,5 +1,5 @@
 import type { ProjectFileEntry } from "@shared/project"
-import { Loader2, Send, Square } from "lucide-react"
+import { Loader2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -33,7 +33,8 @@ interface AgentInputProps {
   // 排队消息原文（提示条 hover 时 tooltip 展示各条问题）。
   queuedMessages: string[]
   onInputChange: (text: string) => void
-  onSend: () => void
+  // options.delivery 标记即时插话；内容由 useAgentChat 从输入框读取并统一剥离 /steer 前缀。
+  onSend: (options?: { delivery?: "queue" | "steer" }) => void
   onStop: () => void
   onClear: () => void
   onUndo: () => void
@@ -58,6 +59,7 @@ interface AgentInputProps {
 const INPUT_COMMANDS: AgentInputCommand[] = [
   { id: "clear", name: "/clear", description: "清空当前对话" },
   { id: "undo", name: "/undo", description: "撤销上一轮对话" },
+  { id: "steer", name: "/steer", description: "即时插话（引导运行中 Agent 转向）" },
   { id: "model", name: "/model", description: "切换 AI 模型" },
   { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区" },
   { id: "compact", name: "/compact", description: "压缩当前会话上下文" },
@@ -142,7 +144,7 @@ export const AgentInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { error: errorToast } = useLxToast()
+  const { error: errorToast, warning: warningToast } = useLxToast()
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const list = event.target.files
@@ -364,13 +366,56 @@ export const AgentInput = ({
     refreshPanels(value, event.target.selectionStart)
   }
 
-  // 发送前记录历史提示词（仅输入框发送路径），并退出历史浏览。
-  // 流式输出期间 Enter 仍可发送：main 侧入队，当前回复结束后自动发送。
-  const handleSend = (): void => {
+  const isSteerOnly = inputText.trim() === "/steer"
+  const canSend = (!isSteerOnly && inputText.trim().length > 0) || selectedFiles.length > 0
+
+  // Esc 停止生成的连按计时（间隔 ≤1s 视为双击）；单按仅 toast 提示，不打断。
+  const escStopRef = useRef(0)
+
+  // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
+  const [steerNoticeVisible, setSteerNoticeVisible] = useState(false)
+  const steerNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showSteerNotice = useCallback((): void => {
+    setSteerNoticeVisible(true)
+    if (steerNoticeTimerRef.current !== null) {
+      clearTimeout(steerNoticeTimerRef.current)
+    }
+    steerNoticeTimerRef.current = setTimeout(() => {
+      steerNoticeTimerRef.current = null
+      setSteerNoticeVisible(false)
+    }, 4000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (steerNoticeTimerRef.current !== null) {
+        clearTimeout(steerNoticeTimerRef.current)
+      }
+    }
+  }, [])
+
+  // 流式输出期间 Enter 默认排队发送；Shift+Enter 或以 /steer 开头执行即时插话。
+  // 内容不在组件内透传，由 useAgentChat 统一剥离 /steer 前缀（保证气泡/模型只看到内容）。
+  const handleSend = (forceDelivery?: "queue" | "steer"): void => {
     reset()
-    if (!inputText.trim()) return
-    record(inputText)
-    onSend()
+    let text = inputText.trim()
+    if (!text) return
+
+    let delivery = forceDelivery
+    if (text.startsWith("/steer ") || text === "/steer") {
+      delivery = "steer"
+      text = text.slice(6).trim()
+      if (!text) return
+    }
+
+    if (delivery === "steer") {
+      // 即时插话（steer）不写入历史提示词。
+      showSteerNotice()
+      onSend({ delivery })
+    } else {
+      record(text || inputText)
+      onSend()
+    }
   }
 
   const executeCommand = (command: AgentInputCommand): void => {
@@ -381,6 +426,8 @@ export const AgentInput = ({
       onClear()
     } else if (command.id === "undo") {
       onUndo()
+    } else if (command.id === "steer") {
+      onInputChange("/steer ")
     } else if (command.id === "model") {
       onInputChange("/model ")
     } else if (command.id === "gitWorktree") {
@@ -552,9 +599,43 @@ export const AgentInput = ({
       }
     }
 
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault()
-      handleSend()
+    // Esc 分级打断机制：
+    // ① 补全/提及/命令面板激活态：Esc 关闭面板（已在上面各个 isXMode 中 return）
+    // ② 若有输入草稿文本：Esc 清空草稿
+    // ③ 若输入为空且正在生成 (isStreaming)：双击 Esc 才触发 onStop；单按仅 toast 提示。
+    if (event.key === "Escape") {
+      if (inputText.trim().length > 0 || selectedFiles.length > 0) {
+        event.preventDefault()
+        onInputChange("")
+        onFilesChange([])
+        return
+      }
+      if (isStreaming) {
+        event.preventDefault()
+        const now = Date.now()
+        if (escStopRef.current !== 0 && now - escStopRef.current <= 1000) {
+          escStopRef.current = 0
+          onStop()
+        } else {
+          escStopRef.current = now
+          warningToast("再次按 Esc 可停止生成")
+        }
+        return
+      }
+    }
+
+    if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+      if (event.shiftKey) {
+        // Shift+Enter 在流式生成中触发 Steer 即时插话；非流式中作为普通换行
+        if (isStreaming) {
+          event.preventDefault()
+          handleSend("steer")
+        }
+      } else {
+        // 普通 Enter：流式中排队发送 (queue)，非流式中普通发送
+        event.preventDefault()
+        handleSend()
+      }
     }
   }
 
@@ -591,7 +672,7 @@ export const AgentInput = ({
     <LxIconButton
       shape="circle"
       aria-label="停止生成"
-      title={{ content: "停止生成", placement: "top" }}
+      title={{ content: "停止生成 (Esc)", placement: "top" }}
       onClick={onStop}
       hoverBgClass="hover:bg-white/90"
       className="bg-white !text-black shadow-sm"
@@ -616,8 +697,8 @@ export const AgentInput = ({
       shape="circle"
       aria-label="发送消息"
       title={{ content: "发送消息 (Enter)", placement: "top" }}
-      onClick={handleSend}
-      disabled={!inputText.trim() && selectedFiles.length === 0}
+      onClick={() => handleSend()}
+      disabled={!canSend}
       hoverBgClass="hover:bg-white/90"
       className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
     >
@@ -653,6 +734,13 @@ export const AgentInput = ({
           </div>
         </LxTooltip>
       )}
+      {/* 即时插话提示：发送 steer 后短暂展示（参考排队消息提示条）。 */}
+      {steerNoticeVisible && (
+        <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-amber-400/90">
+          <Zap className="h-3 w-3 shrink-0" />
+          <span className="truncate">已发送即时插话，将在当前步骤完成后生效</span>
+        </div>
+      )}
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
@@ -661,36 +749,40 @@ export const AgentInput = ({
       >
         <>
           <AgentInputCommandPanel
-              isOpen={isCommandMode}
-              position={panelPosition}
-              commands={matchedCommands}
-              activeIndex={commandIndex}
-            />
-            <AgentInputModelPanel
-              isOpen={isModelMode}
-              position={panelPosition}
-              models={matchedModels}
-              activeIndex={modelIndex}
-            />
-            <GitWorktreeCommandMenu
-              visible={isWorktreeMode}
-              position={panelPosition ?? undefined}
-              options={matchedWorktrees}
-              activeIndex={worktreeIndex}
-            />
-            <AgentInputFilePanel
-              isOpen={isFileMode}
-              position={panelPosition}
-              files={files}
-              activeIndex={fileIndex}
-            />
+            isOpen={isCommandMode}
+            position={panelPosition}
+            commands={matchedCommands}
+            activeIndex={commandIndex}
+          />
+          <AgentInputModelPanel
+            isOpen={isModelMode}
+            position={panelPosition}
+            models={matchedModels}
+            activeIndex={modelIndex}
+          />
+          <GitWorktreeCommandMenu
+            visible={isWorktreeMode}
+            position={panelPosition ?? undefined}
+            options={matchedWorktrees}
+            activeIndex={worktreeIndex}
+          />
+          <AgentInputFilePanel
+            isOpen={isFileMode}
+            position={panelPosition}
+            files={files}
+            activeIndex={fileIndex}
+          />
         </>
         <textarea
           ref={mergedTextareaRef}
           value={inputText}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="给 LX Agent 发送消息..."
+          placeholder={
+            isStreaming
+              ? "排队发送 (Enter) · 即时插话 (Shift+Enter 或 /steer)"
+              : "给 LX Agent 发送消息..."
+          }
           rows={2}
           className="min-h-[44px] max-h-[124px] w-full resize-none overflow-y-auto bg-transparent px-1 py-0.5 text-[12px] leading-[20px] text-white/90 placeholder-white/35 focus:outline-none [field-sizing:content]"
         />
