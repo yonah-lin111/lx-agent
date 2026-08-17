@@ -1,7 +1,8 @@
 import { Check, ChevronDown } from "lucide-react"
 import type React from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { TooltipLayerContext } from "./LxTooltip"
 
 // 下拉选项。
 export interface LxSelectOption<T> {
@@ -65,6 +66,9 @@ export const LxSelect = <T extends string>({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const listboxRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
+  // 嵌套于 Tooltip 内时，将下拉列表注册为父级浮层的一部分，
+  // 避免点击/滚动下拉被父 Tooltip 误判为外部而关闭。
+  const tooltipLayer = useContext(TooltipLayerContext)
   const selectedOption = options
     .flatMap((item) => (isGroup(item) ? item.options : [item]))
     .find((item) => item.value === value)
@@ -149,6 +153,15 @@ export const LxSelect = <T extends string>({
     }, 120)
     return () => window.clearTimeout(timer)
   }, [isOpen, shouldRender])
+
+  // 注册下拉列表到父级 Tooltip 浮层集合（列表经 portal 渲染到 body，位于父气泡 DOM 之外）。
+  useEffect(() => {
+    if (!tooltipLayer || !shouldRender) return
+    const node = listboxRef.current
+    if (!node) return
+    tooltipLayer.register(node)
+    return () => tooltipLayer.unregister(node)
+  }, [tooltipLayer, shouldRender])
 
   const renderOption = (option: LxSelectOption<T>, isGrouped = false): React.JSX.Element => {
     const isSelected = option.value === value

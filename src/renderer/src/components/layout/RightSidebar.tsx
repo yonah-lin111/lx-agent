@@ -290,12 +290,12 @@ export const RightSideBar = (): React.JSX.Element => {
                 <History className="h-4 w-4" />
               </LxIconButton>
             </LxTooltip>
-
-            <LspStatusButton />
-            <McpStatusButton />
           </div>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+            <LspStatusButton />
+            <McpStatusButton />
+
             <LxIconButton
               aria-label="折叠右侧栏"
               title={{ content: "折叠右侧栏", placement: "top" }}

@@ -1,5 +1,13 @@
 import { Check, Minus, X } from "lucide-react"
-import React, { useEffect, useRef, useState } from "react"
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
 
 // Tooltip 弹出位置。
@@ -34,6 +42,14 @@ export interface LxTooltipProps {
   onConfirm?: () => void
   onCancel?: () => void
 }
+
+// 嵌套浮层注册上下文：portal 渲染到 body 的嵌套组件（LxSelect 下拉、嵌套 Tooltip 气泡等）
+// 通过注册自身根元素，避免被父级 Tooltip 的「点击外部 / 滚动」逻辑误判为外部而关闭。
+interface TooltipLayerContextValue {
+  register: (node: HTMLElement) => void
+  unregister: (node: HTMLElement) => void
+}
+export const TooltipLayerContext = createContext<TooltipLayerContextValue | null>(null)
 
 /**
  * 将节点同时写入 Tooltip 与触发元素原有的 ref。
@@ -82,6 +98,46 @@ export const LxTooltip = ({
   const isConfirming = typeof onConfirm === "function"
   const activeTrigger = isConfirming ? "click" : trigger
   const activeDelay = isConfirming ? 0 : delay
+
+  // 嵌套浮层注册：维护属于本气泡的 portal 节点集合，并向上传播到父级 Tooltip，
+  // 使深层嵌套（下拉、嵌套气泡）的点击/滚动都不会关闭任意祖先气泡。
+  const parentLayer = useContext(TooltipLayerContext)
+  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
+  const registerLayer = useCallback(
+    (node: HTMLElement): void => {
+      layerNodesRef.current.add(node)
+      parentLayer?.register(node)
+    },
+    [parentLayer],
+  )
+  const unregisterLayer = useCallback(
+    (node: HTMLElement): void => {
+      layerNodesRef.current.delete(node)
+      parentLayer?.unregister(node)
+    },
+    [parentLayer],
+  )
+  const layerContextValue = useMemo(
+    () => ({ register: registerLayer, unregister: unregisterLayer }),
+    [registerLayer, unregisterLayer],
+  )
+
+  // 本 Tooltip 自身的气泡作为嵌套浮层注册到父级 Tooltip。
+  useEffect(() => {
+    if (!parentLayer || !shouldRender || !tooltipRef.current) return
+    const node = tooltipRef.current
+    parentLayer.register(node)
+    return () => parentLayer.unregister(node)
+  }, [parentLayer, shouldRender])
+
+  // 目标节点是否属于本气泡范围：触发元素、气泡本身，或已注册的嵌套浮层。
+  const isInsideTooltip = useCallback((target: Node): boolean => {
+    if (containerRef.current?.contains(target) || tooltipRef.current?.contains(target)) return true
+    for (const node of layerNodesRef.current) {
+      if (node.contains(target)) return true
+    }
+    return false
+  }, [])
 
   /**
    * 更新显隐状态并同步受控父组件。
@@ -208,23 +264,24 @@ export const LxTooltip = ({
 
   useEffect(() => {
     if (!isVisible || !closeOnScroll) return
-    // 任意滚动条滚动时关闭气泡，排除气泡自身内部滚动。
+    // 任意滚动条滚动时关闭气泡，排除本气泡范围（含已注册的嵌套浮层）内滚动。
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
-      if (!containerRef.current?.contains(target) && !tooltipRef.current?.contains(target)) {
+      if (!isInsideTooltip(target)) {
         clearTimers()
         syncVisible(false)
       }
     }
     document.addEventListener("scroll", handleScroll, true)
     return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isVisible, closeOnScroll])
+  }, [isVisible, closeOnScroll, isInsideTooltip])
 
   useEffect(() => {
     if (!isVisible) return
+    // 点击本气泡范围（含已注册的嵌套浮层）外时关闭。
     const handleOutsideClick = (event: MouseEvent): void => {
       const target = event.target as Node
-      if (!containerRef.current?.contains(target) && !tooltipRef.current?.contains(target)) {
+      if (!isInsideTooltip(target)) {
         syncVisible(false)
       }
     }
@@ -355,91 +412,97 @@ export const LxTooltip = ({
       {triggerElement}
       {shouldRender &&
         createPortal(
-          <div
-            ref={tooltipRef}
-            role="tooltip"
-            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
-            style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
-            onMouseEnter={() => {
-              if (hideTimeoutRef.current) {
-                clearTimeout(hideTimeoutRef.current)
-                hideTimeoutRef.current = null
-              }
-            }}
-            onMouseLeave={() => {
-              if (activeTrigger === "hover" || activeTrigger === "both") hideTooltip()
-            }}
-            onClick={(event) => {
-              event.stopPropagation()
-              if (closeOnContentClick) syncVisible(false)
-            }}
-          >
-            {minimizable && (
-              <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
-                {title && (
-                  <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
+          <TooltipLayerContext.Provider value={layerContextValue}>
+            <div
+              ref={tooltipRef}
+              role="tooltip"
+              className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
+              style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
+              onMouseEnter={() => {
+                if (hideTimeoutRef.current) {
+                  clearTimeout(hideTimeoutRef.current)
+                  hideTimeoutRef.current = null
+                }
+              }}
+              onMouseLeave={() => {
+                if (activeTrigger === "hover" || activeTrigger === "both") hideTooltip()
+              }}
+              onClick={(event) => {
+                event.stopPropagation()
+                if (closeOnContentClick) syncVisible(false)
+              }}
+            >
+              {minimizable && (
+                <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
+                  {title && (
+                    <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
+                      {title}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="最小化"
+                    onClick={() => syncVisible(false)}
+                    className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {isConfirming ? (
+                <div className="flex flex-col gap-1.5">
+                  {title && (
+                    <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>
+                  )}
+                  <div className="text-sm leading-snug">{content}</div>
+                  <div className="mt-0.5 flex items-center justify-end gap-1">
+                    <button
+                      aria-label="取消"
+                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                      type="button"
+                      onClick={() => {
+                        syncVisible(false)
+                        onCancel?.()
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <button
+                      aria-label="确认"
+                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                      type="button"
+                      onClick={() => {
+                        syncVisible(false)
+                        onConfirm()
+                      }}
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              ) : title && !minimizable ? (
+                <div className="flex flex-col gap-1">
+                  <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
                     {title}
                   </div>
-                )}
-                <button
-                  type="button"
-                  aria-label="最小化"
-                  onClick={() => syncVisible(false)}
-                  className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                  {content}
+                </div>
+              ) : (
+                <div
+                  className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : undefined}
                 >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            {isConfirming ? (
-              <div className="flex flex-col gap-1.5">
-                {title && <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>}
-                <div className="text-sm leading-snug">{content}</div>
-                <div className="mt-0.5 flex items-center justify-end gap-1">
-                  <button
-                    aria-label="取消"
-                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
-                    type="button"
-                    onClick={() => {
-                      syncVisible(false)
-                      onCancel?.()
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <button
-                    aria-label="确认"
-                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
-                    type="button"
-                    onClick={() => {
-                      syncVisible(false)
-                      onConfirm()
-                    }}
-                  >
-                    <Check className="h-3 w-3" />
-                  </button>
+                  {content}
                 </div>
-              </div>
-            ) : title && !minimizable ? (
-              <div className="flex flex-col gap-1">
-                <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
-                  {title}
-                </div>
-                {content}
-              </div>
-            ) : (
-              <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : undefined}>
-                {content}
-              </div>
-            )}
-            <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
-              <path
-                d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
-                fill="#303030"
-                stroke="none"
-              />
-            </svg>
-          </div>,
+              )}
+              <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
+                <path
+                  d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
+                  fill="#303030"
+                  stroke="none"
+                />
+              </svg>
+            </div>
+          </TooltipLayerContext.Provider>,
           document.body,
         )}
     </>
