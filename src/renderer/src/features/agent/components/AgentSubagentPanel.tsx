@@ -4,7 +4,6 @@ import { Fragment, useMemo } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
-import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, SubagentData } from "@/features/agent/types"
 import { toChatMessage } from "@/features/agent/utils"
@@ -49,8 +48,6 @@ export const AgentSubagentPanel = ({
 
   // 与 AgentMessageList 相同的 QA 分组：一次子代理运行的 AI 内容（助手消息 + 工具结果 + 续写）合并到一个 AgentMessageItem 内展示。
   const messageGroups = useMemo(() => buildQaGroups(groupAgentMessages(messages)), [messages])
-  // 用户消息吸顶（与主消息列表同一套逻辑）。
-  const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
 
   return (
     <div
@@ -108,7 +105,6 @@ export const AgentSubagentPanel = ({
           {messages.length > 0 ? (
             <div
               ref={scrollRef}
-              onScroll={() => updatePinnedQuestion(scrollRef?.current ?? null)}
               className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-1.5"
             >
               <div className="flex flex-col gap-1">
@@ -119,25 +115,9 @@ export const AgentSubagentPanel = ({
                   return (
                     <Fragment key={groupKey}>
                       {userMessage && (
-                        <>
-                          {/* 用户消息完全滚出面板视口后，才将问题钉住面板顶部。 */}
-                          <div
-                            className={`top-0 z-20 mb-2 w-full ${
-                              pinnedUserMessageId === userMessage.id ? "sticky" : ""
-                            }`}
-                          >
-                            <AgentMessageItem
-                              message={userMessage}
-                              isPinned={pinnedUserMessageId === userMessage.id}
-                              readOnly
-                            />
-                          </div>
-                          <div
-                            ref={attachUserMessageEndRef(userMessage.id)}
-                            className="h-0 -translate-y-4"
-                            aria-hidden="true"
-                          />
-                        </>
+                        <div className="mb-2 w-full">
+                          <AgentMessageItem message={userMessage} isPinned={false} readOnly />
+                        </div>
                       )}
                       {assistant && (
                         <AgentMessageItem

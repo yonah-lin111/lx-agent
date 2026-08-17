@@ -134,9 +134,14 @@ export const AgentMessageList = ({
   const lastGroup = messageGroups.at(-1)
   // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
   const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
-  const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } = useMessagePin()
   // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。
   const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
+  const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } =
+    useMessagePin(messageGroupRefs)
+  const pinnedUserMessage = useMemo(() => {
+    if (!pinnedUserMessageId) return undefined
+    return messages.find((m) => m.id === pinnedUserMessageId)
+  }, [messages, pinnedUserMessageId])
   // 仅当存在 ≥2 个 QA 对时展示"从此分支"。
   const canFork = useMemo(
     () => messages.filter((message) => message.role === "user").length > 1,
@@ -452,6 +457,31 @@ export const AgentMessageList = ({
         </div>
       ) : (
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          {/* Pinned absolute floating user message at the top */}
+          {pinnedUserMessage && !isSubagentPanelOpen && (
+            <div className="absolute top-0 left-0 right-0 z-30 px-1 pt-1">
+              <AgentMessageItemMemo
+                message={pinnedUserMessage}
+                isPinned={true}
+                onLocate={() => handleLocateMessage(pinnedUserMessage.id)}
+                isEditing={editingMessageId === pinnedUserMessage.id}
+                onStartEdit={() => setEditingMessageId(pinnedUserMessage.id)}
+                onCancelEdit={() => {
+                  if (editingMessageId === pinnedUserMessage.id) {
+                    setEditingMessageId(null)
+                  }
+                }}
+                onEdit={(id, newContent) => {
+                  onEditMessage?.(id, newContent)
+                  setEditingMessageId(null)
+                }}
+                onDelete={onDeleteMessage}
+                onFork={canFork ? onFork : undefined}
+                onOpenSubagent={onOpenSubagent}
+              />
+            </div>
+          )}
+
           <div
             ref={scrollRef}
             onScroll={handleScroll}
@@ -479,7 +509,6 @@ export const AgentMessageList = ({
               const isLastGroupAi = isLastGroup && assistant?.message.role !== "compactionSummary"
               const isLastGroupCompaction =
                 isLastGroup && assistant?.message.role === "compactionSummary"
-              const isUserPinned = pinnedUserMessageId === userMessage?.id
 
               return (
                 <div
@@ -489,14 +518,12 @@ export const AgentMessageList = ({
                 >
                   {userMessage && (
                     <>
-                      {/* 用户消息完全离开视口后，才将问题钉住视口顶部。 */}
-                      <div className={`top-0 z-20 mb-4 w-full ${isUserPinned ? "sticky" : ""}`}>
+                      {/* 用户消息普通容器，不再有 sticky 属性 */}
+                      <div className="mb-4 w-full">
                         <AgentMessageItemMemo
                           message={userMessage}
-                          isPinned={isUserPinned}
-                          onLocate={
-                            isUserPinned ? () => handleLocateMessage(userMessage.id) : undefined
-                          }
+                          isPinned={false}
+                          onLocate={undefined}
                           isEditing={editingMessageId === userMessage.id}
                           onStartEdit={() => setEditingMessageId(userMessage.id)}
                           onCancelEdit={() => {

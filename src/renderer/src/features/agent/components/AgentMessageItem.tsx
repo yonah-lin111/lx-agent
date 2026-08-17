@@ -844,6 +844,7 @@ export const AgentMessageItem = ({
         </LxTooltip>
       )}
       <div
+        data-assistant-bubble="true"
         className={`relative min-w-0 w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
       >
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">

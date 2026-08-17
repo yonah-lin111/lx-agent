@@ -112,7 +112,7 @@ describe("AgentMessageList", () => {
     expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBe(1)
   })
 
-  it("用户消息与其后 AI 回复合并为 QA 对，问题置于吸顶容器", () => {
+  it("用户消息与其后 AI 回复合并为 QA 对，未吸顶时绝对定位容器不渲染", () => {
     const messages: ChatMessage[] = [
       userMessage("qa-q", "问题一"),
       {
@@ -125,12 +125,12 @@ describe("AgentMessageList", () => {
 
     const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    // 吸顶容器（条件渲染 .sticky）始终存在，未吸顶时无 .sticky class。
-    const stickyContainer = container.querySelector(".top-0.z-20")
-    expect(stickyContainer).not.toBeNull()
-    expect(stickyContainer?.textContent).toContain("问题一")
-    expect(container.querySelector(".sticky")).toBeNull()
-    // 回复不进入吸顶容器，仍在 QA 对内正常渲染。
+    // 未吸顶时，绝对定位的浮动容器不渲染
+    const absoluteContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
+    expect(absoluteContainer).toBeNull()
+
+    // 用户消息和回复在自然流中正常渲染
+    expect(screen.getByText("问题一")).not.toBeNull()
     expect(screen.getByText("回答一")).not.toBeNull()
   })
 

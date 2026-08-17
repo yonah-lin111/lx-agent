@@ -41,11 +41,11 @@ const renderList = () => {
   const { container } = render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
   const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
   Object.defineProperty(scrollEl, "clientHeight", { value: 600, configurable: true })
-  // 吸顶判定锚点：用户消息自然流结束位置（useMessagePin 据此判定是否完全滚出视口）。
+  // 吸顶判定锚点：用户消息自然流结束位置（useMessagePin 据此判定是否完全滚出视口 ）。
   const anchorEls = Array.from(container.querySelectorAll('[aria-hidden="true"]'))
   // 吸顶容器仅在钉住时挂 .sticky class。
   const stickyContainerEls = Array.from(container.querySelectorAll(".top-0.z-20"))
-  return { scrollEl, anchorEls, stickyContainerEls }
+  return { scrollEl, anchorEls, stickyContainerEls, container }
 }
 
 // 读取最近一次渲染时某条消息收到的 isPinned 状态。
@@ -60,7 +60,11 @@ describe("AgentMessageList 吸顶判定", () => {
   })
 
   it("滚动回顶部（scrollTop=0）时，首条自然贴顶的消息不被判为吸顶", () => {
-    const { scrollEl, anchorEls } = renderList()
+    const { scrollEl, anchorEls, container } = renderList()
+
+    const groupEls = Array.from(container.querySelectorAll(".custom-scrollbar > div"))
+    if (groupEls[0]) vi.spyOn(groupEls[0], "getBoundingClientRect").mockReturnValue(rect(4, 300))
+    if (groupEls[1]) vi.spyOn(groupEls[1], "getBoundingClientRect").mockReturnValue(rect(300, 600))
 
     Object.defineProperty(scrollEl, "scrollTop", { value: 0, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
@@ -75,13 +79,18 @@ describe("AgentMessageList 吸顶判定", () => {
   })
 
   it("滚动中贴住容器顶部的消息被钉住居中，滚出视口的消息不再钉住", () => {
-    const { scrollEl, anchorEls } = renderList()
+    const { scrollEl, anchorEls, container } = renderList()
 
     Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
     // q1 已滚出视口顶部，q2 锚点贴住容器顶部。
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(0, 30))
+
+    const groupEls = Array.from(container.querySelectorAll(".custom-scrollbar > div"))
+    if (groupEls[0])
+      vi.spyOn(groupEls[0], "getBoundingClientRect").mockReturnValue(rect(-400, -100))
+    if (groupEls[1]) vi.spyOn(groupEls[1], "getBoundingClientRect").mockReturnValue(rect(0, 300))
 
     fireEvent.scroll(scrollEl)
 
@@ -90,13 +99,21 @@ describe("AgentMessageList 吸顶判定", () => {
   })
 
   it("吸顶期间持续滚动保持钉住，直至消息滚回视口内解除", () => {
-    const { scrollEl, anchorEls } = renderList()
+    const { scrollEl, anchorEls, container } = renderList()
+
+    const groupEls = Array.from(container.querySelectorAll(".custom-scrollbar > div"))
+    const q1GroupSpy = groupEls[0] ? vi.spyOn(groupEls[0], "getBoundingClientRect") : null
+    const q2GroupSpy = groupEls[1] ? vi.spyOn(groupEls[1], "getBoundingClientRect") : null
 
     // 第一阶段：q2 吸顶。
     Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(0, 30))
+
+    q1GroupSpy?.mockReturnValue(rect(-400, -100))
+    q2GroupSpy?.mockReturnValue(rect(0, 300))
+
     fireEvent.scroll(scrollEl)
     expect(pinState("q2")).toBe(true)
     mockMessageItemProps.length = 0
@@ -107,6 +124,10 @@ describe("AgentMessageList 吸顶判定", () => {
     Object.defineProperty(scrollEl, "scrollTop", { value: 600, configurable: true })
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-260, -230))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(-200, -170))
+
+    q1GroupSpy?.mockReturnValue(rect(-600, -300))
+    q2GroupSpy?.mockReturnValue(rect(-200, 100))
+
     fireEvent.scroll(scrollEl)
     expect(mockMessageItemProps).toHaveLength(0)
 
@@ -115,8 +136,12 @@ describe("AgentMessageList 吸顶判定", () => {
     Object.defineProperty(scrollEl, "scrollTop", { value: 100, configurable: true })
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(160, 190))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(220, 250))
+
+    q1GroupSpy?.mockReturnValue(rect(160, 400))
+    q2GroupSpy?.mockReturnValue(rect(220, 600))
+
     fireEvent.scroll(scrollEl)
-    expect(pinState("q2")).toBe(false)
+    expect(pinState("q2") ?? false).toBe(false)
   })
 
   it("在底部附近向上滚动时，释放吸底锁，即使触发 visibleGroups 更新也不应自动滚到底部", () => {
