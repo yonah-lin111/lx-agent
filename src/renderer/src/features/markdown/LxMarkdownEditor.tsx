@@ -59,6 +59,7 @@ import {
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
+import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
 import {
@@ -106,55 +107,55 @@ const findTitleLoadingLine = (view: EditorView): Line | null => {
 /**
  * 从剪贴板读取本地文件绝对路径。
  */
-const getClipboardFile = (
+const getClipboardFiles = (
   event: ClipboardEvent,
-): { isDirectory: boolean; isImage: boolean; path: string } | null => {
+): { path: string; type: "folder" | "file" | "image" }[] => {
   const clipboardData = event.clipboardData
-  if (!clipboardData) return null
+  if (!clipboardData) return []
 
-  const plainText = clipboardData.getData("text/plain")
+  const files = Array.from(clipboardData.files)
+  const entries = Array.from(clipboardData.items).filter(
+    (clipboardItem) => clipboardItem.kind === "file",
+  )
+  const clipboardFiles = files.flatMap((file, index) => {
+    try {
+      const path = window.api.getPathForFile(file)
+      if (!path) return []
+      const entry = (
+        entries[index] as
+          | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
+          | undefined
+      )?.webkitGetAsEntry?.()
+      const isImage = file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
+      return [{ path, type: entry?.isDirectory ? "folder" : isImage ? "image" : "file" }]
+    } catch {
+      return []
+    }
+  })
+  if (clipboardFiles.length > 0) return clipboardFiles
+
+  const plainText = clipboardData.getData("text/plain").trim()
   if (plainText.startsWith("/")) {
-    const path = plainText.trim()
-    return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
+    return [{
+      path: plainText,
+      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
+    }]
   }
 
   const fileUri = clipboardData
     .getData("text/uri-list")
     .split(/\r?\n/)
     .find((value) => value.trim() && !value.trim().startsWith("#"))
-
-  if (fileUri?.startsWith("file://")) {
-    try {
-      const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
-      return { isDirectory: false, isImage: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path), path }
-    } catch {
-      return null
-    }
-  }
-
-  const file = clipboardData.files[0]
-  if (!file) return null
+  if (!fileUri?.startsWith("file://")) return []
 
   try {
-    const path = window.api.getPathForFile(file)
-    if (!path) return null
-
-    const item = Array.from(clipboardData.items).find(
-      (clipboardItem) => clipboardItem.kind === "file",
-    )
-    const entry = (
-      item as
-        | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
-        | undefined
-    )?.webkitGetAsEntry?.()
-
-    return {
-      isDirectory: entry?.isDirectory ?? false,
-      isImage: file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path),
+    const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
+    return [{
       path,
-    }
+      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
+    }]
   } catch {
-    return null
+    return []
   }
 }
 
@@ -250,6 +251,77 @@ export const LxMarkdownEditor = ({
   const [pageName, setPageName] = useState("")
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [activeLine, setActiveLine] = useState(1)
+  const [pasteReferencePanel, setPasteReferencePanel] = useState<{
+    from: number
+    to: number
+    insertion: string
+    referenceInsertion: string
+    originalText: string
+    paths: { path: string; type: "folder" | "file" | "image" }[]
+    position: { left: number; top: number | string; bottom: number | string }
+  } | null>(null)
+  const [activePasteReferenceIndex, setActivePasteReferenceIndex] = useState(0)
+  const pasteReferencePanelRef = useRef(pasteReferencePanel)
+  const activePasteReferenceIndexRef = useRef(0)
+  pasteReferencePanelRef.current = pasteReferencePanel
+
+  const closePasteReferencePanel = (restore = true): void => {
+    const view = editorViewRef.current
+    const panel = pasteReferencePanelRef.current
+    if (restore && view && panel) {
+      view.dispatch({
+        changes: {
+          from: panel.from,
+          to: panel.from + panel.insertion.length,
+          insert: panel.originalText,
+        },
+        selection: { anchor: panel.from + panel.originalText.length },
+      })
+      view.focus()
+    }
+    pasteReferencePanelRef.current = null
+    activePasteReferenceIndexRef.current = 0
+    setPasteReferencePanel(null)
+    setActivePasteReferenceIndex(0)
+  }
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!pasteReferencePanelRef.current) return
+      if (editorContainerRef.current?.contains(event.target as Node)) return
+      closePasteReferencePanel()
+    }
+    document.addEventListener("pointerdown", handlePointerDown)
+    return () => document.removeEventListener("pointerdown", handlePointerDown)
+  }, [])
+
+  const handlePasteReferenceKey = (offset: number): boolean => {
+    const panel = pasteReferencePanelRef.current
+    if (!panel) return false
+    const nextIndex = (activePasteReferenceIndexRef.current + offset + 2) % 2
+    activePasteReferenceIndexRef.current = nextIndex
+    setActivePasteReferenceIndex(nextIndex)
+    return true
+  }
+
+  const selectPasteReference = (mode: "reference" | "path"): boolean => {
+    const view = editorViewRef.current
+    const panel = pasteReferencePanelRef.current
+    if (!view || !panel) return false
+
+    const text =
+      mode === "reference"
+        ? panel.referenceInsertion
+        : panel.insertion
+    view.dispatch({
+      changes: { from: panel.from, to: panel.from + panel.insertion.length, insert: text },
+      selection: { anchor: panel.from + text.length },
+      userEvent: "input.paste",
+    })
+    view.focus()
+    closePasteReferencePanel(false)
+    return true
+  }
 
   const scrollToLine = useCallback((line: number): void => {
     const view = editorViewRef.current
@@ -890,6 +962,7 @@ export const LxMarkdownEditor = ({
             {
               key: "ArrowDown",
               run: () =>
+                handlePasteReferenceKey(1) ||
                 handleFileMentionKey("ArrowDown") ||
                 handleGitWorktreeKey(1) ||
                 handleSlashCommandKey(1) ||
@@ -899,6 +972,7 @@ export const LxMarkdownEditor = ({
             {
               key: "ArrowUp",
               run: () =>
+                handlePasteReferenceKey(-1) ||
                 handleFileMentionKey("ArrowUp") ||
                 handleGitWorktreeKey(-1) ||
                 handleSlashCommandKey(-1) ||
@@ -908,6 +982,13 @@ export const LxMarkdownEditor = ({
             {
               key: "Enter",
               run: (view) => {
+                const pastePanel = pasteReferencePanelRef.current
+                if (pastePanel) {
+                  return selectPasteReference(
+                    activePasteReferenceIndexRef.current === 0 ? "reference" : "path",
+                  )
+                }
+
                 const fileMention = fileMentionPanelRef.current
                 if (fileMention) {
                   selectFileMention(
@@ -1015,6 +1096,10 @@ export const LxMarkdownEditor = ({
             {
               key: "Escape",
               run: () => {
+                if (pasteReferencePanelRef.current) {
+                  closePasteReferencePanel()
+                  return true
+                }
                 if (fileMentionPanelRef.current) {
                   closeFileMentionPanel()
                   return true
@@ -1044,15 +1129,36 @@ export const LxMarkdownEditor = ({
         Prec.high(
           EditorView.domEventHandlers({
             paste: (event, view) => {
-              const file = getClipboardFile(event)
-              if (!file) return false
+              const files = getClipboardFiles(event)
+              if (files.length === 0) return false
 
               event.preventDefault()
-              const type = file.isDirectory ? "folder" : file.isImage ? "image" : "file"
               const { from, to } = view.state.selection.main
               const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
               const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
-              const insertion = `${leadingSpace}${createMarkdownReference(type, file.path)} `
+              const referenceInsertion = `${leadingSpace}${files
+                .map(({ path, type }) => createMarkdownReference(type, path))
+                .join(" ")} `
+              const insertion = `${leadingSpace}${files.map(({ path }) => path).join(" ")} `
+              const coords = view.coordsAtPos(from)
+              if (!coords) return true
+
+              const panel = {
+                from,
+                to,
+                insertion,
+                referenceInsertion,
+                originalText: view.state.doc.sliceString(from, to),
+                paths: files,
+                position: {
+                  left: Math.max(8, coords.left),
+                  top: coords.bottom + 6,
+                  bottom: "auto",
+                },
+              }
+              pasteReferencePanelRef.current = panel
+              activePasteReferenceIndexRef.current = 0
+              setPasteReferencePanel(panel)
               view.dispatch({
                 changes: { from, to, insert: insertion },
                 selection: { anchor: from + insertion.length },
@@ -1294,6 +1400,11 @@ export const LxMarkdownEditor = ({
         )}
       </div>
       <MarkdownStatusBar projectPath={worktreePath ?? projectPath} />
+      <MarkdownPasteCommandMenu
+        activeIndex={activePasteReferenceIndex}
+        position={pasteReferencePanel?.position}
+        visible={Boolean(pasteReferencePanel)}
+      />
       <MarkdownBlockCommandMenu
         activeIndex={activeBlockCommandIndex}
         commands={blockCommandPanel?.commands}
