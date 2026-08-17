@@ -6,14 +6,23 @@ import {
 import { languages } from "@codemirror/language-data"
 import { markdown } from "@codemirror/lang-markdown"
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language"
-import { EditorState, Prec } from "@codemirror/state"
-import { EditorView, keymap, placeholder } from "@codemirror/view"
+import { EditorState, Prec, RangeSetBuilder, type Text } from "@codemirror/state"
+import {
+  type DecorationSet,
+  type ViewUpdate,
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  keymap,
+  placeholder,
+} from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { tags } from "@lezer/highlight"
 import type { ProjectFileEntry } from "@shared/project"
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
+import type { MarkdownReferenceType } from "@/features/markdown/commands/markdownReferenceCommands"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
@@ -22,6 +31,7 @@ import {
   isInsideMarkdownCodeFence,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
+import { MARKDOWN_FILE_MENTION_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
@@ -141,6 +151,32 @@ const agentEditorTheme = EditorView.theme({
   ".cm-activeLine": {
     backgroundColor: "transparent",
   },
+  ".cm-agent-file-mention, .cm-agent-file-mention *": {
+    color: "#eab308",
+    fontWeight: "500",
+    textDecoration: "underline",
+    textDecorationColor: "rgba(234, 179, 8, 0.4)",
+  },
+  ".cm-agent-reference-project, .cm-agent-reference-project *": {
+    color: "#c4b5fd",
+    fontWeight: "500",
+  },
+  ".cm-agent-reference-folder, .cm-agent-reference-folder *": {
+    color: "#d97706",
+    fontWeight: "500",
+  },
+  ".cm-agent-reference-file, .cm-agent-reference-file *": {
+    color: "#7dd3fc",
+    fontWeight: "500",
+  },
+  ".cm-agent-reference-image, .cm-agent-reference-image *": {
+    color: "#f9a8d4",
+    fontWeight: "500",
+  },
+  ".cm-agent-reference-common, .cm-agent-reference-common *": {
+    color: "#22d3ee",
+    fontWeight: "500",
+  },
 })
 
 const markdownHighlightStyle = HighlightStyle.define([
@@ -152,6 +188,61 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.monospace, color: "#38bdf8" },
   { tag: tags.comment, color: "rgba(255, 255, 255, 0.4)" },
 ])
+
+// @ 提及高亮样式类（对齐主 Markdown 编辑器的配色）。
+const agentMentionDecorations: Record<"mention" | MarkdownReferenceType, Decoration> = {
+  mention: Decoration.mark({ class: "cm-agent-file-mention" }),
+  project: Decoration.mark({ class: "cm-agent-reference-project" }),
+  folder: Decoration.mark({ class: "cm-agent-reference-folder" }),
+  file: Decoration.mark({ class: "cm-agent-reference-file" }),
+  image: Decoration.mark({ class: "cm-agent-reference-image" }),
+  common: Decoration.mark({ class: "cm-agent-reference-common" }),
+}
+
+// 参考引用 token：@[refer-{type}]({path})，与主 Markdown 编辑器一致。
+const AGENT_MENTION_REFERENCE_PATTERN =
+  /@\[refer-(project|folder|file|image|common)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/g
+
+export const buildMentionDecorations = (doc: Text): DecorationSet => {
+  const builder = new RangeSetBuilder<Decoration>()
+  for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber += 1) {
+    const line = doc.line(lineNumber)
+    const from = line.from
+    const lineText = line.text
+
+    MARKDOWN_FILE_MENTION_PATTERN.lastIndex = 0
+    for (const match of lineText.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
+      if (match.index === undefined) continue
+      const fromPos = from + match.index
+      builder.add(fromPos, fromPos + match[0].length, agentMentionDecorations.mention)
+    }
+
+    AGENT_MENTION_REFERENCE_PATTERN.lastIndex = 0
+    for (const match of lineText.matchAll(AGENT_MENTION_REFERENCE_PATTERN)) {
+      if (match.index === undefined) continue
+      const type = match[1] as MarkdownReferenceType
+      const fromPos = from + match.index
+      builder.add(fromPos, fromPos + match[0].length, agentMentionDecorations[type])
+    }
+  }
+  return builder.finish()
+}
+
+// @ 提及/参考引用高亮插件：文档变化时重算装饰。
+const agentMentionHighlight = ViewPlugin.fromClass(
+  class {
+    view: EditorView
+    decorations: DecorationSet
+    constructor(view: EditorView) {
+      this.view = view
+      this.decorations = buildMentionDecorations(view.state.doc)
+    }
+    update(update: ViewUpdate): void {
+      if (update.docChanged) this.decorations = buildMentionDecorations(this.view.state.doc)
+    }
+  },
+  { decorations: (view) => view.decorations },
+)
 
 /**
  * Agent 专用 Markdown 输入框组件，使用 CodeMirror 6 引擎，支持：
@@ -208,6 +299,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const isBlockCommandOpen = blockCommands.length > 0 && !!blockCommandPosition
 
     const { browsing, record, reset, navigate } = usePromptHistory()
+    // keymap 在首次渲染创建并捕获闭包，而 history 为异步加载，必须通过 ref 读取最新浏览状态。
+    const browsingRef = useRef(browsing)
+    browsingRef.current = browsing
+    const navigateRef = useRef(navigate)
+    navigateRef.current = navigate
 
     const onChangeRef = useRef(onChange)
     onChangeRef.current = onChange
@@ -574,6 +670,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           }),
           syntaxHighlighting(markdownHighlightStyle),
           agentEditorTheme,
+          agentMentionHighlight,
           EditorView.lineWrapping,
           indentOnInput(),
           bracketMatching(),
@@ -608,8 +705,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   const cursor = view.state.selection.main.head
                   const lastLineBreak = doc.lastIndexOf("\n")
                   const isOnLastLine = lastLineBreak === -1 || cursor > lastLineBreak
-                  if (browsing && isOnLastLine) {
-                    const result = navigate("down", doc)
+                  if (browsingRef.current && isOnLastLine) {
+                    const result = navigateRef.current("down", doc)
                     if (result) {
                       view.dispatch({
                         changes: { from: 0, to: view.state.doc.length, insert: result.text },
@@ -660,9 +757,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   const firstLineBreak = doc.indexOf("\n")
                   const isOnFirstLine = firstLineBreak === -1 || cursor <= firstLineBreak
                   const isAtLineStart = cursor === 0 || (cursor > 0 && doc[cursor - 1] === "\n")
-                  const canUp = isOnFirstLine && (doc.length === 0 || browsing || isAtLineStart)
+                  const canUp = isOnFirstLine && (doc.length === 0 || browsingRef.current || isAtLineStart)
                   if (canUp) {
-                    const result = navigate("up", doc)
+                    const result = navigateRef.current("up", doc)
                     if (result) {
                       view.dispatch({
                         changes: { from: 0, to: view.state.doc.length, insert: result.text },
