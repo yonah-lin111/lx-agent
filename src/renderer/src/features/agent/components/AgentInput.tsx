@@ -1,6 +1,6 @@
 import { Loader2, Send, Square } from "lucide-react"
 import type React from "react"
-import { useEffect, useImperativeHandle, useRef, useState } from "react"
+import { useImperativeHandle, useRef } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -12,13 +12,6 @@ import {
   type AgentMarkdownInputRef,
 } from "./AgentMarkdownInput"
 import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
-
-// 编辑区高度上限：12 行（20px/行 + .cm-content 上下 padding）。
-const EDITOR_MAX_HEIGHT = 244
-// 编辑区高度下限（单行）。
-const EDITOR_MIN_HEIGHT = 44
-// 输入框容器中编辑区之外固定的高度：按钮栏 + 垂直 padding + 上下边框。
-const CONTAINER_FIXED_EXTRA = 61
 
 export interface AgentInputProps {
   inputText: string
@@ -87,44 +80,6 @@ export const AgentInput = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { error: errorToast } = useLxToast()
-
-  // 编辑区拖拽高度（px；null = 内容自适应）。
-  const [editorHeight, setEditorHeight] = useState<number | null>(null)
-  const [isEditorResizing, setIsEditorResizing] = useState(false)
-  const editorResizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
-
-  // 向上拖输入框顶部热区增高：记录起点，增量换算编辑区高度。
-  const handleEditorResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
-    const containerHeight = containerRef.current?.getBoundingClientRect().height ?? 0
-    const startHeight =
-      editorHeight ?? Math.max(containerHeight - CONTAINER_FIXED_EXTRA, EDITOR_MIN_HEIGHT)
-    editorResizeStartRef.current = { startY: event.clientY, startHeight }
-    setIsEditorResizing(true)
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  const handleEditorResizeMove = (event: React.PointerEvent<HTMLDivElement>): void => {
-    const start = editorResizeStartRef.current
-    if (!start) return
-    const next = start.startHeight - (event.clientY - start.startY)
-    setEditorHeight(Math.max(EDITOR_MIN_HEIGHT, Math.min(EDITOR_MAX_HEIGHT, next)))
-  }
-
-  const handleEditorResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {
-    editorResizeStartRef.current = null
-    setIsEditorResizing(false)
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }
-
-  // 拖拽期间禁用文本选中，避免误选上方消息内容。
-  useEffect(() => {
-    if (!isEditorResizing) return
-    const previous = document.body.style.userSelect
-    document.body.style.userSelect = "none"
-    return () => {
-      document.body.style.userSelect = previous
-    }
-  }, [isEditorResizing])
 
   // 暴露对外的 focus / setSelectionRange 兼容方法
   useImperativeHandle(
@@ -306,28 +261,15 @@ export const AgentInput = ({
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
-        className="relative flex flex-col rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
-        style={
-          editorHeight ? { height: `${editorHeight + CONTAINER_FIXED_EXTRA}px` } : undefined
-        }
+        className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
         onPointerDown={handleContainerPointerDown}
       >
-        {/* 顶部隐形拖拽热区：向上拖增高（无边框，仅 cursor 提示）。 */}
-        <div
-          aria-label="调整输入框高度"
-          className="absolute top-0 right-0 left-0 z-10 h-2 cursor-row-resize touch-none"
-          onPointerCancel={handleEditorResizeEnd}
-          onPointerDown={handleEditorResizeStart}
-          onPointerMove={handleEditorResizeMove}
-          onPointerUp={handleEditorResizeEnd}
-        />
         <AgentMarkdownInput
           ref={markdownInputRef}
           value={inputText}
           onChange={onInputChange}
           onSend={handleSend}
           panelAnchorRef={containerRef}
-          editorHeight={editorHeight}
           projectId={projectId}
           projectPath={projectPath}
           modelOptions={modelOptions as AgentMarkdownInputProps["modelOptions"]}

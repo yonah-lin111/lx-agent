@@ -56,8 +56,6 @@ export interface AgentMarkdownInputProps {
   onSend: () => void
   disabled?: boolean
   placeholder?: string
-  // 编辑区固定高度（px，null = 内容自适应到 12 行上限）。由父级拖拽热区控制。
-  editorHeight?: number | null
   // 面板定位锚点：整个输入框容器（含 padding/边框），保证面板宽度与输入框一致。
   // 缺省时回退到内部 CodeMirror 容器。
   panelAnchorRef?: React.RefObject<HTMLElement | null>
@@ -113,9 +111,9 @@ const getMentionQuery = (
 
 const agentEditorTheme = EditorView.theme({
   "&": {
-    height: "var(--agent-editor-height, auto)",
+    height: "auto",
     minHeight: "44px",
-    maxHeight: "var(--agent-editor-height, 244px)",
+    maxHeight: "244px",
     backgroundColor: "transparent",
     color: "rgba(255, 255, 255, 0.9)",
     fontSize: "12px",
@@ -126,7 +124,7 @@ const agentEditorTheme = EditorView.theme({
   },
   ".cm-content": {
     minHeight: "44px",
-    maxHeight: "var(--agent-editor-height, 244px)",
+    maxHeight: "244px",
     padding: "2px 4px",
     caretColor: "#ffffff",
     fontFamily: "inherit",
@@ -272,7 +270,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onUndo,
       onCompact,
       panelAnchorRef,
-      editorHeight = null,
     },
     ref,
   ): React.JSX.Element => {
@@ -925,7 +922,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     }, [value])
 
     return (
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative min-w-0 flex-1">
         {/* 面板集合 */}
         <AgentInputCommandPanel
           isOpen={isCommandMode}
@@ -958,18 +955,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           visible={isBlockCommandOpen}
         />
 
-        {/* CodeMirror 编辑器容器：拖拽固定高度时跟随 --agent-editor-height，否则内容自适应到 12 行。 */}
+        {/* CodeMirror 编辑器容器：内容自适应，最大 12 行。 */}
         <div
           ref={containerRef}
-          style={
-            editorHeight
-              ? ({
-                  height: `${editorHeight}px`,
-                  "--agent-editor-height": `${editorHeight}px`,
-                } as React.CSSProperties)
-              : undefined
-          }
-          className={`min-h-[44px] w-full flex-1 ${
+          className={`min-h-[44px] max-h-[244px] w-full overflow-y-auto ${
             disabled ? "pointer-events-none opacity-50" : ""
           }`}
         />
