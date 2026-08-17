@@ -403,6 +403,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       },
       [projectId, projectPath],
     )
+    // CodeMirror keymap/ViewPlugin 在首次渲染时创建并捕获闭包，而 projectId/projectPath 为异步加载，
+    // 必须通过 ref 读取最新 syncPanels，否则 @ / 斜杠命令等面板检测永远拿不到项目上下文。
+    const syncPanelsRef = useRef(syncPanels)
+    syncPanelsRef.current = syncPanels
 
     // 发送处理
     const handleSendAction = useCallback((): void => {
@@ -759,7 +763,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 if (update.docChanged || update.selectionSet) {
                   const cursor = update.view.state.selection.main.head
                   const docText = update.view.state.doc.toString()
-                  syncPanels(docText, cursor, update.view)
+                  syncPanelsRef.current(docText, cursor, update.view)
                 }
               }
             },
@@ -768,7 +772,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             focus: (_event, view) => {
               const cursor = view.state.selection.main.head
               const docText = view.state.doc.toString()
-              syncPanels(docText, cursor, view)
+              syncPanelsRef.current(docText, cursor, view)
             },
           }),
         ],
