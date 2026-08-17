@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, us
 import { useLxToast } from "@/components/ui/LxToast"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
+import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
@@ -26,6 +27,7 @@ import {
   isInsideMarkdownCodeFence,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
+import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import {
   markdownHighlightStyle,
   markdownMarkerHighlight,
@@ -98,6 +100,58 @@ const getMatchedCommands = (value: string): AgentInputCommand[] => {
     const aliases = command.id === "clear" ? ["clear", "new"] : [command.id]
     return aliases.some((alias) => isFuzzyMatch(query, alias))
   })
+}
+
+const getClipboardFiles = (
+  event: ClipboardEvent,
+): { path: string; type: "folder" | "file" | "image" }[] => {
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return []
+
+  const files = Array.from(clipboardData.files)
+  const entries = Array.from(clipboardData.items).filter(
+    (item) => item.kind === "file",
+  )
+  const clipboardFiles = files.flatMap((file, index) => {
+    try {
+      const path = window.api.getPathForFile(file)
+      if (!path) return []
+      const entry = (
+        entries[index] as
+          | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
+          | undefined
+      )?.webkitGetAsEntry?.()
+      const isImage = file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
+      return [{ path, type: entry?.isDirectory ? "folder" : isImage ? "image" : "file" }]
+    } catch {
+      return []
+    }
+  })
+  if (clipboardFiles.length > 0) return clipboardFiles
+
+  const plainText = clipboardData.getData("text/plain").trim()
+  if (plainText.startsWith("/")) {
+    return [{
+      path: plainText,
+      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
+    }]
+  }
+
+  const fileUri = clipboardData
+    .getData("text/uri-list")
+    .split(/\r?\n/)
+    .find((value) => value.trim() && !value.trim().startsWith("#"))
+  if (!fileUri?.startsWith("file://")) return []
+
+  try {
+    const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
+    return [{
+      path,
+      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
+    }]
+  } catch {
+    return []
+  }
 }
 
 const getMentionQuery = (
@@ -454,7 +508,15 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const [modelIndex, setModelIndex] = useState(0)
     const [worktreeIndex, setWorktreeIndex] = useState(0)
     const [files, setFiles] = useState<ProjectFileEntry[]>([])
-
+    const [pastePanel, setPastePanel] = useState<{
+      from: number
+      insertion: string
+      referenceInsertion: string
+      originalText: string
+      paths: { path: string; type: "folder" | "file" | "image" }[]
+      position: React.CSSProperties
+    } | null>(null)
+    const [pasteIndex, setPasteIndex] = useState(0)
     // 块级命令状态
     const [blockCommands, setBlockCommands] = useState<MarkdownBlockCommand[]>([])
     const [blockCommandIndex, setBlockCommandIndex] = useState(0)
@@ -464,6 +526,62 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const isBlockCommandOpen = blockCommands.length > 0 && !!blockCommandPosition
 
     const { browsing, record, reset, navigate } = usePromptHistory()
+    const pastePanelRef = useRef(pastePanel)
+    pastePanelRef.current = pastePanel
+    const pasteIndexRef = useRef(pasteIndex)
+    pasteIndexRef.current = pasteIndex
+
+    const closePastePanel = (restore = true): void => {
+      const view = editorViewRef.current
+      const panel = pastePanelRef.current
+      if (restore && view && panel) {
+        view.dispatch({
+          changes: {
+            from: panel.from,
+            to: panel.from + panel.insertion.length,
+            insert: panel.originalText,
+          },
+          selection: { anchor: panel.from + panel.originalText.length },
+        })
+        view.focus()
+      }
+      pastePanelRef.current = null
+      pasteIndexRef.current = 0
+      setPastePanel(null)
+      setPasteIndex(0)
+    }
+
+    const selectPasteReference = (mode: "reference" | "path"): boolean => {
+      const view = editorViewRef.current
+      const panel = pastePanelRef.current
+      if (!view || !panel) return false
+
+      const text = mode === "reference" ? panel.referenceInsertion : panel.insertion
+      view.dispatch({
+        changes: {
+          from: panel.from,
+          to: panel.from + panel.insertion.length,
+          insert: text,
+        },
+        selection: { anchor: panel.from + text.length },
+        userEvent: "input.paste",
+      })
+      view.focus()
+      closePastePanel(false)
+      return true
+    }
+
+    useEffect(() => {
+      const handlePointerDown = (event: PointerEvent): void => {
+        if (!pastePanelRef.current) return
+        const anchor = getPanelAnchor()
+        if (anchor?.contains(event.target as Node)) return
+        closePastePanel()
+      }
+      document.addEventListener("pointerdown", handlePointerDown)
+      return () => document.removeEventListener("pointerdown", handlePointerDown)
+    }, [getPanelAnchor])
+
     // keymap 在首次渲染创建并捕获闭包，而 history 为异步加载，必须通过 ref 读取最新浏览状态。
     const browsingRef = useRef(browsing)
     browsingRef.current = browsing
@@ -877,6 +995,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "ArrowDown",
                 run: (view) => {
+                  if (pastePanelRef.current) {
+                    setPasteIndex((i) => (i + 1) % 2)
+                    return true
+                  }
                   if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
                     setCommandIndex((i) => (i + 1) % matchedCommandsRef.current.length)
                     return true
@@ -919,6 +1041,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "ArrowUp",
                 run: (view) => {
+                  if (pastePanelRef.current) {
+                    setPasteIndex((i) => (i - 1 + 2) % 2)
+                    return true
+                  }
                   if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
                     setCommandIndex(
                       (i) => (i - 1 + matchedCommandsRef.current.length) % matchedCommandsRef.current.length,
@@ -972,6 +1098,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "Escape",
                 run: () => {
+                  if (pastePanelRef.current) {
+                    closePastePanel()
+                    return true
+                  }
                   // ① 补全/提及/命令面板激活态：Esc 关闭面板。
                   if (activeModeRef.current) {
                     setActiveMode(null)
@@ -1011,6 +1141,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "Enter",
                 run: () => {
+                  if (pastePanelRef.current) {
+                    return selectPasteReference(
+                      pasteIndexRef.current === 0 ? "reference" : "path",
+                    )
+                  }
                   if (activeModeRef.current === "command") {
                     const cmd =
                       matchedCommandsRef.current[commandIndexRef.current] ??
@@ -1113,6 +1248,42 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             }
           }),
           EditorView.domEventHandlers({
+            paste: (event, view) => {
+              const files = getClipboardFiles(event)
+              if (files.length === 0) return false
+
+              event.preventDefault()
+              const { from, to } = view.state.selection.main
+              const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
+              const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
+              const referenceInsertion = `${leadingSpace}${files
+                .map(({ path, type }) => createMarkdownReference(type, path))
+                .join(" ")} `
+              const insertion = `${leadingSpace}${files.map(({ path }) => path).join(" ")} `
+              const anchor = getPanelAnchor()
+              const position = anchor
+                ? getAgentPanelPosition("command", anchor.getBoundingClientRect())
+                : { left: 8, top: 8 }
+
+              const panel = {
+                from,
+                insertion,
+                referenceInsertion,
+                originalText: view.state.doc.sliceString(from, to),
+                paths: files,
+                position,
+              }
+              pastePanelRef.current = panel
+              pasteIndexRef.current = 0
+              setPastePanel(panel)
+              setPasteIndex(0)
+              view.dispatch({
+                changes: { from, to, insert: insertion },
+                selection: { anchor: from + insertion.length },
+                userEvent: "input.paste",
+              })
+              return true
+            },
             focus: (_event, view) => {
               const cursor = view.state.selection.main.head
               const docText = view.state.doc.toString()
@@ -1179,6 +1350,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           activeIndex={blockCommandIndex}
           position={blockCommandPosition}
           visible={isBlockCommandOpen}
+        />
+        <MarkdownPasteCommandMenu
+          activeIndex={pasteIndex}
+          position={pastePanel?.position}
+          visible={Boolean(pastePanel)}
         />
 
         {/* CodeMirror 编辑器容器：内容自适应（默认最大 12 行），扩大时固定最大 12 行高度（244px）。 */}
