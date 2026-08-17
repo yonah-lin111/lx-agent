@@ -385,14 +385,20 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         if (matchedBlockCmds.length > 0 && trigger) {
           const measurePos = trigger.kind === "codeBlock" && cursor > line.from ? cursor - 1 : cursor
           const coords = view.coordsAtPos(measurePos)
+          const container = containerRef.current
+          let position: React.CSSProperties | undefined
           if (coords) {
             const panelWidth = 320
             const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
-            const position: React.CSSProperties =
+            position =
               window.innerHeight - coords.bottom < 240
                 ? { left, top: "auto", bottom: window.innerHeight - coords.top + 6 }
                 : { left, top: coords.bottom + 6, bottom: "auto" }
-
+          } else if (container) {
+            // coordsAtPos 在输入 update 期间对行尾位置可能返回 null，fallback 到容器定位。
+            position = getAgentPanelPosition("command", container.getBoundingClientRect())
+          }
+          if (position) {
             setBlockCommands(matchedBlockCmds)
             setBlockCommandPosition(position)
             return
