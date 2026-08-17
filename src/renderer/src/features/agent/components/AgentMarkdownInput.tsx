@@ -7,7 +7,7 @@ import { languages } from "@codemirror/language-data"
 import { markdown } from "@codemirror/lang-markdown"
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language"
 import { EditorState, Prec } from "@codemirror/state"
-import { EditorView, keymap } from "@codemirror/view"
+import { EditorView, keymap, placeholder } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import { tags } from "@lezer/highlight"
 import type { ProjectFileEntry } from "@shared/project"
@@ -46,6 +46,9 @@ export interface AgentMarkdownInputProps {
   onSend: () => void
   disabled?: boolean
   placeholder?: string
+  // 面板定位锚点：整个输入框容器（含 padding/边框），保证面板宽度与输入框一致。
+  // 缺省时回退到内部 CodeMirror 容器。
+  panelAnchorRef?: React.RefObject<HTMLElement | null>
   projectId?: string
   projectPath?: string
   modelOptions?: { label: string; value?: string; options?: { label: string; value: string }[] }[]
@@ -165,7 +168,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onChange,
       onSend,
       disabled = false,
-      placeholder = "给 LX Agent 发送消息...",
+      placeholder: placeholderText = "给 LX Agent 发送消息...",
       projectId,
       projectPath,
       modelOptions = [],
@@ -175,12 +178,17 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onClear,
       onUndo,
       onCompact,
+      panelAnchorRef,
     },
     ref,
   ): React.JSX.Element => {
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
+    // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
+    const getPanelAnchor = useCallback((): HTMLElement | null => {
+      return panelAnchorRef?.current ?? containerRef.current
+    }, [panelAnchorRef])
 
     const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | "worktree" | null>(
       null,
@@ -269,8 +277,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
 
     // 计算底部面板相对于输入框容器的位置
     const updatePanelPosition = useCallback((): void => {
-      const container = containerRef.current
-      if (!container) {
+      const anchor = getPanelAnchor()
+      if (!anchor) {
         setPanelPosition(null)
         return
       }
@@ -283,8 +291,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         setPanelPosition(null)
         return
       }
-      setPanelPosition(getAgentPanelPosition(kind, container.getBoundingClientRect()))
-    }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode])
+      setPanelPosition(getAgentPanelPosition(kind, anchor.getBoundingClientRect()))
+    }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode, getPanelAnchor])
 
     useEffect(() => {
       updatePanelPosition()
@@ -400,8 +408,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           } catch {
             position = undefined
           }
-          if (!position && containerRef.current) {
-            position = getAgentPanelPosition("command", containerRef.current.getBoundingClientRect())
+          if (!position) {
+            const anchor = getPanelAnchor()
+            if (anchor) {
+              position = getAgentPanelPosition("command", anchor.getBoundingClientRect())
+            }
           }
           if (position) {
             setBlockCommands(matchedBlockCmds)
@@ -412,7 +423,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         setBlockCommands([])
         setBlockCommandPosition(undefined)
       },
-      [projectId, projectPath],
+      [projectId, projectPath, getPanelAnchor],
     )
     // CodeMirror keymap/ViewPlugin 在首次渲染时创建并捕获闭包，而 projectId/projectPath 为异步加载，
     // 必须通过 ref 读取最新 syncPanels，否则 @ / 斜杠命令等面板检测永远拿不到项目上下文。
@@ -764,6 +775,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             ]),
           ),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          placeholder(placeholderText),
           // 用 updateListener 而非 viewPlugin：后者在 DOM 更新前调用，读取布局
           // （coordsAtPos）会抛 "Reading the editor layout isn't allowed during an update"。
           EditorView.updateListener.of((update) => {
@@ -852,7 +864,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           className={`min-h-[44px] max-h-[124px] w-full overflow-y-auto ${
             disabled ? "pointer-events-none opacity-50" : ""
           }`}
-          data-placeholder={value ? undefined : placeholder}
         />
       </div>
     )

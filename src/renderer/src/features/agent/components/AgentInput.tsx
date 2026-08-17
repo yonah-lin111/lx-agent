@@ -269,6 +269,7 @@ export const AgentInput = ({
           value={inputText}
           onChange={onInputChange}
           onSend={handleSend}
+          panelAnchorRef={containerRef}
           projectId={projectId}
           projectPath={projectPath}
           modelOptions={modelOptions as AgentMarkdownInputProps["modelOptions"]}
