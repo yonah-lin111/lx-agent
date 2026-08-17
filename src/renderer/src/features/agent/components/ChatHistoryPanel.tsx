@@ -2,9 +2,11 @@ import type { AgentSessionSummary } from "@shared/contracts/agent"
 import { Search } from "lucide-react"
 import type React from "react"
 import { useMemo, useState, useSyncExternalStore } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
+import { agentApi } from "../api/agentApi"
 import { sessionListStore } from "../hooks/sessionListStore"
 
 interface ChatHistoryPanelProps {
@@ -15,6 +17,7 @@ interface ChatHistoryPanelProps {
   // 项目列表（Project tag 的 LxSelect 选项）。
   projects: { id: string; name: string }[]
   onRestore: (sessionId: string) => void
+  onDelete: (sessionId: string) => void
 }
 
 // 项目 tag（英文单选）：全部 / 指定项目 / 当前项目。
@@ -34,6 +37,7 @@ export const ChatHistoryPanel = ({
   currentProjectId,
   projects,
   onRestore,
+  onDelete,
 }: ChatHistoryPanelProps): React.JSX.Element => {
   const [query, setQuery] = useState("")
   const [projectTag, setProjectTag] = useState<ProjectTag>("all")
@@ -42,6 +46,25 @@ export const ChatHistoryPanel = ({
     sessionListStore.subscribe,
     sessionListStore.getPendingSessionIds,
   )
+  // 正在编辑标题的会话 id（点击条目右侧编辑 icon 进入，行内输入框编辑）。
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [titleDraft, setTitleDraft] = useState("")
+
+  // 提交标题修改：写入 DB 并本地同步，随后退出编辑态。
+  const commitTitle = (): void => {
+    const sessionId = editingSessionId
+    setEditingSessionId(null)
+    if (!sessionId) return
+    const trimmed = titleDraft.trim()
+    const original = sessions.find((session) => session.id === sessionId)?.title
+    if (!trimmed || original === undefined || trimmed === original) return
+    void agentApi
+      .renameSession(sessionId, trimmed)
+      .then(() => sessionListStore.updateSessionTitle(sessionId, trimmed))
+      .catch(() => {
+        // 重命名失败：保持原标题。
+      })
+  }
 
   const filteredSessions = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase()
@@ -100,24 +123,78 @@ export const ChatHistoryPanel = ({
         <div className="space-y-0.5">
           {filteredSessions.map((session) => {
             const isCurrent = session.id === currentSessionId
+            const isEditing = editingSessionId === session.id
             return (
-              <button
+              <div
                 key={session.id}
-                disabled={isCurrent}
-                type="button"
-                className={`flex min-h-7 w-full items-center gap-3 rounded-[3px] px-1.5 text-left text-xs ${
+                className={`group flex min-h-7 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
                   isCurrent
                     ? "cursor-default bg-white/10 text-white"
                     : "text-white/70 hover:bg-white/5"
                 }`}
-                onClick={() => onRestore(session.id)}
               >
-                {pendingSessionIds.has(session.id) ? (
-                  <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    aria-label="编辑会话标题"
+                    className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-xs text-white/80 outline-none"
+                    maxLength={40}
+                    value={titleDraft}
+                    onBlur={commitTitle}
+                    onChange={(event) => setTitleDraft(event.target.value)}
+                    onFocus={(event) => event.target.select()}
+                    onKeyDown={(event) => {
+                      event.stopPropagation()
+                      if (event.key === "Escape") {
+                        setEditingSessionId(null)
+                        return
+                      }
+                      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                        commitTitle()
+                      }
+                    }}
+                  />
                 ) : (
-                  <span className="min-w-0 truncate">{session.title}</span>
+                  <>
+                    <button
+                      type="button"
+                      disabled={isCurrent}
+                      className="min-w-0 flex-1 truncate text-left"
+                      onClick={() => onRestore(session.id)}
+                    >
+                      {pendingSessionIds.has(session.id) ? (
+                        <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+                      ) : (
+                        <span className="block truncate">{session.title}</span>
+                      )}
+                    </button>
+                    <LxIconButton
+                      aria-label="重命名会话"
+                      className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      disabled={pendingSessionIds.has(session.id)}
+                      preset="edit"
+                      size="small"
+                      title={{ content: "重命名", placement: "bottom" }}
+                      onClick={() => {
+                        setTitleDraft(session.title)
+                        setEditingSessionId(session.id)
+                      }}
+                    />
+                    <LxIconButton
+                      aria-label="删除会话"
+                      className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      disabled={pendingSessionIds.has(session.id)}
+                      preset="delete"
+                      size="small"
+                      title={{
+                        content: "是否删除该会话",
+                        placement: "bottom",
+                        onConfirm: () => onDelete(session.id),
+                      }}
+                    />
+                  </>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>
