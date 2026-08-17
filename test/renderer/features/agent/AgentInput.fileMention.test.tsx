@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentInput } from "@/features/agent/components/AgentInput"
@@ -32,8 +32,6 @@ vi.stubGlobal("requestAnimationFrame", ((cb: () => void) => {
   return 0
 }) as typeof requestAnimationFrame)
 
-const PLACEHOLDER = "给 LX Agent 发送消息..."
-
 describe("AgentInput 文件提及面板唤起", () => {
   afterEach(cleanup)
 
@@ -47,8 +45,10 @@ describe("AgentInput 文件提及面板唤起", () => {
       { path: "src/index.ts", isDirectory: false },
     ])
 
+    let updateText: (val: string) => void = () => {}
     const Harness = () => {
       const [text, setText] = useState("")
+      updateText = setText
       return (
         <AgentInput
           inputText={text}
@@ -79,10 +79,13 @@ describe("AgentInput 文件提及面板唤起", () => {
     }
 
     render(<Harness />)
-    const textarea = screen.getByPlaceholderText(PLACEHOLDER) as HTMLTextAreaElement
+    await act(async () => {})
+    const content = document.querySelector(".cm-content") as HTMLElement
+    expect(content).not.toBeNull()
 
     await act(async () => {
-      fireEvent.change(textarea, { target: { value: "@" } })
+      fireEvent.focus(content)
+      updateText("@")
     })
 
     expect(projectApi.searchFiles).toHaveBeenCalledWith("test-proj", "")
@@ -94,8 +97,10 @@ describe("AgentInput 文件提及面板唤起", () => {
       { path: "/desktop/doc.txt", isDirectory: false },
     ])
 
+    let updateText: (val: string) => void = () => {}
     const Harness = () => {
       const [text, setText] = useState("")
+      updateText = setText
       return (
         <AgentInput
           inputText={text}
@@ -124,10 +129,13 @@ describe("AgentInput 文件提及面板唤起", () => {
     }
 
     render(<Harness />)
-    const textarea = screen.getByPlaceholderText(PLACEHOLDER) as HTMLTextAreaElement
+    await act(async () => {})
+    const content = document.querySelector(".cm-content") as HTMLElement
+    expect(content).not.toBeNull()
 
     await act(async () => {
-      fireEvent.change(textarea, { target: { value: "@" } })
+      fireEvent.focus(content)
+      updateText("@")
     })
 
     expect(projectApi.searchDirectoryFiles).toHaveBeenCalledWith("/desktop", "")

@@ -67,9 +67,10 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("纠偏插话")
+    const editor = document.querySelector(".cm-content") as HTMLElement
+    expect(editor).not.toBeNull()
 
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true })
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: true })
     expect(onSend).toHaveBeenCalledWith({ delivery: "steer" })
     // 发送后输入框顶部展示即时插话提示条（参考排队消息提示）。
     expect(screen.getByText("已发送即时插话，将在当前步骤完成后生效")).toBeDefined()
@@ -108,9 +109,10 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("/steer 改为直接回答")
+    const editor = document.querySelector(".cm-content") as HTMLElement
+    expect(editor).not.toBeNull()
 
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false })
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false })
     expect(onSend).toHaveBeenCalledWith({ delivery: "steer" })
   })
 
@@ -147,15 +149,20 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("/steer")
+    const editor = document.querySelector(".cm-content") as HTMLElement
+    expect(editor).not.toBeNull()
 
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false })
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false })
     expect(onSend).not.toHaveBeenCalled()
   })
 
   it("在命令面板中按 Enter 选中 /steer 时回显 '/steer '", async () => {
+    let updateText: (v: string) => void = () => {}
+    let currentText = ""
     const Harness = () => {
       const [text, setText] = useState("")
+      updateText = setText
+      currentText = text
       return (
         <AgentInput
           inputText={text}
@@ -184,15 +191,17 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByPlaceholderText(
-      "排队发送 (Enter) · 即时插话 (Shift+Enter 或 /steer)",
-    )
+    const editor = document.querySelector(".cm-content") as HTMLElement
 
     // 输入 "/st" 筛选到 /steer 并按 Enter
-    fireEvent.change(textarea, { target: { value: "/st" } })
-    fireEvent.keyDown(textarea, { key: "Enter" })
+    await act(async () => {
+      fireEvent.focus(editor)
+      updateText("/st")
+    })
+    await act(async () => {})
+    fireEvent.keyDown(editor, { key: "Enter" })
 
-    expect((textarea as HTMLTextAreaElement).value).toBe("/steer ")
+    expect(currentText).toBe("/steer ")
   })
 
   it("steer 内容不写入历史提示词（普通发送正常记录）", async () => {
@@ -226,10 +235,10 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("/steer 插话内容")
+    const editor = document.querySelector(".cm-content") as HTMLElement
 
     // 触发 steer 发送：不记录历史。
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false })
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false })
     expect(vi.mocked(promptHistoryApi.add)).not.toHaveBeenCalled()
   })
 
@@ -264,9 +273,9 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("普通问题")
+    const editor = document.querySelector(".cm-content") as HTMLElement
 
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false })
+    fireEvent.keyDown(editor, { key: "Enter", shiftKey: false })
     expect(vi.mocked(promptHistoryApi.add)).toHaveBeenCalledWith("普通问题")
   })
 
@@ -307,9 +316,9 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByDisplayValue("待清空草稿")
+    const editor = document.querySelector(".cm-content") as HTMLElement
 
-    fireEvent.keyDown(textarea, { key: "Escape" })
+    fireEvent.keyDown(editor, { key: "Escape" })
     expect(currentVal).toBe("")
     expect(onStop).not.toHaveBeenCalled()
   })
@@ -346,16 +355,14 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
 
     render(<Harness />)
     await act(async () => {})
-    const textarea = screen.getByPlaceholderText(
-      "排队发送 (Enter) · 即时插话 (Shift+Enter 或 /steer)",
-    )
+    const editor = document.querySelector(".cm-content") as HTMLElement
 
     // 第一次按 Esc：仅 toast 提示，不打断。
-    fireEvent.keyDown(textarea, { key: "Escape" })
+    fireEvent.keyDown(editor, { key: "Escape" })
     expect(onStop).not.toHaveBeenCalled()
 
     // 1s 内再次按 Esc：双击确认，触发停止。
-    fireEvent.keyDown(textarea, { key: "Escape" })
+    fireEvent.keyDown(editor, { key: "Escape" })
     expect(onStop).toHaveBeenCalledTimes(1)
   })
 })

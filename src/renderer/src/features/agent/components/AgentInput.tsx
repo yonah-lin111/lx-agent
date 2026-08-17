@@ -1,6 +1,6 @@
-import { Loader2, Maximize2, Minimize2, Send, Square } from "lucide-react"
+import { Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
-import { useImperativeHandle, useRef, useState } from "react"
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -84,6 +84,28 @@ export const AgentInput = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { error: errorToast } = useLxToast()
 
+  // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
+  const [steerNoticeVisible, setSteerNoticeVisible] = useState(false)
+  const steerNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showSteerNotice = useCallback((): void => {
+    setSteerNoticeVisible(true)
+    if (steerNoticeTimerRef.current !== null) {
+      clearTimeout(steerNoticeTimerRef.current)
+    }
+    steerNoticeTimerRef.current = setTimeout(() => {
+      steerNoticeTimerRef.current = null
+      setSteerNoticeVisible(false)
+    }, 4000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (steerNoticeTimerRef.current !== null) {
+        clearTimeout(steerNoticeTimerRef.current)
+      }
+    }
+  }, [])
+
   // 暴露对外的 focus / setSelectionRange 兼容方法
   useImperativeHandle(
     inputTextareaRef,
@@ -99,10 +121,11 @@ export const AgentInput = ({
           return markdownInputRef.current?.getValue() ?? inputText
         },
         set value(val: string) {
+          onInputChange(val)
           markdownInputRef.current?.setValue(val)
         },
       }) as unknown as HTMLTextAreaElement,
-    [inputText],
+    [inputText, onInputChange],
   )
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -168,9 +191,13 @@ export const AgentInput = ({
     markdownInputRef.current?.focus()
   }
 
-  const handleSend = (): void => {
+  const handleSend = (options?: { delivery?: "queue" | "steer" }): void => {
     if (!inputText.trim() && selectedFiles.length === 0) return
-    onSend()
+    // 即时插话（steer）展示顶部瞬时提示条。
+    if (options?.delivery === "steer") {
+      showSteerNotice()
+    }
+    onSend(options)
   }
 
   const addButton = (
@@ -224,7 +251,7 @@ export const AgentInput = ({
       shape="circle"
       aria-label="发送消息"
       title={{ content: "发送消息 (Enter)", placement: "top" }}
-      onClick={handleSend}
+      onClick={() => handleSend()}
       disabled={!inputText.trim() && selectedFiles.length === 0}
       hoverBgClass="hover:bg-white/90"
       className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
@@ -261,6 +288,12 @@ export const AgentInput = ({
           </div>
         </LxTooltip>
       )}
+      {steerNoticeVisible && (
+        <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
+          <Zap className="h-3 w-3 shrink-0 text-amber-400/80" />
+          <span className="truncate">已发送即时插话，将在当前步骤完成后生效</span>
+        </div>
+      )}
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
@@ -273,6 +306,8 @@ export const AgentInput = ({
           onChange={onInputChange}
           onSend={handleSend}
           isExpanded={isExpanded}
+          isStreaming={isStreaming}
+          onStop={onStop}
           panelAnchorRef={containerRef}
           projectId={projectId}
           projectPath={projectPath}

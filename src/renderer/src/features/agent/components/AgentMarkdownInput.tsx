@@ -15,6 +15,7 @@ import {
 import { GFM } from "@lezer/markdown"
 import type { ProjectFileEntry } from "@shared/project"
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import { useLxToast } from "@/components/ui/LxToast"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
@@ -53,6 +54,8 @@ export interface AgentMarkdownInputProps {
   onSend: (options?: { delivery?: "queue" | "steer" }) => void
   disabled?: boolean
   isExpanded?: boolean
+  isStreaming?: boolean
+  onStop?: () => void
   placeholder?: string
   // 面板定位锚点：整个输入框容器（含 padding/边框），保证面板宽度与输入框一致。
   // 缺省时回退到内部 CodeMirror 容器。
@@ -417,6 +420,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onSend,
       disabled = false,
       isExpanded = false,
+      isStreaming = false,
+      onStop,
       placeholder: placeholderText = "给 LX Agent 发送消息...",
       projectId,
       projectPath,
@@ -434,6 +439,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
   ): React.JSX.Element => {
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
+    const { warning: warningToast } = useLxToast()
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
     // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
     const getPanelAnchor = useCallback((): HTMLElement | null => {
@@ -468,8 +474,14 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     onChangeRef.current = onChange
     const onSendRef = useRef(onSend)
     onSendRef.current = onSend
+    const isStreamingRef = useRef(isStreaming)
+    isStreamingRef.current = isStreaming
+    const onStopRef = useRef(onStop)
+    onStopRef.current = onStop
     const valueRef = useRef(value)
     valueRef.current = value
+    // Esc 停止生成的连按计时（间隔 ≤1s 视为双击）；单按仅 toast 提示，不打断。
+    const escStopRef = useRef(0)
 
     const activeModeRef = useRef(activeMode)
     activeModeRef.current = activeMode
@@ -684,7 +696,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         setBlockCommands([])
         setBlockCommandPosition(undefined)
       },
-      [projectId, projectPath, getPanelAnchor],
+      [projectId, projectPath, currentPath, getPanelAnchor],
     )
     // CodeMirror keymap/ViewPlugin 在首次渲染时创建并捕获闭包，而 projectId/projectPath 为异步加载，
     // 必须通过 ref 读取最新 syncPanels，否则 @ / 斜杠命令等面板检测永远拿不到项目上下文。
@@ -692,13 +704,28 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     syncPanelsRef.current = syncPanels
 
     // 发送处理
-    const handleSendAction = useCallback((): void => {
-      reset()
-      const text = valueRef.current
-      if (!text.trim()) return
-      record(text)
-      onSendRef.current()
-    }, [record, reset])
+    const handleSendAction = useCallback(
+      (forceDelivery?: "queue" | "steer"): void => {
+        reset()
+        let text = valueRef.current.trim()
+        if (!text) return
+
+        let delivery = forceDelivery
+        if (text.startsWith("/steer ") || text === "/steer") {
+          delivery = "steer"
+          text = text.slice(6).trim()
+          if (!text) return
+        }
+
+        if (delivery === "steer") {
+          onSendRef.current({ delivery })
+        } else {
+          record(text || valueRef.current)
+          onSendRef.current()
+        }
+      },
+      [record, reset],
+    )
 
     const executeCommand = useCallback(
       (command: AgentInputCommand): void => {
@@ -945,6 +972,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "Escape",
                 run: () => {
+                  // ① 补全/提及/命令面板激活态：Esc 关闭面板。
                   if (activeModeRef.current) {
                     setActiveMode(null)
                     return true
@@ -952,6 +980,29 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   if (blockCommandsRef.current.length > 0) {
                     setBlockCommands([])
                     setBlockCommandPosition(undefined)
+                    return true
+                  }
+                  // ② 若有草稿文本：Esc 清空草稿。
+                  const view = editorViewRef.current
+                  const doc = view?.state.doc.toString() ?? ""
+                  if (doc.trim().length > 0) {
+                    view?.dispatch({
+                      changes: { from: 0, to: doc.length, insert: "" },
+                      selection: { anchor: 0 },
+                    })
+                    onChangeRef.current("")
+                    return true
+                  }
+                  // ③ 输入为空且正在生成：双击 Esc 才触发 onStop；单按仅 toast 提示。
+                  if (isStreamingRef.current) {
+                    const now = Date.now()
+                    if (escStopRef.current !== 0 && now - escStopRef.current <= 1000) {
+                      escStopRef.current = 0
+                      onStopRef.current?.()
+                    } else {
+                      escStopRef.current = now
+                      warningToast("再次按 Esc 可停止生成")
+                    }
                     return true
                   }
                   return false
@@ -1008,16 +1059,20 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   return true
                 },
                 shift: (view) => {
-                  // Shift+Enter 换行并保持缩进
-                  const cursor = view.state.selection.main.head
-                  const line = view.state.doc.lineAt(cursor)
-                  const indentMatch = line.text.match(/^(\s*)/)
-                  const indent = indentMatch ? indentMatch[1] : ""
-                  const insert = `\n${indent}`
-                  view.dispatch({
-                    changes: { from: cursor, to: cursor, insert },
-                    selection: { anchor: cursor + insert.length },
-                  })
+                  // 流式生成中 Shift+Enter 触发 Steer 即时插话；非流式中作为普通换行并保持缩进。
+                  if (isStreamingRef.current) {
+                    handleSendAction("steer")
+                  } else {
+                    const cursor = view.state.selection.main.head
+                    const line = view.state.doc.lineAt(cursor)
+                    const indentMatch = line.text.match(/^(\s*)/)
+                    const indent = indentMatch ? indentMatch[1] : ""
+                    const insert = `\n${indent}`
+                    view.dispatch({
+                      changes: { from: cursor, to: cursor, insert },
+                      selection: { anchor: cursor + insert.length },
+                    })
+                  }
                   return true
                 },
               },
@@ -1079,7 +1134,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       }
     }, [])
 
-    // 外部 value 变动同步回 CodeMirror
+    // 外部 value 变动同步回 CodeMirror（如建议问题回显），光标定位到末尾，保证 @ 等触发检测正确。
     useEffect(() => {
       const view = editorViewRef.current
       if (!view) return
@@ -1087,7 +1142,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       if (currentDoc !== value) {
         view.dispatch({
           changes: { from: 0, to: currentDoc.length, insert: value },
-          selection: { anchor: Math.min(view.state.selection.main.head, value.length) },
+          selection: { anchor: value.length },
         })
       }
     }, [value])
