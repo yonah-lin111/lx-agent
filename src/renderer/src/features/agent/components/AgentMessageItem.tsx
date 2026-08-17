@@ -195,11 +195,21 @@ export const AgentMessageItem = ({
   const contentRef = useRef<HTMLDivElement>(null)
   const [pinShift, setPinShift] = useState(0)
   const prevIsEditingRef = useRef(isEditing)
+  const isInitialMountRef = useRef(true)
   const measurePinShift = useCallback((): void => {
     const outer = outerRef.current
     const content = contentRef.current
     if (!outer || !content) return
+    if (isInitialMountRef.current) {
+      content.style.transition = "none"
+    }
     setPinShift(Math.max(0, (outer.clientWidth - content.clientWidth) / 2))
+    if (isInitialMountRef.current) {
+      requestAnimationFrame(() => {
+        content.style.transition = ""
+      })
+      isInitialMountRef.current = false
+    }
   }, [])
 
   // 钉住瞬间先同步测量一次避免首帧闪跳；尺寸变化由 ResizeObserver 兜底。
@@ -696,10 +706,7 @@ export const AgentMessageItem = ({
 
   if (isUser) {
     return (
-      <div
-        ref={outerRef}
-        className={`group flex w-full flex-col items-end px-0 ${isPinned ? "animate-pinned-in" : ""}`}
-      >
+      <div ref={outerRef} className="group flex w-full flex-col items-end px-0">
         <div
           ref={contentRef}
           className="agent-pinned-shift flex w-fit max-w-[88%] flex-col items-end"

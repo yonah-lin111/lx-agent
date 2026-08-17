@@ -182,7 +182,8 @@ select {
   .animate-sidebar-content-slide-in,
   .animate-header-breadcrumb-in,
   .animate-header-breadcrumb-out,
-  .animate-pinned-in {
+  .animate-pinned-in,
+  .animate-pinned-out {
     animation: none;
   }
 
@@ -226,7 +227,7 @@ select {
 @keyframes pinned-in {
   from {
     opacity: 0;
-    transform: translateY(-16px);
+    transform: translateY(-100%);
   }
 
   to {
@@ -236,7 +237,21 @@ select {
 }
 
 .animate-pinned-in {
-  animation: pinned-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: pinned-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pinned-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-pinned-out {
+  animation: pinned-out 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* 吸顶居中/回位：transform 表达 items-end↔center 的水平位移，进入与退出双向都能过渡。 */

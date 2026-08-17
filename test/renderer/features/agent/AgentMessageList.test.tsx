@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentMessageList } from "@/features/agent/components/AgentMessageList"
+import * as useMessagePinHook from "@/features/agent/hooks/useMessagePin"
 import type { ChatMessage } from "@/features/agent/types"
 
 // jsdom 未实现 ResizeObserver（用户消息折叠重测依赖它），用空实现代替。
@@ -195,5 +196,65 @@ describe("AgentMessageList", () => {
     fireEvent.click(summary)
     expect(summary.getAttribute("aria-expanded")).toBe("true")
     expect(screen.getByText("对话摘要内容")).toBeTruthy()
+  })
+
+  it("吸顶时绝对定位容器渲染，带有 animate-pinned-in 动画；关闭时过渡到 animate-pinned-out，动画结束后卸载", () => {
+    const useMessagePinSpy = vi.spyOn(useMessagePinHook, "useMessagePin").mockReturnValue({
+      pinnedUserMessageId: "qa-q",
+      attachUserMessageEndRef: () => () => {},
+      updatePinnedQuestion: () => {},
+    })
+
+    const messages: ChatMessage[] = [
+      userMessage("qa-q", "问题一"),
+      {
+        id: "qa-a",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "回答一" }],
+        isStreaming: false,
+      },
+    ]
+
+    const { container, rerender } = render(
+      <AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />,
+    )
+
+    // 吸顶时绝对定位容器渲染，带有 animate-pinned-in
+    const absoluteContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
+    expect(absoluteContainer).not.toBeNull()
+    expect(absoluteContainer?.className).toContain("animate-pinned-in")
+
+    // 变为不吸顶时，设置 isClosing 为 true 并挂载 animate-pinned-out
+    useMessagePinSpy.mockReturnValue({
+      pinnedUserMessageId: null,
+      attachUserMessageEndRef: () => () => {},
+      updatePinnedQuestion: () => {},
+    })
+
+    rerender(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    // 应该依然渲染，但 class 变为 animate-pinned-out
+    const closingContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
+    expect(closingContainer).not.toBeNull()
+    expect(closingContainer?.className).toContain("animate-pinned-out")
+
+    // 模拟动画结束（通过 React 内部属性直接触发 onAnimationEnd 绕过 JSDOM 动画事件局限）
+    act(() => {
+      const reactPropsKey = Object.keys(closingContainer!).find((key) =>
+        key.startsWith("__reactProps"),
+      )
+      if (reactPropsKey) {
+        ;(closingContainer as any)[reactPropsKey].onAnimationEnd({
+          target: closingContainer,
+          currentTarget: closingContainer,
+        })
+      }
+    })
+
+    // 之后完全不渲染
+    const unmountedContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
+    expect(unmountedContainer).toBeNull()
+
+    useMessagePinSpy.mockRestore()
   })
 })

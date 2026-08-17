@@ -142,6 +142,36 @@ export const AgentMessageList = ({
     if (!pinnedUserMessageId) return undefined
     return messages.find((m) => m.id === pinnedUserMessageId)
   }, [messages, pinnedUserMessageId])
+
+  // Pinned message state for smooth exit transition.
+  const currentPinnedMessage = useMemo(() => {
+    return !isSubagentPanelOpen && pinnedUserMessage ? pinnedUserMessage : null
+  }, [isSubagentPanelOpen, pinnedUserMessage])
+
+  const [displayPinnedMessage, setDisplayPinnedMessage] = useState<ChatMessage | null>(null)
+  const [isClosing, setIsClosing] = useState(false)
+
+  useEffect(() => {
+    if (currentPinnedMessage) {
+      setDisplayPinnedMessage(currentPinnedMessage)
+      setIsClosing(false)
+    } else {
+      if (displayPinnedMessage && !isClosing) {
+        setIsClosing(true)
+      }
+    }
+  }, [currentPinnedMessage, displayPinnedMessage, isClosing])
+
+  const handleAnimationEnd = useCallback(
+    (e: React.AnimationEvent) => {
+      if (isClosing && e.currentTarget === e.target) {
+        setDisplayPinnedMessage(null)
+        setIsClosing(false)
+      }
+    },
+    [isClosing],
+  )
+
   // 仅当存在 ≥2 个 QA 对时展示"从此分支"。
   const canFork = useMemo(
     () => messages.filter((message) => message.role === "user").length > 1,
@@ -458,16 +488,22 @@ export const AgentMessageList = ({
       ) : (
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Pinned absolute floating user message at the top */}
-          {pinnedUserMessage && !isSubagentPanelOpen && (
-            <div className="absolute top-0 left-0 right-0 z-30 px-1 pt-1">
+          {displayPinnedMessage && (
+            <div
+              className={`absolute top-0 left-0 right-0 z-30 px-1 pt-1 ${
+                isClosing ? "animate-pinned-out" : "animate-pinned-in"
+              }`}
+              onAnimationEnd={handleAnimationEnd}
+            >
               <AgentMessageItemMemo
-                message={pinnedUserMessage}
+                key={displayPinnedMessage.id}
+                message={displayPinnedMessage}
                 isPinned={true}
-                onLocate={() => handleLocateMessage(pinnedUserMessage.id)}
-                isEditing={editingMessageId === pinnedUserMessage.id}
-                onStartEdit={() => setEditingMessageId(pinnedUserMessage.id)}
+                onLocate={() => handleLocateMessage(displayPinnedMessage.id)}
+                isEditing={editingMessageId === displayPinnedMessage.id}
+                onStartEdit={() => setEditingMessageId(displayPinnedMessage.id)}
                 onCancelEdit={() => {
-                  if (editingMessageId === pinnedUserMessage.id) {
+                  if (editingMessageId === displayPinnedMessage.id) {
                     setEditingMessageId(null)
                   }
                 }}
