@@ -295,15 +295,13 @@ export const AgentInput = ({
           <div className="flex items-center gap-1.5">
             <LxIconButton
               shape="circle"
+              showHoverBg={false}
               aria-label={isExpanded ? "自适应高度" : "扩大输入框"}
               title={{
                 content: isExpanded ? "自适应高度" : "扩大输入框",
                 placement: "top",
               }}
               onClick={() => setIsExpanded((prev) => !prev)}
-              hoverBgClass="hover:bg-white/20"
-              hoverTextClass="hover:text-white"
-              className="bg-white/10 !text-white/70"
             >
               {isExpanded ? (
                 <Minimize2 className="h-3.5 w-3.5" />
