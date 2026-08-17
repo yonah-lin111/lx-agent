@@ -69,11 +69,16 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
     expect(screen.getByText("Tip 内容")).not.toBeNull()
   })
 
-  it("minimizable=true：右上角展示 [-] 最小化按钮，点击后关闭", () => {
+  it("minimizable=true：右上角展示 [-] 最小化按钮，点击后关闭，且角标 svg 始终存在且父级不裁剪", () => {
     renderTooltip({ minimizable: true, closeOnScroll: false, closeOnOutsideClick: false })
     fireEvent.click(screen.getByText("触发"))
     expect(screen.getByText("Tip 内容")).not.toBeNull()
     expect(screen.getByRole("button", { name: "最小化" })).not.toBeNull()
+
+    const tooltip = screen.getByRole("tooltip")
+    expect(tooltip.className).not.toContain("overflow-hidden")
+    const arrow = tooltip.querySelector("svg")
+    expect(arrow).not.toBeNull()
 
     // 滚动与外点均不关闭（常驻）
     fireEvent.scroll(document)

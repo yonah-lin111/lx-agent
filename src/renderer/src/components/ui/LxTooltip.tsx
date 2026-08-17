@@ -358,7 +358,7 @@ export const LxTooltip = ({
           <div
             ref={tooltipRef}
             role="tooltip"
-            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex max-h-[min(60vh,480px)] flex-col overflow-hidden" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
+            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
             style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
             onMouseEnter={() => {
               if (hideTimeoutRef.current) {
@@ -428,7 +428,9 @@ export const LxTooltip = ({
                 {content}
               </div>
             ) : (
-              content
+              <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : undefined}>
+                {content}
+              </div>
             )}
             <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
               <path

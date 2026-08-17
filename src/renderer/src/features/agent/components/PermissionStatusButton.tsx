@@ -197,7 +197,7 @@ export const PermissionStatusButton = ({
       placement="top"
       minimizable
       closeOnScroll={false}
-      closeOnOutsideClick={false}
+      closeOnOutsideClick={true}
       title={
         <span className="flex min-w-0 items-center gap-1.5">
           <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
@@ -220,7 +220,6 @@ export const PermissionStatusButton = ({
         className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 transition-colors hover:bg-white/5"
       >
         <ShieldAlert className="h-3 w-3 shrink-0" />
-        <span className="tabular-nums">权限</span>
       </span>
     </LxTooltip>
   )
