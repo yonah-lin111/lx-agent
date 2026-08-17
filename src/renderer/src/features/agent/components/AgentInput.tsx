@@ -47,6 +47,7 @@ interface AgentInputProps {
   inputTextareaRef?: React.Ref<HTMLTextAreaElement>
   projectId?: string
   projectPath?: string
+  currentPath?: string
   // git 工作区选项（/gitWorktree 二级面板；null = 无 git 上下文或非 git 仓库）。
   worktreeOptions: GitWorktreeOption[] | null
   // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
@@ -134,7 +135,7 @@ export const AgentInput = ({
   hasModelOptions,
   inputTextareaRef,
   projectId,
-  projectPath,
+  currentPath,
   worktreeOptions,
   onWorktreeSelect,
   selectedFiles,
@@ -302,7 +303,7 @@ export const AgentInput = ({
   }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode])
 
   useEffect(() => {
-    if (!projectId || !projectPath || activeMode !== "file") {
+    if (activeMode !== "file") {
       setFiles([])
       return
     }
@@ -310,8 +311,14 @@ export const AgentInput = ({
     const mention = getMentionQuery(inputText, cursor)
     if (!mention) return
     let current = true
-    void projectApi
-      .searchFiles(projectId, mention.query)
+
+    const fetchPromise = projectId
+      ? projectApi.searchFiles(projectId, mention.query)
+      : currentPath
+        ? projectApi.searchDirectoryFiles(currentPath, mention.query)
+        : Promise.resolve([])
+
+    void fetchPromise
       .then((results) => {
         if (current) setFiles(results)
       })
@@ -321,7 +328,7 @@ export const AgentInput = ({
     return () => {
       current = false
     }
-  }, [inputText, activeMode, projectId, projectPath])
+  }, [inputText, activeMode, projectId, currentPath])
 
   const refreshPanels = useCallback(
     (value: string, cursor: number): void => {
@@ -348,7 +355,7 @@ export const AgentInput = ({
         setFiles([])
         return
       }
-      if (!projectId || !projectPath) {
+      if (!projectId && !currentPath) {
         setActiveMode(null)
         setFiles([])
         return
@@ -357,7 +364,7 @@ export const AgentInput = ({
       setActiveMode(mention ? "file" : null)
       setFileIndex(0)
     },
-    [projectId, projectPath],
+    [projectId, currentPath],
   )
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>): void => {

@@ -344,6 +344,7 @@ export const AgentPage = ({
         hasModelOptions={hasModelOptions}
         projectId={currentProjectId}
         projectPath={currentProjectPath}
+        currentPath={statusBarPath}
         inputTextareaRef={inputTextareaRef}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
