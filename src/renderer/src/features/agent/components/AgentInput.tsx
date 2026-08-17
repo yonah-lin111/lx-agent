@@ -1,6 +1,5 @@
-import type { PermissionRequest } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Loader2, Send, ShieldAlert, Square } from "lucide-react"
+import { Loader2, Send, Square } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -21,12 +20,6 @@ import {
 } from "./AgentInputCommandPanels"
 import { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
-import {
-  PERMISSION_CONFIRM_OPTIONS,
-  PERMISSION_SELECT_OPTIONS,
-  type PermissionPanelPhase,
-  PermissionRequestPanel,
-} from "./PermissionRequestPanel"
 
 interface AgentInputProps {
   inputText: string
@@ -53,14 +46,6 @@ interface AgentInputProps {
   inputTextareaRef?: React.Ref<HTMLTextAreaElement>
   projectId?: string
   projectPath?: string
-  // 挂起的权限请求（非空时权限面板独占键盘）。
-  pendingRequest: PermissionRequest | null
-  onPermissionRespond: (
-    decision: "allow" | "deny",
-    rememberForSession?: boolean,
-    allowAll?: boolean,
-    permanent?: boolean,
-  ) => void
   // git 工作区选项（/gitWorktree 二级面板；null = 无 git 上下文或非 git 仓库）。
   worktreeOptions: GitWorktreeOption[] | null
   // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
@@ -148,8 +133,6 @@ export const AgentInput = ({
   inputTextareaRef,
   projectId,
   projectPath,
-  pendingRequest,
-  onPermissionRespond,
   worktreeOptions,
   onWorktreeSelect,
   selectedFiles,
@@ -229,8 +212,6 @@ export const AgentInput = ({
     [inputTextareaRef],
   )
   const [panelPosition, setPanelPosition] = useState<CSSProperties | null>(null)
-  // 右上角浮层定位：输入框容器上方（bottom 对齐输入框顶部），供权限面板折叠图标栏使用。
-  const [dockPosition, setDockPosition] = useState<CSSProperties | null>(null)
   const [commandIndex, setCommandIndex] = useState(0)
   const [fileIndex, setFileIndex] = useState(0)
   const [modelIndex, setModelIndex] = useState(0)
@@ -239,12 +220,6 @@ export const AgentInput = ({
   const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | "worktree" | null>(
     null,
   )
-  // 权限面板状态：选择态 → 确认态（允许全部二次确认）。
-  const [permissionPhase, setPermissionPhase] = useState<PermissionPanelPhase>("select")
-  const [permissionIndex, setPermissionIndex] = useState(0)
-  const [permissionKeyboardNavigationVersion, setPermissionKeyboardNavigationVersion] = useState(0)
-  // 面板折叠态（仅当前请求记忆）：折叠后键盘决策降级。
-  const [permissionCollapsed, setPermissionCollapsed] = useState(false)
   // 历史提示词浏览（全局共享；无面板模式时 ↑↓ 触发）。
   const { browsing, record, reset, navigate } = usePromptHistory()
   const matchedCommands = useMemo(() => getMatchedCommands(inputText), [inputText])
@@ -279,10 +254,6 @@ export const AgentInput = ({
   const isFileMode = activeMode === "file" && files.length > 0
   const isModelMode = activeMode === "model" && matchedModels.length > 0
   const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
-  // 权限请求挂起时面板独占键盘与其他面板。
-  const isPermissionMode = pendingRequest != null
-  // 权限面板折叠时右上角展示展开 icon（右对齐，条件渲染自动右对齐收缩）。
-  const showPermissionShield = isPermissionMode && permissionCollapsed
 
   useLayoutEffect(() => {
     const update = (): void => {
@@ -291,13 +262,11 @@ export const AgentInput = ({
         setPanelPosition(null)
         return
       }
-      const kind: "command" | "file" | null = isPermissionMode
-        ? "command"
-        : isFileMode
-          ? "file"
-          : isCommandMode || isModelMode || isWorktreeMode
-            ? "command"
-            : null
+      const kind: "command" | "file" | null = isFileMode
+        ? "file"
+        : isCommandMode || isModelMode || isWorktreeMode
+          ? "command"
+          : null
       if (!kind) {
         setPanelPosition(null)
         return
@@ -328,41 +297,7 @@ export const AgentInput = ({
       window.removeEventListener("resize", scheduleUpdate)
       viewport?.removeEventListener("resize", scheduleUpdate)
     }
-  }, [isPermissionMode, isCommandMode, isFileMode, isModelMode, isWorktreeMode])
-
-  // 右上角图标栏定位（独立于输入模式）：容器上方 bottom 对齐，left/width 取容器。
-  useLayoutEffect(() => {
-    const update = (): void => {
-      const container = containerRef.current
-      if (!container) {
-        setDockPosition(null)
-        return
-      }
-      const rect = container.getBoundingClientRect()
-      const offset = 6
-      setDockPosition({
-        left: Math.max(rect.left, 8),
-        width: rect.width,
-        top: "auto",
-        bottom: window.innerHeight - rect.top + offset,
-        maxHeight: Math.max(rect.top - offset - 8, 0),
-      })
-    }
-
-    update()
-    const container = containerRef.current
-    if (!container) return
-    const resizeObserver = new ResizeObserver(update)
-    resizeObserver.observe(container)
-    const viewport = window.visualViewport
-    window.addEventListener("resize", update)
-    viewport?.addEventListener("resize", update)
-    return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener("resize", update)
-      viewport?.removeEventListener("resize", update)
-    }
-  }, [])
+  }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode])
 
   useEffect(() => {
     if (!projectId || !projectPath || activeMode !== "file") {
@@ -422,39 +357,6 @@ export const AgentInput = ({
     },
     [projectId, projectPath],
   )
-
-  // 权限请求变化时重置面板为选择态（新请求重新开始），并复位折叠。
-  useEffect(() => {
-    setPermissionPhase("select")
-    setPermissionIndex(0)
-    setPermissionKeyboardNavigationVersion(0)
-    setPermissionCollapsed(false)
-  }, [pendingRequest])
-
-  // 处理权限面板选中项：选择态六选项 / 确认态两选项。
-  const handlePermissionAction = (index: number): void => {
-    if (permissionPhase === "select") {
-      if (index === 0) {
-        onPermissionRespond("allow")
-      } else if (index === 1) {
-        onPermissionRespond("allow", true)
-      } else if (index === 2) {
-        onPermissionRespond("allow", false, false, true) // 永久允许：写回配置，直接发送
-      } else if (index === 3) {
-        onPermissionRespond("deny")
-      } else if (index === 4) {
-        onPermissionRespond("deny", false, false, true) // 永久拒绝：写回配置，直接发送
-      } else {
-        setPermissionPhase("confirm")
-        setPermissionIndex(1) // 默认停在"返回"
-      }
-    } else if (index === 0) {
-      onPermissionRespond("allow", false, true) // 允许全部
-    } else {
-      setPermissionPhase("select")
-      setPermissionIndex(5) // 返回选择，保留"允许全部"高亮
-    }
-  }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
     const value = event.target.value
@@ -520,41 +422,6 @@ export const AgentInput = ({
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // 权限面板独占键盘：↑↓ 循环选择、Enter 选中（不发送消息）、Esc 拒绝关闭。
-    if (isPermissionMode) {
-      // 折叠态键盘降级：不决策（防误触），Esc 仍拒绝关闭，Enter/↑↓ 拦截避免误发消息或移动光标。
-      if (permissionCollapsed) {
-        if (event.key === "Escape") {
-          event.preventDefault()
-          onPermissionRespond("deny")
-        } else if (event.key === "Enter" || event.key === "ArrowDown" || event.key === "ArrowUp") {
-          event.preventDefault()
-        }
-        return
-      }
-      const options =
-        permissionPhase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault()
-        setPermissionIndex((index) => {
-          const offset = event.key === "ArrowDown" ? 1 : -1
-          return (index + offset + options.length) % options.length
-        })
-        setPermissionKeyboardNavigationVersion((version) => version + 1)
-        return
-      }
-      if (event.key === "Escape") {
-        event.preventDefault()
-        onPermissionRespond("deny")
-        return
-      }
-      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-        event.preventDefault()
-        handlePermissionAction(permissionIndex)
-        return
-      }
-    }
-
     if (isCommandMode) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
@@ -792,25 +659,8 @@ export const AgentInput = ({
         className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
         onPointerDown={handleContainerPointerDown}
       >
-        {isPermissionMode && pendingRequest ? (
-          <PermissionRequestPanel
-            isOpen={isPermissionMode}
-            position={panelPosition}
-            request={pendingRequest}
-            phase={permissionPhase}
-            options={
-              permissionPhase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
-            }
-            activeIndex={permissionIndex}
-            isCollapsed={permissionCollapsed}
-            keyboardNavigationVersion={permissionKeyboardNavigationVersion}
-            onToggleCollapse={() => setPermissionCollapsed((collapsed) => !collapsed)}
-            onHoverIndex={setPermissionIndex}
-            onSelect={handlePermissionAction}
-          />
-        ) : (
-          <>
-            <AgentInputCommandPanel
+        <>
+          <AgentInputCommandPanel
               isOpen={isCommandMode}
               position={panelPosition}
               commands={matchedCommands}
@@ -834,28 +684,7 @@ export const AgentInput = ({
               files={files}
               activeIndex={fileIndex}
             />
-          </>
-        )}
-        {/* 右上角图标栏：权限面板折叠时展示展开 icon（右对齐）。 */}
-        {dockPosition && showPermissionShield && (
-          <div
-            aria-label="浮动图标栏"
-            className="pointer-events-none fixed z-30 flex h-7 items-center justify-end gap-1.5 px-2"
-            style={{ ...dockPosition, overflow: "hidden" }}
-          >
-            <LxIconButton
-              shape="circle"
-              aria-label="展开权限确认"
-              title={{ content: "展开权限面板", placement: "top" }}
-              className="pointer-events-auto border border-white/10 bg-[#303030] !text-amber-300"
-              hoverBgClass="hover:bg-[#3a3a3a]"
-              hoverTextClass="hover:text-amber-300"
-              onClick={() => setPermissionCollapsed(false)}
-            >
-              <ShieldAlert className="h-4 w-4" />
-            </LxIconButton>
-          </div>
-        )}
+        </>
         <textarea
           ref={mergedTextareaRef}
           value={inputText}

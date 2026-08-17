@@ -1,6 +1,7 @@
-import type { TodoList } from "@shared/contracts/agent"
+import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { PermissionStatusButton } from "@/features/agent/components/PermissionStatusButton"
 import { TodoStatusButton } from "@/features/agent/components/TodoStatusButton"
 import { GitStatusBar } from "@/features/git"
 
@@ -12,6 +13,15 @@ interface AgentStatusBarProps {
   contextUsage?: { tokens: number; contextWindow: number } | null
   // 当前会话任务清单（有未完成任务时状态栏右侧展示 todo 计数 icon）。
   todos?: TodoList
+  // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
+  pendingRequest: PermissionRequest | null
+  // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
+  onPermissionRespond: (
+    decision: "allow" | "deny",
+    rememberForSession?: boolean,
+    allowAll?: boolean,
+    permanent?: boolean,
+  ) => void
 }
 
 // 上下文容量文字颜色：≥100% 红（已满）/ >85% 琥珀（接近压缩触发区）/ 其余中性。
@@ -31,6 +41,8 @@ export const AgentStatusBar = ({
   projectPath,
   contextUsage,
   todos,
+  pendingRequest,
+  onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
   const percent = contextUsage
     ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
@@ -60,6 +72,7 @@ export const AgentStatusBar = ({
         </LxTooltip>
       )}
       <TodoStatusButton todos={todos} />
+      <PermissionStatusButton request={pendingRequest} onRespond={onPermissionRespond} />
     </div>
   )
 }
