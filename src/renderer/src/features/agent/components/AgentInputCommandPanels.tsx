@@ -2,7 +2,7 @@ import type { ProjectFileEntry } from "@shared/project"
 import { FileText, Folder } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useLayoutEffect, useRef } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import { getMentionDirectoryTag } from "@/features/project/utils"
 
@@ -43,6 +43,42 @@ interface AgentInputFilePanelProps {
 
 const panelClassName =
   "scrollbar-hidden pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+
+/**
+ * 面板淡入/淡出动画：关闭后保留最后数据渲染 120ms 播放退场动画，
+ * 与 MarkdownBlockCommandMenu / GitWorktreeCommandMenu 一致的过渡体验。
+ */
+const usePanelAnimation = <T,>(
+  visible: boolean,
+  data: T | null,
+): { displayData: T; isAnimatingOut: boolean } | null => {
+  const [shouldRender, setShouldRender] = useState(false)
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+
+  const lastDataRef = useRef<T | null>(null)
+  if (visible && data) lastDataRef.current = data
+
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true)
+      setIsAnimatingOut(false)
+      return
+    }
+    if (!shouldRender) return
+
+    setIsAnimatingOut(true)
+    const timer = setTimeout(() => {
+      setShouldRender(false)
+      setIsAnimatingOut(false)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [visible, shouldRender])
+
+  if (!shouldRender) return null
+  const displayData = (visible && data ? data : lastDataRef.current) as T | null
+  if (!displayData) return null
+  return { displayData, isAnimatingOut }
+}
 
 /**
  * 读取 CSS 变量中的尺寸（支持 px/rem/vh/vw）换算为像素。
@@ -141,25 +177,39 @@ export const AgentInputModelPanel = ({
   models,
   activeIndex,
 }: AgentInputModelPanelProps): React.JSX.Element | null => {
-  const panelRef = useActiveItemScrollIntoView(isOpen, position, activeIndex)
-  if (!isOpen || !position || models.length === 0) return null
+  const hasData = position !== null && models.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, models, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const { position: displayPosition, models: displayModels, activeIndex: displayIndex } =
+    animated.displayData
 
   return (
     <div
       ref={panelRef}
       aria-label="模型选择"
-      className={panelClassName}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
       role="listbox"
-      style={position}
+      style={displayPosition}
     >
-      {models.map((model, index) => (
+      {displayModels.map((model, index) => (
         <div
           key={model.id}
           role="option"
           data-index={index}
-          aria-selected={index === activeIndex}
+          aria-selected={index === displayIndex}
           className={`flex h-11 w-full items-center gap-3 rounded-[4px] px-2 text-left text-xs ${
-            index === activeIndex ? "bg-white/8 text-white" : "text-white/75"
+            index === displayIndex ? "bg-white/8 text-white" : "text-white/75"
           }`}
         >
           <span className="truncate font-medium">{model.label}</span>
@@ -179,25 +229,39 @@ export const AgentInputCommandPanel = ({
   commands,
   activeIndex,
 }: AgentInputCommandPanelProps): React.JSX.Element | null => {
-  const panelRef = useActiveItemScrollIntoView(isOpen, position, activeIndex)
-  if (!isOpen || !position || commands.length === 0) return null
+  const hasData = position !== null && commands.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, commands, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const { position: displayPosition, commands: displayCommands, activeIndex: displayIndex } =
+    animated.displayData
 
   return (
     <div
       ref={panelRef}
       aria-label="Slash 命令"
-      className={panelClassName}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
       role="listbox"
-      style={position}
+      style={displayPosition}
     >
-      {commands.map((command, index) => (
+      {displayCommands.map((command, index) => (
         <div
           key={command.id}
           role="option"
           data-index={index}
-          aria-selected={index === activeIndex}
+          aria-selected={index === displayIndex}
           className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-            index === activeIndex ? "bg-white/8 text-white" : "text-white/75"
+            index === displayIndex ? "bg-white/8 text-white" : "text-white/75"
           }`}
         >
           <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
@@ -224,24 +288,38 @@ export const AgentInputFilePanel = ({
   files,
   activeIndex,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
-  const panelRef = useActiveItemScrollIntoView(isOpen, position, activeIndex)
-  if (!isOpen || !position || files.length === 0) return null
+  const hasData = position !== null && files.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, files, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const { position: displayPosition, files: displayFiles, activeIndex: displayIndex } =
+    animated.displayData
 
   return (
     <div
       ref={panelRef}
       aria-label="项目文件提及"
-      className={panelClassName}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
       role="listbox"
-      style={position}
+      style={displayPosition}
     >
-      {files.map((file, index) => {
+      {displayFiles.map((file, index) => {
         const normalizedPath = file.path.replace(/\/$/, "")
         const slashIndex = normalizedPath.lastIndexOf("/")
         const name = normalizedPath.slice(slashIndex + 1)
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const Icon = file.isDirectory ? Folder : FileText
-        const isActive = index === activeIndex
+        const isActive = index === displayIndex
         const directoryTag = getMentionDirectoryTag(file.path)
 
         return (

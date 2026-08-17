@@ -207,9 +207,7 @@ export const RightSideBar = (): React.JSX.Element => {
       {!isCollapsed && (
         <div
           aria-label="调整右侧栏宽度"
-          className={`absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize touch-none bg-transparent hover:bg-white/20 active:bg-white/30 ${
-            isResizing ? "bg-white/30" : ""
-          }`}
+          className="absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize touch-none"
           onPointerCancel={handleResizeEnd}
           onPointerDown={handleResizeStart}
           onPointerMove={handleResizeMove}
