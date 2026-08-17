@@ -195,6 +195,7 @@ export const PermissionStatusButton = ({
       onOpenChange={setIsOpen}
       trigger="click"
       placement="top"
+      minimizable
       closeOnScroll={false}
       closeOnOutsideClick={false}
       title={
@@ -206,13 +207,21 @@ export const PermissionStatusButton = ({
       }
       content={tooltipContent}
     >
-      <button
-        type="button"
+      <span
+        role="button"
+        tabIndex={0}
         aria-label="权限确认"
-        className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[4px] border border-amber-300/25 bg-amber-300/10 text-amber-300 transition-colors hover:bg-amber-300/20"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setIsOpen((open) => !open)
+          }
+        }}
+        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 transition-colors hover:bg-white/5"
       >
-        <ShieldAlert className="h-3.5 w-3.5" />
-      </button>
+        <ShieldAlert className="h-3 w-3 shrink-0" />
+        <span className="tabular-nums">权限</span>
+      </span>
     </LxTooltip>
   )
 }

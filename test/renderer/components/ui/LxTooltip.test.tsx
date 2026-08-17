@@ -29,17 +29,18 @@ const renderTooltip = (props: Partial<Parameters<typeof LxTooltip>[0]> = {}) =>
     </LxTooltip>,
   )
 
-describe("LxTooltip closeOnScroll / closeOnOutsideClick", () => {
+describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
   })
 
-  it("默认：滚动条滚动与点击外部均关闭", () => {
+  it("默认：滚动条滚动与点击外部均关闭，且默认不展示最小化 [-]", () => {
     renderTooltip()
     fireEvent.click(screen.getByText("触发"))
     expect(screen.getByText("Tip 内容")).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "最小化" })).toBeNull()
 
     fireEvent.scroll(document)
     flushCloseAnimation()
@@ -68,8 +69,8 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick", () => {
     expect(screen.getByText("Tip 内容")).not.toBeNull()
   })
 
-  it("两开关均为 false：右上角出现 [-] 最小化，点击后关闭", () => {
-    renderTooltip({ closeOnScroll: false, closeOnOutsideClick: false })
+  it("minimizable=true：右上角展示 [-] 最小化按钮，点击后关闭", () => {
+    renderTooltip({ minimizable: true, closeOnScroll: false, closeOnOutsideClick: false })
     fireEvent.click(screen.getByText("触发"))
     expect(screen.getByText("Tip 内容")).not.toBeNull()
     expect(screen.getByRole("button", { name: "最小化" })).not.toBeNull()

@@ -20,6 +20,8 @@ export interface LxTooltipProps {
   className?: string
   // 内容允许多行/列表展示：宽度随内容自适应，超出视口时受限并可换行。
   multiline?: boolean
+  // 是否支持最小化：右上角展示 [-] 按钮，点击关闭/最小化气泡（默认 false）。
+  minimizable?: boolean
   // 滚动条滚动时是否关闭（默认 true；常驻浮层如权限面板设为 false）。
   closeOnScroll?: boolean
   // 点击气泡外区域是否关闭（默认 true；常驻浮层如权限面板设为 false）。
@@ -58,6 +60,7 @@ export const LxTooltip = ({
   contentClassName = "",
   className = "",
   multiline = false,
+  minimizable = false,
   closeOnScroll = true,
   closeOnOutsideClick = true,
   closeOnContentClick = false,
@@ -79,8 +82,6 @@ export const LxTooltip = ({
   const isConfirming = typeof onConfirm === "function"
   const activeTrigger = isConfirming ? "click" : trigger
   const activeDelay = isConfirming ? 0 : delay
-  // 常驻模式：滚动与外点均不关闭，右上角提供 [-] 最小化按钮（如权限面板）。
-  const persistent = !closeOnScroll && !closeOnOutsideClick
 
   /**
    * 更新显隐状态并同步受控父组件。
@@ -357,7 +358,7 @@ export const LxTooltip = ({
           <div
             ref={tooltipRef}
             role="tooltip"
-            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${persistent ? "flex max-h-[min(60vh,480px)] flex-col overflow-hidden" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
+            className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex max-h-[min(60vh,480px)] flex-col overflow-hidden" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
             style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
             onMouseEnter={() => {
               if (hideTimeoutRef.current) {
@@ -373,7 +374,7 @@ export const LxTooltip = ({
               if (closeOnContentClick) syncVisible(false)
             }}
           >
-            {persistent && (
+            {minimizable && (
               <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
                 {title && (
                   <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
@@ -419,7 +420,7 @@ export const LxTooltip = ({
                   </button>
                 </div>
               </div>
-            ) : title && !persistent ? (
+            ) : title && !minimizable ? (
               <div className="flex flex-col gap-1">
                 <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
                   {title}

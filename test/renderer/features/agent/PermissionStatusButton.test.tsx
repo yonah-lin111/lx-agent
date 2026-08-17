@@ -45,7 +45,7 @@ describe("PermissionStatusButton", () => {
 
   it("无请求时不渲染", () => {
     const { container } = render(<PermissionStatusButton request={null} onRespond={vi.fn()} />)
-    expect(container.querySelector("button")).toBeNull()
+    expect(container.querySelector('[role="button"]')).toBeNull()
   })
 
   it("请求到达自动展开：展示工具名/mode 与选择态六选项", () => {
