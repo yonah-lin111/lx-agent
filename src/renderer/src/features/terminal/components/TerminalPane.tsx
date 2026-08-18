@@ -46,9 +46,10 @@ export const TerminalPane = ({
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
       if (event.type !== "keydown") return true
 
-      // Shift + Enter 触发换行（发送 LF \n 而非默认执行命令的 CR \r）
+      // Shift + Enter 触发换行：发送 Escape + Return (\x1b\r)
+      // 这是现代终端（VS Code/Cursor/Ghostty/Claude Code）中 Shift+Enter 换行而不触发提交的标准转义序列
       if (event.shiftKey && event.key === "Enter") {
-        void terminalApi.write(tab.id, "\n")
+        void terminalApi.write(tab.id, "\x1b\r")
         return false
       }
 
