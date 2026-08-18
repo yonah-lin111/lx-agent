@@ -41,9 +41,9 @@ export const GhosttyTerminalView = ({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#141414]">
-      {/* 顶部水平栏：左侧加号新建按钮 + 水平多标签页 */}
+      {/* 顶部水平栏：水平多标签页 */}
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/5 px-2">
-        <TerminalTabs onAddTab={() => void handleCreateTab()} />
+        <TerminalTabs />
       </div>
 
       {/* 下方终端画布交互区 */}

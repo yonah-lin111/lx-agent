@@ -1,18 +1,13 @@
-import { Plus, Terminal as TerminalIcon, X } from "lucide-react"
+import { Terminal as TerminalIcon, X } from "lucide-react"
 import { useState } from "react"
-import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalTabItem } from "@/features/terminal/types"
 
-interface TerminalTabsProps {
-  onAddTab: () => void
-}
-
 /**
- * Ghostty 风格顶部水平终端标签列表栏（左侧新建按钮 + 水平多标签）。
+ * Ghostty 风格顶部水平终端标签列表栏（纯标签横向滚动展示）。
  */
-export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element => {
+export const TerminalTabs = (): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
   const activeTabId = useTerminalStore((state) => state.activeTabId)
   const setActiveTab = useTerminalStore((state) => state.setActiveTab)
@@ -45,16 +40,7 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
   }
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden select-none">
-      {/* 新建终端按钮（位于最左侧，与折叠按钮图标尺寸统一为 h-4 w-4） */}
-      <LxIconButton
-        aria-label="新建终端"
-        title={{ content: "新建终端", placement: "top" }}
-        onClick={onAddTab}
-      >
-        <Plus className="h-4 w-4" />
-      </LxIconButton>
-
+    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden select-none">
       {/* 水平滚动标签列表 */}
       <div className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {tabs.map((tab) => {
