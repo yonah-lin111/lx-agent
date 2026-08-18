@@ -119,19 +119,59 @@ export function substituteArgs(content: string, args: string[]): string {
 }
 
 /**
- * 从单文件读取并解析 Markdown 模板。
+ * 从模板正文中推断参数占位符提示：
+ * - 查找 $1, $2 ... 或 ${1:-default}
+ * - 查找 $@ 或 $ARGUMENTS
  */
-function loadTemplateFromFile(
+export function inferArgumentHint(content: string): string | undefined {
+  const numberedMatches = Array.from(content.matchAll(/\$\{(\d+)(?::-([^}]*))?\}|\$(\d+)/g))
+  if (numberedMatches.length > 0) {
+    const argMap = new Map<number, string>()
+    for (const match of numberedMatches) {
+      const num = Number.parseInt(match[1] || match[3], 10)
+      const defaultValue = match[2]
+      if (num > 0) {
+        if (!argMap.has(num) || defaultValue) {
+          argMap.set(num, defaultValue ? defaultValue : `arg${num}`)
+        }
+      }
+    }
+    const maxNum = Math.max(...Array.from(argMap.keys()))
+    const parts: string[] = []
+    for (let i = 1; i <= maxNum; i++) {
+      const name = argMap.get(i) || `arg${i}`
+      parts.push(name.startsWith("[") ? name : `[${name}]`)
+    }
+    return parts.join(" ")
+  }
+
+  if (/\$(ARGUMENTS|@)|\$\{(ARGUMENTS|@)(?::-([^}]*))?\}/.test(content)) {
+    return "[arguments]"
+  }
+
+  return undefined
+}
+
+/**
+ * 从单个 .md 文件加载并解析 Prompt 模板。
+ */
+export function loadTemplateFromFile(
   filePath: string,
   source: "project" | "user",
 ): LoadedPromptTemplate | null {
   try {
-    const raw = readFileSync(filePath, "utf8")
-    const { data: frontmatter, content: body } = matter(raw)
-    const name = basename(filePath).replace(/\.md$/, "")
+    const fileContent = readFileSync(filePath, "utf8")
+    const parsed = matter(fileContent)
+    const frontmatter = parsed.data || {}
+    const body = parsed.content || ""
+
+    const name = (frontmatter.name ? String(frontmatter.name) : basename(filePath, ".md")).trim()
+    if (!name || RESERVED_COMMANDS.has(name) || name.startsWith("skill:")) {
+      return null
+    }
 
     let description = ""
-    if (typeof frontmatter.description === "string" && frontmatter.description.trim()) {
+    if (typeof frontmatter.description === "string") {
       description = frontmatter.description.trim()
     } else {
       const firstLine = body.split("\n").find((line) => line.trim())
@@ -145,8 +185,15 @@ function loadTemplateFromFile(
     const rawHint = frontmatter["argument-hint"] ?? frontmatter.argumentHint
     if (typeof rawHint === "string" && rawHint.trim()) {
       argumentHint = rawHint.trim()
+      if (!argumentHint.startsWith("[") && !argumentHint.includes(" ")) {
+        argumentHint = `[${argumentHint}]`
+      }
     } else if (Array.isArray(rawHint)) {
-      argumentHint = `[${rawHint.join(", ")}]`
+      argumentHint = rawHint
+        .map((h) => (String(h).startsWith("[") ? String(h) : `[${h}]`))
+        .join(" ")
+    } else {
+      argumentHint = inferArgumentHint(body)
     }
 
     return {

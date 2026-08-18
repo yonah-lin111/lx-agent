@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  inferArgumentHint,
   PromptTemplateLoader,
   parseCommandArgs,
   substituteArgs,
@@ -207,6 +208,27 @@ description: 重构代码
 
     it("returns original text if template does not exist", () => {
       expect(loader.expand("/nonexistent arg1", projectDir)).toBe("/nonexistent arg1")
+    })
+  })
+
+  describe("inferArgumentHint", () => {
+    it("infers multiple indexed arguments like $1 $2", () => {
+      expect(inferArgumentHint("请审查 $1 并对比 $2")).toBe("[arg1] [arg2]")
+    })
+
+    it("infers arguments with default names like ${1:-target_file} ${2:-rules}", () => {
+      expect(inferArgumentHint("请审查 ${1:-target_file} 规则：${2:-rules}")).toBe(
+        "[target_file] [rules]",
+      )
+    })
+
+    it("infers [arguments] for $@ or $ARGUMENTS", () => {
+      expect(inferArgumentHint("执行任务：$@")).toBe("[arguments]")
+      expect(inferArgumentHint("参数：$ARGUMENTS")).toBe("[arguments]")
+    })
+
+    it("returns undefined for static templates without arguments", () => {
+      expect(inferArgumentHint("请输出系统架构图。")).toBeUndefined()
     })
   })
 })

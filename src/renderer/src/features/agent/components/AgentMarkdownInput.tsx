@@ -83,6 +83,7 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
     name: "/steer",
     description: "即时插话（引导运行中 Agent 转向）",
     kind: "builtin",
+    argumentHint: "[prompt]",
   },
   { id: "model", name: "/model", description: "切换 AI 模型", kind: "builtin" },
   { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区", kind: "builtin" },
@@ -908,23 +909,32 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         setActiveMode(null)
         const view = editorViewRef.current
         if (command.kind === "prompt") {
-          const insertText = `/${command.name.replace(/^\//, "")} `
+          const rawName = command.name.startsWith("/") ? command.name : `/${command.name}`
+          const hint = command.argumentHint ? ` ${command.argumentHint}` : " "
+          const insertText = `${rawName}${hint}`
           onChangeRef.current(insertText)
-          view?.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: insertText },
-            selection: { anchor: insertText.length },
-          })
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: insertText },
+              selection: command.argumentHint
+                ? { anchor: rawName.length + 1, head: insertText.length }
+                : { anchor: insertText.length },
+            })
+          }
         } else if (command.id === "clear") {
           onChangeRef.current("")
           onClear?.()
         } else if (command.id === "undo") {
           onUndo?.()
         } else if (command.id === "steer") {
-          onChangeRef.current("/steer ")
-          view?.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: "/steer " },
-            selection: { anchor: 7 },
-          })
+          const insertText = "/steer [prompt]"
+          onChangeRef.current(insertText)
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: insertText },
+              selection: { anchor: 7, head: 15 },
+            })
+          }
         } else if (command.id === "model") {
           onChangeRef.current("/model ")
           view?.dispatch({

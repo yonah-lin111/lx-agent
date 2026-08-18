@@ -16,7 +16,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentCompactionSummary } from "@/features/agent/components/AgentCompactionSummary"
 import {
@@ -172,17 +171,17 @@ export const AgentMessageItem = ({
   // 用户消息时间戳（fork 定位切割轮；const 捕获便于闭包内保持收窄）。
   const messageTimestamp = message.timestamp
   // 子代理面板（readOnly）内气泡使用独立配色，与主消息列表区分。
-  // 即时插话（steer）使用暖色暗调；项目/全局 Prompt 模板使用对应的项目/全局底色。
+  // 即时插话（steer）使用暖色暗调；项目/全局 Prompt 模板使用对应的项目/全局底色（纯色无边框）。
   const userBubbleClass = readOnly
     ? "bg-[#33517a]"
     : message.isSteer
       ? "bg-steer-bubble"
       : message.command?.kind === "prompt" && message.command.source === "project"
-        ? "bg-[#163f35] border border-[#059669]/30"
+        ? "bg-[#163f35]"
         : message.command?.kind === "prompt" && message.command.source === "user"
-          ? "bg-[#1e2a5e] border border-[#2563eb]/30"
+          ? "bg-[#1e2a5e]"
           : message.command?.kind === "skill"
-            ? "bg-[#35254d] border border-[#7c3aed]/30"
+            ? "bg-[#35254d]"
             : "bg-user-bubble"
   const assistantBubbleClass = readOnly ? "bg-[#363e4c]" : "bg-[#303030]"
   const previewRef = useRef<HTMLDivElement>(null)
@@ -264,11 +263,11 @@ export const AgentMessageItem = ({
     return message.isSteer ? joined.replace(/^\s*\/steer\s+/, "") : joined
   }, [message.blocks, message.isSteer])
 
-  const commandTag = useMemo<{ label: string; bgClass: string } | null>(() => {
+  const commandTag = useMemo<{ label: string; sourceTag?: string } | null>(() => {
     if (message.isSteer) {
       return {
         label: "/steer",
-        bgClass: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+        sourceTag: "Steer",
       }
     }
     if (message.command) {
@@ -276,26 +275,18 @@ export const AgentMessageItem = ({
         ? message.command.name
         : `/${message.command.name}`
 
-      if (message.command.kind === "prompt") {
-        return message.command.source === "project"
-          ? {
-              label: name,
-              bgClass: "bg-[#059669]/25 text-[#34d399] border border-[#059669]/35",
-            }
-          : {
-              label: name,
-              bgClass: "bg-[#2563eb]/25 text-[#60a5fa] border border-[#2563eb]/35",
-            }
-      }
-      if (message.command.kind === "skill") {
-        return {
-          label: name,
-          bgClass: "bg-[#7c3aed]/25 text-[#c084fc] border border-[#7c3aed]/35",
-        }
-      }
+      const sourceTag =
+        message.command.kind === "prompt"
+          ? message.command.source === "project"
+            ? "Project"
+            : "Global"
+          : message.command.kind === "skill"
+            ? "Skill"
+            : undefined
+
       return {
         label: name,
-        bgClass: "bg-white/10 text-white/70 border border-white/15",
+        sourceTag,
       }
     }
     return null
@@ -824,18 +815,7 @@ export const AgentMessageItem = ({
                       : "custom-scrollbar max-h-[50vh] overflow-y-auto"
                   }
                 >
-                  {commandTag && (
-                    <span className="mr-1.5 inline-flex align-middle">
-                      <LxTag
-                        size="small"
-                        bgClass={commandTag.bgClass}
-                        className="pointer-events-none font-mono select-none"
-                      >
-                        {commandTag.label}
-                      </LxTag>
-                    </span>
-                  )}
-                  <span>{userText}</span>
+                  {userText}
                 </div>
               </div>
             </>
@@ -844,10 +824,29 @@ export const AgentMessageItem = ({
             <div className="mt-1 h-5" aria-hidden="true" />
           ) : (
             <div
-              className={`mt-1 flex items-center gap-1 justify-end opacity-0 transition-opacity group-hover:opacity-100 ${
+              className={`mt-1 flex w-full items-center justify-between gap-2 opacity-0 transition-opacity group-hover:opacity-100 ${
                 isPinned ? `rounded-[6px] ${userBubbleClass} p-0.5` : ""
               }`}
             >
+              {/* 底部左侧：命令来源标识（hover 时随底栏一同显示，对齐 token 用量排版） */}
+              {commandTag ? (
+                <span className="flex items-center gap-1 text-[10px] leading-none text-white/40 select-text font-mono whitespace-nowrap pl-0.5">
+                  <span>{commandTag.label}</span>
+                  {commandTag.sourceTag && (
+                    <>
+                      <span aria-hidden="true" className="text-white/20">
+                        ·
+                      </span>
+                      <span className="text-[10px] font-sans tracking-wide text-white/35">
+                        {commandTag.sourceTag}
+                      </span>
+                    </>
+                  )}
+                </span>
+              ) : (
+                <div />
+              )}
+
               <div className="flex items-center gap-1">
                 {isPinned && onLocate && (
                   <LxIconButton
