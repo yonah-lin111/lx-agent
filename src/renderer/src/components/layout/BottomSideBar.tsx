@@ -68,7 +68,7 @@ export const BottomSideBar = ({
     }
   }, [isResizing])
 
-  // 右上角动作控制按钮组（与 RightSidebar / HeaderSideBar 保持一致的默认尺寸与 h-4 w-4 icon）
+  // 右上角动作控制按钮组（与 RightSidebar / HeaderSideBar 保持一致的标准中等尺寸与 h-4 w-4 icon）
   const actionButtons = (
     <div className="flex shrink-0 items-center gap-1">
       <LxIconButton
@@ -97,11 +97,11 @@ export const BottomSideBar = ({
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 ${
+      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"
-      } ${isExpanded ? "" : "h-[40px] min-h-[40px] max-h-[40px]"}`}
+      } ${isExpanded ? "p-2" : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1"}`}
       style={
         isExpanded
           ? { height: `${height}vh`, minHeight: `${height}vh`, maxHeight: `${height}vh` }
@@ -128,7 +128,7 @@ export const BottomSideBar = ({
           <GhosttyTerminalView actions={actionButtons} isExpanded={isExpanded} />
         </div>
 
-        {/* 折叠区域：紧凑 40px 状态栏，对齐 RightSidebar / HeaderSideBar 按钮尺寸与样式 */}
+        {/* 折叠区域：紧凑 40px 状态栏，内部 30px 高度完美容纳 28px 图标按钮 */}
         {!isExpanded && (
           <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
