@@ -1,11 +1,13 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
-import { Download, Search } from "lucide-react"
+import { Copy, Download, FileCode, FileText, Globe, MessageSquare, Search } from "lucide-react"
 import type React from "react"
 import { useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
+import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "../api/agentApi"
 import { sessionListStore } from "../hooks/sessionListStore"
 
@@ -42,6 +44,12 @@ export const ChatHistoryPanel = ({
   const [query, setQuery] = useState("")
   const [projectTag, setProjectTag] = useState<ProjectTag>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const { success: successToast, error: errorToast } = useLxToast()
+  const [exportMenuState, setExportMenuState] = useState<{
+    sessionId: string
+    x: number
+    y: number
+  } | null>(null)
   const pendingSessionIds = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getPendingSessionIds,
@@ -173,12 +181,14 @@ export const ChatHistoryPanel = ({
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                       disabled={pendingSessionIds.has(session.id)}
                       size="small"
-                      title={{ content: "导出 HTML", placement: "bottom" }}
-                      onClick={() => {
-                        void agentApi.exportSession({
+                      title={{ content: "导出会话...", placement: "bottom" }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setExportMenuState({
                           sessionId: session.id,
-                          format: "html",
-                          openAfterExport: true,
+                          x: rect.right + 4,
+                          y: rect.top,
                         })
                       }}
                     >
@@ -218,6 +228,134 @@ export const ChatHistoryPanel = ({
           <div className="py-4 text-center text-xs text-white/45">未找到匹配的会话</div>
         )}
       </div>
+
+      <LxMenu
+        isOpen={exportMenuState !== null}
+        x={exportMenuState?.x ?? 0}
+        y={exportMenuState?.y ?? 0}
+        ariaLabel="导出会话菜单"
+        width={180}
+        onClose={() => setExportMenuState(null)}
+      >
+        <LxMenuItem
+          leading={<Globe className="h-3.5 w-3.5 text-[#38bdf8]" />}
+          onClick={() => {
+            if (exportMenuState) {
+              void agentApi
+                .exportSession({
+                  sessionId: exportMenuState.sessionId,
+                  format: "html",
+                  openAfterExport: true,
+                })
+                .then((res) => {
+                  if (res.ok && !res.canceled && res.filePath) {
+                    successToast(`已导出 HTML: ${res.filePath}`)
+                  } else if (!res.ok) {
+                    errorToast(res.error || "导出失败")
+                  }
+                })
+            }
+            setExportMenuState(null)
+          }}
+        >
+          HTML 网页 (.html)
+        </LxMenuItem>
+        <LxMenuItem
+          leading={<FileText className="h-3.5 w-3.5 text-[#34d399]" />}
+          onClick={() => {
+            if (exportMenuState) {
+              void agentApi
+                .exportSession({
+                  sessionId: exportMenuState.sessionId,
+                  format: "markdown",
+                  openAfterExport: true,
+                })
+                .then((res) => {
+                  if (res.ok && !res.canceled && res.filePath) {
+                    successToast(`已导出 Markdown: ${res.filePath}`)
+                  } else if (!res.ok) {
+                    errorToast(res.error || "导出失败")
+                  }
+                })
+            }
+            setExportMenuState(null)
+          }}
+        >
+          Markdown 文档 (.md)
+        </LxMenuItem>
+        <LxMenuItem
+          leading={<FileCode className="h-3.5 w-3.5 text-[#fbbf24]" />}
+          onClick={() => {
+            if (exportMenuState) {
+              void agentApi
+                .exportSession({
+                  sessionId: exportMenuState.sessionId,
+                  format: "jsonl",
+                  openAfterExport: true,
+                })
+                .then((res) => {
+                  if (res.ok && !res.canceled && res.filePath) {
+                    successToast(`已导出 JSONL: ${res.filePath}`)
+                  } else if (!res.ok) {
+                    errorToast(res.error || "导出失败")
+                  }
+                })
+            }
+            setExportMenuState(null)
+          }}
+        >
+          JSONL 数据集 (.jsonl)
+        </LxMenuItem>
+        <LxMenuSeparator />
+        <LxMenuItem
+          leading={<Copy className="h-3.5 w-3.5 text-white/60" />}
+          onClick={() => {
+            if (exportMenuState) {
+              void agentApi
+                .copySession({
+                  sessionId: exportMenuState.sessionId,
+                  target: "markdown",
+                })
+                .then((res) => {
+                  if (res.ok && res.text) {
+                    void navigator.clipboard.writeText(res.text).then(() => {
+                      successToast("已复制完整对话 Markdown")
+                    })
+                  } else if (!res.ok) {
+                    errorToast(res.error || "复制失败")
+                  }
+                })
+            }
+            setExportMenuState(null)
+          }}
+        >
+          复制完整 Markdown
+        </LxMenuItem>
+        <LxMenuItem
+          leading={<MessageSquare className="h-3.5 w-3.5 text-white/60" />}
+          onClick={() => {
+            if (exportMenuState) {
+              void agentApi
+                .copySession({
+                  sessionId: exportMenuState.sessionId,
+                  target: "last_assistant",
+                })
+                .then((res) => {
+                  if (res.ok && res.text) {
+                    void navigator.clipboard.writeText(res.text).then(() => {
+                      successToast("已复制最近一条回复")
+                    })
+                  } else if (!res.ok) {
+                    errorToast(res.error || "复制失败")
+                  }
+                })
+            }
+            setExportMenuState(null)
+          }}
+        >
+          复制最近回复
+        </LxMenuItem>
+      </LxMenu>
     </div>
   )
 }

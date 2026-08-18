@@ -223,10 +223,17 @@ export async function exportSessionToFile(
   summary: AgentSessionSummary,
   options: ExportSessionOptions,
 ): Promise<ExportSessionResult> {
-  const format = options.format || "html"
+  let format: "html" | "markdown" | "jsonl" = options.format || "html"
+  if (format === ("md" as string)) format = "markdown"
+  if (format === ("json" as string)) format = "jsonl"
+
   const defaultExt = format === "html" ? "html" : format === "markdown" ? "md" : "jsonl"
   const filterName =
-    format === "html" ? "HTML 报告" : format === "markdown" ? "Markdown 文档" : "JSONL 数据文件"
+    format === "html"
+      ? "HTML 网页 (*.html)"
+      : format === "markdown"
+        ? "Markdown 文档 (*.md)"
+        : "JSONL 数据文件 (*.jsonl)"
 
   let targetPath = options.customPath
 
@@ -237,7 +244,10 @@ export async function exportSessionToFile(
     const dialogResult = await dialog.showSaveDialog({
       title: `导出对话为 ${filterName}`,
       defaultPath: defaultFileName,
-      filters: [{ name: filterName, extensions: [defaultExt] }],
+      filters: [
+        { name: filterName, extensions: [defaultExt] },
+        { name: "全部文件", extensions: ["*"] },
+      ],
     })
 
     if (dialogResult.canceled || !dialogResult.filePath) {
@@ -245,6 +255,16 @@ export async function exportSessionToFile(
     }
 
     targetPath = dialogResult.filePath
+  }
+
+  // 依据最终文件后缀名二次校验格式（防止用户在保存对话框中自定义了扩展名）
+  const lowerPath = targetPath.toLowerCase()
+  if (lowerPath.endsWith(".md") || lowerPath.endsWith(".markdown")) {
+    format = "markdown"
+  } else if (lowerPath.endsWith(".jsonl") || lowerPath.endsWith(".json")) {
+    format = "jsonl"
+  } else if (lowerPath.endsWith(".html") || lowerPath.endsWith(".htm")) {
+    format = "html"
   }
 
   // 生成内容

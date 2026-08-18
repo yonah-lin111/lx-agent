@@ -172,7 +172,7 @@ describe("Session Export & Share System (v10)", () => {
   })
 
   describe("exportSessionToFile", () => {
-    it("should export to customPath directly without dialog", async () => {
+    it("should export to customPath directly without dialog (HTML)", async () => {
       const targetPath = join(tempDir, "exported-session.html")
       const result = await exportSessionToFile(mockSession, mockSummary, {
         format: "html",
@@ -185,6 +185,44 @@ describe("Session Export & Share System (v10)", () => {
         expect(existsSync(targetPath)).toBe(true)
         const fileContent = readFileSync(targetPath, "utf-8")
         expect(fileContent).toContain("重构用户认证模块")
+        expect(fileContent).toContain("<!DOCTYPE html>")
+      }
+    })
+
+    it("should export to customPath as Markdown correctly when format=markdown or ext=.md", async () => {
+      const targetPath = join(tempDir, "exported-session.md")
+      const result = await exportSessionToFile(mockSession, mockSummary, {
+        format: "markdown",
+        customPath: targetPath,
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok && !result.canceled) {
+        expect(result.filePath).toBe(targetPath)
+        expect(existsSync(targetPath)).toBe(true)
+        const fileContent = readFileSync(targetPath, "utf-8")
+        expect(fileContent).toContain("# 重构用户认证模块")
+        expect(fileContent).toContain("## 👤 用户")
+        expect(fileContent).not.toContain("<!DOCTYPE html>")
+      }
+    })
+
+    it("should export to customPath as JSONL correctly when format=jsonl or ext=.jsonl", async () => {
+      const targetPath = join(tempDir, "exported-session.jsonl")
+      const result = await exportSessionToFile(mockSession, mockSummary, {
+        format: "jsonl",
+        customPath: targetPath,
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok && !result.canceled) {
+        expect(result.filePath).toBe(targetPath)
+        expect(existsSync(targetPath)).toBe(true)
+        const fileContent = readFileSync(targetPath, "utf-8")
+        const lines = fileContent.trim().split("\n")
+        expect(lines.length).toBe(5)
+        const header = JSON.parse(lines[0])
+        expect(header.type).toBe("session_header")
       }
     })
 

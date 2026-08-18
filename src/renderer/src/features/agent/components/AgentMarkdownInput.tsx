@@ -91,16 +91,40 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
   {
     id: "export",
     name: "/export",
-    description: "导出会话报告（HTML 网页 / Markdown / JSONL）",
+    description: "导出会话报告（选择 HTML / Markdown / JSONL）",
     kind: "builtin",
     argumentHint: "[html|md|jsonl]",
   },
   {
+    id: "export:html",
+    name: "/export:html",
+    description: "导出会话为交互式 HTML 网页报告",
+    kind: "builtin",
+  },
+  {
+    id: "export:md",
+    name: "/export:md",
+    description: "导出会话为 Markdown 结构化文档",
+    kind: "builtin",
+  },
+  {
+    id: "export:jsonl",
+    name: "/export:jsonl",
+    description: "导出会话为 JSONL 训练/分析数据集",
+    kind: "builtin",
+  },
+  {
     id: "copy",
     name: "/copy",
-    description: "复制会话到剪贴板（最近回复或全文）",
+    description: "复制最近一条回复到剪贴板",
     kind: "builtin",
     argumentHint: "[all]",
+  },
+  {
+    id: "copy:all",
+    name: "/copy:all",
+    description: "复制完整对话 Markdown 到剪贴板",
+    kind: "builtin",
   },
 ]
 
@@ -920,15 +944,30 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         let text = valueRef.current.trim()
         if (!text) return
 
-        // 拦截 /export 命令
-        if (text === "/export" || text.startsWith("/export ")) {
-          const arg = text.slice(7).trim().toLowerCase()
+        // 拦截 /export 相关命令
+        if (
+          text === "/export" ||
+          text.startsWith("/export ") ||
+          text.startsWith("/export:") ||
+          text.startsWith("/export-")
+        ) {
+          const rawArg = text.replace(/^\/export[:\s-]*/i, "").trim().toLowerCase()
           let format: "html" | "markdown" | "jsonl" = "html"
-          if (arg === "md" || arg === "markdown") {
+          if (
+            rawArg === "md" ||
+            rawArg === "markdown" ||
+            rawArg.startsWith("md") ||
+            rawArg.startsWith("markdown")
+          ) {
             format = "markdown"
-          } else if (arg === "jsonl" || arg === "json") {
+          } else if (
+            rawArg === "json" ||
+            rawArg === "jsonl" ||
+            rawArg.startsWith("json") ||
+            rawArg.startsWith("jsonl")
+          ) {
             format = "jsonl"
-          } else if (arg === "html") {
+          } else if (rawArg === "html" || rawArg.startsWith("html")) {
             format = "html"
           }
           onChangeRef.current("")
@@ -942,7 +981,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             .exportSession({ format, openAfterExport: true })
             .then((res) => {
               if (res.ok && !res.canceled && res.filePath) {
-                successToast(`导出成功: ${res.filePath}`)
+                successToast(`导出成功 (${format.toUpperCase()}): ${res.filePath}`)
               } else if (!res.ok) {
                 errorToast(res.error || "导出失败")
               }
@@ -953,10 +992,18 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           return
         }
 
-        // 拦截 /copy 命令
-        if (text === "/copy" || text.startsWith("/copy ")) {
-          const arg = text.slice(5).trim().toLowerCase()
-          const target = arg === "all" ? "markdown" : "last_assistant"
+        // 拦截 /copy 相关命令
+        if (
+          text === "/copy" ||
+          text.startsWith("/copy ") ||
+          text.startsWith("/copy:") ||
+          text.startsWith("/copy-")
+        ) {
+          const rawArg = text.replace(/^\/copy[:\s-]*/i, "").trim().toLowerCase()
+          const target =
+            rawArg === "all" || rawArg === "full" || rawArg === "md" || rawArg === "markdown"
+              ? "markdown"
+              : "last_assistant"
           onChangeRef.current("")
           const view = editorViewRef.current
           if (view) {
@@ -1060,6 +1107,51 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               selection,
             })
           }
+        } else if (command.id === "export:html") {
+          onChangeRef.current("")
+          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+          void agentApi
+            .exportSession({ format: "html", openAfterExport: true })
+            .then((res) => {
+              if (res.ok && !res.canceled && res.filePath) {
+                successToast(`导出成功 (HTML): ${res.filePath}`)
+              } else if (!res.ok) {
+                errorToast(res.error || "导出失败")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "导出失败")
+            })
+        } else if (command.id === "export:md") {
+          onChangeRef.current("")
+          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+          void agentApi
+            .exportSession({ format: "markdown", openAfterExport: true })
+            .then((res) => {
+              if (res.ok && !res.canceled && res.filePath) {
+                successToast(`导出成功 (Markdown): ${res.filePath}`)
+              } else if (!res.ok) {
+                errorToast(res.error || "导出失败")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "导出失败")
+            })
+        } else if (command.id === "export:jsonl") {
+          onChangeRef.current("")
+          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+          void agentApi
+            .exportSession({ format: "jsonl", openAfterExport: true })
+            .then((res) => {
+              if (res.ok && !res.canceled && res.filePath) {
+                successToast(`导出成功 (JSONL): ${res.filePath}`)
+              } else if (!res.ok) {
+                errorToast(res.error || "导出失败")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "导出失败")
+            })
         } else if (command.id === "copy") {
           const insertText = "/copy [all]"
           onChangeRef.current(insertText)
@@ -1070,6 +1162,23 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               selection,
             })
           }
+        } else if (command.id === "copy:all") {
+          onChangeRef.current("")
+          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+          void agentApi
+            .copySession({ target: "markdown" })
+            .then((res) => {
+              if (res.ok && res.text) {
+                void navigator.clipboard.writeText(res.text).then(() => {
+                  successToast("已复制完整对话 Markdown")
+                })
+              } else if (!res.ok) {
+                errorToast(res.error || "复制失败")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "复制失败")
+            })
         }
         view?.focus()
       },
