@@ -29,7 +29,7 @@ interface BottomSideBarProps {
 }
 
 /**
- * 页面底边栏布局容器：展开时左侧列放置添加终端按钮，中间为 Ghostty 终端（带独立边框），右侧列放置覆盖与折叠按钮。
+ * 页面底边栏布局容器：展开时左侧添加按钮、中间 Tab 标签、右侧操作按钮严格保持像素级水平对齐。
  */
 export const BottomSideBar = ({
   children,
@@ -109,14 +109,14 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：左侧留列放添加按钮，中间为独立终端，右侧留列放覆盖与折叠按钮 */}
+        {/* 展开区域：左侧添加按钮、中间 Tab 标签、右侧操作按钮保持同一高度与基线水平对齐 */}
         <div
           className={`h-full w-full min-h-0 flex-1 items-start gap-2 overflow-hidden ${
             isExpanded ? "flex" : "hidden"
           }`}
         >
-          {/* 左侧操作列：新建终端 */}
-          <div className="flex shrink-0 flex-col items-center pl-0.5">
+          {/* 左侧操作列：新建终端（pt-[1px] 补偿中间终端 1px 边框以水平对齐） */}
+          <div className="flex shrink-0 flex-col items-center pt-[1px] pl-0.5">
             <LxIconButton
               aria-label="新建终端"
               title={{ content: "新建终端", placement: "right" }}
@@ -131,8 +131,8 @@ export const BottomSideBar = ({
             <GhosttyTerminalView isExpanded={isExpanded} />
           </div>
 
-          {/* 右侧操作列：覆盖右侧栏与折叠底边栏 */}
-          <div className="flex shrink-0 flex-col items-center gap-1.5 pr-0.5">
+          {/* 右侧操作列：覆盖右侧栏与折叠底边栏（pt-[1px] 补偿中间终端 1px 边框以水平对齐） */}
+          <div className="flex shrink-0 flex-col items-center gap-1.5 pt-[1px] pr-0.5">
             <LxIconButton
               aria-label={
                 isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"

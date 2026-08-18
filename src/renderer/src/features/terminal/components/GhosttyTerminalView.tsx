@@ -41,8 +41,8 @@ export const GhosttyTerminalView = ({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#141414]">
-      {/* 顶部水平栏：水平多标签页 */}
-      <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/5 px-2">
+      {/* 顶部水平栏：与左右操作按钮对齐高度（h-7）与水平基线 */}
+      <div className="flex h-7 shrink-0 items-center border-b border-white/5 px-1.5">
         <TerminalTabs />
       </div>
 
