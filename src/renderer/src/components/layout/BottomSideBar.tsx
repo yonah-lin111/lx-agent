@@ -115,8 +115,8 @@ export const BottomSideBar = ({
             isExpanded ? "flex" : "hidden"
           }`}
         >
-          {/* 左侧操作列：新建终端（pt-[1px] 补偿中间终端 1px 边框以水平对齐） */}
-          <div className="flex shrink-0 flex-col items-center pt-[1px] pl-0.5">
+          {/* 左侧操作列：新建终端（pt-1 对齐终端 1px 边框 + 4px 顶栏内边距） */}
+          <div className="flex shrink-0 flex-col items-center pt-1 pl-0.5">
             <LxIconButton
               aria-label="新建终端"
               title={{ content: "新建终端", placement: "right" }}
@@ -131,8 +131,8 @@ export const BottomSideBar = ({
             <GhosttyTerminalView isExpanded={isExpanded} />
           </div>
 
-          {/* 右侧操作列：覆盖右侧栏与折叠底边栏（pt-[1px] 补偿中间终端 1px 边框以水平对齐） */}
-          <div className="flex shrink-0 flex-col items-center gap-1.5 pt-[1px] pr-0.5">
+          {/* 右侧操作列：覆盖右侧栏与折叠底边栏（pt-1 对齐终端 1px 边框 + 4px 顶栏内边距） */}
+          <div className="flex shrink-0 flex-col items-center gap-1.5 pt-1 pr-0.5">
             <LxIconButton
               aria-label={
                 isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"

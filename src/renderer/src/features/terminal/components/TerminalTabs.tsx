@@ -40,9 +40,9 @@ export const TerminalTabs = (): React.JSX.Element => {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden select-none">
+    <div className="flex min-w-0 flex-1 items-center overflow-hidden select-none">
       {/* 水平滚动标签列表 */}
-      <div className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+      <div className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
           const isEditing = editingTabId === tab.id
@@ -50,7 +50,7 @@ export const TerminalTabs = (): React.JSX.Element => {
           return (
             <div
               key={tab.id}
-              className={`group flex h-7 max-w-[160px] min-w-[80px] shrink-0 items-center gap-1.5 rounded-[4px] px-2 text-xs transition-colors cursor-pointer ${
+              className={`group flex h-7 max-w-[160px] min-w-[80px] shrink-0 items-center gap-1.5 rounded-[4px] px-2.5 text-xs transition-colors cursor-pointer ${
                 isActive
                   ? "bg-white/10 text-white"
                   : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
