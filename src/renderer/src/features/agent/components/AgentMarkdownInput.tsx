@@ -91,9 +91,9 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
   {
     id: "export",
     name: "/export",
-    description: "导出会话报告（参数：[html] / [md] / [jsonl]）",
+    description: "导出会话报告（网页、Markdown 或 JSONL）",
     kind: "builtin",
-    argumentHint: "[html]",
+    argumentHint: "[html | md | json]",
   },
   {
     id: "copy",
@@ -1082,7 +1082,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           onChangeRef.current("")
           onCompact?.()
         } else if (command.id === "export") {
-          const insertText = "/export [html]"
+          const insertText = "/export [html | md | json]"
           onChangeRef.current(insertText)
           if (view) {
             const selection = getArgumentSelectionRange(insertText, 7)
