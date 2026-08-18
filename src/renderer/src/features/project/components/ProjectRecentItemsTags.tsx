@@ -14,9 +14,27 @@ import {
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
-// 拼接「项目/文件夹/条目」单行标签文本。
-const formatTagLabel = (card: RecentItemCard): string =>
-  [card.projectName, card.folderName, card.itemName].filter(Boolean).join("/")
+// 渲染「项目/文件夹/条目」单行标签文本与对应图标。
+const renderTagLabel = (card: RecentItemCard): React.ReactNode => (
+  <span className="inline-flex min-w-0 items-center gap-0.5">
+    {card.projectName && (
+      <>
+        <Boxes className="h-3 w-3 shrink-0 text-sky-400/80" />
+        <span className="truncate">{card.projectName}</span>
+        <span>/</span>
+      </>
+    )}
+    {card.folderName && (
+      <>
+        <Folder className="h-3 w-3 shrink-0 text-amber-400/80" />
+        <span className="truncate">{card.folderName}</span>
+        <span>/</span>
+      </>
+    )}
+    <File className="h-3 w-3 shrink-0 text-white/50" />
+    <span className="truncate">{card.itemName}</span>
+  </span>
+)
 
 // 渲染 tag 悬停详情中的模版状态数量徽章。
 const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
@@ -257,7 +275,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                       </span>
                     }
                   >
-                    {formatTagLabel(card)}
+                    {renderTagLabel(card)}
                   </LxTag>
                 </div>
               </LxTooltip>
