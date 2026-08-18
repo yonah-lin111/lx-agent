@@ -178,11 +178,11 @@ export const AgentMessageItem = ({
     : message.isSteer
       ? "bg-steer-bubble"
       : message.command?.kind === "prompt" && message.command.source === "project"
-        ? "bg-project-prompt-bubble"
+        ? "bg-[#163f35] border border-[#059669]/30"
         : message.command?.kind === "prompt" && message.command.source === "user"
-          ? "bg-global-prompt-bubble"
+          ? "bg-[#1e2a5e] border border-[#2563eb]/30"
           : message.command?.kind === "skill"
-            ? "bg-[#3b2d54]"
+            ? "bg-[#35254d] border border-[#7c3aed]/30"
             : "bg-user-bubble"
   const assistantBubbleClass = readOnly ? "bg-[#363e4c]" : "bg-[#303030]"
   const previewRef = useRef<HTMLDivElement>(null)
@@ -264,38 +264,37 @@ export const AgentMessageItem = ({
     return message.isSteer ? joined.replace(/^\s*\/steer\s+/, "") : joined
   }, [message.blocks, message.isSteer])
 
-  const commandProvenance = useMemo(() => {
+  const commandTag = useMemo<{ label: string; bgClass: string } | null>(() => {
     if (message.isSteer) {
       return {
-        name: "steer",
-        tag: "Steer",
-        bgClass: "bg-[#d97706]/25 text-[#fbbf24] border border-[#d97706]/40",
+        label: "/steer",
+        bgClass: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
       }
     }
     if (message.command) {
+      const name = message.command.name.startsWith("/")
+        ? message.command.name
+        : `/${message.command.name}`
+
       if (message.command.kind === "prompt") {
         return message.command.source === "project"
           ? {
-              name: message.command.name,
-              tag: "Project",
-              bgClass: "bg-[#059669]/25 text-[#34d399] border border-[#059669]/40",
+              label: name,
+              bgClass: "bg-[#059669]/25 text-[#34d399] border border-[#059669]/35",
             }
           : {
-              name: message.command.name,
-              tag: "Global",
-              bgClass: "bg-[#2563eb]/25 text-[#60a5fa] border border-[#2563eb]/40",
+              label: name,
+              bgClass: "bg-[#2563eb]/25 text-[#60a5fa] border border-[#2563eb]/35",
             }
       }
       if (message.command.kind === "skill") {
         return {
-          name: message.command.name,
-          tag: "Skill",
-          bgClass: "bg-[#7c3aed]/25 text-[#c084fc] border border-[#7c3aed]/40",
+          label: name,
+          bgClass: "bg-[#7c3aed]/25 text-[#c084fc] border border-[#7c3aed]/35",
         }
       }
       return {
-        name: message.command.name,
-        tag: "Builtin",
+        label: name,
         bgClass: "bg-white/10 text-white/70 border border-white/15",
       }
     }
@@ -825,18 +824,18 @@ export const AgentMessageItem = ({
                       : "custom-scrollbar max-h-[50vh] overflow-y-auto"
                   }
                 >
-                  {commandProvenance && (
-                    <span className="inline-flex items-center mr-1.5 align-baseline select-none">
+                  {commandTag && (
+                    <span className="mr-1.5 inline-flex align-middle">
                       <LxTag
                         size="small"
-                        bgClass={commandProvenance.bgClass}
-                        className="font-mono text-[11px] font-medium"
+                        bgClass={commandTag.bgClass}
+                        className="pointer-events-none font-mono select-none"
                       >
-                        /{commandProvenance.name}
+                        {commandTag.label}
                       </LxTag>
                     </span>
                   )}
-                  {userText}
+                  <span>{userText}</span>
                 </div>
               </div>
             </>
@@ -849,63 +848,68 @@ export const AgentMessageItem = ({
                 isPinned ? `rounded-[6px] ${userBubbleClass} p-0.5` : ""
               }`}
             >
-              {isPinned && onLocate && (
+              <div className="flex items-center gap-1">
+                {isPinned && onLocate && (
+                  <LxIconButton
+                    size="small"
+                    aria-label="定位到消息"
+                    title={{ content: "定位到消息", placement: "top" }}
+                    onClick={onLocate}
+                  >
+                    <Locate className="h-3 w-3" />
+                  </LxIconButton>
+                )}
+                {isCollapsible && (
+                  <LxIconButton
+                    size="small"
+                    aria-label={isExpanded ? "折叠内容" : "展开内容"}
+                    title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
+                    onClick={toggleExpand}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </LxIconButton>
+                )}
+                {/* 即时插话（steer）消息不可分支、不可编辑。 */}
+                {!readOnly &&
+                  !message.isSteer &&
+                  typeof messageTimestamp === "number" &&
+                  onFork && (
+                    <LxIconButton
+                      size="small"
+                      aria-label="从此分支"
+                      title={{ content: "从此分支", placement: "top" }}
+                      onClick={() => onFork(messageTimestamp)}
+                    >
+                      <GitBranch className="h-3 w-3" />
+                    </LxIconButton>
+                  )}
+                {!readOnly && !message.isSteer && (
+                  <LxIconButton
+                    size="small"
+                    aria-label="编辑消息"
+                    title={{ content: "编辑消息", placement: "top" }}
+                    onClick={handleStartEdit}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </LxIconButton>
+                )}
                 <LxIconButton
                   size="small"
-                  aria-label="定位到消息"
-                  title={{ content: "定位到消息", placement: "top" }}
-                  onClick={onLocate}
+                  aria-label="复制消息"
+                  title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+                  onClick={copyMessageContent}
                 >
-                  <Locate className="h-3 w-3" />
-                </LxIconButton>
-              )}
-              {isCollapsible && (
-                <LxIconButton
-                  size="small"
-                  aria-label={isExpanded ? "折叠内容" : "展开内容"}
-                  title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
-                  onClick={toggleExpand}
-                >
-                  {isExpanded ? (
-                    <ChevronUp className="h-3 w-3" />
+                  {copied ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
                   ) : (
-                    <ChevronDown className="h-3 w-3" />
+                    <Copy className="h-3 w-3" />
                   )}
                 </LxIconButton>
-              )}
-              {/* 即时插话（steer）消息不可分支、不可编辑。 */}
-              {!readOnly && !message.isSteer && typeof messageTimestamp === "number" && onFork && (
-                <LxIconButton
-                  size="small"
-                  aria-label="从此分支"
-                  title={{ content: "从此分支", placement: "top" }}
-                  onClick={() => onFork(messageTimestamp)}
-                >
-                  <GitBranch className="h-3 w-3" />
-                </LxIconButton>
-              )}
-              {!readOnly && !message.isSteer && (
-                <LxIconButton
-                  size="small"
-                  aria-label="编辑消息"
-                  title={{ content: "编辑消息", placement: "top" }}
-                  onClick={handleStartEdit}
-                >
-                  <Pencil className="h-3 w-3" />
-                </LxIconButton>
-              )}
-              <LxIconButton
-                size="small"
-                aria-label="复制消息"
-                title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
-                onClick={copyMessageContent}
-              >
-                {copied ? (
-                  <Check className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </LxIconButton>
+              </div>
             </div>
           )}
         </div>

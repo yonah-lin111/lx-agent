@@ -275,12 +275,8 @@ class AgentRunner {
     return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
   }
 
-  private getEffectiveCwd(contextCwd?: string): string | undefined {
-    return contextCwd ?? this.cwd ?? this.requestedCwd
-  }
-
-  // 显式 /skill:<name> 指令宏展开：读取 SKILL.md 正文并拼装为 <skill> 结构化块注入用户消息。
-  private _expandSkillCommand(text: string, contextCwd?: string): string {
+  // 显式触发 /skill:<name> args → 正文块（strip frontmatter）+ args；未命中原样透传。
+  private _expandSkillCommand(text: string): string {
     if (!text.startsWith("/skill:")) return text
     const spaceIndex = text.indexOf(" ")
     const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
@@ -294,11 +290,19 @@ class AgentRunner {
     return args ? `${skillBlock}\n\n${args}` : skillBlock
   }
 
+  private getEffectiveCwd(): string | undefined {
+    return this.cwd ?? this.requestedCwd ?? resolveCwd()
+  }
+
   // 统一指令宏展开与元数据解析
-  private _expandAndDetectCommand(text: string): {
+  private _expandAndDetectCommand(
+    text: string,
+    overrideCwd?: string,
+  ): {
     expanded: string
     command?: UserMessageCommand
   } {
+    const cwd = overrideCwd ?? this.getEffectiveCwd()
     const skillExpanded = this._expandSkillCommand(text)
     if (skillExpanded !== text) {
       const match = text.match(/^\/skill:([^\s]+)/)
@@ -311,7 +315,7 @@ class AgentRunner {
       }
     }
 
-    const templateMatch = promptTemplateLoader.match(text, this.cwd)
+    const templateMatch = promptTemplateLoader.match(text, cwd)
     if (templateMatch) {
       return {
         expanded: templateMatch.expanded,
@@ -409,7 +413,7 @@ class AgentRunner {
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
       const isNewSession = !this.currentSessionId
       if (!isNewSession && this.currentSessionId) {
-        const { expanded, command } = this._expandAndDetectCommand(text)
+        const { expanded, command } = this._expandAndDetectCommand(text, context?.cwd)
         const steerMessage: UserMessage = {
           role: "user",
           content: expanded,
@@ -437,7 +441,7 @@ class AgentRunner {
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
-    const result = await this.runOne(text, context?.files)
+    const result = await this.runOne(text, context?.files, context?.cwd)
     // 本轮 run 结束后续发排队消息（队列为空则立即返回）。
     void this.kickDrain()
     return result
@@ -474,7 +478,11 @@ class AgentRunner {
   }
 
   // 驱动一轮独立 run（send 空闲分派与 drain 循环共用；调用方保证非 busy）。
-  private async runOne(text: string, files?: AttachedFile[]): Promise<AgentSendResult> {
+  private async runOne(
+    text: string,
+    files?: AttachedFile[],
+    overrideCwd?: string,
+  ): Promise<AgentSendResult> {
     const agent = this.agent
     if (!agent) {
       return { ok: false, error: "Agent 尚未就绪，请重试。" }
@@ -488,7 +496,7 @@ class AgentRunner {
       this.turnStore.resetOverflow()
     }
     // 显式 /skill: 或 Prompt 模板在 main 侧展开正文（未命中原样透传）。
-    const { expanded, command } = this._expandAndDetectCommand(text)
+    const { expanded, command } = this._expandAndDetectCommand(text, overrideCwd)
     this.beginSessionTurn(text)
     // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
     this.turnStore.captureSnapshot()
