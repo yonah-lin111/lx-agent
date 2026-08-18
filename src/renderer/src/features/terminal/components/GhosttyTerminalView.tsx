@@ -1,5 +1,4 @@
 import { Terminal as TerminalIcon } from "lucide-react"
-import type React from "react"
 import { useCallback, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { TerminalPane } from "@/features/terminal/components/TerminalPane"
@@ -9,7 +8,6 @@ import { resolveInitialTerminalCwd } from "@/features/terminal/utils"
 
 interface GhosttyTerminalViewProps {
   isExpanded: boolean
-  actions?: React.ReactNode
 }
 
 /**
@@ -17,7 +15,6 @@ interface GhosttyTerminalViewProps {
  */
 export const GhosttyTerminalView = ({
   isExpanded,
-  actions,
 }: GhosttyTerminalViewProps): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
@@ -43,11 +40,10 @@ export const GhosttyTerminalView = ({
   }, [isExpanded, tabs.length, handleCreateTab])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[4px] bg-[#141414]">
-      {/* 顶部水平栏：移除多余背景色，保持与终端底色通透一致 */}
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#141414]">
+      {/* 顶部水平栏：左侧水平多标签页与新建按钮 */}
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-white/5 px-2">
         <TerminalTabs onAddTab={() => void handleCreateTab()} />
-        {actions && <div className="flex shrink-0 items-center gap-1 pl-2">{actions}</div>}
       </div>
 
       {/* 下方终端画布交互区 */}

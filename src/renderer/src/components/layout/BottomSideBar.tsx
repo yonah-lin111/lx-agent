@@ -24,7 +24,7 @@ interface BottomSideBarProps {
 }
 
 /**
- * 页面底边栏布局容器：展开时上方为 Ghostty 终端（水平标签栏 + 右上角控制按钮，支持顶部拖拽调整高度至 50vh）。
+ * 页面底边栏布局容器：展开时左侧为 Ghostty 终端（带独立边框），右侧在外侧竖直排列操作按钮（支持顶部拖拽调整高度至 50vh）。
  */
 export const BottomSideBar = ({
   children,
@@ -68,33 +68,6 @@ export const BottomSideBar = ({
     }
   }, [isResizing])
 
-  // 右上角动作控制按钮组（与 RightSidebar / HeaderSideBar 保持一致的标准中等尺寸与 h-4 w-4 icon）
-  const actionButtons = (
-    <div className="flex shrink-0 items-center gap-1">
-      <LxIconButton
-        aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
-        title={{
-          content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
-          placement: "top",
-        }}
-        onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
-      >
-        {isCoveringRightSideBar ? (
-          <ChevronsRightLeft className="h-4 w-4" />
-        ) : (
-          <ChevronsLeftRight className="h-4 w-4" />
-        )}
-      </LxIconButton>
-      <LxIconButton
-        aria-label={isExpanded ? "折叠底边栏" : "展开底边栏"}
-        title={{ content: isExpanded ? "折叠底边栏" : "展开底边栏", placement: "top" }}
-        onClick={() => onExpandedChange(!isExpanded)}
-      >
-        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-      </LxIconButton>
-    </div>
-  )
-
   return (
     <aside
       className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
@@ -121,18 +94,74 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：Ghostty 多标签终端系统（水平顶部标签 + 右上角控制按钮） */}
+        {/* 展开区域：左侧终端（独立边框），右侧在终端边框外侧竖直排列控制按钮，互不遮挡 */}
         <div
-          className={`h-full w-full min-h-0 flex-1 overflow-hidden ${isExpanded ? "block" : "hidden"}`}
+          className={`h-full w-full min-h-0 flex-1 items-start gap-2 overflow-hidden ${
+            isExpanded ? "flex" : "hidden"
+          }`}
         >
-          <GhosttyTerminalView actions={actionButtons} isExpanded={isExpanded} />
+          <div className="h-full min-w-0 flex-1 overflow-hidden">
+            <GhosttyTerminalView isExpanded={isExpanded} />
+          </div>
+
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <LxIconButton
+              aria-label={
+                isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
+              }
+              title={{
+                content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
+                placement: "left",
+              }}
+              onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+            >
+              {isCoveringRightSideBar ? (
+                <ChevronsRightLeft className="h-4 w-4" />
+              ) : (
+                <ChevronsLeftRight className="h-4 w-4" />
+              )}
+            </LxIconButton>
+            <LxIconButton
+              aria-label="折叠底边栏"
+              title={{ content: "折叠底边栏", placement: "left" }}
+              onClick={() => onExpandedChange(false)}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </LxIconButton>
+          </div>
         </div>
 
-        {/* 折叠区域：紧凑 40px 状态栏，内部 30px 高度完美容纳 28px 图标按钮 */}
+        {/* 折叠区域：紧凑 40px 状态栏，水平排列控制按钮 */}
         {!isExpanded && (
           <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
-            <div className="flex shrink-0 items-center pl-2">{actionButtons}</div>
+            <div className="flex shrink-0 items-center gap-1 pl-2">
+              <LxIconButton
+                aria-label={
+                  isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
+                }
+                title={{
+                  content: isCoveringRightSideBar
+                    ? "底边栏不覆盖右侧栏宽度"
+                    : "底边栏覆盖右侧栏宽度",
+                  placement: "top",
+                }}
+                onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+              >
+                {isCoveringRightSideBar ? (
+                  <ChevronsRightLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronsLeftRight className="h-4 w-4" />
+                )}
+              </LxIconButton>
+              <LxIconButton
+                aria-label="展开底边栏"
+                title={{ content: "展开底边栏", placement: "top" }}
+                onClick={() => onExpandedChange(true)}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </LxIconButton>
+            </div>
           </div>
         )}
       </div>
