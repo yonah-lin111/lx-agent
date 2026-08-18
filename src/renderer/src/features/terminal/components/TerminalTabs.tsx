@@ -52,16 +52,14 @@ export const TerminalTabs = (): React.JSX.Element => {
               key={tab.id}
               className={`group flex h-6 max-w-[160px] min-w-[80px] shrink-0 items-center gap-1.5 rounded-[4px] px-2 text-xs transition-colors cursor-pointer ${
                 isActive
-                  ? "border border-white/10 bg-white/[0.08] font-medium text-white"
-                  : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
+                  ? "bg-white/10 text-white"
+                  : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
-              {/* 每个 Tab 项左侧的小终端图标 */}
+              {/* 每个 Tab 项左侧的小终端图标（与 ProjectNavigationList 图标高亮状态一致） */}
               <TerminalIcon
-                className={`h-3 w-3 shrink-0 ${
-                  isActive ? "text-white/80" : "text-white/40 group-hover:text-white/60"
-                }`}
+                className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/70" : "text-white/30"}`}
               />
 
               {isEditing ? (
