@@ -76,8 +76,8 @@ export class TerminalService {
 
       const shell = this.resolveDefaultShell()
       const resolvedCwd = this.resolveCwd(options.cwd)
-      const cols = options.cols && options.cols > 0 ? options.cols : 80
-      const rows = options.rows && options.rows > 0 ? options.rows : 24
+      const cols = options.cols && options.cols >= 10 ? options.cols : 80
+      const rows = options.rows && options.rows >= 2 ? options.rows : 24
       const env = {
         ...process.env,
         COLORTERM: "truecolor",
@@ -104,7 +104,13 @@ export class TerminalService {
         env.PATH = pathSegments.join(":")
       }
 
-      const ptyProcess = pty.spawn(shell, [], {
+      const args = process.platform === "win32" ? [] : ["-l"]
+      const spawnFn =
+        typeof pty.spawn === "function"
+          ? pty.spawn
+          : (pty as unknown as { default: typeof pty }).default.spawn
+
+      const ptyProcess = spawnFn(shell, args, {
         name: "xterm-256color",
         cols,
         rows,
@@ -117,8 +123,10 @@ export class TerminalService {
       })
 
       ptyProcess.onExit((event) => {
-        this.ptyProcesses.delete(options.id)
-        onExit({ exitCode: event.exitCode, signal: event.signal })
+        if (this.ptyProcesses.get(options.id) === ptyProcess) {
+          this.ptyProcesses.delete(options.id)
+          onExit({ exitCode: event.exitCode, signal: event.signal })
+        }
       })
 
       this.ptyProcesses.set(options.id, ptyProcess)
@@ -151,7 +159,7 @@ export class TerminalService {
    * 调整 PTY 视口行数与列数。
    */
   resizeTerminal(id: string, cols: number, rows: number): void {
-    if (cols <= 0 || rows <= 0) return
+    if (cols < 10 || rows < 2) return
     const ptyProcess = this.ptyProcesses.get(id)
     if (!ptyProcess) return
 

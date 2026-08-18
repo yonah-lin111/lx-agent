@@ -1,6 +1,7 @@
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
 import { Terminal } from "@xterm/xterm"
+import "@xterm/xterm/css/xterm.css"
 import { useEffect, useRef } from "react"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
@@ -41,44 +42,43 @@ export const TerminalPane = ({
     terminalRef.current = term
     fitAddonRef.current = fitAddon
 
-    // 自定义按键处理：处理剪贴板复制/粘贴与快捷键穿透。
+    // 自定义按键处理：仅拦截系统剪贴板复制/粘贴，其余按键完全由 xterm 原生捕获
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-      const isMac = navigator.userAgent.includes("Mac")
-      const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey
+      if (event.type !== "keydown") return true
 
-      // 复制：有选区时拦截为系统剪贴板复制。
-      if (isCtrlOrCmd && event.key === "c" && term.hasSelection()) {
-        if (event.type === "keydown") {
-          const selection = term.getSelection()
-          void navigator.clipboard.writeText(selection)
-        }
+      const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+      const isModifier = isMac ? event.metaKey : event.ctrlKey
+
+      if (isModifier && event.key.toLowerCase() === "c" && term.hasSelection()) {
+        void navigator.clipboard.writeText(term.getSelection())
         return false
       }
 
-      // 粘贴：Ctrl+V 或 Cmd+V。
-      if (isCtrlOrCmd && event.key === "v") {
-        if (event.type === "keydown") {
-          void navigator.clipboard.readText().then((text) => {
-            if (text) void terminalApi.write(tab.id, text)
-          })
-        }
+      if (isModifier && event.key.toLowerCase() === "v") {
+        void navigator.clipboard.readText().then((text) => {
+          if (text) {
+            term.paste(text)
+          }
+        })
         return false
       }
 
       return true
     })
 
-    // 首次计算视口列数与行数。
+    // 首次计算视口尺寸，若不可用则使用默认安全尺寸
     try {
-      fitAddon.fit()
+      if (container.clientWidth >= 20 && container.clientHeight >= 20) {
+        fitAddon.fit()
+      }
     } catch {
       // 忽略初始尺寸不可用
     }
 
-    const cols = term.cols > 0 ? term.cols : 80
-    const rows = term.rows > 0 ? term.rows : 24
+    const cols = term.cols >= 10 ? term.cols : 80
+    const rows = term.rows >= 2 ? term.rows : 24
 
-    // 先订阅后端 PTY 输出与退出事件（保证不丢失首包输出）。
+    // 先订阅后端 PTY 输出与退出事件（保证不丢失首包输出）
     const unsubscribeData = terminalApi.onData(tab.id, (data) => {
       term.write(data)
     })
@@ -87,12 +87,12 @@ export const TerminalPane = ({
       term.writeln(`\r\n\x1b[90m[进程已退出，代码: ${exitCode}]\x1b[0m`)
     })
 
-    // 监听前端用户键入输入并转发到后端 PTY。
+    // 监听前端用户键入输入并转发到后端 PTY
     const onDataDisposable = term.onData((data) => {
       void terminalApi.write(tab.id, data)
     })
 
-    // 创建后端 PTY 进程。
+    // 创建后端 PTY 进程
     void terminalApi
       .create({
         id: tab.id,
@@ -106,7 +106,7 @@ export const TerminalPane = ({
         }
       })
 
-    // 挂载后立即请求焦点。
+    // 挂载后请求焦点
     term.focus()
 
     return () => {
@@ -129,10 +129,10 @@ export const TerminalPane = ({
     if (!container || !term || !fitAddon || !isActive || !isExpanded) return
 
     const handleResize = (): void => {
-      if (container.clientWidth <= 0 || container.clientHeight <= 0) return
+      if (container.clientWidth < 20 || container.clientHeight < 20) return
       try {
         fitAddon.fit()
-        if (term.cols > 0 && term.rows > 0) {
+        if (term.cols >= 10 && term.rows >= 2) {
           void terminalApi.resize(tab.id, term.cols, term.rows)
         }
       } catch {
@@ -140,15 +140,20 @@ export const TerminalPane = ({
       }
     }
 
-    // 延迟以等待 DOM 展开过渡动画完成。
-    const timer = window.setTimeout(handleResize, 100)
+    // 配合底边栏 300ms CSS 过渡动画在各阶段重新计算尺寸
+    const t1 = window.setTimeout(handleResize, 50)
+    const t2 = window.setTimeout(handleResize, 150)
+    const t3 = window.setTimeout(handleResize, 350)
+
     const observer = new ResizeObserver(() => {
       handleResize()
     })
     observer.observe(container)
 
     return () => {
-      window.clearTimeout(timer)
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(t3)
       observer.disconnect()
     }
   }, [tab.id, isActive, isExpanded])
@@ -156,10 +161,16 @@ export const TerminalPane = ({
   // 3. 激活或展开时自动聚焦到 xterm 输入光标。
   useEffect(() => {
     if (isActive && isExpanded && terminalRef.current) {
-      const timer = window.setTimeout(() => {
+      const timer1 = window.setTimeout(() => {
         terminalRef.current?.focus()
-      }, 50)
-      return () => window.clearTimeout(timer)
+      }, 60)
+      const timer2 = window.setTimeout(() => {
+        terminalRef.current?.focus()
+      }, 360)
+      return () => {
+        window.clearTimeout(timer1)
+        window.clearTimeout(timer2)
+      }
     }
   }, [isActive, isExpanded])
 
