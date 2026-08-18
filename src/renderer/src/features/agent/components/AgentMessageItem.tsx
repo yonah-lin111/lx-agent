@@ -824,13 +824,17 @@ export const AgentMessageItem = ({
             <div className="mt-1 h-5" aria-hidden="true" />
           ) : (
             <div
-              className={`mt-1 flex w-full items-center justify-between gap-2 opacity-0 transition-opacity group-hover:opacity-100 ${
+              className={`mt-1 flex w-full items-center justify-between gap-2 ${
                 isPinned ? `rounded-[6px] ${userBubbleClass} p-0.5` : ""
               }`}
             >
-              {/* 底部左侧：命令来源标识（hover 时随底栏一同显示，对齐 token 用量排版） */}
+              {/* 底部左侧：命令来源标识（非吸顶滚动时常驻显示；吸顶时 hover 才显现） */}
               {commandTag ? (
-                <span className="flex items-center gap-1 text-[10px] leading-none text-white/40 select-text font-mono whitespace-nowrap pl-0.5">
+                <span
+                  className={`flex items-center gap-1 text-[10px] leading-none text-white/40 select-text font-mono whitespace-nowrap pl-0.5 transition-opacity ${
+                    isPinned ? "opacity-0 group-hover:opacity-100" : "opacity-100"
+                  }`}
+                >
                   <span>{commandTag.label}</span>
                   {commandTag.sourceTag && (
                     <>
@@ -847,7 +851,7 @@ export const AgentMessageItem = ({
                 <div />
               )}
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 {isPinned && onLocate && (
                   <LxIconButton
                     size="small"
