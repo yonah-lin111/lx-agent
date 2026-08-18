@@ -30,8 +30,7 @@ const recomputeBinding = (): void => {
     return
   }
   cachedSessionBinding = {
-    projectId: session.project_id ?? undefined,
-    projectItemId: session.project_item_id ?? undefined,
+    projectId: session.projectId ?? undefined,
     cwd: session.cwd,
   }
 }

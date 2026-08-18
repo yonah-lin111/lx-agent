@@ -278,7 +278,7 @@ export const generateCompactionSummary = async (
     return {
       summary,
       model: resolved.model.id,
-      usage: { input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 },
+      usage: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
     }
   } catch {
     // 无响应 provider / 网络错误 / 超时：静默返回 null，保留旧边界，下轮再试。

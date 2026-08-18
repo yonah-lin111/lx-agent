@@ -40,6 +40,8 @@ export const agentApi: AgentApi["agent"] = {
   installLspServers: () => ipcRenderer.invoke(AGENT_CHANNELS.installLspServers),
   listPromptTemplates: (cwd?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.listPromptTemplates, cwd),
+  exportSession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.exportSession, options),
+  copySession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.copySession, options),
   suggestedQuestions: (messages: SuggestedQuestionContextMessage[], excludedQuestions?: string[]) =>
     ipcRenderer.invoke(AGENT_CHANNELS.suggestedQuestions, messages, excludedQuestions),
   getDefaultPath: () => ipcRenderer.invoke(AGENT_CHANNELS.getDefaultPath),

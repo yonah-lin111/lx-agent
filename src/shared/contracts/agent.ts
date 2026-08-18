@@ -489,6 +489,31 @@ export interface AgentContextUsage {
   contextWindow: number
 }
 
+// 导出会话选项。
+export interface ExportSessionOptions {
+  sessionId?: string
+  format: "html" | "markdown" | "jsonl"
+  customPath?: string
+  openAfterExport?: boolean
+}
+
+// 导出会话结果。
+export type ExportSessionResult =
+  | { ok: true; filePath: string; canceled?: false }
+  | { ok: true; canceled: true }
+  | { ok: false; error: string }
+
+// 复制会话选项。
+export interface CopySessionOptions {
+  sessionId?: string
+  target?: "markdown" | "last_assistant"
+}
+
+// 复制会话结果。
+export type CopySessionResult =
+  | { ok: true; text: string }
+  | { ok: false; error: string }
+
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
   agent: {
@@ -522,6 +547,12 @@ export interface AgentApi {
     getLspStatus: () => Promise<LspServerStatusItem[]>
     // 安装缺失的 LSP server 包（npm install -g）。
     installLspServers: () => Promise<LspInstallResult>
+    // 加载可用 Prompt 模板列表。
+    listPromptTemplates: (cwd?: string) => Promise<PromptTemplateItem[]>
+    // 导出会话（HTML / Markdown / JSONL）。
+    exportSession: (options: ExportSessionOptions) => Promise<ExportSessionResult>
+    // 复制会话内容（Markdown 全文或最后一条 Assistant 回复）。
+    copySession: (options?: CopySessionOptions) => Promise<CopySessionResult>
     // 为最后一条 AI 回答生成后续建议问题。
     suggestedQuestions: (
       messages: SuggestedQuestionContextMessage[],

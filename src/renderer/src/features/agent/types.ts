@@ -8,6 +8,7 @@ import type {
   StopReason,
   SubagentData,
   Usage,
+  UserMessageCommand,
 } from "@shared/contracts/agent"
 
 export type {

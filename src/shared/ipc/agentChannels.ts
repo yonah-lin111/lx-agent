@@ -28,5 +28,8 @@ export const AGENT_CHANNELS = {
   questionResponse: "agent:questionResponse",
   // LSP 结果跳转：系统默认编辑器打开文件并定位行。
   openFileAt: "agent:openFileAt",
+  // 会话导出与复制通道
+  exportSession: "agent:exportSession",
+  copySession: "agent:copySession",
   event: "agent:event",
 } as const
