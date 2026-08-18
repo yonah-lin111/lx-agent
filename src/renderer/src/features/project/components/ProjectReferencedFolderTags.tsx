@@ -326,14 +326,6 @@ const ProjectReferencedFolderTagsContent = ({
     <div className={`relative flex min-w-0 max-w-full items-center overflow-hidden ${className}`}>
       <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 overflow-hidden">
         <LxIconButton
-          aria-label="添加文件夹"
-          size="small"
-          title={{ content: "添加文件夹", placement: "top" }}
-          onClick={() => void handlePickFolder()}
-        >
-          <FolderPlus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
-        </LxIconButton>
-        <LxIconButton
           aria-label="向左滚动"
           disabled={!canScrollLeft}
           size="small"
@@ -354,15 +346,15 @@ const ProjectReferencedFolderTagsContent = ({
               {Array.from({ length: 3 }, (_, index) => (
                 <div
                   key={index}
-                  className="flex animate-pulse items-center gap-1 rounded-[4px] border border-white/5 bg-white/[0.03] px-1.5 py-0.5"
+                  className="flex animate-pulse items-center gap-1 rounded-[6px] border border-white/5 bg-white/[0.03] px-2 py-1"
                 >
-                  <div className="h-2.5 w-2.5 shrink-0 rounded-[2px] bg-white/10" />
+                  <div className="h-3 w-3 shrink-0 rounded-[4px] bg-white/10" />
                   <div
-                    className={`h-2.5 rounded-[2px] bg-white/10 ${
-                      ["w-12", "w-16", "w-14"][index] ?? "w-14"
+                    className={`h-3 rounded-[4px] bg-white/10 ${
+                      ["w-16", "w-24", "w-20"][index] ?? "w-20"
                     }`}
                   />
-                  <div className="h-2 w-2 shrink-0 rounded-[2px] bg-white/[0.06]" />
+                  <div className="h-2.5 w-2.5 shrink-0 rounded-[4px] bg-white/[0.06]" />
                 </div>
               ))}
             </div>
@@ -378,8 +370,8 @@ const ProjectReferencedFolderTagsContent = ({
                     bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
                     closeTooltipContent="是否要删除这个文件夹？"
                     hoverClass=""
-                    prefix={<Folder className="h-2.5 w-2.5" />}
-                    size="small"
+                    prefix={<Folder className="h-3 w-3" />}
+                    size="default"
                     suffix={
                       <>
                         <LxTooltip
@@ -392,7 +384,7 @@ const ProjectReferencedFolderTagsContent = ({
                             aria-label={
                               isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
                             }
-                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] transition-colors ${
+                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
                               isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
                             }`}
                             type="button"
@@ -410,7 +402,7 @@ const ProjectReferencedFolderTagsContent = ({
                         <LxTooltip content={isCopied ? "已复制" : "复制文件夹引用"} placement="top">
                           <button
                             aria-label="复制文件夹引用"
-                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] transition-colors ${
+                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
                               isCopied ? "text-current" : "text-current/60 hover:text-current"
                             }`}
                             type="button"
@@ -445,6 +437,14 @@ const ProjectReferencedFolderTagsContent = ({
           onClick={() => handleScroll("right")}
         >
           <ChevronRight className="h-3.5 w-3.5" />
+        </LxIconButton>
+        <LxIconButton
+          aria-label="添加文件夹"
+          size="small"
+          title={{ content: "添加文件夹", placement: "top" }}
+          onClick={() => void handlePickFolder()}
+        >
+          <FolderPlus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
         </LxIconButton>
       </div>
       {folderPanel && (
