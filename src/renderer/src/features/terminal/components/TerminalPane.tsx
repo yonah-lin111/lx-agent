@@ -44,24 +44,32 @@ export const TerminalPane = ({
 
     // 自定义按键处理：处理 Shift+Enter 换行与系统剪贴板复制/粘贴
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-      if (event.type !== "keydown") return true
-
       // Shift + Enter 触发换行：发送 Escape + Return (\x1b\r)
       // 这是现代终端（VS Code/Cursor/Ghostty/Claude Code）中 Shift+Enter 换行而不触发提交的标准转义序列
       if (event.shiftKey && event.key === "Enter") {
-        void terminalApi.write(tab.id, "\x1b\r")
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.type === "keydown") {
+          void terminalApi.write(tab.id, "\x1b\r")
+        }
         return false
       }
+
+      if (event.type !== "keydown") return true
 
       const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
       const isModifier = isMac ? event.metaKey : event.ctrlKey
 
       if (isModifier && event.key.toLowerCase() === "c" && term.hasSelection()) {
+        event.preventDefault()
+        event.stopPropagation()
         void navigator.clipboard.writeText(term.getSelection())
         return false
       }
 
       if (isModifier && event.key.toLowerCase() === "v") {
+        event.preventDefault()
+        event.stopPropagation()
         void navigator.clipboard.readText().then((text) => {
           if (text) {
             term.paste(text)
