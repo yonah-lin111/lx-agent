@@ -6,6 +6,7 @@ import {
   inferArgumentHint,
   PromptTemplateLoader,
   parseCommandArgs,
+  parseFrontmatterSafely,
   substituteArgs,
 } from "@/agent/prompts/promptTemplateLoader"
 
@@ -229,6 +230,43 @@ description: 重构代码
 
     it("returns undefined for static templates without arguments", () => {
       expect(inferArgumentHint("请输出系统架构图。")).toBeUndefined()
+    })
+  })
+
+  describe("parseFrontmatterSafely", () => {
+    it("handles unquoted bracketed argument-hint without syntax error", () => {
+      const raw = `---
+description: say hello
+argument-hint: [content] [title]
+---
+输出 $1 的内容，并添加表情emoji
+`
+      const parsed = parseFrontmatterSafely(raw)
+      expect(parsed.frontmatter.description).toBe("say hello")
+      expect(parsed.frontmatter["argument-hint"]).toBe("[content] [title]")
+      expect(parsed.content.trim()).toBe("输出 $1 的内容，并添加表情emoji")
+    })
+
+    it("loads template with unquoted argument-hint correctly", () => {
+      writeFileSync(
+        join(projectPromptsDir, "sayHello.md"),
+        `---
+description: say hello
+argument-hint: [content] [title]
+---
+输出 $1 的内容，并添加表情emoji
+`,
+      )
+
+      const templates = loader.load(projectDir)
+      expect(templates).toHaveLength(1)
+      expect(templates[0]).toMatchObject({
+        name: "sayHello",
+        description: "say hello",
+        argumentHint: "[content] [title]",
+        content: "输出 $1 的内容，并添加表情emoji",
+        source: "project",
+      })
     })
   })
 })

@@ -153,6 +153,55 @@ export function inferArgumentHint(content: string): string | undefined {
 }
 
 /**
+ * 健壮解析 frontmatter，支持非标准 YAML 格式（如未加引号的 argument-hint: [content] [title]）。
+ */
+export function parseFrontmatterSafely(fileContent: string): {
+  frontmatter: Record<string, unknown>
+  content: string
+} {
+  try {
+    const parsed = matter(fileContent)
+    if (parsed && parsed.data && Object.keys(parsed.data).length > 0) {
+      return { frontmatter: parsed.data, content: parsed.content || "" }
+    }
+  } catch {
+    // gray-matter 遇到非严格 YAML 时降级到正则行解析
+  }
+
+  // 手动提取 --- 包裹的 frontmatter 区块
+  const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/)
+  if (!match) {
+    return { frontmatter: {}, content: fileContent }
+  }
+
+  const rawYaml = match[1]
+  const body = match[2]
+  const data: Record<string, unknown> = {}
+
+  for (const line of rawYaml.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const colonIdx = trimmed.indexOf(":")
+    if (colonIdx === -1) continue
+
+    const key = trimmed.slice(0, colonIdx).trim()
+    let value = trimmed.slice(colonIdx + 1).trim()
+
+    // 去除外层引号
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1).trim()
+    }
+
+    data[key] = value
+  }
+
+  return { frontmatter: data, content: body }
+}
+
+/**
  * 从单个 .md 文件加载并解析 Prompt 模板。
  */
 export function loadTemplateFromFile(
@@ -161,9 +210,7 @@ export function loadTemplateFromFile(
 ): LoadedPromptTemplate | null {
   try {
     const fileContent = readFileSync(filePath, "utf8")
-    const parsed = matter(fileContent)
-    const frontmatter = parsed.data || {}
-    const body = parsed.content || ""
+    const { frontmatter, content: body } = parseFrontmatterSafely(fileContent)
 
     const name = (frontmatter.name ? String(frontmatter.name) : basename(filePath, ".md")).trim()
     if (!name || RESERVED_COMMANDS.has(name) || name.startsWith("skill:")) {
@@ -171,7 +218,7 @@ export function loadTemplateFromFile(
     }
 
     let description = ""
-    if (typeof frontmatter.description === "string") {
+    if (typeof frontmatter.description === "string" && frontmatter.description.trim()) {
       description = frontmatter.description.trim()
     } else {
       const firstLine = body.split("\n").find((line) => line.trim())
@@ -184,9 +231,18 @@ export function loadTemplateFromFile(
     let argumentHint: string | undefined
     const rawHint = frontmatter["argument-hint"] ?? frontmatter.argumentHint
     if (typeof rawHint === "string" && rawHint.trim()) {
-      argumentHint = rawHint.trim()
-      if (!argumentHint.startsWith("[") && !argumentHint.includes(" ")) {
-        argumentHint = `[${argumentHint}]`
+      const trimmedHint = rawHint.trim()
+      if (trimmedHint.includes(",") && !trimmedHint.startsWith("[")) {
+        argumentHint = trimmedHint
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((s) => (s.startsWith("[") ? s : `[${s}]`))
+          .join(" ")
+      } else if (!trimmedHint.startsWith("[") && !trimmedHint.includes(" ")) {
+        argumentHint = `[${trimmedHint}]`
+      } else {
+        argumentHint = trimmedHint
       }
     } else if (Array.isArray(rawHint)) {
       argumentHint = rawHint
