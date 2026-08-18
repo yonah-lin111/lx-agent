@@ -42,9 +42,15 @@ export const TerminalPane = ({
     terminalRef.current = term
     fitAddonRef.current = fitAddon
 
-    // 自定义按键处理：仅拦截系统剪贴板复制/粘贴，其余按键完全由 xterm 原生捕获
+    // 自定义按键处理：处理 Shift+Enter 换行与系统剪贴板复制/粘贴
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
       if (event.type !== "keydown") return true
+
+      // Shift + Enter 触发换行（发送 LF \n 而非默认执行命令的 CR \r）
+      if (event.shiftKey && event.key === "Enter") {
+        void terminalApi.write(tab.id, "\n")
+        return false
+      }
 
       const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
       const isModifier = isMac ? event.metaKey : event.ctrlKey
