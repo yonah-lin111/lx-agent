@@ -91,40 +91,16 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
   {
     id: "export",
     name: "/export",
-    description: "导出会话报告（选择 HTML / Markdown / JSONL）",
+    description: "导出会话报告（参数：html / md / jsonl）",
     kind: "builtin",
     argumentHint: "[html|md|jsonl]",
   },
   {
-    id: "export:html",
-    name: "/export:html",
-    description: "导出会话为交互式 HTML 网页报告",
-    kind: "builtin",
-  },
-  {
-    id: "export:md",
-    name: "/export:md",
-    description: "导出会话为 Markdown 结构化文档",
-    kind: "builtin",
-  },
-  {
-    id: "export:jsonl",
-    name: "/export:jsonl",
-    description: "导出会话为 JSONL 训练/分析数据集",
-    kind: "builtin",
-  },
-  {
     id: "copy",
     name: "/copy",
-    description: "复制最近一条回复到剪贴板",
+    description: "复制会话到剪贴板（参数：all 复制全文，缺省复制最近回复）",
     kind: "builtin",
     argumentHint: "[all]",
-  },
-  {
-    id: "copy:all",
-    name: "/copy:all",
-    description: "复制完整对话 Markdown 到剪贴板",
-    kind: "builtin",
   },
 ]
 
@@ -1107,51 +1083,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               selection,
             })
           }
-        } else if (command.id === "export:html") {
-          onChangeRef.current("")
-          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
-          void agentApi
-            .exportSession({ format: "html", openAfterExport: true })
-            .then((res) => {
-              if (res.ok && !res.canceled && res.filePath) {
-                successToast(`导出成功 (HTML): ${res.filePath}`)
-              } else if (!res.ok) {
-                errorToast(res.error || "导出失败")
-              }
-            })
-            .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "导出失败")
-            })
-        } else if (command.id === "export:md") {
-          onChangeRef.current("")
-          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
-          void agentApi
-            .exportSession({ format: "markdown", openAfterExport: true })
-            .then((res) => {
-              if (res.ok && !res.canceled && res.filePath) {
-                successToast(`导出成功 (Markdown): ${res.filePath}`)
-              } else if (!res.ok) {
-                errorToast(res.error || "导出失败")
-              }
-            })
-            .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "导出失败")
-            })
-        } else if (command.id === "export:jsonl") {
-          onChangeRef.current("")
-          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
-          void agentApi
-            .exportSession({ format: "jsonl", openAfterExport: true })
-            .then((res) => {
-              if (res.ok && !res.canceled && res.filePath) {
-                successToast(`导出成功 (JSONL): ${res.filePath}`)
-              } else if (!res.ok) {
-                errorToast(res.error || "导出失败")
-              }
-            })
-            .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "导出失败")
-            })
         } else if (command.id === "copy") {
           const insertText = "/copy [all]"
           onChangeRef.current(insertText)
@@ -1162,23 +1093,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               selection,
             })
           }
-        } else if (command.id === "copy:all") {
-          onChangeRef.current("")
-          view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
-          void agentApi
-            .copySession({ target: "markdown" })
-            .then((res) => {
-              if (res.ok && res.text) {
-                void navigator.clipboard.writeText(res.text).then(() => {
-                  successToast("已复制完整对话 Markdown")
-                })
-              } else if (!res.ok) {
-                errorToast(res.error || "复制失败")
-              }
-            })
-            .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "复制失败")
-            })
         }
         view?.focus()
       },
