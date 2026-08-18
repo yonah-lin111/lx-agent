@@ -275,8 +275,12 @@ class AgentRunner {
     return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
   }
 
-  // 显式触发 /skill:<name> args → 正文块（strip frontmatter）+ args；未命中原样透传。
-  private _expandSkillCommand(text: string): string {
+  private getEffectiveCwd(contextCwd?: string): string | undefined {
+    return contextCwd ?? this.cwd ?? this.requestedCwd
+  }
+
+  // 显式 /skill:<name> 指令宏展开：读取 SKILL.md 正文并拼装为 <skill> 结构化块注入用户消息。
+  private _expandSkillCommand(text: string, contextCwd?: string): string {
     if (!text.startsWith("/skill:")) return text
     const spaceIndex = text.indexOf(" ")
     const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
