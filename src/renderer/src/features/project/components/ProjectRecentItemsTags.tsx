@@ -14,24 +14,21 @@ import {
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
-// 渲染「项目/文件夹/条目」单行标签文本与对应图标。
+// 渲染「项目/文件夹/条目」单行标签文本。
 const renderTagLabel = (card: RecentItemCard): React.ReactNode => (
   <span className="inline-flex min-w-0 items-center gap-0.5">
     {card.projectName && (
       <>
-        <Boxes className="h-3 w-3 shrink-0 text-sky-400/80" />
         <span className="truncate">{card.projectName}</span>
         <span>/</span>
       </>
     )}
     {card.folderName && (
       <>
-        <Folder className="h-3 w-3 shrink-0 text-amber-400/80" />
         <span className="truncate">{card.folderName}</span>
         <span>/</span>
       </>
     )}
-    <File className="h-3 w-3 shrink-0 text-white/50" />
     <span className="truncate">{card.itemName}</span>
   </span>
 )
@@ -261,6 +258,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                     color={card.inProgress > 0 ? "amber" : "default"}
                     highlighted={isActive}
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
+                    prefix={<File className="h-3 w-3" />}
                     suffix={
                       <span
                         aria-label="移出最近打开"
