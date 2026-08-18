@@ -15,7 +15,7 @@ describe("terminalStore", () => {
   it("支持新增标签页并自动递增默认标题与激活新建标签", () => {
     const id1 = useTerminalStore.getState().addTab()
     expect(useTerminalStore.getState().tabs).toHaveLength(1)
-    expect(useTerminalStore.getState().tabs[0]?.title).toBe("终端 1")
+    expect(useTerminalStore.getState().tabs[0]?.title).toBe("Terminal 1")
     expect(useTerminalStore.getState().activeTabId).toBe(id1)
 
     const id2 = useTerminalStore.getState().addTab({ title: "Custom" })

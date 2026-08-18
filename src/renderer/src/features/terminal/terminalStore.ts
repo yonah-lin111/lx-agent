@@ -25,7 +25,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   addTab: (params) => {
     const nextCounter = get().terminalCounter + 1
     const id = `term_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-    const defaultTitle = `终端 ${get().terminalCounter}`
+    const defaultTitle = `Terminal ${get().terminalCounter}`
 
     const newTab: TerminalTabItem = {
       id,
