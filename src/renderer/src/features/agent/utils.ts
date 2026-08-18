@@ -47,6 +47,7 @@ export const toChatMessage = (
       isStreaming: false,
       timestamp: message.timestamp,
       isSteer: message.isSteer,
+      command: message.command,
       files: message.files,
     }
   }

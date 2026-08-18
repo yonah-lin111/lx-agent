@@ -166,5 +166,10 @@ description: 审计代码
       ? (userMsg.content[0] as TextContent).text
       : userMsg.content
     expect(text).toBe("请审查模块 src/core.ts。重点：src/core.ts 关注性能")
+    expect(userMsg.command).toEqual({
+      name: "audit",
+      kind: "prompt",
+      source: "project",
+    })
   })
 })

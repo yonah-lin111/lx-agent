@@ -26,6 +26,7 @@ export type {
   SubagentStep,
   ToolResultMessage,
   Usage,
+  UserMessageCommand,
 } from "@shared/contracts/agent"
 
 // 消息内容块渲染视图。
@@ -74,6 +75,8 @@ export interface ChatMessage {
   stopReason?: StopReason
   // 是否为即时插话消息（steer 模式发送；列表展示微标签）。
   isSteer?: boolean
+  // 指令来源元数据（Prompt 模板、Skill 或 Slash 命令）。
+  command?: UserMessageCommand
   // 队列 drain 自动发送的 user 消息（流式中排队，run 结束后自动发送；列表据此跳过"用户发送→滚动到底"）。
   isQueuedDrain?: boolean
   // 上下文压缩 loading 占位（compaction_start 插入、同 compactionId 的 summary/failed 替换或移除）。

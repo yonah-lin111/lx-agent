@@ -47,6 +47,13 @@ export interface CompactionUsage {
   output: number
 }
 
+// 用户消息指令来源元数据。
+export interface UserMessageCommand {
+  name: string
+  kind: "builtin" | "prompt" | "skill"
+  source?: "project" | "user"
+}
+
 // 用户消息。
 export interface UserMessage {
   role: "user"
@@ -54,6 +61,8 @@ export interface UserMessage {
   timestamp: number
   // 是否为即时插话（steer 消息注入当前 run 的 turn 边界，用于视觉标识与区分）。
   isSteer?: boolean
+  // 指令来源元数据（Prompt 模板、Skill 或 Slash 命令）。
+  command?: UserMessageCommand
   files?: {
     name: string
     path: string

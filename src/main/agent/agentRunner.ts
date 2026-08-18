@@ -17,6 +17,7 @@ import type {
   TodoList,
   TodoStateMessage,
   UserMessage,
+  UserMessageCommand,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
@@ -289,11 +290,41 @@ class AgentRunner {
     return args ? `${skillBlock}\n\n${args}` : skillBlock
   }
 
-  // 统一指令宏展开：优先匹配 /skill: 显式调用，其次匹配 Prompt 模板（/<template> args）；未命中原样透传。
-  private _expandCommand(text: string): string {
+  // 统一指令宏展开与元数据解析
+  private _expandAndDetectCommand(text: string): {
+    expanded: string
+    command?: UserMessageCommand
+  } {
     const skillExpanded = this._expandSkillCommand(text)
-    if (skillExpanded !== text) return skillExpanded
-    return promptTemplateLoader.expand(text, this.cwd)
+    if (skillExpanded !== text) {
+      const match = text.match(/^\/skill:([^\s]+)/)
+      return {
+        expanded: skillExpanded,
+        command: {
+          name: match ? match[1] : "skill",
+          kind: "skill",
+        },
+      }
+    }
+
+    const templateMatch = promptTemplateLoader.match(text, this.cwd)
+    if (templateMatch) {
+      return {
+        expanded: templateMatch.expanded,
+        command: {
+          name: templateMatch.template.name,
+          kind: "prompt",
+          source: templateMatch.template.source,
+        },
+      }
+    }
+
+    return { expanded: text }
+  }
+
+  // 统一指令宏展开：兼容原有简单字符串调用
+  private _expandCommand(text: string): string {
+    return this._expandAndDetectCommand(text).expanded
   }
 
   // 当前是否有活动 run 或排队消息：流式输出 / 正在 drain / 队列非空均为 busy。
@@ -374,12 +405,13 @@ class AgentRunner {
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
       const isNewSession = !this.currentSessionId
       if (!isNewSession && this.currentSessionId) {
-        const expanded = this._expandCommand(text)
+        const { expanded, command } = this._expandAndDetectCommand(text)
         const steerMessage: UserMessage = {
           role: "user",
           content: expanded,
           timestamp: Date.now(),
           isSteer: true,
+          command: command ?? { name: "steer", kind: "builtin" },
         }
         if (context?.files && context.files.length > 0) {
           steerMessage.files = this.processPendingFiles(this.currentSessionId, context.files)
@@ -452,7 +484,7 @@ class AgentRunner {
       this.turnStore.resetOverflow()
     }
     // 显式 /skill: 或 Prompt 模板在 main 侧展开正文（未命中原样透传）。
-    const expanded = this._expandCommand(text)
+    const { expanded, command } = this._expandAndDetectCommand(text)
     this.beginSessionTurn(text)
     // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
     this.turnStore.captureSnapshot()
@@ -477,7 +509,13 @@ class AgentRunner {
     }
 
     try {
-      await agent.prompt(expanded)
+      const userMessage: UserMessage = {
+        role: "user",
+        content: expanded,
+        timestamp: Date.now(),
+        ...(command ? { command } : {}),
+      }
+      await agent.prompt(userMessage)
       // context-overflow 自动压缩重试一次（决策 9）：移除错误消息 → 强制压缩 → 续跑重试。
       if (this.turnStore.consumeOverflow()) {
         this.removeLastOverflowMessage()

@@ -232,10 +232,10 @@ const getCommandTag = (command: AgentInputCommand): { label: string; bgClass: st
   }
   if (command.kind === "prompt") {
     return command.source === "project"
-      ? { label: "项目", bgClass: "bg-[#059669]/20 text-[#34d399]" }
-      : { label: "全局", bgClass: "bg-[#2563eb]/20 text-[#60a5fa]" }
+      ? { label: "Project", bgClass: "bg-[#059669]/20 text-[#34d399]" }
+      : { label: "Global", bgClass: "bg-[#2563eb]/20 text-[#60a5fa]" }
   }
-  return { label: "内置", bgClass: "bg-white/10 text-white/50" }
+  return { label: "Builtin", bgClass: "bg-white/10 text-white/50" }
 }
 
 /**

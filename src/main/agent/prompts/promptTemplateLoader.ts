@@ -246,28 +246,41 @@ export class PromptTemplateLoader {
   }
 
   /**
-   * 展开文本中的模板调用：
-   * 若 text 以 /<template_name> 开头（且不是保留命令或 /skill:），则执行参数解析与宏替换。
+   * 匹配文本中的模板调用：
+   * 若 text 以 /<template_name> 开头（且不是保留命令或 /skill:），返回匹配到的模板对象、解析参数与宏替换后的文本。
    */
-  expand(text: string, cwd?: string): string {
-    if (!text.startsWith("/") || text.startsWith("/skill:")) return text
+  match(
+    text: string,
+    cwd?: string,
+  ): { template: LoadedPromptTemplate; args: string[]; expanded: string } | null {
+    if (!text.startsWith("/") || text.startsWith("/skill:")) return null
 
-    const match = text.match(/^\/([^\s]+)(?:\s+([\s\S]*))?$/)
-    if (!match) return text
+    const matched = text.match(/^\/([^\s]+)(?:\s+([\s\S]*))?$/)
+    if (!matched) return null
 
-    const commandName = match[1]
-    if (RESERVED_COMMANDS.has(commandName)) return text
+    const commandName = matched[1]
+    if (RESERVED_COMMANDS.has(commandName)) return null
 
-    const argsString = match[2] ?? ""
+    const argsString = matched[2] ?? ""
     const templates = this.load(cwd)
     const template = templates.find((t) => t.name === commandName)
 
     if (template) {
       const args = parseCommandArgs(argsString)
-      return substituteArgs(template.content, args)
+      const expanded = substituteArgs(template.content, args)
+      return { template, args, expanded }
     }
 
-    return text
+    return null
+  }
+
+  /**
+   * 展开文本中的模板调用：
+   * 若 text 以 /<template_name> 开头（且不是保留命令或 /skill:），则执行参数解析与宏替换。
+   */
+  expand(text: string, cwd?: string): string {
+    const matched = this.match(text, cwd)
+    return matched ? matched.expanded : text
   }
 }
 

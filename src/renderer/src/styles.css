@@ -8,6 +8,10 @@
   --color-user-bubble: #1f4e79;
   /* 即时插话（steer）消息气泡色：暖色暗调，与普通用户消息区分 */
   --color-steer-bubble: #5a4522;
+  /* 项目级 Prompt 模板气泡色：深青绿暗调 */
+  --color-project-prompt-bubble: #174238;
+  /* 全局级 Prompt 模板气泡色：深靛蓝暗调 */
+  --color-global-prompt-bubble: #2d3164;
 }
 
 :root {
