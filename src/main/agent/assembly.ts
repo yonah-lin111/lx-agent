@@ -56,6 +56,10 @@ export const resolveCwd = (): string | undefined => {
   return filesystemProjects[0]?.path
 }
 
+export interface SessionToolDeps {
+  getSessionId: () => string | null
+}
+
 // 装配会话工具集：注册内置工具全集 + task + MCP 包装工具 + read_skill + lsp，按能力集激活。
 export const createRegistry = (
   cwd: string,
@@ -65,19 +69,22 @@ export const createRegistry = (
   taskDeps?: TaskToolDeps,
   questionDeps?: QuestionToolDeps,
   lspDeps?: LspToolDeps,
+  sessionDeps?: SessionToolDeps,
 ): ToolRegistry => {
+  const effectiveSessionDeps =
+    sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
   const registry = new ToolRegistry(cwd)
-  registry.register(createReadTool(cwd))
-  registry.register(createLsTool(cwd))
-  registry.register(createGrepTool(cwd))
-  registry.register(createFindTool(cwd))
-  registry.register(createWriteTool(cwd))
-  registry.register(createEditTool(cwd))
-  registry.register(createBashTool(cwd))
+  registry.register(createReadTool(cwd, effectiveSessionDeps))
+  registry.register(createLsTool(cwd, effectiveSessionDeps))
+  registry.register(createGrepTool(cwd, effectiveSessionDeps))
+  registry.register(createFindTool(cwd, effectiveSessionDeps))
+  registry.register(createWriteTool(cwd, lspDeps))
+  registry.register(createEditTool(cwd, lspDeps))
+  registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())
   registry.register(createWebSearchTool())
-  registry.register(createWebFetchTool())
+  registry.register(createWebFetchTool(undefined, effectiveSessionDeps))
   if (lspDeps) {
     registry.register(createLspTool(lspDeps))
   }
@@ -89,6 +96,7 @@ export const createRegistry = (
     registry.register(
       createTaskTool({
         ...taskDeps,
+        getSessionId: taskDeps.getSessionId ?? effectiveSessionDeps?.getSessionId,
         getTools: () => registry.getActive().filter((tool) => tool.name !== "task"),
       }),
     )

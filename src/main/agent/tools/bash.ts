@@ -3,6 +3,8 @@ import { constants, existsSync } from "node:fs"
 import { access } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
+import type { SessionDeps } from "./read"
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -97,14 +99,17 @@ const waitForChildProcess = (child: ReturnType<typeof spawn>): Promise<number | 
   })
 }
 
-// 创建 bash 工具：cwd 内执行命令，默认超时 + 进程树清理 + 尾部截断。
-export const createBashTool = (cwd: string): AgentTool<typeof bashSchema> => ({
+// 创建 bash 工具：cwd 内执行命令，默认超时 + 进程树清理 + 尾部截断 + Spill 机制。
+export const createBashTool = (
+  cwd: string,
+  sessionDeps?: SessionDeps,
+): AgentTool<typeof bashSchema> => ({
   name: "bash",
   label: "执行命令",
   description: `在项目根目录执行 shell 命令，返回 stdout 与 stderr 合并输出。输出截断保留最后 ${DEFAULT_MAX_LINES} 行或 ${DEFAULT_MAX_BYTES / 1024}KB。可传 timeout 指定超时秒数。`,
   inputSchema: bashSchema,
   executionMode: "sequential",
-  execute: async (_toolCallId, params, signal) => {
+  execute: async (toolCallId, params, signal) => {
     const shellConfig = getShellConfig()
     try {
       await access(cwd, constants.F_OK)
@@ -196,7 +201,8 @@ export const createBashTool = (cwd: string): AgentTool<typeof bashSchema> => ({
       }
 
       const truncation = truncateTail(rawOutput)
-      const { text, details } = formatOutput(truncation)
+      const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+      const { text, details } = formatOutput(rawOutput, truncation, { sessionId, toolCallId })
       if (exitCode !== 0 && exitCode !== null) {
         return {
           content: [{ type: "text", text: appendStatus(text, `命令退出码 ${exitCode}`) }],
@@ -217,19 +223,20 @@ const appendStatus = (text: string, status: string): string =>
 
 // 格式化尾部截断输出与提示。
 const formatOutput = (
+  rawOutput: string,
   truncation: TruncationResult,
+  options?: { sessionId?: string; toolCallId?: string },
 ): { text: string; details?: BashToolDetails } => {
   let text = truncation.content || "(无输出)"
   let details: BashToolDetails | undefined
   if (truncation.truncated) {
     details = { truncation }
-    const startLine = truncation.totalLines - truncation.outputLines + 1
-    const endLine = truncation.totalLines
-    if (truncation.truncatedBy === "lines") {
-      text += `\n\n[显示第 ${startLine}-${endLine} 行，共 ${truncation.totalLines} 行。]`
-    } else {
-      text += `\n\n[显示第 ${startLine}-${endLine} 行，共 ${truncation.totalLines} 行（${formatSize(DEFAULT_MAX_BYTES)} 限制）。]`
-    }
+    const { text: spilledText } = spillManager.handleTruncation(rawOutput, truncation, {
+      sessionId: options?.sessionId,
+      toolCallId: options?.toolCallId,
+      customActionHint: "Use 'read' tool with offset/limit to view full bash log.",
+    })
+    text = spilledText
   }
   return { text, details }
 }

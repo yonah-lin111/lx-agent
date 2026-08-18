@@ -2,7 +2,9 @@ import { spawn } from "node:child_process"
 import { createInterface } from "node:readline"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
+import type { SessionDeps } from "./read"
 import { globToRegExp, walkFiles } from "./search"
 import { DEFAULT_MAX_BYTES, formatSize, truncateHead } from "./truncate"
 
@@ -20,6 +22,7 @@ const findWithFd = async (
   searchPath: string,
   effectiveLimit: number,
   signal?: AbortSignal,
+  options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof findSchema>["execute"]> | undefined> => {
   const args: string[] = ["--glob", "--color=never", "--hidden"]
   args.push("--max-results", String(effectiveLimit))
@@ -68,13 +71,14 @@ const findWithFd = async (
     }
   }
 
-  return formatFindOutput(lines, effectiveLimit)
+  return formatFindOutput(lines, effectiveLimit, options)
 }
 
 // 格式化 find 输出：相对搜索根 + 截断 + 提示。
 const formatFindOutput = async (
   relativized: string[],
   effectiveLimit: number,
+  options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof findSchema>["execute"]>> => {
   if (relativized.length === 0) {
     return { content: [{ type: "text", text: "未找到匹配文件" }] }
@@ -88,9 +92,13 @@ const formatFindOutput = async (
     notices.push(`达到 ${effectiveLimit} 条结果限制`)
   }
   if (truncation.truncated) {
-    notices.push(`达到 ${formatSize(DEFAULT_MAX_BYTES)} 限制`)
-  }
-  if (notices.length > 0) {
+    const { text } = spillManager.handleTruncation(rawOutput, truncation, {
+      sessionId: options?.sessionId,
+      toolCallId: options?.toolCallId,
+      customActionHint: "Use more specific pattern or path to narrow down find results.",
+    })
+    output = text
+  } else if (notices.length > 0) {
     output += `\n\n[${notices.join(". ")}]`
   }
   return {
@@ -108,20 +116,24 @@ const findWithNode = async (
   searchPath: string,
   effectiveLimit: number,
   signal?: AbortSignal,
+  options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof findSchema>["execute"]>> => {
   const files = await walkFiles(searchPath, { signal, maxResults: effectiveLimit })
   const globRegex = globToRegExp(pattern)
   const matched = files.filter((file) => globRegex.test(file))
-  return formatFindOutput(matched.slice(0, effectiveLimit), effectiveLimit)
+  return formatFindOutput(matched.slice(0, effectiveLimit), effectiveLimit, options)
 }
 
 // 创建 find 工具：优先 fd 降级纯 Node glob。
-export const createFindTool = (cwd: string): AgentTool<typeof findSchema> => ({
+export const createFindTool = (
+  cwd: string,
+  sessionDeps?: SessionDeps,
+): AgentTool<typeof findSchema> => ({
   name: "find",
   label: "查找文件",
   description: `按 glob 模式在项目内查找文件，返回相对搜索目录的路径。输出截断到 ${DEFAULT_LIMIT} 条或 ${DEFAULT_MAX_BYTES / 1024}KB。`,
   inputSchema: findSchema,
-  execute: async (_toolCallId, params, signal) => {
+  execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
@@ -131,10 +143,12 @@ export const createFindTool = (cwd: string): AgentTool<typeof findSchema> => ({
     }
 
     const effectiveLimit = Math.max(1, params.limit ?? DEFAULT_LIMIT)
-    const fdResult = await findWithFd(params.pattern, searchPath, effectiveLimit, signal)
+    const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+    const options = { sessionId, toolCallId }
+    const fdResult = await findWithFd(params.pattern, searchPath, effectiveLimit, signal, options)
     if (fdResult !== undefined) {
       return fdResult
     }
-    return findWithNode(params.pattern, searchPath, effectiveLimit, signal)
+    return findWithNode(params.pattern, searchPath, effectiveLimit, signal, options)
   },
 })
