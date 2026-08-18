@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "./truncate"
 
@@ -9,6 +10,10 @@ const readSchema = z.object({
   offset: z.number().describe("起始读取行号（1 起始）").optional(),
   limit: z.number().describe("最多读取的行数").optional(),
 })
+
+export interface SessionDeps {
+  getSessionId?: () => string | null
+}
 
 export interface ReadToolDetails {
   truncation?: TruncationResult
@@ -21,14 +26,17 @@ const looksBinary = (buffer: Buffer): boolean => {
 }
 
 // 创建 read 工具：读取 cwd 内文件内容，支持 offset/limit 分页，越界或二进制文件拒绝。
-export const createReadTool = (cwd: string): AgentTool<typeof readSchema> => ({
+export const createReadTool = (
+  cwd: string,
+  sessionDeps?: SessionDeps,
+): AgentTool<typeof readSchema> => ({
   name: "read",
   label: "读取文件",
   description:
     "读取项目目录内指定文件的内容。path 为相对于项目根目录的文件路径，支持子目录。可选用 offset/limit 按行号分页读取大文件。禁止访问项目目录之外的文件。",
   inputSchema: readSchema,
   executionMode: "sequential",
-  execute: async (_toolCallId, params) => {
+  execute: async (toolCallId, params) => {
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
@@ -88,7 +96,14 @@ export const createReadTool = (cwd: string): AgentTool<typeof readSchema> => ({
         const nextOffset = endLineDisplay + 1
         const reason =
           truncation.truncatedBy === "lines" ? "" : `（${formatSize(DEFAULT_MAX_BYTES)} 限制）`
-        outputText = `${truncation.content}\n\n[显示第 ${startLineDisplay}-${endLineDisplay} 行，共 ${totalFileLines} 行${reason}。使用 offset=${nextOffset} 继续读取。]`
+        const hint = `显示第 ${startLineDisplay}-${endLineDisplay} 行，共 ${totalFileLines} 行${reason}。使用 offset=${nextOffset} 继续读取。`
+        const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+        const { text } = spillManager.handleTruncation(selectedContent, truncation, {
+          sessionId,
+          toolCallId,
+          customActionHint: hint,
+        })
+        outputText = text
       } else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {
         const remaining = allLines.length - (startLine + userLimitedLines)
         const nextOffset = startLine + userLimitedLines + 1

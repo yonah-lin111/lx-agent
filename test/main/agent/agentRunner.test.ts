@@ -777,9 +777,9 @@ describe("agentRunner 持久化", () => {
       )
     expect(taskResult).toBeDefined()
     const text = toolResultText(taskResult!)
-    // 有界预览 + 路径标记（完整内容写入 tool-output 文件）。
-    expect(text).toContain("输出超限")
-    expect(text).toContain("tool-output")
+    // 有界预览 + 路径标记（完整内容写入 spill 文件）。
+    expect(text).toContain("Output truncated")
+    expect(text).toContain(".lx/spill")
   })
 
   it("删除最后轮回滚该轮文件改动（git 快照）", async () => {

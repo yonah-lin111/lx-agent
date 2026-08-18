@@ -1,6 +1,7 @@
 import { access, readFile, writeFile } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { checkLspDiagnosticsFeedback, type LspFeedbackDeps } from "../lsp/feedback"
 import { generateStructuredDiff } from "./diff"
 import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
@@ -142,8 +143,11 @@ const applyEditsToNormalizedContent = (
   return { baseContent: normalizedContent, newContent }
 }
 
-// 创建 edit 工具：目标文本替换，经 mutation queue 串行化。
-export const createEditTool = (cwd: string): AgentTool<typeof editSchema> => ({
+// 创建 edit 工具：目标文本替换，经 mutation queue 串行化，写后自动进行 LSP 诊断探测。
+export const createEditTool = (
+  cwd: string,
+  lspDeps?: LspFeedbackDeps,
+): AgentTool<typeof editSchema> => ({
   name: "edit",
   label: "编辑文件",
   description:
@@ -208,12 +212,19 @@ export const createEditTool = (cwd: string): AgentTool<typeof editSchema> => ({
       await writeFile(absolutePath, finalContent, "utf-8")
       throwIfAborted()
 
+      const baseText = `已替换 ${params.edits.length} 处内容于 ${params.path}。`
+      const { textSuffix, errors } = await checkLspDiagnosticsFeedback(
+        params.path,
+        absolutePath,
+        cwd,
+        lspDeps,
+      )
+
       return {
-        content: [
-          { type: "text", text: `已替换 ${params.edits.length} 处内容于 ${params.path}。` },
-        ],
+        content: [{ type: "text", text: `${baseText}${textSuffix}` }],
         details: {
           diff: generateStructuredDiff(baseContent, newContent, params.path),
+          ...(errors.length > 0 ? { diagnostics: errors } : {}),
         },
       }
     })

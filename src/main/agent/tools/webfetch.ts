@@ -2,6 +2,8 @@ import { DomUtils, parseDocument } from "htmlparser2"
 import TurndownService from "turndown"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
+import type { SessionDeps } from "./read"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./truncate"
 
 // 原始响应硬上限（超限抛错，防恶意 URL 返回超大内容）。
@@ -143,6 +145,7 @@ const createRequestController = (
  */
 export const createWebFetchTool = (
   fetcher: Fetcher = fetch,
+  sessionDeps?: SessionDeps,
 ): AgentTool<typeof webfetchInputSchema, WebFetchDetails> => ({
   name: "webfetch",
   label: "抓取网页",
@@ -151,7 +154,7 @@ export const createWebFetchTool = (
     "仅支持 http/https 公网地址（私网地址被阻断）。HTML 页面默认转为 markdown；纯文本/JSON 原样返回。",
   inputSchema: webfetchInputSchema,
   executionMode: "parallel",
-  execute: async (_toolCallId, params, signal) => {
+  execute: async (toolCallId, params, signal) => {
     const { url, format = "markdown", timeout = DEFAULT_TIMEOUT_S } = params
     parseHttpUrl(url) // 仅校验 scheme 与私网；非法时抛错（error toolResult 回灌模型）。
     const { controller, dispose } = createRequestController(signal, timeout * 1000)
@@ -174,9 +177,13 @@ export const createWebFetchTool = (
         maxLines: DEFAULT_MAX_LINES,
         maxBytes: DEFAULT_MAX_BYTES,
       })
-      const content = truncated.truncated
-        ? `${truncated.content}\n\n[内容已截断（原 ${truncated.totalBytes} 字节）]`
-        : truncated.content
+      const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+      const { text: content } = spillManager.handleTruncation(converted, truncated, {
+        sessionId,
+        toolCallId,
+        customActionHint:
+          "Use 'read' tool with offset/limit to inspect specific sections of the scraped page.",
+      })
       return {
         content: [{ type: "text", text: content }],
         details: { url, format, contentType, provider: "webfetch" },

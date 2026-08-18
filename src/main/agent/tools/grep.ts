@@ -4,12 +4,15 @@ import { basename, join, relative, sep } from "node:path"
 import { createInterface } from "node:readline"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
-import { globToRegExp, readFileText, walkFiles } from "./search"
+import type { SessionDeps } from "./read"
+import { globToRegExp, walkFiles } from "./search"
 import {
   DEFAULT_MAX_BYTES,
   formatSize,
   GREP_MAX_LINE_LENGTH,
+  type TruncationResult,
   truncateHead,
   truncateLine,
 } from "./truncate"
@@ -100,6 +103,7 @@ const grepWithRg = async (
   isDirectory: boolean,
   effectiveLimit: number,
   signal?: AbortSignal,
+  options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof grepSchema>["execute"]> | undefined> => {
   const rgArgs = ["--json", "--line-number", "--color=never", "--hidden"]
   if (args.ignoreCase) rgArgs.push("--ignore-case")
@@ -166,15 +170,36 @@ const grepWithRg = async (
     }
   }
 
+  return formatGrepOutput(
+    matches,
+    args,
+    searchPath,
+    isDirectory,
+    effectiveLimit,
+    matchLimitReached,
+    options,
+  )
+}
+
+// 统一格式化 grep 输出与截断/Spill 处理。
+const formatGrepOutput = async (
+  matches: MatchEntry[],
+  args: GrepArgs,
+  searchPath: string,
+  isDirectory: boolean,
+  effectiveLimit: number,
+  matchLimitReached: boolean,
+  options?: { sessionId?: string; toolCallId?: string },
+): Promise<ReturnType<AgentTool<typeof grepSchema>["execute"]>> => {
+  if (!matches.length) {
+    return { content: [{ type: "text", text: "未找到匹配" }] }
+  }
   const { output: rawOutput, linesTruncated } = await formatMatches(
     matches,
     args,
     searchPath,
     isDirectory,
   )
-  if (!matches.length) {
-    return { content: [{ type: "text", text: "未找到匹配" }] }
-  }
   const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER })
   let output = truncation.content
   const notices: string[] = []
@@ -184,13 +209,19 @@ const grepWithRg = async (
     )
   }
   if (truncation.truncated) {
-    notices.push(`达到 ${formatSize(DEFAULT_MAX_BYTES)} 限制`)
-  }
-  if (linesTruncated) {
-    notices.push(`部分行截断到 ${GREP_MAX_LINE_LENGTH} 字符，使用 read 工具查看完整内容`)
-  }
-  if (notices.length > 0) {
-    output += `\n\n[${notices.join(". ")}]`
+    const { text } = spillManager.handleTruncation(rawOutput, truncation, {
+      sessionId: options?.sessionId,
+      toolCallId: options?.toolCallId,
+      customActionHint: "Use more specific grep pattern or path filter to narrow down matches.",
+    })
+    output = text
+  } else {
+    if (linesTruncated) {
+      notices.push(`部分行截断到 ${GREP_MAX_LINE_LENGTH} 字符，使用 read 工具查看完整内容`)
+    }
+    if (notices.length > 0) {
+      output += `\n\n[${notices.join(". ")}]`
+    }
   }
   return {
     content: [{ type: "text", text: output }],
@@ -256,49 +287,27 @@ const grepWithNode = async (
     if (matchLimitReached) break
   }
 
-  const { output: rawOutput, linesTruncated } = await formatMatches(
+  return formatGrepOutput(
     matches,
     args,
     searchPath,
     isDirectory,
+    effectiveLimit,
+    matchLimitReached,
+    options,
   )
-  if (!matches.length) {
-    return { content: [{ type: "text", text: "未找到匹配" }] }
-  }
-  const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER })
-  let output = truncation.content
-  const notices: string[] = []
-  if (matchLimitReached) {
-    notices.push(
-      `达到 ${effectiveLimit} 条匹配限制，使用 limit=${effectiveLimit * 2} 获取更多或细化模式`,
-    )
-  }
-  if (truncation.truncated) {
-    notices.push(`达到 ${formatSize(DEFAULT_MAX_BYTES)} 限制`)
-  }
-  if (linesTruncated) {
-    notices.push(`部分行截断到 ${GREP_MAX_LINE_LENGTH} 字符，使用 read 工具查看完整内容`)
-  }
-  if (notices.length > 0) {
-    output += `\n\n[${notices.join(". ")}]`
-  }
-  return {
-    content: [{ type: "text", text: output }],
-    details: {
-      matchLimitReached: matchLimitReached ? effectiveLimit : undefined,
-      truncation: truncation.truncated ? truncation : undefined,
-      linesTruncated: linesTruncated || undefined,
-    },
-  }
 }
 
 // 创建 grep 工具：优先 rg 降级纯 Node 扫描。
-export const createGrepTool = (cwd: string): AgentTool<typeof grepSchema> => ({
+export const createGrepTool = (
+  cwd: string,
+  sessionDeps?: SessionDeps,
+): AgentTool<typeof grepSchema> => ({
   name: "grep",
   label: "搜索内容",
   description: `搜索项目内文件内容。支持正则或字面量匹配，可按 glob 过滤文件，支持上下文行。输出截断到 ${DEFAULT_LIMIT} 条匹配或 ${DEFAULT_MAX_BYTES / 1024}KB，单行超 ${GREP_MAX_LINE_LENGTH} 字符截断。`,
   inputSchema: grepSchema,
-  execute: async (_toolCallId, params, signal) => {
+  execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
@@ -318,10 +327,19 @@ export const createGrepTool = (cwd: string): AgentTool<typeof grepSchema> => ({
     }
 
     const effectiveLimit = Math.max(1, params.limit ?? DEFAULT_LIMIT)
-    const rgResult = await grepWithRg(params, searchPath, isDirectory, effectiveLimit, signal)
+    const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+    const options = { sessionId, toolCallId }
+    const rgResult = await grepWithRg(
+      params,
+      searchPath,
+      isDirectory,
+      effectiveLimit,
+      signal,
+      options,
+    )
     if (rgResult !== undefined) {
       return rgResult
     }
-    return grepWithNode(params, searchPath, isDirectory, effectiveLimit, signal)
+    return grepWithNode(params, searchPath, isDirectory, effectiveLimit, signal, options)
   },
 })

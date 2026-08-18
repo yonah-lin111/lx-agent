@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { extname } from "node:path"
 import { pathToFileURL } from "node:url"
 import type { LspInstallResult, LspServerStatusItem } from "@shared/contracts/agent"
+import type { Diagnostic } from "vscode-languageserver-types"
 import { LspClient } from "./client"
 import { LANGUAGE_EXTENSIONS } from "./language"
 import { findWorkspaceRoot, type LspServerSpec, resolveServer } from "./server"
@@ -187,6 +188,23 @@ export class LspManager {
         : failed.push(packageName)
     }
     return { installed, failed }
+  }
+
+  // 获取文件的 LSP 诊断信息；超时或未启动时静默降级为空数组。
+  async getDiagnostics(
+    sessionId: string | null | undefined,
+    filePath: string,
+    cwd: string,
+    timeoutMs: number = 2000,
+  ): Promise<Diagnostic[]> {
+    if (!sessionId) return []
+    try {
+      const clientResult = await this.getClient(sessionId, filePath, cwd)
+      if ("error" in clientResult) return []
+      return await clientResult.client.touchAndGetDiagnostics(filePath, timeoutMs)
+    } catch {
+      return []
+    }
   }
 
   // 启动失败原因 + 手动安装提示。

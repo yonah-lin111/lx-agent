@@ -2,7 +2,9 @@ import { readdir, stat } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
+import type { SessionDeps } from "./read"
 import { DEFAULT_MAX_BYTES, formatSize, truncateHead } from "./truncate"
 
 const DEFAULT_LIMIT = 500
@@ -13,12 +15,15 @@ const lsSchema = z.object({
 })
 
 // 创建 ls 工具：列出 cwd 内目录条目，字母序 + 目录 `/` 后缀，含 dotfiles。
-export const createLsTool = (cwd: string): AgentTool<typeof lsSchema> => ({
+export const createLsTool = (
+  cwd: string,
+  sessionDeps?: SessionDeps,
+): AgentTool<typeof lsSchema> => ({
   name: "ls",
   label: "列出目录",
   description: `列出项目目录内指定目录的内容。条目按字母序排列，目录带 "/" 后缀，包含隐藏文件。输出截断到 ${DEFAULT_LIMIT} 条或 ${DEFAULT_MAX_BYTES / 1024}KB。`,
   inputSchema: lsSchema,
-  execute: async (_toolCallId, params) => {
+  execute: async (toolCallId, params) => {
     const dirPath = resolveToCwd(params.path || ".", cwd)
     if (!dirPath) {
       return {
@@ -69,9 +74,14 @@ export const createLsTool = (cwd: string): AgentTool<typeof lsSchema> => ({
         notices.push(`达到 ${effectiveLimit} 条限制，使用 limit=${effectiveLimit * 2} 查看更多`)
       }
       if (truncation.truncated) {
-        notices.push(`达到 ${formatSize(DEFAULT_MAX_BYTES)} 限制`)
-      }
-      if (notices.length > 0) {
+        const sessionId = sessionDeps?.getSessionId?.() ?? undefined
+        const { text } = spillManager.handleTruncation(rawOutput, truncation, {
+          sessionId,
+          toolCallId,
+          customActionHint: "Use 'ls' on specific subdirectories to explore further.",
+        })
+        output = text
+      } else if (notices.length > 0) {
         output += `\n\n[${notices.join(". ")}]`
       }
 

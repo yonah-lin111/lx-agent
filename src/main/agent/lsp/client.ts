@@ -11,6 +11,7 @@ import type {
   CallHierarchyIncomingCall,
   CallHierarchyItem,
   CallHierarchyOutgoingCall,
+  Diagnostic,
   DocumentSymbol,
   Hover,
   Location,
@@ -92,6 +93,10 @@ export class LspClient {
   private projectReady = false
   // 首连串行链：项目就绪前新请求排队等前一个完成。
   private startupChain: Promise<void> = Promise.resolve()
+  // 缓存服务端推送的文件诊断：URI -> Diagnostic[]
+  private readonly diagnostics = new Map<string, Diagnostic[]>()
+  // 诊断等待队列：URI -> 等待函数列表
+  private readonly diagnosticWaiters = new Map<string, Array<(diags: Diagnostic[]) => void>>()
 
   constructor(spec: LspServerSpec, options: LspClientOptions = {}) {
     this.languageId = spec.language
@@ -132,6 +137,20 @@ export class LspClient {
       this.stderrTail.push(chunk.toString())
       if (this.stderrTail.length > 20) this.stderrTail.shift()
     })
+    // 监听服务端诊断推送通知
+    this.connection.onNotification(
+      "textDocument/publishDiagnostics",
+      (params: { uri: string; version?: number; diagnostics: Diagnostic[] }) => {
+        this.diagnostics.set(params.uri, params.diagnostics)
+        const waiters = this.diagnosticWaiters.get(params.uri)
+        if (waiters && waiters.length > 0) {
+          this.diagnosticWaiters.delete(params.uri)
+          for (const waiter of waiters) {
+            waiter(params.diagnostics)
+          }
+        }
+      },
+    )
     this.connection.listen()
   }
 
@@ -347,6 +366,45 @@ export class LspClient {
     const items = await this.prepareCallHierarchy(filePath, line0, character0)
     if (!items || items.length === 0) return null
     return items[0] ?? null
+  }
+
+  // 触发并获取文件的最新诊断；didOpen/didSave 后等待 publishDiagnostics 推送，超时回退缓存。
+  async touchAndGetDiagnostics(filePath: string, timeoutMs: number = 2000): Promise<Diagnostic[]> {
+    const uri = this.uriFor(filePath)
+    let resolveFn: ((diags: Diagnostic[]) => void) | undefined
+    const waitForDiagnostics = new Promise<Diagnostic[]>((resolve) => {
+      resolveFn = resolve
+      const waiters = this.diagnosticWaiters.get(uri) ?? []
+      waiters.push(resolve)
+      this.diagnosticWaiters.set(uri, waiters)
+    })
+
+    try {
+      await this.ensureOpened(filePath)
+      this.connection.sendNotification("textDocument/didSave", {
+        textDocument: { uri },
+      })
+    } catch {
+      // ignore
+    }
+
+    let timer: NodeJS.Timeout
+    const timeout = new Promise<Diagnostic[]>((resolve) => {
+      timer = setTimeout(() => {
+        const waiters = this.diagnosticWaiters.get(uri)
+        if (waiters && resolveFn) {
+          this.diagnosticWaiters.set(
+            uri,
+            waiters.filter((w) => w !== resolveFn),
+          )
+        }
+        resolve(this.diagnostics.get(uri) ?? [])
+      }, timeoutMs)
+    })
+
+    const result = await Promise.race([waitForDiagnostics, timeout])
+    clearTimeout(timer!)
+    return result
   }
 
   // 关闭：shutdown + exit 优雅退出（sendNotification 失败会 re-throw，须捕获），

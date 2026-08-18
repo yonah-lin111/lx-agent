@@ -45,6 +45,7 @@ import {
   skillLoader,
   stripFrontmatter,
 } from "./skills/skillLoader"
+import { spillManager } from "./spill/spillManager"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { generateSessionTitle } from "./titleGenerator"
@@ -118,6 +119,7 @@ class AgentRunner {
       emit: (event) => this.eventSink?.(event),
       emitUsage: () => this.compactor.emitUsage(),
     })
+    void Promise.resolve().then(() => spillManager.cleanStaleSpills(7))
   }
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
@@ -907,6 +909,7 @@ class AgentRunner {
       this.eventSink?.({ type: "todo_updated", todos: [] })
     }
     agentSessionService.deleteSession(sessionId)
+    spillManager.cleanSessionSpill(sessionId)
 
     // 删除会话附件文件夹
     try {

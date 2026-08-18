@@ -13,6 +13,7 @@ import { z } from "zod"
 import { getAppDataRoot } from "@/paths"
 import { Agent } from "../core/agent"
 import type { AgentTool, BeforeToolCallContext, BeforeToolCallResult, Model } from "../core/types"
+import { spillManager } from "../spill/spillManager"
 import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
 import { DEFAULT_MAX_BYTES, formatSize, truncateTail } from "./truncate"
 
@@ -23,22 +24,20 @@ const SUBAGENT_PROMPT_SUFFIX = [
   "不要执行任务范围之外的多余探索。",
 ].join("\n")
 
-// 子代理最终输出超限阈值（写 tool-output 文件，父上下文只收有界预览 + 路径标记）。
+// 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
 const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
 // task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
-  name: z
-    .string()
-    .max(50)
-    .optional()
-    .describe("子代理名称（供 UI 展示；AI 分发时填写，缺失回退 task）"),
-  description: z.string().min(1).max(500).describe("子任务说明（供父模型判断是否适合委托）"),
-  prompt: z.string().min(1).max(4000).describe("委托给子代理的任务文本"),
+  description: z.string().describe("任务简短描述（1-5 个词），用于进度显示"),
+  prompt: z.string().describe("要委托给子代理的完整任务提示词，需包含充足上下文"),
+  name: z.string().optional().describe("子代理名称（如 'explorer' / 'coder'）"),
 })
 
-// 子代理执行细节（UI/审计用，不进模型上下文）。
-interface SubagentDetails {
+export type TaskInput = z.infer<typeof TASK_INPUT_SCHEMA>
+
+// 子代理工具结果 details（挂落库数据 + 恢复重建弹窗数据）。
+export interface SubagentDetails {
   subagent: SubagentData
 }
 
@@ -82,17 +81,27 @@ export interface TaskToolDeps {
   getSignal: () => AbortSignal | undefined
   // 记录子代理内部工具调用（parent_call_id 指向触发它的父 task 调用行；与父 turn 同事务落库）。
   recordChildCall: (parentToolCallId: string, child: ChildCallInput) => void
+  // 可选当前会话 ID
+  getSessionId?: () => string | null
 }
 
-// 子代理最终文本有界化：未超限原样返回；超限截断 + 完整内容写 tool-output 文件。
-const boundSubagentOutput = (text: string): { content: string; filePath?: string } => {
+// 子代理最终文本有界化：未超限原样返回；超限截断 + 完整内容写 spill 文件。
+const boundSubagentOutput = (
+  text: string,
+  options?: { sessionId?: string; toolCallId?: string },
+): { content: string; filePath?: string } => {
   const truncated = truncateTail(text, { maxBytes: SUBAGENT_MAX_BYTES })
   if (!truncated.truncated) return { content: text }
-  const filePath = join(getAppDataRoot(), "tool-output", `subagent-${randomUUID()}.txt`)
-  mkdirSync(join(getAppDataRoot(), "tool-output"), { recursive: true })
-  writeFileSync(filePath, text, "utf8")
-  const marker = `\n\n[输出超限（${formatSize(truncated.totalBytes)}），完整结果已写入 ${filePath}]`
-  return { content: `${truncated.content}${marker}`, filePath }
+  const { text: content, spillFilePath: filePath } = spillManager.handleTruncation(
+    text,
+    truncated,
+    {
+      sessionId: options?.sessionId,
+      toolCallId: options?.toolCallId,
+      customActionHint: "Use 'read' tool to inspect the full subagent output.",
+    },
+  )
+  return { content, filePath }
 }
 
 // 提取子代理上下文的全部助手文本（最终输出）与错误信息。
@@ -261,7 +270,8 @@ export const createTaskTool = (
       const details: SubagentDetails = { subagent: buildSubagentData() }
       let content: string
       if (text) {
-        const bounded = boundSubagentOutput(text)
+        const sessionId = deps.getSessionId?.() ?? undefined
+        const bounded = boundSubagentOutput(text, { sessionId, toolCallId })
         content = bounded.content
         if (bounded.filePath) details.subagent.filePath = bounded.filePath
       } else if (error) {
