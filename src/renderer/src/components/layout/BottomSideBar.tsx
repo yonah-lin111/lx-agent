@@ -68,12 +68,11 @@ export const BottomSideBar = ({
     }
   }, [isResizing])
 
-  // 右上角动作控制按钮组（覆盖右侧栏切换 + 展开/折叠）
+  // 右上角动作控制按钮组（与 RightSidebar / HeaderSideBar 保持一致的默认尺寸与 h-4 w-4 icon）
   const actionButtons = (
     <div className="flex shrink-0 items-center gap-1">
       <LxIconButton
         aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
-        size="small"
         title={{
           content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
           placement: "top",
@@ -81,33 +80,28 @@ export const BottomSideBar = ({
         onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
       >
         {isCoveringRightSideBar ? (
-          <ChevronsRightLeft className="h-3.5 w-3.5" />
+          <ChevronsRightLeft className="h-4 w-4" />
         ) : (
-          <ChevronsLeftRight className="h-3.5 w-3.5" />
+          <ChevronsLeftRight className="h-4 w-4" />
         )}
       </LxIconButton>
       <LxIconButton
         aria-label={isExpanded ? "折叠底边栏" : "展开底边栏"}
-        size="small"
         title={{ content: isExpanded ? "折叠底边栏" : "展开底边栏", placement: "top" }}
         onClick={() => onExpandedChange(!isExpanded)}
       >
-        {isExpanded ? (
-          <ChevronDown className="h-3.5 w-3.5" />
-        ) : (
-          <ChevronUp className="h-3.5 w-3.5" />
-        )}
+        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
       </LxIconButton>
     </div>
   )
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"
-      } ${isExpanded ? "p-1.5" : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1.5"}`}
+      } ${isExpanded ? "" : "h-[40px] min-h-[40px] max-h-[40px]"}`}
       style={
         isExpanded
           ? { height: `${height}vh`, minHeight: `${height}vh`, maxHeight: `${height}vh` }
@@ -134,7 +128,7 @@ export const BottomSideBar = ({
           <GhosttyTerminalView actions={actionButtons} isExpanded={isExpanded} />
         </div>
 
-        {/* 折叠区域：紧凑状态栏，垂直居中完整展示右侧控制按钮 */}
+        {/* 折叠区域：紧凑 40px 状态栏，对齐 RightSidebar / HeaderSideBar 按钮尺寸与样式 */}
         {!isExpanded && (
           <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
