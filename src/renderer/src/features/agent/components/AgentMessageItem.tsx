@@ -824,13 +824,15 @@ export const AgentMessageItem = ({
             <div className="mt-1 h-5" aria-hidden="true" />
           ) : (
             <div
-              className={`mt-1 flex w-full items-center justify-between gap-2 ${
-                isPinned ? "opacity-0 transition-opacity group-hover:opacity-100" : ""
+              className={`mt-1 flex w-full items-center justify-between gap-2 transition-opacity ${
+                isPinned
+                  ? `opacity-0 group-hover:opacity-100 rounded-[6px] ${userBubbleClass} px-2 py-0.5 shadow-sm`
+                  : ""
               }`}
             >
               {/* 底部左侧：命令来源标识（非吸顶常驻显示；吸顶时随底栏 hover 显现） */}
               {commandTag ? (
-                <span className="flex items-center gap-1 text-[10px] leading-none text-white/40 select-text font-mono whitespace-nowrap pl-0.5">
+                <span className="flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
                   <span>{commandTag.label}</span>
                   {commandTag.sourceTag && (
                     <>
