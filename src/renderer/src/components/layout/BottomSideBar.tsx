@@ -1,12 +1,9 @@
 import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
-import { useLocation } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { ProjectReferencedFolderTags } from "@/features/project"
 import { GhosttyTerminalView } from "@/features/terminal"
-import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 展开态最小/最大高度（相对视口高度，单位 vh）。
 const MIN_HEIGHT_VH = 15
@@ -27,7 +24,7 @@ interface BottomSideBarProps {
 }
 
 /**
- * 页面底边栏布局容器：展开时上方为 Ghostty 终端（顶部支持拖拽调整高度至 50vh），下方为文件夹引用与控制栏。
+ * 页面底边栏布局容器：展开时上方为 Ghostty 终端（顶部支持拖拽调整高度至 50vh），下方为底边栏操作控制栏。
  */
 export const BottomSideBar = ({
   children,
@@ -36,9 +33,6 @@ export const BottomSideBar = ({
   onCoveringRightSideBarChange,
   onExpandedChange,
 }: BottomSideBarProps): React.JSX.Element => {
-  const { pathname } = useLocation()
-  const isProjectPage = pathname === PAGE_ROUTES.project
-
   const [height, setHeight] = useState<number>(DEFAULT_HEIGHT_VH)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
@@ -105,9 +99,8 @@ export const BottomSideBar = ({
           <GhosttyTerminalView isExpanded={isExpanded} />
         </div>
 
-        {/* 底部固定栏：文件夹引用标签与折叠/展开操作 */}
+        {/* 底部固定控制栏：折叠/展开与覆盖右侧栏切换操作 */}
         <div className="relative h-[24px] shrink-0">
-          {isProjectPage && <ProjectReferencedFolderTags isExpanded={isExpanded} />}
           {children}
           <div className="absolute right-0 bottom-0 flex gap-1">
             <LxIconButton

@@ -7,6 +7,8 @@ import { getGitWorktreeDirName } from "@/features/git/utils"
 interface GitStatusBarProps {
   // 当前项目文件系统路径；缺省时不渲染状态栏。
   projectPath?: string
+  // 容器类名。
+  className?: string
 }
 
 /**
@@ -15,7 +17,10 @@ interface GitStatusBarProps {
  * 项目名取仓库根目录名（切换工作区后保持不变）；处于非默认工作区时
  * 单独展示工作区段（GitFork 图标 + 工作区名）。
  */
-export const GitStatusBar = ({ projectPath }: GitStatusBarProps): React.JSX.Element | null => {
+export const GitStatusBar = ({
+  projectPath,
+  className = "flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50",
+}: GitStatusBarProps): React.JSX.Element | null => {
   const { worktrees, projectBranch } = useGitWorktrees(projectPath)
   if (!projectPath) return null
 
@@ -35,7 +40,7 @@ export const GitStatusBar = ({ projectPath }: GitStatusBarProps): React.JSX.Elem
   const mainBranch = defaultEntry?.branch ?? projectBranch
 
   return (
-    <div className="flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50">
+    <div className={className}>
       <LxTooltip content={projectPath} placement="top">
         <span className="flex min-w-0 items-center gap-1">
           <Folder className="h-3 w-3 shrink-0 text-sky-400" />

@@ -1,4 +1,5 @@
 import { GitStatusBar } from "@/features/git"
+import { ProjectReferencedFolderTags } from "@/features/project"
 
 // 状态栏属性。
 interface MarkdownStatusBarProps {
@@ -7,10 +8,25 @@ interface MarkdownStatusBarProps {
 }
 
 /**
- * 渲染编辑器底部状态栏。
+ * 渲染编辑器底部状态栏：左侧为 Git 状态与工作区，右侧为项目共享文件夹引用标签（右对齐同一行）。
  */
 export const MarkdownStatusBar = ({
   projectPath,
 }: MarkdownStatusBarProps): React.JSX.Element | null => {
-  return <GitStatusBar projectPath={projectPath} />
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 border-t border-white/5 py-1 text-xs text-white/50">
+      {/* 左侧：项目路径、分支与工作区 */}
+      <div className="flex min-w-0 shrink items-center">
+        <GitStatusBar
+          className="flex min-w-0 items-center gap-2 text-xs text-white/50"
+          projectPath={projectPath}
+        />
+      </div>
+
+      {/* 右侧：项目共享文件夹引用标签栏（右对齐） */}
+      <div className="flex min-w-0 shrink-0 items-center justify-end">
+        <ProjectReferencedFolderTags />
+      </div>
+    </div>
+  )
 }

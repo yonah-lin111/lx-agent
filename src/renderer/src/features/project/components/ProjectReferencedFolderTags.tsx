@@ -1,7 +1,7 @@
 import type { ReferencedFolder } from "@shared/project"
 import { Check, ChevronLeft, ChevronRight, Copy, Folder, FolderPlus, Pin } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useInRouterContext, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -14,7 +14,7 @@ import { ReferencedFolderCommandMenu } from "@/features/project/components/Refer
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
 
 interface ProjectReferencedFolderTagsProps {
-  isExpanded?: boolean
+  className?: string
 }
 
 // 防止 Zustand 选择器因返回新数组而重复渲染。
@@ -47,11 +47,8 @@ interface FolderPanelState {
   position: React.CSSProperties
 }
 
-/**
- * 渲染项目共享文件夹引用标签栏。目录按项目共享，启用状态按条目独立。
- */
-export const ProjectReferencedFolderTags = ({
-  isExpanded = false,
+const ProjectReferencedFolderTagsContent = ({
+  className = "",
 }: ProjectReferencedFolderTagsProps): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
@@ -326,12 +323,8 @@ export const ProjectReferencedFolderTags = ({
   }, [])
 
   return (
-    <div
-      className={`absolute bottom-0 left-0 right-16 min-w-0 flex items-center overflow-hidden transition-transform duration-300 ease-in-out ${
-        isExpanded ? "translate-y-0" : "translate-y-[2px]"
-      }`}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-1">
+    <div className={`relative min-w-0 flex items-center overflow-hidden ${className}`}>
+      <div className="flex min-w-0 items-center gap-1">
         <LxIconButton
           aria-label="添加文件夹"
           title={{ content: "添加文件夹", placement: "top" }}
@@ -463,4 +456,16 @@ export const ProjectReferencedFolderTags = ({
       )}
     </div>
   )
+}
+
+/**
+ * 渲染项目共享文件夹引用标签栏。目录按项目共享，启用状态按条目独立。
+ * 具备 Router 上下文检测，在无 Router 环境（如独立单元测试）下安全降级。
+ */
+export const ProjectReferencedFolderTags = (
+  props: ProjectReferencedFolderTagsProps,
+): React.JSX.Element | null => {
+  const inRouter = useInRouterContext()
+  if (!inRouter) return null
+  return <ProjectReferencedFolderTagsContent {...props} />
 }
