@@ -33,6 +33,20 @@ export const sessionListStore = {
     return sessions.find((session) => session.id === currentSessionId)?.cwd
   },
 
+  // 当前会话的绑定信息（项目 ID、项目项 ID 与 cwd），新会话尚未落库时返回 undefined。
+  getCurrentSessionBinding: ():
+    | { projectId?: string; projectItemId?: string; cwd?: string }
+    | undefined => {
+    if (!currentSessionId) return undefined
+    const session = sessions.find((s) => s.id === currentSessionId)
+    if (!session) return undefined
+    return {
+      projectId: session.project_id ?? undefined,
+      projectItemId: session.project_item_id ?? undefined,
+      cwd: session.cwd,
+    }
+  },
+
   // 当前标题生成中的会话 id（占位 pulse 判定）。
   getPendingSessionIds: (): Set<string> => pendingSessionIds,
 

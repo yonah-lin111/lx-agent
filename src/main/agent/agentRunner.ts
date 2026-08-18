@@ -929,6 +929,11 @@ class AgentRunner {
     return this.registry?.getActive() ?? []
   }
 
+  // 当前会话绑定的工作目录（未初始化时回退到默认工作目录）。
+  getCurrentCwd(): string | undefined {
+    return this.cwd ?? this.requestedCwd ?? resolveCwd()
+  }
+
   // run 开始：重置 turn 缓冲并捕获本次落盘输入（会话归属、cwd 与能力快照）。
   private beginSessionTurn(text: string): void {
     this.turnStore.beginTurn({

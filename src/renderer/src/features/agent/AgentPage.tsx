@@ -113,23 +113,27 @@ export const AgentPage = ({
     })
   }, [])
 
-  const currentSessionPath = useSyncExternalStore(
+  const currentSessionBinding = useSyncExternalStore(
     sessionListStore.subscribe,
-    sessionListStore.getCurrentSessionPath,
+    sessionListStore.getCurrentSessionBinding,
   )
-  const statusBarPath = currentSessionPath ?? currentProjectPath ?? defaultPath
+  const currentSessionPath = currentSessionBinding?.cwd
+  // 会话路径锁定：当前会话存在时绝对优先使用会话自身的绑定路径，切路由/切项目不漂移；新会话缺省才使用当前路由/项目项或默认路径。
+  const effectiveProjectPath = currentSessionBinding?.cwd ?? currentProjectPath ?? defaultPath
+  const effectiveProjectId = currentSessionBinding?.projectId ?? currentProjectId
+  const statusBarPath = effectiveProjectPath
 
   // git 工作区列表（/gitWorktree 二级面板数据源；当前会话 cwd 即工作区绑定）。
-  const { worktrees, projectBranch } = useGitWorktrees(currentProjectPath)
+  const { worktrees, projectBranch } = useGitWorktrees(effectiveProjectPath)
   const worktreeOptions = useMemo(() => {
-    if (!currentProjectPath || worktrees == null) return null
+    if (!effectiveProjectPath || worktrees == null) return null
     return buildGitWorktreeOptions({
       worktrees,
-      projectPath: currentProjectPath,
+      projectPath: effectiveProjectPath,
       projectBranch,
       worktreePath: currentSessionPath,
     })
-  }, [worktrees, projectBranch, currentProjectPath, currentSessionPath])
+  }, [worktrees, projectBranch, effectiveProjectPath, currentSessionPath])
 
   const { success, error, warning } = useLxToast()
 
@@ -342,8 +346,8 @@ export const AgentPage = ({
         onModelChange={handleModelChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
-        projectId={currentProjectId}
-        projectPath={currentProjectPath}
+        projectId={effectiveProjectId}
+        projectPath={effectiveProjectPath}
         currentPath={statusBarPath}
         inputTextareaRef={inputTextareaRef}
         worktreeOptions={worktreeOptions}

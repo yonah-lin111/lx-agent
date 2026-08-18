@@ -236,7 +236,8 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(AGENT_CHANNELS.installLspServers, () => lspManager.installMissingServers())
 
   ipcMain.handle(AGENT_CHANNELS.listPromptTemplates, (_, cwd: unknown) => {
-    const validCwd = typeof cwd === "string" && cwd.trim() ? cwd.trim() : undefined
+    const validCwd =
+      typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
     return promptTemplateLoader.list(validCwd)
   })
 
