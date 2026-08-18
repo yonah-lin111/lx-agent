@@ -70,7 +70,7 @@ export const BottomSideBar = ({
 
   // 右上角动作控制按钮组（覆盖右侧栏切换 + 展开/折叠）
   const actionButtons = (
-    <div className="flex items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1">
       <LxIconButton
         aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
         size="small"
@@ -81,9 +81,9 @@ export const BottomSideBar = ({
         onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
       >
         {isCoveringRightSideBar ? (
-          <ChevronsRightLeft className="h-4 w-4" />
+          <ChevronsRightLeft className="h-3.5 w-3.5" />
         ) : (
-          <ChevronsLeftRight className="h-4 w-4" />
+          <ChevronsLeftRight className="h-3.5 w-3.5" />
         )}
       </LxIconButton>
       <LxIconButton
@@ -92,18 +92,22 @@ export const BottomSideBar = ({
         title={{ content: isExpanded ? "折叠底边栏" : "展开底边栏", placement: "top" }}
         onClick={() => onExpandedChange(!isExpanded)}
       >
-        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        {isExpanded ? (
+          <ChevronDown className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronUp className="h-3.5 w-3.5" />
+        )}
       </LxIconButton>
     </div>
   )
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 ${
+      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"
-      } ${isExpanded ? "" : "h-[40px] min-h-[40px] max-h-[40px]"}`}
+      } ${isExpanded ? "p-1.5" : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1.5"}`}
       style={
         isExpanded
           ? { height: `${height}vh`, minHeight: `${height}vh`, maxHeight: `${height}vh` }
@@ -130,11 +134,11 @@ export const BottomSideBar = ({
           <GhosttyTerminalView actions={actionButtons} isExpanded={isExpanded} />
         </div>
 
-        {/* 折叠区域：紧凑 24px 状态栏，右上角放置控制按钮 */}
+        {/* 折叠区域：紧凑状态栏，垂直居中完整展示右侧控制按钮 */}
         {!isExpanded && (
-          <div className="relative flex h-[24px] w-full shrink-0 items-center justify-between">
+          <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
-            <div className="flex shrink-0 items-center">{actionButtons}</div>
+            <div className="flex shrink-0 items-center pl-2">{actionButtons}</div>
           </div>
         )}
       </div>

@@ -21,7 +21,7 @@ export const App = () => {
   const { pathname } = useLocation()
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true)
   const [isBottomSideBarCoveringRightSideBar, setIsBottomSideBarCoveringRightSideBar] =
-    useState<boolean>(true)
+    useState<boolean>(false)
   const [isHeaderExpanded, setIsHeaderExpanded] = useState<boolean>(false)
   const [isBottomSideBarExpanded, setIsBottomSideBarExpanded] = useState<boolean>(false)
 
