@@ -1,11 +1,12 @@
-import { Terminal as TerminalIcon, X } from "lucide-react"
-import { useState } from "react"
+import { ChevronLeft, ChevronRight, Terminal as TerminalIcon, X } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalTabItem } from "@/features/terminal/types"
 
 /**
- * Ghostty 风格顶部水平终端标签列表栏（纯标签横向滚动展示，与操作按钮高度一致为 h-7）。
+ * Ghostty 风格顶部水平终端标签列表栏（带左右滚动控制与滚轮横向滚动支持）。
  */
 export const TerminalTabs = (): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
@@ -16,6 +17,10 @@ export const TerminalTabs = (): React.JSX.Element => {
 
   const [editingTabId, setEditingTabId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   const handleStartRename = (tab: TerminalTabItem): void => {
     setEditingTabId(tab.id)
@@ -39,10 +44,64 @@ export const TerminalTabs = (): React.JSX.Element => {
     }
   }
 
+  const updateScrollState = useCallback((): void => {
+    const el = scrollRef.current
+    if (!el) return
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    setCanScrollLeft(scrollLeft > 1)
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    updateScrollState()
+
+    const onScroll = (): void => updateScrollState()
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.deltaY) return
+      event.preventDefault()
+      el.scrollLeft += event.deltaY
+    }
+
+    el.addEventListener("scroll", onScroll, { passive: true })
+    el.addEventListener("wheel", onWheel, { passive: false })
+
+    const observer = new ResizeObserver(() => updateScrollState())
+    observer.observe(el)
+
+    return () => {
+      el.removeEventListener("scroll", onScroll)
+      el.removeEventListener("wheel", onWheel)
+      observer.disconnect()
+    }
+  }, [tabs, updateScrollState])
+
+  const handleScroll = useCallback((direction: "left" | "right"): void => {
+    const el = scrollRef.current
+    if (!el) return
+    const scrollAmount = direction === "left" ? -150 : 150
+    el.scrollBy({ left: scrollAmount, behavior: "smooth" })
+  }, [])
+
   return (
-    <div className="flex min-w-0 flex-1 items-center overflow-hidden select-none">
-      {/* 水平滚动标签列表 */}
-      <div className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5">
+    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden select-none">
+      {/* 最左侧：向左滚动按钮 */}
+      <LxIconButton
+        aria-label="向左滚动"
+        disabled={!canScrollLeft}
+        size="small"
+        onClick={() => handleScroll("left")}
+      >
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </LxIconButton>
+
+      {/* 中间：水平滚动标签列表 */}
+      <div
+        ref={scrollRef}
+        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5"
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
           const isEditing = editingTabId === tab.id
@@ -107,6 +166,16 @@ export const TerminalTabs = (): React.JSX.Element => {
           )
         })}
       </div>
+
+      {/* 最右侧：向右滚动按钮 */}
+      <LxIconButton
+        aria-label="向右滚动"
+        disabled={!canScrollRight}
+        size="small"
+        onClick={() => handleScroll("right")}
+      >
+        <ChevronRight className="h-3.5 w-3.5" />
+      </LxIconButton>
     </div>
   )
 }
