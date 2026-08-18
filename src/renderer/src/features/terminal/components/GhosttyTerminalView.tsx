@@ -41,9 +41,9 @@ export const GhosttyTerminalView = ({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#141414]">
-      {/* 顶部水平栏：保留上下 4px 呼吸边距（h-9 px-2 py-1），与左右操作按钮严格对齐 */}
+      {/* 顶部水平栏：左侧滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 */}
       <div className="flex h-9 shrink-0 items-center border-b border-white/5 px-2 py-1">
-        <TerminalTabs />
+        <TerminalTabs onAddTab={() => void handleCreateTab()} />
       </div>
 
       {/* 下方终端画布交互区 */}

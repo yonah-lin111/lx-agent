@@ -1,14 +1,18 @@
-import { ChevronLeft, ChevronRight, Terminal as TerminalIcon, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Terminal as TerminalIcon, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalTabItem } from "@/features/terminal/types"
 
+interface TerminalTabsProps {
+  onAddTab: () => void
+}
+
 /**
- * Ghostty 风格顶部水平终端标签列表栏（带左右滚动控制与滚轮横向滚动支持）。
+ * Ghostty 风格顶部水平终端标签列表栏（带左右滚动切换、新建终端按钮与滚轮横向滚动支持）。
  */
-export const TerminalTabs = (): React.JSX.Element => {
+export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
   const activeTabId = useTerminalStore((state) => state.activeTabId)
   const setActiveTab = useTerminalStore((state) => state.setActiveTab)
@@ -166,6 +170,16 @@ export const TerminalTabs = (): React.JSX.Element => {
           )
         })}
       </div>
+
+      {/* 添加终端按钮（位于 Tab 列表右侧、向右切换按钮左侧） */}
+      <LxIconButton
+        aria-label="新建终端"
+        size="small"
+        title={{ content: "新建终端", placement: "top" }}
+        onClick={onAddTab}
+      >
+        <Plus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
+      </LxIconButton>
 
       {/* 最右侧：向右滚动按钮 */}
       <LxIconButton
