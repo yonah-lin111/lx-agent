@@ -1,14 +1,9 @@
-import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp, Plus } from "lucide-react"
+import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
 import type React from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import {
-  GhosttyTerminalView,
-  resolveInitialTerminalCwd,
-  useTerminalStore,
-} from "@/features/terminal"
+import { GhosttyTerminalView } from "@/features/terminal"
 
 // 展开态最小/最大高度（相对视口高度，单位 vh）。
 const MIN_HEIGHT_VH = 15
@@ -29,7 +24,7 @@ interface BottomSideBarProps {
 }
 
 /**
- * 页面底边栏布局容器：展开时左侧为 Ghostty 终端（带独立边框），右侧留出空间并在外侧竖直排列新建终端、覆盖与折叠按钮（标准 h-4 w-4 图标尺寸）。
+ * 页面底边栏布局容器：展开时左侧为 Ghostty 终端（带独立边框），右侧留出空间并在外侧竖直排列覆盖与折叠按钮（标准 h-4 w-4 图标尺寸）。
  */
 export const BottomSideBar = ({
   children,
@@ -38,19 +33,9 @@ export const BottomSideBar = ({
   onCoveringRightSideBarChange,
   onExpandedChange,
 }: BottomSideBarProps): React.JSX.Element => {
-  const [searchParams] = useSearchParams()
-  const itemId = searchParams.get("itemId")
-  const addTab = useTerminalStore((state) => state.addTab)
-
   const [height, setHeight] = useState<number>(DEFAULT_HEIGHT_VH)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
-
-  // 新建终端标签
-  const handleAddTab = useCallback(async (): Promise<void> => {
-    const cwd = await resolveInitialTerminalCwd(itemId)
-    addTab({ cwd, itemId: itemId ?? undefined })
-  }, [itemId, addTab])
 
   // 拖拽顶部边缘调整高度：最小 15vh，最大 50vh。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
@@ -109,7 +94,7 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：左侧终端（独立边框），右侧留出独立空间并在外侧竖直排列新建、覆盖与折叠按钮 */}
+        {/* 展开区域：左侧终端（独立边框），右侧留出独立空间并在外侧竖直排列覆盖与折叠按钮 */}
         <div
           className={`h-full w-full min-h-0 flex-1 items-start gap-2 overflow-hidden ${
             isExpanded ? "flex" : "hidden"
@@ -120,13 +105,6 @@ export const BottomSideBar = ({
           </div>
 
           <div className="flex shrink-0 flex-col items-center gap-1.5 pr-0.5">
-            <LxIconButton
-              aria-label="新建终端"
-              title={{ content: "新建终端", placement: "left" }}
-              onClick={() => void handleAddTab()}
-            >
-              <Plus className="h-4 w-4" />
-            </LxIconButton>
             <LxIconButton
               aria-label={
                 isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
