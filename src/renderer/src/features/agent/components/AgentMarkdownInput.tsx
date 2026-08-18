@@ -128,6 +128,20 @@ const getMatchedCommands = (
   })
 }
 
+const getArgumentSelectionRange = (
+  insertText: string,
+  commandNameLength: number,
+): { anchor: number; head: number } => {
+  const startBracket = insertText.indexOf("[", commandNameLength)
+  if (startBracket !== -1) {
+    const endBracket = insertText.indexOf("]", startBracket)
+    if (endBracket !== -1 && endBracket > startBracket + 1) {
+      return { anchor: startBracket + 1, head: endBracket }
+    }
+  }
+  return { anchor: commandNameLength + 1, head: insertText.length }
+}
+
 const getClipboardFiles = (
   event: ClipboardEvent,
 ): { path: string; type: "folder" | "file" | "image" }[] => {
@@ -914,11 +928,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           const insertText = `${rawName}${hint}`
           onChangeRef.current(insertText)
           if (view) {
+            const selection = command.argumentHint
+              ? getArgumentSelectionRange(insertText, rawName.length)
+              : { anchor: insertText.length }
             view.dispatch({
               changes: { from: 0, to: view.state.doc.length, insert: insertText },
-              selection: command.argumentHint
-                ? { anchor: rawName.length + 1, head: insertText.length }
-                : { anchor: insertText.length },
+              selection,
             })
           }
         } else if (command.id === "clear") {
@@ -930,9 +945,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           const insertText = "/steer [prompt]"
           onChangeRef.current(insertText)
           if (view) {
+            const selection = getArgumentSelectionRange(insertText, 6)
             view.dispatch({
               changes: { from: 0, to: view.state.doc.length, insert: insertText },
-              selection: { anchor: 7, head: 15 },
+              selection,
             })
           }
         } else if (command.id === "model") {

@@ -872,9 +872,10 @@ export const AgentMessageItem = ({
                     )}
                   </LxIconButton>
                 )}
-                {/* 即时插话（steer）消息不可分支、不可编辑。 */}
+                {/* 即时插话（steer）与指令模板/Skill 消息不可分支、不可编辑。 */}
                 {!readOnly &&
                   !message.isSteer &&
+                  !message.command &&
                   typeof messageTimestamp === "number" &&
                   onFork && (
                     <LxIconButton
@@ -886,7 +887,7 @@ export const AgentMessageItem = ({
                       <GitBranch className="h-3 w-3" />
                     </LxIconButton>
                   )}
-                {!readOnly && !message.isSteer && (
+                {!readOnly && !message.isSteer && !message.command && (
                   <LxIconButton
                     size="small"
                     aria-label="编辑消息"
