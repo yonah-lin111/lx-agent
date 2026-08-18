@@ -10,7 +10,7 @@ interface TerminalTabsProps {
 }
 
 /**
- * Ghostty 风格顶部水平终端标签列表栏（带左右滚动切换、新建终端按钮与滚轮横向滚动支持）。
+ * Ghostty 风格顶部水平终端标签列表栏（与 ProjectReferencedFolderTags 保持一致的 default 标签规格）。
  */
 export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
@@ -113,22 +113,22 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
           return (
             <div
               key={tab.id}
-              className={`group flex h-7 max-w-[160px] min-w-[80px] shrink-0 items-center gap-1.5 rounded-[4px] px-2.5 text-xs transition-colors cursor-pointer ${
+              className={`group flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1 rounded-[6px] border px-2 py-1 text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
+                  ? "border-white/10 bg-white/10 text-white"
+                  : "border-white/5 bg-transparent text-white/65 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/90"
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
-              {/* 每个 Tab 项左侧的小终端图标 */}
+              {/* 每个 Tab 项左侧的小终端图标（与 LxTag default 前缀图标一致为 h-3 w-3） */}
               <TerminalIcon
-                className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/70" : "text-white/30"}`}
+                className={`h-3 w-3 shrink-0 ${isActive ? "text-white/70" : "text-white/30"}`}
               />
 
               {isEditing ? (
                 <input
                   autoFocus
-                  className="h-5 w-full rounded-[2px] border border-white/20 bg-black/60 px-1 text-xs text-white outline-none"
+                  className="h-4.5 min-w-0 flex-1 border-b border-white/20 bg-transparent px-0 text-xs text-white outline-none"
                   value={editingTitle}
                   onBlur={() => handleSaveRename(tab.id)}
                   onChange={(e) => setEditingTitle(e.target.value)}
@@ -137,7 +137,7 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
                 />
               ) : (
                 <span
-                  className="min-w-0 flex-1 truncate"
+                  className="min-w-0 flex-1 truncate leading-none"
                   onDoubleClick={(e) => {
                     e.stopPropagation()
                     handleStartRename(tab)
@@ -155,14 +155,14 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
                 <LxTooltip content="关闭标签" placement="top">
                   <button
                     aria-label="关闭标签"
-                    className="flex h-4 w-4 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       removeTab(tab.id)
                     }}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </LxTooltip>
               </div>
