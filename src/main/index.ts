@@ -12,7 +12,9 @@ import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
+import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
+import { terminalService } from "@/services/terminalService"
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -61,11 +63,13 @@ app.whenReady().then(() => {
   registerMarkdownHandlers()
   registerGitHandlers()
   registerPromptHistoryHandlers()
+  registerTerminalHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   // MCP server 连接（幂等；失败降级不阻塞），退出时断开避免残留子进程。
   void mcpManager.ensureConnected()
   app.on("will-quit", () => {
+    terminalService.disposeAll()
     void mcpManager.disconnectAll()
     // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。
     void lspManager.dispose()

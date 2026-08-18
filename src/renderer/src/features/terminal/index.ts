@@ -1,0 +1,6 @@
+export { terminalApi } from "@/features/terminal/api/terminalApi"
+export { GhosttyTerminalView } from "@/features/terminal/components/GhosttyTerminalView"
+export { TerminalPane } from "@/features/terminal/components/TerminalPane"
+export { TerminalTabs } from "@/features/terminal/components/TerminalTabs"
+export { useTerminalStore } from "@/features/terminal/terminalStore"
+export * from "@/features/terminal/types"

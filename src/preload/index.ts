@@ -3,6 +3,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
+import type { TerminalApi } from "@shared/contracts/terminal"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
 import type { ProjectApi } from "@shared/project"
@@ -12,6 +13,7 @@ import { agentApi } from "./api/agent"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
 import { promptHistoryApi } from "./api/promptHistory"
+import { terminalApi } from "./api/terminal"
 
 const api: ProjectApi &
   ClipboardApi &
@@ -19,7 +21,8 @@ const api: ProjectApi &
   AgentApi &
   MarkdownApi &
   GitApi &
-  PromptHistoryApi = {
+  PromptHistoryApi &
+  TerminalApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   project: {
     projects: {
@@ -64,6 +67,7 @@ const api: ProjectApi &
   markdown: markdownApi,
   git: gitApi,
   promptHistory: promptHistoryApi,
+  terminal: terminalApi,
 }
 
 contextBridge.exposeInMainWorld("api", api)
