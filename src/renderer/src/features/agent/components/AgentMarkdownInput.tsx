@@ -91,14 +91,14 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
   {
     id: "export",
     name: "/export",
-    description: "导出会话报告（参数：html / md / jsonl）",
+    description: "导出会话报告（参数：[html] / [md] / [jsonl]）",
     kind: "builtin",
-    argumentHint: "[html|md|jsonl]",
+    argumentHint: "[html]",
   },
   {
     id: "copy",
     name: "/copy",
-    description: "复制会话到剪贴板（参数：all 复制全文，缺省复制最近回复）",
+    description: "复制会话到剪贴板（参数：[all] 复制全文，缺省复制最近回复）",
     kind: "builtin",
     argumentHint: "[all]",
   },
@@ -927,7 +927,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           text.startsWith("/export:") ||
           text.startsWith("/export-")
         ) {
-          const rawArg = text.replace(/^\/export[:\s-]*/i, "").trim().toLowerCase()
+          const rawArg = text
+            .replace(/^\/export[:\s-]*/i, "")
+            .replace(/^\[|\]$/g, "")
+            .trim()
+            .toLowerCase()
           let format: "html" | "markdown" | "jsonl" = "html"
           if (
             rawArg === "md" ||
@@ -943,7 +947,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             rawArg.startsWith("jsonl")
           ) {
             format = "jsonl"
-          } else if (rawArg === "html" || rawArg.startsWith("html")) {
+          } else if (rawArg === "html" || rawArg.startsWith("html") || rawArg === "") {
             format = "html"
           }
           onChangeRef.current("")
@@ -975,7 +979,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           text.startsWith("/copy:") ||
           text.startsWith("/copy-")
         ) {
-          const rawArg = text.replace(/^\/copy[:\s-]*/i, "").trim().toLowerCase()
+          const rawArg = text
+            .replace(/^\/copy[:\s-]*/i, "")
+            .replace(/^\[|\]$/g, "")
+            .trim()
+            .toLowerCase()
           const target =
             rawArg === "all" || rawArg === "full" || rawArg === "md" || rawArg === "markdown"
               ? "markdown"
@@ -1074,7 +1082,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           onChangeRef.current("")
           onCompact?.()
         } else if (command.id === "export") {
-          const insertText = "/export [html|md|jsonl]"
+          const insertText = "/export [html]"
           onChangeRef.current(insertText)
           if (view) {
             const selection = getArgumentSelectionRange(insertText, 7)
