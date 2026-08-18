@@ -10,10 +10,10 @@ import {
   getMarkdownReferenceName,
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import { projectApi } from "@/features/project/api/projectApi"
+import { ReferencedFolderCommandMenu } from "@/features/project/components/ReferencedFolderCommandMenu"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
-import { ReferencedFolderCommandMenu } from "@/pages/project/components/ReferencedFolderCommandMenu"
 
-interface ProjectBottomSideBarProps {
+interface ProjectReferencedFolderTagsProps {
   isExpanded?: boolean
 }
 
@@ -48,11 +48,11 @@ interface FolderPanelState {
 }
 
 /**
- * 渲染项目共享文件夹引用。目录按项目共享，启用状态按条目独立。
+ * 渲染项目共享文件夹引用标签栏。目录按项目共享，启用状态按条目独立。
  */
-export const ProjectBottomSideBar = ({
+export const ProjectReferencedFolderTags = ({
   isExpanded = false,
-}: ProjectBottomSideBarProps): React.JSX.Element => {
+}: ProjectReferencedFolderTagsProps): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
   const [projectId, setProjectId] = useState<string | null>(null)

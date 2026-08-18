@@ -1,7 +1,10 @@
 import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
 import type React from "react"
+import { useLocation } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { ProjectReferencedFolderTags } from "@/features/project"
+import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 页面底边栏属性。
 interface BottomSideBarProps {
@@ -22,6 +25,9 @@ export const BottomSideBar = ({
   onCoveringRightSideBarChange,
   onExpandedChange,
 }: BottomSideBarProps): React.JSX.Element => {
+  const { pathname } = useLocation()
+  const isProjectPage = pathname === PAGE_ROUTES.project
+
   return (
     <aside
       className={`w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[width,height,min-height,max-height] duration-300 ease-in-out ${
@@ -29,6 +35,7 @@ export const BottomSideBar = ({
       }`}
     >
       <div className="relative h-full w-full">
+        {isProjectPage && <ProjectReferencedFolderTags isExpanded={isExpanded} />}
         {children}
         <div
           className={`absolute right-0 bottom-0 flex gap-1 transition-transform duration-300 ease-in-out ${

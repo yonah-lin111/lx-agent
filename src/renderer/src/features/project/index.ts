@@ -1,0 +1,5 @@
+export { projectApi } from "@/features/project/api/projectApi"
+export { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
+export { ProjectReferencedFolderTags } from "@/features/project/components/ProjectReferencedFolderTags"
+export { useRecentItemsStore } from "@/features/project/recentItemsStore"
+export { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
