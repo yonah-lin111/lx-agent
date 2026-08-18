@@ -15,6 +15,7 @@ import type {
   LspServerStatusItem,
   McpServerStatusItem,
   PermissionResponse,
+  PromptTemplateItem,
   QuestionResponse,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
@@ -48,6 +49,8 @@ export const agentApi = {
   getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
   getLspStatus: (): Promise<LspServerStatusItem[]> => window.api.agent.getLspStatus(),
   installLspServers: (): Promise<LspInstallResult> => window.api.agent.installLspServers(),
+  listPromptTemplates: (cwd?: string): Promise<PromptTemplateItem[]> =>
+    window.api.agent.listPromptTemplates(cwd),
   suggestedQuestions: (
     messages: SuggestedQuestionContextMessage[],
     excludedQuestions?: string[],

@@ -7,9 +7,12 @@ import { LxTag } from "@/components/ui/LxTag"
 import { getMentionDirectoryTag } from "@/features/project/utils"
 
 export interface AgentInputCommand {
-  id: "clear" | "undo" | "steer" | "model" | "gitWorktree" | "compact"
+  id: string
   name: string
   description: string
+  kind?: "builtin" | "prompt" | "skill"
+  source?: "project" | "user"
+  argumentHint?: string
 }
 
 export interface AgentInputModel {
@@ -189,8 +192,11 @@ export const AgentInputModelPanel = ({
   )
   if (!animated) return null
 
-  const { position: displayPosition, models: displayModels, activeIndex: displayIndex } =
-    animated.displayData
+  const {
+    position: displayPosition,
+    models: displayModels,
+    activeIndex: displayIndex,
+  } = animated.displayData
 
   return (
     <div
@@ -220,6 +226,18 @@ export const AgentInputModelPanel = ({
   )
 }
 
+const getCommandTag = (command: AgentInputCommand): { label: string; bgClass: string } | null => {
+  if (command.kind === "skill") {
+    return { label: "Skill", bgClass: "bg-[#7c3aed]/20 text-[#c084fc]" }
+  }
+  if (command.kind === "prompt") {
+    return command.source === "project"
+      ? { label: "项目", bgClass: "bg-[#059669]/20 text-[#34d399]" }
+      : { label: "全局", bgClass: "bg-[#2563eb]/20 text-[#60a5fa]" }
+  }
+  return { label: "内置", bgClass: "bg-white/10 text-white/50" }
+}
+
 /**
  * 渲染 Agent 输入框的 Slash 命令面板。
  */
@@ -241,8 +259,11 @@ export const AgentInputCommandPanel = ({
   )
   if (!animated) return null
 
-  const { position: displayPosition, commands: displayCommands, activeIndex: displayIndex } =
-    animated.displayData
+  const {
+    position: displayPosition,
+    commands: displayCommands,
+    activeIndex: displayIndex,
+  } = animated.displayData
 
   return (
     <div
@@ -254,27 +275,48 @@ export const AgentInputCommandPanel = ({
       role="listbox"
       style={displayPosition}
     >
-      {displayCommands.map((command, index) => (
-        <div
-          key={command.id}
-          role="option"
-          data-index={index}
-          aria-selected={index === displayIndex}
-          className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-            index === displayIndex ? "bg-white/8 text-white" : "text-white/75"
-          }`}
-        >
-          <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
-            /
-          </span>
-          <span className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="shrink-0 text-[13px] leading-none text-white">{command.name}</span>
-            <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
-              {command.description}
+      {displayCommands.map((command, index) => {
+        const tag = getCommandTag(command)
+        const isActive = index === displayIndex
+
+        return (
+          <div
+            key={command.id}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75"
+            }`}
+          >
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
+              {command.kind === "skill" ? "@" : "/"}
             </span>
-          </span>
-        </div>
-      ))}
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="font-medium">{command.name}</span>
+                {command.argumentHint && (
+                  <span className="text-[12px] font-normal text-white/35">
+                    {command.argumentHint}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                {command.description}
+              </span>
+            </span>
+            {tag && (
+              <LxTag
+                bgClass={tag.bgClass}
+                className="pointer-events-none ml-auto shrink-0"
+                size="small"
+              >
+                {tag.label}
+              </LxTag>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -300,8 +342,11 @@ export const AgentInputFilePanel = ({
   )
   if (!animated) return null
 
-  const { position: displayPosition, files: displayFiles, activeIndex: displayIndex } =
-    animated.displayData
+  const {
+    position: displayPosition,
+    files: displayFiles,
+    activeIndex: displayIndex,
+  } = animated.displayData
 
   return (
     <div

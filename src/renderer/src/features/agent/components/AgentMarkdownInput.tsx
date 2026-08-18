@@ -1,24 +1,22 @@
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-} from "@codemirror/commands"
-import { languages } from "@codemirror/language-data"
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
 import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language"
+import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
-import {
-  EditorView,
-  keymap,
-  placeholder,
-} from "@codemirror/view"
-import { GFM } from "@lezer/markdown"
+import { EditorView, keymap, placeholder } from "@codemirror/view"
+import type { PromptTemplateItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
-import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   createMarkdownBlockInsertion,
@@ -26,6 +24,7 @@ import {
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import {
@@ -33,6 +32,7 @@ import {
   markdownMarkerHighlight,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
+import { agentApi } from "../api/agentApi"
 import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
   type AgentInputCommand,
@@ -74,13 +74,18 @@ export interface AgentMarkdownInputProps {
   onCompact?: () => void
 }
 
-const INPUT_COMMANDS: AgentInputCommand[] = [
-  { id: "clear", name: "/clear", description: "清空当前对话" },
-  { id: "undo", name: "/undo", description: "撤销上一轮对话" },
-  { id: "steer", name: "/steer", description: "即时插话（引导运行中 Agent 转向）" },
-  { id: "model", name: "/model", description: "切换 AI 模型" },
-  { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区" },
-  { id: "compact", name: "/compact", description: "压缩当前会话上下文" },
+const BUILTIN_COMMANDS: AgentInputCommand[] = [
+  { id: "clear", name: "/clear", description: "清空当前对话", kind: "builtin" },
+  { id: "undo", name: "/undo", description: "撤销上一轮对话", kind: "builtin" },
+  {
+    id: "steer",
+    name: "/steer",
+    description: "即时插话（引导运行中 Agent 转向）",
+    kind: "builtin",
+  },
+  { id: "model", name: "/model", description: "切换 AI 模型", kind: "builtin" },
+  { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区", kind: "builtin" },
+  { id: "compact", name: "/compact", description: "压缩当前会话上下文", kind: "builtin" },
 ]
 
 const isFuzzyMatch = (query: string, keyword: string): boolean => {
@@ -93,12 +98,31 @@ const isFuzzyMatch = (query: string, keyword: string): boolean => {
   return false
 }
 
-const getMatchedCommands = (value: string): AgentInputCommand[] => {
+const getMatchedCommands = (
+  value: string,
+  templates: PromptTemplateItem[] = [],
+): AgentInputCommand[] => {
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
-  return INPUT_COMMANDS.filter((command) => {
-    const aliases = command.id === "clear" ? ["clear", "new"] : [command.id]
-    return aliases.some((alias) => isFuzzyMatch(query, alias))
+
+  const templateCommands: AgentInputCommand[] = templates.map((t) => ({
+    id: `prompt:${t.name}`,
+    name: `/${t.name}`,
+    description: t.description,
+    kind: "prompt",
+    source: t.source,
+    argumentHint: t.argumentHint,
+  }))
+
+  const allCommands = [...BUILTIN_COMMANDS, ...templateCommands]
+
+  return allCommands.filter((command) => {
+    const rawName = command.name.replace(/^\//, "").toLowerCase()
+    const aliases = command.id === "clear" ? ["clear", "new"] : [rawName]
+    return (
+      aliases.some((alias) => isFuzzyMatch(query, alias)) ||
+      isFuzzyMatch(query, command.description.toLowerCase())
+    )
   })
 }
 
@@ -109,9 +133,7 @@ const getClipboardFiles = (
   if (!clipboardData) return []
 
   const files = Array.from(clipboardData.files)
-  const entries = Array.from(clipboardData.items).filter(
-    (item) => item.kind === "file",
-  )
+  const entries = Array.from(clipboardData.items).filter((item) => item.kind === "file")
   const clipboardFiles = files.flatMap((file, index) => {
     try {
       const path = window.api.getPathForFile(file)
@@ -121,7 +143,8 @@ const getClipboardFiles = (
           | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
           | undefined
       )?.webkitGetAsEntry?.()
-      const isImage = file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
+      const isImage =
+        file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
       return [{ path, type: entry?.isDirectory ? "folder" : isImage ? "image" : "file" }]
     } catch {
       return []
@@ -131,10 +154,12 @@ const getClipboardFiles = (
 
   const plainText = clipboardData.getData("text/plain").trim()
   if (plainText.startsWith("/")) {
-    return [{
-      path: plainText,
-      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
-    }]
+    return [
+      {
+        path: plainText,
+        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
+      },
+    ]
   }
 
   const fileUri = clipboardData
@@ -145,10 +170,12 @@ const getClipboardFiles = (
 
   try {
     const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
-    return [{
-      path,
-      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
-    }]
+    return [
+      {
+        path,
+        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
+      },
+    ]
   } catch {
     return []
   }
@@ -279,17 +306,19 @@ const agentEditorTheme = EditorView.theme({
   ".cm-md-code-fence-hidden-line": {
     display: "none !important",
   },
-  ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace": {
-    color: "inherit !important",
-    backgroundColor: "transparent !important",
-    padding: "0 !important",
-    borderRadius: "0 !important",
-  },
-  ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node)": {
-    backgroundColor: "transparent !important",
-    padding: "0 !important",
-    borderRadius: "0 !important",
-  },
+  ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace":
+    {
+      color: "inherit !important",
+      backgroundColor: "transparent !important",
+      padding: "0 !important",
+      borderRadius: "0 !important",
+    },
+  ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node)":
+    {
+      backgroundColor: "transparent !important",
+      padding: "0 !important",
+      borderRadius: "0 !important",
+    },
   ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
     color: "#fb7185 !important",
     fontWeight: "700",
@@ -520,9 +549,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     // 块级命令状态
     const [blockCommands, setBlockCommands] = useState<MarkdownBlockCommand[]>([])
     const [blockCommandIndex, setBlockCommandIndex] = useState(0)
-    const [blockCommandPosition, setBlockCommandPosition] = useState<React.CSSProperties | undefined>(
-      undefined,
-    )
+    const [blockCommandPosition, setBlockCommandPosition] = useState<
+      React.CSSProperties | undefined
+    >(undefined)
     const isBlockCommandOpen = blockCommands.length > 0 && !!blockCommandPosition
 
     const { browsing, record, reset, navigate } = usePromptHistory()
@@ -618,7 +647,29 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const blockCommandIndexRef = useRef(blockCommandIndex)
     blockCommandIndexRef.current = blockCommandIndex
 
-    const matchedCommands = getMatchedCommands(value)
+    const [promptTemplates, setPromptTemplates] = useState<PromptTemplateItem[]>([])
+    const promptTemplatesRef = useRef(promptTemplates)
+    promptTemplatesRef.current = promptTemplates
+
+    useEffect(() => {
+      let active = true
+      agentApi
+        .listPromptTemplates(projectPath)
+        .then((templates) => {
+          if (active) setPromptTemplates(templates)
+        })
+        .catch(() => {
+          if (active) setPromptTemplates([])
+        })
+      return () => {
+        active = false
+      }
+    }, [projectPath])
+
+    const matchedCommands = useMemo(
+      () => getMatchedCommands(value, promptTemplates),
+      [value, promptTemplates],
+    )
     const matchedCommandsRef = useRef(matchedCommands)
     matchedCommandsRef.current = matchedCommands
 
@@ -636,7 +687,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           }
           return [{ id: group.value ?? "", label: group.label, provider: "" }]
         })
-        .filter((model) => !query || `${model.label} ${model.provider}`.toLowerCase().includes(query))
+        .filter(
+          (model) => !query || `${model.label} ${model.provider}`.toLowerCase().includes(query),
+        )
     }, [value, modelOptions])
     const matchedModelsRef = useRef(matchedModels)
     matchedModelsRef.current = matchedModels
@@ -735,7 +788,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           return
         }
 
-        const commands = getMatchedCommands(docText)
+        const commands = getMatchedCommands(docText, promptTemplatesRef.current)
         if (commands.length > 0) {
           setActiveMode("command")
           setCommandIndex(0)
@@ -784,13 +837,17 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         if (matchedBlockCmds.length > 0 && trigger) {
           // 组件主逻辑在 updateListener 中执行（DOM 已更新，可读布局）；
           // coordsAtPos 失败时（极端场景/无布局）fallback 到容器定位。
-          const measurePos = trigger.kind === "codeBlock" && cursor > line.from ? cursor - 1 : cursor
+          const measurePos =
+            trigger.kind === "codeBlock" && cursor > line.from ? cursor - 1 : cursor
           let position: React.CSSProperties | undefined
           try {
             const coords = view.coordsAtPos(measurePos)
             if (coords) {
               const panelWidth = 320
-              const left = Math.min(Math.max(coords.left, 8), Math.max(window.innerWidth - panelWidth - 8, 8))
+              const left = Math.min(
+                Math.max(coords.left, 8),
+                Math.max(window.innerWidth - panelWidth - 8, 8),
+              )
               position =
                 window.innerHeight - coords.bottom < 240
                   ? { left, top: "auto", bottom: window.innerHeight - coords.top + 6 }
@@ -849,7 +906,14 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       (command: AgentInputCommand): void => {
         setActiveMode(null)
         const view = editorViewRef.current
-        if (command.id === "clear") {
+        if (command.kind === "prompt") {
+          const insertText = `/${command.name.replace(/^\//, "")} `
+          onChangeRef.current(insertText)
+          view?.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection: { anchor: insertText.length },
+          })
+        } else if (command.id === "clear") {
           onChangeRef.current("")
           onClear?.()
         } else if (command.id === "undo") {
@@ -872,7 +936,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             changes: { from: 0, to: view.state.doc.length, insert: "/gitWorktree " },
             selection: { anchor: 13 },
           })
-        } else {
+        } else if (command.id === "compact") {
           onChangeRef.current("")
           onCompact?.()
         }
@@ -999,7 +1063,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     setPasteIndex((i) => (i + 1) % 2)
                     return true
                   }
-                  if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
+                  if (
+                    activeModeRef.current === "command" &&
+                    matchedCommandsRef.current.length > 0
+                  ) {
                     setCommandIndex((i) => (i + 1) % matchedCommandsRef.current.length)
                     return true
                   }
@@ -1007,7 +1074,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     setModelIndex((i) => (i + 1) % matchedModelsRef.current.length)
                     return true
                   }
-                  if (activeModeRef.current === "worktree" && matchedWorktreesRef.current.length > 0) {
+                  if (
+                    activeModeRef.current === "worktree" &&
+                    matchedWorktreesRef.current.length > 0
+                  ) {
                     setWorktreeIndex((i) => (i + 1) % matchedWorktreesRef.current.length)
                     return true
                   }
@@ -1045,22 +1115,32 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     setPasteIndex((i) => (i - 1 + 2) % 2)
                     return true
                   }
-                  if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
+                  if (
+                    activeModeRef.current === "command" &&
+                    matchedCommandsRef.current.length > 0
+                  ) {
                     setCommandIndex(
-                      (i) => (i - 1 + matchedCommandsRef.current.length) % matchedCommandsRef.current.length,
+                      (i) =>
+                        (i - 1 + matchedCommandsRef.current.length) %
+                        matchedCommandsRef.current.length,
                     )
                     return true
                   }
                   if (activeModeRef.current === "model" && matchedModelsRef.current.length > 0) {
                     setModelIndex(
-                      (i) => (i - 1 + matchedModelsRef.current.length) % matchedModelsRef.current.length,
+                      (i) =>
+                        (i - 1 + matchedModelsRef.current.length) % matchedModelsRef.current.length,
                     )
                     return true
                   }
-                  if (activeModeRef.current === "worktree" && matchedWorktreesRef.current.length > 0) {
+                  if (
+                    activeModeRef.current === "worktree" &&
+                    matchedWorktreesRef.current.length > 0
+                  ) {
                     setWorktreeIndex(
                       (i) =>
-                        (i - 1 + matchedWorktreesRef.current.length) % matchedWorktreesRef.current.length,
+                        (i - 1 + matchedWorktreesRef.current.length) %
+                        matchedWorktreesRef.current.length,
                     )
                     return true
                   }
@@ -1070,7 +1150,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   }
                   if (blockCommandsRef.current.length > 0) {
                     setBlockCommandIndex(
-                      (i) => (i - 1 + blockCommandsRef.current.length) % blockCommandsRef.current.length,
+                      (i) =>
+                        (i - 1 + blockCommandsRef.current.length) % blockCommandsRef.current.length,
                     )
                     return true
                   }
@@ -1081,7 +1162,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   const firstLineBreak = doc.indexOf("\n")
                   const isOnFirstLine = firstLineBreak === -1 || cursor <= firstLineBreak
                   const isAtLineStart = cursor === 0 || (cursor > 0 && doc[cursor - 1] === "\n")
-                  const canUp = isOnFirstLine && (doc.length === 0 || browsingRef.current || isAtLineStart)
+                  const canUp =
+                    isOnFirstLine && (doc.length === 0 || browsingRef.current || isAtLineStart)
                   if (canUp) {
                     const result = navigateRef.current("up", doc)
                     if (result) {
@@ -1142,9 +1224,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 key: "Enter",
                 run: () => {
                   if (pastePanelRef.current) {
-                    return selectPasteReference(
-                      pasteIndexRef.current === 0 ? "reference" : "path",
-                    )
+                    return selectPasteReference(pasteIndexRef.current === 0 ? "reference" : "path")
                   }
                   if (activeModeRef.current === "command") {
                     const cmd =
@@ -1361,9 +1441,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         <div
           ref={containerRef}
           style={
-            isExpanded
-              ? ({ "--agent-input-height": "244px" } as React.CSSProperties)
-              : undefined
+            isExpanded ? ({ "--agent-input-height": "244px" } as React.CSSProperties) : undefined
           }
           className={`${
             isExpanded ? "h-[244px]" : "min-h-[44px]"

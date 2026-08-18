@@ -31,6 +31,7 @@ import { formatInstructions, loadInstructions } from "./instructionLoader"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
+import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { questionManager } from "./question/questionManager"
 import {
   formatSkillsForPrompt,
@@ -288,6 +289,13 @@ class AgentRunner {
     return args ? `${skillBlock}\n\n${args}` : skillBlock
   }
 
+  // 统一指令宏展开：优先匹配 /skill: 显式调用，其次匹配 Prompt 模板（/<template> args）；未命中原样透传。
+  private _expandCommand(text: string): string {
+    const skillExpanded = this._expandSkillCommand(text)
+    if (skillExpanded !== text) return skillExpanded
+    return promptTemplateLoader.expand(text, this.cwd)
+  }
+
   // 当前是否有活动 run 或排队消息：流式输出 / 正在 drain / 队列非空均为 busy。
   private isBusy(): boolean {
     return Boolean(this.agent?.state.isStreaming || this.draining || this.messageQueue.length > 0)
@@ -366,7 +374,7 @@ class AgentRunner {
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
       const isNewSession = !this.currentSessionId
       if (!isNewSession && this.currentSessionId) {
-        const expanded = this._expandSkillCommand(text)
+        const expanded = this._expandCommand(text)
         const steerMessage: UserMessage = {
           role: "user",
           content: expanded,
@@ -443,8 +451,8 @@ class AgentRunner {
       this.compactor.setBoundary(null)
       this.turnStore.resetOverflow()
     }
-    // 显式 /skill: 触发在 main 侧展开正文（未命中原样透传）。
-    const expanded = this._expandSkillCommand(text)
+    // 显式 /skill: 或 Prompt 模板在 main 侧展开正文（未命中原样透传）。
+    const expanded = this._expandCommand(text)
     this.beginSessionTurn(text)
     // 文件快照：turn 开始捕获 hash_start（仅 git 仓库，失败静默降级）。
     this.turnStore.captureSnapshot()

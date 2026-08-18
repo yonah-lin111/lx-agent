@@ -19,6 +19,7 @@ import { agentRunner } from "@/agent/agentRunner"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
+import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 
@@ -233,6 +234,11 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   // LSP server 安装状态与一键安装（状态栏指示；安装复用懒安装器）。
   ipcMain.handle(AGENT_CHANNELS.getLspStatus, () => lspManager.getStatus())
   ipcMain.handle(AGENT_CHANNELS.installLspServers, () => lspManager.installMissingServers())
+
+  ipcMain.handle(AGENT_CHANNELS.listPromptTemplates, (_, cwd: unknown) => {
+    const validCwd = typeof cwd === "string" && cwd.trim() ? cwd.trim() : undefined
+    return promptTemplateLoader.list(validCwd)
+  })
 
   ipcMain.handle(
     AGENT_CHANNELS.suggestedQuestions,

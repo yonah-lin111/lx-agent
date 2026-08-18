@@ -382,6 +382,15 @@ export type AgentEvent =
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
   | { type: "queue_changed"; length: number; messages: string[] }
 
+// Prompt 模板条目（由 promptTemplateLoader 扫描自 ~/.lx/prompts 与 <cwd>/.lx/prompts）。
+export interface PromptTemplateItem {
+  name: string
+  description: string
+  argumentHint?: string
+  source: "project" | "user"
+  filePath: string
+}
+
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
   projectItemId?: string // 项目 item 会话归属

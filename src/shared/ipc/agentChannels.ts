@@ -16,6 +16,7 @@ export const AGENT_CHANNELS = {
   getMcpStatus: "agent:getMcpStatus",
   getLspStatus: "agent:getLspStatus",
   installLspServers: "agent:installLspServers",
+  listPromptTemplates: "agent:listPromptTemplates",
   suggestedQuestions: "agent:suggestedQuestions",
   // 获取系统默认的桌面路径
   getDefaultPath: "agent:getDefaultPath",
