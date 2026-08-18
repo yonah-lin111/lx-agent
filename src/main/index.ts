@@ -63,7 +63,7 @@ app.whenReady().then(() => {
   registerMarkdownHandlers()
   registerGitHandlers()
   registerPromptHistoryHandlers()
-  registerTerminalHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  registerTerminalHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   // MCP server 连接（幂等；失败降级不阻塞），退出时断开避免残留子进程。

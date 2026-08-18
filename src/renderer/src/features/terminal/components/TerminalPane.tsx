@@ -78,20 +78,11 @@ export const TerminalPane = ({
     const cols = term.cols > 0 ? term.cols : 80
     const rows = term.rows > 0 ? term.rows : 24
 
-    // 创建后端 PTY 进程。
-    void terminalApi.create({
-      id: tab.id,
-      cwd: tab.cwd,
-      cols,
-      rows,
-    })
-
-    // 订阅后端 PTY 输出。
+    // 先订阅后端 PTY 输出与退出事件（保证不丢失首包输出）。
     const unsubscribeData = terminalApi.onData(tab.id, (data) => {
       term.write(data)
     })
 
-    // 订阅后端 PTY 退出。
     const unsubscribeExit = terminalApi.onExit(tab.id, ({ exitCode }) => {
       term.writeln(`\r\n\x1b[90m[进程已退出，代码: ${exitCode}]\x1b[0m`)
     })
@@ -100,6 +91,23 @@ export const TerminalPane = ({
     const onDataDisposable = term.onData((data) => {
       void terminalApi.write(tab.id, data)
     })
+
+    // 创建后端 PTY 进程。
+    void terminalApi
+      .create({
+        id: tab.id,
+        cwd: tab.cwd,
+        cols,
+        rows,
+      })
+      .then((res) => {
+        if (!res.success && res.error) {
+          term.writeln(`\r\n\x1b[31m[创建终端失败: ${res.error}]\x1b[0m`)
+        }
+      })
+
+    // 挂载后立即请求焦点。
+    term.focus()
 
     return () => {
       unsubscribeData()
@@ -132,7 +140,7 @@ export const TerminalPane = ({
       }
     }
 
-    // 延迟一次以等待 DOM 动画完成。
+    // 延迟以等待 DOM 展开过渡动画完成。
     const timer = window.setTimeout(handleResize, 100)
     const observer = new ResizeObserver(() => {
       handleResize()
@@ -145,19 +153,24 @@ export const TerminalPane = ({
     }
   }, [tab.id, isActive, isExpanded])
 
-  // 3. 激活或展开时自动聚焦。
+  // 3. 激活或展开时自动聚焦到 xterm 输入光标。
   useEffect(() => {
     if (isActive && isExpanded && terminalRef.current) {
-      terminalRef.current.focus()
+      const timer = window.setTimeout(() => {
+        terminalRef.current?.focus()
+      }, 50)
+      return () => window.clearTimeout(timer)
     }
   }, [isActive, isExpanded])
 
   return (
     <div
       ref={containerRef}
-      className={`h-full w-full overflow-hidden bg-[#141414] p-1.5 ${
+      className={`h-full w-full overflow-hidden bg-[#141414] p-1.5 cursor-text ${
         isActive ? "block" : "hidden"
       }`}
+      onClick={() => terminalRef.current?.focus()}
+      onMouseDown={() => terminalRef.current?.focus()}
     />
   )
 }

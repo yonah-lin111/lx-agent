@@ -85,6 +85,25 @@ export class TerminalService {
         ...options.env,
       } as Record<string, string>
 
+      if (process.platform === "darwin") {
+        const extraPaths = [
+          "/opt/homebrew/bin",
+          "/usr/local/bin",
+          "/usr/bin",
+          "/bin",
+          "/usr/sbin",
+          "/sbin",
+        ]
+        const currentPath = env.PATH || process.env.PATH || ""
+        const pathSegments = currentPath.split(":").filter(Boolean)
+        for (const extraPath of extraPaths) {
+          if (!pathSegments.includes(extraPath) && existsSync(extraPath)) {
+            pathSegments.unshift(extraPath)
+          }
+        }
+        env.PATH = pathSegments.join(":")
+      }
+
       const ptyProcess = pty.spawn(shell, [], {
         name: "xterm-256color",
         cols,

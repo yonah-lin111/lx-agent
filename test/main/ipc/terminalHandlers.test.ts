@@ -20,7 +20,7 @@ describe("terminal IPC handlers", () => {
   it("为终端领域 channel 注册全部主进程 handler", async () => {
     const { registerTerminalHandlers } = await import("@/ipc/terminalHandlers")
 
-    registerTerminalHandlers(() => undefined)
+    registerTerminalHandlers()
 
     const expectedChannels = [
       TERMINAL_CHANNELS.create,

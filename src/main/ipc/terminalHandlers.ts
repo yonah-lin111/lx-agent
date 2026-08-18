@@ -13,20 +13,24 @@ const isValidCreateOptions = (value: unknown): value is CreateTerminalOptions =>
 /**
  * 注册终端领域 IPC 处理器。
  */
-export const registerTerminalHandlers = (getWebContents: () => WebContents | undefined): void => {
-  ipcMain.handle(TERMINAL_CHANNELS.create, (_event, options: unknown) => {
+export const registerTerminalHandlers = (): void => {
+  ipcMain.handle(TERMINAL_CHANNELS.create, (event, options: unknown) => {
     if (!isValidCreateOptions(options)) {
       return { success: false, id: "", error: "参数无效：必须提供合法的终端实例 ID" }
     }
 
-    const webContents = getWebContents()
+    const sender = event.sender
     return terminalService.createTerminal(
       options,
       (data) => {
-        webContents?.send(TERMINAL_CHANNELS.data(options.id), data)
+        if (!sender.isDestroyed()) {
+          sender.send(TERMINAL_CHANNELS.data(options.id), data)
+        }
       },
       (exitEvent) => {
-        webContents?.send(TERMINAL_CHANNELS.exit(options.id), exitEvent)
+        if (!sender.isDestroyed()) {
+          sender.send(TERMINAL_CHANNELS.exit(options.id), exitEvent)
+        }
       },
     )
   })
