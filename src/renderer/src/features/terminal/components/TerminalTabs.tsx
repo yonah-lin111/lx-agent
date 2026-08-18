@@ -45,12 +45,16 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
   }
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden select-none">
-      {/* 终端标题与图标 */}
-      <div className="flex shrink-0 items-center gap-1.5 pr-1 text-white/50">
-        <TerminalIcon className="h-3.5 w-3.5 text-white/40" />
-        <span className="text-[11px] font-medium tracking-wider uppercase">终端</span>
-      </div>
+    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden select-none">
+      {/* 新建标签按钮（位于最左侧） */}
+      <LxIconButton
+        aria-label="新建终端"
+        size="small"
+        title={{ content: "新建终端", placement: "top" }}
+        onClick={onAddTab}
+      >
+        <Plus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
+      </LxIconButton>
 
       {/* 水平滚动标签列表 */}
       <div className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
@@ -61,13 +65,20 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
           return (
             <div
               key={tab.id}
-              className={`group flex h-6 max-w-[160px] min-w-[80px] shrink-0 items-center justify-between rounded-[4px] px-2 text-xs transition-colors cursor-pointer ${
+              className={`group flex h-6 max-w-[160px] min-w-[80px] shrink-0 items-center gap-1.5 rounded-[4px] px-2 text-xs transition-colors cursor-pointer ${
                 isActive
                   ? "border border-white/10 bg-white/[0.08] font-medium text-white"
                   : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
+              {/* 每个 Tab 项左侧的小终端图标 */}
+              <TerminalIcon
+                className={`h-3 w-3 shrink-0 ${
+                  isActive ? "text-white/80" : "text-white/40 group-hover:text-white/60"
+                }`}
+              />
+
               {isEditing ? (
                 <input
                   autoFocus
@@ -91,7 +102,7 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
               )}
 
               <div
-                className={`ml-1 flex shrink-0 items-center transition-opacity ${
+                className={`flex shrink-0 items-center transition-opacity ${
                   isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 }`}
               >
@@ -113,16 +124,6 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
           )
         })}
       </div>
-
-      {/* 新建标签按钮 */}
-      <LxIconButton
-        aria-label="新建终端"
-        size="small"
-        title={{ content: "新建终端", placement: "top" }}
-        onClick={onAddTab}
-      >
-        <Plus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
-      </LxIconButton>
     </div>
   )
 }
