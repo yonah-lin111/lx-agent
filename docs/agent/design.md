@@ -360,3 +360,20 @@ type AgentToolResult<TDetails> = { content: (TextContent | ImageContent)[]; deta
 - 移植核心（agent-loop 工具循环）补单元测试（vitest，`test/main/agent/`）。
 - 全量 `pnpm typecheck` + Biome format 受影响文件。
 - IPC 三层契约（channel 常量 / preload / main handler）同步更新。
+
+## 13. 运行时执行增强与后续演进
+
+### 13.1 Spill 机制（大输出落盘与引用化）
+- **背景**：解决内存硬截断丢失后半段数据的问题。
+- **机制**：当 `read` / `grep` / `bash` / `webfetch` 输出超过行数（2000 行）或字节（50KB）限制时，完整原始内容写入 `~/.lx/spill/<sessionId>/<callId>.txt`。
+- **上下文回灌**：返回截断预览，末尾附带落盘文件路径与提示，供 Agent 按需通过 `read` 的 `offset`/`limit` 读取分片。
+- **生命周期**：随会话删除级联清理，应用启动轻量清理 7 天前过期文件。
+
+### 13.2 Post-Mutation LSP 自动诊断闭环
+- **背景**：解决写操作破坏语法或类型时缺乏即时反馈的问题。
+- **机制**：`edit` / `write` 工具写入成功后，调用 `lspManager` 探测修改文件的诊断（2000ms 超时）。
+- **反馈原则**：静默优先。仅在检测到 `error` 级别诊断时在 ToolResult 尾部追加诊断摘要；无报错、仅 warning 或 LSP 不可用/超时时静默返回普通成功，不污染上下文。
+
+### 13.3 后续演进路线图：v12（后台长进程与终端 PTY 管理）
+- 规划引入进程管理器（`src/main/agent/process/`），支持后台运行 `npm run dev` / 长耗时任务并提供实时状态监控、交互式 stdin 注入与中止能力。本能力在 v12 实施，v11 不执行。
+
