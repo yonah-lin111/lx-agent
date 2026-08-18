@@ -127,7 +127,8 @@ const getClipboardFiles = (
           | undefined
       )?.webkitGetAsEntry?.()
       const isImage = file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
-      return [{ path, type: entry?.isDirectory ? "folder" : isImage ? "image" : "file" }]
+      const fileType: "image" | "file" | "folder" = entry?.isDirectory ? "folder" : isImage ? "image" : "file"
+      return [{ path, type: fileType }]
     } catch {
       return []
     }

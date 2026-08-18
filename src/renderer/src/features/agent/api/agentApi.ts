@@ -11,6 +11,10 @@ import type {
   AgentSessionSummary,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  CopySessionOptions,
+  CopySessionResult,
+  ExportSessionOptions,
+  ExportSessionResult,
   LspInstallResult,
   LspServerStatusItem,
   McpServerStatusItem,
@@ -51,6 +55,10 @@ export const agentApi = {
   installLspServers: (): Promise<LspInstallResult> => window.api.agent.installLspServers(),
   listPromptTemplates: (cwd?: string): Promise<PromptTemplateItem[]> =>
     window.api.agent.listPromptTemplates(cwd),
+  exportSession: (options: ExportSessionOptions): Promise<ExportSessionResult> =>
+    window.api.agent.exportSession(options),
+  copySession: (options?: CopySessionOptions): Promise<CopySessionResult> =>
+    window.api.agent.copySession(options),
   suggestedQuestions: (
     messages: SuggestedQuestionContextMessage[],
     excludedQuestions?: string[],

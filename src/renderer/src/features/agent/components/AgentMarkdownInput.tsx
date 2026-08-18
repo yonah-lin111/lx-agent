@@ -88,6 +88,20 @@ const BUILTIN_COMMANDS: AgentInputCommand[] = [
   { id: "model", name: "/model", description: "切换 AI 模型", kind: "builtin" },
   { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区", kind: "builtin" },
   { id: "compact", name: "/compact", description: "压缩当前会话上下文", kind: "builtin" },
+  {
+    id: "export",
+    name: "/export",
+    description: "导出会话报告（HTML 网页 / Markdown / JSONL）",
+    kind: "builtin",
+    argumentHint: "[html|md|jsonl]",
+  },
+  {
+    id: "copy",
+    name: "/copy",
+    description: "复制会话到剪贴板（最近回复或全文）",
+    kind: "builtin",
+    argumentHint: "[all]",
+  },
 ]
 
 const isFuzzyMatch = (query: string, keyword: string): boolean => {
@@ -161,7 +175,12 @@ const getClipboardFiles = (
       )?.webkitGetAsEntry?.()
       const isImage =
         file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
-      return [{ path, type: entry?.isDirectory ? "folder" : isImage ? "image" : "file" }]
+      const fileType: "image" | "file" | "folder" = entry?.isDirectory
+        ? "folder"
+        : isImage
+          ? "image"
+          : "file"
+      return [{ path, type: fileType }]
     } catch {
       return []
     }
@@ -538,7 +557,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
   ): React.JSX.Element => {
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
-    const { warning: warningToast } = useLxToast()
+    const { warning: warningToast, success: successToast, error: errorToast } = useLxToast()
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
     // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
     const getPanelAnchor = useCallback((): HTMLElement | null => {
@@ -901,6 +920,71 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         let text = valueRef.current.trim()
         if (!text) return
 
+        // 拦截 /export 命令
+        if (text === "/export" || text.startsWith("/export ")) {
+          const arg = text.slice(7).trim().toLowerCase()
+          let format: "html" | "markdown" | "jsonl" = "html"
+          if (arg === "md" || arg === "markdown") {
+            format = "markdown"
+          } else if (arg === "jsonl" || arg === "json") {
+            format = "jsonl"
+          } else if (arg === "html") {
+            format = "html"
+          }
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          void agentApi
+            .exportSession({ format, openAfterExport: true })
+            .then((res) => {
+              if (res.ok && !res.canceled && res.filePath) {
+                successToast(`导出成功: ${res.filePath}`)
+              } else if (!res.ok) {
+                errorToast(res.error || "导出失败")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "导出失败")
+            })
+          return
+        }
+
+        // 拦截 /copy 命令
+        if (text === "/copy" || text.startsWith("/copy ")) {
+          const arg = text.slice(5).trim().toLowerCase()
+          const target = arg === "all" ? "markdown" : "last_assistant"
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          void agentApi
+            .copySession({ target })
+            .then((res) => {
+              if (res.ok && res.text) {
+                void navigator.clipboard.writeText(res.text).then(() => {
+                  successToast(
+                    target === "markdown" ? "已复制完整对话 Markdown" : "已复制最近一条回复",
+                  )
+                })
+              } else if (!res.ok) {
+                errorToast(res.error || "复制失败")
+              } else {
+                warningToast("暂无内容可复制")
+              }
+            })
+            .catch((err) => {
+              errorToast(err instanceof Error ? err.message : "复制失败")
+            })
+          return
+        }
+
         let delivery = forceDelivery
         if (text.startsWith("/steer ") || text === "/steer") {
           delivery = "steer"
@@ -915,7 +999,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           onSendRef.current()
         }
       },
-      [record, reset],
+      [record, reset, successToast, errorToast, warningToast],
     )
 
     const executeCommand = useCallback(
@@ -966,6 +1050,26 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         } else if (command.id === "compact") {
           onChangeRef.current("")
           onCompact?.()
+        } else if (command.id === "export") {
+          const insertText = "/export [html|md|jsonl]"
+          onChangeRef.current(insertText)
+          if (view) {
+            const selection = getArgumentSelectionRange(insertText, 7)
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: insertText },
+              selection,
+            })
+          }
+        } else if (command.id === "copy") {
+          const insertText = "/copy [all]"
+          onChangeRef.current(insertText)
+          if (view) {
+            const selection = getArgumentSelectionRange(insertText, 5)
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: insertText },
+              selection,
+            })
+          }
         }
         view?.focus()
       },

@@ -7,6 +7,8 @@ import type {
   AgentMessage,
   AgentSendContext,
   AgentSendOptions,
+  CopySessionOptions,
+  ExportSessionOptions,
   McpServerStatusItem,
   PermissionResponse,
   QuestionResponse,
@@ -239,6 +241,20 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     const validCwd =
       typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
     return promptTemplateLoader.list(validCwd)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.exportSession, (_, options: unknown) => {
+    const opts =
+      typeof options === "object" && options !== null
+        ? (options as ExportSessionOptions)
+        : ({ format: "html" } as ExportSessionOptions)
+    return agentRunner.exportSession(opts)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.copySession, (_, options: unknown) => {
+    const opts =
+      typeof options === "object" && options !== null ? (options as CopySessionOptions) : undefined
+    return agentRunner.copySession(opts)
   })
 
   ipcMain.handle(

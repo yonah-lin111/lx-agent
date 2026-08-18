@@ -1,5 +1,5 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
-import { Search } from "lucide-react"
+import { Download, Search } from "lucide-react"
 import type React from "react"
 import { useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -168,6 +168,22 @@ export const ChatHistoryPanel = ({
                         <span className="block truncate">{session.title}</span>
                       )}
                     </button>
+                    <LxIconButton
+                      aria-label="导出会话"
+                      className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      disabled={pendingSessionIds.has(session.id)}
+                      size="small"
+                      title={{ content: "导出 HTML", placement: "bottom" }}
+                      onClick={() => {
+                        void agentApi.exportSession({
+                          sessionId: session.id,
+                          format: "html",
+                          openAfterExport: true,
+                        })
+                      }}
+                    >
+                      <Download className="h-3 w-3" />
+                    </LxIconButton>
                     <LxIconButton
                       aria-label="重命名会话"
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"

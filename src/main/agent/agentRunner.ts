@@ -14,6 +14,10 @@ import type {
   AgentSessionSummary,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  CopySessionOptions,
+  CopySessionResult,
+  ExportSessionOptions,
+  ExportSessionResult,
   TodoList,
   TodoStateMessage,
   UserMessage,
@@ -28,6 +32,7 @@ import { createCompactionSummaryMessage } from "./compaction"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
+import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
 import { formatInstructions, loadInstructions } from "./instructionLoader"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
@@ -328,11 +333,6 @@ class AgentRunner {
     }
 
     return { expanded: text }
-  }
-
-  // 统一指令宏展开：兼容原有简单字符串调用
-  private _expandCommand(text: string): string {
-    return this._expandAndDetectCommand(text).expanded
   }
 
   // 当前是否有活动 run 或排队消息：流式输出 / 正在 drain / 队列非空均为 busy。
@@ -996,6 +996,98 @@ class AgentRunner {
         this.eventSink?.({ type: "session_title", sessionId, title })
       },
     )
+  }
+
+  // 导出会话（HTML / Markdown / JSONL）
+  async exportSession(options: ExportSessionOptions): Promise<ExportSessionResult> {
+    const targetSessionId = options.sessionId || this.currentSessionId
+    let restoredSession: AgentRestoredSession
+    let summary: AgentSessionSummary
+
+    if (targetSessionId) {
+      const sessionSummary = agentSessionService.getSession(targetSessionId)
+      if (!sessionSummary) {
+        return { ok: false, error: `会话不存在: ${targetSessionId}` }
+      }
+      summary = {
+        id: sessionSummary.external_id,
+        title: sessionSummary.title,
+        cwd: sessionSummary.cwd,
+        projectId: sessionSummary.project_id ?? null,
+        createdAt: sessionSummary.created_at,
+        updatedAt: sessionSummary.updated_at,
+      }
+      restoredSession = await this.restoreSession(targetSessionId)
+    } else {
+      // 纯内存态会话（尚未落盘首条消息）
+      const messages = this.agent?.state.messages ?? []
+      if (messages.length === 0) {
+        return { ok: false, error: "当前会话暂无消息可导出" }
+      }
+      summary = {
+        id: "in-memory",
+        title: "未命名会话",
+        cwd: this.getCurrentCwd() ?? "",
+        projectId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      restoredSession = {
+        messages,
+        activeCapabilities: { tools: [], mcp: [], skills: [] },
+        todos: [],
+      }
+    }
+
+    if (restoredSession.messages.length === 0) {
+      return { ok: false, error: "会话内容为空，无法导出" }
+    }
+
+    try {
+      return await exportSessionToFile(restoredSession, summary, options)
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "导出失败" }
+    }
+  }
+
+  // 复制会话内容（Markdown 全文或最后一条 Assistant 回复）
+  async copySession(options?: CopySessionOptions): Promise<CopySessionResult> {
+    const targetSessionId = options?.sessionId || this.currentSessionId
+    let restoredSession: AgentRestoredSession
+
+    let summary: AgentSessionSummary | undefined
+    if (targetSessionId) {
+      const sessionSummary = agentSessionService.getSession(targetSessionId)
+      if (sessionSummary) {
+        summary = {
+          id: sessionSummary.external_id,
+          title: sessionSummary.title,
+          cwd: sessionSummary.cwd,
+          projectId: sessionSummary.project_id ?? null,
+          createdAt: sessionSummary.created_at,
+          updatedAt: sessionSummary.updated_at,
+        }
+      }
+      restoredSession = await this.restoreSession(targetSessionId)
+    } else {
+      const messages = this.agent?.state.messages ?? []
+      restoredSession = {
+        messages,
+        activeCapabilities: { tools: [], mcp: [], skills: [] },
+        todos: [],
+      }
+    }
+
+    if (restoredSession.messages.length === 0) {
+      return { ok: false, error: "暂无内容可复制" }
+    }
+
+    try {
+      const text = copySessionText(restoredSession, options, summary)
+      return { ok: true, text }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "复制失败" }
+    }
   }
 }
 
