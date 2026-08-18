@@ -4,6 +4,7 @@ import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/
 import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
+import { GFM } from "@lezer/markdown"
 import type { PromptTemplateItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import React, {
