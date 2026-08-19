@@ -50,4 +50,34 @@ describe("terminalStore", () => {
     expect(useTerminalStore.getState().tabs).toHaveLength(0)
     expect(useTerminalStore.getState().activeTabId).toBeNull()
   })
+
+  it("支持分屏并在 Store 中调整分屏比例", () => {
+    const tabId = useTerminalStore.getState().addTab()
+    const newPaneId = useTerminalStore.getState().splitPane(tabId, "horizontal")
+    expect(newPaneId).toBeTruthy()
+
+    const tab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
+    expect(tab).toBeDefined()
+    expect(Object.keys(tab!.panes)).toHaveLength(2)
+    expect(tab!.rootNode.type).toBe("split")
+
+    if (tab!.rootNode.type === "split") {
+      const containerId = tab!.rootNode.id
+      expect(tab!.rootNode.ratio).toBe(0.5)
+
+      // 调整为 0.35
+      useTerminalStore.getState().setSplitRatio(tabId, containerId, 0.35)
+      const updatedTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
+      if (updatedTab?.rootNode.type === "split") {
+        expect(updatedTab.rootNode.ratio).toBe(0.35)
+      }
+
+      // 测试极值 clamp
+      useTerminalStore.getState().setSplitRatio(tabId, containerId, 0.01)
+      const clampedTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
+      if (clampedTab?.rootNode.type === "split") {
+        expect(clampedTab.rootNode.ratio).toBe(0.05)
+      }
+    }
+  })
 })

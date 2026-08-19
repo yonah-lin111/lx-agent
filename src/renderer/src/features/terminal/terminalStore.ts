@@ -1,6 +1,11 @@
 import { create } from "zustand"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
-import { collectAllPaneIds, removeNodeAt, splitNodeAt } from "@/features/terminal/splitTreeUtils"
+import {
+  collectAllPaneIds,
+  removeNodeAt,
+  splitNodeAt,
+  updateSplitRatioAt,
+} from "@/features/terminal/splitTreeUtils"
 import { disposeTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { SplitDirection, TerminalPaneItem, TerminalTabItem } from "@/features/terminal/types"
 
@@ -16,6 +21,7 @@ interface TerminalStoreState {
   splitPane: (tabId: string, direction: SplitDirection, cwd?: string) => string | null
   removePane: (tabId: string, paneId: string) => void
   setActivePane: (tabId: string, paneId: string) => void
+  setSplitRatio: (tabId: string, containerId: string, ratio: number) => void
   clearTabs: () => void
 }
 
@@ -190,6 +196,20 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   setActivePane: (tabId, paneId) => {
     set((state) => ({
       tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, activePaneId: paneId } : t)),
+    }))
+  },
+
+  setSplitRatio: (tabId, containerId, ratio) => {
+    const clampedRatio = Math.max(0.05, Math.min(0.95, ratio))
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === tabId
+          ? {
+              ...t,
+              rootNode: updateSplitRatioAt(t.rootNode, containerId, clampedRatio),
+            }
+          : t,
+      ),
     }))
   },
 

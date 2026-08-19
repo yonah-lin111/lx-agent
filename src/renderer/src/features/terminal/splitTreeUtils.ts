@@ -23,7 +23,9 @@ export const splitNodeAt = (
     if (node.paneId === targetPaneId) {
       return {
         type: "split",
+        id: `split_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         direction,
+        ratio: 0.5,
         children: [
           { type: "leaf", paneId: targetPaneId },
           { type: "leaf", paneId: newPaneId },
@@ -35,7 +37,9 @@ export const splitNodeAt = (
 
   return {
     type: "split",
+    id: node.id || `split_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     direction: node.direction,
+    ratio: node.ratio ?? 0.5,
     children: [
       splitNodeAt(node.children[0], targetPaneId, newPaneId, direction),
       splitNodeAt(node.children[1], targetPaneId, newPaneId, direction),
@@ -65,7 +69,37 @@ export const removeNodeAt = (node: SplitNode, targetPaneId: string): SplitNode |
   // 4. 左右均保留：维持原容器结构
   return {
     type: "split",
+    id: node.id || `split_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     direction: node.direction,
+    ratio: node.ratio ?? 0.5,
     children: [left as SplitNode, right as SplitNode],
+  }
+}
+
+/**
+ * 递归更新指定容器节点的分屏比例。
+ */
+export const updateSplitRatioAt = (
+  node: SplitNode,
+  containerId: string,
+  ratio: number,
+): SplitNode => {
+  if (node.type === "leaf") {
+    return node
+  }
+
+  if (node.id === containerId) {
+    return {
+      ...node,
+      ratio,
+    }
+  }
+
+  return {
+    ...node,
+    children: [
+      updateSplitRatioAt(node.children[0], containerId, ratio),
+      updateSplitRatioAt(node.children[1], containerId, ratio),
+    ],
   }
 }

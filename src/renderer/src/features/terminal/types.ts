@@ -10,8 +10,10 @@ export interface SplitLeafNode {
 // 分屏容器节点：将空间沿水平或垂直方向一分为二。
 export interface SplitContainerNode {
   type: "split"
+  id: string
   direction: SplitDirection
   children: [SplitNode, SplitNode]
+  ratio?: number
 }
 
 // 二叉分屏树节点联合类型。
