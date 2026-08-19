@@ -17,8 +17,6 @@ export const clampHeight = (value: number): number =>
 // 页面底边栏属性。
 interface BottomSideBarProps {
   children?: React.ReactNode
-  height?: number
-  onHeightChange?: (height: number) => void
   isCoveringRightSideBar: boolean
   isExpanded: boolean
   onCoveringRightSideBarChange: (isCoveringRightSideBar: boolean) => void
@@ -30,26 +28,14 @@ interface BottomSideBarProps {
  */
 export const BottomSideBar = ({
   children,
-  height: controlledHeight,
-  onHeightChange,
   isCoveringRightSideBar,
   isExpanded,
   onCoveringRightSideBarChange,
   onExpandedChange,
 }: BottomSideBarProps): React.JSX.Element => {
-  const [internalHeight, setInternalHeight] = useState<number>(DEFAULT_HEIGHT_VH)
-  const height = controlledHeight ?? internalHeight
+  const [height, setHeight] = useState<number>(DEFAULT_HEIGHT_VH)
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
-
-  const updateHeight = (next: number): void => {
-    const clamped = clampHeight(next)
-    if (onHeightChange) {
-      onHeightChange(clamped)
-    } else {
-      setInternalHeight(clamped)
-    }
-  }
 
   // 拖拽顶部边缘调整高度：最小 15vh，最大 85vh。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
@@ -63,7 +49,7 @@ export const BottomSideBar = ({
     if (!start) return
     // 向上拖拽（clientY 变小）高度增加，向下拖拽（clientY 变大）高度减小。
     const next = start.startHeight + (start.startY - event.clientY) / (window.innerHeight / 100)
-    updateHeight(next)
+    setHeight(clampHeight(next))
   }
 
   const handleResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {

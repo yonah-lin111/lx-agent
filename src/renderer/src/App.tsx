@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
-import { BottomSideBar, DEFAULT_HEIGHT_VH } from "@/components/layout/BottomSideBar"
+import { BottomSideBar } from "@/components/layout/BottomSideBar"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
 import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { PageContent } from "@/components/layout/PageContent"
@@ -24,8 +24,6 @@ export const App = () => {
     useState<boolean>(false)
   const [isHeaderExpanded, setIsHeaderExpanded] = useState<boolean>(false)
   const [isBottomSideBarExpanded, setIsBottomSideBarExpanded] = useState<boolean>(false)
-  const [bottomSideBarHeight, setBottomSideBarHeight] = useState<number>(DEFAULT_HEIGHT_VH)
-  const [isPageContentCollapsed, setIsPageContentCollapsed] = useState<boolean>(false)
 
   // 路由切换时显示统一的页面加载过渡，并保证最短展示时间。
   useEffect(() => {
@@ -38,7 +36,6 @@ export const App = () => {
     setIsHeaderExpanded(isExpanded)
     if (isExpanded) {
       setIsBottomSideBarExpanded(false)
-      setIsPageContentCollapsed(false)
     }
   }
 
@@ -46,26 +43,6 @@ export const App = () => {
     setIsBottomSideBarExpanded(isExpanded)
     if (isExpanded) {
       setIsHeaderExpanded(false)
-    } else {
-      setIsPageContentCollapsed(false)
-    }
-  }
-
-  const handleBottomSideBarHeightChange = (height: number): void => {
-    setBottomSideBarHeight(height)
-    if (height <= 60 && isPageContentCollapsed) {
-      setIsPageContentCollapsed(false)
-    }
-  }
-
-  const handleExpandPageContent = (): void => {
-    setBottomSideBarHeight(DEFAULT_HEIGHT_VH)
-    setIsPageContentCollapsed(false)
-  }
-
-  const handleAutoCollapsePageContent = (): void => {
-    if (isBottomSideBarExpanded && !isPageContentCollapsed) {
-      setIsPageContentCollapsed(true)
     }
   }
 
@@ -87,11 +64,7 @@ export const App = () => {
                 isExpanded={isHeaderExpanded}
                 onExpandedChange={handleHeaderExpandedChange}
               />
-              <PageContent
-                isCollapsed={isPageContentCollapsed}
-                onAutoCollapse={handleAutoCollapsePageContent}
-                onExpand={handleExpandPageContent}
-              >
+              <PageContent>
                 <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <PageRouter />
                   <LxLoadingOverlay isLoading={isPageLoading} text="Loading page..." />
@@ -105,12 +78,10 @@ export const App = () => {
               className={isBottomSideBarCoveringRightSideBar ? "lg:col-span-2" : "lg:col-start-1"}
             >
               <BottomSideBar
-                height={bottomSideBarHeight}
                 isCoveringRightSideBar={isBottomSideBarCoveringRightSideBar}
                 isExpanded={isBottomSideBarExpanded}
                 onCoveringRightSideBarChange={setIsBottomSideBarCoveringRightSideBar}
                 onExpandedChange={handleBottomSideBarExpandedChange}
-                onHeightChange={handleBottomSideBarHeightChange}
               />
             </div>
           </div>
