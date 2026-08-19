@@ -7,6 +7,7 @@ import {
   FileText,
   FolderOpen,
   FolderSearch,
+  OctagonX,
   Pencil,
   PenLine,
   SearchCode,
@@ -133,9 +134,13 @@ const formatToolCommand = (toolName: string, args: Record<string, unknown>): str
   if (toolName === "find") return `find ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "grep") return `grep ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "ls") return `ls ${path}`.trim()
+  if (toolName === "job_output") return `job_output ${String(args.job_id ?? "")}`
+  if (toolName === "job_list") return "job_list"
+  if (toolName === "job_kill") return `job_kill ${String(args.job_id ?? "")}`
   if (toolName === "bash") {
     const command = typeof args.command === "string" ? args.command : "bash"
-    return truncateBashCommand(command)
+    const bg = args.background ? " (bg)" : ""
+    return `${truncateBashCommand(command)}${bg}`
   }
   return null
 }
@@ -157,7 +162,8 @@ const formatToolGroupSummary = (toolName: string, toolCalls: ToolCallBlock[]): s
     }
     if (toolName === "bash") {
       const command = typeof args.command === "string" ? args.command : "bash"
-      return truncateBashCommand(command)
+      const bg = args.background ? " (bg)" : ""
+      return `${truncateBashCommand(command)}${bg}`
     }
     return JSON.stringify(args)
   })
@@ -175,6 +181,9 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   write: PenLine,
   time: Clock,
   lsp: Braces,
+  job_output: Terminal,
+  job_list: Terminal,
+  job_kill: OctagonX,
 }
 
 // 未映射工具使用的兜底图标。

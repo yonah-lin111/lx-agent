@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { stat } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import { basename, join, relative, sep } from "node:path"
 import { createInterface } from "node:readline"
 import { z } from "zod"
@@ -10,9 +10,7 @@ import type { SessionDeps } from "./read"
 import { globToRegExp, walkFiles } from "./search"
 import {
   DEFAULT_MAX_BYTES,
-  formatSize,
   GREP_MAX_LINE_LENGTH,
-  type TruncationResult,
   truncateHead,
   truncateLine,
 } from "./truncate"
@@ -69,7 +67,7 @@ const formatMatches = async (
     // 需要上下文行时读取文件内容构建块。
     let lines = fileCache.get(match.filePath)
     if (!lines) {
-      lines = (await readFileText(match.filePath))
+      lines = (await readFile(match.filePath, "utf-8"))
         .replace(/\r\n/g, "\n")
         .replace(/\r/g, "\n")
         .split("\n")
@@ -240,6 +238,7 @@ const grepWithNode = async (
   isDirectory: boolean,
   effectiveLimit: number,
   signal?: AbortSignal,
+  options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof grepSchema>["execute"]>> => {
   let filePaths: string[]
   if (isDirectory) {
@@ -271,7 +270,7 @@ const grepWithNode = async (
   let matchLimitReached = false
   for (const filePath of filePaths) {
     if (signal?.aborted) break
-    const lines = (await readFileText(filePath))
+    const lines = (await readFile(filePath, "utf-8"))
       .replace(/\r\n/g, "\n")
       .replace(/\r/g, "\n")
       .split("\n")

@@ -5,6 +5,7 @@ import type {
 } from "@shared/contracts/agent"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { useLxToast } from "@/components/ui/LxToast"
 import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
@@ -15,6 +16,7 @@ import { AgentStatusBar } from "./components/AgentStatusBar"
 import { AgentSubagentPanel } from "./components/AgentSubagentPanel"
 import { sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
+import { useAgentJobs } from "./hooks/useAgentJobs"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
 import type { ChatBlock } from "./types"
 
@@ -65,6 +67,8 @@ export const AgentPage = ({
     editMessage,
     refreshContextUsage,
   } = useAgentChat(context)
+
+  const { jobs } = useAgentJobs()
 
   const {
     selectedModel,
@@ -360,6 +364,8 @@ export const AgentPage = ({
         projectPath={statusBarPath}
         contextUsage={contextUsage}
         todos={todos}
+        jobs={jobs}
+        onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />

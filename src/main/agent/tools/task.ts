@@ -1,6 +1,3 @@
-import { randomUUID } from "node:crypto"
-import { mkdirSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
 import type {
   AgentMessage,
   AssistantMessage,
@@ -10,12 +7,11 @@ import type {
   Usage,
 } from "@shared/contracts/agent"
 import { z } from "zod"
-import { getAppDataRoot } from "@/paths"
 import { Agent } from "../core/agent"
 import type { AgentTool, BeforeToolCallContext, BeforeToolCallResult, Model } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
-import { DEFAULT_MAX_BYTES, formatSize, truncateTail } from "./truncate"
+import { DEFAULT_MAX_BYTES, truncateTail } from "./truncate"
 
 // 子代理系统提示词后缀（追加在父系统提示词之后）。
 const SUBAGENT_PROMPT_SUFFIX = [

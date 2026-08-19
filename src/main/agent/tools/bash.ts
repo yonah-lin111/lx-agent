@@ -1,14 +1,14 @@
-import { spawn, spawnSync } from "node:child_process"
-import { constants, existsSync } from "node:fs"
+import { spawn } from "node:child_process"
+import { constants } from "node:fs"
 import { access } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
+import { getShellConfig, jobRegistry, killProcessTree } from "../jobs/jobRegistry"
 import { spillManager } from "../spill/spillManager"
 import type { SessionDeps } from "./read"
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
-  formatSize,
   type TruncationResult,
   truncateTail,
 } from "./truncate"
@@ -19,76 +19,18 @@ const MAX_TIMEOUT_MS = 2_147_483_647
 
 const bashSchema = z.object({
   command: z.string().describe("要执行的 shell 命令"),
-  timeout: z.number().describe("超时秒数（可选，默认 120 秒）").optional(),
+  timeout: z.number().describe("超时秒数（可选，同步执行时默认 120 秒）").optional(),
+  background: z
+    .boolean()
+    .describe(
+      "是否在后台启动长耗时命令（如开发服务器、长构建、监听进程）。为 true 时立即返回任务 ID，不阻塞主流程。",
+    )
+    .optional(),
 })
 
 export interface BashToolDetails {
   truncation?: TruncationResult
-}
-
-interface ShellConfig {
-  shell: string
-  args: string[]
-  commandTransport?: "argv" | "stdin"
-}
-
-// Windows 上查找 bash.exe（Git Bash 常见路径 / PATH）。
-const findBashOnPath = (): string | null => {
-  try {
-    const result = spawnSync("where", ["bash.exe"], {
-      encoding: "utf-8",
-      timeout: 5000,
-      windowsHide: true,
-    })
-    if (result.status === 0 && result.stdout) {
-      const firstMatch = result.stdout.trim().split(/\r?\n/)[0]
-      if (firstMatch && existsSync(firstMatch)) return firstMatch
-    }
-  } catch {
-    // 忽略错误
-  }
-  return null
-}
-
-// 按平台解析 shell 配置：Unix 优先 /bin/bash，Windows 用 Git Bash，最终回退 sh。
-const getShellConfig = (): ShellConfig => {
-  if (process.platform === "win32") {
-    const programFiles = process.env.ProgramFiles
-    const candidates: string[] = []
-    if (programFiles) candidates.push(`${programFiles}\\Git\\bin\\bash.exe`)
-    const programFilesX86 = process.env["ProgramFiles(x86)"]
-    if (programFilesX86) candidates.push(`${programFilesX86}\\Git\\bin\\bash.exe`)
-    for (const candidate of candidates) {
-      if (existsSync(candidate)) return { shell: candidate, args: ["-c"] }
-    }
-    const bashOnPath = findBashOnPath()
-    if (bashOnPath) return { shell: bashOnPath, args: ["-c"] }
-    throw new Error("未找到 bash shell。请安装 Git for Windows 或将 bash 加入 PATH。")
-  }
-
-  if (existsSync("/bin/bash")) return { shell: "/bin/bash", args: ["-c"] }
-  return { shell: "sh", args: ["-c"] }
-}
-
-// 终止进程树：Unix 按进程组负 pid，Windows 用 taskkill。
-const killProcessTree = (pid: number): void => {
-  if (process.platform === "win32") {
-    try {
-      spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true })
-    } catch {
-      // 忽略
-    }
-  } else {
-    try {
-      process.kill(-pid, "SIGTERM")
-    } catch {
-      try {
-        process.kill(pid, "SIGTERM")
-      } catch {
-        // 进程可能已退出
-      }
-    }
-  }
+  backgroundJobId?: string
 }
 
 // 等待子进程结束并返回退出码（不因继承的 stdio 句柄挂起）。
@@ -99,18 +41,17 @@ const waitForChildProcess = (child: ReturnType<typeof spawn>): Promise<number | 
   })
 }
 
-// 创建 bash 工具：cwd 内执行命令，默认超时 + 进程树清理 + 尾部截断 + Spill 机制。
+// 创建 bash 工具：cwd 内执行命令，默认超时 + 进程树清理 + 尾部截断 + Spill 机制 + 后台作业分支。
 export const createBashTool = (
   cwd: string,
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof bashSchema> => ({
   name: "bash",
   label: "执行命令",
-  description: `在项目根目录执行 shell 命令，返回 stdout 与 stderr 合并输出。输出截断保留最后 ${DEFAULT_MAX_LINES} 行或 ${DEFAULT_MAX_BYTES / 1024}KB。可传 timeout 指定超时秒数。`,
+  description: `在项目根目录执行 shell 命令，返回 stdout 与 stderr 合并输出。输出截断保留最后 ${DEFAULT_MAX_LINES} 行或 ${DEFAULT_MAX_BYTES / 1024}KB。可传 timeout 指定超时秒数，或传 background: true 在后台运行长耗时命令。`,
   inputSchema: bashSchema,
   executionMode: "sequential",
   execute: async (toolCallId, params, signal) => {
-    const shellConfig = getShellConfig()
     try {
       await access(cwd, constants.F_OK)
     } catch {
@@ -119,6 +60,37 @@ export const createBashTool = (
         details: { error: "cwd_not_found" },
       }
     }
+
+    const sessionId = sessionDeps?.getSessionId?.() ?? "default"
+
+    // 后台长任务执行分支
+    if (params.background) {
+      try {
+        const job = jobRegistry.startJob({
+          kind: "bash",
+          label: params.command,
+          command: params.command,
+          cwd,
+          sessionId,
+        })
+        const notice = [
+          `Background job ${job.id} (bash: ${job.label}) started with PID ${job.pid ?? "N/A"}.`,
+          `Use 'job_output' with job_id='${job.id}' to inspect logs, or 'job_kill' to stop it.`,
+        ].join("\n")
+        return {
+          content: [{ type: "text", text: notice }],
+          details: { backgroundJobId: job.id },
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        return {
+          content: [{ type: "text", text: `后台任务启动失败: ${errorMsg}` }],
+          details: { error: errorMsg },
+        }
+      }
+    }
+
+    const shellConfig = getShellConfig()
 
     const timeoutSeconds = params.timeout ?? DEFAULT_TIMEOUT_SECONDS
     if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {

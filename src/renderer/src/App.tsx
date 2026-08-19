@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { BottomSideBar } from "@/components/layout/BottomSideBar"
+import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { HeaderSideBar } from "@/components/layout/HeaderSideBar"
 import { LeftSideBar } from "@/components/layout/LeftSideBar"
 import { PageContent } from "@/components/layout/PageContent"
@@ -20,10 +21,15 @@ import { PageRouter } from "@/routes/PageRouter"
 export const App = () => {
   const { pathname } = useLocation()
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true)
-  const [isBottomSideBarCoveringRightSideBar, setIsBottomSideBarCoveringRightSideBar] =
-    useState<boolean>(false)
+  const isBottomSideBarCoveringRightSideBar = useBottomSideBarStore(
+    (state) => state.isCoveringRightSideBar,
+  )
+  const setIsBottomSideBarCoveringRightSideBar = useBottomSideBarStore(
+    (state) => state.setCoveringRightSideBar,
+  )
   const [isHeaderExpanded, setIsHeaderExpanded] = useState<boolean>(false)
-  const [isBottomSideBarExpanded, setIsBottomSideBarExpanded] = useState<boolean>(false)
+  const isBottomSideBarExpanded = useBottomSideBarStore((state) => state.isExpanded)
+  const setIsBottomSideBarExpanded = useBottomSideBarStore((state) => state.setExpanded)
 
   // 路由切换时显示统一的页面加载过渡，并保证最短展示时间。
   useEffect(() => {

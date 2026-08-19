@@ -1,6 +1,7 @@
-import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
+import type { JobSnapshot, PermissionRequest, TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { JobStatusButton } from "@/features/agent/components/JobStatusButton"
 import { PermissionStatusButton } from "@/features/agent/components/PermissionStatusButton"
 import { TodoStatusButton } from "@/features/agent/components/TodoStatusButton"
 import { GitStatusBar } from "@/features/git"
@@ -13,6 +14,10 @@ interface AgentStatusBarProps {
   contextUsage?: { tokens: number; contextWindow: number } | null
   // 当前会话任务清单（有未完成任务时状态栏右侧展示 todo 计数 icon）。
   todos?: TodoList
+  // 后台长任务列表。
+  jobs?: JobSnapshot[]
+  // 打开后台长任务监控面板。
+  onOpenJobs?: () => void
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
   pendingRequest: PermissionRequest | null
   // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
@@ -32,7 +37,7 @@ const contextColor = (percent: number): string => {
 }
 
 /**
- * 渲染 Agent 当前会话的路径、分支、上下文容量与任务清单状态，最右侧为 todo 计数。
+ * 渲染 Agent 当前会话的路径、分支、上下文容量与任务清单状态，最右侧为 todo 计数与后台任务监控。
  *
  * 无 git 上下文（projectPath 缺省）时隐藏 git 部分，但保留等高位占位，
  * 避免输入框位置跳动（高度 = GitStatusBar 的 border-t 1px + py-1 8px + text-xs 行高 16px）。
@@ -41,6 +46,8 @@ export const AgentStatusBar = ({
   projectPath,
   contextUsage,
   todos,
+  jobs,
+  onOpenJobs,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
@@ -71,6 +78,7 @@ export const AgentStatusBar = ({
           </span>
         </LxTooltip>
       )}
+      <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <TodoStatusButton todos={todos} />
       <PermissionStatusButton request={pendingRequest} onRespond={onPermissionRespond} />
     </div>

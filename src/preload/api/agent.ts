@@ -53,6 +53,14 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
   getContextUsage: (selection?: ModelSelection) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getContextUsage, selection),
+  listJobs: (sessionId?: string) => ipcRenderer.invoke(AGENT_CHANNELS.listJobs, sessionId),
+  killJob: (jobId: string, reason?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.killJob, jobId, reason),
+  removeJob: (jobId: string) => ipcRenderer.invoke(AGENT_CHANNELS.removeJob, jobId),
+  clearSettledJobs: (sessionId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.clearSettledJobs, sessionId),
+  readJobOutput: (jobId: string, wait?: boolean, timeoutMs?: number) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.readJobOutput, jobId, wait, timeoutMs),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

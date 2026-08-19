@@ -5,7 +5,7 @@ import type { AgentTool } from "../core/types"
 import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import type { SessionDeps } from "./read"
-import { DEFAULT_MAX_BYTES, formatSize, truncateHead } from "./truncate"
+import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 
 const DEFAULT_LIMIT = 500
 

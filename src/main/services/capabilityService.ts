@@ -16,6 +16,9 @@ export const DEFAULT_TOOLS = [
   "task",
   "question",
   "lsp",
+  "job_output",
+  "job_list",
+  "job_kill",
 ]
 
 /**
