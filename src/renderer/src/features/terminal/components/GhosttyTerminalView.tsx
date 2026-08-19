@@ -8,6 +8,7 @@ import { resolveInitialTerminalCwd } from "@/features/terminal/utils"
 
 interface GhosttyTerminalViewProps {
   isExpanded: boolean
+  rightActions?: React.ReactNode
 }
 
 /**
@@ -15,6 +16,7 @@ interface GhosttyTerminalViewProps {
  */
 export const GhosttyTerminalView = ({
   isExpanded,
+  rightActions,
 }: GhosttyTerminalViewProps): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
@@ -132,10 +134,10 @@ export const GhosttyTerminalView = ({
   }, [isExpanded, activeTabId, handleCreateTab])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#121212]">
-      {/* 顶部水平栏：左侧滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 */}
-      <div className="flex h-9 shrink-0 items-center border-b border-white/5 bg-white/[0.01] px-2 py-1">
-        <TerminalTabs onAddTab={() => void handleCreateTab()} />
+    <div className="flex h-full w-full flex-col overflow-hidden bg-[#111116]">
+      {/* 顶部水平栏：左侧滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 + 右侧扩展控制 */}
+      <div className="flex h-9 shrink-0 items-center px-2 py-1">
+        <TerminalTabs onAddTab={() => void handleCreateTab()} rightActions={rightActions} />
       </div>
 
       {/* 下方终端画布交互区 */}
@@ -161,7 +163,7 @@ export const GhosttyTerminalView = ({
         })}
 
         {tabs.length === 0 && (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#141414] text-white/40">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111116] text-white/40">
             <TerminalIcon className="h-8 w-8 text-white/20" />
             <span className="text-xs">暂无打开的终端</span>
             <button

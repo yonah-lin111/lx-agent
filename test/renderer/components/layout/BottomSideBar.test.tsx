@@ -12,7 +12,12 @@ import {
 } from "@/components/layout/BottomSideBar"
 
 vi.mock("@/features/terminal", () => ({
-  GhosttyTerminalView: () => <div data-testid="mock-ghostty-terminal">Ghostty Terminal</div>,
+  GhosttyTerminalView: ({ rightActions }: { rightActions?: React.ReactNode }) => (
+    <div data-testid="mock-ghostty-terminal">
+      Ghostty Terminal
+      {rightActions}
+    </div>
+  ),
 }))
 
 describe("BottomSideBar", () => {

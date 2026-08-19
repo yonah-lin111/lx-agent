@@ -91,11 +91,15 @@ export const BottomSideBar = ({
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 ${
+        isExpanded
+          ? "bg-[#111116] p-0"
+          : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1 bg-[#212121]"
+      } ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"
-      } ${isExpanded ? "p-2" : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1"}`}
+      }`}
       style={
         isExpanded
           ? { height: `${height}vh`, minHeight: `${height}vh`, maxHeight: `${height}vh` }
@@ -115,45 +119,46 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：左侧终端视口，右侧操作列（覆盖右侧栏与折叠底边栏） */}
+        {/* 展开区域：Ghostty 终端主视口（右侧折叠、覆盖按钮平铺在 Tab 栏最右侧） */}
         <div
-          className={`h-full w-full min-h-0 flex-1 items-start gap-2 overflow-hidden ${
+          className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
             isExpanded ? "flex" : "hidden"
           }`}
         >
-          {/* 左侧主视口：Ghostty 多标签终端 */}
-          <div className="h-full min-w-0 flex-1 overflow-hidden">
-            <GhosttyTerminalView isExpanded={isExpanded} />
-          </div>
-
-          {/* 右侧操作列：覆盖右侧栏与折叠底边栏（pt-1 保持与顶栏对齐） */}
-          <div className="flex shrink-0 flex-col items-center gap-1.5 pt-1 pr-0.5">
-            <LxIconButton
-              aria-label="折叠底边栏"
-              title={{ content: "折叠底边栏", placement: "left" }}
-              onClick={() => onExpandedChange(false)}
-              size="small"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </LxIconButton>
-            <LxIconButton
-              aria-label={
-                isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
-              }
-              title={{
-                content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
-                placement: "left",
-              }}
-              onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
-              size="small"
-            >
-              {isCoveringRightSideBar ? (
-                <ChevronsRightLeft className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronsLeftRight className="h-3.5 w-3.5" />
-              )}
-            </LxIconButton>
-          </div>
+          <GhosttyTerminalView
+            isExpanded={isExpanded}
+            rightActions={
+              <div className="flex shrink-0 items-center gap-1">
+                <LxIconButton
+                  aria-label="折叠底边栏"
+                  title={{ content: "折叠底边栏", placement: "top" }}
+                  onClick={() => onExpandedChange(false)}
+                  size="small"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </LxIconButton>
+                <LxIconButton
+                  aria-label={
+                    isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
+                  }
+                  title={{
+                    content: isCoveringRightSideBar
+                      ? "底边栏不覆盖右侧栏宽度"
+                      : "底边栏覆盖右侧栏宽度",
+                    placement: "top",
+                  }}
+                  onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+                  size="small"
+                >
+                  {isCoveringRightSideBar ? (
+                    <ChevronsRightLeft className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronsLeftRight className="h-3.5 w-3.5" />
+                  )}
+                </LxIconButton>
+              </div>
+            }
+          />
         </div>
 
         {/* 折叠区域：紧凑 40px 状态栏，水平排列控制按钮 */}

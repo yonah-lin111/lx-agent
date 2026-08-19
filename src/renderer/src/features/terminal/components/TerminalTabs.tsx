@@ -7,12 +7,13 @@ import type { TerminalTabItem } from "@/features/terminal/types"
 
 interface TerminalTabsProps {
   onAddTab: () => void
+  rightActions?: React.ReactNode
 }
 
 /**
  * Ghostty 风格顶部水平终端标签列表栏（与 ProjectReferencedFolderTags 保持一致的 default 标签规格）。
  */
-export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element => {
+export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
   const activeTabId = useTerminalStore((state) => state.activeTabId)
   const pendingCloseTabId = useTerminalStore((state) => state.pendingCloseTabId)
@@ -214,6 +215,9 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
       >
         <ChevronRight className="h-3.5 w-3.5" />
       </LxIconButton>
+
+      {/* 右侧扩展操作按钮（如折叠底边栏、覆盖右侧栏等） */}
+      {rightActions}
     </div>
   )
 }
