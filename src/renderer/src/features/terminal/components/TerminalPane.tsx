@@ -1,7 +1,6 @@
 import "@xterm/xterm/css/xterm.css"
 import type React from "react"
 import { useEffect, useRef } from "react"
-import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { TerminalPaneItem } from "@/features/terminal/types"
 
@@ -59,19 +58,22 @@ export const TerminalPane = ({
     if (!container || !isActive || !isExpanded) return
 
     const session = getOrCreateTerminalSession(pane.id, pane.cwd)
+    let rafId: number | null = null
 
     const handleResize = (): void => {
-      if (container.clientWidth < 20 || container.clientHeight < 20) return
-      try {
-        session.fitAddon.fit()
-        if (session.term.cols >= 10 && session.term.rows >= 2) {
-          void terminalApi.resize(pane.id, session.term.cols, session.term.rows)
+      if (rafId !== null) return
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null
+        if (!container || container.clientWidth < 20 || container.clientHeight < 20) return
+        try {
+          session.fitAddon.fit()
+        } catch {
+          // 忽略动画过渡期异常
         }
-      } catch {
-        // 忽略动画过渡期异常
-      }
+      })
     }
 
+    handleResize()
     const t1 = window.setTimeout(handleResize, 50)
     const t2 = window.setTimeout(handleResize, 150)
     const t3 = window.setTimeout(handleResize, 350)
@@ -82,6 +84,9 @@ export const TerminalPane = ({
     observer.observe(container)
 
     return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId)
+      }
       window.clearTimeout(t1)
       window.clearTimeout(t2)
       window.clearTimeout(t3)
@@ -117,7 +122,7 @@ export const TerminalPane = ({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#111116] cursor-text transition-all duration-150 ${
+      className={`relative h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
         isFocused ? "ring-1 ring-white/20 z-10" : "opacity-85 hover:opacity-100"
       }`}
       onClick={handleFocus}

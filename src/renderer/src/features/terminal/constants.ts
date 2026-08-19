@@ -32,16 +32,18 @@ export const GHOSTTY_TERMINAL_THEME = {
 export const DEFAULT_XTERM_OPTIONS: ITerminalOptions = {
   fontFamily:
     'ui-monospace, "SF Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  fontSize: 12.5,
-  lineHeight: 1.35,
+  fontSize: 13,
+  lineHeight: 1.0,
   letterSpacing: 0,
   cursorBlink: true,
   cursorStyle: "bar",
   cursorWidth: 2,
   theme: GHOSTTY_TERMINAL_THEME,
   allowTransparency: true,
-  smoothScrollDuration: 120,
-  convertEol: true,
+  smoothScrollDuration: 0,
+  convertEol: false,
   drawBoldTextInBrightColors: true,
   minimumContrastRatio: 4.5,
+  rescaleOverlappingGlyphs: true,
+  allowProposedApi: true,
 }

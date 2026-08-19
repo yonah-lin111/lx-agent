@@ -1,5 +1,7 @@
 import { FitAddon } from "@xterm/addon-fit"
+import { Unicode11Addon } from "@xterm/addon-unicode11"
 import { WebLinksAddon } from "@xterm/addon-web-links"
+import { WebglAddon } from "@xterm/addon-webgl"
 import { Terminal } from "@xterm/xterm"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
@@ -11,6 +13,8 @@ export interface TerminalSession {
   term: Terminal
   fitAddon: FitAddon
   webLinksAddon: WebLinksAddon
+  unicode11Addon: Unicode11Addon
+  webglAddon?: WebglAddon
   element: HTMLDivElement
   paneId: string
   isAttached: boolean
@@ -27,16 +31,31 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
   if (existing) return existing
 
   const element = document.createElement("div")
-  element.className =
-    "relative h-full w-full overflow-hidden bg-[#111116] px-3 py-2 cursor-text select-text"
+  element.className = "relative h-full w-full overflow-hidden bg-[#111116] cursor-text select-text"
 
   const term = new Terminal(DEFAULT_XTERM_OPTIONS)
   const fitAddon = new FitAddon()
   const webLinksAddon = new WebLinksAddon()
+  const unicode11Addon = new Unicode11Addon()
 
   term.loadAddon(fitAddon)
   term.loadAddon(webLinksAddon)
+  term.loadAddon(unicode11Addon)
+  term.unicode.activeVersion = "11"
   term.open(element)
+
+  // 启用 WebGL 硬件加速渲染，彻底杜绝 DOM 重绘抖动
+  let webglAddon: WebglAddon | undefined
+  try {
+    webglAddon = new WebglAddon()
+    webglAddon.onContextLoss(() => {
+      webglAddon?.dispose()
+      webglAddon = undefined
+    })
+    term.loadAddon(webglAddon)
+  } catch {
+    webglAddon = undefined
+  }
 
   // 快捷键处理
   term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
@@ -80,7 +99,7 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     if (isModifier && (event.key === "=" || event.key === "+")) {
       event.preventDefault()
       event.stopPropagation()
-      const currentSize = term.options.fontSize || 12.5
+      const currentSize = term.options.fontSize || 13
       if (currentSize < 24) {
         term.options.fontSize = currentSize + 1
         fitAddon.fit()
@@ -91,7 +110,7 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     if (isModifier && event.key === "-") {
       event.preventDefault()
       event.stopPropagation()
-      const currentSize = term.options.fontSize || 12.5
+      const currentSize = term.options.fontSize || 13
       if (currentSize > 9) {
         term.options.fontSize = currentSize - 1
         fitAddon.fit()
@@ -102,12 +121,19 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     if (isModifier && event.key === "0") {
       event.preventDefault()
       event.stopPropagation()
-      term.options.fontSize = 12.5
+      term.options.fontSize = 13
       fitAddon.fit()
       return false
     }
 
     return true
+  })
+
+  // 监听 xterm 视口行列变化并即时同步调整底层 PTY 尺寸
+  const onResizeDisposable = term.onResize(({ cols, rows }) => {
+    if (cols >= 10 && rows >= 2) {
+      void terminalApi.resize(paneId, cols, rows)
+    }
   })
 
   // 订阅后端 PTY
@@ -141,6 +167,8 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     term,
     fitAddon,
     webLinksAddon,
+    unicode11Addon,
+    webglAddon,
     element,
     paneId,
     isAttached: false,
@@ -148,6 +176,9 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
       unsubscribeData()
       unsubscribeExit()
       onDataDisposable.dispose()
+      onResizeDisposable.dispose()
+      webglAddon?.dispose()
+      unicode11Addon.dispose()
       webLinksAddon.dispose()
       fitAddon.dispose()
       term.dispose()
