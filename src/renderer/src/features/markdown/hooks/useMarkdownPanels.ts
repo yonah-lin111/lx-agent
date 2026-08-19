@@ -134,6 +134,7 @@ export const useMarkdownPanels = ({
   worktrees,
   projectBranch,
   reloadWorktrees,
+  customSlashCommands = [],
 }: {
   editorViewRef: RefObject<EditorView | null>
   projectId?: string
@@ -155,6 +156,8 @@ export const useMarkdownPanels = ({
   projectBranch?: string | null
   // 主动重拉工作区列表（打开二级面板时若尚未加载则调用）。
   reloadWorktrees?: () => void
+  // 自定义 Markdown 斜杠命令列表。
+  customSlashCommands?: MarkdownSlashCommand[]
 }) => {
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
@@ -177,6 +180,7 @@ export const useMarkdownPanels = ({
   const projectBranchRef = useRef(projectBranch)
   const reloadWorktreesRef = useRef(reloadWorktrees)
   const referencedProjectPathsRef = useRef(referencedProjectPaths)
+  const customSlashCommandsRef = useRef(customSlashCommands)
 
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
     null,
@@ -204,6 +208,7 @@ export const useMarkdownPanels = ({
     projectBranchRef.current = projectBranch
     reloadWorktreesRef.current = reloadWorktrees
     referencedProjectPathsRef.current = referencedProjectPaths
+    customSlashCommandsRef.current = customSlashCommands
   }, [
     onSearchFiles,
     onSearchReferencedFiles,
@@ -215,6 +220,7 @@ export const useMarkdownPanels = ({
     projectBranch,
     reloadWorktrees,
     referencedProjectPaths,
+    customSlashCommands,
   ])
 
   /**
@@ -279,13 +285,18 @@ export const useMarkdownPanels = ({
     )
     // 已武装的确认命令行不弹面板，等待二次回车触发。
     const isArmed = commandLine
-      ? isMarkdownConfirmCommandArmed(commandLine.value, isInsideTemplateBlock)
+      ? isMarkdownConfirmCommandArmed(
+          commandLine.value,
+          isInsideTemplateBlock,
+          customSlashCommandsRef.current,
+        )
       : false
     const commands = commandLine
       ? getMarkdownSlashCommands(
           commandLine.value,
           isInsideTemplateBlock,
           Boolean(projectPathRef.current) && worktreesRef.current !== null,
+          customSlashCommandsRef.current,
         )
       : []
     const coords = view.coordsAtPos(cursor)
@@ -407,6 +418,17 @@ export const useMarkdownPanels = ({
       view.focus()
       closeSlashCommandPanel()
       openGitWorktreePanel(view)
+      return
+    }
+
+    // 自定义模板命令：直接将 content 插入光标行。
+    if (command.kind === "customTemplate") {
+      view.dispatch({
+        changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
+        selection: { anchor: panel.line.from + command.cursorOffset },
+      })
+      view.focus()
+      closeSlashCommandPanel()
       return
     }
 

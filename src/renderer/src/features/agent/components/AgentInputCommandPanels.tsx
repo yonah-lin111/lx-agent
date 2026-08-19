@@ -226,16 +226,21 @@ export const AgentInputModelPanel = ({
   )
 }
 
-const getCommandTag = (command: AgentInputCommand): { label: string; bgClass: string } | null => {
+const getCommandTags = (
+  command: AgentInputCommand,
+): { label: string; bgClass: string }[] => {
+  const tags: { label: string; bgClass: string }[] = []
+
   if (command.kind === "skill") {
-    return { label: "Skill", bgClass: "bg-[#7c3aed]/20 text-[#c084fc]" }
+    tags.push({ label: "Skill", bgClass: "bg-[#7c3aed]/20 text-[#c084fc]" })
+  } else if (command.kind === "prompt") {
+    const scopeLabel = command.source === "project" ? "Custom|Project" : "Custom|Global"
+    tags.push({ label: scopeLabel, bgClass: "bg-amber-500/20 text-amber-300" })
+  } else {
+    tags.push({ label: "Builtin", bgClass: "bg-white/10 text-white/50" })
   }
-  if (command.kind === "prompt") {
-    return command.source === "project"
-      ? { label: "Project", bgClass: "bg-[#059669]/20 text-[#34d399]" }
-      : { label: "Global", bgClass: "bg-[#2563eb]/20 text-[#60a5fa]" }
-  }
-  return { label: "Builtin", bgClass: "bg-white/10 text-white/50" }
+
+  return tags
 }
 
 /**
@@ -276,7 +281,7 @@ export const AgentInputCommandPanel = ({
       style={displayPosition}
     >
       {displayCommands.map((command, index) => {
-        const tag = getCommandTag(command)
+        const tags = getCommandTags(command)
         const isActive = index === displayIndex
 
         return (
@@ -305,14 +310,19 @@ export const AgentInputCommandPanel = ({
                 {command.description}
               </span>
             </span>
-            {tag && (
-              <LxTag
-                bgClass={tag.bgClass}
-                className="pointer-events-none ml-auto shrink-0"
-                size="small"
-              >
-                {tag.label}
-              </LxTag>
+            {tags.length > 0 && (
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                {tags.map((tag) => (
+                  <LxTag
+                    key={tag.label}
+                    bgClass={tag.bgClass}
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    {tag.label}
+                  </LxTag>
+                ))}
+              </div>
             )}
           </div>
         )

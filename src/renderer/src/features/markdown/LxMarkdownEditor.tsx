@@ -35,6 +35,7 @@ import {
   lineNumbers,
 } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
+import type { MarkdownTemplateCommandItem } from "@shared/contracts/markdown"
 import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -477,6 +478,37 @@ export const LxMarkdownEditor = ({
   switchPageRef.current = switchPage
   createPageRef.current = createPage
 
+  const [customMarkdownCommands, setCustomMarkdownCommands] = useState<
+    MarkdownTemplateCommandItem[]
+  >([])
+
+  useEffect(() => {
+    let active = true
+    window.api?.markdown
+      ?.listMarkdownCommands?.(projectPath)
+      ?.then((cmds) => {
+        if (active) setCustomMarkdownCommands(cmds)
+      })
+      ?.catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [projectPath])
+
+  const formattedCustomSlashCommands = useMemo(() => {
+    return customMarkdownCommands.map((cmd) => ({
+      id: `custom:${cmd.name}`,
+      label: `/${cmd.name}`,
+      description: cmd.description,
+      content: cmd.content,
+      cursorOffset: cmd.content.length,
+      scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
+      kind: "customTemplate" as const,
+      source: cmd.source,
+      customScope: cmd.scope,
+    }))
+  }, [customMarkdownCommands])
+
   const {
     blockCommandPanel,
     activeBlockCommandIndex,
@@ -529,6 +561,7 @@ export const LxMarkdownEditor = ({
     worktrees,
     projectBranch,
     reloadWorktrees,
+    customSlashCommands: formattedCustomSlashCommands,
   })
 
   const { captureScrollAnchor } = useEditorScrollSync({
