@@ -165,13 +165,13 @@ export const GhosttyTerminalView = ({
         {tabs.length === 0 && (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111116] text-white/40">
             <TerminalIcon className="h-8 w-8 text-white/20" />
-            <span className="text-xs">暂无打开的终端</span>
+            <span className="text-xs">No open terminals</span>
             <button
               className="mt-1 rounded-[4px] border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/80 transition-colors hover:bg-white/10 hover:text-white"
               type="button"
               onClick={() => void handleCreateTab()}
             >
-              新建终端
+              New Terminal
             </button>
           </div>
         )}
