@@ -14,6 +14,7 @@ export const terminalApi: TerminalApi["terminal"] = {
     ipcRenderer.invoke(TERMINAL_CHANNELS.resize, id, cols, rows),
   kill: (id: string) => ipcRenderer.invoke(TERMINAL_CHANNELS.kill, id),
   getDesktopPath: () => ipcRenderer.invoke(TERMINAL_CHANNELS.getDesktopPath),
+  hasRunningProcess: (id: string) => ipcRenderer.invoke(TERMINAL_CHANNELS.hasRunningProcess, id),
   onData: (id: string, handler: (data: string) => void) => {
     const channel = TERMINAL_CHANNELS.data(id)
     const listener = (_: unknown, data: string): void => handler(data)

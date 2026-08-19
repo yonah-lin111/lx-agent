@@ -5,14 +5,35 @@ import { useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { GhosttyTerminalView } from "@/features/terminal"
 
-// 展开态最小/最大高度（相对视口高度，单位 vh）。
-const MIN_HEIGHT_VH = 15
-const DEFAULT_HEIGHT_VH = 30
-const MAX_HEIGHT_VH = 50
+// 展开态最小高度（相对视口高度，单位 vh）。
+export const MIN_HEIGHT_VH = 15
+export const DEFAULT_HEIGHT_VH = 30
+// 顶部预留最小像素：保证 HeaderSideBar(48px) + MarkdownEditorToolbar(36px) + MarkdownStatusBar(32px) + 间距/边框(40px) 完全显示
+export const RESERVED_TOP_HEIGHT_PX = 156
 
-// 约束高度到 [15vh, 50vh]。
-const clampHeight = (value: number): number =>
-  Math.min(Math.max(value, MIN_HEIGHT_VH), MAX_HEIGHT_VH)
+/**
+ * 根据当前视口高度与顶部预留像素，动态计算底边栏允许拖拽的最大高度（vh）。
+ */
+export const calculateMaxHeightVh = (
+  windowHeight: number = typeof window !== "undefined" ? window.innerHeight : 900,
+  reservedTopPx: number = RESERVED_TOP_HEIGHT_PX,
+): number => {
+  if (windowHeight <= 0) return 85
+  const maxAllowedPx = Math.max(windowHeight * (MIN_HEIGHT_VH / 100), windowHeight - reservedTopPx)
+  return Math.min(95, Math.max(MIN_HEIGHT_VH, (maxAllowedPx / windowHeight) * 100))
+}
+
+/**
+ * 约束高度到 [MIN_HEIGHT_VH, calculateMaxHeightVh()]。
+ */
+export const clampHeight = (
+  value: number,
+  windowHeight: number = typeof window !== "undefined" ? window.innerHeight : 900,
+  reservedTopPx: number = RESERVED_TOP_HEIGHT_PX,
+): number => {
+  const maxVh = calculateMaxHeightVh(windowHeight, reservedTopPx)
+  return Math.min(Math.max(value, MIN_HEIGHT_VH), maxVh)
+}
 
 // 页面底边栏属性。
 interface BottomSideBarProps {
@@ -37,7 +58,7 @@ export const BottomSideBar = ({
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
 
-  // 拖拽顶部边缘调整高度：最小 15vh，最大 50vh。
+  // 拖拽顶部边缘调整高度：最小 15vh，最大动态计算预留顶部视口。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = { startY: event.clientY, startHeight: height }
     setIsResizing(true)
@@ -49,7 +70,7 @@ export const BottomSideBar = ({
     if (!start) return
     // 向上拖拽（clientY 变小）高度增加，向下拖拽（clientY 变大）高度减小。
     const next = start.startHeight + (start.startY - event.clientY) / (window.innerHeight / 100)
-    setHeight(clampHeight(next))
+    setHeight(clampHeight(next, window.innerHeight))
   }
 
   const handleResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {

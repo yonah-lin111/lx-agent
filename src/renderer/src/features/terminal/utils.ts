@@ -33,3 +33,21 @@ export const resolveInitialTerminalCwd = async (itemId?: string | null): Promise
 
   return terminalApi.getDesktopPath()
 }
+
+/**
+ * 根据工作目录路径解析友好的展示名称（取最末级文件夹名，根目录/空值兜底）。
+ */
+export const resolveCwdDisplayName = (cwd?: string): string => {
+  if (!cwd || typeof cwd !== "string") {
+    return "~"
+  }
+
+  const trimmed = cwd.trim().replace(/[/\\]+$/, "")
+  if (!trimmed || trimmed === "/" || trimmed === "\\") {
+    return "/"
+  }
+
+  const parts = trimmed.split(/[/\\]/)
+  const last = parts[parts.length - 1]
+  return last || "~"
+}

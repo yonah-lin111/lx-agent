@@ -31,6 +31,7 @@ describe("preload terminal API", () => {
     await api.terminal.resize("term-1", 100, 30)
     await api.terminal.kill("term-1")
     await api.terminal.getDesktopPath()
+    await api.terminal.hasRunningProcess("term-1")
 
     expect(invoke).toHaveBeenNthCalledWith(1, TERMINAL_CHANNELS.create, {
       id: "term-1",
@@ -40,6 +41,7 @@ describe("preload terminal API", () => {
     expect(invoke).toHaveBeenNthCalledWith(3, TERMINAL_CHANNELS.resize, "term-1", 100, 30)
     expect(invoke).toHaveBeenNthCalledWith(4, TERMINAL_CHANNELS.kill, "term-1")
     expect(invoke).toHaveBeenNthCalledWith(5, TERMINAL_CHANNELS.getDesktopPath)
+    expect(invoke).toHaveBeenNthCalledWith(6, TERMINAL_CHANNELS.hasRunningProcess, "term-1")
   })
 
   it("支持订阅并正确解绑 onData 与 onExit 事件", async () => {

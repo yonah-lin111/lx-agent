@@ -67,14 +67,21 @@ export const GhosttyTerminalView = ({
         return
       }
 
-      // Cmd/Ctrl + W: 关闭当前激活的分屏 Pane（若仅剩 1 个则关闭该 Tab）
+      // Cmd/Ctrl + W: 关闭当前激活的分屏 Pane（若仅剩 1 个则关闭该 Tab，遇任务自动弹气泡确认）
       if (event.key.toLowerCase() === "w" && !event.shiftKey) {
         if (activeTabId) {
           event.preventDefault()
           event.stopPropagation()
           const currentTab = useTerminalStore.getState().tabs.find((t) => t.id === activeTabId)
           if (currentTab) {
-            useTerminalStore.getState().removePane(activeTabId, currentTab.activePaneId)
+            const isSinglePane = Object.keys(currentTab.panes).length <= 1
+            if (isSinglePane) {
+              void useTerminalStore.getState().requestCloseTab(activeTabId)
+            } else {
+              void useTerminalStore
+                .getState()
+                .requestClosePane(activeTabId, currentTab.activePaneId)
+            }
           }
         }
         return

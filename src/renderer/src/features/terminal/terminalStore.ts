@@ -8,18 +8,26 @@ import {
 } from "@/features/terminal/splitTreeUtils"
 import { disposeTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { SplitDirection, TerminalPaneItem, TerminalTabItem } from "@/features/terminal/types"
+import { resolveCwdDisplayName } from "@/features/terminal/utils"
 
 // 终端状态存储接口。
 interface TerminalStoreState {
   tabs: TerminalTabItem[]
   activeTabId: string | null
   terminalCounter: number
+  pendingCloseTabId: string | null
+  pendingClosePaneId: string | null
+  setPendingCloseTabId: (id: string | null) => void
+  setPendingClosePaneId: (id: string | null) => void
   addTab: (params?: { cwd?: string; projectId?: string; itemId?: string; title?: string }) => string
   removeTab: (id: string) => void
+  requestCloseTab: (id: string) => Promise<boolean>
   setActiveTab: (id: string) => void
   updateTabTitle: (id: string, title: string) => void
+  updatePaneTitle: (paneId: string, title: string) => void
   splitPane: (tabId: string, direction: SplitDirection, cwd?: string) => string | null
   removePane: (tabId: string, paneId: string) => void
+  requestClosePane: (tabId: string, paneId: string) => Promise<boolean>
   setActivePane: (tabId: string, paneId: string) => void
   setSplitRatio: (tabId: string, containerId: string, ratio: number) => void
   clearTabs: () => void
@@ -32,6 +40,16 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   terminalCounter: 1,
+  pendingCloseTabId: null,
+  pendingClosePaneId: null,
+
+  setPendingCloseTabId: (id) => {
+    set({ pendingCloseTabId: id })
+  },
+
+  setPendingClosePaneId: (id) => {
+    set({ pendingClosePaneId: id })
+  },
 
   addTab: (params) => {
     const nextCounter = get().terminalCounter + 1
@@ -41,6 +59,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
     const initialPane: TerminalPaneItem = {
       id: paneId,
+      title: params?.title?.trim() || defaultTitle,
       cwd: params?.cwd,
       projectId: params?.projectId,
       itemId: params?.itemId,
@@ -97,8 +116,28 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
       return {
         tabs: nextTabs,
         activeTabId: nextActiveId,
+        pendingCloseTabId: state.pendingCloseTabId === tabId ? null : state.pendingCloseTabId,
       }
     })
+  },
+
+  requestCloseTab: async (tabId: string): Promise<boolean> => {
+    const targetTab = get().tabs.find((t) => t.id === tabId)
+    if (!targetTab) return false
+
+    const paneIds = Object.keys(targetTab.panes)
+    const checkResults = await Promise.all(
+      paneIds.map((paneId) => terminalApi.hasRunningProcess(paneId).catch(() => false)),
+    )
+    const hasRunningTask = checkResults.some(Boolean)
+
+    if (hasRunningTask) {
+      set({ pendingCloseTabId: tabId })
+      return false
+    }
+
+    get().removeTab(tabId)
+    return true
   },
 
   setActiveTab: (id: string) => {
@@ -107,12 +146,52 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
   updateTabTitle: (id: string, title: string) => {
     const trimmed = title.trim()
+
+    set((state) => ({
+      tabs: state.tabs.map((tab) => {
+        if (tab.id !== id) return tab
+        if (!trimmed) {
+          const activePaneTitle = tab.panes[tab.activePaneId]?.title
+          return {
+            ...tab,
+            customTitle: undefined,
+            title: activePaneTitle || tab.title,
+          }
+        }
+        return {
+          ...tab,
+          title: trimmed,
+          customTitle: trimmed,
+        }
+      }),
+    }))
+  },
+
+  updatePaneTitle: (paneId: string, title: string) => {
+    const trimmed = title.trim()
     if (!trimmed) return
 
     set((state) => ({
-      tabs: state.tabs.map((tab) =>
-        tab.id === id ? { ...tab, title: trimmed, customTitle: trimmed } : tab,
-      ),
+      tabs: state.tabs.map((tab) => {
+        if (!tab.panes[paneId]) return tab
+
+        const nextPanes = {
+          ...tab.panes,
+          [paneId]: {
+            ...tab.panes[paneId],
+            title: trimmed,
+          },
+        }
+
+        const isCurrentActive = tab.activePaneId === paneId
+        const nextTitle = !tab.customTitle && isCurrentActive ? trimmed : tab.title
+
+        return {
+          ...tab,
+          panes: nextPanes,
+          title: nextTitle,
+        }
+      }),
     }))
   },
 
@@ -131,8 +210,11 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const activePane = tab.panes[targetPaneId]
     const effectiveCwd = cwd || activePane?.cwd || tab.cwd
 
+    const newPaneTitle = resolveCwdDisplayName(effectiveCwd)
+
     const newPane: TerminalPaneItem = {
       id: newPaneId,
+      title: newPaneTitle,
       cwd: effectiveCwd,
       projectId: tab.projectId,
       itemId: tab.itemId,
@@ -142,16 +224,17 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const nextRootNode = splitNodeAt(tab.rootNode, targetPaneId, newPaneId, direction)
 
     set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId
-          ? {
-              ...t,
-              panes: { ...t.panes, [newPaneId]: newPane },
-              rootNode: nextRootNode,
-              activePaneId: newPaneId,
-            }
-          : t,
-      ),
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const nextTitle = !t.customTitle && newPaneTitle ? newPaneTitle : t.title
+        return {
+          ...t,
+          panes: { ...t.panes, [newPaneId]: newPane },
+          rootNode: nextRootNode,
+          activePaneId: newPaneId,
+          title: nextTitle,
+        }
+      }),
     }))
 
     return newPaneId
@@ -180,22 +263,54 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
       tab.activePaneId === paneId ? remainingPaneIds[0] || "" : tab.activePaneId
 
     set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId
-          ? {
-              ...t,
-              panes: nextPanes,
-              rootNode: nextRootNode,
-              activePaneId: nextActivePaneId,
-            }
-          : t,
-      ),
+      pendingClosePaneId: state.pendingClosePaneId === paneId ? null : state.pendingClosePaneId,
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const activePaneTitle = nextPanes[nextActivePaneId]?.title
+        const nextTitle = !t.customTitle && activePaneTitle ? activePaneTitle : t.title
+
+        return {
+          ...t,
+          panes: nextPanes,
+          rootNode: nextRootNode,
+          activePaneId: nextActivePaneId,
+          title: nextTitle,
+        }
+      }),
     }))
+  },
+
+  requestClosePane: async (tabId: string, paneId: string): Promise<boolean> => {
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!tab || !tab.panes[paneId]) return false
+
+    const totalPanes = Object.keys(tab.panes).length
+    if (totalPanes <= 1) {
+      return get().requestCloseTab(tabId)
+    }
+
+    const hasRunningTask = await terminalApi.hasRunningProcess(paneId).catch(() => false)
+    if (hasRunningTask) {
+      set({ pendingClosePaneId: paneId })
+      return false
+    }
+
+    get().removePane(tabId, paneId)
+    return true
   },
 
   setActivePane: (tabId, paneId) => {
     set((state) => ({
-      tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, activePaneId: paneId } : t)),
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const activePaneTitle = t.panes[paneId]?.title
+        const nextTitle = !t.customTitle && activePaneTitle ? activePaneTitle : t.title
+        return {
+          ...t,
+          activePaneId: paneId,
+          title: nextTitle,
+        }
+      }),
     }))
   },
 
@@ -220,6 +335,6 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
         void terminalApi.kill(paneId)
       }
     }
-    set({ tabs: [], activeTabId: null })
+    set({ tabs: [], activeTabId: null, pendingCloseTabId: null, pendingClosePaneId: null })
   },
 }))

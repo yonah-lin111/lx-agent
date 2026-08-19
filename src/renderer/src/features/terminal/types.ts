@@ -23,6 +23,8 @@ export type SplitNode = SplitLeafNode | SplitContainerNode
 export interface TerminalPaneItem {
   // Pane 唯一 ID（对应一个独立的 PTY 进程）。
   id: string
+  // 分屏标题（由 CLI 动态输出或默认值）。
+  title?: string
   // 终端启动工作目录。
   cwd?: string
   // 关联项目 ID。

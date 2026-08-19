@@ -5,6 +5,7 @@ import { WebglAddon } from "@xterm/addon-webgl"
 import { Terminal } from "@xterm/xterm"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
+import { useTerminalStore } from "@/features/terminal/terminalStore"
 
 /**
  * xterm 实例与宿主容器桥接管理对象。
@@ -136,6 +137,14 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     }
   })
 
+  // 监听 xterm 标题变化事件（如 CLI 输出的 OSC 0 / OSC 2 动态标题）
+  const onTitleChangeDisposable = term.onTitleChange((title: string) => {
+    const cleanTitle = title.trim()
+    if (cleanTitle) {
+      useTerminalStore.getState().updatePaneTitle(paneId, cleanTitle)
+    }
+  })
+
   // 订阅后端 PTY
   const unsubscribeData = terminalApi.onData(paneId, (data) => {
     term.write(data)
@@ -177,6 +186,7 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
       unsubscribeExit()
       onDataDisposable.dispose()
       onResizeDisposable.dispose()
+      onTitleChangeDisposable.dispose()
       webglAddon?.dispose()
       unicode11Addon.dispose()
       webLinksAddon.dispose()
