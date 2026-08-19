@@ -1,161 +1,77 @@
-import { FitAddon } from "@xterm/addon-fit"
-import { WebLinksAddon } from "@xterm/addon-web-links"
-import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
+import type React from "react"
 import { useEffect, useRef } from "react"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
-import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
-import type { TerminalTabItem } from "@/features/terminal/types"
+import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionRegistry"
+import type { TerminalPaneItem } from "@/features/terminal/types"
 
 interface TerminalPaneProps {
-  tab: TerminalTabItem
+  pane: TerminalPaneItem
   isActive: boolean
+  isFocused: boolean
   isExpanded: boolean
+  onFocus: () => void
 }
 
 /**
- * 单个 xterm 终端画布组件：负责 PTY 连接、尺寸自适应与输入输出交互。
+ * 单个 xterm 终端视口宿主组件：从单例注册表中挂载稳定的 xterm DOM 元素。
+ * 当分屏树重排时，由于底层 DOM 与 xterm 实例稳定常驻，历史输出与交互状态绝不丢失。
  */
 export const TerminalPane = ({
-  tab,
+  pane,
   isActive,
+  isFocused,
   isExpanded,
+  onFocus,
 }: TerminalPaneProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const terminalRef = useRef<Terminal | null>(null)
-  const fitAddonRef = useRef<FitAddon | null>(null)
 
-  // 1. 初始化 xterm 实例与 PTY 进程。
+  // 1. 将常驻的 TerminalSession DOM 元素挂载到当前容器节点下
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const term = new Terminal(DEFAULT_XTERM_OPTIONS)
-    const fitAddon = new FitAddon()
-    const webLinksAddon = new WebLinksAddon()
+    const session = getOrCreateTerminalSession(pane.id, pane.cwd)
 
-    term.loadAddon(fitAddon)
-    term.loadAddon(webLinksAddon)
+    // 将持久化的终端 DOM 移动挂载至当前容器中
+    if (session.element.parentElement !== container) {
+      container.appendChild(session.element)
+      session.isAttached = true
+    }
 
-    term.open(container)
-
-    terminalRef.current = term
-    fitAddonRef.current = fitAddon
-
-    // 自定义按键处理：处理 Shift+Enter 换行与系统剪贴板复制/粘贴
-    term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-      // Shift + Enter 触发换行：发送 Escape + Return (\x1b\r)
-      // 这是现代终端（VS Code/Cursor/Ghostty/Claude Code）中 Shift+Enter 换行而不触发提交的标准转义序列
-      if (event.shiftKey && event.key === "Enter") {
-        event.preventDefault()
-        event.stopPropagation()
-        if (event.type === "keydown") {
-          void terminalApi.write(tab.id, "\x1b\r")
-        }
-        return false
-      }
-
-      if (event.type !== "keydown") return true
-
-      const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
-      const isModifier = isMac ? event.metaKey : event.ctrlKey
-
-      if (isModifier && event.key.toLowerCase() === "c" && term.hasSelection()) {
-        event.preventDefault()
-        event.stopPropagation()
-        void navigator.clipboard.writeText(term.getSelection())
-        return false
-      }
-
-      if (isModifier && event.key.toLowerCase() === "v") {
-        event.preventDefault()
-        event.stopPropagation()
-        void navigator.clipboard.readText().then((text) => {
-          if (text) {
-            term.paste(text)
-          }
-        })
-        return false
-      }
-
-      return true
-    })
-
-    // 首次计算视口尺寸，若不可用则使用默认安全尺寸
+    // 初始适配尺寸
     try {
       if (container.clientWidth >= 20 && container.clientHeight >= 20) {
-        fitAddon.fit()
+        session.fitAddon.fit()
       }
     } catch {
-      // 忽略初始尺寸不可用
+      // 忽略
     }
 
-    const cols = term.cols >= 10 ? term.cols : 80
-    const rows = term.rows >= 2 ? term.rows : 24
-
-    // 先订阅后端 PTY 输出与退出事件（保证不丢失首包输出）
-    const unsubscribeData = terminalApi.onData(tab.id, (data) => {
-      term.write(data)
-    })
-
-    const unsubscribeExit = terminalApi.onExit(tab.id, ({ exitCode }) => {
-      term.writeln(`\r\n\x1b[90m[进程已退出，代码: ${exitCode}]\x1b[0m`)
-    })
-
-    // 监听前端用户键入输入并转发到后端 PTY
-    const onDataDisposable = term.onData((data) => {
-      void terminalApi.write(tab.id, data)
-    })
-
-    // 创建后端 PTY 进程
-    void terminalApi
-      .create({
-        id: tab.id,
-        cwd: tab.cwd,
-        cols,
-        rows,
-      })
-      .then((res) => {
-        if (!res.success && res.error) {
-          term.writeln(`\r\n\x1b[31m[创建终端失败: ${res.error}]\x1b[0m`)
-        }
-      })
-
-    // 挂载后请求焦点
-    term.focus()
-
-    return () => {
-      unsubscribeData()
-      unsubscribeExit()
-      onDataDisposable.dispose()
-      webLinksAddon.dispose()
-      fitAddon.dispose()
-      term.dispose()
-      terminalRef.current = null
-      fitAddonRef.current = null
+    if (isFocused) {
+      session.term.focus()
     }
-  }, [tab.id, tab.cwd])
+  }, [pane.id, pane.cwd])
 
-  // 2. 监听容器尺寸与展开/激活状态变化，执行 fit 与 resize 广播。
+  // 2. 监听容器尺寸与展开/激活状态变化，执行 fit 与 resize 广播
   useEffect(() => {
     const container = containerRef.current
-    const term = terminalRef.current
-    const fitAddon = fitAddonRef.current
-    if (!container || !term || !fitAddon || !isActive || !isExpanded) return
+    if (!container || !isActive || !isExpanded) return
+
+    const session = getOrCreateTerminalSession(pane.id, pane.cwd)
 
     const handleResize = (): void => {
       if (container.clientWidth < 20 || container.clientHeight < 20) return
       try {
-        fitAddon.fit()
-        if (term.cols >= 10 && term.rows >= 2) {
-          void terminalApi.resize(tab.id, term.cols, term.rows)
+        session.fitAddon.fit()
+        if (session.term.cols >= 10 && session.term.rows >= 2) {
+          void terminalApi.resize(pane.id, session.term.cols, session.term.rows)
         }
       } catch {
-        // 忽略动画过渡期的计算异常
+        // 忽略动画过渡期异常
       }
     }
 
-    // 配合底边栏 300ms CSS 过渡动画在各阶段重新计算尺寸
     const t1 = window.setTimeout(handleResize, 50)
     const t2 = window.setTimeout(handleResize, 150)
     const t3 = window.setTimeout(handleResize, 350)
@@ -171,32 +87,41 @@ export const TerminalPane = ({
       window.clearTimeout(t3)
       observer.disconnect()
     }
-  }, [tab.id, isActive, isExpanded])
+  }, [pane.id, pane.cwd, isActive, isExpanded])
 
-  // 3. 激活或展开时自动聚焦到 xterm 输入光标。
+  // 3. 激活或聚焦时自动获得焦点
   useEffect(() => {
-    if (isActive && isExpanded && terminalRef.current) {
-      const timer1 = window.setTimeout(() => {
-        terminalRef.current?.focus()
-      }, 60)
-      const timer2 = window.setTimeout(() => {
-        terminalRef.current?.focus()
-      }, 360)
-      return () => {
-        window.clearTimeout(timer1)
-        window.clearTimeout(timer2)
-      }
+    if (!isActive || !isFocused || !isExpanded) return
+
+    const session = getOrCreateTerminalSession(pane.id, pane.cwd)
+
+    const timer1 = window.setTimeout(() => {
+      session.term.focus()
+    }, 60)
+    const timer2 = window.setTimeout(() => {
+      session.term.focus()
+    }, 360)
+
+    return () => {
+      window.clearTimeout(timer1)
+      window.clearTimeout(timer2)
     }
-  }, [isActive, isExpanded])
+  }, [pane.id, pane.cwd, isActive, isFocused, isExpanded])
+
+  const handleFocus = (): void => {
+    onFocus()
+    const session = getOrCreateTerminalSession(pane.id, pane.cwd)
+    session.term.focus()
+  }
 
   return (
     <div
       ref={containerRef}
-      className={`h-full w-full overflow-hidden bg-[#141414] p-1.5 cursor-text ${
-        isActive ? "block" : "hidden"
+      className={`relative h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#111116] cursor-text transition-all duration-150 ${
+        isFocused ? "ring-1 ring-white/20 z-10" : "opacity-85 hover:opacity-100"
       }`}
-      onClick={() => terminalRef.current?.focus()}
-      onMouseDown={() => terminalRef.current?.focus()}
+      onClick={handleFocus}
+      onMouseDown={handleFocus}
     />
   )
 }

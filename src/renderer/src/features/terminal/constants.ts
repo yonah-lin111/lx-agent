@@ -1,42 +1,47 @@
 import type { ITerminalOptions } from "@xterm/xterm"
 
-// Ghostty 风格深色主题调色盘。
+// Ghostty 风格高活力深色主题调色盘（现代 Vibrant ANSI 配色，高明度、高饱和与柔和护眼对比度）。
 export const GHOSTTY_TERMINAL_THEME = {
-  background: "#141414",
-  foreground: "#e4e4e7",
-  cursor: "#ffffff",
-  cursorAccent: "#141414",
-  selectionBackground: "rgba(255, 255, 255, 0.22)",
-  selectionInactiveBackground: "rgba(255, 255, 255, 0.1)",
-  black: "#1e1e2e",
-  red: "#f38ba8",
-  green: "#a6e3a1",
-  yellow: "#f9e2af",
-  blue: "#89b4fa",
-  magenta: "#cba6f7",
-  cyan: "#94e2d5",
-  white: "#cdd6f4",
-  brightBlack: "#585b70",
-  brightRed: "#f38ba8",
-  brightGreen: "#a6e3a1",
-  brightYellow: "#f9e2af",
-  brightBlue: "#89b4fa",
-  brightMagenta: "#cba6f7",
-  brightCyan: "#94e2d5",
+  background: "#111116",
+  foreground: "#f0f6fc",
+  cursor: "#38bdf8",
+  cursorAccent: "#111116",
+  selectionBackground: "rgba(56, 189, 248, 0.32)",
+  selectionInactiveBackground: "rgba(255, 255, 255, 0.08)",
+  // 标准 ANSI 基础 8 色（明亮、通透）
+  black: "#21262d",
+  red: "#ff5370",
+  green: "#2ed573",
+  yellow: "#ffb86c",
+  blue: "#38bdf8",
+  magenta: "#c084fc",
+  cyan: "#22d3ee",
+  white: "#f1f5f9",
+  // ANSI 高亮 8 色 (Bright，更加活力鲜艳)
+  brightBlack: "#8b949e",
+  brightRed: "#ff7675",
+  brightGreen: "#55efc4",
+  brightYellow: "#ffeaa7",
+  brightBlue: "#70a1ff",
+  brightMagenta: "#e056fd",
+  brightCyan: "#67e8f9",
   brightWhite: "#ffffff",
 } as const
 
 // 默认 xterm 配置。
 export const DEFAULT_XTERM_OPTIONS: ITerminalOptions = {
   fontFamily:
-    'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  fontSize: 12,
-  lineHeight: 1.25,
+    'ui-monospace, "SF Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  fontSize: 12.5,
+  lineHeight: 1.35,
+  letterSpacing: 0,
   cursorBlink: true,
   cursorStyle: "bar",
   cursorWidth: 2,
   theme: GHOSTTY_TERMINAL_THEME,
   allowTransparency: true,
-  smoothScrollDuration: 100,
+  smoothScrollDuration: 120,
   convertEol: true,
+  drawBoldTextInBrightColors: true,
+  minimumContrastRatio: 4.5,
 }

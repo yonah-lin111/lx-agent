@@ -113,10 +113,10 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
           return (
             <div
               key={tab.id}
-              className={`group flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1 rounded-[6px] border px-2 py-1 text-xs font-semibold transition-all duration-150 cursor-pointer ${
+              className={`group relative flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? "border-white/10 bg-white/10 text-white"
-                  : "border-white/5 bg-transparent text-white/65 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/90"
+                  ? "border-white/15 bg-white/[0.08] text-white shadow-xs"
+                  : "border-white/5 bg-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/90"
               }`}
               onClick={() => setActiveTab(tab.id)}
             >

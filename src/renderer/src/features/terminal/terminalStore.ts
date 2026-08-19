@@ -1,6 +1,8 @@
 import { create } from "zustand"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
-import type { TerminalTabItem } from "@/features/terminal/types"
+import { collectAllPaneIds, removeNodeAt, splitNodeAt } from "@/features/terminal/splitTreeUtils"
+import { disposeTerminalSession } from "@/features/terminal/terminalSessionRegistry"
+import type { SplitDirection, TerminalPaneItem, TerminalTabItem } from "@/features/terminal/types"
 
 // 终端状态存储接口。
 interface TerminalStoreState {
@@ -11,11 +13,14 @@ interface TerminalStoreState {
   removeTab: (id: string) => void
   setActiveTab: (id: string) => void
   updateTabTitle: (id: string, title: string) => void
+  splitPane: (tabId: string, direction: SplitDirection, cwd?: string) => string | null
+  removePane: (tabId: string, paneId: string) => void
+  setActivePane: (tabId: string, paneId: string) => void
   clearTabs: () => void
 }
 
 /**
- * 终端标签与活动状态全局 Store。
+ * 终端标签与二叉分屏状态全局 Store。
  */
 export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   tabs: [],
@@ -24,12 +29,24 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
   addTab: (params) => {
     const nextCounter = get().terminalCounter + 1
-    const id = `term_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const tabId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const paneId = `pane_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
     const defaultTitle = `Terminal ${get().terminalCounter}`
 
+    const initialPane: TerminalPaneItem = {
+      id: paneId,
+      cwd: params?.cwd,
+      projectId: params?.projectId,
+      itemId: params?.itemId,
+      createdAt: Date.now(),
+    }
+
     const newTab: TerminalTabItem = {
-      id,
+      id: tabId,
       title: params?.title?.trim() || defaultTitle,
+      panes: { [paneId]: initialPane },
+      rootNode: { type: "leaf", paneId },
+      activePaneId: paneId,
       cwd: params?.cwd,
       projectId: params?.projectId,
       itemId: params?.itemId,
@@ -38,24 +55,30 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
     set((state) => ({
       tabs: [...state.tabs, newTab],
-      activeTabId: id,
+      activeTabId: tabId,
       terminalCounter: nextCounter,
     }))
 
-    return id
+    return tabId
   },
 
-  removeTab: (id: string) => {
-    void terminalApi.kill(id)
+  removeTab: (tabId: string) => {
+    const targetTab = get().tabs.find((t) => t.id === tabId)
+    if (targetTab) {
+      for (const paneId of Object.keys(targetTab.panes)) {
+        disposeTerminalSession(paneId)
+        void terminalApi.kill(paneId)
+      }
+    }
 
     set((state) => {
-      const targetIndex = state.tabs.findIndex((tab) => tab.id === id)
+      const targetIndex = state.tabs.findIndex((tab) => tab.id === tabId)
       if (targetIndex === -1) return state
 
-      const nextTabs = state.tabs.filter((tab) => tab.id !== id)
+      const nextTabs = state.tabs.filter((tab) => tab.id !== tabId)
       let nextActiveId = state.activeTabId
 
-      if (state.activeTabId === id) {
+      if (state.activeTabId === tabId) {
         if (nextTabs.length === 0) {
           nextActiveId = null
         } else if (targetIndex > 0) {
@@ -87,10 +110,95 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     }))
   },
 
+  splitPane: (tabId, direction, cwd) => {
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!tab) return null
+
+    const existingPaneIds = collectAllPaneIds(tab.rootNode)
+    // 最大限制单 Tab 8 个嵌套分屏，保持性能与可用性
+    if (existingPaneIds.length >= 8) return null
+
+    const targetPaneId = tab.activePaneId || existingPaneIds[0]
+    if (!targetPaneId) return null
+
+    const newPaneId = `pane_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const activePane = tab.panes[targetPaneId]
+    const effectiveCwd = cwd || activePane?.cwd || tab.cwd
+
+    const newPane: TerminalPaneItem = {
+      id: newPaneId,
+      cwd: effectiveCwd,
+      projectId: tab.projectId,
+      itemId: tab.itemId,
+      createdAt: Date.now(),
+    }
+
+    const nextRootNode = splitNodeAt(tab.rootNode, targetPaneId, newPaneId, direction)
+
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === tabId
+          ? {
+              ...t,
+              panes: { ...t.panes, [newPaneId]: newPane },
+              rootNode: nextRootNode,
+              activePaneId: newPaneId,
+            }
+          : t,
+      ),
+    }))
+
+    return newPaneId
+  },
+
+  removePane: (tabId, paneId) => {
+    disposeTerminalSession(paneId)
+    void terminalApi.kill(paneId)
+
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!tab) return
+
+    const nextRootNode = removeNodeAt(tab.rootNode, paneId)
+
+    // 若整棵树已被清空，则销毁整个 Tab
+    if (!nextRootNode) {
+      get().removeTab(tabId)
+      return
+    }
+
+    const remainingPaneIds = collectAllPaneIds(nextRootNode)
+    const nextPanes = { ...tab.panes }
+    delete nextPanes[paneId]
+
+    const nextActivePaneId =
+      tab.activePaneId === paneId ? remainingPaneIds[0] || "" : tab.activePaneId
+
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === tabId
+          ? {
+              ...t,
+              panes: nextPanes,
+              rootNode: nextRootNode,
+              activePaneId: nextActivePaneId,
+            }
+          : t,
+      ),
+    }))
+  },
+
+  setActivePane: (tabId, paneId) => {
+    set((state) => ({
+      tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, activePaneId: paneId } : t)),
+    }))
+  },
+
   clearTabs: () => {
     const { tabs } = get()
     for (const tab of tabs) {
-      void terminalApi.kill(tab.id)
+      for (const paneId of Object.keys(tab.panes)) {
+        void terminalApi.kill(paneId)
+      }
     }
     set({ tabs: [], activeTabId: null })
   },
