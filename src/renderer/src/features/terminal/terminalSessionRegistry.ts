@@ -6,6 +6,7 @@ import { Terminal } from "@xterm/xterm"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
+import { extractPathsFromDataTransfer, formatTerminalPaths } from "@/features/terminal/utils"
 
 /**
  * xterm 实例与宿主容器桥接管理对象。
@@ -82,11 +83,7 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     }
 
     if (isModifier && event.key.toLowerCase() === "v") {
-      event.preventDefault()
-      event.stopPropagation()
-      void navigator.clipboard.readText().then((text) => {
-        if (text) term.paste(text)
-      })
+      // 允许浏览器原生 paste 事件触发，由 DOM 'paste' 监听器从 clipboardData 读取完整文件物理路径
       return false
     }
 
@@ -129,6 +126,65 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
 
     return true
   })
+
+  // 粘贴与拖拽文件/文件夹绝对路径处理
+  const handlePaste = (event: ClipboardEvent): void => {
+    const clipboardData = event.clipboardData
+    if (!clipboardData) return
+
+    const paths = extractPathsFromDataTransfer(clipboardData)
+    if (paths.length > 0) {
+      event.preventDefault()
+      event.stopPropagation()
+      const formatted = formatTerminalPaths(paths)
+      if (formatted) {
+        term.paste(formatted)
+      }
+      return
+    }
+
+    const text = clipboardData.getData("text/plain")
+    if (text) {
+      event.preventDefault()
+      event.stopPropagation()
+      term.paste(text)
+    }
+  }
+
+  const handleDragOver = (event: DragEvent): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "copy"
+    }
+  }
+
+  const handleDrop = (event: DragEvent): void => {
+    event.preventDefault()
+    event.stopPropagation()
+    const dataTransfer = event.dataTransfer
+    if (!dataTransfer) return
+
+    const paths = extractPathsFromDataTransfer(dataTransfer)
+    if (paths.length > 0) {
+      const formatted = formatTerminalPaths(paths)
+      if (formatted) {
+        term.paste(formatted)
+        term.focus()
+      }
+      return
+    }
+
+    const text = dataTransfer.getData("text/plain")
+    if (text) {
+      term.paste(text)
+      term.focus()
+    }
+  }
+
+  element.addEventListener("paste", handlePaste, true)
+  element.addEventListener("dragover", handleDragOver, false)
+  element.addEventListener("drop", handleDrop, false)
 
   // 监听 xterm 视口行列变化并即时同步调整底层 PTY 尺寸
   const onResizeDisposable = term.onResize(({ cols, rows }) => {
@@ -182,6 +238,9 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     paneId,
     isAttached: false,
     dispose: () => {
+      element.removeEventListener("paste", handlePaste, true)
+      element.removeEventListener("dragover", handleDragOver, false)
+      element.removeEventListener("drop", handleDrop, false)
       unsubscribeData()
       unsubscribeExit()
       onDataDisposable.dispose()
