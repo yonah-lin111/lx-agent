@@ -33,7 +33,8 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
   if (existing) return existing
 
   const element = document.createElement("div")
-  element.className = "relative h-full w-full overflow-hidden bg-[#111116] cursor-text select-text"
+  element.className =
+    "terminal-session-element relative h-full w-full overflow-hidden bg-transparent cursor-text select-text"
 
   const term = new Terminal(DEFAULT_XTERM_OPTIONS)
   const fitAddon = new FitAddon()

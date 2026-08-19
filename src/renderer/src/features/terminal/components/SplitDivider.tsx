@@ -84,7 +84,7 @@ export const SplitDivider = ({
   return (
     <>
       <div
-        className={`group relative z-20 shrink-0 select-none ${
+        className={`terminal-split-divider group relative z-20 shrink-0 select-none ${
           isHorizontal
             ? "flex h-full w-2 -mx-1 cursor-col-resize items-center justify-center"
             : "flex w-full h-2 -my-1 cursor-row-resize items-center justify-center"

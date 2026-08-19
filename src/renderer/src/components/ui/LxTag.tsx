@@ -145,7 +145,9 @@ export const LxTag = ({
   return (
     <span
       aria-label={isClickable && typeof children === "string" ? children : undefined}
-      className={`inline-flex select-none items-center justify-center border font-semibold transition-all duration-150 ${
+      data-color={color}
+      data-highlighted={highlighted ? "true" : undefined}
+      className={`lx-tag inline-flex select-none items-center justify-center border font-semibold transition-all duration-150 ${
         currentStyles.container
       } ${
         highlighted ? defaultHighlightBg : `${defaultBg} ${isInteractive ? defaultHover : ""}`

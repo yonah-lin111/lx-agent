@@ -43,18 +43,21 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
   }
 
   return (
-    <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+    <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
       <div>
-        <h3 className="mb-2 text-sm font-medium text-white">默认模型</h3>
+        <h3 className="mb-2.5 text-sm font-medium text-white">默认模型</h3>
         <div className="grid gap-3 lg:grid-cols-2">
           {MODEL_SELECTIONS.map(({ key, label }) => {
             const isCompaction = key === "compactionModel"
             const selection = settings[key] || { provider: "", model: "" }
             const models = settings.providers[selection.provider]?.models ?? {}
             return (
-              <section key={key}>
+              <div
+                key={key}
+                className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3"
+              >
                 <h4 className="text-xs text-white/60">{label}</h4>
-                <div className="mt-2 grid gap-2">
+                <div className="grid gap-2">
                   <LxSelect
                     value={selection.provider}
                     options={providerOptions(selection, isCompaction)}
@@ -78,18 +81,18 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                     onChange={(model) => updateSelection(key, { ...selection, model })}
                   />
                 </div>
-              </section>
+              </div>
             )
           })}
         </div>
       </div>
 
       <div className="border-t border-white/8 pt-3">
-        <h3 className="mb-2 text-sm font-medium text-white">功能配置</h3>
+        <h3 className="mb-2.5 text-sm font-medium text-white">功能配置</h3>
         <div className="grid gap-3 lg:grid-cols-2">
-          <section>
+          <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
             <h4 className="text-xs text-white/60">推荐问题</h4>
-            <div className="mt-2 flex items-center">
+            <div className="flex items-center">
               <LxRadioGroup
                 className="flex gap-2"
                 name="suggested-questions"
@@ -106,10 +109,10 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                 <LxRadio value="disabled" label="停用" />
               </LxRadioGroup>
             </div>
-          </section>
-          <section>
+          </div>
+          <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
             <h4 className="text-xs text-white/60">上下文压缩</h4>
-            <div className="mt-2 flex items-center">
+            <div className="flex items-center">
               <LxRadioGroup
                 className="flex gap-2"
                 name="context-compaction"
@@ -124,7 +127,7 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                 <LxRadio value="disabled" label="停用" />
               </LxRadioGroup>
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>

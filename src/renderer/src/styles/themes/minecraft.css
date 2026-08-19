@@ -42,7 +42,6 @@
 /* 经典 Minecraft 容器立体凹凸像素槽：外深黑 + 内凸亮边 + 底部阴影边 */
 [data-theme="minecraft"] header,
 [data-theme="minecraft"] aside,
-[data-theme="minecraft"] nav,
 [data-theme="minecraft"] section,
 [data-theme="minecraft"] [role="region"],
 [data-theme="minecraft"] [role="dialog"],
@@ -55,12 +54,19 @@
   background-color: #262636 !important;
 }
 
+[data-theme="minecraft"] aside nav,
+[data-theme="minecraft"] nav {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 /* ========================================================
  * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
  * ======================================================== */
-/* 基础按钮风格（非侧栏列表按钮） */
-[data-theme="minecraft"] button:not([role="button"]),
-[data-theme="minecraft"] [role="button"] {
+/* 基础按钮风格（非侧栏列表按钮、非下拉/菜单选项） */
+[data-theme="minecraft"] button:not([role="button"]):not([role="option"]),
+[data-theme="minecraft"] [role="button"]:not([role="option"]) {
   transition: none !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -110,10 +116,10 @@
 }
 
 /* Level 3: 具体条目 Prompt Item（File 图标容器）—— 深石墨暗槽 */
-[data-theme="minecraft"] [data-item-level="prompt"],
-[data-theme="minecraft"] div[role="button"]:has(svg.lucide-file) {
+[data-theme="minecraft"] [data-item-level="prompt"]:not([aria-current="page"]):not(.bg-white\/10),
+[data-theme="minecraft"]
+  div[role="button"]:not([aria-current="page"]):not(.bg-white\/10):has(svg.lucide-file) {
   background-color: #1e1e2a !important;
-  color: #c4c4d6 !important;
   border: 2px solid #000000 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
@@ -121,10 +127,11 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] [data-item-level="prompt"]:hover,
-[data-theme="minecraft"] div[role="button"]:has(svg.lucide-file):hover {
+[data-theme="minecraft"]
+  [data-item-level="prompt"]:not([aria-current="page"]):not(.bg-white\/10):hover,
+[data-theme="minecraft"]
+  div[role="button"]:not([aria-current="page"]):not(.bg-white\/10):has(svg.lucide-file):hover {
   background-color: #2b2b3b !important;
-  color: #ffffff !important;
 }
 
 /* --------------------------------------------------------
@@ -133,7 +140,6 @@
 /* Level 1: 大分组头节点（深黑曜石承托感） */
 [data-theme="minecraft"] nav > div > button[aria-expanded] {
   background-color: #38384e !important;
-  color: #ffffff !important;
   border: 2px solid #000000 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
@@ -148,7 +154,6 @@
 /* Level 2: 具体组件项按钮（深石墨暗槽） */
 [data-theme="minecraft"] nav > div > div > button {
   background-color: #1e1e2a !important;
-  color: #c4c4d6 !important;
   border: 2px solid #000000 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
@@ -158,33 +163,22 @@
 
 [data-theme="minecraft"] nav > div > div > button:hover {
   background-color: #2b2b3b !important;
-  color: #ffffff !important;
 }
 
 /* --------------------------------------------------------
  * 3. 激活/选中高亮态（精确匹配当前选中的 Prompt 与组件）
  * -------------------------------------------------------- */
+[data-theme="minecraft"] div[role="button"][aria-current="page"],
 [data-theme="minecraft"] div[role="button"].bg-white\/10,
-[data-theme="minecraft"] button[aria-current="page"] {
+[data-theme="minecraft"] button[aria-current="page"],
+[data-theme="minecraft"] [aria-current="page"] {
   background-color: #14141c !important;
-  color: #55ff55 !important;
   border: 2px solid #000000 !important;
   border-left: 4px solid #55ff55 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
     0px 0px 8px rgba(85, 255, 85, 0.2) !important;
-}
-
-[data-theme="minecraft"] div[role="button"].bg-white\/10 span,
-[data-theme="minecraft"] button[aria-current="page"] span {
-  color: #55ff55 !important;
-  font-weight: bold;
-}
-
-[data-theme="minecraft"] div[role="button"].bg-white\/10 svg.lucide-file,
-[data-theme="minecraft"] button[aria-current="page"] svg {
-  color: #55ff55 !important;
 }
 
 /* ========================================================
@@ -555,7 +549,9 @@
 /* 面板选项 Item */
 [data-theme="minecraft"] .markdown-command-menu [role="option"],
 [data-theme="minecraft"] [role="listbox"] [role="option"] {
-  border: 1px solid transparent;
+  border: 1px solid transparent !important;
+  border-left: 3px solid transparent !important;
+  box-shadow: none !important;
   transition: none !important;
 }
 
@@ -594,4 +590,232 @@
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ========================================================
+ * LxTooltip 悬浮小三角适配
+ * ======================================================== */
+[data-theme="minecraft"] .lx-tooltip-arrow {
+  color: #262636 !important;
+}
+
+/* ========================================================
+ * Agent 输入框底栏魔改（安山岩/黑曜石内凹像素槽）
+ * ======================================================== */
+[data-theme="minecraft"] .agent-input-container,
+[data-theme="minecraft"] .bg-\[\#2a2a2a\] {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  color: #f0f0f8 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="minecraft"] .agent-input-container:focus-within,
+[data-theme="minecraft"] .bg-\[\#2a2a2a\]:focus-within {
+  border-color: #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0 0 6px rgba(85, 255, 85, 0.25) !important;
+}
+
+[data-theme="minecraft"] .agent-input-container .cm-editor,
+[data-theme="minecraft"] .agent-input-container .cm-scroller {
+  background-color: transparent !important;
+}
+
+/* Agent 输入框底栏按键像素化与配色 */
+[data-theme="minecraft"] .agent-input-add-btn,
+[data-theme="minecraft"] .agent-input-expand-btn {
+  background-color: #2e2e42 !important;
+  color: #c4c4d6 !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-add-btn:hover,
+[data-theme="minecraft"] .agent-input-expand-btn:hover {
+  background-color: #3e3e58 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .agent-input-send-btn {
+  background-color: #55ff55 !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-send-btn:hover:not(:disabled) {
+  background-color: #77ff77 !important;
+  color: #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-send-btn:disabled,
+[data-theme="minecraft"] .agent-input-compacting-btn {
+  background-color: #242432 !important;
+  color: #626278 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.5) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="minecraft"] .agent-input-stop-btn {
+  background-color: #ff5555 !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-stop-btn:hover {
+  background-color: #ff7777 !important;
+  color: #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-container button[aria-haspopup="listbox"] {
+  background-color: #2e2e42 !important;
+  color: #e0e0ee !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-container button[aria-haspopup="listbox"]:hover {
+  background-color: #3e3e58 !important;
+}
+
+/* ========================================================
+ * LxTag 标签组件魔改（经典直角矿石像素槽）
+ * ======================================================== */
+[data-theme="minecraft"] .lx-tag {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="minecraft"] .lx-tag[data-highlighted="true"] {
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25) !important;
+}
+
+/* ========================================================
+ * 设置页面配置卡片（经典直角石质像素凹槽）
+ * ======================================================== */
+[data-theme="minecraft"] .settings-item-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .settings-model-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
+    1px 1px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 终端模块（Terminal & Ghostty View & Xterm）
+ * ======================================================== */
+/* 1. 终端标签栏 Tab 项（经典直角矿石像素槽） */
+[data-theme="minecraft"] .terminal-tab-item {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="minecraft"] .terminal-tab-item:hover:not([data-active="true"]) {
+  background-color: #343448 !important;
+}
+
+[data-theme="minecraft"] .terminal-tab-item[data-active="true"] {
+  background-color: #14141c !important;
+  border: 1px solid #000000 !important;
+  border-bottom: 2px solid #55ff55 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset 0px -1px 0px 0px rgba(85, 255, 85, 0.25) !important;
+}
+
+[data-theme="minecraft"] .terminal-tab-item[data-active="true"] span {
+  color: #55ff55 !important;
+}
+
+/* 2. 终端画布视口与分屏卡片（黑曜石基底 + 内部阴影槽） */
+[data-theme="minecraft"] .terminal-viewport-wrapper,
+[data-theme="minecraft"] .terminal-session-element,
+[data-theme="minecraft"] .terminal-empty-state {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] .terminal-pane-container {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* 3. 分屏标题栏与分割线 */
+[data-theme="minecraft"] .terminal-pane-header {
+  border-radius: 0px !important;
+  background-color: #1e1e2a !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .terminal-split-divider > div {
+  background-color: #000000 !important;
+}
+
+[data-theme="minecraft"] .terminal-split-divider:hover > div {
+  background-color: #38bdf8 !important;
+}
+
+/* 4. xterm 终端画布与文字渲染 */
+[data-theme="minecraft"] .terminal-pane-container .xterm,
+[data-theme="minecraft"] .terminal-pane-container .xterm-viewport,
+[data-theme="minecraft"] .terminal-pane-container .xterm-screen,
+[data-theme="minecraft"] .terminal-pane-container .xterm-screen canvas,
+[data-theme="minecraft"] .terminal-pane-container .xterm canvas,
+[data-theme="minecraft"] .terminal-session-element .xterm,
+[data-theme="minecraft"] .terminal-session-element .xterm-viewport,
+[data-theme="minecraft"] .terminal-session-element .xterm-screen,
+[data-theme="minecraft"] .terminal-session-element .xterm-screen canvas,
+[data-theme="minecraft"] .terminal-session-element .xterm canvas {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  font-family: var(--theme-font-family) !important;
 }

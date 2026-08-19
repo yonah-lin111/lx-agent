@@ -2,7 +2,7 @@ import type { ITerminalOptions } from "@xterm/xterm"
 
 // Ghostty 风格高活力深色主题调色盘（现代 Vibrant ANSI 配色，高明度、高饱和与柔和护眼对比度）。
 export const GHOSTTY_TERMINAL_THEME = {
-  background: "#111116",
+  background: "#00000000",
   foreground: "#f0f6fc",
   cursor: "#38bdf8",
   cursorAccent: "#111116",

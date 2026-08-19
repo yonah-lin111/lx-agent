@@ -540,80 +540,82 @@ export const ModelProviderSettings = ({
 
         {selectedProvider ? (
           <div className="min-h-0 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <h3 className="mb-3 text-sm font-medium text-white">Provider</h3>
-            <div className="grid gap-3 @[380px]:grid-cols-2">
-              <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                Provider ID
-                <LxInput
-                  value={selectedProvider.id}
-                  onChange={(event) =>
-                    updateProvider(selectedProviderId, (provider) => ({
-                      ...provider,
-                      id: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                显示名称
-                <LxInput
-                  value={selectedProvider.name}
-                  onChange={(event) =>
-                    updateProvider(selectedProviderId, (provider) => ({
-                      ...provider,
-                      name: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label
-                className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2"
-                onClick={(event) => event.preventDefault()}
-              >
-                传输格式
-                <LxSelect
-                  value={selectedProvider.type}
-                  options={PROVIDER_TYPES.map((type) => ({ value: type, label: type }))}
-                  onChange={(event) =>
-                    updateProvider(selectedProviderId, (provider) => ({
-                      ...provider,
-                      type: event,
-                    }))
-                  }
-                />
-              </label>
-              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
-                Base URL
-                <LxInput
-                  value={selectedProvider.options.baseURL}
-                  placeholder="https://api.example.com/v1"
-                  onChange={(event) => {
-                    invalidateFetchedModels(selectedProviderId)
-                    updateProvider(selectedProviderId, (provider) => ({
-                      ...provider,
-                      options: { ...provider.options, baseURL: event.target.value },
-                    }))
-                  }}
-                />
-              </label>
-              <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
-                API Key
-                <LxInput
-                  type="password"
-                  value={selectedProvider.options.apiKey}
-                  prefix={<KeyRound className="h-3.5 w-3.5 text-white/35" />}
-                  onChange={(event) => {
-                    invalidateFetchedModels(selectedProviderId)
-                    updateProvider(selectedProviderId, (provider) => ({
-                      ...provider,
-                      options: { ...provider.options, apiKey: event.target.value },
-                    }))
-                  }}
-                />
-              </label>
+            <div className="settings-item-card rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+              <h3 className="mb-3 text-sm font-medium text-white">Provider</h3>
+              <div className="grid gap-3 @[380px]:grid-cols-2">
+                <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                  Provider ID
+                  <LxInput
+                    value={selectedProvider.id}
+                    onChange={(event) =>
+                      updateProvider(selectedProviderId, (provider) => ({
+                        ...provider,
+                        id: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                  显示名称
+                  <LxInput
+                    value={selectedProvider.name}
+                    onChange={(event) =>
+                      updateProvider(selectedProviderId, (provider) => ({
+                        ...provider,
+                        name: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label
+                  className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2"
+                  onClick={(event) => event.preventDefault()}
+                >
+                  传输格式
+                  <LxSelect
+                    value={selectedProvider.type}
+                    options={PROVIDER_TYPES.map((type) => ({ value: type, label: type }))}
+                    onChange={(event) =>
+                      updateProvider(selectedProviderId, (provider) => ({
+                        ...provider,
+                        type: event,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
+                  Base URL
+                  <LxInput
+                    value={selectedProvider.options.baseURL}
+                    placeholder="https://api.example.com/v1"
+                    onChange={(event) => {
+                      invalidateFetchedModels(selectedProviderId)
+                      updateProvider(selectedProviderId, (provider) => ({
+                        ...provider,
+                        options: { ...provider.options, baseURL: event.target.value },
+                      }))
+                    }}
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
+                  API Key
+                  <LxInput
+                    type="password"
+                    value={selectedProvider.options.apiKey}
+                    prefix={<KeyRound className="h-3.5 w-3.5 text-white/35" />}
+                    onChange={(event) => {
+                      invalidateFetchedModels(selectedProviderId)
+                      updateProvider(selectedProviderId, (provider) => ({
+                        ...provider,
+                        options: { ...provider.options, apiKey: event.target.value },
+                      }))
+                    }}
+                  />
+                </label>
+              </div>
             </div>
 
-            <div className="mt-5 border-t border-white/8 pt-4">
+            <div className="settings-item-card mt-4 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-white">模型</h3>
                 <div className="flex items-center gap-1">
@@ -639,7 +641,7 @@ export const ModelProviderSettings = ({
                 {Object.entries(selectedProvider.models).map(([modelKey, model]) => (
                   <div
                     key={modelKey}
-                    className="rounded-[6px] border border-white/8 bg-white/[0.04] p-2"
+                    className="settings-model-card rounded-[6px] border border-white/8 bg-white/[0.04] p-3"
                   >
                     <div className="grid gap-2 grid-cols-1 @[380px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                       <label className="grid gap-1.5 text-xs text-white/55 min-w-0">

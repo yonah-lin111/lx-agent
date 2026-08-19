@@ -125,7 +125,8 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
           return (
             <div
               key={tab.id}
-              className={`group relative flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
+              data-active={isActive ? "true" : undefined}
+              className={`terminal-tab-item group relative flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
                 isActive
                   ? "border-white/15 bg-white/[0.08] text-white shadow-xs"
                   : "border-white/5 bg-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/90"

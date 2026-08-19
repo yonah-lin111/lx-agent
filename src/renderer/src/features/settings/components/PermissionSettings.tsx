@@ -78,7 +78,7 @@ export const PermissionSettings = ({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
       {/* 模式选择 */}
-      <section className="flex flex-col gap-2">
+      <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
         <h3 className="text-sm font-semibold text-white/90">权限模式</h3>
         <p className="text-xs text-white/45">决定未命中规则时门控工具的默认处理方式。</p>
         <div className="w-72">
@@ -91,12 +91,15 @@ export const PermissionSettings = ({
             bypassPermissions 下门控工具（bash / write / edit / MCP）不再询问确认。
           </p>
         ) : null}
-      </section>
+      </div>
 
       {/* 规则组 */}
-      <section className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         {RULE_GROUPS.map((group) => (
-          <div key={group.key} className="flex flex-col gap-1.5">
+          <div
+            key={group.key}
+            className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3"
+          >
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <h4 className="text-sm font-semibold text-white/90">{group.label}</h4>
@@ -143,7 +146,7 @@ export const PermissionSettings = ({
             )}
           </div>
         ))}
-      </section>
+      </div>
 
       <p className="flex items-center gap-1 text-xs text-white/35">
         <Plus className="h-3 w-3" />

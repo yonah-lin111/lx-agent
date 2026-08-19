@@ -457,7 +457,7 @@ export const AgentMessageList = ({
   const hasHiddenHistory = windowStartIndex > 0
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="agent-message-list-container relative flex min-h-0 min-w-0 flex-1 flex-col">
       {messages.length === 0 ? (
         <div className="flex h-full flex-col justify-between p-1 select-none">
           <div className="mt-8 flex flex-col items-center text-center">

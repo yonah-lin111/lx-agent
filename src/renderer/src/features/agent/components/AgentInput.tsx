@@ -216,7 +216,7 @@ export const AgentInput = ({
         title={{ content: "添加附件", placement: "top" }}
         hoverBgClass="hover:bg-white/20"
         hoverTextClass="hover:text-white"
-        className="bg-white/10 !text-white/70"
+        className="agent-input-add-btn bg-white/10 !text-white/70"
         onClick={() => fileInputRef.current?.click()}
       />
     </>
@@ -229,7 +229,7 @@ export const AgentInput = ({
       title={{ content: "停止生成", placement: "top" }}
       onClick={onStop}
       hoverBgClass="hover:bg-white/90"
-      className="bg-white !text-black shadow-sm"
+      className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
     >
       <Square className="h-3 w-3 fill-current" />
     </LxIconButton>
@@ -242,7 +242,7 @@ export const AgentInput = ({
         placement: "top",
       }}
       disabled
-      className="bg-white/15 !text-white/30"
+      className="agent-input-action-btn agent-input-compacting-btn bg-white/15 !text-white/30"
     >
       <Loader2 className="h-3.5 w-3.5 animate-spin" />
     </LxIconButton>
@@ -254,7 +254,7 @@ export const AgentInput = ({
       onClick={() => handleSend()}
       disabled={!inputText.trim() && selectedFiles.length === 0}
       hoverBgClass="hover:bg-white/90"
-      className="bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
+      className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
     >
       <Send className="h-3.5 w-3.5" />
     </LxIconButton>
@@ -297,7 +297,7 @@ export const AgentInput = ({
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
-        className="relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
+        className="agent-input-container relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
         onPointerDown={handleContainerPointerDown}
       >
         <AgentMarkdownInput
@@ -339,6 +339,7 @@ export const AgentInput = ({
                 content: isExpanded ? "自适应高度" : "扩大输入框",
                 placement: "top",
               }}
+              className="agent-input-expand-btn"
               onClick={() => setIsExpanded((prev) => !prev)}
             >
               {isExpanded ? (

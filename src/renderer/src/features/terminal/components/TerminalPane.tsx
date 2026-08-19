@@ -143,15 +143,15 @@ export const TerminalPane = ({
 
   return (
     <div
-      className={`group relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
-        isFocused ? "ring-1 ring-white/20 z-10" : "opacity-85 hover:opacity-100"
+      className={`terminal-pane-container group relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
+        isFocused ? "z-10" : "opacity-85 hover:opacity-100"
       }`}
       onClick={handleFocus}
       onMouseDown={handleFocus}
     >
       {showHeader && (
         <div
-          className={`flex h-6 shrink-0 items-center justify-between border-b px-2 select-none text-xs transition-colors ${
+          className={`terminal-pane-header flex h-6 shrink-0 items-center justify-between border-b px-2 select-none text-xs transition-colors ${
             isFocused
               ? "border-white/10 bg-white/[0.04] text-white/90"
               : "border-white/5 bg-white/[0.01] text-white/40 hover:text-white/60"

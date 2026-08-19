@@ -494,10 +494,15 @@ export const LxTooltip = ({
                   {content}
                 </div>
               )}
-              <svg aria-hidden="true" viewBox="0 0 20 20" style={arrowStyle}>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                style={arrowStyle}
+                className="lx-tooltip-arrow pointer-events-none text-[#303030]"
+              >
                 <path
                   d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
-                  fill="#303030"
+                  fill="currentColor"
                   stroke="none"
                 />
               </svg>

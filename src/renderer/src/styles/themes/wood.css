@@ -56,7 +56,6 @@
 /* 基础容器卡片：实木表面 + 抛光倒角 + 柔和温润投影 */
 [data-theme="wood"] header,
 [data-theme="wood"] aside,
-[data-theme="wood"] nav,
 [data-theme="wood"] section,
 [data-theme="wood"] [role="region"],
 [data-theme="wood"] [role="dialog"],
@@ -80,11 +79,19 @@
   color: #261200;
 }
 
+[data-theme="wood"] aside nav,
+[data-theme="wood"] nav {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 /* ========================================================
  * 基础交互按钮：木块打磨全圆角胶囊
  * ======================================================== */
-[data-theme="wood"] button:not([role="button"]),
-[data-theme="wood"] [role="button"] {
+[data-theme="wood"] button:not([role="button"]):not([role="option"]),
+[data-theme="wood"] [role="button"]:not([role="option"]) {
   border-radius: 9999px !important;
   border: 1.5px solid #a88240 !important;
   background: linear-gradient(180deg, #eed5a1 0%, #dbba7d 100%) !important;
@@ -96,8 +103,8 @@
   transition: all 150ms ease-in-out !important;
 }
 
-[data-theme="wood"] button:not([role="button"]):hover,
-[data-theme="wood"] [role="button"]:hover {
+[data-theme="wood"] button:not([role="button"]):not([role="option"]):hover,
+[data-theme="wood"] [role="button"]:not([role="option"]):hover {
   background: linear-gradient(180deg, #f5dfb0 0%, #e2c48b 100%) !important;
   border-color: #8c5d1a !important;
   color: #1e0d00 !important;
@@ -106,8 +113,8 @@
     0 3px 6px rgba(90, 50, 10, 0.14) !important;
 }
 
-[data-theme="wood"] button:not([role="button"]):active,
-[data-theme="wood"] [role="button"]:active {
+[data-theme="wood"] button:not([role="button"]):not([role="option"]):active,
+[data-theme="wood"] [role="button"]:not([role="option"]):active {
   background: linear-gradient(180deg, #d4b070 0%, #e0c285 100%) !important;
   box-shadow: inset 0 2px 4px rgba(70, 35, 5, 0.3) !important;
   transform: translateY(1px);
@@ -160,19 +167,19 @@
 }
 
 /* Level 3: 具体条目 Prompt Item（File 图标容器）—— 黄木薄板 */
-[data-theme="wood"] [data-item-level="prompt"],
-[data-theme="wood"] div[role="button"]:has(svg.lucide-file) {
+[data-theme="wood"] [data-item-level="prompt"]:not([aria-current="page"]):not(.bg-white\/10),
+[data-theme="wood"]
+  div[role="button"]:not([aria-current="page"]):not(.bg-white\/10):has(svg.lucide-file) {
   background-color: #dfc894 !important;
-  color: #4e2e0e !important;
   border: 1px solid #b89758 !important;
   border-radius: 8px !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
 }
 
-[data-theme="wood"] [data-item-level="prompt"]:hover,
-[data-theme="wood"] div[role="button"]:has(svg.lucide-file):hover {
+[data-theme="wood"] [data-item-level="prompt"]:not([aria-current="page"]):not(.bg-white\/10):hover,
+[data-theme="wood"]
+  div[role="button"]:not([aria-current="page"]):not(.bg-white\/10):has(svg.lucide-file):hover {
   background-color: #ebd4a1 !important;
-  color: #241101 !important;
 }
 
 /* --------------------------------------------------------
@@ -181,7 +188,6 @@
 /* Level 1: 大分组头节点（实木横梁感） */
 [data-theme="wood"] nav > div > button[aria-expanded] {
   background: linear-gradient(180deg, #eedab0 0%, #dec187 100%) !important;
-  color: #351a02 !important;
   border: 1.5px solid #a37b35 !important;
   border-radius: 12px !important;
   box-shadow:
@@ -196,40 +202,28 @@
 /* Level 2: 具体组件项按钮（细磨木条） */
 [data-theme="wood"] nav > div > div > button {
   background-color: #dfc894 !important;
-  color: #4e2e0e !important;
   border: 1px solid #b89758 !important;
   border-radius: 8px !important;
 }
 
 [data-theme="wood"] nav > div > div > button:hover {
   background-color: #ebd4a1 !important;
-  color: #241101 !important;
 }
 
 /* --------------------------------------------------------
  * 3. 激活/选中高亮态（金黄琥珀雕刻嵌条）
  * -------------------------------------------------------- */
+[data-theme="wood"] div[role="button"][aria-current="page"],
 [data-theme="wood"] div[role="button"].bg-white\/10,
-[data-theme="wood"] button[aria-current="page"] {
+[data-theme="wood"] button[aria-current="page"],
+[data-theme="wood"] [aria-current="page"] {
   background: linear-gradient(180deg, #dfb466 0%, #cd9c46 100%) !important;
-  color: #241000 !important;
   border: 1.5px solid #9e640e !important;
   border-left: 4px solid #9e640e !important;
   border-radius: 10px !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
     0 2px 6px rgba(158, 100, 14, 0.3) !important;
-}
-
-[data-theme="wood"] div[role="button"].bg-white\/10 span,
-[data-theme="wood"] button[aria-current="page"] span {
-  color: #241000 !important;
-  font-weight: 700;
-}
-
-[data-theme="wood"] div[role="button"].bg-white\/10 svg,
-[data-theme="wood"] button[aria-current="page"] svg {
-  color: #783800 !important;
 }
 
 /* ========================================================
@@ -714,9 +708,9 @@
 /* 面板选项 Item */
 [data-theme="wood"] .markdown-command-menu [role="option"],
 [data-theme="wood"] [role="listbox"] [role="option"] {
-  border: 1px solid transparent;
+  border: 1px solid transparent !important;
   border-radius: 9999px !important;
-  color: #351a02 !important;
+  box-shadow: none !important;
   transition: all 120ms ease-in-out !important;
 }
 
@@ -895,4 +889,232 @@
 [data-theme="wood"] .markdown-preview .markdown-reference-common {
   color: #334155 !important;
   background-color: rgba(51, 65, 85, 0.15) !important;
+}
+
+/* ========================================================
+ * LxTooltip 悬浮小三角适配
+ * ======================================================== */
+[data-theme="wood"] .lx-tooltip-arrow {
+  color: #dfc590 !important;
+}
+
+/* ========================================================
+ * Agent 输入框底栏魔改（实木案台凹槽与打磨木质按键）
+ * ======================================================== */
+[data-theme="wood"] .agent-input-container,
+[data-theme="wood"] .bg-\[\#2a2a2a\] {
+  border: 1.5px solid #aa8544 !important;
+  border-radius: 14px !important;
+  background-color: #dfcb9c !important;
+  color: #261200 !important;
+  box-shadow:
+    inset 1px 1px 3px rgba(80, 45, 10, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-theme="wood"] .agent-input-container:focus-within,
+[data-theme="wood"] .bg-\[\#2a2a2a\]:focus-within {
+  border-color: #9c4b05 !important;
+  box-shadow:
+    0 0 0 2px rgba(156, 75, 5, 0.3),
+    inset 1px 1px 2px rgba(80, 45, 10, 0.1) !important;
+}
+
+[data-theme="wood"] .agent-input-container .cm-editor,
+[data-theme="wood"] .agent-input-container .cm-scroller {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Agent 输入框底栏按键 */
+[data-theme="wood"] .agent-input-add-btn,
+[data-theme="wood"] .agent-input-expand-btn {
+  border-radius: 9999px !important;
+  border: 1.5px solid #a88240 !important;
+  background: linear-gradient(180deg, #eed5a1 0%, #dbba7d 100%) !important;
+  color: #351a02 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(90, 50, 10, 0.2),
+    0 2px 4px rgba(90, 50, 10, 0.1) !important;
+}
+
+[data-theme="wood"] .agent-input-add-btn:hover,
+[data-theme="wood"] .agent-input-expand-btn:hover {
+  background: linear-gradient(180deg, #f5dfb0 0%, #e2c48b 100%) !important;
+  border-color: #8c5d1a !important;
+  color: #1e0d00 !important;
+}
+
+[data-theme="wood"] .agent-input-send-btn {
+  border-radius: 9999px !important;
+  border: 1.5px solid #9e640e !important;
+  background: linear-gradient(180deg, #e5a83b 0%, #c4821a 100%) !important;
+  color: #220f00 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 5px rgba(158, 100, 14, 0.25) !important;
+}
+
+[data-theme="wood"] .agent-input-send-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #efb852 0%, #d19028 100%) !important;
+  color: #170a00 !important;
+}
+
+[data-theme="wood"] .agent-input-send-btn:disabled,
+[data-theme="wood"] .agent-input-compacting-btn {
+  border-radius: 9999px !important;
+  background: #d5b880 !important;
+  color: #8c6838 !important;
+  border: 1.5px solid #b89758 !important;
+  box-shadow: none !important;
+  opacity: 0.6 !important;
+}
+
+[data-theme="wood"] .agent-input-stop-btn {
+  border-radius: 9999px !important;
+  border: 1.5px solid #8c280e !important;
+  background: linear-gradient(180deg, #e05e38 0%, #b83818 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 5px rgba(140, 40, 14, 0.25) !important;
+}
+
+[data-theme="wood"] .agent-input-stop-btn:hover {
+  background: linear-gradient(180deg, #ed6e48 0%, #c74522 100%) !important;
+}
+
+[data-theme="wood"] .agent-input-container button[aria-haspopup="listbox"] {
+  border-radius: 9999px !important;
+  border: 1.5px solid #a88240 !important;
+  background: linear-gradient(180deg, #eed5a1 0%, #dbba7d 100%) !important;
+  color: #351a02 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(90, 50, 10, 0.2),
+    0 2px 4px rgba(90, 50, 10, 0.1) !important;
+}
+
+[data-theme="wood"] .agent-input-container button[aria-haspopup="listbox"]:hover {
+  background: linear-gradient(180deg, #f5dfb0 0%, #e2c48b 100%) !important;
+  border-color: #8c5d1a !important;
+  color: #1e0d00 !important;
+}
+
+/* ========================================================
+ * LxTag 标签组件魔改（打磨实木小圆牌）
+ * ======================================================== */
+[data-theme="wood"] .lx-tag {
+  border-radius: 9999px !important;
+  border: 1px solid #b89758 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="wood"] .lx-tag[data-highlighted="true"] {
+  border: 1.5px solid #9e640e !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 4px rgba(158, 100, 14, 0.2) !important;
+}
+
+/* ========================================================
+ * 设置页面配置卡片（实木浅槽卡片）
+ * ======================================================== */
+[data-theme="wood"] .settings-item-card {
+  border: 1.5px solid #b89758 !important;
+  border-radius: 12px !important;
+  background-color: #d8be86 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(100, 60, 10, 0.15),
+    0 2px 5px rgba(80, 45, 10, 0.06) !important;
+}
+
+[data-theme="wood"] .settings-model-card {
+  border: 1.5px solid #a88240 !important;
+  border-radius: 10px !important;
+  background-color: #dfc894 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(100, 60, 10, 0.18),
+    0 1px 3px rgba(80, 45, 10, 0.08) !important;
+}
+
+/* ========================================================
+ * 终端模块（Terminal & Ghostty View & Xterm）
+ * ======================================================== */
+/* 1. 终端标签栏 Tab 项（实木打磨圆角胶囊） */
+[data-theme="wood"] .terminal-tab-item {
+  border-radius: 9999px !important;
+  border: 1px solid #b89758 !important;
+  background-color: #dfc894 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  transition: all 120ms ease-in-out !important;
+}
+
+[data-theme="wood"] .terminal-tab-item:hover:not([data-active="true"]) {
+  background-color: #ebd4a1 !important;
+}
+
+[data-theme="wood"] .terminal-tab-item[data-active="true"] {
+  border: 1.5px solid #9e640e !important;
+  background: linear-gradient(180deg, #dfb466 0%, #cd9c46 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 4px rgba(158, 100, 14, 0.2) !important;
+}
+
+[data-theme="wood"] .terminal-tab-item[data-active="true"] span {
+  color: #1e0d00 !important;
+  font-weight: 600;
+}
+
+/* 2. 终端画布视口与分屏卡片（黑胡桃木/深沉原木控制台槽） */
+[data-theme="wood"] .terminal-viewport-wrapper,
+[data-theme="wood"] .terminal-session-element,
+[data-theme="wood"] .terminal-empty-state {
+  border-radius: 8px !important;
+  border: 1.5px solid #8c602a !important;
+  background-color: #24160a !important;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-theme="wood"] .terminal-pane-container {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+/* 3. 分屏标题栏与分割线 */
+[data-theme="wood"] .terminal-pane-header {
+  background-color: #35210e !important;
+  border-bottom: 1px solid #5a3818 !important;
+}
+
+[data-theme="wood"] .terminal-split-divider > div {
+  background-color: #5a3818 !important;
+}
+
+[data-theme="wood"] .terminal-split-divider:hover > div {
+  background-color: #df9b50 !important;
+}
+
+/* 4. xterm 终端画布与文字渲染 */
+[data-theme="wood"] .terminal-pane-container .xterm,
+[data-theme="wood"] .terminal-pane-container .xterm-viewport,
+[data-theme="wood"] .terminal-pane-container .xterm-screen,
+[data-theme="wood"] .terminal-pane-container .xterm-screen canvas,
+[data-theme="wood"] .terminal-pane-container .xterm canvas,
+[data-theme="wood"] .terminal-session-element .xterm,
+[data-theme="wood"] .terminal-session-element .xterm-viewport,
+[data-theme="wood"] .terminal-session-element .xterm-screen,
+[data-theme="wood"] .terminal-session-element .xterm-screen canvas,
+[data-theme="wood"] .terminal-session-element .xterm canvas {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
 }

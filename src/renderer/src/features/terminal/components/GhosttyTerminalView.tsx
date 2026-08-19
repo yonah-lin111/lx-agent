@@ -141,7 +141,7 @@ export const GhosttyTerminalView = ({
       </div>
 
       {/* 下方终端画布交互区（带圆角终端独立背景） */}
-      <div className="relative min-h-0 flex-1 w-full overflow-hidden rounded-[4px] bg-[#111116]">
+      <div className="terminal-viewport-wrapper relative min-h-0 flex-1 w-full overflow-hidden rounded-[4px] bg-[#111116]">
         {tabs.map((tab) => {
           const isTabActive = tab.id === activeTabId
 
@@ -163,7 +163,7 @@ export const GhosttyTerminalView = ({
         })}
 
         {tabs.length === 0 && (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111116] text-white/40">
+          <div className="terminal-empty-state flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111116] text-white/40">
             <TerminalIcon className="h-8 w-8 text-white/20" />
             <span className="text-xs">No open terminals</span>
             <button
