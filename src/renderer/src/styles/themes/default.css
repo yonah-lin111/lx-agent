@@ -1,0 +1,17 @@
+/**
+ * 默认主题变量定义 (Default Dark)
+ */
+:root,
+[data-theme="default"] {
+  --color-theme-bg: #000000;
+  --color-theme-surface: #212121;
+  --color-theme-surface-hover: #303030;
+  --color-theme-border: rgba(255, 255, 255, 0.05);
+  --color-theme-border-strong: rgba(255, 255, 255, 0.1);
+  --color-theme-text: #ffffff;
+  --color-theme-text-muted: rgba(255, 255, 255, 0.45);
+  --color-theme-text-subtle: rgba(255, 255, 255, 0.3);
+  --color-theme-accent: #38bdf8;
+  --theme-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --theme-radius-base: 6px;
+}

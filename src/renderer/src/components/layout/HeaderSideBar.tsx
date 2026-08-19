@@ -1,18 +1,20 @@
 /**
  * 渲染页面顶部栏。
  */
-import { ChevronDown, ChevronUp, Tags } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Palette, Tags } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
+import { type AppTheme, useAppTheme } from "@/stores/themeStore"
 
 // tag 栏退场动画时长，与面包屑入场动画时长一致。
 const TAGS_LEAVE_DURATION = 300
@@ -155,6 +157,13 @@ export const HeaderSideBar = ({
     if (section) breadcrumbParts.push(section.label)
   }
 
+  const { theme, setTheme } = useAppTheme()
+
+  const THEME_OPTIONS: { id: AppTheme; label: string }[] = [
+    { id: "default", label: "Default" },
+    { id: "minecraft", label: "Minecraft" },
+  ]
+
   return (
     <header
       className={`mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
@@ -162,43 +171,101 @@ export const HeaderSideBar = ({
       }`}
     >
       <div className="relative h-full w-full">
-        <div
-          className={`absolute left-0 top-0 flex h-6 items-center gap-2 text-xs font-mono ${
-            renderTags ? "max-w-[calc(100%-72px)]" : "max-w-[calc(100%-48px)]"
-          }`}
-        >
-          {hasBreadcrumbToast ? (
-            <LxBreadcrumbToast />
-          ) : renderTags ? (
-            <div
-              className={`flex min-w-0 flex-1 items-center ${
-                isTagsLeaving
-                  ? "animate-header-breadcrumb-out pointer-events-none"
-                  : "animate-header-breadcrumb-in"
-              }`}
-            >
-              <ProjectRecentItemsTags />
-            </div>
-          ) : (
-            <div
-              key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
-              className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in"
-            >
-              <span className="text-white/30">//</span>
-              {breadcrumbParts.map((part, index) => (
-                <span key={`${part}-${index}`} className="flex min-w-0 items-center gap-2 truncate">
-                  {index > 0 && <span className="shrink-0 text-white/20">/</span>}
+        <div className="flex h-6 w-full items-center justify-between">
+          <div className="flex h-6 min-w-0 flex-1 items-center gap-2 mr-2 text-xs font-mono">
+            {hasBreadcrumbToast ? (
+              <LxBreadcrumbToast />
+            ) : renderTags ? (
+              <div
+                className={`flex min-w-0 flex-1 items-center ${
+                  isTagsLeaving
+                    ? "animate-header-breadcrumb-out pointer-events-none"
+                    : "animate-header-breadcrumb-in"
+                }`}
+              >
+                <ProjectRecentItemsTags />
+              </div>
+            ) : (
+              <div
+                key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
+                className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in"
+              >
+                <span className="text-white/30">//</span>
+                {breadcrumbParts.map((part, index) => (
                   <span
-                    className={`truncate font-bold ${
-                      index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
-                    }`}
+                    key={`${part}-${index}`}
+                    className="flex min-w-0 items-center gap-2 truncate"
                   >
-                    {part}
+                    {index > 0 && <span className="shrink-0 text-white/20">/</span>}
+                    <span
+                      className={`truncate font-bold ${
+                        index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
+                      }`}
+                    >
+                      {part}
+                    </span>
                   </span>
-                </span>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex h-6 shrink-0 items-center gap-2">
+            <LxIconButton
+              aria-label="显示最近打开标签"
+              highlighted={showRecentTags}
+              title={{
+                content: showRecentTags ? "隐藏最近打开标签" : "显示最近打开标签",
+                placement: "bottom",
+              }}
+              onClick={handleToggleRecentTags}
+              size="small"
+            >
+              <Tags className="h-3.5 w-3.5" />
+            </LxIconButton>
+            <LxTooltip
+              placement="bottom"
+              trigger="click"
+              closeOnContentClick
+              content={
+                <div className="flex flex-col gap-0.5 py-0.5 min-w-[90px]">
+                  {THEME_OPTIONS.map((opt) => {
+                    const isSelected = theme === opt.id
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setTheme(opt.id)}
+                        className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                          isSelected
+                            ? "bg-white/10 font-semibold text-white"
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {isSelected && <Check className="h-3 w-3 shrink-0 text-emerald-400" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              }
+            >
+              <LxIconButton aria-label="切换主题" size="small" highlighted={theme === "minecraft"}>
+                <Palette className="h-3.5 w-3.5" />
+              </LxIconButton>
+            </LxTooltip>
+            <LxIconButton
+              aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
+              size="small"
+              title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}
+              onClick={() => onExpandedChange(!isExpanded)}
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </LxIconButton>
+          </div>
         </div>
         <div
           className={`absolute inset-x-0 bottom-0 top-8 overflow-hidden ${
@@ -206,32 +273,6 @@ export const HeaderSideBar = ({
           }`}
         >
           {children}
-        </div>
-        <div className="absolute right-0 top-0 flex h-6 items-center gap-2">
-          <LxIconButton
-            aria-label="显示最近打开标签"
-            highlighted={showRecentTags}
-            title={{
-              content: showRecentTags ? "隐藏最近打开标签" : "显示最近打开标签",
-              placement: "bottom",
-            }}
-            onClick={handleToggleRecentTags}
-            size="small"
-          >
-            <Tags className="h-3.5 w-3.5" />
-          </LxIconButton>
-          <LxIconButton
-            aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
-            size="small"
-            title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}
-            onClick={() => onExpandedChange(!isExpanded)}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </LxIconButton>
         </div>
       </div>
     </header>
