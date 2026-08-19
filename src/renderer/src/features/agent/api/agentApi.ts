@@ -72,6 +72,12 @@ export const agentApi = {
     window.api.agent.openFileAt(filePath, line),
   getContextUsage: (selection?: ModelSelection): Promise<AgentContextUsage> =>
     window.api.agent.getContextUsage(selection),
+  listJobs: (sessionId?: string) => window.api.agent.listJobs(sessionId),
+  killJob: (jobId: string, reason?: string) => window.api.agent.killJob(jobId, reason),
+  removeJob: (jobId: string) => window.api.agent.removeJob(jobId),
+  clearSettledJobs: (sessionId?: string) => window.api.agent.clearSettledJobs(sessionId),
+  readJobOutput: (jobId: string, wait?: boolean, timeoutMs?: number) =>
+    window.api.agent.readJobOutput(jobId, wait, timeoutMs),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
     window.api.agent.onEvent(handler),
 }

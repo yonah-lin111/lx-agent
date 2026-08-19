@@ -1,9 +1,19 @@
-import { ChevronDown, ChevronsLeftRight, ChevronsRightLeft, ChevronUp } from "lucide-react"
+import {
+  Activity,
+  ChevronDown,
+  ChevronsLeftRight,
+  ChevronsRightLeft,
+  ChevronUp,
+  Terminal as TerminalIcon,
+} from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { AgentJobsMonitorView } from "@/features/agent/components/AgentJobsMonitorView"
+import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
 import { GhosttyTerminalView } from "@/features/terminal"
+import { useBottomSideBarStore } from "./bottomSideBarStore"
 
 // 展开态最小高度（相对视口高度，单位 vh）。
 export const MIN_HEIGHT_VH = 15
@@ -45,7 +55,7 @@ interface BottomSideBarProps {
 }
 
 /**
- * 页面底边栏布局容器：展开时左侧为 Ghostty 终端（带独立边框与 Tab 栏），右侧为覆盖与折叠控制按钮。
+ * 页面底边栏布局容器：展开时支持 Ghostty 控制台终端与 Agent 长任务监控双视图无缝切换（保活控制台任务）。
  */
 export const BottomSideBar = ({
   children,
@@ -58,6 +68,10 @@ export const BottomSideBar = ({
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
 
+  const viewMode = useBottomSideBarStore((state) => state.viewMode)
+  const setViewMode = useBottomSideBarStore((state) => state.setViewMode)
+  const { runningJobs } = useAgentJobs()
+
   // 拖拽顶部边缘调整高度：最小 15vh，最大动态计算预留顶部视口。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = { startY: event.clientY, startHeight: height }
@@ -68,7 +82,6 @@ export const BottomSideBar = ({
   const handleResizeMove = (event: React.PointerEvent<HTMLDivElement>): void => {
     const start = resizeStartRef.current
     if (!start) return
-    // 向上拖拽（clientY 变小）高度增加，向下拖拽（clientY 变大）高度减小。
     const next = start.startHeight + (start.startY - event.clientY) / (window.innerHeight / 100)
     setHeight(clampHeight(next, window.innerHeight))
   }
@@ -88,6 +101,64 @@ export const BottomSideBar = ({
       document.body.style.userSelect = previous
     }
   }, [isResizing])
+
+  // 渲染右侧操作栏（包含控制台/长任务切换、覆盖右侧栏、折叠按钮）
+  const renderRightActions = (): React.JSX.Element => (
+    <div className="flex shrink-0 items-center gap-1">
+      {/* 视图切换按钮：位于覆盖 icon 左侧 */}
+      <LxIconButton
+        aria-label={viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"}
+        title={{
+          content:
+            viewMode === "terminal"
+              ? `Switch to Background Jobs${runningJobs.length > 0 ? ` (${runningJobs.length} running)` : ""}`
+              : "Switch to Terminal",
+          placement: "top",
+        }}
+        onClick={() => setViewMode(viewMode === "terminal" ? "jobs" : "terminal")}
+        size="small"
+      >
+        {viewMode === "terminal" ? (
+          <Activity
+            className={`h-3.5 w-3.5 ${
+              runningJobs.length > 0 ? "text-sky-400 animate-pulse" : "text-white/60"
+            }`}
+          />
+        ) : (
+          <TerminalIcon className="h-3.5 w-3.5 text-sky-400" />
+        )}
+      </LxIconButton>
+
+      <LxIconButton
+        aria-label={
+          isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
+        }
+        title={{
+          content: isCoveringRightSideBar
+            ? "底边栏不覆盖右侧栏宽度"
+            : "底边栏覆盖右侧栏宽度",
+          placement: "top",
+        }}
+        onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+        size="small"
+      >
+        {isCoveringRightSideBar ? (
+          <ChevronsRightLeft className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronsLeftRight className="h-3.5 w-3.5" />
+        )}
+      </LxIconButton>
+
+      <LxIconButton
+        aria-label="折叠底边栏"
+        title={{ content: "折叠底边栏", placement: "top" }}
+        onClick={() => onExpandedChange(false)}
+        size="small"
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
+      </LxIconButton>
+    </div>
+  )
 
   return (
     <aside
@@ -115,53 +186,58 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：Ghostty 终端主视口（右侧覆盖、折叠按钮平铺在 Tab 栏最右侧） */}
-        <div
-          className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
-            isExpanded ? "flex" : "hidden"
-          }`}
-        >
-          <GhosttyTerminalView
-            isExpanded={isExpanded}
-            rightActions={
-              <div className="flex shrink-0 items-center gap-1">
-                <LxIconButton
-                  aria-label={
-                    isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
-                  }
-                  title={{
-                    content: isCoveringRightSideBar
-                      ? "底边栏不覆盖右侧栏宽度"
-                      : "底边栏覆盖右侧栏宽度",
-                    placement: "top",
-                  }}
-                  onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
-                  size="small"
-                >
-                  {isCoveringRightSideBar ? (
-                    <ChevronsRightLeft className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronsLeftRight className="h-3.5 w-3.5" />
-                  )}
-                </LxIconButton>
-                <LxIconButton
-                  aria-label="折叠底边栏"
-                  title={{ content: "折叠底边栏", placement: "top" }}
-                  onClick={() => onExpandedChange(false)}
-                  size="small"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </LxIconButton>
-              </div>
-            }
-          />
-        </div>
+        {/* 展开区域：双视图常驻 DOM 保活（切换时不销毁控制台进程与任务） */}
+        {isExpanded && (
+          <div className="relative flex h-full w-full min-h-0 flex-1 overflow-hidden">
+            <div
+              className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
+                viewMode === "terminal" ? "flex" : "hidden"
+              }`}
+            >
+              <GhosttyTerminalView isExpanded={isExpanded} rightActions={renderRightActions()} />
+            </div>
+
+            <div
+              className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
+                viewMode === "jobs" ? "flex" : "hidden"
+              }`}
+            >
+              <AgentJobsMonitorView isExpanded={isExpanded} rightActions={renderRightActions()} />
+            </div>
+          </div>
+        )}
 
         {/* 折叠区域：紧凑 40px 状态栏，水平排列控制按钮 */}
         {!isExpanded && (
           <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
             <div className="flex shrink-0 items-center gap-1 pl-2">
+              <LxIconButton
+                aria-label={viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"}
+                title={{
+                  content:
+                    viewMode === "terminal"
+                      ? `Switch to Background Jobs${runningJobs.length > 0 ? ` (${runningJobs.length} running)` : ""}`
+                      : "Switch to Terminal",
+                  placement: "top",
+                }}
+                onClick={() => {
+                  setViewMode(viewMode === "terminal" ? "jobs" : "terminal")
+                  onExpandedChange(true)
+                }}
+                size="small"
+              >
+                {viewMode === "terminal" ? (
+                  <Activity
+                    className={`h-3.5 w-3.5 ${
+                      runningJobs.length > 0 ? "text-sky-400 animate-pulse" : "text-white/60"
+                    }`}
+                  />
+                ) : (
+                  <TerminalIcon className="h-3.5 w-3.5 text-sky-400" />
+                )}
+              </LxIconButton>
+
               <LxIconButton
                 aria-label={
                   isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
@@ -181,6 +257,7 @@ export const BottomSideBar = ({
                   <ChevronsLeftRight className="h-3.5 w-3.5" />
                 )}
               </LxIconButton>
+
               <LxIconButton
                 aria-label="展开底边栏"
                 title={{ content: "展开底边栏", placement: "top" }}

@@ -31,5 +31,11 @@ export const AGENT_CHANNELS = {
   // 会话导出与复制通道
   exportSession: "agent:exportSession",
   copySession: "agent:copySession",
+  // 后台长任务作业管控通道
+  listJobs: "agent:listJobs",
+  killJob: "agent:killJob",
+  removeJob: "agent:removeJob",
+  clearSettledJobs: "agent:clearSettledJobs",
+  readJobOutput: "agent:readJobOutput",
   event: "agent:event",
 } as const

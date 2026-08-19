@@ -18,6 +18,10 @@ import type {
   CopySessionResult,
   ExportSessionOptions,
   ExportSessionResult,
+  JobId,
+  JobReadResult,
+  JobSnapshot,
+  JobStatus,
   TodoList,
   TodoStateMessage,
   UserMessage,
@@ -34,6 +38,7 @@ import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
 import { formatInstructions, loadInstructions } from "./instructionLoader"
+import { jobRegistry } from "./jobs/jobRegistry"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
@@ -120,6 +125,9 @@ class AgentRunner {
       emitUsage: () => this.compactor.emitUsage(),
     })
     void Promise.resolve().then(() => spillManager.cleanStaleSpills(7))
+
+    // 订阅后台长任务实时事件，向 UI 广播（静默模式：不伪造用户消息，状态由 UI 抽屉与工具主权管理）
+    jobRegistry.onJobEvent((event) => this.eventSink?.(event))
   }
 
   // 绑定事件转发目标（IPC 层注入 webContents 发送）。
@@ -910,6 +918,7 @@ class AgentRunner {
     }
     agentSessionService.deleteSession(sessionId)
     spillManager.cleanSessionSpill(sessionId)
+    jobRegistry.cleanSessionJobs(sessionId)
 
     // 删除会话附件文件夹
     try {
@@ -1091,6 +1100,49 @@ class AgentRunner {
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : "复制失败" }
     }
+  }
+
+  // 查询当前会话全部可见后台任务（严格按会话隔离，无会话时返回空）。
+  listJobs(sessionId?: string): JobSnapshot[] {
+    const targetSessionId = sessionId ?? this.currentSessionId
+    if (!targetSessionId) return []
+    return jobRegistry.listJobs(targetSessionId)
+  }
+
+  // 终止指定后台长任务（向进程树发送 SIGTERM / taskkill）。
+  async killJob(
+    jobId: JobId,
+    reason?: string,
+  ): Promise<{ ok: boolean; status?: JobStatus; error?: string }> {
+    return jobRegistry.killJob(jobId, reason, this.currentSessionId ?? undefined)
+  }
+
+  // 移除/关闭指定后台长任务记录。
+  async removeJob(jobId: JobId): Promise<{ ok: boolean; error?: string }> {
+    return jobRegistry.removeJob(jobId, this.currentSessionId ?? undefined)
+  }
+
+  // 清理当前会话全部已结束的后台长任务。
+  clearSettledJobs(sessionId?: string): { count: number } {
+    const targetSessionId = sessionId ?? this.currentSessionId
+    if (!targetSessionId) return { count: 0 }
+    return jobRegistry.clearSettledJobs(targetSessionId)
+  }
+
+  // 读取指定后台长任务日志输出（默认以 full 模式供 UI 完整查看历史日志）。
+  async readJobOutput(
+    jobId: JobId,
+    wait?: boolean,
+    timeoutMs?: number,
+    mode: "delta" | "full" = "full",
+  ): Promise<JobReadResult | null> {
+    return jobRegistry.readOutput(
+      jobId,
+      wait,
+      timeoutMs,
+      this.currentSessionId ?? undefined,
+      mode,
+    )
   }
 }
 

@@ -351,4 +351,40 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
     return agentRunner.getContextUsage(selection as ModelSelection | undefined)
   })
+
+  ipcMain.handle(AGENT_CHANNELS.listJobs, (_, sessionId: unknown) => {
+    return agentRunner.listJobs(typeof sessionId === "string" ? sessionId : undefined)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.killJob, async (_, jobId: unknown, reason: unknown) => {
+    if (typeof jobId !== "string" || !jobId) {
+      return { ok: false, error: "INVALID_JOB_ID" }
+    }
+    return agentRunner.killJob(jobId, typeof reason === "string" ? reason : undefined)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.removeJob, async (_, jobId: unknown) => {
+    if (typeof jobId !== "string" || !jobId) {
+      return { ok: false, error: "INVALID_JOB_ID" }
+    }
+    return agentRunner.removeJob(jobId)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.clearSettledJobs, (_, sessionId: unknown) => {
+    return agentRunner.clearSettledJobs(typeof sessionId === "string" ? sessionId : undefined)
+  })
+
+  ipcMain.handle(
+    AGENT_CHANNELS.readJobOutput,
+    async (_, jobId: unknown, wait: unknown, timeoutMs: unknown) => {
+      if (typeof jobId !== "string" || !jobId) {
+        return null
+      }
+      return agentRunner.readJobOutput(
+        jobId,
+        typeof wait === "boolean" ? wait : undefined,
+        typeof timeoutMs === "number" ? timeoutMs : undefined,
+      )
+    },
+  )
 }

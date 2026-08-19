@@ -5,6 +5,7 @@ import { createBashTool } from "./tools/bash"
 import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
 import { createGrepTool } from "./tools/grep"
+import { createJobKillTool, createJobListTool, createJobOutputTool } from "./tools/jobTools"
 import { createLsTool } from "./tools/ls"
 import { createLspTool, type LspToolDeps } from "./tools/lsp"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
@@ -22,6 +23,8 @@ export const DEFAULT_SYSTEM_PROMPT = [
   "你是 LX Agent，一个帮助用户在本地项目中工作的 AI 助手。",
   "你可以使用工具读取、搜索、写入和编辑项目目录内的文件，并在项目根目录执行命令。",
   "修改文件前先读取确认目标内容；执行有副作用的命令前说明你的意图。",
+  "面对长耗时命令（如启动开发服务器、长编译、监听进程），使用 bash 工具的 background: true 在后台运行，不要同步阻塞等待。",
+  "后台任务启动后可使用 job_output 非阻塞读取日志，使用 job_list 查看任务状态，使用 job_kill 终止不需要的任务。在任务完成前不要重复启动相同的后台命令。",
   "回答使用简体中文，代码与专有名词保留原文。",
   "面对多步骤任务（≥2 步、需要工具调用）时，用 todowrite 工具建立任务清单，并随进度更新；单步任务或闲聊不需要。",
 ].join("\n")
@@ -42,6 +45,9 @@ export const ALL_TOOL_NAMES = new Set([
   "task",
   "question",
   "lsp",
+  "job_output",
+  "job_list",
+  "job_kill",
 ])
 
 // skill 注入上限（按 name 排序取前 N；描述注入时截断）。
@@ -85,6 +91,9 @@ export const createRegistry = (
   registry.register(createTodoTool())
   registry.register(createWebSearchTool())
   registry.register(createWebFetchTool(undefined, effectiveSessionDeps))
+  registry.register(createJobOutputTool(effectiveSessionDeps))
+  registry.register(createJobListTool(effectiveSessionDeps))
+  registry.register(createJobKillTool(effectiveSessionDeps))
   if (lspDeps) {
     registry.register(createLspTool(lspDeps))
   }

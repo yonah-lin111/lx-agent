@@ -390,6 +390,38 @@ export type AgentEvent =
   | { type: "todo_updated"; todos: TodoList }
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
   | { type: "queue_changed"; length: number; messages: string[] }
+  // 后台长任务生命周期事件（JobRegistry 驱动，支持抽屉与状态指示器实时刷新）。
+  | { type: "job_started"; job: JobSnapshot }
+  | { type: "job_output_chunk"; jobId: JobId; chunk: string }
+  | { type: "job_settled"; job: JobSnapshot }
+
+// 后台任务唯一标识（会话内自增：bash-1, bash-2 等）。
+export type JobId = string
+
+// 任务类型与生命周期状态。
+export type JobKind = "bash" | "subagent"
+export type JobStatus = "running" | "stopping" | "completed" | "killed" | "failed"
+
+// 任务快照（面向 UI 与模型工具只读展示）。
+export interface JobSnapshot {
+  id: JobId
+  kind: JobKind
+  label: string
+  status: JobStatus
+  detail?: string
+  startedAt: number
+  finishedAt?: number
+  pid?: number
+  sessionId: string
+  outputLimitBytes?: number
+}
+
+// 任务读取结果。
+export interface JobReadResult {
+  text: string
+  job: JobSnapshot
+  hasMore: boolean
+}
 
 // Prompt 模板条目（由 promptTemplateLoader 扫描自 ~/.lx/prompts 与 <cwd>/.lx/prompts）。
 export interface PromptTemplateItem {
@@ -568,6 +600,20 @@ export interface AgentApi {
     openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
     // 查询当前会话上下文容量（模型切换后状态栏主动刷新；selection 指定要显示的模型窗口）。
     getContextUsage: (selection?: ModelSelection) => Promise<AgentContextUsage>
+    // 查询当前会话全部可见后台任务。
+    listJobs: (sessionId?: string) => Promise<JobSnapshot[]>
+    // 终止指定后台长任务（向进程树发送 SIGTERM / taskkill）。
+    killJob: (jobId: JobId, reason?: string) => Promise<{ ok: boolean; status?: JobStatus; error?: string }>
+    // 移除/关闭指定后台长任务记录（若运行中则先终止进程再移除）。
+    removeJob: (jobId: JobId) => Promise<{ ok: boolean; error?: string }>
+    // 清理指定会话全部已结束（completed/failed/killed）的后台长任务。
+    clearSettledJobs: (sessionId?: string) => Promise<{ count: number }>
+    // 读取指定后台长任务日志输出（支持 wait 阻塞或消费式增量）。
+    readJobOutput: (
+      jobId: JobId,
+      wait?: boolean,
+      timeoutMs?: number,
+    ) => Promise<JobReadResult | null>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }
