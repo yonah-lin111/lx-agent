@@ -28,13 +28,11 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
 
   const handleStartRename = (tab: TerminalTabItem): void => {
     setEditingTabId(tab.id)
-    setEditingTitle(tab.title)
+    setEditingTitle(tab.customTitle || tab.title)
   }
 
   const handleSaveRename = (id: string): void => {
-    if (editingTitle.trim()) {
-      updateTabTitle(id, editingTitle.trim())
-    }
+    updateTabTitle(id, editingTitle)
     setEditingTabId(null)
   }
 

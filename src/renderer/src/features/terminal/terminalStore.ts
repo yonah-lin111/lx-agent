@@ -18,6 +18,7 @@ interface TerminalStoreState {
   removeTab: (id: string) => void
   setActiveTab: (id: string) => void
   updateTabTitle: (id: string, title: string) => void
+  updatePaneTitle: (paneId: string, title: string) => void
   splitPane: (tabId: string, direction: SplitDirection, cwd?: string) => string | null
   removePane: (tabId: string, paneId: string) => void
   setActivePane: (tabId: string, paneId: string) => void
@@ -41,6 +42,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
     const initialPane: TerminalPaneItem = {
       id: paneId,
+      title: params?.title?.trim() || defaultTitle,
       cwd: params?.cwd,
       projectId: params?.projectId,
       itemId: params?.itemId,
@@ -107,12 +109,52 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
   updateTabTitle: (id: string, title: string) => {
     const trimmed = title.trim()
+
+    set((state) => ({
+      tabs: state.tabs.map((tab) => {
+        if (tab.id !== id) return tab
+        if (!trimmed) {
+          const activePaneTitle = tab.panes[tab.activePaneId]?.title
+          return {
+            ...tab,
+            customTitle: undefined,
+            title: activePaneTitle || tab.title,
+          }
+        }
+        return {
+          ...tab,
+          title: trimmed,
+          customTitle: trimmed,
+        }
+      }),
+    }))
+  },
+
+  updatePaneTitle: (paneId: string, title: string) => {
+    const trimmed = title.trim()
     if (!trimmed) return
 
     set((state) => ({
-      tabs: state.tabs.map((tab) =>
-        tab.id === id ? { ...tab, title: trimmed, customTitle: trimmed } : tab,
-      ),
+      tabs: state.tabs.map((tab) => {
+        if (!tab.panes[paneId]) return tab
+
+        const nextPanes = {
+          ...tab.panes,
+          [paneId]: {
+            ...tab.panes[paneId],
+            title: trimmed,
+          },
+        }
+
+        const isCurrentActive = tab.activePaneId === paneId
+        const nextTitle = !tab.customTitle && isCurrentActive ? trimmed : tab.title
+
+        return {
+          ...tab,
+          panes: nextPanes,
+          title: nextTitle,
+        }
+      }),
     }))
   },
 
@@ -133,6 +175,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
     const newPane: TerminalPaneItem = {
       id: newPaneId,
+      title: `Terminal ${get().terminalCounter}`,
       cwd: effectiveCwd,
       projectId: tab.projectId,
       itemId: tab.itemId,
@@ -180,22 +223,34 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
       tab.activePaneId === paneId ? remainingPaneIds[0] || "" : tab.activePaneId
 
     set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId
-          ? {
-              ...t,
-              panes: nextPanes,
-              rootNode: nextRootNode,
-              activePaneId: nextActivePaneId,
-            }
-          : t,
-      ),
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const activePaneTitle = nextPanes[nextActivePaneId]?.title
+        const nextTitle = !t.customTitle && activePaneTitle ? activePaneTitle : t.title
+
+        return {
+          ...t,
+          panes: nextPanes,
+          rootNode: nextRootNode,
+          activePaneId: nextActivePaneId,
+          title: nextTitle,
+        }
+      }),
     }))
   },
 
   setActivePane: (tabId, paneId) => {
     set((state) => ({
-      tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, activePaneId: paneId } : t)),
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const activePaneTitle = t.panes[paneId]?.title
+        const nextTitle = !t.customTitle && activePaneTitle ? activePaneTitle : t.title
+        return {
+          ...t,
+          activePaneId: paneId,
+          title: nextTitle,
+        }
+      }),
     }))
   },
 

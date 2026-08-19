@@ -1,6 +1,8 @@
 import "@xterm/xterm/css/xterm.css"
+import { Terminal as TerminalIcon, X } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef } from "react"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { TerminalPaneItem } from "@/features/terminal/types"
 
@@ -9,7 +11,9 @@ interface TerminalPaneProps {
   isActive: boolean
   isFocused: boolean
   isExpanded: boolean
+  showHeader?: boolean
   onFocus: () => void
+  onClose?: () => void
 }
 
 /**
@@ -21,7 +25,9 @@ export const TerminalPane = ({
   isActive,
   isFocused,
   isExpanded,
+  showHeader = false,
   onFocus,
+  onClose,
 }: TerminalPaneProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -50,7 +56,7 @@ export const TerminalPane = ({
     if (isFocused) {
       session.term.focus()
     }
-  }, [pane.id, pane.cwd])
+  }, [pane.id, pane.cwd, isFocused])
 
   // 2. 监听容器尺寸与展开/激活状态变化，执行 fit 与 resize 广播
   useEffect(() => {
@@ -92,7 +98,7 @@ export const TerminalPane = ({
       window.clearTimeout(t3)
       observer.disconnect()
     }
-  }, [pane.id, pane.cwd, isActive, isExpanded])
+  }, [pane.id, pane.cwd, isActive, isExpanded, showHeader])
 
   // 3. 激活或聚焦时自动获得焦点
   useEffect(() => {
@@ -121,12 +127,46 @@ export const TerminalPane = ({
 
   return (
     <div
-      ref={containerRef}
-      className={`relative h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
+      className={`group relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
         isFocused ? "ring-1 ring-white/20 z-10" : "opacity-85 hover:opacity-100"
       }`}
       onClick={handleFocus}
       onMouseDown={handleFocus}
-    />
+    >
+      {showHeader && (
+        <div
+          className={`flex h-6 shrink-0 items-center justify-between border-b px-2 select-none text-xs transition-colors ${
+            isFocused
+              ? "border-white/10 bg-white/[0.04] text-white/90"
+              : "border-white/5 bg-white/[0.01] text-white/40 hover:text-white/60"
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+            <TerminalIcon
+              className={`h-3 w-3 shrink-0 ${isFocused ? "text-white/70" : "text-white/30"}`}
+            />
+            <span className="truncate font-mono text-[11px] leading-none">
+              {pane.title || "Terminal"}
+            </span>
+          </div>
+          {onClose && (
+            <LxTooltip content="关闭分屏" placement="top">
+              <button
+                aria-label="关闭分屏"
+                className="flex h-4 w-4 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </LxTooltip>
+          )}
+        </div>
+      )}
+      <div ref={containerRef} className="relative min-h-0 flex-1 w-full overflow-hidden" />
+    </div>
   )
 }
