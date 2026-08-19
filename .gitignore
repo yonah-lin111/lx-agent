@@ -21,3 +21,4 @@ playwright-report/
 .worktrees/
 .codegraph/
 .codebase-memory/
+.lx/
