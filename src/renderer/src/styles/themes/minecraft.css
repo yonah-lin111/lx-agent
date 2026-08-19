@@ -578,9 +578,20 @@
   color: #55ff55 !important;
 }
 
-/* 面板内部 Tag 徽章直角化与矿石色调 */
-[data-theme="minecraft"] .markdown-command-menu span[class*="rounded"],
-[data-theme="minecraft"] [role="listbox"] span[class*="rounded"] {
+/* ========================================================
+ * 底部任务监控面板与长任务状态标签魔改
+ * ======================================================== */
+[data-theme="minecraft"] .bg-\[\#111116\] {
+  background-color: #14141d !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] button[aria-label="后台任务监控"] {
   border: 1px solid #000000 !important;
-  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
 }
