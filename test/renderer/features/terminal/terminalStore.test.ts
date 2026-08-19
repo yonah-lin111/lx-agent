@@ -17,16 +17,15 @@ describe("terminalStore", () => {
     useTerminalStore.setState({
       tabs: [],
       activeTabId: null,
-      terminalCounter: 1,
       pendingCloseTabId: null,
       pendingClosePaneId: null,
     })
   })
 
-  it("支持新增标签页并自动递增默认标题与激活新建标签", () => {
+  it("支持新增标签页并设置默认标题 New Terminal 与激活新建标签", () => {
     const id1 = useTerminalStore.getState().addTab()
     expect(useTerminalStore.getState().tabs).toHaveLength(1)
-    expect(useTerminalStore.getState().tabs[0]?.title).toBe("Terminal 1")
+    expect(useTerminalStore.getState().tabs[0]?.title).toBe("New Terminal")
     expect(useTerminalStore.getState().activeTabId).toBe(id1)
 
     const id2 = useTerminalStore.getState().addTab({ title: "Custom" })
@@ -101,9 +100,9 @@ describe("terminalStore", () => {
     const tab = useTerminalStore.getState().tabs[0]!
     const paneId = tab.activePaneId
 
-    // 初始标题为默认 Terminal 1
-    expect(tab.title).toBe("Terminal 1")
-    expect(tab.panes[paneId]?.title).toBe("Terminal 1")
+    // 初始标题为默认 New Terminal
+    expect(tab.title).toBe("New Terminal")
+    expect(tab.panes[paneId]?.title).toBe("New Terminal")
 
     // 动态更新 PTY 标题（如 CLI 输出的 OSC 序列）
     useTerminalStore.getState().updatePaneTitle(paneId, "claude")

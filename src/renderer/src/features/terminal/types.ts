@@ -65,6 +65,4 @@ export interface TerminalState {
   tabs: TerminalTabItem[]
   // 当前激活的标签 ID。
   activeTabId: string | null
-  // 累计创建计数（用于生成自增默认标题）。
-  terminalCounter: number
 }

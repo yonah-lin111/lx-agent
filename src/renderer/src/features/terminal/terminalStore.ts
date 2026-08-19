@@ -14,7 +14,6 @@ import { resolveCwdDisplayName } from "@/features/terminal/utils"
 interface TerminalStoreState {
   tabs: TerminalTabItem[]
   activeTabId: string | null
-  terminalCounter: number
   pendingCloseTabId: string | null
   pendingClosePaneId: string | null
   setPendingCloseTabId: (id: string | null) => void
@@ -39,7 +38,6 @@ interface TerminalStoreState {
 export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   tabs: [],
   activeTabId: null,
-  terminalCounter: 1,
   pendingCloseTabId: null,
   pendingClosePaneId: null,
 
@@ -52,10 +50,9 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   },
 
   addTab: (params) => {
-    const nextCounter = get().terminalCounter + 1
     const tabId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
     const paneId = `pane_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-    const defaultTitle = `Terminal ${get().terminalCounter}`
+    const defaultTitle = "New Terminal"
 
     const initialPane: TerminalPaneItem = {
       id: paneId,
@@ -81,7 +78,6 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: tabId,
-      terminalCounter: nextCounter,
     }))
 
     return tabId
