@@ -1,6 +1,7 @@
 /**
  * 木质纹理 (Wood) 风格暖黄主题样式
  * 特征：天然黄木/橡木实木质感、轻量微木纹与打磨浮雕、暖黄琥珀光泽、胶囊与大圆角打磨设计
+ * 约束：全面杜绝纯白背景与白色字体，所有界面元素统一为暖黄/实木色阶与深胡桃木色字体
  */
 [data-theme="wood"] {
   --color-theme-bg: #f5eedb;
@@ -8,27 +9,29 @@
   --color-theme-surface-hover: #dfcba2;
   --color-theme-border: #c4a46a;
   --color-theme-border-strong: #8e5e26;
-  --color-theme-text: #331e0b;
-  --color-theme-text-muted: #6e4c27;
-  --color-theme-text-subtle: #99754c;
-  --color-theme-accent: #c6781c;
+  --color-theme-text: #2c1500;
+  --color-theme-text-muted: #5e3c1b;
+  --color-theme-text-subtle: #8a653e;
+  --color-theme-accent: #b45309;
   --theme-font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei", sans-serif;
   --theme-radius-base: 14px;
 
-  /* 覆盖 Tailwind 气泡全局变量：暖黄原木与自然木色调 */
+  /* 覆盖 Tailwind 气泡全局变量：暖黄原木与自然木色调（深色文字） */
   --color-user-bubble: #ebd09c; /* 琥珀金柚木 */
   --color-steer-bubble: #f0c896; /* 暖阳雪松木 */
   --color-project-prompt-bubble: #d3deaa; /* 苍竹青木 */
   --color-global-prompt-bubble: #dfcae6; /* 浅紫檀木 */
 
-  color: #331e0b;
+  color: #2c1500;
   background-color: #f5eedb;
   font-family: var(--theme-font-family);
 }
 
-/* 全局圆角规范与木质底纹 */
+/* ========================================================
+ * 全局木质底纹与全局字体颜色约束
+ * ======================================================== */
 [data-theme="wood"] body {
   background-color: #f5eedb;
   background-image:
@@ -47,7 +50,7 @@
       transparent 36px
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='woodNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03 0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0.86  0 1 0 0 0.74  0 0 1 0 0.52  0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23woodNoise)'/%3E%3C/svg%3E");
-  color: #331e0b;
+  color: #2c1500;
 }
 
 /* 基础容器卡片：实木表面 + 抛光倒角 + 柔和温润投影 */
@@ -61,7 +64,7 @@
   border: 1.5px solid #c4a46a !important;
   border-radius: 14px !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.5),
     inset -1px -1px 0px 0px rgba(120, 80, 20, 0.15),
     0 3px 10px rgba(90, 50, 10, 0.07) !important;
   background-color: #ecdcba !important;
@@ -74,7 +77,7 @@
       transparent 16px
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0.85  0 1 0 0 0.72  0 0 1 0 0.5  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
-  color: #331e0b;
+  color: #2c1500;
 }
 
 /* ========================================================
@@ -85,9 +88,9 @@
   border-radius: 9999px !important;
   border: 1.5px solid #b88d48 !important;
   background: linear-gradient(180deg, #fcedc9 0%, #e5ca95 100%) !important;
-  color: #4a2c0d !important;
+  color: #382009 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
     inset 0 -1px 0 rgba(100, 60, 10, 0.15),
     0 2px 4px rgba(100, 60, 10, 0.08) !important;
   transition: all 150ms ease-in-out !important;
@@ -97,9 +100,9 @@
 [data-theme="wood"] [role="button"]:hover {
   background: linear-gradient(180deg, #fff4d7 0%, #ebd3a3 100%) !important;
   border-color: #9c6e2a !important;
-  color: #2c1802 !important;
+  color: #241100 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 3px 6px rgba(100, 60, 10, 0.12) !important;
 }
 
@@ -126,7 +129,7 @@
   border: 1.5px solid #ab8240 !important;
   border-radius: 12px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     inset 0 -1px 0 rgba(120, 80, 20, 0.15),
     0 2px 5px rgba(80, 45, 10, 0.08) !important;
   font-weight: 600;
@@ -146,7 +149,7 @@
   border: 1.5px solid #bc9758 !important;
   border-radius: 10px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
     0 1px 3px rgba(80, 45, 10, 0.05) !important;
 }
 
@@ -163,7 +166,7 @@
   color: #5c3b16 !important;
   border: 1px solid #c9ab73 !important;
   border-radius: 8px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 [data-theme="wood"] [data-item-level="prompt"]:hover,
@@ -182,7 +185,7 @@
   border: 1.5px solid #ab8240 !important;
   border-radius: 12px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 2px 5px rgba(80, 45, 10, 0.08) !important;
 }
 
@@ -214,7 +217,7 @@
   border-left: 4px solid #b87a20 !important;
   border-radius: 10px !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 2px 6px rgba(184, 122, 32, 0.25) !important;
 }
 
@@ -234,13 +237,22 @@
  * ======================================================== */
 [data-theme="wood"] .cm-editor {
   background-color: #faf4e6 !important;
-  color: #382009 !important;
+  color: #2c1500 !important;
   font-family: var(--theme-font-family) !important;
   border-radius: 12px !important;
 }
 
 [data-theme="wood"] .cm-editor .cm-scroller {
   background-color: #faf4e6 !important;
+}
+
+[data-theme="wood"] .cm-editor .cm-content {
+  color: #2c1500 !important;
+  caret-color: #b45309 !important;
+}
+
+[data-theme="wood"] .cm-editor .cm-line {
+  color: #2c1500 !important;
 }
 
 /* 行号槽：浅色木纹刻线 */
@@ -269,18 +281,20 @@
 
 /* Markdown 标题魔改：深胡桃木与热烈琥珀色 */
 [data-theme="wood"] .markdown-preview h1 {
-  color: #6b3305 !important;
+  color: #522703 !important;
   border-bottom: 2px solid #d4a86e;
   padding-bottom: 4px;
 }
 
 [data-theme="wood"] .markdown-preview h2 {
-  color: #8a4309 !important;
+  color: #6b3305 !important;
 }
 
 [data-theme="wood"] .markdown-preview h3,
-[data-theme="wood"] .markdown-preview h4 {
-  color: #a85810 !important;
+[data-theme="wood"] .markdown-preview h4,
+[data-theme="wood"] .markdown-preview h5,
+[data-theme="wood"] .markdown-preview h6 {
+  color: #8a4309 !important;
 }
 
 /* Markdown 预览区与 CodeMirror 编辑区代码块：内嵌浅色枫木槽 */
@@ -290,7 +304,7 @@
 [data-theme="wood"] .cm-md-code-fence-middle-line,
 [data-theme="wood"] .cm-md-code-fence-end-line {
   background-color: #f2e7ce !important;
-  color: #382009 !important;
+  color: #2c1500 !important;
 }
 
 [data-theme="wood"] .markdown-preview pre {
@@ -301,7 +315,7 @@
 
 [data-theme="wood"] .markdown-preview .markdown-code-block-header {
   background-color: #e6d3af !important;
-  color: #634320 !important;
+  color: #4a2c0d !important;
   border-radius: 12px 12px 0 0 !important;
   border-bottom: 1.5px solid #d1b88e !important;
 }
@@ -321,6 +335,68 @@
   border: 1.5px solid #d1b88e !important;
   border-top: none !important;
   border-radius: 0 0 10px 10px !important;
+}
+
+/* 语法高亮颜色全面适配浅暖黄木质（杜绝高亮白色/浅色发飘） */
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-comment,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-quote,
+[data-theme="wood"] .agent-diff-block .hljs-comment,
+[data-theme="wood"] .agent-diff-block .hljs-quote {
+  color: #8c6a43 !important;
+  font-style: italic;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-keyword,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-selector-tag,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-meta,
+[data-theme="wood"] .agent-diff-block .hljs-keyword,
+[data-theme="wood"] .agent-diff-block .hljs-selector-tag,
+[data-theme="wood"] .agent-diff-block .hljs-meta {
+  color: #7e22ce !important;
+  font-weight: 600;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-string,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-attr,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-template-variable,
+[data-theme="wood"] .agent-diff-block .hljs-string,
+[data-theme="wood"] .agent-diff-block .hljs-attr,
+[data-theme="wood"] .agent-diff-block .hljs-template-variable {
+  color: #15803d !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-number,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-literal,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-symbol,
+[data-theme="wood"] .agent-diff-block .hljs-number,
+[data-theme="wood"] .agent-diff-block .hljs-literal,
+[data-theme="wood"] .agent-diff-block .hljs-symbol {
+  color: #c2410c !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-title,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-function,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-property,
+[data-theme="wood"] .agent-diff-block .hljs-title,
+[data-theme="wood"] .agent-diff-block .hljs-function,
+[data-theme="wood"] .agent-diff-block .hljs-property {
+  color: #1d4ed8 !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-built_in,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-type,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-class .hljs-title,
+[data-theme="wood"] .agent-diff-block .hljs-built_in,
+[data-theme="wood"] .agent-diff-block .hljs-type,
+[data-theme="wood"] .agent-diff-block .hljs-class .hljs-title {
+  color: #0f766e !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-variable,
+[data-theme="wood"] .markdown-preview .markdown-code-block .hljs-params,
+[data-theme="wood"] .agent-diff-block .hljs-variable,
+[data-theme="wood"] .agent-diff-block .hljs-params {
+  color: #3b2207 !important;
 }
 
 /* ========================================================
@@ -421,7 +497,7 @@
 [data-theme="wood"] .cm-md-template-id,
 [data-theme="wood"] .cm-md-template-wt {
   background-color: #ebdcb9 !important;
-  color: #6b4d29 !important;
+  color: #5e3c1b !important;
   border: 1px solid #c9ad7d !important;
   border-radius: 9999px !important;
   padding: 1px 8px !important;
@@ -433,14 +509,14 @@
   border: 1px solid #b88d48 !important;
   border-radius: 9999px !important;
   background-color: #faeed4 !important;
-  color: #5c3b16 !important;
+  color: #4a2c0d !important;
   padding: 3px !important;
 }
 
 [data-theme="wood"] .cm-template-block-action-wrap button:hover,
 [data-theme="wood"] .cm-code-block-action-wrap button:hover {
   background-color: #fff6e4 !important;
-  color: #2e1b06 !important;
+  color: #241100 !important;
 }
 
 /* ========================================================
@@ -451,7 +527,7 @@
   border-radius: 14px !important;
   background-color: #f7eed8 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.8),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
     0 2px 6px rgba(100, 60, 10, 0.06) !important;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -461,13 +537,13 @@
   border-bottom: 1.5px solid #c49d60 !important;
   border-radius: 14px 14px 0 0 !important;
   background-color: #ebd8b0 !important;
-  color: #4a2c0d !important;
+  color: #382009 !important;
 }
 
 /* 预览区模板块状态标签：圆润木牌徽章 */
 [data-theme="wood"] .markdown-template-block-header [data-template-status="todo"] {
   background-color: #e5d3ab !important;
-  color: #694b28 !important;
+  color: #5e3c1b !important;
   border: 1px solid #ba9f6e !important;
   border-radius: 9999px !important;
   padding: 1px 8px !important;
@@ -493,7 +569,7 @@
 
 /* 模板块内部注释行 */
 [data-theme="wood"] .markdown-template-comment {
-  color: #8c6a43 !important;
+  color: #7c572f !important;
   font-style: italic;
   font-family: var(--theme-font-family);
 }
@@ -518,7 +594,7 @@
   background: linear-gradient(180deg, #fbf5e6 0%, #f4e8cf 100%) !important;
   color: #2c1500 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 2px 8px rgba(90, 50, 10, 0.06) !important;
 }
 
@@ -529,7 +605,7 @@
   background: linear-gradient(180deg, #f6dcab 0%, #ebd09c 100%) !important;
   color: #241200 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 2px 6px rgba(184, 134, 40, 0.15) !important;
 }
 
@@ -541,7 +617,7 @@
   background: linear-gradient(180deg, #fbd8ad 0%, #f0c896 100%) !important;
   color: #2e1400 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
     0 2px 6px rgba(201, 126, 52, 0.15) !important;
 }
 
@@ -554,10 +630,12 @@
   background-color: #f2e5cb !important;
   box-shadow:
     inset 1px 1px 2px rgba(120, 80, 20, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
-/* 输入控件：打磨圆润木槽 */
+/* ========================================================
+ * 输入控件与操作按钮：杜绝纯白背景
+ * ======================================================== */
 [data-theme="wood"] input,
 [data-theme="wood"] textarea,
 [data-theme="wood"] select {
@@ -567,7 +645,7 @@
   color: #2c1500 !important;
   box-shadow:
     inset 1px 1px 3px rgba(100, 60, 10, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
 }
 
 [data-theme="wood"] textarea {
@@ -577,11 +655,26 @@
 [data-theme="wood"] input:focus,
 [data-theme="wood"] textarea:focus,
 [data-theme="wood"] select:focus {
-  border-color: #c6781c !important;
+  border-color: #b45309 !important;
   outline: none !important;
   box-shadow:
-    0 0 0 2px rgba(198, 120, 28, 0.25),
+    0 0 0 2px rgba(180, 83, 9, 0.25),
     inset 1px 1px 2px rgba(100, 60, 10, 0.08) !important;
+}
+
+/* 发送/提交类按钮覆盖（替换 bg-white 纯白背景为金色琥珀木块） */
+[data-theme="wood"] button.bg-white,
+[data-theme="wood"] button.bg-white\/90,
+[data-theme="wood"] .bg-white {
+  background: linear-gradient(180deg, #f0c36b 0%, #d4952d 100%) !important;
+  color: #241100 !important;
+  border: 1.5px solid #b37718 !important;
+}
+
+[data-theme="wood"] button.bg-white:hover,
+[data-theme="wood"] button.bg-white\/90:hover {
+  background: linear-gradient(180deg, #fad482 0%, #e0a53e 100%) !important;
+  color: #1a0800 !important;
 }
 
 /* 选中文本：温暖金色高光 */
@@ -596,7 +689,7 @@
   border: 1px solid #b8935c !important;
   background: #d4b886 !important;
   border-radius: 9999px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 [data-theme="wood"] ::-webkit-scrollbar-thumb:hover,
@@ -613,7 +706,7 @@
   border-radius: 14px !important;
   background-color: #ebdcb9 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
     0 6px 18px rgba(80, 45, 10, 0.15) !important;
 }
 
@@ -622,7 +715,7 @@
 [data-theme="wood"] [role="listbox"] [role="option"] {
   border: 1px solid transparent;
   border-radius: 9999px !important;
-  color: #4a2c0d !important;
+  color: #382009 !important;
   transition: all 120ms ease-in-out !important;
 }
 
@@ -635,7 +728,7 @@
   color: #241100 !important;
   border: 1px solid #b88628 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 2px 4px rgba(184, 134, 40, 0.12) !important;
 }
 
@@ -653,7 +746,7 @@
   border: 1.5px solid #ab8240 !important;
   border-radius: 14px 14px 0 0 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
     0 -2px 8px rgba(80, 45, 10, 0.08) !important;
 }
 
@@ -662,60 +755,143 @@
   border-radius: 9999px !important;
   background: linear-gradient(180deg, #fbedcc 0%, #e8cca0 100%) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 2px 4px rgba(80, 45, 10, 0.08) !important;
 }
 
 /* ========================================================
- * 文本与图标在浅暖黄背景下的对比度优化
+ * 全局消除白色字体与半透明白色字体的映射规则
  * ======================================================== */
-[data-theme="wood"] .text-white {
+[data-theme="wood"] .text-white,
+[data-theme="wood"] .text-white\/95,
+[data-theme="wood"] .text-white\/90,
+[data-theme="wood"] .text-white\/85,
+[data-theme="wood"] .text-white\/80,
+[data-theme="wood"] .text-white\/75,
+[data-theme="wood"] .text-white\/70 {
   color: #2c1500 !important;
 }
 
-[data-theme="wood"] .text-white\/90,
-[data-theme="wood"] .text-white\/80,
-[data-theme="wood"] .text-white\/70 {
-  color: #4a2c0d !important;
-}
-
+[data-theme="wood"] .text-white\/65,
 [data-theme="wood"] .text-white\/60,
+[data-theme="wood"] .text-white\/55,
 [data-theme="wood"] .text-white\/50,
-[data-theme="wood"] .text-white\/40,
-[data-theme="wood"] .text-white\/30,
-[data-theme="wood"] .text-white\/20 {
-  color: #78522b !important;
+[data-theme="wood"] .text-white\/45,
+[data-theme="wood"] .text-white\/40 {
+  color: #5a3818 !important;
 }
 
+[data-theme="wood"] .text-white\/35,
+[data-theme="wood"] .text-white\/30,
+[data-theme="wood"] .text-white\/25,
+[data-theme="wood"] .text-white\/20,
+[data-theme="wood"] .text-white\/15,
+[data-theme="wood"] .text-white\/10 {
+  color: #856139 !important;
+}
+
+/* 覆盖 Neutral / Gray / Zinc / Slate 浅色文本类名 */
+[data-theme="wood"] [class*="text-neutral-100"],
+[data-theme="wood"] [class*="text-neutral-200"],
+[data-theme="wood"] [class*="text-neutral-300"],
+[data-theme="wood"] [class*="text-gray-100"],
+[data-theme="wood"] [class*="text-gray-200"],
+[data-theme="wood"] [class*="text-gray-300"],
+[data-theme="wood"] [class*="text-zinc-100"],
+[data-theme="wood"] [class*="text-zinc-200"],
+[data-theme="wood"] [class*="text-zinc-300"],
+[data-theme="wood"] [class*="text-slate-100"],
+[data-theme="wood"] [class*="text-slate-200"],
+[data-theme="wood"] [class*="text-slate-300"] {
+  color: #2c1500 !important;
+}
+
+[data-theme="wood"] [class*="text-neutral-400"],
+[data-theme="wood"] [class*="text-gray-400"],
+[data-theme="wood"] [class*="text-zinc-400"],
+[data-theme="wood"] [class*="text-slate-400"] {
+  color: #5a3818 !important;
+}
+
+/* 边框及悬浮覆盖 */
 [data-theme="wood"] .border-white\/5,
 [data-theme="wood"] .border-white\/10,
 [data-theme="wood"] .border-white\/15,
-[data-theme="wood"] .border-white\/20 {
+[data-theme="wood"] .border-white\/20,
+[data-theme="wood"] .border-white\/25,
+[data-theme="wood"] .border-white\/30 {
   border-color: #c9ab73 !important;
 }
 
 [data-theme="wood"] .hover\:bg-white\/5:hover,
-[data-theme="wood"] .hover\:bg-white\/10:hover {
+[data-theme="wood"] .hover\:bg-white\/8:hover,
+[data-theme="wood"] .hover\:bg-white\/10:hover,
+[data-theme="wood"] .hover\:bg-white\/15:hover,
+[data-theme="wood"] .hover\:bg-white\/20:hover {
   background-color: #dfcaa0 !important;
+  color: #241100 !important;
 }
 
+/* Markdown 文档内文本与引用标签规范 */
 [data-theme="wood"] .markdown-preview {
-  color: #382009 !important;
+  color: #2c1500 !important;
+}
+
+[data-theme="wood"] .markdown-preview p,
+[data-theme="wood"] .markdown-preview li,
+[data-theme="wood"] .markdown-preview span {
+  color: #2c1500 !important;
 }
 
 [data-theme="wood"] .markdown-preview strong,
 [data-theme="wood"] .markdown-preview b {
-  color: #1a0b00 !important;
+  color: #150600 !important;
+  font-weight: 700;
 }
 
 [data-theme="wood"] .markdown-preview code {
   background: #ede0c6 !important;
-  color: #92400e !important;
+  color: #854308 !important;
   border: 1px solid #d4bea0 !important;
   border-radius: 6px !important;
 }
 
 [data-theme="wood"] .markdown-preview blockquote {
   border-left-color: #c49d60 !important;
-  color: #6e4c27 !important;
+  color: #5e3c1b !important;
+}
+
+/* 复选框与单选框纯白消除 */
+[data-theme="wood"] .task-list-item-checkbox:checked {
+  background-color: #b87a20 !important;
+  border-color: #8e5e26 !important;
+}
+
+[data-theme="wood"] .task-list-item-checkbox:checked::after {
+  border-color: #fef4dc !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-reference-project {
+  color: #5b21b6 !important;
+  background-color: rgba(91, 33, 182, 0.12) !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-reference-folder {
+  color: #92400e !important;
+  background-color: rgba(146, 64, 14, 0.12) !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-reference-file {
+  color: #0369a1 !important;
+  background-color: rgba(3, 105, 161, 0.12) !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-reference-image {
+  color: #9d174d !important;
+  background-color: rgba(157, 23, 77, 0.12) !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-reference-common {
+  color: #475569 !important;
+  background-color: rgba(71, 85, 105, 0.12) !important;
 }
