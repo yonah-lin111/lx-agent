@@ -126,8 +126,13 @@ const getClipboardFiles = (
           | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
           | undefined
       )?.webkitGetAsEntry?.()
-      const isImage = file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
-      const fileType: "image" | "file" | "folder" = entry?.isDirectory ? "folder" : isImage ? "image" : "file"
+      const isImage =
+        file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
+      const fileType: "image" | "file" | "folder" = entry?.isDirectory
+        ? "folder"
+        : isImage
+          ? "image"
+          : "file"
       return [{ path, type: fileType }]
     } catch {
       return []
@@ -137,10 +142,12 @@ const getClipboardFiles = (
 
   const plainText = clipboardData.getData("text/plain").trim()
   if (plainText.startsWith("/")) {
-    return [{
-      path: plainText,
-      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
-    }]
+    return [
+      {
+        path: plainText,
+        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
+      },
+    ]
   }
 
   const fileUri = clipboardData
@@ -151,10 +158,12 @@ const getClipboardFiles = (
 
   try {
     const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
-    return [{
-      path,
-      type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
-    }]
+    return [
+      {
+        path,
+        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
+      },
+    ]
   } catch {
     return []
   }
@@ -310,10 +319,7 @@ export const LxMarkdownEditor = ({
     const panel = pasteReferencePanelRef.current
     if (!view || !panel) return false
 
-    const text =
-      mode === "reference"
-        ? panel.referenceInsertion
-        : panel.insertion
+    const text = mode === "reference" ? panel.referenceInsertion : panel.insertion
     view.dispatch({
       changes: { from: panel.from, to: panel.from + panel.insertion.length, insert: text },
       selection: { anchor: panel.from + text.length },
@@ -1369,7 +1375,7 @@ export const LxMarkdownEditor = ({
   ]
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
+    <section className="flex min-h-[70px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
       <MarkdownEditorToolbar
         actions={actions}
         isSaved={isSaved}
@@ -1386,7 +1392,7 @@ export const LxMarkdownEditor = ({
         activeLine={activeLine}
         onScrollToLine={scrollToLine}
       />
-      <div className="min-h-0 flex flex-1 text-sm">
+      <div className="min-h-0 flex flex-1 overflow-hidden text-sm">
         <div
           ref={editorContainerRef}
           className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}
