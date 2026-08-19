@@ -171,8 +171,9 @@ export const RightSideBar = (): React.JSX.Element => {
       disabled={!currentSessionId}
       title={{ content: "新建对话", placement: "bottom" }}
       onClick={() => newChatRef.current?.()}
+      size="small"
     >
-      <Plus className="h-4 w-4" />
+      <Plus className="h-3.5 w-3.5" />
     </LxIconButton>
   )
 
@@ -220,8 +221,9 @@ export const RightSideBar = (): React.JSX.Element => {
             aria-label="展开右侧栏"
             title={{ content: "展开右侧栏", placement: "left" }}
             onClick={() => setIsCollapsed(false)}
+            size="small"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           </LxIconButton>
 
           <LxIconButton
@@ -232,16 +234,18 @@ export const RightSideBar = (): React.JSX.Element => {
               newChatRef.current?.()
               setIsCollapsed(false)
             }}
+            size="small"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
           </LxIconButton>
 
           <LxIconButton
             aria-label="历史对话"
             title={{ content: "历史对话", placement: "left" }}
             onClick={() => setIsCollapsed(false)}
+            size="small"
           >
-            <History className="h-4 w-4" />
+            <History className="h-3.5 w-3.5" />
           </LxIconButton>
         </div>
       ) : (
@@ -284,8 +288,9 @@ export const RightSideBar = (): React.JSX.Element => {
               <LxIconButton
                 aria-label="历史对话"
                 title={{ content: "历史对话", placement: "bottom" }}
+                size="small"
               >
-                <History className="h-4 w-4" />
+                <History className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
           </div>
@@ -298,8 +303,9 @@ export const RightSideBar = (): React.JSX.Element => {
               aria-label="折叠右侧栏"
               title={{ content: "折叠右侧栏", placement: "top" }}
               onClick={() => setIsCollapsed(true)}
+              size="small"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </LxIconButton>
           </div>
         </div>

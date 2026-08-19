@@ -41,7 +41,7 @@ export const TodoStatusButton = ({
         aria-label="任务清单"
         className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-orange-300/90 transition-colors hover:bg-white/5"
       >
-        <ListTodo className="h-3 w-3 shrink-0" />
+        <ListTodo className="h-3.5 w-3.5 shrink-0" />
         <span className="tabular-nums">
           {done}/{todos.length}
         </span>

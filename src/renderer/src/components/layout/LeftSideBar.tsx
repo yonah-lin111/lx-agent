@@ -44,8 +44,13 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
         aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
         title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
         onClick={() => setIsCollapsed((currentValue) => !currentValue)}
+        size="small"
       >
-        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        {isCollapsed ? (
+          <ChevronRight className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronLeft className="h-3.5 w-3.5" />
+        )}
       </LxIconButton>
       <div
         className={`mt-2 flex shrink-0 gap-1 transition-transform duration-300 ease-in-out ${
@@ -66,6 +71,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
               hoverBgClass="hover:bg-white/10"
               hoverTextClass="hover:text-white"
               onClick={() => navigate(path)}
+              size="small"
             >
               <Icon className="h-3.5 w-3.5" />
             </LxIconButton>

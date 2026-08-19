@@ -712,7 +712,7 @@ export const MarkdownEditorToolbar = ({
       <LxIconButton
         aria-label="上一页"
         disabled={activePageIndex === 0}
-        size="medium"
+        size="small"
         title={{ content: "上一页" }}
         onClick={() => onPageChange?.(activePageIndex - 1)}
       >
@@ -727,7 +727,7 @@ export const MarkdownEditorToolbar = ({
       <LxIconButton
         aria-label="下一页"
         disabled={activePageIndex === pages.length - 1}
-        size="medium"
+        size="small"
         title={{ content: "下一页" }}
         onClick={() => onPageChange?.(activePageIndex + 1)}
       >
@@ -821,7 +821,7 @@ export const MarkdownEditorToolbar = ({
           aria-label={label}
           disabled={disabled}
           highlighted={highlighted}
-          size="medium"
+          size="small"
           title={{ content: label }}
           onClick={onClick}
         >
@@ -837,7 +837,7 @@ export const MarkdownEditorToolbar = ({
       >
         <LxIconButton
           aria-label="插入表格"
-          size="medium"
+          size="small"
           onClick={() => setTableSize(null)}
           onMouseEnter={() => setTableSize(null)}
         >
@@ -845,7 +845,7 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       </LxTooltip>
       <LxTooltip content={shortcutList} placement="bottom" trigger="click" contentClassName="!p-2">
-        <LxIconButton aria-label="快捷键" size="medium">
+        <LxIconButton aria-label="快捷键" size="small">
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
@@ -859,7 +859,7 @@ export const MarkdownEditorToolbar = ({
           className={index === 0 && !pageSwitchControls ? "ml-auto" : ""}
           disabled={disabled}
           highlighted={highlighted}
-          size="medium"
+          size="small"
           title={{ content: label }}
           onClick={onClick}
         >
@@ -880,7 +880,7 @@ export const MarkdownEditorToolbar = ({
         placement="bottom"
         trigger="hover"
       >
-        <LxIconButton aria-label="页面大纲" size="medium">
+        <LxIconButton aria-label="页面大纲" size="small">
           <List className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>

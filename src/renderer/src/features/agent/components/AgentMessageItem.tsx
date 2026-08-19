@@ -824,10 +824,10 @@ export const AgentMessageItem = ({
             <div className="mt-1 h-5" aria-hidden="true" />
           ) : (
             <div
-              className={`mt-1 flex w-full items-center justify-between gap-2 transition-opacity ${
+              className={`mt-1 flex items-center gap-2 transition-opacity ${
                 isPinned
-                  ? `opacity-0 group-hover:opacity-100 rounded-[6px] ${userBubbleClass} px-2 py-0.5 shadow-sm`
-                  : ""
+                  ? `opacity-0 group-hover:opacity-100 rounded-[6px] ${userBubbleClass} px-2 py-0.5 shadow-sm w-fit self-end`
+                  : "w-full justify-between"
               }`}
             >
               {/* 底部左侧：命令来源标识（非吸顶常驻显示；吸顶时随底栏 hover 显现） */}
@@ -861,7 +861,7 @@ export const AgentMessageItem = ({
                     title={{ content: "定位到消息", placement: "top" }}
                     onClick={onLocate}
                   >
-                    <Locate className="h-3 w-3" />
+                    <Locate className="h-3.5 w-3.5" />
                   </LxIconButton>
                 )}
                 {isCollapsible && (
@@ -872,9 +872,9 @@ export const AgentMessageItem = ({
                     onClick={toggleExpand}
                   >
                     {isExpanded ? (
-                      <ChevronUp className="h-3 w-3" />
+                      <ChevronUp className="h-3.5 w-3.5" />
                     ) : (
-                      <ChevronDown className="h-3 w-3" />
+                      <ChevronDown className="h-3.5 w-3.5" />
                     )}
                   </LxIconButton>
                 )}
@@ -890,7 +890,7 @@ export const AgentMessageItem = ({
                       title={{ content: "从此分支", placement: "top" }}
                       onClick={() => onFork(messageTimestamp)}
                     >
-                      <GitBranch className="h-3 w-3" />
+                      <GitBranch className="h-3.5 w-3.5" />
                     </LxIconButton>
                   )}
                 {!readOnly && !message.isSteer && !message.command && (
@@ -900,7 +900,7 @@ export const AgentMessageItem = ({
                     title={{ content: "编辑消息", placement: "top" }}
                     onClick={handleStartEdit}
                   >
-                    <Pencil className="h-3 w-3" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </LxIconButton>
                 )}
                 <LxIconButton
@@ -910,9 +910,9 @@ export const AgentMessageItem = ({
                   onClick={copyMessageContent}
                 >
                   {copied ? (
-                    <Check className="h-3 w-3 text-emerald-400" />
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
                   ) : (
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-3.5 w-3.5" />
                   )}
                 </LxIconButton>
               </div>
@@ -1107,7 +1107,7 @@ export const AgentMessageItem = ({
           onClick={onContinue}
           className="mt-1 flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshCw className="h-3.5 w-3.5" />
           继续生成
         </button>
       )}
@@ -1129,15 +1129,15 @@ export const AgentMessageItem = ({
               onClick={copyMessageContent}
             >
               {copied ? (
-                <Check className="h-3 w-3 text-emerald-400" />
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
               ) : (
-                <Copy className="h-3 w-3" />
+                <Copy className="h-3.5 w-3.5" />
               )}
             </LxIconButton>
             {!readOnly && onDelete && (
               <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
                 <LxIconButton size="small" aria-label="删除消息">
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </LxIconButton>
               </LxTooltip>
             )}

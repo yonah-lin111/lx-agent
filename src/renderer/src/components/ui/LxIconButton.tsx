@@ -36,7 +36,7 @@ const SIZE_CONTAINER_CLASSES: Record<LxIconButtonSize, string> = {
 }
 
 const SIZE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
-  small: "h-3 w-3",
+  small: "h-3.5 w-3.5",
   medium: "h-4 w-4",
   large: "h-[18px] w-[18px]",
 }
@@ -124,7 +124,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       preset,
       shape = "square",
       showHoverBg = true,
-      size = "medium",
+      size = "small",
       disabled,
       title,
       ...props

@@ -108,6 +108,14 @@ export const BottomSideBar = ({
           {/* 右侧操作列：覆盖右侧栏与折叠底边栏（pt-1 保持与顶栏对齐） */}
           <div className="flex shrink-0 flex-col items-center gap-1.5 pt-1 pr-0.5">
             <LxIconButton
+              aria-label="折叠底边栏"
+              title={{ content: "折叠底边栏", placement: "left" }}
+              onClick={() => onExpandedChange(false)}
+              size="small"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </LxIconButton>
+            <LxIconButton
               aria-label={
                 isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
               }
@@ -116,19 +124,13 @@ export const BottomSideBar = ({
                 placement: "left",
               }}
               onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+              size="small"
             >
               {isCoveringRightSideBar ? (
-                <ChevronsRightLeft className="h-4 w-4" />
+                <ChevronsRightLeft className="h-3.5 w-3.5" />
               ) : (
-                <ChevronsLeftRight className="h-4 w-4" />
+                <ChevronsLeftRight className="h-3.5 w-3.5" />
               )}
-            </LxIconButton>
-            <LxIconButton
-              aria-label="折叠底边栏"
-              title={{ content: "折叠底边栏", placement: "left" }}
-              onClick={() => onExpandedChange(false)}
-            >
-              <ChevronDown className="h-4 w-4" />
             </LxIconButton>
           </div>
         </div>
@@ -149,19 +151,21 @@ export const BottomSideBar = ({
                   placement: "top",
                 }}
                 onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
+                size="small"
               >
                 {isCoveringRightSideBar ? (
-                  <ChevronsRightLeft className="h-4 w-4" />
+                  <ChevronsRightLeft className="h-3.5 w-3.5" />
                 ) : (
-                  <ChevronsLeftRight className="h-4 w-4" />
+                  <ChevronsLeftRight className="h-3.5 w-3.5" />
                 )}
               </LxIconButton>
               <LxIconButton
                 aria-label="展开底边栏"
                 title={{ content: "展开底边栏", placement: "top" }}
                 onClick={() => onExpandedChange(true)}
+                size="small"
               >
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-3.5 w-3.5" />
               </LxIconButton>
             </div>
           </div>

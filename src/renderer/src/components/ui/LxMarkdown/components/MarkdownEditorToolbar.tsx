@@ -160,7 +160,7 @@ export const MarkdownEditorToolbar = ({
           aria-label={label}
           disabled={disabled}
           highlighted={highlighted}
-          size="medium"
+          size="small"
           title={{ content: label }}
           onClick={onClick}
         >
@@ -176,7 +176,7 @@ export const MarkdownEditorToolbar = ({
       >
         <LxIconButton
           aria-label="插入表格"
-          size="medium"
+          size="small"
           onClick={() => setTableSize(null)}
           onMouseEnter={() => setTableSize(null)}
         >
@@ -184,7 +184,7 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       </LxTooltip>
       <LxTooltip content={shortcutList} placement="bottom" trigger="click" contentClassName="!p-2">
-        <LxIconButton aria-label="快捷键" size="medium">
+        <LxIconButton aria-label="快捷键" size="small">
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
@@ -196,7 +196,7 @@ export const MarkdownEditorToolbar = ({
           className={index === 0 ? "ml-auto" : ""}
           disabled={disabled}
           highlighted={highlighted}
-          size="medium"
+          size="small"
           title={{ content: label }}
           onClick={onClick}
         >

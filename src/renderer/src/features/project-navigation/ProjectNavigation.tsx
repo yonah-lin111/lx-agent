@@ -659,6 +659,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               title={{ content: "定位当前条目", placement: "bottom" }}
               disabled={!activePromptId}
               onClick={() => locatePrompt(activePromptId)}
+              size="small"
             >
               <Locate className="h-3.5 w-3.5" />
             </LxIconButton>
@@ -667,6 +668,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               title={{ content: isAllCollapsed ? "展开全部" : "折叠全部", placement: "bottom" }}
               disabled={searchKeyword.length > 0}
               onClick={toggleCollapseAll}
+              size="small"
             >
               {isAllCollapsed ? (
                 <ChevronsDownUp className="h-3.5 w-3.5" />
@@ -680,7 +682,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               placement="bottom"
               trigger="hover"
             >
-              <LxIconButton aria-label="筛选条目">
+              <LxIconButton aria-label="筛选条目" size="small">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
@@ -690,7 +692,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               placement="bottom"
               trigger="hover"
             >
-              <LxIconButton aria-label="排序条目">
+              <LxIconButton aria-label="排序条目" size="small">
                 <ArrowUpDown className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
@@ -701,8 +703,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
               trigger="hover"
               closeOnContentClick
             >
-              <LxIconButton aria-label="新建或导入项目">
-                <Plus className="h-4 w-4" />
+              <LxIconButton aria-label="新建或导入项目" size="small">
+                <Plus className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
           </div>

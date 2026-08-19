@@ -207,11 +207,7 @@ export const HeaderSideBar = ({
         >
           {children}
         </div>
-        <div
-          className={`absolute right-0 top-0 flex items-center gap-2 transition-transform duration-300 ease-in-out ${
-            isExpanded ? "translate-y-0" : "-translate-y-0.5"
-          }`}
-        >
+        <div className="absolute right-0 top-0 flex h-6 items-center gap-2">
           <LxIconButton
             aria-label="显示最近打开标签"
             highlighted={showRecentTags}
@@ -220,15 +216,21 @@ export const HeaderSideBar = ({
               placement: "bottom",
             }}
             onClick={handleToggleRecentTags}
+            size="small"
           >
-            <Tags className="h-4 w-4" />
+            <Tags className="h-3.5 w-3.5" />
           </LxIconButton>
           <LxIconButton
             aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
+            size="small"
             title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}
             onClick={() => onExpandedChange(!isExpanded)}
           >
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
           </LxIconButton>
         </div>
       </div>

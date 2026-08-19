@@ -216,7 +216,7 @@ export const PermissionStatusButton = ({
         aria-label="权限确认"
         className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
       >
-        <ShieldAlert className="h-3 w-3 shrink-0" />
+        <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
       </span>
     </LxTooltip>
   )

@@ -323,7 +323,9 @@ const ProjectReferencedFolderTagsContent = ({
   }, [])
 
   return (
-    <div className={`relative flex min-w-0 max-w-full items-center overflow-hidden ${className}`}>
+    <div
+      className={`relative flex h-6 min-w-0 max-w-full items-center overflow-hidden ${className}`}
+    >
       <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 overflow-hidden">
         <LxIconButton
           aria-label="向左滚动"
@@ -346,7 +348,7 @@ const ProjectReferencedFolderTagsContent = ({
               {Array.from({ length: 3 }, (_, index) => (
                 <div
                   key={index}
-                  className="flex animate-pulse items-center gap-1 rounded-[6px] border border-white/5 bg-white/[0.03] px-2 py-1"
+                  className="flex animate-pulse items-center gap-1 rounded-[6px] border border-white/5 bg-white/[0.03] px-2 py-0.5 h-5"
                 >
                   <div className="h-3 w-3 shrink-0 rounded-[4px] bg-white/10" />
                   <div
@@ -384,7 +386,7 @@ const ProjectReferencedFolderTagsContent = ({
                             aria-label={
                               isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
                             }
-                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
+                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
                               isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
                             }`}
                             type="button"
@@ -402,7 +404,7 @@ const ProjectReferencedFolderTagsContent = ({
                         <LxTooltip content={isCopied ? "已复制" : "复制文件夹引用"} placement="top">
                           <button
                             aria-label="复制文件夹引用"
-                            className={`flex h-4 w-4 items-center justify-center rounded-[4px] transition-colors ${
+                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
                               isCopied ? "text-current" : "text-current/60 hover:text-current"
                             }`}
                             type="button"

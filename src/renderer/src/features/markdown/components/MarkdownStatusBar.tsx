@@ -14,7 +14,7 @@ export const MarkdownStatusBar = ({
   projectPath,
 }: MarkdownStatusBarProps): React.JSX.Element | null => {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 border-t border-white/5 py-1 text-xs text-white/50">
+    <div className="flex min-w-0 items-center justify-between gap-3 border-t border-white/5 px-1.5 py-1 text-xs text-white/50">
       {/* 左侧：项目路径、分支与工作区（固定不被压缩覆盖） */}
       <div className="flex min-w-0 shrink-0 items-center">
         <GitStatusBar
