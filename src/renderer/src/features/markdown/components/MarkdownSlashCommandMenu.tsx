@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { LxTag } from "@/components/ui/LxTag"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
 
 // Markdown 斜杠命令菜单属性。
@@ -8,6 +9,64 @@ interface MarkdownSlashCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+}
+
+const getCommandTags = (
+  command: MarkdownSlashCommand,
+): { label: string; bgClass: string }[] => {
+  const tags: { label: string; bgClass: string }[] = []
+
+  if (command.kind === "customTemplate" || command.source === "project" || command.source === "user") {
+    // 作用域 Tag（MD / Template）
+    if (command.customScope === "template" || command.scope === "template") {
+      tags.push({ label: "Template", bgClass: "bg-purple-500/20 text-purple-300" })
+    } else {
+      tags.push({ label: "MD", bgClass: "bg-sky-500/20 text-sky-300" })
+    }
+
+    // 格式为 Custom|Global 或 Custom|Project
+    const customSourceLabel = command.source === "project" ? "Custom|Project" : "Custom|Global"
+    tags.push({ label: customSourceLabel, bgClass: "bg-amber-500/20 text-amber-300" })
+  } else {
+    // 内置命令
+    tags.push({ label: "Builtin", bgClass: "bg-white/10 text-white/50" })
+  }
+
+  return tags
+}
+
+/**
+ * 激活项与面板边缘保持间距，避免上下键移动时被裁切。
+ */
+const useActiveItemScrollIntoView = (
+  isOpen: boolean,
+  position: CSSProperties | null,
+  activeIndex: number,
+): React.RefObject<HTMLDivElement | null> => {
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!isOpen || !position) return
+    const container = panelRef.current
+    if (!container) return
+
+    const activeElement = container.querySelector(
+      `[data-index="${activeIndex}"]`,
+    ) as HTMLElement | null
+    if (!activeElement) return
+
+    const scrollPadding = 4
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeElement.getBoundingClientRect()
+
+    if (activeRect.top < containerRect.top + scrollPadding) {
+      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
+    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
+      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
+    }
+  }, [isOpen, position, activeIndex])
+
+  return panelRef
 }
 
 /**
@@ -48,11 +107,16 @@ export const MarkdownSlashCommandMenu = ({
     return () => clearTimeout(timer)
   }, [visible, shouldRender])
 
-  if (!shouldRender) return null
-
   const displayData =
     visible && commands && position ? { commands, activeIndex, position } : lastDataRef.current
-  if (!displayData) return null
+
+  const panelRef = useActiveItemScrollIntoView(
+    shouldRender && visible,
+    displayData?.position ?? null,
+    displayData?.activeIndex ?? 0,
+  )
+
+  if (!shouldRender || !displayData) return null
 
   const {
     commands: displayCommands,
@@ -62,8 +126,9 @@ export const MarkdownSlashCommandMenu = ({
 
   return (
     <div
+      ref={panelRef}
       aria-label="Markdown 模板命令"
-      className={`markdown-command-menu markdown-command-menu--slash pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`markdown-command-menu markdown-command-menu--slash pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -71,10 +136,12 @@ export const MarkdownSlashCommandMenu = ({
     >
       {displayCommands.map((command, index) => {
         const isActive = index === displayActiveIndex
+        const tags = getCommandTags(command)
 
         return (
           <div
             key={command.id}
+            data-index={index}
             aria-selected={isActive}
             className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
               isActive ? "bg-white/8 text-white" : "text-white/75"
@@ -90,6 +157,20 @@ export const MarkdownSlashCommandMenu = ({
                 {command.description}
               </span>
             </span>
+            {tags.length > 0 && (
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                {tags.map((tag) => (
+                  <LxTag
+                    key={tag.label}
+                    bgClass={tag.bgClass}
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    {tag.label}
+                  </LxTag>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}

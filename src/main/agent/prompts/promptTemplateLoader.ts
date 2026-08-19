@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { basename, join, resolve } from "node:path"
 import type { PromptTemplateItem } from "@shared/contracts/agent"
+import type { MarkdownCommandScope, MarkdownTemplateCommandItem } from "@shared/contracts/markdown"
 import matter from "gray-matter"
 import { getAppDataRoot } from "@/paths"
 
@@ -10,6 +11,16 @@ export interface LoadedPromptTemplate {
   description: string
   argumentHint?: string
   content: string
+  source: "project" | "user"
+  filePath: string
+}
+
+// 已加载的 Markdown 模板命令对象。
+export interface LoadedMarkdownTemplateCommand {
+  name: string
+  description: string
+  content: string
+  scope: MarkdownCommandScope
   source: "project" | "user"
   filePath: string
 }
@@ -256,13 +267,94 @@ export function loadTemplateFromFile(
       name,
       description,
       argumentHint,
-      content: body.trim(),
+      content: body.replace(/^\r?\n+/, "").trimEnd(),
       source,
       filePath,
     }
   } catch {
     return null
   }
+}
+
+/**
+ * 从单个 .md 文件加载并解析 Markdown 模板命令。
+ */
+export function loadMarkdownCommandFromFile(
+  filePath: string,
+  source: "project" | "user",
+): LoadedMarkdownTemplateCommand | null {
+  try {
+    const fileContent = readFileSync(filePath, "utf8")
+    const { frontmatter, content: body } = parseFrontmatterSafely(fileContent)
+
+    const name = (frontmatter.name ? String(frontmatter.name) : basename(filePath, ".md")).trim()
+    if (!name || RESERVED_COMMANDS.has(name) || name.startsWith("skill:")) {
+      return null
+    }
+
+    let description = ""
+    if (typeof frontmatter.description === "string" && frontmatter.description.trim()) {
+      description = frontmatter.description.trim()
+    } else {
+      const firstLine = body.split("\n").find((line) => line.trim())
+      if (firstLine) {
+        description = firstLine.trim().slice(0, 60)
+        if (firstLine.length > 60) description += "..."
+      }
+    }
+
+    const scope: MarkdownCommandScope =
+      frontmatter.scope === "template" ? "template" : "global"
+
+    return {
+      name,
+      description,
+      content: body.replace(/^\r?\n+/, "").trimEnd(),
+      scope,
+      source,
+      filePath,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 扫描指定目录下的 Markdown 模板命令 .md 文件（非递归）。
+ */
+function loadMarkdownCommandsFromDir(
+  dir: string,
+  source: "project" | "user",
+): LoadedMarkdownTemplateCommand[] {
+  const commands: LoadedMarkdownTemplateCommand[] = []
+  if (!existsSync(dir)) return commands
+
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      let isFile = entry.isFile()
+
+      if (entry.isSymbolicLink()) {
+        try {
+          isFile = statSync(fullPath).isFile()
+        } catch {
+          continue
+        }
+      }
+
+      if (isFile && entry.name.endsWith(".md")) {
+        const cmd = loadMarkdownCommandFromFile(fullPath, source)
+        if (cmd) {
+          commands.push(cmd)
+        }
+      }
+    }
+  } catch {
+    return commands
+  }
+
+  return commands
 }
 
 /**
@@ -302,29 +394,35 @@ function loadTemplatesFromDir(dir: string, source: "project" | "user"): LoadedPr
 
 export class PromptTemplateLoader {
   /**
-   * 加载当前环境下的全部 Prompt 模板：
-   * 1. 全局：~/.lx/prompts/（user）
-   * 2. 项目：<cwd>/.lx/prompts/ 或 <cwd>/.prompts/（project）
+   * 加载当前环境下的全部 Prompt 模板（用于 AgentInput 对话输入框）：
+   * 1. 全局：~/.lx/command/agentInput/（优先）或 ~/.lx/prompts/（user）
+   * 2. 项目：<cwd>/.lx/command/agentInput/（优先）、<cwd>/.lx/prompts/ 或 <cwd>/.prompts/（project）
    * 冲突策略：Project Overrides User（项目级覆盖全局级）。
    */
   load(cwd?: string): LoadedPromptTemplate[] {
     const templateMap = new Map<string, LoadedPromptTemplate>()
 
     // 1. 加载全局（User）
-    const globalDir = join(getAppDataRoot(), "prompts")
-    const globalTemplates = loadTemplatesFromDir(globalDir, "user")
+    const legacyGlobalDir = join(getAppDataRoot(), "prompts")
+    const newGlobalDir = join(getAppDataRoot(), "command", "agentInput")
+    const globalTemplates = [
+      ...loadTemplatesFromDir(legacyGlobalDir, "user"),
+      ...loadTemplatesFromDir(newGlobalDir, "user"),
+    ]
     for (const t of globalTemplates) {
       templateMap.set(t.name, t)
     }
 
     // 2. 加载项目（Project，优先级更高）
     if (cwd) {
-      const projectLxDir = resolve(cwd, ".lx", "prompts")
-      const projectDotDir = resolve(cwd, ".prompts")
+      const legacyProjectLxDir = resolve(cwd, ".lx", "prompts")
+      const legacyProjectDotDir = resolve(cwd, ".prompts")
+      const newProjectCommandDir = resolve(cwd, ".lx", "command", "agentInput")
 
       const projectTemplates = [
-        ...loadTemplatesFromDir(projectDotDir, "project"),
-        ...loadTemplatesFromDir(projectLxDir, "project"),
+        ...loadTemplatesFromDir(legacyProjectDotDir, "project"),
+        ...loadTemplatesFromDir(legacyProjectLxDir, "project"),
+        ...loadTemplatesFromDir(newProjectCommandDir, "project"),
       ]
 
       for (const t of projectTemplates) {
@@ -336,7 +434,35 @@ export class PromptTemplateLoader {
   }
 
   /**
-   * 转换为 IPC 传输条目列表。
+   * 加载当前环境下的全部 Markdown 模板命令（用于 Markdown 文档编辑器）：
+   * 1. 全局：~/.lx/command/agentMD/（user）
+   * 2. 项目：<cwd>/.lx/command/agentMD/（project）
+   * 冲突策略：Project Overrides User（项目级覆盖全局级）。
+   */
+  loadMarkdownCommands(cwd?: string): LoadedMarkdownTemplateCommand[] {
+    const commandMap = new Map<string, LoadedMarkdownTemplateCommand>()
+
+    // 1. 加载全局（User）
+    const globalDir = join(getAppDataRoot(), "command", "agentMD")
+    const globalCommands = loadMarkdownCommandsFromDir(globalDir, "user")
+    for (const cmd of globalCommands) {
+      commandMap.set(cmd.name, cmd)
+    }
+
+    // 2. 加载项目（Project，优先级更高）
+    if (cwd) {
+      const projectDir = resolve(cwd, ".lx", "command", "agentMD")
+      const projectCommands = loadMarkdownCommandsFromDir(projectDir, "project")
+      for (const cmd of projectCommands) {
+        commandMap.set(cmd.name, cmd)
+      }
+    }
+
+    return Array.from(commandMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  /**
+   * 转换为 IPC 传输条目列表（Agent 对话框）。
    */
   list(cwd?: string): PromptTemplateItem[] {
     return this.load(cwd).map((t) => ({
@@ -345,6 +471,20 @@ export class PromptTemplateLoader {
       argumentHint: t.argumentHint,
       source: t.source,
       filePath: t.filePath,
+    }))
+  }
+
+  /**
+   * 转换为 IPC 传输条目列表（Markdown 编辑器）。
+   */
+  listMarkdownCommands(cwd?: string): MarkdownTemplateCommandItem[] {
+    return this.loadMarkdownCommands(cwd).map((cmd) => ({
+      name: cmd.name,
+      description: cmd.description,
+      content: cmd.content,
+      scope: cmd.scope,
+      source: cmd.source,
+      filePath: cmd.filePath,
     }))
   }
 

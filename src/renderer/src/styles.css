@@ -23,8 +23,8 @@
   --markdown-command-menu-block-width: 20rem;
   --markdown-command-menu-block-max-height: 30vh;
   /* 斜杠命令面板：输入 / 时显示。 */
-  --markdown-command-menu-slash-width: 20rem;
-  --markdown-command-menu-slash-max-height: 30vh;
+  --markdown-command-menu-slash-width: 26rem;
+  --markdown-command-menu-slash-max-height: 35vh;
   /* 文件提及面板：输入 @ 时显示。 */
   --markdown-command-menu-file-width: 30rem;
   --markdown-command-menu-file-max-height: 40vh;

@@ -75,4 +75,47 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownSelectCommandValue("/gitWorktree", false)).toBeNull()
     expect(getMarkdownSelectCommandValue("/summaryTitle", true)).toBeNull()
   })
+
+  it("自定义命令：支持传入并在指定范围生效", () => {
+    const customCommands = [
+      {
+        id: "custom:my-global",
+        label: "/my-global",
+        description: "全局自定义模板",
+        content: "hello world",
+        cursorOffset: 11,
+        scope: "both" as const,
+        kind: "customTemplate" as const,
+        source: "project" as const,
+      },
+      {
+        id: "custom:block-only",
+        label: "/block-only",
+        description: "仅模板块自定义命令",
+        content: "- item",
+        cursorOffset: 6,
+        scope: "template" as const,
+        kind: "customTemplate" as const,
+        source: "user" as const,
+      },
+    ]
+
+    // 模板块外：仅 my-global 可见
+    const normalMatches = getMarkdownSlashCommands("/", false, true, customCommands)
+    expect(normalMatches.some((c) => c.id === "custom:my-global")).toBe(true)
+    expect(normalMatches.some((c) => c.id === "custom:block-only")).toBe(false)
+
+    // 模板块内：my-global 与 block-only 均可见
+    const templateMatches = getMarkdownSlashCommands("/", true, true, customCommands)
+    expect(templateMatches.some((c) => c.id === "custom:my-global")).toBe(true)
+    expect(templateMatches.some((c) => c.id === "custom:block-only")).toBe(true)
+
+    // 精确查询
+    expect(getMarkdownSlashCommands("/my-", false, true, customCommands).map((c) => c.id)).toEqual([
+      "custom:my-global",
+    ])
+    expect(
+      getMarkdownSlashCommands("/block", true, true, customCommands).map((c) => c.id),
+    ).toEqual(["custom:block-only"])
+  })
 })

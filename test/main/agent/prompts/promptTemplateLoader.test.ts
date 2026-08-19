@@ -269,4 +269,134 @@ argument-hint: [content] [title]
       })
     })
   })
+
+  describe("agentInput and agentMD command directories", () => {
+    it("loads agentInput templates from command/agentInput and overrides prompts", () => {
+      const userAgentInputDir = join(holder.appDataRoot, "command", "agentInput")
+      mkdirSync(userAgentInputDir, { recursive: true })
+      writeFileSync(
+        join(userAgentInputDir, "cmd1.md"),
+        `---
+description: user agent input command
+---
+hello $1
+`,
+      )
+
+      const projectAgentInputDir = join(projectDir, ".lx", "command", "agentInput")
+      mkdirSync(projectAgentInputDir, { recursive: true })
+      writeFileSync(
+        join(projectAgentInputDir, "cmd1.md"),
+        `---
+description: project agent input command
+---
+project hello $1
+`,
+      )
+
+      const templates = loader.load(projectDir)
+      expect(templates).toHaveLength(1)
+      expect(templates[0]).toMatchObject({
+        name: "cmd1",
+        description: "project agent input command",
+        content: "project hello $1",
+        source: "project",
+      })
+    })
+
+    it("loads agentMD commands with scope: global and scope: template", () => {
+      const userAgentMDDir = join(holder.appDataRoot, "command", "agentMD")
+      mkdirSync(userAgentMDDir, { recursive: true })
+      writeFileSync(
+        join(userAgentMDDir, "globalTemplate.md"),
+        `---
+description: global markdown template
+scope: global
+---
+# Global Template
+content
+`,
+      )
+      writeFileSync(
+        join(userAgentMDDir, "blockOnlyTemplate.md"),
+        `---
+description: template block only
+scope: template
+---
+- item 1
+`,
+      )
+      writeFileSync(
+        join(userAgentMDDir, "defaultScopeTemplate.md"),
+        `---
+description: default scope is global
+---
+plain content
+`,
+      )
+
+      const projectAgentMDDir = join(projectDir, ".lx", "command", "agentMD")
+      mkdirSync(projectAgentMDDir, { recursive: true })
+      writeFileSync(
+        join(projectAgentMDDir, "globalTemplate.md"),
+        `---
+description: project override global template
+scope: global
+---
+# Overridden Project Template
+`,
+      )
+
+      const mdCommands = loader.loadMarkdownCommands(projectDir)
+      expect(mdCommands).toHaveLength(3)
+
+      const overridden = mdCommands.find((c) => c.name === "globalTemplate")
+      expect(overridden).toMatchObject({
+        name: "globalTemplate",
+        description: "project override global template",
+        content: "# Overridden Project Template",
+        scope: "global",
+        source: "project",
+      })
+
+      const blockOnly = mdCommands.find((c) => c.name === "blockOnlyTemplate")
+      expect(blockOnly).toMatchObject({
+        name: "blockOnlyTemplate",
+        description: "template block only",
+        content: "- item 1",
+        scope: "template",
+        source: "user",
+      })
+
+      const defaultScope = mdCommands.find((c) => c.name === "defaultScopeTemplate")
+      expect(defaultScope).toMatchObject({
+        name: "defaultScopeTemplate",
+        scope: "global",
+        source: "user",
+      })
+    })
+
+    it("preserves leading spaces/indentation on the first line while trimming trailing whitespace", () => {
+      const userAgentMDDir = join(holder.appDataRoot, "command", "agentMD")
+      mkdirSync(userAgentMDDir, { recursive: true })
+      writeFileSync(
+        join(userAgentMDDir, "developFormat.md"),
+        `---
+name: developFormat
+description: 开发流程注意事项
+scope: template
+---
+  - 使用开发流程和代码检索mcp，必须使用grill me质问用户确认边界
+  - 编写代码需要在 .worktrees 新建git工作区执行，在工作区执行任务，任务执行完成后询问用户是否合并
+`,
+      )
+
+      const mdCommands = loader.loadMarkdownCommands(projectDir)
+      const cmd = mdCommands.find((c) => c.name === "developFormat")
+      expect(cmd).toBeDefined()
+      expect(cmd?.content).toBe(
+        "  - 使用开发流程和代码检索mcp，必须使用grill me质问用户确认边界\n  - 编写代码需要在 .worktrees 新建git工作区执行，在工作区执行任务，任务执行完成后询问用户是否合并",
+      )
+    })
+  })
 })
