@@ -91,15 +91,11 @@ export const BottomSideBar = ({
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 ${
-        isExpanded
-          ? "bg-[#111116] p-0"
-          : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1 bg-[#212121]"
-      } ${
+      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"
-      }`}
+      } ${isExpanded ? "p-1.5" : "h-[40px] min-h-[40px] max-h-[40px] px-2 py-1"}`}
       style={
         isExpanded
           ? { height: `${height}vh`, minHeight: `${height}vh`, maxHeight: `${height}vh` }
@@ -119,7 +115,7 @@ export const BottomSideBar = ({
       )}
 
       <div className="relative flex h-full w-full flex-col overflow-hidden">
-        {/* 展开区域：Ghostty 终端主视口（右侧折叠、覆盖按钮平铺在 Tab 栏最右侧） */}
+        {/* 展开区域：Ghostty 终端主视口（右侧覆盖、折叠按钮平铺在 Tab 栏最右侧） */}
         <div
           className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
             isExpanded ? "flex" : "hidden"
@@ -129,14 +125,6 @@ export const BottomSideBar = ({
             isExpanded={isExpanded}
             rightActions={
               <div className="flex shrink-0 items-center gap-1">
-                <LxIconButton
-                  aria-label="折叠底边栏"
-                  title={{ content: "折叠底边栏", placement: "top" }}
-                  onClick={() => onExpandedChange(false)}
-                  size="small"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </LxIconButton>
                 <LxIconButton
                   aria-label={
                     isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
@@ -155,6 +143,14 @@ export const BottomSideBar = ({
                   ) : (
                     <ChevronsLeftRight className="h-3.5 w-3.5" />
                   )}
+                </LxIconButton>
+                <LxIconButton
+                  aria-label="折叠底边栏"
+                  title={{ content: "折叠底边栏", placement: "top" }}
+                  onClick={() => onExpandedChange(false)}
+                  size="small"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </LxIconButton>
               </div>
             }

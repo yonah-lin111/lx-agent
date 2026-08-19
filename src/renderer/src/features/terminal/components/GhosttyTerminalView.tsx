@@ -134,14 +134,14 @@ export const GhosttyTerminalView = ({
   }, [isExpanded, activeTabId, handleCreateTab])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-[#111116]">
-      {/* 顶部水平栏：左侧滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 + 右侧扩展控制 */}
-      <div className="flex h-9 shrink-0 items-center px-2 py-1">
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* 顶部水平栏：左侧滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 + 右侧扩展控制（底色继承底边栏 #212121） */}
+      <div className="flex h-8 shrink-0 items-center px-0.5 pb-1">
         <TerminalTabs onAddTab={() => void handleCreateTab()} rightActions={rightActions} />
       </div>
 
-      {/* 下方终端画布交互区 */}
-      <div className="relative min-h-0 flex-1 w-full overflow-hidden">
+      {/* 下方终端画布交互区（带圆角终端独立背景） */}
+      <div className="relative min-h-0 flex-1 w-full overflow-hidden rounded-[4px] bg-[#111116]">
         {tabs.map((tab) => {
           const isTabActive = tab.id === activeTabId
 
