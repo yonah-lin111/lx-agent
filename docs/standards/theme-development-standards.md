@@ -22,7 +22,8 @@ src/renderer/src/
 ├── styles/
 │   └── themes/
 │       ├── default.css           # 默认暗色主题 Token 定义
-│       └── minecraft.css         # 我的世界 (Minecraft) 像素暗色主题定义
+│       ├── minecraft.css         # 我的世界 (Minecraft) 像素暗色主题定义
+│       └── wood.css              # 木质纹理 (Wood) 暖黄原木主题定义
 └── styles.css                    # 全局样式入口，统一引入各主题 css 文件
 ```
 

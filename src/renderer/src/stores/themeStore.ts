@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react"
 
-export type AppTheme = "default" | "minecraft"
+export type AppTheme = "default" | "minecraft" | "wood"
 
 const THEME_STORAGE_KEY = "lx_app_theme"
+const VALID_THEMES: readonly AppTheme[] = ["default", "minecraft", "wood"]
 
 /**
  * 获取当前持久化的主题配置，默认为 default。
  */
 export const getInitialTheme = (): AppTheme => {
   try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY)
-    if (saved === "minecraft" || saved === "default") {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY) as AppTheme | null
+    if (saved && VALID_THEMES.includes(saved)) {
       return saved
     }
   } catch (error) {
@@ -52,7 +53,8 @@ export const useAppTheme = (): {
   }
 
   const toggleTheme = (): void => {
-    setTheme(theme === "default" ? "minecraft" : "default")
+    const nextIndex = (VALID_THEMES.indexOf(theme) + 1) % VALID_THEMES.length
+    setTheme(VALID_THEMES[nextIndex] ?? "default")
   }
 
   return {

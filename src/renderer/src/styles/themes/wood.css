@@ -1,0 +1,721 @@
+/**
+ * 木质纹理 (Wood) 风格暖黄主题样式
+ * 特征：天然黄木/橡木实木质感、轻量微木纹与打磨浮雕、暖黄琥珀光泽、胶囊与大圆角打磨设计
+ */
+[data-theme="wood"] {
+  --color-theme-bg: #f5eedb;
+  --color-theme-surface: #ecdcba;
+  --color-theme-surface-hover: #dfcba2;
+  --color-theme-border: #c4a46a;
+  --color-theme-border-strong: #8e5e26;
+  --color-theme-text: #331e0b;
+  --color-theme-text-muted: #6e4c27;
+  --color-theme-text-subtle: #99754c;
+  --color-theme-accent: #c6781c;
+  --theme-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  --theme-radius-base: 14px;
+
+  /* 覆盖 Tailwind 气泡全局变量：暖黄原木与自然木色调 */
+  --color-user-bubble: #ebd09c; /* 琥珀金柚木 */
+  --color-steer-bubble: #f0c896; /* 暖阳雪松木 */
+  --color-project-prompt-bubble: #d3deaa; /* 苍竹青木 */
+  --color-global-prompt-bubble: #dfcae6; /* 浅紫檀木 */
+
+  color: #331e0b;
+  background-color: #f5eedb;
+  font-family: var(--theme-font-family);
+}
+
+/* 全局圆角规范与木质底纹 */
+[data-theme="wood"] body {
+  background-color: #f5eedb;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(150, 100, 30, 0.03) 0px,
+      rgba(150, 100, 30, 0.03) 1px,
+      transparent 1px,
+      transparent 12px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(130, 80, 20, 0.025) 0px,
+      rgba(130, 80, 20, 0.025) 2px,
+      transparent 2px,
+      transparent 36px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='woodNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.03 0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0.86  0 1 0 0 0.74  0 0 1 0 0.52  0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23woodNoise)'/%3E%3C/svg%3E");
+  color: #331e0b;
+}
+
+/* 基础容器卡片：实木表面 + 抛光倒角 + 柔和温润投影 */
+[data-theme="wood"] header,
+[data-theme="wood"] aside,
+[data-theme="wood"] nav,
+[data-theme="wood"] section,
+[data-theme="wood"] [role="region"],
+[data-theme="wood"] [role="dialog"],
+[data-theme="wood"] [role="tooltip"] {
+  border: 1.5px solid #c4a46a !important;
+  border-radius: 14px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 0px 0px rgba(120, 80, 20, 0.15),
+    0 3px 10px rgba(90, 50, 10, 0.07) !important;
+  background-color: #ecdcba !important;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(150, 100, 30, 0.02) 0px,
+      rgba(150, 100, 30, 0.02) 1px,
+      transparent 1px,
+      transparent 16px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0.85  0 1 0 0 0.72  0 0 1 0 0.5  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  color: #331e0b;
+}
+
+/* ========================================================
+ * 基础交互按钮：木块打磨全圆角胶囊
+ * ======================================================== */
+[data-theme="wood"] button:not([role="button"]),
+[data-theme="wood"] [role="button"] {
+  border-radius: 9999px !important;
+  border: 1.5px solid #b88d48 !important;
+  background: linear-gradient(180deg, #fcedc9 0%, #e5ca95 100%) !important;
+  color: #4a2c0d !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(100, 60, 10, 0.15),
+    0 2px 4px rgba(100, 60, 10, 0.08) !important;
+  transition: all 150ms ease-in-out !important;
+}
+
+[data-theme="wood"] button:not([role="button"]):hover,
+[data-theme="wood"] [role="button"]:hover {
+  background: linear-gradient(180deg, #fff4d7 0%, #ebd3a3 100%) !important;
+  border-color: #9c6e2a !important;
+  color: #2c1802 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 3px 6px rgba(100, 60, 10, 0.12) !important;
+}
+
+[data-theme="wood"] button:not([role="button"]):active,
+[data-theme="wood"] [role="button"]:active {
+  background: linear-gradient(180deg, #dfc086 0%, #edd39e 100%) !important;
+  box-shadow: inset 0 2px 4px rgba(80, 45, 10, 0.25) !important;
+  transform: translateY(1px);
+}
+
+/* ========================================================
+ * 木质树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
+ * ======================================================== */
+
+/* --------------------------------------------------------
+ * 1. ProjectNavigationList 精准三级层级背景与边框
+ * -------------------------------------------------------- */
+
+/* Level 1: 项目根节点（Boxes 图标容器）—— 金黄橡木木板 */
+[data-theme="wood"] [data-item-level="project"],
+[data-theme="wood"] div[role="button"]:has(svg.text-sky-400\/80) {
+  background: linear-gradient(180deg, #faefd6 0%, #ecd7ac 100%) !important;
+  color: #3b2207 !important;
+  border: 1.5px solid #ab8240 !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(120, 80, 20, 0.15),
+    0 2px 5px rgba(80, 45, 10, 0.08) !important;
+  font-weight: 600;
+}
+
+[data-theme="wood"] [data-item-level="project"]:hover,
+[data-theme="wood"] div[role="button"]:has(svg.text-sky-400\/80):hover {
+  background: linear-gradient(180deg, #fff7e4 0%, #f3e0b8 100%) !important;
+  color: #241300 !important;
+}
+
+/* Level 2: 文件夹头节点（Folder 图标容器）—— 暖黄山毛榉木条 */
+[data-theme="wood"] [data-item-level="folder"],
+[data-theme="wood"] div[role="button"]:has(svg.text-amber-400\/80) {
+  background: linear-gradient(180deg, #f7ebd1 0%, #e6ce9e 100%) !important;
+  color: #4f310f !important;
+  border: 1.5px solid #bc9758 !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 1px 3px rgba(80, 45, 10, 0.05) !important;
+}
+
+[data-theme="wood"] [data-item-level="folder"]:hover,
+[data-theme="wood"] div[role="button"]:has(svg.text-amber-400\/80):hover {
+  background: linear-gradient(180deg, #fff2da 0%, #ebd7ab 100%) !important;
+  color: #2a1803 !important;
+}
+
+/* Level 3: 具体条目 Prompt Item（File 图标容器）—— 浅白桦木薄板 */
+[data-theme="wood"] [data-item-level="prompt"],
+[data-theme="wood"] div[role="button"]:has(svg.lucide-file) {
+  background-color: #f3e6cb !important;
+  color: #5c3b16 !important;
+  border: 1px solid #c9ab73 !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+[data-theme="wood"] [data-item-level="prompt"]:hover,
+[data-theme="wood"] div[role="button"]:has(svg.lucide-file):hover {
+  background-color: #faeed4 !important;
+  color: #2e1b06 !important;
+}
+
+/* --------------------------------------------------------
+ * 2. UI Preview 组件展示页左侧栏层级区分
+ * -------------------------------------------------------- */
+/* Level 1: 大分组头节点（实木横梁感） */
+[data-theme="wood"] nav > div > button[aria-expanded] {
+  background: linear-gradient(180deg, #faefd6 0%, #ecd7ac 100%) !important;
+  color: #3b2207 !important;
+  border: 1.5px solid #ab8240 !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 5px rgba(80, 45, 10, 0.08) !important;
+}
+
+[data-theme="wood"] nav > div > button[aria-expanded]:hover {
+  background: linear-gradient(180deg, #fff7e4 0%, #f3e0b8 100%) !important;
+}
+
+/* Level 2: 具体组件项按钮（细磨木条） */
+[data-theme="wood"] nav > div > div > button {
+  background-color: #f3e6cb !important;
+  color: #5c3b16 !important;
+  border: 1px solid #c9ab73 !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="wood"] nav > div > div > button:hover {
+  background-color: #faeed4 !important;
+  color: #2e1b06 !important;
+}
+
+/* --------------------------------------------------------
+ * 3. 激活/选中高亮态（金黄琥珀雕刻嵌条）
+ * -------------------------------------------------------- */
+[data-theme="wood"] div[role="button"].bg-white\/10,
+[data-theme="wood"] button[aria-current="page"] {
+  background: linear-gradient(180deg, #ebd09c 0%, #deb876 100%) !important;
+  color: #2c1500 !important;
+  border: 1.5px solid #b87a20 !important;
+  border-left: 4px solid #b87a20 !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 6px rgba(184, 122, 32, 0.25) !important;
+}
+
+[data-theme="wood"] div[role="button"].bg-white\/10 span,
+[data-theme="wood"] button[aria-current="page"] span {
+  color: #2c1500 !important;
+  font-weight: 700;
+}
+
+[data-theme="wood"] div[role="button"].bg-white\/10 svg,
+[data-theme="wood"] button[aria-current="page"] svg {
+  color: #8f4d00 !important;
+}
+
+/* ========================================================
+ * Markdown 编辑区（羊皮纸/白桦木书写案）
+ * ======================================================== */
+[data-theme="wood"] .cm-editor {
+  background-color: #faf4e6 !important;
+  color: #382009 !important;
+  font-family: var(--theme-font-family) !important;
+  border-radius: 12px !important;
+}
+
+[data-theme="wood"] .cm-editor .cm-scroller {
+  background-color: #faf4e6 !important;
+}
+
+/* 行号槽：浅色木纹刻线 */
+[data-theme="wood"] .cm-editor .cm-gutters {
+  background-color: #f0e4cb !important;
+  border-right: 1.5px solid #d4bea0 !important;
+  color: #8c6f4e !important;
+}
+
+/* 当前光标行高亮：淡金色光晕 */
+[data-theme="wood"] .cm-editor .cm-activeLine,
+[data-theme="wood"] .cm-editor .cm-activeLineGutter {
+  background-color: rgba(224, 155, 38, 0.12) !important;
+}
+
+/* 编辑器光标：深琥珀色木笔触 */
+[data-theme="wood"] .cm-editor .cm-cursor {
+  border-left: 2px solid #b45309 !important;
+}
+
+/* 编辑器选区：暖黄蜜蜡透光 */
+[data-theme="wood"] .cm-editor .cm-selectionBackground,
+[data-theme="wood"] .cm-editor ::selection {
+  background-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+/* Markdown 标题魔改：深胡桃木与热烈琥珀色 */
+[data-theme="wood"] .markdown-preview h1 {
+  color: #6b3305 !important;
+  border-bottom: 2px solid #d4a86e;
+  padding-bottom: 4px;
+}
+
+[data-theme="wood"] .markdown-preview h2 {
+  color: #8a4309 !important;
+}
+
+[data-theme="wood"] .markdown-preview h3,
+[data-theme="wood"] .markdown-preview h4 {
+  color: #a85810 !important;
+}
+
+/* Markdown 预览区与 CodeMirror 编辑区代码块：内嵌浅色枫木槽 */
+[data-theme="wood"] .markdown-preview pre,
+[data-theme="wood"] .markdown-preview .markdown-code-block,
+[data-theme="wood"] .cm-md-code-fence-start-line,
+[data-theme="wood"] .cm-md-code-fence-middle-line,
+[data-theme="wood"] .cm-md-code-fence-end-line {
+  background-color: #f2e7ce !important;
+  color: #382009 !important;
+}
+
+[data-theme="wood"] .markdown-preview pre {
+  border-radius: 12px !important;
+  border: 1.5px solid #d1b88e !important;
+  box-shadow: inset 1px 1px 3px rgba(120, 80, 20, 0.08) !important;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-code-block-header {
+  background-color: #e6d3af !important;
+  color: #634320 !important;
+  border-radius: 12px 12px 0 0 !important;
+  border-bottom: 1.5px solid #d1b88e !important;
+}
+
+[data-theme="wood"] .cm-md-code-fence-start-line {
+  border: 1.5px solid #d1b88e !important;
+  border-bottom: 1px solid #dfcbb0 !important;
+  border-radius: 10px 10px 0 0 !important;
+}
+
+[data-theme="wood"] .cm-md-code-fence-middle-line {
+  border-left: 1.5px solid #d1b88e !important;
+  border-right: 1.5px solid #d1b88e !important;
+}
+
+[data-theme="wood"] .cm-md-code-fence-end-line {
+  border: 1.5px solid #d1b88e !important;
+  border-top: none !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* ========================================================
+ * Markdown 编辑区 &&& 模板块魔改（CodeMirror 逐行装饰）
+ * ======================================================== */
+[data-theme="wood"] .cm-md-template-start-line {
+  border: 1.5px solid #c49d60 !important;
+  border-bottom: 1.5px solid #deb981 !important;
+  background-color: transparent !important;
+  border-radius: 10px 10px 0 0 !important;
+  color: #4a2c0d !important;
+}
+
+[data-theme="wood"] .cm-md-template-middle-line,
+[data-theme="wood"] .cm-md-template-comment-line {
+  border-left: 1.5px solid #c49d60 !important;
+  border-right: 1.5px solid #c49d60 !important;
+  background-color: transparent !important;
+}
+
+[data-theme="wood"] .cm-md-template-end-line {
+  border: 1.5px solid #c49d60 !important;
+  border-top: none !important;
+  background-color: transparent !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* 进行中/已完成状态下的木质边框修饰 */
+[data-theme="wood"] .cm-md-template-line-in-progress {
+  border-left-color: #d97706 !important;
+  border-right-color: #d97706 !important;
+}
+
+[data-theme="wood"] .cm-md-template-start-line.cm-md-template-line-in-progress {
+  border-color: #d97706 !important;
+  border-bottom-color: #f59e0b !important;
+}
+
+[data-theme="wood"] .cm-md-template-end-line.cm-md-template-line-in-progress {
+  border-color: #d97706 !important;
+  border-top: none !important;
+}
+
+[data-theme="wood"] .cm-md-template-line-done {
+  border-left-color: #4d7c0f !important;
+  border-right-color: #4d7c0f !important;
+}
+
+[data-theme="wood"] .cm-md-template-start-line.cm-md-template-line-done {
+  border-color: #4d7c0f !important;
+  border-bottom-color: #65a30d !important;
+}
+
+[data-theme="wood"] .cm-md-template-end-line.cm-md-template-line-done {
+  border-color: #4d7c0f !important;
+  border-top: none !important;
+}
+
+/* 编辑区行内高亮标记 */
+[data-theme="wood"] .cm-md-template-marker {
+  color: #b45309 !important;
+  font-weight: bold;
+}
+
+[data-theme="wood"] .cm-md-template-command {
+  background-color: #edd9b4 !important;
+  color: #78350f !important;
+  border: 1px solid #c9a56c !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+}
+
+[data-theme="wood"] .cm-md-template-title {
+  background-color: #f7ecd2 !important;
+  color: #854d0e !important;
+  border: 1px solid #dec28e !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+  text-decoration: none !important;
+}
+
+[data-theme="wood"] .cm-md-template-done {
+  background-color: #e1edd0 !important;
+  color: #365314 !important;
+  border: 1px solid #a3cf78 !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+}
+
+[data-theme="wood"] .cm-md-template-in-progress {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fcd34d !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+}
+
+[data-theme="wood"] .cm-md-template-id,
+[data-theme="wood"] .cm-md-template-wt {
+  background-color: #ebdcb9 !important;
+  color: #6b4d29 !important;
+  border: 1px solid #c9ad7d !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+}
+
+/* 编辑区模板块右侧操作栏按钮 */
+[data-theme="wood"] .cm-template-block-action-wrap button,
+[data-theme="wood"] .cm-code-block-action-wrap button {
+  border: 1px solid #b88d48 !important;
+  border-radius: 9999px !important;
+  background-color: #faeed4 !important;
+  color: #5c3b16 !important;
+  padding: 3px !important;
+}
+
+[data-theme="wood"] .cm-template-block-action-wrap button:hover,
+[data-theme="wood"] .cm-code-block-action-wrap button:hover {
+  background-color: #fff6e4 !important;
+  color: #2e1b06 !important;
+}
+
+/* ========================================================
+ * Markdown 预览区 &&& 模板块魔改（HTML 渲染树）
+ * ======================================================== */
+[data-theme="wood"] .markdown-preview .markdown-template-block {
+  border: 1.5px solid #c49d60 !important;
+  border-radius: 14px !important;
+  background-color: #f7eed8 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.8),
+    0 2px 6px rgba(100, 60, 10, 0.06) !important;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+[data-theme="wood"] .markdown-preview .markdown-template-block-header {
+  border-bottom: 1.5px solid #c49d60 !important;
+  border-radius: 14px 14px 0 0 !important;
+  background-color: #ebd8b0 !important;
+  color: #4a2c0d !important;
+}
+
+/* 预览区模板块状态标签：圆润木牌徽章 */
+[data-theme="wood"] .markdown-template-block-header [data-template-status="todo"] {
+  background-color: #e5d3ab !important;
+  color: #694b28 !important;
+  border: 1px solid #ba9f6e !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+}
+
+[data-theme="wood"] .markdown-template-block-header [data-template-status="in_progress"] {
+  background-color: #fde68a !important;
+  color: #92400e !important;
+  border: 1px solid #f59e0b !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.2) !important;
+}
+
+[data-theme="wood"] .markdown-template-block-header [data-template-status="done"] {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #22c55e !important;
+  border-radius: 9999px !important;
+  padding: 1px 8px !important;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.2) !important;
+}
+
+/* 模板块内部注释行 */
+[data-theme="wood"] .markdown-template-comment {
+  color: #8c6a43 !important;
+  font-style: italic;
+  font-family: var(--theme-font-family);
+}
+
+/* ========================================================
+ * Agent 消息列表与 AI 气泡魔改（黄木质感 / 暖色温润）
+ * ======================================================== */
+[data-theme="wood"] .bg-\[\#212121\] {
+  background-color: #ecdcba !important;
+}
+
+[data-theme="wood"] .bg-\[\#171717\] {
+  background-color: #f5eedb !important;
+}
+
+/* AI 消息气泡：精磨淡金黄木盒 + 16px 圆角 */
+[data-theme="wood"] [data-assistant-bubble="true"],
+[data-theme="wood"] .bg-\[\#303030\],
+[data-theme="wood"] .bg-\[\#363e4c\] {
+  border: 1.5px solid #c9aa70 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #fbf5e6 0%, #f4e8cf 100%) !important;
+  color: #2c1500 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 8px rgba(90, 50, 10, 0.06) !important;
+}
+
+/* 用户消息气泡：温暖蜜蜡琥珀黄 */
+[data-theme="wood"] .bg-user-bubble {
+  border: 1.5px solid #b88628 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #f6dcab 0%, #ebd09c 100%) !important;
+  color: #241200 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 6px rgba(184, 134, 40, 0.15) !important;
+}
+
+/* 即时插话消息气泡：暖棕红雪松木 */
+[data-theme="wood"] .bg-steer-bubble,
+[data-theme="wood"] .bg-\[\#4d3817\] {
+  border: 1.5px solid #c97e34 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #fbd8ad 0%, #f0c896 100%) !important;
+  color: #2e1400 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 6px rgba(201, 126, 52, 0.15) !important;
+}
+
+/* AI 执行与工具调用块卡片 (Execution / Thinking / ToolCall / Mcp) */
+[data-theme="wood"] .bg-white\/\[0\.04\],
+[data-theme="wood"] .bg-white\/\[0\.03\],
+[data-theme="wood"] .bg-white\/5 {
+  border: 1.5px solid #d4bea0 !important;
+  border-radius: 12px !important;
+  background-color: #f2e5cb !important;
+  box-shadow:
+    inset 1px 1px 2px rgba(120, 80, 20, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 输入控件：打磨圆润木槽 */
+[data-theme="wood"] input,
+[data-theme="wood"] textarea,
+[data-theme="wood"] select {
+  border: 1.5px solid #ba965e !important;
+  border-radius: 9999px !important;
+  background-color: #faf5e8 !important;
+  color: #2c1500 !important;
+  box-shadow:
+    inset 1px 1px 3px rgba(100, 60, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="wood"] textarea {
+  border-radius: 14px !important;
+}
+
+[data-theme="wood"] input:focus,
+[data-theme="wood"] textarea:focus,
+[data-theme="wood"] select:focus {
+  border-color: #c6781c !important;
+  outline: none !important;
+  box-shadow:
+    0 0 0 2px rgba(198, 120, 28, 0.25),
+    inset 1px 1px 2px rgba(100, 60, 10, 0.08) !important;
+}
+
+/* 选中文本：温暖金色高光 */
+[data-theme="wood"] ::selection {
+  background: rgba(234, 153, 33, 0.35) !important;
+  color: #1a0b00 !important;
+}
+
+/* 滚动条：圆润打磨黄木滑块 */
+[data-theme="wood"] ::-webkit-scrollbar-thumb,
+[data-theme="wood"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid #b8935c !important;
+  background: #d4b886 !important;
+  border-radius: 9999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="wood"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="wood"] .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: #c2a068 !important;
+}
+
+/* ========================================================
+ * Markdown 命令面板 & Agent 输入框命令/文件/模型面板魔改
+ * ======================================================== */
+[data-theme="wood"] .markdown-command-menu,
+[data-theme="wood"] [role="listbox"]:not(nav [role="listbox"]) {
+  border: 1.5px solid #ab8240 !important;
+  border-radius: 14px !important;
+  background-color: #ebdcb9 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
+    0 6px 18px rgba(80, 45, 10, 0.15) !important;
+}
+
+/* 面板选项 Item */
+[data-theme="wood"] .markdown-command-menu [role="option"],
+[data-theme="wood"] [role="listbox"] [role="option"] {
+  border: 1px solid transparent;
+  border-radius: 9999px !important;
+  color: #4a2c0d !important;
+  transition: all 120ms ease-in-out !important;
+}
+
+/* 面板选项悬停与激活选中高亮 */
+[data-theme="wood"] .markdown-command-menu [role="option"][aria-selected="true"],
+[data-theme="wood"] .markdown-command-menu [role="option"]:hover,
+[data-theme="wood"] [role="listbox"] [role="option"][aria-selected="true"],
+[data-theme="wood"] [role="listbox"] [role="option"]:hover {
+  background: linear-gradient(180deg, #fbedcc 0%, #e8cca0 100%) !important;
+  color: #241100 !important;
+  border: 1px solid #b88628 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 4px rgba(184, 134, 40, 0.12) !important;
+}
+
+[data-theme="wood"] .markdown-command-menu [role="option"][aria-selected="true"] span,
+[data-theme="wood"] [role="listbox"] [role="option"][aria-selected="true"] span {
+  color: #241100 !important;
+  font-weight: 600;
+}
+
+/* ========================================================
+ * 底部任务监控面板与长任务状态标签魔改
+ * ======================================================== */
+[data-theme="wood"] .bg-\[\#111116\] {
+  background-color: #ebd8b0 !important;
+  border: 1.5px solid #ab8240 !important;
+  border-radius: 14px 14px 0 0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 -2px 8px rgba(80, 45, 10, 0.08) !important;
+}
+
+[data-theme="wood"] button[aria-label="后台任务监控"] {
+  border: 1.5px solid #ab8240 !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(180deg, #fbedcc 0%, #e8cca0 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 2px 4px rgba(80, 45, 10, 0.08) !important;
+}
+
+/* ========================================================
+ * 文本与图标在浅暖黄背景下的对比度优化
+ * ======================================================== */
+[data-theme="wood"] .text-white {
+  color: #2c1500 !important;
+}
+
+[data-theme="wood"] .text-white\/90,
+[data-theme="wood"] .text-white\/80,
+[data-theme="wood"] .text-white\/70 {
+  color: #4a2c0d !important;
+}
+
+[data-theme="wood"] .text-white\/60,
+[data-theme="wood"] .text-white\/50,
+[data-theme="wood"] .text-white\/40,
+[data-theme="wood"] .text-white\/30,
+[data-theme="wood"] .text-white\/20 {
+  color: #78522b !important;
+}
+
+[data-theme="wood"] .border-white\/5,
+[data-theme="wood"] .border-white\/10,
+[data-theme="wood"] .border-white\/15,
+[data-theme="wood"] .border-white\/20 {
+  border-color: #c9ab73 !important;
+}
+
+[data-theme="wood"] .hover\:bg-white\/5:hover,
+[data-theme="wood"] .hover\:bg-white\/10:hover {
+  background-color: #dfcaa0 !important;
+}
+
+[data-theme="wood"] .markdown-preview {
+  color: #382009 !important;
+}
+
+[data-theme="wood"] .markdown-preview strong,
+[data-theme="wood"] .markdown-preview b {
+  color: #1a0b00 !important;
+}
+
+[data-theme="wood"] .markdown-preview code {
+  background: #ede0c6 !important;
+  color: #92400e !important;
+  border: 1px solid #d4bea0 !important;
+  border-radius: 6px !important;
+}
+
+[data-theme="wood"] .markdown-preview blockquote {
+  border-left-color: #c49d60 !important;
+  color: #6e4c27 !important;
+}

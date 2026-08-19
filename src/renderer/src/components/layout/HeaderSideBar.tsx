@@ -162,6 +162,7 @@ export const HeaderSideBar = ({
   const THEME_OPTIONS: { id: AppTheme; label: string }[] = [
     { id: "default", label: "Default" },
     { id: "minecraft", label: "Minecraft" },
+    { id: "wood", label: "Wood" },
   ]
 
   return (
@@ -249,7 +250,7 @@ export const HeaderSideBar = ({
                 </div>
               }
             >
-              <LxIconButton aria-label="切换主题" size="small" highlighted={theme === "minecraft"}>
+              <LxIconButton aria-label="切换主题" size="small" highlighted={theme !== "default"}>
                 <Palette className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>

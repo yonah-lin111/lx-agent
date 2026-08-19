@@ -22,6 +22,9 @@ describe("themeStore", () => {
     localStorage.setItem("lx_app_theme", "minecraft")
     expect(getInitialTheme()).toBe("minecraft")
 
+    localStorage.setItem("lx_app_theme", "wood")
+    expect(getInitialTheme()).toBe("wood")
+
     localStorage.setItem("lx_app_theme", "default")
     expect(getInitialTheme()).toBe("default")
   })
@@ -29,6 +32,9 @@ describe("themeStore", () => {
   it("should apply theme to documentElement attribute", () => {
     applyThemeToDom("minecraft")
     expect(document.documentElement.getAttribute("data-theme")).toBe("minecraft")
+
+    applyThemeToDom("wood")
+    expect(document.documentElement.getAttribute("data-theme")).toBe("wood")
 
     applyThemeToDom("default")
     expect(document.documentElement.getAttribute("data-theme")).toBe("default")
@@ -39,11 +45,17 @@ describe("themeStore", () => {
     expect(result.current.theme).toBe("default")
 
     act(() => {
-      result.current.setTheme("minecraft")
+      result.current.setTheme("wood")
     })
 
-    expect(result.current.theme).toBe("minecraft")
-    expect(localStorage.getItem("lx_app_theme")).toBe("minecraft")
-    expect(document.documentElement.getAttribute("data-theme")).toBe("minecraft")
+    expect(result.current.theme).toBe("wood")
+    expect(localStorage.getItem("lx_app_theme")).toBe("wood")
+    expect(document.documentElement.getAttribute("data-theme")).toBe("wood")
+
+    act(() => {
+      result.current.toggleTheme()
+    })
+
+    expect(result.current.theme).toBe("default")
   })
 })

@@ -2,6 +2,7 @@
 @import "@xterm/xterm/css/xterm.css";
 @import "./styles/themes/default.css";
 @import "./styles/themes/minecraft.css";
+@import "./styles/themes/wood.css";
 
 @theme {
   --font-size-xs: 13px;
