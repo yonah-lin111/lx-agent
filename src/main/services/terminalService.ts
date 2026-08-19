@@ -1,3 +1,4 @@
+import { exec } from "node:child_process"
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type {
@@ -239,6 +240,46 @@ alias egrep='egrep --color=auto'
     } catch (error) {
       console.error(`[TerminalService] Failed to resize terminal ${id}:`, error)
     }
+  }
+
+  /**
+   * 检查指定终端实例是否存在运行中的子进程/子任务。
+   */
+  async hasRunningProcess(id: string): Promise<boolean> {
+    const ptyProcess = this.ptyProcesses.get(id)
+    if (!ptyProcess || !ptyProcess.pid) return false
+
+    return new Promise<boolean>((resolve) => {
+      if (process.platform === "win32") {
+        exec(
+          `wmic process where (ParentProcessId=${ptyProcess.pid}) get ProcessId`,
+          (err, stdout) => {
+            if (err || !stdout) {
+              resolve(false)
+              return
+            }
+            const lines = stdout
+              .trim()
+              .split("\n")
+              .filter((line) => line.trim() && !line.includes("ProcessId"))
+            resolve(lines.length > 0)
+          },
+        )
+      } else {
+        exec(`pgrep -P ${ptyProcess.pid}`, (err, stdout) => {
+          if (err || !stdout) {
+            resolve(false)
+            return
+          }
+          const pids = stdout
+            .trim()
+            .split("\n")
+            .map((p) => p.trim())
+            .filter(Boolean)
+          resolve(pids.length > 0)
+        })
+      }
+    })
   }
 
   /**

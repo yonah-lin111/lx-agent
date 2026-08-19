@@ -5,6 +5,7 @@ export const TERMINAL_CHANNELS = {
   resize: "terminal:resize",
   kill: "terminal:kill",
   getDesktopPath: "terminal:getDesktopPath",
+  hasRunningProcess: "terminal:hasRunningProcess",
   data: (id: string): string => `terminal:data:${id}`,
   exit: (id: string): string => `terminal:exit:${id}`,
 } as const

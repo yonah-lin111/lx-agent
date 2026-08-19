@@ -15,6 +15,9 @@ interface TerminalTabsProps {
 export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element => {
   const tabs = useTerminalStore((state) => state.tabs)
   const activeTabId = useTerminalStore((state) => state.activeTabId)
+  const pendingCloseTabId = useTerminalStore((state) => state.pendingCloseTabId)
+  const setPendingCloseTabId = useTerminalStore((state) => state.setPendingCloseTabId)
+  const requestCloseTab = useTerminalStore((state) => state.requestCloseTab)
   const setActiveTab = useTerminalStore((state) => state.setActiveTab)
   const removeTab = useTerminalStore((state) => state.removeTab)
   const updateTabTitle = useTerminalStore((state) => state.updateTabTitle)
@@ -107,6 +110,11 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
           const isEditing = editingTabId === tab.id
+          const isConfirming = pendingCloseTabId === tab.id
+          const hasMultiplePanes = Object.keys(tab.panes).length > 1
+          const confirmContent = hasMultiplePanes
+            ? "终端包含正在运行的分屏/任务，确定关闭吗？"
+            : "当前终端有任务正在运行，确定关闭吗？"
 
           return (
             <div
@@ -147,17 +155,35 @@ export const TerminalTabs = ({ onAddTab }: TerminalTabsProps): React.JSX.Element
 
               <div
                 className={`flex shrink-0 items-center transition-opacity ${
-                  isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  isActive || isConfirming ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 }`}
               >
-                <LxTooltip content="关闭标签" placement="top">
+                <LxTooltip
+                  closeOnOutsideClick
+                  content={isConfirming ? confirmContent : "关闭标签"}
+                  open={isConfirming ? true : undefined}
+                  placement="top"
+                  title={isConfirming ? "确认关闭终端" : undefined}
+                  onCancel={() => setPendingCloseTabId(null)}
+                  onConfirm={
+                    isConfirming
+                      ? () => {
+                          removeTab(tab.id)
+                          setPendingCloseTabId(null)
+                        }
+                      : undefined
+                  }
+                  onOpenChange={(open) => {
+                    if (!open && isConfirming) setPendingCloseTabId(null)
+                  }}
+                >
                   <button
                     aria-label="关闭标签"
                     className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      removeTab(tab.id)
+                      void requestCloseTab(tab.id)
                     }}
                   >
                     <X className="h-2.5 w-2.5" />

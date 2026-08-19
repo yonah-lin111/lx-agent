@@ -51,6 +51,8 @@ export interface TerminalApi {
     kill: (id: string) => Promise<void>
     // 获取桌面目录路径作为默认兜底工作目录。
     getDesktopPath: () => Promise<string>
+    // 检查指定终端实例是否存在运行中的子进程任务。
+    hasRunningProcess: (id: string) => Promise<boolean>
     // 监听指定终端的数据输出事件。
     onData: (id: string, handler: (data: string) => void) => () => void
     // 监听指定终端的退出事件。

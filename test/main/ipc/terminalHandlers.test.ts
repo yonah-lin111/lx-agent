@@ -28,6 +28,7 @@ describe("terminal IPC handlers", () => {
       TERMINAL_CHANNELS.resize,
       TERMINAL_CHANNELS.kill,
       TERMINAL_CHANNELS.getDesktopPath,
+      TERMINAL_CHANNELS.hasRunningProcess,
     ].sort()
 
     expect(handle.mock.calls.map(([channel]) => channel).sort()).toEqual(expectedChannels)

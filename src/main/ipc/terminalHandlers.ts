@@ -1,6 +1,6 @@
 import type { CreateTerminalOptions } from "@shared/contracts/terminal"
 import { TERMINAL_CHANNELS } from "@shared/ipc/terminalChannels"
-import { ipcMain, type WebContents } from "electron"
+import { ipcMain } from "electron"
 import { terminalService } from "@/services/terminalService"
 
 // 校验终端创建参数（IPC 输入边界）。
@@ -60,5 +60,10 @@ export const registerTerminalHandlers = (): void => {
 
   ipcMain.handle(TERMINAL_CHANNELS.getDesktopPath, () => {
     return terminalService.getDesktopPath()
+  })
+
+  ipcMain.handle(TERMINAL_CHANNELS.hasRunningProcess, async (_event, id: unknown) => {
+    if (typeof id !== "string") return false
+    return terminalService.hasRunningProcess(id)
   })
 }

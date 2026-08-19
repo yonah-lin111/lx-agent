@@ -1,15 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 
+const mockHasRunningProcess = vi.fn()
+
 vi.mock("@/features/terminal/api/terminalApi", () => ({
   terminalApi: {
     kill: vi.fn(),
+    hasRunningProcess: (id: string) => mockHasRunningProcess(id),
   },
 }))
 
 describe("terminalStore", () => {
   beforeEach(() => {
-    useTerminalStore.setState({ tabs: [], activeTabId: null, terminalCounter: 1 })
+    vi.clearAllMocks()
+    mockHasRunningProcess.mockResolvedValue(false)
+    useTerminalStore.setState({
+      tabs: [],
+      activeTabId: null,
+      terminalCounter: 1,
+      pendingCloseTabId: null,
+      pendingClosePaneId: null,
+    })
   })
 
   it("支持新增标签页并自动递增默认标题与激活新建标签", () => {
@@ -164,5 +175,61 @@ describe("terminalStore", () => {
     expect(updatedTab.activePaneId).toBe(pane1Id)
     expect(updatedTab.title).toBe("main-server")
     expect(Object.keys(updatedTab.panes)).toHaveLength(1)
+  })
+
+  it("无运行任务时 requestCloseTab 直接关闭标签页", async () => {
+    mockHasRunningProcess.mockResolvedValue(false)
+    const tabId = useTerminalStore.getState().addTab()
+
+    const closed = await useTerminalStore.getState().requestCloseTab(tabId)
+    expect(closed).toBe(true)
+    expect(useTerminalStore.getState().tabs).toHaveLength(0)
+    expect(useTerminalStore.getState().pendingCloseTabId).toBeNull()
+  })
+
+  it("存在运行任务时 requestCloseTab 设置 pendingCloseTabId 进行二次确认", async () => {
+    mockHasRunningProcess.mockResolvedValue(true)
+    const tabId = useTerminalStore.getState().addTab()
+
+    const closed = await useTerminalStore.getState().requestCloseTab(tabId)
+    expect(closed).toBe(false)
+    expect(useTerminalStore.getState().tabs).toHaveLength(1)
+    expect(useTerminalStore.getState().pendingCloseTabId).toBe(tabId)
+  })
+
+  it("分屏存在运行任务时 requestCloseTab 同样需要二次确认", async () => {
+    const tabId = useTerminalStore.getState().addTab()
+    const pane2Id = useTerminalStore.getState().splitPane(tabId, "horizontal")!
+
+    // pane1 无任务，pane2 有任务
+    mockHasRunningProcess.mockImplementation((id: string) => Promise.resolve(id === pane2Id))
+
+    const closed = await useTerminalStore.getState().requestCloseTab(tabId)
+    expect(closed).toBe(false)
+    expect(useTerminalStore.getState().pendingCloseTabId).toBe(tabId)
+    expect(useTerminalStore.getState().tabs).toHaveLength(1)
+  })
+
+  it("无运行任务时 requestClosePane 直接关闭分屏", async () => {
+    mockHasRunningProcess.mockResolvedValue(false)
+    const tabId = useTerminalStore.getState().addTab()
+    const pane2Id = useTerminalStore.getState().splitPane(tabId, "horizontal")!
+
+    const closed = await useTerminalStore.getState().requestClosePane(tabId, pane2Id)
+    expect(closed).toBe(true)
+    expect(useTerminalStore.getState().pendingClosePaneId).toBeNull()
+    expect(Object.keys(useTerminalStore.getState().tabs[0]!.panes)).toHaveLength(1)
+  })
+
+  it("存在运行任务时 requestClosePane 设置 pendingClosePaneId 进行二次确认", async () => {
+    const tabId = useTerminalStore.getState().addTab()
+    const pane2Id = useTerminalStore.getState().splitPane(tabId, "horizontal")!
+
+    mockHasRunningProcess.mockImplementation((id: string) => Promise.resolve(id === pane2Id))
+
+    const closed = await useTerminalStore.getState().requestClosePane(tabId, pane2Id)
+    expect(closed).toBe(false)
+    expect(useTerminalStore.getState().pendingClosePaneId).toBe(pane2Id)
+    expect(Object.keys(useTerminalStore.getState().tabs[0]!.panes)).toHaveLength(2)
   })
 })

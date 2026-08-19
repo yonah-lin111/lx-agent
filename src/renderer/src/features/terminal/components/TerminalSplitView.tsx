@@ -39,10 +39,11 @@ export const TerminalSplitView = ({
         isActive={isTabActive}
         isExpanded={isExpanded}
         isFocused={node.paneId === activePaneId}
-        onClose={() => useTerminalStore.getState().removePane(tabId, node.paneId)}
+        onClose={() => void useTerminalStore.getState().requestClosePane(tabId, node.paneId)}
         onFocus={() => useTerminalStore.getState().setActivePane(tabId, node.paneId)}
         pane={pane}
         showHeader={showHeader}
+        tabId={tabId}
       />
     )
   }

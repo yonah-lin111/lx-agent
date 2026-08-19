@@ -23,6 +23,9 @@ export const terminalApi = {
   getDesktopPath: (): Promise<string> => {
     return window.api.terminal.getDesktopPath()
   },
+  hasRunningProcess: (id: string): Promise<boolean> => {
+    return window.api.terminal.hasRunningProcess(id)
+  },
   onData: (id: string, handler: (data: string) => void): (() => void) => {
     return window.api.terminal.onData(id, handler)
   },

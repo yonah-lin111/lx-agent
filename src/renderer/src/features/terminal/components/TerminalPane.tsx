@@ -4,11 +4,13 @@ import type React from "react"
 import { useEffect, useRef } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionRegistry"
+import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalPaneItem } from "@/features/terminal/types"
 import { resolveCwdDisplayName } from "@/features/terminal/utils"
 
 interface TerminalPaneProps {
   pane: TerminalPaneItem
+  tabId?: string
   isActive: boolean
   isFocused: boolean
   isExpanded: boolean
@@ -23,6 +25,7 @@ interface TerminalPaneProps {
  */
 export const TerminalPane = ({
   pane,
+  tabId,
   isActive,
   isFocused,
   isExpanded,
@@ -31,6 +34,11 @@ export const TerminalPane = ({
   onClose,
 }: TerminalPaneProps): React.JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const pendingClosePaneId = useTerminalStore((state) => state.pendingClosePaneId)
+  const setPendingClosePaneId = useTerminalStore((state) => state.setPendingClosePaneId)
+  const removePane = useTerminalStore((state) => state.removePane)
+
+  const isConfirming = pendingClosePaneId === pane.id
 
   // 1. 将常驻的 TerminalSession DOM 元素挂载到当前容器节点下
   useEffect(() => {
@@ -126,6 +134,13 @@ export const TerminalPane = ({
     session.term.focus()
   }
 
+  const handleConfirmClose = (): void => {
+    if (tabId) {
+      removePane(tabId, pane.id)
+    }
+    setPendingClosePaneId(null)
+  }
+
   return (
     <div
       className={`group relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111116] cursor-text transition-opacity duration-150 ${
@@ -151,7 +166,18 @@ export const TerminalPane = ({
             </span>
           </div>
           {onClose && (
-            <LxTooltip content="关闭分屏" placement="top">
+            <LxTooltip
+              closeOnOutsideClick
+              content={isConfirming ? "当前分屏有任务正在运行，确定关闭吗？" : "关闭分屏"}
+              open={isConfirming ? true : undefined}
+              placement="top"
+              title={isConfirming ? "确认关闭分屏" : undefined}
+              onCancel={() => setPendingClosePaneId(null)}
+              onConfirm={isConfirming ? handleConfirmClose : undefined}
+              onOpenChange={(open) => {
+                if (!open && isConfirming) setPendingClosePaneId(null)
+              }}
+            >
               <button
                 aria-label="关闭分屏"
                 className="flex h-4 w-4 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
