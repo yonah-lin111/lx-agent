@@ -6,17 +6,19 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { GhosttyTerminalView } from "@/features/terminal"
 
 // 展开态最小/最大高度（相对视口高度，单位 vh）。
-const MIN_HEIGHT_VH = 15
-const DEFAULT_HEIGHT_VH = 30
-const MAX_HEIGHT_VH = 50
+export const MIN_HEIGHT_VH = 15
+export const DEFAULT_HEIGHT_VH = 30
+export const MAX_HEIGHT_VH = 85
 
-// 约束高度到 [15vh, 50vh]。
-const clampHeight = (value: number): number =>
+// 约束高度到 [15vh, 85vh]。
+export const clampHeight = (value: number): number =>
   Math.min(Math.max(value, MIN_HEIGHT_VH), MAX_HEIGHT_VH)
 
 // 页面底边栏属性。
 interface BottomSideBarProps {
   children?: React.ReactNode
+  height?: number
+  onHeightChange?: (height: number) => void
   isCoveringRightSideBar: boolean
   isExpanded: boolean
   onCoveringRightSideBarChange: (isCoveringRightSideBar: boolean) => void
@@ -28,16 +30,28 @@ interface BottomSideBarProps {
  */
 export const BottomSideBar = ({
   children,
+  height: controlledHeight,
+  onHeightChange,
   isCoveringRightSideBar,
   isExpanded,
   onCoveringRightSideBarChange,
   onExpandedChange,
 }: BottomSideBarProps): React.JSX.Element => {
-  const [height, setHeight] = useState<number>(DEFAULT_HEIGHT_VH)
+  const [internalHeight, setInternalHeight] = useState<number>(DEFAULT_HEIGHT_VH)
+  const height = controlledHeight ?? internalHeight
   const [isResizing, setIsResizing] = useState(false)
   const resizeStartRef = useRef<{ startY: number; startHeight: number } | null>(null)
 
-  // 拖拽顶部边缘调整高度：最小 15vh，最大 50vh。
+  const updateHeight = (next: number): void => {
+    const clamped = clampHeight(next)
+    if (onHeightChange) {
+      onHeightChange(clamped)
+    } else {
+      setInternalHeight(clamped)
+    }
+  }
+
+  // 拖拽顶部边缘调整高度：最小 15vh，最大 85vh。
   const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = { startY: event.clientY, startHeight: height }
     setIsResizing(true)
@@ -49,7 +63,7 @@ export const BottomSideBar = ({
     if (!start) return
     // 向上拖拽（clientY 变小）高度增加，向下拖拽（clientY 变大）高度减小。
     const next = start.startHeight + (start.startY - event.clientY) / (window.innerHeight / 100)
-    setHeight(clampHeight(next))
+    updateHeight(next)
   }
 
   const handleResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {
