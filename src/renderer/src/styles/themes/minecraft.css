@@ -1,0 +1,597 @@
+/**
+ * 我的世界 (Minecraft) 风格暗色主题样式
+ * 特征：安山岩/黑曜石石质中深灰底色、立体凹凸浮雕像素边框槽、附魔书羊皮暗墨编辑区、末影箱紫黑 AI 气泡、多阶梯矿物色树形列表
+ */
+[data-theme="minecraft"] {
+  --color-theme-bg: #1c1c26;
+  --color-theme-surface: #262636;
+  --color-theme-surface-hover: #343448;
+  --color-theme-border: #48485c;
+  --color-theme-border-strong: #64647c;
+  --color-theme-text: #f0f0f8;
+  --color-theme-text-muted: #a6a6bc;
+  --color-theme-text-subtle: #727288;
+  --color-theme-accent: #55ff55;
+  --theme-font-family:
+    "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
+    "Microsoft YaHei", monospace;
+  --theme-radius-base: 0px;
+
+  /* 覆盖 Tailwind 气泡全局变量：经典矿物暗色系（整体适度提亮） */
+  --color-user-bubble: #24385a; /* 青金石矿石深蓝 */
+  --color-steer-bubble: #4e3b20; /* 金矿石暗暖棕 */
+  --color-project-prompt-bubble: #1a4837; /* 绿宝石矿石深翠绿 */
+  --color-global-prompt-bubble: #372854; /* 末影水晶暗紫 */
+
+  color: #f0f0f8;
+  background: #1c1c26;
+  font-family: var(--theme-font-family);
+  image-rendering: auto;
+}
+
+/* 全局直角重置与字体继承 */
+[data-theme="minecraft"] * {
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] body {
+  background: #1c1c26;
+  color: #f0f0f8;
+}
+
+/* 经典 Minecraft 容器立体凹凸像素槽：外深黑 + 内凸亮边 + 底部阴影边 */
+[data-theme="minecraft"] header,
+[data-theme="minecraft"] aside,
+[data-theme="minecraft"] nav,
+[data-theme="minecraft"] section,
+[data-theme="minecraft"] [role="region"],
+[data-theme="minecraft"] [role="dialog"],
+[data-theme="minecraft"] [role="tooltip"] {
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    3px 3px 0px 0px #000000;
+  background-color: #262636 !important;
+}
+
+/* ========================================================
+ * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
+ * ======================================================== */
+/* 基础按钮风格（非侧栏列表按钮） */
+[data-theme="minecraft"] button:not([role="button"]),
+[data-theme="minecraft"] [role="button"] {
+  transition: none !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000;
+}
+
+/* --------------------------------------------------------
+ * 1. ProjectNavigationList 精准三级层级背景与边框
+ * -------------------------------------------------------- */
+
+/* Level 1: 项目根节点（Boxes 图标容器）—— 较亮黑曜石基底 + 明显外凸高光 */
+[data-theme="minecraft"] [data-item-level="project"],
+[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80) {
+  background-color: #38384e !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] [data-item-level="project"]:hover,
+[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80):hover {
+  background-color: #494964 !important;
+  color: #ffffff !important;
+}
+
+/* Level 2: 文件夹头节点（Folder 图标容器）—— 安山岩中灰槽 */
+[data-theme="minecraft"] [data-item-level="folder"],
+[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80) {
+  background-color: #2c2c3c !important;
+  color: #e2e2ee !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] [data-item-level="folder"]:hover,
+[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80):hover {
+  background-color: #3b3b4f !important;
+  color: #ffffff !important;
+}
+
+/* Level 3: 具体条目 Prompt Item（File 图标容器）—— 深石墨暗槽 */
+[data-theme="minecraft"] [data-item-level="prompt"],
+[data-theme="minecraft"] div[role="button"]:has(svg.lucide-file) {
+  background-color: #1e1e2a !important;
+  color: #c4c4d6 !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] [data-item-level="prompt"]:hover,
+[data-theme="minecraft"] div[role="button"]:has(svg.lucide-file):hover {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+}
+
+/* --------------------------------------------------------
+ * 2. UI Preview 组件展示页左侧栏层级区分
+ * -------------------------------------------------------- */
+/* Level 1: 大分组头节点（深黑曜石承托感） */
+[data-theme="minecraft"] nav > div > button[aria-expanded] {
+  background-color: #38384e !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] nav > div > button[aria-expanded]:hover {
+  background-color: #494964 !important;
+}
+
+/* Level 2: 具体组件项按钮（深石墨暗槽） */
+[data-theme="minecraft"] nav > div > div > button {
+  background-color: #1e1e2a !important;
+  color: #c4c4d6 !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] nav > div > div > button:hover {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+}
+
+/* --------------------------------------------------------
+ * 3. 激活/选中高亮态（精确匹配当前选中的 Prompt 与组件）
+ * -------------------------------------------------------- */
+[data-theme="minecraft"] div[role="button"].bg-white\/10,
+[data-theme="minecraft"] button[aria-current="page"] {
+  background-color: #14141c !important;
+  color: #55ff55 !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #55ff55 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 8px rgba(85, 255, 85, 0.2) !important;
+}
+
+[data-theme="minecraft"] div[role="button"].bg-white\/10 span,
+[data-theme="minecraft"] button[aria-current="page"] span {
+  color: #55ff55 !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] div[role="button"].bg-white\/10 svg.lucide-file,
+[data-theme="minecraft"] button[aria-current="page"] svg {
+  color: #55ff55 !important;
+}
+
+/* ========================================================
+ * Markdown 编辑区魔改（附魔台/附魔书暗黑沙盒质感）
+ * ======================================================== */
+[data-theme="minecraft"] .cm-editor {
+  background-color: #1a1a24 !important;
+  color: #e4e4ee !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-scroller {
+  background-color: #1a1a24 !important;
+}
+
+/* 行号槽：石质刻度感 */
+[data-theme="minecraft"] .cm-editor .cm-gutters {
+  background-color: #222230 !important;
+  border-right: 2px solid #000000 !important;
+  color: #78788c !important;
+  box-shadow: inset -1px 0px 0px 0px rgba(255, 255, 255, 0.08);
+}
+
+/* 当前光标行高亮：经验条荧光绿微光槽 */
+[data-theme="minecraft"] .cm-editor .cm-activeLine,
+[data-theme="minecraft"] .cm-editor .cm-activeLineGutter {
+  background-color: rgba(85, 255, 85, 0.1) !important;
+}
+
+/* 编辑器光标：2px 宽经验条荧光绿 */
+[data-theme="minecraft"] .cm-editor .cm-cursor {
+  border-left: 2px solid #55ff55 !important;
+}
+
+/* 编辑器选区：钻石高亮天蓝 */
+[data-theme="minecraft"] .cm-editor .cm-selectionBackground,
+[data-theme="minecraft"] .cm-editor ::selection {
+  background-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Markdown 标题魔改：Minecraft 金黄与钻石蓝高光 */
+[data-theme="minecraft"] .markdown-preview h1 {
+  color: #ffaa00 !important;
+  text-shadow: 1px 1px 0px #000000;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 4px;
+}
+
+[data-theme="minecraft"] .markdown-preview h2 {
+  color: #55ffff !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .markdown-preview h3,
+[data-theme="minecraft"] .markdown-preview h4 {
+  color: #55ff55 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* Markdown 预览区与 CodeMirror 编辑区代码块魔改：深黑曜石内嵌凹槽 */
+[data-theme="minecraft"] .markdown-preview pre,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block,
+[data-theme="minecraft"] .cm-md-code-fence-start-line,
+[data-theme="minecraft"] .cm-md-code-fence-middle-line,
+[data-theme="minecraft"] .cm-md-code-fence-end-line {
+  background-color: #14141d !important;
+}
+
+[data-theme="minecraft"] .cm-md-code-fence-start-line {
+  border: 2px solid #000000 !important;
+  border-bottom: 1px solid #2e2e40 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="minecraft"] .cm-md-code-fence-middle-line {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-code-fence-end-line {
+  border: 2px solid #000000 !important;
+  border-top: none !important;
+  box-shadow: inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* ========================================================
+ * Markdown 编辑区 &&& 模板块魔改（CodeMirror 逐行装饰）
+ * 移除与编辑区不一致的背景色，使模板块与编辑区背景无缝融合
+ * ======================================================== */
+[data-theme="minecraft"] .cm-md-template-start-line {
+  border: 2px solid #443c58 !important;
+  border-bottom: 2px solid #282436 !important;
+  background-color: transparent !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    2px 2px 0px 0px #000000 !important;
+  color: #e6e6f2 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-middle-line,
+[data-theme="minecraft"] .cm-md-template-comment-line {
+  border-left: 2px solid #443c58 !important;
+  border-right: 2px solid #443c58 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-end-line {
+  border: 2px solid #443c58 !important;
+  border-top: none !important;
+  background-color: transparent !important;
+  box-shadow:
+    inset 0px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 编辑区模板块在进行中/已完成状态下的边框暗色调：保持背景透明 */
+[data-theme="minecraft"] .cm-md-template-line-in-progress {
+  border-left-color: #6e4e18 !important;
+  border-right-color: #6e4e18 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-in-progress {
+  border-color: #6e4e18 !important;
+  border-bottom-color: #382810 !important;
+  background-color: transparent !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.15),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-in-progress {
+  border-color: #6e4e18 !important;
+  border-top: none !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-line-done {
+  border-left-color: #235c37 !important;
+  border-right-color: #235c37 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-done {
+  border-color: #235c37 !important;
+  border-bottom-color: #123420 !important;
+  background-color: transparent !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.15),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-done {
+  border-color: #235c37 !important;
+  border-top: none !important;
+}
+
+/* 编辑区行内高亮标记：命令、标题、状态、ID、WT */
+[data-theme="minecraft"] .cm-md-template-marker {
+  color: #ffaa00 !important;
+  font-weight: bold;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .cm-md-template-command {
+  background-color: #2f2242 !important;
+  color: #be8aef !important;
+  border: 1px solid #483863 !important;
+  padding: 1px 4px !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-title {
+  background-color: #382a14 !important;
+  color: #ebd076 !important;
+  border: 1px solid #5a4420 !important;
+  padding: 1px 4px !important;
+  text-decoration: none !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-done {
+  background-color: #143821 !important;
+  color: #55e055 !important;
+  border: 1px solid #235c37 !important;
+  padding: 1px 4px !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-in-progress {
+  background-color: #422d0e !important;
+  color: #f0a716 !important;
+  border: 1px solid #6e4e18 !important;
+  padding: 1px 4px !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-id,
+[data-theme="minecraft"] .cm-md-template-wt {
+  background-color: #222230 !important;
+  color: #9e9eb0 !important;
+  border: 1px solid #000000 !important;
+  padding: 1px 4px !important;
+}
+
+/* 编辑区模板块右侧操作栏按钮（复制/折叠/状态切换/删除） */
+[data-theme="minecraft"] .cm-template-block-action-wrap button,
+[data-theme="minecraft"] .cm-code-block-action-wrap button {
+  border: 1px solid #000000 !important;
+  background-color: #2e2e42 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+  padding: 3px !important;
+}
+
+[data-theme="minecraft"] .cm-template-block-action-wrap button:hover,
+[data-theme="minecraft"] .cm-code-block-action-wrap button:hover {
+  background-color: #42425c !important;
+}
+
+/* ========================================================
+ * Markdown 预览区 &&& 模板块魔改（HTML 渲染树）
+ * ======================================================== */
+[data-theme="minecraft"] .markdown-preview .markdown-template-block {
+  border: 2px solid #000000 !important;
+  background-color: #171520 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000 !important;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-template-block-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #241e34 !important;
+  color: #e6e6f2 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 预览区模板块状态标签高光魔改：矿石经典成色 */
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="todo"] {
+  background-color: #303042 !important;
+  color: #a8a8b8 !important;
+  border: 1px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="in_progress"] {
+  background-color: #523912 !important;
+  color: #ffaa00 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 6px rgba(255, 170, 0, 0.3) !important;
+}
+
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="done"] {
+  background-color: #17482a !important;
+  color: #55ff55 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 6px rgba(85, 255, 85, 0.3) !important;
+}
+
+/* 模板块内部注释行：深附魔羊皮灰墨色 */
+[data-theme="minecraft"] .markdown-template-comment {
+  color: #7e7e96 !important;
+  font-style: italic;
+  font-family: var(--theme-font-family);
+}
+
+/* ========================================================
+ * Agent 消息列表与 AI 气泡魔改（末影箱深紫 / 矿石凹槽）
+ * ======================================================== */
+[data-theme="minecraft"] .bg-\[\#212121\] {
+  background-color: #242434 !important;
+}
+
+[data-theme="minecraft"] .bg-\[\#171717\] {
+  background-color: #171722 !important;
+}
+
+/* AI 消息气泡魔改：末影箱深黑紫石质槽，配合 2px 立体阴影 */
+[data-theme="minecraft"] [data-assistant-bubble="true"],
+[data-theme="minecraft"] .bg-\[\#303030\],
+[data-theme="minecraft"] .bg-\[\#363e4c\] {
+  border: 2px solid #000000 !important;
+  background-color: #221e2e !important;
+  color: #ececf6 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    3px 3px 0px 0px #000000 !important;
+}
+
+/* 用户消息气泡：青金石深蓝黑曜石槽 */
+[data-theme="minecraft"] .bg-user-bubble {
+  border: 2px solid #000000 !important;
+  background-color: #24385a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 即时插话消息气泡：金矿石暗暖棕槽 */
+[data-theme="minecraft"] .bg-steer-bubble,
+[data-theme="minecraft"] .bg-\[\#4d3817\] {
+  border: 2px solid #000000 !important;
+  background-color: #4e3b20 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* AI 执行与工具调用块卡片 (Execution / Thinking / ToolCall / Mcp) 魔改：红石暗矿石内凹槽 */
+[data-theme="minecraft"] .bg-white\/\[0\.04\],
+[data-theme="minecraft"] .bg-white\/\[0\.03\],
+[data-theme="minecraft"] .bg-white\/5 {
+  border: 2px solid #000000 !important;
+  background-color: #1a1824 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08);
+}
+
+/* 经典 Minecraft 输入框：深内凹槽感 */
+[data-theme="minecraft"] input,
+[data-theme="minecraft"] textarea,
+[data-theme="minecraft"] select {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08);
+}
+
+/* 选中文本：钻石矿石天蓝微光 */
+[data-theme="minecraft"] ::selection {
+  background: rgba(56, 189, 248, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* 滚动条 Minecraft 风格：硬边缘石质滑块 */
+[data-theme="minecraft"] ::-webkit-scrollbar-thumb,
+[data-theme="minecraft"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid #000000 !important;
+  background: #464658 !important;
+  border-radius: 0 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="minecraft"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="minecraft"] .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: #58586e !important;
+}
+
+/* ========================================================
+ * Markdown 命令面板 & Agent 输入框命令/文件/模型面板魔改
+ * ======================================================== */
+[data-theme="minecraft"] .markdown-command-menu,
+[data-theme="minecraft"] [role="listbox"]:not(nav [role="listbox"]) {
+  border: 2px solid #000000 !important;
+  background-color: #242436 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.14),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 4px 0px 0px #000000 !important;
+}
+
+/* 面板选项 Item */
+[data-theme="minecraft"] .markdown-command-menu [role="option"],
+[data-theme="minecraft"] [role="listbox"] [role="option"] {
+  border: 1px solid transparent;
+  transition: none !important;
+}
+
+/* 面板选项悬停与激活选中高亮 */
+[data-theme="minecraft"] .markdown-command-menu [role="option"][aria-selected="true"],
+[data-theme="minecraft"] .markdown-command-menu [role="option"]:hover,
+[data-theme="minecraft"] [role="listbox"] [role="option"][aria-selected="true"],
+[data-theme="minecraft"] [role="listbox"] [role="option"]:hover {
+  background-color: #14141c !important;
+  color: #55ff55 !important;
+  border: 1px solid #000000 !important;
+  border-left: 3px solid #55ff55 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.2) !important;
+}
+
+[data-theme="minecraft"] .markdown-command-menu [role="option"][aria-selected="true"] span,
+[data-theme="minecraft"] [role="listbox"] [role="option"][aria-selected="true"] span {
+  color: #55ff55 !important;
+}
+
+/* ========================================================
+ * 底部任务监控面板与长任务状态标签魔改
+ * ======================================================== */
+[data-theme="minecraft"] .bg-\[\#111116\] {
+  background-color: #14141d !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] button[aria-label="后台任务监控"] {
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
+@import "./styles/themes/default.css";
+@import "./styles/themes/minecraft.css";
 
 @theme {
   --font-size-xs: 13px;
