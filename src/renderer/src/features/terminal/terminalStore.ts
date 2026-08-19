@@ -8,6 +8,7 @@ import {
 } from "@/features/terminal/splitTreeUtils"
 import { disposeTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { SplitDirection, TerminalPaneItem, TerminalTabItem } from "@/features/terminal/types"
+import { resolveCwdDisplayName } from "@/features/terminal/utils"
 
 // 终端状态存储接口。
 interface TerminalStoreState {
@@ -173,9 +174,11 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const activePane = tab.panes[targetPaneId]
     const effectiveCwd = cwd || activePane?.cwd || tab.cwd
 
+    const newPaneTitle = resolveCwdDisplayName(effectiveCwd)
+
     const newPane: TerminalPaneItem = {
       id: newPaneId,
-      title: `Terminal ${get().terminalCounter}`,
+      title: newPaneTitle,
       cwd: effectiveCwd,
       projectId: tab.projectId,
       itemId: tab.itemId,
@@ -185,16 +188,17 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const nextRootNode = splitNodeAt(tab.rootNode, targetPaneId, newPaneId, direction)
 
     set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId
-          ? {
-              ...t,
-              panes: { ...t.panes, [newPaneId]: newPane },
-              rootNode: nextRootNode,
-              activePaneId: newPaneId,
-            }
-          : t,
-      ),
+      tabs: state.tabs.map((t) => {
+        if (t.id !== tabId) return t
+        const nextTitle = !t.customTitle && newPaneTitle ? newPaneTitle : t.title
+        return {
+          ...t,
+          panes: { ...t.panes, [newPaneId]: newPane },
+          rootNode: nextRootNode,
+          activePaneId: newPaneId,
+          title: nextTitle,
+        }
+      }),
     }))
 
     return newPaneId

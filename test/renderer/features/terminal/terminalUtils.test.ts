@@ -80,3 +80,19 @@ describe("terminal utils - resolveInitialTerminalCwd", () => {
     expect(cwd).toBe("/Users/mock/Desktop")
   })
 })
+
+describe("terminal utils - resolveCwdDisplayName", () => {
+  it("正确提取路径的末级目录名", async () => {
+    const { resolveCwdDisplayName } = await import("@/features/terminal/utils")
+    expect(resolveCwdDisplayName("/Users/yonah/projects/agent/lx-agent")).toBe("lx-agent")
+    expect(resolveCwdDisplayName("/Users/yonah/projects/agent/lx-agent/")).toBe("lx-agent")
+    expect(resolveCwdDisplayName("/repo/sub-dir")).toBe("sub-dir")
+  })
+
+  it("对根目录、空值或未定义回退兜底", async () => {
+    const { resolveCwdDisplayName } = await import("@/features/terminal/utils")
+    expect(resolveCwdDisplayName("/")).toBe("/")
+    expect(resolveCwdDisplayName("")).toBe("~")
+    expect(resolveCwdDisplayName(undefined)).toBe("~")
+  })
+})

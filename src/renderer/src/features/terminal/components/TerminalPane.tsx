@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionRegistry"
 import type { TerminalPaneItem } from "@/features/terminal/types"
+import { resolveCwdDisplayName } from "@/features/terminal/utils"
 
 interface TerminalPaneProps {
   pane: TerminalPaneItem
@@ -146,7 +147,7 @@ export const TerminalPane = ({
               className={`h-3 w-3 shrink-0 ${isFocused ? "text-white/70" : "text-white/30"}`}
             />
             <span className="truncate font-mono text-[11px] leading-none">
-              {pane.title || "Terminal"}
+              {pane.title || resolveCwdDisplayName(pane.cwd)}
             </span>
           </div>
           {onClose && (

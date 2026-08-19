@@ -51,14 +51,18 @@ describe("terminalStore", () => {
     expect(useTerminalStore.getState().activeTabId).toBeNull()
   })
 
-  it("支持分屏并在 Store 中调整分屏比例", () => {
-    const tabId = useTerminalStore.getState().addTab()
-    const newPaneId = useTerminalStore.getState().splitPane(tabId, "horizontal")
+  it("支持分屏并在 Store 中调整分屏比例，新分屏默认标题使用工作目录名而非 Terminal", () => {
+    const tabId = useTerminalStore.getState().addTab({ cwd: "/workspace/my-feature" })
+    const newPaneId = useTerminalStore
+      .getState()
+      .splitPane(tabId, "horizontal", "/workspace/backend-api")
     expect(newPaneId).toBeTruthy()
 
     const tab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
     expect(tab).toBeDefined()
     expect(Object.keys(tab!.panes)).toHaveLength(2)
+    expect(tab!.panes[newPaneId!]?.title).toBe("backend-api")
+    expect(tab!.title).toBe("backend-api")
     expect(tab!.rootNode.type).toBe("split")
 
     if (tab!.rootNode.type === "split") {
@@ -82,7 +86,7 @@ describe("terminalStore", () => {
   })
 
   it("支持更新分屏标题并同步至活跃标签页标题", () => {
-    const tabId = useTerminalStore.getState().addTab()
+    useTerminalStore.getState().addTab()
     const tab = useTerminalStore.getState().tabs[0]!
     const paneId = tab.activePaneId
 
