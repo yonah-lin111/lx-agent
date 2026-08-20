@@ -2,6 +2,7 @@ import { FileText, Loader2 } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 interface AgentMessageFile {
   name: string
@@ -66,8 +67,9 @@ const ImageItem = ({ file }: { file: AgentMessageFile }) => {
 }
 
 const FileItem = ({ file }: { file: AgentMessageFile }) => {
+  const { t } = useTranslation()
   const extension = file.extension || file.name.split(".").pop()?.toUpperCase() || "UNKNOWN"
-  const sizeStr = file.size || "未知大小"
+  const sizeStr = file.size || t("agent.unknownSize")
 
   return (
     <LxTooltip content={<span className="text-xs font-semibold">{file.name}</span>} placement="top">

@@ -3,6 +3,7 @@ import type React from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { useTranslation } from "@/i18n"
 
 // 思考块组件属性类型。
 interface AgentThinkingBlockProps {
@@ -19,6 +20,7 @@ export const AgentThinkingBlock = ({
   content,
   isGenerating = false,
 }: AgentThinkingBlockProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -44,7 +46,7 @@ export const AgentThinkingBlock = ({
       <div className="min-w-0">
         <button
           type="button"
-          aria-label="思考过程"
+          aria-label={t("agent.thinkingProcess")}
           aria-expanded={isExpanded}
           className="agent-thinking-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}

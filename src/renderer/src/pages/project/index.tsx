@@ -6,6 +6,7 @@ import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectEditor } from "@/features/project/hooks/useProjectEditor"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
+import { useTranslation } from "@/i18n"
 
 // 防止 Zustand 选择器因返回新数组而重复渲染。
 const EMPTY_ENABLED_FOLDER_PATHS: string[] = []
@@ -14,6 +15,7 @@ const EMPTY_ENABLED_FOLDER_PATHS: string[] = []
  * 渲染项目条目页面。
  */
 export const ProjectPage = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
   const {
@@ -68,7 +70,7 @@ export const ProjectPage = (): React.JSX.Element => {
 
   return (
     <div className="relative flex min-w-0 flex-1">
-      <LxLoadingOverlay isLoading={isItemLoading} text="Loading item..." />
+      <LxLoadingOverlay isLoading={isItemLoading} text={t("project.loadingItem")} />
       {!isItemLoading && hasItem && (
         <LxMarkdownEditor
           key={itemId}
@@ -92,12 +94,12 @@ export const ProjectPage = (): React.JSX.Element => {
       )}
       {!isItemLoading && !itemId && (
         <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
-          <span className="text-sm text-white/60">请选择一个条目</span>
+          <span className="text-sm text-white/60">{t("project.selectItemEmpty")}</span>
         </div>
       )}
       {!isItemLoading && itemId && !hasItem && (
         <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
-          <span className="text-sm text-white/60">未找到条目</span>
+          <span className="text-sm text-white/60">{t("project.itemNotFound")}</span>
         </div>
       )}
     </div>

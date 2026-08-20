@@ -4,7 +4,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import type { MarkdownTableSize, MarkdownToolbarAction } from "@/components/ui/LxMarkdown/types"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
 
 // 工具栏属性。

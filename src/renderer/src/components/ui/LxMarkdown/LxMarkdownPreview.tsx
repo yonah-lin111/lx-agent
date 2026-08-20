@@ -85,7 +85,10 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
       aria-label={t("markdown.copyCode")}
       preset={isCopied ? "confirm" : undefined}
       size="small"
-      title={{ content: isCopied ? t("markdown.copiedCode") : t("markdown.copyCode"), placement: "bottom" }}
+      title={{
+        content: isCopied ? t("markdown.copiedCode") : t("markdown.copyCode"),
+        placement: "bottom",
+      }}
       onClick={copyCode}
     >
       {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -131,7 +134,10 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
       aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
       aria-expanded={isExpanded}
       size="small"
-      title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "bottom" }}
+      title={{
+        content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"),
+        placement: "bottom",
+      }}
       onClick={toggleContent}
     >
       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

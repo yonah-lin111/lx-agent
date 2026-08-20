@@ -53,7 +53,7 @@ export const getShellConfig = (): ShellConfig => {
     }
     const bashOnPath = findBashOnPath()
     if (bashOnPath) return { shell: bashOnPath, args: ["-c"] }
-    throw new Error("未找到 bash shell。请安装 Git for Windows 或将 bash 加入 PATH。")
+    throw new Error("bash shell not found. Please install Git for Windows or add bash to PATH.")
   }
 
   if (existsSync("/bin/bash")) return { shell: "/bin/bash", args: ["-c"] }
@@ -131,7 +131,7 @@ export class LocalJobRegistry {
     )
     if (runningJobsInSession.length >= MAX_CONCURRENT_JOBS_PER_SESSION) {
       throw new Error(
-        `当前会话后台任务并发超限（最多同时运行 ${MAX_CONCURRENT_JOBS_PER_SESSION} 个任务）。请使用 job_kill 终止无用任务后再试。`,
+        `Session background job concurrency limit reached (maximum ${MAX_CONCURRENT_JOBS_PER_SESSION} concurrent jobs). Please kill inactive jobs using job_kill before starting new ones.`,
       )
     }
 
@@ -215,11 +215,7 @@ export class LocalJobRegistry {
     child.on("exit", (code, signal) => {
       this.settleJob(
         jobRecord,
-        jobRecord.status === "stopping"
-          ? "killed"
-          : code === 0
-            ? "completed"
-            : "failed",
+        jobRecord.status === "stopping" ? "killed" : code === 0 ? "completed" : "failed",
         code !== null ? `exit code: ${code}` : signal ? `signal: ${signal}` : undefined,
       )
     })
@@ -296,7 +292,7 @@ export class LocalJobRegistry {
     const job = this.jobs.get(jobId)
     if (!job) return null
     if (callerSessionId && job.sessionId !== callerSessionId) {
-      throw new Error(`拒绝跨会话访问后台任务: ${jobId}`)
+      throw new Error(`Cross-session access to background job denied: ${jobId}`)
     }
     if (job.spillFilePath && existsSync(job.spillFilePath)) {
       try {
@@ -323,7 +319,7 @@ export class LocalJobRegistry {
     const job = this.jobs.get(jobId)
     if (!job) return null
     if (callerSessionId && job.sessionId !== callerSessionId) {
-      throw new Error(`拒绝跨会话访问后台任务: ${jobId}`)
+      throw new Error(`Cross-session access to background job denied: ${jobId}`)
     }
 
     if (mode === "full") {
@@ -385,10 +381,10 @@ export class LocalJobRegistry {
   ): Promise<{ ok: boolean; status?: JobStatus; error?: string }> {
     const job = this.jobs.get(jobId)
     if (!job) {
-      return { ok: false, error: `未找到后台任务: ${jobId}` }
+      return { ok: false, error: `Background job not found: ${jobId}` }
     }
     if (callerSessionId && job.sessionId !== callerSessionId) {
-      return { ok: false, error: `拒绝跨会话终止后台任务: ${jobId}` }
+      return { ok: false, error: `Cross-session termination of background job denied: ${jobId}` }
     }
 
     if (job.status !== "running" && job.status !== "stopping") {
@@ -421,10 +417,10 @@ export class LocalJobRegistry {
   ): Promise<{ ok: boolean; error?: string }> {
     const job = this.jobs.get(jobId)
     if (!job) {
-      return { ok: false, error: `未找到后台任务: ${jobId}` }
+      return { ok: false, error: `Background job not found: ${jobId}` }
     }
     if (callerSessionId && job.sessionId !== callerSessionId) {
-      return { ok: false, error: `拒绝跨会话移除后台任务: ${jobId}` }
+      return { ok: false, error: `Cross-session removal of background job denied: ${jobId}` }
     }
 
     if (job.status === "running" || job.status === "stopping") {

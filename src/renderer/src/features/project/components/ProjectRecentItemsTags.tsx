@@ -12,6 +12,7 @@ import {
   useRecentItemsStore,
 } from "@/features/project/recentItemsStore"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
+import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 渲染「项目/文件夹/条目」单行标签文本。
@@ -115,6 +116,7 @@ const renderCardDetails = (card: RecentItemCard): React.ReactNode => (
 export const ProjectRecentItemsTags = (): React.JSX.Element => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { t } = useTranslation()
   const itemId = searchParams.get("itemId")
   const recentIds = useRecentItemsStore((state) => state.ids)
   const removeRecent = useRecentItemsStore((state) => state.remove)
@@ -224,7 +226,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
   return (
     <div className="flex h-6 min-w-0 flex-1 items-center gap-1">
       <LxIconButton
-        aria-label="向左滚动"
+        aria-label={t("project.scrollLeft")}
         disabled={!canScrollLeft}
         size="small"
         onClick={() => handleScroll("left")}
@@ -236,7 +238,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
         className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
         {cards === null ? null : cards.length === 0 ? (
-          <span className="whitespace-nowrap text-white/40">暂无最近打开</span>
+          <span className="whitespace-nowrap text-white/40">{t("project.noProjects")}</span>
         ) : (
           cards.map((card) => {
             const isActive = card.id === itemId
@@ -272,7 +274,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                     prefix={<File className="h-3 w-3" />}
                     suffix={
                       <span
-                        aria-label="移出最近打开"
+                        aria-label={t("agent.removeFromRecent")}
                         className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
                         role="button"
                         onClick={(event) => {
@@ -293,20 +295,20 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
         )}
       </div>
       <LxIconButton
-        aria-label="清除最近打开记录"
+        aria-label={t("agent.clearRecentRecords")}
         disabled={recentIds.length === 0}
         size="small"
         title={{
-          content: "清除后无法恢复，确定清除所有最近打开记录吗？",
+          content: t("project.deleteFolderConfirm"),
           placement: "bottom",
-          title: "清除最近记录",
+          title: t("agent.clearRecentRecords"),
           onConfirm: clearRecent,
         }}
       >
         <BrushCleaning className="h-3.5 w-3.5" />
       </LxIconButton>
       <LxIconButton
-        aria-label="向右滚动"
+        aria-label={t("project.scrollRight")}
         disabled={!canScrollRight}
         size="small"
         onClick={() => handleScroll("right")}

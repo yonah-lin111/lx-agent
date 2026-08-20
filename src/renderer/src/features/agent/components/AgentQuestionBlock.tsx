@@ -106,7 +106,7 @@ export const AgentQuestionBlock = ({
       <div className="agent-question-block my-0.5 min-w-0">
         <button
           type="button"
-          aria-label="已作答问题"
+          aria-label={t("agent.answeredQuestions")}
           aria-expanded={isExpanded}
           className="agent-question-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] transition-all duration-200 hover:text-white/70 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}

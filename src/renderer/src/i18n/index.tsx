@@ -1,5 +1,5 @@
 import type { Locale } from "@shared/settings"
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { en, type TranslationDictionary } from "./locales/en"
@@ -91,7 +91,8 @@ export const I18nProvider = ({ children }: I18nProviderProps): React.JSX.Element
 
   const t = (key: TranslationKey, params?: Record<string, string | number>): string => {
     const dict = dictionaries[locale] ?? dictionaries.en
-    let translation: string = getNestedValue(dict, key) ?? getNestedValue(dictionaries.en, key) ?? key
+    let translation: string =
+      getNestedValue(dict, key) ?? getNestedValue(dictionaries.en, key) ?? key
 
     if (params) {
       Object.entries(params).forEach(([paramKey, paramVal]) => {
@@ -105,7 +106,10 @@ export const I18nProvider = ({ children }: I18nProviderProps): React.JSX.Element
   return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>
 }
 
-const defaultTranslate = (key: TranslationKey, params?: Record<string, string | number>): string => {
+const defaultTranslate = (
+  key: TranslationKey,
+  params?: Record<string, string | number>,
+): string => {
   let translation: string = getNestedValue(dictionaries.en, key) ?? key
   if (params) {
     Object.entries(params).forEach(([paramKey, paramVal]) => {

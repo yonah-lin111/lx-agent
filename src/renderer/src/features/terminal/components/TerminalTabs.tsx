@@ -4,6 +4,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalTabItem } from "@/features/terminal/types"
+import { useTranslation } from "@/i18n"
 
 interface TerminalTabsProps {
   onAddTab: () => void
@@ -14,6 +15,7 @@ interface TerminalTabsProps {
  * Ghostty 风格顶部水平终端标签列表栏（与 ProjectReferencedFolderTags 保持一致的 default 标签规格）。
  */
 export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const tabs = useTerminalStore((state) => state.tabs)
   const activeTabId = useTerminalStore((state) => state.activeTabId)
   const pendingCloseTabId = useTerminalStore((state) => state.pendingCloseTabId)
@@ -100,7 +102,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
 
       {/* 向左滚动按钮 */}
       <LxIconButton
-        aria-label="向左滚动"
+        aria-label={t("project.scrollLeft")}
         disabled={!canScrollLeft}
         size="small"
         onClick={() => handleScroll("left")}
@@ -117,10 +119,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
           const isActive = tab.id === activeTabId
           const isEditing = editingTabId === tab.id
           const isConfirming = pendingCloseTabId === tab.id
-          const hasMultiplePanes = Object.keys(tab.panes).length > 1
-          const confirmContent = hasMultiplePanes
-            ? "终端包含正在运行的分屏/任务，确定关闭吗？"
-            : "当前终端有任务正在运行，确定关闭吗？"
+          const confirmContent = t("terminal.runningTaskConfirmTab")
 
           return (
             <div
@@ -168,10 +167,10 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
               >
                 <LxTooltip
                   closeOnOutsideClick
-                  content={isConfirming ? confirmContent : "关闭标签"}
+                  content={isConfirming ? confirmContent : t("terminal.closeTab")}
                   open={isConfirming ? true : undefined}
                   placement="top"
-                  title={isConfirming ? "确认关闭终端" : undefined}
+                  title={isConfirming ? t("terminal.confirmCloseTab") : undefined}
                   onCancel={() => setPendingCloseTabId(null)}
                   onConfirm={
                     isConfirming
@@ -186,7 +185,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
                   }}
                 >
                   <button
-                    aria-label="关闭标签"
+                    aria-label={t("terminal.closeTab")}
                     className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
                     type="button"
                     onClick={(e) => {
@@ -205,9 +204,9 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
 
       {/* 添加终端按钮（位于 Tab 列表右侧、向右切换按钮左侧） */}
       <LxIconButton
-        aria-label="新建终端"
+        aria-label={t("terminal.newTab")}
         size="small"
-        title={{ content: "新建终端", placement: "top" }}
+        title={{ content: t("terminal.newTab"), placement: "top" }}
         onClick={onAddTab}
       >
         <Plus className="h-3.5 w-3.5 text-white/60 hover:text-white" />
@@ -215,7 +214,7 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
 
       {/* 最右侧：向右滚动按钮 */}
       <LxIconButton
-        aria-label="向右滚动"
+        aria-label={t("project.scrollRight")}
         disabled={!canScrollRight}
         size="small"
         onClick={() => handleScroll("right")}

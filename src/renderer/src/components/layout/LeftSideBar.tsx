@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { useTranslation } from "@/i18n"
+import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 
 // 左侧栏属性。
 interface LeftSideBarProps {

@@ -21,7 +21,7 @@ import type {
   MarkdownTableSize,
   MarkdownToolbarAction,
 } from "@/features/markdown/types"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
 
 // 工具栏属性。
@@ -132,9 +132,7 @@ const MarkdownEditorTOC = ({
       <LxInput
         aria-label={t("markdown.tableOfContents")}
         placeholder={
-          tocTab === "template"
-            ? t("markdown.searchTemplates")
-            : t("markdown.searchHeadings")
+          tocTab === "template" ? t("markdown.searchTemplates") : t("markdown.searchHeadings")
         }
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"
@@ -495,10 +493,10 @@ export const MarkdownEditorToolbar = ({
     const query = shortcutQuery.trim().toLocaleLowerCase()
     if (!query) return shortcuts
 
-    return shortcuts.filter(({ keys, description }) =>
-      `${keys} ${description}`.toLocaleLowerCase().includes(query),
+    return shortcuts.filter(({ keys, descKey }) =>
+      `${keys} ${t(descKey)}`.toLocaleLowerCase().includes(query),
     )
-  }, [pageMode, shortcutQuery])
+  }, [pageMode, shortcutQuery, t])
 
   /**
    * 将跨平台快捷键转换为当前系统对应的修饰键显示。
@@ -632,7 +630,9 @@ export const MarkdownEditorToolbar = ({
                         placement="top"
                       >
                         <span
-                          aria-label={t("markdown.inProgressCountLabel", { count: counts.inProgress })}
+                          aria-label={t("markdown.inProgressCountLabel", {
+                            count: counts.inProgress,
+                          })}
                           className="flex items-center gap-1 rounded-[4px] bg-amber-400/10 px-1 text-[10px] leading-4 text-amber-400"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />

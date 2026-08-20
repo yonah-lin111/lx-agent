@@ -13,6 +13,7 @@ import type React from "react"
 import { useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { useTranslation } from "@/i18n"
 import { UiActionButton } from "@/pages/ui/components/UiActionButton"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
@@ -56,54 +57,81 @@ const MenuTrigger = ({ buttonLabel, ariaLabel, children }: MenuTriggerProps): Re
 /**
  * 预览 LxMenu 组件。
  */
-export const LxMenuDemo = (): React.JSX.Element => (
-  <div className="flex flex-col gap-4">
-    <UiPreviewSection title="菜单容器" description="点击触发按钮弹出，支持 Esc 与外部点击关闭">
-      <MenuTrigger buttonLabel="打开菜单" ariaLabel="示例菜单">
-        <LxMenuItem leading={<Copy className="h-3.5 w-3.5" />}>复制</LxMenuItem>
-        <LxMenuItem
-          leading={<Pencil className="h-3.5 w-3.5" />}
-          trailing={<span className="text-white/30">⌘E</span>}
+export const LxMenuDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex flex-col gap-4">
+      <UiPreviewSection
+        title={t("uiPreview.demos.menuContainer")}
+        description={t("uiPreview.demos.menuContainerDesc")}
+      >
+        <MenuTrigger
+          buttonLabel={t("uiPreview.demos.openMenu")}
+          ariaLabel={t("uiPreview.demos.exampleMenu")}
         >
-          重命名
-        </LxMenuItem>
-        <LxMenuSeparator />
-        <LxMenuItem danger leading={<Trash2 className="h-3.5 w-3.5" />}>
-          删除
-        </LxMenuItem>
-      </MenuTrigger>
-    </UiPreviewSection>
-    <UiPreviewSection title="菜单项状态" description="radio 单选态、前缀图标与危险操作">
-      <div className="flex flex-wrap gap-2">
-        <MenuTrigger buttonLabel="状态菜单" ariaLabel="状态菜单">
-          <LxMenuItem leading={<Monitor className="h-3.5 w-3.5" />}>默认显示</LxMenuItem>
-          <LxMenuItem leading={<Moon className="h-3.5 w-3.5" />}>深色模式</LxMenuItem>
-          <LxMenuSeparator />
+          <LxMenuItem leading={<Copy className="h-3.5 w-3.5" />}>{t("common.copy")}</LxMenuItem>
           <LxMenuItem
-            aria-checked="true"
-            leading={<span className="h-2 w-2 rounded-full bg-white/60" />}
-            menuRole="menuitemradio"
-            trailing={<Check className="h-3.5 w-3.5 text-white/70" />}
+            leading={<Pencil className="h-3.5 w-3.5" />}
+            trailing={<span className="text-white/30">⌘E</span>}
           >
-            紧凑布局
+            {t("common.edit")}
           </LxMenuItem>
-          <LxMenuItem
-            aria-checked="false"
-            leading={<span className="h-2 w-2 rounded-full bg-white/30" />}
-            menuRole="menuitemradio"
-          >
-            舒适布局
+          <LxMenuSeparator />
+          <LxMenuItem danger leading={<Trash2 className="h-3.5 w-3.5" />}>
+            {t("common.delete")}
           </LxMenuItem>
         </MenuTrigger>
-        <MenuTrigger buttonLabel="操作菜单" ariaLabel="操作菜单">
-          <LxMenuItem leading={<FileText className="h-3.5 w-3.5" />}>新建文件</LxMenuItem>
-          <LxMenuItem leading={<FolderOpen className="h-3.5 w-3.5" />}>打开文件夹</LxMenuItem>
-          <LxMenuSeparator />
-          <LxMenuItem danger leading={<LogOut className="h-3.5 w-3.5" />}>
-            退出登录
-          </LxMenuItem>
-        </MenuTrigger>
-      </div>
-    </UiPreviewSection>
-  </div>
-)
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.menuItemStates")}
+        description={t("uiPreview.demos.menuItemStatesDesc")}
+      >
+        <div className="flex flex-wrap gap-2">
+          <MenuTrigger
+            buttonLabel={t("uiPreview.demos.statusMenu")}
+            ariaLabel={t("uiPreview.demos.statusMenu")}
+          >
+            <LxMenuItem leading={<Monitor className="h-3.5 w-3.5" />}>
+              {t("uiPreview.demos.defaultDisplay")}
+            </LxMenuItem>
+            <LxMenuItem leading={<Moon className="h-3.5 w-3.5" />}>
+              {t("uiPreview.demos.darkMode")}
+            </LxMenuItem>
+            <LxMenuSeparator />
+            <LxMenuItem
+              aria-checked="true"
+              leading={<span className="h-2 w-2 rounded-full bg-white/60" />}
+              menuRole="menuitemradio"
+              trailing={<Check className="h-3.5 w-3.5 text-white/70" />}
+            >
+              {t("uiPreview.demos.compactLayout")}
+            </LxMenuItem>
+            <LxMenuItem
+              aria-checked="false"
+              leading={<span className="h-2 w-2 rounded-full bg-white/30" />}
+              menuRole="menuitemradio"
+            >
+              {t("uiPreview.demos.comfortableLayout")}
+            </LxMenuItem>
+          </MenuTrigger>
+          <MenuTrigger
+            buttonLabel={t("uiPreview.demos.actionMenu")}
+            ariaLabel={t("uiPreview.demos.actionMenu")}
+          >
+            <LxMenuItem leading={<FileText className="h-3.5 w-3.5" />}>
+              {t("uiPreview.demos.newFile")}
+            </LxMenuItem>
+            <LxMenuItem leading={<FolderOpen className="h-3.5 w-3.5" />}>
+              {t("uiPreview.demos.openFolder")}
+            </LxMenuItem>
+            <LxMenuSeparator />
+            <LxMenuItem danger leading={<LogOut className="h-3.5 w-3.5" />}>
+              {t("uiPreview.demos.logout")}
+            </LxMenuItem>
+          </MenuTrigger>
+        </div>
+      </UiPreviewSection>
+    </div>
+  )
+}

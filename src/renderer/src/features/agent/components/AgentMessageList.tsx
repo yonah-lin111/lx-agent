@@ -2,14 +2,15 @@ import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import type React from "react"
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import logoImg from "../../../../../../resources/icons/lx-op-logo.png"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
 import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
+import logoImg from "../../../../../../resources/icons/lx-op-logo.png"
 
 // 子代理调用块类型（点击 label 打开面板）。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -84,6 +85,7 @@ export const AgentMessageList = ({
   canContinue,
   onContinue,
 }: AgentMessageListProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
@@ -620,7 +622,7 @@ export const AgentMessageList = ({
             <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
               <button
                 type="button"
-                aria-label="滚动到底部"
+                aria-label={t("agent.scrollToBottom")}
                 onClick={scrollToBottom}
                 className={`relative flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#303030] text-white/60 shadow-lg transition-all hover:bg-[#4a4a4a] hover:text-white active:scale-95 ${
                   scrollButtonAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"

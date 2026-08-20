@@ -3,32 +3,44 @@ import type React from "react"
 import { useState } from "react"
 
 import { LxInput } from "@/components/ui/LxInput"
+import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 /**
  * 预览 LxInput 组件。
  */
 export const LxInputDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [value, setValue] = useState("")
   const [numberValue, setNumberValue] = useState(0)
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <UiPreviewSection title="基础输入框" description="受控值、占位与清除按钮">
+      <UiPreviewSection
+        title={t("uiPreview.demos.basicInput")}
+        description={t("uiPreview.demos.basicInputDesc")}
+      >
         <div className="grid gap-2 lg:grid-cols-2">
           <LxInput
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            placeholder="请输入内容"
+            placeholder={t("uiPreview.demos.inputPlaceholder")}
           />
-          <LxInput defaultValue="可清除的内容" clear aria-label="可清除输入框" />
+          <LxInput
+            defaultValue={t("uiPreview.demos.clearableContent")}
+            clear
+            aria-label={t("uiPreview.demos.clearableInput")}
+          />
         </div>
       </UiPreviewSection>
-      <UiPreviewSection title="前后缀" description="prefix / suffix 插槽">
+      <UiPreviewSection
+        title={t("uiPreview.demos.prefixAndSuffix")}
+        description={t("uiPreview.demos.prefixAndSuffixDesc")}
+      >
         <div className="grid gap-2 lg:grid-cols-2">
           <LxInput
             prefix={<Search className="h-3.5 w-3.5 text-white/40" />}
-            placeholder="搜索关键词"
+            placeholder={t("uiPreview.demos.searchKeyword")}
           />
           <LxInput
             suffix={<span className="text-xs text-white/40">@lx.agent</span>}
@@ -36,28 +48,40 @@ export const LxInputDemo = (): React.JSX.Element => {
           />
         </div>
       </UiPreviewSection>
-      <UiPreviewSection title="特殊模式" description="password 显隐、number 步进与 multiline">
+      <UiPreviewSection
+        title={t("uiPreview.demos.specialModes")}
+        description={t("uiPreview.demos.specialModesDesc")}
+      >
         <div className="grid gap-2 lg:grid-cols-2">
-          <LxInput type="password" defaultValue="secret" aria-label="密码输入框" />
+          <LxInput
+            type="password"
+            defaultValue="secret"
+            aria-label={t("uiPreview.demos.passwordInput")}
+          />
           <LxInput
             type="number"
             value={numberValue}
             onChange={(event) => setNumberValue(Number(event.target.value))}
-            aria-label="数字输入框"
+            aria-label={t("uiPreview.demos.numberInput")}
           />
-          <LxInput multiline rows={3} placeholder="多行文本..." className="lg:col-span-2" />
+          <LxInput
+            multiline
+            rows={3}
+            placeholder={t("uiPreview.demos.multilinePlaceholder")}
+            className="lg:col-span-2"
+          />
         </div>
       </UiPreviewSection>
       <UiPreviewSection
-        title="尺寸与变体"
-        description="xs / sm / lg 与 default / simple / disabled"
+        title={t("uiPreview.demos.sizesAndVariants")}
+        description={t("uiPreview.demos.sizesAndVariantsDesc")}
       >
         <div className="grid gap-2 lg:grid-cols-2">
-          <LxInput size="xs" placeholder="xs 尺寸" />
-          <LxInput size="sm" placeholder="sm 尺寸" />
-          <LxInput size="lg" placeholder="lg 尺寸" />
-          <LxInput variant="simple" placeholder="simple 变体" />
-          <LxInput disabled value="禁用状态" />
+          <LxInput size="xs" placeholder={t("uiPreview.demos.xsSize")} />
+          <LxInput size="sm" placeholder={t("uiPreview.demos.smSize")} />
+          <LxInput size="lg" placeholder={t("uiPreview.demos.lgSize")} />
+          <LxInput variant="simple" placeholder={t("uiPreview.demos.simpleVariant")} />
+          <LxInput disabled value={t("uiPreview.demos.disabledStatus")} />
         </div>
       </UiPreviewSection>
     </div>

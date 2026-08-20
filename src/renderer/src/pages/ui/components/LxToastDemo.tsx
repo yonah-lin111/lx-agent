@@ -1,6 +1,7 @@
 import type React from "react"
 
 import { useLxToast } from "@/components/ui/LxToast"
+import { useTranslation } from "@/i18n"
 import { UiActionButton } from "@/pages/ui/components/UiActionButton"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
@@ -8,46 +9,67 @@ import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
  * 预览 LxToast 组件。
  */
 export const LxToastDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const toast = useLxToast()
 
   const showStackedToasts = (): void => {
-    toast.success("第一条保存成功")
-    window.setTimeout(() => toast.warning("第二条磁盘空间不足"), 300)
-    window.setTimeout(() => toast.error("第三条连接失败"), 600)
+    toast.success(t("uiPreview.demos.firstSaved"))
+    window.setTimeout(() => toast.warning(t("uiPreview.demos.secondDiskLow")), 300)
+    window.setTimeout(() => toast.error(t("uiPreview.demos.thirdConnFailed")), 600)
   }
 
   return (
     <div className="flex flex-col gap-4">
       <UiPreviewSection
-        title="消息提示"
-        description="通过 useLxToast 展示全局消息提示，支持四种类型，多条消息自动堆叠"
+        title={t("uiPreview.demos.toastTitle")}
+        description={t("uiPreview.demos.toastDesc")}
       >
         <div className="flex flex-wrap gap-2">
-          <UiActionButton onClick={() => toast.success("保存成功")}>Success</UiActionButton>
-          <UiActionButton onClick={() => toast.error("保存失败")}>Error</UiActionButton>
-          <UiActionButton onClick={() => toast.warning("磁盘空间不足")}>Warning</UiActionButton>
-          <UiActionButton onClick={() => toast.info("任务已加入队列")}>Info</UiActionButton>
-          <UiActionButton onClick={showStackedToasts}>连续堆叠</UiActionButton>
+          <UiActionButton onClick={() => toast.success(t("uiPreview.demos.saveSuccess"))}>
+            Success
+          </UiActionButton>
+          <UiActionButton onClick={() => toast.error(t("uiPreview.demos.saveFailed"))}>
+            Error
+          </UiActionButton>
+          <UiActionButton onClick={() => toast.warning(t("uiPreview.demos.diskSpaceLow"))}>
+            Warning
+          </UiActionButton>
+          <UiActionButton onClick={() => toast.info(t("uiPreview.demos.taskQueued"))}>
+            Info
+          </UiActionButton>
+          <UiActionButton onClick={showStackedToasts}>
+            {t("uiPreview.demos.stackedToasts")}
+          </UiActionButton>
         </div>
       </UiPreviewSection>
       <UiPreviewSection
-        title="消息方位"
-        description="支持四角、顶部居中与面包屑位置，默认展示在顶部栏面包屑处（无边框无背景）"
+        title={t("uiPreview.demos.toastPlacements")}
+        description={t("uiPreview.demos.toastPlacementsDesc")}
       >
         <div className="flex flex-wrap gap-2">
-          <UiActionButton onClick={() => toast.success("右下角消息", 3000, "bottom-right")}>
+          <UiActionButton
+            onClick={() => toast.success(t("uiPreview.demos.bottomRightMsg"), 3000, "bottom-right")}
+          >
             Bottom Right
           </UiActionButton>
-          <UiActionButton onClick={() => toast.success("右上角消息", 3000, "top-right")}>
+          <UiActionButton
+            onClick={() => toast.success(t("uiPreview.demos.topRightMsg"), 3000, "top-right")}
+          >
             Top Right
           </UiActionButton>
-          <UiActionButton onClick={() => toast.success("左下角消息", 3000, "bottom-left")}>
+          <UiActionButton
+            onClick={() => toast.success(t("uiPreview.demos.bottomLeftMsg"), 3000, "bottom-left")}
+          >
             Bottom Left
           </UiActionButton>
-          <UiActionButton onClick={() => toast.success("左上角消息", 3000, "top-left")}>
+          <UiActionButton
+            onClick={() => toast.success(t("uiPreview.demos.topLeftMsg"), 3000, "top-left")}
+          >
             Top Left
           </UiActionButton>
-          <UiActionButton onClick={() => toast.success("顶部居中消息", 3000, "top-center")}>
+          <UiActionButton
+            onClick={() => toast.success(t("uiPreview.demos.topCenterMsg"), 3000, "top-center")}
+          >
             Top Center
           </UiActionButton>
         </div>
