@@ -49,13 +49,11 @@ class CodeBlockActionWidget extends WidgetType {
     this.reactRoot = createRoot(wrap)
     this.reactRoot.render(
       createElement(Fragment, null, [
-        createElement(MarkdownActionCopyButton, { text: this.codeText, label: "复制代码" }),
+        createElement(MarkdownActionCopyButton, { text: this.codeText }),
         ...(this.showFoldBtn
           ? [
               createElement(MarkdownActionFoldButton, {
                 isFolded: this.isFolded,
-                label: "折叠代码块",
-                unfoldLabel: "展开代码块",
                 onToggle: this.onToggleFold,
               }),
             ]

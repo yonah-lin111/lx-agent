@@ -28,8 +28,10 @@ export interface ProjectNavigationPrompt {
 export interface ProjectNavigationFolder {
   id: string
   name: string
+  parentFolderId?: string
   createdAt: string
   updatedAt: string
+  projectFolders: ProjectNavigationFolder[]
   prompts: ProjectNavigationPrompt[]
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
 
@@ -103,7 +103,7 @@ export const ProjectNavigationMenu = ({
         {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
       </LxMenuItem>
 
-      {displayedMenu.type === "project" ? (
+      {displayedMenu.type !== "prompt" ? (
         <LxMenuItem
           leading={<FolderPlus className="h-3.5 w-3.5 text-white/45" />}
           onClick={onAddFolder}

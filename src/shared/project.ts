@@ -19,6 +19,7 @@ export type Project = {
 export type ProjectFolder = {
   id: string
   projectId: string
+  parentFolderId?: string
   name: string
   createdAt: string
   updatedAt: string
@@ -58,10 +59,17 @@ export type ProjectFileEntry = { path: string; isDirectory: boolean }
 export type ReferencedProjectFileEntry = ProjectFileEntry & { projectPath: string }
 
 // 项目文件夹创建参数。
-export type CreateProjectFolderInput = { projectId: string; name: string }
+export type CreateProjectFolderInput = {
+  projectId: string
+  parentFolderId?: string
+  name: string
+}
 
 // 项目文件夹更新参数。
-export type UpdateProjectFolderInput = { name: string }
+export type UpdateProjectFolderInput = {
+  name?: string
+  parentFolderId?: string | null
+}
 
 // 项目条目创建参数。
 export type CreateProjectItemInput = {

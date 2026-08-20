@@ -50,7 +50,11 @@ export const useProjectNavigationActions = (
       try {
         const item =
           type === "project_folder"
-            ? await projectNavigationApi.createFolder({ projectId: menu.id, name: "new folder" })
+            ? await projectNavigationApi.createFolder({
+                projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
+                parentFolderId: menu.type === "project_folder" ? menu.id : undefined,
+                name: "new folder",
+              })
             : await projectNavigationApi.createItem({
                 projectId: menu.type === "project" ? menu.id : (menu.projectId ?? ""),
                 projectFolderId: menu.type === "project_folder" ? menu.id : undefined,
@@ -69,8 +73,19 @@ export const useProjectNavigationActions = (
 
   const renameItem = useCallback(
     async (id: string, name: string): Promise<boolean> => {
+      const findFolder = (
+        folders: ProjectNavigationProject["projectFolders"],
+      ): ProjectNavigationProject["projectFolders"][number] | undefined => {
+        for (const f of folders) {
+          if (f.id === id) return f
+          const found = findFolder(f.projectFolders)
+          if (found) return found
+        }
+        return undefined
+      }
+
       const project = projects.find((item) => item.id === id)
-      const folder = projects.flatMap((item) => item.projectFolders).find((item) => item.id === id)
+      const folder = projects.map((item) => findFolder(item.projectFolders)).find(Boolean)
       try {
         if (project) await projectNavigationApi.updateProject(id, { name })
         else if (folder) await projectNavigationApi.updateFolder(id, { name })

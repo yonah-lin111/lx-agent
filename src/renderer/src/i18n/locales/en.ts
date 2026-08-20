@@ -330,6 +330,16 @@ export const en = {
     formatTable: "Table",
     copiedCode: "Copied code",
     copyCode: "Copy code",
+    foldCode: "Collapse code block",
+    unfoldCode: "Expand code block",
+    copyTemplate: "Copy template content",
+    foldTemplate: "Collapse template block",
+    unfoldTemplate: "Expand template block",
+    deleteTemplate: "Delete template block",
+    confirmDeleteTemplate: "Are you sure you want to delete this template block?",
+    markInProgress: "Mark as in progress",
+    markCompleted: "Mark as completed",
+    markTodo: "Mark as todo",
     expandContent: "Expand Content",
     collapseContent: "Collapse Content",
     mermaidDiagram: "Mermaid Diagram",
@@ -475,14 +485,16 @@ export const en = {
       messageList: "Agent message list, empty state welcome screen, and quick inspiration prompts",
       skeleton: "QA conversation skeleton screen displayed during session restoration",
       todoCall: "Task list call snapshot showing todos and progress states",
-      questionBlock: "Agent question block supporting single-select, multi-select, and custom answers",
+      questionBlock:
+        "Agent question block supporting single-select, multi-select, and custom answers",
       lspBlock: "LSP code analysis calls showing definitions, references, and symbol searches",
       subagentBlock: "Subagent task invocation card showing description and step metrics",
       compactionSummary: "Context compaction summary showing token metrics and markdown summary",
       suggestedQuestions: "Suggested questions list supporting one-click send or echo into input",
       statusBar: "Agent status bar with Git, context usage, permissions, and todo indicators",
       agentInput: "Agent composite input box with Markdown, model switcher, and file attachments",
-      jobsMonitor: "Long-running background jobs monitor with real-time logs, duration, and control",
+      jobsMonitor:
+        "Long-running background jobs monitor with real-time logs, duration, and control",
       chatHistory: "Chat history panel with project filtering, search, and session restore",
       subagentPanel: "Subagent detail drawer panel displaying full internal execution trajectory",
     },
@@ -646,27 +658,37 @@ export const en = {
       startLoading: "Start Loading",
       stopLoading: "Stop Loading",
       agentTodoTitle: "Todo List",
-      agentTodoDesc: "Renders todowrite invocation snapshot supporting completed, in-progress, and cancelled states",
+      agentTodoDesc:
+        "Renders todowrite invocation snapshot supporting completed, in-progress, and cancelled states",
       agentQuestionTitle: "Agent Question",
-      agentQuestionDesc: "Renders question tool invocation with single-select, multi-select, and custom answers",
+      agentQuestionDesc:
+        "Renders question tool invocation with single-select, multi-select, and custom answers",
       agentLspTitle: "LSP Code Intelligence",
-      agentLspDesc: "Renders lsp tool invocation and results such as definition, references, and symbol lookups",
+      agentLspDesc:
+        "Renders lsp tool invocation and results such as definition, references, and symbol lookups",
       agentSubagentTitle: "Subagent Task Card",
-      agentSubagentDesc: "Renders task tool invocation card with step counts and click-to-open drawer",
+      agentSubagentDesc:
+        "Renders task tool invocation card with step counts and click-to-open drawer",
       agentCompactionTitle: "Context Compaction Summary",
-      agentCompactionDesc: "Renders automated or manual context compaction result and token usage metrics",
+      agentCompactionDesc:
+        "Renders automated or manual context compaction result and token usage metrics",
       suggestedQuestionsTitle: "Suggested Questions",
-      suggestedQuestionsDesc: "Shows follow-up prompts supporting one-click send or echo into input box",
+      suggestedQuestionsDesc:
+        "Shows follow-up prompts supporting one-click send or echo into input box",
       agentStatusBarTitle: "Agent Status Bar",
-      agentStatusBarDesc: "Shows Git workspace branch, context quota, todo indicator, and permission requests",
+      agentStatusBarDesc:
+        "Shows Git workspace branch, context quota, todo indicator, and permission requests",
       agentInputTitle: "Agent Composite Input",
-      agentInputDesc: "Comprehensive input area with Markdown editor, model selector, file attachments, and send modes",
+      agentInputDesc:
+        "Comprehensive input area with Markdown editor, model selector, file attachments, and send modes",
       jobsMonitorTitle: "Background Jobs Monitor",
-      jobsMonitorDesc: "Displays background jobs execution status, real-time log streams, and kill operations",
+      jobsMonitorDesc:
+        "Displays background jobs execution status, real-time log streams, and kill operations",
       chatHistoryTitle: "Chat History Panel",
       chatHistoryDesc: "Browse, filter, search, and restore historical chat sessions by project",
       subagentPanelTitle: "Subagent Detail Panel",
-      subagentPanelDesc: "Expanded view showing internal execution history and interactions of a subagent",
+      subagentPanelDesc:
+        "Expanded view showing internal execution history and interactions of a subagent",
     },
   },
 }

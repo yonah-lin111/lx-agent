@@ -525,9 +525,9 @@ class CodeBlockActionWidget extends WidgetType {
     readonly onToggleFold: () => void,
     readonly showFoldBtn = true,
     readonly actionClassName = "cm-code-block-action-wrap",
-    readonly copyTitle = "复制代码",
-    readonly foldTitle = "折叠代码块",
-    readonly unfoldTitle = "展开代码块",
+    readonly copyTitle?: string,
+    readonly foldTitle?: string,
+    readonly unfoldTitle?: string,
     readonly templateStatus: TemplateStatusAction | null = null,
     readonly templateStartLine: number | null = null,
     readonly onDeleteTemplate: (() => void) | null = null,
@@ -563,6 +563,7 @@ class CodeBlockActionWidget extends WidgetType {
     wrap.style.zIndex = "10"
     wrap.style.transform = "translateY(-50%)"
 
+    const isTemplate = Boolean(this.templateStatus)
     const actionNodes: React.ReactNode[] = []
     if (this.templateStatus) {
       actionNodes.push(
@@ -578,7 +579,11 @@ class CodeBlockActionWidget extends WidgetType {
       )
     }
     actionNodes.push(
-      createElement(MarkdownActionCopyButton, { text: this.codeText, label: this.copyTitle }),
+      createElement(MarkdownActionCopyButton, {
+        text: this.codeText,
+        label: this.copyTitle,
+        isTemplate,
+      }),
     )
     if (this.showFoldBtn) {
       actionNodes.push(
@@ -586,6 +591,7 @@ class CodeBlockActionWidget extends WidgetType {
           isFolded: this.isFolded,
           label: this.foldTitle,
           unfoldLabel: this.unfoldTitle,
+          isTemplate,
           onToggle: this.onToggleFold,
         }),
       )
@@ -935,9 +941,9 @@ const buildMarkdownMarkerDecorations = (
           () => onToggleTemplateFold(currentTemplateIndex),
           showFolding,
           "cm-template-block-action-wrap",
-          "复制模板内容",
-          "折叠模板块",
-          "展开模板块",
+          undefined,
+          undefined,
+          undefined,
           {
             line: templateEndIndex,
             status: templateEndStatus,

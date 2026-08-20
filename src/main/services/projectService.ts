@@ -46,6 +46,7 @@ type ProjectRow = {
 type ProjectFolderRow = {
   external_id: string
   project_id: string
+  parent_folder_id: string | null
   name: string
   created_at: string
   updated_at: string
@@ -167,6 +168,7 @@ const toProject = (row: ProjectRow): Project => ({
 const toFolder = (row: ProjectFolderRow): ProjectFolder => ({
   id: row.external_id,
   projectId: row.project_id,
+  parentFolderId: row.parent_folder_id ?? undefined,
   name: row.name,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -318,17 +320,39 @@ export const createProjectService = (getConnection: () => Database.Database) => 
 
     getConnection()
       .prepare(
-        "INSERT INTO project_folder (external_id, project_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO project_folder (external_id, project_id, parent_folder_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run(id, input.projectId, name, now, now)
+      .run(id, input.projectId, input.parentFolderId ?? null, name, now, now)
 
-    return { id, projectId: input.projectId, name, createdAt: now, updatedAt: now }
+    return {
+      id,
+      projectId: input.projectId,
+      parentFolderId: input.parentFolderId,
+      name,
+      createdAt: now,
+      updatedAt: now,
+    }
   },
 
   updateFolder: (id: string, input: UpdateProjectFolderInput): void => {
+    const updates: string[] = []
+    const values: Array<string | null> = []
+
+    if (input.name !== undefined) {
+      updates.push("name = ?")
+      values.push(requireName(input.name))
+    }
+    if (input.parentFolderId !== undefined) {
+      updates.push("parent_folder_id = ?")
+      values.push(input.parentFolderId ?? null)
+    }
+    if (updates.length === 0) return
+
+    updates.push("updated_at = ?")
+    values.push(new Date().toISOString(), id)
     getConnection()
-      .prepare("UPDATE project_folder SET name = ?, updated_at = ? WHERE external_id = ?")
-      .run(requireName(input.name), new Date().toISOString(), id)
+      .prepare(`UPDATE project_folder SET ${updates.join(", ")} WHERE external_id = ?`)
+      .run(...values)
   },
 
   deleteFolder: (id: string): void => {

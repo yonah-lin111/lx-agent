@@ -7,6 +7,7 @@ import type { MarkdownTemplateStatus } from "@/features/markdown/commands/markdo
 import { MarkdownReferenceImageTooltip } from "@/features/markdown/components/MarkdownReferenceImageTooltip"
 import { MermaidDiagram } from "@/features/markdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/features/markdown/types"
+import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // Markdown 预览属性。
@@ -54,6 +55,7 @@ const copyToClipboard = async (content: string): Promise<void> => {
  * 渲染代码块复制按钮及其短暂成功反馈。
  */
 const CodeBlockCopyButton = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
 
@@ -85,10 +87,13 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label="复制代码"
+      aria-label={t("markdown.copyCode")}
       preset={isCopied ? "confirm" : undefined}
       size="small"
-      title={{ content: isCopied ? "已复制" : "复制代码", placement: "bottom" }}
+      title={{
+        content: isCopied ? t("markdown.copiedCode") : t("markdown.copyCode"),
+        placement: "bottom",
+      }}
       onClick={copyCode}
     >
       {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -100,6 +105,7 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
  * 渲染代码块折叠按钮，并同步内容容器的动画状态。
  */
 const CodeBlockCollapseButton = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
 
   const toggleContent = (event: React.MouseEvent<HTMLButtonElement>): void => {
@@ -130,10 +136,13 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label={isExpanded ? "折叠内容" : "展开内容"}
+      aria-label={isExpanded ? t("markdown.foldCode") : t("markdown.unfoldCode")}
       aria-expanded={isExpanded}
       size="small"
-      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+      title={{
+        content: isExpanded ? t("markdown.foldCode") : t("markdown.unfoldCode"),
+        placement: "bottom",
+      }}
       onClick={toggleContent}
     >
       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -145,6 +154,7 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
  * 渲染模板块复制按钮及其短暂成功反馈。
  */
 const MarkdownTemplateCopyButton = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
 
@@ -175,10 +185,13 @@ const MarkdownTemplateCopyButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label="复制模板内容"
+      aria-label={t("markdown.copyTemplate")}
       preset={isCopied ? "confirm" : undefined}
       size="small"
-      title={{ content: isCopied ? "已复制" : "复制模板内容", placement: "bottom" }}
+      title={{
+        content: isCopied ? t("markdown.copiedCode") : t("markdown.copyTemplate"),
+        placement: "bottom",
+      }}
       onClick={copyTemplate}
     >
       {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -190,6 +203,7 @@ const MarkdownTemplateCopyButton = (): React.JSX.Element => {
  * 渲染模板块折叠按钮，并保持顶部工具栏可见。
  */
 const MarkdownTemplateCollapseButton = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
 
   const toggleContent = (event: React.MouseEvent<HTMLButtonElement>): void => {
@@ -219,22 +233,18 @@ const MarkdownTemplateCollapseButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label={isExpanded ? "折叠内容" : "展开内容"}
+      aria-label={isExpanded ? t("markdown.foldTemplate") : t("markdown.unfoldTemplate")}
       aria-expanded={isExpanded}
       size="small"
-      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+      title={{
+        content: isExpanded ? t("markdown.foldTemplate") : t("markdown.unfoldTemplate"),
+        placement: "bottom",
+      }}
       onClick={toggleContent}
     >
       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
     </LxIconButton>
   )
-}
-
-// 模板块状态对应的下一步操作提示。
-const TEMPLATE_STATUS_ACTION_LABELS: Record<MarkdownTemplateStatus, string> = {
-  todo: "标记为进行中",
-  in_progress: "标记为已完成",
-  done: "标记为未完成",
 }
 
 // 模板块状态按钮属性。
@@ -252,7 +262,13 @@ const MarkdownTemplateStatusButton = ({
   status,
   onToggle,
 }: MarkdownTemplateStatusButtonProps): React.JSX.Element => {
-  const actionLabel = TEMPLATE_STATUS_ACTION_LABELS[status]
+  const { t } = useTranslation()
+  const actionLabel =
+    status === "done"
+      ? t("markdown.markTodo")
+      : status === "in_progress"
+        ? t("markdown.markCompleted")
+        : t("markdown.markInProgress")
 
   return (
     <LxIconButton

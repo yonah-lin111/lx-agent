@@ -98,6 +98,40 @@ describe("projectService", () => {
     expect(service.listItems()).toEqual([])
   })
 
+  it("支持嵌套文件夹创建、更新与级联删除", () => {
+    const service = createProjectService(() => database)
+    const project = service.createProject({ name: "Tree" })
+    const parentFolder = service.createFolder({ projectId: project.id, name: "Parent" })
+    const subFolder = service.createFolder({
+      projectId: project.id,
+      parentFolderId: parentFolder.id,
+      name: "Child",
+    })
+    const subItem = service.createItem({
+      projectId: project.id,
+      projectFolderId: subFolder.id,
+      name: "Deep Item",
+    })
+
+    const folders = service.listFolders(project.id)
+    expect(folders).toHaveLength(2)
+    expect(folders.find((f) => f.id === subFolder.id)?.parentFolderId).toBe(parentFolder.id)
+
+    service.updateFolder(subFolder.id, { name: "Child Renamed", parentFolderId: null })
+    expect(
+      service.listFolders(project.id).find((f) => f.id === subFolder.id)?.parentFolderId,
+    ).toBeUndefined()
+
+    service.updateFolder(subFolder.id, { parentFolderId: parentFolder.id })
+    expect(service.listFolders(project.id).find((f) => f.id === subFolder.id)?.parentFolderId).toBe(
+      parentFolder.id,
+    )
+
+    service.deleteFolder(parentFolder.id)
+    expect(service.listFolders(project.id)).toEqual([])
+    expect(service.listItems(project.id)).toEqual([])
+  })
+
   it("拒绝不存在的项目路径", () => {
     const service = createProjectService(() => database)
 

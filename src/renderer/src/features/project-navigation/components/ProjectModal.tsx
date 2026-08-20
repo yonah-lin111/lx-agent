@@ -103,9 +103,7 @@ export const ProjectModal = ({
         <div className="mt-1 flex justify-end gap-1.5">
           <LxIconButton
             aria-label={
-              isEditMode
-                ? t("project.cancelEditProject")
-                : t("project.cancelCreateProject")
+              isEditMode ? t("project.cancelEditProject") : t("project.cancelCreateProject")
             }
             preset="close"
             size="small"
@@ -114,9 +112,7 @@ export const ProjectModal = ({
           />
           <LxIconButton
             aria-label={
-              isEditMode
-                ? t("project.confirmEditProject")
-                : t("project.confirmCreateProject")
+              isEditMode ? t("project.confirmEditProject") : t("project.confirmCreateProject")
             }
             preset="confirm"
             size="small"

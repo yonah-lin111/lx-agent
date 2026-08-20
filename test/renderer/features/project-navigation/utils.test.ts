@@ -56,6 +56,39 @@ describe("project navigation utils", () => {
     ])
   })
 
+  it("组装多层嵌套文件夹与条目", () => {
+    const subFolder: ProjectFolder = {
+      id: "subfolder-1",
+      projectId: project.id,
+      parentFolderId: folder.id,
+      name: "Components",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    }
+    const deepItem = makeItem({
+      id: "item-deep",
+      name: "Nested Prompt",
+      projectFolderId: subFolder.id,
+    })
+
+    const tree = createProjectNavigationTree([project], [folder, subFolder], [deepItem])
+    expect(tree).toMatchObject([
+      {
+        projectFolders: [
+          {
+            id: folder.id,
+            projectFolders: [
+              {
+                id: subFolder.id,
+                prompts: [{ id: "item-deep" }],
+              },
+            ],
+          },
+        ],
+      },
+    ])
+  })
+
   it("搜索命中子节点时保留项目与文件夹", () => {
     const tree = createProjectNavigationTree([project], [folder], items)
     expect(filterProjectNavigationTree(tree, "navigation")).toMatchObject([

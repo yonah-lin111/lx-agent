@@ -11,19 +11,13 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { MarkdownTemplateStatus } from "@/features/markdown/commands/markdownBlockCommands"
+import { useTranslation } from "@/i18n"
 
 // 模板块状态按钮的悬停与普通颜色。
 const TEMPLATE_STATUS_COLOR: Record<MarkdownTemplateStatus, string> = {
   todo: "rgba(255, 255, 255, 0.5)",
   in_progress: "#fbbf24",
   done: "#34d399",
-}
-
-// 模板块状态按钮的下一步操作提示。
-const TEMPLATE_STATUS_NEXT_LABEL: Record<MarkdownTemplateStatus, string> = {
-  todo: "标记为进行中",
-  in_progress: "标记为已完成",
-  done: "标记为未完成",
 }
 
 // 源码区操作按钮统一样式。
@@ -40,12 +34,17 @@ const ACTION_BUTTON_STYLE: React.CSSProperties = {
 export const MarkdownActionCopyButton = ({
   text,
   label,
+  isTemplate = false,
 }: {
   text: string
-  label: string
+  label?: string
+  isTemplate?: boolean
 }): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
+  const defaultLabel = isTemplate ? t("markdown.copyTemplate") : t("markdown.copyCode")
+  const copyLabel = label ?? defaultLabel
 
   useEffect(
     () => () => {
@@ -69,9 +68,9 @@ export const MarkdownActionCopyButton = ({
   }
 
   return (
-    <LxTooltip content={isCopied ? "已复制" : label} placement="bottom">
+    <LxTooltip content={isCopied ? t("markdown.copiedCode") : copyLabel} placement="bottom">
       <button
-        aria-label={isCopied ? "已复制" : label}
+        aria-label={isCopied ? t("markdown.copiedCode") : copyLabel}
         type="button"
         style={{
           ...ACTION_BUTTON_STYLE,
@@ -94,49 +93,67 @@ export const MarkdownActionDeleteButton = ({
   onDelete,
 }: {
   onDelete: () => void
-}): React.JSX.Element => (
-  <LxTooltip content="确定删除该模板块？" placement="bottom" onConfirm={onDelete}>
-    <button
-      aria-label="删除模板块"
-      type="button"
-      style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
-      onClick={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-      }}
+}): React.JSX.Element => {
+  const { t } = useTranslation()
+
+  return (
+    <LxTooltip
+      content={t("markdown.confirmDeleteTemplate")}
+      placement="bottom"
+      onConfirm={onDelete}
     >
-      <Trash2 className="h-3 w-3" />
-    </button>
-  </LxTooltip>
-)
+      <button
+        aria-label={t("markdown.deleteTemplate")}
+        type="button"
+        style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </LxTooltip>
+  )
+}
 
 // 折叠按钮：切换代码块/模板块内容的折叠状态。
 export const MarkdownActionFoldButton = ({
   isFolded,
   label,
   unfoldLabel,
+  isTemplate = false,
   onToggle,
 }: {
   isFolded: boolean
-  label: string
-  unfoldLabel: string
+  label?: string
+  unfoldLabel?: string
+  isTemplate?: boolean
   onToggle: () => void
-}): React.JSX.Element => (
-  <LxTooltip content={isFolded ? unfoldLabel : label} placement="bottom">
-    <button
-      aria-label={isFolded ? unfoldLabel : label}
-      type="button"
-      style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
-      onClick={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        onToggle()
-      }}
-    >
-      {isFolded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-    </button>
-  </LxTooltip>
-)
+}): React.JSX.Element => {
+  const { t } = useTranslation()
+  const defaultFold = isTemplate ? t("markdown.foldTemplate") : t("markdown.foldCode")
+  const defaultUnfold = isTemplate ? t("markdown.unfoldTemplate") : t("markdown.unfoldCode")
+  const foldText = label ?? defaultFold
+  const unfoldText = unfoldLabel ?? defaultUnfold
+
+  return (
+    <LxTooltip content={isFolded ? unfoldText : foldText} placement="bottom">
+      <button
+        aria-label={isFolded ? unfoldText : foldText}
+        type="button"
+        style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onToggle()
+        }}
+      >
+        {isFolded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+      </button>
+    </LxTooltip>
+  )
+}
 
 // 状态按钮：循环切换模板块结束行的状态标记。
 export const TemplateStatusButton = ({
@@ -146,10 +163,16 @@ export const TemplateStatusButton = ({
   status: MarkdownTemplateStatus
   onToggle: () => void
 }): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isHovered, setIsHovered] = useState(false)
   const StatusIcon =
     status === "done" ? CheckCircle2 : status === "in_progress" ? CircleDot : Circle
-  const label = TEMPLATE_STATUS_NEXT_LABEL[status]
+  const label =
+    status === "done"
+      ? t("markdown.markTodo")
+      : status === "in_progress"
+        ? t("markdown.markCompleted")
+        : t("markdown.markInProgress")
 
   return (
     <LxTooltip content={label} placement="bottom">

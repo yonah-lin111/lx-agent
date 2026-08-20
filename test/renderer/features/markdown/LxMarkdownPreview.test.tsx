@@ -12,14 +12,14 @@ describe("LxMarkdownPreview", () => {
       <LxMarkdownPreview html={previewHtml} previewMode="split" previewRef={previewRef} />,
     )
 
-    await screen.findByRole("button", { name: "复制代码" })
+    await screen.findByRole("button", { name: "Copy code" })
 
     view.rerender(
       <LxMarkdownPreview html={previewHtml} previewMode="split" previewRef={previewRef} />,
     )
 
-    expect(screen.queryByRole("button", { name: "复制代码" })).not.toBeNull()
-    expect(screen.queryByRole("button", { name: "折叠内容" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "Copy code" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "Collapse code block" })).not.toBeNull()
 
     const mention = screen.getByText("@example.ts")
     expect(mention.className).toContain("markdown-file-mention-node")

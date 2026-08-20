@@ -35,27 +35,40 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6])
+    expect(versions).toEqual([1, 2, 3, 6, 7])
   })
 
-  it("迁移后 project_item 移除 sort_order 并保留 worktree_path", () => {
+  it("迁移后 project_item 移除 sort_order 并保留 worktree_path，project_folder 增加 parent_folder_id", () => {
     database = new Database(":memory:")
     runMigrations(database)
 
-    const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
+    const itemColumns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
-    expect(columns.some((column) => column.name === "sort_order")).toBe(false)
-    expect(columns.some((column) => column.name === "worktree_path")).toBe(true)
+    expect(itemColumns.some((column) => column.name === "sort_order")).toBe(false)
+    expect(itemColumns.some((column) => column.name === "worktree_path")).toBe(true)
+
+    const folderColumns = database.prepare("PRAGMA table_info(project_folder)").all() as Array<{
+      name: string
+    }>
+    expect(folderColumns.some((column) => column.name === "parent_folder_id")).toBe(true)
   })
 
   it("旧库按基线登记初始快照后只补跑新增迁移", () => {
     database = new Database(":memory:")
-    // 模拟迁移系统启用前的旧库：已有项目表且 project_item 仍含 sort_order。
+    // 模拟迁移系统启用前的旧库：已有项目表、文件夹表且 project_item 仍含 sort_order。
     database.exec(`
       CREATE TABLE project (
         id INTEGER PRIMARY KEY,
         external_id TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP NOT NULL
+      );
+      CREATE TABLE project_folder (
+        id INTEGER PRIMARY KEY,
+        external_id TEXT NOT NULL UNIQUE,
+        project_id TEXT NOT NULL,
         name TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL,
         updated_at TIMESTAMP NOT NULL
@@ -78,7 +91,7 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6])
+    expect(versions).toEqual([1, 2, 3, 6, 7])
     const columns = database.prepare("PRAGMA table_info(project_item)").all() as Array<{
       name: string
     }>
@@ -94,6 +107,6 @@ describe("runMigrations", () => {
       .prepare("SELECT version FROM _migrations ORDER BY version")
       .all()
       .map((row) => (row as { version: number }).version)
-    expect(versions).toEqual([1, 2, 3, 6])
+    expect(versions).toEqual([1, 2, 3, 6, 7])
   })
 })

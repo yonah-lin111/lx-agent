@@ -1,6 +1,7 @@
 import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 // 源码区操作按钮统一样式。
 const ACTION_BUTTON_STYLE: React.CSSProperties = {
@@ -18,10 +19,12 @@ export const MarkdownActionCopyButton = ({
   label,
 }: {
   text: string
-  label: string
+  label?: string
 }): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
+  const copyLabel = label ?? t("markdown.copyCode")
 
   useEffect(
     () => () => {
@@ -45,9 +48,9 @@ export const MarkdownActionCopyButton = ({
   }
 
   return (
-    <LxTooltip content={isCopied ? "已复制" : label} placement="bottom">
+    <LxTooltip content={isCopied ? t("markdown.copiedCode") : copyLabel} placement="bottom">
       <button
-        aria-label={isCopied ? "已复制" : label}
+        aria-label={isCopied ? t("markdown.copiedCode") : copyLabel}
         type="button"
         style={{
           ...ACTION_BUTTON_STYLE,
@@ -73,22 +76,28 @@ export const MarkdownActionFoldButton = ({
   onToggle,
 }: {
   isFolded: boolean
-  label: string
-  unfoldLabel: string
+  label?: string
+  unfoldLabel?: string
   onToggle: () => void
-}): React.JSX.Element => (
-  <LxTooltip content={isFolded ? unfoldLabel : label} placement="bottom">
-    <button
-      aria-label={isFolded ? unfoldLabel : label}
-      type="button"
-      style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
-      onClick={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        onToggle()
-      }}
-    >
-      {isFolded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-    </button>
-  </LxTooltip>
-)
+}): React.JSX.Element => {
+  const { t } = useTranslation()
+  const foldText = label ?? t("markdown.foldCode")
+  const unfoldText = unfoldLabel ?? t("markdown.unfoldCode")
+
+  return (
+    <LxTooltip content={isFolded ? unfoldText : foldText} placement="bottom">
+      <button
+        aria-label={isFolded ? unfoldText : foldText}
+        type="button"
+        style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onToggle()
+        }}
+      >
+        {isFolded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+      </button>
+    </LxTooltip>
+  )
+}

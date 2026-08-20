@@ -86,4 +86,36 @@ describe("useProjectNavigationActions", () => {
     })
     expect(refreshProjects).toHaveBeenCalledOnce()
   })
+
+  it("在文件夹下创建子文件夹时传递 parentFolderId", async () => {
+    const refreshProjects = vi.fn<() => Promise<void>>().mockResolvedValue()
+    const toast = { success: vi.fn(), error: vi.fn() }
+    const createFolder = vi.spyOn(projectNavigationApi, "createFolder").mockResolvedValue({
+      id: "subfolder-1",
+      projectId: "project-1",
+      parentFolderId: "folder-1",
+      name: "new folder",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    })
+    const { result } = renderHook(() =>
+      useProjectNavigationActions(projects, refreshProjects, toast),
+    )
+
+    const folderId = await act(() =>
+      result.current.createMenuItem(
+        { type: "project_folder", id: "folder-1", projectId: "project-1" },
+        "project_folder",
+      ),
+    )
+
+    expect(folderId).toBe("subfolder-1")
+    expect(createFolder).toHaveBeenCalledWith({
+      projectId: "project-1",
+      parentFolderId: "folder-1",
+      name: "new folder",
+    })
+    expect(refreshProjects).toHaveBeenCalledOnce()
+    expect(toast.success).toHaveBeenCalledWith("文件夹创建成功")
+  })
 })

@@ -139,12 +139,9 @@ export const ProjectNavigationList = ({
   /**
    * 渲染可选择的条目节点。
    */
-  const renderPrompt = (
-    prompt: ProjectNavigationPrompt,
-    isNested: boolean,
-    showBranch: boolean,
-  ): React.JSX.Element => {
+  const renderPrompt = (prompt: ProjectNavigationPrompt, depth: number): React.JSX.Element => {
     const isActive = activePromptId === prompt.id
+    const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
 
     return (
       <div
@@ -153,9 +150,10 @@ export const ProjectNavigationList = ({
         tabIndex={0}
         data-item-level="prompt"
         aria-current={isActive ? "page" : undefined}
+        style={{ marginLeft: `${marginLeft}px` }}
         className={`flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-          isNested ? "ml-5" : "ml-2.5"
-        } ${isActive ? "bg-white/5 text-white" : "text-white/70"}`}
+          isActive ? "bg-white/5 text-white" : "text-white/70"
+        }`}
         onClick={() => {
           onItemOpen(prompt.id)
         }}
@@ -164,11 +162,6 @@ export const ProjectNavigationList = ({
         }}
         onContextMenu={(event) => onOpenMenu(event, "prompt", prompt)}
       >
-        {showBranch ? (
-          <TreeBranchIcon />
-        ) : (
-          <span aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        )}
         <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`} />
         {renderItemName(
           prompt,
@@ -182,11 +175,57 @@ export const ProjectNavigationList = ({
   }
 
   /**
-   * 渲染文件夹内条目，顺序由父组件按状态分组与排序键预先排好。
+   * 递归渲染文件夹节点及其子文件夹与条目。
    */
-  const renderFolderPrompts = (
-    prompts: ProjectNavigationProject["projectFolders"][number]["prompts"],
-  ): React.JSX.Element[] => prompts.map((prompt, index) => renderPrompt(prompt, true, index === 0))
+  const renderFolder = (
+    folder: ProjectNavigationProject["projectFolders"][number],
+    depth: number,
+    projectId: string,
+  ): React.JSX.Element => {
+    const isFolderCollapsed = searchKeyword ? false : !Boolean(collapsedProjectFolders[folder.id])
+    const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
+    const totalChildCount = folder.projectFolders.length + folder.prompts.length
+
+    return (
+      <div key={folder.id} className="space-y-0.5">
+        <div
+          role="button"
+          tabIndex={0}
+          data-item-level="folder"
+          style={{ marginLeft: `${marginLeft}px` }}
+          className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+          aria-expanded={!isFolderCollapsed}
+          onClick={() => onProjectFolderToggle(folder.id)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.currentTarget.click()
+            }
+          }}
+          onContextMenu={(event) => onOpenMenu(event, "project_folder", folder, projectId)}
+        >
+          <TreeBranchIcon />
+          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
+          {renderItemName(folder, "min-w-0 flex-1 truncate")}
+          {isFolderCollapsed ? (
+            <>
+              <span className="text-xs text-white/35 group-hover:hidden">{totalChildCount}</span>
+              <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+            </>
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
+          )}
+        </div>
+        {!isFolderCollapsed && (
+          <>
+            {folder.projectFolders.map((childFolder) =>
+              renderFolder(childFolder, depth + 1, projectId),
+            )}
+            {folder.prompts.map((prompt) => renderPrompt(prompt, depth + 1))}
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]">
@@ -227,48 +266,8 @@ export const ProjectNavigationList = ({
 
               {!isProjectCollapsed && (
                 <div className="space-y-0.5">
-                  {project.projectFolders.map((folder) => {
-                    const isFolderCollapsed = searchKeyword
-                      ? false
-                      : !Boolean(collapsedProjectFolders[folder.id])
-
-                    return (
-                      <div key={folder.id} className="space-y-0.5">
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          data-item-level="folder"
-                          className="group ml-2.5 flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
-                          aria-expanded={!isFolderCollapsed}
-                          onClick={() => onProjectFolderToggle(folder.id)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.currentTarget.click()
-                            }
-                          }}
-                          onContextMenu={(event) =>
-                            onOpenMenu(event, "project_folder", folder, project.id)
-                          }
-                        >
-                          <TreeBranchIcon />
-                          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
-                          {renderItemName(folder, "min-w-0 flex-1 truncate")}
-                          {isFolderCollapsed ? (
-                            <>
-                              <span className="text-xs text-white/35 group-hover:hidden">
-                                {folder.prompts.length}
-                              </span>
-                              <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
-                            </>
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
-                          )}
-                        </div>
-                        {!isFolderCollapsed && renderFolderPrompts(folder.prompts)}
-                      </div>
-                    )
-                  })}
-                  {project.prompts.map((prompt) => renderPrompt(prompt, false, true))}
+                  {project.projectFolders.map((folder) => renderFolder(folder, 1, project.id))}
+                  {project.prompts.map((prompt) => renderPrompt(prompt, 1))}
                 </div>
               )}
             </div>

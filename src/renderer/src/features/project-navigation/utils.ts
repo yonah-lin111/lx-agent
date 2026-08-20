@@ -1,6 +1,7 @@
 import type { Project, ProjectFolder, ProjectItem } from "@shared/project"
 import type {
   ProjectNavigationFilterScope,
+  ProjectNavigationFolder,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
   ProjectNavigationSortDirection,
@@ -14,30 +15,36 @@ export const createProjectNavigationTree = (
   projectRecords: Project[],
   folderRecords: ProjectFolder[],
   itemRecords: ProjectItem[],
-): ProjectNavigationProject[] =>
-  projectRecords.map((project) => ({
+): ProjectNavigationProject[] => {
+  const buildFolderTree = (folder: ProjectFolder): ProjectNavigationFolder => ({
+    id: folder.id,
+    name: folder.name,
+    parentFolderId: folder.parentFolderId,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
+    projectFolders: folderRecords
+      .filter((child) => child.parentFolderId === folder.id)
+      .map(buildFolderTree),
+    prompts: itemRecords
+      .filter((item) => item.projectFolderId === folder.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        status: item.status,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+  })
+
+  return projectRecords.map((project) => ({
     id: project.id,
     name: project.name,
     path: project.path,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     projectFolders: folderRecords
-      .filter((folder) => folder.projectId === project.id)
-      .map((folder) => ({
-        id: folder.id,
-        name: folder.name,
-        createdAt: folder.createdAt,
-        updatedAt: folder.updatedAt,
-        prompts: itemRecords
-          .filter((item) => item.projectFolderId === folder.id)
-          .map((item) => ({
-            id: item.id,
-            name: item.name,
-            status: item.status,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-          })),
-      })),
+      .filter((folder) => folder.projectId === project.id && !folder.parentFolderId)
+      .map(buildFolderTree),
     prompts: itemRecords
       .filter((item) => item.projectId === project.id && !item.projectFolderId)
       .map((item) => ({
@@ -48,6 +55,7 @@ export const createProjectNavigationTree = (
         updatedAt: item.updatedAt,
       })),
   }))
+}
 
 /**
  * 按指定键与方向比较两个同名同字段节点。
@@ -86,19 +94,25 @@ export const sortProjectNavigationTree = (
   projects: ProjectNavigationProject[],
   sortKey: ProjectNavigationSortKey,
   direction: ProjectNavigationSortDirection,
-): ProjectNavigationProject[] =>
-  [...projects]
+): ProjectNavigationProject[] => {
+  const sortFolderNode = (folder: ProjectNavigationFolder): ProjectNavigationFolder => ({
+    ...folder,
+    projectFolders: [...folder.projectFolders]
+      .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
+      .map(sortFolderNode),
+    prompts: sortPrompts(folder.prompts, sortKey, direction),
+  })
+
+  return [...projects]
     .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
     .map((project) => ({
       ...project,
       projectFolders: [...project.projectFolders]
         .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
-        .map((folder) => ({
-          ...folder,
-          prompts: sortPrompts(folder.prompts, sortKey, direction),
-        })),
+        .map(sortFolderNode),
       prompts: sortPrompts(project.prompts, sortKey, direction),
     }))
+}
 
 /**
  * 根据关键词过滤项目树，同时保留匹配节点的父级层次。
@@ -109,21 +123,39 @@ export const filterProjectNavigationTree = (
 ): ProjectNavigationProject[] => {
   const keyword = searchKeyword.trim().toLowerCase()
   if (!keyword) return projects
-  return projects.flatMap((project) => {
-    const matchesProject = project.name.toLowerCase().includes(keyword)
-    const folders = project.projectFolders
-      .map((folder) => ({
+
+  const filterFolderNode = (
+    folder: ProjectNavigationFolder,
+    parentMatched: boolean,
+  ): ProjectNavigationFolder | null => {
+    const isFolderMatched = parentMatched || folder.name.toLowerCase().includes(keyword)
+    const filteredChildFolders = folder.projectFolders
+      .map((child) => filterFolderNode(child, isFolderMatched))
+      .filter((child): child is ProjectNavigationFolder => child !== null)
+    const filteredPrompts = folder.prompts.filter(
+      (prompt) => isFolderMatched || prompt.name.toLowerCase().includes(keyword),
+    )
+
+    if (isFolderMatched || filteredChildFolders.length > 0 || filteredPrompts.length > 0) {
+      return {
         ...folder,
-        prompts: folder.prompts.filter((prompt) => prompt.name.toLowerCase().includes(keyword)),
-      }))
-      .filter(
-        (folder) =>
-          matchesProject ||
-          folder.name.toLowerCase().includes(keyword) ||
-          folder.prompts.length > 0,
-      )
-    const prompts = project.prompts.filter((prompt) => prompt.name.toLowerCase().includes(keyword))
-    return matchesProject || folders.length > 0 || prompts.length > 0
+        projectFolders: filteredChildFolders,
+        prompts: filteredPrompts,
+      }
+    }
+    return null
+  }
+
+  return projects.flatMap((project) => {
+    const isProjectMatched = project.name.toLowerCase().includes(keyword)
+    const folders = project.projectFolders
+      .map((folder) => filterFolderNode(folder, isProjectMatched))
+      .filter((folder): folder is ProjectNavigationFolder => folder !== null)
+    const prompts = project.prompts.filter(
+      (prompt) => isProjectMatched || prompt.name.toLowerCase().includes(keyword),
+    )
+
+    return isProjectMatched || folders.length > 0 || prompts.length > 0
       ? [{ ...project, projectFolders: folders, prompts }]
       : []
   })
@@ -140,15 +172,32 @@ export const filterProjectNavigationTreeByStatus = (
   activeProjectId?: string,
 ): ProjectNavigationProject[] => {
   if (statuses.length === 0) return projects
+
+  const filterFolderByStatus = (
+    folder: ProjectNavigationFolder,
+  ): ProjectNavigationFolder | null => {
+    const filteredChildFolders = folder.projectFolders
+      .map(filterFolderByStatus)
+      .filter((child): child is ProjectNavigationFolder => child !== null)
+    const filteredPrompts = folder.prompts.filter((prompt) => statuses.includes(prompt.status))
+
+    if (filteredChildFolders.length > 0 || filteredPrompts.length > 0) {
+      return {
+        ...folder,
+        projectFolders: filteredChildFolders,
+        prompts: filteredPrompts,
+      }
+    }
+    return null
+  }
+
   return projects.flatMap((project) => {
     if (scope !== "all" && activeProjectId && project.id !== activeProjectId) return []
     const projectFolders = project.projectFolders
-      .map((folder) => ({
-        ...folder,
-        prompts: folder.prompts.filter((prompt) => statuses.includes(prompt.status)),
-      }))
-      .filter((folder) => folder.prompts.length > 0)
+      .map(filterFolderByStatus)
+      .filter((folder): folder is ProjectNavigationFolder => folder !== null)
     const prompts = project.prompts.filter((prompt) => statuses.includes(prompt.status))
+
     return projectFolders.length > 0 || prompts.length > 0
       ? [{ ...project, projectFolders, prompts }]
       : []

@@ -170,12 +170,17 @@ export const ProjectNavigation = (): React.JSX.Element => {
   // 当前激活条目所属的项目 id，用于"当前项目"范围筛选。
   const activeProjectId = useMemo(() => {
     if (!activePromptId) return undefined
+    const hasPrompt = (folders: ProjectNavigationProject["projectFolders"]): boolean =>
+      folders.some(
+        (folder) =>
+          folder.prompts.some((prompt) => prompt.id === activePromptId) ||
+          hasPrompt(folder.projectFolders),
+      )
+
     return projects.find(
       (project) =>
         project.prompts.some((prompt) => prompt.id === activePromptId) ||
-        project.projectFolders.some((folder) =>
-          folder.prompts.some((prompt) => prompt.id === activePromptId),
-        ),
+        hasPrompt(project.projectFolders),
     )?.id
   }, [activePromptId, projects])
 
@@ -250,8 +255,13 @@ export const ProjectNavigation = (): React.JSX.Element => {
     const name = itemType === "project_folder" ? "new folder" : "new item"
     const id = await createMenuItem(menu, itemType)
     if (id) {
-      if (itemType === "project_folder")
-        setCollapsedProjects((value) => ({ ...value, [menu.id]: true }))
+      if (itemType === "project_folder") {
+        if (menu.type === "project") {
+          setCollapsedProjects((value) => ({ ...value, [menu.id]: true }))
+        } else if (menu.type === "project_folder") {
+          setCollapsedProjectFolders((value) => ({ ...value, [menu.id]: true }))
+        }
+      }
       if (itemType === "prompt" && menu.type === "project_folder") {
         setCollapsedProjectFolders((value) => ({ ...value, [menu.id]: true }))
       }
@@ -342,18 +352,48 @@ export const ProjectNavigation = (): React.JSX.Element => {
    */
   const deleteMenuItem = async (): Promise<void> => {
     if (!menu) return
+    const collectFolderPromptIds = (
+      folders: ProjectNavigationProject["projectFolders"],
+    ): string[] =>
+      folders.flatMap((folder) => [
+        ...folder.prompts.map((p) => p.id),
+        ...collectFolderPromptIds(folder.projectFolders),
+      ])
+
+    const findFolderInTree = (
+      folders: ProjectNavigationProject["projectFolders"],
+      folderId: string,
+    ): ProjectNavigationProject["projectFolders"][number] | undefined => {
+      for (const f of folders) {
+        if (f.id === folderId) return f
+        const found = findFolderInTree(f.projectFolders, folderId)
+        if (found) return found
+      }
+      return undefined
+    }
+
     const deletedPromptIds =
       menu.type === "project"
         ? (projects
             .find((project) => project.id === menu.id)
-            ?.projectFolders.flatMap((folder) => folder.prompts)
-            .concat(projects.find((project) => project.id === menu.id)?.prompts ?? [])
-            .map((prompt) => prompt.id) ?? [])
+            ?.prompts.map((p) => p.id)
+            .concat(
+              collectFolderPromptIds(
+                projects.find((project) => project.id === menu.id)?.projectFolders ?? [],
+              ),
+            ) ?? [])
         : menu.type === "project_folder"
-          ? (projects
-              .find((project) => project.id === menu.projectId)
-              ?.projectFolders.find((folder) => folder.id === menu.id)
-              ?.prompts.map((prompt) => prompt.id) ?? [])
+          ? (() => {
+              const folder = projects
+                .map((p) => findFolderInTree(p.projectFolders, menu.id))
+                .find(Boolean)
+              return folder
+                ? [
+                    ...folder.prompts.map((p) => p.id),
+                    ...collectFolderPromptIds(folder.projectFolders),
+                  ]
+                : []
+            })()
           : [menu.id]
 
     if (await deleteItem(menu)) {
@@ -382,6 +422,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }))
   }
 
+  const checkAllFoldersCollapsed = (folders: ProjectNavigationProject["projectFolders"]): boolean =>
+    folders.every(
+      (folder) =>
+        !collapsedProjectFolders[folder.id] && checkAllFoldersCollapsed(folder.projectFolders),
+    )
+
   /**
    * 当前可见项目与文件夹是否已全部折叠，用于切换折叠/展开全部图标。
    */
@@ -389,8 +435,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
     searchKeyword.length === 0 &&
     filteredProjects.every(
       (project) =>
-        !collapsedProjects[project.id] &&
-        project.projectFolders.every((folder) => !collapsedProjectFolders[folder.id]),
+        !collapsedProjects[project.id] && checkAllFoldersCollapsed(project.projectFolders),
     )
 
   /**
@@ -399,11 +444,15 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const toggleCollapseAll = (): void => {
     const nextCollapsedProjects = { ...collapsedProjects }
     const nextCollapsedFolders = { ...collapsedProjectFolders }
+    const setFoldersCollapsed = (folders: ProjectNavigationProject["projectFolders"]): void => {
+      for (const folder of folders) {
+        nextCollapsedFolders[folder.id] = isAllCollapsed
+        setFoldersCollapsed(folder.projectFolders)
+      }
+    }
     for (const project of filteredProjects) {
       nextCollapsedProjects[project.id] = isAllCollapsed
-      for (const folder of project.projectFolders) {
-        nextCollapsedFolders[folder.id] = isAllCollapsed
-      }
+      setFoldersCollapsed(project.projectFolders)
     }
     setCollapsedProjects(nextCollapsedProjects)
     setCollapsedProjectFolders(nextCollapsedFolders)
@@ -445,19 +494,28 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }
     const nextCollapsedProjects = { ...collapsedProjects }
     const nextCollapsedFolders = { ...collapsedProjectFolders }
+
+    const expandMatchingFolders = (
+      folders: ProjectNavigationProject["projectFolders"],
+    ): boolean => {
+      let hasMatch = false
+      for (const folder of folders) {
+        const childMatched = expandMatchingFolders(folder.projectFolders)
+        const promptMatched = folder.prompts.some((prompt) => statuses.includes(prompt.status))
+        if (childMatched || promptMatched) {
+          nextCollapsedFolders[folder.id] = true
+          hasMatch = true
+        }
+      }
+      return hasMatch
+    }
+
     for (const project of projects) {
       if (scope !== "all" && activeProjectId && project.id !== activeProjectId) continue
-      const matchingFolders = project.projectFolders.filter((folder) =>
-        folder.prompts.some((prompt) => statuses.includes(prompt.status)),
-      )
-      if (
-        project.prompts.some((prompt) => statuses.includes(prompt.status)) ||
-        matchingFolders.length > 0
-      ) {
+      const foldersMatched = expandMatchingFolders(project.projectFolders)
+      const promptsMatched = project.prompts.some((prompt) => statuses.includes(prompt.status))
+      if (foldersMatched || promptsMatched) {
         nextCollapsedProjects[project.id] = true
-      }
-      for (const folder of matchingFolders) {
-        nextCollapsedFolders[folder.id] = true
       }
     }
     setCollapsedProjects(nextCollapsedProjects)
@@ -594,17 +652,29 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const locatePrompt = (promptId: string): boolean => {
     if (!promptId) return false
 
+    const expandFolderWithPrompt = (
+      folders: ProjectNavigationProject["projectFolders"],
+    ): boolean => {
+      for (const folder of folders) {
+        if (folder.prompts.some((prompt) => prompt.id === promptId)) {
+          setCollapsedProjectFolders((currentValue) => ({ ...currentValue, [folder.id]: true }))
+          return true
+        }
+        if (expandFolderWithPrompt(folder.projectFolders)) {
+          setCollapsedProjectFolders((currentValue) => ({ ...currentValue, [folder.id]: true }))
+          return true
+        }
+      }
+      return false
+    }
+
     for (const project of projects) {
       if (project.prompts.some((prompt) => prompt.id === promptId)) {
         setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: true }))
         return true
       }
-      const folder = project.projectFolders.find((item) =>
-        item.prompts.some((prompt) => prompt.id === promptId),
-      )
-      if (folder) {
+      if (expandFolderWithPrompt(project.projectFolders)) {
         setCollapsedProjects((currentValue) => ({ ...currentValue, [project.id]: true }))
-        setCollapsedProjectFolders((currentValue) => ({ ...currentValue, [folder.id]: true }))
         return true
       }
     }
