@@ -18,12 +18,12 @@ describe("themeStore", () => {
     expect(getInitialTheme()).toBe("default")
   })
 
-  it("should read stored theme from localStorage", () => {
+  it("should read stored theme from localStorage and fallback on invalid theme", () => {
     localStorage.setItem("lx_app_theme", "minecraft")
     expect(getInitialTheme()).toBe("minecraft")
 
-    localStorage.setItem("lx_app_theme", "wood")
-    expect(getInitialTheme()).toBe("wood")
+    localStorage.setItem("lx_app_theme", "invalid_theme_name")
+    expect(getInitialTheme()).toBe("default")
 
     localStorage.setItem("lx_app_theme", "default")
     expect(getInitialTheme()).toBe("default")
@@ -32,9 +32,6 @@ describe("themeStore", () => {
   it("should apply theme to documentElement attribute", () => {
     applyThemeToDom("minecraft")
     expect(document.documentElement.getAttribute("data-theme")).toBe("minecraft")
-
-    applyThemeToDom("wood")
-    expect(document.documentElement.getAttribute("data-theme")).toBe("wood")
 
     applyThemeToDom("default")
     expect(document.documentElement.getAttribute("data-theme")).toBe("default")
@@ -45,12 +42,12 @@ describe("themeStore", () => {
     expect(result.current.theme).toBe("default")
 
     act(() => {
-      result.current.setTheme("wood")
+      result.current.setTheme("minecraft")
     })
 
-    expect(result.current.theme).toBe("wood")
-    expect(localStorage.getItem("lx_app_theme")).toBe("wood")
-    expect(document.documentElement.getAttribute("data-theme")).toBe("wood")
+    expect(result.current.theme).toBe("minecraft")
+    expect(localStorage.getItem("lx_app_theme")).toBe("minecraft")
+    expect(document.documentElement.getAttribute("data-theme")).toBe("minecraft")
 
     act(() => {
       result.current.toggleTheme()

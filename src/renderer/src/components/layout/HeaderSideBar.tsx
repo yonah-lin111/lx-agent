@@ -165,7 +165,6 @@ export const HeaderSideBar = ({
   const THEME_OPTIONS: { id: AppTheme; label: string }[] = [
     { id: "default", label: "Default" },
     { id: "minecraft", label: "Minecraft" },
-    { id: "wood", label: "Wood" },
   ]
 
   return (

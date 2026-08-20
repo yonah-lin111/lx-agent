@@ -22,8 +22,11 @@ src/renderer/src/
 ├── styles/
 │   └── themes/
 │       ├── default.css           # 默认暗色主题 Token 定义
-│       ├── minecraft.css         # 我的世界 (Minecraft) 像素暗色主题定义
-│       └── wood.css              # 木质纹理 (Wood) 暖黄原木主题定义
+│       └── minecraft/            # 模块化复杂主题示例（Minecraft 像素暗色）
+│           ├── index.css         # 主题入口（变量、全局重置、布局与核心控件）
+│           ├── markdown-editor.css # CodeMirror 编辑器专用定制样式
+│           ├── markdown-preview.css# Markdown 预览排版与代码块样式
+│           └── agent.css         # Agent 会话气泡与专属交互样式
 └── styles.css                    # 全局样式入口，统一引入各主题 css 文件
 ```
 
@@ -67,8 +70,16 @@ src/renderer/src/
 export type AppTheme = "default" | "minecraft" | "cyberpunk"
 ```
 
-### Step 2：新建主题 CSS 文件
-在 `src/renderer/src/styles/themes/cyberpunk.css` 中定义主题规则：
+### Step 2：新建主题 CSS 样式
+
+- **简单主题**：在 `src/renderer/src/styles/themes/<theme_id>.css` 中单文件定义；
+- **深度定制/复杂主题（推荐模式）**：参照 `minecraft` 目录模式建立子目录 `src/renderer/src/styles/themes/<theme_id>/`，拆分为模块化样式表：
+  - `index.css`：引入子模块、定义全局 Token、直角/圆角重置、基础容器及通用组件；
+  - `markdown-editor.css`：定制编辑器（CodeMirror）光标、选区、行号与高亮样式；
+  - `markdown-preview.css`：定制预览区排版、代码块、标题与引用样式；
+  - `agent.css`：定制 Agent 气泡、思考块、交互卡片及特殊状态。
+
+单文件/入口基础 Token 示例（以 `cyberpunk` 为例）：
 ```css
 [data-theme="cyberpunk"] {
   --color-theme-bg: #0d0221;
@@ -97,8 +108,8 @@ export type AppTheme = "default" | "minecraft" | "cyberpunk"
 ```css
 /* src/renderer/src/styles.css */
 @import "./styles/themes/default.css";
-@import "./styles/themes/minecraft.css";
-@import "./styles/themes/cyberpunk.css";
+@import "./styles/themes/minecraft/index.css";
+@import "./styles/themes/cyberpunk.css"; /* 或 ./styles/themes/cyberpunk/index.css */
 ```
 
 ### Step 4：在顶部切换栏中添加选项
