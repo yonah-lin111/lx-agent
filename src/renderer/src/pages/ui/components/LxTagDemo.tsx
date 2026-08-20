@@ -3,6 +3,7 @@ import type React from "react"
 import { useState } from "react"
 
 import { LxTag, type LxTagColor } from "@/components/ui/LxTag"
+import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 // 示例标签颜色。
@@ -21,11 +22,15 @@ const TAG_COLORS: LxTagColor[] = [
  * 预览 LxTag 组件。
  */
 export const LxTagDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [tags, setTags] = useState<string[]>(["TypeScript", "React", "Electron"])
 
   return (
     <div className="flex flex-col gap-4">
-      <UiPreviewSection title="颜色" description="内置多种强调色，highlighted 加深底色">
+      <UiPreviewSection
+        title={t("uiPreview.demos.tagColors")}
+        description={t("uiPreview.demos.tagColorsDesc")}
+      >
         <div className="flex flex-wrap gap-2">
           {TAG_COLORS.map((color) => (
             <LxTag key={color} color={color}>
@@ -34,14 +39,20 @@ export const LxTagDemo = (): React.JSX.Element => {
           ))}
         </div>
       </UiPreviewSection>
-      <UiPreviewSection title="尺寸" description="small / default / large">
+      <UiPreviewSection
+        title={t("uiPreview.demos.tagSizes")}
+        description={t("uiPreview.demos.tagSizesDesc")}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <LxTag size="small">Small</LxTag>
           <LxTag size="default">Default</LxTag>
           <LxTag size="large">Large</LxTag>
         </div>
       </UiPreviewSection>
-      <UiPreviewSection title="交互" description="可关闭、可点击与自定义前后缀">
+      <UiPreviewSection
+        title={t("uiPreview.demos.tagInteractions")}
+        description={t("uiPreview.demos.tagInteractionsDesc")}
+      >
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -56,10 +67,10 @@ export const LxTagDemo = (): React.JSX.Element => {
           </div>
           <div className="flex flex-wrap gap-2">
             <LxTag color="blue" onClick={() => {}}>
-              可点击标签
+              Clickable Tag
             </LxTag>
             <LxTag color="rose" prefix={<CircleDot className="h-2.5 w-2.5" />}>
-              带前缀
+              With Prefix
             </LxTag>
           </div>
         </div>

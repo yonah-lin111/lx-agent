@@ -2,6 +2,7 @@ import { Braces, CornerDownRight } from "lucide-react"
 import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { ChatBlock, LspToolDetails } from "@/features/agent/types"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 
 // 工具调用块类型。
@@ -14,17 +15,17 @@ interface AgentLspBlockProps {
   toolCalls: ToolCallBlock[]
 }
 
-// 操作名 → 中文标签。
-const OPERATION_LABELS: Record<string, string> = {
-  goToDefinition: "定义",
-  findReferences: "引用",
-  hover: "悬停文档",
-  documentSymbol: "文档符号",
-  workspaceSymbol: "工作区符号",
-  goToImplementation: "实现",
-  prepareCallHierarchy: "调用层级",
-  incomingCalls: "入调用",
-  outgoingCalls: "出调用",
+// 操作名 → i18n 标签 key。
+const OPERATION_LABEL_KEYS: Record<string, TranslationKey> = {
+  goToDefinition: "agent.lspActions.goToDefinition",
+  findReferences: "agent.lspActions.findReferences",
+  hover: "agent.lspActions.hover",
+  documentSymbol: "agent.lspActions.documentSymbol",
+  workspaceSymbol: "agent.lspActions.workspaceSymbol",
+  goToImplementation: "agent.lspActions.goToImplementation",
+  prepareCallHierarchy: "agent.lspActions.prepareCallHierarchy",
+  incomingCalls: "agent.lspActions.incomingCalls",
+  outgoingCalls: "agent.lspActions.outgoingCalls",
 }
 
 // 收缩绝对路径中间段，保留根目录与最后两个路径段。
@@ -48,8 +49,13 @@ const summarizeCalls = (toolCalls: ToolCallBlock[]): string =>
     .join(" · ")
 
 // 单份结果渲染：标题 + 错误/文本/位置行列表。
-const renderDetails = (details: LspToolDetails, index: number): React.JSX.Element => {
-  const label = OPERATION_LABELS[details.operation] ?? details.operation
+const renderDetails = (
+  details: LspToolDetails,
+  index: number,
+  t: (key: TranslationKey) => string,
+): React.JSX.Element => {
+  const labelKey = OPERATION_LABEL_KEYS[details.operation]
+  const label = labelKey ? t(labelKey) : details.operation
   return (
     <div key={index} className="agent-lsp-detail min-w-0">
       {details.error ? (
@@ -68,7 +74,9 @@ const renderDetails = (details: LspToolDetails, index: number): React.JSX.Elemen
       ) : details.results.length === 0 ? (
         <div className="agent-lsp-empty mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="agent-lsp-corner mt-[2px] h-3 w-3 shrink-0" />
-          <span className="agent-lsp-empty-text">{label} 未找到结果</span>
+          <span className="agent-lsp-empty-text">
+            {label} - {t("project.noProjects")}
+          </span>
         </div>
       ) : (
         <div className="agent-lsp-results mt-1 flex flex-col">
@@ -106,11 +114,11 @@ export const AgentLspBlock = ({
   details = [],
   toolCalls,
 }: AgentLspBlockProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   if (toolCalls.length === 0 && details.length === 0) return null
-  const title = details[0]
-    ? (OPERATION_LABELS[details[0].operation] ?? details[0].operation)
-    : "lsp"
-  const headerCount = details.length === 1 ? ` · ${details[0].results.length} 处` : ""
+  const firstOpKey = details[0] ? OPERATION_LABEL_KEYS[details[0].operation] : undefined
+  const title = firstOpKey ? t(firstOpKey) : (details[0]?.operation ?? "lsp")
+  const headerCount = details.length === 1 ? ` · ${details[0].results.length}` : ""
 
   return (
     <div className="agent-lsp-block my-0.5 min-w-0">
@@ -122,7 +130,7 @@ export const AgentLspBlock = ({
         </span>
       </div>
       {details.length > 0 ? (
-        details.map((entry, index) => renderDetails(entry, index))
+        details.map((entry, index) => renderDetails(entry, index, t))
       ) : (
         <div className="agent-lsp-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="agent-lsp-corner mt-[2px] h-3 w-3 shrink-0" />

@@ -3,46 +3,61 @@ import { ShieldAlert } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useTranslation } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type PermissionPanelPhase = "select" | "confirm"
 
 export interface PermissionPanelOption {
   key: string
-  label: string
-  description: string
+  labelKey: TranslationKey
+  descriptionKey: TranslationKey
   tone?: "default" | "allow" | "danger" | "warn"
 }
 
 // 选择态：允许 / 允许本次会话 / 永久允许 / 拒绝 / 永久拒绝 / 允许全部。
 export const PERMISSION_SELECT_OPTIONS: PermissionPanelOption[] = [
-  { key: "allow", label: "允许", description: "本次放行该操作", tone: "allow" },
-  { key: "session", label: "允许本次会话", description: "本次会话内不再询问同类操作" },
   {
-    key: "permanentAllow",
-    label: "永久允许",
-    description: "写回配置，相同操作不再询问",
+    key: "allow",
+    labelKey: "agent.permAllow",
+    descriptionKey: "agent.permAllowDesc",
     tone: "allow",
   },
-  { key: "deny", label: "拒绝", description: "拒绝该操作，交由模型解释调整", tone: "danger" },
+  { key: "session", labelKey: "agent.permSession", descriptionKey: "agent.permSessionDesc" },
+  {
+    key: "permanentAllow",
+    labelKey: "agent.permAlways",
+    descriptionKey: "agent.permAlwaysDesc",
+    tone: "allow",
+  },
+  { key: "deny", labelKey: "agent.permDeny", descriptionKey: "agent.permDenyDesc", tone: "danger" },
   {
     key: "permanentDeny",
-    label: "永久拒绝",
-    description: "写回配置，相同操作直接拒绝",
+    labelKey: "agent.permAlwaysDeny",
+    descriptionKey: "agent.permAlwaysDenyDesc",
     tone: "danger",
   },
-  { key: "allowAll", label: "允许全部", description: "允许当前对话全部工具与 MCP", tone: "warn" },
+  {
+    key: "allowAll",
+    labelKey: "agent.permAllowAll",
+    descriptionKey: "agent.permAllowAllDesc",
+    tone: "warn",
+  },
 ]
 
 // 确认态：确认允许全部 / 返回（默认停在"返回"）。
 export const PERMISSION_CONFIRM_OPTIONS: PermissionPanelOption[] = [
   {
     key: "confirmAllowAll",
-    label: "确认允许全部",
-    description: "对当前对话全部工具与 MCP 不再询问",
+    labelKey: "agent.permConfirmAllowAll",
+    descriptionKey: "agent.permAllowAllDesc",
     tone: "danger",
   },
-  { key: "back", label: "返回", description: "返回选择", tone: "default" },
+  {
+    key: "back",
+    labelKey: "agent.permBack",
+    descriptionKey: "agent.permBackDesc",
+    tone: "default",
+  },
 ]
 
 // 选项 tone 配色（active 高亮态 / 非激活态）。
@@ -185,10 +200,10 @@ export const PermissionStatusButton = ({
             )}`}
           >
             <span className="min-w-0 max-w-[45%] truncate text-[13px] font-medium leading-none">
-              {option.label}
+              {t(option.labelKey)}
             </span>
             <span className="ml-auto min-w-0 max-w-[55%] truncate text-[12px] leading-none opacity-60">
-              {option.description}
+              {t(option.descriptionKey)}
             </span>
           </button>
         ))}

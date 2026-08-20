@@ -874,8 +874,15 @@ export const AgentMessageItem = ({
                 {isCollapsible && (
                   <LxIconButton
                     size="small"
-                    aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
-                    title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "top" }}
+                    aria-label={
+                      isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")
+                    }
+                    title={{
+                      content: isExpanded
+                        ? t("markdown.collapseContent")
+                        : t("markdown.expandContent"),
+                      placement: "top",
+                    }}
                     onClick={toggleExpand}
                   >
                     {isExpanded ? (
@@ -913,7 +920,10 @@ export const AgentMessageItem = ({
                 <LxIconButton
                   size="small"
                   aria-label={t("agent.copyMessage")}
-                  title={{ content: copied ? t("common.copied") : t("agent.copyMessage"), placement: "top" }}
+                  title={{
+                    content: copied ? t("common.copied") : t("agent.copyMessage"),
+                    placement: "top",
+                  }}
                   onClick={copyMessageContent}
                 >
                   {copied ? (
@@ -1103,7 +1113,11 @@ export const AgentMessageItem = ({
           </div>
         )}
         {(isStreamingNow || isLoading) && !assistantError && !showScrollToBottom && (
-          <div className="flex items-center py-1" role="status" aria-label="AI 生成中">
+          <div
+            className="flex items-center py-1"
+            role="status"
+            aria-label={t("agent.aiGenerating")}
+          >
             <div className="lx-liquid-loader">
               <span className="lx-liquid-blob" />
             </div>
@@ -1134,7 +1148,10 @@ export const AgentMessageItem = ({
             <LxIconButton
               size="small"
               aria-label={t("agent.copyMessage")}
-              title={{ content: copied ? t("common.copied") : t("agent.copyMessage"), placement: "top" }}
+              title={{
+                content: copied ? t("common.copied") : t("agent.copyMessage"),
+                placement: "top",
+              }}
               onClick={copyMessageContent}
             >
               {copied ? (
@@ -1144,7 +1161,10 @@ export const AgentMessageItem = ({
               )}
             </LxIconButton>
             {!readOnly && onDelete && (
-              <LxTooltip content={t("agent.deleteQaConfirm")} onConfirm={() => onDelete(message.id)}>
+              <LxTooltip
+                content={t("agent.deleteQaConfirm")}
+                onConfirm={() => onDelete(message.id)}
+              >
                 <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </LxIconButton>

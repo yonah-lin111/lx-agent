@@ -1,5 +1,6 @@
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useLspStatus } from "@/features/agent/hooks/useLspStatus"
+import { useTranslation } from "@/i18n"
 
 // 聚合状态圆点颜色：全部安装绿 / 全部未装灰 / 部分缺失红（异常）。
 const dotColor = (isLoading: boolean, installed: number, total: number): string => {
@@ -17,6 +18,7 @@ const dotColor = (isLoading: boolean, installed: number, total: number): string 
  */
 export const LspStatusButton = (): React.JSX.Element => {
   const { summary, isLoading, isInstalling, lastResult, installMissing } = useLspStatus()
+  const { t } = useTranslation()
   const needsInstall = summary.missing > 0
   const color = dotColor(isLoading, summary.installed, summary.total)
 
@@ -34,11 +36,14 @@ export const LspStatusButton = (): React.JSX.Element => {
 
   const failedHint =
     lastResult && lastResult.failed.length > 0
-      ? `（上次失败：${lastResult.failed.join("、")}）`
+      ? ` ${t("agent.lspInstallFailedPrefix", { names: lastResult.failed.join(", ") })}`
       : ""
   const tooltipContent = needsInstall ? (
     <span className="agent-status-tooltip-install text-sm leading-snug">
-      安装缺失的 LSP server（{summary.missing} 个）：{summary.missingNames.join("、")}
+      {t("agent.lspInstallConfirm", {
+        count: summary.missing,
+        names: summary.missingNames.join(", "),
+      })}
       {failedHint}
     </span>
   ) : (
@@ -58,7 +63,7 @@ export const LspStatusButton = (): React.JSX.Element => {
       onConfirm={needsInstall ? () => void installMissing() : undefined}
     >
       <span
-        aria-label="LSP 安装状态"
+        aria-label={t("agent.lspStatusAria")}
         className={`agent-status-btn agent-lsp-status-btn flex shrink-0 items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5 ${needsInstall ? "cursor-pointer" : "cursor-default"}`}
       >
         {isInstalling ? (

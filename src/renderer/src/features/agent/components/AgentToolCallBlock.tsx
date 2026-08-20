@@ -18,6 +18,7 @@ import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { AgentDiff, AgentDiffLine, ChatBlock, LspToolDetails } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
 import { AgentLspBlock } from "./AgentLspBlock"
 
@@ -234,6 +235,7 @@ export const AgentToolCallBlock = ({
   lspDetails,
   defaultExpanded = false,
 }: AgentToolCallBlockProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   // diff 折叠状态与展开态内容高度（仅写/编辑工具使用）。
   const [isDiffExpanded, setIsDiffExpanded] = useState(defaultExpanded)
   const [contentHeight, setContentHeight] = useState<number | null>(null)
@@ -306,7 +308,7 @@ export const AgentToolCallBlock = ({
         <>
           <button
             type="button"
-            aria-label="Diff 内容"
+            aria-label={t("agent.diffContent")}
             aria-expanded={isDiffExpanded}
             className="agent-tool-diff-toggle mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
             onClick={() => setIsDiffExpanded((previous) => !previous)}

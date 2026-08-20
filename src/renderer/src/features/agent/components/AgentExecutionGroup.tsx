@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react"
 import type React from "react"
 import { Fragment, useState } from "react"
+import { useTranslation } from "@/i18n"
 
 // 时间轴子项（带类型以匹配小圆点颜色）。
 export type ExecutionGroupItem = {
@@ -50,6 +51,7 @@ export const AgentExecutionGroup = ({
   mcpCount,
   webSearchCount,
 }: AgentExecutionGroupProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const isCollapsible =
     toolCount + thinkingCount + mcpCount + webSearchCount >= EXECUTION_GROUP_COLLAPSE_THRESHOLD
@@ -91,7 +93,7 @@ export const AgentExecutionGroup = ({
       <button
         type="button"
         aria-expanded={isExpanded}
-        aria-label={isExpanded ? "收起执行内容" : "展开执行内容"}
+        aria-label={isExpanded ? t("agent.collapseExecution") : t("agent.expandExecution")}
         className="agent-execution-group-toggle relative ml-6 flex h-5 w-fit items-center gap-1 rounded-[6px] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >

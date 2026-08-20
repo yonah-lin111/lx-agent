@@ -117,7 +117,9 @@ export const BottomSideBar = ({
           content:
             viewMode === "terminal"
               ? `${t("bottomBar.switchToJobs")}${
-                  runningJobs.length > 0 ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}` : ""
+                  runningJobs.length > 0
+                    ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}`
+                    : ""
                 }`
               : t("bottomBar.switchToTerminal"),
           placement: "top",

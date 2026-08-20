@@ -1,6 +1,7 @@
 import type React from "react"
 
 import { AgentSkillCallBlock, type ChatBlock } from "@/features/agent"
+import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -26,12 +27,19 @@ const SKILL_CALLS: ToolCallBlock[] = [
 /**
  * 预览 AgentSkillCallBlock 组件。
  */
-export const AgentSkillCallDemo = (): React.JSX.Element => (
-  <div className="flex w-full flex-col gap-4">
-    <UiPreviewSection title="Skill 调用" description="展示加载的 Skill 名称，不展示 Skill 内容">
-      <div className="flex max-w-lg flex-col">
-        <AgentSkillCallBlock toolCalls={SKILL_CALLS} />
-      </div>
-    </UiPreviewSection>
-  </div>
-)
+export const AgentSkillCallDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex w-full flex-col gap-4">
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentSkillTitle")}
+        description={t("uiPreview.demos.agentSkillDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentSkillCallBlock toolCalls={SKILL_CALLS} />
+        </div>
+      </UiPreviewSection>
+    </div>
+  )
+}

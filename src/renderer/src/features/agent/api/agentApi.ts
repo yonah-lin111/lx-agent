@@ -54,7 +54,9 @@ export const agentApi = {
   getLspStatus: (): Promise<LspServerStatusItem[]> => window.api.agent.getLspStatus(),
   installLspServers: (): Promise<LspInstallResult> => window.api.agent.installLspServers(),
   listPromptTemplates: (cwd?: string): Promise<PromptTemplateItem[]> =>
-    window?.api?.agent?.listPromptTemplates ? window.api.agent.listPromptTemplates(cwd) : Promise.resolve([]),
+    window?.api?.agent?.listPromptTemplates
+      ? window.api.agent.listPromptTemplates(cwd)
+      : Promise.resolve([]),
   exportSession: (options: ExportSessionOptions): Promise<ExportSessionResult> =>
     window.api.agent.exportSession(options),
   copySession: (options?: CopySessionOptions): Promise<CopySessionResult> =>

@@ -8,6 +8,7 @@ import {
   AgentWebSearchBlock,
   type ChatBlock,
 } from "@/features/agent"
+import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -110,95 +111,105 @@ const WEB_SEARCH_CALLS: ToolCallBlock[] = [
 /**
  * 预览 AgentToolCallBlock 组件。
  */
-export const AgentToolCallDemo = (): React.JSX.Element => (
-  <div className="flex w-full flex-col gap-4">
-    <UiPreviewSection title="单次工具调用" description="read / bash / grep 摘要与工具结果展示">
-      <div className="flex max-w-lg flex-col">
-        <AgentToolCallBlock toolCall={READ_CALL} toolResult={READ_RESULT} />
-        <AgentToolCallBlock toolCall={BASH_CALL} />
-        <AgentToolCallBlock toolCall={GREP_CALL} />
-      </div>
-    </UiPreviewSection>
-    <UiPreviewSection title="工具调用组" description="连续同名调用合并为单行摘要，数量 ≥2 时折叠">
-      <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup
-          toolCount={3}
-          thinkingCount={0}
-          mcpCount={0}
-          webSearchCount={0}
-          items={[{ kind: "tool", node: <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} /> }]}
-        />
-      </div>
-    </UiPreviewSection>
-    <UiPreviewSection
-      title="工具 + 思考折叠组"
-      description="思考块与工具调用合并折叠，展示英文计数"
-    >
-      <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup
-          toolCount={2}
-          thinkingCount={1}
-          mcpCount={0}
-          webSearchCount={0}
-          items={[
-            {
-              kind: "thinking",
-              node: (
-                <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
-              ),
-            },
-            { kind: "tool", node: <AgentToolCallBlock toolCall={READ_CALL} /> },
-            { kind: "tool", node: <AgentToolCallBlock toolCall={BASH_CALL} /> },
-          ]}
-        />
-      </div>
-    </UiPreviewSection>
-    <UiPreviewSection
-      title="工具 + 思考 + MCP 折叠组"
-      description="MCP 调用并入执行组折叠，展示三类英文计数"
-    >
-      <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup
-          toolCount={1}
-          thinkingCount={1}
-          mcpCount={2}
-          webSearchCount={0}
-          items={[
-            {
-              kind: "thinking",
-              node: (
-                <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
-              ),
-            },
-            { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
-            { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
-          ]}
-        />
-      </div>
-    </UiPreviewSection>
-    <UiPreviewSection
-      title="工具 + 思考 + MCP + Web Search 折叠组"
-      description="联网搜索并入执行组折叠，展示四类英文计数"
-    >
-      <div className="flex max-w-lg flex-col">
-        <AgentExecutionGroup
-          toolCount={1}
-          thinkingCount={1}
-          mcpCount={1}
-          webSearchCount={2}
-          items={[
-            {
-              kind: "thinking",
-              node: (
-                <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
-              ),
-            },
-            { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
-            { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
-            { kind: "webSearch", node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} /> },
-          ]}
-        />
-      </div>
-    </UiPreviewSection>
-  </div>
-)
+export const AgentToolCallDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex w-full flex-col gap-4">
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentToolCallSingle")}
+        description={t("uiPreview.demos.agentToolCallSingleDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentToolCallBlock toolCall={READ_CALL} toolResult={READ_RESULT} />
+          <AgentToolCallBlock toolCall={BASH_CALL} />
+          <AgentToolCallBlock toolCall={GREP_CALL} />
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentToolCallGroup")}
+        description={t("uiPreview.demos.agentToolCallGroupDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentExecutionGroup
+            toolCount={3}
+            thinkingCount={0}
+            mcpCount={0}
+            webSearchCount={0}
+            items={[{ kind: "tool", node: <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} /> }]}
+          />
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentToolThinkingFold")}
+        description={t("uiPreview.demos.agentToolThinkingFoldDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentExecutionGroup
+            toolCount={2}
+            thinkingCount={1}
+            mcpCount={0}
+            webSearchCount={0}
+            items={[
+              {
+                kind: "thinking",
+                node: (
+                  <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
+                ),
+              },
+              { kind: "tool", node: <AgentToolCallBlock toolCall={READ_CALL} /> },
+              { kind: "tool", node: <AgentToolCallBlock toolCall={BASH_CALL} /> },
+            ]}
+          />
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentToolThinkingMcpFold")}
+        description={t("uiPreview.demos.agentToolThinkingMcpFoldDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentExecutionGroup
+            toolCount={1}
+            thinkingCount={1}
+            mcpCount={2}
+            webSearchCount={0}
+            items={[
+              {
+                kind: "thinking",
+                node: (
+                  <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
+                ),
+              },
+              { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
+              { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
+            ]}
+          />
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.agentToolThinkingMcpWebFold")}
+        description={t("uiPreview.demos.agentToolThinkingMcpWebFoldDesc")}
+      >
+        <div className="flex max-w-lg flex-col">
+          <AgentExecutionGroup
+            toolCount={1}
+            thinkingCount={1}
+            mcpCount={1}
+            webSearchCount={2}
+            items={[
+              {
+                kind: "thinking",
+                node: (
+                  <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
+                ),
+              },
+              { kind: "tool", node: <AgentToolCallBlock toolCall={GREP_CALL} /> },
+              { kind: "mcp", node: <AgentMcpCallBlock toolCalls={MCP_CALLS} /> },
+              { kind: "webSearch", node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} /> },
+            ]}
+          />
+        </div>
+      </UiPreviewSection>
+    </div>
+  )
+}

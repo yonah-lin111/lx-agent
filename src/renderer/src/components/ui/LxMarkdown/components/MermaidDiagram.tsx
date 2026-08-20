@@ -225,7 +225,10 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             aria-label={isLocked ? t("common.unlock") : t("common.lock")}
             highlighted={!isLocked}
             size="small"
-            title={{ content: isLocked ? t("common.unlock") : t("common.lock"), placement: "bottom" }}
+            title={{
+              content: isLocked ? t("common.unlock") : t("common.lock"),
+              placement: "bottom",
+            }}
             onClick={() => setIsLocked((current) => !current)}
           >
             {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
@@ -234,7 +237,10 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
             aria-expanded={isExpanded}
             size="small"
-            title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "bottom" }}
+            title={{
+              content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"),
+              placement: "bottom",
+            }}
             onClick={toggleContent}
           >
             {isExpanded ? (

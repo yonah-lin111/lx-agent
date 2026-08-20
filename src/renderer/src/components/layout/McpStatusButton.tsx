@@ -1,6 +1,7 @@
 import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useMcpStatus } from "@/features/agent/hooks/useMcpStatus"
+import { useTranslation } from "@/i18n"
 
 // 聚合状态圆点颜色：全部正常绿 / 部分异常黄 / 全部异常红 / 无配置中性（对齐 memory agent 三态）。
 const aggregateColor = (total: number, connected: number): string => {
@@ -23,6 +24,7 @@ const nameColor = (name: string, failedNames: string[], disabledNames: string[])
  */
 export const McpStatusButton = (): React.JSX.Element => {
   const { summary, isLoading } = useMcpStatus()
+  const { t } = useTranslation()
   const color = aggregateColor(summary.total, summary.connected)
 
   const tooltipContent = (
@@ -54,7 +56,7 @@ export const McpStatusButton = (): React.JSX.Element => {
   return (
     <LxTooltip content={tooltipContent} contentClassName="!p-2 !whitespace-normal" placement="top">
       <span
-        aria-label="MCP 连接状态"
+        aria-label={t("agent.mcpStatusAria")}
         className="agent-status-btn agent-mcp-status-btn flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5"
       >
         <span

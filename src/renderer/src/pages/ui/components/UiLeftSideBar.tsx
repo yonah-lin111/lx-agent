@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { UI_SECTION_GROUPS, UI_SECTIONS } from "@/features/ui-preview"
+import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 export interface UiLeftSideBarProps {
@@ -16,6 +17,7 @@ export interface UiLeftSideBarProps {
 export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): React.JSX.Element => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { t } = useTranslation()
   const [expandedGroupIds, setExpandedGroupIds] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(UI_SECTION_GROUPS.map((group) => [group.id, true])),
   )
@@ -34,7 +36,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
         <div className="flex h-7 shrink-0 items-center justify-end px-1" />
         <nav
           className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2 [scrollbar-gutter:stable]"
-          aria-label="UI 组件分区"
+          aria-label={t("uiPreview.sidebarAria")}
         >
           {UI_SECTIONS.map((section) => {
             const isActive = activeSection === section.id
@@ -62,7 +64,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
       <div className="flex h-7 shrink-0 items-center justify-end px-1" />
       <nav
         className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]"
-        aria-label="UI 组件分区"
+        aria-label={t("uiPreview.sidebarAria")}
       >
         {UI_SECTION_GROUPS.map((group) => {
           const isGroupExpanded = expandedGroupIds[group.id] ?? true
@@ -81,7 +83,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                 <GroupIcon
                   className={`h-3.5 w-3.5 shrink-0 ${groupHasActive ? "text-white" : ""}`}
                 />
-                <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                <span className="min-w-0 flex-1 truncate">{t(group.labelKey)}</span>
                 <ChevronDown
                   className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${
                     isGroupExpanded ? "rotate-0" : "-rotate-90"

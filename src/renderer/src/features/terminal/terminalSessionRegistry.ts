@@ -7,6 +7,7 @@ import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { DEFAULT_XTERM_OPTIONS } from "@/features/terminal/constants"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import { extractPathsFromDataTransfer, formatTerminalPaths } from "@/features/terminal/utils"
+import { useTranslation } from "@/i18n"
 
 /**
  * xterm 实例与宿主容器桥接管理对象。
@@ -208,7 +209,8 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
   })
 
   const unsubscribeExit = terminalApi.onExit(paneId, ({ exitCode }) => {
-    term.writeln(`\r\n\x1b[90m[进程已退出，代码: ${exitCode}]\x1b[0m`)
+    const { t } = useTranslation()
+    term.writeln(`\r\n\x1b[90m${t("terminal.processExited", { code: exitCode })}\x1b[0m`)
   })
 
   const onDataDisposable = term.onData((data) => {
@@ -225,7 +227,8 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
     })
     .then((res) => {
       if (!res.success && res.error) {
-        term.writeln(`\r\n\x1b[31m[创建终端失败: ${res.error}]\x1b[0m`)
+        const { t } = useTranslation()
+        term.writeln(`\r\n\x1b[31m${t("terminal.createFailed", { error: res.error })}\x1b[0m`)
       }
     })
 

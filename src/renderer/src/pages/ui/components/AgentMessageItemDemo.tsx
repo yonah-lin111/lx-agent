@@ -2,6 +2,7 @@ import type React from "react"
 import { useState } from "react"
 
 import { AgentMessageItem, type ChatMessage } from "@/features/agent"
+import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 // 示例用户消息。
@@ -37,6 +38,7 @@ const ASSISTANT_MESSAGE: ChatMessage = {
  * 预览 AgentMessageItem 组件。
  */
 export const AgentMessageItemDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const [userMessage, setUserMessage] = useState<ChatMessage>(USER_MESSAGE)
 
   /**
@@ -53,7 +55,10 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <UiPreviewSection title="用户消息" description="右侧用户气泡，hover 显示编辑与复制操作">
+      <UiPreviewSection
+        title={t("uiPreview.demos.userMessageTitle")}
+        description={t("uiPreview.demos.userMessageDesc")}
+      >
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
           <AgentMessageItem
             message={userMessage}
@@ -62,7 +67,10 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
           />
         </div>
       </UiPreviewSection>
-      <UiPreviewSection title="AI 消息" description="文本 / 思考 / 工具调用块按事件顺序渲染">
+      <UiPreviewSection
+        title={t("uiPreview.demos.aiMessageTitle")}
+        description={t("uiPreview.demos.aiMessageDesc")}
+      >
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
           <AgentMessageItem message={ASSISTANT_MESSAGE} onDelete={() => {}} />
         </div>

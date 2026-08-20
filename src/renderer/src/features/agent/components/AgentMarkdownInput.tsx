@@ -33,7 +33,7 @@ import {
   markdownMarkerHighlight,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
@@ -983,13 +983,13 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             .exportSession({ format, openAfterExport: true })
             .then((res) => {
               if (res.ok && !res.canceled && res.filePath) {
-                successToast(`导出成功 (${format.toUpperCase()}): ${res.filePath}`)
+                successToast(`Export (${format.toUpperCase()}): ${res.filePath}`)
               } else if (!res.ok) {
-                errorToast(res.error || "导出失败")
+                errorToast(res.error || t("agent.exportFailed"))
               }
             })
             .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "导出失败")
+              errorToast(err instanceof Error ? err.message : t("agent.exportFailed"))
             })
           return
         }
@@ -1023,17 +1023,19 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               if (res.ok && res.text) {
                 void navigator.clipboard.writeText(res.text).then(() => {
                   successToast(
-                    target === "markdown" ? "已复制完整对话 Markdown" : "已复制最近一条回复",
+                    target === "markdown"
+                      ? t("agent.copyMarkdownSuccess")
+                      : t("agent.copyReplySuccess"),
                   )
                 })
               } else if (!res.ok) {
-                errorToast(res.error || "复制失败")
+                errorToast(res.error || t("agent.copyFailed"))
               } else {
-                warningToast("暂无内容可复制")
+                warningToast(t("agent.noContentToCopy"))
               }
             })
             .catch((err) => {
-              errorToast(err instanceof Error ? err.message : "复制失败")
+              errorToast(err instanceof Error ? err.message : t("agent.copyFailed"))
             })
           return
         }

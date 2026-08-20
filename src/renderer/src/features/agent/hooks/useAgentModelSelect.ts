@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import type { ModelProviderSettingsData } from "@/features/settings/types"
+import { useTranslation } from "@/i18n"
 import { modelsApi } from "../api/modelsApi"
 
 // localStorage 中保存上次所选模型的键。
@@ -78,9 +79,11 @@ export const useAgentModelSelect = () => {
     }
   }, [loadProviders])
 
+  const { t } = useTranslation()
+
   // 已启用 Provider 下的分组模型选项。
   const selectOptions = useMemo<(LxSelectOption<string> | LxSelectGroup<string>)[]>(() => {
-    if (!settings) return [{ value: "", label: "无可用模型" }]
+    if (!settings) return [{ value: "", label: t("agent.noAvailableModels") }]
     const groups = settings.enabledProviders
       .map((providerId) => settings.providers[providerId])
       .filter((provider) => provider && Object.keys(provider.models).length > 0)
@@ -91,8 +94,8 @@ export const useAgentModelSelect = () => {
           label: model.name || model.id,
         })),
       }))
-    return groups.length > 0 ? groups : [{ value: "", label: "无可用模型" }]
-  }, [settings])
+    return groups.length > 0 ? groups : [{ value: "", label: t("agent.noAvailableModels") }]
+  }, [settings, t])
 
   const hasModelOptions = useMemo(
     () =>

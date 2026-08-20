@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useTranslation } from "@/i18n"
 
 // 弹窗属性。
 interface LxModalProps {
@@ -31,10 +32,10 @@ interface LxModalProps {
  */
 export const LxModal = ({
   isOpen,
+  onClose,
   title,
   children,
-  onClose,
-  width = 320,
+  width = "400px",
   height,
   minWidth,
   maxWidth = "90vw",
@@ -42,6 +43,7 @@ export const LxModal = ({
   maxHeight = "calc(100vh - 32px)",
   headerActions,
 }: LxModalProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -123,7 +125,12 @@ export const LxModal = ({
           </h2>
           <div className="flex shrink-0 items-center gap-1.5">
             {headerActions}
-            <LxIconButton aria-label="关闭弹窗" preset="close" size="small" onClick={handleClose} />
+            <LxIconButton
+              aria-label={t("agent.modalCloseAria")}
+              preset="close"
+              size="small"
+              onClick={handleClose}
+            />
           </div>
         </header>
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">{children}</div>

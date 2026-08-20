@@ -12,10 +12,10 @@ import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRec
 import { createProjectNavigationTree, projectNavigationApi } from "@/features/project-navigation"
 import { SETTINGS_SECTIONS } from "@/features/settings/constants"
 import { UI_SECTIONS } from "@/features/ui-preview"
+import { useTranslation } from "@/i18n"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { type AppTheme, useAppTheme } from "@/stores/themeStore"
-import { useTranslation } from "@/i18n"
 
 // tag 栏退场动画时长，与面包屑入场动画时长一致。
 const TAGS_LEAVE_DURATION = 300

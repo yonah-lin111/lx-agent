@@ -1,50 +1,51 @@
 import type React from "react"
 
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 import { UiActionButton } from "@/pages/ui/components/UiActionButton"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 /**
  * 预览 LxTooltip 组件。
  */
-export const LxTooltipDemo = (): React.JSX.Element => (
-  <div className="flex flex-col gap-4">
-    <UiPreviewSection title="位置" description="top / bottom / left / right，超出视口时自动翻转">
-      <div className="flex flex-wrap items-center gap-2">
-        <LxTooltip content="上方提示" placement="top">
-          <UiActionButton>上</UiActionButton>
-        </LxTooltip>
-        <LxTooltip content="下方提示" placement="bottom">
-          <UiActionButton>下</UiActionButton>
-        </LxTooltip>
-        <LxTooltip content="左侧提示" placement="left">
-          <UiActionButton>左</UiActionButton>
-        </LxTooltip>
-        <LxTooltip content="右侧提示" placement="right">
-          <UiActionButton>右</UiActionButton>
-        </LxTooltip>
-      </div>
-    </UiPreviewSection>
-    <UiPreviewSection title="标题与内容" description="title 分隔标题与内容，multiline 支持换行">
-      <LxTooltip
-        title="LxTooltip"
-        content="支持标题与内容的多层气泡，multiline 时宽度自适应并允许换行。"
-        placement="bottom"
-        multiline
+export const LxTooltipDemo = (): React.JSX.Element => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex flex-col gap-4">
+      <UiPreviewSection
+        title={t("uiPreview.demos.tooltipBasic")}
+        description={t("uiPreview.demos.tooltipBasicDesc")}
       >
-        <UiActionButton>悬停查看</UiActionButton>
-      </LxTooltip>
-    </UiPreviewSection>
-    <UiPreviewSection title="二次确认" description="onConfirm 触发确认气泡">
-      <LxTooltip
-        title="删除确认"
-        content="确定要删除这条记录吗？"
-        placement="bottom"
-        onConfirm={() => {}}
-        onCancel={() => {}}
+        <div className="flex flex-wrap items-center gap-2">
+          <LxTooltip content="Top tooltip" placement="top">
+            <UiActionButton>Top</UiActionButton>
+          </LxTooltip>
+          <LxTooltip content="Bottom tooltip" placement="bottom">
+            <UiActionButton>Bottom</UiActionButton>
+          </LxTooltip>
+          <LxTooltip content="Left tooltip" placement="left">
+            <UiActionButton>Left</UiActionButton>
+          </LxTooltip>
+          <LxTooltip content="Right tooltip" placement="right">
+            <UiActionButton>Right</UiActionButton>
+          </LxTooltip>
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
+        title={t("uiPreview.demos.tooltipConfirm")}
+        description={t("uiPreview.demos.tooltipConfirmDesc")}
       >
-        <UiActionButton>删除记录</UiActionButton>
-      </LxTooltip>
-    </UiPreviewSection>
-  </div>
-)
+        <LxTooltip
+          title={t("common.confirmDelete")}
+          content={t("uiPreview.demos.deleteConfirmPrompt")}
+          placement="bottom"
+          onConfirm={() => {}}
+          onCancel={() => {}}
+        >
+          <UiActionButton>{t("common.delete")}</UiActionButton>
+        </LxTooltip>
+      </UiPreviewSection>
+    </div>
+  )
+}

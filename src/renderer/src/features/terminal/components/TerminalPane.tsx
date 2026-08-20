@@ -7,6 +7,7 @@ import { getOrCreateTerminalSession } from "@/features/terminal/terminalSessionR
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 import type { TerminalPaneItem } from "@/features/terminal/types"
 import { resolveCwdDisplayName } from "@/features/terminal/utils"
+import { useTranslation } from "@/i18n"
 
 interface TerminalPaneProps {
   pane: TerminalPaneItem
@@ -37,6 +38,7 @@ export const TerminalPane = ({
   const pendingClosePaneId = useTerminalStore((state) => state.pendingClosePaneId)
   const setPendingClosePaneId = useTerminalStore((state) => state.setPendingClosePaneId)
   const removePane = useTerminalStore((state) => state.removePane)
+  const { t } = useTranslation()
 
   const isConfirming = pendingClosePaneId === pane.id
 
@@ -168,10 +170,12 @@ export const TerminalPane = ({
           {onClose && (
             <LxTooltip
               closeOnOutsideClick
-              content={isConfirming ? "当前分屏有任务正在运行，确定关闭吗？" : "关闭分屏"}
+              content={
+                isConfirming ? t("terminal.runningTaskConfirmPane") : t("terminal.closePane")
+              }
               open={isConfirming ? true : undefined}
               placement="top"
-              title={isConfirming ? "确认关闭分屏" : undefined}
+              title={isConfirming ? t("terminal.confirmClosePane") : undefined}
               onCancel={() => setPendingClosePaneId(null)}
               onConfirm={isConfirming ? handleConfirmClose : undefined}
               onOpenChange={(open) => {
@@ -179,7 +183,7 @@ export const TerminalPane = ({
               }}
             >
               <button
-                aria-label="关闭分屏"
+                aria-label={t("terminal.closePane")}
                 className="flex h-4 w-4 items-center justify-center rounded-[3px] text-white/40 hover:bg-white/10 hover:text-white"
                 type="button"
                 onClick={(e) => {
