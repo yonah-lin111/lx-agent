@@ -48,7 +48,7 @@ export const AgentThinkingBlock = ({
           type="button"
           aria-label={t("agent.thinkingProcess")}
           aria-expanded={isExpanded}
-          className="agent-thinking-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
+          className="agent-thinking-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] text-white/50 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
         >
           <Brain className="h-3.5 w-3.5 shrink-0 text-rose-300" />

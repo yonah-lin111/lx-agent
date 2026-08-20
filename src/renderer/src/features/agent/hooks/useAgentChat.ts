@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
+  QuestionAnswer,
   SubagentData,
   TodoList,
 } from "@shared/contracts/agent"
@@ -15,6 +16,7 @@ import {
   extractQuestionAnswers,
   extractSubagentData,
   extractToolProgressText,
+  parseQuestionAnswersFromText,
   toAgentMessages,
   toChatMessage,
 } from "../utils"
@@ -23,23 +25,37 @@ import { sessionListStore } from "./sessionListStore"
 // 展示条目 id 自增。
 let messageSequence = 0
 
-// 恢复会话时把 task 工具结果携带的子代理快照回填到对应 toolCall 块（弹窗展示）。
+// 恢复会话时把 task 子代理快照与 question 答案（兜底）回填到对应 toolCall 块。
 const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
   const subagentByToolCallId = new Map<string, SubagentData>()
+  const answersByToolCallId = new Map<string, QuestionAnswer[]>()
   for (const message of chatMessages) {
     for (const block of message.blocks) {
-      if (block.kind === "toolResult" && block.subagent) {
-        subagentByToolCallId.set(block.toolCallId, block.subagent)
+      if (block.kind === "toolResult") {
+        if (block.subagent) {
+          subagentByToolCallId.set(block.toolCallId, block.subagent)
+        }
+        if (block.toolName === "question" && block.text) {
+          const parsed = parseQuestionAnswersFromText(block.text)
+          if (parsed) {
+            answersByToolCallId.set(block.toolCallId, parsed)
+          }
+        }
       }
     }
   }
-  if (subagentByToolCallId.size === 0) return chatMessages
+  if (subagentByToolCallId.size === 0 && answersByToolCallId.size === 0) return chatMessages
   return chatMessages.map((message) => ({
     ...message,
     blocks: message.blocks.map((block) => {
       if (block.kind === "toolCall") {
         const subagent = subagentByToolCallId.get(block.toolCallId)
-        if (subagent) return { ...block, subagent }
+        const fallbackAnswers = answersByToolCallId.get(block.toolCallId)
+        return {
+          ...block,
+          ...(subagent ? { subagent } : {}),
+          ...(!block.answers && fallbackAnswers ? { answers: fallbackAnswers } : {}),
+        }
       }
       return block
     }),

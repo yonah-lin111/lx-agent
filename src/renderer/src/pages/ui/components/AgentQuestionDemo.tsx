@@ -45,7 +45,8 @@ const MOCK_QUESTION_CALL: ToolCallBlock = {
   },
   question: {
     requestId: "q_request_1",
-    sessionID: "sess_demo",
+    toolCallId: "call_question_1",
+    sessionId: "sess_demo",
     questions: [
       {
         header: "运行模式",
@@ -81,6 +82,32 @@ const MOCK_QUESTION_CALL: ToolCallBlock = {
   status: "done",
 }
 
+const MOCK_ANSWERED_QUESTION_CALL: ToolCallBlock = {
+  kind: "toolCall",
+  toolCallId: "call_question_2",
+  toolName: "question",
+  args: {
+    questions: [
+      {
+        question: "你好！这是一条测试提问，你能看到并选择这个选项吗？",
+        options: [
+          {
+            label: "工作正常",
+            description: "组件能够正常渲染和交互",
+          },
+        ],
+      },
+    ],
+  },
+  answers: [
+    {
+      question: "你好！这是一条测试提问，你能看到并选择这个选项吗？",
+      answer: ["工作正常"],
+    },
+  ],
+  status: "done",
+}
+
 export const AgentQuestionDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -90,8 +117,19 @@ export const AgentQuestionDemo = (): React.JSX.Element => {
         title={t("uiPreview.demos.agentQuestionTitle")}
         description={t("uiPreview.demos.agentQuestionDesc")}
       >
-        <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-          <AgentQuestionBlock toolCall={MOCK_QUESTION_CALL} />
+        <div className="flex flex-col gap-4">
+          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+            <div className="mb-2 text-[11px] font-medium text-white/40">
+              1. 待作答交互阶段 (Pending)
+            </div>
+            <AgentQuestionBlock toolCall={MOCK_QUESTION_CALL} />
+          </div>
+          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+            <div className="mb-2 text-[11px] font-medium text-white/40">
+              2. 已完成展示/折叠阶段 (Answered / Readonly)
+            </div>
+            <AgentQuestionBlock toolCall={MOCK_ANSWERED_QUESTION_CALL} />
+          </div>
         </div>
       </UiPreviewSection>
     </div>

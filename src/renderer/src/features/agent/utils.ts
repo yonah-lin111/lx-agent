@@ -30,6 +30,23 @@ export const extractQuestionAnswers = (result: unknown): QuestionAnswer[] | unde
   return details?.answers
 }
 
+// 从 question 工具的 toolResult 文本（User answered: ...）解析答案（历史会话兼容兜底）。
+export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | undefined => {
+  const match = text.match(/^User answered: (.*)\. Continue with the answers\.$/s)
+  if (!match || !match[1]) return undefined
+  const inner = match[1]
+  const regex = /"((?:[^"\\]|\\.)*)"="((?:[^"\\]|\\.)*)"/g
+  const answers: QuestionAnswer[] = []
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(inner)) !== null) {
+    const question = m[1].replace(/\\"/g, '"')
+    const rawAnswer = m[2].replace(/\\"/g, '"')
+    const answer = rawAnswer.length > 0 ? rawAnswer.split(",") : []
+    answers.push({ question, answer })
+  }
+  return answers.length > 0 ? answers : undefined
+}
+
 // 将 shared AgentMessage 转换为展示条目。
 export const toChatMessage = (
   message: AgentMessage,
@@ -179,13 +196,25 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
       ): Array<
         | { type: "text"; text: string }
         | { type: "thinking"; thinking: string }
-        | { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }
+        | {
+            type: "toolCall"
+            id: string
+            name: string
+            arguments: Record<string, unknown>
+            answers?: QuestionAnswer[]
+          }
       > => {
         if (block.kind === "text") return [{ type: "text", text: block.text }]
         if (block.kind === "thinking") return [{ type: "thinking", thinking: block.text }]
         if (block.kind === "toolCall") {
           return [
-            { type: "toolCall", id: block.toolCallId, name: block.toolName, arguments: block.args },
+            {
+              type: "toolCall",
+              id: block.toolCallId,
+              name: block.toolName,
+              arguments: block.args,
+              ...(block.answers ? { answers: block.answers } : {}),
+            },
           ]
         }
         return []

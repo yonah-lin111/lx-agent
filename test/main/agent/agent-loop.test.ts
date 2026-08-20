@@ -321,6 +321,51 @@ describe("Agent 工具循环", () => {
     expect(toolResult.message.content[0]).toEqual({ type: "text", text: "echo:world" })
     expect(toolResult.message.toolName).toBe("echo")
   })
+
+  it("sequential 工具（如 question）执行完成后将 answers 回填到 assistant message", async () => {
+    const questionTool: AgentTool<
+      z.ZodType<{ questions: Array<{ question: string }> }>,
+      { answers: Array<{ question: string; answer: string[] }> }
+    > = {
+      name: "question",
+      label: "提问",
+      description: "提问工具",
+      inputSchema: z.object({ questions: z.array(z.object({ question: z.string() })) }),
+      executionMode: "sequential",
+      execute: async () => ({
+        content: [{ type: "text", text: "已回答" }],
+        details: { answers: [{ question: "q1", answer: ["TypeScript"] }] },
+      }),
+    }
+
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant(
+          [toolCallBlock("call-q", "question", { questions: [{ question: "q1" }] })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "收到答案" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [questionTool] },
+    })
+
+    const events = await runPrompt(agent, "hi")
+    const endEvent = events.find((event) => event.type === "agent_end")
+    expect(endEvent?.type).toBe("agent_end")
+    if (endEvent?.type !== "agent_end") return
+
+    const assistantMsg = endEvent.messages.find(
+      (m): m is AssistantMessage =>
+        m.role === "assistant" &&
+        m.content.some((c) => c.type === "toolCall" && c.name === "question"),
+    )
+    expect(assistantMsg).toBeDefined()
+    const callBlock = assistantMsg?.content.find(
+      (c): c is Extract<AssistantMessage["content"][number], { type: "toolCall" }> =>
+        c.type === "toolCall" && c.name === "question",
+    )
+    expect(callBlock?.answers).toEqual([{ question: "q1", answer: ["TypeScript"] }])
+  })
 })
 
 describe("Agent 消息转换", () => {

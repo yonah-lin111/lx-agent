@@ -132,27 +132,35 @@ export const AgentQuestionBlock = ({
           }}
           className="overflow-hidden"
         >
-          <div ref={innerRef} className="mt-1 flex min-w-0 flex-col gap-1.5 pl-1">
+          <div
+            ref={innerRef}
+            className="agent-question-answered-container mt-1 flex min-w-0 flex-col gap-2 pb-1 pl-1"
+          >
             {questions.map((question, index) => {
-              const answers = answersByQuestion.get(question.question) ?? []
+              const answers =
+                answersByQuestion.get(question.question) ?? toolCall.answers?.[index]?.answer ?? []
               return (
-                <div key={index} className="min-w-0">
-                  <div className="flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/75">
-                    <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
-                    <span className="min-w-0 break-words">{question.question}</span>
-                  </div>
-                  {answers.length > 0 && (
-                    <div className="ml-4 mt-0.5 flex flex-col gap-0.5">
-                      {answers.map((answer) => (
-                        <div
-                          key={answer}
-                          className="min-w-0 break-words text-[12px] leading-relaxed text-white/50"
-                        >
-                          {answer}
-                        </div>
-                      ))}
+                <div key={index} className="flex min-w-0 items-start gap-1">
+                  <CornerDownRight className="agent-question-corner mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="agent-question-answered-question-card min-w-0">
+                      <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
+                        {question.question}
+                      </div>
                     </div>
-                  )}
+                    {answers.length > 0 && (
+                      <div className="agent-question-answered-answers-container flex flex-col gap-1">
+                        {answers.map((answer) => (
+                          <div
+                            key={answer}
+                            className="agent-question-answered-value min-w-0 break-words text-[12px] leading-relaxed text-white/70"
+                          >
+                            {answer}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -224,7 +232,7 @@ export const AgentQuestionBlock = ({
         </span>
       </div>
       <div className="mt-1 flex min-w-0 items-start gap-1 pl-1">
-        <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
+        <CornerDownRight className="agent-question-corner mt-[2px] h-3 w-3 shrink-0 text-white/45" />
         <div className="min-w-0 flex-1">
           {/* 多问题 tab 切换。 */}
           {questions.length > 1 && (
@@ -237,6 +245,7 @@ export const AgentQuestionBlock = ({
                   <button
                     key={index}
                     type="button"
+                    data-active={isActive ? "true" : undefined}
                     onClick={() => setActiveIndex(index)}
                     className={`agent-question-tab flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[12px] transition-colors ${
                       isActive
@@ -302,6 +311,7 @@ export const AgentQuestionBlock = ({
                       <LxRadio
                         key={option.label}
                         value={option.label}
+                        className="agent-question-option"
                         label={
                           option.description ? (
                             <span className="flex min-w-0 flex-col">

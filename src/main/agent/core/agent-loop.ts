@@ -403,6 +403,7 @@ async function executeToolCallsSequential(
       )
     }
 
+    attachQuestionAnswers(assistantMessage, finalized)
     await emitToolExecutionEnd(finalized, emit)
     const toolResultMessage = createToolResultMessage(finalized)
     await emitToolResultMessage(toolResultMessage, emit)
