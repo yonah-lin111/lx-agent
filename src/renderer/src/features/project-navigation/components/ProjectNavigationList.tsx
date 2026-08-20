@@ -149,13 +149,9 @@ export const ProjectNavigationList = ({
         tabIndex={0}
         data-item-level="prompt"
         aria-current={isActive ? "page" : undefined}
-        className={`flex h-7 w-full items-center gap-2 rounded-[6px] pr-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+        className={`flex h-7 w-full items-center gap-2 rounded-[6px] pr-2 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
           isNested ? "pl-3" : "pl-1.5"
-        } ${
-          isActive
-            ? "bg-white/10 text-white"
-            : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
-        }`}
+        } ${isActive ? "bg-white/5 text-white" : "text-white/70"}`}
         onClick={() => {
           onItemOpen(prompt.id)
         }}
@@ -169,7 +165,7 @@ export const ProjectNavigationList = ({
         ) : (
           <span aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
         )}
-        <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/30"}`} />
+        <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`} />
         {renderItemName(
           prompt,
           prompt.status === "completed"
@@ -200,7 +196,7 @@ export const ProjectNavigationList = ({
                 role="button"
                 tabIndex={0}
                 data-item-level="project"
-                className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] px-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04]"
+                className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] px-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
                 onKeyDown={(event) => {
@@ -211,7 +207,7 @@ export const ProjectNavigationList = ({
                 <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
                 {renderItemName(
                   project,
-                  "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors group-hover:text-white/80",
+                  "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors",
                 )}
                 {isProjectCollapsed ? (
                   <>
@@ -238,7 +234,7 @@ export const ProjectNavigationList = ({
                           role="button"
                           tabIndex={0}
                           data-item-level="folder"
-                          className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] pr-1 pl-1 text-left text-sm text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/[0.04] hover:text-white/85"
+                          className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] pr-1 pl-1 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
                           aria-expanded={!isFolderCollapsed}
                           onClick={() => onProjectFolderToggle(folder.id)}
                           onKeyDown={(event) => {

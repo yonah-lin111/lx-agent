@@ -171,8 +171,10 @@ export const LxSelect = <T extends string>({
         type="button"
         role="option"
         aria-selected={isSelected}
-        className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/10 ${
-          isSelected ? "bg-white/5 text-white" : "text-white/70"
+        className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-xs transition-colors ${
+          isSelected
+            ? "bg-white/10 text-white font-medium shadow-xs"
+            : "text-white/70 hover:bg-white/5 hover:text-white"
         } ${isGrouped ? "pl-5" : ""}`}
         onMouseDown={(event) => {
           event.preventDefault()

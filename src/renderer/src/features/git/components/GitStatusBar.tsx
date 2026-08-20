@@ -40,23 +40,23 @@ export const GitStatusBar = ({
   const mainBranch = defaultEntry?.branch ?? projectBranch
 
   return (
-    <div className={className}>
+    <div className={`git-status-bar ${className}`}>
       <LxTooltip content={projectPath} placement="top">
-        <span className="flex min-w-0 items-center gap-1">
+        <span className="git-status-item flex min-w-0 items-center gap-1">
           <Folder className="h-3.5 w-3.5 shrink-0 text-sky-400" />
           <span className="truncate">: {projectName}</span>
         </span>
       </LxTooltip>
       {mainBranch && (
         <LxTooltip content={`当前分支 ${mainBranch}`} placement="top">
-          <span className="flex shrink-0 items-center gap-1 text-white/70">
+          <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
             <GitBranch className="h-3.5 w-3.5 text-emerald-400" />: {mainBranch}
           </span>
         </LxTooltip>
       )}
       {worktreeName && (
         <LxTooltip content={`工作区 ${worktreeName}`} placement="top">
-          <span className="flex shrink-0 items-center gap-1 text-white/70">
+          <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
             <GitFork className="h-3.5 w-3.5 text-amber-400" />: {worktreeName}
           </span>
         </LxTooltip>

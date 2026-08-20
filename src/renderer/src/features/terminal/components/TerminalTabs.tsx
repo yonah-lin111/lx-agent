@@ -126,16 +126,17 @@ export const TerminalTabs = ({ onAddTab, rightActions }: TerminalTabsProps): Rea
             <div
               key={tab.id}
               data-active={isActive ? "true" : undefined}
+              aria-current={isActive ? "page" : undefined}
               className={`terminal-tab-item group relative flex max-w-[160px] min-w-[80px] shrink-0 select-none items-center justify-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? "border-white/15 bg-white/[0.08] text-white shadow-xs"
-                  : "border-white/5 bg-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/90"
+                  ? "border-white/15 bg-white/10 text-white shadow-xs"
+                  : "border-white/5 bg-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
               {/* 每个 Tab 项左侧的小终端图标（与 LxTag default 前缀图标一致为 h-3 w-3） */}
               <TerminalIcon
-                className={`h-3 w-3 shrink-0 ${isActive ? "text-white/70" : "text-white/30"}`}
+                className={`h-3 w-3 shrink-0 ${isActive ? "text-white" : "text-white/45"}`}
               />
 
               {isEditing ? (

@@ -69,6 +69,16 @@ const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
   )
 }
 
+const getCardTagColor = (card: RecentItemCard): "default" | "amber" | "emerald" => {
+  if (card.status === "completed" || (card.done > 0 && card.todo === 0 && card.inProgress === 0)) {
+    return "emerald"
+  }
+  if (card.status === "in_progress" || card.inProgress > 0) {
+    return "amber"
+  }
+  return "default"
+}
+
 // 渲染 tag 悬停详情：项目/文件夹/条目树与状态数量，带直角分支缩进与 icon 颜色。
 const renderCardDetails = (card: RecentItemCard): React.ReactNode => (
   <div className="flex flex-col gap-1">
@@ -255,8 +265,9 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                 >
                   <LxTag
                     size="default"
-                    color={card.inProgress > 0 ? "amber" : "default"}
+                    color={getCardTagColor(card)}
                     highlighted={isActive}
+                    className="project-recent-tag"
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
                     prefix={<File className="h-3 w-3" />}
                     suffix={

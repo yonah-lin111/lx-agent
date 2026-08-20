@@ -58,13 +58,13 @@ const PRESET_ICONS: Record<LxIconButtonPreset, React.ComponentType<{ className?:
 }
 
 const PRESET_BG_CLASSES: Record<LxIconButtonPreset, string> = {
-  add: "hover:bg-white/5",
-  close: "hover:bg-white/5",
+  add: "hover:bg-white/10",
+  close: "hover:bg-white/10",
   save: "hover:bg-emerald-500/10",
   confirm: "hover:bg-emerald-500/10",
   delete: "hover:bg-rose-400/10",
   edit: "hover:bg-amber-400/10",
-  default: "hover:bg-white/5",
+  default: "hover:bg-white/10",
 }
 
 const PRESET_TEXT_CLASSES: Record<LxIconButtonPreset, string> = {
@@ -139,13 +139,14 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     const sizeStyles =
       iconOnly && !hasIconAndLabel ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
     const finalHoverBg = showHoverBg
-      ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/5"))
+      ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/10"))
       : ""
     const finalHoverText =
       hoverTextClass ?? (preset ? PRESET_TEXT_CLASSES[preset] : "hover:text-white")
     const defaultTextClass = preset ? PRESET_DEFAULT_TEXT_CLASSES[preset] : "text-white/45"
-    const highlightedStyles =
-      `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
+    const highlightedStyles = preset
+      ? `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
+      : "bg-white/5 text-white"
     const stateStyles = disabled
       ? highlighted
         ? highlightedStyles
@@ -182,6 +183,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       <button
         ref={ref}
         type={type}
+        data-highlighted={highlighted ? "true" : undefined}
         className={`${baseStyles} ${hasIconAndLabel ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}

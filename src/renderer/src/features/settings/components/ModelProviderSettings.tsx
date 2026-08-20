@@ -488,10 +488,8 @@ export const ModelProviderSettings = ({
                   key={providerKey}
                   role="button"
                   tabIndex={0}
-                  className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-                    isSelected
-                      ? "bg-white/10 text-white"
-                      : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
+                  className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+                    isSelected ? "bg-white/5 text-white" : "text-white/70"
                   }`}
                   aria-current={isSelected ? "true" : undefined}
                   onClick={() => setSelectedProviderId(providerKey)}

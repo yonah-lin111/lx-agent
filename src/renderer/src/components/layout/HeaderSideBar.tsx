@@ -167,7 +167,7 @@ export const HeaderSideBar = ({
 
   return (
     <header
-      className={`mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
+      className={`header-sidebar mb-2 shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] p-2 transition-[height,min-height,max-height] duration-300 ease-in-out ${
         isExpanded ? "h-[300px] min-h-[300px] max-h-[300px]" : "h-[40px] min-h-[40px] max-h-[40px]"
       }`}
     >
@@ -189,18 +189,24 @@ export const HeaderSideBar = ({
             ) : (
               <div
                 key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
-                className="flex min-w-0 items-center gap-2 animate-header-breadcrumb-in"
+                className="header-breadcrumb flex min-w-0 items-center gap-1.5 animate-header-breadcrumb-in"
               >
-                <span className="text-white/30">//</span>
+                <span className="header-breadcrumb-slash inline-flex items-center rounded-[4px] border border-white/10 bg-white/5 px-1.5 py-0.5 text-white/50 text-[11px] shadow-xs">
+                  //
+                </span>
                 {breadcrumbParts.map((part, index) => (
                   <span
                     key={`${part}-${index}`}
-                    className="flex min-w-0 items-center gap-2 truncate"
+                    className="flex min-w-0 items-center gap-1.5 truncate"
                   >
-                    {index > 0 && <span className="shrink-0 text-white/20">/</span>}
+                    {index > 0 && (
+                      <span className="header-breadcrumb-slash inline-flex items-center rounded-[4px] border border-white/10 bg-white/5 px-1 py-0.5 text-white/40 text-[11px] shadow-xs shrink-0">
+                        /
+                      </span>
+                    )}
                     <span
-                      className={`truncate font-bold ${
-                        index === 0 ? "uppercase tracking-wider text-white/40" : "text-white"
+                      className={`header-breadcrumb-part inline-flex min-w-0 items-center rounded-[5px] border border-white/10 bg-white/5 px-2 py-0.5 truncate font-bold text-xs shadow-xs ${
+                        index === 0 ? "uppercase tracking-wider text-white/60" : "text-white"
                       }`}
                     >
                       {part}
@@ -228,7 +234,7 @@ export const HeaderSideBar = ({
               trigger="click"
               closeOnContentClick
               content={
-                <div className="flex flex-col gap-0.5 py-0.5 min-w-[90px]">
+                <div className="theme-menu-dropdown flex flex-col gap-0.5 py-0.5 min-w-[90px]">
                   {THEME_OPTIONS.map((opt) => {
                     const isSelected = theme === opt.id
                     return (
@@ -236,7 +242,7 @@ export const HeaderSideBar = ({
                         key={opt.id}
                         type="button"
                         onClick={() => setTheme(opt.id)}
-                        className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                        className={`theme-menu-option flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
                           isSelected
                             ? "bg-white/10 font-semibold text-white"
                             : "text-white/70 hover:bg-white/5 hover:text-white"
@@ -250,7 +256,7 @@ export const HeaderSideBar = ({
                 </div>
               }
             >
-              <LxIconButton aria-label="切换主题" size="small" highlighted={theme !== "default"}>
+              <LxIconButton aria-label="切换主题" size="small">
                 <Palette className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>

@@ -68,8 +68,6 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
               aria-label={`打开${label}页面`}
               title={{ content: label, placement: isCollapsed ? "right" : "top" }}
               highlighted={isActive}
-              hoverBgClass="hover:bg-white/10"
-              hoverTextClass="hover:text-white"
               onClick={() => navigate(path)}
               size="small"
             >

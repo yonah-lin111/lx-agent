@@ -1,0 +1,76 @@
+/* ========================================================
+ * Minecraft 主题 - Markdown 预览区魔改（HTML 渲染树）
+ * ======================================================== */
+/* Markdown 标题魔改：Minecraft 金黄与钻石蓝高光 */
+[data-theme="minecraft"] .markdown-preview h1 {
+  color: #ffaa00 !important;
+  text-shadow: 1px 1px 0px #000000;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 4px;
+}
+
+[data-theme="minecraft"] .markdown-preview h2 {
+  color: #55ffff !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .markdown-preview h3,
+[data-theme="minecraft"] .markdown-preview h4 {
+  color: #55ff55 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 预览区代码块魔改：深黑曜石 3D 凸起卡片槽 */
+[data-theme="minecraft"] .markdown-preview pre,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block {
+  background-color: #1a1a26 !important;
+}
+
+/* ========================================================
+ * Markdown 预览区 &&& 模板块魔改（HTML 渲染树）
+ * ======================================================== */
+[data-theme="minecraft"] .markdown-preview .markdown-template-block {
+  border: 2px solid #000000 !important;
+  background-color: #171520 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000 !important;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-template-block-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #241e34 !important;
+  color: #e6e6f2 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 预览区模板块状态标签高光魔改：矿石经典成色 */
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="todo"] {
+  background-color: #303042 !important;
+  color: #a8a8b8 !important;
+  border: 1px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="in_progress"] {
+  background-color: #523912 !important;
+  color: #ffaa00 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 6px rgba(255, 170, 0, 0.3) !important;
+}
+
+[data-theme="minecraft"] .markdown-template-block-header [data-template-status="done"] {
+  background-color: #17482a !important;
+  color: #55ff55 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 0 0 6px rgba(85, 255, 85, 0.3) !important;
+}
+
+/* 模板块内部注释行：深附魔羊皮灰墨色 */
+[data-theme="minecraft"] .markdown-template-comment {
+  color: #7e7e96 !important;
+  font-style: italic;
+  font-family: var(--theme-font-family);
+}

@@ -214,9 +214,7 @@ export const AgentInput = ({
         preset="add"
         aria-label="添加附件"
         title={{ content: "添加附件", placement: "top" }}
-        hoverBgClass="hover:bg-white/20"
-        hoverTextClass="hover:text-white"
-        className="agent-input-add-btn bg-white/10 !text-white/70"
+        className="agent-input-add-btn"
         onClick={() => fileInputRef.current?.click()}
       />
     </>
@@ -297,7 +295,7 @@ export const AgentInput = ({
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
-        className="agent-input-container relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10"
+        className="agent-input-container relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-white/20 focus-within:border-l-2 focus-within:border-l-white focus-within:ring-1 focus-within:ring-white/10"
         onPointerDown={handleContainerPointerDown}
       >
         <AgentMarkdownInput

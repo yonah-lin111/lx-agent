@@ -209,7 +209,8 @@ export const LxToastProvider = ({
             >
               <div className="min-h-0 overflow-hidden">
                 <span
-                  className={`mb-2 block max-w-[min(80vw,24rem)] truncate rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-none ${getLxToastColorClass(toast.type)} ${
+                  data-toast-type={toast.type}
+                  className={`lx-toast-item mb-2 block max-w-[min(80vw,24rem)] truncate rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-none ${getLxToastColorClass(toast.type)} ${
                     toast.isExiting ? "animate-toast-out" : "animate-toast-in"
                   }`}
                   style={getSlideStyle(toastPosition)}
@@ -267,7 +268,8 @@ export const LxBreadcrumbToast = (): React.JSX.Element | null => {
   return (
     <span
       key={latestToast.id}
-      className={`whitespace-nowrap text-xs font-medium tracking-wide ${getLxToastColorClass(
+      data-toast-type={latestToast.type}
+      className={`lx-breadcrumb-toast inline-flex select-none items-center gap-1.5 whitespace-nowrap rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
         latestToast.type,
       )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
       style={getSlideStyle("breadcrumb")}

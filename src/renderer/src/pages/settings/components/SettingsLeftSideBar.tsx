@@ -34,8 +34,6 @@ export const SettingsLeftSideBar = ({
                 aria-label={section.label}
                 title={{ content: section.label, placement: "right" }}
                 highlighted={isActive}
-                hoverBgClass="hover:bg-white/10"
-                hoverTextClass="hover:text-white"
                 onClick={() => navigate(`/settings?section=${section.id}`)}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -61,10 +59,8 @@ export const SettingsLeftSideBar = ({
             <button
               key={section.id}
               type="button"
-              className={`flex h-7 w-full items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-                isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/65 hover:bg-white/[0.04] hover:text-white/90"
+              className={`flex h-7 w-full items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+                isActive ? "bg-white/5 text-white" : "text-white/70"
               }`}
               aria-current={isActive ? "page" : undefined}
               onClick={() => navigate(`/settings?section=${section.id}`)}

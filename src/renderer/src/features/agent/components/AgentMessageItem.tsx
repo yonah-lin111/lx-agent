@@ -764,6 +764,7 @@ export const AgentMessageItem = ({
         >
           {isEditing ? (
             <div
+              data-user-bubble="true"
               className={`flex w-[380px] max-w-full flex-col gap-2 rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2`}
             >
               <textarea
@@ -804,6 +805,7 @@ export const AgentMessageItem = ({
             <>
               {message.files && !isPinned && <AgentMessageFiles files={message.files} />}
               <div
+                data-user-bubble="true"
                 className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
                 onCopy={handleBubbleCopy}
               >
