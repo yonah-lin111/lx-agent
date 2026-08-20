@@ -47,11 +47,10 @@ const countSteps = (steps: SubagentStep[]): { tool: number; mcp: number; webSear
 const countThinking = (messages: AgentMessage[] | undefined): number =>
   messages
     ?.filter((message) => message.role === "assistant")
-    .reduce(
-      (count, message) =>
-        count + message.content.filter((block) => block.type === "thinking").length,
-      0,
-    ) ?? 0
+    .reduce((count, message) => {
+      if (!Array.isArray(message.content)) return count
+      return count + message.content.filter((block) => block.type === "thinking").length
+    }, 0) ?? 0
 
 // 子代理状态展示（Idle / Working / Done / Error，英文文本 + 状态色）。
 type SubagentStatus = {

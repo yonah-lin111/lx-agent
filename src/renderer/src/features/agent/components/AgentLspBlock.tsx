@@ -56,6 +56,7 @@ const renderDetails = (
 ): React.JSX.Element => {
   const labelKey = OPERATION_LABEL_KEYS[details.operation]
   const label = labelKey ? t(labelKey) : details.operation
+  const results = details.results ?? []
   return (
     <div key={index} className="agent-lsp-detail min-w-0">
       {details.error ? (
@@ -71,7 +72,7 @@ const renderDetails = (
             </div>
           </LxTooltip>
         </div>
-      ) : details.results.length === 0 ? (
+      ) : results.length === 0 ? (
         <div className="agent-lsp-empty mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="agent-lsp-corner mt-[2px] h-3 w-3 shrink-0" />
           <span className="agent-lsp-empty-text">
@@ -80,7 +81,7 @@ const renderDetails = (
         </div>
       ) : (
         <div className="agent-lsp-results mt-1 flex flex-col">
-          {details.results.map((result, rowIndex) => (
+          {results.map((result, rowIndex) => (
             <LxTooltip key={rowIndex} content={result.filePath}>
               <button
                 type="button"

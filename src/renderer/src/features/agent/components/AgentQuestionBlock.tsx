@@ -268,7 +268,7 @@ export const AgentQuestionBlock = ({
                 {activeQuestion.multiSelect ? (
                   <div className="mt-1.5 flex flex-col gap-1">
                     {activeQuestion.options.map((option) => {
-                      const checked = selections[activeIndex]!.includes(option.label)
+                      const checked = selections[activeIndex]?.includes(option.label) ?? false
                       return (
                         <label
                           key={option.label}
@@ -294,7 +294,7 @@ export const AgentQuestionBlock = ({
                 ) : (
                   <LxRadioGroup
                     name={`question-${pending.requestId}-${activeIndex}`}
-                    value={selections[activeIndex]![0] ?? ""}
+                    value={selections[activeIndex]?.[0] ?? ""}
                     onChange={setSelection}
                     className="mt-1.5 flex flex-col gap-1"
                   >
@@ -319,7 +319,7 @@ export const AgentQuestionBlock = ({
                   </LxRadioGroup>
                 )}
                 <input
-                  value={customTexts[activeIndex]}
+                  value={customTexts[activeIndex] ?? ""}
                   onChange={(event) => setCustomText(event.target.value)}
                   placeholder={t("agent.questionCustomOther")}
                   className="agent-question-input mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
@@ -327,7 +327,7 @@ export const AgentQuestionBlock = ({
               </>
             ) : (
               <textarea
-                value={customTexts[activeIndex]}
+                value={customTexts[activeIndex] ?? ""}
                 onChange={(event) => setCustomText(event.target.value)}
                 rows={2}
                 placeholder={t("agent.questionAnswerPlaceholder")}
