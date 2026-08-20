@@ -40,17 +40,19 @@ export const AgentThinkingBlock = ({
   }, [content, isExpanded])
 
   return (
-    <div className="my-1.5 w-full">
+    <div className="agent-thinking-block my-1.5 w-full">
       <div className="min-w-0">
         <button
           type="button"
           aria-label="思考过程"
           aria-expanded={isExpanded}
-          className="flex h-5 w-fit items-center gap-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
+          className="agent-thinking-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
         >
           <Brain className="h-3.5 w-3.5 shrink-0 text-rose-300" />
-          <span className="text-rose-300">{isGenerating ? "Thinking" : "Thought Process"}</span>
+          <span className="agent-thinking-title text-rose-300">
+            {isGenerating ? "Thinking" : "Thought Process"}
+          </span>
           {isGenerating && (
             <span className="relative ml-0.5 flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/40 opacity-75" />
@@ -76,7 +78,7 @@ export const AgentThinkingBlock = ({
         >
           <div
             ref={innerRef}
-            className="flex min-w-0 items-start gap-1 select-text pl-1 pt-1 text-white/45"
+            className="agent-thinking-content flex min-w-0 items-start gap-1 select-text pl-1 pt-1 text-white/45"
           >
             <CornerDownRight className="mt-1 h-3 w-3 shrink-0" />
             <div className="custom-scrollbar max-h-72 min-w-0 flex-1 overflow-y-auto">

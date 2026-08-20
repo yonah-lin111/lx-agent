@@ -130,13 +130,9 @@ export const BottomSideBar = ({
       </LxIconButton>
 
       <LxIconButton
-        aria-label={
-          isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
-        }
+        aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
         title={{
-          content: isCoveringRightSideBar
-            ? "底边栏不覆盖右侧栏宽度"
-            : "底边栏覆盖右侧栏宽度",
+          content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
           placement: "top",
         }}
         onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
@@ -213,7 +209,9 @@ export const BottomSideBar = ({
             <div className="min-w-0 flex-1">{children}</div>
             <div className="flex shrink-0 items-center gap-1 pl-2">
               <LxIconButton
-                aria-label={viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"}
+                aria-label={
+                  viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"
+                }
                 title={{
                   content:
                     viewMode === "terminal"

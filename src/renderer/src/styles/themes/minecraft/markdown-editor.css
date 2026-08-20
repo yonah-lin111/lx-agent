@@ -1,119 +1,263 @@
 /* ========================================================
  * Minecraft 主题 - Markdown 编辑区魔改（CodeMirror 逐行与块级装饰）
+ * 特征：黑曜石深底、石质刻度行号槽、矿石色标与硬核 3D 浮雕模板卡片
  * ======================================================== */
+
+/* 1. 编辑器基础背景与字体 */
 [data-theme="minecraft"] .cm-editor {
-  background-color: #1a1a24 !important;
-  color: #e4e4ee !important;
+  background-color: #14141d !important;
+  color: #f0f0f8 !important;
   font-family: var(--theme-font-family) !important;
 }
 
 [data-theme="minecraft"] .cm-editor .cm-scroller {
-  background-color: #1a1a24 !important;
+  background-color: #14141d !important;
+  font-family: var(--theme-font-family) !important;
 }
 
-/* 行号槽：石质刻度感 */
+[data-theme="minecraft"] .cm-editor .cm-content {
+  caret-color: #55ff55 !important; /* 经验条荧光绿光标 */
+  font-family: var(--theme-font-family) !important;
+}
+
+/* 2. 行号与折叠槽（石质刻度凹槽） */
 [data-theme="minecraft"] .cm-editor .cm-gutters {
-  background-color: #222230 !important;
-  border-right: 2px solid #000000 !important;
-  color: #78788c !important;
-  box-shadow: inset -1px 0px 0px 0px rgba(255, 255, 255, 0.08);
+  background-color: #1e1e28 !important;
+  border-right: 3px solid #000000 !important;
+  color: #727288 !important;
+  box-shadow:
+    inset -2px 0px 0px 0px rgba(255, 255, 255, 0.12),
+    2px 0px 0px 0px #000000;
 }
 
-/* 当前光标行高亮：经验条荧光绿微光槽 */
+[data-theme="minecraft"] .cm-editor .cm-lineNumbers .cm-gutterElement {
+  color: #727288 !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-foldGutter .cm-gutterElement {
+  color: #727288 !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-foldGutter .cm-gutterElement:hover {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-foldPlaceholder {
+  background-color: #262636 !important;
+  border: 2px solid #000000 !important;
+  color: #ffaa00 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.3),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-foldPlaceholder:hover {
+  background-color: #343448 !important;
+  color: #ffffff !important;
+}
+
+/* 3. 当前光标行与选区高亮 */
 [data-theme="minecraft"] .cm-editor .cm-activeLine,
 [data-theme="minecraft"] .cm-editor .cm-activeLineGutter {
-  background-color: rgba(85, 255, 85, 0.1) !important;
+  background-color: rgba(85, 255, 85, 0.08) !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-activeLineGutter {
+  color: #55ff55 !important;
+  font-weight: 700;
 }
 
 /* 编辑器光标：2px 宽经验条荧光绿 */
-[data-theme="minecraft"] .cm-editor .cm-cursor {
+[data-theme="minecraft"] .cm-editor .cm-cursor,
+[data-theme="minecraft"] .cm-editor .cm-dropCursor {
   border-left: 2px solid #55ff55 !important;
 }
 
 /* 编辑器选区：钻石高亮天蓝 */
 [data-theme="minecraft"] .cm-editor .cm-selectionBackground,
+[data-theme="minecraft"] .cm-editor.cm-focused .cm-selectionBackground,
 [data-theme="minecraft"] .cm-editor ::selection {
   background-color: rgba(56, 189, 248, 0.35) !important;
 }
 
-/* CodeMirror 代码块（深黑曜石 3D 凸起卡片槽） */
+/* 行跳转快速闪烁高亮（flashLineEffect）：经验绿光 */
+[data-theme="minecraft"] .cm-editor .cm-md-line-flash {
+  background-color: rgba(85, 255, 85, 0.25) !important;
+  box-shadow: inset 0 0 8px rgba(85, 255, 85, 0.4) !important;
+}
+
+/* 4. 编辑器内 Markdown 语法标记高亮 */
+[data-theme="minecraft"] .cm-md-heading-marker,
+[data-theme="minecraft"] .cm-md-heading-marker * {
+  color: #ffaa00 !important;
+  font-weight: 700;
+  text-shadow: 2px 2px 0px #000000;
+}
+
+[data-theme="minecraft"] .cm-md-strong-marker,
+[data-theme="minecraft"] .cm-md-strong-marker * {
+  color: #ffaa00 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-emphasis-marker,
+[data-theme="minecraft"] .cm-md-emphasis-marker * {
+  color: #fde68a !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-strike-marker,
+[data-theme="minecraft"] .cm-md-strike-marker * {
+  color: #ff5555 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-link-marker,
+[data-theme="minecraft"] .cm-md-link-marker * {
+  color: #55ffff !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-inline-code-marker,
+[data-theme="minecraft"] .cm-md-inline-code-marker * {
+  color: #ff5555 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-quote-marker,
+[data-theme="minecraft"] .cm-md-quote-marker * {
+  color: #c084fc !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-table-marker,
+[data-theme="minecraft"] .cm-md-table-marker * {
+  color: #38bdf8 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-task-marker,
+[data-theme="minecraft"] .cm-md-task-marker * {
+  color: #55ff55 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-unordered-list-marker,
+[data-theme="minecraft"] .cm-md-unordered-list-marker *,
+[data-theme="minecraft"] .cm-md-ordered-list-marker,
+[data-theme="minecraft"] .cm-md-ordered-list-marker * {
+  color: #ffaa00 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-separator-marker,
+[data-theme="minecraft"] .cm-md-separator-marker * {
+  color: #727288 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-code-fence-marker,
+[data-theme="minecraft"] .cm-md-code-fence-marker * {
+  color: #c084fc !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .cm-md-code-fence-language,
+[data-theme="minecraft"] .cm-md-code-fence-language * {
+  color: #55ffff !important;
+  background-color: #182838 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.3),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+  font-weight: 700;
+}
+
+/* 5. CodeMirror 代码块（深黑曜石重度 3D 凸起卡片槽） */
 [data-theme="minecraft"] .cm-md-code-fence-start-line,
 [data-theme="minecraft"] .cm-md-code-fence-middle-line,
 [data-theme="minecraft"] .cm-md-code-fence-end-line {
   background-color: #1a1a26 !important;
+  border-radius: 0px !important;
 }
 
 [data-theme="minecraft"] .cm-md-code-fence-start-line {
   border: 2px solid #000000 !important;
-  border-bottom: 1px solid #28283a !important;
+  border-bottom: 2px solid #28283a !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    2px 2px 0px 0px #000000 !important;
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.35),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 4px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-code-fence-middle-line {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    2px 0px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 0px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-code-fence-end-line {
   border: 2px solid #000000 !important;
   border-top: none !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
-    2px 2px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    4px 4px 0px 0px #000000 !important;
 }
 
-/* ========================================================
- * Markdown 编辑区 &&& 模板块魔改（CodeMirror 逐行 3D 凸起实体卡片）
- * ======================================================== */
+/* 6. 编辑区模板块（CodeMirror 逐行重度 3D 凸起实体卡片） */
 [data-theme="minecraft"] .cm-md-template-start-line {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #282436 !important;
-  background-color: #262238 !important;
+  background-color: #241e34 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.38),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 4px 0px 0px #000000 !important;
   color: #e6e6f2 !important;
+  border-radius: 0px !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-middle-line,
 [data-theme="minecraft"] .cm-md-template-comment-line {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;
-  background-color: #262238 !important;
+  background-color: #241e34 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 0px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 0px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-end-line {
   border: 2px solid #000000 !important;
   border-top: none !important;
-  background-color: #262238 !important;
+  background-color: #241e34 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    4px 4px 0px 0px #000000 !important;
+  border-radius: 0px !important;
 }
 
-/* 编辑区模板块在进行中/已完成状态下的 3D 凸起卡片（保持统一黑边，无额外左高亮边框） */
+/* 进行中状态（暖金琥珀色） */
 [data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-in-progress {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #382810 !important;
   background-color: #2a2012 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.35),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 2px 0px 0px rgba(255, 170, 0, 0.5),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 4px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-middle-line.cm-md-template-line-in-progress,
@@ -122,9 +266,9 @@
   border-right: 2px solid #000000 !important;
   background-color: #2a2012 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 170, 0, 0.22),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 0px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 170, 0, 0.35),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 0px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-in-progress {
@@ -132,19 +276,20 @@
   border-top: none !important;
   background-color: #2a2012 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(255, 170, 0, 0.22),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(255, 170, 0, 0.35),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    4px 4px 0px 0px #000000 !important;
 }
 
+/* 已完成状态（翡翠经验绿） */
 [data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-done {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #123420 !important;
   background-color: #122418 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.35),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 2px 0px 0px rgba(85, 255, 85, 0.5),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 4px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-middle-line.cm-md-template-line-done,
@@ -153,9 +298,9 @@
   border-right: 2px solid #000000 !important;
   background-color: #122418 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(85, 255, 85, 0.22),
-    inset -1px 0px 0px 0px rgba(0, 0, 0, 0.7),
-    3px 0px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(85, 255, 85, 0.35),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    4px 0px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-done {
@@ -163,67 +308,178 @@
   border-top: none !important;
   background-color: #122418 !important;
   box-shadow:
-    inset 1px 0px 0px 0px rgba(85, 255, 85, 0.22),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
-    3px 3px 0px 0px #000000 !important;
+    inset 2px 0px 0px 0px rgba(85, 255, 85, 0.35),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    4px 4px 0px 0px #000000 !important;
 }
 
-/* 编辑区行内高亮标记：命令、标题、状态、ID、WT */
+/* 7. 编辑区模板块行内高亮标记 */
 [data-theme="minecraft"] .cm-md-template-marker {
   color: #ffaa00 !important;
   font-weight: bold;
-  text-shadow: 1px 1px 0px #000000;
+  text-shadow: 2px 2px 0px #000000;
 }
 
 [data-theme="minecraft"] .cm-md-template-command {
   background-color: #2f2242 !important;
   color: #be8aef !important;
-  border: 1px solid #483863 !important;
-  padding: 1px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-command-addTemplate {
+  background-color: #143821 !important;
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-command-bugTemplate {
+  background-color: #381c24 !important;
+  color: #ff5555 !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-command-refactorTemplate {
+  background-color: #2f2242 !important;
+  color: #c084fc !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-command-commonTemplate {
+  background-color: #182838 !important;
+  color: #55ffff !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-title {
   background-color: #382a14 !important;
   color: #ebd076 !important;
-  border: 1px solid #5a4420 !important;
-  padding: 1px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
   text-decoration: none !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-done {
   background-color: #143821 !important;
   color: #55e055 !important;
-  border: 1px solid #235c37 !important;
-  padding: 1px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.4),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-in-progress {
   background-color: #422d0e !important;
   color: #f0a716 !important;
-  border: 1px solid #6e4e18 !important;
-  padding: 1px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.4),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-id,
 [data-theme="minecraft"] .cm-md-template-wt {
   background-color: #222230 !important;
   color: #9e9eb0 !important;
-  border: 1px solid #000000 !important;
-  padding: 1px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
 }
 
-/* 编辑区模板块右侧操作栏按钮（复制/折叠/状态切换/删除） */
+[data-theme="minecraft"] .cm-md-template-comment-line,
+[data-theme="minecraft"] .cm-md-template-comment-line * {
+  color: #727288 !important;
+  font-style: italic !important;
+}
+
+/* 8. 编辑区操作栏按钮（复制/折叠/状态切换/删除）：重度 3D 像素按钮 */
 [data-theme="minecraft"] .cm-template-block-action-wrap button,
 [data-theme="minecraft"] .cm-code-block-action-wrap button {
-  border: 1px solid #000000 !important;
+  border: 2px solid #000000 !important;
   background-color: #2e2e42 !important;
+  color: #c0c0d4 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.35),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  border-radius: 0px !important;
   padding: 3px !important;
 }
 
 [data-theme="minecraft"] .cm-template-block-action-wrap button:hover,
 [data-theme="minecraft"] .cm-code-block-action-wrap button:hover {
   background-color: #42425c !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .cm-template-block-action-wrap button:active,
+[data-theme="minecraft"] .cm-code-block-action-wrap button:active {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */
+[data-theme="minecraft"] .cm-editor .cm-md-file-mention,
+[data-theme="minecraft"] .cm-editor .cm-md-file-mention * {
+  color: #fbbf24 !important;
+  font-weight: 500;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-referenced-file-mention,
+[data-theme="minecraft"] .cm-editor .cm-md-referenced-file-mention * {
+  color: #c4b5fd !important;
+  font-weight: 500;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(196, 181, 253, 0.4) !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-reference-project {
+  color: #c4b5fd !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-reference-folder {
+  color: #fbbf24 !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-reference-file {
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-reference-image {
+  color: #ff88aa !important;
+}
+
+[data-theme="minecraft"] .cm-editor .cm-md-reference-common {
+  color: #d0d0e0 !important;
+}
+
+/* 10. CodeMirror 悬浮气泡（Tooltip）魔改：重度 3D 浮雕卡片 */
+[data-theme="minecraft"] .cm-tooltip {
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  color: #f0f0f8 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.85),
+    4px 4px 0px 0px #000000 !important;
+  border-radius: 0px !important;
 }

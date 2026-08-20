@@ -490,15 +490,12 @@ select {
 
 .markdown-preview ul {
   list-style-type: disc;
+  padding-left: 1.6em;
 }
 
 .markdown-preview ol {
   list-style-type: decimal;
-}
-
-.markdown-preview ul,
-.markdown-preview ol {
-  padding-left: 1.5em;
+  padding-left: 2.1em;
 }
 
 .markdown-preview li.task-list-item {

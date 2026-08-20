@@ -295,10 +295,12 @@ export const AgentToolCallBlock = ({
   const ToolIcon = getToolIcon(toolName)
 
   return (
-    <div className="my-0.5 min-w-0">
-      <div className="flex items-center gap-1">
+    <div className="agent-tool-call-block my-0.5 min-w-0">
+      <div className="agent-tool-call-header flex items-center gap-1">
         <ToolIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-        <span className="font-mono text-[12px] font-bold text-amber-300">{displayToolName}</span>
+        <span className="agent-tool-call-name font-mono text-[12px] font-bold text-amber-300">
+          {displayToolName}
+        </span>
       </div>
       {hasDiffToggle && resolvedDiff ? (
         <>
@@ -306,14 +308,20 @@ export const AgentToolCallBlock = ({
             type="button"
             aria-label="Diff 内容"
             aria-expanded={isDiffExpanded}
-            className="mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
+            className="agent-tool-diff-toggle mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
             onClick={() => setIsDiffExpanded((previous) => !previous)}
           >
-            <CornerDownRight className="h-3 w-3 shrink-0" />
-            <span className="min-w-0 flex-1 truncate text-left">{commandSummary}</span>
+            <CornerDownRight className="agent-tool-corner h-3 w-3 shrink-0" />
+            <span className="agent-tool-diff-title min-w-0 flex-1 truncate text-left">
+              {commandSummary}
+            </span>
             <span className="shrink-0 text-[11px]">
-              <span className="text-emerald-400">+{resolvedDiff.stats.added}</span>
-              <span className="ml-2 text-red-400">−{resolvedDiff.stats.removed}</span>
+              <span className="agent-tool-diff-added text-emerald-400">
+                +{resolvedDiff.stats.added}
+              </span>
+              <span className="agent-tool-diff-removed ml-2 text-red-400">
+                −{resolvedDiff.stats.removed}
+              </span>
               {resolvedDiff.truncated && (
                 <span className="ml-2 text-white/25">已截断，仅显示部分变更</span>
               )}
@@ -335,26 +343,26 @@ export const AgentToolCallBlock = ({
           </div>
         </>
       ) : isSimpleTool ? (
-        <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
-          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
+        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+          <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
           {toolName === "read" ? (
-            <span className="min-w-0 break-all">
+            <span className="agent-tool-call-desc min-w-0 break-all">
               {readPaths.map(compactPath).join(TOOL_GROUP_SEPARATORS.read)}
             </span>
           ) : groupSummary ? (
-            <span className="min-w-0 break-all">{groupSummary}</span>
+            <span className="agent-tool-call-desc min-w-0 break-all">{groupSummary}</span>
           ) : (
-            <span>{summary}</span>
+            <span className="agent-tool-call-desc">{summary}</span>
           )}
         </div>
       ) : (
-        <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
-          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
-          <span className="min-w-0 break-all">{summary}</span>
+        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+          <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
+          <span className="agent-tool-call-desc min-w-0 break-all">{summary}</span>
         </div>
       )}
       {firstToolCall?.progress && (
-        <div className="mt-1 max-h-24 overflow-y-auto rounded-[4px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] leading-relaxed text-white/50 whitespace-pre-wrap break-all">
+        <div className="agent-tool-call-progress mt-1 max-h-24 overflow-y-auto rounded-[4px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] leading-relaxed text-white/50 whitespace-pre-wrap break-all">
           {firstToolCall.progress}
         </div>
       )}

@@ -702,6 +702,37 @@
     0 2px 6px rgba(166, 92, 20, 0.2) !important;
 }
 
+/* 消息顶部/底部信息（模型名称、命令说明、Token 用量） */
+[data-theme="wood"] .agent-message-model {
+  color: #8c5820 !important;
+  font-weight: 600;
+}
+
+[data-theme="wood"] .agent-message-command-label {
+  color: #a65c14 !important;
+  font-weight: 600;
+}
+
+[data-theme="wood"] .agent-message-command-separator {
+  color: #b38b47 !important;
+}
+
+[data-theme="wood"] .agent-message-command-source {
+  color: #8c5820 !important;
+}
+
+[data-theme="wood"] .agent-message-usage {
+  color: #8c7b64 !important;
+}
+
+[data-theme="wood"] .agent-message-usage-item {
+  color: #8c7b64 !important;
+}
+
+[data-theme="wood"] .agent-message-usage-separator {
+  color: #b38b47 !important;
+}
+
 /* AI 执行与工具调用块卡片 (Execution / Thinking / ToolCall / Mcp) */
 [data-theme="wood"] .bg-white\/\[0\.04\],
 [data-theme="wood"] .bg-white\/\[0\.03\],

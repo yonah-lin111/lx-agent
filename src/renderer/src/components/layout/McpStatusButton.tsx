@@ -26,23 +26,27 @@ export const McpStatusButton = (): React.JSX.Element => {
   const color = aggregateColor(summary.total, summary.connected)
 
   const tooltipContent = (
-    <div className="flex min-w-[150px] max-w-[240px] flex-col gap-1.5">
-      <span className="text-[11px] font-semibold text-white/50">
+    <div className="agent-status-tooltip flex min-w-[150px] max-w-[240px] flex-col gap-1.5">
+      <span className="agent-status-tooltip-title text-[11px] font-semibold text-white/50">
         MCP servers · {summary.connected}/{summary.total}
       </span>
       {isLoading ? (
-        <span className="text-xs font-normal text-white/40">Checking MCP servers...</span>
+        <span className="agent-status-tooltip-loading text-xs font-normal text-white/40">
+          Checking MCP servers...
+        </span>
       ) : summary.names.length > 0 ? (
         summary.names.map((name) => (
           <span
             key={name}
-            className={`truncate text-xs font-normal ${nameColor(name, summary.failedNames, summary.disabledNames)}`}
+            className={`agent-status-tooltip-item truncate text-xs font-normal ${nameColor(name, summary.failedNames, summary.disabledNames)}`}
           >
             {name}
           </span>
         ))
       ) : (
-        <span className="text-xs font-normal text-white/40">No MCP servers configured</span>
+        <span className="agent-status-tooltip-empty text-xs font-normal text-white/40">
+          No MCP servers configured
+        </span>
       )}
     </div>
   )
@@ -51,13 +55,15 @@ export const McpStatusButton = (): React.JSX.Element => {
     <LxTooltip content={tooltipContent} contentClassName="!p-2 !whitespace-normal" placement="top">
       <span
         aria-label="MCP 连接状态"
-        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5"
+        className="agent-status-btn agent-mcp-status-btn flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5"
       >
         <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${isLoading ? "bg-white/30" : color}`}
+          className={`agent-status-dot h-1.5 w-1.5 shrink-0 rounded-full ${isLoading ? "bg-white/30" : color}`}
         />
-        <span className="tabular-nums">{isLoading ? "…" : summary.connected}</span>
-        MCP
+        <span className="agent-status-count tabular-nums">
+          {isLoading ? "…" : summary.connected}
+        </span>
+        <span className="agent-status-label">MCP</span>
       </span>
     </LxTooltip>
   )

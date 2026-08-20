@@ -87,18 +87,18 @@ export const AgentExecutionGroup = ({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className="agent-execution-group flex min-w-0 flex-col gap-1">
       <button
         type="button"
         aria-expanded={isExpanded}
         aria-label={isExpanded ? "收起执行内容" : "展开执行内容"}
-        className="relative ml-6 flex h-5 w-fit items-center gap-1 rounded-[6px] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
+        className="agent-execution-group-toggle relative ml-6 flex h-5 w-fit items-center gap-1 rounded-[6px] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
         onClick={() => setIsExpanded((previous) => !previous)}
       >
         {/* 小圆点置于黑色背景左侧，与展开项圆点同列，hover 颜色随按钮文字联动。 */}
         <span
           aria-hidden
-          className="absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current"
+          className="agent-execution-group-dot absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current"
         />
         <span>
           {countSegments.map((segment, index) => (
@@ -127,13 +127,19 @@ export const AgentExecutionGroup = ({
       >
         <div className="min-h-0 overflow-hidden">
           <div className="relative flex min-w-0 flex-col gap-1.5">
-            <span aria-hidden className="absolute bottom-0 left-[5px] top-0 w-px bg-white/10" />
+            <span
+              aria-hidden
+              className="agent-execution-timeline-line absolute bottom-0 left-[5px] top-0 w-px bg-white/10"
+            />
             {items.map((item, index) => (
-              <div key={index} className="relative pl-6 [&>*:first-child]:mt-0">
+              <div
+                key={index}
+                className="agent-execution-timeline-item relative pl-6 [&>*:first-child]:mt-0"
+              >
                 {item.node}
                 <span
                   aria-hidden
-                  className={`absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
+                  className={`agent-execution-timeline-dot absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
                 />
               </div>
             ))}

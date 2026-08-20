@@ -134,7 +134,7 @@ export const GhosttyTerminalView = ({
   }, [isExpanded, activeTabId, handleCreateTab])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
+    <div className="ghostty-terminal-view flex h-full w-full flex-col overflow-hidden">
       {/* 顶部水平栏：左侧图标 + 滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 + 右侧扩展控制 */}
       <div className="flex h-8 shrink-0 items-center px-1 select-none">
         <TerminalTabs onAddTab={() => void handleCreateTab()} rightActions={rightActions} />

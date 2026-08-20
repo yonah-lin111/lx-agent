@@ -25,7 +25,7 @@ export const LspStatusButton = (): React.JSX.Element => {
     return (
       <span
         key={name}
-        className={`truncate text-xs font-normal ${installed ? "text-emerald-400" : "text-red-400"}`}
+        className={`agent-status-tooltip-item truncate text-xs font-normal ${installed ? "text-emerald-400" : "text-red-400"}`}
       >
         {name}
       </span>
@@ -37,13 +37,13 @@ export const LspStatusButton = (): React.JSX.Element => {
       ? `（上次失败：${lastResult.failed.join("、")}）`
       : ""
   const tooltipContent = needsInstall ? (
-    <span className="text-sm leading-snug">
+    <span className="agent-status-tooltip-install text-sm leading-snug">
       安装缺失的 LSP server（{summary.missing} 个）：{summary.missingNames.join("、")}
       {failedHint}
     </span>
   ) : (
-    <div className="flex min-w-[150px] max-w-[240px] flex-col gap-1.5">
-      <span className="text-[11px] font-semibold text-white/50">
+    <div className="agent-status-tooltip flex min-w-[150px] max-w-[240px] flex-col gap-1.5">
+      <span className="agent-status-tooltip-title text-[11px] font-semibold text-white/50">
         LSP servers · {summary.installed}/{summary.total}
       </span>
       {statusLines}
@@ -59,15 +59,17 @@ export const LspStatusButton = (): React.JSX.Element => {
     >
       <span
         aria-label="LSP 安装状态"
-        className={`flex shrink-0 items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5 ${needsInstall ? "cursor-pointer" : "cursor-default"}`}
+        className={`agent-status-btn agent-lsp-status-btn flex shrink-0 items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5 ${needsInstall ? "cursor-pointer" : "cursor-default"}`}
       >
         {isInstalling ? (
-          <span className="h-1.5 w-1.5 shrink-0 animate-spin rounded-full border border-white/50 border-t-transparent" />
+          <span className="agent-status-dot h-1.5 w-1.5 shrink-0 animate-spin rounded-full border border-white/50 border-t-transparent" />
         ) : (
-          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${color}`} />
+          <span className={`agent-status-dot h-1.5 w-1.5 shrink-0 rounded-full ${color}`} />
         )}
-        <span className="tabular-nums">{isLoading ? "…" : summary.installed}</span>
-        LSP
+        <span className="agent-status-count tabular-nums">
+          {isLoading ? "…" : summary.installed}
+        </span>
+        <span className="agent-status-label">LSP</span>
       </span>
     </LxTooltip>
   )

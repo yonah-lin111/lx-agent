@@ -18,8 +18,8 @@ import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useLxToast } from "@/components/ui/LxToast"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useAgentJobs } from "../hooks/useAgentJobs"
 
 interface AgentJobsMonitorViewProps {
@@ -166,7 +166,7 @@ export const AgentJobsMonitorView = ({
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-[#212121]">
+    <div className="agent-jobs-monitor-view flex h-full w-full flex-col overflow-hidden bg-[#212121]">
       {/* 顶部标签与操作栏（高度 32px，与 TerminalTabs 风格统一，支持滚轮与左右箭头切换） */}
       <div className="flex h-8 shrink-0 items-center justify-between gap-1 overflow-hidden px-1 select-none">
         {/* 最左侧：Jobs 图标 */}
@@ -349,11 +349,11 @@ export const AgentJobsMonitorView = ({
       </div>
 
       {/* 下方日志视口区（与终端保持一致的独立圆角暗色容器） */}
-      <div className="relative flex min-h-0 flex-1 w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#111116]">
+      <div className="agent-jobs-log-viewport relative flex min-h-0 flex-1 w-full flex-col overflow-hidden rounded-[4px] border border-white/5 bg-[#111116]">
         {activeJob ? (
           <>
             {/* 顶栏元信息 */}
-            <div className="flex h-7 shrink-0 items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 font-mono text-[11px] text-white/50 select-text">
+            <div className="agent-jobs-log-header flex h-7 shrink-0 items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 font-mono text-[11px] text-white/50 select-text">
               <div className="min-w-0 flex-1 truncate mr-2">
                 <span className="text-sky-400 font-semibold mr-1.5">{activeJob.id}</span>
                 <span className="text-white/80">$ {activeJob.label}</span>
@@ -383,7 +383,7 @@ export const AgentJobsMonitorView = ({
             {/* 终端实时日志流 */}
             <div
               ref={logContainerRef}
-              className="flex-1 overflow-y-auto p-3 font-mono text-[12px] leading-relaxed text-zinc-200 select-text bg-[#0d0d12]"
+              className="agent-jobs-log-content flex-1 overflow-y-auto p-3 font-mono text-[12px] leading-relaxed text-zinc-200 select-text bg-[#0d0d12]"
             >
               {currentLogs ? (
                 <pre className="whitespace-pre-wrap break-all font-mono">{currentLogs}</pre>
@@ -395,11 +395,12 @@ export const AgentJobsMonitorView = ({
             </div>
           </>
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/40 select-none">
+          <div className="agent-jobs-empty-state flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/40 select-none">
             <TerminalIcon className="h-8 w-8 text-white/15 mb-1" />
             <span className="text-xs text-white/60">No background jobs in this session</span>
             <span className="text-[11px] text-white/30">
-              Tasks started via <code>bash(background: true)</code> will be monitored here in real-time.
+              Tasks started via <code>bash(background: true)</code> will be monitored here in
+              real-time.
             </span>
           </div>
         )}

@@ -1,76 +1,529 @@
 /* ========================================================
  * Minecraft 主题 - Markdown 预览区魔改（HTML 渲染树）
+ * 特征：黑曜石/深板岩暗底、硬核 Minecraft 3D 浮雕凹凸、矿石/附魔书高光色阶
  * ======================================================== */
-/* Markdown 标题魔改：Minecraft 金黄与钻石蓝高光 */
+
+/* 1. 基础容器与正文排版 */
+[data-theme="minecraft"] .markdown-preview {
+  color: #f0f0f8 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview p {
+  color: #d8d8e8;
+  line-height: 1.7;
+}
+
+/* 2. 标题层级：Minecraft 经典矿物与附魔高光（2px 黑色像素投影） */
 [data-theme="minecraft"] .markdown-preview h1 {
-  color: #ffaa00 !important;
-  text-shadow: 1px 1px 0px #000000;
-  border-bottom: 2px solid #000000;
-  padding-bottom: 4px;
+  color: #ffaa00 !important; /* 金矿/经验条暖金 */
+  text-shadow: 2px 2px 0px #000000;
+  border-bottom: 3px solid #000000 !important;
+  box-shadow: 0 2px 0 0 rgba(255, 255, 255, 0.15);
+  padding-bottom: 6px;
+  font-weight: 700;
 }
 
 [data-theme="minecraft"] .markdown-preview h2 {
-  color: #55ffff !important;
-  text-shadow: 1px 1px 0px #000000;
+  color: #55ffff !important; /* 钻石天蓝 */
+  text-shadow: 2px 2px 0px #000000;
+  border-bottom: 2px solid #000000 !important;
+  box-shadow: 0 2px 0 0 rgba(255, 255, 255, 0.12);
+  padding-bottom: 4px;
+  font-weight: 700;
 }
 
-[data-theme="minecraft"] .markdown-preview h3,
+[data-theme="minecraft"] .markdown-preview h3 {
+  color: #55ff55 !important; /* 绿宝石/经验条荧光绿 */
+  text-shadow: 2px 2px 0px #000000;
+  font-weight: 700;
+}
+
 [data-theme="minecraft"] .markdown-preview h4 {
-  color: #55ff55 !important;
+  color: #c084fc !important; /* 紫水晶/附魔光泽紫 */
+  text-shadow: 2px 2px 0px #000000;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .markdown-preview h5 {
+  color: #38bdf8 !important; /* 青金石亮蓝 */
+  text-shadow: 2px 2px 0px #000000;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .markdown-preview h6 {
+  color: #a6a6bc !important; /* 安山岩中灰 */
+  text-shadow: 2px 2px 0px #000000;
+  font-weight: 700;
+}
+
+/* 3. 文本行内装饰与链接 */
+[data-theme="minecraft"] .markdown-preview strong,
+[data-theme="minecraft"] .markdown-preview b {
+  color: #ffaa00 !important; /* 金矿橙黄 */
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .markdown-preview em,
+[data-theme="minecraft"] .markdown-preview i {
+  color: #fde68a !important; /* 石英暗金淡黄 */
+  font-style: italic;
+}
+
+[data-theme="minecraft"] .markdown-preview del,
+[data-theme="minecraft"] .markdown-preview s {
+  color: #ff5555 !important; /* 红石浅红 */
+  text-decoration-color: #ff5555 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview a {
+  color: #55ffff !important; /* 附魔/钻石蓝 */
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  transition: none !important;
+}
+
+[data-theme="minecraft"] .markdown-preview a:hover {
+  color: #77ffff !important;
+  text-shadow: 0 0 4px rgba(85, 255, 255, 0.4);
+}
+
+[data-theme="minecraft"] .markdown-preview hr {
+  border: none !important;
+  height: 3px !important;
+  background-color: #000000 !important;
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.18) !important;
+  margin: 1.5em 0 !important;
+}
+
+/* 4. 引用块（Blockquote）：重度 3D 浮雕石质凹槽 + 5px 紫水晶边条 */
+[data-theme="minecraft"] .markdown-preview blockquote {
+  border: 2px solid #000000 !important;
+  border-left: 5px solid #c084fc !important;
+  background-color: #1e1a2c !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.85),
+    4px 4px 0px 0px #000000 !important;
+  color: #d2d0e4 !important;
+  padding: 10px 16px !important;
+  margin: 1.2em 0 !important;
+}
+
+/* 5. 列表与有序/无序序号（Lists & Markers） */
+[data-theme="minecraft"] .markdown-preview ul {
+  list-style-type: disc !important;
+  padding-left: 1.8em !important;
+}
+
+[data-theme="minecraft"] .markdown-preview ol {
+  list-style-type: decimal !important;
+  padding-left: 2.4em !important;
+}
+
+[data-theme="minecraft"] .markdown-preview ul > li::marker {
+  color: #55ff55 !important; /* 绿宝石圆点 */
+}
+
+[data-theme="minecraft"] .markdown-preview ol > li::marker {
+  color: #ffaa00 !important; /* 金矿石序号 */
+  font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
 
-/* 预览区代码块魔改：深黑曜石 3D 凸起卡片槽 */
-[data-theme="minecraft"] .markdown-preview pre,
-[data-theme="minecraft"] .markdown-preview .markdown-code-block {
-  background-color: #1a1a26 !important;
+[data-theme="minecraft"] .markdown-preview li + li {
+  margin-top: 0.35em !important;
 }
 
-/* ========================================================
- * Markdown 预览区 &&& 模板块魔改（HTML 渲染树）
- * ======================================================== */
+[data-theme="minecraft"] .markdown-preview li.task-list-item {
+  padding-left: 1.8em !important;
+}
+
+/* 6. 任务清单与复选框（Task List & Checkbox）：重度 3D 像素方格 */
+[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.15),
+    2px 2px 0px 0px #000000 !important;
+  border-radius: 0px !important;
+  cursor: pointer;
+}
+
+[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox:checked {
+  background-color: #55ff55 !important; /* 经验条荧光绿 */
+  border-color: #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.55),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px 0px #000000,
+    0 0 8px rgba(85, 255, 85, 0.4) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .task-list-item-checkbox:checked::after {
+  border-color: #000000 !important;
+}
+
+/* 7. 行内代码（Inline Code）：双层 3D 物品框像素槽 */
+[data-theme="minecraft"] .markdown-preview code:not(pre code) {
+  border: 2px solid #000000 !important;
+  background-color: #12121a !important;
+  color: #ff7777 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.1),
+    1px 1px 0px 0px #000000 !important;
+  padding: 2px 6px !important;
+  font-family: var(--theme-font-family) !important;
+  border-radius: 0px !important;
+}
+
+/* 8. 表格（Table）：重度 3D 物品栏方格与安山岩浮雕槽 */
+[data-theme="minecraft"] .markdown-preview table {
+  border: 2px solid #000000 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background-color: #1a1a26 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.85),
+    4px 4px 0px 0px #000000 !important;
+  margin: 1.2em 0 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview th {
+  border: 2px solid #000000 !important;
+  background-color: #2e2e44 !important;
+  color: #ffaa00 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  padding: 8px 12px !important;
+}
+
+[data-theme="minecraft"] .markdown-preview td {
+  border: 1px solid #000000 !important;
+  background-color: #171722 !important;
+  color: #e0e0ee !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.7),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+  padding: 8px 12px !important;
+}
+
+[data-theme="minecraft"] .markdown-preview tr:nth-child(even) td {
+  background-color: #1d1d2b !important;
+}
+
+[data-theme="minecraft"] .markdown-preview tr:hover td {
+  background-color: #28283c !important;
+}
+
+/* 9. 预览区代码块（Code Block）：黑曜石重度 3D 凸起卡片槽（4px 投影） */
+[data-theme="minecraft"] .markdown-preview pre {
+  border-radius: 0px !important;
+  background-color: #12121c !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block {
+  border: 2px solid #000000 !important;
+  background-color: #12121c !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
+    4px 4px 0px 0px #000000 !important;
+  margin: 1.2em 0 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #242436 !important;
+  color: #e6e6f2 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.7) !important;
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-language {
+  color: #55ffff !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 代码块操作按钮（复制/折叠）：重度 3D 像素按钮 */
+[data-theme="minecraft"] .markdown-preview .markdown-code-actions button,
+[data-theme="minecraft"] .markdown-preview .markdown-template-actions button {
+  border: 2px solid #000000 !important;
+  background-color: #2e2e42 !important;
+  color: #c0c0d4 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.3),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-actions button:hover,
+[data-theme="minecraft"] .markdown-preview .markdown-template-actions button:hover {
+  background-color: #3e3e58 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-actions button:active,
+[data-theme="minecraft"] .markdown-preview .markdown-template-actions button:active {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 10. 代码块语法高亮（HLJS）：Minecraft 经典配色 */
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs {
+  background: transparent !important;
+  color: #f0f0f8 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-comment,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-quote {
+  color: #727288 !important;
+  font-style: italic !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-keyword,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-selector-tag,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-meta {
+  color: #ff5555 !important;
+  font-weight: 700;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-string,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-attr,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-template-variable {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-number,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-literal,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-symbol {
+  color: #ffaa00 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-title,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-function,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-property {
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-built_in,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-type,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-class .hljs-title {
+  color: #c084fc !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-variable,
+[data-theme="minecraft"] .markdown-preview .markdown-code-block .hljs-params {
+  color: #f0f0f8 !important;
+}
+
+/* 11. 模板块（Template Block）：重度 3D 实体卡片（4px 投影） */
 [data-theme="minecraft"] .markdown-preview .markdown-template-block {
   border: 2px solid #000000 !important;
-  background-color: #171520 !important;
+  background-color: #161420 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    3px 3px 0px 0px #000000 !important;
-  margin-top: 12px;
-  margin-bottom: 12px;
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
+    4px 4px 0px 0px #000000 !important;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  border-radius: 0px !important;
 }
 
 [data-theme="minecraft"] .markdown-preview .markdown-template-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #241e34 !important;
   color: #e6e6f2 !important;
-  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15) !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.28),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.75) !important;
+  border-radius: 0px !important;
 }
 
-/* 预览区模板块状态标签高光魔改：矿石经典成色 */
+[data-theme="minecraft"] .markdown-preview .markdown-template-block--in-progress {
+  border: 2px solid #000000 !important;
+  background-color: #20180d !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 170, 0, 0.35),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
+    4px 4px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-template-block--done {
+  border: 2px solid #000000 !important;
+  background-color: #0e1e14 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(85, 255, 85, 0.35),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
+    4px 4px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-template-command {
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"]
+  .markdown-preview
+  .markdown-template-block[data-template-command="addTemplate"]
+  .markdown-template-command {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"]
+  .markdown-preview
+  .markdown-template-block[data-template-command="bugTemplate"]
+  .markdown-template-command {
+  color: #ff5555 !important;
+}
+
+[data-theme="minecraft"]
+  .markdown-preview
+  .markdown-template-block[data-template-command="refactorTemplate"]
+  .markdown-template-command {
+  color: #c084fc !important;
+}
+
+[data-theme="minecraft"]
+  .markdown-preview
+  .markdown-template-block[data-template-command="commonTemplate"]
+  .markdown-template-command {
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-template-title {
+  color: #ffea88 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 [data-theme="minecraft"] .markdown-template-block-header [data-template-status="todo"] {
-  background-color: #303042 !important;
-  color: #a8a8b8 !important;
-  border: 1px solid #000000 !important;
+  background-color: #2a2a3a !important;
+  color: #a0a0b0 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .markdown-template-block-header [data-template-status="in_progress"] {
-  background-color: #523912 !important;
+  background-color: #4e3810 !important;
   color: #ffaa00 !important;
-  border: 1px solid #000000 !important;
-  box-shadow: 0 0 6px rgba(255, 170, 0, 0.3) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.4),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000,
+    0 0 8px rgba(255, 170, 0, 0.35) !important;
 }
 
 [data-theme="minecraft"] .markdown-template-block-header [data-template-status="done"] {
-  background-color: #17482a !important;
+  background-color: #143e22 !important;
   color: #55ff55 !important;
-  border: 1px solid #000000 !important;
-  box-shadow: 0 0 6px rgba(85, 255, 85, 0.3) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.4),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000,
+    0 0 8px rgba(85, 255, 85, 0.35) !important;
 }
 
-/* 模板块内部注释行：深附魔羊皮灰墨色 */
 [data-theme="minecraft"] .markdown-template-comment {
-  color: #7e7e96 !important;
+  color: #727288 !important;
   font-style: italic;
   font-family: var(--theme-font-family);
+}
+
+/* 11. 文件引用标签与 Mention 胶囊：3D 像素立体胶囊 */
+[data-theme="minecraft"] .markdown-preview .markdown-reference {
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  padding: 2px 6px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-reference-project {
+  background-color: #281e3a !important;
+  color: #c4b5fd !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-reference-folder {
+  background-color: #382810 !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-reference-file {
+  background-color: #182c3c !important;
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-reference-image {
+  background-color: #381c24 !important;
+  color: #ff88aa !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-reference-common {
+  background-color: #242434 !important;
+  color: #d0d0e0 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node {
+  border: 2px solid #000000 !important;
+  background-color: #282414 !important;
+  color: #fbbf24 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  text-decoration: none !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node:hover {
+  background-color: #383018 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node--referenced {
+  background-color: #241e34 !important;
+  color: #c4b5fd !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-file-mention-node--referenced:hover {
+  background-color: #322848 !important;
+  color: #ffffff !important;
+}
+
+/* 12. Mermaid 渲染容器 */
+[data-theme="minecraft"] .markdown-preview .markdown-mermaid {
+  border: 2px solid #000000 !important;
+  background-color: #14141e !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -2px -2px 0px 0px rgba(255, 255, 255, 0.12),
+    4px 4px 0px 0px #000000 !important;
+  border-radius: 0px !important;
+  padding: 10px !important;
 }

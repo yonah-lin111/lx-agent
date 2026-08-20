@@ -226,9 +226,7 @@ export const AgentInputModelPanel = ({
   )
 }
 
-const getCommandTags = (
-  command: AgentInputCommand,
-): { label: string; bgClass: string }[] => {
+const getCommandTags = (command: AgentInputCommand): { label: string; bgClass: string }[] => {
   const tags: { label: string; bgClass: string }[] = []
 
   if (command.kind === "skill") {

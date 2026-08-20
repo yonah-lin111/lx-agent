@@ -112,29 +112,26 @@ export const useAgentJobs = (sessionIdOverride?: string | null): UseAgentJobsRes
     [refreshJobs],
   )
 
-  const removeJob = useCallback(
-    async (jobId: string) => {
-      try {
-        await agentApi.removeJob(jobId)
-        setJobs((prev) => {
-          const next = prev.filter((j) => j.id !== jobId)
-          setSelectedJobId((curr) => {
-            if (curr !== jobId) return curr
-            return next[0]?.id ?? null
-          })
-          return next
+  const removeJob = useCallback(async (jobId: string) => {
+    try {
+      await agentApi.removeJob(jobId)
+      setJobs((prev) => {
+        const next = prev.filter((j) => j.id !== jobId)
+        setSelectedJobId((curr) => {
+          if (curr !== jobId) return curr
+          return next[0]?.id ?? null
         })
-        setJobLogs((prev) => {
-          const next = { ...prev }
-          delete next[jobId]
-          return next
-        })
-      } catch {
-        // 忽略
-      }
-    },
-    [],
-  )
+        return next
+      })
+      setJobLogs((prev) => {
+        const next = { ...prev }
+        delete next[jobId]
+        return next
+      })
+    } catch {
+      // 忽略
+    }
+  }, [])
 
   const clearSettledJobs = useCallback(async () => {
     if (!currentSessionId) return
@@ -150,7 +147,7 @@ export const useAgentJobs = (sessionIdOverride?: string | null): UseAgentJobsRes
   const settledJobs = jobs.filter(
     (j) => j.status === "completed" || j.status === "failed" || j.status === "killed",
   )
-  const selectedJob = jobs.find((j) => j.id === selectedJobId) ?? (jobs[0] ?? null)
+  const selectedJob = jobs.find((j) => j.id === selectedJobId) ?? jobs[0] ?? null
 
   return {
     jobs,

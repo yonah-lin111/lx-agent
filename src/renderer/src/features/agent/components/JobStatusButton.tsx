@@ -28,7 +28,10 @@ export const JobStatusButton = ({
   const tooltipContent = (
     <div className="flex min-w-[160px] max-w-[260px] flex-col gap-1.5">
       <span className="text-[11px] font-semibold text-white/50">
-        后台长任务 · {runningCount > 0 ? `${runningCount} 运行中 / ${jobs.length} 总计` : `${jobs.length} 个记录`}
+        后台长任务 ·{" "}
+        {runningCount > 0
+          ? `${runningCount} 运行中 / ${jobs.length} 总计`
+          : `${jobs.length} 个记录`}
       </span>
       {jobs.slice(0, 5).map((job) => (
         <div key={job.id} className="flex items-center justify-between gap-2 text-xs">

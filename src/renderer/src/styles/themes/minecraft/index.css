@@ -1,5 +1,6 @@
 @import "./markdown-editor.css";
 @import "./markdown-preview.css";
+@import "./agent.css";
 
 /**
  * 我的世界 (Minecraft) 风格暗色主题样式
@@ -186,7 +187,6 @@
 [data-theme="minecraft"] button.bg-white\/5,
 [data-theme="minecraft"] button[data-active="true"],
 [data-theme="minecraft"] div[data-active="true"],
-[data-theme="minecraft"] [data-highlighted="true"],
 [data-theme="minecraft"] [aria-current="page"],
 [data-theme="minecraft"] [aria-current="true"],
 [data-theme="minecraft"] [aria-current] {
@@ -198,86 +198,6 @@
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
     0px 0px 8px rgba(85, 255, 85, 0.2) !important;
-}
-
-[data-theme="minecraft"] div[role="button"][aria-current] svg,
-[data-theme="minecraft"] div[role="button"][aria-current="page"] svg,
-[data-theme="minecraft"] div[role="button"][aria-current="true"] svg,
-[data-theme="minecraft"] div[role="button"].bg-white\/10 svg,
-[data-theme="minecraft"] div[role="button"].bg-white\/5 svg,
-[data-theme="minecraft"] button[aria-current] svg,
-[data-theme="minecraft"] button[aria-current="page"] svg,
-[data-theme="minecraft"] button[aria-current="true"] svg,
-[data-theme="minecraft"] button.bg-white\/10 svg,
-[data-theme="minecraft"] button.bg-white\/5 svg,
-[data-theme="minecraft"] button[data-active="true"] svg,
-[data-theme="minecraft"] div[data-active="true"] svg,
-[data-theme="minecraft"] [data-highlighted="true"] svg,
-[data-theme="minecraft"] [aria-current="page"] svg,
-[data-theme="minecraft"] [aria-current="true"] svg,
-[data-theme="minecraft"] [aria-current] svg {
-  color: #55ff55 !important;
-}
-
-/* ========================================================
- * Agent 消息列表与 AI 气泡魔改（末影箱深紫 / 矿石凹槽）
- * ======================================================== */
-[data-theme="minecraft"] .bg-\[\#212121\] {
-  background-color: #242434 !important;
-}
-
-[data-theme="minecraft"] .bg-\[\#171717\] {
-  background-color: #171722 !important;
-}
-
-/* AI 消息气泡魔改：末影箱深黑紫石质槽，配合 2px 立体阴影 */
-[data-theme="minecraft"] [data-assistant-bubble="true"],
-[data-theme="minecraft"] .bg-\[\#303030\],
-[data-theme="minecraft"] .bg-\[\#363e4c\] {
-  border: 2px solid #000000 !important;
-  background-color: #221e2e !important;
-  color: #ececf6 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    3px 3px 0px 0px #000000 !important;
-}
-
-/* 用户消息气泡：青金石深蓝黑曜石槽（含子代理面板用户消息及各类命令气泡） */
-[data-theme="minecraft"] [data-user-bubble="true"],
-[data-theme="minecraft"] .bg-user-bubble,
-[data-theme="minecraft"] .bg-\[\#33517a\],
-[data-theme="minecraft"] .bg-\[\#163f35\],
-[data-theme="minecraft"] .bg-\[\#1e2a5e\],
-[data-theme="minecraft"] .bg-\[\#35254d\] {
-  border: 2px solid #000000 !important;
-  background-color: #24385a !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-/* 即时插话消息气泡：金矿石暗暖棕槽 */
-[data-theme="minecraft"] .bg-steer-bubble,
-[data-theme="minecraft"] .bg-\[\#4d3817\] {
-  border: 2px solid #000000 !important;
-  background-color: #4e3b20 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-/* AI 执行与工具调用块卡片 (Execution / Thinking / ToolCall / Mcp) 魔改：红石暗矿石内凹槽 */
-[data-theme="minecraft"] .bg-white\/\[0\.04\],
-[data-theme="minecraft"] .bg-white\/\[0\.03\],
-[data-theme="minecraft"] .bg-white\/5 {
-  border: 2px solid #000000 !important;
-  background-color: #1a1824 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.8),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08);
 }
 
 /* 经典 Minecraft 输入框：深内凹槽感 */
@@ -387,137 +307,23 @@
     0px 0px 8px rgba(85, 255, 85, 0.2) !important;
 }
 
-[data-theme="minecraft"] .markdown-command-menu [role="option"][aria-selected="true"] svg,
-[data-theme="minecraft"] [role="listbox"] [role="option"][aria-selected="true"] svg,
-[data-theme="minecraft"] [role="menu"] [role="menuitem"]:hover svg,
-[data-theme="minecraft"] [role="menu"] [role="menuitemradio"][aria-checked="true"] svg,
-[data-theme="minecraft"] [role="menu"] button:hover svg {
-  color: #55ff55 !important;
-}
-
 /* ========================================================
- * 底部任务监控面板与长任务状态标签魔改
+ * LxTooltip 提示气泡魔改（经典直角石质像素凹槽与硬边缘黑阴影）
  * ======================================================== */
-[data-theme="minecraft"] .bg-\[\#111116\] {
-  background-color: #14141d !important;
+[data-theme="minecraft"] [role="tooltip"] {
   border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
-}
-
-[data-theme="minecraft"] button[aria-label="后台任务监控"] {
-  border: 1px solid #000000 !important;
+  background-color: #242436 !important;
+  color: #ececf6 !important;
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000 !important;
 }
 
-/* ========================================================
- * LxTooltip 悬浮小三角适配
- * ======================================================== */
 [data-theme="minecraft"] .lx-tooltip-arrow {
-  color: #262636 !important;
-}
-
-/* ========================================================
- * Agent 输入框底栏魔改（安山岩/黑曜石内凹像素槽）
- * ======================================================== */
-[data-theme="minecraft"] .agent-input-container,
-[data-theme="minecraft"] .bg-\[\#2a2a2a\] {
-  border: 2px solid #000000 !important;
-  border-left: 4px solid transparent !important;
-  background-color: #14141d !important;
-  color: #f0f0f8 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
-}
-
-[data-theme="minecraft"] .agent-input-container:focus-within,
-[data-theme="minecraft"] .bg-\[\#2a2a2a\]:focus-within {
-  border: 2px solid #000000 !important;
-  border-left: 4px solid #55ff55 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    0 0 8px rgba(85, 255, 85, 0.25) !important;
-}
-
-[data-theme="minecraft"] .agent-input-container .cm-editor,
-[data-theme="minecraft"] .agent-input-container .cm-scroller {
-  background-color: transparent !important;
-}
-
-/* Agent 输入框底栏按键像素化与配色 */
-[data-theme="minecraft"] .agent-input-add-btn,
-[data-theme="minecraft"] .agent-input-expand-btn {
-  background-color: #2e2e42 !important;
-  color: #c4c4d6 !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-add-btn:hover,
-[data-theme="minecraft"] .agent-input-expand-btn:hover {
-  background-color: #3e3e58 !important;
-  color: #ffffff !important;
-}
-
-[data-theme="minecraft"] .agent-input-send-btn {
-  background-color: #55ff55 !important;
-  color: #000000 !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-send-btn:hover:not(:disabled) {
-  background-color: #77ff77 !important;
-  color: #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-send-btn:disabled,
-[data-theme="minecraft"] .agent-input-compacting-btn {
-  background-color: #242432 !important;
-  color: #626278 !important;
-  border: 2px solid #000000 !important;
-  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.5) !important;
-  opacity: 1 !important;
-}
-
-[data-theme="minecraft"] .agent-input-stop-btn {
-  background-color: #ff5555 !important;
-  color: #000000 !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-stop-btn:hover {
-  background-color: #ff7777 !important;
-  color: #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-container button[aria-haspopup="listbox"] {
-  background-color: #2e2e42 !important;
-  color: #e0e0ee !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-input-container button[aria-haspopup="listbox"]:hover {
-  background-color: #3e3e58 !important;
+  color: #242436 !important;
 }
 
 /* ========================================================
@@ -603,29 +409,20 @@
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .terminal-tab-item[data-active="true"] svg,
-[data-theme="minecraft"] [role="tab"][aria-selected="true"] svg {
-  color: #55ff55 !important;
-}
-
-/* 2. 终端画布视口与分屏卡片（黑曜石基底 + 内部阴影槽） */
+/* 2. 终端画布视口与分屏卡片（黑曜石/深板岩马赛克基底 + 内部阴影槽） */
 [data-theme="minecraft"] .terminal-viewport-wrapper,
 [data-theme="minecraft"] .terminal-session-element,
+[data-theme="minecraft"] .terminal-pane-container,
 [data-theme="minecraft"] .terminal-empty-state {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
-  background-color: #14141d !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
-}
-
-[data-theme="minecraft"] .terminal-pane-container {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: transparent !important;
-  background-image: none !important;
 }
 
 /* 3. 分屏标题栏与分割线 */
@@ -696,10 +493,6 @@
     0px 0px 8px rgba(255, 255, 255, 0.15) !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="default"][data-highlighted="true"] svg {
-  color: #ffffff !important;
-}
-
 /* 2. 进行中状态高亮（琥珀黄指示边条与文本） */
 [data-theme="minecraft"] .project-recent-tag[data-color="amber"][data-highlighted="true"],
 [data-theme="minecraft"] .project-recent-tag[data-color="amber"][data-highlighted="true"] span {
@@ -716,10 +509,6 @@
     0px 0px 8px rgba(251, 191, 36, 0.25) !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="amber"][data-highlighted="true"] svg {
-  color: #fbbf24 !important;
-}
-
 /* 3. 已完成状态高亮（翡翠绿指示边条与文本） */
 [data-theme="minecraft"] .project-recent-tag[data-color="emerald"][data-highlighted="true"],
 [data-theme="minecraft"] .project-recent-tag[data-color="emerald"][data-highlighted="true"] span {
@@ -734,10 +523,6 @@
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(52, 211, 153, 0.25),
     0px 0px 8px rgba(52, 211, 153, 0.25) !important;
-}
-
-[data-theme="minecraft"] .project-recent-tag[data-color="emerald"][data-highlighted="true"] svg {
-  color: #34d399 !important;
 }
 
 /* ========================================================

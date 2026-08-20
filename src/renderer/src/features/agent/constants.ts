@@ -15,20 +15,23 @@ export const TOOL_GROUP_SEPARATORS: Record<string, string> = {
 export const DEFAULT_PROMPT_CARDS: AgentPromptCard[] = [
   {
     id: "analyze-code",
-    title: "代码深度重构",
-    description: "分析结构，提供优化与重构方案",
-    prompt: "请帮我分析和重构当前模块的代码，并提高其可维护性与可测试性。",
+    title: "Code Refactoring",
+    description: "Analyze structure and provide optimization suggestions",
+    prompt:
+      "Help me analyze and refactor the code in the current module to improve maintainability and testability.",
   },
   {
     id: "write-tests",
-    title: "单元测试生成",
-    description: "为核心逻辑补充高质量单测",
-    prompt: "请为当前的单元功能生成完整的测试用例，覆盖边界条件与异常处理。",
+    title: "Generate Unit Tests",
+    description: "Write comprehensive unit tests for core logic",
+    prompt:
+      "Generate complete unit test cases for the current feature, covering edge cases and error handling.",
   },
   {
     id: "explain-architecture",
-    title: "架构设计分析",
-    description: "梳理模块交互与数据流方向",
-    prompt: "请解释当前系统的三进程架构设计与 renderer 层 feature 划分。",
+    title: "Architecture Analysis",
+    description: "Clarify module interactions and data flow",
+    prompt:
+      "Explain the three-process architecture and renderer feature-first organization of this project.",
   },
 ]

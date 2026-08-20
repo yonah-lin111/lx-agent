@@ -25,8 +25,10 @@ export const SuggestedQuestions = ({
   if (!isLoading && questions.length === 0) return null
 
   return (
-    <div className="my-1.5 w-full max-w-full">
-      <div className="mb-1.5 text-xs font-medium text-lime-300">Suggested questions</div>
+    <div className="agent-suggested-questions my-1.5 w-full max-w-full">
+      <div className="agent-suggested-questions-title mb-1.5 text-xs font-medium text-lime-300">
+        Suggested questions
+      </div>
       {isLoading ? (
         <div className="h-5 w-36 animate-pulse rounded-[6px] bg-white/5" />
       ) : (
@@ -36,7 +38,7 @@ export const SuggestedQuestions = ({
               <button
                 type="button"
                 onClick={() => onSelect(question)}
-                className="max-w-full rounded-[6px] border border-white/10 px-2 py-1 text-left text-xs leading-relaxed text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+                className="agent-suggested-question-btn max-w-full rounded-[6px] border border-white/10 px-2 py-1 text-left text-xs leading-relaxed text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
               >
                 {question}
               </button>

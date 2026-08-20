@@ -107,11 +107,15 @@ export const AgentCompactionSummary = ({
         />
       </button>
       {metricSegments.length > 0 && (
-        <div className="mb-1 flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+        <div className="agent-message-usage mb-1 flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
           {metricSegments.map((segment, index) => (
             <Fragment key={index}>
-              {index > 0 && <span aria-hidden="true">·</span>}
-              {segment}
+              {index > 0 && (
+                <span aria-hidden="true" className="agent-message-usage-separator">
+                  ·
+                </span>
+              )}
+              <span className="agent-message-usage-item">{segment}</span>
             </Fragment>
           ))}
         </div>

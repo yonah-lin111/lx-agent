@@ -834,14 +834,17 @@ export const AgentMessageItem = ({
             >
               {/* 底部左侧：命令来源标识（非吸顶常驻显示；吸顶时随底栏 hover 显现） */}
               {commandTag ? (
-                <span className="flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
-                  <span>{commandTag.label}</span>
+                <span className="agent-message-command-tag flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
+                  <span className="agent-message-command-label">{commandTag.label}</span>
                   {commandTag.sourceTag && (
                     <>
-                      <span aria-hidden="true" className="text-white/20">
+                      <span
+                        aria-hidden="true"
+                        className="agent-message-command-separator text-white/20"
+                      >
                         ·
                       </span>
-                      <span className="text-[10px] font-sans tracking-wide text-white/35">
+                      <span className="agent-message-command-source text-[10px] font-sans tracking-wide text-white/35">
                         {commandTag.sourceTag}
                       </span>
                     </>
@@ -929,7 +932,7 @@ export const AgentMessageItem = ({
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {!readOnly && message.model && (
         <LxTooltip placement="top" content={`${message.provider} / ${message.model}`}>
-          <span className="flex w-fit select-text items-center text-[11px] leading-none text-white/40">
+          <span className="agent-message-model flex w-fit select-text items-center text-[11px] leading-none text-white/40">
             {message.model}
           </span>
         </LxTooltip>
@@ -1081,18 +1084,20 @@ export const AgentMessageItem = ({
           })}
         </div>
         {assistantError && (
-          <div className="mt-2 flex flex-col gap-1.5">
+          <div className="agent-message-error-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />
-            <div className="text-[13px] text-red-400 italic whitespace-pre-wrap break-words">
+            <div className="agent-message-error text-[13px] text-red-400 italic whitespace-pre-wrap break-words">
               {assistantError}
             </div>
           </div>
         )}
         {/* 停止生成（停止按钮 / Esc）后：底部黄色提示已取消（错误提示样式，颜色改琥珀色）。 */}
         {isAborted && !assistantError && (
-          <div className="mt-2 flex flex-col gap-1.5">
+          <div className="agent-message-aborted-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />
-            <div className="text-[13px] text-amber-400 italic">Generation cancelled</div>
+            <div className="agent-message-aborted text-[13px] text-amber-400 italic">
+              Generation cancelled
+            </div>
           </div>
         )}
         {(isStreamingNow || isLoading) && !assistantError && !showScrollToBottom && (
@@ -1107,7 +1112,7 @@ export const AgentMessageItem = ({
         <button
           type="button"
           onClick={onContinue}
-          className="mt-1 flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+          className="agent-message-continue-btn mt-1 flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           继续生成
@@ -1156,12 +1161,22 @@ export const AgentMessageItem = ({
                 </div>
               }
             >
-              <span className="flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
-                <span>IN {formatTokensShort(qaUsage.input)}</span>
-                <span aria-hidden="true">·</span>
-                <span>OUT {formatTokensShort(qaUsage.output)}</span>
-                <span aria-hidden="true">·</span>
-                <span>CACHE {formatTokensShort(qaUsage.cacheRead)}</span>
+              <span className="agent-message-usage flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+                <span className="agent-message-usage-item">
+                  IN {formatTokensShort(qaUsage.input)}
+                </span>
+                <span aria-hidden="true" className="agent-message-usage-separator">
+                  ·
+                </span>
+                <span className="agent-message-usage-item">
+                  OUT {formatTokensShort(qaUsage.output)}
+                </span>
+                <span aria-hidden="true" className="agent-message-usage-separator">
+                  ·
+                </span>
+                <span className="agent-message-usage-item">
+                  CACHE {formatTokensShort(qaUsage.cacheRead)}
+                </span>
               </span>
             </LxTooltip>
           )}

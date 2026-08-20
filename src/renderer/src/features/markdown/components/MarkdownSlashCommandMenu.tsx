@@ -11,12 +11,14 @@ interface MarkdownSlashCommandMenuProps {
   visible?: boolean
 }
 
-const getCommandTags = (
-  command: MarkdownSlashCommand,
-): { label: string; bgClass: string }[] => {
+const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass: string }[] => {
   const tags: { label: string; bgClass: string }[] = []
 
-  if (command.kind === "customTemplate" || command.source === "project" || command.source === "user") {
+  if (
+    command.kind === "customTemplate" ||
+    command.source === "project" ||
+    command.source === "user"
+  ) {
     // 作用域 Tag（MD / Template）
     if (command.customScope === "template" || command.scope === "template") {
       tags.push({ label: "Template", bgClass: "bg-purple-500/20 text-purple-300" })

@@ -98,32 +98,34 @@ export const AgentSubagentBlock = ({
   const status = getSubagentStatus(toolCall)
 
   return (
-    <div className="my-0.5 min-w-0">
+    <div className="agent-subagent-block my-0.5 min-w-0">
       {/* 顶部 label：Subagent 名称 + 子代理名（AI 分发时注明原始名称），点击打开面板。 */}
       <button
         type="button"
         aria-label={`查看子代理 ${name} 详情`}
         onClick={() => onOpen?.(toolCall)}
-        className="group/label flex w-fit max-w-full items-center gap-1 rounded-[4px] py-px pr-1 transition-colors hover:bg-white/5 focus:outline-none"
+        className="agent-subagent-header group/label flex w-fit max-w-full items-center gap-1 rounded-[4px] py-px pr-1 transition-colors hover:bg-white/5 focus:outline-none"
       >
         <Bot className="h-3.5 w-3.5 shrink-0 text-blue-300" />
-        <span className="font-mono text-[12px] font-bold text-blue-300">Subagent</span>
-        <span className="truncate text-[12px] text-white/50">
+        <span className="agent-subagent-name font-mono text-[12px] font-bold text-blue-300">
+          Subagent
+        </span>
+        <span className="agent-subagent-detail truncate text-[12px] text-white/50">
           {name !== "task" ? ` - ${name}(task)` : " - task"}
         </span>
       </button>
 
       {/* 第一个直角 icon：任务描述。 */}
-      <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+      <div className="agent-subagent-desc-row mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
         <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
-        <span className="min-w-0 break-all">{description}</span>
+        <span className="agent-subagent-desc min-w-0 break-all">{description}</span>
       </div>
 
       {/* 第二个直角 icon：内部工具/思考/MCP 调用统计（静态展示，可换行）。 */}
       {countSegments.length > 0 && (
-        <div className="mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] text-white/50">
+        <div className="agent-subagent-stats-row mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] text-white/50">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
-          <span className="flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
+          <span className="agent-subagent-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
             {countSegments.map((segment, index) => (
               <Fragment key={segment.plural}>
                 {index > 0 && <span className="px-1">·</span>}
@@ -138,9 +140,11 @@ export const AgentSubagentBlock = ({
       )}
 
       {/* 第三个直角 icon：当前状态（Idle / Working / Done / Error）。 */}
-      <div className="mt-1 flex items-start gap-1 pl-1 text-[12px]">
+      <div className="agent-subagent-status-row mt-1 flex items-start gap-1 pl-1 text-[12px]">
         <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
-        <span className={`flex h-5 items-center ${status.labelClass}`}>{status.label}</span>
+        <span className={`agent-subagent-status flex h-5 items-center ${status.labelClass}`}>
+          {status.label}
+        </span>
       </div>
     </div>
   )

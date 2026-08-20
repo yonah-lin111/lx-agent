@@ -26,19 +26,23 @@ export const AgentSkillCallBlock = ({
   if (toolCalls.length === 0) return null
 
   return (
-    <div className="my-0.5 min-w-0">
-      <div className="flex items-center gap-1">
+    <div className="agent-skill-call-block my-0.5 min-w-0">
+      <div className="agent-skill-header flex items-center gap-1">
         <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-300" />
-        <span className="font-mono text-[12px] font-bold text-violet-300">Load_skill</span>
+        <span className="agent-skill-name font-mono text-[12px] font-bold text-violet-300">
+          Load_skill
+        </span>
       </div>
       <div className="mt-1 flex min-w-0 flex-col gap-1 pl-1">
         {toolCalls.map((call) => (
           <div
             key={call.toolCallId}
-            className="flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45"
+            className="agent-skill-item-row flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45"
           >
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
-            <span className="min-w-0 break-all font-mono">{getSkillName(call.args)}</span>
+            <span className="agent-skill-item-name min-w-0 break-all font-mono">
+              {getSkillName(call.args)}
+            </span>
           </div>
         ))}
       </div>

@@ -183,7 +183,8 @@ export const isMarkdownConfirmCommandArmed = (
   lineValue: string,
   isInsideTemplateBlock: boolean,
   customCommands: MarkdownSlashCommand[] = [],
-): boolean => getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock, customCommands) !== null
+): boolean =>
+  getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock, customCommands) !== null
 
 // 提取选择型命令行携带的值（标签后的首个词）；非选择型或缺失时返回 null。
 export const getMarkdownSelectCommandValue = (
