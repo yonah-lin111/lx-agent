@@ -180,6 +180,11 @@
 /* ========================================================
  * 4. 普通工具调用与 Diff 代码块 (AgentToolCallBlock) - 3D 浮雕凸起
  * ======================================================== */
+[data-theme="minecraft"] .agent-tool-call-block {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 [data-theme="minecraft"] .agent-tool-call-header {
   font-family: var(--theme-font-family) !important;
   display: inline-flex !important;
@@ -206,46 +211,46 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-/* 直角指示图标：独立 3D 像素方块凹槽 */
+/* 直角指示图标：扁平纯图标，对应主题换色，顶部对齐 */
 [data-theme="minecraft"] .agent-tool-corner {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #ffaa00 !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
-/* Diff 变更折叠开关按钮：3D 像素凸起浮雕卡片 */
+/* Diff 变更折叠开关按钮：扁平换行文本按钮，彻底去除 3D 边框、阴影与背景，间距与缩进严格对齐 agent-tool-call-summary */
+[data-theme="minecraft"] button.agent-tool-diff-toggle,
 [data-theme="minecraft"] .agent-tool-diff-toggle {
   font-family: var(--theme-font-family) !important;
   color: #d0d0e6 !important;
   text-shadow: 1px 1px 0px #000000;
-  border: 2px solid #000000 !important;
-  background-color: #1a1824 !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-  padding: 3px 8px !important;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 0 0 4px !important; /* pl-1 对齐普通工具 summary 的 pl-1 */
   height: auto !important;
-  min-height: 26px !important;
-  display: inline-flex !important;
-  align-items: center !important;
+  min-height: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 6px !important; /* gap 与 agent-tool-call-summary 一致 */
+  margin-top: 4px !important;
+  width: fit-content !important;
 }
 
-[data-theme="minecraft"] .agent-tool-diff-toggle:hover {
-  background-color: #2b2738 !important;
+[data-theme="minecraft"] button.agent-tool-diff-toggle:hover,
+[data-theme="minecraft"] .agent-tool-diff-toggle:hover,
+[data-theme="minecraft"] button.agent-tool-diff-toggle:focus,
+[data-theme="minecraft"] .agent-tool-diff-toggle:focus,
+[data-theme="minecraft"] button.agent-tool-diff-toggle:active,
+[data-theme="minecraft"] .agent-tool-diff-toggle:active {
+  background: transparent !important;
+  background-color: transparent !important;
   color: #ffffff !important;
-  border-left: 4px solid #55ff55 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Diff 命令标题：羊皮浅金命令高亮 */
@@ -256,54 +261,44 @@
 }
 
 [data-theme="minecraft"] .agent-tool-diff-added {
-  background-color: #142818 !important;
-  border: 1px solid #000000 !important;
-  padding: 1px 5px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    1px 1px 0px 0px #000000 !important;
   color: #55ff55 !important; /* 绿宝石翠绿 */
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 [data-theme="minecraft"] .agent-tool-diff-removed {
-  background-color: #281414 !important;
-  border: 1px solid #000000 !important;
-  padding: 1px 5px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    1px 1px 0px 0px #000000 !important;
   color: #ff5555 !important; /* 红石鲜红 */
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
-/* 工具参数与描述容器 */
+/* 工具参数与描述容器：顶部对齐 */
 [data-theme="minecraft"] .agent-tool-call-summary {
   font-family: var(--theme-font-family) !important;
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   gap: 6px !important;
   margin-top: 4px !important;
 }
 
-/* 工具右侧描述正文（路径、概要、参数）：3D 像素凸起胶囊卡片 */
+/* 工具右侧描述正文（路径、概要、参数）：扁平文本与换色，无 3D 凸起与边框阴影 */
 [data-theme="minecraft"] .agent-tool-call-desc {
   font-family: var(--theme-font-family) !important;
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #14141d !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #ececf6 !important;
   text-shadow: 1px 1px 0px #000000;
   font-weight: 500;
@@ -349,39 +344,25 @@
 }
 
 [data-theme="minecraft"] .agent-lsp-corner {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #55ffff !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-lsp-summary {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   gap: 6px !important;
   margin-top: 4px !important;
 }
 
 [data-theme="minecraft"] .agent-lsp-summary-text {
   font-family: var(--theme-font-family) !important;
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #141c26 !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #ececf6 !important;
   text-shadow: 1px 1px 0px #000000;
 }
@@ -516,37 +497,23 @@
 
 [data-theme="minecraft"] .agent-mcp-method-row {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   gap: 6px !important;
   margin-top: 4px !important;
 }
 
 [data-theme="minecraft"] .agent-mcp-method-row svg {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #55ffff !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-mcp-method {
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #141c26 !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #55ffff !important;
   text-shadow: 1px 1px 0px #000000;
   font-weight: 600;
@@ -585,37 +552,23 @@
 
 [data-theme="minecraft"] .agent-skill-item-row {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   gap: 6px !important;
   margin-top: 4px !important;
 }
 
 [data-theme="minecraft"] .agent-skill-item-row svg {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #e0a0ff !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-skill-item-name {
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #22142c !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #ffea88 !important; /* 经验羊皮浅金 */
   font-weight: 600;
   text-shadow: 1px 1px 0px #000000;
@@ -665,7 +618,7 @@
 [data-theme="minecraft"] .agent-subagent-stats-row,
 [data-theme="minecraft"] .agent-subagent-status-row {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   gap: 6px !important;
   margin-top: 4px !important;
 }
@@ -673,45 +626,27 @@
 [data-theme="minecraft"] .agent-subagent-desc-row svg,
 [data-theme="minecraft"] .agent-subagent-stats-row svg,
 [data-theme="minecraft"] .agent-subagent-status-row svg {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #38bdf8 !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-subagent-desc {
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #161c28 !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #f0f0f8 !important;
   text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="minecraft"] .agent-subagent-stats {
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #181c24 !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
-    1px 1px 0px 0px #000000 !important;
+  display: inline-flex !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #d0d0e6 !important;
   text-shadow: 1px 1px 0px #000000;
 }
@@ -782,18 +717,8 @@
 
 [data-theme="minecraft"] .agent-question-corner,
 [data-theme="minecraft"] .agent-question-block svg.mt-\[2px\] {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #ffaa00 !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
@@ -857,16 +782,12 @@
   color: #ffffff !important;
 }
 
-/* 只读展示阶段：问题独立卡片与回答独立卡片（分别立体凸起，不同配色，无绿色高亮） */
+/* 只读展示阶段：问题与回答（扁平排列，去除 3D 浮雕与黑边框） */
 [data-theme="minecraft"] .agent-question-answered-question-card {
-  border: 2px solid #000000 !important;
-  background-color: #241e14 !important; /* 金矿暗黑曜石基底 */
-  padding: 6px 10px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   margin-bottom: 2px !important;
 }
 
@@ -882,18 +803,14 @@
 }
 
 [data-theme="minecraft"] .agent-question-answered-value {
-  color: #e2e2ee !important; /* 清晰的浅灰白/淡紫白，不使用绿色 */
+  color: #e2e2ee !important;
   font-family: var(--theme-font-family) !important;
   font-weight: 500;
   text-shadow: 1px 1px 0px #000000;
-  background-color: #1a1824 !important; /* 深板岩/黑曜石立体槽 */
-  border: 2px solid #000000 !important;
-  padding: 4px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
-    1px 1px 0px 0px #000000 !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 [data-theme="minecraft"] .agent-question-input {
@@ -982,31 +899,17 @@
 }
 
 [data-theme="minecraft"] .agent-todo-call-block svg.mt-\[2px\] {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #fb923c !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-todo-item {
-  border: 2px solid #000000 !important;
-  background-color: #1a1612 !important;
-  padding: 3px 8px !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
   margin-bottom: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
-    1px 1px 0px 0px #000000 !important;
+  box-shadow: none !important;
 }
 
 [data-theme="minecraft"] .agent-todo-content {
@@ -1056,31 +959,17 @@
 }
 
 [data-theme="minecraft"] .agent-web-search-block svg.mt-\[2px\] {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  padding: 2px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
-    1px 1px 0px 0px #000000 !important;
   color: #55ff55 !important;
-  width: 18px !important;
-  height: 18px !important;
-  margin-top: 0 !important;
+  margin-top: 2px !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .agent-web-search-queries {
-  display: inline-block !important;
-  border: 2px solid #000000 !important;
-  background-color: #122016 !important;
-  padding: 2px 8px !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
+  display: inline !important;
+  border: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
   color: #86efac !important;
   font-family: var(--theme-font-family) !important;
   text-shadow: 1px 1px 0px #000000;

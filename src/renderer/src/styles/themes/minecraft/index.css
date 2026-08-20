@@ -68,9 +68,9 @@
 /* ========================================================
  * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
  * ======================================================== */
-/* 基础按钮风格（非下拉/菜单选项） */
-[data-theme="minecraft"] button:not([role="option"]),
-[data-theme="minecraft"] [role="button"]:not([role="option"]) {
+/* 基础按钮风格（非下拉/菜单选项，排除 Agent 消息内部的内联切换按钮） */
+[data-theme="minecraft"] button:not([role="option"]):not(.agent-tool-diff-toggle),
+[data-theme="minecraft"] [role="button"]:not([role="option"]):not(.agent-tool-diff-toggle) {
   transition: none !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -178,15 +178,27 @@
 [data-theme="minecraft"] div[role="button"][aria-current],
 [data-theme="minecraft"] div[role="button"][aria-current="page"],
 [data-theme="minecraft"] div[role="button"][aria-current="true"],
-[data-theme="minecraft"] div[role="button"].bg-white\/10:not(.agent-question-tab):not(.agent-question-prev-btn):not(.agent-question-next-btn):not(.agent-question-submit-btn),
-[data-theme="minecraft"] div[role="button"].bg-white\/5:not(.agent-question-tab):not(.agent-question-prev-btn):not(.agent-question-next-btn):not(.agent-question-submit-btn),
+[data-theme="minecraft"]
+  div[role="button"].bg-white\/10:not(.agent-question-tab):not(.agent-question-prev-btn):not(
+    .agent-question-next-btn
+  ):not(.agent-question-submit-btn):not(.agent-tool-diff-toggle),
+[data-theme="minecraft"]
+  div[role="button"].bg-white\/5:not(.agent-question-tab):not(.agent-question-prev-btn):not(
+    .agent-question-next-btn
+  ):not(.agent-question-submit-btn):not(.agent-tool-diff-toggle),
 [data-theme="minecraft"] button[aria-current],
 [data-theme="minecraft"] button[aria-current="page"],
 [data-theme="minecraft"] button[aria-current="true"],
-[data-theme="minecraft"] button.bg-white\/10:not(.agent-question-tab):not(.agent-question-prev-btn):not(.agent-question-next-btn):not(.agent-question-submit-btn),
-[data-theme="minecraft"] button.bg-white\/5:not(.agent-question-tab):not(.agent-question-prev-btn):not(.agent-question-next-btn):not(.agent-question-submit-btn),
-[data-theme="minecraft"] button[data-active="true"],
-[data-theme="minecraft"] div[data-active="true"],
+[data-theme="minecraft"]
+  button.bg-white\/10:not(.agent-question-tab):not(.agent-question-prev-btn):not(
+    .agent-question-next-btn
+  ):not(.agent-question-submit-btn):not(.agent-tool-diff-toggle),
+[data-theme="minecraft"]
+  button.bg-white\/5:not(.agent-question-tab):not(.agent-question-prev-btn):not(
+    .agent-question-next-btn
+  ):not(.agent-question-submit-btn):not(.agent-tool-diff-toggle),
+[data-theme="minecraft"] button[data-active="true"]:not(.agent-tool-diff-toggle),
+[data-theme="minecraft"] div[data-active="true"]:not(.agent-tool-diff-toggle),
 [data-theme="minecraft"] [aria-current="page"],
 [data-theme="minecraft"] [aria-current="true"],
 [data-theme="minecraft"] [aria-current] {
@@ -486,7 +498,9 @@
   color: #fbbf24 !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:not([data-highlighted="true"]) span {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="amber"]:not([data-highlighted="true"])
+  span {
   color: #fbbf24 !important;
 }
 
@@ -496,7 +510,9 @@
   color: #34d399 !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:not([data-highlighted="true"]) span {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="emerald"]:not([data-highlighted="true"])
+  span {
   color: #34d399 !important;
 }
 
@@ -505,21 +521,27 @@
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"]) {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"]) {
   background-color: #3e3320 !important;
   color: #fde68a !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"]) span {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"])
+  span {
   color: #fde68a !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"]) {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"]) {
   background-color: #233d2c !important;
   color: #6ee7b7 !important;
 }
 
-[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"]) span {
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"])
+  span {
   color: #6ee7b7 !important;
 }
 

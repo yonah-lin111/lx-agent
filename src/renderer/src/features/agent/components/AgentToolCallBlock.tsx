@@ -324,9 +324,6 @@ export const AgentToolCallBlock = ({
               <span className="agent-tool-diff-removed ml-2 text-red-400">
                 −{resolvedDiff.stats.removed}
               </span>
-              {resolvedDiff.truncated && (
-                <span className="ml-2 text-white/25">已截断，仅显示部分变更</span>
-              )}
             </span>
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform duration-200 ${isDiffExpanded ? "" : "-rotate-90"}`}
