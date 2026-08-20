@@ -1,6 +1,7 @@
 import { CornerDownLeft } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useTranslation } from "@/i18n"
 
 // 推荐问题组件属性。
 type SuggestedQuestionsProps = {
@@ -22,12 +23,13 @@ export const SuggestedQuestions = ({
   onSelect,
   onEcho,
 }: SuggestedQuestionsProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   if (!isLoading && questions.length === 0) return null
 
   return (
     <div className="agent-suggested-questions my-1.5 w-full max-w-full">
       <div className="agent-suggested-questions-title mb-1.5 text-xs font-medium text-lime-300">
-        Suggested questions
+        {t("agent.suggestedQuestions")}
       </div>
       {isLoading ? (
         <div className="h-5 w-36 animate-pulse rounded-[6px] bg-white/5" />
@@ -44,8 +46,8 @@ export const SuggestedQuestions = ({
               </button>
               <LxIconButton
                 size="small"
-                aria-label="填入输入框"
-                title={{ content: "填入输入框", placement: "top" }}
+                aria-label={t("agent.fillInput")}
+                title={{ content: t("agent.fillInput"), placement: "top" }}
                 onClick={() => onEcho(question)}
                 className="mt-1 opacity-0 transition-opacity group-hover/item:opacity-100 focus-visible:opacity-100"
               >

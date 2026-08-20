@@ -5,6 +5,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
+import { useTranslation } from "@/i18n"
 import { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 import {
   AgentMarkdownInput,
@@ -83,6 +84,7 @@ export const AgentInput = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { error: errorToast } = useLxToast()
+  const { t } = useTranslation()
 
   // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
   const [steerNoticeVisible, setSteerNoticeVisible] = useState(false)
@@ -150,7 +152,7 @@ export const AgentInput = ({
 
       // Check image modality support
       if (type === "image" && !supportsImages) {
-        errorToast("当前所选模型不支持图片多模态输入，请切换模型。")
+        errorToast(t("agent.unsupportedImageInput"))
         continue
       }
 
@@ -212,8 +214,8 @@ export const AgentInput = ({
       <LxIconButton
         shape="circle"
         preset="add"
-        aria-label="添加附件"
-        title={{ content: "添加附件", placement: "top" }}
+        aria-label={t("agent.addAttachment")}
+        title={{ content: t("agent.addAttachment"), placement: "top" }}
         className="agent-input-add-btn"
         onClick={() => fileInputRef.current?.click()}
       />
@@ -223,8 +225,8 @@ export const AgentInput = ({
   const actionButton = isStreaming ? (
     <LxIconButton
       shape="circle"
-      aria-label="停止生成"
-      title={{ content: "停止生成", placement: "top" }}
+      aria-label={t("agent.stopGenerating")}
+      title={{ content: t("agent.stopGenerating"), placement: "top" }}
       onClick={onStop}
       hoverBgClass="hover:bg-white/90"
       className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
@@ -234,9 +236,9 @@ export const AgentInput = ({
   ) : isCompacting ? (
     <LxIconButton
       shape="circle"
-      aria-label={isCompactingManual ? "手动压缩上下文中" : "自动压缩上下文中"}
+      aria-label={isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto")}
       title={{
-        content: isCompactingManual ? "正在手动压缩上下文" : "正在自动压缩上下文",
+        content: isCompactingManual ? t("agent.compactingManual") : t("agent.compactingAuto"),
         placement: "top",
       }}
       disabled
@@ -247,8 +249,8 @@ export const AgentInput = ({
   ) : (
     <LxIconButton
       shape="circle"
-      aria-label="发送消息"
-      title={{ content: "发送消息 (Enter)", placement: "top" }}
+      aria-label={t("agent.send")}
+      title={{ content: t("agent.sendMessage"), placement: "top" }}
       onClick={() => handleSend()}
       disabled={!inputText.trim() && selectedFiles.length === 0}
       hoverBgClass="hover:bg-white/90"
@@ -282,14 +284,16 @@ export const AgentInput = ({
         >
           <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
             <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-            <span className="truncate">已排队 {queuedCount} 条消息，当前回复结束后自动发送</span>
+            <span className="truncate">
+              {t("agent.queuedMessagesCount", { count: queuedCount })}
+            </span>
           </div>
         </LxTooltip>
       )}
       {steerNoticeVisible && (
         <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
           <Zap className="h-3 w-3 shrink-0 text-amber-400/80" />
-          <span className="truncate">已发送即时插话，将在当前步骤完成后生效</span>
+          <span className="truncate">{t("agent.steerSentNotice")}</span>
         </div>
       )}
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
@@ -301,6 +305,7 @@ export const AgentInput = ({
         <AgentMarkdownInput
           ref={markdownInputRef}
           value={inputText}
+          placeholder={t("agent.inputPlaceholder")}
           onChange={onInputChange}
           onSend={handleSend}
           isExpanded={isExpanded}
@@ -332,9 +337,9 @@ export const AgentInput = ({
             <LxIconButton
               shape="circle"
               showHoverBg={false}
-              aria-label={isExpanded ? "自适应高度" : "扩大输入框"}
+              aria-label={isExpanded ? t("agent.adaptiveHeight") : t("agent.expandInput")}
               title={{
-                content: isExpanded ? "自适应高度" : "扩大输入框",
+                content: isExpanded ? t("agent.adaptiveHeight") : t("agent.expandInput"),
                 placement: "top",
               }}
               className="agent-input-expand-btn"

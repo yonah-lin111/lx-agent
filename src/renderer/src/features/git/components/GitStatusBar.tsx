@@ -2,6 +2,7 @@ import { Folder, GitBranch, GitFork } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useGitWorktrees } from "@/features/git/hooks/useGitWorktrees"
 import { getGitWorktreeDirName } from "@/features/git/utils"
+import { useTranslation } from "@/i18n"
 
 // 状态栏属性。
 interface GitStatusBarProps {
@@ -21,6 +22,7 @@ export const GitStatusBar = ({
   projectPath,
   className = "flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50",
 }: GitStatusBarProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const { worktrees, projectBranch } = useGitWorktrees(projectPath)
   if (!projectPath) return null
 
@@ -48,14 +50,20 @@ export const GitStatusBar = ({
         </span>
       </LxTooltip>
       {mainBranch && (
-        <LxTooltip content={`当前分支 ${mainBranch}`} placement="top">
+        <LxTooltip
+          content={t("git.currentBranch", { branch: mainBranch })}
+          placement="top"
+        >
           <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
             <GitBranch className="h-3.5 w-3.5 text-emerald-400" />: {mainBranch}
           </span>
         </LxTooltip>
       )}
       {worktreeName && (
-        <LxTooltip content={`工作区 ${worktreeName}`} placement="top">
+        <LxTooltip
+          content={t("git.worktree", { name: worktreeName })}
+          placement="top"
+        >
           <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
             <GitFork className="h-3.5 w-3.5 text-amber-400" />: {worktreeName}
           </span>

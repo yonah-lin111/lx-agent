@@ -8,6 +8,7 @@ import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
+import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import { sessionListStore } from "../hooks/sessionListStore"
 
@@ -45,6 +46,7 @@ export const ChatHistoryPanel = ({
   const [projectTag, setProjectTag] = useState<ProjectTag>("all")
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const { success: successToast, error: errorToast } = useLxToast()
+  const { t } = useTranslation()
   const [exportMenuState, setExportMenuState] = useState<{
     sessionId: string
     x: number
@@ -96,10 +98,10 @@ export const ChatHistoryPanel = ({
   }))
 
   return (
-    <div className="flex w-72 flex-col gap-2" aria-label="历史对话">
+    <div className="flex w-72 flex-col gap-2" aria-label={t("agent.historyTitle")}>
       <LxInput
-        aria-label="搜索历史对话"
-        placeholder="搜索历史对话"
+        aria-label={t("agent.searchHistory")}
+        placeholder={t("agent.searchHistory")}
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"
         value={query}
@@ -121,7 +123,7 @@ export const ChatHistoryPanel = ({
         <LxSelect
           size="small"
           value={selectedProjectId ?? ""}
-          placeholder="请选择项目"
+          placeholder={t("agent.selectProjectPlaceholder")}
           onChange={setSelectedProjectId}
           options={projectOptions}
           zIndex={1_000_000}
@@ -144,7 +146,7 @@ export const ChatHistoryPanel = ({
                 {isEditing ? (
                   <input
                     autoFocus
-                    aria-label="编辑会话标题"
+                    aria-label={t("agent.editSessionTitle")}
                     className="min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-xs text-white/80 outline-none"
                     maxLength={40}
                     value={titleDraft}
@@ -177,11 +179,11 @@ export const ChatHistoryPanel = ({
                       )}
                     </button>
                     <LxIconButton
-                      aria-label="导出会话"
+                      aria-label={t("agent.exportSession")}
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                       disabled={pendingSessionIds.has(session.id)}
                       size="small"
-                      title={{ content: "导出会话...", placement: "bottom" }}
+                      title={{ content: t("agent.exportSession"), placement: "bottom" }}
                       onClick={(e) => {
                         e.stopPropagation()
                         const rect = e.currentTarget.getBoundingClientRect()
@@ -195,25 +197,25 @@ export const ChatHistoryPanel = ({
                       <Download className="h-3 w-3" />
                     </LxIconButton>
                     <LxIconButton
-                      aria-label="重命名会话"
+                      aria-label={t("agent.renameSession")}
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                       disabled={pendingSessionIds.has(session.id)}
                       preset="edit"
                       size="small"
-                      title={{ content: "重命名", placement: "bottom" }}
+                      title={{ content: t("agent.renameSession"), placement: "bottom" }}
                       onClick={() => {
                         setTitleDraft(session.title)
                         setEditingSessionId(session.id)
                       }}
                     />
                     <LxIconButton
-                      aria-label="删除会话"
+                      aria-label={t("common.delete")}
                       className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                       disabled={pendingSessionIds.has(session.id)}
                       preset="delete"
                       size="small"
                       title={{
-                        content: "是否删除该会话",
+                        content: t("agent.deleteSessionConfirm"),
                         placement: "bottom",
                         onConfirm: () => onDelete(session.id),
                       }}
@@ -225,7 +227,7 @@ export const ChatHistoryPanel = ({
           })}
         </div>
         {filteredSessions.length === 0 && (
-          <div className="py-4 text-center text-xs text-white/45">未找到匹配的会话</div>
+          <div className="py-4 text-center text-xs text-white/45">{t("agent.noHistory")}</div>
         )}
       </div>
 
@@ -233,7 +235,7 @@ export const ChatHistoryPanel = ({
         isOpen={exportMenuState !== null}
         x={exportMenuState?.x ?? 0}
         y={exportMenuState?.y ?? 0}
-        ariaLabel="导出会话菜单"
+        ariaLabel="Export menu"
         width={180}
         onClose={() => setExportMenuState(null)}
       >
@@ -249,16 +251,16 @@ export const ChatHistoryPanel = ({
                 })
                 .then((res) => {
                   if (res.ok && !res.canceled && res.filePath) {
-                    successToast(`已导出 HTML: ${res.filePath}`)
+                    successToast(`HTML: ${res.filePath}`)
                   } else if (!res.ok) {
-                    errorToast(res.error || "导出失败")
+                    errorToast(res.error || t("common.failed"))
                   }
                 })
             }
             setExportMenuState(null)
           }}
         >
-          HTML 网页 (.html)
+          HTML (.html)
         </LxMenuItem>
         <LxMenuItem
           leading={<FileText className="h-3.5 w-3.5 text-[#34d399]" />}
@@ -272,16 +274,16 @@ export const ChatHistoryPanel = ({
                 })
                 .then((res) => {
                   if (res.ok && !res.canceled && res.filePath) {
-                    successToast(`已导出 Markdown: ${res.filePath}`)
+                    successToast(`Markdown: ${res.filePath}`)
                   } else if (!res.ok) {
-                    errorToast(res.error || "导出失败")
+                    errorToast(res.error || t("common.failed"))
                   }
                 })
             }
             setExportMenuState(null)
           }}
         >
-          Markdown 文档 (.md)
+          Markdown (.md)
         </LxMenuItem>
         <LxMenuItem
           leading={<FileCode className="h-3.5 w-3.5 text-[#fbbf24]" />}
@@ -295,16 +297,16 @@ export const ChatHistoryPanel = ({
                 })
                 .then((res) => {
                   if (res.ok && !res.canceled && res.filePath) {
-                    successToast(`已导出 JSONL: ${res.filePath}`)
+                    successToast(`JSONL: ${res.filePath}`)
                   } else if (!res.ok) {
-                    errorToast(res.error || "导出失败")
+                    errorToast(res.error || t("common.failed"))
                   }
                 })
             }
             setExportMenuState(null)
           }}
         >
-          JSONL 数据集 (.jsonl)
+          JSONL (.jsonl)
         </LxMenuItem>
         <LxMenuSeparator />
         <LxMenuItem
@@ -319,17 +321,17 @@ export const ChatHistoryPanel = ({
                 .then((res) => {
                   if (res.ok && res.text) {
                     void navigator.clipboard.writeText(res.text).then(() => {
-                      successToast("已复制完整对话 Markdown")
+                      successToast(t("common.copied"))
                     })
                   } else if (!res.ok) {
-                    errorToast(res.error || "复制失败")
+                    errorToast(res.error || t("common.failed"))
                   }
                 })
             }
             setExportMenuState(null)
           }}
         >
-          复制完整 Markdown
+          Copy Markdown
         </LxMenuItem>
         <LxMenuItem
           leading={<MessageSquare className="h-3.5 w-3.5 text-white/60" />}
@@ -343,17 +345,17 @@ export const ChatHistoryPanel = ({
                 .then((res) => {
                   if (res.ok && res.text) {
                     void navigator.clipboard.writeText(res.text).then(() => {
-                      successToast("已复制最近一条回复")
+                      successToast(t("common.copied"))
                     })
                   } else if (!res.ok) {
-                    errorToast(res.error || "复制失败")
+                    errorToast(res.error || t("common.failed"))
                   }
                 })
             }
             setExportMenuState(null)
           }}
         >
-          复制最近回复
+          Copy Last Reply
         </LxMenuItem>
       </LxMenu>
     </div>

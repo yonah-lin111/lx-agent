@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
+import { useTranslation } from "@/i18n"
 
 // 左侧栏属性。
 interface LeftSideBarProps {
@@ -17,6 +18,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   useEffect(() => {
     setIsCollapsed(false)
@@ -41,8 +43,11 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
         className={`absolute top-2 left-1 transition-transform duration-300 ease-in-out ${
           isCollapsed ? "translate-x-[2px]" : "translate-x-0"
         }`}
-        aria-label={isCollapsed ? "展开左侧栏" : "折叠左侧栏"}
-        title={{ content: isCollapsed ? "展开左侧栏" : "折叠左侧栏", placement: "right" }}
+        aria-label={isCollapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
+        title={{
+          content: isCollapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar"),
+          placement: "right",
+        }}
         onClick={() => setIsCollapsed((currentValue) => !currentValue)}
         size="small"
       >
@@ -59,13 +64,14 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
             : "translate-x-0 flex-row justify-center"
         }`}
       >
-        {PRIMARY_NAVIGATION_ITEMS.map(({ icon: Icon, label, path }) => {
+        {PRIMARY_NAVIGATION_ITEMS.map(({ icon: Icon, labelKey, path }) => {
           const isActive = pathname === path
+          const label = t(labelKey)
           return (
             <LxIconButton
               key={path}
               aria-current={isActive ? "page" : undefined}
-              aria-label={`打开${label}页面`}
+              aria-label={t("nav.openPage", { name: label })}
               title={{ content: label, placement: isCollapsed ? "right" : "top" }}
               highlighted={isActive}
               onClick={() => navigate(path)}

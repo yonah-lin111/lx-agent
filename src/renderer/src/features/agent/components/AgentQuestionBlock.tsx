@@ -15,6 +15,7 @@ import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRende
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ChatBlock } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -55,6 +56,7 @@ const getQuestions = (toolCall: ToolCallBlock): QuestionPrompt[] => {
 export const AgentQuestionBlock = ({
   toolCall,
 }: AgentQuestionBlockProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const pending: QuestionRequest | undefined = toolCall.question
   const questions = getQuestions(toolCall)
   if (questions.length === 0) return null
@@ -319,7 +321,7 @@ export const AgentQuestionBlock = ({
                 <input
                   value={customTexts[activeIndex]}
                   onChange={(event) => setCustomText(event.target.value)}
-                  placeholder="其他（自定义输入）"
+                  placeholder={t("agent.questionCustomOther")}
                   className="agent-question-input mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
                 />
               </>
@@ -328,7 +330,7 @@ export const AgentQuestionBlock = ({
                 value={customTexts[activeIndex]}
                 onChange={(event) => setCustomText(event.target.value)}
                 rows={2}
-                placeholder="输入回答..."
+                placeholder={t("agent.questionAnswerPlaceholder")}
                 className="agent-question-input mt-1.5 min-h-[40px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-[12px] leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
               />
             )}
@@ -340,24 +342,24 @@ export const AgentQuestionBlock = ({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  aria-label="Previous question"
+                  aria-label={t("agent.questionPrev")}
                   disabled={activeIndex === 0}
                   onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
                   className="agent-question-prev-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  Prev
+                  {t("agent.questionPrev")}
                 </button>
                 <button
                   type="button"
-                  aria-label="Next question"
+                  aria-label={t("agent.questionNext")}
                   disabled={activeIndex === questions.length - 1}
                   onClick={() =>
                     setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
                   }
                   className="agent-question-next-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
                 >
-                  Next
+                  {t("agent.questionNext")}
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -369,7 +371,7 @@ export const AgentQuestionBlock = ({
               className="agent-question-submit-btn flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
             >
               <Send className="h-3 w-3" />
-              Submit
+              {t("agent.questionSubmit")}
             </button>
           </div>
         </div>

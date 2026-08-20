@@ -34,7 +34,7 @@ describe("AgentMessageList", () => {
 
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    const editBtns = screen.getAllByRole("button", { name: "编辑消息" })
+    const editBtns = screen.getAllByRole("button", { name: "Edit Message" })
     expect(editBtns.length).toBe(2)
 
     // 点击第一条消息的编辑按钮
@@ -45,7 +45,7 @@ describe("AgentMessageList", () => {
     expect((textareas[0] as HTMLTextAreaElement).value).toBe("消息 1")
 
     // 点击第二条消息的编辑按钮
-    const remainingEditBtns = screen.getAllByRole("button", { name: "编辑消息" })
+    const remainingEditBtns = screen.getAllByRole("button", { name: "Edit Message" })
     fireEvent.click(remainingEditBtns[0])
 
     textareas = screen.getAllByRole("textbox")
@@ -110,7 +110,7 @@ describe("AgentMessageList", () => {
 
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBe(1)
+    expect(screen.getAllByRole("button", { name: "Copy message" }).length).toBe(1)
   })
 
   it("用户消息与其后 AI 回复合并为 QA 对，未吸顶时绝对定位容器不渲染", () => {
@@ -140,7 +140,7 @@ describe("AgentMessageList", () => {
 
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
-    expect(screen.getByRole("button", { name: "编辑消息" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Edit Message" })).not.toBeNull()
     expect(screen.getByText("待回复问题")).not.toBeNull()
   })
 
@@ -296,6 +296,6 @@ describe("AgentMessageList", () => {
 
     // 第一条 AI 回复仍在且已定型，其复制操作按钮应渲染（不被 loader 遮盖）。
     expect(screen.getByText("第一轮回复")).not.toBeNull()
-    expect(screen.getAllByRole("button", { name: "复制消息" }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole("button", { name: "Copy message" }).length).toBeGreaterThan(0)
   })
 })

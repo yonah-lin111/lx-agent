@@ -47,6 +47,7 @@ import {
   filterProjectNavigationTreeByStatus,
   sortProjectNavigationTree,
 } from "@/features/project-navigation/utils"
+import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 当前右键菜单状态。
@@ -140,6 +141,7 @@ const saveSortPreference = (sort: ProjectNavigationSort): void => {
  * 页面左侧栏，展示可搜索的持久化项目与条目层级。
  */
 export const ProjectNavigation = (): React.JSX.Element => {
+  const { t } = useTranslation()
   const toast = useLxToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -409,15 +411,15 @@ export const ProjectNavigation = (): React.JSX.Element => {
 
   // 范围筛选选项（单选）。
   const scopeFilterOptions: { value: ProjectNavigationFilterScope; label: string }[] = [
-    { value: "all", label: "All Projects" },
-    { value: "current", label: "Current Project" },
+    { value: "all", label: t("project.allProjects") },
+    { value: "current", label: t("project.currentProject") },
   ]
 
   // 状态筛选选项（多选），颜色与条目状态图标一致。
   const statusFilterOptions: { value: PromptStatus; label: string; color: LxTagColor }[] = [
-    { value: "todo", label: "Todo", color: "gray" },
-    { value: "in_progress", label: "In Progress", color: "amber" },
-    { value: "completed", label: "Done", color: "emerald" },
+    { value: "todo", label: t("agent.promptStatusTodo"), color: "gray" },
+    { value: "in_progress", label: t("agent.promptStatusInProgress"), color: "amber" },
+    { value: "completed", label: t("agent.promptStatusCompleted"), color: "emerald" },
   ]
 
   /**
@@ -483,30 +485,31 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   const addPanel = (
-    <div className="flex min-w-36 flex-col gap-0.5" aria-label="新建或导入项目">
+    <div className="flex min-w-36 flex-col gap-0.5" aria-label={t("project.createOrImportProject")}>
       <LxMenuItem
         leading={<Plus className="h-3.5 w-3.5 text-white/45" />}
         onClick={() => setProjectModal({ mode: "create" })}
       >
-        新建项目
+        {t("project.newProject")}
       </LxMenuItem>
       <LxMenuItem
         leading={<Import className="h-3.5 w-3.5 text-white/45" />}
         onClick={() => void handleProjectImport()}
       >
-        导入项目
+        {t("project.importProject")}
       </LxMenuItem>
     </div>
   )
 
   const filterPanel = (
-    <div className="flex w-56 flex-col gap-1.5" aria-label="筛选项目条目">
+    <div className="flex w-56 flex-col gap-1.5" aria-label={t("project.filterItems")}>
       <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        范围
+        {t("project.scope")}
         <div className="flex flex-nowrap gap-1">
           {scopeFilterOptions.map(({ value, label }) => (
             <LxTag
               key={value}
+              size="small"
               highlighted={filterScope === value}
               onClick={() => toggleScopeFilter(value)}
             >
@@ -516,12 +519,13 @@ export const ProjectNavigation = (): React.JSX.Element => {
         </div>
       </div>
       <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-        状态
+        {t("common.status")}
         <div className="flex flex-nowrap gap-1">
           {statusFilterOptions.map(({ value, label, color }) => {
             const isSelected = statusFilter.includes(value)
             return (
               <LxTag
+                size="small"
                 key={value}
                 color={color}
                 highlighted={isSelected}
@@ -538,9 +542,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
 
   // 排序选项（单选），同一键重复点击切换升/降序。
   const sortOptions: { key: ProjectNavigationSortKey; label: string }[] = [
-    { key: "name", label: "首字母" },
-    { key: "createdAt", label: "创建时间" },
-    { key: "updatedAt", label: "修改时间" },
+    { key: "name", label: t("project.sortAlphabetical") },
+    { key: "createdAt", label: t("project.sortCreatedAt") },
+    { key: "updatedAt", label: t("project.sortUpdatedAt") },
   ]
 
   /**
@@ -555,7 +559,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   const sortPanel = (
-    <div className="flex w-44 flex-col gap-1.5" aria-label="排序项目条目">
+    <div className="flex w-44 flex-col gap-1.5" aria-label={t("project.sortItems")}>
       {sortOptions.map(({ key, label }) => {
         const isSelected = sort.key === key
         return (
@@ -655,8 +659,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
         <div className="flex h-7 shrink-0 items-center justify-end px-1">
           <div className="flex items-center gap-0.5">
             <LxIconButton
-              aria-label="定位当前条目"
-              title={{ content: "定位当前条目", placement: "bottom" }}
+              aria-label={t("project.locateCurrentItem")}
+              title={{ content: t("project.locateCurrentItem"), placement: "bottom" }}
               disabled={!activePromptId}
               onClick={() => locatePrompt(activePromptId)}
               size="small"
@@ -664,8 +668,11 @@ export const ProjectNavigation = (): React.JSX.Element => {
               <Locate className="h-3.5 w-3.5" />
             </LxIconButton>
             <LxIconButton
-              aria-label={isAllCollapsed ? "展开全部" : "折叠全部"}
-              title={{ content: isAllCollapsed ? "展开全部" : "折叠全部", placement: "bottom" }}
+              aria-label={isAllCollapsed ? t("project.expandAll") : t("project.collapseAll")}
+              title={{
+                content: isAllCollapsed ? t("project.expandAll") : t("project.collapseAll"),
+                placement: "bottom",
+              }}
               disabled={searchKeyword.length > 0}
               onClick={toggleCollapseAll}
               size="small"
@@ -682,7 +689,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               placement="bottom"
               trigger="hover"
             >
-              <LxIconButton aria-label="筛选条目" size="small">
+              <LxIconButton aria-label={t("project.filterItems")} size="small">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
@@ -692,7 +699,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               placement="bottom"
               trigger="hover"
             >
-              <LxIconButton aria-label="排序条目" size="small">
+              <LxIconButton aria-label={t("project.sortItems")} size="small">
                 <ArrowUpDown className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
@@ -703,7 +710,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
               trigger="hover"
               closeOnContentClick
             >
-              <LxIconButton aria-label="新建或导入项目" size="small">
+              <LxIconButton aria-label={t("project.createOrImportProject")} size="small">
                 <Plus className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
@@ -714,8 +721,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
           <LxInput
             type="text"
             value={searchKeyword}
-            placeholder="搜索项目..."
-            aria-label="搜索项目"
+            placeholder={t("project.searchProjects")}
+            aria-label={t("project.searchProjects")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
             size="sm"
             onChange={(event) => setSearchKeyword(event.target.value)}

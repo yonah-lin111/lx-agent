@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
+import { useTranslation } from "@/i18n"
 
 // 项目弹窗模式。
 export type ProjectModalMode = "create" | "edit"
@@ -39,6 +40,7 @@ export const ProjectModal = ({
   onClose,
   onSubmit,
 }: ProjectModalProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const [name, setName] = useState<string>("")
   const [path, setPath] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
@@ -70,25 +72,29 @@ export const ProjectModal = ({
   }
 
   return (
-    <LxModal isOpen={isOpen} title={isEditMode ? "编辑项目" : "新建项目"} onClose={onClose}>
+    <LxModal
+      isOpen={isOpen}
+      title={isEditMode ? t("project.editProject") : t("project.newProject")}
+      onClose={onClose}
+    >
       <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-          项目名称
+          {t("project.projectName")}
           <LxInput
             autoFocus
             required
-            aria-label="项目名称"
-            placeholder="输入项目名称"
+            aria-label={t("project.projectName")}
+            placeholder={t("project.inputProjectName")}
             size="sm"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-semibold text-white/55">
-          项目路径（可选）
+          {t("project.projectPathOptional")}
           <LxInput
-            aria-label="项目路径"
-            placeholder="例如：/Users/name/project"
+            aria-label={t("project.projectPathOptional")}
+            placeholder={t("project.projectPathPlaceholder")}
             size="sm"
             value={path}
             onChange={(event) => setPath(event.target.value)}
@@ -96,14 +102,22 @@ export const ProjectModal = ({
         </label>
         <div className="mt-1 flex justify-end gap-1.5">
           <LxIconButton
-            aria-label={isEditMode ? "取消编辑项目" : "取消创建项目"}
+            aria-label={
+              isEditMode
+                ? t("project.cancelEditProject")
+                : t("project.cancelCreateProject")
+            }
             preset="close"
             size="small"
             disabled={isSubmitting}
             onClick={onClose}
           />
           <LxIconButton
-            aria-label={isEditMode ? "确认编辑项目" : "确认创建项目"}
+            aria-label={
+              isEditMode
+                ? t("project.confirmEditProject")
+                : t("project.confirmCreateProject")
+            }
             preset="confirm"
             size="small"
             type="submit"

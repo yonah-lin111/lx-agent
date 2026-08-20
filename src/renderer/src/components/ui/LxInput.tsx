@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, X } from "lucide-react"
 import type React from "react"
 import { forwardRef, useEffect, useRef, useState } from "react"
+import { useTranslation } from "@/i18n"
 
 // 输入框尺寸。
 export type LxInputSize = "xs" | "sm" | "lg"
@@ -82,6 +83,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
     const [showPassword, setShowPassword] = useState<boolean>(false)
+    const { t } = useTranslation()
     const textSizeClass = size === "lg" ? "text-sm" : "text-xs"
     const sizeClass = size === "xs" ? "gap-1.5 px-2 py-1" : "gap-1.5 px-2.5 py-1.5"
     const variantClass =
@@ -204,7 +206,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
           <button
             type="button"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] text-white/45 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50"
-            aria-label="清除输入内容"
+            aria-label={t("common.clear")}
             onClick={handleClear}
           >
             <X className="h-3.5 w-3.5" />
@@ -214,7 +216,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
           <button
             type="button"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] text-white/45 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50"
-            aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            aria-label={showPassword ? t("common.hidePassword") : t("common.showPassword")}
             onClick={() => setShowPassword((prev) => !prev)}
           >
             {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -226,7 +228,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
               type="button"
               tabIndex={-1}
               className="flex h-3 w-4 items-center justify-center rounded-[2px] transition-colors hover:bg-white/10 hover:text-white focus:outline-none"
-              aria-label="增加数值"
+              aria-label={t("common.increaseValue")}
               onClick={() => handleStep("up")}
             >
               <ChevronUp className="h-3 w-3" />
@@ -235,7 +237,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
               type="button"
               tabIndex={-1}
               className="flex h-3 w-4 items-center justify-center rounded-[2px] transition-colors hover:bg-white/10 hover:text-white focus:outline-none"
-              aria-label="减少数值"
+              aria-label={t("common.decreaseValue")}
               onClick={() => handleStep("down")}
             >
               <ChevronDown className="h-3 w-3" />

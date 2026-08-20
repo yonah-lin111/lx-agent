@@ -18,6 +18,7 @@ import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 import { settingsApi } from "../api/settingsApi"
 import type { ModelProvider, ModelProviderSettingsData } from "../types"
 
@@ -114,6 +115,7 @@ const ModelProviderMenu = ({
 }: ModelProviderMenuProps): React.JSX.Element | null => {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
   const [lastMenu, setLastMenu] = useState({ providerName, isEnabled, x, y })
+  const { t } = useTranslation()
 
   const displayedMenu = isOpen ? { providerName, isEnabled, x, y } : lastMenu
 
@@ -135,7 +137,7 @@ const ModelProviderMenu = ({
 
   return (
     <LxMenu
-      ariaLabel={`${displayedMenu.providerName} 操作菜单`}
+      ariaLabel={t("settings.providerMenu", { name: displayedMenu.providerName })}
       isOpen={isOpen}
       x={displayedMenu.x}
       y={displayedMenu.y}
@@ -151,7 +153,7 @@ const ModelProviderMenu = ({
         }}
         trailing={displayedMenu.isEnabled ? <Check className="h-3.5 w-3.5 text-white/70" /> : null}
       >
-        启用
+        {t("common.enable")}
       </LxMenuItem>
       <LxMenuItem
         aria-checked={!displayedMenu.isEnabled}
@@ -163,7 +165,7 @@ const ModelProviderMenu = ({
         }}
         trailing={!displayedMenu.isEnabled ? <Check className="h-3.5 w-3.5 text-white/70" /> : null}
       >
-        停用
+        {t("common.disable")}
       </LxMenuItem>
       <LxMenuSeparator />
       <LxMenuItem
@@ -173,7 +175,7 @@ const ModelProviderMenu = ({
           onClose()
         }}
       >
-        复制 Provider
+        {t("settings.duplicateProvider")}
       </LxMenuItem>
       <LxMenuItem
         active={isConfirmingDelete}
@@ -185,7 +187,7 @@ const ModelProviderMenu = ({
         }
         onClick={handleDeleteClick}
       >
-        {isConfirmingDelete ? "确认删除" : "删除 Provider"}
+        {isConfirmingDelete ? t("settings.confirmDeleteProvider") : t("settings.deleteProvider")}
       </LxMenuItem>
     </LxMenu>
   )
@@ -216,6 +218,7 @@ export const ModelProviderSettings = ({
   const [isFetchingModels, setIsFetchingModels] = useState<boolean>(false)
   const [modelListQuery, setModelListQuery] = useState<string>("")
   const toast = useLxToast()
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (settings && !selectedProviderId) {
@@ -398,18 +401,18 @@ export const ModelProviderSettings = ({
         },
       },
     }))
-    toast.success(`已更新为模型 ${fetched.id}`)
+    toast.success(`${t("common.saved")}: ${fetched.id}`)
   }
 
   const fetchProviderModels = async (providerId: string): Promise<void> => {
     const provider = settings.providers[providerId]
     if (!provider) return
     if (!provider.options.baseURL) {
-      toast.error("请先填写 Base URL")
+      toast.error(t("settings.baseUrl"))
       return
     }
     if (!provider.options.apiKey) {
-      toast.error("请先填写 API Key")
+      toast.error(t("settings.apiKey"))
       return
     }
     setIsFetchingModels(true)
@@ -419,7 +422,7 @@ export const ModelProviderSettings = ({
         apiKey: provider.options.apiKey,
       })
       setFetchedModels((current) => ({ ...current, [providerId]: models }))
-      toast.success(`获取到 ${models.length} 个模型`)
+      toast.success(t("settings.fetchModelsSuccess"))
     } catch (error) {
       toast.error(toFetchModelsErrorMessage(error))
     } finally {
@@ -437,8 +440,8 @@ export const ModelProviderSettings = ({
       <div className="flex h-full min-h-0 flex-col gap-2 font-normal">
         <div onClick={(event) => event.stopPropagation()}>
           <LxInput
-            aria-label="搜索模型"
-            placeholder="搜索模型"
+            aria-label={t("common.search")}
+            placeholder={t("common.search")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
             size="xs"
             value={modelListQuery}
@@ -447,9 +450,9 @@ export const ModelProviderSettings = ({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {models.length === 0 ? (
-            <div className="py-1 text-white/45">未获取到模型</div>
+            <div className="py-1 text-white/45">{t("settings.noModelsConfigured")}</div>
           ) : filteredModels.length === 0 ? (
-            <div className="py-1 text-white/45">未找到匹配的模型</div>
+            <div className="py-1 text-white/45">{t("settings.noModelsConfigured")}</div>
           ) : (
             filteredModels.map((model) => (
               <button
@@ -477,7 +480,7 @@ export const ModelProviderSettings = ({
       <div className="grid min-h-0 flex-1 gap-3 @[520px]:grid-cols-[180px_minmax(0,1fr)]">
         <nav
           className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="模型 Provider 列表"
+          aria-label={t("settings.providers")}
         >
           <div className="flex flex-col gap-1">
             {Object.entries(settings.providers).map(([providerKey, provider]) => {
@@ -513,8 +516,8 @@ export const ModelProviderSettings = ({
                     size="small"
                     shape="circle"
                     showHoverBg={false}
-                    aria-label={isEnabled ? "已启用" : "已停用"}
-                    title={{ content: isEnabled ? "已启用" : "已停用" }}
+                    aria-label={isEnabled ? t("common.enabled") : t("common.disabled")}
+                    title={{ content: isEnabled ? t("common.enabled") : t("common.disabled") }}
                     className="-m-0.5 shrink-0"
                     onClick={(event) => {
                       event.stopPropagation()
@@ -542,7 +545,7 @@ export const ModelProviderSettings = ({
               <h3 className="mb-3 text-sm font-medium text-white">Provider</h3>
               <div className="grid gap-3 @[380px]:grid-cols-2">
                 <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                  Provider ID
+                  {t("settings.providerId")}
                   <LxInput
                     value={selectedProvider.id}
                     onChange={(event) =>
@@ -554,7 +557,7 @@ export const ModelProviderSettings = ({
                   />
                 </label>
                 <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                  显示名称
+                  {t("settings.providerName")}
                   <LxInput
                     value={selectedProvider.name}
                     onChange={(event) =>
@@ -569,7 +572,7 @@ export const ModelProviderSettings = ({
                   className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2"
                   onClick={(event) => event.preventDefault()}
                 >
-                  传输格式
+                  {t("settings.providerType")}
                   <LxSelect
                     value={selectedProvider.type}
                     options={PROVIDER_TYPES.map((type) => ({ value: type, label: type }))}
@@ -582,7 +585,7 @@ export const ModelProviderSettings = ({
                   />
                 </label>
                 <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
-                  Base URL
+                  {t("settings.baseUrl")}
                   <LxInput
                     value={selectedProvider.options.baseURL}
                     placeholder="https://api.example.com/v1"
@@ -596,7 +599,7 @@ export const ModelProviderSettings = ({
                   />
                 </label>
                 <label className="grid gap-1.5 text-xs text-white/55 min-w-0 @[380px]:col-span-2">
-                  API Key
+                  {t("settings.apiKey")}
                   <LxInput
                     type="password"
                     value={selectedProvider.options.apiKey}
@@ -615,12 +618,12 @@ export const ModelProviderSettings = ({
 
             <div className="settings-item-card mt-4 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white">模型</h3>
+                <h3 className="text-sm font-medium text-white">{t("settings.modelsList")}</h3>
                 <div className="flex items-center gap-1">
                   <LxIconButton
                     size="small"
-                    aria-label="获取模型列表"
-                    title={{ content: "获取模型列表", placement: "top" }}
+                    aria-label={t("settings.fetchModels")}
+                    title={{ content: t("settings.fetchModels"), placement: "top" }}
                     disabled={isFetchingModels}
                     onClick={() => void fetchProviderModels(selectedProviderId)}
                   >
@@ -629,8 +632,8 @@ export const ModelProviderSettings = ({
                   <LxIconButton
                     preset="add"
                     size="small"
-                    aria-label="添加模型"
-                    title={{ content: "添加模型", placement: "top" }}
+                    aria-label={t("settings.addModel")}
+                    title={{ content: t("settings.addModel"), placement: "top" }}
                     onClick={() => addModel(selectedProviderId)}
                   />
                 </div>
@@ -643,9 +646,9 @@ export const ModelProviderSettings = ({
                   >
                     <div className="grid gap-2 grid-cols-1 @[380px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                       <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                        模型 ID
+                        {t("settings.modelId")}
                         <LxInput
-                          aria-label={`${modelKey} 模型 ID`}
+                          aria-label={`${modelKey} ${t("settings.modelId")}`}
                           value={model.id}
                           onChange={(event) =>
                             updateProvider(selectedProviderId, (provider) => ({
@@ -662,9 +665,9 @@ export const ModelProviderSettings = ({
                         />
                       </label>
                       <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                        显示名称
+                        {t("settings.modelName")}
                         <LxInput
-                          aria-label={`${modelKey} 模型名称`}
+                          aria-label={`${modelKey} ${t("settings.modelName")}`}
                           value={model.name}
                           onChange={(event) =>
                             updateProvider(selectedProviderId, (provider) => ({
@@ -690,14 +693,14 @@ export const ModelProviderSettings = ({
                             contentClassName="w-[350px] h-[200px]"
                             content={renderFetchedModelsContent(selectedProviderId, modelKey)}
                           >
-                            <LxIconButton aria-label={`模型 ${model.id} 模型列表`}>
+                            <LxIconButton aria-label={`${model.id} ${t("settings.modelsList")}`}>
                               <Bot className="h-3.5 w-3.5" />
                             </LxIconButton>
                           </LxTooltip>
                         ) : null}
                         <LxIconButton
-                          aria-label={`模型 ${model.id} 高级设置`}
-                          title={{ content: "高级设置", placement: "top" }}
+                          aria-label={`${model.id} ${t("common.edit")}`}
+                          title={{ content: t("common.edit"), placement: "top" }}
                           highlighted={expandedModelKeys[`${selectedProviderId}:${modelKey}`]}
                           onClick={() =>
                             setExpandedModelKeys((current) => ({
@@ -710,16 +713,16 @@ export const ModelProviderSettings = ({
                           <SlidersHorizontal className="h-3.5 w-3.5" />
                         </LxIconButton>
                         <LxIconButton
-                          aria-label={`复制模型 ${model.id}`}
-                          title={{ content: "复制模型", placement: "top" }}
+                          aria-label={`${t("common.copy")} ${model.id}`}
+                          title={{ content: t("common.copy"), placement: "top" }}
                           onClick={() => duplicateModel(selectedProviderId, modelKey)}
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </LxIconButton>
                         <LxIconButton
                           preset="delete"
-                          aria-label={`删除模型 ${model.id}`}
-                          title={{ content: "删除模型", placement: "top" }}
+                          aria-label={`${t("common.delete")} ${model.id}`}
+                          title={{ content: t("common.delete"), placement: "top" }}
                           onClick={() =>
                             updateProvider(selectedProviderId, (provider) => {
                               const models = { ...provider.models }
@@ -740,10 +743,10 @@ export const ModelProviderSettings = ({
                       <div className="overflow-hidden">
                         <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 @[360px]:grid-cols-2 @[580px]:grid-cols-4">
                           <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                            上下文限制
+                            {t("settings.contextWindow")}
                             <LxInput
                               type="number"
-                              aria-label={`${modelKey} 上下文限制`}
+                              aria-label={`${modelKey} ${t("settings.contextWindow")}`}
                               value={model.limit?.context || ""}
                               onChange={(event) =>
                                 updateProvider(selectedProviderId, (provider) => ({
@@ -766,10 +769,10 @@ export const ModelProviderSettings = ({
                             />
                           </label>
                           <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                            最大输出限制
+                            {t("settings.maxOutputTokens")}
                             <LxInput
                               type="number"
-                              aria-label={`${modelKey} 最大输出限制`}
+                              aria-label={`${modelKey} ${t("settings.maxOutputTokens")}`}
                               value={model.limit?.output || ""}
                               onChange={(event) =>
                                 updateProvider(selectedProviderId, (provider) => ({
@@ -792,7 +795,7 @@ export const ModelProviderSettings = ({
                             />
                           </label>
                           <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                            输入模态
+                            Modalities (In)
                             <LxInput
                               value={(model.modalities?.input ?? ["text"]).join(", ")}
                               onChange={(event) =>
@@ -818,7 +821,7 @@ export const ModelProviderSettings = ({
                             />
                           </label>
                           <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
-                            输出模态
+                            Modalities (Out)
                             <LxInput
                               value={(model.modalities?.output ?? ["text"]).join(", ")}
                               onChange={(event) =>

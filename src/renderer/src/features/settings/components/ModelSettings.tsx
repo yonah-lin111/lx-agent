@@ -1,13 +1,14 @@
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
+import { useTranslation, type TranslationKey } from "@/i18n"
 import type { ModelProviderSettingsData, ModelSelection } from "../types"
 
-const MODEL_SELECTIONS = [
-  { key: "defaultModel", label: "默认对话模型" },
-  { key: "titleSummary", label: "标题总结模型" },
-  { key: "suggestedQuestions", label: "推荐问题模型" },
-  { key: "compactionModel", label: "上下文压缩模型" },
-] as const
+const MODEL_SELECTIONS: { key: keyof ModelProviderSettingsData & string; labelKey: TranslationKey }[] = [
+  { key: "defaultModel", labelKey: "settings.defaultChatModel" },
+  { key: "titleSummary", labelKey: "settings.titleSummaryModel" },
+  { key: "suggestedQuestions", labelKey: "settings.suggestedQuestionsModel" },
+  { key: "compactionModel", labelKey: "settings.compactionModel" },
+]
 
 export interface ModelSettingsProps {
   settings: ModelProviderSettingsData
@@ -18,8 +19,10 @@ export interface ModelSettingsProps {
  * 渲染模型选择和推荐问题配置。
  */
 export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): React.JSX.Element => {
+  const { t } = useTranslation()
+
   const updateSelection = (
-    key: (typeof MODEL_SELECTIONS)[number]["key"],
+    key: string,
     selection: ModelSelection,
   ): void => {
     setSettings((current) => (current ? { ...current, [key]: selection } : current))
@@ -37,7 +40,7 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
       }))
 
     if (isCompaction) {
-      return [{ value: "", label: "跟随当前会话模型" }, ...baseOptions]
+      return [{ value: "", label: t("settings.followCurrentSessionModel") }, ...baseOptions]
     }
     return baseOptions
   }
@@ -45,18 +48,18 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
       <div>
-        <h3 className="mb-2.5 text-sm font-medium text-white">默认模型</h3>
+        <h3 className="mb-2.5 text-sm font-medium text-white">{t("settings.defaultModels")}</h3>
         <div className="grid gap-3 lg:grid-cols-2">
-          {MODEL_SELECTIONS.map(({ key, label }) => {
+          {MODEL_SELECTIONS.map(({ key, labelKey }) => {
             const isCompaction = key === "compactionModel"
-            const selection = settings[key] || { provider: "", model: "" }
+            const selection = (settings[key as keyof ModelProviderSettingsData] as ModelSelection) || { provider: "", model: "" }
             const models = settings.providers[selection.provider]?.models ?? {}
             return (
               <div
                 key={key}
                 className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3"
               >
-                <h4 className="text-xs text-white/60">{label}</h4>
+                <h4 className="text-xs text-white/60">{t(labelKey)}</h4>
                 <div className="grid gap-2">
                   <LxSelect
                     value={selection.provider}
@@ -88,10 +91,10 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
       </div>
 
       <div className="border-t border-white/8 pt-3">
-        <h3 className="mb-2.5 text-sm font-medium text-white">功能配置</h3>
+        <h3 className="mb-2.5 text-sm font-medium text-white">{t("settings.featuresConfig")}</h3>
         <div className="grid gap-3 lg:grid-cols-2">
           <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-            <h4 className="text-xs text-white/60">推荐问题</h4>
+            <h4 className="text-xs text-white/60">{t("settings.suggestedQuestions")}</h4>
             <div className="flex items-center">
               <LxRadioGroup
                 className="flex gap-2"
@@ -105,13 +108,13 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                   )
                 }
               >
-                <LxRadio value="enabled" label="启用" />
-                <LxRadio value="disabled" label="停用" />
+                <LxRadio value="enabled" label={t("common.enable")} />
+                <LxRadio value="disabled" label={t("common.disable")} />
               </LxRadioGroup>
             </div>
           </div>
           <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-            <h4 className="text-xs text-white/60">上下文压缩</h4>
+            <h4 className="text-xs text-white/60">{t("settings.contextCompaction")}</h4>
             <div className="flex items-center">
               <LxRadioGroup
                 className="flex gap-2"
@@ -123,8 +126,8 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                   )
                 }
               >
-                <LxRadio value="enabled" label="启用" />
-                <LxRadio value="disabled" label="停用" />
+                <LxRadio value="enabled" label={t("common.enable")} />
+                <LxRadio value="disabled" label={t("common.disable")} />
               </LxRadioGroup>
             </div>
           </div>

@@ -21,6 +21,7 @@ import type {
   MarkdownTableSize,
   MarkdownToolbarAction,
 } from "@/features/markdown/types"
+import { useTranslation, type TranslationKey } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
 
 // 工具栏属性。
@@ -72,6 +73,7 @@ const MarkdownEditorTOC = ({
 }: MarkdownEditorTOCProps): React.JSX.Element => {
   const listboxRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
+  const { t } = useTranslation()
 
   const handleTabChange = (tab: "template" | "heading") => {
     setIsReady(false)
@@ -100,7 +102,7 @@ const MarkdownEditorTOC = ({
   }, [tocTab])
 
   return (
-    <div className="flex w-64 flex-col gap-2" aria-label="页面大纲列表">
+    <div className="flex w-64 flex-col gap-2" aria-label={t("markdown.tableOfContents")}>
       <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5">
         <button
           type="button"
@@ -111,7 +113,7 @@ const MarkdownEditorTOC = ({
           }`}
           onClick={() => handleTabChange("template")}
         >
-          <span>模版块目录</span>
+          <span>{t("markdown.tocTemplateBlocks")}</span>
         </button>
 
         <button
@@ -123,13 +125,17 @@ const MarkdownEditorTOC = ({
           }`}
           onClick={() => handleTabChange("heading")}
         >
-          <span>标题目录</span>
+          <span>{t("markdown.tocHeadings")}</span>
         </button>
       </div>
 
       <LxInput
-        aria-label="搜索大纲"
-        placeholder={tocTab === "template" ? "搜索模版块..." : "搜索标题..."}
+        aria-label={t("markdown.tableOfContents")}
+        placeholder={
+          tocTab === "template"
+            ? t("markdown.searchTemplates")
+            : t("markdown.searchHeadings")
+        }
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"
         value={tocQuery}
@@ -145,37 +151,37 @@ const MarkdownEditorTOC = ({
         <div className="space-y-0.5">
           {tocTab === "template" ? (
             <>
-              {filteredTemplates.map((t) => {
-                const isActive = activeTemplate?.id === t.id
+              {filteredTemplates.map((tItem) => {
+                const isActive = activeTemplate?.id === tItem.id
                 const TEMPLATE_COMMAND_COLORS: Record<string, string> = {
                   addTemplate: "#34d399",
                   bugTemplate: "#fb7185",
                   refactorTemplate: "#c084fc",
                   commonTemplate: "#38bdf8",
                 }
-                const textStyle = t.hasCustomTitle
+                const textStyle = tItem.hasCustomTitle
                   ? { color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.6)" }
-                  : { color: TEMPLATE_COMMAND_COLORS[t.command] || "rgba(255, 255, 255, 0.7)" }
+                  : { color: TEMPLATE_COMMAND_COLORS[tItem.command] || "rgba(255, 255, 255, 0.7)" }
                 return (
                   <button
-                    key={t.id}
+                    key={tItem.id}
                     type="button"
                     data-active={isActive ? "true" : undefined}
-                    className={getTemplateItemClass(t.status, isActive)}
+                    className={getTemplateItemClass(tItem.status, isActive)}
                     onClick={() => {
-                      onScrollToLine?.(t.line)
+                      onScrollToLine?.(tItem.line)
                       onClose()
                     }}
                   >
                     <span className="min-w-0 truncate" style={textStyle}>
-                      {t.title}
+                      {tItem.title}
                     </span>
-                    <span className="ml-auto text-[10px] opacity-40 shrink-0">L{t.line}</span>
+                    <span className="ml-auto text-[10px] opacity-40 shrink-0">L{tItem.line}</span>
                   </button>
                 )
               })}
               {filteredTemplates.length === 0 && (
-                <div className="py-4 text-center text-xs text-white/45">未找到匹配的模版块</div>
+                <div className="py-4 text-center text-xs text-white/45">{t("common.none")}</div>
               )}
             </>
           ) : (
@@ -201,7 +207,7 @@ const MarkdownEditorTOC = ({
                 )
               })}
               {filteredHeadings.length === 0 && (
-                <div className="py-4 text-center text-xs text-white/45">未找到匹配的标题</div>
+                <div className="py-4 text-center text-xs text-white/45">{t("common.none")}</div>
               )}
             </>
           )}
@@ -211,32 +217,34 @@ const MarkdownEditorTOC = ({
   )
 }
 
-const markdownShortcuts = [
-  { keys: "Cmd / Ctrl + S", description: "保存当前内容" },
-  { keys: "Tab", description: "增加缩进" },
-  { keys: "Shift + Tab", description: "减少缩进" },
-  { keys: "Cmd / Ctrl + D", description: "删除当前行" },
-  { keys: "Cmd / Ctrl + B", description: "粗体" },
-  { keys: "Cmd / Ctrl + I", description: "斜体" },
-  { keys: "Cmd / Ctrl + 1 - 6", description: "标题" },
-  { keys: "Cmd / Ctrl + O", description: "有序列表" },
-  { keys: "Cmd / Ctrl + L", description: "链接" },
-  { keys: "Cmd / Ctrl + Shift + S", description: "删除线" },
-  { keys: "Cmd / Ctrl + Shift + U", description: "无序列表" },
-  { keys: "Cmd / Ctrl + Shift + C", description: "代码块" },
-  { keys: "Cmd / Ctrl + Shift + 8", description: "有序列表" },
-  { keys: "Cmd / Ctrl + Shift + 9", description: "无序列表" },
-  { keys: "Cmd / Ctrl + Z", description: "撤销" },
-  { keys: "Cmd / Ctrl + Shift + Z", description: "重做" },
-  { keys: "Cmd / Ctrl + Alt + C", description: "行内代码" },
-  { keys: "Cmd / Ctrl + Shift + Alt + T", description: "插入表格" },
-  { keys: "Cmd / Ctrl + Shift + F", description: "格式化 Markdown" },
-  { keys: "Cmd / Ctrl + Shift + E", description: "双栏预览" },
-  { keys: "Cmd / Ctrl + Shift + V", description: "仅预览" },
+const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
+  { keys: "Cmd / Ctrl + S", descKey: "markdown.shortcutSave" },
+  { keys: "Tab", descKey: "markdown.shortcutTab" },
+  { keys: "Shift + Tab", descKey: "markdown.shortcutShiftTab" },
+  { keys: "Cmd / Ctrl + D", descKey: "markdown.shortcutDeleteLine" },
+  { keys: "Cmd / Ctrl + B", descKey: "markdown.shortcutBold" },
+  { keys: "Cmd / Ctrl + I", descKey: "markdown.shortcutItalic" },
+  { keys: "Cmd / Ctrl + 1 - 6", descKey: "markdown.shortcutHeading" },
+  { keys: "Cmd / Ctrl + O", descKey: "markdown.shortcutOrderedList" },
+  { keys: "Cmd / Ctrl + L", descKey: "markdown.shortcutLink" },
+  { keys: "Cmd / Ctrl + Shift + S", descKey: "markdown.shortcutStrikethrough" },
+  { keys: "Cmd / Ctrl + Shift + U", descKey: "markdown.shortcutUnorderedList" },
+  { keys: "Cmd / Ctrl + Shift + C", descKey: "markdown.shortcutCodeBlock" },
+  { keys: "Cmd / Ctrl + Shift + 8", descKey: "markdown.shortcutOrderedList" },
+  { keys: "Cmd / Ctrl + Shift + 9", descKey: "markdown.shortcutUnorderedList" },
+  { keys: "Cmd / Ctrl + Z", descKey: "markdown.shortcutUndo" },
+  { keys: "Cmd / Ctrl + Shift + Z", descKey: "markdown.shortcutRedo" },
+  { keys: "Cmd / Ctrl + Alt + C", descKey: "markdown.shortcutInlineCode" },
+  { keys: "Cmd / Ctrl + Shift + Alt + T", descKey: "markdown.shortcutInsertTable" },
+  { keys: "Cmd / Ctrl + Shift + F", descKey: "markdown.shortcutFormat" },
+  { keys: "Cmd / Ctrl + Shift + E", descKey: "markdown.shortcutSplitView" },
+  { keys: "Cmd / Ctrl + Shift + V", descKey: "markdown.shortcutPreviewOnly" },
 ]
 
 // 分页模式专属快捷键。
-const pageShortcuts = [{ keys: "Cmd / Ctrl + Alt + ← / →", description: "切换上一页 / 下一页" }]
+const pageShortcuts: { keys: string; descKey: TranslationKey }[] = [
+  { keys: "Cmd / Ctrl + Alt + ← / →", descKey: "markdown.shortcutPageSwitch" },
+]
 
 /**
  * 渲染 Markdown 编辑器的格式化工具栏。
@@ -264,6 +272,7 @@ export const MarkdownEditorToolbar = ({
   const [isPageListOpen, setIsPageListOpen] = useState(false)
   const [pageListQuery, setPageListQuery] = useState("")
   const pageNameBeforeEditRef = useRef(pageName)
+  const { t } = useTranslation()
 
   // Auto-focus and edit page name when a new page is created
   const prevPagesLengthRef = useRef(pages.length)
@@ -534,7 +543,7 @@ export const MarkdownEditorToolbar = ({
   }
 
   const pageList = (
-    <div className="flex w-60 flex-col gap-2" aria-label="页面列表">
+    <div className="flex w-60 flex-col gap-2" aria-label={t("markdown.pageList")}>
       <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5">
         <button
           type="button"
@@ -548,7 +557,7 @@ export const MarkdownEditorToolbar = ({
           }}
         >
           <Plus className="h-3.5 w-3.5 text-white/45" />
-          <span>添加页面</span>
+          <span>{t("common.add")}</span>
         </button>
 
         <button
@@ -564,13 +573,13 @@ export const MarkdownEditorToolbar = ({
           <Trash2
             className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
           />
-          <span>{isConfirmingDelete ? "确认删除" : "删除当前页"}</span>
+          <span>{isConfirmingDelete ? t("common.confirmDelete") : t("common.delete")}</span>
         </button>
       </div>
 
       <LxInput
-        aria-label="搜索页面"
-        placeholder="搜索页面"
+        aria-label={t("common.search")}
+        placeholder={t("common.search")}
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"
         value={pageListQuery}
@@ -604,9 +613,12 @@ export const MarkdownEditorToolbar = ({
                 {hasCounts && (
                   <span className="ml-auto flex shrink-0 items-center gap-1">
                     {counts.todo > 0 && (
-                      <LxTooltip content={`待办 ${counts.todo}`} placement="top">
+                      <LxTooltip
+                        content={t("markdown.todoCountLabel", { count: counts.todo })}
+                        placement="top"
+                      >
                         <span
-                          aria-label={`待办 ${counts.todo}`}
+                          aria-label={t("markdown.todoCountLabel", { count: counts.todo })}
                           className="flex items-center gap-1 rounded-[4px] bg-white/5 px-1 text-[10px] leading-4 text-white/50"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
@@ -615,9 +627,12 @@ export const MarkdownEditorToolbar = ({
                       </LxTooltip>
                     )}
                     {counts.inProgress > 0 && (
-                      <LxTooltip content={`进行中 ${counts.inProgress}`} placement="top">
+                      <LxTooltip
+                        content={t("markdown.inProgressCountLabel", { count: counts.inProgress })}
+                        placement="top"
+                      >
                         <span
-                          aria-label={`进行中 ${counts.inProgress}`}
+                          aria-label={t("markdown.inProgressCountLabel", { count: counts.inProgress })}
                           className="flex items-center gap-1 rounded-[4px] bg-amber-400/10 px-1 text-[10px] leading-4 text-amber-400"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -626,9 +641,12 @@ export const MarkdownEditorToolbar = ({
                       </LxTooltip>
                     )}
                     {counts.done > 0 && (
-                      <LxTooltip content={`已完成 ${counts.done}`} placement="top">
+                      <LxTooltip
+                        content={t("markdown.completedCountLabel", { count: counts.done })}
+                        placement="top"
+                      >
                         <span
-                          aria-label={`已完成 ${counts.done}`}
+                          aria-label={t("markdown.completedCountLabel", { count: counts.done })}
                           className="flex items-center gap-1 rounded-[4px] bg-emerald-400/10 px-1 text-[10px] leading-4 text-emerald-400"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -643,7 +661,7 @@ export const MarkdownEditorToolbar = ({
           })}
         </div>
         {filteredPages.length === 0 && (
-          <div className="py-4 text-center text-xs text-white/45">未找到匹配的页面</div>
+          <div className="py-4 text-center text-xs text-white/45">{t("common.none")}</div>
         )}
       </div>
     </div>
@@ -654,7 +672,7 @@ export const MarkdownEditorToolbar = ({
       {isEditingPageName ? (
         <input
           autoFocus
-          aria-label="页面名称"
+          aria-label={t("common.name")}
           className="w-[12ch] border-b border-white/20 bg-transparent px-1 text-left text-xs text-white/80 outline-none"
           value={pageName}
           onBlur={() => {
@@ -693,7 +711,7 @@ export const MarkdownEditorToolbar = ({
         >
           <button
             type="button"
-            aria-label={`编辑页面名称 ${pageName}`}
+            aria-label={`${t("common.edit")} ${pageName}`}
             className="min-w-[4ch] max-w-[12ch] truncate px-1 text-center text-xs text-white/65 hover:text-white/90"
             onClick={() => {
               pageNameBeforeEditRef.current = pageName
@@ -710,25 +728,28 @@ export const MarkdownEditorToolbar = ({
   const pageSwitchControls = pageMode && pages.length > 0 && (
     <div className="ml-auto flex shrink-0 items-center gap-0.5">
       <LxIconButton
-        aria-label="上一页"
+        aria-label={t("markdown.previousPage")}
         disabled={activePageIndex === 0}
         size="small"
-        title={{ content: "上一页" }}
+        title={{ content: t("markdown.previousPage") }}
         onClick={() => onPageChange?.(activePageIndex - 1)}
       >
         <ChevronLeft className="h-3.5 w-3.5" />
       </LxIconButton>
       <span
-        aria-label={`页面 ${activePageIndex + 1} / ${pages.length}`}
+        aria-label={t("markdown.pageIndicator", {
+          current: activePageIndex + 1,
+          total: pages.length,
+        })}
         className="h-7 px-1.5 text-[11px] leading-7 tabular-nums text-white/45"
       >
         {activePageIndex + 1} / {pages.length}
       </span>
       <LxIconButton
-        aria-label="下一页"
+        aria-label={t("markdown.nextPage")}
         disabled={activePageIndex === pages.length - 1}
         size="small"
-        title={{ content: "下一页" }}
+        title={{ content: t("markdown.nextPage") }}
         onClick={() => onPageChange?.(activePageIndex + 1)}
       >
         <ChevronRight className="h-3.5 w-3.5" />
@@ -738,9 +759,9 @@ export const MarkdownEditorToolbar = ({
 
   const tablePicker = useMemo(
     () => (
-      <div className="flex flex-col gap-1" aria-label="选择表格大小">
+      <div className="flex flex-col gap-1" aria-label={t("markdown.formatTable")}>
         <div className="px-0.5 text-center text-[11px] text-white/70" aria-live="polite">
-          {tableSize ? `${tableSize.columns} x ${tableSize.rows}` : "选择表格大小"}
+          {tableSize ? `${tableSize.columns} x ${tableSize.rows}` : t("markdown.formatTable")}
         </div>
         <div className="grid grid-cols-5 gap-1" role="grid">
           {Array.from({ length: 4 }, (_, rowIndex) =>
@@ -753,7 +774,7 @@ export const MarkdownEditorToolbar = ({
               return (
                 <button
                   key={`${columns}-${rows}`}
-                  aria-label={`${columns} columns ${rows} rows`}
+                  aria-label={t("markdown.columnsAndRows", { columns, rows })}
                   className={`h-3.5 w-3.5 rounded-[3px] border transition-colors ${
                     isHighlighted
                       ? "border-[#737373] bg-[#666666]"
@@ -773,14 +794,14 @@ export const MarkdownEditorToolbar = ({
         </div>
       </div>
     ),
-    [onInsertTable, tableSize],
+    [onInsertTable, tableSize, t],
   )
 
   const shortcutList = (
-    <div className="flex w-80 flex-col gap-2" aria-label="Markdown 编辑器快捷键">
+    <div className="flex w-80 flex-col gap-2" aria-label={t("markdown.shortcutsHint")}>
       <LxInput
-        aria-label="筛选快捷键"
-        placeholder="筛选快捷键或说明"
+        aria-label={t("common.search")}
+        placeholder={t("common.search")}
         prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
         size="xs"
         value={shortcutQuery}
@@ -788,12 +809,12 @@ export const MarkdownEditorToolbar = ({
       />
       <div className="max-h-72 overflow-y-auto custom-scrollbar">
         <div className="space-y-0.5">
-          {filteredShortcuts.map(({ keys, description }) => (
+          {filteredShortcuts.map(({ keys, descKey }) => (
             <div
               key={keys}
               className="flex min-h-7 items-center justify-between gap-3 rounded-[3px] px-1.5 text-xs hover:bg-white/5"
             >
-              <span className="min-w-0 text-white/55">{description}</span>
+              <span className="min-w-0 text-white/55">{t(descKey)}</span>
               <kbd className="shrink-0 font-mono text-[11px] text-white/75">
                 {getShortcutKeys(keys)}
               </kbd>
@@ -801,7 +822,7 @@ export const MarkdownEditorToolbar = ({
           ))}
         </div>
         {filteredShortcuts.length === 0 && (
-          <div className="py-4 text-center text-xs text-white/45">未找到匹配的快捷键</div>
+          <div className="py-4 text-center text-xs text-white/45">{t("common.none")}</div>
         )}
       </div>
     </div>
@@ -836,7 +857,7 @@ export const MarkdownEditorToolbar = ({
         contentClassName="!p-1.5"
       >
         <LxIconButton
-          aria-label="插入表格"
+          aria-label={t("markdown.formatTable")}
           size="small"
           onClick={() => setTableSize(null)}
           onMouseEnter={() => setTableSize(null)}
@@ -845,7 +866,7 @@ export const MarkdownEditorToolbar = ({
         </LxIconButton>
       </LxTooltip>
       <LxTooltip content={shortcutList} placement="bottom" trigger="click" contentClassName="!p-2">
-        <LxIconButton aria-label="快捷键" size="small">
+        <LxIconButton aria-label={t("markdown.shortcutsHint")} size="small">
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
@@ -880,14 +901,14 @@ export const MarkdownEditorToolbar = ({
         placement="bottom"
         trigger="hover"
       >
-        <LxIconButton aria-label="页面大纲" size="small">
+        <LxIconButton aria-label={t("markdown.tableOfContents")} size="small">
           <List className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
 
-      <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+      <LxTooltip content={isSaved ? t("common.saved") : t("common.unsaved")} placement="bottom">
         <span
-          aria-label={isSaved ? "已保存" : "未保存"}
+          aria-label={isSaved ? t("common.saved") : t("common.unsaved")}
           className={`mx-1.5 h-2 w-2 shrink-0 rounded-full ${isSaved ? "bg-emerald-400" : "bg-amber-400"}`}
           role="status"
         />

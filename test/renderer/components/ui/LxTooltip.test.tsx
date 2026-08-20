@@ -73,7 +73,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
     renderTooltip({ minimizable: true, closeOnScroll: false, closeOnOutsideClick: false })
     fireEvent.click(screen.getByText("触发"))
     expect(screen.getByText("Tip 内容")).not.toBeNull()
-    expect(screen.getByRole("button", { name: "最小化" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Collapse" })).not.toBeNull()
 
     const tooltip = screen.getByRole("tooltip")
     expect(tooltip.className).not.toContain("overflow-hidden")
@@ -86,7 +86,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
     flushCloseAnimation()
     expect(screen.getByText("Tip 内容")).not.toBeNull()
 
-    fireEvent.click(screen.getByRole("button", { name: "最小化" }))
+    fireEvent.click(screen.getByRole("button", { name: "Collapse" }))
     flushCloseAnimation()
     expect(screen.queryByText("Tip 内容")).toBeNull()
   })

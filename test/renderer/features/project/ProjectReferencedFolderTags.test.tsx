@@ -20,6 +20,7 @@ let mockSearchParams = new URLSearchParams()
 
 vi.mock("react-router-dom", () => ({
   useSearchParams: () => [mockSearchParams],
+  useInRouterContext: () => true,
 }))
 
 vi.mock("@/features/project/api/projectApi", () => ({
@@ -51,7 +52,7 @@ describe("ProjectReferencedFolderTags Component", () => {
     await act(async () => {
       render(<ProjectReferencedFolderTags />)
     })
-    expect(screen.getByLabelText("添加文件夹")).not.toBeNull()
+    expect(screen.getByLabelText("Add Folder")).not.toBeNull()
   })
 
   it("当有 itemId 且有引用文件夹时正确渲染文件夹标签", async () => {

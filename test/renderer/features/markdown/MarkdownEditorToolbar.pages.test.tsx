@@ -23,7 +23,7 @@ describe("MarkdownEditorToolbar 页面管理与交互", () => {
     const { rerender } = render(<MarkdownEditorToolbar {...defaultProps} pages={pages} />)
 
     // Initially not editing
-    expect(screen.queryByLabelText("页面名称")).toBeNull()
+    expect(screen.queryByLabelText("Name")).toBeNull()
 
     // Rerender with a newly added page
     const nextPages = [...pages, { id: "2", name: "Page 2", content: "" }]
@@ -38,7 +38,7 @@ describe("MarkdownEditorToolbar 页面管理与交互", () => {
     )
 
     // After pages length increases, it should auto enter editing mode
-    const input = screen.getByLabelText("页面名称") as HTMLInputElement
+    const input = screen.getByLabelText("Name") as HTMLInputElement
     expect(input).not.toBeNull()
     expect(input.value).toBe("Page 2")
   })

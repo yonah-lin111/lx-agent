@@ -1,14 +1,15 @@
-import { Bot, type LucideIcon, Server, Shield } from "lucide-react"
+import { Bot, type LucideIcon, Server, Settings as SettingsIcon, Shield } from "lucide-react"
 
 export interface SettingsSection {
   id: string
-  label: string
+  labelKey: "settings.general" | "settings.models" | "settings.providers" | "settings.permissions"
   icon: LucideIcon
 }
 
 // 设置页面分区。
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { id: "models", label: "模型配置", icon: Bot },
-  { id: "providers", label: "模型 Provider", icon: Server },
-  { id: "permissions", label: "权限", icon: Shield },
+  { id: "general", labelKey: "settings.general", icon: SettingsIcon },
+  { id: "models", labelKey: "settings.models", icon: Bot },
+  { id: "providers", labelKey: "settings.providers", icon: Server },
+  { id: "permissions", labelKey: "settings.permissions", icon: Shield },
 ] as const

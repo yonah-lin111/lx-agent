@@ -35,6 +35,7 @@ import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestio
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type { ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
@@ -187,6 +188,7 @@ export const AgentMessageItem = ({
   const previewRef = useRef<HTMLDivElement>(null)
   const userContentRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { t } = useTranslation()
 
   const [copied, setCopied] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -784,16 +786,16 @@ export const AgentMessageItem = ({
               <div className="flex items-center justify-end gap-1 pt-1">
                 <LxIconButton
                   size="small"
-                  aria-label="取消编辑"
-                  title={{ content: "取消", placement: "top" }}
+                  aria-label={t("agent.cancelEdit")}
+                  title={{ content: t("common.cancel"), placement: "top" }}
                   onClick={handleCancelEdit}
                 >
                   <X className="h-3.5 w-3.5" />
                 </LxIconButton>
                 <LxIconButton
                   size="small"
-                  aria-label="发送消息"
-                  title={{ content: "发送消息 (Enter)", placement: "top" }}
+                  aria-label={t("agent.sendMessage")}
+                  title={{ content: t("agent.sendMessage"), placement: "top" }}
                   disabled={!editText.trim() || editText.trim() === userText.trim()}
                   onClick={handleSaveEdit}
                 >
@@ -862,8 +864,8 @@ export const AgentMessageItem = ({
                 {isPinned && onLocate && (
                   <LxIconButton
                     size="small"
-                    aria-label="定位到消息"
-                    title={{ content: "定位到消息", placement: "top" }}
+                    aria-label={t("agent.locateMessage")}
+                    title={{ content: t("agent.locateMessage"), placement: "top" }}
                     onClick={onLocate}
                   >
                     <Locate className="h-3.5 w-3.5" />
@@ -872,8 +874,8 @@ export const AgentMessageItem = ({
                 {isCollapsible && (
                   <LxIconButton
                     size="small"
-                    aria-label={isExpanded ? "折叠内容" : "展开内容"}
-                    title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "top" }}
+                    aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
+                    title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "top" }}
                     onClick={toggleExpand}
                   >
                     {isExpanded ? (
@@ -891,8 +893,8 @@ export const AgentMessageItem = ({
                   onFork && (
                     <LxIconButton
                       size="small"
-                      aria-label="从此分支"
-                      title={{ content: "从此分支", placement: "top" }}
+                      aria-label={t("agent.forkFromHere")}
+                      title={{ content: t("agent.forkFromHere"), placement: "top" }}
                       onClick={() => onFork(messageTimestamp)}
                     >
                       <GitBranch className="h-3.5 w-3.5" />
@@ -901,8 +903,8 @@ export const AgentMessageItem = ({
                 {!readOnly && !message.isSteer && !message.command && (
                   <LxIconButton
                     size="small"
-                    aria-label="编辑消息"
-                    title={{ content: "编辑消息", placement: "top" }}
+                    aria-label={t("agent.editMessage")}
+                    title={{ content: t("agent.editMessage"), placement: "top" }}
                     onClick={handleStartEdit}
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -910,8 +912,8 @@ export const AgentMessageItem = ({
                 )}
                 <LxIconButton
                   size="small"
-                  aria-label="复制消息"
-                  title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+                  aria-label={t("agent.copyMessage")}
+                  title={{ content: copied ? t("common.copied") : t("agent.copyMessage"), placement: "top" }}
                   onClick={copyMessageContent}
                 >
                   {copied ? (
@@ -1115,7 +1117,7 @@ export const AgentMessageItem = ({
           className="agent-message-continue-btn mt-1 flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          继续生成
+          {t("agent.continueGenerating")}
         </button>
       )}
       {isLastAssistant && (
@@ -1131,8 +1133,8 @@ export const AgentMessageItem = ({
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             <LxIconButton
               size="small"
-              aria-label="复制消息"
-              title={{ content: copied ? "已复制" : "复制消息", placement: "top" }}
+              aria-label={t("agent.copyMessage")}
+              title={{ content: copied ? t("common.copied") : t("agent.copyMessage"), placement: "top" }}
               onClick={copyMessageContent}
             >
               {copied ? (
@@ -1142,8 +1144,8 @@ export const AgentMessageItem = ({
               )}
             </LxIconButton>
             {!readOnly && onDelete && (
-              <LxTooltip content="是否删除当前的QA" onConfirm={() => onDelete(message.id)}>
-                <LxIconButton size="small" aria-label="删除消息">
+              <LxTooltip content={t("agent.deleteQaConfirm")} onConfirm={() => onDelete(message.id)}>
+                <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </LxIconButton>
               </LxTooltip>

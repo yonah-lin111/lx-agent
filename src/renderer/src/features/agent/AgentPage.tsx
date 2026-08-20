@@ -9,6 +9,7 @@ import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { useLxToast } from "@/components/ui/LxToast"
 import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
+import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList } from "./components/AgentMessageList"
@@ -140,14 +141,15 @@ export const AgentPage = ({
   }, [worktrees, projectBranch, effectiveProjectPath, currentSessionPath])
 
   const { success, error, warning } = useLxToast()
+  const { t } = useTranslation()
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
   const handleStop = useCallback(() => {
     if (queuedCount > 0) {
-      success(`已丢弃 ${queuedCount} 条排队消息`)
+      success(t("agent.droppedQueuedMessages", { count: queuedCount }))
     }
     stopStreaming()
-  }, [queuedCount, stopStreaming, success])
+  }, [queuedCount, stopStreaming, success, t])
 
   // 挂起的权限请求：订阅事件流，驱动状态栏权限 icon tooltip（替代原弹窗）。
   const [pendingRequest, setPendingRequest] = useState<PermissionRequest | null>(null)
@@ -216,7 +218,7 @@ export const AgentPage = ({
         handleStop()
       } else {
         escStopRef.current = now
-        warning("再次按 Esc 可停止生成")
+        warning(t("agent.pressEscAgainToStop"))
       }
     }
 
@@ -224,21 +226,21 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning])
+  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
     (path: string): void => {
       void agentApi.switchWorktree(path).then((result) => {
         if (result.ok) {
-          success("已切换工作区")
+          success(t("agent.worktreeSwitched"))
           void sessionListStore.refresh()
         } else {
           error(result.error)
         }
       })
     },
-    [success, error],
+    [success, error, t],
   )
 
   // 会话分支：从指定用户轮切割复制历史到新会话，创建后自动切换（输入框留空直接重写）。
@@ -248,7 +250,7 @@ export const AgentPage = ({
       if (!sessionId) return
       void agentApi.forkSession(sessionId, userMessageTimestamp).then((result) => {
         if (result.ok) {
-          success("已创建分支会话")
+          success(t("agent.forkSessionCreated"))
           void sessionListStore.refresh()
           restoreChat(result.sessionId)
         } else {
@@ -256,7 +258,7 @@ export const AgentPage = ({
         }
       })
     },
-    [success, error, restoreChat],
+    [success, error, restoreChat, t],
   )
 
   // 建议问题输入框聚焦引用（回显后定位光标）。

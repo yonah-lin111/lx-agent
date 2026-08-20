@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react"
 import { createPortal } from "react-dom"
+import { useTranslation } from "@/i18n"
 
 // Tooltip 弹出位置。
 export type LxTooltipPlacement = "top" | "bottom" | "left" | "right"
@@ -98,6 +99,7 @@ export const LxTooltip = ({
   const isConfirming = typeof onConfirm === "function"
   const activeTrigger = isConfirming ? "click" : trigger
   const activeDelay = isConfirming ? 0 : delay
+  const { t } = useTranslation()
 
   // 嵌套浮层注册：维护属于本气泡的 portal 节点集合，并向上传播到父级 Tooltip，
   // 使深层嵌套（下拉、嵌套气泡）的点击/滚动都不会关闭任意祖先气泡。
@@ -441,7 +443,7 @@ export const LxTooltip = ({
                   )}
                   <button
                     type="button"
-                    aria-label="最小化"
+                    aria-label={t("common.collapse")}
                     onClick={() => syncVisible(false)}
                     className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
                   >
@@ -457,7 +459,7 @@ export const LxTooltip = ({
                   <div className="text-sm leading-snug">{content}</div>
                   <div className="mt-0.5 flex items-center justify-end gap-1">
                     <button
-                      aria-label="取消"
+                      aria-label={t("common.cancel")}
                       className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
                       type="button"
                       onClick={() => {
@@ -468,7 +470,7 @@ export const LxTooltip = ({
                       <X className="h-3 w-3" />
                     </button>
                     <button
-                      aria-label="确认"
+                      aria-label={t("common.confirm")}
                       className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
                       type="button"
                       onClick={() => {

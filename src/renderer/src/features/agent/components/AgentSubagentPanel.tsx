@@ -7,6 +7,7 @@ import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, SubagentData } from "@/features/agent/types"
 import { toChatMessage } from "@/features/agent/utils"
+import { useTranslation } from "@/i18n"
 
 // 子代理调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -30,6 +31,7 @@ export const AgentSubagentPanel = ({
   onClose,
   scrollRef,
 }: AgentSubagentPanelProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const isOpen = toolCall !== null
   const data: SubagentData | undefined = toolCall?.subagent
   const displayName = data?.name.trim() || "task"
@@ -52,7 +54,7 @@ export const AgentSubagentPanel = ({
   return (
     <div
       role="dialog"
-      aria-label="子代理面板"
+      aria-label={t("agent.subagentPanel")}
       inert={!isOpen}
       className="absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       style={{
@@ -77,21 +79,21 @@ export const AgentSubagentPanel = ({
               placement="bottom"
               content={
                 <div className="flex flex-col gap-0.5 whitespace-nowrap">
-                  <span>输入 {data.usage.input} tokens</span>
-                  <span>输出 {data.usage.output} tokens</span>
-                  <span>总计 {data.usage.totalTokens} tokens</span>
+                  <span>{t("agent.inputTokens", { count: data.usage.input })}</span>
+                  <span>{t("agent.outputTokens", { count: data.usage.output })}</span>
+                  <span>{t("agent.totalTokens", { count: data.usage.totalTokens })}</span>
                 </div>
               }
             >
-              <LxIconButton size="small" aria-label="查看统计">
+              <LxIconButton size="small" aria-label={t("agent.viewStats")}>
                 <BarChart3 className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
           )}
           <LxIconButton
             size="small"
-            aria-label="关闭子代理面板"
-            title={{ content: "收起面板", placement: "bottom" }}
+            aria-label={t("agent.closeSubagentPanel")}
+            title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
             onClick={onClose}
           >
             <X className="h-3.5 w-3.5" />
@@ -133,13 +135,13 @@ export const AgentSubagentPanel = ({
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/35">
-              子代理尚未产生内容
+              {t("agent.subagentNoContent")}
             </div>
           )}
         </>
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/35">
-          暂无子代理详情
+          {t("agent.subagentNoDetails")}
         </div>
       )}
     </div>

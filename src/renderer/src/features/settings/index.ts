@@ -1,4 +1,5 @@
 export * from "./api/settingsApi"
+export * from "./components/GeneralSettings"
 export * from "./components/ModelProviderSettings"
 export * from "./components/ModelSettings"
 export * from "./components/PermissionSettings"

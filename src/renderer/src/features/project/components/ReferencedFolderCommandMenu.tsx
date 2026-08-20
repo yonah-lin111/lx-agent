@@ -7,6 +7,7 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useTranslation } from "@/i18n"
 
 // 文件夹命令面板属性。
 interface ReferencedFolderCommandMenuProps {
@@ -23,6 +24,7 @@ export const ReferencedFolderCommandMenu = ({
   position,
   onClose,
 }: ReferencedFolderCommandMenuProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const [files, setFiles] = useState<ProjectFileEntry[]>([])
   const [query, setQuery] = useState("")
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
@@ -166,7 +168,7 @@ export const ReferencedFolderCommandMenu = ({
   return createPortal(
     <div
       ref={panelRef}
-      aria-label="引用文件夹内容"
+      aria-label={t("project.referencedFolderContent")}
       className={`markdown-command-menu markdown-command-menu--file fixed z-50 flex h-[var(--markdown-command-menu-file-max-height)] w-80 flex-col overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
@@ -181,9 +183,12 @@ export const ReferencedFolderCommandMenu = ({
         >
           {folderPath}
         </span>
-        <LxTooltip content={isFolderPathCopied ? "已复制" : "复制路径"} placement="top">
+        <LxTooltip
+          content={isFolderPathCopied ? t("common.copied") : t("project.copyPath")}
+          placement="top"
+        >
           <button
-            aria-label="复制文件夹路径"
+            aria-label={t("project.copyFolderPath")}
             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${
               isFolderPathCopied ? "text-emerald-400" : "text-white/40 hover:text-white/80"
             }`}
@@ -220,9 +225,12 @@ export const ReferencedFolderCommandMenu = ({
                 <div className="truncate">{file.isDirectory ? `${name}/` : name}</div>
                 {directory && <div className="truncate text-[12px] text-white/40">{directory}</div>}
               </div>
-              <LxTooltip content={isCopied ? "已复制" : "复制引用"} placement="top">
+              <LxTooltip
+                content={isCopied ? t("common.copied") : t("project.copyRef")}
+                placement="top"
+              >
                 <button
-                  aria-label="复制引用"
+                  aria-label={t("project.copyRef")}
                   className={`ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] transition-colors ${
                     isCopied
                       ? "text-emerald-400"
@@ -241,8 +249,8 @@ export const ReferencedFolderCommandMenu = ({
       <div>
         <LxInput
           ref={inputRef}
-          aria-label="搜索文件夹内容"
-          placeholder="搜索文件夹内容"
+          aria-label={t("project.searchFolderContent")}
+          placeholder={t("project.searchFolderContent")}
           prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/40" />}
           size="xs"
           value={query}

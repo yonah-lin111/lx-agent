@@ -5,6 +5,7 @@ import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import { getMentionDirectoryTag } from "@/features/project/utils"
+import { useTranslation } from "@/i18n"
 
 export interface AgentInputCommand {
   id: string
@@ -180,6 +181,7 @@ export const AgentInputModelPanel = ({
   models,
   activeIndex,
 }: AgentInputModelPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const hasData = position !== null && models.length > 0
   const animated = usePanelAnimation(
     isOpen && hasData,
@@ -201,7 +203,7 @@ export const AgentInputModelPanel = ({
   return (
     <div
       ref={panelRef}
-      aria-label="模型选择"
+      aria-label={t("agent.modelSelect")}
       className={`${panelClassName} ${
         animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
@@ -250,6 +252,7 @@ export const AgentInputCommandPanel = ({
   commands,
   activeIndex,
 }: AgentInputCommandPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const hasData = position !== null && commands.length > 0
   const animated = usePanelAnimation(
     isOpen && hasData,
@@ -271,7 +274,7 @@ export const AgentInputCommandPanel = ({
   return (
     <div
       ref={panelRef}
-      aria-label="Slash 命令"
+      aria-label={t("agent.slashCommands")}
       className={`${panelClassName} ${
         animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
@@ -338,6 +341,7 @@ export const AgentInputFilePanel = ({
   files,
   activeIndex,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const hasData = position !== null && files.length > 0
   const animated = usePanelAnimation(
     isOpen && hasData,
@@ -359,7 +363,7 @@ export const AgentInputFilePanel = ({
   return (
     <div
       ref={panelRef}
-      aria-label="项目文件提及"
+      aria-label={t("agent.fileMention")}
       className={`${panelClassName} ${
         animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}

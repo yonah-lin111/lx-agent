@@ -73,7 +73,7 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
     fireEvent.keyDown(editor, { key: "Enter", shiftKey: true })
     expect(onSend).toHaveBeenCalledWith({ delivery: "steer" })
     // 发送后输入框顶部展示即时插话提示条（参考排队消息提示）。
-    expect(screen.getByText("已发送即时插话，将在当前步骤完成后生效")).toBeDefined()
+    expect(screen.getByText("Interruption sent, will take effect after current step")).toBeDefined()
   })
 
   it("输入 /steer 命令发送时，自动转换为 delivery='steer'", async () => {
@@ -185,6 +185,7 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
           selectedFiles={[]}
           onFilesChange={vi.fn()}
           supportsImages={false}
+          projectId="test-proj"
         />
       )
     }
@@ -196,12 +197,12 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
     // 输入 "/st" 筛选到 /steer 并按 Enter
     await act(async () => {
       fireEvent.focus(editor)
-      updateText("/st")
+      updateText("/steer")
     })
     await act(async () => {})
     fireEvent.keyDown(editor, { key: "Enter" })
 
-    expect(currentText).toBe("/steer ")
+    expect(currentText).toBe("/steer [prompt]")
   })
 
   it("steer 内容不写入历史提示词（普通发送正常记录）", async () => {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 export interface AgentInputFile {
   id: string
@@ -23,6 +24,7 @@ export const AgentInputFiles = ({
   files,
   onRemove,
 }: AgentInputFilesProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -72,7 +74,7 @@ export const AgentInputFiles = ({
   return (
     <div className="mb-2 flex items-center gap-1.5 border-b border-white/5 pb-2">
       <LxIconButton
-        aria-label="向左滚动"
+        aria-label={t("common.previous")}
         disabled={!canScrollLeft}
         size="small"
         onClick={() => handleScroll("left")}
@@ -117,7 +119,7 @@ export const AgentInputFiles = ({
                   prefix={prefixIcon}
                   onClose={() => onRemove(file.id)}
                   confirmClose={false}
-                  closeTooltipContent="移除此文件"
+                  closeTooltipContent={t("common.delete")}
                 >
                   {file.name}
                 </LxTag>
@@ -128,7 +130,7 @@ export const AgentInputFiles = ({
       </div>
 
       <LxIconButton
-        aria-label="向右滚动"
+        aria-label={t("common.next")}
         disabled={!canScrollRight}
         size="small"
         onClick={() => handleScroll("right")}

@@ -13,6 +13,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentJobsMonitorView } from "@/features/agent/components/AgentJobsMonitorView"
 import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
 import { GhosttyTerminalView } from "@/features/terminal"
+import { useTranslation } from "@/i18n"
 import { useBottomSideBarStore } from "./bottomSideBarStore"
 
 // 展开态最小高度（相对视口高度，单位 vh）。
@@ -102,17 +103,23 @@ export const BottomSideBar = ({
     }
   }, [isResizing])
 
+  const { t } = useTranslation()
+
   // 渲染右侧操作栏（包含控制台/长任务切换、覆盖右侧栏、折叠按钮）
   const renderRightActions = (): React.JSX.Element => (
     <div className="flex shrink-0 items-center gap-1">
       {/* 视图切换按钮：位于覆盖 icon 左侧 */}
       <LxIconButton
-        aria-label={viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"}
+        aria-label={
+          viewMode === "terminal" ? t("bottomBar.switchToJobs") : t("bottomBar.switchToTerminal")
+        }
         title={{
           content:
             viewMode === "terminal"
-              ? `Switch to Background Jobs${runningJobs.length > 0 ? ` (${runningJobs.length} running)` : ""}`
-              : "Switch to Terminal",
+              ? `${t("bottomBar.switchToJobs")}${
+                  runningJobs.length > 0 ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}` : ""
+                }`
+              : t("bottomBar.switchToTerminal"),
           placement: "top",
         }}
         onClick={() => setViewMode(viewMode === "terminal" ? "jobs" : "terminal")}
@@ -130,9 +137,15 @@ export const BottomSideBar = ({
       </LxIconButton>
 
       <LxIconButton
-        aria-label={isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"}
+        aria-label={
+          isCoveringRightSideBar
+            ? t("bottomBar.uncoverRightSidebar")
+            : t("bottomBar.coverRightSidebar")
+        }
         title={{
-          content: isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度",
+          content: isCoveringRightSideBar
+            ? t("bottomBar.uncoverRightSidebar")
+            : t("bottomBar.coverRightSidebar"),
           placement: "top",
         }}
         onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
@@ -146,8 +159,8 @@ export const BottomSideBar = ({
       </LxIconButton>
 
       <LxIconButton
-        aria-label="折叠底边栏"
-        title={{ content: "折叠底边栏", placement: "top" }}
+        aria-label={t("bottomBar.collapseBottomBar")}
+        title={{ content: t("bottomBar.collapseBottomBar"), placement: "top" }}
         onClick={() => onExpandedChange(false)}
         size="small"
       >
@@ -172,7 +185,7 @@ export const BottomSideBar = ({
       {/* 顶部拖拽调整高度把手：仅在展开态生效 */}
       {isExpanded && (
         <div
-          aria-label="调整底边栏高度"
+          aria-label={t("bottomBar.resizeBottomBar")}
           className="absolute top-0 left-0 right-0 z-10 h-1.5 cursor-row-resize touch-none hover:bg-white/10 transition-colors"
           onPointerCancel={handleResizeEnd}
           onPointerDown={handleResizeStart}
@@ -210,13 +223,19 @@ export const BottomSideBar = ({
             <div className="flex shrink-0 items-center gap-1 pl-2">
               <LxIconButton
                 aria-label={
-                  viewMode === "terminal" ? "Switch to Background Jobs" : "Switch to Terminal"
+                  viewMode === "terminal"
+                    ? t("bottomBar.switchToJobs")
+                    : t("bottomBar.switchToTerminal")
                 }
                 title={{
                   content:
                     viewMode === "terminal"
-                      ? `Switch to Background Jobs${runningJobs.length > 0 ? ` (${runningJobs.length} running)` : ""}`
-                      : "Switch to Terminal",
+                      ? `${t("bottomBar.switchToJobs")}${
+                          runningJobs.length > 0
+                            ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}`
+                            : ""
+                        }`
+                      : t("bottomBar.switchToTerminal"),
                   placement: "top",
                 }}
                 onClick={() => {
@@ -238,12 +257,14 @@ export const BottomSideBar = ({
 
               <LxIconButton
                 aria-label={
-                  isCoveringRightSideBar ? "底边栏不覆盖右侧栏宽度" : "底边栏覆盖右侧栏宽度"
+                  isCoveringRightSideBar
+                    ? t("bottomBar.uncoverRightSidebar")
+                    : t("bottomBar.coverRightSidebar")
                 }
                 title={{
                   content: isCoveringRightSideBar
-                    ? "底边栏不覆盖右侧栏宽度"
-                    : "底边栏覆盖右侧栏宽度",
+                    ? t("bottomBar.uncoverRightSidebar")
+                    : t("bottomBar.coverRightSidebar"),
                   placement: "top",
                 }}
                 onClick={() => onCoveringRightSideBarChange(!isCoveringRightSideBar)}
@@ -257,8 +278,8 @@ export const BottomSideBar = ({
               </LxIconButton>
 
               <LxIconButton
-                aria-label="展开底边栏"
-                title={{ content: "展开底边栏", placement: "top" }}
+                aria-label={t("common.expand")}
+                title={{ content: t("common.expand"), placement: "top" }}
                 onClick={() => onExpandedChange(true)}
                 size="small"
               >

@@ -5,6 +5,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
+  GeneralSettings,
   ModelProviderSettings,
   ModelSettings,
   notifySettingsChanged,
@@ -15,11 +16,13 @@ import {
   useSettingsData,
   useSettingsMutations,
 } from "@/features/settings"
+import { useTranslation, type TranslationKey } from "@/i18n"
 
-const SECTION_DESCRIPTIONS: Record<string, string> = {
-  models: "选择各类任务默认使用的模型",
-  providers: "配置与管理模型 Provider 及模型参数",
-  permissions: "配置 Agent 工具执行权限与确认模式",
+const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
+  general: "settings.generalDesc",
+  models: "settings.modelsDesc",
+  providers: "settings.providersDesc",
+  permissions: "settings.permissionsDesc",
 }
 
 /**
@@ -34,6 +37,7 @@ export const SettingsPage = (): React.JSX.Element => {
   const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
   const addProviderRef = useRef<(() => void) | null>(null)
   const toast = useLxToast()
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (settings && permissionSettings && lastSavedSettings === null) {
@@ -59,15 +63,16 @@ export const SettingsPage = (): React.JSX.Element => {
       setLastSavedSettings(JSON.stringify({ models: saved, permissions: savedPermission }))
       notifySettingsChanged("models")
       notifySettingsChanged("permissions")
-      toast.success("保存配置成功")
+      toast.success(t("settings.saveSuccess"))
     } catch (saveError) {
-      const errorMessage = saveError instanceof Error ? saveError.message : "保存配置失败"
+      const errorMessage = saveError instanceof Error ? saveError.message : t("settings.saveFailed")
       setError(errorMessage)
       toast.error(errorMessage)
     }
   }
 
-  const currentDescription = SECTION_DESCRIPTIONS[activeSection] ?? ""
+  const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
+  const currentDescription = descKey ? t(descKey) : ""
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
@@ -77,17 +82,17 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "providers" ? (
             <LxIconButton
               preset="add"
-              aria-label="添加 Provider"
-              title={{ content: "添加 Provider", placement: "bottom" }}
+              aria-label={t("settings.addProvider")}
+              title={{ content: t("settings.addProvider"), placement: "bottom" }}
               onClick={() => addProviderRef.current?.()}
             />
           ) : null}
           <LxIconButton
             preset="save"
-            aria-label="保存配置"
+            aria-label={t("settings.saveSettings")}
             title={{
-              title: "确认保存配置？",
-              content: "保存后立即生效,无需刷新",
+              title: t("settings.confirmSaveTitle"),
+              content: t("settings.confirmSaveContent"),
               placement: "bottom",
               onConfirm: () => void save(),
             }}
@@ -95,9 +100,9 @@ export const SettingsPage = (): React.JSX.Element => {
           >
             <Save className="h-4 w-4" />
           </LxIconButton>
-          <LxTooltip content={isSaved ? "已保存" : "未保存"} placement="bottom">
+          <LxTooltip content={isSaved ? t("common.saved") : t("common.unsaved")} placement="bottom">
             <span
-              aria-label={isSaved ? "已保存" : "未保存"}
+              aria-label={isSaved ? t("common.saved") : t("common.unsaved")}
               className={`ml-1.5 h-2 w-2 shrink-0 rounded-full ${
                 isSaved ? "bg-emerald-400" : "bg-amber-400"
               }`}
@@ -109,12 +114,12 @@ export const SettingsPage = (): React.JSX.Element => {
 
       {isLoading ? (
         <div className="flex h-full items-center justify-center text-sm text-white/45">
-          正在读取配置...
+          {t("settings.loadingSettings")}
         </div>
       ) : !settings ? (
         <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-rose-300">
           <AlertCircle className="h-5 w-5" />
-          <span>{error || "无法读取配置"}</span>
+          <span>{error || t("settings.loadSettingsFailed")}</span>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -122,6 +127,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {permissionError ? (
             <p className="px-3 pt-2 text-xs text-rose-300">{permissionError}</p>
           ) : null}
+          {activeSection === "general" ? <GeneralSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}
@@ -132,8 +138,8 @@ export const SettingsPage = (): React.JSX.Element => {
               onRegisterAddProvider={(fn) => {
                 addProviderRef.current = fn
               }}
-              onAddProvider={() => toast.success("添加 Provider 成功")}
-              onDeleteProvider={() => toast.success("删除 Provider 成功")}
+              onAddProvider={() => toast.success(t("settings.addProviderSuccess"))}
+              onDeleteProvider={() => toast.success(t("settings.deleteProviderSuccess"))}
             />
           ) : null}
           {activeSection === "permissions" && permissionSettings ? (

@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { SETTINGS_SECTIONS } from "@/features/settings"
+import { useTranslation } from "@/i18n"
 
 export interface SettingsLeftSideBarProps {
   isCollapsed?: boolean
@@ -14,6 +15,7 @@ export const SettingsLeftSideBar = ({
 }: SettingsLeftSideBarProps): React.JSX.Element => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { t } = useTranslation()
   const activeSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
 
   if (isCollapsed) {
@@ -22,17 +24,18 @@ export const SettingsLeftSideBar = ({
         <div className="flex h-7 shrink-0 items-center justify-end px-1" />
         <nav
           className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2"
-          aria-label="设置分区"
+          aria-label={t("settings.title")}
         >
           {SETTINGS_SECTIONS.map((section) => {
             const isActive = activeSection === section.id
             const Icon = section.icon
+            const label = t(section.labelKey)
             return (
               <LxIconButton
                 key={section.id}
                 aria-current={isActive ? "page" : undefined}
-                aria-label={section.label}
-                title={{ content: section.label, placement: "right" }}
+                aria-label={label}
+                title={{ content: label, placement: "right" }}
                 highlighted={isActive}
                 onClick={() => navigate(`/settings?section=${section.id}`)}
               >
@@ -50,11 +53,12 @@ export const SettingsLeftSideBar = ({
       <div className="flex h-7 shrink-0 items-center justify-end px-1" />
       <nav
         className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-1 pb-2"
-        aria-label="设置分区"
+        aria-label={t("settings.title")}
       >
         {SETTINGS_SECTIONS.map((section) => {
           const isActive = activeSection === section.id
           const Icon = section.icon
+          const label = t(section.labelKey)
           return (
             <button
               key={section.id}
@@ -66,7 +70,7 @@ export const SettingsLeftSideBar = ({
               onClick={() => navigate(`/settings?section=${section.id}`)}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{section.label}</span>
+              <span className="truncate">{label}</span>
             </button>
           )
         })}

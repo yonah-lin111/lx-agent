@@ -30,7 +30,7 @@ Template content here.
     render(<MarkdownEditorToolbar {...defaultProps} content={sampleContent} activeLine={1} />)
 
     // Trigger hover on the TOC button to open the tooltip
-    const tocBtn = screen.getAllByLabelText("页面大纲")[0]
+    const tocBtn = screen.getAllByLabelText("Table of Contents")[0]
     fireEvent.mouseEnter(tocBtn)
 
     // Verify template block catalog title is present
@@ -38,7 +38,7 @@ Template content here.
     expect(templateItem).not.toBeNull()
 
     // Switch to headings catalog
-    const headingTabBtn = screen.getByText("标题目录")
+    const headingTabBtn = screen.getByText("Headings")
     fireEvent.click(headingTabBtn)
 
     // Verify headings are present
@@ -58,7 +58,7 @@ Template content here.
       />,
     )
 
-    const tocBtn = screen.getAllByLabelText("页面大纲")[0]
+    const tocBtn = screen.getAllByLabelText("Table of Contents")[0]
     fireEvent.mouseEnter(tocBtn)
 
     // Click on a template item
@@ -73,7 +73,7 @@ Template content here.
   it("支持关键字搜索过滤", async () => {
     render(<MarkdownEditorToolbar {...defaultProps} content={sampleContent} activeLine={1} />)
 
-    const tocBtn = screen.getAllByLabelText("页面大纲")[0]
+    const tocBtn = screen.getAllByLabelText("Table of Contents")[0]
     fireEvent.mouseEnter(tocBtn)
 
     // Initially "My Custom Template" is visible
@@ -81,11 +81,11 @@ Template content here.
     expect(templateItem).not.toBeNull()
 
     // Search for non-existent keyword
-    const searchInput = screen.getByPlaceholderText("搜索模版块...")
+    const searchInput = screen.getByPlaceholderText("Search templates...")
     fireEvent.change(searchInput, { target: { value: "NotExist" } })
 
     // Verify "My Custom Template" is filtered out
     expect(screen.queryByText("My Custom Template")).toBeNull()
-    expect(screen.getByText("未找到匹配的模版块")).not.toBeNull()
+    expect(screen.getByText("None")).not.toBeNull()
   })
 })

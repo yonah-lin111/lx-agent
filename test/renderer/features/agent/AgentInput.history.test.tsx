@@ -36,7 +36,7 @@ beforeAll(() => {
   Range.prototype.getBoundingClientRect = () => rect
 })
 
-const PLACEHOLDER = "给 LX Agent 发送消息..."
+const PLACEHOLDER = "Send a message or type / for commands..."
 
 // 受控输入 harness：onInputChange 驱动本地 state，使 CodeMirror 内容变化可回写。
 const renderInput = async (history: string[], initialText = "") => {
@@ -148,16 +148,16 @@ describe("AgentInput 历史提示词键盘", () => {
   it("点击扩大按钮切换扩大/自适应高度", async () => {
     await renderInput([])
 
-    const expandBtn = screen.getByRole("button", { name: "扩大输入框" })
+    const expandBtn = screen.getByRole("button", { name: "Expand Input" })
     expect(expandBtn).not.toBeNull()
 
     fireEvent.click(expandBtn)
 
-    const shrinkBtn = screen.getByRole("button", { name: "自适应高度" })
+    const shrinkBtn = screen.getByRole("button", { name: "Adaptive Height" })
     expect(shrinkBtn).not.toBeNull()
 
     fireEvent.click(shrinkBtn)
 
-    expect(screen.getByRole("button", { name: "扩大输入框" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Expand Input" })).not.toBeNull()
   })
 })

@@ -3,13 +3,15 @@ import { dirname } from "node:path"
 import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
   CompactionSettings,
+  Locale,
   ModelProvider,
   ModelProviderModel,
   ModelProviderSettings,
   ModelSelection,
   ProviderTransportType,
+  UiSettings,
 } from "@shared/settings"
-import { DEFAULT_COMPACTION_SETTINGS } from "@shared/settings"
+import { DEFAULT_COMPACTION_SETTINGS, DEFAULT_UI_SETTINGS } from "@shared/settings"
 import { getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。
@@ -420,4 +422,48 @@ export const getCompactionSettings = (): CompactionSettings => {
       DEFAULT_COMPACTION_SETTINGS.reserveTokens,
     ),
   }
+}
+
+/**
+ * 规范化 UI 客户端配置。
+ */
+const normalizeUiSettings = (raw: unknown): UiSettings => {
+  if (!isRecord(raw)) return DEFAULT_UI_SETTINGS
+  const locale = raw.locale === "zh" || raw.locale === "en" ? (raw.locale as Locale) : DEFAULT_UI_SETTINGS.locale
+  return {
+    locale,
+  }
+}
+
+/**
+ * 读取 UI 客户端配置。
+ */
+export const getUiSettings = (): UiSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  return normalizeUiSettings(rawConfig.ui)
+}
+
+/**
+ * 保存 UI 客户端配置。
+ */
+export const saveUiSettings = (input: UiSettings): UiSettings => {
+  const settings = normalizeUiSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawUiObj = isRecord(rawConfig.ui) ? { ...rawConfig.ui } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    ui: {
+      ...rawUiObj,
+      ...settings,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
 }

@@ -62,6 +62,8 @@ const api: ProjectApi &
     getPermissionSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getPermissionSettings),
     savePermissionSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.savePermissionSettings, settings),
+    getUiSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getUiSettings),
+    saveUiSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveUiSettings, settings),
   },
   agent: agentApi,
   markdown: markdownApi,

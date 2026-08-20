@@ -45,6 +45,7 @@ import type {
   MarkdownToolbarAction,
 } from "@/components/ui/LxMarkdown/types"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
 
 /**
@@ -356,18 +357,24 @@ export const LxMarkdownEditor = ({
     }
   }, [showLineNumbers, showFolding])
 
-  const splitLabel = isMacOS() ? "双栏预览 (Cmd+Shift+E)" : "双栏预览 (Ctrl+Shift+E)"
-  const previewLabel = isMacOS() ? "仅预览 (Cmd+Shift+V)" : "仅预览 (Ctrl+Shift+V)"
+  const { t } = useTranslation()
+
+  const splitLabel = t("markdown.splitViewShortcut", {
+    shortcut: isMacOS() ? "Cmd+Shift+E" : "Ctrl+Shift+E",
+  })
+  const previewLabel = t("markdown.previewShortcut", {
+    shortcut: isMacOS() ? "Cmd+Shift+V" : "Ctrl+Shift+V",
+  })
 
   const actions: MarkdownToolbarAction[] = [
     {
       icon: Undo2,
-      label: "撤销",
+      label: t("common.undo"),
       onClick: () => editorViewRef.current && undo(editorViewRef.current),
     },
     {
       icon: Redo2,
-      label: "重做",
+      label: t("common.redo"),
       onClick: () => editorViewRef.current && redo(editorViewRef.current),
     },
     {

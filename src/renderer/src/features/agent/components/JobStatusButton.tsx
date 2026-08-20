@@ -2,6 +2,7 @@ import type { JobSnapshot } from "@shared/contracts/agent"
 import { Loader2, Terminal } from "lucide-react"
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 interface JobStatusButtonProps {
   jobs: JobSnapshot[]
@@ -12,6 +13,7 @@ export const JobStatusButton = ({
   jobs,
   onOpenJobs,
 }: JobStatusButtonProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   if (!jobs || jobs.length === 0) return null
 
   const runningJobs = jobs.filter((j) => j.status === "running" || j.status === "stopping")
@@ -28,10 +30,9 @@ export const JobStatusButton = ({
   const tooltipContent = (
     <div className="flex min-w-[160px] max-w-[260px] flex-col gap-1.5">
       <span className="text-[11px] font-semibold text-white/50">
-        后台长任务 ·{" "}
         {runningCount > 0
-          ? `${runningCount} 运行中 / ${jobs.length} 总计`
-          : `${jobs.length} 个记录`}
+          ? t("agent.backgroundJobsCount", { running: runningCount, total: jobs.length })
+          : t("agent.backgroundJobsTotal", { count: jobs.length })}
       </span>
       {jobs.slice(0, 5).map((job) => (
         <div key={job.id} className="flex items-center justify-between gap-2 text-xs">
@@ -52,7 +53,9 @@ export const JobStatusButton = ({
         </div>
       ))}
       {jobs.length > 5 && (
-        <span className="text-[10px] text-white/40">...等共 {jobs.length} 个任务 (点击查看)</span>
+        <span className="text-[10px] text-white/40">
+          {t("agent.moreJobsClickToView", { count: jobs.length })}
+        </span>
       )}
     </div>
   )
@@ -61,7 +64,7 @@ export const JobStatusButton = ({
     <LxTooltip content={tooltipContent} placement="top">
       <button
         type="button"
-        aria-label="后台任务监控"
+        aria-label={t("agent.jobStatus")}
         onClick={handleClick}
         className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/10 ${
           runningCount > 0

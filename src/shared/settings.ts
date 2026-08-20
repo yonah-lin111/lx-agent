@@ -76,6 +76,18 @@ export type FetchModelsInput = {
   apiKey: string
 }
 
+// 支持的语言类型。
+export type Locale = "en" | "zh"
+
+// UI 客户端配置（~/.lx/config.json 的 ui 节点）。
+export type UiSettings = {
+  locale: Locale
+}
+
+export const DEFAULT_UI_SETTINGS: UiSettings = {
+  locale: "en",
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -84,5 +96,7 @@ export interface SettingsApi {
     fetchModels: (input: FetchModelsInput) => Promise<FetchedProviderModel[]>
     getPermissionSettings: () => Promise<PermissionSettings>
     savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
+    getUiSettings: () => Promise<UiSettings>
+    saveUiSettings: (settings: UiSettings) => Promise<UiSettings>
   }
 }

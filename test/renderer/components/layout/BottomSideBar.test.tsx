@@ -11,6 +11,16 @@ import {
   RESERVED_TOP_HEIGHT_PX,
 } from "@/components/layout/BottomSideBar"
 
+// jsdom 未实现 ResizeObserver，用空实现代替。
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe = (): void => undefined
+    unobserve = (): void => undefined
+    disconnect = (): void => undefined
+  },
+)
+
 vi.mock("@/features/terminal", () => ({
   GhosttyTerminalView: ({ rightActions }: { rightActions?: React.ReactNode }) => (
     <div data-testid="mock-ghostty-terminal">
@@ -49,9 +59,9 @@ describe("BottomSideBar", () => {
       />,
     )
 
-    expect(screen.getByLabelText("调整底边栏高度")).not.toBeNull()
+    expect(screen.getByLabelText("Resize Bottom Bar")).not.toBeNull()
     expect(screen.getByTestId("mock-ghostty-terminal")).not.toBeNull()
-    expect(screen.getByLabelText("折叠底边栏")).not.toBeNull()
+    expect(screen.getAllByLabelText("Collapse Bottom Bar").length).toBeGreaterThan(0)
   })
 
   it("折叠态展示紧凑条与展开按钮", () => {
@@ -67,6 +77,6 @@ describe("BottomSideBar", () => {
     )
 
     expect(screen.getByText("状态栏内容")).not.toBeNull()
-    expect(screen.getByLabelText("展开底边栏")).not.toBeNull()
+    expect(screen.getByLabelText("Expand")).not.toBeNull()
   })
 })

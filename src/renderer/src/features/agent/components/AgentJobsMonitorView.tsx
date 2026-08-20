@@ -20,6 +20,7 @@ import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 import { useAgentJobs } from "../hooks/useAgentJobs"
 
 interface AgentJobsMonitorViewProps {
@@ -67,6 +68,7 @@ export const AgentJobsMonitorView = ({
   const storeSelectedJobId = useBottomSideBarStore((state) => state.selectedJobId)
 
   const { success: successToast } = useLxToast()
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const [pendingCloseJobId, setPendingCloseJobId] = useState<string | null>(null)
@@ -176,7 +178,7 @@ export const AgentJobsMonitorView = ({
 
         {/* 向左滚动按钮 */}
         <LxIconButton
-          aria-label="Scroll left"
+          aria-label={t("common.previous")}
           disabled={!canScrollLeft}
           size="small"
           onClick={() => handleScroll("left")}
@@ -274,7 +276,7 @@ export const AgentJobsMonitorView = ({
 
         {/* 向右滚动按钮 */}
         <LxIconButton
-          aria-label="Scroll right"
+          aria-label={t("common.next")}
           disabled={!canScrollRight}
           size="small"
           onClick={() => handleScroll("right")}
@@ -304,9 +306,9 @@ export const AgentJobsMonitorView = ({
                 </LxTooltip>
               )}
 
-              <LxTooltip content="Copy logs" placement="top">
+              <LxTooltip content={copied ? t("common.copied") : t("common.copy")} placement="top">
                 <LxIconButton
-                  aria-label="Copy logs"
+                  aria-label={t("common.copy")}
                   size="small"
                   onClick={() => void handleCopyLogs()}
                 >
@@ -318,9 +320,9 @@ export const AgentJobsMonitorView = ({
                 </LxIconButton>
               </LxTooltip>
 
-              <LxTooltip content="Refresh list" placement="top">
+              <LxTooltip content={t("common.refresh")} placement="top">
                 <LxIconButton
-                  aria-label="Refresh list"
+                  aria-label={t("common.refresh")}
                   size="small"
                   onClick={() => void refreshJobs()}
                 >
@@ -331,9 +333,9 @@ export const AgentJobsMonitorView = ({
           )}
 
           {settledJobs.length > 0 && (
-            <LxTooltip content={`Clear finished jobs (${settledJobs.length})`} placement="top">
+            <LxTooltip content={t("common.clear")} placement="top">
               <LxIconButton
-                aria-label="Clear finished jobs"
+                aria-label={t("common.clear")}
                 size="small"
                 onClick={() => void handleClearSettled()}
               >

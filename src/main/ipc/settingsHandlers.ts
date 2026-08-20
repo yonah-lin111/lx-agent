@@ -6,8 +6,10 @@ import { fetchProviderModels } from "@/services/modelFetchService"
 import {
   getModelProviderSettings,
   getPermissionSettings,
+  getUiSettings,
   saveModelProviderSettings,
   savePermissionSettings,
+  saveUiSettings,
 } from "@/services/settingsService"
 
 /**
@@ -27,4 +29,6 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.savePermissionSettings, (_, input) =>
     savePermissionSettings(input),
   )
+  ipcMain.handle(SETTINGS_CHANNELS.getUiSettings, () => getUiSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveUiSettings, (_, input) => saveUiSettings(input))
 }

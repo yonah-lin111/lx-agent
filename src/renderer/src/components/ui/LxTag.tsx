@@ -1,6 +1,7 @@
 import { X } from "lucide-react"
 import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 // LxTag 组件尺寸类型。
 export type LxTagSize = "small" | "default" | "large"
@@ -128,19 +129,21 @@ export const LxTag = ({
   onClick,
   onClose,
   confirmClose = true,
-  closeTooltipContent = "确认删除此标签？",
+  closeTooltipContent,
   color = "default",
   bgClass,
   highlightBgClass,
   hoverClass,
   className = "",
 }: LxTagProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
   const isInteractive = isClickable || typeof onClose === "function"
   const defaultBg = bgClass ?? colorStyles[color].bg
   const defaultHighlightBg = highlightBgClass ?? colorStyles[color].highlightBg
   const defaultHover = hoverClass ?? colorStyles[color].hover
+  const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
 
   return (
     <span
@@ -164,9 +167,9 @@ export const LxTag = ({
           {suffix}
           {onClose &&
             (confirmClose ? (
-              <LxTooltip content={closeTooltipContent} onConfirm={onClose} placement="top">
+              <LxTooltip content={resolvedCloseTooltip} onConfirm={onClose} placement="top">
                 <span
-                  aria-label="删除标签"
+                  aria-label={t("common.delete")}
                   className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
                   role="button"
                   onClick={(event) => event.stopPropagation()}
@@ -175,9 +178,9 @@ export const LxTag = ({
                 </span>
               </LxTooltip>
             ) : (
-              <LxTooltip content={closeTooltipContent} placement="top">
+              <LxTooltip content={resolvedCloseTooltip} placement="top">
                 <span
-                  aria-label="删除标签"
+                  aria-label={t("common.delete")}
                   className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
                   role="button"
                   onClick={(event) => {

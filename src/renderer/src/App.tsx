@@ -8,6 +8,7 @@ import { PageContent } from "@/components/layout/PageContent"
 import { RightSideBar } from "@/components/layout/RightSidebar"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
+import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
@@ -60,39 +61,41 @@ export const App = () => {
   }
 
   return (
-    <LxToastProvider>
-      <div className="flex h-screen w-screen flex-col gap-2 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
-        <LeftSideBar>{renderLeftSideBarContent()}</LeftSideBar>
-        <div className="flex h-auto min-w-0 flex-1 flex-col overflow-hidden lg:h-full">
-          <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,1fr)_auto]">
-            <div className="flex min-w-0 flex-col">
-              <HeaderSideBar
-                isExpanded={isHeaderExpanded}
-                onExpandedChange={handleHeaderExpandedChange}
-              />
-              <PageContent>
-                <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                  <PageRouter />
-                  <LxLoadingOverlay isLoading={isPageLoading} text="Loading page..." />
-                </div>
-              </PageContent>
-            </div>
-            <div className={isBottomSideBarCoveringRightSideBar ? "" : "lg:row-span-2"}>
-              <RightSideBar />
-            </div>
-            <div
-              className={isBottomSideBarCoveringRightSideBar ? "lg:col-span-2" : "lg:col-start-1"}
-            >
-              <BottomSideBar
-                isCoveringRightSideBar={isBottomSideBarCoveringRightSideBar}
-                isExpanded={isBottomSideBarExpanded}
-                onCoveringRightSideBarChange={setIsBottomSideBarCoveringRightSideBar}
-                onExpandedChange={handleBottomSideBarExpandedChange}
-              />
+    <I18nProvider>
+      <LxToastProvider>
+        <div className="flex h-screen w-screen flex-col gap-2 overflow-y-auto p-3 lg:flex-row lg:overflow-hidden">
+          <LeftSideBar>{renderLeftSideBarContent()}</LeftSideBar>
+          <div className="flex h-auto min-w-0 flex-1 flex-col overflow-hidden lg:h-full">
+            <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,1fr)_auto]">
+              <div className="flex min-w-0 flex-col">
+                <HeaderSideBar
+                  isExpanded={isHeaderExpanded}
+                  onExpandedChange={handleHeaderExpandedChange}
+                />
+                <PageContent>
+                  <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                    <PageRouter />
+                    <LxLoadingOverlay isLoading={isPageLoading} text="Loading page..." />
+                  </div>
+                </PageContent>
+              </div>
+              <div className={isBottomSideBarCoveringRightSideBar ? "" : "lg:row-span-2"}>
+                <RightSideBar />
+              </div>
+              <div
+                className={isBottomSideBarCoveringRightSideBar ? "lg:col-span-2" : "lg:col-start-1"}
+              >
+                <BottomSideBar
+                  isCoveringRightSideBar={isBottomSideBarCoveringRightSideBar}
+                  isExpanded={isBottomSideBarExpanded}
+                  onCoveringRightSideBarChange={setIsBottomSideBarCoveringRightSideBar}
+                  onExpandedChange={handleBottomSideBarExpandedChange}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </LxToastProvider>
+      </LxToastProvider>
+    </I18nProvider>
   )
 }

@@ -15,6 +15,7 @@ import { UI_SECTIONS } from "@/features/ui-preview"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { type AppTheme, useAppTheme } from "@/stores/themeStore"
+import { useTranslation } from "@/i18n"
 
 // tag 栏退场动画时长，与面包屑入场动画时长一致。
 const TAGS_LEAVE_DURATION = 300
@@ -140,6 +141,8 @@ export const HeaderSideBar = ({
     }
   }, [])
 
+  const { t } = useTranslation()
+
   const breadcrumbParts =
     pathname === PAGE_ROUTES.project && projectBreadcrumb
       ? [
@@ -150,7 +153,7 @@ export const HeaderSideBar = ({
       : [activeNavigationItem.breadcrumbCategory]
   if (pathname === PAGE_ROUTES.settings) {
     const section = SETTINGS_SECTIONS.find((item) => item.id === settingsSection)
-    if (section) breadcrumbParts.push(section.label)
+    if (section) breadcrumbParts.push(t(section.labelKey))
   }
   if (pathname === PAGE_ROUTES.ui) {
     const section = UI_SECTIONS.find((item) => item.id === uiSection)
@@ -218,10 +221,10 @@ export const HeaderSideBar = ({
           </div>
           <div className="flex h-6 shrink-0 items-center gap-2">
             <LxIconButton
-              aria-label="显示最近打开标签"
+              aria-label={t("header.showRecentTags")}
               highlighted={showRecentTags}
               title={{
-                content: showRecentTags ? "隐藏最近打开标签" : "显示最近打开标签",
+                content: showRecentTags ? t("header.hideRecentTags") : t("header.showRecentTags"),
                 placement: "bottom",
               }}
               onClick={handleToggleRecentTags}
@@ -256,14 +259,17 @@ export const HeaderSideBar = ({
                 </div>
               }
             >
-              <LxIconButton aria-label="切换主题" size="small">
+              <LxIconButton aria-label={t("header.switchTheme")} size="small">
                 <Palette className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
             <LxIconButton
-              aria-label={isExpanded ? "折叠顶部栏" : "展开顶部栏"}
+              aria-label={isExpanded ? t("header.collapseHeader") : t("header.expandHeader")}
               size="small"
-              title={{ content: isExpanded ? "折叠顶部栏" : "展开顶部栏", placement: "bottom" }}
+              title={{
+                content: isExpanded ? t("header.collapseHeader") : t("header.expandHeader"),
+                placement: "bottom",
+              }}
               onClick={() => onExpandedChange(!isExpanded)}
             >
               {isExpanded ? (

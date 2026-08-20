@@ -10,6 +10,7 @@ import type {
   ProjectNavigationPrompt,
   PromptStatus,
 } from "@/features/project-navigation/types"
+import { useTranslation, type TranslationKey } from "@/i18n"
 
 export type {
   EditingItem,
@@ -24,11 +25,11 @@ const NEXT_PROMPT_STATUS: Record<PromptStatus, PromptStatus> = {
   completed: "todo",
 }
 
-// 状态对应的中文名称。
-const PROMPT_STATUS_LABELS: Record<PromptStatus, string> = {
-  todo: "待处理",
-  in_progress: "进行中",
-  completed: "已完成",
+// 状态对应的翻译键。
+const PROMPT_STATUS_LABEL_KEYS: Record<PromptStatus, TranslationKey> = {
+  todo: "agent.promptStatusTodo",
+  in_progress: "agent.promptStatusInProgress",
+  completed: "agent.promptStatusCompleted",
 }
 
 // 项目列表属性。
@@ -73,19 +74,22 @@ export const ProjectNavigationList = ({
   onProjectFolderToggle,
   onOpenMenu,
 }: ProjectNavigationListProps): React.JSX.Element => {
+  const { t } = useTranslation()
+
   /**
    * 渲染条目状态图标，点击可循环切换状态。
    */
   const renderStatusIcon = (prompt: ProjectNavigationPrompt): React.JSX.Element => {
     const className = prompt.status === "completed" ? "text-emerald-400/80" : "text-white/30"
+    const labelKey = PROMPT_STATUS_LABEL_KEYS[prompt.status]
 
     return (
       <LxIconButton
         size="small"
         shape="circle"
         showHoverBg={false}
-        aria-label="切换状态"
-        title={{ content: PROMPT_STATUS_LABELS[prompt.status] }}
+        aria-label={t("agent.toggleStatus")}
+        title={{ content: t(labelKey) }}
         className="-m-0.5 shrink-0"
         onClick={(event) => {
           event.stopPropagation()

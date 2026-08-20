@@ -5,6 +5,7 @@ import { JobStatusButton } from "@/features/agent/components/JobStatusButton"
 import { PermissionStatusButton } from "@/features/agent/components/PermissionStatusButton"
 import { TodoStatusButton } from "@/features/agent/components/TodoStatusButton"
 import { GitStatusBar } from "@/features/git"
+import { useTranslation } from "@/i18n"
 
 // Agent 状态栏属性。
 interface AgentStatusBarProps {
@@ -51,6 +52,7 @@ export const AgentStatusBar = ({
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const percent = contextUsage
     ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
     : null
@@ -67,10 +69,13 @@ export const AgentStatusBar = ({
       {contextUsage && percent !== null && (
         <LxTooltip
           placement="top"
-          content={`已用 ${contextUsage.tokens.toLocaleString()} / ${contextUsage.contextWindow.toLocaleString()} tokens`}
+          content={t("agent.contextUsed", {
+            used: contextUsage.tokens.toLocaleString(),
+            total: contextUsage.contextWindow.toLocaleString(),
+          })}
         >
           <span
-            aria-label="上下文容量"
+            aria-label={t("agent.contextCapacity")}
             className={`flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
           >
             <Layers className="h-3.5 w-3.5 shrink-0" />

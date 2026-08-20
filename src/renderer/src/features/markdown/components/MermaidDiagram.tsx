@@ -11,6 +11,7 @@ import {
 import mermaid from "mermaid"
 import { useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useTranslation } from "@/i18n"
 
 // Mermaid 视图变换状态。
 interface MermaidTransform {
@@ -96,6 +97,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
   const [isLocked, setIsLocked] = useState(true)
   const [isExpanded, setIsExpanded] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const target = renderTargetRef.current
@@ -113,13 +115,13 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
         bindFunctions?.(target)
       })
       .catch(() => {
-        if (isCurrent) setError("图表语法无法渲染")
+        if (isCurrent) setError(t("markdown.diagramSyntaxError"))
       })
 
     return () => {
       isCurrent = false
     }
-  }, [source])
+  }, [source, t])
 
   const changeScale = (offset: number): void => {
     if (isLocked) return
@@ -191,48 +193,48 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
     >
       <div className="flex h-10 items-center justify-between border-b border-white/10 bg-[#212121] px-2">
         <span className="text-[12px] text-white/50">Mermaid</span>
-        <div className="flex items-center gap-0.5" aria-label="图表视图控制">
+        <div className="flex items-center gap-0.5" aria-label={t("markdown.viewControl")}>
           <LxIconButton
-            aria-label="缩小图表"
+            aria-label={t("common.zoomOut")}
             disabled={isLocked || transform.scale <= MIN_SCALE}
             size="small"
-            title={{ content: "缩小", placement: "bottom" }}
+            title={{ content: t("common.zoomOut"), placement: "bottom" }}
             onClick={() => changeScale(-SCALE_STEP)}
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </LxIconButton>
           <LxIconButton
-            aria-label="放大图表"
+            aria-label={t("common.zoomIn")}
             disabled={isLocked || transform.scale >= MAX_SCALE}
             size="small"
-            title={{ content: "放大", placement: "bottom" }}
+            title={{ content: t("common.zoomIn"), placement: "bottom" }}
             onClick={() => changeScale(SCALE_STEP)}
           >
             <ZoomIn className="h-3.5 w-3.5" />
           </LxIconButton>
           <LxIconButton
-            aria-label="复位图表视图"
+            aria-label={t("common.resetView")}
             disabled={isLocked}
             size="small"
-            title={{ content: "复位视图", placement: "bottom" }}
+            title={{ content: t("common.resetView"), placement: "bottom" }}
             onClick={resetTransform}
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </LxIconButton>
           <LxIconButton
-            aria-label={isLocked ? "解锁图表操作" : "锁定图表操作"}
+            aria-label={isLocked ? t("common.unlock") : t("common.lock")}
             highlighted={!isLocked}
             size="small"
-            title={{ content: isLocked ? "解锁图表" : "锁定图表", placement: "bottom" }}
+            title={{ content: isLocked ? t("common.unlock") : t("common.lock"), placement: "bottom" }}
             onClick={() => setIsLocked((current) => !current)}
           >
             {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
           </LxIconButton>
           <LxIconButton
-            aria-label={isExpanded ? "折叠内容" : "展开内容"}
+            aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
             aria-expanded={isExpanded}
             size="small"
-            title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+            title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "bottom" }}
             onClick={toggleContent}
           >
             {isExpanded ? (
@@ -245,7 +247,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
       </div>
       <div ref={contentRef} className="markdown-mermaid-content">
         <div
-          aria-label={isLocked ? "已锁定的 Mermaid 图表" : "可拖动和缩放的 Mermaid 图表"}
+          aria-label={isLocked ? t("markdown.lockedDiagram") : t("markdown.interactiveDiagram")}
           className={`relative flex min-h-56 items-center justify-center overflow-hidden ${
             isLocked ? "cursor-default" : "cursor-grab touch-none active:cursor-grabbing"
           }`}

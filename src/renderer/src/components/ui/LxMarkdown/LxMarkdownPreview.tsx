@@ -4,6 +4,7 @@ import { createPortal } from "react-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { MermaidDiagram } from "@/components/ui/LxMarkdown/components/MermaidDiagram"
 import type { MarkdownPreviewMode } from "@/components/ui/LxMarkdown/types"
+import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // Markdown 预览属性。
@@ -51,6 +52,7 @@ const copyToClipboard = async (content: string): Promise<void> => {
 const CodeBlockCopyButton = (): React.JSX.Element => {
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
+  const { t } = useTranslation()
 
   useEffect(
     () => () => {
@@ -80,10 +82,10 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label="复制代码"
+      aria-label={t("markdown.copyCode")}
       preset={isCopied ? "confirm" : undefined}
       size="small"
-      title={{ content: isCopied ? "已复制" : "复制代码", placement: "bottom" }}
+      title={{ content: isCopied ? t("markdown.copiedCode") : t("markdown.copyCode"), placement: "bottom" }}
       onClick={copyCode}
     >
       {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -96,6 +98,7 @@ const CodeBlockCopyButton = (): React.JSX.Element => {
  */
 const CodeBlockCollapseButton = (): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(true)
+  const { t } = useTranslation()
 
   const toggleContent = (event: React.MouseEvent<HTMLButtonElement>): void => {
     const codeBlock = event.currentTarget.closest<HTMLElement>(".markdown-code-block")
@@ -125,10 +128,10 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
 
   return (
     <LxIconButton
-      aria-label={isExpanded ? "折叠内容" : "展开内容"}
+      aria-label={isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent")}
       aria-expanded={isExpanded}
       size="small"
-      title={{ content: isExpanded ? "折叠内容" : "展开内容", placement: "bottom" }}
+      title={{ content: isExpanded ? t("markdown.collapseContent") : t("markdown.expandContent"), placement: "bottom" }}
       onClick={toggleContent}
     >
       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

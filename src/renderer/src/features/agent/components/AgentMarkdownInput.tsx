@@ -33,6 +33,7 @@ import {
   markdownMarkerHighlight,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useTranslation, type TranslationKey } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
@@ -75,30 +76,41 @@ export interface AgentMarkdownInputProps {
   onCompact?: () => void
 }
 
-const BUILTIN_COMMANDS: AgentInputCommand[] = [
-  { id: "clear", name: "/clear", description: "清空当前对话", kind: "builtin" },
-  { id: "undo", name: "/undo", description: "撤销上一轮对话", kind: "builtin" },
+const BUILTIN_COMMAND_KEYS: {
+  id: string
+  name: string
+  descKey: TranslationKey
+  kind: "builtin"
+  argumentHint?: string
+}[] = [
+  { id: "clear", name: "/clear", descKey: "agent.commandClearDesc", kind: "builtin" },
+  { id: "undo", name: "/undo", descKey: "agent.commandUndoDesc", kind: "builtin" },
   {
     id: "steer",
     name: "/steer",
-    description: "即时插话（引导运行中 Agent 转向）",
+    descKey: "agent.commandSteerDesc",
     kind: "builtin",
     argumentHint: "[prompt]",
   },
-  { id: "model", name: "/model", description: "切换 AI 模型", kind: "builtin" },
-  { id: "gitWorktree", name: "/gitWorktree", description: "切换 git 工作区", kind: "builtin" },
-  { id: "compact", name: "/compact", description: "压缩当前会话上下文", kind: "builtin" },
+  { id: "model", name: "/model", descKey: "agent.commandModelDesc", kind: "builtin" },
+  {
+    id: "gitWorktree",
+    name: "/gitWorktree",
+    descKey: "agent.commandGitWorktreeDesc",
+    kind: "builtin",
+  },
+  { id: "compact", name: "/compact", descKey: "agent.commandCompactDesc", kind: "builtin" },
   {
     id: "export",
     name: "/export",
-    description: "导出会话报告（网页、Markdown 或 JSONL）",
+    descKey: "agent.commandExportDesc",
     kind: "builtin",
     argumentHint: "[html | md | json]",
   },
   {
     id: "copy",
     name: "/copy",
-    description: "复制会话到剪贴板（参数：[all] 复制全文，缺省复制最近回复）",
+    descKey: "agent.commandCopyDesc",
     kind: "builtin",
     argumentHint: "[all]",
   },
@@ -117,9 +129,18 @@ const isFuzzyMatch = (query: string, keyword: string): boolean => {
 const getMatchedCommands = (
   value: string,
   templates: PromptTemplateItem[] = [],
+  t: (key: TranslationKey) => string,
 ): AgentInputCommand[] => {
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
+
+  const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS.map((cmd) => ({
+    id: cmd.id,
+    name: cmd.name,
+    description: t(cmd.descKey),
+    kind: cmd.kind,
+    argumentHint: cmd.argumentHint,
+  }))
 
   const templateCommands: AgentInputCommand[] = templates.map((t) => ({
     id: `prompt:${t.name}`,
@@ -130,7 +151,7 @@ const getMatchedCommands = (
     argumentHint: t.argumentHint,
   }))
 
-  const allCommands = [...BUILTIN_COMMANDS, ...templateCommands]
+  const allCommands = [...builtinCommands, ...templateCommands]
 
   return allCommands.filter((command) => {
     const rawName = command.name.replace(/^\//, "").toLowerCase()
@@ -558,6 +579,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
     const { warning: warningToast, success: successToast, error: errorToast } = useLxToast()
+    const { t } = useTranslation()
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
     // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
     const getPanelAnchor = useCallback((): HTMLElement | null => {
@@ -702,8 +724,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     }, [projectPath])
 
     const matchedCommands = useMemo(
-      () => getMatchedCommands(value, promptTemplates),
-      [value, promptTemplates],
+      () => getMatchedCommands(value, promptTemplates, t),
+      [value, promptTemplates, t],
     )
     const matchedCommandsRef = useRef(matchedCommands)
     matchedCommandsRef.current = matchedCommands
@@ -823,7 +845,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           return
         }
 
-        const commands = getMatchedCommands(docText, promptTemplatesRef.current)
+        const commands = getMatchedCommands(docText, promptTemplatesRef.current, t)
         if (commands.length > 0) {
           setActiveMode("command")
           setCommandIndex(0)

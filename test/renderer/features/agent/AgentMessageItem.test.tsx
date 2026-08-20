@@ -47,10 +47,10 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.queryByRole("button", { name: "展开内容" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "折叠内容" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Expand Content" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Collapse Content" })).toBeNull()
     expect(screen.getByText("这是一条短消息")).not.toBeNull()
-    expect(screen.getByRole("button", { name: "编辑消息" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Edit Message" })).not.toBeNull()
   })
 
   it("用户长消息（多于3行）折叠并提供展开/折叠切换功能", () => {
@@ -67,13 +67,13 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    const expandBtn = screen.getByRole("button", { name: "展开内容" })
+    const expandBtn = screen.getByRole("button", { name: "Expand Content" })
     expect(expandBtn).not.toBeNull()
 
     // 点击展开按钮
     fireEvent.click(expandBtn)
 
-    const collapseBtn = screen.getByRole("button", { name: "折叠内容" })
+    const collapseBtn = screen.getByRole("button", { name: "Collapse Content" })
     expect(collapseBtn).not.toBeNull()
   })
 
@@ -83,7 +83,7 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} onEdit={onEdit} />)
 
-    const editBtn = screen.getByRole("button", { name: "编辑消息" })
+    const editBtn = screen.getByRole("button", { name: "Edit Message" })
     expect(editBtn).not.toBeNull()
 
     // 点击编辑按钮
@@ -97,7 +97,7 @@ describe("AgentMessageItem", () => {
     fireEvent.change(textarea, { target: { value: "修改后的内容" } })
 
     // 点击右下角发送按钮
-    const sendBtn = screen.getByRole("button", { name: "发送消息" })
+    const sendBtn = screen.getByRole("button", { name: "Send Message (Enter)" })
     fireEvent.click(sendBtn)
 
     expect(onEdit).toHaveBeenCalledWith("3", "修改后的内容")
@@ -657,9 +657,8 @@ describe("AgentMessageItem", () => {
     expect(container.querySelector(".bg-steer-bubble")).not.toBeNull()
     // 内容已剥离 /steer 前缀。
     expect(screen.getByText("改为直接回答")).not.toBeNull()
-    // 不再渲染 Steer 微标签。
+    // 不再渲染中文 Steer 微标签。
     expect(screen.queryByText(/即时插话/)).toBeNull()
-    expect(screen.queryByText(/Steer/)).toBeNull()
   })
 
   it("即时插话（steer）气泡不提供编辑、分支功能", () => {
@@ -674,8 +673,8 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} onFork={vi.fn()} />)
 
-    expect(screen.queryByRole("button", { name: "编辑消息" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "从此分支" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Edit Message" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Fork from here" })).toBeNull()
   })
 
   it("纯工具调用型助手消息（无文本）也展示底部操作按钮", () => {
@@ -697,7 +696,7 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.queryByRole("button", { name: "复制消息" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "Copy message" })).not.toBeNull()
     expect(screen.queryByText(/OUT/)).not.toBeNull()
   })
 

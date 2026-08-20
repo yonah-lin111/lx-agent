@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
+import { useTranslation, type TranslationKey } from "@/i18n"
 
 export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
 
@@ -33,10 +34,10 @@ type MenuDisplayState = {
 }
 
 // 条目状态配置。
-const STATUS_OPTIONS: { value: PromptStatus; label: string; className: string }[] = [
-  { value: "todo", label: "待处理", className: "bg-white/40" },
-  { value: "in_progress", label: "进行中", className: "bg-amber-400/80" },
-  { value: "completed", label: "已完成", className: "bg-emerald-400/80" },
+const STATUS_OPTIONS: { value: PromptStatus; labelKey: TranslationKey; className: string }[] = [
+  { value: "todo", labelKey: "agent.promptStatusTodo", className: "bg-white/40" },
+  { value: "in_progress", labelKey: "agent.promptStatusInProgress", className: "bg-amber-400/80" },
+  { value: "completed", labelKey: "agent.promptStatusCompleted", className: "bg-emerald-400/80" },
 ]
 
 /**
@@ -57,6 +58,7 @@ export const ProjectNavigationMenu = ({
   onDelete,
   onClose,
 }: ProjectNavigationMenuProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
   const [lastMenu, setLastMenu] = useState<MenuDisplayState>({
     type: "project",
@@ -98,7 +100,7 @@ export const ProjectNavigationMenu = ({
         leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
         onClick={displayedMenu.type === "project" ? onEditProject : onRename}
       >
-        {displayedMenu.type === "project" ? "编辑项目" : "重命名"}
+        {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
       </LxMenuItem>
 
       {displayedMenu.type === "project" ? (
@@ -106,7 +108,7 @@ export const ProjectNavigationMenu = ({
           leading={<FolderPlus className="h-3.5 w-3.5 text-white/45" />}
           onClick={onAddFolder}
         >
-          新增文件夹
+          {t("project.addFolderMenu")}
         </LxMenuItem>
       ) : null}
 
@@ -115,7 +117,7 @@ export const ProjectNavigationMenu = ({
           leading={<FilePlus className="h-3.5 w-3.5 text-white/45" />}
           onClick={onAddPrompt}
         >
-          新增条目
+          {t("project.addPromptMenu")}
         </LxMenuItem>
       ) : null}
 
@@ -134,7 +136,7 @@ export const ProjectNavigationMenu = ({
                 onClick={() => onStatusChange(option.value)}
                 trailing={isSelected ? <Check className="h-3.5 w-3.5 text-white/70" /> : null}
               >
-                {option.label}
+                {t(option.labelKey)}
               </LxMenuItem>
             )
           })}
@@ -153,8 +155,12 @@ export const ProjectNavigationMenu = ({
         onClick={handleDeleteClick}
       >
         {isConfirmingDelete
-          ? "确认删除"
-          : `删除${displayedMenu.type === "project" ? "项目" : displayedMenu.type === "project_folder" ? "文件夹" : "条目"}`}
+          ? t("common.confirmDelete")
+          : displayedMenu.type === "project"
+            ? t("project.deleteProject")
+            : displayedMenu.type === "project_folder"
+              ? t("project.deleteFolder")
+              : t("project.deleteItem")}
       </LxMenuItem>
     </LxMenu>
   )

@@ -11,6 +11,7 @@ import { AgentPage, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
+import { useTranslation } from "@/i18n"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 
 // 展开态最小/最大宽度（相对视口宽度，单位 vw）。
@@ -26,6 +27,7 @@ const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const { t } = useTranslation()
 
   // 同步折叠状态到全局存储，供其他区域（如 Markdown 编辑器）感知布局变化。
   useEffect(() => {
@@ -167,9 +169,9 @@ export const RightSideBar = (): React.JSX.Element => {
   // 新对话（未入库）不显示标题；仅会话落库（currentSessionId 存在）后展示。
   const newChatButton = (
     <LxIconButton
-      aria-label="新建对话"
+      aria-label={t("rightSidebar.newChat")}
       disabled={!currentSessionId}
-      title={{ content: "新建对话", placement: "bottom" }}
+      title={{ content: t("rightSidebar.newChat"), placement: "bottom" }}
       onClick={() => newChatRef.current?.()}
       size="small"
     >
@@ -207,7 +209,7 @@ export const RightSideBar = (): React.JSX.Element => {
     >
       {!isCollapsed && (
         <div
-          aria-label="调整右侧栏宽度"
+          aria-label={t("rightSidebar.resizeSidebar")}
           className="absolute top-0 left-0 z-10 h-full w-1.5 cursor-col-resize touch-none hover:bg-white/10 transition-colors"
           onPointerCancel={handleResizeEnd}
           onPointerDown={handleResizeStart}
@@ -218,8 +220,8 @@ export const RightSideBar = (): React.JSX.Element => {
       {isCollapsed ? (
         <div className="flex flex-col items-center gap-2">
           <LxIconButton
-            aria-label="展开右侧栏"
-            title={{ content: "展开右侧栏", placement: "left" }}
+            aria-label={t("rightSidebar.expandSidebar")}
+            title={{ content: t("rightSidebar.expandSidebar"), placement: "left" }}
             onClick={() => setIsCollapsed(false)}
             size="small"
           >
@@ -227,9 +229,9 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
 
           <LxIconButton
-            aria-label="新建对话"
+            aria-label={t("rightSidebar.newChat")}
             disabled={!currentSessionId}
-            title={{ content: "新建对话", placement: "left" }}
+            title={{ content: t("rightSidebar.newChat"), placement: "left" }}
             onClick={() => {
               newChatRef.current?.()
               setIsCollapsed(false)
@@ -240,8 +242,8 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
 
           <LxIconButton
-            aria-label="历史对话"
-            title={{ content: "历史对话", placement: "left" }}
+            aria-label={t("rightSidebar.chatHistory")}
+            title={{ content: t("rightSidebar.chatHistory"), placement: "left" }}
             onClick={() => setIsCollapsed(false)}
             size="small"
           >
@@ -286,8 +288,8 @@ export const RightSideBar = (): React.JSX.Element => {
               trigger="click"
             >
               <LxIconButton
-                aria-label="历史对话"
-                title={{ content: "历史对话", placement: "bottom" }}
+                aria-label={t("rightSidebar.chatHistory")}
+                title={{ content: t("rightSidebar.chatHistory"), placement: "bottom" }}
                 size="small"
               >
                 <History className="h-3.5 w-3.5" />
@@ -300,8 +302,8 @@ export const RightSideBar = (): React.JSX.Element => {
             <McpStatusButton />
 
             <LxIconButton
-              aria-label="折叠右侧栏"
-              title={{ content: "折叠右侧栏", placement: "top" }}
+              aria-label={t("rightSidebar.collapseSidebar")}
+              title={{ content: t("rightSidebar.collapseSidebar"), placement: "top" }}
               onClick={() => setIsCollapsed(true)}
               size="small"
             >

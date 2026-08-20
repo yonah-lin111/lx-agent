@@ -80,7 +80,9 @@ describe("PermissionStatusButton", () => {
   it("点击允许全部进入确认态，确认后触发允许全部", () => {
     const { onRespond } = renderButton()
     fireEvent.click(screen.getByText("允许全部"))
-    expect(screen.getByText("允许当前对话全部工具与 MCP 不再询问？")).not.toBeNull()
+    expect(
+      screen.getByText("Allow all tools and MCP in current chat without asking?"),
+    ).not.toBeNull()
     expect(screen.getByText("确认允许全部")).not.toBeNull()
     expect(screen.queryByText("允许本次会话")).toBeNull()
     fireEvent.click(screen.getByText("确认允许全部"))
@@ -101,7 +103,7 @@ describe("PermissionStatusButton", () => {
     fireEvent.keyDown(document, { key: "Escape" })
     flushCloseAnimation()
     expect(screen.queryByText("允许")).toBeNull()
-    fireEvent.click(screen.getByLabelText("权限确认"))
+    fireEvent.click(screen.getByLabelText("Permission Confirmation"))
     expect(screen.getByText("允许")).not.toBeNull()
     vi.useRealTimers()
   })

@@ -12,6 +12,7 @@ import {
 import { projectApi } from "@/features/project/api/projectApi"
 import { ReferencedFolderCommandMenu } from "@/features/project/components/ReferencedFolderCommandMenu"
 import { useProjectReferencedFoldersStore } from "@/features/project/referencedFoldersStore"
+import { useTranslation } from "@/i18n"
 
 interface ProjectReferencedFolderTagsProps {
   className?: string
@@ -50,6 +51,7 @@ interface FolderPanelState {
 const ProjectReferencedFolderTagsContent = ({
   className = "",
 }: ProjectReferencedFolderTagsProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
   const [projectId, setProjectId] = useState<string | null>(null)
@@ -328,7 +330,7 @@ const ProjectReferencedFolderTagsContent = ({
     >
       <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 overflow-hidden">
         <LxIconButton
-          aria-label="向左滚动"
+          aria-label={t("project.scrollLeft")}
           disabled={!canScrollLeft}
           size="small"
           onClick={() => handleScroll("left")}
@@ -370,7 +372,7 @@ const ProjectReferencedFolderTagsContent = ({
                   <LxTag
                     key={folder.path}
                     bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
-                    closeTooltipContent="是否要删除这个文件夹？"
+                    closeTooltipContent={t("project.deleteFolderConfirm")}
                     hoverClass=""
                     prefix={<Folder className="h-3 w-3" />}
                     size="default"
@@ -378,13 +380,17 @@ const ProjectReferencedFolderTagsContent = ({
                       <>
                         <LxTooltip
                           content={
-                            isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
+                            isEnabled
+                              ? t("project.disableFolderInMention")
+                              : t("project.enableFolderInMention")
                           }
                           placement="top"
                         >
                           <button
                             aria-label={
-                              isEnabled ? "在 @ 命令中停用此文件夹" : "在 @ 命令中启用此文件夹"
+                              isEnabled
+                                ? t("project.disableFolderInMention")
+                                : t("project.enableFolderInMention")
                             }
                             className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
                               isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
@@ -401,9 +407,12 @@ const ProjectReferencedFolderTagsContent = ({
                             />
                           </button>
                         </LxTooltip>
-                        <LxTooltip content={isCopied ? "已复制" : "复制文件夹引用"} placement="top">
+                        <LxTooltip
+                          content={isCopied ? t("common.copied") : t("project.copyFolderRef")}
+                          placement="top"
+                        >
                           <button
-                            aria-label="复制文件夹引用"
+                            aria-label={t("project.copyFolderRef")}
                             className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
                               isCopied ? "text-current" : "text-current/60 hover:text-current"
                             }`}
@@ -433,7 +442,7 @@ const ProjectReferencedFolderTagsContent = ({
           )}
         </div>
         <LxIconButton
-          aria-label="向右滚动"
+          aria-label={t("project.scrollRight")}
           disabled={!canScrollRight}
           size="small"
           onClick={() => handleScroll("right")}
@@ -441,9 +450,9 @@ const ProjectReferencedFolderTagsContent = ({
           <ChevronRight className="h-3.5 w-3.5" />
         </LxIconButton>
         <LxIconButton
-          aria-label="添加文件夹"
+          aria-label={t("project.addFolder")}
           size="small"
-          title={{ content: "添加文件夹", placement: "top" }}
+          title={{ content: t("project.addFolder"), placement: "top" }}
           onClick={() => void handlePickFolder()}
         >
           <FolderPlus className="h-3.5 w-3.5 text-white/60 hover:text-white" />

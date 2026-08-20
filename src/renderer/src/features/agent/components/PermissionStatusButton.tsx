@@ -3,6 +3,7 @@ import { ShieldAlert } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 export type PermissionPanelPhase = "select" | "confirm"
 
@@ -74,6 +75,7 @@ export const PermissionStatusButton = ({
   request,
   onRespond,
 }: PermissionStatusButtonProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [phase, setPhase] = useState<PermissionPanelPhase>("select")
   const [activeIndex, setActiveIndex] = useState(0)
@@ -165,7 +167,7 @@ export const PermissionStatusButton = ({
         {request.toolName}
       </span>
       {phase === "confirm" && (
-        <p className="text-xs text-amber-300/90">允许当前对话全部工具与 MCP 不再询问？</p>
+        <p className="text-xs text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
       )}
       <div className="flex flex-col gap-0.5">
         {options.map((option, index) => (
@@ -213,7 +215,7 @@ export const PermissionStatusButton = ({
       content={tooltipContent}
     >
       <span
-        aria-label="权限确认"
+        aria-label={t("agent.permissionTitle")}
         className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
       >
         <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
