@@ -460,7 +460,7 @@
 }
 
 /* ========================================================
- * 最近打开标签栏（ProjectRecentItemsTags）3 种状态独立 3D 高亮
+ * 最近打开标签栏（ProjectRecentItemsTags）3 种状态独立 3D 高亮与非激活底色
  * ======================================================== */
 [data-theme="minecraft"] .project-recent-tag {
   border-radius: 0px !important;
@@ -474,9 +474,53 @@
   color: #a0a0b0 !important;
 }
 
+/* 默认状态非高亮底色 */
+[data-theme="minecraft"] .project-recent-tag[data-color="default"]:not([data-highlighted="true"]) {
+  background-color: #242434 !important;
+  color: #a0a0b0 !important;
+}
+
+/* 进行中状态非高亮底色与文字颜色 */
+[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:not([data-highlighted="true"]) {
+  background-color: #2e2619 !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:not([data-highlighted="true"]) span {
+  color: #fbbf24 !important;
+}
+
+/* 已完成状态非高亮底色与文字颜色 */
+[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:not([data-highlighted="true"]) {
+  background-color: #1a2c20 !important;
+  color: #34d399 !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:not([data-highlighted="true"]) span {
+  color: #34d399 !important;
+}
+
 [data-theme="minecraft"] .project-recent-tag:hover:not([data-highlighted="true"]) {
   background-color: #343448 !important;
   color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"]) {
+  background-color: #3e3320 !important;
+  color: #fde68a !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="amber"]:hover:not([data-highlighted="true"]) span {
+  color: #fde68a !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"]) {
+  background-color: #233d2c !important;
+  color: #6ee7b7 !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"]) span {
+  color: #6ee7b7 !important;
 }
 
 /* 1. 待办/默认状态高亮（纯白指示边条与文本） */
