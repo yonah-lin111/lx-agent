@@ -21,6 +21,7 @@ import { AgentCompactionSummary } from "@/features/agent/components/AgentCompact
 import {
   AgentExecutionGroup,
   type ExecutionGroupItem,
+  getToolExecutionCategory,
 } from "@/features/agent/components/AgentExecutionGroup"
 import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
 import { AgentMessageFiles } from "@/features/agent/components/AgentMessageFiles"
@@ -40,29 +41,17 @@ import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
-// 执行组内容块（普通工具调用、思考、MCP 与联网搜索调用）。
+// 执行组内容块（普通工具调用、思考、MCP、Skill、写操作等各类执行块）。
 type ExecutionBlock = ToolCallBlock | Extract<ChatBlock, { kind: "thinking" }>
 type ExecutionItem = { block: ExecutionBlock; isStreaming: boolean }
-// 仅工具调用的执行条目（Skill 组）。
-type ToolCallItem = { block: ToolCallBlock; isStreaming: boolean }
 type ExecutionGroup = {
   kind: "execution"
   blocks: ExecutionItem[]
-}
-// Skill 调用组（连续调用合并）。
-type SkillCallGroup = {
-  kind: "skill"
-  blocks: ToolCallItem[]
 }
 // 展示分组联合类型。
 type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   | ExecutionGroup
-  | SkillCallGroup
-  // 写操作工具独立组（不参与执行折叠，展示 diff）。
-  | { kind: "write"; block: ToolCallBlock; isStreaming: boolean }
-  // 子代理调用独立组（不参与执行折叠）。
-  | { kind: "subagent"; block: ToolCallBlock; isStreaming: boolean }
   // 任务清单调用独立组（不参与执行折叠，逐条展示清单）。
   | { kind: "todo"; block: ToolCallBlock; isStreaming: boolean }
   // 模型提问调用独立组（不参与执行折叠，内联作答）。
@@ -446,6 +435,34 @@ export const AgentMessageItem = ({
       ),
     [webSearchCallGroups],
   )
+  // 按连续调用切分 Skill 调用，供执行组内渲染 Skill 子块。
+  const skillCallGroups = useMemo(() => {
+    const groups: ToolCallBlock[][] = []
+    for (const { block } of displayBlocks) {
+      if (block.kind === "toolResult" && isSkillToolCall(block.toolName)) continue
+      if (block.kind !== "toolCall" || !isSkillToolCall(block.toolName)) {
+        groups.push([])
+        continue
+      }
+      const lastGroup = groups.at(-1)
+      if (lastGroup?.[0] && lastGroup[0].toolName === block.toolName) {
+        lastGroup.push(block)
+      } else {
+        groups.push([block])
+      }
+    }
+
+    return groups.filter((group) => group.length > 0)
+  }, [displayBlocks])
+  const skillCallGroupById = useMemo(
+    () =>
+      new Map(
+        skillCallGroups.flatMap((group) =>
+          group.map((block) => [block.toolCallId, group] as const),
+        ),
+      ),
+    [skillCallGroups],
+  )
   const executionGroups = useMemo(() => {
     const groups: DisplayGroup[] = []
     let currentExecution: ExecutionGroup | null = null
@@ -468,31 +485,6 @@ export const AgentMessageItem = ({
       if (item.block.kind !== "toolCall") continue
 
       const toolName = item.block.toolName
-      if (isSkillToolCall(toolName)) {
-        currentExecution = null
-        const previousGroup = groups.at(-1)
-        if (previousGroup?.kind === "skill") {
-          previousGroup.blocks.push({ block: item.block, isStreaming: item.isStreaming })
-        } else {
-          groups.push({
-            kind: "skill",
-            blocks: [{ block: item.block, isStreaming: item.isStreaming }],
-          })
-        }
-        continue
-      }
-      // 写操作工具独立成组：切断执行组并永不参与折叠，下方展示 diff。
-      if (isWriteToolCall(toolName)) {
-        currentExecution = null
-        groups.push({ kind: "write", block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
-      // 子代理调用独立成组：切断执行组并永不参与折叠。
-      if (isSubagentToolCall(toolName)) {
-        currentExecution = null
-        groups.push({ kind: "subagent", block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
       // 任务清单调用独立成组：切断执行组并永不参与折叠，下方逐条展示清单。
       if (isTodoToolCall(toolName)) {
         currentExecution = null
@@ -503,22 +495,6 @@ export const AgentMessageItem = ({
       if (isQuestionToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "question", block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
-      if (isWebSearchToolCall(toolName)) {
-        if (!currentExecution) {
-          currentExecution = { kind: "execution", blocks: [] }
-          groups.push(currentExecution)
-        }
-        currentExecution.blocks.push({ block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
-      if (isMcpToolCall(toolName)) {
-        if (!currentExecution) {
-          currentExecution = { kind: "execution", blocks: [] }
-          groups.push(currentExecution)
-        }
-        currentExecution.blocks.push({ block: item.block, isStreaming: item.isStreaming })
         continue
       }
 
@@ -970,36 +946,6 @@ export const AgentMessageItem = ({
               )
             }
 
-            if (group.kind === "write") {
-              return (
-                <AgentToolCallBlock
-                  key={groupIndex}
-                  toolCall={group.block}
-                  diff={diffByToolCallId.get(group.block.toolCallId)}
-                  defaultExpanded={isStreamingNow}
-                />
-              )
-            }
-
-            if (group.kind === "skill") {
-              return (
-                <AgentSkillCallBlock
-                  key={groupIndex}
-                  toolCalls={group.blocks.map(({ block }) => block)}
-                />
-              )
-            }
-
-            if (group.kind === "subagent") {
-              return (
-                <AgentSubagentBlock
-                  key={groupIndex}
-                  toolCall={group.block}
-                  onOpen={onOpenSubagent}
-                />
-              )
-            }
-
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
             }
@@ -1008,25 +954,12 @@ export const AgentMessageItem = ({
               return <AgentQuestionBlock key={groupIndex} toolCall={group.block} />
             }
 
-            const toolCount = group.blocks.filter(
-              ({ block }) =>
-                block.kind === "toolCall" &&
-                !isMcpToolCall(block.toolName) &&
-                !isWebSearchToolCall(block.toolName),
-            ).length
-            const webSearchCount = group.blocks.filter(
-              ({ block }) => block.kind === "toolCall" && isWebSearchToolCall(block.toolName),
-            ).length
-            const mcpCount = group.blocks.filter(
-              ({ block }) => block.kind === "toolCall" && isMcpToolCall(block.toolName),
-            ).length
-            const thinkingCount = group.blocks.length - toolCount - webSearchCount - mcpCount
             const executionItems: ExecutionGroupItem[] = group.blocks.flatMap<ExecutionGroupItem>(
               ({ block, isStreaming }, blockIndex) => {
                 if (block.kind === "thinking") {
                   return [
                     {
-                      kind: "thinking" as const,
+                      category: "system",
                       node: (
                         <AgentThinkingBlock
                           content={block.text}
@@ -1041,12 +974,47 @@ export const AgentMessageItem = ({
                   ]
                 }
 
+                if (isSubagentToolCall(block.toolName)) {
+                  return [
+                    {
+                      category: "subagent",
+                      node: <AgentSubagentBlock toolCall={block} onOpen={onOpenSubagent} />,
+                    },
+                  ]
+                }
+
+                if (isSkillToolCall(block.toolName)) {
+                  const skillGroup = skillCallGroupById.get(block.toolCallId)
+                  if (!skillGroup || block.toolCallId !== skillGroup[0]?.toolCallId) return []
+                  return [
+                    {
+                      category: "externalInfo",
+                      node: <AgentSkillCallBlock toolCalls={skillGroup} />,
+                    },
+                  ]
+                }
+
+                if (isWriteToolCall(block.toolName)) {
+                  return [
+                    {
+                      category: "coding",
+                      node: (
+                        <AgentToolCallBlock
+                          toolCall={block}
+                          diff={diffByToolCallId.get(block.toolCallId)}
+                          defaultExpanded={isStreamingNow}
+                        />
+                      ),
+                    },
+                  ]
+                }
+
                 if (isWebSearchToolCall(block.toolName)) {
                   const searchGroup = webSearchCallGroupById.get(block.toolCallId)
                   if (!searchGroup || block.toolCallId !== searchGroup[0]?.toolCallId) return []
                   return [
                     {
-                      kind: "webSearch" as const,
+                      category: "externalInfo",
                       node: <AgentWebSearchBlock toolCalls={searchGroup} />,
                     },
                   ]
@@ -1056,13 +1024,17 @@ export const AgentMessageItem = ({
                   const mcpGroup = mcpCallGroupById.get(block.toolCallId)
                   if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return []
                   return [
-                    { kind: "mcp" as const, node: <AgentMcpCallBlock toolCalls={mcpGroup} /> },
+                    {
+                      category: "externalInfo",
+                      node: <AgentMcpCallBlock toolCalls={mcpGroup} />,
+                    },
                   ]
                 }
 
                 if (block.toolName in TOOL_GROUP_SEPARATORS) {
                   const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
                   if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
+                  const category = getToolExecutionCategory(block.toolName)
                   // lsp 组：附带合并组内每份检索结果（渲染块复用跳转）。
                   if (toolGroup[0]?.toolName === "lsp") {
                     const lspDetails = toolGroup
@@ -1070,29 +1042,29 @@ export const AgentMessageItem = ({
                       .filter((entry): entry is LspToolDetails => entry !== undefined)
                     return [
                       {
-                        kind: "tool" as const,
+                        category,
                         node: <AgentToolCallBlock toolCalls={toolGroup} lspDetails={lspDetails} />,
                       },
                     ]
                   }
                   return [
-                    { kind: "tool" as const, node: <AgentToolCallBlock toolCalls={toolGroup} /> },
+                    {
+                      category,
+                      node: <AgentToolCallBlock toolCalls={toolGroup} />,
+                    },
                   ]
                 }
 
-                return [{ kind: "tool" as const, node: <AgentToolCallBlock toolCall={block} /> }]
+                const category = getToolExecutionCategory(block.toolName)
+                return [
+                  {
+                    category,
+                    node: <AgentToolCallBlock toolCall={block} />,
+                  },
+                ]
               },
             )
-            return (
-              <AgentExecutionGroup
-                key={groupIndex}
-                toolCount={toolCount}
-                thinkingCount={thinkingCount}
-                mcpCount={mcpCount}
-                webSearchCount={webSearchCount}
-                items={executionItems}
-              />
-            )
+            return <AgentExecutionGroup key={groupIndex} items={executionItems} />
           })}
         </div>
         {assistantError && (

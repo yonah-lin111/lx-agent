@@ -1,152 +1,203 @@
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, CornerDownRight } from "lucide-react"
 import type React from "react"
-import { Fragment, useState } from "react"
-import { useTranslation } from "@/i18n"
+import { useMemo, useState } from "react"
 
-// 时间轴子项（带类型以匹配小圆点颜色）。
+// 执行类别联合类型。
+export type ExecutionCategoryKey =
+  | "searchCodebase"
+  | "externalInfo"
+  | "system"
+  | "subagent"
+  | "coding"
+
+// 类别配置项。
+export interface CategoryConfig {
+  key: ExecutionCategoryKey
+  label: string
+  dotColor: string
+}
+
+// 5 大类别定义与配色。
+export const EXECUTION_CATEGORIES: Record<ExecutionCategoryKey, CategoryConfig> = {
+  searchCodebase: {
+    key: "searchCodebase",
+    label: "Search CodeBase",
+    dotColor: "bg-amber-300",
+  },
+  externalInfo: {
+    key: "externalInfo",
+    label: "External Info",
+    dotColor: "bg-cyan-300",
+  },
+  system: {
+    key: "system",
+    label: "System",
+    dotColor: "bg-rose-300",
+  },
+  subagent: {
+    key: "subagent",
+    label: "Subagent",
+    dotColor: "bg-blue-300",
+  },
+  coding: {
+    key: "coding",
+    label: "Coding",
+    dotColor: "bg-emerald-300",
+  },
+}
+
+// 类别固定展示顺序（subagent 在 coding 上方）。
+export const CATEGORY_ORDER: ExecutionCategoryKey[] = [
+  "searchCodebase",
+  "externalInfo",
+  "system",
+  "subagent",
+  "coding",
+]
+
+// 根据工具名获取执行类别。
+export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey => {
+  if (toolName === "edit" || toolName === "write") {
+    return "coding"
+  }
+  if (toolName === "task") {
+    return "subagent"
+  }
+  if (
+    toolName === "read" ||
+    toolName === "ls" ||
+    toolName === "grep" ||
+    toolName === "find" ||
+    toolName === "lsp"
+  ) {
+    return "searchCodebase"
+  }
+  if (
+    toolName === "web_search" ||
+    toolName === "webfetch" ||
+    toolName === "read_skill" ||
+    toolName.includes("_")
+  ) {
+    return "externalInfo"
+  }
+  return "system"
+}
+
+// 执行组子项类型。
 export type ExecutionGroupItem = {
-  kind: "tool" | "thinking" | "mcp" | "webSearch"
+  category: ExecutionCategoryKey
   node: React.ReactNode
 }
 
 // 执行折叠组件属性类型。
-interface AgentExecutionGroupProps {
-  // 组内渲染内容（每项带类型，用于时间轴小圆点配色）。
+export interface AgentExecutionGroupProps {
+  // 组内渲染内容列表。
   items: ExecutionGroupItem[]
-  // 组内工具数量。
-  toolCount: number
-  // 组内思考块数量。
-  thinkingCount: number
-  // 组内 MCP 调用数量。
-  mcpCount: number
-  // 组内联网搜索调用数量。
-  webSearchCount: number
-}
-
-// 工具、思考、MCP 与联网搜索调用合计数量达到该阈值时默认折叠执行内容。
-const EXECUTION_GROUP_COLLAPSE_THRESHOLD = 2
-
-// 各类别计数展示片段（数字与类别词统一颜色）。
-type CountSegment = {
-  count: number
-  singular: string
-  plural: string
-}
-
-// 时间轴小圆点按类型的填充色（实心圆点）。
-const DOT_COLOR: Record<ExecutionGroupItem["kind"], string> = {
-  tool: "bg-amber-300",
-  thinking: "bg-rose-300",
-  mcp: "bg-cyan-300",
-  webSearch: "bg-emerald-300",
+  // 初始是否展开（保留兼容）。
+  defaultExpanded?: boolean
 }
 
 /**
- * 工具、思考与 MCP 调用合计数量达到阈值时默认折叠执行内容。
+ * Agent 执行组组件：展示 Execute Group 标题，下方直接展示分类行（Search CodeBase、External Info、System、Coding），分类支持折叠展开。
  */
 export const AgentExecutionGroup = ({
   items,
-  toolCount,
-  thinkingCount,
-  mcpCount,
-  webSearchCount,
-}: AgentExecutionGroupProps): React.JSX.Element => {
-  const { t } = useTranslation()
-  const [isExpanded, setIsExpanded] = useState(false)
-  const isCollapsible =
-    toolCount + thinkingCount + mcpCount + webSearchCount >= EXECUTION_GROUP_COLLAPSE_THRESHOLD
-  const countSegments: CountSegment[] = [
-    {
-      count: toolCount,
-      singular: "Tool Call",
-      plural: "Tool Calls",
-    },
-    {
-      count: thinkingCount,
-      singular: "Thought",
-      plural: "Thoughts",
-    },
-    {
-      count: mcpCount,
-      singular: "MCP Call",
-      plural: "MCP Calls",
-    },
-    {
-      count: webSearchCount,
-      singular: "Web Search",
-      plural: "Web Searches",
-    },
-  ].filter((segment) => segment.count > 0)
+}: AgentExecutionGroupProps): React.JSX.Element | null => {
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
 
-  if (!isCollapsible) {
-    return (
-      <>
-        {items.map((item, index) => (
-          <Fragment key={index}>{item.node}</Fragment>
-        ))}
-      </>
-    )
+  // 按类别对 items 分组。
+  const groupedItems = useMemo(() => {
+    const map = new Map<ExecutionCategoryKey, ExecutionGroupItem[]>()
+    for (const item of items) {
+      const list = map.get(item.category)
+      if (list) {
+        list.push(item)
+      } else {
+        map.set(item.category, [item])
+      }
+    }
+    return map
+  }, [items])
+
+  // 按固定顺序提取当前包含条目的有效类别。
+  const activeCategories = useMemo(
+    () => CATEGORY_ORDER.filter((categoryKey) => (groupedItems.get(categoryKey)?.length ?? 0) > 0),
+    [groupedItems],
+  )
+
+  if (items.length === 0) {
+    return null
+  }
+
+  const toggleCategory = (categoryKey: ExecutionCategoryKey): void => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [categoryKey]: !prev[categoryKey],
+    }))
   }
 
   return (
-    <div className="agent-execution-group flex min-w-0 flex-col gap-1">
-      <button
-        type="button"
-        aria-expanded={isExpanded}
-        aria-label={isExpanded ? t("agent.collapseExecution") : t("agent.expandExecution")}
-        className="agent-execution-group-toggle relative ml-6 flex h-5 w-fit items-center gap-1 rounded-[6px] pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
-        onClick={() => setIsExpanded((previous) => !previous)}
-      >
-        {/* 小圆点置于黑色背景左侧，与展开项圆点同列，hover 颜色随按钮文字联动。 */}
+    <div className="agent-execution-group my-0.5 flex min-w-0 flex-col gap-1">
+      <div className="agent-execution-group-header flex w-fit items-center gap-1.5 text-[12px]">
         <span
           aria-hidden
-          className="agent-execution-group-dot absolute -left-6 top-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-current"
+          className="agent-execution-group-dot h-1.5 w-1.5 shrink-0 rounded-full bg-white/80"
         />
-        <span>
-          {countSegments.map((segment, index) => (
-            <Fragment key={segment.plural}>
-              {index > 0 && <span className="px-1">·</span>}
-              <span>{segment.count}</span>
-              <span className="ml-0.5">
-                {segment.count === 1 ? segment.singular : segment.plural}
-              </span>
-            </Fragment>
-          ))}
-        </span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
-        />
-      </button>
-      {/* 用 grid-template-rows 0fr/1fr 过渡展开：行高跟随内容自适应，避免测量 max-height 在嵌套动画期间被反复打断造成卡顿。 */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateRows: isExpanded ? "1fr" : "0fr",
-          opacity: isExpanded ? 1 : 0,
-          transition:
-            "grid-template-rows 0.25s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0.85, 0.2, 1)",
-        }}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="relative flex min-w-0 flex-col gap-1.5">
-            <span
-              aria-hidden
-              className="agent-execution-timeline-line absolute bottom-0 left-[5px] top-0 w-px bg-white/10"
-            />
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="agent-execution-timeline-item relative pl-6 [&>*:first-child]:mt-0"
+        <span className="font-mono text-[12px] font-semibold text-white/90">Execute Group</span>
+        <span className="text-[11px] text-white/40">({items.length})</span>
+      </div>
+
+      <div className="agent-execution-categories flex min-w-0 flex-col gap-1">
+        {activeCategories.map((categoryKey) => {
+          const categoryConfig = EXECUTION_CATEGORIES[categoryKey]
+          const categoryItems = groupedItems.get(categoryKey) ?? []
+          const isCategoryExpanded = Boolean(expandedCategories[categoryKey])
+
+          return (
+            <div
+              key={categoryKey}
+              className="agent-execution-category relative flex flex-col gap-1"
+            >
+              <button
+                type="button"
+                aria-expanded={isCategoryExpanded}
+                className="agent-execution-category-toggle ml-1 flex h-5 w-fit items-center gap-1.5 rounded-[4px] px-1 text-[12px] text-white/60 transition-colors hover:text-white/80 focus:outline-none"
+                onClick={() => toggleCategory(categoryKey)}
               >
-                {item.node}
+                <CornerDownRight className="h-3 w-3 shrink-0 text-white/40" />
                 <span
                   aria-hidden
-                  className={`agent-execution-timeline-dot absolute left-0 top-[5px] h-2.5 w-2.5 rounded-full ${DOT_COLOR[item.kind]}`}
+                  className={`h-2 w-2 shrink-0 rounded-full ${categoryConfig.dotColor}`}
                 />
+                <span className="font-mono font-medium text-white/70">{categoryConfig.label}</span>
+                <span className="text-[11px] text-white/35">({categoryItems.length})</span>
+                <ChevronDown
+                  className={`h-3 w-3 transition-transform duration-200 ${isCategoryExpanded ? "" : "-rotate-90"}`}
+                />
+              </button>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateRows: isCategoryExpanded ? "1fr" : "0fr",
+                  opacity: isCategoryExpanded ? 1 : 0,
+                  transition:
+                    "grid-template-rows 0.2s cubic-bezier(0.2, 0.85, 0.2, 1), opacity 0.2s cubic-bezier(0.2, 0.85, 0.2, 1)",
+                }}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="relative ml-5 flex min-w-0 flex-col gap-1.5 border-l border-white/10 pl-3 py-1">
+                    {categoryItems.map((item, itemIndex) => (
+                      <div key={itemIndex} className="agent-execution-item min-w-0">
+                        {item.node}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
