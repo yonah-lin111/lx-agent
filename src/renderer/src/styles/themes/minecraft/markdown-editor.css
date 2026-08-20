@@ -15,6 +15,11 @@
   font-family: var(--theme-font-family) !important;
 }
 
+[data-theme="minecraft"] .markdown-editor-workspace .cm-editor,
+[data-theme="minecraft"] .markdown-editor-workspace .cm-scroller {
+  background-color: transparent !important;
+}
+
 [data-theme="minecraft"] .cm-editor .cm-content {
   caret-color: #55ff55 !important; /* 经验条荧光绿光标 */
   font-family: var(--theme-font-family) !important;

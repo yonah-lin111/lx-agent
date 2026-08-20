@@ -1425,7 +1425,7 @@ export const LxMarkdownEditor = ({
         activeLine={activeLine}
         onScrollToLine={scrollToLine}
       />
-      <div className="min-h-0 flex flex-1 overflow-hidden text-sm">
+      <div className="markdown-editor-workspace min-h-0 flex flex-1 overflow-hidden text-sm">
         <div
           ref={editorContainerRef}
           className={`custom-scrollbar min-h-0 min-w-0 flex-1 ${previewMode === "preview" ? "hidden" : ""}`}

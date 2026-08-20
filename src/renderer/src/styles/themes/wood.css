@@ -1209,7 +1209,8 @@
 /* 2. 终端画布视口与分屏卡片（黑胡桃木/深沉原木控制台槽） */
 [data-theme="wood"] .terminal-viewport-wrapper,
 [data-theme="wood"] .terminal-session-element,
-[data-theme="wood"] .terminal-empty-state {
+[data-theme="wood"] .terminal-empty-state,
+[data-theme="wood"] .agent-page-container {
   border-radius: 8px !important;
   border: 1.5px solid #8c602a !important;
   background-color: #24160a !important;

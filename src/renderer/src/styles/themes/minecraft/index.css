@@ -413,7 +413,9 @@
 [data-theme="minecraft"] .terminal-viewport-wrapper,
 [data-theme="minecraft"] .terminal-session-element,
 [data-theme="minecraft"] .terminal-pane-container,
-[data-theme="minecraft"] .terminal-empty-state {
+[data-theme="minecraft"] .terminal-empty-state,
+[data-theme="minecraft"] .agent-page-container,
+[data-theme="minecraft"] .markdown-editor-workspace {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #12121a !important;
