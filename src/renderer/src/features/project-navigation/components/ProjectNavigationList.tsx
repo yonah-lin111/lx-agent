@@ -10,7 +10,7 @@ import type {
   ProjectNavigationPrompt,
   PromptStatus,
 } from "@/features/project-navigation/types"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type {
   EditingItem,
@@ -153,8 +153,8 @@ export const ProjectNavigationList = ({
         tabIndex={0}
         data-item-level="prompt"
         aria-current={isActive ? "page" : undefined}
-        className={`flex h-7 w-full items-center gap-2 rounded-[6px] pr-2 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-          isNested ? "pl-3" : "pl-1.5"
+        className={`flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+          isNested ? "ml-5" : "ml-2.5"
         } ${isActive ? "bg-white/5 text-white" : "text-white/70"}`}
         onClick={() => {
           onItemOpen(prompt.id)
@@ -200,7 +200,7 @@ export const ProjectNavigationList = ({
                 role="button"
                 tabIndex={0}
                 data-item-level="project"
-                className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] px-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+                className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
                 onKeyDown={(event) => {
@@ -238,7 +238,7 @@ export const ProjectNavigationList = ({
                           role="button"
                           tabIndex={0}
                           data-item-level="folder"
-                          className="group flex h-7 w-full items-center gap-1.5 rounded-[6px] pr-1 pl-1 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+                          className="group ml-2.5 flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
                           aria-expanded={!isFolderCollapsed}
                           onClick={() => onProjectFolderToggle(folder.id)}
                           onKeyDown={(event) => {
