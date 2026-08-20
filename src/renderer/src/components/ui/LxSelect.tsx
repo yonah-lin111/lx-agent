@@ -16,6 +16,9 @@ export interface LxSelectGroup<T> {
   options: LxSelectOption<T>[]
 }
 
+// 下拉选择器尺寸类型。
+export type LxSelectSize = "small" | "medium" | "large"
+
 // 下拉选择器属性。
 export interface LxSelectProps<T> {
   value: T
@@ -27,15 +30,22 @@ export interface LxSelectProps<T> {
   // 下拉列表 z-index（portal 渲染到 body，嵌套于更高层浮层（如 Tooltip）时需传入更高值）。默认 50。
   zIndex?: number
   // 触发按钮尺寸。默认为 "medium"。
-  size?: "small" | "medium"
+  size?: LxSelectSize
   disabled?: boolean
   // 未选中任何选项（value 无匹配）时的占位提示。
   placeholder?: string
 }
 
-const SIZE_BUTTON_CLASSES: Record<NonNullable<LxSelectProps<string>["size"]>, string> = {
-  small: "h-8 text-xs",
-  medium: "h-9 text-sm",
+const SIZE_BUTTON_CLASSES: Record<LxSelectSize, string> = {
+  small: "h-6 px-2 text-xs",
+  medium: "h-7 px-2.5 text-xs",
+  large: "h-8 px-3 text-sm",
+}
+
+const SIZE_CHEVRON_CLASSES: Record<LxSelectSize, string> = {
+  small: "h-3 w-3",
+  medium: "h-3.5 w-3.5",
+  large: "h-4 w-4",
 }
 
 const isGroup = <T,>(item: LxSelectOption<T> | LxSelectGroup<T>): item is LxSelectGroup<T> =>
@@ -194,7 +204,7 @@ export const LxSelect = <T extends string>({
         <button
           ref={buttonRef}
           type="button"
-          className={`flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-left text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${SIZE_BUTTON_CLASSES[size]}`}
+          className={`flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] text-left text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${SIZE_BUTTON_CLASSES[size]}`}
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -204,7 +214,7 @@ export const LxSelect = <T extends string>({
             {selectedOption?.label ?? placeholder ?? value}
           </span>
           <ChevronDown
-            className={`ml-2 h-3.5 w-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            className={`ml-1.5 shrink-0 transition-transform ${SIZE_CHEVRON_CLASSES[size]} ${isOpen ? "rotate-180" : ""}`}
           />
         </button>
       </div>

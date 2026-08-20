@@ -45,11 +45,13 @@ export const UiPreviewPage = (): React.JSX.Element => {
     UI_SECTIONS.find((section) => section.id === activeSection) ?? UI_SECTIONS[0]
 
   return (
-    <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 p-3">
-        <p className="text-xs text-white/45">{t(activeUiSection.descriptionKey)}</p>
+    <section className="ui-preview-page-container flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
+      <div className="ui-preview-page-header flex shrink-0 items-center justify-between gap-3 border-b border-white/5 p-3">
+        <p className="ui-preview-page-description text-xs text-white/45">
+          {t(activeUiSection.descriptionKey)}
+        </p>
       </div>
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="ui-preview-page-content custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
         {activeSection === "icon-button" ? <LxIconButtonDemo /> : null}
         {activeSection === "checkbox" ? <LxCheckboxDemo /> : null}
         {activeSection === "input" ? <LxInputDemo /> : null}

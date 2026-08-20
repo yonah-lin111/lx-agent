@@ -1585,7 +1585,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     }, [value])
 
     return (
-      <div className="relative min-w-0 flex-1">
+      <div className="agent-markdown-input-wrapper relative min-w-0 flex-1">
         {/* 面板集合 */}
         <AgentInputCommandPanel
           isOpen={isCommandMode}
@@ -1629,9 +1629,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           style={
             isExpanded ? ({ "--agent-input-height": "244px" } as React.CSSProperties) : undefined
           }
-          className={`${
+          className={`agent-markdown-input-editor ${
             isExpanded ? "h-[244px]" : "min-h-[44px]"
-          } max-h-[244px] w-full overflow-y-auto ${
+          } max-h-[244px] w-full overflow-hidden ${
             disabled ? "pointer-events-none opacity-50" : ""
           }`}
         />

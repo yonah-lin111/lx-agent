@@ -14,7 +14,7 @@ export const UiActionButton = forwardRef<HTMLButtonElement, UiActionButtonProps>
     <button
       ref={ref}
       type="button"
-      className={`flex h-7 items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-xs text-white/70 transition-colors hover:border-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${className}`}
+      className={`ui-preview-action-btn flex h-7 items-center gap-1.5 rounded-[6px] border border-white/10 bg-[#212121] px-2.5 text-xs text-white/70 transition-colors hover:border-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${className}`}
       {...props}
     >
       {children}

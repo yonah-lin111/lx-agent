@@ -731,6 +731,20 @@
   color: #727288 !important;
 }
 
+/* 子代理抽屉面板：深板岩马赛克基底 + 3D 浮雕 */
+[data-theme="minecraft"] [aria-label="Subagent 面板"],
+[data-theme="minecraft"] [aria-label="Subagent Panel"] {
+  border: 2px solid #000000 !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.75) !important;
+}
+
 /* ========================================================
  * 10. 模型提问与作答卡片 (AgentQuestionBlock) - 3D 浮雕凸起
  * ======================================================== */
@@ -1224,17 +1238,22 @@
 }
 
 /* ========================================================
- * 16. Agent 输入框底栏魔改（安山岩/黑曜石内凹像素槽）
+ * 16. Agent 输入框底栏魔改（安山岩石质外框 + 黑曜石马赛克编辑槽）
  * ======================================================== */
 [data-theme="minecraft"] .agent-input-container,
 [data-theme="minecraft"] .bg-\[\#2a2a2a\] {
+  border-radius: 0px !important;
   border: 2px solid #000000 !important;
   border-left: 4px solid transparent !important;
-  background-color: #14141d !important;
+  background-color: #222232 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2328283a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252536'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232b2b3d'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23242435'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262637'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23272738'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23232333'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f42'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%2329293b'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23242435'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23343448'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2338384e'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23171722'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2338384e'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23171722'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   color: #f0f0f8 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000 !important;
 }
 
 [data-theme="minecraft"] .agent-input-container:focus-within,
@@ -1242,14 +1261,52 @@
   border: 2px solid #000000 !important;
   border-left: 4px solid #55ff55 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    0 0 8px rgba(85, 255, 85, 0.25) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000,
+    0 0 10px rgba(85, 255, 85, 0.25) !important;
 }
 
-[data-theme="minecraft"] .agent-input-container .cm-editor,
-[data-theme="minecraft"] .agent-input-container .cm-scroller {
+/* Agent Markdown 输入框内部黑曜石深色马赛克编辑槽 */
+[data-theme="minecraft"] .agent-input-container .agent-markdown-input-editor {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+  padding: 4px 6px !important;
+  margin-bottom: 4px;
+  overflow: hidden !important;
+}
+
+[data-theme="minecraft"] .agent-input-container .agent-markdown-input-editor .cm-editor {
+  border: none !important;
+  box-shadow: none !important;
   background-color: transparent !important;
+  background-image: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+[data-theme="minecraft"] .agent-input-container .agent-markdown-input-editor .cm-scroller {
+  background-color: transparent !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .agent-input-container .cm-content {
+  font-family: var(--theme-font-family) !important;
+  color: #ffffff !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-input-container .cm-placeholder {
+  color: #727288 !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
 }
 
 /* Agent 输入框底栏按键像素化与配色 */
@@ -1321,6 +1378,13 @@
 
 [data-theme="minecraft"] .agent-input-container button[aria-haspopup="listbox"]:hover {
   background-color: #3e3e58 !important;
+}
+
+[data-theme="minecraft"] .agent-input-queued-notice,
+[data-theme="minecraft"] .agent-input-steer-notice {
+  font-family: var(--theme-font-family) !important;
+  color: #ffea88 !important;
+  text-shadow: 1px 1px 0px #000000;
 }
 
 /* ========================================================
@@ -1438,4 +1502,129 @@
   color: #a6a6bc !important;
   font-family: var(--theme-font-family) !important;
   text-shadow: 1px 1px 0px #000000;
+}
+
+/* ========================================================
+ * 18. Agent 会话恢复骨架屏与 Loading 加载态 (AgentMessageListSkeleton & Loaders)
+ * ======================================================== */
+[data-theme="minecraft"] .agent-message-list-skeleton {
+  border: 2px solid #000000 !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] .agent-skeleton-user {
+  border: 2px solid #000000 !important;
+  background-color: #24385a !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-skeleton-ai-text {
+  border: 1px solid #000000 !important;
+  background-color: #221e2e !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-skeleton-code {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-skeleton-bar {
+  border: 1px solid #000000 !important;
+  background-color: #34344c !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* AI 等待与流式中转液态球像素化（绿宝石经验像素方块跳动） */
+[data-theme="minecraft"] .lx-liquid-loader {
+  filter: none !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-theme="minecraft"] .lx-liquid-blob {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 0px !important;
+  background-color: #55ff55 !important; /* 绿宝石荧光绿 */
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000 !important;
+  filter: none !important;
+}
+
+[data-theme="minecraft"] .lx-liquid-blob::before,
+[data-theme="minecraft"] .lx-liquid-blob::after {
+  display: none !important;
+}
+
+[data-theme="minecraft"] .agent-suggested-questions-skeleton {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 19. 上下文压缩摘要卡片 (AgentCompactionSummary)
+ * ======================================================== */
+[data-theme="minecraft"] .agent-compaction-title {
+  color: #ffea88 !important; /* 羊皮浅金 */
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-compaction-toggle-btn:hover .agent-compaction-title {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .agent-compaction-loading {
+  font-family: var(--theme-font-family) !important;
+  color: #a6a6bc !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-compaction-spinner {
+  color: #55ff55 !important; /* 绿宝石翠绿 */
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="minecraft"] .agent-compaction-bubble {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1a1a28 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a28'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231e1e30'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%231c1c2c'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23222234'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%231b1b2a'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23232336'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23171724'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231e1e2e'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231f1f30'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23181826'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%2325253a'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23151520'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23202032'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%231b1b2a'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23232336'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
 }

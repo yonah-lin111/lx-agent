@@ -75,7 +75,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
               <button
                 type="button"
                 aria-expanded={isGroupExpanded}
-                className={`flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-xs font-semibold transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+                className={`ui-preview-nav-group-btn flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-xs font-semibold transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
                   groupHasActive ? "text-white" : "text-white/45"
                 }`}
                 onClick={() => toggleGroup(group.id)}
@@ -99,7 +99,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                       <button
                         key={section.id}
                         type="button"
-                        className={`ml-2.5 flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+                        className={`ui-preview-nav-item-btn ml-2.5 flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
                           isActive ? "bg-white/5 text-white" : "text-white/70"
                         }`}
                         aria-current={isActive ? "page" : undefined}

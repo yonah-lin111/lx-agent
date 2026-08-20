@@ -6,12 +6,15 @@
 /* 1. 编辑器基础背景与字体 */
 [data-theme="minecraft"] .cm-editor {
   background-color: #14141d !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314141d'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23111118'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23151520'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23121219'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23151520'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23202030'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23121219'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23101016'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23222234'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2326263a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0c12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2326263a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0c12'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   color: #f0f0f8 !important;
   font-family: var(--theme-font-family) !important;
 }
 
 [data-theme="minecraft"] .cm-editor .cm-scroller {
-  background-color: #14141d !important;
+  background-color: transparent !important;
   font-family: var(--theme-font-family) !important;
 }
 
@@ -184,11 +187,14 @@
   font-weight: 700;
 }
 
-/* 5. CodeMirror 代码块（深黑曜石重度 3D 凸起卡片槽） */
+/* 5. CodeMirror 代码块（深黑曜石重度 3D 凸起卡片槽 + 像素马赛克底纹） */
 [data-theme="minecraft"] .cm-md-code-fence-start-line,
 [data-theme="minecraft"] .cm-md-code-fence-middle-line,
 [data-theme="minecraft"] .cm-md-code-fence-end-line {
-  background-color: #1a1a26 !important;
+  background-color: #14141e !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314141e'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23111118'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23151520'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23121219'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23151520'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23202030'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23121219'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23101016'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23222234'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2326263a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0c12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2326263a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0c12'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   border-radius: 0px !important;
 }
 
@@ -219,24 +225,32 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-/* 6. 编辑区模板块（CodeMirror 逐行重度 3D 凸起实体卡片） */
+/* 6. 编辑区模板块（CodeMirror 逐行重度 3D 凸起实体卡片 + 紫晶/金/绿像素马赛克底纹） */
+[data-theme="minecraft"] .cm-md-template-start-line,
+[data-theme="minecraft"] .cm-md-template-middle-line,
+[data-theme="minecraft"] .cm-md-template-comment-line,
+[data-theme="minecraft"] .cm-md-template-end-line {
+  background-color: #201a2e !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23201a2e'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23262037'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231b1627'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23231d33'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232b243e'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23221c30'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232c2540'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231d182a'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23241e35'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23272138'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23201a2e'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23302846'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231d182a'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23181423'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%2328223a'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23221c30'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232c2540'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23342c4c'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23383052'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2314101d'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23383052'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2314101d'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  border-radius: 0px !important;
+}
+
 [data-theme="minecraft"] .cm-md-template-start-line {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #282436 !important;
-  background-color: #241e34 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.38),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
     4px 4px 0px 0px #000000 !important;
   color: #e6e6f2 !important;
-  border-radius: 0px !important;
 }
 
 [data-theme="minecraft"] .cm-md-template-middle-line,
 [data-theme="minecraft"] .cm-md-template-comment-line {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;
-  background-color: #241e34 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(255, 255, 255, 0.25),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
@@ -246,19 +260,26 @@
 [data-theme="minecraft"] .cm-md-template-end-line {
   border: 2px solid #000000 !important;
   border-top: none !important;
-  background-color: #241e34 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(255, 255, 255, 0.25),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
     4px 4px 0px 0px #000000 !important;
-  border-radius: 0px !important;
 }
 
-/* 进行中状态（暖金琥珀色） */
+/* 进行中状态（暖金琥珀色马赛克） */
+[data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-in-progress,
+[data-theme="minecraft"] .cm-md-template-middle-line.cm-md-template-line-in-progress,
+[data-theme="minecraft"] .cm-md-template-comment-line.cm-md-template-line-in-progress,
+[data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-in-progress {
+  background-color: #281e10 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23281e10'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23302414'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%2322190d'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%232c2112'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23362916'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%232a2011'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23382b18'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23241b0f'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%232e2313'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23322615'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23281e10'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%233c2e1a'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23241b0f'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231e160b'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23342816'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%232a2011'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23382b18'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2342331d'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23483720'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23181209'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23483720'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23181209'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+}
+
 [data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-in-progress {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #382810 !important;
-  background-color: #2a2012 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 170, 0, 0.5),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
@@ -269,7 +290,6 @@
 [data-theme="minecraft"] .cm-md-template-comment-line.cm-md-template-line-in-progress {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;
-  background-color: #2a2012 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(255, 170, 0, 0.35),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
@@ -279,18 +299,26 @@
 [data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-in-progress {
   border: 2px solid #000000 !important;
   border-top: none !important;
-  background-color: #2a2012 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(255, 170, 0, 0.35),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
     4px 4px 0px 0px #000000 !important;
 }
 
-/* 已完成状态（翡翠经验绿） */
+/* 已完成状态（翡翠经验绿马赛克） */
+[data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-done,
+[data-theme="minecraft"] .cm-md-template-middle-line.cm-md-template-line-done,
+[data-theme="minecraft"] .cm-md-template-comment-line.cm-md-template-line-done,
+[data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-done {
+  background-color: #102216 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23102216'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23142a1b'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230d1c12'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23122618'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23183020'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23112417'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231a3422'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%230f2014'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23132819'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23152c1d'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23102216'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231d3a26'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%230f2014'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230b180f'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23162e1e'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23112417'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231a3422'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2320402a'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2324462e'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2308120b'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2324462e'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2308120b'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+}
+
 [data-theme="minecraft"] .cm-md-template-start-line.cm-md-template-line-done {
   border: 2px solid #000000 !important;
   border-bottom: 2px solid #123420 !important;
-  background-color: #122418 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(85, 255, 85, 0.5),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
@@ -301,7 +329,6 @@
 [data-theme="minecraft"] .cm-md-template-comment-line.cm-md-template-line-done {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;
-  background-color: #122418 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(85, 255, 85, 0.35),
     inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
@@ -311,7 +338,6 @@
 [data-theme="minecraft"] .cm-md-template-end-line.cm-md-template-line-done {
   border: 2px solid #000000 !important;
   border-top: none !important;
-  background-color: #122418 !important;
   box-shadow:
     inset 2px 0px 0px 0px rgba(85, 255, 85, 0.35),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),

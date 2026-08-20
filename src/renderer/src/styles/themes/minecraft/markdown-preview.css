@@ -7,6 +7,10 @@
 [data-theme="minecraft"] .markdown-preview {
   color: #f0f0f8 !important;
   font-family: var(--theme-font-family) !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
 }
 
 [data-theme="minecraft"] .markdown-preview p {
@@ -232,6 +236,9 @@
 [data-theme="minecraft"] .markdown-preview .markdown-code-block {
   border: 2px solid #000000 !important;
   background-color: #12121c !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121c'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.22),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
@@ -332,9 +339,13 @@
 }
 
 /* 11. 模板块（Template Block）：重度 3D 实体卡片（4px 投影） */
+/* 11. 模板块（Template Block）：重度 3D 实体卡片（4px 投影 + 像素马赛克底纹） */
 [data-theme="minecraft"] .markdown-preview .markdown-template-block {
   border: 2px solid #000000 !important;
   background-color: #161420 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23161420'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231c1928'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%2312101a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23191624'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23201d2e'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23181522'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23211e30'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%2314121c'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231b1727'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231d1a2a'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23161420'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23242034'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%2314121c'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23100e17'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231f1b2c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23181522'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23211e30'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2328243a'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%232c2740'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0a12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%232c2740'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0a12'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.22),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
@@ -357,6 +368,9 @@
 [data-theme="minecraft"] .markdown-preview .markdown-template-block--in-progress {
   border: 2px solid #000000 !important;
   background-color: #20180d !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2320180d'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23281e10'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a130a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23241b0f'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2112'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2322190e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232e2313'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231c150c'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23261c10'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23291f11'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2320180d'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23322615'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231c150c'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23161008'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2011'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2322190e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232e2313'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23382b18'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%233e301a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23120c06'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%233e301a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23120c06'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 170, 0, 0.35),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),
@@ -366,6 +380,9 @@
 [data-theme="minecraft"] .markdown-preview .markdown-template-block--done {
   border: 2px solid #000000 !important;
   background-color: #0e1e14 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e1e14'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23122619'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230b1810'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23102216'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23152c1d'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%230f2015'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23173020'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%230d1c12'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23112418'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2313281a'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%230e1e14'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231a3624'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%230d1c12'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%2309140d'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23142a1c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%230f2015'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23173020'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231e3e29'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2322442d'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23060e09'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2322442d'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23060e09'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(85, 255, 85, 0.35),
     inset -3px -3px 0px 0px rgba(0, 0, 0, 0.9),

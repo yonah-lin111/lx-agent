@@ -13,6 +13,8 @@ export const LxSelectDemo = (): React.JSX.Element => {
   const [value, setValue] = useState("opus")
   const [regionValue, setRegionValue] = useState("shanghai")
   const [smallValue, setSmallValue] = useState("small")
+  const [mediumValue, setMediumValue] = useState("medium")
+  const [largeValue, setLargeValue] = useState("large")
 
   const modelOptions: (LxSelectOption<string> | LxSelectGroup<string>)[] = useMemo(
     () => [
@@ -51,10 +53,11 @@ export const LxSelectDemo = (): React.JSX.Element => {
 
   const sizeOptions: LxSelectOption<string>[] = useMemo(
     () => [
-      { value: "small", label: "small" },
-      { value: "other", label: t("common.all") },
+      { value: "small", label: "small (h-6)" },
+      { value: "medium", label: "medium (h-7)" },
+      { value: "large", label: "large (h-8)" },
     ],
-    [t],
+    [],
   )
 
   return (
@@ -74,6 +77,40 @@ export const LxSelectDemo = (): React.JSX.Element => {
         </div>
       </UiPreviewSection>
       <UiPreviewSection
+        title={t("uiPreview.demos.sizesAndShapes")}
+        description={t("uiPreview.demos.sizesAndShapesDesc")}
+      >
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-white/45">small (h-6 / 24px)</span>
+            <LxSelect
+              size="small"
+              value={smallValue}
+              onChange={setSmallValue}
+              options={sizeOptions}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-white/45">medium (h-7 / 28px)</span>
+            <LxSelect
+              size="medium"
+              value={mediumValue}
+              onChange={setMediumValue}
+              options={sizeOptions}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-white/45">large (h-8 / 32px)</span>
+            <LxSelect
+              size="large"
+              value={largeValue}
+              onChange={setLargeValue}
+              options={sizeOptions}
+            />
+          </div>
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
         title={t("uiPreview.demos.selectGroup")}
         description={t("uiPreview.demos.selectGroupDesc")}
       >
@@ -87,12 +124,6 @@ export const LxSelectDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.selectPlacementDesc")}
       >
         <div className="grid gap-3 lg:grid-cols-2">
-          <LxSelect
-            size="small"
-            value={smallValue}
-            onChange={setSmallValue}
-            options={sizeOptions}
-          />
           <LxSelect
             position="up"
             value={value}

@@ -43,7 +43,7 @@
   color: #f0f0f8;
 }
 
-/* 经典 Minecraft 容器立体凹凸像素槽：外深黑 + 内凸亮边 + 底部阴影边 */
+/* 经典 Minecraft 容器立体凹凸像素槽：外深黑 + 内凸亮边 + 底部阴影边 + 安山岩像素马赛克底纹 */
 [data-theme="minecraft"] header,
 [data-theme="minecraft"] aside,
 [data-theme="minecraft"] section,
@@ -55,7 +55,10 @@
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.12),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
     3px 3px 0px 0px #000000;
-  background-color: #262636 !important;
+  background-color: #222232 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2327273a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252538'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2c42'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23232335'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262639'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2328283d'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23212132'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f46'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2a3f'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23232335'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2332324b'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23353550'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23191924'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23353550'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23191924'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
 }
 
 [data-theme="minecraft"] aside nav,
@@ -269,6 +272,9 @@
 [data-theme="minecraft"] [role="menu"] {
   border: 2px solid #000000 !important;
   background-color: #242436 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2327273a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252538'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2c42'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23232335'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262639'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2328283d'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23212132'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f46'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2a3f'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23232335'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2332324b'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23353550'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23191924'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23353550'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23191924'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.14),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
@@ -325,6 +331,9 @@
 [data-theme="minecraft"] [role="tooltip"] {
   border: 2px solid #000000 !important;
   background-color: #242436 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2327273a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252538'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2c42'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23232335'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262639'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2328283d'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23212132'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f46'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2a3f'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23232335'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2332324b'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23353550'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23191924'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23353550'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23191924'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   color: #ececf6 !important;
   border-radius: 0px !important;
   font-family: var(--theme-font-family) !important;
@@ -366,6 +375,9 @@
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e1e2a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a1a24'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%2321212e'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23262636'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2320202c'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23272737'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23222230'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%231f1f2b'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232a2a3b'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23181822'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23252534'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2320202c'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23272737'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%232d2d3e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23303042'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2315151e'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23303042'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2315151e'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
@@ -376,6 +388,9 @@
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #242434 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23242434'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2329293c'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%2320202e'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23272738'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232e2e42'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23252535'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232f2f44'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23212130'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%2328283a'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%232a2a3c'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23232332'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23323248'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23212130'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231d1d2a'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23252535'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232f2f44'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2336364e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%233a3a54'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23191924'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%233a3a54'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23191924'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
@@ -427,7 +442,11 @@
 [data-theme="minecraft"] .terminal-pane-container,
 [data-theme="minecraft"] .terminal-empty-state,
 [data-theme="minecraft"] .agent-page-container,
-[data-theme="minecraft"] .markdown-editor-workspace {
+[data-theme="minecraft"] .agent-message-list-container,
+[data-theme="minecraft"] .agent-message-list-skeleton,
+[data-theme="minecraft"] .markdown-editor-workspace,
+[data-theme="minecraft"] .markdown-preview,
+[data-theme="minecraft"] .ui-preview-page-container {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #12121a !important;
@@ -599,7 +618,10 @@
 [data-theme="minecraft"] .header-sidebar {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
-  background-color: #1e1e2a !important;
+  background-color: #222232 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2327273a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252538'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232c2c42'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23232335'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262639'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2328283d'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23212132'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f46'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a2a3f'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23232335'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232d2d44'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%2332324b'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23353550'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23191924'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23353550'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23191924'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
@@ -732,4 +754,151 @@
     inset 1px 1px 0px 0px rgba(85, 255, 255, 0.25),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
     3px 3px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 通用加载遮罩（LxLoadingOverlay 像素马赛克与像素跳动点）
+ * ======================================================== */
+[data-theme="minecraft"] div[aria-live="polite"][role="status"] {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] div[aria-live="polite"][role="status"] span[style*="lx-loading-dot"] {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #55ff55 !important;
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 24. UI 组件预览页面魔改（UiPreviewPage & 3D 浮雕展示卡片）
+ * ======================================================== */
+[data-theme="minecraft"] .ui-preview-page-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset 0 -2px 0px 0px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="minecraft"] .ui-preview-page-description {
+  color: #a6a6bc !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .ui-preview-section-title {
+  color: #ffaa00 !important; /* 经验暖金 */
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .ui-preview-section-description {
+  color: #a6a6bc !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 示例分区卡片：3D 石质像素浮雕凹槽 + 马赛克纹理 */
+[data-theme="minecraft"] .ui-preview-section-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e1e2a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a1a24'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%2321212e'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23262636'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2320202c'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23272737'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23222230'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%231f1f2b'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232a2a3b'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23181822'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23252534'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2320202c'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23272737'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%232d2d3e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23303042'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2315151e'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23303042'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2315151e'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    3px 3px 0px 0px #000000 !important;
+}
+
+/* 预览触发按钮：3D 凸起石质按键 */
+[data-theme="minecraft"] .ui-preview-action-btn {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #2e2e42 !important;
+  color: #ffffff !important;
+  font-family: var(--theme-font-family) !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .ui-preview-action-btn:hover {
+  background-color: #3e3e58 !important;
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .ui-preview-action-btn:active {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.15) !important;
+  transform: translate(1px, 1px);
+}
+
+/* UI 预览左侧边栏分组与项目导航 */
+[data-theme="minecraft"] .ui-preview-nav-group-btn {
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .ui-preview-nav-item-btn {
+  border-radius: 0px !important;
+  border: 1px solid transparent !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .ui-preview-nav-item-btn[aria-current="page"] {
+  background-color: #14141c !important;
+  border: 1px solid #000000 !important;
+  border-left: 3px solid #55ff55 !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 6px rgba(85, 255, 85, 0.2) !important;
+}
+
+[data-theme="minecraft"] .ui-preview-nav-item-btn:hover:not([aria-current="page"]) {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* UI 预览各个 Demo 内部容器卡片（黑曜石/深板岩马赛克基底 + 3D 浮雕投影） */
+[data-theme="minecraft"] .ui-preview-section-card .bg-\[\#1a1a1a\],
+[data-theme="minecraft"] .ui-preview-section-card .bg-\[\#1e1e1e\],
+[data-theme="minecraft"] .ui-preview-section-card .bg-\[\#212121\] {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141e !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314141e'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23111118'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23151520'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23121219'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23151520'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23202030'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23121219'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23101016'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23222234'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2326263a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0c12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2326263a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0c12'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .ui-preview-section-card .text-white\/40,
+[data-theme="minecraft"] .ui-preview-section-card .text-white\/45,
+[data-theme="minecraft"] .ui-preview-section-card .text-white\/35 {
+  color: #a6a6bc !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
 }

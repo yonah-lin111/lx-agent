@@ -282,7 +282,7 @@ export const AgentInput = ({
             </div>
           }
         >
-          <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
+          <div className="agent-input-queued-notice mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
             <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
             <span className="truncate">
               {t("agent.queuedMessagesCount", { count: queuedCount })}
@@ -291,7 +291,7 @@ export const AgentInput = ({
         </LxTooltip>
       )}
       {steerNoticeVisible && (
-        <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
+        <div className="agent-input-steer-notice mb-1 flex items-center gap-1.5 px-1 text-[11px] text-white/45">
           <Zap className="h-3 w-3 shrink-0 text-amber-400/80" />
           <span className="truncate">{t("agent.steerSentNotice")}</span>
         </div>

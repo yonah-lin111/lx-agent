@@ -86,10 +86,7 @@ export const AgentSubagentDemo = (): React.JSX.Element => {
 
       {activePanelCall ? (
         <div className="relative h-[320px] w-full max-w-2xl overflow-hidden rounded-[6px] border border-white/10 bg-[#1e1e1e]">
-          <AgentSubagentPanel
-            toolCall={activePanelCall}
-            onClose={() => setActivePanelCall(null)}
-          />
+          <AgentSubagentPanel toolCall={activePanelCall} onClose={() => setActivePanelCall(null)} />
         </div>
       ) : null}
     </div>

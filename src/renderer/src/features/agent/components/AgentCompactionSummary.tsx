@@ -66,9 +66,9 @@ export const AgentCompactionSummary = ({
       ? "Compressing context manually..."
       : "Compressing context automatically..."
     return (
-      <div className="my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        <span className="italic">{loadingText}</span>
+      <div className="agent-compaction-loading my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
+        <Loader2 className="agent-compaction-spinner h-3.5 w-3.5 animate-spin" />
+        <span className="agent-compaction-loading-text italic">{loadingText}</span>
       </div>
     )
   }
@@ -91,15 +91,15 @@ export const AgentCompactionSummary = ({
   }
 
   return (
-    <div className="my-1.5 w-full max-w-full select-none">
+    <div className="agent-compaction-summary my-1.5 w-full max-w-full select-none">
       <button
         type="button"
         aria-label={titleText}
         aria-expanded={isExpanded}
-        className="mb-1 flex h-5 w-full items-center gap-1.5 text-[11px] font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
+        className="agent-compaction-toggle-btn mb-1 flex h-5 w-full items-center gap-1.5 text-[11px] font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
         onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
       >
-        <span className="italic">{titleText}</span>
+        <span className="agent-compaction-title italic">{titleText}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${
             isExpanded ? "" : "-rotate-90"
@@ -134,7 +134,7 @@ export const AgentCompactionSummary = ({
         className="overflow-hidden"
       >
         <div ref={innerRef} className="w-full">
-          <div className="rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/45">
+          <div className="agent-compaction-bubble rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/45">
             <LxMarkdownPreview
               html={markdownRenderer.render(summary)}
               previewMode="preview"
