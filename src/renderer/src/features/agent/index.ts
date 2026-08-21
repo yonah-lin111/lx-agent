@@ -2,7 +2,11 @@ export { AgentPage } from "./AgentPage"
 export { AgentExecutionGroup } from "./components/AgentExecutionGroup"
 export { AgentMcpCallBlock } from "./components/AgentMcpCallBlock"
 export { AgentMessageItem } from "./components/AgentMessageItem"
-export { AgentMessageList } from "./components/AgentMessageList"
+export {
+  AgentMessageList,
+  type AgentMessageListProps,
+  type AgentMessageListRef,
+} from "./components/AgentMessageList"
 export { AgentMessageListSkeleton } from "./components/AgentMessageListSkeleton"
 export { AgentSkillCallBlock } from "./components/AgentSkillCallBlock"
 export { AgentStatusBar } from "./components/AgentStatusBar"

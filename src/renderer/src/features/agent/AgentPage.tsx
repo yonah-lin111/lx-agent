@@ -12,7 +12,7 @@ import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNoti
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
 import { AgentInput } from "./components/AgentInput"
-import { AgentMessageList } from "./components/AgentMessageList"
+import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentStatusBar } from "./components/AgentStatusBar"
 import { AgentSubagentPanel } from "./components/AgentSubagentPanel"
 import { sessionListStore } from "./hooks/sessionListStore"
@@ -194,6 +194,12 @@ export const AgentPage = ({
   }, [])
   // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
+  const messageListRef = useRef<AgentMessageListRef>(null)
+  const [navState, setNavState] = useState({
+    canScrollPrevious: false,
+    canScrollNext: false,
+    canScrollBottom: false,
+  })
   // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
   const escStopRef = useRef(0)
 
@@ -311,6 +317,7 @@ export const AgentPage = ({
       {/* 消息列表容器：子代理面板从容器顶部向下展开、恰好覆盖消息列表（列表保持挂载不隐藏）。 */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <AgentMessageList
+          ref={messageListRef}
           messages={messages}
           isStreaming={isStreaming}
           isRestoring={isRestoring}
@@ -326,6 +333,7 @@ export const AgentPage = ({
           subagentScrollRef={subagentScrollRef}
           canContinue={canContinue}
           onContinue={continueChat}
+          onNavigationStateChange={setNavState}
         />
         {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
         <AgentSubagentPanel
@@ -361,6 +369,12 @@ export const AgentPage = ({
         selectedFiles={selectedFiles}
         onFilesChange={setSelectedFiles}
         supportsImages={supportsImages}
+        onScrollPrevious={() => messageListRef.current?.scrollToPrevious()}
+        onScrollNext={() => messageListRef.current?.scrollToNext()}
+        onScrollBottom={() => messageListRef.current?.scrollToBottom()}
+        canScrollPrevious={navState.canScrollPrevious}
+        canScrollNext={navState.canScrollNext}
+        canScrollBottom={navState.canScrollBottom}
       />
       <AgentStatusBar
         projectPath={statusBarPath}

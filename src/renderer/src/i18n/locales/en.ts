@@ -304,6 +304,8 @@ export const en = {
     copyMarkdownSuccess: "Copied full conversation Markdown",
     copyReplySuccess: "Copied last reply",
     copyFailed: "Copy failed",
+    prevTurn: "Previous question",
+    nextTurn: "Next question",
     scrollToBottom: "Scroll to bottom",
     aiGenerating: "AI generating",
     diffContent: "Diff Content",
