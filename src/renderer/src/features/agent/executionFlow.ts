@@ -135,8 +135,7 @@ export const buildExecutionSteps = (
           turnIndex: turn,
           stepIndex,
           kind: "thinking",
-          title: "Thinking Process",
-          subtitle: formatPreview(block.text, 80),
+          title: formatPreview(block.text, 90),
           status: "done",
           timestamp: message.timestamp,
           thinkingContent: {
@@ -171,7 +170,7 @@ export const buildExecutionSteps = (
             turnIndex: turn,
             stepIndex,
             kind: "subagent",
-            title: `Subagent: ${subagentName}`,
+            title: subagentName,
             subtitle: subagentData?.description
               ? formatPreview(subagentData.description, 60)
               : undefined,
@@ -205,7 +204,7 @@ export const buildExecutionSteps = (
             turnIndex: turn,
             stepIndex,
             kind: "tool",
-            title: `Tool: ${block.toolName}`,
+            title: block.toolName,
             subtitle: formatPreview(JSON.stringify(block.args), 60),
             status,
             timestamp: message.timestamp,
@@ -232,8 +231,7 @@ export const buildExecutionSteps = (
           turnIndex: turn,
           stepIndex,
           kind: "assistant",
-          title: "Assistant Response",
-          subtitle: formatPreview(block.text, 80),
+          title: formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
           tokens: message.usage
@@ -265,7 +263,7 @@ export const buildExecutionSteps = (
           turnIndex: turn,
           stepIndex,
           kind: "tool",
-          title: `Tool Result: ${block.toolName}`,
+          title: block.toolName,
           subtitle: formatPreview(block.text, 60),
           status: block.isError ? "error" : "done",
           timestamp: message.timestamp,

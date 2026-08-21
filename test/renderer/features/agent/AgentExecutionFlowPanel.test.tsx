@@ -63,10 +63,10 @@ describe("AgentExecutionFlowPanel", () => {
 
     // 步骤标签与标题
     expect(screen.getByText("查找所有测试用例")).not.toBeNull()
-    expect(screen.getByText("Tool: search_code")).not.toBeNull()
+    expect(screen.getByText("search_code")).not.toBeNull()
 
     // 点击工具步骤展开详情
-    const toolStep = screen.getByText("Tool: search_code")
+    const toolStep = screen.getByText("search_code")
     fireEvent.click(toolStep)
 
     // 展开后应显示输入参数与执行结果区域
@@ -109,14 +109,14 @@ describe("AgentExecutionFlowPanel", () => {
 
     // 初始展示所有步骤
     expect(screen.getByText("问答")).not.toBeNull()
-    expect(screen.getByText("Tool: bash")).not.toBeNull()
+    expect(screen.getByText("bash")).not.toBeNull()
 
     // 切换到工具筛选
     const toolFilterBtn = screen.getByRole("button", { name: /Tools \(1\)/ })
     fireEvent.click(toolFilterBtn)
 
     // 工具可见，用户输入不可见
-    expect(screen.getByText("Tool: bash")).not.toBeNull()
+    expect(screen.getByText("bash")).not.toBeNull()
     expect(screen.queryByText("问答")).toBeNull()
   })
 })
