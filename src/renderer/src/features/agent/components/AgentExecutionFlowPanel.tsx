@@ -26,10 +26,8 @@ import {
   Zap,
 } from "lucide-react"
 import type React from "react"
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -114,7 +112,6 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
 
   const meta = getKindMeta(step.kind)
   const IconComponent = meta.icon
@@ -159,7 +156,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
             setIsExpanded((prev) => !prev)
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none hover:bg-white/[0.02]"
+        className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {/* 折叠箭头 */}
@@ -229,28 +226,27 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
       {/* 展开详情区 */}
       {isExpanded && (
-        <div className="flex flex-col gap-3 border-t border-white/5 bg-[#181818] p-3 text-[12px]">
+        <div className="border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && (
             <div className="flex flex-col gap-3 font-mono text-[11px]">
               {/* 分段概览 */}
               {step.systemContent.sections.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5 text-[12px] font-semibold text-indigo-300">
-                    <Layers className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1 text-indigo-300 font-semibold">
+                    <Layers className="h-3 w-3" />
                     <span>{t("agent.systemPrompt")}</span>
                   </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     {step.systemContent.sections.map((sec) => (
                       <details
                         key={sec.name}
-                        className="group overflow-hidden rounded-[6px] border border-white/5 bg-[#141414]"
+                        className="group rounded border border-white/5 bg-white/[0.02] p-2"
                       >
-                        <summary className="flex cursor-pointer items-center justify-between px-2.5 py-1.5 font-mono text-[11px] font-medium text-white/80 select-none hover:bg-white/[0.03]">
-                          <span className="font-semibold text-indigo-300/90">{sec.name}</span>
-                          <ChevronDown className="h-3 w-3 text-white/40 transition-transform group-open:rotate-180" />
+                        <summary className="cursor-pointer font-semibold text-white/80 select-none">
+                          {sec.name}
                         </summary>
-                        <div className="custom-scrollbar max-h-48 overflow-y-auto border-t border-white/5 bg-[#0e0e0e] p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-white/70 select-text">
+                        <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-white/70">
                           {sec.text}
                         </div>
                       </details>
@@ -262,20 +258,18 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 运行时上下文注入 */}
               {step.systemContent.contexts.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5 text-[12px] font-semibold text-sky-300">
-                    <Sliders className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1 text-sky-300 font-semibold">
+                    <Sliders className="h-3 w-3" />
                     <span>{t("agent.runtimeContext")}</span>
                   </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     {step.systemContent.contexts.map((ctx) => (
                       <div
                         key={ctx.name}
-                        className="rounded-[6px] border border-white/5 bg-[#141414] p-2.5 font-mono text-[11px]"
+                        className="rounded border border-white/5 bg-black/30 p-2 text-white/70"
                       >
-                        <div className="mb-1 font-semibold text-sky-300/90">{ctx.name}</div>
-                        <div className="whitespace-pre-wrap leading-relaxed text-white/70 select-text">
-                          {ctx.text}
-                        </div>
+                        <div className="font-semibold text-white/80">{ctx.name}</div>
+                        <div className="mt-1 whitespace-pre-wrap">{ctx.text}</div>
                       </div>
                     ))}
                   </div>
@@ -285,15 +279,15 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 激活的工具全集 */}
               {step.systemContent.activeTools && step.systemContent.activeTools.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-300">
-                    <Wrench className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1 text-amber-300 font-semibold">
+                    <Wrench className="h-3 w-3" />
                     <span>{t("agent.activeToolsList")}</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {step.systemContent.activeTools.map((tool) => (
                       <span
                         key={tool}
-                        className="rounded-[4px] border border-white/10 bg-[#212121] px-2 py-0.5 font-mono text-[11px] text-white/70"
+                        className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60"
                       >
                         {tool}
                       </span>
@@ -306,38 +300,38 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 用户输入详情 */}
           {step.userContent && (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 {step.userContent.command && (
-                  <span className="inline-flex items-center gap-1 rounded-[4px] border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-amber-300">
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-mono text-amber-300">
                     <Zap className="h-3 w-3" />
                     {t("agent.commandTrigger")}: /{step.userContent.command.name}
                   </span>
                 )}
                 {step.userContent.isSteer && (
-                  <span className="inline-flex items-center gap-1 rounded-[4px] border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] font-medium text-sky-300">
+                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-mono text-sky-300">
                     {t("agent.steerMessage")}
                   </span>
                 )}
               </div>
-              <div className="rounded-[6px] border border-white/5 bg-[#141414] p-3 text-[13px] leading-relaxed text-white/90 whitespace-pre-wrap select-text">
+              <div className="whitespace-pre-wrap font-sans text-white/90">
                 {step.userContent.text || (
-                  <span className="text-white/30 italic">{t("agent.emptyPrompt")}</span>
+                  <span className="text-white/30">{t("agent.emptyPrompt")}</span>
                 )}
               </div>
               {step.userContent.files && step.userContent.files.length > 0 && (
-                <div className="flex flex-col gap-1.5 pt-0.5">
-                  <div className="font-mono text-[11px] text-white/45">
+                <div className="flex flex-col gap-1 pt-1">
+                  <div className="text-[11px] font-mono text-white/40">
                     {t("agent.attachedFiles")}:
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {step.userContent.files.map((file) => (
                       <span
                         key={file.path}
-                        className="inline-flex items-center gap-1.5 rounded-[4px] border border-white/10 bg-[#212121] px-2 py-0.5 text-[11px] text-white/70"
+                        className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60"
                       >
-                        <FileCode className="h-3 w-3 text-sky-400" />
-                        <span className="font-mono">{file.name}</span>
+                        <FileCode className="h-3 w-3" />
+                        {file.name}
                       </span>
                     ))}
                   </div>
@@ -348,40 +342,27 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 思考过程详情 */}
           {step.thinkingContent && (
-            <div className="rounded-[6px] border border-purple-500/20 bg-[#141414] p-3">
-              <div className="mb-2 flex items-center gap-1 font-mono text-[11px] text-purple-300/80">
-                <Brain className="h-3 w-3" />
-                <span>{t("agent.thinkingProcess")}</span>
-              </div>
-              <div className="custom-scrollbar max-h-72 overflow-y-auto select-text">
-                <LxMarkdownPreview
-                  html={markdownRenderer.render(step.thinkingContent.text)}
-                  previewMode="preview"
-                  previewRef={previewRef}
-                  className="px-0 text-white/70"
-                  contentClassName="py-0 text-[12px] text-white/70 leading-relaxed [&_*]:!text-white/70"
-                  sanitizeCopy
-                />
-              </div>
+            <div className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap rounded border border-purple-500/20 bg-purple-950/20 p-2 font-mono text-[11px] leading-relaxed text-purple-200/90">
+              {step.thinkingContent.text}
             </div>
           )}
 
           {/* 工具调用详情 */}
           {step.toolContent && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {/* 参数 */}
               <div>
-                <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/50">
+                <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
                   <span className="flex items-center gap-1 font-mono">
-                    <Terminal className="h-3 w-3 text-sky-400" /> {t("agent.toolArgs")}
+                    <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
                   </span>
                   {step.toolContent.toolCallId && (
-                    <span className="font-mono text-[10px] text-white/35">
+                    <span className="font-mono text-[10px] text-white/30">
                       ID: {step.toolContent.toolCallId}
                     </span>
                   )}
                 </div>
-                <div className="custom-scrollbar max-h-48 overflow-y-auto rounded-[6px] border border-white/5 bg-[#121212] p-2.5 font-mono text-[11px] leading-relaxed text-sky-200/90 whitespace-pre-wrap select-text">
+                <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px] text-sky-200/90">
                   {formatJsonString(step.toolContent.args)}
                 </div>
               </div>
@@ -389,12 +370,12 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 结构化 Diff (针对 write/edit 工具) */}
               {step.toolContent.diff && (
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-white/50">
+                  <div className="mb-1 flex items-center justify-between font-mono text-[11px] text-white/45">
                     <span className="flex items-center gap-1">
-                      <Code2 className="h-3 w-3 text-emerald-400" /> {t("agent.lineDiff")}
+                      <Code2 className="h-3 w-3" /> {t("agent.lineDiff")}
                     </span>
                     {step.toolContent.diff.stats && (
-                      <span className="flex items-center gap-2 font-mono text-[10px]">
+                      <span className="flex items-center gap-1.5 text-[10px]">
                         <span className="text-emerald-400">
                           +{step.toolContent.diff.stats.added}
                         </span>
@@ -402,29 +383,27 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                       </span>
                     )}
                   </div>
-                  <div className="custom-scrollbar max-h-56 overflow-y-auto rounded-[6px] border border-white/5 bg-[#121212] overflow-hidden font-mono text-[11px] select-text">
+                  <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px]">
                     {step.toolContent.diff.fileName && (
-                      <div className="border-b border-white/5 bg-white/[0.02] px-2.5 py-1 text-[11px] text-white/60">
-                        {step.toolContent.diff.fileName}
-                      </div>
+                      <div className="text-white/60 mb-1">{step.toolContent.diff.fileName}</div>
                     )}
                     {step.toolContent.diff.lines && step.toolContent.diff.lines.length > 0 && (
-                      <div className="flex flex-col py-1">
+                      <div className="flex flex-col">
                         {step.toolContent.diff.lines.map((line, lIdx) => (
                           <div
                             key={lIdx}
-                            className={`flex items-start gap-2 px-2 py-0.5 leading-[1.6] ${
+                            className={`flex items-start gap-2 px-1 ${
                               line.type === "add"
-                                ? "bg-emerald-500/10 text-emerald-300"
+                                ? "bg-emerald-500/15 text-emerald-300"
                                 : line.type === "del"
-                                  ? "bg-red-500/10 text-red-300"
+                                  ? "bg-red-500/15 text-red-300"
                                   : "text-white/60"
                             }`}
                           >
-                            <span className="w-4 shrink-0 select-none text-right font-mono text-[10px] opacity-40">
-                              {line.type === "add" ? "+" : line.type === "del" ? "−" : " "}
+                            <span className="w-4 shrink-0 select-none text-right text-[10px] opacity-40">
+                              {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
                             </span>
-                            <span className="whitespace-pre-wrap break-all">{line.text}</span>
+                            <span className="whitespace-pre-wrap">{line.text}</span>
                           </div>
                         ))}
                       </div>
@@ -436,21 +415,19 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 结果 */}
               {step.toolContent.result !== undefined && (
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/50">
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
                     <span className="flex items-center gap-1 font-mono">
-                      <FileText className="h-3 w-3 text-amber-400" /> {t("agent.toolResult")}
+                      <FileText className="h-3 w-3" /> {t("agent.toolResult")}
                     </span>
                     {step.toolContent.isError && (
-                      <span className="rounded bg-red-500/15 px-1.5 py-0.2 font-mono text-[10px] font-bold text-red-400">
-                        ERROR
-                      </span>
+                      <span className="text-[10px] text-red-400 font-medium">ERROR</span>
                     )}
                   </div>
                   <div
-                    className={`custom-scrollbar max-h-60 overflow-y-auto rounded-[6px] p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-text ${
+                    className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2 font-mono text-[11px] leading-relaxed ${
                       step.toolContent.isError
                         ? "border border-red-500/20 bg-red-950/20 text-red-200"
-                        : "border border-white/5 bg-[#121212] text-white/80"
+                        : "bg-black/40 text-white/80"
                     }`}
                   >
                     {step.toolContent.result || <span className="text-white/30">-</span>}
@@ -462,24 +439,22 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 子代理详情 */}
           {step.subagentContent && (
-            <div className="flex flex-col gap-2.5 font-mono text-[11px]">
+            <div className="flex flex-col gap-2 font-mono text-[11px]">
               <div className="flex items-center gap-2 text-white/70">
                 <span className="text-white/40">Task:</span>
                 <span className="font-bold text-blue-300">{step.subagentContent.name}</span>
               </div>
               {step.subagentContent.subagent?.prompt && (
-                <div className="rounded-[6px] border border-white/5 bg-[#121212] p-2.5 text-white/80">
-                  <div className="mb-1 text-[10px] text-white/40">Prompt:</div>
-                  <div className="whitespace-pre-wrap leading-relaxed select-text">
-                    {step.subagentContent.subagent.prompt}
-                  </div>
+                <div className="rounded bg-black/30 p-2 text-white/80">
+                  <div className="text-[10px] text-white/40 mb-0.5">Prompt:</div>
+                  <div className="whitespace-pre-wrap">{step.subagentContent.subagent.prompt}</div>
                 </div>
               )}
               {step.subagentContent.subagent?.description && (
                 <div className="text-white/50">{step.subagentContent.subagent.description}</div>
               )}
               {step.subagentContent.subagent?.usage && (
-                <div className="flex gap-3 border-t border-white/5 pt-1.5 text-white/40">
+                <div className="flex gap-3 text-white/40 pt-1">
                   <span>Input: {step.subagentContent.subagent.usage.input}</span>
                   <span>Output: {step.subagentContent.subagent.usage.output}</span>
                   <span>Total: {step.subagentContent.subagent.usage.totalTokens}</span>
@@ -490,10 +465,10 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 上下文压缩详情 */}
           {step.compactionContent && (
-            <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#121212] p-2.5 font-mono text-[11px] text-white/75">
+            <div className="flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
               <div className="flex items-center gap-2">
                 <span className="text-white/40">Mode:</span>
-                <span className="font-semibold text-indigo-300">
+                <span className="text-indigo-300 font-semibold">
                   {step.compactionContent.isManual ? "Manual (/compact)" : "Automatic"}
                 </span>
               </div>
@@ -506,7 +481,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                 </div>
               )}
               {step.compactionContent.compactionUsage && (
-                <div className="flex gap-3 border-t border-white/5 pt-1 text-white/40">
+                <div className="flex gap-3 text-white/40">
                   <span>Input: {step.compactionContent.compactionUsage.input}</span>
                   <span>Output: {step.compactionContent.compactionUsage.output}</span>
                 </div>
@@ -516,16 +491,9 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 助手回复详情 */}
           {step.assistantContent && (
-            <div className="flex flex-col gap-2.5">
-              <div className="rounded-[6px] border border-white/5 bg-[#141414] p-3 text-[13px] leading-relaxed text-white/90">
-                <LxMarkdownPreview
-                  html={markdownRenderer.render(step.assistantContent.text)}
-                  previewMode="preview"
-                  previewRef={previewRef}
-                  className="px-0 text-white/90"
-                  contentClassName="py-0 text-[13px] text-white/90 leading-relaxed"
-                  sanitizeCopy
-                />
+            <div className="flex flex-col gap-2 font-sans text-white/90">
+              <div className="whitespace-pre-wrap leading-relaxed">
+                {step.assistantContent.text}
               </div>
               {(step.assistantContent.model || step.assistantContent.usage) && (
                 <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-1.5 font-mono text-[11px] text-white/40">
