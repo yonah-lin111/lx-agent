@@ -1,5 +1,5 @@
 import type { AgentSendContext } from "@shared/contracts/agent"
-import { ChevronLeft, ChevronRight, History, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, History, Plus, Workflow } from "lucide-react"
 import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
@@ -44,6 +44,7 @@ export const RightSideBar = (): React.JSX.Element => {
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
   const restoreChatRef = useRef<((sessionId: string) => void) | null>(null)
   const newChatRef = useRef<(() => void) | null>(null)
+  const toggleExecutionFlowRef = useRef<(() => void) | null>(null)
   const chatSessions = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getSessions,
@@ -188,6 +189,9 @@ export const RightSideBar = (): React.JSX.Element => {
       onRestoreChatRef={(fn) => {
         restoreChatRef.current = fn
       }}
+      onToggleExecutionFlowRef={(fn) => {
+        toggleExecutionFlowRef.current = fn
+      }}
       context={context}
       currentProjectId={currentProject?.id}
       currentProjectPath={currentProject?.path}
@@ -249,6 +253,20 @@ export const RightSideBar = (): React.JSX.Element => {
           >
             <History className="h-3.5 w-3.5" />
           </LxIconButton>
+
+          <LxIconButton
+            aria-label={t("agent.executionFlow")}
+            title={{ content: t("agent.executionFlow"), placement: "left" }}
+            onClick={() => {
+              setIsCollapsed(false)
+              setTimeout(() => {
+                toggleExecutionFlowRef.current?.()
+              }, 50)
+            }}
+            size="small"
+          >
+            <Workflow className="h-3.5 w-3.5" />
+          </LxIconButton>
         </div>
       ) : (
         <div
@@ -295,6 +313,15 @@ export const RightSideBar = (): React.JSX.Element => {
                 <History className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>
+
+            <LxIconButton
+              aria-label={t("agent.executionFlow")}
+              title={{ content: t("agent.executionFlow"), placement: "bottom" }}
+              onClick={() => toggleExecutionFlowRef.current?.()}
+              size="small"
+            >
+              <Workflow className="h-3.5 w-3.5" />
+            </LxIconButton>
           </div>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1">

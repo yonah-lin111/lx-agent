@@ -11,6 +11,7 @@ import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
+import { AgentExecutionFlowPanel } from "./components/AgentExecutionFlowPanel"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentStatusBar } from "./components/AgentStatusBar"
@@ -27,6 +28,7 @@ type SubagentToolCall = Extract<ChatBlock, { kind: "toolCall" }>
 export interface AgentPageProps {
   onNewChatRef?: (fn: () => void) => void
   onRestoreChatRef?: (fn: (sessionId: string) => void) => void
+  onToggleExecutionFlowRef?: (fn: () => void) => void
   context?: AgentSendContext
   currentProjectId?: string
   currentProjectPath?: string
@@ -38,6 +40,7 @@ export interface AgentPageProps {
 export const AgentPage = ({
   onNewChatRef,
   onRestoreChatRef,
+  onToggleExecutionFlowRef,
   context,
   currentProjectId,
   currentProjectPath,
@@ -122,6 +125,10 @@ export const AgentPage = ({
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionBinding,
   )
+  const currentSessionId = useSyncExternalStore(
+    sessionListStore.subscribe,
+    sessionListStore.getCurrentSessionId,
+  )
   const currentSessionPath = currentSessionBinding?.cwd
   // 会话路径锁定：当前会话存在时绝对优先使用会话自身的绑定路径，切路由/切项目不漂移；新会话缺省才使用当前路由/项目项或默认路径。
   const effectiveProjectPath = currentSessionBinding?.cwd ?? currentProjectPath ?? defaultPath
@@ -189,11 +196,27 @@ export const AgentPage = ({
 
   // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
   const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
+  // 当前打开的执行流程面板（点击顶部工具栏流程图标触发；从头部下方覆盖消息列表展开）。
+  const [isExecutionFlowOpen, setIsExecutionFlowOpen] = useState(false)
+
+  const toggleExecutionFlow = useCallback((): void => {
+    setIsExecutionFlowOpen((prev) => {
+      const next = !prev
+      if (next) {
+        setActiveSubagent(null)
+      }
+      return next
+    })
+  }, [])
+
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
+    setIsExecutionFlowOpen(false)
     setActiveSubagent(toolCall)
   }, [])
   // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
+  // 执行流程面板滚动容器。
+  const executionFlowScrollRef = useRef<HTMLDivElement>(null)
   const messageListRef = useRef<AgentMessageListRef>(null)
   const [navState, setNavState] = useState({
     canScrollPrevious: false,
@@ -207,9 +230,17 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
-      if (!isStreaming) return
+      // 若处于执行流程面板打开状态，让执行流程面板优先关闭
+      if (isExecutionFlowOpen) {
+        setIsExecutionFlowOpen(false)
+        return
+      }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
-      if (activeSubagent !== null) return
+      if (activeSubagent !== null) {
+        setActiveSubagent(null)
+        return
+      }
+      if (!isStreaming) return
       // 若有权限面板弹层，不全局截获
       if (pendingRequest !== null) return
       // 若当前焦点在 textarea/input 内，由局部 keydown 处理
@@ -232,7 +263,7 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t])
+  }, [isStreaming, isExecutionFlowOpen, activeSubagent, pendingRequest, handleStop, warning, t])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -307,6 +338,9 @@ export const AgentPage = ({
   if (onRestoreChatRef) {
     onRestoreChatRef(restoreChat)
   }
+  if (onToggleExecutionFlowRef) {
+    onToggleExecutionFlowRef(toggleExecutionFlow)
+  }
 
   return (
     <div
@@ -314,7 +348,7 @@ export const AgentPage = ({
         pendingRequest ? "permission-pending" : ""
       }`}
     >
-      {/* 消息列表容器：子代理面板从容器顶部向下展开、恰好覆盖消息列表（列表保持挂载不隐藏）。 */}
+      {/* 消息列表容器：子代理面板与执行流程面板从容器顶部向下展开、恰好覆盖消息列表（列表保持挂载不隐藏）。 */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <AgentMessageList
           ref={messageListRef}
@@ -329,7 +363,7 @@ export const AgentPage = ({
           onDeleteMessage={deleteTurn}
           onOpenSubagent={openSubagent}
           onFork={handleFork}
-          isSubagentPanelOpen={activeSubagent !== null}
+          isSubagentPanelOpen={activeSubagent !== null || isExecutionFlowOpen}
           subagentScrollRef={subagentScrollRef}
           canContinue={canContinue}
           onContinue={continueChat}
@@ -340,6 +374,15 @@ export const AgentPage = ({
           toolCall={activeSubagent}
           onClose={() => setActiveSubagent(null)}
           scrollRef={subagentScrollRef}
+        />
+        {/* 执行流程面板：点击顶部工具栏工作流图标展开，展示当前 Agent 的全部执行日志与步骤。 */}
+        <AgentExecutionFlowPanel
+          isOpen={isExecutionFlowOpen}
+          onClose={() => setIsExecutionFlowOpen(false)}
+          messages={messages}
+          sessionId={currentSessionId ?? undefined}
+          cwd={statusBarPath}
+          scrollRef={executionFlowScrollRef}
         />
       </div>
       {/* 任务清单由 AgentStatusBar 右侧 todo 指示展示（有未完成任务时显示，hover 查看列表）。 */}

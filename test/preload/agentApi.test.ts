@@ -109,4 +109,11 @@ describe("preload agent API", () => {
       "旧问题",
     ])
   })
+
+  it("getPromptAssembly 转发 sessionId 与 cwd 到共享 channel", async () => {
+    const api = exposeInMainWorld.mock.calls[0]?.[1]
+
+    await api.agent.getPromptAssembly("sess-1", "/foo/path")
+    expect(invoke).toHaveBeenCalledWith(AGENT_CHANNELS.getPromptAssembly, "sess-1", "/foo/path")
+  })
 })

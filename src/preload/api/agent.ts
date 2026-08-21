@@ -61,6 +61,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.clearSettledJobs, sessionId),
   readJobOutput: (jobId: string, wait?: boolean, timeoutMs?: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.readJobOutput, jobId, wait, timeoutMs),
+  getPromptAssembly: (sessionId?: string, cwd?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.getPromptAssembly, sessionId, cwd),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

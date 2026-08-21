@@ -387,4 +387,11 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       )
     },
   )
+
+  ipcMain.handle(AGENT_CHANNELS.getPromptAssembly, async (_, sessionId: unknown, cwd: unknown) => {
+    return agentRunner.getPromptAssembly(
+      typeof sessionId === "string" ? sessionId : undefined,
+      typeof cwd === "string" ? cwd : undefined,
+    )
+  })
 }
