@@ -21,7 +21,7 @@
 [data-theme="minecraft"] .bg-\[\#363e4c\] {
   border: 2px solid #000000 !important;
   background-color: #221e2e !important;
-  color: #ececf6 !important;
+  color: #d4d4e4 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
@@ -494,8 +494,8 @@
 }
 
 [data-theme="minecraft"] .agent-thinking-content {
-  color: #ececf6 !important;
-  text-shadow: 1px 1px 0px #000000;
+  color: rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
   margin-top: 4px !important;
   border: 2px solid #000000 !important;
   background-color: #14121a !important;
@@ -507,8 +507,27 @@
 }
 
 [data-theme="minecraft"] .agent-thinking-content svg {
-  color: #c084fc !important;
-  filter: drop-shadow(1px 1px 0px #000000);
+  color: rgba(255, 255, 255, 0.45) !important;
+  filter: none !important;
+}
+
+/* 思考块 Markdown 渲染强制隔离：防止主题列表、标题与强调色污染灰色字体 */
+[data-theme="minecraft"] .agent-thinking-content .markdown-preview {
+  background: transparent !important;
+  background-image: none !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+[data-theme="minecraft"] .agent-thinking-content .markdown-preview * {
+  color: rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="minecraft"] .agent-thinking-content .markdown-preview ul > li::marker,
+[data-theme="minecraft"] .agent-thinking-content .markdown-preview ol > li::marker {
+  color: rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
+  font-weight: normal !important;
 }
 
 /* ========================================================
@@ -1627,4 +1646,110 @@
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 压缩摘要 Markdown 渲染强制隔离：重置列表 marker 与子元素 */
+[data-theme="minecraft"] .agent-compaction-bubble .markdown-preview {
+  background: transparent !important;
+  background-image: none !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+[data-theme="minecraft"] .agent-compaction-bubble .markdown-preview * {
+  color: rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="minecraft"] .agent-compaction-bubble .markdown-preview ul > li::marker,
+[data-theme="minecraft"] .agent-compaction-bubble .markdown-preview ol > li::marker {
+  color: rgba(255, 255, 255, 0.45) !important;
+  text-shadow: none !important;
+  font-weight: normal !important;
+}
+
+/* ========================================================
+ * 20. Agent 消息与输入框文件附件 (AgentMessageFiles & AgentInputFiles) - 3D 浮雕
+ * ======================================================== */
+[data-theme="minecraft"] .agent-message-file-image {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2c !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-message-file-item {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2c !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-message-file-icon {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #14141e !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="minecraft"] .agent-input-files-bar {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2328283a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252536'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232b2b3d'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23242435'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262637'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23272738'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23232333'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f42'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%2329293b'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23242435'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23343448'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2338384e'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23171722'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2338384e'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23171722'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  padding: 4px 6px !important;
+  margin-bottom: 6px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-input-file-item .lx-tag {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* ========================================================
+ * 21. Agent 底部状态栏容器 (AgentStatusBar) - 3D 浮雕与分层马赛克底栏
+ * ======================================================== */
+[data-theme="minecraft"] .agent-status-bar {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1a1a26 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a26'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%231d1d2b'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23222232'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%231c1c29'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23232334'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23171723'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231e1e2e'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23171723'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23252536'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%231a1a27'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23222232'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  padding: 4px 6px !important;
+  margin-top: 4px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-status-context-pill {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  padding: 1px 8px !important;
+  font-family: var(--theme-font-family) !important;
+  height: 24px !important;
 }

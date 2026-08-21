@@ -58,7 +58,7 @@ export const AgentStatusBar = ({
     : null
 
   return (
-    <div className="flex min-w-0 items-center">
+    <div className="agent-status-bar flex min-w-0 items-center">
       <div className="min-w-0 flex-1">
         {projectPath ? (
           <GitStatusBar projectPath={projectPath} />
@@ -76,7 +76,7 @@ export const AgentStatusBar = ({
         >
           <span
             aria-label={t("agent.contextCapacity")}
-            className={`flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
+            className={`agent-status-context-pill flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
           >
             <Layers className="h-3.5 w-3.5 shrink-0" />
             <span className="tabular-nums">{percent}%</span>

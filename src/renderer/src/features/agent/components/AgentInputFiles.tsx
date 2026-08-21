@@ -72,7 +72,7 @@ export const AgentInputFiles = ({
   if (files.length === 0) return null
 
   return (
-    <div className="mb-2 flex items-center gap-1.5 border-b border-white/5 pb-2">
+    <div className="agent-input-files-bar mb-2 flex items-center gap-1.5 border-b border-white/5 pb-2">
       <LxIconButton
         aria-label={t("common.previous")}
         disabled={!canScrollLeft}
@@ -112,7 +112,7 @@ export const AgentInputFiles = ({
 
           return (
             <LxTooltip key={file.id} content={tooltipContent} placement="top" multiline>
-              <div className="flex shrink-0 items-center">
+              <div className="agent-input-file-item flex shrink-0 items-center">
                 <LxTag
                   size="default"
                   color={isImage ? "blue" : "teal"}

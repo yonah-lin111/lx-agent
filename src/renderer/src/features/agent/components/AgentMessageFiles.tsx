@@ -48,7 +48,7 @@ const ImageItem = ({ file }: { file: AgentMessageFile }) => {
 
   return (
     <LxTooltip content={previewContent} placement="top" multiline>
-      <div className="relative h-12 w-12 overflow-hidden rounded-[8px] border border-white/10 bg-white/5 flex items-center justify-center cursor-pointer">
+      <div className="agent-message-file-image relative h-12 w-12 overflow-hidden rounded-[8px] border border-white/10 bg-white/5 flex items-center justify-center cursor-pointer">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#252525]">
             <Loader2 className="h-4 w-4 animate-spin text-white/30" />
@@ -73,8 +73,8 @@ const FileItem = ({ file }: { file: AgentMessageFile }) => {
 
   return (
     <LxTooltip content={<span className="text-xs font-semibold">{file.name}</span>} placement="top">
-      <div className="flex h-12 w-48 items-center gap-2 rounded-[8px] border border-white/10 bg-white/5 px-2.5 cursor-default">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] bg-white/10">
+      <div className="agent-message-file-item flex h-12 w-48 items-center gap-2 rounded-[8px] border border-white/10 bg-white/5 px-2.5 cursor-default">
+        <div className="agent-message-file-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] bg-white/10">
           <FileText className="h-4 w-4 text-teal-400" />
         </div>
         <div className="min-w-0 flex-1 text-left flex flex-col justify-center">

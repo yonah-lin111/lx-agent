@@ -9,7 +9,7 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314141d'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23111118'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231c1c2a'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23151520'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23121219'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23181824'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23191926'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23151520'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23202030'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23121219'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23101016'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23161622'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23222234'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2326263a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230c0c12'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2326263a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230c0c12'/%3E%3C/svg%3E") !important;
   background-repeat: repeat !important;
   image-rendering: pixelated !important;
-  color: #f0f0f8 !important;
+  color: #d4d4e4 !important;
   font-family: var(--theme-font-family) !important;
 }
 
@@ -107,8 +107,8 @@
 
 [data-theme="minecraft"] .cm-md-strong-marker,
 [data-theme="minecraft"] .cm-md-strong-marker * {
-  color: #ffaa00 !important;
-  font-weight: 700;
+  color: #e6e6f0 !important;
+  font-weight: 600;
 }
 
 [data-theme="minecraft"] .cm-md-emphasis-marker,

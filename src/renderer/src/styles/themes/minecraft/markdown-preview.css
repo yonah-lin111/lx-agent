@@ -5,7 +5,7 @@
 
 /* 1. 基础容器与正文排版 */
 [data-theme="minecraft"] .markdown-preview {
-  color: #f0f0f8 !important;
+  color: #d4d4e4 !important;
   font-family: var(--theme-font-family) !important;
   background-color: #12121a !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
@@ -14,13 +14,13 @@
 }
 
 [data-theme="minecraft"] .markdown-preview p {
-  color: #d8d8e8;
+  color: #c4c4d4;
   line-height: 1.7;
 }
 
-/* 2. 标题层级：Minecraft 经典矿物与附魔高光（2px 黑色像素投影） */
+/* 2. 标题层级：Minecraft 经典矿物阶梯收敛（钻石蓝 -> 附魔紫 -> 安山岩灰蓝，避免多色杂乱） */
 [data-theme="minecraft"] .markdown-preview h1 {
-  color: #ffaa00 !important; /* 金矿/经验条暖金 */
+  color: #55ffff !important; /* 钻石天蓝 */
   text-shadow: 2px 2px 0px #000000;
   border-bottom: 3px solid #000000 !important;
   box-shadow: 0 2px 0 0 rgba(255, 255, 255, 0.15);
@@ -38,25 +38,25 @@
 }
 
 [data-theme="minecraft"] .markdown-preview h3 {
-  color: #55ff55 !important; /* 绿宝石/经验条荧光绿 */
+  color: #c084fc !important; /* 紫水晶/附魔紫 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
 [data-theme="minecraft"] .markdown-preview h4 {
-  color: #c084fc !important; /* 紫水晶/附魔光泽紫 */
+  color: #c084fc !important; /* 紫水晶/附魔紫 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
 [data-theme="minecraft"] .markdown-preview h5 {
-  color: #38bdf8 !important; /* 青金石亮蓝 */
+  color: #b0b0c8 !important; /* 次级浅灰蓝 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
 
 [data-theme="minecraft"] .markdown-preview h6 {
-  color: #a6a6bc !important; /* 安山岩中灰 */
+  color: #8c8ca0 !important; /* 安山岩中灰 */
   text-shadow: 2px 2px 0px #000000;
   font-weight: 700;
 }
@@ -64,20 +64,21 @@
 /* 3. 文本行内装饰与链接 */
 [data-theme="minecraft"] .markdown-preview strong,
 [data-theme="minecraft"] .markdown-preview b {
-  color: #ffaa00 !important; /* 金矿橙黄 */
-  font-weight: 700;
+  color: #e6e6f0 !important; /* 柔和浅象牙白，消除纯白眩光 */
+  font-weight: 600;
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="minecraft"] .markdown-preview em,
 [data-theme="minecraft"] .markdown-preview i {
-  color: #fde68a !important; /* 石英暗金淡黄 */
+  color: #e2e8f0 !important; /* 浅灰白斜体 */
   font-style: italic;
 }
 
 [data-theme="minecraft"] .markdown-preview del,
 [data-theme="minecraft"] .markdown-preview s {
-  color: #ff5555 !important; /* 红石浅红 */
-  text-decoration-color: #ff5555 !important;
+  color: #94a3b8 !important; /* 低调中灰删除线 */
+  text-decoration-color: #94a3b8 !important;
 }
 
 [data-theme="minecraft"] .markdown-preview a {
@@ -126,11 +127,11 @@
 }
 
 [data-theme="minecraft"] .markdown-preview ul > li::marker {
-  color: #55ff55 !important; /* 绿宝石圆点 */
+  color: #55ffff !important; /* 钻石蓝圆点 */
 }
 
 [data-theme="minecraft"] .markdown-preview ol > li::marker {
-  color: #ffaa00 !important; /* 金矿石序号 */
+  color: #55ffff !important; /* 钻石蓝序号 */
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }

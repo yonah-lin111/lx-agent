@@ -12,7 +12,7 @@
   --color-theme-surface-hover: #343448;
   --color-theme-border: #48485c;
   --color-theme-border-strong: #64647c;
-  --color-theme-text: #f0f0f8;
+  --color-theme-text: #d4d4e4;
   --color-theme-text-muted: #a6a6bc;
   --color-theme-text-subtle: #727288;
   --color-theme-accent: #55ff55;
@@ -27,7 +27,7 @@
   --color-project-prompt-bubble: #1a4837; /* 绿宝石矿石深翠绿 */
   --color-global-prompt-bubble: #372854; /* 末影水晶暗紫 */
 
-  color: #f0f0f8;
+  color: #d4d4e4;
   background: #1c1c26;
   font-family: var(--theme-font-family);
   image-rendering: auto;
@@ -38,9 +38,17 @@
   border-radius: 0px !important;
 }
 
+[data-theme="minecraft"] strong,
+[data-theme="minecraft"] b,
+[data-theme="minecraft"] .font-bold,
+[data-theme="minecraft"] .font-semibold {
+  color: #e6e6f0;
+  font-weight: 600;
+}
+
 [data-theme="minecraft"] body {
   background: #1c1c26;
-  color: #f0f0f8;
+  color: #d4d4e4;
 }
 
 /* 经典 Minecraft 容器立体凹凸像素槽：外深黑 + 内凸亮边 + 底部阴影边 + 安山岩像素马赛克底纹 */
@@ -442,8 +450,6 @@
 [data-theme="minecraft"] .terminal-pane-container,
 [data-theme="minecraft"] .terminal-empty-state,
 [data-theme="minecraft"] .agent-page-container,
-[data-theme="minecraft"] .agent-message-list-container,
-[data-theme="minecraft"] .agent-message-list-skeleton,
 [data-theme="minecraft"] .markdown-editor-workspace,
 [data-theme="minecraft"] .markdown-preview,
 [data-theme="minecraft"] .ui-preview-page-container {
@@ -456,6 +462,13 @@
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] .agent-message-list-container {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
 }
 
 /* 3. 分屏标题栏与分割线 */
@@ -682,23 +695,26 @@
 }
 
 /* ========================================================
- * Git 状态栏（GitStatusBar）
+ * Git 状态栏（GitStatusBar） - 3D 凸起像素胶囊
  * ======================================================== */
 [data-theme="minecraft"] .git-status-bar {
-  border-top: 2px solid #000000 !important;
+  border-top: none !important;
   color: #a0a0b0 !important;
   font-family: var(--theme-font-family) !important;
+  gap: 6px !important;
 }
 
 [data-theme="minecraft"] .git-status-item {
   border-radius: 0px !important;
-  border: 1px solid #000000 !important;
-  background-color: #14141c !important;
+  border: 2px solid #000000 !important;
+  background-color: #222232 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
-  padding: 1px 6px !important;
-  color: #f0f0f8 !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  padding: 1px 8px !important;
+  color: #d4d4e4 !important;
+  font-family: var(--theme-font-family) !important;
 }
 
 /* ========================================================
