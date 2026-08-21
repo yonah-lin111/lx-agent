@@ -2,6 +2,7 @@ import type { TranslationDictionary } from "./en"
 
 export const zh: TranslationDictionary = {
   common: {
+    more: "更多",
     save: "保存",
     saving: "保存中...",
     saved: "已保存",
