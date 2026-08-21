@@ -7,10 +7,11 @@ import type {
   Usage,
 } from "@shared/contracts/agent"
 import { stepCountIs, streamText } from "ai"
-import { createAssistantMessageEventStream } from "../core/event-stream"
-import type { Model, StreamFn } from "../core/types"
-import { resolveLanguageModel } from "./modelFactory"
-import { toAiTools, toModelMessages } from "./toModelMessages"
+import { createAssistantMessageEventStream } from "@/agent/core/event-stream"
+import type { Model, StreamFn } from "@/agent/core/types"
+import { DEFAULT_STREAM_IDLE_TIMEOUT_MS, IdleWatchdog } from "@/agent/stream/idleWatchdog"
+import { resolveLanguageModel } from "@/agent/stream/modelFactory"
+import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
 
 // AI SDK finishReason → 本地 StopReason 映射。
 const mapStopReason = (reason: string): StopReason => {
@@ -46,9 +47,9 @@ const createEmptyAssistant = (model: Model): AssistantMessage => ({
  * AI SDK → StreamFn 适配器。
  *
  * 每次调用执行单步生成（stopWhen: stepCountIs(1)），工具调用以 toolcall_end 事件交付，
- * 由 agent-loop 执行工具后回灌上下文。
+ * 由 agent-loop 执行工具后回灌上下文。集成 IdleWatchdog 防止流式假死。
  */
-export const createAiSdkStreamFn = (): StreamFn => {
+export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number }): StreamFn => {
   return async (model, context, options) => {
     const stream = createAssistantMessageEventStream()
 
@@ -92,6 +93,17 @@ export const createAiSdkStreamFn = (): StreamFn => {
         stream.push(event)
       }
 
+      const idleTimeoutMs =
+        options?.idleTimeoutMs ?? defaultOptions?.idleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
+      const watchdog = new IdleWatchdog({
+        timeoutMs: idleTimeoutMs,
+        errorMessage: `Stream idle timeout after ${idleTimeoutMs}ms`,
+      })
+
+      const combinedSignal = options?.signal
+        ? AbortSignal.any([options.signal, watchdog.signal])
+        : watchdog.signal
+
       try {
         const languageModel = resolveLanguageModel(model)
         const result = streamText({
@@ -100,12 +112,13 @@ export const createAiSdkStreamFn = (): StreamFn => {
           messages: toModelMessages(context.messages),
           tools: toAiTools(context.tools),
           stopWhen: stepCountIs(1),
-          abortSignal: options?.signal,
+          abortSignal: combinedSignal,
         })
 
         stream.push({ type: "start", partial })
 
         for await (const part of result.fullStream) {
+          watchdog.feed()
           switch (part.type) {
             case "text-start": {
               const block = ensureTextBlock()
@@ -192,28 +205,39 @@ export const createAiSdkStreamFn = (): StreamFn => {
         }
 
         // 流提前结束（无 finish 事件）。
-        const aborted = options?.signal?.aborted
+        const isWatchdogTimeout = watchdog.aborted
+        const isUserAbort = options?.signal?.aborted
         const finalMessage: AssistantMessage = {
           ...partial,
           content: blocks,
-          stopReason: aborted ? "aborted" : "error",
-          errorMessage: aborted ? "Request was aborted" : "Stream ended without finish",
+          stopReason: isUserAbort ? "aborted" : "error",
+          errorMessage: isUserAbort
+            ? "Request was aborted"
+            : isWatchdogTimeout
+              ? `Stream idle timeout after ${idleTimeoutMs}ms`
+              : "Stream ended without finish",
           timestamp: Date.now(),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()
       } catch (error) {
-        const aborted = options?.signal?.aborted
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const isWatchdogTimeout = watchdog.aborted
+        const isUserAbort = options?.signal?.aborted
+        let errorMessage = error instanceof Error ? error.message : String(error)
+        if (isWatchdogTimeout && !errorMessage.includes("idle timeout")) {
+          errorMessage = `Stream idle timeout after ${idleTimeoutMs}ms`
+        }
         const finalMessage: AssistantMessage = {
           ...partial,
           content: blocks,
-          stopReason: aborted ? "aborted" : "error",
-          errorMessage,
+          stopReason: isUserAbort ? "aborted" : "error",
+          errorMessage: isUserAbort ? "Request was aborted" : errorMessage,
           timestamp: Date.now(),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()
+      } finally {
+        watchdog.dispose()
       }
     })()
 

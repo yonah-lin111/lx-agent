@@ -231,53 +231,57 @@ async function streamAssistantResponse(
   let partialMessage: AssistantMessage | null = null
   let addedPartial = false
 
-  for await (const event of response) {
-    switch (event.type) {
-      case "start": {
-        const partial = event.partial
-        partialMessage = partial
-        context.messages.push(partial)
-        addedPartial = true
-        await emit({ type: "message_start", message: { ...partial } })
-        break
-      }
-
-      case "text_start":
-      case "text_delta":
-      case "text_end":
-      case "thinking_start":
-      case "thinking_delta":
-      case "thinking_end":
-      case "toolcall_start":
-      case "toolcall_delta":
-      case "toolcall_end":
-        if (partialMessage) {
+  try {
+    for await (const event of response) {
+      switch (event.type) {
+        case "start": {
           const partial = event.partial
           partialMessage = partial
-          context.messages[context.messages.length - 1] = partial
-          await emit({
-            type: "message_update",
-            assistantMessageEvent: event,
-            message: { ...partial },
-          })
+          context.messages.push(partial)
+          addedPartial = true
+          await emit({ type: "message_start", message: { ...partial } })
+          break
         }
-        break
 
-      case "done":
-      case "error": {
-        const finalMessage = await response.result()
-        if (addedPartial) {
-          context.messages[context.messages.length - 1] = finalMessage
-        } else {
-          context.messages.push(finalMessage)
+        case "text_start":
+        case "text_delta":
+        case "text_end":
+        case "thinking_start":
+        case "thinking_delta":
+        case "thinking_end":
+        case "toolcall_start":
+        case "toolcall_delta":
+        case "toolcall_end":
+          if (partialMessage) {
+            const partial = event.partial
+            partialMessage = partial
+            context.messages[context.messages.length - 1] = partial
+            await emit({
+              type: "message_update",
+              assistantMessageEvent: event,
+              message: { ...partial },
+            })
+          }
+          break
+
+        case "done":
+        case "error": {
+          const finalMessage = await response.result()
+          if (addedPartial) {
+            context.messages[context.messages.length - 1] = finalMessage
+          } else {
+            context.messages.push(finalMessage)
+          }
+          if (!addedPartial) {
+            await emit({ type: "message_start", message: { ...finalMessage } })
+          }
+          await emit({ type: "message_end", message: finalMessage })
+          return finalMessage
         }
-        if (!addedPartial) {
-          await emit({ type: "message_start", message: { ...finalMessage } })
-        }
-        await emit({ type: "message_end", message: finalMessage })
-        return finalMessage
       }
     }
+  } finally {
+    response.end()
   }
 
   const finalMessage = await response.result()

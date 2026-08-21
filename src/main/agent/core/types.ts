@@ -33,6 +33,8 @@ export interface SimpleStreamOptions {
   signal?: AbortSignal
   reasoning?: ThinkingLevel
   sessionId?: string
+  // 流式空闲超时毫秒数。
+  idleTimeoutMs?: number
 }
 
 // 消息上下文（systemPrompt + LlmMessage + tools）。
