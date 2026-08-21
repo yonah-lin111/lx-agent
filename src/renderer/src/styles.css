@@ -787,6 +787,12 @@ select {
   color: #38bdf8;
 }
 
+.markdown-preview
+  .markdown-template-block[data-template-command="styleTemplate"]
+  .markdown-template-command {
+  color: #f472b6;
+}
+
 .markdown-preview .markdown-template-actions {
   display: flex;
   flex: none;

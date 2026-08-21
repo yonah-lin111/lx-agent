@@ -28,6 +28,7 @@ describe("Markdown 斜杠命令", () => {
       "bugTemplate",
       "refactorTemplate",
       "commonTemplate",
+      "styleTemplate",
       "gitWorktree",
     ])
   })
@@ -51,6 +52,16 @@ describe("Markdown 斜杠命令", () => {
   it("virtual 项目（无 git 上下文）不列出工作区命令", () => {
     expect(getMarkdownSlashCommands("/git", false, false)).toEqual([])
     expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual(["summaryTitle"])
+  })
+  it("支持多语言环境下的模板文案切换", () => {
+    const zhCommands = getMarkdownSlashCommands("/style", false, true, [], "zh")
+    expect(zhCommands[0]?.description).toBe("插入样式设计提示词模板")
+    expect(zhCommands[0]?.content).toContain("# 样式设计")
+
+    const enCommands = getMarkdownSlashCommands("/style", false, true, [], "en")
+    expect(enCommands[0]?.description).toBe("Insert style design prompt template")
+    expect(enCommands[0]?.content).toContain("# Design Style")
+    expect(enCommands[0]?.content).toContain("- Reference: ")
   })
 })
 
@@ -114,8 +125,8 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownSlashCommands("/my-", false, true, customCommands).map((c) => c.id)).toEqual([
       "custom:my-global",
     ])
-    expect(
-      getMarkdownSlashCommands("/block", true, true, customCommands).map((c) => c.id),
-    ).toEqual(["custom:block-only"])
+    expect(getMarkdownSlashCommands("/block", true, true, customCommands).map((c) => c.id)).toEqual(
+      ["custom:block-only"],
+    )
   })
 })

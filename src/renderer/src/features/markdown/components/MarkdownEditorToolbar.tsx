@@ -156,6 +156,7 @@ const MarkdownEditorTOC = ({
                   bugTemplate: "#fb7185",
                   refactorTemplate: "#c084fc",
                   commonTemplate: "#38bdf8",
+                  styleTemplate: "#f472b6",
                 }
                 const textStyle = tItem.hasCustomTitle
                   ? { color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.6)" }

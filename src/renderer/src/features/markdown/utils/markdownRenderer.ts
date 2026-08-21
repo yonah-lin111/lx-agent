@@ -96,6 +96,7 @@ const markdownTemplateCommands = new Set([
   "bugTemplate",
   "refactorTemplate",
   "commonTemplate",
+  "styleTemplate",
 ])
 
 const isTemplateListItemLine = (line: string): RegExpMatchArray | null =>

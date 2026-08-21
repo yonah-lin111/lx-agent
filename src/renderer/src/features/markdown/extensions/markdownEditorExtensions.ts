@@ -204,6 +204,10 @@ export const editorTheme = EditorView.theme(
       color: "#38bdf8 !important",
       backgroundColor: "rgba(56, 189, 248, 0.15) !important",
     },
+    ".cm-md-template-command-styleTemplate, .cm-md-template-command-styleTemplate *": {
+      color: "#f472b6 !important",
+      backgroundColor: "rgba(244, 114, 182, 0.15) !important",
+    },
     ".cm-md-template-title, .cm-md-template-title *": {
       color: "#fde68a !important",
       backgroundColor: "rgba(253, 230, 138, 0.18) !important",

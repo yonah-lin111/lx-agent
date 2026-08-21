@@ -363,6 +363,7 @@ export const LxMarkdownEditor = ({
     }
   }, [])
   const { success, warning, error } = useLxToast()
+  const { locale } = useTranslation()
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
     rightSidebarStore.isCollapsed,
@@ -563,6 +564,7 @@ export const LxMarkdownEditor = ({
     projectBranch,
     reloadWorktrees,
     customSlashCommands: formattedCustomSlashCommands,
+    locale,
   })
 
   const { captureScrollAnchor } = useEditorScrollSync({

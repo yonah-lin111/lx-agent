@@ -1,9 +1,14 @@
+import type { Locale } from "@shared/settings"
+import { en } from "@/i18n/locales/en"
+import { zh } from "@/i18n/locales/zh"
+
 // Markdown 模板命令标识。
 export type MarkdownTemplateCommandId =
   | "addTemplate"
   | "bugTemplate"
   | "refactorTemplate"
   | "commonTemplate"
+  | "styleTemplate"
 
 // Markdown 斜杠命令标识。
 export type MarkdownSlashCommandId =
@@ -45,96 +50,114 @@ export interface MarkdownSlashCommandLine {
   value: string
 }
 
-const templateCommands: MarkdownSlashCommand[] = [
-  {
-    id: "addTemplate",
-    label: "/addTemplate",
-    description: "插入需求提示词模板",
-    scope: "normal",
-    kind: "direct",
-    source: "builtin",
-    content:
-      "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: \n- 位置: \n- 描述: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
-    cursorOffset: "&&& addTemplate 「title: 」\n# 添加需求\n\n- 参考: ".length,
-  },
-  {
-    id: "bugTemplate",
-    label: "/bugTemplate",
-    description: "插入 Bug 修复提示词模板",
-    scope: "normal",
-    kind: "direct",
-    source: "builtin",
-    content:
-      "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: \n- 位置: \n- 描述: \n- 复现: \n- 要求: \n  - \n- 期望: \n&&&",
-    cursorOffset: "&&& bugTemplate 「title: 」\n# 修复 Bug\n\n- 参考: ".length,
-  },
-  {
-    id: "refactorTemplate",
-    label: "/refactorTemplate",
-    description: "插入功能重构提示词模板",
-    scope: "normal",
-    kind: "direct",
-    source: "builtin",
-    content:
-      "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: \n- 位置: \n- 目标: \n- 要求: \n  - \n- 注意: \n  - \n&&&",
-    cursorOffset: "&&& refactorTemplate 「title: 」\n# 重构功能\n\n- 参考: ".length,
-  },
-  // 通用提示词模板（通用模板，非代码修改模板）
-  {
-    id: "commonTemplate",
-    label: "/commonTemplate",
-    description: "插入通用提示词模板（非代码修改模板）",
-    scope: "normal",
-    kind: "direct",
-    source: "builtin",
-    content: [
-      "&&& commonTemplate 「title: 」",
-      "# 执行任务",
-      "",
-      "- 参考: ",
-      "- 位置: ",
-      "- 要求: ",
-      "  - ",
-      "- 注意: ",
-      "  - ",
-      "- 期望: ",
-      "&&&",
-    ].join("\n"),
-    cursorOffset: ["&&& commonTemplate 「title: 」", "# 执行任务", "", "- 参考: "].join("\n")
-      .length,
-  },
-]
-
-// 模板块内的 AI 标题命令：确认型（回显 /summaryTitle、二次回车触发），content 为回显文本（带尾随空格）。
-const summaryTitleCommand: MarkdownSlashCommand = {
-  id: "summaryTitle",
-  label: "/summaryTitle",
-  description: "AI 提炼当前模板块标题",
-  scope: "template",
-  kind: "confirm",
-  source: "builtin",
-  content: "/summaryTitle ",
-  cursorOffset: "/summaryTitle ".length,
+/**
+ * 计算模板插入内容在首个输入占位处的光标偏移量。
+ */
+const getTemplateCursorOffset = (content: string): number => {
+  const lines = content.split("\n")
+  let offset = 0
+  for (const line of lines) {
+    if (line.startsWith("- ") && (line.endsWith(": ") || line.endsWith("："))) {
+      return offset + line.length
+    }
+    offset += line.length + 1
+  }
+  return content.length
 }
 
-// 模板块内外的 git 工作区切换命令：选择型（回显 /gitWorktree、打开二级工作区面板，选中回显分支名、回车触发切换）。
-const gitWorktreeCommand: MarkdownSlashCommand = {
-  id: "gitWorktree",
-  label: "/gitWorktree",
-  description: "切换当前 git 工作区",
-  scope: "both",
-  kind: "select",
-  source: "builtin",
-  content: "/gitWorktree ",
-  cursorOffset: "/gitWorktree ".length,
+/**
+ * 根据语言环境构造内置 Markdown 模板命令。
+ */
+export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): MarkdownSlashCommand[] => {
+  const dict = locale === "en" ? en : zh
+
+  const addContent = dict.markdown.templateAddContent
+  const bugContent = dict.markdown.templateBugContent
+  const refactorContent = dict.markdown.templateRefactorContent
+  const commonContent = dict.markdown.templateCommonContent
+  const styleContent = dict.markdown.templateStyleContent
+
+  const templates: MarkdownSlashCommand[] = [
+    {
+      id: "addTemplate",
+      label: "/addTemplate",
+      description: dict.markdown.templateAddDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: addContent,
+      cursorOffset: getTemplateCursorOffset(addContent),
+    },
+    {
+      id: "bugTemplate",
+      label: "/bugTemplate",
+      description: dict.markdown.templateBugDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: bugContent,
+      cursorOffset: getTemplateCursorOffset(bugContent),
+    },
+    {
+      id: "refactorTemplate",
+      label: "/refactorTemplate",
+      description: dict.markdown.templateRefactorDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: refactorContent,
+      cursorOffset: getTemplateCursorOffset(refactorContent),
+    },
+    {
+      id: "commonTemplate",
+      label: "/commonTemplate",
+      description: dict.markdown.templateCommonDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: commonContent,
+      cursorOffset: getTemplateCursorOffset(commonContent),
+    },
+    {
+      id: "styleTemplate",
+      label: "/styleTemplate",
+      description: dict.markdown.templateStyleDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: styleContent,
+      cursorOffset: getTemplateCursorOffset(styleContent),
+    },
+  ]
+
+  const summaryTitle: MarkdownSlashCommand = {
+    id: "summaryTitle",
+    label: "/summaryTitle",
+    description: dict.markdown.templateSummaryTitleDesc,
+    scope: "template",
+    kind: "confirm",
+    source: "builtin",
+    content: "/summaryTitle ",
+    cursorOffset: "/summaryTitle ".length,
+  }
+
+  const gitWorktree: MarkdownSlashCommand = {
+    id: "gitWorktree",
+    label: "/gitWorktree",
+    description: dict.markdown.templateGitWorktreeDesc,
+    scope: "both",
+    kind: "select",
+    source: "builtin",
+    content: "/gitWorktree ",
+    cursorOffset: "/gitWorktree ".length,
+  }
+
+  return [...templates, summaryTitle, gitWorktree]
 }
 
-// 内置斜杠命令。
-export const builtinMarkdownSlashCommands: MarkdownSlashCommand[] = [
-  ...templateCommands,
-  summaryTitleCommand,
-  gitWorktreeCommand,
-]
+// 默认内置命令（中文兜底与单测兼容）。
+export const builtinMarkdownSlashCommands: MarkdownSlashCommand[] =
+  getBuiltinMarkdownSlashCommands("zh")
 
 // 全部斜杠命令（含确认型与选择型），供 armed 判定使用。
 const markdownSlashCommands: MarkdownSlashCommand[] = [...builtinMarkdownSlashCommands]
@@ -223,13 +246,15 @@ export const getMarkdownSlashCommands = (
   isInsideTemplateBlock = false,
   isGitWorktreeAvailable = true,
   customCommands: MarkdownSlashCommand[] = [],
+  locale: Locale = "zh",
 ): MarkdownSlashCommand[] => {
   const match = /^\/([a-zA-Z0-9_-]*)$/i.exec(value)
   if (!match) return []
 
   const query = match[1].toLowerCase()
   const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
-  const allCommands = [...builtinMarkdownSlashCommands, ...customCommands]
+  const builtinCommands = getBuiltinMarkdownSlashCommands(locale)
+  const allCommands = [...builtinCommands, ...customCommands]
 
   return allCommands.filter(
     (command) =>

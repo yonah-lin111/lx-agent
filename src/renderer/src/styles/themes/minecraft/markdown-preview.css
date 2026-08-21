@@ -423,6 +423,13 @@
   color: #55ffff !important;
 }
 
+[data-theme="minecraft"]
+  .markdown-preview
+  .markdown-template-block[data-template-command="styleTemplate"]
+  .markdown-template-command {
+  color: #ff77c2 !important;
+}
+
 [data-theme="minecraft"] .markdown-preview .markdown-template-title {
   color: #ffea88 !important;
   text-shadow: 1px 1px 0px #000000;

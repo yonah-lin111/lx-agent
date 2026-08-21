@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { GitWorktreeEntry } from "@shared/contracts/git"
 import type { ProjectFileEntry, ReferencedProjectFileEntry } from "@shared/project"
+import type { Locale } from "@shared/settings"
 import type { CSSProperties, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import {
@@ -135,6 +136,7 @@ export const useMarkdownPanels = ({
   projectBranch,
   reloadWorktrees,
   customSlashCommands = [],
+  locale = "zh",
 }: {
   editorViewRef: RefObject<EditorView | null>
   projectId?: string
@@ -158,6 +160,8 @@ export const useMarkdownPanels = ({
   reloadWorktrees?: () => void
   // 自定义 Markdown 斜杠命令列表。
   customSlashCommands?: MarkdownSlashCommand[]
+  // 语言环境（内置模板多语言）。
+  locale?: Locale
 }) => {
   const blockCommandPanelRef = useRef<MarkdownBlockCommandPanelState | null>(null)
   const activeBlockCommandIndexRef = useRef(0)
@@ -181,6 +185,7 @@ export const useMarkdownPanels = ({
   const reloadWorktreesRef = useRef(reloadWorktrees)
   const referencedProjectPathsRef = useRef(referencedProjectPaths)
   const customSlashCommandsRef = useRef(customSlashCommands)
+  const localeRef = useRef(locale)
 
   const [blockCommandPanel, setBlockCommandPanel] = useState<MarkdownBlockCommandPanelState | null>(
     null,
@@ -221,7 +226,12 @@ export const useMarkdownPanels = ({
     reloadWorktrees,
     referencedProjectPaths,
     customSlashCommands,
+    locale,
   ])
+
+  useEffect(() => {
+    localeRef.current = locale
+  }, [locale])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -297,6 +307,7 @@ export const useMarkdownPanels = ({
           isInsideTemplateBlock,
           Boolean(projectPathRef.current) && worktreesRef.current !== null,
           customSlashCommandsRef.current,
+          localeRef.current,
         )
       : []
     const coords = view.coordsAtPos(cursor)
