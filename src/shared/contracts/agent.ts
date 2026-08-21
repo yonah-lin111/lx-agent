@@ -617,6 +617,8 @@ export interface AgentApi {
     questionRespond: (response: QuestionResponse) => Promise<{ ok: boolean }>
     // 用系统默认编辑器打开文件并定位到行（LSP 结果跳转）。
     openFileAt: (filePath: string, line: number) => Promise<{ ok: boolean }>
+    // 在系统文件管理器/资源管理器中高亮定位文件。
+    showItemInFolder: (filePath: string) => Promise<{ ok: boolean }>
     // 查询当前会话上下文容量（模型切换后状态栏主动刷新；selection 指定要显示的模型窗口）。
     getContextUsage: (selection?: ModelSelection) => Promise<AgentContextUsage>
     // 查询当前会话全部可见后台任务。

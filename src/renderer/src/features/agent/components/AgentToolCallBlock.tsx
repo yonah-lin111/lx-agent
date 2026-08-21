@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import type { AgentDiff, AgentDiffLine, ChatBlock, LspToolDetails } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -36,6 +37,8 @@ interface AgentToolCallBlockProps {
   toolCalls?: ToolCallBlock[]
   // 工具结果数据。
   toolResult?: ToolResultBlock
+  // 合并组对应的全部工具结果数据。
+  toolResults?: ToolResultBlock[]
   // 写/编辑工具的结构化 diff（随 toolCall 配套传入，用于折叠展示）。
   diff?: AgentDiff
   // lsp 工具的检索结果（合并组内每个调用一份；流式中尚未返回时缺省）。
@@ -227,10 +230,26 @@ const renderDiffLines = (diff: AgentDiff, highlightedLines: string[]): React.JSX
  * 渲染 Agent 工具调用与结果的时间线步骤。
  * 写/编辑工具携带 diff 时，摘要行升级为折叠开关，点击展开/收起变更代码块（动画与 markdown 代码块一致）。
  */
+// 提取工具结果中包含的溢出文件路径。
+const extractSpillFilePathFromResults = (
+  results: (ToolResultBlock | undefined)[],
+): string | null => {
+  for (const res of results) {
+    if (!res?.text) continue
+    const match = res.text.match(/Full output saved to:\s*([^\s\]]+)/)
+    if (match) {
+      // 去除结尾可能粘连的英文句号或标点
+      return match[1].replace(/[.,;:!]+$/, "")
+    }
+  }
+  return null
+}
+
 export const AgentToolCallBlock = ({
   toolCall,
   toolCalls,
   toolResult,
+  toolResults,
   diff,
   lspDetails,
   defaultExpanded = false,
@@ -296,6 +315,9 @@ export const AgentToolCallBlock = ({
     resolvedDiff.lines.some((line) => line.type !== "context")
   const ToolIcon = getToolIcon(toolName)
 
+  const allResults = toolResults && toolResults.length > 0 ? toolResults : [toolResult]
+  const spillFilePath = extractSpillFilePathFromResults(allResults)
+
   return (
     <div className="agent-tool-call-block my-0.5 min-w-0">
       <div className="agent-tool-call-header flex items-center gap-1">
@@ -358,6 +380,24 @@ export const AgentToolCallBlock = ({
         <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
           <span className="agent-tool-call-desc min-w-0 break-all">{summary}</span>
+        </div>
+      )}
+      {spillFilePath && (
+        <div className="mt-1 flex min-w-0 items-center gap-1 pl-1 text-[12px] text-white/45">
+          <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
+          <span>Output truncated.</span>
+          <span
+            className="cursor-pointer text-[12px] text-white/60 underline underline-offset-2 transition-colors hover:text-white/90 focus:outline-none"
+            onClick={() => {
+              if (window.api?.agent?.showItemInFolder) {
+                void window.api.agent.showItemInFolder(spillFilePath)
+              } else {
+                void agentApi.openFileAt(spillFilePath, 1)
+              }
+            }}
+          >
+            Open full output file
+          </span>
         </div>
       )}
       {firstToolCall?.progress && (

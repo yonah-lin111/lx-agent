@@ -354,6 +354,7 @@ export const zh: TranslationDictionary = {
     scrollToBottom: "回到底部",
     aiGenerating: "AI 生成中",
     diffContent: "Diff 内容",
+    openSpillFile: "打开完整输出文件",
     answeredQuestions: "已作答问题",
     thinkingProcess: "思考过程",
     expandExecution: "展开执行内容",

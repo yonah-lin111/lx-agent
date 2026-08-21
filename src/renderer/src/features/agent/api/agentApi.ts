@@ -77,6 +77,8 @@ export const agentApi = {
     window.api.agent.questionRespond(response),
   openFileAt: (filePath: string, line: number): Promise<{ ok: boolean }> =>
     window.api.agent.openFileAt(filePath, line),
+  showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>
+    window.api.agent.showItemInFolder(filePath),
   getContextUsage: (selection?: ModelSelection): Promise<AgentContextUsage> =>
     window.api.agent.getContextUsage(selection),
   listJobs: (sessionId?: string) => window.api.agent.listJobs(sessionId),

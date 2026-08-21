@@ -52,6 +52,8 @@ import { permissionManager } from "./permissions/permissionManager"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
+import { repeatToolGuard } from "./guard/repeatToolGuard"
+import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillLoader"
 import { spillManager } from "./spill/spillManager"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
@@ -218,17 +220,47 @@ class AgentRunner {
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
         streamFn: createAiSdkStreamFn(),
-        beforeToolCall: (context, signal) =>
-          permissionManager.gate(context, this.currentSessionId, signal),
-        // 上下文变换：todo 清单（非空时）注入头部 + 压缩边界构造 [摘要] + 保留尾部；
+        beforeToolCall: async (context, signal) => {
+          if (this.currentSessionId) {
+            const guardResult = repeatToolGuard.checkBeforeExecute(
+              this.currentSessionId,
+              context.toolCall.name,
+              context.args,
+            )
+            if (guardResult.blocked) {
+              return { block: true, reason: guardResult.blockReason }
+            }
+          }
+          return permissionManager.gate(context, this.currentSessionId, signal)
+        },
+        afterToolCall: async (context) => {
+          if (this.currentSessionId) {
+            const guardResult = repeatToolGuard.checkBeforeExecute(
+              this.currentSessionId,
+              context.toolCall.name,
+              context.args,
+            )
+            if (guardResult.reminder && !context.isError) {
+              return {
+                content: [
+                  ...context.result.content,
+                  { type: "text", text: guardResult.reminder },
+                ],
+              }
+            }
+          }
+          return undefined
+        },
+        // 上下文变换：Tier-1 工具大输出修剪 + todo 清单注入 + 压缩边界构造 [摘要] + 保留尾部；
         // state.messages 保持全量（UI/DB 真相源）。
         transformContext: async (messages) => {
+          const prunedMessages = pruneHistoricalToolOutputs(messages)
           const todoList = this.turnStore.getTodo()
           const todoMessage = todoList.length > 0 ? [createTodoStateMessage(todoList)] : []
           const boundary = this.compactor.getBoundary()
-          if (!boundary) return [...todoMessage, ...messages]
+          if (!boundary) return [...todoMessage, ...prunedMessages]
           const messageSeqs = this.turnStore.getMessageSeqs()
-          const kept = messages.filter((_, index) => {
+          const kept = prunedMessages.filter((_, index) => {
             const seq = messageSeqs[index] ?? -1
             // 幽灵消息（-1，未落库/未匹配）恒保留：被压缩边界误剔除会导致模型上下文丢失历史。
             return seq < 0 || seq >= boundary.firstKeptSeq

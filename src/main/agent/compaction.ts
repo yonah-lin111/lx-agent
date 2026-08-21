@@ -11,6 +11,7 @@ import {
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 
 // 摘要生成超时（秒）：兜底避免无响应 provider 挂住 turn 收尾。
 const COMPACTION_TIMEOUT_MS = 30_000
@@ -245,7 +246,8 @@ export const generateCompactionSummary = async (
     if ("error" in resolved) return null
     const languageModel = resolveLanguageModel(resolved.model)
 
-    const input = extractConversationText(messages)
+    const pruned = pruneHistoricalToolOutputs(messages)
+    const input = extractConversationText(pruned)
     if (!input) return null
     // 输入超限时保留尾部（最近内容信息量最大）。
     const truncated =

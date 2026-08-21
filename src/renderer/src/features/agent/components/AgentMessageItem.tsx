@@ -308,6 +308,22 @@ export const AgentMessageItem = ({
     if (!hasUsage) return null
     return { input, output, cacheRead, totalTokens }
   }, [message, continuationMessages])
+  const toolResultByToolCallId = useMemo(
+    () =>
+      new Map(
+        displayBlocks
+          .filter(
+            (
+              item,
+            ): item is {
+              block: Extract<ChatBlock, { kind: "toolResult" }>
+              isStreaming: boolean
+            } => item.block.kind === "toolResult",
+          )
+          .map((item) => [item.block.toolCallId, item.block]),
+      ),
+    [displayBlocks],
+  )
   const diffByToolCallId = useMemo(
     () =>
       new Map(
@@ -1001,6 +1017,7 @@ export const AgentMessageItem = ({
                       node: (
                         <AgentToolCallBlock
                           toolCall={block}
+                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
                           diff={diffByToolCallId.get(block.toolCallId)}
                           defaultExpanded={isStreamingNow}
                         />
@@ -1035,6 +1052,9 @@ export const AgentMessageItem = ({
                   const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
                   if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
                   const category = getToolExecutionCategory(block.toolName)
+                  const toolResults = toolGroup
+                    .map((call) => toolResultByToolCallId.get(call.toolCallId))
+                    .filter((entry): entry is Extract<ChatBlock, { kind: "toolResult" }> => entry !== undefined)
                   // lsp 组：附带合并组内每份检索结果（渲染块复用跳转）。
                   if (toolGroup[0]?.toolName === "lsp") {
                     const lspDetails = toolGroup
@@ -1043,14 +1063,26 @@ export const AgentMessageItem = ({
                     return [
                       {
                         category,
-                        node: <AgentToolCallBlock toolCalls={toolGroup} lspDetails={lspDetails} />,
+                        node: (
+                          <AgentToolCallBlock
+                            toolCalls={toolGroup}
+                            toolResults={toolResults}
+                            lspDetails={lspDetails}
+                          />
+                        ),
                       },
                     ]
                   }
                   return [
                     {
                       category,
-                      node: <AgentToolCallBlock toolCalls={toolGroup} />,
+                      node: (
+                        <AgentToolCallBlock
+                          toolCalls={toolGroup}
+                          toolResults={toolResults}
+                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                        />
+                      ),
                     },
                   ]
                 }
@@ -1059,7 +1091,12 @@ export const AgentMessageItem = ({
                 return [
                   {
                     category,
-                    node: <AgentToolCallBlock toolCall={block} />,
+                    node: (
+                      <AgentToolCallBlock
+                        toolCall={block}
+                        toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                      />
+                    ),
                   },
                 ]
               },

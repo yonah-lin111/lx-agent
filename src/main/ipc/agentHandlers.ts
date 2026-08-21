@@ -345,6 +345,19 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return openFileAt(filePath, line)
   })
 
+  ipcMain.handle(AGENT_CHANNELS.showItemInFolder, (_, filePath: unknown) => {
+    if (typeof filePath !== "string" || !filePath) {
+      return { ok: false }
+    }
+    try {
+      const cleanPath = filePath.trim().replace(/[.,;:!]+$/, "")
+      shell.showItemInFolder(cleanPath)
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  })
+
   ipcMain.handle(AGENT_CHANNELS.getContextUsage, (_, selection: unknown) => {
     if (selection !== undefined && !isValidModelSelection(selection)) {
       throw new Error("INVALID_MODEL_SELECTION")

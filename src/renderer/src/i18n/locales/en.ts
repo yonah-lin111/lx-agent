@@ -356,6 +356,7 @@ export const en = {
     scrollToBottom: "Scroll to bottom",
     aiGenerating: "AI generating",
     diffContent: "Diff Content",
+    openSpillFile: "Open Full Output File",
     answeredQuestions: "Answered Questions",
     thinkingProcess: "Thinking Process",
     expandExecution: "Expand execution content",

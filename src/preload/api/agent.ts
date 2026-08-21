@@ -51,6 +51,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.questionResponse, response),
   openFileAt: (filePath: string, line: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
+  showItemInFolder: (filePath: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.showItemInFolder, filePath),
   getContextUsage: (selection?: ModelSelection) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getContextUsage, selection),
   listJobs: (sessionId?: string) => ipcRenderer.invoke(AGENT_CHANNELS.listJobs, sessionId),
