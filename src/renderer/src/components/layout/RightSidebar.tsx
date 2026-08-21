@@ -1,13 +1,14 @@
 import type { AgentSendContext } from "@shared/contracts/agent"
-import { ChevronLeft, ChevronRight, History, Plus, Workflow } from "lucide-react"
+import { ChevronLeft, ChevronRight, History, MessageSquare, Plus, Workflow } from "lucide-react"
 import type React from "react"
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 import { LspStatusButton } from "@/components/layout/LspStatusButton"
 import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentPage, ChatHistoryPanel } from "@/features/agent"
+import { AgentPage, agentViewStore, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
@@ -28,6 +29,16 @@ export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { t } = useTranslation()
+  const { warning } = useLxToast()
+
+  const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
+
+  const handleToggleViewMode = useCallback((): void => {
+    const ok = agentViewStore.toggleViewMode()
+    if (!ok) {
+      warning(t("agent.viewSwitchBlocked"))
+    }
+  }, [warning, t])
 
   // 同步折叠状态到全局存储，供其他区域（如 Markdown 编辑器）感知布局变化。
   useEffect(() => {
@@ -239,17 +250,24 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
 
           <LxIconButton
-            aria-label={t("agent.executionFlow")}
-            title={{ content: t("agent.executionFlow"), placement: "left" }}
+            aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
+            title={{
+              content: viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView"),
+              placement: "left",
+            }}
             onClick={() => {
               setIsCollapsed(false)
               setTimeout(() => {
-                toggleExecutionFlowRef.current?.()
+                handleToggleViewMode()
               }, 50)
             }}
             size="small"
           >
-            <Workflow className="h-3.5 w-3.5" />
+            {viewMode === "flow" ? (
+              <MessageSquare className="h-3.5 w-3.5" />
+            ) : (
+              <Workflow className="h-3.5 w-3.5" />
+            )}
           </LxIconButton>
         </div>
       ) : (
@@ -299,12 +317,19 @@ export const RightSideBar = (): React.JSX.Element => {
             </LxTooltip>
 
             <LxIconButton
-              aria-label={t("agent.executionFlow")}
-              title={{ content: t("agent.executionFlow"), placement: "bottom" }}
-              onClick={() => toggleExecutionFlowRef.current?.()}
+              aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
+              title={{
+                content: viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView"),
+                placement: "bottom",
+              }}
+              onClick={handleToggleViewMode}
               size="small"
             >
-              <Workflow className="h-3.5 w-3.5" />
+              {viewMode === "flow" ? (
+                <MessageSquare className="h-3.5 w-3.5" />
+              ) : (
+                <Workflow className="h-3.5 w-3.5" />
+              )}
             </LxIconButton>
           </div>
 

@@ -118,7 +118,7 @@ export type ExecutionStepKind =
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
 
-// 单个执行步骤条目（用于 AgentExecutionFlowPanel 展示完整执行日志与流程）。
+// 单个执行步骤条目（用于 AgentExecutionFlowList 展示完整执行日志与流程）。
 export interface ExecutionStep {
   // 步骤全局唯一 ID。
   id: string

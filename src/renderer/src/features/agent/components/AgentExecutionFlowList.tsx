@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronsDown,
   Code2,
   Compass,
   Copy,
@@ -18,7 +17,6 @@ import {
   Layers,
   Loader2,
   Minimize2,
-  RefreshCw,
   Search,
   Sliders,
   Sparkles,
@@ -26,7 +24,6 @@ import {
   User,
   Workflow,
   Wrench,
-  X,
   Zap,
 } from "lucide-react"
 import type React from "react"
@@ -37,6 +34,7 @@ import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRende
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import {
   CATEGORY_ORDER,
   EXECUTION_CATEGORIES,
@@ -46,23 +44,23 @@ import {
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep, ExecutionStepKind } from "@/features/agent/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
+import { AgentSuggestedPromptCards } from "./AgentSuggestedPromptCards"
 
-export interface AgentExecutionFlowPanelProps {
-  // 是否打开面板
-  isOpen: boolean
-  // 关闭面板回调
-  onClose: () => void
+export interface AgentExecutionFlowListProps {
   // 当前会话的全部消息列表
   messages: readonly ChatMessage[]
   // 当前会话 ID（用于查询完整装配的系统提示词）
   sessionId?: string
   // 当前项目或工作区路径
   cwd?: string
-  // 面板滚动容器 Ref
-  scrollRef?: React.RefObject<HTMLDivElement | null>
+  // 点击推荐提示词回调
+  onSelectPrompt?: (prompt: string) => void
 }
 
 type FilterKind = "all" | ExecutionStepKind
+
+// 智能吸底判定阈值：滚动容器距底部小于该值视为处于底部。
+const FOLLOW_BOTTOM_THRESHOLD = 40
 
 /**
  * 复制文本辅助函数
@@ -172,11 +170,16 @@ const getKindMeta = (
 /**
  * 单个步骤展示条目组件
  */
-const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
+const StepItem = ({
+  step,
+  isExpanded,
+  onToggleExpand,
+}: {
+  step: ExecutionStep
+  isExpanded: boolean
+  onToggleExpand: () => void
+}): React.JSX.Element => {
   const { t } = useTranslation()
-  const [isExpanded, setIsExpanded] = useState(
-    step.kind === "user" || step.kind === "assistant",
-  )
   const [isCopied, setIsCopied] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -216,11 +219,11 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
       <div
         role="button"
         tabIndex={0}
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={onToggleExpand}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
-            setIsExpanded((prev) => !prev)
+            onToggleExpand()
           }
         }}
         className="agent-execution-flow-step-header flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
@@ -390,28 +393,30 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                     <span>{t("agent.activeToolsList")}</span>
                   </div>
                   <div className="flex flex-col gap-1.5 pl-1">
-                    {groupToolsByCategory(step.systemContent.activeTools).map(({ category, tools }) => {
-                      const catConfig = EXECUTION_CATEGORIES[category]
-                      return (
-                        <div key={category} className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 text-[10px] text-white/50">
-                            <span className={`h-1.5 w-1.5 rounded-full ${catConfig.dotColor}`} />
-                            <span className="font-mono">{catConfig.label}</span>
-                            <span className="text-white/30">({tools.length})</span>
+                    {groupToolsByCategory(step.systemContent.activeTools).map(
+                      ({ category, tools }) => {
+                        const catConfig = EXECUTION_CATEGORIES[category]
+                        return (
+                          <div key={category} className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-[10px] text-white/50">
+                              <span className={`h-1.5 w-1.5 rounded-full ${catConfig.dotColor}`} />
+                              <span className="font-mono">{catConfig.label}</span>
+                              <span className="text-white/30">({tools.length})</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 pl-3">
+                              {tools.map((tool) => (
+                                <span
+                                  key={tool}
+                                  className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 font-mono"
+                                >
+                                  {tool}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1 pl-3">
-                            {tools.map((tool) => (
-                              <span
-                                key={tool}
-                                className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 font-mono"
-                              >
-                                {tool}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      },
+                    )}
                   </div>
                 </div>
               )}
@@ -678,30 +683,29 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 }
 
 /**
- * AgentExecutionFlowPanel - 从顶部向下展开、恰好覆盖消息列表的执行流程面板。
- * 只读展示当前 Agent 的全部执行日志、提示词注入与步骤。
+ * AgentExecutionFlowList - 与消息列表互斥显示的执行流程视图。
+ * 只读展示当前 Agent 的全部执行日志、提示词注入与步骤；默认智能吸底，
+ * 用户上翻离开底部暂停跟随，滚回底部自动恢复，发送新消息后强制回到底部。
  */
-export const AgentExecutionFlowPanel = ({
-  isOpen,
-  onClose,
+export const AgentExecutionFlowList = ({
   messages,
   sessionId,
   cwd,
-  scrollRef: externalScrollRef,
-}: AgentExecutionFlowPanelProps): React.JSX.Element => {
+  onSelectPrompt,
+}: AgentExecutionFlowListProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  // 内部滚动容器引用
-  const internalScrollRef = useRef<HTMLDivElement>(null)
-  const targetScrollRef = externalScrollRef || internalScrollRef
+  // 滚动容器引用
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // 吸底状态与控制（默认不打开吸底）
-  const [autoStick, setAutoStick] = useState(false)
-  const autoStickRef = useRef(autoStick)
-  autoStickRef.current = autoStick
+  // 智能吸底：默认跟随底部；用户上翻离开底部暂停跟随，滚回底部自动恢复。
+  const followBottomRef = useRef(true)
+  const prevScrollTopRef = useRef<number | null>(null)
 
   const [promptAssembly, setPromptAssembly] = useState<PromptAssembly | null>(null)
   const [activeFilter, setActiveFilter] = useState<FilterKind>("all")
+  // 手动展开/折叠覆盖状态字典：用户手动点击过的步骤在此记录覆盖值
+  const [userExpansionOverrides, setUserExpansionOverrides] = useState<Record<string, boolean>>({})
 
   // 获取完整系统提示词装配
   const fetchPromptAssembly = useCallback(async () => {
@@ -713,15 +717,8 @@ export const AgentExecutionFlowPanel = ({
     }
   }, [sessionId, cwd])
 
-  // 打开时获取系统提示词装配，若处于开启吸底状态则保持最新步骤吸底
+  // 挂载时获取系统提示词装配
   useEffect(() => {
-    if (isOpen) {
-      void fetchPromptAssembly()
-    }
-  }, [isOpen, fetchPromptAssembly])
-
-  // 手动刷新提示词装配
-  const handleRefresh = useCallback(() => {
     void fetchPromptAssembly()
   }, [fetchPromptAssembly])
 
@@ -729,6 +726,47 @@ export const AgentExecutionFlowPanel = ({
   const steps = useMemo(
     () => buildExecutionSteps(messages, promptAssembly),
     [messages, promptAssembly],
+  )
+
+  // 计算最大轮次（最后一轮）
+  const maxTurn = useMemo(() => {
+    let max = 0
+    for (const step of steps) {
+      if (step.turnIndex > max) {
+        max = step.turnIndex
+      }
+    }
+    return max
+  }, [steps])
+
+  // 计算某个步骤当前的展开状态（用户手动覆盖 > 默认展开规则）
+  const isStepExpanded = useCallback(
+    (step: ExecutionStep): boolean => {
+      if (step.id in userExpansionOverrides) {
+        return userExpansionOverrides[step.id]
+      }
+      // 默认规则：用户 item 始终默认展开；最后一轮的 assistant item 默认展开；其余默认折叠
+      if (step.kind === "user") {
+        return true
+      }
+      if (step.kind === "assistant") {
+        return step.turnIndex === maxTurn && maxTurn > 0
+      }
+      return false
+    },
+    [userExpansionOverrides, maxTurn],
+  )
+
+  // 切换指定步骤的展开/折叠状态并记录手动覆盖
+  const toggleStepExpanded = useCallback(
+    (step: ExecutionStep) => {
+      const currentExpanded = isStepExpanded(step)
+      setUserExpansionOverrides((prev) => ({
+        ...prev,
+        [step.id]: !currentExpanded,
+      }))
+    },
+    [isStepExpanded],
   )
 
   // 过滤后的步骤列表
@@ -785,36 +823,45 @@ export const AgentExecutionFlowPanel = ({
     el.scrollBy({ left: direction === "left" ? -160 : 160, behavior: "smooth" })
   }, [])
 
-  // 切换吸底滚动模式：仅改变状态开关，不立刻跳转，保持当前浏览位置
-  const handleToggleAutoStick = useCallback(() => {
-    setAutoStick((prev) => !prev)
+  // 滚动时更新跟随状态：向上滚动离开底部暂停吸底，向下滚回底部自动恢复。
+  const handleScroll = useCallback((): void => {
+    const el = scrollRef.current
+    if (!el) return
+    const prevScrollTop = prevScrollTopRef.current
+    const isScrollingUp = prevScrollTop !== null && prevScrollTop - el.scrollTop > 0.5
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_BOTTOM_THRESHOLD
+    followBottomRef.current = isScrollingUp ? false : nearBottom
+    prevScrollTopRef.current = el.scrollTop
   }, [])
 
   // 记录上一轮消息数量，用于检测用户发送新消息或收到新消息
   const prevMessagesLengthRef = useRef(messages.length)
 
-  // 用户发送新消息后（若开启吸底模式）滚动到底部
+  // 用户发送新消息后强制滚动到底部并恢复跟随
   useEffect(() => {
     const prevLength = prevMessagesLengthRef.current
     prevMessagesLengthRef.current = messages.length
 
-    if (!autoStickRef.current) return
-    if (messages.length > prevLength) {
-      const el = targetScrollRef.current
-      if (el) {
+    if (messages.length <= prevLength) return
+    followBottomRef.current = true
+    const el = scrollRef.current
+    if (el) {
+      if (typeof el.scrollTo === "function") {
         el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+      } else {
+        el.scrollTop = el.scrollHeight
       }
     }
-  }, [messages.length, targetScrollRef])
+  }, [messages.length])
 
-  // AI 实时输出生成、步骤更新时（若开启吸底模式）持续保持在底部
+  // AI 实时输出生成、步骤更新时，处于跟随状态则持续保持在底部
   useLayoutEffect(() => {
-    if (!autoStickRef.current) return
-    const el = targetScrollRef.current
+    if (!followBottomRef.current) return
+    const el = scrollRef.current
     if (el) {
       el.scrollTop = el.scrollHeight
     }
-  }, [filteredSteps, targetScrollRef])
+  }, [filteredSteps])
 
   // 统计指标汇总
   const stats = useMemo(() => {
@@ -871,48 +918,131 @@ export const AgentExecutionFlowPanel = ({
 
   return (
     <div
-      role="dialog"
       aria-label={t("agent.executionFlow")}
-      inert={!isOpen}
-      className="agent-execution-flow-panel absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-      style={{
-        transform: isOpen ? "translateY(0)" : "translateY(-100%)",
-        transition: "transform 0.28s cubic-bezier(0.2, 0.85, 0.2, 1)",
-        pointerEvents: isOpen ? "auto" : "none",
-      }}
+      className="agent-execution-flow-list relative flex min-h-0 min-w-0 flex-1 flex-col"
     >
-      {/* 面板头部 */}
-      <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Workflow className="h-4 w-4 text-sky-400" />
-          <span className="font-mono text-[13px] font-bold text-white/90">
-            {t("agent.executionFlow")}
-          </span>
-          <span className="rounded bg-white/5 px-1.5 py-0.2 font-mono text-[11px] text-white/40">
-            {stats.totalSteps}
-          </span>
-        </div>
+      {/* 面板头部：左侧为步骤分类筛选 Tabs（有步骤时显示），右侧为统计指标浮层 */}
+      <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-2 py-1.5 select-none">
+        {/* 左侧筛选 Tab 栏 */}
+        {steps.length > 0 ? (
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <LxIconButton
+              aria-label={t("project.scrollLeft")}
+              disabled={!canScrollTabLeft}
+              size="small"
+              onClick={() => handleTabScroll("left")}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </LxIconButton>
+            <div
+              ref={tabScrollRef}
+              className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setActiveFilter("all")}
+                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  activeFilter === "all"
+                    ? "bg-white/15 text-white"
+                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                }`}
+              >
+                {t("agent.filterAll")} ({filterCounts.all})
+              </button>
+              {filterCounts.system > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("system")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "system"
+                      ? "bg-indigo-500/20 text-indigo-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterSystem")} ({filterCounts.system})
+                </button>
+              )}
+              {filterCounts.tool > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("tool")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "tool"
+                      ? "bg-sky-500/20 text-sky-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterTools")} ({filterCounts.tool})
+                </button>
+              )}
+              {filterCounts.thinking > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("thinking")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "thinking"
+                      ? "bg-purple-500/20 text-purple-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterThinking")} ({filterCounts.thinking})
+                </button>
+              )}
+              {filterCounts.subagent > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("subagent")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "subagent"
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterSubagent")} ({filterCounts.subagent})
+                </button>
+              )}
+              {filterCounts.user > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("user")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "user"
+                      ? "bg-amber-500/20 text-amber-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterUser")} ({filterCounts.user})
+                </button>
+              )}
+              {filterCounts.assistant > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveFilter("assistant")}
+                  className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    activeFilter === "assistant"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                  }`}
+                >
+                  {t("agent.filterAssistant")} ({filterCounts.assistant})
+                </button>
+              )}
+            </div>
+            <LxIconButton
+              aria-label={t("project.scrollRight")}
+              disabled={!canScrollTabRight}
+              size="small"
+              onClick={() => handleTabScroll("right")}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </LxIconButton>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* 顶部右侧操作栏 */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* 实时吸底滚动切换按钮 */}
-          <LxIconButton
-            size="small"
-            aria-label={t("agent.autoStickToBottom")}
-            title={{
-              content: autoStick ? t("agent.autoStickToBottomOn") : t("agent.autoStickToBottomOff"),
-              placement: "bottom",
-            }}
-            className={
-              autoStick
-                ? "bg-sky-500/20 text-sky-300 ring-1 ring-sky-400/40 hover:bg-sky-500/30 hover:text-sky-200"
-                : "text-white/40 hover:bg-white/5 hover:text-white/80"
-            }
-            onClick={handleToggleAutoStick}
-          >
-            <ChevronsDown className={`h-3.5 w-3.5 ${autoStick ? "text-sky-300 animate-pulse" : ""}`} />
-          </LxIconButton>
-
           {/* 统计指标浮层 */}
           <LxTooltip
             multiline
@@ -947,149 +1077,44 @@ export const AgentExecutionFlowPanel = ({
               <BarChart3 className="h-3.5 w-3.5" />
             </LxIconButton>
           </LxTooltip>
-
-          {/* 刷新按钮 */}
-          <LxIconButton
-            size="small"
-            aria-label={t("agent.refreshFlow")}
-            title={{ content: t("agent.refreshFlow"), placement: "bottom" }}
-            onClick={handleRefresh}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </LxIconButton>
-
-          {/* 关闭按钮 */}
-          <LxIconButton
-            size="small"
-            aria-label={t("agent.closeExecutionFlow")}
-            title={{ content: t("agent.collapsePanel"), placement: "bottom" }}
-            onClick={onClose}
-          >
-            <X className="h-3.5 w-3.5" />
-          </LxIconButton>
         </div>
       </div>
 
-      {/* 筛选标签条 */}
-      {steps.length > 0 && (
-        <div className="flex shrink-0 items-center gap-1 border-b border-white/5 bg-black/10 px-2 py-1 select-none">
-          <LxIconButton
-            aria-label={t("project.scrollLeft")}
-            disabled={!canScrollTabLeft}
-            size="small"
-            onClick={() => handleTabScroll("left")}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </LxIconButton>
-          <div
-            ref={tabScrollRef}
-            className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
-          >
-            <button
-              type="button"
-              onClick={() => setActiveFilter("all")}
-              className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                activeFilter === "all"
-                  ? "bg-white/15 text-white"
-                  : "text-white/40 hover:bg-white/5 hover:text-white/70"
-              }`}
-            >
-              {t("agent.filterAll")} ({filterCounts.all})
-            </button>
-            {filterCounts.system > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("system")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "system"
-                    ? "bg-indigo-500/20 text-indigo-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterSystem")} ({filterCounts.system})
-              </button>
-            )}
-            {filterCounts.tool > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("tool")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "tool"
-                    ? "bg-sky-500/20 text-sky-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterTools")} ({filterCounts.tool})
-              </button>
-            )}
-            {filterCounts.thinking > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("thinking")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "thinking"
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterThinking")} ({filterCounts.thinking})
-              </button>
-            )}
-            {filterCounts.subagent > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("subagent")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "subagent"
-                    ? "bg-blue-500/20 text-blue-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterSubagent")} ({filterCounts.subagent})
-              </button>
-            )}
-            {filterCounts.user > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("user")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "user"
-                    ? "bg-amber-500/20 text-amber-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterUser")} ({filterCounts.user})
-              </button>
-            )}
-            {filterCounts.assistant > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveFilter("assistant")}
-                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                  activeFilter === "assistant"
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
-                }`}
-              >
-                {t("agent.filterAssistant")} ({filterCounts.assistant})
-              </button>
-            )}
-          </div>
-          <LxIconButton
-            aria-label={t("project.scrollRight")}
-            disabled={!canScrollTabRight}
-            size="small"
-            onClick={() => handleTabScroll("right")}
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </LxIconButton>
-        </div>
-      )}
-
       {/* 步骤列表内容区 */}
-      {steps.length > 0 ? (
+      {messages.length === 0 ? (
         <div
-          ref={targetScrollRef}
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-3 py-2 [scrollbar-gutter:stable]"
+        >
+          {/* 系统提示词步骤项（有系统提示词装配时展示） */}
+          {filteredSteps.length > 0 && (
+            <div className="flex shrink-0 flex-col gap-1.5">
+              {filteredSteps.map((step) => (
+                <StepItem
+                  key={step.id}
+                  step={step}
+                  isExpanded={isStepExpanded(step)}
+                  onToggleExpand={() => toggleStepExpanded(step)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* 空状态品牌与当前模式说明 */}
+          <AgentEmptyHero mode="flow" className="my-auto py-6" />
+
+          {/* 推荐问题 */}
+          {onSelectPrompt && (
+            <div className="mt-auto mb-1 shrink-0">
+              <AgentSuggestedPromptCards onSelectPrompt={onSelectPrompt} />
+            </div>
+          )}
+        </div>
+      ) : steps.length > 0 ? (
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
           className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
         >
           {filteredSteps.length > 0 ? (
@@ -1110,7 +1135,11 @@ export const AgentExecutionFlowPanel = ({
                         <div className="h-[1px] flex-1 bg-white/10" />
                       </div>
                     )}
-                    <StepItem step={step} />
+                    <StepItem
+                      step={step}
+                      isExpanded={isStepExpanded(step)}
+                      onToggleExpand={() => toggleStepExpanded(step)}
+                    />
                   </Fragment>
                 )
               })}
@@ -1122,7 +1151,7 @@ export const AgentExecutionFlowPanel = ({
           )}
         </div>
       ) : (
-        /* 空状态 */
+        /* 空状态（无步骤无消息时保底） */
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
           <Workflow className="h-8 w-8 text-white/20" />
           <div className="text-[13px] font-medium text-white/60">{t("agent.noExecutionFlow")}</div>

@@ -451,7 +451,6 @@
 [data-theme="minecraft"] .terminal-empty-state,
 [data-theme="minecraft"] .agent-page-container,
 [data-theme="minecraft"] .markdown-editor-workspace,
-[data-theme="minecraft"] .markdown-preview,
 [data-theme="minecraft"] .ui-preview-page-container {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;

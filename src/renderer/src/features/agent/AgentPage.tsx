@@ -11,11 +11,12 @@ import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
-import { AgentExecutionFlowPanel } from "./components/AgentExecutionFlowPanel"
+import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentStatusBar } from "./components/AgentStatusBar"
 import { AgentSubagentPanel } from "./components/AgentSubagentPanel"
+import { agentViewStore } from "./hooks/agentViewStore"
 import { sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentJobs } from "./hooks/useAgentJobs"
@@ -196,27 +197,28 @@ export const AgentPage = ({
 
   // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
   const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
-  // 当前打开的执行流程面板（点击顶部工具栏流程图标触发；从头部下方覆盖消息列表展开）。
-  const [isExecutionFlowOpen, setIsExecutionFlowOpen] = useState(false)
+  // 当前视图模式：qa 为消息列表，flow 为执行流程视图；两者互斥并持久化，输出中禁止切换。
+  const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
+
+  // 同步当前生成状态到视图模式 store，供全局切换守卫拦截。
+  useEffect(() => {
+    agentViewStore.setIsGenerating(isStreaming)
+  }, [isStreaming])
 
   const toggleExecutionFlow = useCallback((): void => {
-    setIsExecutionFlowOpen((prev) => {
-      const next = !prev
-      if (next) {
-        setActiveSubagent(null)
-      }
-      return next
-    })
-  }, [])
+    const ok = agentViewStore.toggleViewMode()
+    if (!ok) {
+      warning(t("agent.viewSwitchBlocked"))
+    } else {
+      setActiveSubagent(null)
+    }
+  }, [warning, t])
 
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
-    setIsExecutionFlowOpen(false)
     setActiveSubagent(toolCall)
   }, [])
   // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
-  // 执行流程面板滚动容器。
-  const executionFlowScrollRef = useRef<HTMLDivElement>(null)
   const messageListRef = useRef<AgentMessageListRef>(null)
   const [navState, setNavState] = useState({
     canScrollPrevious: false,
@@ -230,9 +232,9 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
-      // 若处于执行流程面板打开状态，让执行流程面板优先关闭
-      if (isExecutionFlowOpen) {
-        setIsExecutionFlowOpen(false)
+      // 若处于执行流程视图，优先切回问答视图（输出中由守卫拦截并提示）
+      if (viewMode === "flow") {
+        toggleExecutionFlow()
         return
       }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
@@ -263,7 +265,16 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [isStreaming, isExecutionFlowOpen, activeSubagent, pendingRequest, handleStop, warning, t])
+  }, [
+    isStreaming,
+    viewMode,
+    toggleExecutionFlow,
+    activeSubagent,
+    pendingRequest,
+    handleStop,
+    warning,
+    t,
+  ])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -348,48 +359,45 @@ export const AgentPage = ({
         pendingRequest ? "permission-pending" : ""
       }`}
     >
-      {/* 消息列表容器：子代理面板与执行流程面板从容器顶部向下展开、恰好覆盖消息列表（列表保持挂载不隐藏）。 */}
+      {/* 视图容器：问答消息列表与执行流程视图互斥显示；子代理面板从容器顶部向下展开、恰好覆盖消息列表。 */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <AgentMessageList
-          ref={messageListRef}
-          messages={messages}
-          isStreaming={isStreaming}
-          isRestoring={isRestoring}
-          suggestedQuestionContext={suggestedQuestionContext}
-          onSendSuggestedQuestion={(question) => sendMessage(question, selectedSelection)}
-          onEchoToInput={echoToInput}
-          onSelectPrompt={(prompt) => sendMessage(prompt)}
-          onEditMessage={editMessage}
-          onDeleteMessage={deleteTurn}
-          onOpenSubagent={openSubagent}
-          onFork={handleFork}
-          isSubagentPanelOpen={activeSubagent !== null || isExecutionFlowOpen}
-          subagentScrollRef={
-            activeSubagent !== null
-              ? subagentScrollRef
-              : isExecutionFlowOpen
-                ? executionFlowScrollRef
-                : undefined
-          }
-          canContinue={canContinue}
-          onContinue={continueChat}
-          onNavigationStateChange={setNavState}
-        />
-        {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
-        <AgentSubagentPanel
-          toolCall={activeSubagent}
-          onClose={() => setActiveSubagent(null)}
-          scrollRef={subagentScrollRef}
-        />
-        {/* 执行流程面板：点击顶部工具栏工作流图标展开，展示当前 Agent 的全部执行日志与步骤。 */}
-        <AgentExecutionFlowPanel
-          isOpen={isExecutionFlowOpen}
-          onClose={() => setIsExecutionFlowOpen(false)}
-          messages={messages}
-          sessionId={currentSessionId ?? undefined}
-          cwd={statusBarPath}
-          scrollRef={executionFlowScrollRef}
-        />
+        {viewMode === "flow" ? (
+          /* 执行流程视图：消息列表的另一种显示形式，展示当前 Agent 的全部执行日志与步骤。 */
+          <AgentExecutionFlowList
+            messages={messages}
+            sessionId={currentSessionId ?? undefined}
+            cwd={statusBarPath}
+            onSelectPrompt={(prompt) => sendMessage(prompt)}
+          />
+        ) : (
+          <>
+            <AgentMessageList
+              ref={messageListRef}
+              messages={messages}
+              isStreaming={isStreaming}
+              isRestoring={isRestoring}
+              suggestedQuestionContext={suggestedQuestionContext}
+              onSendSuggestedQuestion={(question) => sendMessage(question, selectedSelection)}
+              onEchoToInput={echoToInput}
+              onSelectPrompt={(prompt) => sendMessage(prompt)}
+              onEditMessage={editMessage}
+              onDeleteMessage={deleteTurn}
+              onOpenSubagent={openSubagent}
+              onFork={handleFork}
+              isSubagentPanelOpen={activeSubagent !== null}
+              subagentScrollRef={activeSubagent !== null ? subagentScrollRef : undefined}
+              canContinue={canContinue}
+              onContinue={continueChat}
+              onNavigationStateChange={setNavState}
+            />
+            {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
+            <AgentSubagentPanel
+              toolCall={activeSubagent}
+              onClose={() => setActiveSubagent(null)}
+              scrollRef={subagentScrollRef}
+            />
+          </>
+        )}
       </div>
       {/* 任务清单由 AgentStatusBar 右侧 todo 指示展示（有未完成任务时显示，hover 查看列表）。 */}
       <AgentInput

@@ -1078,6 +1078,17 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
+[data-theme="minecraft"] .agent-empty-modes {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
+    2px 2px 0px 0px #000000 !important;
+}
+
 [data-theme="minecraft"] .agent-empty-prompts-title,
 [data-theme="minecraft"] .agent-suggested-questions-title {
   font-family: var(--theme-font-family) !important;
@@ -1263,7 +1274,6 @@
 [data-theme="minecraft"] .bg-\[\#2a2a2a\] {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
-  border-left: 4px solid transparent !important;
   background-color: #222232 !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222232'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2328283a'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231d1d2c'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23252536'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232b2b3d'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23242435'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23262637'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23272738'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23232333'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232f2f42'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231f1f2e'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%231b1b28'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%2329293b'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23242435'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232c2c3e'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23343448'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2338384e'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23171722'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2338384e'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23171722'/%3E%3C/svg%3E") !important;
   background-repeat: repeat !important;
@@ -1273,17 +1283,16 @@
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
     3px 3px 0px 0px #000000 !important;
+  transition: box-shadow 0.15s ease !important;
 }
 
 [data-theme="minecraft"] .agent-input-container:focus-within,
 [data-theme="minecraft"] .bg-\[\#2a2a2a\]:focus-within {
-  border: 2px solid #000000 !important;
-  border-left: 4px solid #55ff55 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.3),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
     3px 3px 0px 0px #000000,
-    0 0 10px rgba(85, 255, 85, 0.25) !important;
+    0 0 12px rgba(85, 255, 85, 0.35) !important;
 }
 
 /* Agent Markdown 输入框内部黑曜石深色马赛克编辑槽 */
@@ -1755,9 +1764,25 @@
 }
 
 /* ========================================================
- * 22. 执行流程面板与子代理全景轨迹 (AgentExecutionFlowPanel & AgentSubagentPanel)
+ * 22. 执行流程列表与子代理全景轨迹 (AgentExecutionFlowList & AgentSubagentPanel)
  * ======================================================== */
-[data-theme="minecraft"] .agent-execution-flow-panel,
+[data-theme="minecraft"] .agent-execution-flow-list {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-header {
+  border-radius: 0px !important;
+  border-bottom: 2px solid #000000 !important;
+  background-color: #222232 !important;
+  font-family: var(--theme-font-family) !important;
+  box-shadow:
+    inset 0px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    0px 2px 0px 0px #000000 !important;
+}
+
 [data-theme="minecraft"] .agent-subagent-panel-dialog {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1771,7 +1796,6 @@
     4px 4px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-header,
 [data-theme="minecraft"] .agent-subagent-panel-header {
   border-radius: 0px !important;
   border-bottom: 2px solid #000000 !important;

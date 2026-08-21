@@ -12,14 +12,14 @@ import {
   useRef,
   useState,
 } from "react"
+import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
 import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
-import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
+import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
 import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
-import logoImg from "../../../../../../resources/icons/lx-op-logo.png"
 
 // 子代理调用块类型（点击 label 打开面板）。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -639,40 +639,10 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       <div className="agent-message-list-container relative flex min-h-0 min-w-0 flex-1 flex-col">
         {messages.length === 0 ? (
           <div className="agent-empty-state flex h-full flex-col justify-between p-1 select-none">
-            <div className="flex flex-1 flex-col items-center justify-center text-center px-4">
-              <img
-                src={logoImg}
-                alt="LX Agent"
-                className="agent-empty-logo mb-4 h-20 w-20 rounded-2xl object-contain drop-shadow-md select-none pointer-events-none"
-              />
-              <h3 className="agent-empty-title text-[15px] font-semibold text-white/90">
-                LX Agent
-              </h3>
-              <p className="agent-empty-description mt-1.5 max-w-[320px] text-[12px] leading-relaxed text-white/40">
-                Your AI development assistant, ready to help with architecture, refactoring, and
-                tests.
-              </p>
-            </div>
+            <AgentEmptyHero mode="qa" className="flex-1" />
 
-            <div className="mb-1 flex flex-col gap-2">
-              <span className="agent-empty-prompts-title px-1 text-[11px] font-medium text-white/35">
-                Suggested Prompts
-              </span>
-              {DEFAULT_PROMPT_CARDS.map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  onClick={() => onSelectPrompt(card.prompt)}
-                  className="agent-empty-prompt-card flex flex-col items-start rounded-[6px] bg-white/[0.04] p-2.5 text-left transition-colors hover:bg-white/10 active:scale-[0.99]"
-                >
-                  <span className="agent-empty-prompt-title text-[12px] font-medium text-white/80">
-                    {card.title}
-                  </span>
-                  <span className="agent-empty-prompt-desc mt-0.5 text-[11px] text-white/40">
-                    {card.description}
-                  </span>
-                </button>
-              ))}
+            <div className="mb-1">
+              <AgentSuggestedPromptCards onSelectPrompt={onSelectPrompt} />
             </div>
           </div>
         ) : (
