@@ -144,7 +144,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
   }, [step])
 
   return (
-    <div className="rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
+    <div className="agent-execution-flow-step rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
       {/* 头部摘要栏 */}
       <div
         role="button"
@@ -156,7 +156,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
             setIsExpanded((prev) => !prev)
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
+        className="agent-execution-flow-step-header flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {/* 折叠箭头 */}
@@ -226,10 +226,10 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
       {/* 展开详情区 */}
       {isExpanded && (
-        <div className="border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+        <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && (
-            <div className="flex flex-col gap-3 font-mono text-[11px]">
+            <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-[11px]">
               {/* 分段概览 */}
               {step.systemContent.sections.length > 0 && (
                 <div className="flex flex-col gap-1.5">
@@ -300,7 +300,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 用户输入详情 */}
           {step.userContent && (
-            <div className="flex flex-col gap-2">
+            <div className="agent-execution-flow-user-content flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 {step.userContent.command && (
                   <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-mono text-amber-300">
@@ -342,14 +342,14 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 思考过程详情 */}
           {step.thinkingContent && (
-            <div className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap rounded border border-purple-500/20 bg-purple-950/20 p-2 font-mono text-[11px] leading-relaxed text-purple-200/90">
+            <div className="agent-execution-flow-thinking-content custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap rounded border border-purple-500/20 bg-purple-950/20 p-2 font-mono text-[11px] leading-relaxed text-purple-200/90">
               {step.thinkingContent.text}
             </div>
           )}
 
           {/* 工具调用详情 */}
           {step.toolContent && (
-            <div className="flex flex-col gap-2">
+            <div className="agent-execution-flow-tool-content flex flex-col gap-2">
               {/* 参数 */}
               <div>
                 <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
@@ -439,7 +439,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 子代理详情 */}
           {step.subagentContent && (
-            <div className="flex flex-col gap-2 font-mono text-[11px]">
+            <div className="agent-execution-flow-subagent-content flex flex-col gap-2 font-mono text-[11px]">
               <div className="flex items-center gap-2 text-white/70">
                 <span className="text-white/40">Task:</span>
                 <span className="font-bold text-blue-300">{step.subagentContent.name}</span>
@@ -465,7 +465,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 上下文压缩详情 */}
           {step.compactionContent && (
-            <div className="flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
+            <div className="agent-execution-flow-compaction-content flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
               <div className="flex items-center gap-2">
                 <span className="text-white/40">Mode:</span>
                 <span className="text-indigo-300 font-semibold">
@@ -491,7 +491,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 助手回复详情 */}
           {step.assistantContent && (
-            <div className="flex flex-col gap-2 font-sans text-white/90">
+            <div className="agent-execution-flow-assistant-content flex flex-col gap-2 font-sans text-white/90">
               <div className="whitespace-pre-wrap leading-relaxed">
                 {step.assistantContent.text}
               </div>
@@ -639,7 +639,7 @@ export const AgentExecutionFlowPanel = ({
       role="dialog"
       aria-label={t("agent.executionFlow")}
       inert={!isOpen}
-      className="absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+      className="agent-execution-flow-panel absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(-100%)",
         transition: "transform 0.28s cubic-bezier(0.2, 0.85, 0.2, 1)",
@@ -647,7 +647,7 @@ export const AgentExecutionFlowPanel = ({
       }}
     >
       {/* 面板头部 */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+      <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <Workflow className="h-4 w-4 text-sky-400" />
           <span className="font-mono text-[13px] font-bold text-white/90">
@@ -828,7 +828,7 @@ export const AgentExecutionFlowPanel = ({
                   <Fragment key={step.id}>
                     {/* 轮次分隔线 */}
                     {isNewTurn && step.turnIndex > 0 && (
-                      <div className="my-1.5 flex items-center gap-2">
+                      <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                         <div className="h-[1px] flex-1 bg-white/10" />
                         <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
                           {t("agent.turnLabel", { turn: step.turnIndex })}

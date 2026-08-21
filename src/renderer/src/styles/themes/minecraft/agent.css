@@ -1782,41 +1782,6 @@
     0px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-filter-bar {
-  border-radius: 0px !important;
-  border-bottom: 2px solid #000000 !important;
-  background-color: #14141e !important;
-  padding: 4px 8px !important;
-}
-
-[data-theme="minecraft"] .agent-execution-flow-filter-btn {
-  font-family: var(--theme-font-family) !important;
-  border-radius: 0px !important;
-  border: 2px solid #000000 !important;
-  background-color: #222232 !important;
-  color: #a8a8c0 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
-  font-weight: 600;
-  transition: none !important;
-}
-
-[data-theme="minecraft"] .agent-execution-flow-filter-btn:hover {
-  background-color: #2c2c3e !important;
-  color: #ffffff !important;
-}
-
-[data-theme="minecraft"] .agent-execution-flow-filter-btn-active {
-  background-color: #38bdf8 !important;
-  color: #000000 !important;
-  font-weight: 700 !important;
-  text-shadow: none !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.45),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.45) !important;
-}
-
 [data-theme="minecraft"] .agent-execution-flow-step {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1836,10 +1801,279 @@
   font-family: var(--theme-font-family) !important;
 }
 
+/* 步骤头部左侧类型标签 (LxTag) 矿石主题化立体胶囊 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag {
+  font-family: var(--theme-font-family) !important;
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* Assistant: 绿宝石翠绿 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-emerald-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-file-text) {
+  background-color: #16281a !important;
+  color: #55ff55 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-emerald-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-file-text) svg {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* User: 金矿橙黄 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-amber-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-user) {
+  background-color: #281e14 !important;
+  color: #ffaa00 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-amber-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-user) svg {
+  color: #ffaa00 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* Thinking: 紫水晶附魔紫 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-purple-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-brain) {
+  background-color: #241630 !important;
+  color: #c084fc !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-purple-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-brain) svg {
+  color: #c084fc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* Tool: 钻石天蓝 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-sky-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-wrench) {
+  background-color: #14222e !important;
+  color: #55ffff !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-sky-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-wrench) svg {
+  color: #55ffff !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* Subagent: 青金石蓝 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-blue-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-bot) {
+  background-color: #162238 !important;
+  color: #38bdf8 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-blue-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-bot) svg {
+  color: #38bdf8 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* System / Compaction: 附魔靛蓝/紫 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-indigo-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-compass),
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-minimize2) {
+  background-color: #1e1a34 !important;
+  color: #a5b4fc !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-indigo-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-compass) svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-minimize2) svg {
+  color: #a5b4fc !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* 步骤展开内容区：3D 浮雕凹槽效果 */
 [data-theme="minecraft"] .agent-execution-flow-step-body {
   border-top: 2px solid #000000 !important;
-  background-color: #171520 !important;
-  box-shadow: inset 0px 2px 4px 0px rgba(0, 0, 0, 0.6) !important;
+  background-color: #12121a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+  color: #d4d4e4 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+/* 展开内文本颜色定制，避免使用纯白，继承 Minecraft 字体与质感 */
+[data-theme="minecraft"] .agent-execution-flow-step-body * {
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/90,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/85,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/80,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/70 {
+  color: #d4d4e4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/60,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/50,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/45,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/40 {
+  color: #8c8ca4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/35,
+[data-theme="minecraft"] .agent-execution-flow-step-body .text-white\/30 {
+  color: #5c5c72 !important;
+}
+
+/* 助手回复内容与底部元信息栏（模型、StopReason、Token 用量） */
+[data-theme="minecraft"] .agent-execution-flow-assistant-content {
+  color: #d4d4e4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-assistant-content > div:first-child {
+  color: #d4d4e4 !important;
+  line-height: 1.6;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-assistant-content .border-t {
+  border-top: 1px solid #000000 !important;
+  box-shadow: 0 -1px 0 0 rgba(255, 255, 255, 0.08) !important;
+  padding-top: 6px !important;
+  margin-top: 4px !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-assistant-content span {
+  color: #8c8ca4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-assistant-content span.text-sky-300\/80 {
+  color: #55ffff !important; /* 钻石天蓝 */
+}
+
+/* 思考内容：去除额外边框、紫色背景与外发光，使用主题中灰色平铺展示 */
+[data-theme="minecraft"] .agent-execution-flow-thinking-content {
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: #8c8ca4 !important;
+  font-family: var(--theme-font-family) !important;
+  line-height: 1.6;
+}
+
+/* 用户输入详情 */
+[data-theme="minecraft"] .agent-execution-flow-user-content {
+  color: #d4d4e4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-user-content .font-sans {
+  font-family: var(--theme-font-family) !important;
+  color: #d4d4e4 !important;
+  line-height: 1.6;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-user-content .bg-amber-500\/15 {
+  border: 1px solid #000000 !important;
+  background-color: #241e14 !important;
+  color: #ffaa00 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-user-content .bg-sky-500\/15 {
+  border: 1px solid #000000 !important;
+  background-color: #14222e !important;
+  color: #55ffff !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-user-content .bg-white\/5 {
+  border: 1px solid #000000 !important;
+  background-color: #1e1e2c !important;
+  color: #d0d0e6 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 工具参数与调用详情 */
+[data-theme="minecraft"] .agent-execution-flow-tool-content .bg-black\/40 {
+  border: 1px solid #000000 !important;
+  background-color: #14141e !important;
+  color: #d4d4e4 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-tool-content .text-sky-200\/90 {
+  color: #55ffff !important; /* 钻石天蓝 */
+}
+
+/* Diff 行高亮适配 */
+[data-theme="minecraft"] .agent-execution-flow-tool-content .bg-emerald-500\/15 {
+  background-color: #14281a !important;
+  color: #55ff55 !important; /* 绿宝石翠绿 */
+}
+
+[data-theme="minecraft"] .agent-execution-flow-tool-content .bg-red-500\/15 {
+  background-color: #2e1414 !important;
+  color: #ff5555 !important; /* 红石鲜红 */
+}
+
+/* 子代理详情 */
+[data-theme="minecraft"] .agent-execution-flow-subagent-content .bg-black\/30 {
+  border: 1px solid #000000 !important;
+  background-color: #14141e !important;
+  color: #d4d4e4 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-subagent-content .text-blue-300 {
+  color: #38bdf8 !important;
+}
+
+/* 上下文压缩详情 */
+[data-theme="minecraft"] .agent-execution-flow-compaction-content {
+  color: #d4d4e4 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-compaction-content .text-indigo-300 {
+  color: #c084fc !important; /* 紫水晶紫 */
+}
+
+/* 系统提示词与注入 sections */
+[data-theme="minecraft"] .agent-execution-flow-system-content details {
+  border: 1px solid #000000 !important;
+  background-color: #1a1a28 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-system-content summary {
+  color: #ffea88 !important; /* 羊皮浅金 */
+}
+
+[data-theme="minecraft"] .agent-execution-flow-system-content .bg-black\/40,
+[data-theme="minecraft"] .agent-execution-flow-system-content .bg-black\/30 {
+  border: 1px solid #000000 !important;
+  background-color: #14141e !important;
+  color: #d4d4e4 !important;
+  border-radius: 0px !important;
 }
 
 [data-theme="minecraft"] .agent-execution-flow-turn-divider span {
