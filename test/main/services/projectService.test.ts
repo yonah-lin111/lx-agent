@@ -107,7 +107,7 @@ describe("projectService", () => {
       parentFolderId: parentFolder.id,
       name: "Child",
     })
-    const subItem = service.createItem({
+    service.createItem({
       projectId: project.id,
       projectFolderId: subFolder.id,
       name: "Deep Item",

@@ -60,7 +60,10 @@ describe("Job Tools and Bash Background Execution", () => {
       sessionId,
     })
 
-    await new Promise((r) => setTimeout(r, 200))
+    for (let i = 0; i < 20; i++) {
+      if (jobRegistry.getJob(job.id)?.totalOutputBytes ?? 0 > 0) break
+      await new Promise((r) => setTimeout(r, 50))
+    }
 
     const outputTool = createJobOutputTool(sessionDeps)
     const res = await outputTool.execute("call-out-1", {

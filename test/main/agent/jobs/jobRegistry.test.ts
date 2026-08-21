@@ -61,7 +61,7 @@ describe("LocalJobRegistry", () => {
         cwd: process.cwd(),
         sessionId: "test-session",
       })
-    }).toThrow("当前会话后台任务并发超限")
+    }).toThrow(/concurrency limit reached/)
   })
 
   it("消费式读取增量输出 (Consuming Delta Read)", async () => {
@@ -128,12 +128,12 @@ describe("LocalJobRegistry", () => {
       sessionId: "test-session-1",
     })
 
-    await expect(
-      registry.readOutput(job.id, false, undefined, "test-session-2"),
-    ).rejects.toThrow("拒绝跨会话访问后台任务")
+    await expect(registry.readOutput(job.id, false, undefined, "test-session-2")).rejects.toThrow(
+      /Cross-session access to background job denied/,
+    )
 
     const killRes = await registry.killJob(job.id, "reason", "test-session-2")
     expect(killRes.ok).toBe(false)
-    expect(killRes.error).toContain("拒绝跨会话终止后台任务")
+    expect(killRes.error).toMatch(/Cross-session (?:kill|termination) of background job denied/)
   })
 })

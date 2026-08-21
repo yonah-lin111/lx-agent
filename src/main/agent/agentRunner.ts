@@ -31,25 +31,19 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { getAppDataRoot } from "../paths"
-import { createRegistry, DEFAULT_SYSTEM_PROMPT, MAX_INJECTED_SKILLS, resolveCwd } from "./assembly"
+import { buildSystemPromptSync, createRegistry, MAX_INJECTED_SKILLS, resolveCwd } from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
-import { formatInstructions, loadInstructions } from "./instructionLoader"
 import { jobRegistry } from "./jobs/jobRegistry"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { questionManager } from "./question/questionManager"
-import {
-  formatSkillsForPrompt,
-  type LoadedSkill,
-  skillLoader,
-  stripFrontmatter,
-} from "./skills/skillLoader"
+import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillLoader"
 import { spillManager } from "./spill/spillManager"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
@@ -182,11 +176,12 @@ class AgentRunner {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
       )
-      // 会话 system prompt = 基础提示词 + skill 注入块 + 指令文件注入块（装配时一次性拼好）。
-      const systemPrompt =
-        DEFAULT_SYSTEM_PROMPT +
-        formatSkillsForPrompt(this.activeSkills) +
-        formatInstructions(loadInstructions(cwd))
+      // 会话 system prompt：动态分层提示词装配（基础身份 + 核心指导 + 技能分层 + 指令文件）。
+      const systemPrompt = buildSystemPromptSync({
+        cwd,
+        sessionId: this.currentSessionId ?? undefined,
+        activeSkills: this.activeSkills,
+      })
       const registry = createRegistry(
         cwd,
         this.activeCapabilities,
@@ -258,6 +253,12 @@ class AgentRunner {
       this.registry = registry
       this.cwd = cwd
       this.builtSignature = capabilitiesSignature
+    } else {
+      this.agent.state.systemPrompt = buildSystemPromptSync({
+        cwd,
+        sessionId: this.currentSessionId ?? undefined,
+        activeSkills: this.activeSkills,
+      })
     }
 
     return { agent: this.agent }
@@ -531,6 +532,11 @@ class AgentRunner {
     }
 
     try {
+      agent.state.systemPrompt = buildSystemPromptSync({
+        cwd: this.cwd ?? resolveCwd(),
+        sessionId: this.currentSessionId ?? undefined,
+        activeSkills: this.activeSkills,
+      })
       const userMessage: UserMessage = {
         role: "user",
         content: expanded,
@@ -1136,13 +1142,7 @@ class AgentRunner {
     timeoutMs?: number,
     mode: "delta" | "full" = "full",
   ): Promise<JobReadResult | null> {
-    return jobRegistry.readOutput(
-      jobId,
-      wait,
-      timeoutMs,
-      this.currentSessionId ?? undefined,
-      mode,
-    )
+    return jobRegistry.readOutput(jobId, wait, timeoutMs, this.currentSessionId ?? undefined, mode)
   }
 }
 
