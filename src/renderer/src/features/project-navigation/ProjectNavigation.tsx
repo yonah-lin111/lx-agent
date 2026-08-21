@@ -55,6 +55,7 @@ type MenuState = {
   type: ProjectNavigationMenuType
   id: string
   projectId?: string
+  depth?: number
   title: string
   status?: PromptStatus
   x: number
@@ -213,12 +214,14 @@ export const ProjectNavigation = (): React.JSX.Element => {
     type: ProjectNavigationMenuType,
     item: { id: string; name: string; status?: PromptStatus },
     projectId?: string,
+    depth?: number,
   ): void => {
     event.preventDefault()
     setMenu({
       type,
       id: item.id,
       projectId,
+      depth,
       title: item.name,
       status: item.status,
       x: event.clientX,
@@ -828,6 +831,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         title={menu?.title ?? ""}
         x={menu?.x ?? 0}
         y={menu?.y ?? 0}
+        depth={menu?.depth}
         status={menu?.status}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}

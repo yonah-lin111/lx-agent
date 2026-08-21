@@ -14,6 +14,7 @@ type ProjectNavigationMenuProps = {
   title: string
   x: number
   y: number
+  depth?: number
   status?: PromptStatus
   onEditProject?: () => void
   onRename: () => void
@@ -30,6 +31,7 @@ type MenuDisplayState = {
   title: string
   x: number
   y: number
+  depth?: number
   status?: PromptStatus
 }
 
@@ -49,6 +51,7 @@ export const ProjectNavigationMenu = ({
   title,
   x,
   y,
+  depth,
   status,
   onEditProject,
   onRename,
@@ -66,11 +69,11 @@ export const ProjectNavigationMenu = ({
     x: 0,
     y: 0,
   })
-  const displayedMenu: MenuDisplayState = isOpen ? { type, title, x, y, status } : lastMenu
+  const displayedMenu: MenuDisplayState = isOpen ? { type, title, x, y, depth, status } : lastMenu
 
   useEffect(() => {
-    if (isOpen) setLastMenu({ type, title, x, y, status })
-  }, [isOpen, status, title, type, x, y])
+    if (isOpen) setLastMenu({ type, title, x, y, depth, status })
+  }, [isOpen, status, title, type, x, y, depth])
 
   useEffect(() => {
     setIsConfirmingDelete(false)
@@ -88,6 +91,10 @@ export const ProjectNavigationMenu = ({
     onDelete()
   }
 
+  const canAddFolder =
+    displayedMenu.type === "project" ||
+    (displayedMenu.type === "project_folder" && (displayedMenu.depth ?? 1) < 2)
+
   return (
     <LxMenu
       ariaLabel={`${displayedMenu.title} action menu`}
@@ -103,7 +110,7 @@ export const ProjectNavigationMenu = ({
         {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
       </LxMenuItem>
 
-      {displayedMenu.type !== "prompt" ? (
+      {canAddFolder ? (
         <LxMenuItem
           leading={<FolderPlus className="h-3.5 w-3.5 text-white/45" />}
           onClick={onAddFolder}

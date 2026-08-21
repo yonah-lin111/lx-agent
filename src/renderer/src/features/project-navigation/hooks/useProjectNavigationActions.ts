@@ -47,6 +47,9 @@ export const useProjectNavigationActions = (
       menu: ProjectNavigationMenuTarget,
       type: "project_folder" | "prompt",
     ): Promise<string | null> => {
+      if (type === "project_folder" && menu.type === "project_folder" && (menu.depth ?? 1) >= 2) {
+        return null
+      }
       try {
         const item =
           type === "project_folder"

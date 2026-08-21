@@ -52,6 +52,7 @@ interface ProjectNavigationListProps {
     type: ProjectNavigationMenuType,
     item: { id: string; name: string; status?: PromptStatus },
     projectId?: string,
+    depth?: number,
   ) => void
 }
 
@@ -201,7 +202,7 @@ export const ProjectNavigationList = ({
               event.currentTarget.click()
             }
           }}
-          onContextMenu={(event) => onOpenMenu(event, "project_folder", folder, projectId)}
+          onContextMenu={(event) => onOpenMenu(event, "project_folder", folder, projectId, depth)}
         >
           <TreeBranchIcon />
           <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />

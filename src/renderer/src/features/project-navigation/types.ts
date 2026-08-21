@@ -54,4 +54,5 @@ export type ProjectNavigationMenuTarget = {
   type: ProjectNavigationMenuType
   id: string
   projectId?: string
+  depth?: number
 }

@@ -23,7 +23,7 @@ const TAGS_LEAVE_DURATION = 300
 // 项目页面包屑名称。
 interface ProjectBreadcrumb {
   projectName: string
-  folderName: string
+  folderNames: string[]
   itemName: string
 }
 
@@ -72,29 +72,43 @@ export const HeaderSideBar = ({
           projectNavigationApi.listItems(),
         ])
         const navigationProjects = createProjectNavigationTree(projects, folders, items)
+
+        const findItemInFolders = (
+          foldersList: typeof navigationProjects[number]["projectFolders"],
+          trail: string[],
+        ): { folderNames: string[]; itemName: string } | null => {
+          for (const folder of foldersList) {
+            const currentTrail = [...trail, folder.name]
+            const prompt = folder.prompts.find((p) => p.id === itemId)
+            if (prompt) {
+              return { folderNames: currentTrail, itemName: prompt.name }
+            }
+            const nested = findItemInFolders(folder.projectFolders, currentTrail)
+            if (nested) return nested
+          }
+          return null
+        }
+
         for (const project of navigationProjects) {
           const projectItem = project.prompts.find((prompt) => prompt.id === itemId)
           if (projectItem) {
             if (isCurrent) {
               setProjectBreadcrumb({
                 projectName: project.name,
-                folderName: "GENERAL",
+                folderNames: ["GENERAL"],
                 itemName: projectItem.name,
               })
             }
             return
           }
 
-          const folder = project.projectFolders.find((item) =>
-            item.prompts.some((prompt) => prompt.id === itemId),
-          )
-          const folderItem = folder?.prompts.find((prompt) => prompt.id === itemId)
-          if (folder && folderItem) {
+          const match = findItemInFolders(project.projectFolders, [])
+          if (match) {
             if (isCurrent) {
               setProjectBreadcrumb({
                 projectName: project.name,
-                folderName: folder.name,
-                itemName: folderItem.name,
+                folderNames: match.folderNames,
+                itemName: match.itemName,
               })
             }
             return
@@ -148,7 +162,8 @@ export const HeaderSideBar = ({
       ? [
           activeNavigationItem.breadcrumbCategory,
           projectBreadcrumb.projectName,
-          `${projectBreadcrumb.folderName} - ${projectBreadcrumb.itemName}`,
+          ...projectBreadcrumb.folderNames,
+          projectBreadcrumb.itemName,
         ]
       : [activeNavigationItem.breadcrumbCategory]
   if (pathname === PAGE_ROUTES.settings) {
