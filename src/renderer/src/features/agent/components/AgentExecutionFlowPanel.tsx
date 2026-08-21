@@ -144,7 +144,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
   }, [step])
 
   return (
-    <div className="agent-execution-flow-step rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
+    <div className="overflow-hidden rounded-[6px] border border-white/5 bg-[#1c1c1c] transition-colors hover:border-white/10">
       {/* 头部摘要栏 */}
       <div
         role="button"
@@ -156,7 +156,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
             setIsExpanded((prev) => !prev)
           }
         }}
-        className="agent-execution-flow-step-header flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
+        className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none hover:bg-white/[0.02]"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {/* 折叠箭头 */}
@@ -178,13 +178,13 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
             size="small"
             color={meta.tagColor}
             prefix={<IconComponent className="h-3 w-3" />}
-            className="shrink-0"
+            className="shrink-0 font-medium"
           >
             {t(meta.labelKey)}
           </LxTag>
 
           {/* 步骤标题与副标题 */}
-          <div className="flex min-w-0 flex-1 items-center gap-1">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <span className="truncate font-mono text-[12px] font-medium text-white/85">
               {step.title}
             </span>
@@ -226,27 +226,28 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
       {/* 展开详情区 */}
       {isExpanded && (
-        <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+        <div className="flex flex-col gap-2.5 border-t border-white/5 bg-[#141414] p-3 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && (
             <div className="flex flex-col gap-3 font-mono text-[11px]">
               {/* 分段概览 */}
               {step.systemContent.sections.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1 text-indigo-300 font-semibold">
-                    <Layers className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5 font-medium text-indigo-300">
+                    <Layers className="h-3.5 w-3.5" />
                     <span>{t("agent.systemPrompt")}</span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1.5">
                     {step.systemContent.sections.map((sec) => (
                       <details
                         key={sec.name}
-                        className="group rounded border border-white/5 bg-white/[0.02] p-2"
+                        className="group overflow-hidden rounded-[6px] border border-white/5 bg-[#1c1c1c]"
                       >
-                        <summary className="cursor-pointer font-semibold text-white/80 select-none">
-                          {sec.name}
+                        <summary className="flex cursor-pointer items-center justify-between px-2.5 py-1.5 font-mono text-[11px] font-medium text-white/80 select-none transition-colors hover:bg-white/5">
+                          <span className="truncate">{sec.name}</span>
+                          <ChevronDown className="h-3.5 w-3.5 text-white/40 transition-transform group-open:rotate-180" />
                         </summary>
-                        <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-white/70">
+                        <div className="custom-scrollbar max-h-48 overflow-y-auto border-t border-white/5 bg-[#111111] p-2.5 font-mono text-[11px] leading-relaxed text-white/70 whitespace-pre-wrap select-text">
                           {sec.text}
                         </div>
                       </details>
@@ -258,18 +259,22 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 运行时上下文注入 */}
               {step.systemContent.contexts.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1 text-sky-300 font-semibold">
-                    <Sliders className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5 font-medium text-sky-300">
+                    <Sliders className="h-3.5 w-3.5" />
                     <span>{t("agent.runtimeContext")}</span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1.5">
                     {step.systemContent.contexts.map((ctx) => (
                       <div
                         key={ctx.name}
-                        className="rounded border border-white/5 bg-black/30 p-2 text-white/70"
+                        className="rounded-[6px] border border-white/5 bg-[#1c1c1c] p-2.5 text-white/70"
                       >
-                        <div className="font-semibold text-white/80">{ctx.name}</div>
-                        <div className="mt-1 whitespace-pre-wrap">{ctx.text}</div>
+                        <div className="font-mono text-[11px] font-semibold text-white/85">
+                          {ctx.name}
+                        </div>
+                        <div className="mt-1 font-mono text-[11px] leading-relaxed text-white/65 whitespace-pre-wrap select-text">
+                          {ctx.text}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -279,15 +284,15 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 激活的工具全集 */}
               {step.systemContent.activeTools && step.systemContent.activeTools.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1 text-amber-300 font-semibold">
-                    <Wrench className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5 font-medium text-amber-300">
+                    <Wrench className="h-3.5 w-3.5" />
                     <span>{t("agent.activeToolsList")}</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {step.systemContent.activeTools.map((tool) => (
                       <span
                         key={tool}
-                        className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60"
+                        className="rounded-[4px] border border-white/5 bg-[#1c1c1c] px-2 py-0.5 font-mono text-[11px] text-white/70"
                       >
                         {tool}
                       </span>
@@ -301,36 +306,35 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
           {/* 用户输入详情 */}
           {step.userContent && (
             <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {step.userContent.command && (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-mono text-amber-300">
-                    <Zap className="h-3 w-3" />
-                    {t("agent.commandTrigger")}: /{step.userContent.command.name}
-                  </span>
+                  <LxTag size="small" color="amber" prefix={<Zap className="h-3 w-3" />}>
+                    /{step.userContent.command.name}
+                  </LxTag>
                 )}
                 {step.userContent.isSteer && (
-                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-mono text-sky-300">
+                  <LxTag size="small" color="sky">
                     {t("agent.steerMessage")}
-                  </span>
+                  </LxTag>
                 )}
               </div>
-              <div className="whitespace-pre-wrap font-sans text-white/90">
+              <div className="rounded-[6px] border border-white/5 bg-[#1c1c1c] p-3 font-sans text-[13px] leading-relaxed text-white/90 whitespace-pre-wrap select-text">
                 {step.userContent.text || (
-                  <span className="text-white/30">{t("agent.emptyPrompt")}</span>
+                  <span className="italic text-white/30">{t("agent.emptyPrompt")}</span>
                 )}
               </div>
               {step.userContent.files && step.userContent.files.length > 0 && (
-                <div className="flex flex-col gap-1 pt-1">
-                  <div className="text-[11px] font-mono text-white/40">
+                <div className="flex flex-col gap-1 pt-0.5">
+                  <div className="font-mono text-[11px] text-white/40">
                     {t("agent.attachedFiles")}:
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {step.userContent.files.map((file) => (
                       <span
                         key={file.path}
-                        className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60"
+                        className="inline-flex items-center gap-1.5 rounded-[4px] border border-white/5 bg-[#1c1c1c] px-2 py-0.5 font-mono text-[11px] text-white/70"
                       >
-                        <FileCode className="h-3 w-3" />
+                        <FileCode className="h-3 w-3 text-white/40" />
                         {file.name}
                       </span>
                     ))}
@@ -342,18 +346,24 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 思考过程详情 */}
           {step.thinkingContent && (
-            <div className="custom-scrollbar max-h-60 overflow-y-auto whitespace-pre-wrap rounded border border-purple-500/20 bg-purple-950/20 p-2 font-mono text-[11px] leading-relaxed text-purple-200/90">
-              {step.thinkingContent.text}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-1 font-mono text-[11px] font-medium text-purple-300">
+                <Brain className="h-3.5 w-3.5" />
+                <span>{t("agent.filterThinking")}</span>
+              </div>
+              <div className="custom-scrollbar max-h-60 overflow-y-auto rounded-[6px] border border-purple-500/20 bg-purple-950/15 p-3 font-sans text-[12px] leading-relaxed text-purple-100/85 whitespace-pre-wrap select-text">
+                {step.thinkingContent.text}
+              </div>
             </div>
           )}
 
           {/* 工具调用详情 */}
           {step.toolContent && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               {/* 参数 */}
               <div>
-                <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
-                  <span className="flex items-center gap-1 font-mono">
+                <div className="mb-1 flex items-center justify-between font-mono text-[11px] text-white/45">
+                  <span className="flex items-center gap-1">
                     <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
                   </span>
                   {step.toolContent.toolCallId && (
@@ -362,7 +372,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                     </span>
                   )}
                 </div>
-                <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px] text-sky-200/90">
+                <div className="custom-scrollbar max-h-48 overflow-y-auto rounded-[6px] border border-white/5 bg-[#111111] p-2.5 font-mono text-[11px] leading-relaxed text-sky-200/90 select-text">
                   {formatJsonString(step.toolContent.args)}
                 </div>
               </div>
@@ -375,7 +385,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                       <Code2 className="h-3 w-3" /> {t("agent.lineDiff")}
                     </span>
                     {step.toolContent.diff.stats && (
-                      <span className="flex items-center gap-1.5 text-[10px]">
+                      <span className="flex items-center gap-1.5 font-mono text-[11px]">
                         <span className="text-emerald-400">
                           +{step.toolContent.diff.stats.added}
                         </span>
@@ -383,27 +393,34 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                       </span>
                     )}
                   </div>
-                  <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px]">
+                  <div className="custom-scrollbar max-h-56 overflow-y-auto rounded-[6px] border border-white/5 bg-[#111111] p-2 font-mono text-[11px]">
                     {step.toolContent.diff.fileName && (
-                      <div className="text-white/60 mb-1">{step.toolContent.diff.fileName}</div>
+                      <div className="mb-1.5 border-b border-white/5 pb-1 font-medium text-white/60">
+                        {step.toolContent.diff.fileName}
+                      </div>
                     )}
                     {step.toolContent.diff.lines && step.toolContent.diff.lines.length > 0 && (
                       <div className="flex flex-col">
                         {step.toolContent.diff.lines.map((line, lIdx) => (
                           <div
                             key={lIdx}
-                            className={`flex items-start gap-2 px-1 ${
+                            className={`flex items-start gap-2 rounded-[2px] px-1 py-0.5 ${
                               line.type === "add"
-                                ? "bg-emerald-500/15 text-emerald-300"
+                                ? "bg-emerald-500/10 text-emerald-300"
                                 : line.type === "del"
-                                  ? "bg-red-500/15 text-red-300"
+                                  ? "bg-red-500/10 text-red-300"
                                   : "text-white/60"
                             }`}
                           >
-                            <span className="w-4 shrink-0 select-none text-right text-[10px] opacity-40">
+                            <span className="w-5 shrink-0 select-none text-right font-mono text-[10px] text-white/30">
+                              {line.newLine ?? line.oldLine ?? ""}
+                            </span>
+                            <span className="w-3 shrink-0 select-none text-center font-mono text-[11px] font-bold">
                               {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
                             </span>
-                            <span className="whitespace-pre-wrap">{line.text}</span>
+                            <span className="flex-1 whitespace-pre-wrap break-all">
+                              {line.text}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -415,19 +432,21 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               {/* 结果 */}
               {step.toolContent.result !== undefined && (
                 <div>
-                  <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
-                    <span className="flex items-center gap-1 font-mono">
+                  <div className="mb-1 flex items-center justify-between font-mono text-[11px] text-white/45">
+                    <span className="flex items-center gap-1">
                       <FileText className="h-3 w-3" /> {t("agent.toolResult")}
                     </span>
                     {step.toolContent.isError && (
-                      <span className="text-[10px] text-red-400 font-medium">ERROR</span>
+                      <span className="rounded-[4px] bg-red-500/20 px-1 py-0.2 font-mono text-[10px] font-semibold text-red-400">
+                        ERROR
+                      </span>
                     )}
                   </div>
                   <div
-                    className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2 font-mono text-[11px] leading-relaxed ${
+                    className={`custom-scrollbar max-h-60 overflow-y-auto rounded-[6px] border p-2.5 font-mono text-[11px] leading-relaxed select-text ${
                       step.toolContent.isError
-                        ? "border border-red-500/20 bg-red-950/20 text-red-200"
-                        : "bg-black/40 text-white/80"
+                        ? "border-red-500/20 bg-red-950/20 text-red-200"
+                        : "border-white/5 bg-[#111111] text-white/80"
                     }`}
                   >
                     {step.toolContent.result || <span className="text-white/30">-</span>}
@@ -439,22 +458,24 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 子代理详情 */}
           {step.subagentContent && (
-            <div className="flex flex-col gap-2 font-mono text-[11px]">
-              <div className="flex items-center gap-2 text-white/70">
+            <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#1c1c1c] p-2.5 font-mono text-[11px]">
+              <div className="flex items-center gap-2">
                 <span className="text-white/40">Task:</span>
-                <span className="font-bold text-blue-300">{step.subagentContent.name}</span>
+                <span className="font-semibold text-blue-300">{step.subagentContent.name}</span>
               </div>
               {step.subagentContent.subagent?.prompt && (
-                <div className="rounded bg-black/30 p-2 text-white/80">
-                  <div className="text-[10px] text-white/40 mb-0.5">Prompt:</div>
-                  <div className="whitespace-pre-wrap">{step.subagentContent.subagent.prompt}</div>
+                <div className="rounded-[6px] border border-white/5 bg-[#111111] p-2 text-white/80">
+                  <div className="mb-1 text-[10px] text-white/40">Prompt:</div>
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {step.subagentContent.subagent.prompt}
+                  </div>
                 </div>
               )}
               {step.subagentContent.subagent?.description && (
                 <div className="text-white/50">{step.subagentContent.subagent.description}</div>
               )}
               {step.subagentContent.subagent?.usage && (
-                <div className="flex gap-3 text-white/40 pt-1">
+                <div className="flex flex-wrap gap-3 border-t border-white/5 pt-1.5 text-white/40">
                   <span>Input: {step.subagentContent.subagent.usage.input}</span>
                   <span>Output: {step.subagentContent.subagent.usage.output}</span>
                   <span>Total: {step.subagentContent.subagent.usage.totalTokens}</span>
@@ -465,14 +486,14 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 上下文压缩详情 */}
           {step.compactionContent && (
-            <div className="flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
+            <div className="flex flex-col gap-1.5 rounded-[6px] border border-white/5 bg-[#1c1c1c] p-2.5 font-mono text-[11px] text-white/70">
               <div className="flex items-center gap-2">
                 <span className="text-white/40">Mode:</span>
-                <span className="text-indigo-300 font-semibold">
+                <span className="font-semibold text-indigo-300">
                   {step.compactionContent.isManual ? "Manual (/compact)" : "Automatic"}
                 </span>
               </div>
-              {step.compactionContent.summaryTokens && (
+              {step.compactionContent.summaryTokens !== undefined && (
                 <div className="flex items-center gap-2">
                   <span className="text-white/40">Summary:</span>
                   <span className="text-indigo-300">
@@ -481,7 +502,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                 </div>
               )}
               {step.compactionContent.compactionUsage && (
-                <div className="flex gap-3 text-white/40">
+                <div className="flex gap-3 border-t border-white/5 pt-1.5 text-white/40">
                   <span>Input: {step.compactionContent.compactionUsage.input}</span>
                   <span>Output: {step.compactionContent.compactionUsage.output}</span>
                 </div>
@@ -491,13 +512,19 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
           {/* 助手回复详情 */}
           {step.assistantContent && (
-            <div className="flex flex-col gap-2 font-sans text-white/90">
-              <div className="whitespace-pre-wrap leading-relaxed">
+            <div className="flex flex-col gap-2">
+              <div className="rounded-[6px] border border-white/5 bg-[#1c1c1c] p-3 font-sans text-[13px] leading-relaxed text-white/90 whitespace-pre-wrap select-text">
                 {step.assistantContent.text}
               </div>
-              {(step.assistantContent.model || step.assistantContent.usage) && (
-                <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-1.5 font-mono text-[11px] text-white/40">
-                  {step.assistantContent.model && <span>{step.assistantContent.model}</span>}
+              {(step.assistantContent.model ||
+                step.assistantContent.usage ||
+                step.assistantContent.stopReason) && (
+                <div className="flex flex-wrap items-center gap-2.5 font-mono text-[11px] text-white/40">
+                  {step.assistantContent.model && (
+                    <span className="rounded-[4px] border border-white/5 bg-[#1c1c1c] px-1.5 py-0.5 text-white/60">
+                      {step.assistantContent.model}
+                    </span>
+                  )}
                   {step.assistantContent.stopReason && (
                     <span>
                       {t("agent.stopReason")}: {step.assistantContent.stopReason}
@@ -639,7 +666,7 @@ export const AgentExecutionFlowPanel = ({
       role="dialog"
       aria-label={t("agent.executionFlow")}
       inert={!isOpen}
-      className="agent-execution-flow-panel absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+      className="absolute inset-0 z-20 flex flex-col bg-[#212121] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(-100%)",
         transition: "transform 0.28s cubic-bezier(0.2, 0.85, 0.2, 1)",
@@ -647,7 +674,7 @@ export const AgentExecutionFlowPanel = ({
       }}
     >
       {/* 面板头部 */}
-      <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <Workflow className="h-4 w-4 text-sky-400" />
           <span className="font-mono text-[13px] font-bold text-white/90">
@@ -719,13 +746,13 @@ export const AgentExecutionFlowPanel = ({
 
       {/* 筛选标签条 */}
       {steps.length > 0 && (
-        <div className="agent-execution-flow-filter-bar flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-black/10 px-3 py-1.5 custom-scrollbar select-none">
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-[#181818] px-3 py-1.5 custom-scrollbar select-none">
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+            className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
               activeFilter === "all"
-                ? "agent-execution-flow-filter-btn-active bg-white/15 text-white"
+                ? "bg-white/15 text-white"
                 : "text-white/40 hover:bg-white/5 hover:text-white/70"
             }`}
           >
@@ -735,9 +762,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("system")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "system"
-                  ? "agent-execution-flow-filter-btn-active bg-indigo-500/20 text-indigo-300"
+                  ? "bg-indigo-500/20 text-indigo-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -748,9 +775,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("tool")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "tool"
-                  ? "agent-execution-flow-filter-btn-active bg-sky-500/20 text-sky-300"
+                  ? "bg-sky-500/20 text-sky-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -761,9 +788,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("thinking")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "thinking"
-                  ? "agent-execution-flow-filter-btn-active bg-purple-500/20 text-purple-300"
+                  ? "bg-purple-500/20 text-purple-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -774,9 +801,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("subagent")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "subagent"
-                  ? "agent-execution-flow-filter-btn-active bg-blue-500/20 text-blue-300"
+                  ? "bg-blue-500/20 text-blue-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -787,9 +814,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("user")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "user"
-                  ? "agent-execution-flow-filter-btn-active bg-amber-500/20 text-amber-300"
+                  ? "bg-amber-500/20 text-amber-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -800,9 +827,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("assistant")}
-              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "assistant"
-                  ? "agent-execution-flow-filter-btn-active bg-emerald-500/20 text-emerald-300"
+                  ? "bg-emerald-500/20 text-emerald-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -816,7 +843,7 @@ export const AgentExecutionFlowPanel = ({
       {steps.length > 0 ? (
         <div
           ref={scrollRef}
-          className="agent-execution-flow-scroll custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
+          className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
         >
           {filteredSteps.length > 0 ? (
             <div className="flex flex-col gap-1.5">
@@ -828,7 +855,7 @@ export const AgentExecutionFlowPanel = ({
                   <Fragment key={step.id}>
                     {/* 轮次分隔线 */}
                     {isNewTurn && step.turnIndex > 0 && (
-                      <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
+                      <div className="my-1.5 flex items-center gap-2">
                         <div className="h-[1px] flex-1 bg-white/10" />
                         <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
                           {t("agent.turnLabel", { turn: step.turnIndex })}
@@ -849,7 +876,7 @@ export const AgentExecutionFlowPanel = ({
         </div>
       ) : (
         /* 空状态 */
-        <div className="agent-execution-flow-empty flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
           <Workflow className="h-8 w-8 text-white/20" />
           <div className="text-[13px] font-medium text-white/60">{t("agent.noExecutionFlow")}</div>
           <div className="max-w-[240px] text-[12px] text-white/35">
