@@ -1,6 +1,8 @@
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
+import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
 import { createReadSkillTool } from "./skills/readSkillTool"
+import type { LoadedSkill } from "./skills/skillLoader"
 import { createBashTool } from "./tools/bash"
 import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
@@ -18,7 +20,7 @@ import { createWebFetchTool } from "./tools/webfetch"
 import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
 
-// Agent 默认系统提示词。
+// Agent 默认系统提示词（保持向后兼容常量）。
 export const DEFAULT_SYSTEM_PROMPT = [
   "你是 LX Agent，一个帮助用户在本地项目中工作的 AI 助手。",
   "你可以使用工具读取、搜索、写入和编辑项目目录内的文件，并在项目根目录执行命令。",
@@ -28,6 +30,35 @@ export const DEFAULT_SYSTEM_PROMPT = [
   "回答使用简体中文，代码与专有名词保留原文。",
   "面对多步骤任务（≥2 步、需要工具调用）时，用 todowrite 工具建立任务清单，并随进度更新；单步任务或闲聊不需要。",
 ].join("\n")
+
+export interface BuildSystemPromptOptions {
+  cwd?: string
+  sessionId?: string
+  activeSkills?: LoadedSkill[]
+  manager?: SystemPromptManager
+}
+
+// 动态装配系统提示词（异步）。
+export const buildSystemPrompt = async (
+  options: BuildSystemPromptOptions = {},
+): Promise<string> => {
+  const manager = options.manager ?? defaultSystemPromptManager
+  return manager.render({
+    cwd: options.cwd,
+    sessionId: options.sessionId,
+    activeSkills: options.activeSkills,
+  })
+}
+
+// 动态装配系统提示词（同步）。
+export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): string => {
+  const manager = options.manager ?? defaultSystemPromptManager
+  return manager.renderSync({
+    cwd: options.cwd,
+    sessionId: options.sessionId,
+    activeSkills: options.activeSkills,
+  })
+}
 
 // 可装配的内置工具全集（注册全集，按能力快照激活子集）。
 export const ALL_TOOL_NAMES = new Set([
