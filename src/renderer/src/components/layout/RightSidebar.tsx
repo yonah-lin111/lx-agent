@@ -133,26 +133,10 @@ export const RightSideBar = (): React.JSX.Element => {
     return { page: pathname }
   }, [searchParams, currentProject, pathname])
 
-  // 挂载时恢复全局最近活跃会话（无会话则空白新对话）；导航切换不改变会话。
+  // 挂载时刷新会话列表并初始化为空白新对话；导航切换不改变会话。
   useEffect(() => {
-    let cancelled = false
     void sessionListStore.refresh()
-    void agentApi
-      .listSessions()
-      .then((sessions) => {
-        if (cancelled) return
-        if (sessions[0]) {
-          restoreChatRef.current?.(sessions[0].id)
-        } else {
-          newChatRef.current?.()
-        }
-      })
-      .catch(() => {
-        // IPC 失败：保持空展示。
-      })
-    return () => {
-      cancelled = true
-    }
+    newChatRef.current?.()
   }, [])
 
   // 拉取项目列表（历史面板项目 tag 筛选用）。
