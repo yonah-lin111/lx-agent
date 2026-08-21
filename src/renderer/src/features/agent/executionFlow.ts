@@ -95,6 +95,10 @@ export const buildExecutionSteps = (
     if (message.role === "compactionSummary") {
       stepIndex++
       const turn = currentTurn > 0 ? currentTurn : 1
+      const summaryText =
+        message.blocks.find(
+          (b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text",
+        )?.text ?? ""
       steps.push({
         id: `step-${stepIndex}-compaction`,
         turnIndex: turn,
@@ -116,6 +120,7 @@ export const buildExecutionSteps = (
           compactionUsage: message.compactionUsage,
           summaryTokens: message.summaryTokens,
         },
+        assistantContent: summaryText ? { text: summaryText } : undefined,
       })
       continue
     }
@@ -224,14 +229,14 @@ export const buildExecutionSteps = (
 
       // 文本回复
       if (block.kind === "text") {
-        if (!block.text.trim()) continue
+        if (!block.text.trim() && !message.isStreaming) continue
         stepIndex++
         steps.push({
           id: `step-${stepIndex}-assistant`,
           turnIndex: turn,
           stepIndex,
           kind: "assistant",
-          title: formatPreview(block.text, 90),
+          title: message.isStreaming ? "..." : formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
           tokens: message.usage
@@ -242,13 +247,15 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
-          assistantContent: {
-            text: block.text,
-            model: message.model,
-            provider: message.provider,
-            stopReason: message.stopReason,
-            usage: message.usage,
-          },
+          assistantContent: message.isStreaming
+            ? undefined
+            : {
+                text: block.text,
+                model: message.model,
+                provider: message.provider,
+                stopReason: message.stopReason,
+                usage: message.usage,
+              },
         })
         continue
       }

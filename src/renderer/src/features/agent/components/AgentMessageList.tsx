@@ -52,9 +52,9 @@ export interface AgentMessageListProps {
   onFork?: (userMessageTimestamp: number) => void
   // 点击子代理 label 打开面板弹窗。
   onOpenSubagent?: (toolCall: ToolCallBlock) => void
-  // 子代理面板是否打开（打开时滚动按钮接管面板消息列表滚动）。
+  // 面板是否打开（打开时禁用上下轮次导航，且滚动按钮接管当前打开面板的滚动）。
   isSubagentPanelOpen?: boolean
-  // 子代理面板消息列表滚动容器（滚动按钮的目标）。
+  // 当前打开面板的消息列表滚动容器（滚动按钮的目标）。
   subagentScrollRef?: React.RefObject<HTMLDivElement | null>
   // 最后一条 AI 回答被截断/中止时，"继续生成"可用（仅最后一条展示按钮）。
   canContinue?: boolean
@@ -340,18 +340,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       // 2. 找到严格在当前视口顶部下方的第一个问题
       const belowTop = items.filter((item) => item.top > scrollThreshold)
 
-      let currentActiveIndex = -1
-
-      if (aboveOrAtTop.length > 0) {
-        const closestAbove = aboveOrAtTop[aboveOrAtTop.length - 1]
-        // 如果该问题顶部离视口顶很近（比如 -8px 到 +10px 之间，说明用户已经在该问题处）
-        // 且它不是吸顶触发的长回答浏览区
-        currentActiveIndex = closestAbove.index
-      } else if (belowTop.length > 0) {
-        // 所有已渲染问题都在视口下方，当前处于最顶部
-        currentActiveIndex = belowTop[0].index
-      }
-
       // 特别处理：如果有吸顶消息
       if (pinnedUserMessageId) {
         const pinnedIndex = userMessageGroups.findIndex(
@@ -406,23 +394,34 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     }, [pinnedUserMessageId, userMessageGroups])
 
     const scrollToPrevious = useCallback((): void => {
+      if (isSubagentPanelOpen) return
       const { prevMessageId } = getNavigationTargets()
       if (prevMessageId) {
         handleLocateMessage(prevMessageId)
       }
-    }, [getNavigationTargets, handleLocateMessage])
+    }, [isSubagentPanelOpen, getNavigationTargets, handleLocateMessage])
 
     const scrollToNext = useCallback((): void => {
+      if (isSubagentPanelOpen) return
       const { nextMessageId } = getNavigationTargets()
       if (nextMessageId) {
         handleLocateMessage(nextMessageId)
       }
-    }, [getNavigationTargets, handleLocateMessage])
+    }, [isSubagentPanelOpen, getNavigationTargets, handleLocateMessage])
 
     // 计算当前是否可滚动
     const computeNavState = useCallback(() => {
       const hasMessages = messages.length > 0
       const nearBottom = isNearBottom()
+
+      if (isSubagentPanelOpen) {
+        return {
+          canScrollPrevious: false,
+          canScrollNext: false,
+          canScrollBottom: !nearBottom,
+        }
+      }
+
       const { prevMessageId, nextMessageId } = getNavigationTargets()
 
       return {
@@ -430,7 +429,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
         canScrollNext: hasMessages && nextMessageId !== null,
         canScrollBottom: hasMessages && !nearBottom,
       }
-    }, [getNavigationTargets, isNearBottom, messages.length])
+    }, [getNavigationTargets, isNearBottom, isSubagentPanelOpen, messages.length])
 
     // 通知外部导航状态
     const updateNavState = useCallback(() => {

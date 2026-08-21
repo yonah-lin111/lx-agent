@@ -364,7 +364,13 @@ export const AgentPage = ({
           onOpenSubagent={openSubagent}
           onFork={handleFork}
           isSubagentPanelOpen={activeSubagent !== null || isExecutionFlowOpen}
-          subagentScrollRef={subagentScrollRef}
+          subagentScrollRef={
+            activeSubagent !== null
+              ? subagentScrollRef
+              : isExecutionFlowOpen
+                ? executionFlowScrollRef
+                : undefined
+          }
           canContinue={canContinue}
           onContinue={continueChat}
           onNavigationStateChange={setNavState}

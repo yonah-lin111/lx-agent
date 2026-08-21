@@ -61,8 +61,8 @@ describe("AgentExecutionFlowPanel", () => {
     expect(screen.getByText("Execution Flow")).not.toBeNull()
     expect(screen.getByText("4")).not.toBeNull()
 
-    // 步骤标签与标题
-    expect(screen.getByText("查找所有测试用例")).not.toBeNull()
+    // 步骤标签与标题（用户步骤默认展开，因此标题与详情均含有文字，使用 getAllByText 验证）
+    expect(screen.getAllByText("查找所有测试用例").length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("search_code")).not.toBeNull()
 
     // 点击工具步骤展开详情
@@ -107,8 +107,8 @@ describe("AgentExecutionFlowPanel", () => {
 
     render(<AgentExecutionFlowPanel isOpen={true} onClose={() => {}} messages={messages} />)
 
-    // 初始展示所有步骤
-    expect(screen.getByText("问答")).not.toBeNull()
+    // 初始展示所有步骤（用户步骤默认展开，使用 getAllByText 验证）
+    expect(screen.getAllByText("问答").length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("bash")).not.toBeNull()
 
     // 切换到工具筛选
