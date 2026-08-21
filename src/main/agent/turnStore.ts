@@ -5,6 +5,10 @@ import type {
   TodoList,
 } from "@shared/contracts/agent"
 import {
+  type SessionProjectionState,
+  SessionProjectionStore,
+} from "@shared/contracts/sessionProjection"
+import {
   type AgentCallKind,
   agentSessionService,
   createExternalId,
@@ -125,8 +129,20 @@ export class TurnStore {
   private overflowDetected = false
   // MCP 工具全名 → server 名反查（flushTurn 落库 mcp_server/kind 分类用；随装配刷新）。
   private mcpServerByToolName = new Map<string, string>()
+  // 增量事件投影状态机（可观测、确定性内存真相源）。
+  private readonly projection = new SessionProjectionStore()
 
   constructor(private readonly deps: TurnStoreDeps) {}
+
+  // 获取当前会话状态投影快照。
+  getProjection(): SessionProjectionState {
+    return this.projection.getState()
+  }
+
+  // 订阅投影状态变更。
+  subscribeProjection(listener: (state: SessionProjectionState) => void): () => void {
+    return this.projection.subscribe(listener)
+  }
 
   // run 开始：重置缓冲并捕获本次落盘输入。
   beginTurn(input: BeginTurnInput): void {
@@ -280,8 +296,9 @@ export class TurnStore {
     }
   }
 
-  // Agent 事件 → 持久化缓冲（转发渲染的事件由调用方处理）。
+  // Agent 事件 → 持久化缓冲与增量状态投影。
   handleEvent(event: AgentEvent): void {
+    this.projection.apply(event)
     if (this.currentRunGeneration < 0) return
     switch (event.type) {
       case "message_start":
@@ -399,6 +416,7 @@ export class TurnStore {
       })
       this.deps.setSessionId(sessionId)
       this.deps.setSessionBinding(input.binding)
+      this.projection.apply({ type: "session_title", sessionId, title: input.title })
     }
     return sessionId
   }
@@ -577,6 +595,12 @@ export class TurnStore {
         }
       }
     }
+    this.projection.reset({
+      sessionId,
+      messages: [...messages],
+      todos: [...todos],
+      activeCapabilities: capabilities,
+    })
     return { messages, seqs, capabilities, todos }
   }
 

@@ -61,7 +61,7 @@ describe("Job Tools and Bash Background Execution", () => {
     })
 
     for (let i = 0; i < 20; i++) {
-      if (jobRegistry.getJob(job.id)?.totalOutputBytes ?? 0 > 0) break
+      if ((jobRegistry.getFullOutput(job.id)?.length ?? 0) > 0) break
       await new Promise((r) => setTimeout(r, 50))
     }
 

@@ -27,6 +27,7 @@ import type {
   UserMessage,
   UserMessageCommand,
 } from "@shared/contracts/agent"
+import type { SessionProjectionState } from "@shared/contracts/sessionProjection"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
@@ -723,6 +724,11 @@ class AgentRunner {
   // 历史会话列表（全量，客户端过滤）。
   listSessions(): AgentSessionSummary[] {
     return agentSessionService.listSessions()
+  }
+
+  // 获取当前会话状态投影快照。
+  getSessionProjection(): SessionProjectionState {
+    return this.turnStore.getProjection()
   }
 
   // 删除一轮对话：以该轮用户消息 timestamp 定位，删除用户消息 + 后续 AI/toolResult 消息及关联调用。
