@@ -104,3 +104,80 @@ export interface AgentPromptCard {
   description: string
   prompt: string
 }
+
+// 执行步骤类型。
+export type ExecutionStepKind =
+  | "user"
+  | "thinking"
+  | "tool"
+  | "subagent"
+  | "compaction"
+  | "assistant"
+
+// 执行步骤状态。
+export type ExecutionStepStatus = "running" | "done" | "error"
+
+// 单个执行步骤条目（用于 AgentExecutionFlowPanel 展示完整执行日志与流程）。
+export interface ExecutionStep {
+  // 步骤全局唯一 ID。
+  id: string
+  // 所属轮次（从 1 开始）。
+  turnIndex: number
+  // 步骤在当前会话的全局序号（从 1 开始）。
+  stepIndex: number
+  // 步骤类型。
+  kind: ExecutionStepKind
+  // 步骤标题/摘要（如工具名、思考概览、用户问题）。
+  title: string
+  // 步骤副标题/辅助说明。
+  subtitle?: string
+  // 步骤状态。
+  status: ExecutionStepStatus
+  // 产生时间戳。
+  timestamp?: number
+  // 单步 Token 用量。
+  tokens?: {
+    input?: number
+    output?: number
+    reasoning?: number
+    total?: number
+  }
+  // 用户输入内容。
+  userContent?: {
+    text: string
+    files?: { name: string; path: string; type: "image" | "text" }[]
+    command?: UserMessageCommand
+  }
+  // 思考内容。
+  thinkingContent?: {
+    text: string
+  }
+  // 工具调用及返回内容。
+  toolContent?: {
+    toolName: string
+    args: Record<string, unknown>
+    result?: string
+    isError?: boolean
+    diff?: AgentDiff
+    lsp?: LspToolDetails
+  }
+  // 子代理执行内容。
+  subagentContent?: {
+    name: string
+    subagent?: SubagentData
+  }
+  // 压缩内容。
+  compactionContent?: {
+    isManual?: boolean
+    compactionUsage?: CompactionUsage
+    summaryTokens?: number
+  }
+  // 助手最终回复内容。
+  assistantContent?: {
+    text: string
+    model?: string
+    provider?: string
+    stopReason?: StopReason
+    usage?: Usage
+  }
+}
