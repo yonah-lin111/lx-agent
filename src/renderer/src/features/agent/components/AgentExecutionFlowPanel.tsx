@@ -144,7 +144,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
   }, [step])
 
   return (
-    <div className="rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
+    <div className="agent-execution-flow-step rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
       {/* 头部摘要栏 */}
       <div
         role="button"
@@ -156,7 +156,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
             setIsExpanded((prev) => !prev)
           }
         }}
-        className="flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
+        className="agent-execution-flow-step-header flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {/* 折叠箭头 */}
@@ -226,7 +226,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
       {/* 展开详情区 */}
       {isExpanded && (
-        <div className="border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+        <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && (
             <div className="flex flex-col gap-3 font-mono text-[11px]">
@@ -639,7 +639,7 @@ export const AgentExecutionFlowPanel = ({
       role="dialog"
       aria-label={t("agent.executionFlow")}
       inert={!isOpen}
-      className="absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+      className="agent-execution-flow-panel absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(-100%)",
         transition: "transform 0.28s cubic-bezier(0.2, 0.85, 0.2, 1)",
@@ -647,7 +647,7 @@ export const AgentExecutionFlowPanel = ({
       }}
     >
       {/* 面板头部 */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+      <div className="agent-execution-flow-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <Workflow className="h-4 w-4 text-sky-400" />
           <span className="font-mono text-[13px] font-bold text-white/90">
@@ -719,13 +719,13 @@ export const AgentExecutionFlowPanel = ({
 
       {/* 筛选标签条 */}
       {steps.length > 0 && (
-        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-black/10 px-3 py-1.5 custom-scrollbar select-none">
+        <div className="agent-execution-flow-filter-bar flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-black/10 px-3 py-1.5 custom-scrollbar select-none">
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+            className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
               activeFilter === "all"
-                ? "bg-white/15 text-white"
+                ? "agent-execution-flow-filter-btn-active bg-white/15 text-white"
                 : "text-white/40 hover:bg-white/5 hover:text-white/70"
             }`}
           >
@@ -735,9 +735,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("system")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "system"
-                  ? "bg-indigo-500/20 text-indigo-300"
+                  ? "agent-execution-flow-filter-btn-active bg-indigo-500/20 text-indigo-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -748,9 +748,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("tool")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "tool"
-                  ? "bg-sky-500/20 text-sky-300"
+                  ? "agent-execution-flow-filter-btn-active bg-sky-500/20 text-sky-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -761,9 +761,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("thinking")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "thinking"
-                  ? "bg-purple-500/20 text-purple-300"
+                  ? "agent-execution-flow-filter-btn-active bg-purple-500/20 text-purple-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -774,9 +774,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("subagent")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "subagent"
-                  ? "bg-blue-500/20 text-blue-300"
+                  ? "agent-execution-flow-filter-btn-active bg-blue-500/20 text-blue-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -787,9 +787,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("user")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "user"
-                  ? "bg-amber-500/20 text-amber-300"
+                  ? "agent-execution-flow-filter-btn-active bg-amber-500/20 text-amber-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -800,9 +800,9 @@ export const AgentExecutionFlowPanel = ({
             <button
               type="button"
               onClick={() => setActiveFilter("assistant")}
-              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+              className={`agent-execution-flow-filter-btn cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                 activeFilter === "assistant"
-                  ? "bg-emerald-500/20 text-emerald-300"
+                  ? "agent-execution-flow-filter-btn-active bg-emerald-500/20 text-emerald-300"
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
@@ -816,7 +816,7 @@ export const AgentExecutionFlowPanel = ({
       {steps.length > 0 ? (
         <div
           ref={scrollRef}
-          className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
+          className="agent-execution-flow-scroll custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
         >
           {filteredSteps.length > 0 ? (
             <div className="flex flex-col gap-1.5">
@@ -828,7 +828,7 @@ export const AgentExecutionFlowPanel = ({
                   <Fragment key={step.id}>
                     {/* 轮次分隔线 */}
                     {isNewTurn && step.turnIndex > 0 && (
-                      <div className="my-1.5 flex items-center gap-2">
+                      <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                         <div className="h-[1px] flex-1 bg-white/10" />
                         <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
                           {t("agent.turnLabel", { turn: step.turnIndex })}
@@ -849,7 +849,7 @@ export const AgentExecutionFlowPanel = ({
         </div>
       ) : (
         /* 空状态 */
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
+        <div className="agent-execution-flow-empty flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
           <Workflow className="h-8 w-8 text-white/20" />
           <div className="text-[13px] font-medium text-white/60">{t("agent.noExecutionFlow")}</div>
           <div className="max-w-[240px] text-[12px] text-white/35">

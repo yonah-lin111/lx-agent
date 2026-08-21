@@ -56,7 +56,7 @@ export const AgentSubagentPanel = ({
       role="dialog"
       aria-label={t("agent.subagentPanel")}
       inert={!isOpen}
-      className="absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+      className="agent-subagent-panel-dialog absolute inset-0 z-20 flex flex-col bg-[#262626] shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       style={{
         transform: isOpen ? "translateY(0)" : "translateY(-100%)",
         transition: "transform 0.28s cubic-bezier(0.2, 0.85, 0.2, 1)",
@@ -64,7 +64,7 @@ export const AgentSubagentPanel = ({
       }}
     >
       {/* 面板头部：Subagent 名称 + 关闭。 */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+      <div className="agent-subagent-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1">
           <span className="font-mono text-[13px] font-bold text-blue-300">Subagent</span>
           <span className="truncate text-[13px] text-white/70">
