@@ -253,6 +253,12 @@ class AgentRunner {
       this.registry = registry
       this.cwd = cwd
       this.builtSignature = capabilitiesSignature
+    } else {
+      this.agent.state.systemPrompt = buildSystemPromptSync({
+        cwd,
+        sessionId: this.currentSessionId ?? undefined,
+        activeSkills: this.activeSkills,
+      })
     }
 
     return { agent: this.agent }
@@ -526,6 +532,11 @@ class AgentRunner {
     }
 
     try {
+      agent.state.systemPrompt = buildSystemPromptSync({
+        cwd: this.cwd ?? resolveCwd(),
+        sessionId: this.currentSessionId ?? undefined,
+        activeSkills: this.activeSkills,
+      })
       const userMessage: UserMessage = {
         role: "user",
         content: expanded,
