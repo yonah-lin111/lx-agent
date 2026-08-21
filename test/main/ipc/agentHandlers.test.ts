@@ -16,6 +16,7 @@ vi.mock("@/agent/agentRunner", () => ({
     renameSession: vi.fn(),
     deleteSession: vi.fn(),
     deleteMessageTurn: vi.fn(),
+    getPromptAssembly: vi.fn(),
   },
 }))
 vi.mock("@/agent/suggestedQuestionsGenerator", () => ({

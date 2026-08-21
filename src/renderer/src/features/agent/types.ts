@@ -107,6 +107,7 @@ export interface AgentPromptCard {
 
 // 执行步骤类型。
 export type ExecutionStepKind =
+  | "system"
   | "user"
   | "thinking"
   | "tool"
@@ -121,7 +122,7 @@ export type ExecutionStepStatus = "running" | "done" | "error"
 export interface ExecutionStep {
   // 步骤全局唯一 ID。
   id: string
-  // 所属轮次（从 1 开始）。
+  // 所属轮次（从 0 开始；0 为系统级/初始化，1 及以上为用户交互轮次）。
   turnIndex: number
   // 步骤在当前会话的全局序号（从 1 开始）。
   stepIndex: number
@@ -139,14 +140,23 @@ export interface ExecutionStep {
   tokens?: {
     input?: number
     output?: number
-    reasoning?: number
+    cacheRead?: number
     total?: number
+  }
+  // 系统提示词与注入配置内容。
+  systemContent?: {
+    sections: { name: string; text: string }[]
+    contexts: { name: string; text: string }[]
+    variables: Record<string, string | undefined>
+    activeTools?: string[]
+    rendered: string
   }
   // 用户输入内容。
   userContent?: {
     text: string
     files?: { name: string; path: string; type: "image" | "text" }[]
     command?: UserMessageCommand
+    isSteer?: boolean
   }
   // 思考内容。
   thinkingContent?: {
@@ -155,6 +165,7 @@ export interface ExecutionStep {
   // 工具调用及返回内容。
   toolContent?: {
     toolName: string
+    toolCallId?: string
     args: Record<string, unknown>
     result?: string
     isError?: boolean

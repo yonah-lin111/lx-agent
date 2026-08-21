@@ -95,9 +95,41 @@ describe("executionFlow", () => {
       expect(steps[3].kind).toBe("assistant")
       expect(steps[3].turnIndex).toBe(1)
       expect(steps[3].stepIndex).toBe(4)
-      expect(steps[3].title).toBe("助手回复")
+      expect(steps[3].title).toBe("Assistant Response")
       expect(steps[3].subtitle).toBe("已找到 main.ts 文件如下：")
       expect(steps[3].tokens?.total).toBe(150)
+    })
+
+    it("支持系统提示词装配并注入 Step #0", () => {
+      const promptAssembly = {
+        sections: [
+          { name: "harness:identity", text: "You are LX Agent" },
+          { name: "agent:instructions", text: "Follow project guidelines" },
+        ],
+        contexts: [{ name: "agent:runtime-context", text: "OS: mac, CWD: /foo/proj" }],
+        variables: { cwd: "/foo/proj" },
+        activeTools: ["read", "write", "bash"],
+        rendered: "You are LX Agent\n\nFollow project guidelines",
+      }
+
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "Hello" }],
+          isStreaming: false,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages, promptAssembly)
+      expect(steps).toHaveLength(2)
+      expect(steps[0].id).toBe("step-0-system-prompt")
+      expect(steps[0].kind).toBe("system")
+      expect(steps[0].turnIndex).toBe(0)
+      expect(steps[0].stepIndex).toBe(0)
+      expect(steps[0].systemContent?.sections).toHaveLength(2)
+      expect(steps[0].systemContent?.activeTools).toEqual(["read", "write", "bash"])
+      expect(steps[1].kind).toBe("user")
     })
 
     it("正确识别子代理任务与失败状态", () => {

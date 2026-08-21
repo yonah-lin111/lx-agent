@@ -1,3 +1,4 @@
+import type { PromptAssembly } from "@shared/contracts/agent"
 import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionStepStatus } from "./types"
 
 /**
@@ -12,8 +13,37 @@ export const formatPreview = (text: string, maxLength = 80): string => {
 /**
  * 从会话消息列表中提取扁平化执行步骤链（Execution Steps Ledger）。
  */
-export const buildExecutionSteps = (messages: readonly ChatMessage[]): ExecutionStep[] => {
+export const buildExecutionSteps = (
+  messages: readonly ChatMessage[],
+  promptAssembly?: PromptAssembly | null,
+): ExecutionStep[] => {
   const steps: ExecutionStep[] = []
+
+  // 0. 若存在系统提示词装配，注入步骤 0 (System & Injections)
+  if (
+    promptAssembly &&
+    (promptAssembly.sections.length > 0 ||
+      promptAssembly.contexts.length > 0 ||
+      promptAssembly.rendered.trim().length > 0)
+  ) {
+    steps.push({
+      id: "step-0-system-prompt",
+      turnIndex: 0,
+      stepIndex: 0,
+      kind: "system",
+      title: "System & Injections",
+      subtitle: `${promptAssembly.sections.length} sections, ${promptAssembly.contexts.length} contexts`,
+      status: "done",
+      systemContent: {
+        sections: promptAssembly.sections,
+        contexts: promptAssembly.contexts,
+        variables: promptAssembly.variables,
+        activeTools: promptAssembly.activeTools,
+        rendered: promptAssembly.rendered,
+      },
+    })
+  }
+
   if (!messages || messages.length === 0) {
     return steps
   }
@@ -55,6 +85,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
           text: userText,
           files: message.files,
           command: message.command,
+          isSteer: message.isSteer,
         },
       })
       continue
@@ -69,8 +100,8 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
         turnIndex: turn,
         stepIndex,
         kind: "compaction",
-        title: "上下文压缩",
-        subtitle: message.summaryTokens ? `压缩后约 ${message.summaryTokens} tokens` : undefined,
+        title: "Context Compaction",
+        subtitle: message.summaryTokens ? `${message.summaryTokens} tokens` : undefined,
         status: "done",
         timestamp: message.timestamp,
         tokens: message.compactionUsage
@@ -104,7 +135,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
           turnIndex: turn,
           stepIndex,
           kind: "thinking",
-          title: "思考过程",
+          title: "Thinking Process",
           subtitle: formatPreview(block.text, 80),
           status: "done",
           timestamp: message.timestamp,
@@ -150,6 +181,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
               ? {
                   input: subagentData.usage.input,
                   output: subagentData.usage.output,
+                  cacheRead: subagentData.usage.cacheRead,
                   total: subagentData.usage.totalTokens,
                 }
               : undefined,
@@ -159,6 +191,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
             },
             toolContent: {
               toolName: block.toolName,
+              toolCallId: block.toolCallId,
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
@@ -178,6 +211,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
             timestamp: message.timestamp,
             toolContent: {
               toolName: block.toolName,
+              toolCallId: block.toolCallId,
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
@@ -198,7 +232,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
           turnIndex: turn,
           stepIndex,
           kind: "assistant",
-          title: "助手回复",
+          title: "Assistant Response",
           subtitle: formatPreview(block.text, 80),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
@@ -206,6 +240,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
             ? {
                 input: message.usage.input,
                 output: message.usage.output,
+                cacheRead: message.usage.cacheRead,
                 total: message.usage.totalTokens,
               }
             : undefined,
@@ -236,6 +271,7 @@ export const buildExecutionSteps = (messages: readonly ChatMessage[]): Execution
           timestamp: message.timestamp,
           toolContent: {
             toolName: block.toolName,
+            toolCallId: block.toolCallId,
             args: {},
             result: block.text,
             isError: block.isError,

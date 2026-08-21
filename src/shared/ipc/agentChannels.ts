@@ -37,5 +37,7 @@ export const AGENT_CHANNELS = {
   removeJob: "agent:removeJob",
   clearSettledJobs: "agent:clearSettledJobs",
   readJobOutput: "agent:readJobOutput",
+  // 查询会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
+  getPromptAssembly: "agent:getPromptAssembly",
   event: "agent:event",
 } as const

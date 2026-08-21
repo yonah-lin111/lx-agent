@@ -19,6 +19,7 @@ import type {
   LspServerStatusItem,
   McpServerStatusItem,
   PermissionResponse,
+  PromptAssembly,
   PromptTemplateItem,
   QuestionResponse,
   SuggestedQuestionContextMessage,
@@ -27,6 +28,10 @@ import type { ModelSelection } from "@shared/settings"
 
 // Agent feature 对 preload API 的访问层。
 export const agentApi = {
+  getPromptAssembly: (sessionId?: string, cwd?: string): Promise<PromptAssembly> =>
+    window?.api?.agent?.getPromptAssembly
+      ? window.api.agent.getPromptAssembly(sessionId, cwd)
+      : Promise.resolve({ sections: [], contexts: [], variables: {}, rendered: "" }),
   send: (
     text: string,
     selection?: ModelSelection,

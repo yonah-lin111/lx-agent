@@ -22,6 +22,7 @@ import type {
   JobReadResult,
   JobSnapshot,
   JobStatus,
+  PromptAssembly,
   TodoList,
   TodoStateMessage,
   UserMessage,
@@ -32,7 +33,13 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { getAppDataRoot } from "../paths"
-import { buildSystemPromptSync, createRegistry, MAX_INJECTED_SKILLS, resolveCwd } from "./assembly"
+import {
+  ALL_TOOL_NAMES,
+  buildSystemPromptSync,
+  createRegistry,
+  MAX_INJECTED_SKILLS,
+  resolveCwd,
+} from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
@@ -43,6 +50,7 @@ import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
+import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
 import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillLoader"
 import { spillManager } from "./spill/spillManager"
@@ -994,6 +1002,28 @@ class AgentRunner {
   // 撤销最后一次手动压缩（委托 ContextCompactor；renderer 对摘要触发 /undo）。
   undoCompaction(): Promise<AgentUndoCompactionResult> {
     return this.compactor.undo()
+  }
+
+  // 查询会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
+  async getPromptAssembly(sessionId?: string, cwd?: string): Promise<PromptAssembly> {
+    const targetCwd = cwd ?? this.cwd ?? this.requestedCwd ?? resolveCwd() ?? ""
+    const targetSessionId = sessionId ?? this.currentSessionId ?? undefined
+    const activeSkills = this.activeSkills
+
+    const assembly = await defaultSystemPromptManager.assemble({
+      cwd: targetCwd,
+      sessionId: targetSessionId,
+      activeSkills,
+    })
+
+    const activeTools: string[] = this.registry
+      ? this.registry.getAll().map((tool) => tool.name)
+      : Array.from(ALL_TOOL_NAMES)
+
+    return {
+      ...assembly,
+      activeTools,
+    }
   }
 
   // 从 state.messages 尾部移除 overflow 错误消息（消息未落库，messageSeqs 无对应项）。

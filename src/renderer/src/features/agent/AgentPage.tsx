@@ -125,6 +125,10 @@ export const AgentPage = ({
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionBinding,
   )
+  const currentSessionId = useSyncExternalStore(
+    sessionListStore.subscribe,
+    sessionListStore.getCurrentSessionId,
+  )
   const currentSessionPath = currentSessionBinding?.cwd
   // 会话路径锁定：当前会话存在时绝对优先使用会话自身的绑定路径，切路由/切项目不漂移；新会话缺省才使用当前路由/项目项或默认路径。
   const effectiveProjectPath = currentSessionBinding?.cwd ?? currentProjectPath ?? defaultPath
@@ -376,6 +380,8 @@ export const AgentPage = ({
           isOpen={isExecutionFlowOpen}
           onClose={() => setIsExecutionFlowOpen(false)}
           messages={messages}
+          sessionId={currentSessionId ?? undefined}
+          cwd={statusBarPath}
           scrollRef={executionFlowScrollRef}
         />
       </div>

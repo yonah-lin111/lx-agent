@@ -1,3 +1,4 @@
+import type { PromptAssembly } from "@shared/contracts/agent"
 import {
   AlertCircle,
   BarChart3,
@@ -7,23 +8,29 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Code2,
+  Compass,
   Copy,
   FileCode,
   FileText,
+  Layers,
   Loader2,
   Minimize2,
   RefreshCw,
+  Sliders,
   Terminal,
   User,
   Workflow,
   Wrench,
   X,
+  Zap,
 } from "lucide-react"
 import type React from "react"
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep, ExecutionStepKind } from "@/features/agent/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
@@ -35,6 +42,10 @@ export interface AgentExecutionFlowPanelProps {
   onClose: () => void
   // 当前会话的全部消息列表
   messages: readonly ChatMessage[]
+  // 当前会话 ID（用于查询完整装配的系统提示词）
+  sessionId?: string
+  // 当前项目或工作区路径
+  cwd?: string
   // 面板滚动容器 Ref
   scrollRef?: React.RefObject<HTMLDivElement | null>
 }
@@ -72,9 +83,11 @@ const getKindMeta = (
 ): {
   icon: React.ComponentType<{ className?: string }>
   labelKey: TranslationKey
-  tagColor: "amber" | "purple" | "sky" | "blue" | "indigo" | "emerald" | "default"
+  tagColor: "indigo" | "amber" | "purple" | "sky" | "blue" | "emerald" | "default"
 } => {
   switch (kind) {
+    case "system":
+      return { icon: Compass, labelKey: "agent.kindSystem", tagColor: "indigo" }
     case "user":
       return { icon: User, labelKey: "agent.kindUser", tagColor: "amber" }
     case "thinking":
@@ -113,6 +126,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
   }, [])
 
   const copyPayload = useMemo(() => {
+    if (step.systemContent) return step.systemContent.rendered
     if (step.userContent) return step.userContent.text
     if (step.thinkingContent) return step.thinkingContent.text
     if (step.toolContent) {
@@ -220,23 +234,114 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
       {/* 展开详情区 */}
       {isExpanded && (
         <div className="border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+          {/* 系统提示词与注入详情 */}
+          {step.systemContent && (
+            <div className="flex flex-col gap-3 font-mono text-[11px]">
+              {/* 分段概览 */}
+              {step.systemContent.sections.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1 text-indigo-300 font-semibold">
+                    <Layers className="h-3 w-3" />
+                    <span>{t("agent.systemPrompt")}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {step.systemContent.sections.map((sec) => (
+                      <details
+                        key={sec.name}
+                        className="group rounded border border-white/5 bg-white/[0.02] p-2"
+                      >
+                        <summary className="cursor-pointer font-semibold text-white/80 select-none">
+                          {sec.name}
+                        </summary>
+                        <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-white/70">
+                          {sec.text}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 运行时上下文注入 */}
+              {step.systemContent.contexts.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1 text-sky-300 font-semibold">
+                    <Sliders className="h-3 w-3" />
+                    <span>{t("agent.runtimeContext")}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {step.systemContent.contexts.map((ctx) => (
+                      <div
+                        key={ctx.name}
+                        className="rounded border border-white/5 bg-black/30 p-2 text-white/70"
+                      >
+                        <div className="font-semibold text-white/80">{ctx.name}</div>
+                        <div className="mt-1 whitespace-pre-wrap">{ctx.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 激活的工具全集 */}
+              {step.systemContent.activeTools && step.systemContent.activeTools.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1 text-amber-300 font-semibold">
+                    <Wrench className="h-3 w-3" />
+                    <span>{t("agent.activeToolsList")}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {step.systemContent.activeTools.map((tool) => (
+                      <span
+                        key={tool}
+                        className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60"
+                      >
+                        {tool}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 用户输入详情 */}
           {step.userContent && (
             <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {step.userContent.command && (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-mono text-amber-300">
+                    <Zap className="h-3 w-3" />
+                    {t("agent.commandTrigger")}: /{step.userContent.command.name}
+                  </span>
+                )}
+                {step.userContent.isSteer && (
+                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-mono text-sky-300">
+                    {t("agent.steerMessage")}
+                  </span>
+                )}
+              </div>
               <div className="whitespace-pre-wrap font-sans text-white/90">
-                {step.userContent.text || <span className="text-white/30">(无文本)</span>}
+                {step.userContent.text || (
+                  <span className="text-white/30">{t("agent.emptyPrompt")}</span>
+                )}
               </div>
               {step.userContent.files && step.userContent.files.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {step.userContent.files.map((file) => (
-                    <span
-                      key={file.path}
-                      className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60"
-                    >
-                      <FileCode className="h-3 w-3" />
-                      {file.name}
-                    </span>
-                  ))}
+                <div className="flex flex-col gap-1 pt-1">
+                  <div className="text-[11px] font-mono text-white/40">
+                    {t("agent.attachedFiles")}:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {step.userContent.files.map((file) => (
+                      <span
+                        key={file.path}
+                        className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60"
+                      >
+                        <FileCode className="h-3 w-3" />
+                        {file.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -258,11 +363,61 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                   <span className="flex items-center gap-1 font-mono">
                     <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
                   </span>
+                  {step.toolContent.toolCallId && (
+                    <span className="font-mono text-[10px] text-white/30">
+                      ID: {step.toolContent.toolCallId}
+                    </span>
+                  )}
                 </div>
                 <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px] text-sky-200/90">
                   {formatJsonString(step.toolContent.args)}
                 </div>
               </div>
+
+              {/* 结构化 Diff (针对 write/edit 工具) */}
+              {step.toolContent.diff && (
+                <div>
+                  <div className="mb-1 flex items-center justify-between font-mono text-[11px] text-white/45">
+                    <span className="flex items-center gap-1">
+                      <Code2 className="h-3 w-3" /> {t("agent.lineDiff")}
+                    </span>
+                    {step.toolContent.diff.stats && (
+                      <span className="flex items-center gap-1.5 text-[10px]">
+                        <span className="text-emerald-400">
+                          +{step.toolContent.diff.stats.added}
+                        </span>
+                        <span className="text-red-400">-{step.toolContent.diff.stats.removed}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px]">
+                    {step.toolContent.diff.fileName && (
+                      <div className="text-white/60 mb-1">{step.toolContent.diff.fileName}</div>
+                    )}
+                    {step.toolContent.diff.lines && step.toolContent.diff.lines.length > 0 && (
+                      <div className="flex flex-col">
+                        {step.toolContent.diff.lines.map((line, lIdx) => (
+                          <div
+                            key={lIdx}
+                            className={`flex items-start gap-2 px-1 ${
+                              line.type === "add"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : line.type === "del"
+                                  ? "bg-red-500/15 text-red-300"
+                                  : "text-white/60"
+                            }`}
+                          >
+                            <span className="w-4 shrink-0 select-none text-right text-[10px] opacity-40">
+                              {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
+                            </span>
+                            <span className="whitespace-pre-wrap">{line.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 结果 */}
               {step.toolContent.result !== undefined && (
@@ -282,7 +437,7 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                         : "bg-black/40 text-white/80"
                     }`}
                   >
-                    {step.toolContent.result || <span className="text-white/30">(无返回结果)</span>}
+                    {step.toolContent.result || <span className="text-white/30">-</span>}
                   </div>
                 </div>
               )}
@@ -293,16 +448,22 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
           {step.subagentContent && (
             <div className="flex flex-col gap-2 font-mono text-[11px]">
               <div className="flex items-center gap-2 text-white/70">
-                <span>Task:</span>
+                <span className="text-white/40">Task:</span>
                 <span className="font-bold text-blue-300">{step.subagentContent.name}</span>
               </div>
+              {step.subagentContent.subagent?.prompt && (
+                <div className="rounded bg-black/30 p-2 text-white/80">
+                  <div className="text-[10px] text-white/40 mb-0.5">Prompt:</div>
+                  <div className="whitespace-pre-wrap">{step.subagentContent.subagent.prompt}</div>
+                </div>
+              )}
               {step.subagentContent.subagent?.description && (
                 <div className="text-white/50">{step.subagentContent.subagent.description}</div>
               )}
               {step.subagentContent.subagent?.usage && (
-                <div className="flex gap-3 text-white/40">
-                  <span>In: {step.subagentContent.subagent.usage.input}</span>
-                  <span>Out: {step.subagentContent.subagent.usage.output}</span>
+                <div className="flex gap-3 text-white/40 pt-1">
+                  <span>Input: {step.subagentContent.subagent.usage.input}</span>
+                  <span>Output: {step.subagentContent.subagent.usage.output}</span>
                   <span>Total: {step.subagentContent.subagent.usage.totalTokens}</span>
                 </div>
               )}
@@ -312,15 +473,15 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
           {/* 上下文压缩详情 */}
           {step.compactionContent && (
             <div className="flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
-              <div>
-                <span>模式: </span>
-                <span className="text-indigo-300">
-                  {step.compactionContent.isManual ? "手动压缩 (/compact)" : "自动触发压缩"}
+              <div className="flex items-center gap-2">
+                <span className="text-white/40">Mode:</span>
+                <span className="text-indigo-300 font-semibold">
+                  {step.compactionContent.isManual ? "Manual (/compact)" : "Automatic"}
                 </span>
               </div>
               {step.compactionContent.summaryTokens && (
-                <div>
-                  <span>压缩后规模: </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40">Summary:</span>
                   <span className="text-indigo-300">
                     {step.compactionContent.summaryTokens} tokens
                   </span>
@@ -328,8 +489,8 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
               )}
               {step.compactionContent.compactionUsage && (
                 <div className="flex gap-3 text-white/40">
-                  <span>输入: {step.compactionContent.compactionUsage.input}</span>
-                  <span>输出: {step.compactionContent.compactionUsage.output}</span>
+                  <span>Input: {step.compactionContent.compactionUsage.input}</span>
+                  <span>Output: {step.compactionContent.compactionUsage.output}</span>
                 </div>
               )}
             </div>
@@ -342,14 +503,26 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
                 {step.assistantContent.text}
               </div>
               {(step.assistantContent.model || step.assistantContent.usage) && (
-                <div className="flex flex-wrap items-center gap-2 border-t border-white/5 pt-1.5 font-mono text-[11px] text-white/40">
-                  {step.assistantContent.model && <span>模型: {step.assistantContent.model}</span>}
+                <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-1.5 font-mono text-[11px] text-white/40">
+                  {step.assistantContent.model && <span>{step.assistantContent.model}</span>}
                   {step.assistantContent.stopReason && (
-                    <span>停止原因: {step.assistantContent.stopReason}</span>
+                    <span>
+                      {t("agent.stopReason")}: {step.assistantContent.stopReason}
+                    </span>
                   )}
                   {step.assistantContent.usage && (
-                    <span>Tokens: {step.assistantContent.usage.totalTokens}</span>
+                    <span>
+                      {step.assistantContent.usage.input} in / {step.assistantContent.usage.output}{" "}
+                      out
+                    </span>
                   )}
+                  {step.assistantContent.usage?.cacheRead ? (
+                    <span className="text-sky-300/80">
+                      {t("agent.cacheReadTokens", {
+                        count: step.assistantContent.usage.cacheRead,
+                      })}
+                    </span>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -362,34 +535,52 @@ const StepItem = ({ step }: { step: ExecutionStep }): React.JSX.Element => {
 
 /**
  * AgentExecutionFlowPanel - 从顶部向下展开、恰好覆盖消息列表的执行流程面板。
- * 只读展示当前 Agent 的全部执行日志与步骤。
+ * 只读展示当前 Agent 的全部执行日志、提示词注入与步骤。
  */
 export const AgentExecutionFlowPanel = ({
   isOpen,
   onClose,
   messages,
+  sessionId,
+  cwd,
   scrollRef,
 }: AgentExecutionFlowPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
 
   // 快照机制：打开瞬间捕获快照，内部保持静态，支持手动刷新
   const [snapshotMessages, setSnapshotMessages] = useState<readonly ChatMessage[]>([])
+  const [promptAssembly, setPromptAssembly] = useState<PromptAssembly | null>(null)
   const [activeFilter, setActiveFilter] = useState<FilterKind>("all")
 
-  // 打开时捕获快照
+  // 获取完整系统提示词装配
+  const fetchPromptAssembly = useCallback(async () => {
+    try {
+      const assembly = await agentApi.getPromptAssembly(sessionId, cwd)
+      setPromptAssembly(assembly)
+    } catch {
+      setPromptAssembly(null)
+    }
+  }, [sessionId, cwd])
+
+  // 打开时捕获快照并获取系统提示词装配
   useEffect(() => {
     if (isOpen) {
       setSnapshotMessages(messages)
+      void fetchPromptAssembly()
     }
-  }, [isOpen, messages])
+  }, [isOpen, messages, fetchPromptAssembly])
 
   // 手动刷新快照
   const handleRefresh = useCallback(() => {
     setSnapshotMessages(messages)
-  }, [messages])
+    void fetchPromptAssembly()
+  }, [messages, fetchPromptAssembly])
 
   // 提取步骤列表
-  const steps = useMemo(() => buildExecutionSteps(snapshotMessages), [snapshotMessages])
+  const steps = useMemo(
+    () => buildExecutionSteps(snapshotMessages, promptAssembly),
+    [snapshotMessages, promptAssembly],
+  )
 
   // 过滤后的步骤列表
   const filteredSteps = useMemo(() => {
@@ -401,7 +592,7 @@ export const AgentExecutionFlowPanel = ({
   const stats = useMemo(() => {
     let inputTokens = 0
     let outputTokens = 0
-    let reasoningTokens = 0
+    let cacheReadTokens = 0
     let totalTokens = 0
     let toolCallsCount = 0
     let turnsCount = 0
@@ -416,7 +607,7 @@ export const AgentExecutionFlowPanel = ({
       if (step.tokens) {
         if (step.tokens.input) inputTokens += step.tokens.input
         if (step.tokens.output) outputTokens += step.tokens.output
-        if (step.tokens.reasoning) reasoningTokens += step.tokens.reasoning
+        if (step.tokens.cacheRead) cacheReadTokens += step.tokens.cacheRead
         if (step.tokens.total) totalTokens += step.tokens.total
       }
     }
@@ -427,7 +618,7 @@ export const AgentExecutionFlowPanel = ({
       toolCallsCount,
       inputTokens,
       outputTokens,
-      reasoningTokens,
+      cacheReadTokens,
       totalTokens,
     }
   }, [steps])
@@ -436,6 +627,7 @@ export const AgentExecutionFlowPanel = ({
   const filterCounts = useMemo(() => {
     const counts: Record<FilterKind, number> = {
       all: steps.length,
+      system: 0,
       user: 0,
       thinking: 0,
       tool: 0,
@@ -469,7 +661,7 @@ export const AgentExecutionFlowPanel = ({
             {t("agent.executionFlow")}
           </span>
           <span className="rounded bg-white/5 px-1.5 py-0.2 font-mono text-[11px] text-white/40">
-            {stats.totalSteps} steps
+            {stats.totalSteps}
           </span>
         </div>
 
@@ -482,7 +674,7 @@ export const AgentExecutionFlowPanel = ({
             content={
               <div className="flex flex-col gap-1 whitespace-nowrap text-[12px]">
                 <div className="font-bold text-white/90">
-                  {t("agent.turnCount", { count: stats.turnsCount })} · {stats.totalSteps} 步骤
+                  {t("agent.turnCount", { count: stats.turnsCount })} · {stats.totalSteps}
                 </div>
                 <div className="text-white/60">
                   {t("agent.toolCallsCount", { count: stats.toolCallsCount })}
@@ -493,6 +685,11 @@ export const AgentExecutionFlowPanel = ({
                 )}
                 {stats.outputTokens > 0 && (
                   <span>{t("agent.outputTokens", { count: stats.outputTokens })}</span>
+                )}
+                {stats.cacheReadTokens > 0 && (
+                  <span className="text-sky-300">
+                    {t("agent.cacheReadTokens", { count: stats.cacheReadTokens })}
+                  </span>
                 )}
                 {stats.totalTokens > 0 && (
                   <span>{t("agent.totalTokens", { count: stats.totalTokens })}</span>
@@ -539,8 +736,21 @@ export const AgentExecutionFlowPanel = ({
                 : "text-white/40 hover:bg-white/5 hover:text-white/70"
             }`}
           >
-            {t("common.all")} ({filterCounts.all})
+            {t("agent.filterAll")} ({filterCounts.all})
           </button>
+          {filterCounts.system > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveFilter("system")}
+              className={`cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                activeFilter === "system"
+                  ? "bg-indigo-500/20 text-indigo-300"
+                  : "text-white/40 hover:bg-white/5 hover:text-white/70"
+              }`}
+            >
+              {t("agent.filterSystem")} ({filterCounts.system})
+            </button>
+          )}
           {filterCounts.tool > 0 && (
             <button
               type="button"
@@ -577,7 +787,7 @@ export const AgentExecutionFlowPanel = ({
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
-              Subagent ({filterCounts.subagent})
+              {t("agent.filterSubagent")} ({filterCounts.subagent})
             </button>
           )}
           {filterCounts.user > 0 && (
@@ -590,7 +800,7 @@ export const AgentExecutionFlowPanel = ({
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
-              User ({filterCounts.user})
+              {t("agent.filterUser")} ({filterCounts.user})
             </button>
           )}
           {filterCounts.assistant > 0 && (
@@ -603,7 +813,7 @@ export const AgentExecutionFlowPanel = ({
                   : "text-white/40 hover:bg-white/5 hover:text-white/70"
               }`}
             >
-              Assistant ({filterCounts.assistant})
+              {t("agent.filterAssistant")} ({filterCounts.assistant})
             </button>
           )}
         </div>
@@ -621,7 +831,7 @@ export const AgentExecutionFlowPanel = ({
                 return (
                   <Fragment key={step.id}>
                     {/* 轮次分隔线 */}
-                    {isNewTurn && (
+                    {isNewTurn && step.turnIndex > 0 && (
                       <div className="my-1.5 flex items-center gap-2">
                         <div className="h-[1px] flex-1 bg-white/10" />
                         <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">

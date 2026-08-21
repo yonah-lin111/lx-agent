@@ -447,6 +447,27 @@ export interface AgentSendContext {
   }[]
 }
 
+// 系统提示词分段装配结果。
+export interface AssembledSection {
+  name: string
+  text: string
+}
+
+// 运行时上下文注入结果。
+export interface AssembledContext {
+  name: string
+  text: string
+}
+
+// 系统提示词装配输出结构（系统提示词、指令文件、技能、环境变量与工具全集）。
+export interface PromptAssembly {
+  sections: AssembledSection[]
+  contexts: AssembledContext[]
+  variables: Record<string, string | undefined>
+  activeTools?: string[]
+  rendered: string
+}
+
 // 会话能力快照（随会话冻结）。
 export interface AgentCapabilitySnapshot {
   tools: string[]
@@ -542,9 +563,7 @@ export interface CopySessionOptions {
 }
 
 // 复制会话结果。
-export type CopySessionResult =
-  | { ok: true; text: string }
-  | { ok: false; error: string }
+export type CopySessionResult = { ok: true; text: string } | { ok: false; error: string }
 
 // 渲染进程可调用的 Agent IPC 接口。
 export interface AgentApi {
@@ -603,7 +622,10 @@ export interface AgentApi {
     // 查询当前会话全部可见后台任务。
     listJobs: (sessionId?: string) => Promise<JobSnapshot[]>
     // 终止指定后台长任务（向进程树发送 SIGTERM / taskkill）。
-    killJob: (jobId: JobId, reason?: string) => Promise<{ ok: boolean; status?: JobStatus; error?: string }>
+    killJob: (
+      jobId: JobId,
+      reason?: string,
+    ) => Promise<{ ok: boolean; status?: JobStatus; error?: string }>
     // 移除/关闭指定后台长任务记录（若运行中则先终止进程再移除）。
     removeJob: (jobId: JobId) => Promise<{ ok: boolean; error?: string }>
     // 清理指定会话全部已结束（completed/failed/killed）的后台长任务。
@@ -614,6 +636,8 @@ export interface AgentApi {
       wait?: boolean,
       timeoutMs?: number,
     ) => Promise<JobReadResult | null>
+    // 查询当前会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
+    getPromptAssembly: (sessionId?: string, cwd?: string) => Promise<PromptAssembly>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

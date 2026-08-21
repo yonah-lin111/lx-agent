@@ -59,7 +59,7 @@ describe("AgentExecutionFlowPanel", () => {
 
     // 标题与步骤数量
     expect(screen.getByText("Execution Flow")).not.toBeNull()
-    expect(screen.getByText("4 steps")).not.toBeNull()
+    expect(screen.getByText("4")).not.toBeNull()
 
     // 步骤标签与标题
     expect(screen.getByText("查找所有测试用例")).not.toBeNull()
