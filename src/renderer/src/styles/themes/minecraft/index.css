@@ -235,6 +235,80 @@
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08);
 }
 
+/* ========================================================
+ * LxInput 组件魔改（包含搜索框、表单输入框、前后缀图标与清除按钮）
+ * ======================================================== */
+[data-theme="minecraft"] .lx-input {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  transition: box-shadow 0.15s ease !important;
+}
+
+[data-theme="minecraft"] .lx-input:focus-within {
+  border-color: #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0 0 6px rgba(85, 255, 85, 0.3) !important;
+}
+
+[data-theme="minecraft"] .lx-input input,
+[data-theme="minecraft"] .lx-input textarea {
+  border: none !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .lx-input input::placeholder,
+[data-theme="minecraft"] .lx-input textarea::placeholder {
+  color: #727288 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .lx-input svg {
+  color: #a6a6bc !important;
+}
+
+[data-theme="minecraft"] .lx-input button {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0px !important;
+  color: #a6a6bc !important;
+}
+
+[data-theme="minecraft"] .lx-input button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* ========================================================
+ * LxSelect 下拉选择器组件魔改
+ * ======================================================== */
+[data-theme="minecraft"] .lx-select-trigger {
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  border-radius: 0px !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .lx-select-trigger:hover:not(:disabled) {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+}
+
 /* 复选框与单选框勾选态：经验条荧光绿高亮（仅高亮指示器，不高亮同级文本） */
 [data-theme="minecraft"] .peer:checked + span {
   border-color: #000000 !important;

@@ -74,7 +74,7 @@ export const getToolCategoryMeta = (
   if (toolName.includes("_")) {
     return { icon: Terminal, label: "MCP", tagColor: "teal", textColor: "text-cyan-300" }
   }
-  return { icon: Wrench, label: "Tool", tagColor: "sky", textColor: "text-sky-300" }
+  return { icon: Wrench, label: "Tool", tagColor: "sky", textColor: "text-amber-300" }
 }
 
 /**

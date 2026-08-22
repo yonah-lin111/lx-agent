@@ -147,16 +147,60 @@ export const AgentExecutionFlowItem = ({
 
           {/* 步骤标题与副标题 */}
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-            <span
-              className={`font-mono text-[12px] font-medium text-white/85 ${
-                step.kind === "tool" ? "shrink-0 whitespace-nowrap" : "truncate"
-              }`}
-            >
-              {step.status === "running" && (step.kind === "assistant" || step.kind === "thinking")
-                ? "..."
-                : step.title}
-            </span>
-            {step.subtitle && step.status !== "running" && (
+            {step.kind === "tool" && step.toolContent ? (
+              (() => {
+                const toolName = step.toolContent.toolName
+                if (toolName === "read_skill") {
+                  const skillName =
+                    typeof step.toolContent.args?.name === "string" &&
+                    step.toolContent.args.name.trim()
+                      ? step.toolContent.args.name.trim()
+                      : "Skill"
+                  return (
+                    <span className="shrink-0 font-mono text-[12px] font-medium text-violet-300">
+                      {skillName}
+                    </span>
+                  )
+                }
+                if (toolName === "web_search" || toolName === "webfetch") {
+                  return (
+                    <span className="shrink-0 font-mono text-[12px] font-medium text-emerald-300">
+                      {toolName}
+                    </span>
+                  )
+                }
+                if (toolName === "todowrite") {
+                  return (
+                    <span className="shrink-0 font-mono text-[12px] font-medium text-orange-300">
+                      {toolName}
+                    </span>
+                  )
+                }
+                if (toolName.includes("_")) {
+                  const sepIdx = toolName.indexOf("_")
+                  const serverName = toolName.slice(0, sepIdx)
+                  const method = toolName.slice(sepIdx + 1)
+                  return (
+                    <span className="shrink-0 font-mono text-[12px] font-medium text-cyan-300">
+                      MCP · {serverName} · {method}
+                    </span>
+                  )
+                }
+                return (
+                  <span className="shrink-0 font-mono text-[12px] font-medium text-amber-300">
+                    {toolName}
+                  </span>
+                )
+              })()
+            ) : (
+              <span className="truncate font-mono text-[12px] font-medium text-white/85">
+                {step.status === "running" &&
+                (step.kind === "assistant" || step.kind === "thinking")
+                  ? "..."
+                  : step.title}
+              </span>
+            )}
+            {step.kind !== "tool" && step.subtitle && step.status !== "running" && (
               <span className="hidden min-w-0 truncate text-[11px] text-white/40 sm:inline">
                 {step.subtitle}
               </span>

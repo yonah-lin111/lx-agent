@@ -175,7 +175,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
 
     return (
       <div
-        className={`flex w-full min-w-0 items-center rounded-[6px] border text-white/80 transition-colors duration-150 ${sizeClass} ${variantClass} ${
+        className={`lx-input flex w-full min-w-0 items-center rounded-[6px] border text-white/80 transition-colors duration-150 ${sizeClass} ${variantClass} ${
           disabled ? "cursor-not-allowed opacity-40" : ""
         } ${className}`}
       >
