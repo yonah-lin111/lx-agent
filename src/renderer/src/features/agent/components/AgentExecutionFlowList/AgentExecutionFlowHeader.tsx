@@ -180,6 +180,19 @@ export const AgentExecutionFlowHeader = ({
                 {t("agent.filterAssistant")} ({filterCounts.assistant})
               </button>
             )}
+            {filterCounts.error > 0 && (
+              <button
+                type="button"
+                onClick={() => onFilterChange("error")}
+                className={`shrink-0 cursor-pointer rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  activeFilter === "error"
+                    ? "bg-rose-500/20 text-rose-300"
+                    : "text-white/40 hover:bg-white/5 hover:text-white/70"
+                }`}
+              >
+                {t("agent.filterError")} ({filterCounts.error})
+              </button>
+            )}
           </div>
           <LxIconButton
             aria-label={t("project.scrollRight")}

@@ -1,4 +1,6 @@
 import {
+  AlertCircle,
+  AlertOctagon,
   Bot,
   Brain,
   Code2,
@@ -13,6 +15,7 @@ import {
   Wrench,
 } from "lucide-react"
 import type React from "react"
+import type { LxTagColor } from "@/components/ui/LxTag"
 import type { ExecutionStep, ExecutionStepKind } from "@/features/agent/types"
 import type { TranslationKey } from "@/i18n"
 
@@ -86,7 +89,7 @@ export const getKindMeta = (
   icon?: React.ComponentType<{ className?: string }>
   labelKey?: TranslationKey
   customLabel?: string
-  tagColor: "indigo" | "amber" | "purple" | "sky" | "blue" | "emerald" | "teal" | "default"
+  tagColor: LxTagColor
   textColor?: string
 } => {
   switch (step.kind) {
@@ -109,6 +112,23 @@ export const getKindMeta = (
       return { icon: Minimize2, labelKey: "agent.kindCompaction", tagColor: "indigo" }
     case "assistant":
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
+    case "error": {
+      const isAborted = step.errorContent?.isAborted ?? step.errorContent?.stopReason === "aborted"
+      if (isAborted) {
+        return {
+          icon: AlertOctagon,
+          customLabel: "aborted",
+          tagColor: "amber",
+          textColor: "text-amber-300",
+        }
+      }
+      return {
+        icon: AlertCircle,
+        labelKey: "agent.kindError",
+        tagColor: "rose",
+        textColor: "text-rose-300",
+      }
+    }
     default:
       return { icon: Workflow, labelKey: "agent.executionFlow", tagColor: "default" }
   }

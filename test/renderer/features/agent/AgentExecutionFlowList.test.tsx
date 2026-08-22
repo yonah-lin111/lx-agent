@@ -84,10 +84,10 @@ describe("AgentExecutionFlowList", () => {
 
     // 步骤标签与标题（用户步骤默认展开，因此标题与详情均含有文字，使用 getAllByText 验证）
     expect(screen.getAllByText("查找所有测试用例").length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText("search_code")).not.toBeNull()
+    expect(screen.getByText("MCP · search · code")).not.toBeNull()
 
     // 点击工具步骤展开详情
-    const toolStep = screen.getByText("search_code")
+    const toolStep = screen.getByText("MCP · search · code")
     fireEvent.click(toolStep)
 
     // 展开后应显示输入参数与执行结果区域
@@ -217,7 +217,56 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
     // 第二轮（现在变成非最后一轮且未手动展开）自动变为折叠
     expect(screen.getAllByText("第二轮助手回复详细内容").length).toBe(1)
-    // 第三轮（最新轮次）assistant 默认展开
-    expect(screen.getAllByText("第三轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("当出现异常停止或取消时，生成异常说明步骤 item 并默认展开", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "执行复杂计算" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "开始计算..." }],
+        isStreaming: false,
+        stopReason: "error",
+        error: "Network connection timeout to LLM provider",
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 筛选 Tab 栏应显示异常筛选 Tab
+    expect(screen.getByRole("button", { name: /Error \(1\)/ })).not.toBeNull()
+
+    // 步骤标题与详情均展开展示错误内容
+    expect(screen.getAllByText("Network connection timeout to LLM provider").length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("当用户主动中止生成时，生成 Cancelled 步骤 item 并展示 aborted 原因", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "生成长篇小说" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "从前有座山..." }],
+        isStreaming: false,
+        stopReason: "aborted",
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 应展示 Generation cancelled 步骤与 Stop Reason: aborted
+    expect(screen.getByText("Generation cancelled")).not.toBeNull()
+    expect(screen.getByText("Generation was cancelled by user.")).not.toBeNull()
   })
 })

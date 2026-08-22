@@ -285,6 +285,47 @@ export const buildExecutionSteps = (
         })
       }
     }
+
+    // 处理助手消息异常停止或用户中止说明项
+    const errorMessage = message.error
+    const isAborted = message.stopReason === "aborted"
+    const isErrorStop = message.stopReason === "error" || Boolean(errorMessage)
+
+    if (message.role === "assistant" && (isErrorStop || isAborted)) {
+      stepIndex++
+      if (isAborted && !errorMessage) {
+        steps.push({
+          id: `step-${stepIndex}-aborted`,
+          turnIndex: turn,
+          stepIndex,
+          kind: "error",
+          title: "Generation cancelled",
+          status: "error",
+          timestamp: message.timestamp,
+          errorContent: {
+            message: "Generation was cancelled by user.",
+            stopReason: "aborted",
+            isAborted: true,
+          },
+        })
+      } else {
+        const errorText = errorMessage || "Agent execution failed"
+        steps.push({
+          id: `step-${stepIndex}-error`,
+          turnIndex: turn,
+          stepIndex,
+          kind: "error",
+          title: formatPreview(errorText, 90),
+          status: "error",
+          timestamp: message.timestamp,
+          errorContent: {
+            message: errorText,
+            stopReason: message.stopReason,
+            isAborted: false,
+          },
+        })
+      }
+    }
   }
 
   return steps

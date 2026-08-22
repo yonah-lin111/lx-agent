@@ -114,6 +114,7 @@ export type ExecutionStepKind =
   | "subagent"
   | "compaction"
   | "assistant"
+  | "error"
 
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
@@ -190,5 +191,11 @@ export interface ExecutionStep {
     provider?: string
     stopReason?: StopReason
     usage?: Usage
+  }
+  // 异常/中断说明内容。
+  errorContent?: {
+    message?: string
+    stopReason?: StopReason
+    isAborted?: boolean
   }
 }

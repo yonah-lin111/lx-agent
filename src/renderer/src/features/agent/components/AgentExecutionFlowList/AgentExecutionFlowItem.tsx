@@ -96,6 +96,9 @@ export const AgentExecutionFlowItem = ({
       )}`
     }
     if (step.assistantContent) return step.assistantContent.text
+    if (step.errorContent) {
+      return step.errorContent.message || step.title
+    }
     return step.title
   }, [step])
 
@@ -133,16 +136,9 @@ export const AgentExecutionFlowItem = ({
           <LxTag
             size="small"
             color={meta.tagColor}
-            prefix={
-              IconComponent ? (
-                <IconComponent
-                  className={`h-3 w-3 ${meta.customLabel && meta.textColor ? meta.textColor : ""}`}
-                />
-              ) : undefined
-            }
             className="shrink-0"
           >
-            {meta.customLabel || (meta.labelKey ? t(meta.labelKey) : "")}
+            <span className={meta.textColor}>{meta.customLabel || (meta.labelKey ? t(meta.labelKey) : "")}</span>
           </LxTag>
 
           {/* 步骤标题与副标题 */}
@@ -193,7 +189,15 @@ export const AgentExecutionFlowItem = ({
                 )
               })()
             ) : (
-              <span className="truncate font-mono text-[12px] font-medium text-white/85">
+              <span
+                className={`truncate font-mono text-[12px] font-medium ${
+                  step.kind === "error"
+                    ? step.errorContent?.isAborted
+                      ? "text-amber-300"
+                      : "text-red-400"
+                    : "text-white/85"
+                }`}
+              >
                 {step.status === "running" &&
                 (step.kind === "assistant" || step.kind === "thinking")
                   ? "..."
@@ -602,6 +606,30 @@ export const AgentExecutionFlowItem = ({
                       })}
                     </span>
                   ) : null}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 异常/中断详情 */}
+          {step.errorContent && (
+            <div className="agent-execution-flow-error-content flex flex-col gap-2">
+              <div
+                className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2 font-mono text-[11px] leading-relaxed ${
+                  step.errorContent.isAborted
+                    ? "border border-amber-500/20 bg-amber-950/20 text-amber-200"
+                    : "border border-red-500/20 bg-red-950/20 text-red-200"
+                }`}
+              >
+                {step.errorContent.message || (
+                  <span className="text-white/30">{step.title}</span>
+                )}
+              </div>
+              {step.errorContent.stopReason && (
+                <div className="flex items-center gap-2 border-t border-white/5 pt-1.5 font-mono text-[11px] text-white/40">
+                  <span>
+                    {t("agent.stopReason")}: {step.errorContent.stopReason}
+                  </span>
                 </div>
               )}
             </div>

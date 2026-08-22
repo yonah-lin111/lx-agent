@@ -89,8 +89,8 @@ export const AgentExecutionFlowList = ({
       if (step.id in userExpansionOverrides) {
         return userExpansionOverrides[step.id]
       }
-      // 默认规则：用户 item 始终默认展开；最后一轮的 assistant item 默认展开；其余默认折叠
-      if (step.kind === "user") {
+      // 默认规则：用户 item 始终默认展开；异常/中断 item 默认展开；最后一轮的 assistant item 默认展开；其余默认折叠
+      if (step.kind === "user" || step.kind === "error") {
         return true
       }
       if (step.kind === "assistant") {
@@ -205,6 +205,7 @@ export const AgentExecutionFlowList = ({
       subagent: 0,
       compaction: 0,
       assistant: 0,
+      error: 0,
     }
     for (const step of steps) {
       counts[step.kind]++
