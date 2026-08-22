@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentLspBlock } from "@/features/agent/components/AgentLspBlock"
+import { AgentLspBlock } from "@/features/agent"
 import type { ChatBlock, LspToolDetails } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"

@@ -303,8 +303,7 @@ export function loadMarkdownCommandFromFile(
       }
     }
 
-    const scope: MarkdownCommandScope =
-      frontmatter.scope === "template" ? "template" : "global"
+    const scope: MarkdownCommandScope = frontmatter.scope === "template" ? "template" : "global"
 
     return {
       name,

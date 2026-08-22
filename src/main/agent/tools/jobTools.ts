@@ -9,10 +9,7 @@ const jobOutputSchema = z.object({
     .boolean()
     .describe("是否在无新输出时阻塞等待新日志或任务结束（可选，默认 false 非阻塞）")
     .optional(),
-  timeout_ms: z
-    .number()
-    .describe("等待最大毫秒数（默认 10000ms，上限 60000ms）")
-    .optional(),
+  timeout_ms: z.number().describe("等待最大毫秒数（默认 10000ms，上限 60000ms）").optional(),
 })
 
 const jobListSchema = z.object({})
@@ -44,7 +41,12 @@ export const createJobOutputTool = (
   inputSchema: jobOutputSchema,
   execute: async (_toolCallId, params) => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
-    const res = await jobRegistry.readOutput(params.job_id, params.wait, params.timeout_ms, sessionId)
+    const res = await jobRegistry.readOutput(
+      params.job_id,
+      params.wait,
+      params.timeout_ms,
+      sessionId,
+    )
     if (!res) {
       return {
         content: [{ type: "text", text: `未找到任务 ${params.job_id}，请检查任务 ID 是否正确。` }],
@@ -67,9 +69,7 @@ export const createJobOutputTool = (
 /**
  * 创建 job_list 工具：列出当前会话中所有的后台任务。
  */
-export const createJobListTool = (
-  sessionDeps?: SessionDeps,
-): AgentTool<typeof jobListSchema> => ({
+export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobListSchema> => ({
   name: "job_list",
   label: "列出后台任务",
   description: "列出当前会话中所有的后台长任务、运行状态、PID 与执行耗时。",
@@ -100,9 +100,7 @@ export const createJobListTool = (
 /**
  * 创建 job_kill 工具：终止指定的后台任务进程树。
  */
-export const createJobKillTool = (
-  sessionDeps?: SessionDeps,
-): AgentTool<typeof jobKillSchema> => ({
+export const createJobKillTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobKillSchema> => ({
   name: "job_kill",
   label: "终止后台任务",
   description: "向后台长任务的进程树发送终止信号，安全关闭长耗时进程。",

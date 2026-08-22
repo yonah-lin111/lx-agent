@@ -1,9 +1,12 @@
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 import type { ModelProviderSettingsData, ModelSelection } from "../types"
 
-const MODEL_SELECTIONS: { key: keyof ModelProviderSettingsData & string; labelKey: TranslationKey }[] = [
+const MODEL_SELECTIONS: {
+  key: keyof ModelProviderSettingsData & string
+  labelKey: TranslationKey
+}[] = [
   { key: "defaultModel", labelKey: "settings.defaultChatModel" },
   { key: "titleSummary", labelKey: "settings.titleSummaryModel" },
   { key: "suggestedQuestions", labelKey: "settings.suggestedQuestionsModel" },
@@ -21,10 +24,7 @@ export interface ModelSettingsProps {
 export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): React.JSX.Element => {
   const { t } = useTranslation()
 
-  const updateSelection = (
-    key: string,
-    selection: ModelSelection,
-  ): void => {
+  const updateSelection = (key: string, selection: ModelSelection): void => {
     setSettings((current) => (current ? { ...current, [key]: selection } : current))
   }
 
@@ -52,7 +52,9 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
         <div className="grid gap-3 lg:grid-cols-2">
           {MODEL_SELECTIONS.map(({ key, labelKey }) => {
             const isCompaction = key === "compactionModel"
-            const selection = (settings[key as keyof ModelProviderSettingsData] as ModelSelection) || { provider: "", model: "" }
+            const selection = (settings[
+              key as keyof ModelProviderSettingsData
+            ] as ModelSelection) || { provider: "", model: "" }
             const models = settings.providers[selection.provider]?.models ?? {}
             return (
               <div

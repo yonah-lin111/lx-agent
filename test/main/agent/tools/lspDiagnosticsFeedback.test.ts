@@ -1,8 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { Diagnostic } from "vscode-languageserver-types"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { Diagnostic } from "vscode-languageserver-types"
 import {
   checkLspDiagnosticsFeedback,
   formatLspDiagnosticsForFeedback,

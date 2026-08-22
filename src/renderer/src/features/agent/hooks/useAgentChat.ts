@@ -10,7 +10,7 @@ import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { agentApi } from "../api/agentApi"
-import type { AgentInputFile } from "../components/AgentInputFiles"
+import type { AgentInputFile } from "../components/AgentInput"
 import type { ChatBlock, ChatMessage } from "../types"
 import {
   extractQuestionAnswers,

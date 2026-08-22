@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentTodoCallBlock } from "@/features/agent/components/AgentTodoCallBlock"
+import { AgentTodoCallBlock } from "@/features/agent"
 import type { ChatBlock } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"

@@ -1,6 +1,6 @@
+import type { Locale } from "@shared/settings"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { useTranslation } from "@/i18n"
-import type { Locale } from "@shared/settings"
 
 export const GeneralSettings = (): React.JSX.Element => {
   const { locale, setLocale, t } = useTranslation()

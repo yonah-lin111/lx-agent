@@ -49,7 +49,9 @@ describe("RepeatToolGuard", () => {
     // 5th consecutive call: blocked
     res = guard.checkBeforeExecute(sessionId, "read", args)
     expect(res.blocked).toBe(true)
-    expect(res.blockReason).toContain("Execution blocked: Tool \"read\" has been called 5 consecutive times")
+    expect(res.blockReason).toContain(
+      'Execution blocked: Tool "read" has been called 5 consecutive times',
+    )
   })
 
   it("should reset consecutive count when different tool or arguments are used", () => {

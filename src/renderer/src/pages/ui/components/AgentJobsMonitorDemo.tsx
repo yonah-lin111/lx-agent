@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentJobsMonitorView } from "@/features/agent/components/AgentJobsMonitorView"
+import { AgentJobsMonitorView } from "@/features/agent"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

@@ -1,14 +1,14 @@
 import type { JobSnapshot, PermissionRequest, TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { JobStatusButton } from "@/features/agent/components/JobStatusButton"
-import { PermissionStatusButton } from "@/features/agent/components/PermissionStatusButton"
-import { TodoStatusButton } from "@/features/agent/components/TodoStatusButton"
 import { GitStatusBar } from "@/features/git"
 import { useTranslation } from "@/i18n"
+import { JobStatusButton } from "./JobStatusButton"
+import { PermissionStatusButton } from "./PermissionStatusButton"
+import { TodoStatusButton } from "./TodoStatusButton"
 
 // Agent 状态栏属性。
-interface AgentStatusBarProps {
+export interface AgentStatusBarProps {
   // 当前会话的工具执行目录。
   projectPath?: string
   // 当前会话上下文容量（估计 token / 压缩窗口；null = 尚无会话数据）。

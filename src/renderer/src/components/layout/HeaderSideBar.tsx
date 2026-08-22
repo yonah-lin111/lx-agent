@@ -74,7 +74,7 @@ export const HeaderSideBar = ({
         const navigationProjects = createProjectNavigationTree(projects, folders, items)
 
         const findItemInFolders = (
-          foldersList: typeof navigationProjects[number]["projectFolders"],
+          foldersList: (typeof navigationProjects)[number]["projectFolders"],
           trail: string[],
         ): { folderNames: string[]; itemName: string } | null => {
           for (const folder of foldersList) {

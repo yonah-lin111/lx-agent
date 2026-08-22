@@ -1,7 +1,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
-import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
+import { SuggestedQuestions } from "@/features/agent"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

@@ -1,7 +1,6 @@
 import type React from "react"
 import { useState } from "react"
-import { AgentSubagentBlock } from "@/features/agent/components/AgentSubagentBlock"
-import { AgentSubagentPanel } from "@/features/agent/components/AgentSubagentPanel"
+import { AgentSubagentBlock, AgentSubagentPanel } from "@/features/agent"
 import type { ChatBlock } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"

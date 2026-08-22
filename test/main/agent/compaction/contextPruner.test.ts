@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import type { AgentMessage, ToolResultMessage } from "@shared/contracts/agent"
+import { describe, expect, it } from "vitest"
 import { pruneHistoricalToolOutputs } from "../../../../src/main/agent/compaction/contextPruner"
 
 describe("ContextPruner", () => {
@@ -17,7 +17,10 @@ describe("ContextPruner", () => {
     ]
 
     // Keep 1 recent message -> will not prune
-    const pruned = pruneHistoricalToolOutputs(messages, { recentMessagesToKeep: 1, lineThreshold: 20 })
+    const pruned = pruneHistoricalToolOutputs(messages, {
+      recentMessagesToKeep: 1,
+      lineThreshold: 20,
+    })
     expect((pruned[0] as ToolResultMessage).content[0]).toEqual({ type: "text", text: longOutput })
   })
 
@@ -43,7 +46,10 @@ describe("ContextPruner", () => {
       },
     ]
 
-    const pruned = pruneHistoricalToolOutputs(messages, { recentMessagesToKeep: 1, lineThreshold: 20 })
+    const pruned = pruneHistoricalToolOutputs(messages, {
+      recentMessagesToKeep: 1,
+      lineThreshold: 20,
+    })
     const toolMsg = pruned[0] as ToolResultMessage
     expect((toolMsg.content[0] as any).text).toContain('[Historical output of tool "read" pruned')
     expect((toolMsg.content[0] as any).text).toContain("31 lines")
@@ -71,7 +77,10 @@ describe("ContextPruner", () => {
       },
     ]
 
-    const pruned = pruneHistoricalToolOutputs(messages, { recentMessagesToKeep: 1, lineThreshold: 20 })
+    const pruned = pruneHistoricalToolOutputs(messages, {
+      recentMessagesToKeep: 1,
+      lineThreshold: 20,
+    })
     const toolMsg = pruned[0] as ToolResultMessage
     expect((toolMsg.content[0] as any).text).toBe(longOutput)
   })

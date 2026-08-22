@@ -41,10 +41,12 @@ import {
   resolveCwd,
 } from "./assembly"
 import { createCompactionSummaryMessage } from "./compaction"
+import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
+import { repeatToolGuard } from "./guard/repeatToolGuard"
 import { jobRegistry } from "./jobs/jobRegistry"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
@@ -52,8 +54,6 @@ import { permissionManager } from "./permissions/permissionManager"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
-import { repeatToolGuard } from "./guard/repeatToolGuard"
-import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillLoader"
 import { spillManager } from "./spill/spillManager"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
@@ -242,10 +242,7 @@ class AgentRunner {
             )
             if (guardResult.reminder && !context.isError) {
               return {
-                content: [
-                  ...context.result.content,
-                  { type: "text", text: guardResult.reminder },
-                ],
+                content: [...context.result.content, { type: "text", text: guardResult.reminder }],
               }
             }
           }

@@ -8,12 +8,7 @@ import { spillManager } from "../spill/spillManager"
 import { resolveToCwd } from "./path-utils"
 import type { SessionDeps } from "./read"
 import { globToRegExp, walkFiles } from "./search"
-import {
-  DEFAULT_MAX_BYTES,
-  GREP_MAX_LINE_LENGTH,
-  truncateHead,
-  truncateLine,
-} from "./truncate"
+import { DEFAULT_MAX_BYTES, GREP_MAX_LINE_LENGTH, truncateHead, truncateLine } from "./truncate"
 
 const DEFAULT_LIMIT = 100
 

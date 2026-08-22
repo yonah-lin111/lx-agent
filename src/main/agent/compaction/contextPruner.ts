@@ -45,7 +45,12 @@ export function pruneHistoricalToolOutputs(
     }
 
     if (message.role === "toolResult") {
-      return pruneToolResultMessage(message as ToolResultMessage, prunableSet, lineThreshold, charThreshold)
+      return pruneToolResultMessage(
+        message as ToolResultMessage,
+        prunableSet,
+        lineThreshold,
+        charThreshold,
+      )
     }
 
     return message

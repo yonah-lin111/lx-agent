@@ -10,8 +10,8 @@ import {
 } from "@shared/settings"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
-import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
+import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
 
 // 摘要生成超时（秒）：兜底避免无响应 provider 挂住 turn 收尾。
 const COMPACTION_TIMEOUT_MS = 30_000

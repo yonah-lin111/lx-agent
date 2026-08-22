@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentQuestionBlock } from "@/features/agent/components/AgentQuestionBlock"
+import { AgentQuestionBlock } from "@/features/agent"
 import type { ChatBlock } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"

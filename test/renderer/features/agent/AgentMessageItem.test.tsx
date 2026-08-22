@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
+import { AgentMessageItem } from "@/features/agent/components/AgentMessageList"
 import type { ChatMessage } from "@/features/agent/types"
 
 // 构造用户消息展示条目。

@@ -16,7 +16,7 @@ import {
   useSettingsData,
   useSettingsMutations,
 } from "@/features/settings"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   general: "settings.generalDesc",

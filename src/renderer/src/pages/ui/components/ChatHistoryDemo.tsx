@@ -2,7 +2,7 @@ import type { AgentSessionSummary } from "@shared/contracts/agent"
 import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
-import { ChatHistoryPanel } from "@/features/agent/components/ChatHistoryPanel"
+import { ChatHistoryPanel } from "@/features/agent"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

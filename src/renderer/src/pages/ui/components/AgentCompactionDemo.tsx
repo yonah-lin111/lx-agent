@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentCompactionSummary } from "@/features/agent/components/AgentCompactionSummary"
+import { AgentCompactionSummary } from "@/features/agent"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

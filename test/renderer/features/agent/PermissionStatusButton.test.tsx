@@ -3,7 +3,7 @@
 import type { PermissionRequest } from "@shared/contracts/agent"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { PermissionStatusButton } from "@/features/agent/components/PermissionStatusButton"
+import { PermissionStatusButton } from "@/features/agent"
 
 // jsdom 未实现 ResizeObserver / requestAnimationFrame（LxTooltip 定位依赖），用空实现代替。
 vi.stubGlobal(

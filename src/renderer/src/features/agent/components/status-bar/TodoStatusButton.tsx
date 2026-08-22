@@ -1,18 +1,18 @@
 import type { TodoList } from "@shared/contracts/agent"
 import { ListTodo } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { isTodoDone, TodoStatusIcon } from "@/features/agent/components/TodoStatusIcon"
+import { isTodoDone, TodoStatusIcon } from "@/features/agent/components/blocks"
 import { useTranslation } from "@/i18n"
+
+export interface TodoStatusButtonProps {
+  todos: TodoList | undefined
+}
 
 /**
  * Agent 状态栏任务清单指示：计数 icon（已完成/总数），仅存在未完成任务时显示，
  * 全部完成或空列表隐藏；hover 通过 LxTooltip 展示 todo 列表。
  */
-export const TodoStatusButton = ({
-  todos,
-}: {
-  todos: TodoList | undefined
-}): React.JSX.Element | null => {
+export const TodoStatusButton = ({ todos }: TodoStatusButtonProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   if (!todos || !todos.some((todo) => !isTodoDone(todo.status))) return null
   const done = todos.filter((todo) => isTodoDone(todo.status)).length

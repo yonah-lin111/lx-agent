@@ -1,9 +1,9 @@
 import { Braces, CornerDownRight } from "lucide-react"
 import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
 import type { ChatBlock, LspToolDetails } from "@/features/agent/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
-import { agentApi } from "../api/agentApi"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>

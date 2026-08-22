@@ -72,9 +72,7 @@ export function exportToMarkdown(
       if (typeof userMsg.content === "string") {
         userText = userMsg.content
       } else if (Array.isArray(userMsg.content)) {
-        userText = userMsg.content
-          .map((c) => (c.type === "text" ? c.text : "[图片]"))
-          .join("\n")
+        userText = userMsg.content.map((c) => (c.type === "text" ? c.text : "[图片]")).join("\n")
       }
 
       const steerTag = userMsg.isSteer ? " `[Steer]`" : ""
@@ -87,10 +85,7 @@ export function exportToMarkdown(
       )
 
       if (userMsg.files?.length) {
-        lines.push(
-          "",
-          `*附件: ${userMsg.files.map((f) => `\`${f.name}\``).join(", ")}*`,
-        )
+        lines.push("", `*附件: ${userMsg.files.map((f) => `\`${f.name}\``).join(", ")}*`)
       }
 
       lines.push("", "---", "")
@@ -98,10 +93,7 @@ export function exportToMarkdown(
       const asstMsg = msg as AssistantMessage
       const modelTag = asstMsg.model ? ` (${asstMsg.model})` : ""
 
-      lines.push(
-        `## 🤖 Agent${modelTag} (${formatTimestamp(asstMsg.timestamp)})`,
-        "",
-      )
+      lines.push(`## 🤖 Agent${modelTag} (${formatTimestamp(asstMsg.timestamp)})`, "")
 
       for (const item of asstMsg.content) {
         if (item.type === "thinking") {

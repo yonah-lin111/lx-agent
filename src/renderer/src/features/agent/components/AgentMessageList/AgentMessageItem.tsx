@@ -17,27 +17,27 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentCompactionSummary } from "@/features/agent/components/AgentCompactionSummary"
 import {
+  AgentCompactionSummary,
   AgentExecutionGroup,
+  AgentMcpCallBlock,
+  AgentQuestionBlock,
+  AgentSkillCallBlock,
+  AgentSubagentBlock,
+  AgentThinkingBlock,
+  AgentTodoCallBlock,
+  AgentToolCallBlock,
+  AgentWebSearchBlock,
   type ExecutionGroupItem,
   getToolExecutionCategory,
-} from "@/features/agent/components/AgentExecutionGroup"
-import { AgentMcpCallBlock } from "@/features/agent/components/AgentMcpCallBlock"
-import { AgentMessageFiles } from "@/features/agent/components/AgentMessageFiles"
-import { AgentQuestionBlock } from "@/features/agent/components/AgentQuestionBlock"
-import { AgentSkillCallBlock } from "@/features/agent/components/AgentSkillCallBlock"
-import { AgentSubagentBlock } from "@/features/agent/components/AgentSubagentBlock"
-import { AgentThinkingBlock } from "@/features/agent/components/AgentThinkingBlock"
-import { AgentTodoCallBlock } from "@/features/agent/components/AgentTodoCallBlock"
-import { AgentToolCallBlock } from "@/features/agent/components/AgentToolCallBlock"
-import { AgentWebSearchBlock } from "@/features/agent/components/AgentWebSearchBlock"
+} from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type { ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
+import { AgentMessageFiles } from "./AgentMessageFiles"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -642,6 +642,7 @@ export const AgentMessageItem = ({
     if (!content) return
 
     let lastWidth = content.clientWidth
+    if (typeof ResizeObserver === "undefined") return
     const observer = new ResizeObserver(() => {
       if (content.clientWidth === lastWidth) return
       lastWidth = content.clientWidth
@@ -1054,7 +1055,10 @@ export const AgentMessageItem = ({
                   const category = getToolExecutionCategory(block.toolName)
                   const toolResults = toolGroup
                     .map((call) => toolResultByToolCallId.get(call.toolCallId))
-                    .filter((entry): entry is Extract<ChatBlock, { kind: "toolResult" }> => entry !== undefined)
+                    .filter(
+                      (entry): entry is Extract<ChatBlock, { kind: "toolResult" }> =>
+                        entry !== undefined,
+                    )
                   // lsp 组：附带合并组内每份检索结果（渲染块复用跳转）。
                   if (toolGroup[0]?.toolName === "lsp") {
                     const lspDetails = toolGroup

@@ -10,6 +10,7 @@ import type {
   UserMessage,
 } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { escapeHtml, generateSessionHtml } from "@/agent/export/htmlTemplate"
 import {
   copySessionText,
   exportSessionToFile,
@@ -17,7 +18,6 @@ import {
   exportToMarkdown,
   slugify,
 } from "@/agent/export/sessionExporter"
-import { escapeHtml, generateSessionHtml } from "@/agent/export/htmlTemplate"
 
 vi.mock("electron", () => ({
   dialog: {

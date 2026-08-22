@@ -20,8 +20,8 @@ import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
 import { useTranslation } from "@/i18n"
-import { useAgentJobs } from "../hooks/useAgentJobs"
 
 interface AgentJobsMonitorViewProps {
   isExpanded: boolean

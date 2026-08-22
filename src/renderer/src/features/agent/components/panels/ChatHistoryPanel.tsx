@@ -21,9 +21,9 @@ import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { useTranslation } from "@/i18n"
-import { agentApi } from "../api/agentApi"
-import { sessionListStore } from "../hooks/sessionListStore"
 
 interface ChatHistoryPanelProps {
   sessions: AgentSessionSummary[]

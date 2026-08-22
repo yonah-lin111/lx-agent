@@ -8,7 +8,7 @@ import type { ChatMessage } from "@/features/agent/types"
 const { mockMessageItemProps } = vi.hoisted(() => ({
   mockMessageItemProps: [] as Array<Record<string, unknown>>,
 }))
-vi.mock("@/features/agent/components/AgentMessageItem", () => ({
+vi.mock("@/features/agent/components/AgentMessageList/AgentMessageItem", () => ({
   AgentMessageItem: (props: Record<string, unknown>) => {
     mockMessageItemProps.push(props)
     return null
@@ -81,7 +81,7 @@ describe("AgentMessageList 吸顶判定", () => {
   it("滚动中贴住容器顶部的消息被钉住居中，滚出视口的消息不再钉住", () => {
     const { scrollEl, anchorEls, container } = renderList()
 
-    Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
+    Object.defineProperty(scrollEl, "scrollTop", { value: 400, writable: true, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
     // q1 已滚出视口顶部，q2 锚点贴住容器顶部。
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
@@ -106,7 +106,7 @@ describe("AgentMessageList 吸顶判定", () => {
     const q2GroupSpy = groupEls[1] ? vi.spyOn(groupEls[1], "getBoundingClientRect") : null
 
     // 第一阶段：q2 吸顶。
-    Object.defineProperty(scrollEl, "scrollTop", { value: 400, configurable: true })
+    Object.defineProperty(scrollEl, "scrollTop", { value: 400, writable: true, configurable: true })
     vi.spyOn(scrollEl, "getBoundingClientRect").mockReturnValue(rect(0, 600))
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(-60, -30))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(0, 30))
@@ -133,7 +133,7 @@ describe("AgentMessageList 吸顶判定", () => {
 
     // 第三阶段：回滚使 q2 锚点回到容器顶部以下（消息重新可见），应解除钉住。
     mockMessageItemProps.length = 0
-    Object.defineProperty(scrollEl, "scrollTop", { value: 100, configurable: true })
+    Object.defineProperty(scrollEl, "scrollTop", { value: 100, writable: true, configurable: true })
     vi.spyOn(anchorEls[0]!, "getBoundingClientRect").mockReturnValue(rect(160, 190))
     vi.spyOn(anchorEls[1]!, "getBoundingClientRect").mockReturnValue(rect(220, 250))
 

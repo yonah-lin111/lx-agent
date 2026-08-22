@@ -49,7 +49,9 @@ export function simpleMarkdownToHtml(markdown: string): string {
   let text = markdown.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
     const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`
     const escapedCode = escapeHtml(code.trimEnd())
-    const langLabel = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '<span class="code-lang">code</span>'
+    const langLabel = lang
+      ? `<span class="code-lang">${escapeHtml(lang)}</span>`
+      : '<span class="code-lang">code</span>'
     codeBlocks.push(
       `<div class="code-block-wrapper">
         <div class="code-header">
@@ -69,10 +71,7 @@ export function simpleMarkdownToHtml(markdown: string): string {
   text = text.replace(/`([^`]+)`/g, (_, code) => `<code>${escapeHtml(code)}</code>`)
 
   // 转义常规 HTML
-  text = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
+  text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
   // 恢复代码块占位符
   codeBlocks.forEach((block, idx) => {
@@ -153,9 +152,7 @@ export function generateSessionHtml(
       if (typeof userMsg.content === "string") {
         userText = userMsg.content
       } else if (Array.isArray(userMsg.content)) {
-        userText = userMsg.content
-          .map((c) => (c.type === "text" ? c.text : "[图片]"))
-          .join("\n")
+        userText = userMsg.content.map((c) => (c.type === "text" ? c.text : "[图片]")).join("\n")
       }
 
       const steerBadge = userMsg.isSteer
@@ -167,7 +164,10 @@ export function generateSessionHtml(
 
       const filesHtml = userMsg.files?.length
         ? `<div class="files-attachment">${userMsg.files
-            .map((f) => `<span class="file-tag"><svg class="tag-icon" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>${escapeHtml(f.name)}</span>`)
+            .map(
+              (f) =>
+                `<span class="file-tag"><svg class="tag-icon" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>${escapeHtml(f.name)}</span>`,
+            )
             .join(" ")}</div>`
         : ""
 

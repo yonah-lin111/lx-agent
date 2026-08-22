@@ -10,7 +10,7 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { AgentJobsMonitorView } from "@/features/agent/components/AgentJobsMonitorView"
+import { AgentJobsMonitorView } from "@/features/agent"
 import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
 import { GhosttyTerminalView } from "@/features/terminal"
 import { useTranslation } from "@/i18n"

@@ -16,13 +16,13 @@ import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
+import { AgentModelSelect, type AgentModelSelectProps } from "../AgentModelSelect"
 import { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 import {
   AgentMarkdownInput,
   type AgentMarkdownInputProps,
   type AgentMarkdownInputRef,
 } from "./AgentMarkdownInput"
-import { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
 
 export interface AgentInputProps {
   inputText: string

@@ -1,8 +1,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
-import { AgentInput } from "@/features/agent/components/AgentInput"
-import type { AgentInputFile } from "@/features/agent/components/AgentInputFiles"
+import { AgentInput, type AgentInputFile } from "@/features/agent/components/AgentInput"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

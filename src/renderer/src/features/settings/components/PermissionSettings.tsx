@@ -8,7 +8,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { useTranslation, type TranslationKey } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 // 规则组配置（按优先级展示）。
 const RULE_GROUPS: Array<{
@@ -132,10 +132,7 @@ export const PermissionSettings = ({
                         onChange={(event) => updateRule(group.key, index, event.target.value)}
                       />
                       {invalid ? (
-                        <LxTooltip
-                          content={t("settings.ruleInvalidFormat")}
-                          placement="top"
-                        >
+                        <LxTooltip content={t("settings.ruleInvalidFormat")} placement="top">
                           <AlertCircle className="h-4 w-4 shrink-0 text-rose-300" />
                         </LxTooltip>
                       ) : null}

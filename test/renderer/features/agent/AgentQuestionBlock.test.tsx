@@ -2,7 +2,7 @@
 import type { QuestionAnswer } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { AgentQuestionBlock } from "@/features/agent/components/AgentQuestionBlock"
+import { AgentQuestionBlock } from "@/features/agent"
 import type { ChatBlock } from "@/features/agent/types"
 import {
   parseQuestionAnswersFromText,
@@ -122,9 +122,7 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
       "m1",
     )
 
-    const toolCallBlock = chatMessage.blocks.find(
-      (b): b is ToolCallBlock => b.kind === "toolCall",
-    )
+    const toolCallBlock = chatMessage.blocks.find((b): b is ToolCallBlock => b.kind === "toolCall")
     expect(toolCallBlock?.answers).toEqual(answers)
 
     const restoredAgentMessages = toAgentMessages([chatMessage])

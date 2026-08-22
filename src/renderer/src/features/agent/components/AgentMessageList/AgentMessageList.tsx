@@ -13,13 +13,13 @@ import {
   useState,
 } from "react"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
-import { AgentMessageItem } from "@/features/agent/components/AgentMessageItem"
-import { AgentMessageListSkeleton } from "@/features/agent/components/AgentMessageListSkeleton"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
 import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
+import { AgentMessageItem } from "./AgentMessageItem"
+import { AgentMessageListSkeleton } from "./AgentMessageListSkeleton"
 
 // 子代理调用块类型（点击 label 打开面板）。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>

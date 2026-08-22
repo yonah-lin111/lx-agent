@@ -96,9 +96,8 @@ export const buildExecutionSteps = (
       stepIndex++
       const turn = currentTurn > 0 ? currentTurn : 1
       const summaryText =
-        message.blocks.find(
-          (b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text",
-        )?.text ?? ""
+        message.blocks.find((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
+          ?.text ?? ""
       steps.push({
         id: `step-${stepIndex}-compaction`,
         turnIndex: turn,

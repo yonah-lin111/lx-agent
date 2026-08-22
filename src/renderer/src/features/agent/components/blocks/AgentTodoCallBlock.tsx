@@ -1,14 +1,14 @@
 import type { TodoItem, TodoList, TodoStatus } from "@shared/contracts/agent"
 import { CornerDownRight, ListTodo } from "lucide-react"
 import type React from "react"
-import { isTodoDone, TodoStatusIcon } from "@/features/agent/components/TodoStatusIcon"
 import type { ChatBlock } from "@/features/agent/types"
+import { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
 // todo 工具调用展示组件属性类型。
-type AgentTodoCallBlockProps = {
+export interface AgentTodoCallBlockProps {
   // 单次 todowrite 工具调用（args.todos 为整表替换后的完整清单）。
   toolCall: ToolCallBlock
 }

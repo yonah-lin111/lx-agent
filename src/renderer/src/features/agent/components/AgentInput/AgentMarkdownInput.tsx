@@ -16,6 +16,8 @@ import React, {
   useState,
 } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
+import { agentApi } from "@/features/agent/api/agentApi"
+import { usePromptHistory } from "@/features/agent/hooks/usePromptHistory"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
@@ -34,8 +36,6 @@ import {
 } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { type TranslationKey, useTranslation } from "@/i18n"
-import { agentApi } from "../api/agentApi"
-import { usePromptHistory } from "../hooks/usePromptHistory"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
