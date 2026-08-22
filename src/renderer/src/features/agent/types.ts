@@ -145,57 +145,73 @@ export interface ExecutionStep {
     total?: number
   }
   // 系统提示词与注入配置内容。
-  systemContent?: {
-    sections: { name: string; text: string }[]
-    contexts: { name: string; text: string }[]
-    variables: Record<string, string | undefined>
-    activeTools?: string[]
-    rendered: string
-  }
+  systemContent?: ExecutionSystemContent
   // 用户输入内容。
-  userContent?: {
-    text: string
-    files?: { name: string; path: string; type: "image" | "text" }[]
-    command?: UserMessageCommand
-    isSteer?: boolean
-  }
+  userContent?: ExecutionUserContent
   // 思考内容。
-  thinkingContent?: {
-    text: string
-  }
+  thinkingContent?: ExecutionThinkingContent
   // 工具调用及返回内容。
-  toolContent?: {
-    toolName: string
-    toolCallId?: string
-    args: Record<string, unknown>
-    result?: string
-    isError?: boolean
-    diff?: AgentDiff
-    lsp?: LspToolDetails
-  }
+  toolContent?: ExecutionToolContent
   // 子代理执行内容。
-  subagentContent?: {
-    name: string
-    subagent?: SubagentData
-  }
+  subagentContent?: ExecutionSubagentContent
   // 压缩内容。
-  compactionContent?: {
-    isManual?: boolean
-    compactionUsage?: CompactionUsage
-    summaryTokens?: number
-  }
+  compactionContent?: ExecutionCompactionContent
   // 助手最终回复内容。
-  assistantContent?: {
-    text: string
-    model?: string
-    provider?: string
-    stopReason?: StopReason
-    usage?: Usage
-  }
+  assistantContent?: ExecutionAssistantContent
   // 异常/中断说明内容。
-  errorContent?: {
-    message?: string
-    stopReason?: StopReason
-    isAborted?: boolean
-  }
+  errorContent?: ExecutionErrorContent
+}
+
+export interface ExecutionSystemContent {
+  sections: { name: string; text: string }[]
+  contexts: { name: string; text: string }[]
+  variables: Record<string, string | undefined>
+  activeTools?: string[]
+  rendered: string
+}
+
+export interface ExecutionUserContent {
+  text: string
+  files?: { name: string; path: string; type: "image" | "text" }[]
+  command?: UserMessageCommand
+  isSteer?: boolean
+}
+
+export interface ExecutionThinkingContent {
+  text: string
+}
+
+export interface ExecutionToolContent {
+  toolName: string
+  toolCallId?: string
+  args: Record<string, unknown>
+  result?: string
+  isError?: boolean
+  diff?: AgentDiff
+  lsp?: LspToolDetails
+}
+
+export interface ExecutionSubagentContent {
+  name: string
+  subagent?: SubagentData
+}
+
+export interface ExecutionCompactionContent {
+  isManual?: boolean
+  compactionUsage?: CompactionUsage
+  summaryTokens?: number
+}
+
+export interface ExecutionAssistantContent {
+  text: string
+  model?: string
+  provider?: string
+  stopReason?: StopReason
+  usage?: Usage
+}
+
+export interface ExecutionErrorContent {
+  message?: string
+  stopReason?: StopReason
+  isAborted?: boolean
 }
