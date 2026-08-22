@@ -998,6 +998,45 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           return
         }
 
+        // 拦截 /compact 相关命令
+        if (text === "/compact" || text.startsWith("/compact ") || text.startsWith("/compact:") || text.startsWith("/compact-")) {
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          onCompact?.()
+          return
+        }
+
+        // 拦截 /clear 相关命令
+        if (text === "/clear" || text.startsWith("/clear ") || text.startsWith("/clear:") || text.startsWith("/clear-")) {
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          onClear?.()
+          return
+        }
+
+        // 拦截 /undo 相关命令
+        if (text === "/undo" || text.startsWith("/undo ") || text.startsWith("/undo:") || text.startsWith("/undo-")) {
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          onUndo?.()
+          return
+        }
+
         // 拦截 /copy 相关命令
         if (
           text === "/copy" ||
@@ -1058,7 +1097,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           onSendRef.current()
         }
       },
-      [record, reset, successToast, errorToast, warningToast],
+      [record, reset, onCompact, onClear, onUndo, successToast, errorToast, warningToast, t],
     )
 
     const executeCommand = useCallback(

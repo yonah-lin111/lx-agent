@@ -219,6 +219,31 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getAllByText("第二轮助手回复详细内容").length).toBe(1)
   })
 
+  it("当正在压缩上下文时，展示 running loading 状态", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "历史长消息" }],
+        isStreaming: false,
+      },
+      {
+        id: "m-compact",
+        role: "compactionSummary",
+        blocks: [],
+        isStreaming: false,
+        isCompacting: true,
+        compactionId: "cid-1",
+        isManual: true,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    expect(screen.getByText("Compressing context manually...")).not.toBeNull()
+    expect(screen.getByLabelText("Running")).not.toBeNull()
+  })
+
   it("当出现异常停止或取消时，生成异常说明步骤 item 并默认展开", () => {
     const messages: ChatMessage[] = [
       {

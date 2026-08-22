@@ -98,14 +98,19 @@ export const buildExecutionSteps = (
       const summaryText =
         message.blocks.find((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
           ?.text ?? ""
+      const isCompactingNow = Boolean(message.isCompacting)
       steps.push({
         id: `step-${stepIndex}-compaction`,
         turnIndex: turn,
         stepIndex,
         kind: "compaction",
-        title: "Context Compaction",
+        title: isCompactingNow
+          ? message.isManual
+            ? "Compressing context manually..."
+            : "Compressing context automatically..."
+          : "Context Compaction",
         subtitle: message.summaryTokens ? `${message.summaryTokens} tokens` : undefined,
-        status: "done",
+        status: isCompactingNow ? "running" : "done",
         timestamp: message.timestamp,
         tokens: message.compactionUsage
           ? {
