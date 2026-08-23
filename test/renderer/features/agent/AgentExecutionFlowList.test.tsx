@@ -174,9 +174,9 @@ describe("AgentExecutionFlowList", () => {
 
     const { rerender } = render(<AgentExecutionFlowList messages={messages} />)
 
-    // 用户步骤：无论轮次均默认展开（文本在 title 和 userContent 中均存在）
-    expect(screen.getAllByText("第一轮用户提问").length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText("第二轮用户提问").length).toBeGreaterThanOrEqual(2)
+    // 用户步骤：默认展开，展示在 userContent 中
+    expect(screen.getByText("第一轮用户提问")).not.toBeNull()
+    expect(screen.getByText("第二轮用户提问")).not.toBeNull()
 
     // 第一轮（非最后一轮）assistant 步骤默认折叠：只在 title 中出现 1 次（不在 body 中展示）
     expect(screen.getAllByText("第一轮助手回复详细内容").length).toBe(1)
@@ -219,7 +219,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getAllByText("第二轮助手回复详细内容").length).toBe(1)
   })
 
-  it("当正在压缩上下文时，展示 running loading 状态", () => {
+  it("当存在上下文压缩步骤时，在 item 顶部展示分割线说明", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -242,6 +242,15 @@ describe("AgentExecutionFlowList", () => {
 
     expect(screen.getByText("Compressing context manually...")).not.toBeNull()
     expect(screen.getByLabelText("Running")).not.toBeNull()
+    expect(
+      screen.getByText((content, element) => {
+        return (
+          typeof element?.className === "string" &&
+          element.className.includes("text-indigo-300/60") &&
+          content.includes("Context Compaction")
+        )
+      }),
+    ).not.toBeNull()
   })
 
   it("当出现异常停止或取消时，生成异常说明步骤 item 并默认展开", () => {

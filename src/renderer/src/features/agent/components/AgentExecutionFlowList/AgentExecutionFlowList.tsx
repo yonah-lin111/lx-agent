@@ -282,6 +282,16 @@ export const AgentExecutionFlowList = ({
                         <div className="h-[1px] flex-1 bg-white/10" />
                       </div>
                     )}
+                    {/* 上下文压缩分割线说明 */}
+                    {step.kind === "compaction" && (
+                      <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">
+                        <div className="h-[1px] flex-1 bg-white/10" />
+                        <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/60 uppercase">
+                          {t("settings.contextCompaction")}
+                        </span>
+                        <div className="h-[1px] flex-1 bg-white/10" />
+                      </div>
+                    )}
                     <AgentExecutionFlowItem
                       step={step}
                       isExpanded={isStepExpanded(step)}
