@@ -8,6 +8,7 @@ export const DEFAULT_TOOLS = [
   "find",
   "write",
   "edit",
+  "apply_patch",
   "bash",
   "time",
   "todowrite",

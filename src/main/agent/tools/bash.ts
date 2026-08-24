@@ -4,6 +4,7 @@ import { access } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
 import { getShellConfig, jobRegistry, killProcessTree } from "../jobs/jobRegistry"
+import { persistentShellManager } from "../shell/persistentShell"
 import { spillManager } from "../spill/spillManager"
 import type { SessionDeps } from "./read"
 import {
@@ -26,11 +27,16 @@ const bashSchema = z.object({
       "是否在后台启动长耗时命令（如开发服务器、长构建、监听进程）。为 true 时立即返回任务 ID，不阻塞主流程。",
     )
     .optional(),
+  session: z
+    .string()
+    .describe("持久 shell 会话名称（可选）。指定后将在同名持久终端会话中连续执行，保持环境变量与工作目录状态。")
+    .optional(),
 })
 
 export interface BashToolDetails {
   truncation?: TruncationResult
   backgroundJobId?: string
+  session?: string
 }
 
 // 等待子进程结束并返回退出码（不因继承的 stdio 句柄挂起）。
@@ -62,6 +68,14 @@ export const createBashTool = (
     }
 
     const sessionId = sessionDeps?.getSessionId?.() ?? "default"
+
+    // 互斥校验：background 与 session 不可同时使用
+    if (params.background && params.session) {
+      return {
+        content: [{ type: "text", text: "参数错误：background 与 session 互斥，不能在持久会话中启动后台作业。" }],
+        details: { error: "invalid_args" },
+      }
+    }
 
     // 后台长任务执行分支
     if (params.background) {
@@ -103,6 +117,40 @@ export const createBashTool = (
 
     if (signal?.aborted) {
       return { content: [{ type: "text", text: "命令已中止。" }], details: { aborted: true } }
+    }
+
+    // 持久 Shell 执行分支
+    if (params.session) {
+      try {
+        const session = persistentShellManager.getOrCreateSession(sessionId, params.session, cwd)
+        const { output: rawOutput, exitCode } = await persistentShellManager.executeCommand(
+          session,
+          params.command,
+          timeoutMs,
+          signal,
+        )
+
+        const truncation = truncateTail(rawOutput)
+        const { text, details } = formatOutput(rawOutput, truncation, { sessionId, toolCallId })
+        const mergedDetails: BashToolDetails = {
+          ...details,
+          session: params.session,
+        }
+
+        if (exitCode !== 0) {
+          return {
+            content: [{ type: "text", text: appendStatus(text, `命令退出码 ${exitCode}`) }],
+            details: mergedDetails,
+          }
+        }
+        return { content: [{ type: "text", text }], details: mergedDetails }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        return {
+          content: [{ type: "text", text: `持久会话执行失败: ${errorMsg}` }],
+          details: { error: errorMsg, session: params.session },
+        }
+      }
     }
 
     const child = spawn(

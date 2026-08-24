@@ -64,6 +64,13 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
     return "subagent"
   }
   if (
+    toolName === "edit" ||
+    toolName === "write" ||
+    toolName === "apply_patch"
+  ) {
+    return "coding"
+  }
+  if (
     toolName === "read" ||
     toolName === "ls" ||
     toolName === "grep" ||
@@ -76,7 +83,8 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
     toolName === "web_search" ||
     toolName === "webfetch" ||
     toolName === "read_skill" ||
-    toolName.includes("_")
+    (!["apply_patch", "job_output", "job_list", "job_kill"].includes(toolName) &&
+      toolName.includes("_"))
   ) {
     return "externalInfo"
   }

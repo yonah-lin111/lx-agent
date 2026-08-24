@@ -11,6 +11,7 @@ describe("capabilityService", () => {
         "find",
         "write",
         "edit",
+        "apply_patch",
         "bash",
         "time",
         "todowrite",
