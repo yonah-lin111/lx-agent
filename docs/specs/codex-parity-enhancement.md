@@ -15,11 +15,11 @@ lx-agent 已有能力（codex 对应位点）：compaction（`core/src/compact.r
 | 4 | 嵌套 AGENTS.md | `docs/agents_md.md` spec、`agents_md_manager.rs` | 仅读 cwd 根单个文件（instructionLoader.ts） | **P1** |
 | 2 | 持久 shell 会话 | `core/src/unified_exec/`、`shell_snapshot.rs` | bash 一次性进程（tools/bash.ts） | **P2** |
 | 8 | apply_patch 多文件补丁 | `core/src/apply_patch.rs` | edit/write 单文件（tools/edit.ts、write.ts） | **P2** |
-| 7 | worktree-per-task | `core/src/worktree_trust*` 及桌面端工作流 | 只能切换单个绑定 worktree_path，无创建 | **P3** |
+| 7 | worktree-per-task | `core/src/worktree_trust*` 及桌面端工作流 | 只能切换单个绑定 worktree_path，无创建 | 放弃/跳过 |
 | 5 | Turn 级聚合 diff | `core/src/turn_diff_tracker.rs` | 仅单工具 diff | 附录 |
 | 6 | Review 评审模式 | `core/src/tasks/review.rs`、`prompts/templates/review/rubric.md` | 无 | 附录 |
 
-远期池（本期不做）：memories（跨会话记忆）、hooks（用户配置钩子）、collab（多代理角色）、code-mode（JS 编排）、sandboxing（seatbelt/namespace 隔离）、goals（目标追踪）、shell snapshots、file-search 模糊查找。
+远期池（本期不做）：worktree-per-task（按需保留手动切换能力）、memories（跨会话记忆）、hooks（用户配置钩子）、collab（多代理角色）、code-mode（JS 编排）、sandboxing（seatbelt/namespace 隔离）、goals（目标追踪）、shell snapshots、file-search 模糊查找。
 
 ## 2. P1：系统提示词通用行为层 + 嵌套 AGENTS.md
 
@@ -67,37 +67,13 @@ lx-agent 已有能力（codex 对应位点）：compaction（`core/src/compact.r
 - 与 edit/write 并存：ALL_TOOL_NAMES 注册 + assembly.ts 装配；行为层提示词引导「跨多文件的结构化修改优先 apply_patch，单点小改 edit/write 即可」。
 - 解析器独立成纯函数模块（`tools/applyPatchParser.ts`），便于单测覆盖畸形输入。
 
-## 4. P3：worktree-per-task
-
-> 已确认边界：**不做 UI 合并**。创建 → 绑定执行 → 展示 diff 与建议命令，合并由用户手动执行。
-
-### 4.1 main 服务
-
-新建 `src/main/services/worktreeService.ts`：
-
-- `createWorktree(projectPath, name)`：校验 git 仓库与 name slug（`[a-z0-9-]` ≤40）；目标 `<repo>/.worktrees/<name>` 已存在则报错；执行 `git worktree add <path> -b agent/<name>`；返回 `{ path, branch }`。
-- `removeWorktree(projectPath, name, { deleteBranch })`：`git worktree remove`（脏工作区默认拒绝，force 显式传参才强删）+ 可选 `-D agent/<name>`。
-- `mergeCommand(name)`：返回建议命令文本 `git checkout <defaultBranch> && git merge --no-ff agent/<name>`。
-
-### 4.2 IPC 与会话绑定
-
-- `shared/ipc/agentChannels.ts` 增加 `createWorktree` / `removeWorktree` invoke channel（main handler 边界校验风格对齐现有）；列表复用现有 git worktree channel。
-- 绑定链路复用既有字段：创建成功 → `projectService.update(item.id, { worktreePath: path })` → renderer 以该目录发起新 agent 会话 → `turnStore.beginTurn` 冻结 cwd（现有机制自然承接，agentRunner 无需改动核心流程）。
-
-### 4.3 Renderer
-
-- 入口：AgentPage 现有 worktree 切换控件（useGitWorktrees + worktreeOptions 处）旁增加「新建工作区」动作：输入名称 → 确认 → 创建并切换到新工作区开会话。
-- 完成态：会话详情提供「变更总览」入口展示该工作区相对主干的 `git diff` 概要 + 建议 merge 命令复制按钮 + 「移除工作区」（二次确认）。
-- i18n：zh/en 各补 key（遵循现有 locales 结构）；提示统一用项目 Tooltip 组件。
-
-## 5. 风险与回滚
+## 4. 风险与回滚
 
 | 期 | 风险 | 缓解/回滚 |
 |----|------|----------|
 | P1 | 行为层改变所有会话的模型行为 | section 独立注册，删一行即回滚；env 收集失败静默降级；systemPromptManager.test 先行锁定输出形状 |
 | P2 | PTY 会话进程泄漏 | 空闲回收 + 会话级清理 + quit 兜底 disposeAll；apply_patch 解析器纯函数全覆盖单测（畸形 patch 必拒） |
-| P3 | git 写操作误伤主干 | 所有写入限定 `.worktrees/` 内；创建/删除均前置校验；删除需显式确认；merge 仅以建议命令形式给出，UI 不执行任何主干变更 |
 
-## 6. 验证策略
+## 5. 验证策略
 
-每期完成后仅做受影响范围校验：`typecheck` + 定向单测（P1 提示词装配快照；P2 persistentShell 生命周期与 applyPatchParser 用例；P3 worktreeService 对临时仓库的集成用例）。UI 交互由用户启动项目实测（项目约定 agent 不跑应用）。
+每期完成后仅做受影响范围校验：`typecheck` + 定向单测（P1 提示词装配快照；P2 persistentShell 生命周期与 applyPatchParser 用例）。UI 交互由用户启动项目实测（项目约定 agent 不跑应用）。
