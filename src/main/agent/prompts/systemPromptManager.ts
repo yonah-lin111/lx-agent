@@ -17,20 +17,24 @@ const GROUP_AT = /^\{\{([^{}]*)\}\}/
 /** 标准分层优先级常量（升序排列） */
 export const PROMPT_ORDERS = {
   IDENTITY: -100,
+  BEHAVIOR: -50,
   PERSONA: 0,
   SKILLS: 100,
   INSTRUCTIONS: 200,
   RUNTIME_CONTEXT: 300,
+  ENVIRONMENT: 350,
   INTERCEPTOR: 400,
 } as const
 
 /** 标准系统提示词分段名称 */
 export const PROMPT_SECTION_NAMES = {
   IDENTITY: "harness:identity",
+  BEHAVIOR: "harness:behavior",
   PERSONA: "deployment:persona",
   SKILLS: "agent:skills",
   INSTRUCTIONS: "agent:instructions",
   RUNTIME_CONTEXT: "agent:runtime-context",
+  ENVIRONMENT: "agent:environment",
   LSP_FEEDBACK: "agent:lsp-feedback",
 } as const
 
@@ -469,6 +473,29 @@ export class SystemPromptManager {
   }
 }
 
+/** 通用模型无关行为规范（对齐 Codex harness 行为层） */
+export const DEFAULT_BEHAVIOR_PROMPT = [
+  "# 通用行为规范",
+  "",
+  "## 意图说明 (Preamble)",
+  "- 在调用具有副作用或复杂操作的工具前，用 1-2 句简明说明即将执行的动作；相关的连续动作合并为一条说明；简单的单次读取不必多言。",
+  "",
+  "## 任务规划 (Plan)",
+  "- 面对多步骤任务（≥2 步、需要工具调用）时，用 todowrite 工具建立任务清单并随进度即时更新状态；简单任务或闲聊跳过 todowrite，不输出单步计划。",
+  "",
+  "## 验证哲学 (Verification)",
+  "- 代码修改后，优先执行与改动最相关的定向验证（如针对修改文件的 lint、typecheck 或单测），避免无意义的全量验证；格式化迭代最多尝试 3 次；发现既有不相关的失败测试不顺手修复，仅在结论中客观指出。",
+  "",
+  "## 安全边界 (Safety)",
+  "- 绝不 revert 非自己做出的更改；严禁未经用户明确授权执行 `git reset --hard`、`git checkout --` 等破坏性命令；发现非预期的意外更改时立即停下询问用户。",
+  "",
+  "## 结果回复规范 (Response)",
+  "- 默认保持极简；实质改动先给出一句话结论再展开要点；引用代码或文件时使用 `path:line` 格式（如 `src/index.ts:42`）；结尾可提供自然的下一步建议（无建议则不附带）。",
+  "",
+  "## 编辑约束 (Editing & Instructions)",
+  "- 遵循最小修改原则，保持代码既有风格，不过度抽象，注释克制；触碰子目录文件前，应先检查该子树下是否存在 AGENTS.md 规范并予以遵守。",
+].join("\n")
+
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */
 export function createDefaultSystemPromptManager(): SystemPromptManager {
   const manager = new SystemPromptManager()
@@ -478,6 +505,13 @@ export function createDefaultSystemPromptManager(): SystemPromptManager {
     name: PROMPT_SECTION_NAMES.IDENTITY,
     order: PROMPT_ORDERS.IDENTITY,
     text: "你是 LX Agent，一个帮助用户在本地项目中工作的 AI 助手。",
+  })
+
+  // -50: 通用行为规范
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.BEHAVIOR,
+    order: PROMPT_ORDERS.BEHAVIOR,
+    text: DEFAULT_BEHAVIOR_PROMPT,
   })
 
   // 0: 核心操作规范与角色指导
@@ -490,7 +524,6 @@ export function createDefaultSystemPromptManager(): SystemPromptManager {
       "面对长耗时命令（如启动开发服务器、长编译、监听进程），使用 bash 工具的 background: true 在后台运行，不要同步阻塞等待。",
       "后台任务启动后可使用 job_output 非阻塞读取日志，使用 job_list 查看任务状态，使用 job_kill 终止不需要的任务。在任务完成前不要重复启动相同的后台命令。",
       "回答使用简体中文，代码与专有名词保留原文。",
-      "面对多步骤任务（≥2 步、需要工具调用）时，用 todowrite 工具建立任务清单，并随进度更新；单步任务或闲聊不需要。",
     ].join("\n"),
   })
 
@@ -511,6 +544,34 @@ export function createDefaultSystemPromptManager(): SystemPromptManager {
     text: (ctx) => {
       if (!ctx.cwd) return ""
       return formatInstructions(loadInstructions(ctx.cwd)).trim()
+    },
+  })
+
+  // 350: 环境上下文（动态渲染 <env> 块）
+  manager.registerContext({
+    name: PROMPT_SECTION_NAMES.ENVIRONMENT,
+    order: PROMPT_ORDERS.ENVIRONMENT,
+    text: (ctx) => {
+      const vars = ctx.variables ?? {}
+      const lines: string[] = ["<env>"]
+      if (vars.cwd || ctx.cwd) {
+        lines.push(`  Working directory: ${vars.cwd ?? ctx.cwd}`)
+      }
+      if (vars.repo_root) {
+        lines.push(`  Workspace root folder: ${vars.repo_root}`)
+      }
+      if (vars.git_branch) {
+        lines.push(`  Git branch: ${vars.git_branch}`)
+      }
+      if (vars.platform) {
+        lines.push(`  Platform: ${vars.platform}`)
+      }
+      if (vars.date) {
+        lines.push(`  Today's date: ${vars.date}`)
+      }
+      if (lines.length === 1) return ""
+      lines.push("</env>")
+      return lines.join("\n")
     },
   })
 

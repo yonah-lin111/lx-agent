@@ -1,13 +1,11 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import { execSync } from "node:child_process"
+import { existsSync, readFileSync } from "node:fs"
+import { join, relative, resolve } from "node:path"
 import { getAppDataRoot } from "@/paths"
 import { truncateHead } from "./tools/truncate"
 
 // 指令文件单文件读取上限（防超大指令淹没上下文）。
 const MAX_INSTRUCTION_BYTES = 50 * 1024
-
-// 项目级指令文件候选（二选一，命中即停）。
-const PROJECT_INSTRUCTION_NAMES = ["AGENTS.md", "CLAUDE.md"] as const
 
 // 已加载的指令文件（绝对路径 + 截断后的内容）。
 export interface InstructionFile {
@@ -28,22 +26,77 @@ const readInstructionFile = (path: string): InstructionFile | null => {
   }
 }
 
+/** 解析仓库根目录（非 git 仓库或失败回退 undefined） */
+export const findGitRepoRoot = (cwd: string): string | undefined => {
+  try {
+    const root = execSync("git rev-parse --show-toplevel", {
+      cwd,
+      timeout: 1000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    return root && existsSync(root) ? resolve(root) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** 获取从 repoRoot 到 targetDir 的所有目录路径链（从浅到深：repoRoot, ..., targetDir） */
+export const getDirectoryChain = (repoRoot: string, targetDir: string): string[] => {
+  const normalizedRoot = resolve(repoRoot)
+  const normalizedTarget = resolve(targetDir)
+  const rel = relative(normalizedRoot, normalizedTarget)
+
+  // targetDir 不在 repoRoot 内
+  if (rel.startsWith("..") || rel === "") {
+    return [normalizedRoot]
+  }
+
+  const parts = rel.split(/[\/\\]/).filter(Boolean)
+  const chain: string[] = [normalizedRoot]
+  let current = normalizedRoot
+  for (const part of parts) {
+    current = join(current, part)
+    chain.push(current)
+  }
+  return chain
+}
+
 /**
- * 加载会话指令文件：user 级 `~/.lx/AGENTS.md` + 项目级 `<cwd>/AGENTS.md` → `<cwd>/CLAUDE.md`
- * （项目级二选一、命中即停，不递归 findUp）。与 skill 双来源机制同构但语义独立：
- * skill = 可复用指令包（按需 read_skill），instruction = 项目/user 级常驻规范（无条件注入）。
+ * 加载会话指令文件：
+ * 1. user 级 `~/.lx/AGENTS.md`
+ * 2. 项目沿途 AGENTS.md（从 Git 仓库根目录到 cwd，由浅入深按顺序拼接，深层覆盖/靠后）
+ *    - 如果非 Git 仓库，回退为仅读取 `<cwd>/AGENTS.md`
+ * 3. 根级 CLAUDE.md fallback：仅当整条链未加载任何 AGENTS.md 时，在 cwd 尝试 fallback `<cwd>/CLAUDE.md`
  */
 export const loadInstructions = (cwd: string): InstructionFile[] => {
   const instructions: InstructionFile[] = []
+
+  // 1. User 级
   const userInstruction = readInstructionFile(join(getAppDataRoot(), "AGENTS.md"))
   if (userInstruction) instructions.push(userInstruction)
-  for (const name of PROJECT_INSTRUCTION_NAMES) {
-    const projectInstruction = readInstructionFile(join(cwd, name))
-    if (projectInstruction) {
-      instructions.push(projectInstruction)
-      break
+
+  // 2. 项目沿途 AGENTS.md
+  const repoRoot = findGitRepoRoot(cwd)
+  const dirChain = repoRoot ? getDirectoryChain(repoRoot, cwd) : [resolve(cwd)]
+
+  let hasProjectAgentsMd = false
+  for (const dir of dirChain) {
+    const instr = readInstructionFile(join(dir, "AGENTS.md"))
+    if (instr) {
+      instructions.push(instr)
+      hasProjectAgentsMd = true
     }
   }
+
+  // 3. Fallback CLAUDE.md（仅在项目没有任何 AGENTS.md 时生效）
+  if (!hasProjectAgentsMd) {
+    const claudeInstr = readInstructionFile(join(cwd, "CLAUDE.md"))
+    if (claudeInstr) {
+      instructions.push(claudeInstr)
+    }
+  }
+
   return instructions
 }
 

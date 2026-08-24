@@ -208,7 +208,7 @@ describe("SystemPromptManager", () => {
   })
 
   describe("默认单例与内置分层 (createDefaultSystemPromptManager)", () => {
-    it("包含基础身份、Persona 及动态技能与指令分层", async () => {
+    it("包含基础身份、行为层、Persona 及动态技能与指令分层", async () => {
       const manager = createDefaultSystemPromptManager()
       const assembly = await manager.assemble({
         activeSkills: [
@@ -220,14 +220,40 @@ describe("SystemPromptManager", () => {
             disableModelInvocation: false,
           },
         ],
+        variables: {
+          cwd: "/workspace",
+          repo_root: "/workspace",
+          git_branch: "main",
+          platform: "darwin",
+          date: "Mon Aug 24 2026",
+        },
       })
 
       expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.IDENTITY)).toBe(true)
+      expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.BEHAVIOR)).toBe(true)
       expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.PERSONA)).toBe(true)
       expect(assembly.sections.some((s) => s.name === PROMPT_SECTION_NAMES.SKILLS)).toBe(true)
+      expect(assembly.contexts.some((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)).toBe(true)
+
       expect(assembly.rendered).toContain("你是 LX Agent")
+      expect(assembly.rendered).toContain("# 通用行为规范")
+      expect(assembly.rendered).toContain("## 意图说明 (Preamble)")
+      expect(assembly.rendered).toContain("## 任务规划 (Plan)")
+      expect(assembly.rendered).toContain("## 验证哲学 (Verification)")
+      expect(assembly.rendered).toContain("## 安全边界 (Safety)")
+      expect(assembly.rendered).toContain("## 结果回复规范 (Response)")
+      expect(assembly.rendered).toContain("## 编辑约束 (Editing & Instructions)")
       expect(assembly.rendered).toContain("<available_skills>")
       expect(assembly.rendered).toContain("test-skill")
+
+      const envCtx = assembly.contexts.find((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)
+      expect(envCtx?.text).toContain("<env>")
+      expect(envCtx?.text).toContain("Working directory: /workspace")
+      expect(envCtx?.text).toContain("Workspace root folder: /workspace")
+      expect(envCtx?.text).toContain("Git branch: main")
+      expect(envCtx?.text).toContain("Platform: darwin")
+      expect(envCtx?.text).toContain("Today's date: Mon Aug 24 2026")
+      expect(envCtx?.text).toContain("</env>")
     })
   })
 })
