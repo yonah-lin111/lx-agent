@@ -185,6 +185,7 @@ export const buildExecutionSteps = (
               : undefined,
             status,
             timestamp: message.timestamp,
+            durationMs: pairedResult?.durationMs,
             tokens: subagentData?.usage
               ? {
                   input: subagentData.usage.input,
@@ -203,6 +204,7 @@ export const buildExecutionSteps = (
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
+              durationMs: pairedResult?.durationMs,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
             },
@@ -217,12 +219,14 @@ export const buildExecutionSteps = (
             subtitle: formatPreview(JSON.stringify(block.args), 60),
             status,
             timestamp: message.timestamp,
+            durationMs: pairedResult?.durationMs,
             toolContent: {
               toolName: block.toolName,
               toolCallId: block.toolCallId,
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
+              durationMs: pairedResult?.durationMs,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
             },
@@ -243,6 +247,8 @@ export const buildExecutionSteps = (
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
+          durationMs: message.durationMs,
+          model: message.model,
           tokens: message.usage
             ? {
                 input: message.usage.input,
@@ -278,12 +284,14 @@ export const buildExecutionSteps = (
           subtitle: formatPreview(block.text, 60),
           status: block.isError ? "error" : "done",
           timestamp: message.timestamp,
+          durationMs: block.durationMs,
           toolContent: {
             toolName: block.toolName,
             toolCallId: block.toolCallId,
             args: {},
             result: block.text,
             isError: block.isError,
+            durationMs: block.durationMs,
             diff: block.diff,
             lsp: block.lsp,
           },

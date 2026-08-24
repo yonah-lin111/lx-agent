@@ -1825,6 +1825,23 @@
   font-family: var(--theme-font-family) !important;
 }
 
+[data-theme="minecraft"] .agent-execution-flow-step-duration {
+  font-family: var(--theme-font-family) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 1px 5px !important;
+  border: 1px solid #000000 !important;
+  background-color: #1a1824 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  color: #a5f3fc !important; /* 钻石浅青 */
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 /* 步骤头部左侧类型标签 (LxTag) 矿石主题化立体胶囊 */
 [data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag {
   font-family: var(--theme-font-family) !important;
@@ -2106,3 +2123,58 @@
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
+
+/* ========================================================
+ * 16. 执行流轮次底部综合指标 (Turn Summary) - Minecraft 像素浮雕风格
+ * ======================================================== */
+[data-theme="minecraft"] .agent-turn-summary {
+  font-family: var(--theme-font-family) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-top: 4px !important;
+  margin-bottom: 6px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-theme="minecraft"] .agent-turn-summary-pill {
+  font-family: var(--theme-font-family) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 2px 7px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1a1a28 !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  color: #d0d0e6 !important;
+}
+
+[data-theme="minecraft"] .agent-turn-summary-pill-model {
+  background-color: #261e38 !important;
+  color: #e0d0f8 !important;
+}
+
+[data-theme="minecraft"] .agent-turn-summary-pill-tools {
+  background-color: #281e14 !important;
+  color: #ffaa00 !important;
+}
+
+[data-theme="minecraft"] .agent-turn-summary-pill-cache {
+  background-color: #122230 !important;
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .agent-turn-summary-pill-duration {
+  background-color: #16281a !important;
+  color: #55ff55 !important;
+}
+

@@ -218,6 +218,7 @@ async function streamAssistantResponse(
   const resolvedApiKey =
     (config.getApiKey ? await config.getApiKey(config.model.provider) : undefined) || config.apiKey
 
+  const requestStartTime = Date.now()
   const response = await streamFunction(
     config.model,
     { systemPrompt: context.systemPrompt, messages: llmMessages, tools: context.tools },
@@ -267,6 +268,7 @@ async function streamAssistantResponse(
         case "done":
         case "error": {
           const finalMessage = await response.result()
+          finalMessage.durationMs = Math.max(0, Date.now() - requestStartTime)
           if (addedPartial) {
             context.messages[context.messages.length - 1] = finalMessage
           } else {
@@ -285,6 +287,7 @@ async function streamAssistantResponse(
   }
 
   const finalMessage = await response.result()
+  finalMessage.durationMs = Math.max(0, Date.now() - requestStartTime)
   if (addedPartial) {
     context.messages[context.messages.length - 1] = finalMessage
   } else {
@@ -357,6 +360,7 @@ type FinalizedToolCallOutcome = {
   toolCall: AgentToolCall
   result: AgentToolResult<any>
   isError: boolean
+  durationMs?: number
 }
 
 type FinalizedToolCallEntry = FinalizedToolCallOutcome | (() => Promise<FinalizedToolCallOutcome>)
@@ -516,6 +520,7 @@ type ImmediateToolCallOutcome = {
 type ExecutedToolCallOutcome = {
   result: AgentToolResult<any>
   isError: boolean
+  durationMs: number
 }
 
 // 整批工具调用是否应提前终止。
@@ -607,6 +612,7 @@ async function executePreparedToolCall(
 ): Promise<ExecutedToolCallOutcome> {
   const updateEvents: Promise<void>[] = []
   let acceptingUpdates = true
+  const startTime = Date.now()
 
   try {
     const result = await prepared.tool.execute(
@@ -628,15 +634,18 @@ async function executePreparedToolCall(
         )
       },
     )
+    const durationMs = Date.now() - startTime
     acceptingUpdates = false
     await Promise.all(updateEvents)
-    return { result, isError: false }
+    return { result, isError: false, durationMs }
   } catch (error) {
+    const durationMs = Date.now() - startTime
     acceptingUpdates = false
     await Promise.all(updateEvents)
     return {
       result: createErrorToolResult(error instanceof Error ? error.message : String(error)),
       isError: true,
+      durationMs,
     }
   } finally {
     acceptingUpdates = false
@@ -687,6 +696,7 @@ async function finalizeExecutedToolCall(
     toolCall: prepared.toolCall,
     result,
     isError,
+    durationMs: executed.durationMs,
   }
 }
 
@@ -709,6 +719,7 @@ async function emitToolExecutionEnd(
     toolName: finalized.toolCall.name,
     result: finalized.result,
     isError: finalized.isError,
+    durationMs: finalized.durationMs,
   })
 }
 
@@ -741,6 +752,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     content: finalized.result.content ?? [],
     isError: finalized.isError,
     timestamp: Date.now(),
+    ...(finalized.durationMs !== undefined ? { durationMs: finalized.durationMs } : {}),
     ...(diff ? { diff } : {}),
     ...(subagent ? { subagent } : {}),
     ...(lsp ? { lsp } : {}),

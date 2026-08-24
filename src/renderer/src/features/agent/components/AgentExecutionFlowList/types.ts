@@ -31,6 +31,18 @@ export interface ExecutionFlowStats {
   totalTokens: number
 }
 
+export interface TurnStats {
+  turn: number
+  model?: string
+  toolCallsCount: number
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  totalTokens: number
+  durationMs: number
+  isCompleted: boolean
+}
+
 /**
  * 复制文本辅助函数
  */
@@ -52,6 +64,32 @@ export const formatJsonString = (value: unknown): string => {
   } catch {
     return String(value)
   }
+}
+
+/**
+ * 格式化执行耗时
+ */
+export const formatDurationMs = (ms: number): string => {
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  const s = ms / 1000
+  if (s < 60) return `${s < 10 ? s.toFixed(1) : Math.round(s)}s`
+  return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
+}
+
+/**
+ * 格式化 Token 计数
+ */
+export const formatTokenCount = (n: number): string => {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
+
+/**
+ * 格式化时间戳
+ */
+export const formatTimestampTime = (timestamp?: number): string => {
+  if (!timestamp) return ""
+  const d = new Date(timestamp)
+  return d.toTimeString().split(" ")[0] || ""
 }
 
 export const getToolCategoryMeta = (

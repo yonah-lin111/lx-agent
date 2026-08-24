@@ -303,4 +303,130 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Generation cancelled")).not.toBeNull()
     expect(screen.getByText("Generation was cancelled by user.")).not.toBeNull()
   })
+
+  it("当 isStreaming 为 true 且当前无 running 步骤时，在底部展示骨架屏 loading 条目", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "请帮我重构代码" }],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // 应渲染骨架屏加载条目
+    const skeleton = screen.getByTestId("flow-skeleton-loading")
+    expect(skeleton).not.toBeNull()
+    expect(skeleton.textContent).toContain("#1")
+  })
+
+  it("在完成 turn 的底部展示该轮次的汇总指标统计（模型、工具数、token、缓存命中率、耗时等）", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试轮次统计" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        model: "claude-3-5-sonnet",
+        durationMs: 800,
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "bash",
+            args: { command: "echo 1" },
+            status: "done",
+          },
+          { kind: "text", text: "执行完毕" },
+        ],
+        usage: {
+          input: 1200,
+          output: 300,
+          cacheRead: 400,
+          totalTokens: 1500,
+        },
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "bash",
+            text: "1",
+            isError: false,
+            durationMs: 250,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={false} />)
+
+    const summary = screen.getByTestId("turn-summary-1")
+    expect(summary).not.toBeNull()
+    expect(summary.textContent).toContain("claude-3-5-sonnet")
+    expect(summary.textContent).toContain("1 tool calls")
+    expect(summary.textContent).toContain("1.2k in")
+    expect(summary.textContent).toContain("300 out")
+    expect(summary.textContent).toContain("25% cache hit")
+    expect(summary.textContent).toContain("took 1.1s")
+  })
+
+  it("read_skill 工具展示 read_skill 工具名前缀以及 skill 名称", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "调用技能" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c-skill",
+            toolName: "read_skill",
+            args: { name: "grill-me" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={false} />)
+
+    expect(screen.getByText("read_skill")).not.toBeNull()
+    expect(screen.getByText("grill-me")).not.toBeNull()
+  })
+
+  it("loading 虚拟条目不会被计入顶部的总步骤统计中", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试中" }],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // 存在 loading 骨架
+    expect(screen.getByTestId("flow-skeleton-loading")).not.toBeNull()
+    // 顶部 All tab 统计仅计算真实 step 数量（user 步骤 1 个）
+    expect(screen.getByText("All (1)")).not.toBeNull()
+  })
 })

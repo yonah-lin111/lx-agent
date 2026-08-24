@@ -1,7 +1,8 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { Workflow } from "lucide-react"
+import { Loader2, Workflow } from "lucide-react"
 import type React from "react"
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
@@ -10,11 +11,19 @@ import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowHeader } from "./AgentExecutionFlowHeader"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
-import type { ExecutionFlowStats, FilterKind } from "./types"
+import {
+  type ExecutionFlowStats,
+  type FilterKind,
+  formatDurationMs,
+  formatTokenCount,
+  type TurnStats,
+} from "./types"
 
 export interface AgentExecutionFlowListProps {
   // 当前会话的全部消息列表
   messages: readonly ChatMessage[]
+  // 是否正在流式生成/运行中
+  isStreaming?: boolean
   // 当前会话 ID（用于查询完整装配的系统提示词）
   sessionId?: string
   // 当前项目或工作区路径
@@ -33,6 +42,7 @@ const FOLLOW_BOTTOM_THRESHOLD = 40
  */
 export const AgentExecutionFlowList = ({
   messages,
+  isStreaming = false,
   sessionId,
   cwd,
   onSelectPrompt,
@@ -119,6 +129,15 @@ export const AgentExecutionFlowList = ({
     return steps.filter((step) => step.kind === activeFilter)
   }, [steps, activeFilter])
 
+  // 当前是否存在正在运行的步骤
+  const hasRunningStep = useMemo(
+    () => steps.some((step) => step.status === "running"),
+    [steps],
+  )
+
+  // 运行中的虚拟占位步骤（当 isStreaming 为 true 且当前步骤列表中没有处于 running 状态的步骤时展示）
+  const showSkeletonLoading = isStreaming && !hasRunningStep && (activeFilter === "all" || activeFilter === "assistant")
+
   // 滚动时更新跟随状态：向上滚动离开底部暂停吸底，向下滚回底部自动恢复。
   const handleScroll = useCallback((): void => {
     const el = scrollRef.current
@@ -157,7 +176,65 @@ export const AgentExecutionFlowList = ({
     if (el) {
       el.scrollTop = el.scrollHeight
     }
-  }, [filteredSteps])
+  }, [filteredSteps, showSkeletonLoading])
+
+  // 每轮执行指标汇总（计算每轮的模型、工具数、token、缓存命中、耗时及是否已完成）
+  const turnStatsMap = useMemo<Map<number, TurnStats>>(() => {
+    const map = new Map<number, TurnStats>()
+
+    for (const step of steps) {
+      if (step.turnIndex <= 0) continue
+
+      let current = map.get(step.turnIndex)
+      if (!current) {
+        current = {
+          turn: step.turnIndex,
+          model: step.model,
+          toolCallsCount: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          totalTokens: 0,
+          durationMs: 0,
+          isCompleted: true,
+        }
+        map.set(step.turnIndex, current)
+      }
+
+      if (step.model && !current.model) {
+        current.model = step.model
+      }
+
+      if (step.status === "running") {
+        current.isCompleted = false
+      }
+
+      if (step.kind === "tool" || step.kind === "subagent") {
+        current.toolCallsCount++
+      }
+
+      if (step.durationMs !== undefined) {
+        current.durationMs += step.durationMs
+      }
+
+      if (step.tokens) {
+        if (step.tokens.input) current.inputTokens += step.tokens.input
+        if (step.tokens.output) current.outputTokens += step.tokens.output
+        if (step.tokens.cacheRead) current.cacheReadTokens += step.tokens.cacheRead
+        if (step.tokens.total) current.totalTokens += step.tokens.total
+      }
+    }
+
+    // 若当前为最后一轮且 isStreaming 为 true，则最后一轮未完成
+    if (isStreaming && maxTurn > 0) {
+      const lastTurnStat = map.get(maxTurn)
+      if (lastTurnStat) {
+        lastTurnStat.isCompleted = false
+      }
+    }
+
+    return map
+  }, [steps, isStreaming, maxTurn])
 
   // 统计指标汇总
   const stats = useMemo<ExecutionFlowStats>(() => {
@@ -262,13 +339,17 @@ export const AgentExecutionFlowList = ({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2"
+          className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2 pb-16"
         >
           {filteredSteps.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               {filteredSteps.map((step, idx) => {
                 const prevStep = filteredSteps[idx - 1]
+                const nextStep = filteredSteps[idx + 1]
                 const isNewTurn = !prevStep || prevStep.turnIndex !== step.turnIndex
+                const isTurnEnd = !nextStep || nextStep.turnIndex !== step.turnIndex
+                const turnStats =
+                  step.turnIndex > 0 ? turnStatsMap.get(step.turnIndex) : undefined
 
                 return (
                   <Fragment key={step.id}>
@@ -297,9 +378,88 @@ export const AgentExecutionFlowList = ({
                       isExpanded={isStepExpanded(step)}
                       onToggleExpand={() => toggleStepExpanded(step)}
                     />
+                    {/* 当该 turn 结束且已完成所有步骤时，在下一行左侧展示该 turn 的综合执行数据统计 */}
+                    {isTurnEnd &&
+                      step.turnIndex > 0 &&
+                      turnStats &&
+                      turnStats.isCompleted &&
+                      (activeFilter === "all" || activeFilter === "assistant") && (
+                        <div
+                          data-testid={`turn-summary-${step.turnIndex}`}
+                          className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
+                        >
+                          {turnStats.model && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-model font-medium text-white/70">
+                              {turnStats.model}
+                            </span>
+                          )}
+                          {turnStats.toolCallsCount > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-amber-300/90">
+                              {t("agent.turnToolsCount", { count: turnStats.toolCallsCount })}
+                            </span>
+                          )}
+                          {turnStats.inputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-input">
+                              {t("agent.turnInputTokens", {
+                                count: formatTokenCount(turnStats.inputTokens),
+                              })}
+                            </span>
+                          )}
+                          {turnStats.outputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-output">
+                              {t("agent.turnOutputTokens", {
+                                count: formatTokenCount(turnStats.outputTokens),
+                              })}
+                            </span>
+                          )}
+                          {turnStats.cacheReadTokens > 0 && turnStats.inputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-cache text-sky-300/90">
+                              {t("agent.turnCacheHit", {
+                                percent: Math.round(
+                                  (turnStats.cacheReadTokens /
+                                    (turnStats.inputTokens + turnStats.cacheReadTokens)) *
+                                    100,
+                                ),
+                              })}
+                            </span>
+                          )}
+                          {turnStats.durationMs > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-duration text-emerald-400/90">
+                              {t("agent.turnDuration", {
+                                duration: formatDurationMs(turnStats.durationMs),
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      )}
                   </Fragment>
                 )
               })}
+              {/* Agent 正在运行但尚未生成对应 step 块时的骨架加载条目 */}
+              {showSkeletonLoading && (
+                <div
+                  data-testid="flow-skeleton-loading"
+                  className="agent-execution-flow-step flex h-8 items-center justify-between rounded-[6px] border border-white/5 bg-[#212121] px-2.5"
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="shrink-0 font-mono text-[11px] font-medium text-white/20">
+                      #{steps.length}
+                    </span>
+                    <div className="h-3.5 w-16 animate-pulse rounded bg-white/10" />
+                    <div className="h-3.5 w-32 animate-pulse rounded bg-white/5 sm:w-48" />
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
+                    <LxIconButton
+                      size="small"
+                      aria-label="Running"
+                      title={{ content: "Running", placement: "left" }}
+                      className="text-sky-400"
+                    >
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+                    </LxIconButton>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex min-h-full items-center justify-center text-[12px] text-white/35">

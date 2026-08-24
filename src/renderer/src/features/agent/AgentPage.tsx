@@ -365,6 +365,7 @@ export const AgentPage = ({
           /* 执行流程视图：消息列表的另一种显示形式，展示当前 Agent 的全部执行日志与步骤。 */
           <AgentExecutionFlowList
             messages={messages}
+            isStreaming={isStreaming}
             sessionId={currentSessionId ?? undefined}
             cwd={statusBarPath}
             onSelectPrompt={(prompt) => sendMessage(prompt)}
