@@ -26,6 +26,7 @@ import {
   getMarkdownReferenceType,
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import {
+  MarkdownActionCleanButton,
   MarkdownActionCopyButton,
   MarkdownActionDeleteButton,
   MarkdownActionFoldButton,
@@ -344,24 +345,24 @@ export const editorTheme = EditorView.theme(
       display: "none !important",
     },
     ".cm-md-supple-command, .cm-md-supple-command *": {
-      color: "#fb923c !important",
-      backgroundColor: "rgba(251, 146, 60, 0.15) !important",
+      color: "#38bdf8 !important",
+      backgroundColor: "rgba(56, 189, 248, 0.15) !important",
       padding: "1px 6px !important",
       borderRadius: "3px !important",
       fontWeight: "700 !important",
     },
     ".cm-md-supple-marker, .cm-md-supple-marker *": {
-      color: "#fb923c !important",
+      color: "#38bdf8 !important",
       fontWeight: "700",
     },
     ".cm-md-supple-start-line": {
-      borderTop: "1.5px solid rgba(251, 146, 60, 0.45)",
-      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
-      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
-      borderBottom: "1px solid rgba(251, 146, 60, 0.25)",
+      borderTop: "1.5px solid rgba(56, 189, 248, 0.45)",
+      borderLeft: "2px solid rgba(56, 189, 248, 0.45)",
+      borderRight: "2px solid rgba(56, 189, 248, 0.45)",
+      borderBottom: "1px solid rgba(56, 189, 248, 0.25)",
       borderTopLeftRadius: "4px",
       borderTopRightRadius: "4px",
-      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      backgroundColor: "rgba(56, 189, 248, 0.05)",
       paddingLeft: "8px",
       // 操作按钮绝对定位在行末，预留空间避免遮挡。
       paddingRight: "72px",
@@ -370,18 +371,18 @@ export const editorTheme = EditorView.theme(
       paddingBottom: "4px",
     },
     ".cm-md-supple-middle-line": {
-      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
-      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
-      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      borderLeft: "2px solid rgba(56, 189, 248, 0.45)",
+      borderRight: "2px solid rgba(56, 189, 248, 0.45)",
+      backgroundColor: "rgba(56, 189, 248, 0.05)",
       paddingLeft: "8px",
     },
     ".cm-md-supple-end-line": {
-      borderBottom: "1.5px solid rgba(251, 146, 60, 0.45)",
-      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
-      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
+      borderBottom: "1.5px solid rgba(56, 189, 248, 0.45)",
+      borderLeft: "2px solid rgba(56, 189, 248, 0.45)",
+      borderRight: "2px solid rgba(56, 189, 248, 0.45)",
       borderBottomLeftRadius: "4px",
       borderBottomRightRadius: "4px",
-      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      backgroundColor: "rgba(56, 189, 248, 0.05)",
       paddingLeft: "8px",
       paddingBottom: "4px",
     },
@@ -582,6 +583,7 @@ class CodeBlockActionWidget extends WidgetType {
     readonly templateStatus: TemplateStatusAction | null = null,
     readonly templateStartLine: number | null = null,
     readonly onDeleteTemplate: (() => void) | null = null,
+    readonly onCleanTemplate: (() => void) | null = null,
     readonly isSupple = false,
   ) {
     super()
@@ -623,6 +625,14 @@ class CodeBlockActionWidget extends WidgetType {
         createElement(TemplateStatusButton, {
           status: this.templateStatus.status,
           onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
+        }),
+      )
+    }
+    if ((this.templateStatus || this.isSupple) && this.onCleanTemplate) {
+      actionNodes.push(
+        createElement(MarkdownActionCleanButton, {
+          onClean: this.onCleanTemplate,
+          isSupple: this.isSupple,
         }),
       )
     }
@@ -695,9 +705,11 @@ export const markdownMarkerHighlight = (
           showFolding,
           getReferencedProjectNames,
           (startLine, endLine) => this.deleteTemplateBlock(view, startLine, endLine),
+          (startLine, endLine) => this.cleanTemplateBlock(view, startLine, endLine),
           this.suppleFoldedIndices,
           (index) => this.toggleSuppleFold(view, index),
           (startLine, endLine) => this.deleteSuppleBlock(view, startLine, endLine),
+          (startLine, endLine) => this.cleanSuppleBlock(view, startLine, endLine),
         )
       }
 
@@ -738,9 +750,11 @@ export const markdownMarkerHighlight = (
           showFolding,
           getReferencedProjectNames,
           (startLine, endLine) => this.deleteTemplateBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.cleanTemplateBlock(update.view, startLine, endLine),
           this.suppleFoldedIndices,
           (index) => this.toggleSuppleFold(update.view, index),
           (startLine, endLine) => this.deleteSuppleBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.cleanSuppleBlock(update.view, startLine, endLine),
         )
       }
 
@@ -794,6 +808,29 @@ export const markdownMarkerHighlight = (
         })
       }
 
+      cleanTemplateBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        if (safeEndLine <= startLine + 1) return
+
+        const innerLines: string[] = []
+        for (let l = startLine + 1; l < safeEndLine; l++) {
+          innerLines.push(doc.line(l + 1).text)
+        }
+
+        const cleaned = stripEmptyTemplateItems(innerLines.join("\n"), true)
+        const firstInnerLine = doc.line(startLine + 2)
+        const lastInnerLine = doc.line(safeEndLine)
+
+        view.dispatch({
+          changes: {
+            from: firstInnerLine.from,
+            to: lastInnerLine.to,
+            insert: cleaned,
+          },
+        })
+      }
+
       deleteSuppleBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
         const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
@@ -804,6 +841,29 @@ export const markdownMarkerHighlight = (
           changes: {
             from: startDocLine.from,
             to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
+
+      cleanSuppleBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        if (safeEndLine <= startLine + 1) return
+
+        const innerLines: string[] = []
+        for (let l = startLine + 1; l < safeEndLine; l++) {
+          innerLines.push(doc.line(l + 1).text)
+        }
+
+        const cleaned = stripEmptyTemplateItems(innerLines.join("\n"), false)
+        const firstInnerLine = doc.line(startLine + 2)
+        const lastInnerLine = doc.line(safeEndLine)
+
+        view.dispatch({
+          changes: {
+            from: firstInnerLine.from,
+            to: lastInnerLine.to,
+            insert: cleaned,
           },
         })
       }
@@ -827,9 +887,11 @@ const buildMarkdownMarkerDecorations = (
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
   onDeleteTemplateBlock: (startLine: number, endLine: number) => void = () => {},
+  onCleanTemplateBlock: (startLine: number, endLine: number) => void = () => {},
   suppleFoldedIndices = new Set<number>(),
   onToggleSuppleFold: (index: number) => void = () => {},
   onDeleteSuppleBlock: (startLine: number, endLine: number) => void = () => {},
+  onCleanSuppleBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -1046,6 +1108,7 @@ const buildMarkdownMarkerDecorations = (
           },
           i,
           () => onDeleteTemplateBlock(i, templateEndIndex),
+          () => onCleanTemplateBlock(i, templateEndIndex),
         ),
       })
       allDecos.push({
@@ -1144,6 +1207,7 @@ const buildMarkdownMarkerDecorations = (
             null,
             null,
             () => onDeleteSuppleBlock(i, suppleEndIndex),
+            () => onCleanSuppleBlock(i, suppleEndIndex),
             true,
           ),
         })
@@ -1163,9 +1227,7 @@ const buildMarkdownMarkerDecorations = (
         allDecos.push({
           type: "line",
           from: offset,
-          className: currentSuppleFolded
-            ? "cm-md-supple-hidden-line"
-            : "cm-md-supple-end-line",
+          className: currentSuppleFolded ? "cm-md-supple-hidden-line" : "cm-md-supple-end-line",
         })
         isInsideSuppleBlock = false
         currentSuppleFolded = false
@@ -1184,12 +1246,10 @@ const buildMarkdownMarkerDecorations = (
               ? "cm-md-template-comment-line"
               : "cm-md-supple-middle-line",
         })
-        offset += line.length + 1
-        continue
       }
     }
 
-    if (isInsideTemplateBlock) {
+    if (isInsideTemplateBlock && !isInsideSuppleBlock) {
       const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(line)
       allDecos.push({
         type: "line",

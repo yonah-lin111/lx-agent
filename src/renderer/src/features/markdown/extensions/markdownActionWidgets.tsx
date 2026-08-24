@@ -6,6 +6,7 @@ import {
   Circle,
   CircleDot,
   Copy,
+  Eraser,
   Trash2,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -94,6 +95,35 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
+// 清理按钮：点击后移除当前模板块/补充块中未填写的列表项。
+export const MarkdownActionCleanButton = ({
+  onClean,
+  isSupple = false,
+}: {
+  onClean: () => void
+  isSupple?: boolean
+}): React.JSX.Element => {
+  const { t } = useTranslation()
+  const labelText = isSupple ? t("markdown.cleanSupple") : t("markdown.cleanTemplate")
+
+  return (
+    <LxTooltip content={labelText} placement="bottom">
+      <button
+        aria-label={labelText}
+        type="button"
+        style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onClean()
+        }}
+      >
+        <Eraser className="h-3 w-3" />
+      </button>
+    </LxTooltip>
+  )
+}
+
 // 删除按钮：点击后弹出二次确认，确认后删除当前模板块/补充块。
 export const MarkdownActionDeleteButton = ({
   onDelete,
@@ -109,11 +139,7 @@ export const MarkdownActionDeleteButton = ({
   const labelText = isSupple ? t("markdown.deleteSupple") : t("markdown.deleteTemplate")
 
   return (
-    <LxTooltip
-      content={confirmText}
-      placement="bottom"
-      onConfirm={onDelete}
-    >
+    <LxTooltip content={confirmText} placement="bottom" onConfirm={onDelete}>
       <button
         aria-label={labelText}
         type="button"

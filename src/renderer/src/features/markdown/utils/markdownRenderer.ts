@@ -19,6 +19,8 @@ import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
 import {
+  MARKDOWN_SUPPLE_END_RE,
+  MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
   type MarkdownTemplateStatus,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -104,13 +106,29 @@ const isTemplateListItemLine = (line: string): RegExpMatchArray | null =>
 
 /**
  * 移除模板块内容中未填写的列表项及空占位子项。
+ * preserveSuppleBlocks: 为 true 时，若遇到 +++ ... +++ 补充块，则内部内容原样保留，不进行列表项清理。
  */
-export const stripEmptyTemplateItems = (content: string): string => {
+export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = false): string => {
   const lines = content.split("\n")
   const remove: boolean[] = lines.map(() => false)
+  let insideSupple = false
 
   for (let i = 0; i < lines.length; i += 1) {
-    const itemMatch = isTemplateListItemLine(lines[i])
+    const line = lines[i]
+    if (preserveSuppleBlocks) {
+      if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+        insideSupple = true
+        continue
+      }
+      if (insideSupple) {
+        if (MARKDOWN_SUPPLE_END_RE.test(line)) {
+          insideSupple = false
+        }
+        continue
+      }
+    }
+
+    const itemMatch = isTemplateListItemLine(line)
     if (!itemMatch) continue
     const itemIndent = (itemMatch[1] ?? "").length
     const itemBody = (itemMatch[3] ?? "").trim()
@@ -123,6 +141,7 @@ export const stripEmptyTemplateItems = (content: string): string => {
 
     let hasFilledChild = false
     for (let j = i + 1; j < lines.length; j += 1) {
+      if (preserveSuppleBlocks && (MARKDOWN_SUPPLE_START_RE.test(lines[j]) || insideSupple)) break
       const childMatch = isTemplateListItemLine(lines[j])
       if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
       const childBody = (childMatch[3] ?? "").trim()
@@ -135,6 +154,7 @@ export const stripEmptyTemplateItems = (content: string): string => {
 
     remove[i] = true
     for (let j = i + 1; j < lines.length; j += 1) {
+      if (preserveSuppleBlocks && (MARKDOWN_SUPPLE_START_RE.test(lines[j]) || insideSupple)) break
       const childMatch = isTemplateListItemLine(lines[j])
       if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
       remove[j] = true

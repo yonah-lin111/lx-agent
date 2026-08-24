@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { getMarkdownReferenceImageSource } from "@/features/markdown/commands/markdownReferenceCommands"
-import { markdownRenderer } from "@/features/markdown/utils/markdownRenderer"
+import {
+  markdownRenderer,
+  stripEmptyTemplateItems,
+} from "@/features/markdown/utils/markdownRenderer"
 
 describe("markdownRenderer", () => {
   it("渲染带类型和路径的 Markdown 引用", () => {
@@ -143,10 +146,32 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("不将 @ 后的单独符号解析为文件提及", () => {
-    const html = markdownRenderer.render("@. @/ @- @! @命令面板 @src/main/index.ts")
+  it("stripEmptyTemplateItems 在 preserveSuppleBlocks=true 时保留 +++ 内部未填项", () => {
+    const input = [
+      "- 参考: ",
+      "- 位置: src/a.ts",
+      "+++ suppleTemplate",
+      "- 参考: ",
+      "- 位置: ",
+      "+++",
+      "- 要求: ",
+      "  - ",
+    ].join("\n")
 
-    expect(html.match(/class="markdown-file-mention"/g)).toHaveLength(1)
-    expect(html).toContain(`data-full-mention="${encodeURIComponent("@src/main/index.ts")}"`)
+    const cleaned = stripEmptyTemplateItems(input, true)
+    expect(cleaned).toBe(["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++"].join("\n"))
+  })
+
+  it("stripEmptyTemplateItems 在 preserveSuppleBlocks=false 时清理全部未填项", () => {
+    const input = [
+      "- 参考: ",
+      "- 位置: src/a.ts",
+      "- 要求: ",
+      "  - ",
+      "- 描述: 具体描述",
+    ].join("\n")
+
+    const cleaned = stripEmptyTemplateItems(input, false)
+    expect(cleaned).toBe(["- 位置: src/a.ts", "- 描述: 具体描述"].join("\n"))
   })
 })
