@@ -19,6 +19,11 @@ const target = process.argv[2]
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
 const electronProbeEnv = { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
 
+const rebuildEnv = {
+  ...process.env,
+  ...(process.platform === "darwin" && !process.env.PYTHON ? { PYTHON: "/usr/bin/python3" } : {}),
+}
+
 /**
  * 输出错误并退出。
  */
@@ -33,7 +38,7 @@ const fail = (message) => {
 const run = (command, args, options = {}) =>
   spawnSync(command, args, {
     cwd: process.cwd(),
-    env: process.env,
+    env: rebuildEnv,
     stdio: "inherit",
     ...options,
   })
