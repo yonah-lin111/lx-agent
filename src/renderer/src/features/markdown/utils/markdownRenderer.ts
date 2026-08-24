@@ -212,6 +212,57 @@ markdownRenderer.block.ruler.before("fence", "markdown_template", markdownTempla
   alt: ["paragraph", "reference", "blockquote", "list"],
 })
 
+const markdownSuppleBlock = (
+  state: MarkdownBlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean => {
+  if (state.env?.disableTemplateBlocks) return false
+
+  const startText = state.src.slice(
+    state.bMarks[startLine] + state.tShift[startLine],
+    state.eMarks[startLine],
+  )
+  const startMatch = /^\+\+\+\s+(?:suppleTemplate|supple)\s*$/.exec(startText)
+  if (!startMatch) return false
+
+  let closeLine = startLine + 1
+  while (closeLine < endLine) {
+    const lineText = state.src.slice(
+      state.bMarks[closeLine] + state.tShift[closeLine],
+      state.eMarks[closeLine],
+    )
+    if (/^\+\+\+\s*$/.test(lineText)) break
+    closeLine += 1
+  }
+  if (closeLine >= endLine) return false
+  if (silent) return true
+
+  const token = state.push("markdown_supple", "", 0)
+  token.block = true
+  token.map = [startLine, closeLine + 1]
+  token.meta = {
+    content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
+  }
+  state.line = closeLine + 1
+  return true
+}
+
+markdownRenderer.block.ruler.before("markdown_template", "markdown_supple", markdownSuppleBlock, {
+  alt: ["paragraph", "reference", "blockquote", "list"],
+})
+
+markdownRenderer.renderer.rules.markdown_supple = (tokens, index) => {
+  const token = tokens[index]
+  const meta = token?.meta as { content: string }
+  const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
+  const sourceLine = token.attrGet("data-line")
+  const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+
+  return `<section class="markdown-supple-block"${lineAttribute}><header class="markdown-supple-block-header"><span class="markdown-supple-label">suppleTemplate</span></header><div class="markdown-supple-content">${contentHtml}</div></section>`
+}
+
 markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
   const match = /^@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/.exec(
     state.src.slice(state.pos),

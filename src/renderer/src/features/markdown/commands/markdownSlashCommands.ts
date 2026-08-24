@@ -9,6 +9,7 @@ export type MarkdownTemplateCommandId =
   | "refactorTemplate"
   | "commonTemplate"
   | "styleTemplate"
+  | "suppleTemplate"
 
 // Markdown 斜杠命令标识。
 export type MarkdownSlashCommandId =
@@ -76,6 +77,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const refactorContent = dict.markdown.templateRefactorContent
   const commonContent = dict.markdown.templateCommonContent
   const styleContent = dict.markdown.templateStyleContent
+  const suppleContent = dict.markdown.templateSuppleContent
 
   const templates: MarkdownSlashCommand[] = [
     {
@@ -130,6 +132,18 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     },
   ]
 
+  // 补充需求命令：仅在模板块内可用，直接替换当前行插入嵌套子块。
+  const suppleTemplate: MarkdownSlashCommand = {
+    id: "suppleTemplate",
+    label: "/suppleTemplate",
+    description: dict.markdown.templateSuppleDesc,
+    scope: "template",
+    kind: "direct",
+    source: "builtin",
+    content: suppleContent,
+    cursorOffset: getTemplateCursorOffset(suppleContent),
+  }
+
   const summaryTitle: MarkdownSlashCommand = {
     id: "summaryTitle",
     label: "/summaryTitle",
@@ -152,7 +166,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: "/gitWorktree ".length,
   }
 
-  return [...templates, summaryTitle, gitWorktree]
+  return [...templates, suppleTemplate, summaryTitle, gitWorktree]
 }
 
 // 默认内置命令（中文兜底与单测兼容）。
@@ -260,8 +274,7 @@ export const getMarkdownSlashCommands = (
     (command) =>
       (command.scope === expectedScope || command.scope === "both") &&
       (isFuzzyMatch(query, command.id) ||
-        isFuzzyMatch(query, command.label.replace(/^\//, "")) ||
-        isFuzzyMatch(query, command.description)) &&
+        isFuzzyMatch(query, command.label.replace(/^\//, ""))) &&
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )
 }

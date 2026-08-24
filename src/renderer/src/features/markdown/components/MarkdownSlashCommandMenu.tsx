@@ -14,13 +14,19 @@ interface MarkdownSlashCommandMenuProps {
 const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass: string }[] => {
   const tags: { label: string; bgClass: string }[] = []
 
+  const isScopeBoth =
+    command.scope === "both" ||
+    (command.kind === "customTemplate" && command.customScope === "global")
+
   if (
     command.kind === "customTemplate" ||
     command.source === "project" ||
     command.source === "user"
   ) {
-    // 作用域 Tag（MD / Template）
-    if (command.customScope === "template" || command.scope === "template") {
+    // 作用域 Tag（MD / Template / MD & Template）
+    if (isScopeBoth) {
+      tags.push({ label: "MD / Template", bgClass: "bg-teal-500/20 text-teal-300" })
+    } else if (command.customScope === "template" || command.scope === "template") {
       tags.push({ label: "Template", bgClass: "bg-purple-500/20 text-purple-300" })
     } else {
       tags.push({ label: "MD", bgClass: "bg-sky-500/20 text-sky-300" })
@@ -30,7 +36,12 @@ const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass
     const customSourceLabel = command.source === "project" ? "Custom|Project" : "Custom|Global"
     tags.push({ label: customSourceLabel, bgClass: "bg-amber-500/20 text-amber-300" })
   } else {
-    // 内置命令
+    // 内置命令：如果支持双作用域，打上 MD / Template 标记
+    if (isScopeBoth) {
+      tags.push({ label: "MD / Template", bgClass: "bg-teal-500/20 text-teal-300" })
+    } else if (command.scope === "template") {
+      tags.push({ label: "Template", bgClass: "bg-purple-500/20 text-purple-300" })
+    }
     tags.push({ label: "Builtin", bgClass: "bg-white/10 text-white/50" })
   }
 
@@ -126,6 +137,47 @@ export const MarkdownSlashCommandMenu = ({
     position: displayPosition,
   } = displayData
 
+  const renderCommandItem = (command: MarkdownSlashCommand, index: number): React.JSX.Element => {
+    const isActive = index === displayActiveIndex
+    const tags = getCommandTags(command)
+
+    return (
+      <div
+        key={command.id}
+        data-index={index}
+        aria-selected={isActive}
+        className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+          isActive ? "bg-white/8 text-white" : "text-white/75"
+        }`}
+        role="option"
+      >
+        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
+          /
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-[13px] leading-none text-white">{command.label}</span>
+          <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+            {command.description}
+          </span>
+        </span>
+        {tags.length > 0 && (
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {tags.map((tag) => (
+              <LxTag
+                key={tag.label}
+                bgClass={tag.bgClass}
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                {tag.label}
+              </LxTag>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
       ref={panelRef}
@@ -136,46 +188,7 @@ export const MarkdownSlashCommandMenu = ({
       role="listbox"
       style={displayPosition}
     >
-      {displayCommands.map((command, index) => {
-        const isActive = index === displayActiveIndex
-        const tags = getCommandTags(command)
-
-        return (
-          <div
-            key={command.id}
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
-            }`}
-            role="option"
-          >
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
-              /
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="shrink-0 text-[13px] leading-none text-white">{command.label}</span>
-              <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
-                {command.description}
-              </span>
-            </span>
-            {tags.length > 0 && (
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                {tags.map((tag) => (
-                  <LxTag
-                    key={tag.label}
-                    bgClass={tag.bgClass}
-                    className="pointer-events-none shrink-0"
-                    size="small"
-                  >
-                    {tag.label}
-                  </LxTag>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      {displayCommands.map((command, index) => renderCommandItem(command, index))}
     </div>
   )
 }

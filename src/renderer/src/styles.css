@@ -827,6 +827,42 @@ select {
   white-space: pre-wrap;
 }
 
+.markdown-preview .markdown-supple-block {
+  margin: 0.6em 0;
+  border-radius: 4px;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  background: rgba(251, 146, 60, 0.04);
+}
+
+.markdown-preview .markdown-supple-block-header {
+  display: flex;
+  height: 26px;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 4px 4px 0 0;
+  background: rgba(251, 146, 60, 0.07);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 0.75rem;
+}
+
+.markdown-preview .markdown-supple-label {
+  color: #fb923c;
+}
+
+.markdown-preview .markdown-supple-title {
+  color: #94a3b8;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-preview .markdown-supple-content {
+  padding: 0.1rem 1rem;
+}
+
 .markdown-preview table {
   width: 100%;
   max-width: 100%;

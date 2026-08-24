@@ -35,15 +35,21 @@ export const MarkdownActionCopyButton = ({
   text,
   label,
   isTemplate = false,
+  isSupple = false,
 }: {
   text: string
   label?: string
   isTemplate?: boolean
+  isSupple?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
-  const defaultLabel = isTemplate ? t("markdown.copyTemplate") : t("markdown.copyCode")
+  const defaultLabel = isSupple
+    ? t("markdown.copySupple")
+    : isTemplate
+      ? t("markdown.copyTemplate")
+      : t("markdown.copyCode")
   const copyLabel = label ?? defaultLabel
 
   useEffect(
@@ -88,22 +94,28 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
-// 删除按钮：点击后弹出二次确认，确认后删除当前模板块。
+// 删除按钮：点击后弹出二次确认，确认后删除当前模板块/补充块。
 export const MarkdownActionDeleteButton = ({
   onDelete,
+  isSupple = false,
 }: {
   onDelete: () => void
+  isSupple?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
+  const confirmText = isSupple
+    ? t("markdown.confirmDeleteSupple")
+    : t("markdown.confirmDeleteTemplate")
+  const labelText = isSupple ? t("markdown.deleteSupple") : t("markdown.deleteTemplate")
 
   return (
     <LxTooltip
-      content={t("markdown.confirmDeleteTemplate")}
+      content={confirmText}
       placement="bottom"
       onConfirm={onDelete}
     >
       <button
-        aria-label={t("markdown.deleteTemplate")}
+        aria-label={labelText}
         type="button"
         style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
         onClick={(event) => {
@@ -117,23 +129,33 @@ export const MarkdownActionDeleteButton = ({
   )
 }
 
-// 折叠按钮：切换代码块/模板块内容的折叠状态。
+// 折叠按钮：切换代码块/模板块/补充块内容的折叠状态。
 export const MarkdownActionFoldButton = ({
   isFolded,
   label,
   unfoldLabel,
   isTemplate = false,
+  isSupple = false,
   onToggle,
 }: {
   isFolded: boolean
   label?: string
   unfoldLabel?: string
   isTemplate?: boolean
+  isSupple?: boolean
   onToggle: () => void
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const defaultFold = isTemplate ? t("markdown.foldTemplate") : t("markdown.foldCode")
-  const defaultUnfold = isTemplate ? t("markdown.unfoldTemplate") : t("markdown.unfoldCode")
+  const defaultFold = isSupple
+    ? t("markdown.foldSupple")
+    : isTemplate
+      ? t("markdown.foldTemplate")
+      : t("markdown.foldCode")
+  const defaultUnfold = isSupple
+    ? t("markdown.unfoldSupple")
+    : isTemplate
+      ? t("markdown.unfoldTemplate")
+      : t("markdown.unfoldCode")
   const foldText = label ?? defaultFold
   const unfoldText = unfoldLabel ?? defaultUnfold
 

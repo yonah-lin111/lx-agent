@@ -14,6 +14,8 @@ import { createRoot, type Root } from "react-dom/client"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateStatus,
+  MARKDOWN_SUPPLE_END_RE,
+  MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
   type MarkdownTemplateStatus,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -338,6 +340,51 @@ export const editorTheme = EditorView.theme(
     ".cm-md-template-hidden-line": {
       display: "none !important",
     },
+    ".cm-md-supple-hidden-line": {
+      display: "none !important",
+    },
+    ".cm-md-supple-command, .cm-md-supple-command *": {
+      color: "#fb923c !important",
+      backgroundColor: "rgba(251, 146, 60, 0.15) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-supple-marker, .cm-md-supple-marker *": {
+      color: "#fb923c !important",
+      fontWeight: "700",
+    },
+    ".cm-md-supple-start-line": {
+      borderTop: "1.5px solid rgba(251, 146, 60, 0.45)",
+      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
+      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
+      borderBottom: "1px solid rgba(251, 146, 60, 0.25)",
+      borderTopLeftRadius: "4px",
+      borderTopRightRadius: "4px",
+      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      paddingLeft: "8px",
+      // 操作按钮绝对定位在行末，预留空间避免遮挡。
+      paddingRight: "72px",
+      boxSizing: "border-box",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-supple-middle-line": {
+      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
+      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
+      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      paddingLeft: "8px",
+    },
+    ".cm-md-supple-end-line": {
+      borderBottom: "1.5px solid rgba(251, 146, 60, 0.45)",
+      borderLeft: "2px solid rgba(251, 146, 60, 0.45)",
+      borderRight: "2px solid rgba(251, 146, 60, 0.45)",
+      borderBottomLeftRadius: "4px",
+      borderBottomRightRadius: "4px",
+      backgroundColor: "rgba(251, 146, 60, 0.05)",
+      paddingLeft: "8px",
+      paddingBottom: "4px",
+    },
     ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
       color: "#fb7185 !important",
       fontWeight: "700",
@@ -535,6 +582,7 @@ class CodeBlockActionWidget extends WidgetType {
     readonly templateStatus: TemplateStatusAction | null = null,
     readonly templateStartLine: number | null = null,
     readonly onDeleteTemplate: (() => void) | null = null,
+    readonly isSupple = false,
   ) {
     super()
   }
@@ -547,7 +595,8 @@ class CodeBlockActionWidget extends WidgetType {
       this.actionClassName === other.actionClassName &&
       this.templateStatus?.line === other.templateStatus?.line &&
       this.templateStatus?.status === other.templateStatus?.status &&
-      this.templateStartLine === other.templateStartLine
+      this.templateStartLine === other.templateStartLine &&
+      this.isSupple === other.isSupple
     )
   }
 
@@ -577,9 +626,12 @@ class CodeBlockActionWidget extends WidgetType {
         }),
       )
     }
-    if (this.templateStatus && this.onDeleteTemplate) {
+    if ((this.templateStatus || this.isSupple) && this.onDeleteTemplate) {
       actionNodes.push(
-        createElement(MarkdownActionDeleteButton, { onDelete: this.onDeleteTemplate }),
+        createElement(MarkdownActionDeleteButton, {
+          onDelete: this.onDeleteTemplate,
+          isSupple: this.isSupple,
+        }),
       )
     }
     actionNodes.push(
@@ -587,6 +639,7 @@ class CodeBlockActionWidget extends WidgetType {
         text: this.codeText,
         label: this.copyTitle,
         isTemplate,
+        isSupple: this.isSupple,
       }),
     )
     if (this.showFoldBtn) {
@@ -596,6 +649,7 @@ class CodeBlockActionWidget extends WidgetType {
           label: this.foldTitle,
           unfoldLabel: this.unfoldTitle,
           isTemplate,
+          isSupple: this.isSupple,
           onToggle: this.onToggleFold,
         }),
       )
@@ -626,6 +680,7 @@ export const markdownMarkerHighlight = (
       decorations: ReturnType<typeof buildMarkdownMarkerDecorations>
       foldedIndices = new Set<number>()
       templateFoldedIndices = new Set<number>()
+      suppleFoldedIndices = new Set<number>()
       wasComposing = false
       referencedNamesKey = ""
 
@@ -640,6 +695,9 @@ export const markdownMarkerHighlight = (
           showFolding,
           getReferencedProjectNames,
           (startLine, endLine) => this.deleteTemplateBlock(view, startLine, endLine),
+          this.suppleFoldedIndices,
+          (index) => this.toggleSuppleFold(view, index),
+          (startLine, endLine) => this.deleteSuppleBlock(view, startLine, endLine),
         )
       }
 
@@ -680,6 +738,9 @@ export const markdownMarkerHighlight = (
           showFolding,
           getReferencedProjectNames,
           (startLine, endLine) => this.deleteTemplateBlock(update.view, startLine, endLine),
+          this.suppleFoldedIndices,
+          (index) => this.toggleSuppleFold(update.view, index),
+          (startLine, endLine) => this.deleteSuppleBlock(update.view, startLine, endLine),
         )
       }
 
@@ -701,6 +762,15 @@ export const markdownMarkerHighlight = (
         view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
 
+      toggleSuppleFold(view: EditorView, index: number) {
+        if (this.suppleFoldedIndices.has(index)) {
+          this.suppleFoldedIndices.delete(index)
+        } else {
+          this.suppleFoldedIndices.add(index)
+        }
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
+      }
+
       cycleTemplateStatus(view: EditorView, line: number) {
         const docLine = view.state.doc.line(line + 1)
         const nextLineText = cycleMarkdownTemplateStatus(docLine.text)
@@ -712,6 +782,20 @@ export const markdownMarkerHighlight = (
       deleteTemplateBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
         // 未闭合模板块（无结束行）视为延伸到文档末尾。
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const startDocLine = doc.line(startLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
+
+      deleteSuppleBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
         const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
         const startDocLine = doc.line(startLine + 1)
         const endDocLine = doc.line(safeEndLine + 1)
@@ -743,6 +827,9 @@ const buildMarkdownMarkerDecorations = (
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
   onDeleteTemplateBlock: (startLine: number, endLine: number) => void = () => {},
+  suppleFoldedIndices = new Set<number>(),
+  onToggleSuppleFold: (index: number) => void = () => {},
+  onDeleteSuppleBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -760,6 +847,10 @@ const buildMarkdownMarkerDecorations = (
   let currentTemplateStatus: MarkdownTemplateStatus = "todo"
   let templateBlockIndex = 0
   let currentTemplateTextLines: string[] = []
+  let isInsideSuppleBlock = false
+  let currentSuppleFolded = false
+  let suppleBlockIndex = 0
+  let currentSuppleTextLines: string[] = []
 
   const templateStatusLineClass = (status: MarkdownTemplateStatus): string =>
     status === "todo" ? "" : ` cm-md-template-line-${status.replace("_", "-")}`
@@ -999,10 +1090,103 @@ const buildMarkdownMarkerDecorations = (
           : `cm-md-template-end-line${templateStatusLineClass((statusMatch?.[1] as MarkdownTemplateStatus | undefined) ?? "todo")}`,
       })
       isInsideTemplateBlock = false
+      isInsideSuppleBlock = false
       currentTemplateFolded = false
       currentTemplateStatus = "todo"
       offset += line.length + 1
       continue
+    }
+
+    // supple 补充块：识别 +++ suppleTemplate / +++ supple 起止行，给予独立装饰。
+    if (!currentTemplateFolded) {
+      if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+        const currentSuppleIndex = suppleBlockIndex++
+        currentSuppleFolded = suppleFoldedIndices.has(currentSuppleIndex)
+        currentSuppleTextLines = []
+        let suppleEndIndex = -1
+        for (let j = i + 1; j < lines.length; j++) {
+          const subLine = lines[j]
+          if (MARKDOWN_SUPPLE_END_RE.test(subLine)) {
+            suppleEndIndex = j
+            break
+          }
+          currentSuppleTextLines.push(subLine)
+        }
+
+        const markerStart = line.indexOf("+++")
+        addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
+        const commandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)/)
+        if (commandMatch && commandMatch.index !== undefined) {
+          const commandStart = line.indexOf(commandMatch[1], markerStart + 3)
+          if (commandStart !== -1) {
+            addMarkerAlways(
+              commandStart,
+              commandStart + commandMatch[1].length,
+              "cm-md-supple-command",
+            )
+          }
+        }
+        allDecos.push({
+          type: "widget",
+          from: offset + line.length,
+          to: offset + line.length,
+          widget: new CodeBlockActionWidget(
+            stripEmptyTemplateItems(
+              stripMarkdownTemplateComments(currentSuppleTextLines.join("\n")),
+            ),
+            currentSuppleFolded,
+            () => onToggleSuppleFold(currentSuppleIndex),
+            showFolding,
+            "cm-supple-block-action-wrap",
+            undefined,
+            undefined,
+            undefined,
+            null,
+            null,
+            () => onDeleteSuppleBlock(i, suppleEndIndex),
+            true,
+          ),
+        })
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: "cm-md-supple-start-line",
+        })
+        isInsideSuppleBlock = true
+        offset += line.length + 1
+        continue
+      }
+
+      if (isInsideSuppleBlock && MARKDOWN_SUPPLE_END_RE.test(line)) {
+        const markerStart = line.indexOf("+++")
+        addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: currentSuppleFolded
+            ? "cm-md-supple-hidden-line"
+            : "cm-md-supple-end-line",
+        })
+        isInsideSuppleBlock = false
+        currentSuppleFolded = false
+        offset += line.length + 1
+        continue
+      }
+
+      if (isInsideSuppleBlock) {
+        const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(line)
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: currentSuppleFolded
+            ? "cm-md-supple-hidden-line"
+            : isCommentLine
+              ? "cm-md-template-comment-line"
+              : "cm-md-supple-middle-line",
+        })
+        offset += line.length + 1
+        continue
+      }
     }
 
     if (isInsideTemplateBlock) {
