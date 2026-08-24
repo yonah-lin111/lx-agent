@@ -52,6 +52,17 @@ export const AgentExecutionFlowItem = ({
 
   const meta = getKindMeta(step)
 
+  const isRunning = step.status === "running"
+  const isQuestionStep = step.toolContent?.toolName === "question"
+
+  // running 期间强制折叠详情（question 挂起面板除外），加载结束后才按默认规则展开
+  const effectiveExpanded = isQuestionStep ? isExpanded : isExpanded && !isRunning
+
+  const handleToggleExpand = useCallback((): void => {
+    if (isRunning && !isQuestionStep) return
+    onToggleExpand()
+  }, [isRunning, isQuestionStep, onToggleExpand])
+
   const handleCopy = useCallback(async (e: React.MouseEvent, contentToCopy: string) => {
     e.stopPropagation()
     const success = await copyToClipboard(contentToCopy)
@@ -88,11 +99,11 @@ export const AgentExecutionFlowItem = ({
       <div
         role="button"
         tabIndex={0}
-        onClick={onToggleExpand}
+        onClick={handleToggleExpand}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
-            onToggleExpand()
+            handleToggleExpand()
           }
         }}
         className="agent-execution-flow-step-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none"
@@ -100,7 +111,7 @@ export const AgentExecutionFlowItem = ({
         <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none">
           {/* 折叠箭头 */}
           <div className="flex shrink-0 items-center text-white/40">
-            {isExpanded ? (
+            {effectiveExpanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
               <ChevronRight className="h-3.5 w-3.5" />
@@ -244,7 +255,7 @@ export const AgentExecutionFlowItem = ({
       )}
 
       {/* 展开详情区（question 工具的详情已内嵌展示，跳过空详情体） */}
-      {isExpanded && step.toolContent?.toolName !== "question" ? (
+      {effectiveExpanded && step.toolContent?.toolName !== "question" ? (
         <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && <FlowItemSystemContent content={step.systemContent} />}
