@@ -332,6 +332,24 @@ export const LxMarkdownEditor = ({
     return true
   }
 
+  const scrollToBottom = useCallback((): void => {
+    const view = editorViewRef.current
+    if (!view) return
+    const docLength = view.state.doc.length
+    view.dispatch({
+      selection: { anchor: docLength },
+      scrollIntoView: true,
+    })
+    requestAnimationFrame(() => {
+      if (editorViewRef.current) {
+        editorViewRef.current.scrollDOM.scrollTop = editorViewRef.current.scrollDOM.scrollHeight
+      }
+      if (previewRef.current) {
+        previewRef.current.scrollTop = previewRef.current.scrollHeight
+      }
+    })
+  }, [])
+
   const scrollToLine = useCallback((line: number): void => {
     const view = editorViewRef.current
     if (!view) return
@@ -418,11 +436,14 @@ export const LxMarkdownEditor = ({
     if (view.state.doc.toString() !== nextContent) {
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+        selection: { anchor: nextContent.length },
+        scrollIntoView: true,
         // 页面切换不进入撤销历史。
         annotations: [Transaction.addToHistory.of(false)],
       })
+      scrollToBottom()
     }
-  }, [activePage, pageMode])
+  }, [activePage, pageMode, scrollToBottom])
 
   const switchPage = (index: number): void => {
     if (!pages || index < 0 || index >= pages.length || index === activePageIndex) return
@@ -951,6 +972,7 @@ export const LxMarkdownEditor = ({
 
     const state = EditorState.create({
       doc: content,
+      selection: { anchor: content.length },
       extensions: [
         history(),
         markdown({
@@ -1372,6 +1394,7 @@ export const LxMarkdownEditor = ({
     view.scrollDOM.addEventListener("scroll", handleScroll, { passive: true })
     // Initialize active line on load
     handleScroll()
+    scrollToBottom()
 
     return () => {
       view.scrollDOM.removeEventListener("scroll", handleScroll)
