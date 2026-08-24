@@ -15,9 +15,9 @@ import { DEFAULT_MAX_BYTES, truncateTail } from "./truncate"
 
 // 子代理系统提示词后缀（追加在父系统提示词之后）。
 const SUBAGENT_PROMPT_SUFFIX = [
-  "你现在是子代理，专注完成被委托的独立子任务。",
-  "只使用完成该任务必要的工具；达成目标后立即停止，用简体中文简要总结结果。",
-  "不要执行任务范围之外的多余探索。",
+  "You are now a sub-agent focused on completing the delegated independent sub-task.",
+  "Only use tools necessary to complete the task; stop immediately after achieving the goal and briefly summarize the result.",
+  "Do not perform unnecessary exploration beyond the task scope.",
 ].join("\n")
 
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
@@ -25,9 +25,9 @@ const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
 // task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
-  description: z.string().describe("任务简短描述（1-5 个词），用于进度显示"),
-  prompt: z.string().describe("要委托给子代理的完整任务提示词，需包含充足上下文"),
-  name: z.string().optional().describe("子代理名称（如 'explorer' / 'coder'）"),
+  description: z.string().describe("Brief task description (1-5 words) for progress display"),
+  prompt: z.string().describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
+  name: z.string().optional().describe("Sub-agent name (e.g., 'explorer' / 'coder')"),
 })
 
 export type TaskInput = z.infer<typeof TASK_INPUT_SCHEMA>
@@ -152,11 +152,11 @@ export const createTaskTool = (
 
   return {
     name: "task",
-    label: "子代理",
+    label: "Subagent",
     description:
-      "委托一个独立子任务给子代理（如并行搜索、独立探索、长命令执行）。" +
-      "子代理在独立上下文中运行自己的工具循环，最终文本作为结果返回。" +
-      "当任务可分解为互不依赖的子任务时使用；需要父上下文决策的任务不要委托。",
+      "Delegate an independent sub-task to a sub-agent (e.g., parallel search, independent exploration, long-running command execution). " +
+      "The sub-agent runs its own tool loop in an independent context, returning the final text as the result. " +
+      "Use when a task can be decomposed into independent sub-tasks; do not delegate tasks that require parent context decisions.",
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
       const subAgent = new Agent({
@@ -271,9 +271,9 @@ export const createTaskTool = (
         content = bounded.content
         if (bounded.filePath) details.subagent.filePath = bounded.filePath
       } else if (error) {
-        content = `子代理执行失败：${error}`
+        content = `Subagent execution failed: ${error}`
       } else {
-        content = "（子代理无文本输出）"
+        content = "(Subagent produced no text output)"
       }
       return { content: [{ type: "text", text: content }], details }
     },

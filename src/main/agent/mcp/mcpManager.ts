@@ -119,7 +119,7 @@ export const wrapMcpTool = (
     )) as CallToolResult
     if (result.isError) {
       const message = contentToText(result.content)
-      throw new Error(message || `MCP 工具 ${def.name} 执行失败`)
+      throw new Error(message || `MCP tool ${def.name} execution failed`)
     }
     if (result.content.length > 0 || result.structuredContent == null) {
       return { content: [{ type: "text", text: contentToText(result.content) }] }
@@ -223,7 +223,7 @@ class McpManager {
             status: "failed",
             tools: [],
             timeout: state.timeout,
-            error: "MCP server 连接已关闭",
+            error: "MCP server connection closed",
           })
         }
       }

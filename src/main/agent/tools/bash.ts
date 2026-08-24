@@ -19,17 +19,17 @@ const DEFAULT_TIMEOUT_SECONDS = 120
 const MAX_TIMEOUT_MS = 2_147_483_647
 
 const bashSchema = z.object({
-  command: z.string().describe("要执行的 shell 命令"),
-  timeout: z.number().describe("超时秒数（可选，同步执行时默认 120 秒）").optional(),
+  command: z.string().describe("Shell command to execute"),
+  timeout: z.number().describe("Timeout in seconds (optional, default 120 for synchronous execution)").optional(),
   background: z
     .boolean()
     .describe(
-      "是否在后台启动长耗时命令（如开发服务器、长构建、监听进程）。为 true 时立即返回任务 ID，不阻塞主流程。",
+      "Whether to start a long-running command in the background (e.g., dev servers, long builds, listener processes). When true, returns a job ID immediately without blocking.",
     )
     .optional(),
   session: z
     .string()
-    .describe("持久 shell 会话名称（可选）。指定后将在同名持久终端会话中连续执行，保持环境变量与工作目录状态。")
+    .describe("Persistent shell session name (optional). When specified, commands execute consecutively in a persistent terminal session, preserving environment variables and working directory state.")
     .optional(),
 })
 
@@ -53,8 +53,8 @@ export const createBashTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof bashSchema> => ({
   name: "bash",
-  label: "执行命令",
-  description: `在项目根目录执行 shell 命令，返回 stdout 与 stderr 合并输出。输出截断保留最后 ${DEFAULT_MAX_LINES} 行或 ${DEFAULT_MAX_BYTES / 1024}KB。可传 timeout 指定超时秒数，或传 background: true 在后台运行长耗时命令。`,
+  label: "Execute command",
+  description: `Execute a shell command in the project root directory, returning combined stdout and stderr output. Output is truncated to the last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB. Use timeout to specify a timeout in seconds, or background: true to run long-running commands in the background.`,
   inputSchema: bashSchema,
   executionMode: "sequential",
   execute: async (toolCallId, params, signal) => {
@@ -62,7 +62,7 @@ export const createBashTool = (
       await access(cwd, constants.F_OK)
     } catch {
       return {
-        content: [{ type: "text", text: `工作目录不存在: ${cwd}\n无法执行命令。` }],
+        content: [{ type: "text", text: `Working directory not found: ${cwd}\nCannot execute command.` }],
         details: { error: "cwd_not_found" },
       }
     }
@@ -72,7 +72,7 @@ export const createBashTool = (
     // 互斥校验：background 与 session 不可同时使用
     if (params.background && params.session) {
       return {
-        content: [{ type: "text", text: "参数错误：background 与 session 互斥，不能在持久会话中启动后台作业。" }],
+        content: [{ type: "text", text: "Invalid arguments: background and session are mutually exclusive, cannot start a background job in a persistent session." }],
         details: { error: "invalid_args" },
       }
     }
@@ -98,7 +98,7 @@ export const createBashTool = (
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err)
         return {
-          content: [{ type: "text", text: `后台任务启动失败: ${errorMsg}` }],
+          content: [{ type: "text", text: `Failed to start background job: ${errorMsg}` }],
           details: { error: errorMsg },
         }
       }
@@ -109,14 +109,14 @@ export const createBashTool = (
     const timeoutSeconds = params.timeout ?? DEFAULT_TIMEOUT_SECONDS
     if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
       return {
-        content: [{ type: "text", text: "无效的 timeout：必须是正数秒。" }],
+        content: [{ type: "text", text: "Invalid timeout: must be a positive number of seconds." }],
         details: { error: "invalid_timeout" },
       }
     }
     const timeoutMs = Math.min(timeoutSeconds * 1000, MAX_TIMEOUT_MS)
 
     if (signal?.aborted) {
-      return { content: [{ type: "text", text: "命令已中止。" }], details: { aborted: true } }
+      return {         content: [{ type: "text", text: "Command aborted." }], details: { aborted: true } }
     }
 
     // 持久 Shell 执行分支
@@ -139,7 +139,7 @@ export const createBashTool = (
 
         if (exitCode !== 0) {
           return {
-            content: [{ type: "text", text: appendStatus(text, `命令退出码 ${exitCode}`) }],
+            content: [{ type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) }],
             details: mergedDetails,
           }
         }
@@ -147,7 +147,7 @@ export const createBashTool = (
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err)
         return {
-          content: [{ type: "text", text: `持久会话执行失败: ${errorMsg}` }],
+          content: [{ type: "text", text: `Persistent session execution failed: ${errorMsg}` }],
           details: { error: errorMsg, session: params.session },
         }
       }
@@ -207,14 +207,14 @@ export const createBashTool = (
 
       if (signal?.aborted) {
         return {
-          content: [{ type: "text", text: appendStatus(rawOutput, "命令已中止") }],
+          content: [{ type: "text", text: appendStatus(rawOutput, "Command aborted") }],
           details: { aborted: true },
         }
       }
       if (timedOut) {
         return {
           content: [
-            { type: "text", text: appendStatus(rawOutput, `命令超过 ${timeoutSeconds} 秒超时`) },
+            { type: "text", text: appendStatus(rawOutput, `Command timed out after ${timeoutSeconds} seconds`) },
           ],
           details: { timedOut: true },
         }
@@ -225,7 +225,7 @@ export const createBashTool = (
       const { text, details } = formatOutput(rawOutput, truncation, { sessionId, toolCallId })
       if (exitCode !== 0 && exitCode !== null) {
         return {
-          content: [{ type: "text", text: appendStatus(text, `命令退出码 ${exitCode}`) }],
+          content: [{ type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) }],
           details,
         }
       }

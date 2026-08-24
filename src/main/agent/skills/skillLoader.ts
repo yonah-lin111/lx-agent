@@ -69,19 +69,19 @@ const addIgnoreRules = (matcher: IgnoreMatcher, dir: string, rootDir: string): v
 const validateName = (name: string): string[] => {
   const errors: string[] = []
   if (name.length > MAX_NAME_LENGTH)
-    errors.push(`name 超过 ${MAX_NAME_LENGTH} 字符 (${name.length})`)
-  if (!/^[a-z0-9-]+$/.test(name)) errors.push("name 只能包含小写 a-z、0-9 与连字符")
-  if (name.startsWith("-") || name.endsWith("-")) errors.push("name 不能以连字符开头或结尾")
-  if (name.includes("--")) errors.push("name 不能包含连续连字符")
+    errors.push(`name exceeds ${MAX_NAME_LENGTH} characters (${name.length})`)
+  if (!/^[a-z0-9-]+$/.test(name)) errors.push("name must only contain lowercase a-z, 0-9, and hyphens")
+  if (name.startsWith("-") || name.endsWith("-")) errors.push("name must not start or end with a hyphen")
+  if (name.includes("--")) errors.push("name must not contain consecutive hyphens")
   return errors
 }
 
 // 校验描述：必填；超长仅记警告仍加载。
 const validateDescription = (description: string | undefined): string[] => {
   const errors: string[] = []
-  if (!description || description.trim() === "") errors.push("description 必填")
+  if (!description || description.trim() === "") errors.push("description is required")
   else if (description.length > MAX_DESCRIPTION_LENGTH)
-    errors.push(`description 超过 ${MAX_DESCRIPTION_LENGTH} 字符`)
+    errors.push(`description exceeds ${MAX_DESCRIPTION_LENGTH} characters`)
   return errors
 }
 
@@ -111,7 +111,7 @@ const loadSkillFromFile = (filePath: string, diagnostics: string[]): LoadedSkill
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    diagnostics.push(`[skill] ${filePath}: 解析失败 - ${message}`)
+    diagnostics.push(`[skill] ${filePath}: failed to parse - ${message}`)
     return null
   }
 }
@@ -207,7 +207,7 @@ const loadSkills = (cwd: string): LoadedSkill[] => {
         // 同一物理文件重复扫描（如 cwd 为 home 时双来源重合）直接跳过，不记冲突。
         if (isSameFile(existing.filePath, skill.filePath)) continue
         diagnostics.push(
-          `[skill] 名称冲突 "${skill.name}"：${skill.filePath} 被 ${existing.filePath} 覆盖`,
+          `[skill] name conflict "${skill.name}": ${skill.filePath} overridden by ${existing.filePath}`,
         )
         continue
       }
