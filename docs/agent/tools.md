@@ -95,7 +95,11 @@ argument-hint: [target_file]          # 参数提示（缺省由正文占位符�
 
 ## 5. instruction 加载（AGENTS.md / CLAUDE.md）
 
-- 来源与优先级：user 级 `~/.lx/AGENTS.md` + 项目级 `<cwd>/AGENTS.md` → `<cwd>/CLAUDE.md`（命中即停）；只读 cwd 根目录，不递归 findUp。
+- 来源与优先级：
+  1. user 级 `~/.lx/AGENTS.md`
+  2. 项目沿途 AGENTS.md（从 Git 仓库根目录到 cwd，由浅入深按顺序拼接注入，深层靠后生效；非 Git 仓库回退为仅读取 `<cwd>/AGENTS.md`）
+  3. 根级 CLAUDE.md fallback（仅当项目沿途未找到任何 AGENTS.md 时在 cwd 尝试读取 `<cwd>/CLAUDE.md`）
+- 子目录 AGENTS.md：沿途之外的子目录 AGENTS.md 不由 harness 自动预加载，在系统提示词通用行为层声明规范——触碰某子目录文件前模型应检查该子树下的 AGENTS.md（经 `read` 工具读取）。
 - 注入时机：会话装配时一次性拼入 system prompt（`Instructions from: <path>` 块）；cwd 冻结故无需每轮重读；子代理复用父 systemPrompt 自然继承。
 - 失败语义：缺失/读取失败静默跳过；单文件读取截断防淹没上下文。
 

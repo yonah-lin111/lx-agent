@@ -111,7 +111,7 @@ aiSdkStreamFn 内置：每个 chunk `feed()` 重置计时；默认 30s 无增量
 
 ## 11. 提示词装配与执行流程面板
 
-- **systemPromptManager**（prompts/systemPromptManager.ts）：分层装配 system prompt——sections（身份/persona/instructions/skills 等，带优先级）+ contexts（OS/cwd/git 分支/时间等运行时注入）+ variables（模板变量表）→ `rendered` 完整串；skill XML 块与 instruction 文件作为 section 注册。
+- **systemPromptManager**（prompts/systemPromptManager.ts）：分层装配 system prompt——sections（身份/通用行为层 behavior/persona/instructions/skills 等，带优先级）+ contexts（OS/cwd/git 分支/时间等运行时注入）+ variables（模板变量表）→ `rendered` 完整串；skill XML 块与 instruction 文件作为 section 注册，环境块作为 context 注册。
 - **getPromptAssembly**：invoke 返回 `{ sections, contexts, variables, activeTools, rendered }`，供执行流程面板展示「系统到底看到了什么」。
 - **执行流程面板**（AgentExecutionFlowList）：只读时间轴快照，`executionFlow.ts` 将会话消息 + PromptAssembly 投影为步骤序列（system / user / thinking / tool / subagent / compaction / assistant）；打开瞬间捕获快照隔离流式跳动，手动刷新；`scrollbar-gutter: stable` 防抖动。
 

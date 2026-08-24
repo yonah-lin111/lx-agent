@@ -46,6 +46,24 @@ describe("instructionLoader", () => {
     expect(result[0]?.path).toBe(join(appDataRoot, "AGENTS.md"))
   })
 
+  it("支持 Git 仓库根目录到深层子目录沿途 AGENTS.md 链式加载（根在前，深层在后）", async () => {
+    const subDir = join(projectCwd, "packages", "core")
+    mkdirSync(subDir, { recursive: true })
+    writeFileSync(join(projectCwd, "AGENTS.md"), "root rules")
+    writeFileSync(join(subDir, "AGENTS.md"), "sub rules")
+
+    const { loadInstructions, getDirectoryChain } = await importLoader()
+    const chain = getDirectoryChain(projectCwd, subDir)
+    expect(chain).toEqual([
+      projectCwd,
+      join(projectCwd, "packages"),
+      join(projectCwd, "packages", "core"),
+    ])
+
+    const result = loadInstructions(subDir)
+    expect(result).toBeDefined()
+  })
+
   it("项目级 AGENTS.md 优先于 CLAUDE.md（命中即停）", async () => {
     writeFileSync(join(projectCwd, "AGENTS.md"), "agents")
     writeFileSync(join(projectCwd, "CLAUDE.md"), "claude")

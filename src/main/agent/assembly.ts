@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process"
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
@@ -36,6 +37,46 @@ export interface BuildSystemPromptOptions {
   sessionId?: string
   activeSkills?: LoadedSkill[]
   manager?: SystemPromptManager
+  variables?: Record<string, string | undefined>
+}
+
+/** 同步收集环境上下文变量 (cwd, platform, date, git repo_root & git_branch) */
+export const collectEnvironmentVariables = (cwd?: string): Record<string, string | undefined> => {
+  const vars: Record<string, string | undefined> = {
+    platform: process.platform,
+    date: new Date().toDateString(),
+  }
+  if (cwd) {
+    vars.cwd = cwd
+    try {
+      const repoRoot = execSync("git rev-parse --show-toplevel", {
+        cwd,
+        timeout: 1000,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim()
+      if (repoRoot) {
+        vars.repo_root = repoRoot
+      }
+    } catch {
+      // 非 git 仓库或超时，静默跳过
+    }
+
+    try {
+      const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+        cwd,
+        timeout: 1000,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim()
+      if (branch) {
+        vars.git_branch = branch
+      }
+    } catch {
+      // 非 git 仓库或超时，静默跳过
+    }
+  }
+  return vars
 }
 
 // 动态装配系统提示词（异步）。
@@ -43,20 +84,24 @@ export const buildSystemPrompt = async (
   options: BuildSystemPromptOptions = {},
 ): Promise<string> => {
   const manager = options.manager ?? defaultSystemPromptManager
+  const envVars = collectEnvironmentVariables(options.cwd)
   return manager.render({
     cwd: options.cwd,
     sessionId: options.sessionId,
     activeSkills: options.activeSkills,
+    variables: { ...envVars, ...(options.variables ?? {}) },
   })
 }
 
 // 动态装配系统提示词（同步）。
 export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): string => {
   const manager = options.manager ?? defaultSystemPromptManager
+  const envVars = collectEnvironmentVariables(options.cwd)
   return manager.renderSync({
     cwd: options.cwd,
     sessionId: options.sessionId,
     activeSkills: options.activeSkills,
+    variables: { ...envVars, ...(options.variables ?? {}) },
   })
 }
 
