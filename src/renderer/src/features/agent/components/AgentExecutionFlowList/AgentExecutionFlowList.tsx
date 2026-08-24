@@ -84,6 +84,7 @@ export const AgentExecutionFlowList = forwardRef<
     const [userExpansionOverrides, setUserExpansionOverrides] = useState<Record<string, boolean>>(
       {},
     )
+    const pendingQuestionStepIdsRef = useRef(new Set<string>())
 
     // 获取完整系统提示词装配
     const fetchPromptAssembly = useCallback(async () => {
@@ -123,6 +124,9 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.id in userExpansionOverrides) {
           return userExpansionOverrides[step.id]
         }
+        if (step.toolContent?.toolName === "question") {
+          return step.toolContent.question !== undefined
+        }
         // 默认规则：用户 item 始终默认展开；异常/中断 item 默认展开；最后一轮的 assistant item 默认展开；其余默认折叠
         if (step.kind === "user" || step.kind === "error") {
           return true
@@ -134,6 +138,27 @@ export const AgentExecutionFlowList = forwardRef<
       },
       [userExpansionOverrides, maxTurn],
     )
+
+    // question 完成后清除其手动展开覆盖，恢复完成态默认折叠；历史 question 仍可由用户再次展开查看。
+    useLayoutEffect(() => {
+      const pendingQuestionStepIds = new Set(
+        steps
+          .filter((step) => step.toolContent?.toolName === "question" && step.toolContent.question)
+          .map((step) => step.id),
+      )
+
+      setUserExpansionOverrides((prev) => {
+        let next: Record<string, boolean> | undefined
+        for (const id of pendingQuestionStepIdsRef.current) {
+          if (!pendingQuestionStepIds.has(id) && id in prev) {
+            next ??= { ...prev }
+            delete next[id]
+          }
+        }
+        return next ?? prev
+      })
+      pendingQuestionStepIdsRef.current = pendingQuestionStepIds
+    }, [steps])
 
     // 切换指定步骤的展开/折叠状态并记录手动覆盖
     const toggleStepExpanded = useCallback(
@@ -223,6 +248,29 @@ export const AgentExecutionFlowList = forwardRef<
         el.scrollTop = el.scrollHeight
       }
     }, [filteredSteps, showSkeletonLoading])
+
+    // question 挂起时强制滚动到底部：确保作答面板与提交按钮完整可见（无视用户当前吸底状态）。
+    const pendingQuestionRequestId = useMemo(() => {
+      for (const step of steps) {
+        if (step.toolContent?.toolName === "question" && step.toolContent.question) {
+          return step.toolContent.question.requestId
+        }
+      }
+      return null
+    }, [steps])
+
+    useEffect(() => {
+      if (!pendingQuestionRequestId) return
+      followBottomRef.current = true
+      const el = scrollRef.current
+      if (el) {
+        if (typeof el.scrollTo === "function") {
+          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+        } else {
+          el.scrollTop = el.scrollHeight
+        }
+      }
+    }, [pendingQuestionRequestId])
 
     // 步骤或筛选变化后同步导航按钮可用性。
     useEffect(() => {
@@ -399,7 +447,7 @@ export const AgentExecutionFlowList = forwardRef<
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll [scrollbar-gutter:stable] px-3 py-2 pb-16"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll px-3 py-2 pb-16 [scrollbar-gutter:stable]"
           >
             {filteredSteps.length > 0 ? (
               <div className="flex flex-col gap-1.5">

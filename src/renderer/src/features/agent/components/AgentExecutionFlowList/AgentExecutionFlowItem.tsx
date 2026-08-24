@@ -17,6 +17,7 @@ import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
 import { FlowItemErrorContent } from "./FlowItemErrorContent"
+import { FlowItemQuestionContent } from "./FlowItemQuestionContent"
 import { FlowItemSubagentContent } from "./FlowItemSubagentContent"
 import { FlowItemSystemContent } from "./FlowItemSystemContent"
 import { FlowItemThinkingContent } from "./FlowItemThinkingContent"
@@ -232,8 +233,18 @@ export const AgentExecutionFlowItem = ({
         </div>
       </div>
 
-      {/* 展开详情区 */}
-      {isExpanded && step.status !== "running" && (
+      {/* question 问答面板：挂起时默认展开，完成后默认折叠；折叠时保留作答状态以支持多选。 */}
+      {step.toolContent?.toolName === "question" && (
+        <div
+          hidden={!isExpanded}
+          className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]"
+        >
+          <FlowItemQuestionContent content={step.toolContent} />
+        </div>
+      )}
+
+      {/* 展开详情区（question 工具的详情已内嵌展示，跳过空详情体） */}
+      {isExpanded && step.toolContent?.toolName !== "question" ? (
         <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
           {/* 系统提示词与注入详情 */}
           {step.systemContent && <FlowItemSystemContent content={step.systemContent} />}
@@ -273,7 +284,7 @@ export const AgentExecutionFlowItem = ({
             <FlowItemErrorContent content={step.errorContent} fallbackTitle={step.title} />
           )}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

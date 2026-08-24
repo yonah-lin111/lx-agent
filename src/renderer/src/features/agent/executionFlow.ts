@@ -229,6 +229,8 @@ export const buildExecutionSteps = (
               durationMs: pairedResult?.durationMs,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
+              question: block.question,
+              answers: block.answers,
             },
           })
         }

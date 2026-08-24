@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { QuestionRequest } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
@@ -134,6 +135,104 @@ describe("AgentExecutionFlowList", () => {
     // 工具可见，用户输入不可见
     expect(screen.getByText("bash")).not.toBeNull()
     expect(screen.queryByText("问答")).toBeNull()
+  })
+
+  it("鼠标选择执行流 question 选项时聚焦但不滚动，且仍可正常选中", () => {
+    const question: QuestionRequest = {
+      requestId: "request-1",
+      toolCallId: "call-question",
+      questions: [
+        {
+          question: "选择一个选项",
+          options: [{ label: "选项 A" }, { label: "选项 B" }],
+        },
+      ],
+      sessionId: null,
+    }
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "开始问答" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-question",
+            toolName: "question",
+            args: { questions: question.questions },
+            question,
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+    const option = screen.getByLabelText("选项 A")
+    const focus = vi.fn()
+    Object.defineProperty(option, "focus", { value: focus })
+
+    expect(fireEvent.mouseDown(option)).toBe(false)
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+    fireEvent.click(option)
+
+    expect((option as HTMLInputElement).checked).toBe(true)
+  })
+
+  it("question 挂起时默认展开，完成后折叠且仍可手动查看", () => {
+    const question: QuestionRequest = {
+      requestId: "request-1",
+      toolCallId: "call-question",
+      questions: [{ question: "选择一个选项", options: [{ label: "选项 A" }] }],
+      sessionId: null,
+    }
+    const pendingMessages: ChatMessage[] = [
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-question",
+            toolName: "question",
+            args: { questions: question.questions },
+            question,
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+    const completedMessages: ChatMessage[] = [
+      {
+        ...pendingMessages[0]!,
+        blocks: [
+          {
+            ...pendingMessages[0]!.blocks[0]!,
+            question: undefined,
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { rerender } = render(<AgentExecutionFlowList messages={pendingMessages} />)
+    expect(screen.getByText("选择一个选项").closest("[hidden]")).toBeNull()
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} />)
+    const questionContent = screen.getByText("选择一个选项").closest("[hidden]")
+    expect(questionContent).not.toBeNull()
+    expect(questionContent?.hasAttribute("hidden")).toBe(true)
+
+    fireEvent.click(screen.getByRole("button", { name: /question/i }))
+    expect(questionContent?.hasAttribute("hidden")).toBe(false)
   })
 
   it("默认展开用户步骤与最后一轮 AI 回复，早期 AI 回复默认折叠，且手动操作状态得以保持", () => {
@@ -277,7 +376,9 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByRole("button", { name: /Error \(1\)/ })).not.toBeNull()
 
     // 步骤标题与详情均展开展示错误内容
-    expect(screen.getAllByText("Network connection timeout to LLM provider").length).toBeGreaterThanOrEqual(2)
+    expect(
+      screen.getAllByText("Network connection timeout to LLM provider").length,
+    ).toBeGreaterThanOrEqual(2)
   })
 
   it("当用户主动中止生成时，生成 Cancelled 步骤 item 并展示 aborted 原因", () => {

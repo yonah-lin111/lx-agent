@@ -197,6 +197,10 @@ export interface ExecutionToolContent {
   durationMs?: number
   diff?: AgentDiff
   lsp?: LspToolDetails
+  // 挂起的模型提问（question 工具；question_request 事件回填，作答后清除）。
+  question?: QuestionRequest
+  // question 工具的用户作答（随消息落库/事件回填，只读展示用）。
+  answers?: QuestionAnswer[]
 }
 
 export interface ExecutionSubagentContent {

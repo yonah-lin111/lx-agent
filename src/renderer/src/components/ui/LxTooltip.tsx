@@ -490,9 +490,9 @@ export const LxTooltip = ({
                   {content}
                 </div>
               ) : (
-                <div
-                  className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : undefined}
-                >
+                // 撑满气泡高度，保证 contentClassName 指定固定高度时内部滚动生效；
+                // 气泡高度自适应时百分比高度退化为 auto，无副作用。
+                <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : "h-full"}>
                   {content}
                 </div>
               )}

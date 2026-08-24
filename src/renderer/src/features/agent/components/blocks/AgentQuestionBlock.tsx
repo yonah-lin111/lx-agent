@@ -10,8 +10,6 @@ import {
 import type React from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ChatBlock } from "@/features/agent/types"
@@ -23,20 +21,6 @@ type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 // 单个问题块组件属性类型。
 interface AgentQuestionBlockProps {
   toolCall: ToolCallBlock
-}
-
-// 提问附加 markdown 内容（content 字段；每问独立 previewRef，mermaid 经 fence 规则自动成图）。
-const QuestionMarkdown = ({ content }: { content: string }): React.JSX.Element => {
-  const previewRef = useRef<HTMLDivElement>(null)
-  return (
-    <LxMarkdownPreview
-      html={markdownRenderer.render(content)}
-      previewMode="preview"
-      previewRef={previewRef}
-      className="px-0 text-white/80"
-      contentClassName="py-0 text-white/80 [&_*]:!text-white/80"
-    />
-  )
 }
 
 // 提取问题列表：pending 请求优先，回退 toolCall args。
@@ -186,13 +170,25 @@ export const AgentQuestionBlock = ({
     )
   }
 
+  // 单选题：选中选项即清空该题自定义输入（多选题自定义内容保留）。
+  const clearCustomText = (): void => {
+    setCustomTexts((prev) => prev.map((text, index) => (index === activeIndex ? "" : text)))
+  }
+
   const setSelection = (label: string): void => {
+    clearCustomText()
     setSelections((prev) =>
       prev.map((selected, index) => (index === activeIndex ? [label] : selected)),
     )
   }
 
+  // 单选题自定义输入与选项互斥；多选题自定义内容作为多选的一部分，保留已选选项。
   const setCustomText = (value: string): void => {
+    if (value.trim().length > 0 && !activeQuestion.multiSelect) {
+      setSelections((prev) =>
+        prev.map((selected, index) => (index === activeIndex ? [] : selected)),
+      )
+    }
     setCustomTexts((prev) => prev.map((text, index) => (index === activeIndex ? value : text)))
   }
 
@@ -261,16 +257,11 @@ export const AgentQuestionBlock = ({
             </div>
           )}
 
-          {/* 当前问题：纯文本提问 + 独立 md 内容 + 选项/自定义输入。 */}
+          {/* 当前问题：纯文本提问 + 选项/自定义输入。 */}
           <div className="agent-question-card min-w-0">
             <div className="text-[13px] leading-relaxed text-white/85">
               {activeQuestion.question}
             </div>
-            {activeQuestion.content && (
-              <div className="mt-1">
-                <QuestionMarkdown content={activeQuestion.content} />
-              </div>
-            )}
 
             {activeQuestion.options ? (
               <>
