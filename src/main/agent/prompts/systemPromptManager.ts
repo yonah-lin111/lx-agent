@@ -494,6 +494,7 @@ export const DEFAULT_BEHAVIOR_PROMPT = [
   "",
   "## 编辑约束 (Editing & Instructions)",
   "- 遵循最小修改原则，保持代码既有风格，不过度抽象，注释克制；触碰子目录文件前，应先检查该子树下是否存在 AGENTS.md 规范并予以遵守。",
+  "- 跨多文件的结构化修改优先使用 apply_patch 工具原子更新；单点修改使用 edit/write 即可。",
 ].join("\n")
 
 /** 创建带有 LX Agent 标准默认分层的提示词管理器 */

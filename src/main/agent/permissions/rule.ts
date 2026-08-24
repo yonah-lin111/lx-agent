@@ -1,7 +1,14 @@
 import { globToRegExp } from "@/agent/tools/search"
 
-// 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn；webfetch 拉取外网原文）。
-export const GATED_BUILTIN_TOOLS = new Set(["bash", "write", "edit", "task", "webfetch"])
+// 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn；webfetch 拉取外网原文；apply_patch/write/edit 修改文件）。
+export const GATED_BUILTIN_TOOLS = new Set([
+  "bash",
+  "write",
+  "edit",
+  "apply_patch",
+  "task",
+  "webfetch",
+])
 
 // 豁免工具集：永不询问（纯公开检索 + 本地只读 + 纯交互无副作用）。
 export const EXEMPT_TOOLS = new Set([

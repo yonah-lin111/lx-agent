@@ -58,7 +58,8 @@ interface ToolRegistry {
 | `find` | `{ pattern; path?; limit?=1000 }` | glob 文件搜索：优先 `fd`，降级 readdir + glob |
 | `write` | `{ path; content }` | 写入/覆盖文件，自动建父目录；经 file-mutation-queue 串行化 |
 | `edit` | `{ path; edits: { oldText; newText }[] }` | 精确替换：BOM/CRLF 归一化、oldText 唯一且 edits 不重叠；成功返回结构化 diff；串行化；写后 LSP 自动诊断（见 runtime.md §7） |
-| `bash` | `{ command; timeout?=120s; background? }` | cwd 内执行 shell；进程树超时清理；`background: true` 转 jobRegistry 后台作业（见 runtime.md §8） |
+| `apply_patch` | `{ patch }` | V4A 格式多文件原子补丁（Add/Update/Delete）；全量上下文预校验，任一失败整体回滚；串行落盘与写后 LSP 诊断 |
+| `bash` | `{ command; timeout?=120s; background?; session? }` | cwd 内执行 shell；`background: true` 后台作业；`session` 持久 PTY 终端会话复用环境与 cwd |
 | `time` | `{}` | 本机时间与时区 |
 | `todowrite` | `{ todos: { content; status }[] }` | 任务清单整表替换；纯会话状态不进门控；runner 落 `todo` entry |
 | `web_search` | `{ query; numResults?=8; type? }` | Exa 优先 Tavily 兜底（§6） |

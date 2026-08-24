@@ -100,7 +100,7 @@ export const getToolCategoryMeta = (
   tagColor: "teal" | "purple" | "emerald" | "sky" | "blue" | "default"
   textColor: string
 } => {
-  if (toolName === "edit" || toolName === "write") {
+  if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
     return { icon: Code2, label: "Coding", tagColor: "emerald", textColor: "text-emerald-300" }
   }
   if (toolName === "task") {
@@ -111,6 +111,9 @@ export const getToolCategoryMeta = (
   }
   if (toolName === "web_search" || toolName === "webfetch") {
     return { icon: Search, label: "Web", tagColor: "emerald", textColor: "text-emerald-300" }
+  }
+  if (toolName.startsWith("job_")) {
+    return { icon: Terminal, label: "Tool", tagColor: "sky", textColor: "text-sky-300" }
   }
   if (toolName.includes("_")) {
     return { icon: Terminal, label: "MCP", tagColor: "teal", textColor: "text-cyan-300" }

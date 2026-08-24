@@ -20,7 +20,13 @@ type StepKind = "tool" | "mcp" | "webSearch"
 // 步骤类型：web_search 与内置工具为普通工具，含下划线全名为 MCP 调用。
 const getStepKind = (toolName: string): StepKind => {
   if (toolName === "web_search") return "webSearch"
-  if (toolName.includes("_")) return "mcp"
+  if (
+    !["web_search", "apply_patch", "read_skill", "job_output", "job_list", "job_kill"].includes(
+      toolName,
+    ) &&
+    toolName.includes("_")
+  )
+    return "mcp"
   return "tool"
 }
 

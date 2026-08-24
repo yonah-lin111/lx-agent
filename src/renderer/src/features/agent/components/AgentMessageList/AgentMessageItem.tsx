@@ -81,9 +81,18 @@ const isTodoToolCall = (toolName: string): boolean => toolName === TODO_TOOL_NAM
 // 判断是否为模型提问（question 工具）调用。
 const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
 
-// 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，内置工具名不含下划线）。
+// 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，排除内置下划线工具）。
+const BUILTIN_UNDERSCORE_TOOLS = new Set([
+  "web_search",
+  "apply_patch",
+  "read_skill",
+  "job_output",
+  "job_list",
+  "job_kill",
+])
+
 const isMcpToolCall = (toolName: string): boolean =>
-  toolName !== SKILL_TOOL_NAME && !isWebSearchToolCall(toolName) && toolName.includes("_")
+  !BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_")
 
 const getMcpServerName = (toolName: string): string => {
   const separatorIndex = toolName.indexOf("_")

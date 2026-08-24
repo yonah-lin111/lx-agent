@@ -4,6 +4,7 @@ import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
 import { createReadSkillTool } from "./skills/readSkillTool"
 import type { LoadedSkill } from "./skills/skillLoader"
+import { createApplyPatchTool } from "./tools/applyPatch"
 import { createBashTool } from "./tools/bash"
 import { createEditTool } from "./tools/edit"
 import { createFindTool } from "./tools/find"
@@ -113,6 +114,7 @@ export const ALL_TOOL_NAMES = new Set([
   "find",
   "write",
   "edit",
+  "apply_patch",
   "bash",
   "time",
   "todowrite",
@@ -162,6 +164,7 @@ export const createRegistry = (
   registry.register(createFindTool(cwd, effectiveSessionDeps))
   registry.register(createWriteTool(cwd, lspDeps))
   registry.register(createEditTool(cwd, lspDeps))
+  registry.register(createApplyPatchTool(cwd, lspDeps))
   registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())

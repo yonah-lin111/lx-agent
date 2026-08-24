@@ -253,7 +253,12 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     )
   }
 
-  if (toolName.includes("_")) {
+  if (
+    !["web_search", "apply_patch", "read_skill", "job_output", "job_list", "job_kill"].includes(
+      toolName,
+    ) &&
+    toolName.includes("_")
+  ) {
     const sepIdx = toolName.indexOf("_")
     const serverName = toolName.slice(0, sepIdx)
     const method = toolName.slice(sepIdx + 1)
