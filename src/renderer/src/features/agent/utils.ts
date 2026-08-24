@@ -96,6 +96,7 @@ export const toChatMessage = (
             .map((block) => (block.type === "text" ? block.text : "[图片]"))
             .join("\n"),
           isError: message.isError,
+          durationMs: message.durationMs,
           ...(message.diff ? { diff: message.diff } : {}),
           ...(message.subagent ? { subagent: message.subagent } : {}),
           ...(message.lsp ? { lsp: message.lsp } : {}),
@@ -145,6 +146,7 @@ export const toChatMessage = (
     model: message.model,
     provider: message.provider,
     usage: message.usage,
+    durationMs: message.durationMs,
   }
 }
 

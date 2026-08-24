@@ -82,6 +82,7 @@ export interface AssistantMessage {
   stopReason: StopReason
   errorMessage?: string
   timestamp: number
+  durationMs?: number
 }
 
 // 上下文压缩摘要消息：可见的非交互块，标注"此处已压缩"。
@@ -228,6 +229,8 @@ export interface ToolResultMessage {
   content: (TextContent | ImageContent)[]
   isError: boolean
   timestamp: number
+  // 工具执行耗时（毫秒）。
+  durationMs?: number
   // 工具执行的可视化 diff（edit/write 工具产物，供渲染与落库）。
   diff?: AgentDiff
   // 子代理面板数据（task 工具产物，供渲染与落库）。
@@ -369,6 +372,7 @@ export type AgentEvent =
       toolName: string
       result: unknown
       isError: boolean
+      durationMs?: number
     }
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
   | { type: "session_title"; sessionId: string; title: string | null }

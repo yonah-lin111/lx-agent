@@ -23,7 +23,13 @@ import { FlowItemThinkingContent } from "./FlowItemThinkingContent"
 import { FlowItemToolContent } from "./FlowItemToolContent"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
 import { FlowItemUserContent } from "./FlowItemUserContent"
-import { copyToClipboard, formatJsonString, getKindMeta } from "./types"
+import {
+  copyToClipboard,
+  formatDurationMs,
+  formatJsonString,
+  formatTokenCount,
+  getKindMeta,
+} from "./types"
 
 export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
@@ -88,11 +94,11 @@ export const AgentExecutionFlowItem = ({
             onToggleExpand()
           }
         }}
-        className="agent-execution-flow-step-header flex cursor-pointer items-center justify-between gap-2 px-2.5 py-2 select-none"
+        className="agent-execution-flow-step-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none">
           {/* 折叠箭头 */}
-          <div className="text-white/40">
+          <div className="flex shrink-0 items-center text-white/40">
             {isExpanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
@@ -101,33 +107,33 @@ export const AgentExecutionFlowItem = ({
           </div>
 
           {/* 步骤全局索引 */}
-          <span className="shrink-0 font-mono text-[11px] font-medium text-white/35">
+          <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
             #{step.stepIndex}
           </span>
 
           {/* 类型标签 */}
-          <LxTag size="small" color={meta.tagColor} className="shrink-0">
-            <span className={meta.textColor}>
+          <LxTag size="small" color={meta.tagColor} className="shrink-0 leading-none">
+            <span className={`leading-none ${meta.textColor}`}>
               {meta.customLabel || (meta.labelKey ? t(meta.labelKey) : "")}
             </span>
           </LxTag>
 
           {/* 用户步骤中的 Trigger Command 标签 */}
           {step.kind === "user" && step.userContent?.command && (
-            <LxTag size="small" color="amber" className="shrink-0">
-              <span className="inline-flex items-center gap-1 font-mono text-amber-300">
+            <LxTag size="small" color="amber" className="shrink-0 leading-none">
+              <span className="inline-flex items-center gap-1 font-mono text-amber-300 leading-none">
                 <Zap className="h-3 w-3" />/{step.userContent.command.name}
               </span>
             </LxTag>
           )}
 
           {/* 步骤标题与副标题 */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
             {step.kind === "tool" && step.toolContent ? (
               <FlowItemToolTitle toolContent={step.toolContent} />
             ) : step.kind === "user" ? null : (
               <span
-                className={`truncate font-mono text-[12px] font-medium ${
+                className={`truncate font-mono text-[12px] font-medium leading-none ${
                   step.kind === "error"
                     ? step.errorContent?.isAborted
                       ? "text-amber-300"
@@ -145,7 +151,7 @@ export const AgentExecutionFlowItem = ({
               step.kind !== "user" &&
               step.subtitle &&
               step.status !== "running" && (
-                <span className="hidden min-w-0 truncate text-[11px] text-white/40 sm:inline">
+                <span className="hidden min-w-0 truncate text-[11px] leading-none text-white/40 sm:inline">
                   {step.subtitle}
                 </span>
               )}
@@ -153,7 +159,26 @@ export const AgentExecutionFlowItem = ({
         </div>
 
         {/* 右侧状态与指标 */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
+          {/* 单步耗时指标：必须显示，禁止隐藏 */}
+          {step.durationMs !== undefined && step.status !== "running" && (
+            <span
+              data-testid="flow-item-duration"
+              className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50"
+            >
+              {formatDurationMs(step.durationMs)}
+            </span>
+          )}
+
+          {/* Token 指标（非 assistant 步骤展示） */}
+          {step.kind !== "assistant" &&
+            step.tokens?.total !== undefined &&
+            step.status !== "running" && (
+              <span className="hidden shrink-0 leading-none text-white/35 sm:inline">
+                {formatTokenCount(step.tokens.total)} tok
+              </span>
+            )}
+
           {/* 状态图标按钮 */}
           {step.status === "running" && (
             <LxIconButton
@@ -170,9 +195,9 @@ export const AgentExecutionFlowItem = ({
               size="small"
               aria-label="Error"
               title={{ content: "Error", placement: "left" }}
-              className="text-red-400"
+              className="text-rose-400"
             >
-              <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+              <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
             </LxIconButton>
           )}
           {step.status === "done" && (

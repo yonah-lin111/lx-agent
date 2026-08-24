@@ -52,6 +52,7 @@ const createEmptyAssistant = (model: Model): AssistantMessage => ({
 export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number }): StreamFn => {
   return async (model, context, options) => {
     const stream = createAssistantMessageEventStream()
+    const requestStartTime = Date.now()
 
     void (async () => {
       const blocks: AssistantMessage["content"] = []
@@ -190,6 +191,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
                 usage,
                 stopReason: mapStopReason(part.finishReason),
                 timestamp: Date.now(),
+                durationMs: Math.max(0, Date.now() - requestStartTime),
               }
               stream.push({ type: "done", reason: finalMessage.stopReason, message: finalMessage })
               stream.end()
@@ -217,6 +219,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
               ? `Stream idle timeout after ${idleTimeoutMs}ms`
               : "Stream ended without finish",
           timestamp: Date.now(),
+          durationMs: Math.max(0, Date.now() - requestStartTime),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()
@@ -233,6 +236,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
           stopReason: isUserAbort ? "aborted" : "error",
           errorMessage: isUserAbort ? "Request was aborted" : errorMessage,
           timestamp: Date.now(),
+          durationMs: Math.max(0, Date.now() - requestStartTime),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()

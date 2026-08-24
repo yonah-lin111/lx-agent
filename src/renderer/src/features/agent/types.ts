@@ -55,6 +55,7 @@ export type ChatBlock =
       toolName: string
       text: string
       isError: boolean
+      durationMs?: number
       diff?: AgentDiff
       // 子代理面板数据（随 task 工具结果落库，恢复后重建弹窗）。
       subagent?: SubagentData
@@ -95,6 +96,8 @@ export interface ChatMessage {
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
   model?: string
   provider?: string
+  // 单次生成执行耗时（毫秒）。
+  durationMs?: number
 }
 
 // 预设提示词卡片。
@@ -137,6 +140,10 @@ export interface ExecutionStep {
   status: ExecutionStepStatus
   // 产生时间戳。
   timestamp?: number
+  // 单步执行耗时（毫秒）。
+  durationMs?: number
+  // 模型名称（assistant 步骤）。
+  model?: string
   // 单步 Token 用量。
   tokens?: {
     input?: number
@@ -187,6 +194,7 @@ export interface ExecutionToolContent {
   args: Record<string, unknown>
   result?: string
   isError?: boolean
+  durationMs?: number
   diff?: AgentDiff
   lsp?: LspToolDetails
 }
