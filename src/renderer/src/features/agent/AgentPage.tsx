@@ -11,7 +11,10 @@ import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
-import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
+import {
+  AgentExecutionFlowList,
+  type AgentExecutionFlowListRef,
+} from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentSubagentPanel } from "./components/panels"
@@ -220,11 +223,15 @@ export const AgentPage = ({
   // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
   const messageListRef = useRef<AgentMessageListRef>(null)
+  // 执行流程列表命令式句柄（flow 视图下输入区回到底部按钮的目标）。
+  const flowListRef = useRef<AgentExecutionFlowListRef>(null)
   const [navState, setNavState] = useState({
-    canScrollPrevious: false,
-    canScrollNext: false,
     canScrollBottom: false,
   })
+  // 切换视图时重置导航状态，等待当前视图挂载后重新上报。
+  useEffect(() => {
+    setNavState({ canScrollBottom: false })
+  }, [viewMode])
   // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
   const escStopRef = useRef(0)
 
@@ -364,11 +371,13 @@ export const AgentPage = ({
         {viewMode === "flow" ? (
           /* 执行流程视图：消息列表的另一种显示形式，展示当前 Agent 的全部执行日志与步骤。 */
           <AgentExecutionFlowList
+            ref={flowListRef}
             messages={messages}
             isStreaming={isStreaming}
             sessionId={currentSessionId ?? undefined}
             cwd={statusBarPath}
             onSelectPrompt={(prompt) => sendMessage(prompt)}
+            onNavigationStateChange={setNavState}
           />
         ) : (
           <>
@@ -427,11 +436,11 @@ export const AgentPage = ({
         selectedFiles={selectedFiles}
         onFilesChange={setSelectedFiles}
         supportsImages={supportsImages}
-        onScrollPrevious={() => messageListRef.current?.scrollToPrevious()}
-        onScrollNext={() => messageListRef.current?.scrollToNext()}
-        onScrollBottom={() => messageListRef.current?.scrollToBottom()}
-        canScrollPrevious={navState.canScrollPrevious}
-        canScrollNext={navState.canScrollNext}
+        onScrollBottom={() =>
+          viewMode === "flow"
+            ? flowListRef.current?.scrollToBottom()
+            : messageListRef.current?.scrollToBottom()
+        }
         canScrollBottom={navState.canScrollBottom}
       />
       <AgentStatusBar

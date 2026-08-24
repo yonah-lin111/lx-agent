@@ -40,6 +40,13 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [warning, t])
 
+  // Agent 运行中禁止切换/新建会话（会中止正在进行的 run），toast 提示。
+  const blockIfGenerating = useCallback((): boolean => {
+    if (!agentViewStore.isGenerating()) return false
+    warning(t("agent.sessionSwitchBlocked"))
+    return true
+  }, [warning, t])
+
   // 同步折叠状态到全局存储，供其他区域（如 Markdown 编辑器）感知布局变化。
   useEffect(() => {
     rightSidebarStore.setCollapsed(isCollapsed)
@@ -64,8 +71,9 @@ export const RightSideBar = (): React.JSX.Element => {
     sessionListStore.subscribe,
     sessionListStore.getCurrentSessionId,
   )
-  // 删除会话：确认后删除并本地移除；删除当前会话时新建对话。
+  // 删除会话：确认后删除并本地移除；删除当前会话时新建对话（Agent 运行中禁止）。
   const handleDeleteSession = (sessionId: string): void => {
+    if (sessionId === currentSessionId && blockIfGenerating()) return
     void agentApi
       .deleteSession(sessionId)
       .then(() => {
@@ -168,7 +176,10 @@ export const RightSideBar = (): React.JSX.Element => {
       aria-label={t("rightSidebar.newChat")}
       disabled={!currentSessionId}
       title={{ content: t("rightSidebar.newChat"), placement: "bottom" }}
-      onClick={() => newChatRef.current?.()}
+      onClick={() => {
+        if (blockIfGenerating()) return
+        newChatRef.current?.()
+      }}
       size="small"
     >
       <Plus className="h-3.5 w-3.5" />
@@ -226,49 +237,6 @@ export const RightSideBar = (): React.JSX.Element => {
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </LxIconButton>
-
-          <LxIconButton
-            aria-label={t("rightSidebar.newChat")}
-            disabled={!currentSessionId}
-            title={{ content: t("rightSidebar.newChat"), placement: "left" }}
-            onClick={() => {
-              newChatRef.current?.()
-              setIsCollapsed(false)
-            }}
-            size="small"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </LxIconButton>
-
-          <LxIconButton
-            aria-label={t("rightSidebar.chatHistory")}
-            title={{ content: t("rightSidebar.chatHistory"), placement: "left" }}
-            onClick={() => setIsCollapsed(false)}
-            size="small"
-          >
-            <History className="h-3.5 w-3.5" />
-          </LxIconButton>
-
-          <LxIconButton
-            aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
-            title={{
-              content: viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView"),
-              placement: "left",
-            }}
-            onClick={() => {
-              setIsCollapsed(false)
-              setTimeout(() => {
-                handleToggleViewMode()
-              }, 50)
-            }}
-            size="small"
-          >
-            {viewMode === "flow" ? (
-              <MessageSquare className="h-3.5 w-3.5" />
-            ) : (
-              <Workflow className="h-3.5 w-3.5" />
-            )}
-          </LxIconButton>
         </div>
       ) : (
         <div
@@ -290,6 +258,7 @@ export const RightSideBar = (): React.JSX.Element => {
                   currentProjectId={currentProject?.id}
                   projects={projects}
                   onRestore={(sessionId) => {
+                    if (blockIfGenerating()) return
                     restoreChatRef.current?.(sessionId)
                     setIsHistoryOpen(false)
                   }}

@@ -1,14 +1,4 @@
-import {
-  ArrowDownToLine,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  Send,
-  Square,
-  Zap,
-} from "lucide-react"
+import { ArrowDownToLine, Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -57,12 +47,8 @@ export interface AgentInputProps {
   selectedFiles: AgentInputFile[]
   onFilesChange: (files: AgentInputFile[]) => void
   supportsImages: boolean
-  // 滚动与定位控制
-  onScrollPrevious?: () => void
-  onScrollNext?: () => void
+  // 滚动定位控制
   onScrollBottom?: () => void
-  canScrollPrevious?: boolean
-  canScrollNext?: boolean
   canScrollBottom?: boolean
 }
 
@@ -95,11 +81,7 @@ export const AgentInput = ({
   selectedFiles,
   onFilesChange,
   supportsImages,
-  onScrollPrevious,
-  onScrollNext,
   onScrollBottom,
-  canScrollPrevious = false,
-  canScrollNext = false,
   canScrollBottom = false,
 }: AgentInputProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -358,34 +340,6 @@ export const AgentInput = ({
           </div>
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5 mr-0.5">
-              <LxIconButton
-                shape="circle"
-                showHoverBg={false}
-                disabled={!canScrollPrevious}
-                aria-label={t("agent.prevTurn")}
-                title={{
-                  content: t("agent.prevTurn"),
-                  placement: "top",
-                }}
-                className="agent-input-nav-btn text-white/50 hover:text-white disabled:!text-white/20"
-                onClick={onScrollPrevious}
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
-              </LxIconButton>
-              <LxIconButton
-                shape="circle"
-                showHoverBg={false}
-                disabled={!canScrollNext}
-                aria-label={t("agent.nextTurn")}
-                title={{
-                  content: t("agent.nextTurn"),
-                  placement: "top",
-                }}
-                className="agent-input-nav-btn text-white/50 hover:text-white disabled:!text-white/20"
-                onClick={onScrollNext}
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </LxIconButton>
               <LxIconButton
                 shape="circle"
                 showHoverBg={false}

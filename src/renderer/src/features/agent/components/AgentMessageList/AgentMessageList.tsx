@@ -25,11 +25,7 @@ import { AgentMessageListSkeleton } from "./AgentMessageListSkeleton"
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
 export interface AgentMessageListRef {
-  scrollToPrevious: () => void
-  scrollToNext: () => void
   scrollToBottom: () => void
-  canScrollPrevious: boolean
-  canScrollNext: boolean
   canScrollBottom: boolean
 }
 
@@ -61,11 +57,7 @@ export interface AgentMessageListProps {
   // 点击"继续生成"：续写被中断的上一轮输出。
   onContinue?: () => void
   // 滚动导航状态变动通知（供外部按钮响应 disabled 状态更新）。
-  onNavigationStateChange?: (state: {
-    canScrollPrevious: boolean
-    canScrollNext: boolean
-    canScrollBottom: boolean
-  }) => void
+  onNavigationStateChange?: (state: { canScrollBottom: boolean }) => void
 }
 
 const NEAR_BOTTOM_THRESHOLD = 250
@@ -246,12 +238,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       scrollCompensationRef.current = null
     }, [visibleGroups])
 
-    // 所有带有用户消息的 QA 组列表
-    const userMessageGroups = useMemo(
-      () => messageGroups.filter((group) => group.userMessage != null),
-      [messageGroups],
-    )
-
     // 定位吸顶的用户消息：滚动到其在自然流中的位置。
     const performLocate = useCallback((messageId: string): void => {
       const el = scrollRef.current
@@ -299,116 +285,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
     }, [isSubagentPanelOpen, subagentScrollRef])
 
-    // 计算“上一个”和“下一个”的目标用户问题 ID 与可用性
-    const getNavigationTargets = useCallback((): {
-      prevMessageId: string | null
-      nextMessageId: string | null
-    } => {
-      const el = scrollRef.current
-      if (!el || userMessageGroups.length === 0) {
-        return { prevMessageId: null, nextMessageId: null }
-      }
-
-      const containerRect = el.getBoundingClientRect()
-      const scrollThreshold = 10
-
-      // 收集所有已渲染的用户消息元素相对视口顶部的 offset
-      // top <= scrollThreshold: 认为该问题已经进入或滑过视口顶部（在视口上方或正贴顶）
-      // top > scrollThreshold: 认为该问题在当前视口内部或下方
-      const items: {
-        index: number
-        id: string
-        top: number
-      }[] = []
-
-      for (let i = 0; i < userMessageGroups.length; i++) {
-        const id = userMessageGroups[i].userMessage!.id
-        const groupEl = messageGroupRefs.current.get(id)
-        if (groupEl) {
-          const top = groupEl.getBoundingClientRect().top - containerRect.top
-          items.push({ index: i, id, top })
-        }
-      }
-
-      // 如果当前顶部有吸顶消息（比如滚动在 q2 的长回答中，q2 吸顶）
-      // 此时视口内的位置属于 q2 这一轮。点击“上一个”，如果 q2 本身就在视口上方，
-      // 用户期望的是看 q2 还是看 q1？如果当前视口已经在 q2 的回答下方（比如 q3 刚露头或在 q2 回答区），
-      // 点击“上一个”应定位到 q2；如果当前视口顶部正好对齐 q2（top ≈ 0），再次点击“上一个”才跳到 q1。
-
-      // 1. 找到在当前视口顶部及上方的所有问题中，最靠下的那一个（即当前视口所属或紧邻上方的问题）
-      const aboveOrAtTop = items.filter((item) => item.top <= scrollThreshold)
-      // 2. 找到严格在当前视口顶部下方的第一个问题
-      const belowTop = items.filter((item) => item.top > scrollThreshold)
-
-      // 特别处理：如果有吸顶消息
-      if (pinnedUserMessageId) {
-        const pinnedIndex = userMessageGroups.findIndex(
-          (group) => group.userMessage?.id === pinnedUserMessageId,
-        )
-        if (pinnedIndex !== -1) {
-          // 当前吸顶的是 q2，说明视口正在浏览 q2 的回答内容。
-          // 点击“上一个”应该精确定位到 q2 本身！
-          // 只有当 q2 本身已经被定位到视口顶部（即 q2 不再吸顶或 q2 就在顶端）时，上一个才是 q1。
-          return {
-            prevMessageId: userMessageGroups[pinnedIndex]?.userMessage?.id ?? null,
-            nextMessageId:
-              pinnedIndex + 1 < userMessageGroups.length
-                ? (userMessageGroups[pinnedIndex + 1]?.userMessage?.id ?? null)
-                : null,
-          }
-        }
-      }
-
-      // 无吸顶时的通用逻辑：
-      // 如果当前视口最接近的问题 top < -30px（说明该问题已经被向上滚出一段距离，例如在 q3 的中间），
-      // 那么“上一个”应该先滚动到当前问题顶部（如果它偏离较大），或者滚动到前一个问题
-      let prevIndex: number | null = null
-      let nextIndex: number | null = null
-
-      if (aboveOrAtTop.length > 0) {
-        const lastAbove = aboveOrAtTop[aboveOrAtTop.length - 1]
-        if (lastAbove.top < -50) {
-          // 视口已经滑出该问题 50px 以上，先回到该问题顶部
-          prevIndex = lastAbove.index
-          nextIndex = lastAbove.index + 1 < userMessageGroups.length ? lastAbove.index + 1 : null
-        } else {
-          // 已经基本在这个问题顶部，上一个为再前一个
-          prevIndex = lastAbove.index > 0 ? lastAbove.index - 1 : null
-          nextIndex = lastAbove.index + 1 < userMessageGroups.length ? lastAbove.index + 1 : null
-        }
-      } else if (belowTop.length > 0) {
-        prevIndex = null
-        nextIndex = belowTop[0].index
-      }
-
-      const prevMessageId =
-        prevIndex !== null && prevIndex >= 0
-          ? (userMessageGroups[prevIndex]?.userMessage?.id ?? null)
-          : null
-      const nextMessageId =
-        nextIndex !== null && nextIndex < userMessageGroups.length
-          ? (userMessageGroups[nextIndex]?.userMessage?.id ?? null)
-          : null
-
-      return { prevMessageId, nextMessageId }
-    }, [pinnedUserMessageId, userMessageGroups])
-
-    const scrollToPrevious = useCallback((): void => {
-      if (isSubagentPanelOpen) return
-      const { prevMessageId } = getNavigationTargets()
-      if (prevMessageId) {
-        handleLocateMessage(prevMessageId)
-      }
-    }, [isSubagentPanelOpen, getNavigationTargets, handleLocateMessage])
-
-    const scrollToNext = useCallback((): void => {
-      if (isSubagentPanelOpen) return
-      const { nextMessageId } = getNavigationTargets()
-      if (nextMessageId) {
-        handleLocateMessage(nextMessageId)
-      }
-    }, [isSubagentPanelOpen, getNavigationTargets, handleLocateMessage])
-
     // 计算当前是否可滚动
     const computeNavState = useCallback(() => {
       const hasMessages = messages.length > 0
@@ -416,20 +292,14 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
 
       if (isSubagentPanelOpen) {
         return {
-          canScrollPrevious: false,
-          canScrollNext: false,
           canScrollBottom: !nearBottom,
         }
       }
 
-      const { prevMessageId, nextMessageId } = getNavigationTargets()
-
       return {
-        canScrollPrevious: hasMessages && prevMessageId !== null,
-        canScrollNext: hasMessages && nextMessageId !== null,
         canScrollBottom: hasMessages && !nearBottom,
       }
-    }, [getNavigationTargets, isNearBottom, isSubagentPanelOpen, messages.length])
+    }, [isNearBottom, isSubagentPanelOpen, messages.length])
 
     // 通知外部导航状态
     const updateNavState = useCallback(() => {
@@ -441,12 +311,10 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     useImperativeHandle(
       ref,
       () => ({
-        scrollToPrevious,
-        scrollToNext,
         scrollToBottom,
         ...computeNavState(),
       }),
-      [scrollToPrevious, scrollToNext, scrollToBottom, computeNavState],
+      [scrollToBottom, computeNavState],
     )
 
     // 处理滚动事件：吸底状态检测、吸顶问题更新、触顶自动扩展历史。

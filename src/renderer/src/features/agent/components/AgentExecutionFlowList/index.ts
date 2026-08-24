@@ -9,5 +9,7 @@ export {
 export {
   AgentExecutionFlowList,
   type AgentExecutionFlowListProps,
+  type AgentExecutionFlowListRef,
+  type AgentFlowNavState,
 } from "./AgentExecutionFlowList"
 export * from "./types"

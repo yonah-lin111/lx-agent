@@ -496,6 +496,38 @@ export const LxMarkdownEditor = ({
     }
   }
 
+  /**
+   * 拖拽排序：将 fromIndex 页面移动到 toIndex，当前页跟随原页面移动。
+   */
+  const reorderPage = (fromIndex: number, toIndex: number): void => {
+    if (
+      !pages ||
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= pages.length ||
+      toIndex >= pages.length
+    )
+      return
+    const nextPages = [...pages]
+    const [movedPage] = nextPages.splice(fromIndex, 1)
+    nextPages.splice(toIndex, 0, movedPage)
+    onPagesChangeRef.current?.(nextPages)
+
+    let nextIndex = activePageIndex
+    if (activePageIndex === fromIndex) {
+      nextIndex = toIndex
+    } else if (fromIndex < activePageIndex && activePageIndex <= toIndex) {
+      nextIndex = activePageIndex - 1
+    } else if (toIndex <= activePageIndex && activePageIndex < fromIndex) {
+      nextIndex = activePageIndex + 1
+    }
+    setActivePageIndex(nextIndex)
+    if (itemId) {
+      localStorage.setItem(`lx-md-active-page-${itemId}`, nextIndex.toString())
+    }
+  }
+
   const switchPageRef = useRef(switchPage)
   const createPageRef = useRef(createPage)
   switchPageRef.current = switchPage
@@ -1453,6 +1485,7 @@ export const LxMarkdownEditor = ({
         onPageNameChange={renamePage}
         onCreatePage={createPage}
         onDeletePage={deletePage}
+        onPageReorder={reorderPage}
         content={content}
         activeLine={activeLine}
         onScrollToLine={scrollToLine}

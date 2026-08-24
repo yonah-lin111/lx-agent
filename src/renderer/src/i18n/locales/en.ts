@@ -241,6 +241,7 @@ export const en = {
     qaView: "Q&A View",
     executionFlowView: "Execution Flow View",
     viewSwitchBlocked: "Cannot switch view while generating",
+    sessionSwitchBlocked: "Cannot switch session while generating",
     emptyTitle: "LX Agent",
     emptyDescription:
       "Your AI development assistant, ready to help with architecture, refactoring, and tests.",
@@ -363,8 +364,6 @@ export const en = {
     copyMarkdownSuccess: "Copied full conversation Markdown",
     copyReplySuccess: "Copied last reply",
     copyFailed: "Copy failed",
-    prevTurn: "Previous question",
-    nextTurn: "Next question",
     scrollToBottom: "Scroll to bottom",
     aiGenerating: "AI generating",
     diffContent: "Diff Content",

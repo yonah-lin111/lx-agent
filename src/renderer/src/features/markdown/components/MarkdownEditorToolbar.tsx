@@ -37,6 +37,7 @@ interface MarkdownEditorToolbarProps {
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
   onDeletePage?: () => void
+  onPageReorder?: (fromIndex: number, toIndex: number) => void
   content?: string
   activeLine?: number
   onScrollToLine?: (line: number) => void
@@ -260,6 +261,7 @@ export const MarkdownEditorToolbar = ({
   onPageNameChange,
   onCreatePage,
   onDeletePage,
+  onPageReorder,
   content = "",
   activeLine = 1,
   onScrollToLine,
@@ -270,6 +272,9 @@ export const MarkdownEditorToolbar = ({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isPageListOpen, setIsPageListOpen] = useState(false)
   const [pageListQuery, setPageListQuery] = useState("")
+  // 页面列表拖拽排序：记录被拖拽页面的 id。
+  const [draggingPageId, setDraggingPageId] = useState<string | null>(null)
+  const draggingPageIdRef = useRef<string | null>(null)
   const pageNameBeforeEditRef = useRef(pageName)
   const { t } = useTranslation()
 
@@ -541,6 +546,20 @@ export const MarkdownEditorToolbar = ({
     onDeletePage?.()
   }
 
+  /**
+   * 拖拽放到目标页面上时，按真实索引触发页面排序。
+   */
+  const handlePageDropOn = (targetId: string): void => {
+    const fromId = draggingPageIdRef.current
+    draggingPageIdRef.current = null
+    setDraggingPageId(null)
+    if (!fromId || fromId === targetId) return
+    const fromIndex = pages.findIndex((page) => page.id === fromId)
+    const toIndex = pages.findIndex((page) => page.id === targetId)
+    if (fromIndex < 0 || toIndex < 0) return
+    onPageReorder?.(fromIndex, toIndex)
+  }
+
   const pageList = (
     <div className="flex w-60 flex-col gap-2" aria-label={t("markdown.pageList")}>
       <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5">
@@ -586,17 +605,41 @@ export const MarkdownEditorToolbar = ({
       />
       <div className="max-h-60 overflow-y-auto custom-scrollbar">
         <div className="space-y-0.5">
-          {filteredPages.map((page, index) => {
-            const isCurrent = index === activePageIndex
+          {filteredPages.map((page) => {
+            const pageIndex = pages.findIndex((entry) => entry.id === page.id)
+            const isCurrent = pageIndex === activePageIndex
             const counts = pageTemplateCounts.get(page.id)
             const hasCounts =
               counts && (counts.todo > 0 || counts.inProgress > 0 || counts.done > 0)
+            const isDragging = draggingPageId === page.id
             return (
               <button
                 key={page.id}
                 disabled={isCurrent}
+                draggable
                 type="button"
+                onDragStart={(event) => {
+                  draggingPageIdRef.current = page.id
+                  setDraggingPageId(page.id)
+                  event.dataTransfer.effectAllowed = "move"
+                  event.dataTransfer.setData("text/plain", page.id)
+                }}
+                onDragEnd={() => {
+                  draggingPageIdRef.current = null
+                  setDraggingPageId(null)
+                }}
+                onDragOver={(event) => {
+                  if (draggingPageIdRef.current !== null && draggingPageIdRef.current !== page.id) {
+                    event.preventDefault()
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  handlePageDropOn(page.id)
+                }}
                 className={`flex min-h-7 w-full items-center gap-2 rounded-[3px] px-1.5 text-left text-xs ${
+                  isDragging ? "opacity-40" : ""
+                } ${
                   isCurrent
                     ? "cursor-default bg-white/10 text-white"
                     : "text-white/70 hover:bg-white/5"
@@ -605,7 +648,7 @@ export const MarkdownEditorToolbar = ({
                   setIsPageListOpen(false)
                   setPageListQuery("")
                   setIsConfirmingDelete(false)
-                  onPageChange?.(index)
+                  onPageChange?.(pageIndex)
                 }}
               >
                 <span className="min-w-0 truncate">{page.name}</span>
