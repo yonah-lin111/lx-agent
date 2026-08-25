@@ -1,97 +1,97 @@
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
 
-// SVG 绘图工具输入 schema。
+// SVG diagram tool input schema.
 const renderSvgInputSchema = z.object({
-  svg: z.string().min(1).max(50000).describe("SVG 矢量图源码（<svg>...</svg>）"),
+  svg: z.string().min(1).max(50000).describe("SVG vector graphic source code (<svg>...</svg>)"),
   style: z
     .string()
     .max(2000)
     .optional()
-    .describe("自定义 CSS 样式规则（选填，如 '.node { fill: #38bdf8; }'）"),
+    .describe("Custom CSS style rules (optional, e.g. '.node { fill: #38bdf8; }')"),
 })
 
-// 字符图案拓扑工具输入 schema。
+// ASCII / Box-drawing diagram tool input schema.
 const renderAsciiInputSchema = z.object({
   ascii: z
     .string()
     .min(1)
     .max(50000)
-    .describe("ASCII 或 Box-drawing 字符画内容（使用 ┌ ─ │ └ 等标准字符对齐）"),
+    .describe("ASCII or Unicode Box-drawing diagram content (using ┌ ─ │ └ characters)"),
 })
 
-// HTML 原型与结构化渲染工具输入 schema。
+// HTML prototype & structured rendering tool input schema.
 const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
     .describe(
-      "HTML 源码（支持完整 HTML 标签体系：button、input、select、form、card、table、nav、flex/grid 布局等，用于快速构建前端原型草稿与界面组件）",
+      "HTML source code (supports full HTML tags: button, input, select, form, card, table, nav, flex/grid layouts, etc., for building frontend prototypes, UI drafts, and component views)",
     ),
   style: z
     .string()
     .max(2000)
     .optional()
-    .describe("自定义 CSS 样式规则（选填，如 '.card { display: flex; gap: 8px; }'）"),
+    .describe("Custom CSS style rules (optional, e.g. '.card { display: flex; gap: 8px; }')"),
 })
 
 /**
- * 创建 render_svg 工具：输出 SVG 矢量图表（架构图、时序图、拓扑关系）。
+ * Create render_svg tool: outputs SVG vector diagrams (architecture, sequence, topology).
  */
 export const createRenderSvgTool = (): AgentTool<typeof renderSvgInputSchema> => ({
   name: "render_svg",
-  label: "SVG 矢量绘图",
+  label: "SVG Vector Diagram",
   description:
-    "渲染 SVG 矢量图表（如系统架构拓扑、服务时序交互、状态机、数据流图等）。\n" +
-    "【使用说明】：直接传入 svg 字符串；支持传入 style 字符串设置自定义样式。默认采用黑色主题背景展示。",
+    "Render SVG vector diagrams (system architecture topology, service sequence diagrams, state machines, data flow charts, etc.).\n" +
+    "[Usage]: Pass the svg string directly; optionally pass a style string to define custom CSS. Rendered with a dark theme background by default.",
   inputSchema: renderSvgInputSchema,
   execute: async () => ({
     content: [
       {
         type: "text",
-        text: "已成功渲染 SVG 矢量图表。",
+        text: "SVG vector diagram rendered successfully.",
       },
     ],
   }),
 })
 
 /**
- * 创建 render_ascii 工具：输出终端原生质感的 ASCII / Box-drawing 字符流转图。
+ * Create render_ascii tool: outputs terminal-native ASCII / Box-drawing diagrams.
  */
 export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema> => ({
   name: "render_ascii",
-  label: "字符画拓扑",
+  label: "ASCII Diagram",
   description:
-    "渲染终端原生质感的 ASCII / Unicode Box-drawing 字符流转图、树形拓扑或轻量分支流程。\n" +
-    "【使用说明】：直接传入 ascii 字符画内容。默认采用等宽字体与黑色终端主题背景展示。",
+    "Render terminal-native ASCII / Unicode Box-drawing flowcharts, tree topologies, or lightweight branch workflows.\n" +
+    "[Usage]: Pass the ascii diagram string directly. Rendered with monospace font and dark terminal background by default.",
   inputSchema: renderAsciiInputSchema,
   execute: async () => ({
     content: [
       {
         type: "text",
-        text: "已成功渲染字符画拓扑。",
+        text: "ASCII diagram rendered successfully.",
       },
     ],
   }),
 })
 
 /**
- * 创建 render_html 工具：输出前端原型、UI 草稿、结构化内容与自定义样式。
+ * Create render_html tool: outputs concise frontend prototypes, UI drafts, and structured components.
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
-  label: "HTML 原型与排版",
+  label: "HTML Prototype",
   description:
-    "渲染 HTML 前端原型草稿与结构化内容（支持各类表单控件、按钮、卡片、导航栏、网格布局、对比表格等完整标签体系与样式）。\n" +
-    "【核心作用】：设计和展示简洁的前端界面原型、交互草稿、UI 视图组件及数据报表。\n" +
-    "【使用说明】：直接传入 html 源码（支持 form、input、button、select、div、table 等各类标签）；支持传入 style 设置自定义 CSS 样式规则。默认采用黑色主题隔离展示，不受全局样式污染。",
+    "Render concise HTML frontend prototypes, UI drafts, and structured layouts (supports form controls, buttons, cards, navbars, grid/flex layouts, tables, and full HTML tags with styles).\n" +
+    "[Primary Purpose]: Design and display concise frontend UI prototypes, interactive drafts, component views, and data matrices.\n" +
+    "[Usage]: Pass the html source directly (supports form, input, button, select, div, table, etc.); optionally pass custom style rules. Rendered in an isolated dark theme by default.",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [
       {
         type: "text",
-        text: "已成功渲染 HTML 前端原型与结构化内容。",
+        text: "HTML prototype rendered successfully.",
       },
     ],
   }),

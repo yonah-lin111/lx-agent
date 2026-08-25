@@ -72,7 +72,7 @@ describe("AgentVisualBlock", () => {
 
     render(<AgentVisualBlock toolCall={toolCall} />)
     expect(screen.getByText("render_svg")).not.toBeNull()
-    expect(screen.getByText("正在渲染内容...")).not.toBeNull()
+    expect(screen.getByText("Rendering content...")).not.toBeNull()
   })
 
   it("正确渲染 render_html 结构化内容与折叠交互", () => {

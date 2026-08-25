@@ -16,7 +16,7 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       style: "circle { fill: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染 SVG 矢量图表。")
+    expect(result.content[0]?.text).toContain("SVG vector diagram rendered successfully.")
   })
 
   it("render_ascii 正常执行并返回描述性文本", async () => {
@@ -28,7 +28,7 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       ascii: "┌───┐\n│ A │\n└───┘",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染字符画拓扑。")
+    expect(result.content[0]?.text).toContain("ASCII diagram rendered successfully.")
   })
 
   it("render_html 正常执行并返回描述性文本", async () => {
@@ -41,6 +41,6 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       style: "table { color: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染 HTML 前端原型与结构化内容。")
+    expect(result.content[0]?.text).toContain("HTML prototype rendered successfully.")
   })
 })

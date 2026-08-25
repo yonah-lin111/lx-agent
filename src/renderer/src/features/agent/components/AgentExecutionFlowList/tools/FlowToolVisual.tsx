@@ -95,13 +95,13 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
         </div>
       </div>
 
-      {/* 2. Visual Graphic Preview (渲染视图) */}
+      {/* 2. Visual Graphic Preview */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1 text-white/45">
           {toolName === "render_svg" && <Palette className="h-3 w-3 text-sky-400" />}
           {toolName === "render_ascii" && <Terminal className="h-3 w-3 text-emerald-400" />}
           {toolName === "render_html" && <Code2 className="h-3 w-3 text-amber-400" />}
-          <span>渲染视图</span>
+          <span>Rendered Preview</span>
         </div>
         {graphicContent ? (
           <AgentQuestionGraphic
@@ -112,11 +112,11 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
         ) : isRunning ? (
           <div className="flex items-center gap-2 rounded-[6px] border border-white/5 bg-[#0d0d0d] px-3 py-2 text-white/50">
             <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
-            <span>正在渲染内容...</span>
+            <span>Rendering content...</span>
           </div>
         ) : (
           <div className="rounded border border-white/5 bg-black/40 p-2 text-white/40">
-            (无渲染内容)
+            (No render content)
           </div>
         )}
       </div>

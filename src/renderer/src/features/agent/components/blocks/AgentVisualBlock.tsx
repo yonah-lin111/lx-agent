@@ -15,19 +15,19 @@ export interface AgentVisualBlockProps {
 const VISUAL_CONFIGS = {
   render_svg: {
     name: "render_svg",
-    label: "SVG 矢量绘图",
+    label: "SVG Diagram",
     icon: Palette,
     iconColor: "text-sky-400",
   },
   render_ascii: {
     name: "render_ascii",
-    label: "字符画拓扑",
+    label: "ASCII Diagram",
     icon: Terminal,
     iconColor: "text-emerald-400",
   },
   render_html: {
     name: "render_html",
-    label: "HTML 结构化渲染",
+    label: "HTML Prototype",
     icon: Code2,
     iconColor: "text-amber-400",
   },
@@ -123,7 +123,7 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
             {isRunning && !graphicContent ? (
               <div className="flex items-center gap-2 rounded-[6px] border border-white/5 bg-[#0d0d0d] px-3 py-2 text-[11px] text-white/50">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400 shrink-0" />
-                <span>正在渲染内容...</span>
+                <span>Rendering content...</span>
               </div>
             ) : (
               /* 绘制图形内容（支持 style 自定义样式） */
