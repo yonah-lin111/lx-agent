@@ -36,6 +36,7 @@ export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
   isExpanded: boolean
   onToggleExpand: () => void
+  turnStartIndex?: number
 }
 
 /**
@@ -45,6 +46,7 @@ export const AgentExecutionFlowItem = ({
   step,
   isExpanded,
   onToggleExpand,
+  turnStartIndex = 0,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -118,9 +120,9 @@ export const AgentExecutionFlowItem = ({
             )}
           </div>
 
-          {/* 步骤全局索引 */}
+          {/* 步骤当前轮次内的索引 */}
           <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
-            #{step.stepIndex}
+            #{step.stepIndex - turnStartIndex}
           </span>
 
           {/* 类型标签 */}

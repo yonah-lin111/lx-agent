@@ -398,6 +398,21 @@ export const AgentExecutionFlowList = forwardRef<
       return counts
     }, [steps])
 
+    // 计算每个step对应的turn起始索引
+    const stepTurnStartIndices = useMemo(() => {
+      const map = new Map<string, number>()
+      let currentTurn = -1
+      let turnStartIndex = 0
+      for (const step of filteredSteps) {
+        if (step.turnIndex !== currentTurn) {
+          currentTurn = step.turnIndex
+          turnStartIndex = step.stepIndex
+        }
+        map.set(step.id, turnStartIndex)
+      }
+      return map
+    }, [filteredSteps])
+
     return (
       <div
         aria-label={t("agent.executionFlow")}
@@ -405,11 +420,12 @@ export const AgentExecutionFlowList = forwardRef<
       >
         {/* 面板头部：左侧为步骤分类筛选 Tabs（有步骤时显示），右侧为统计指标浮层 */}
         <AgentExecutionFlowHeader
-          stepsCount={steps.length}
+          stepsCount={messages.length > 0 ? steps.length : 0}
           activeFilter={activeFilter}
           filterCounts={filterCounts}
           stats={stats}
           onFilterChange={setActiveFilter}
+          showStats={messages.length > 0}
         />
 
         {/* 步骤列表内容区 */}
@@ -419,8 +435,8 @@ export const AgentExecutionFlowList = forwardRef<
             onScroll={handleScroll}
             className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-3 py-2 [scrollbar-gutter:stable]"
           >
-            {/* 系统提示词步骤项（有系统提示词装配时展示） */}
-            {filteredSteps.length > 0 && (
+            {/* 非空列表时展示步骤项 */}
+            {messages.length > 0 && filteredSteps.length > 0 && (
               <div className="flex shrink-0 flex-col gap-1.5">
                 {filteredSteps.map((step) => (
                   <AgentExecutionFlowItem
@@ -428,6 +444,7 @@ export const AgentExecutionFlowList = forwardRef<
                     step={step}
                     isExpanded={isStepExpanded(step)}
                     onToggleExpand={() => toggleStepExpanded(step)}
+                    turnStartIndex={stepTurnStartIndices.get(step.id) ?? step.stepIndex}
                   />
                 ))}
               </div>
@@ -456,8 +473,10 @@ export const AgentExecutionFlowList = forwardRef<
                   const nextStep = filteredSteps[idx + 1]
                   const isNewTurn = !prevStep || prevStep.turnIndex !== step.turnIndex
                   const isTurnEnd = !nextStep || nextStep.turnIndex !== step.turnIndex
+                  const isSystemStart = !prevStep || prevStep.kind !== "system"
                   const turnStats =
                     step.turnIndex > 0 ? turnStatsMap.get(step.turnIndex) : undefined
+                  const turnStartIndex = stepTurnStartIndices.get(step.id) ?? step.stepIndex
 
                   return (
                     <Fragment key={step.id}>
@@ -481,10 +500,21 @@ export const AgentExecutionFlowList = forwardRef<
                           <div className="h-[1px] flex-1 bg-white/10" />
                         </div>
                       )}
+                      {/* System 分割线 */}
+                      {isSystemStart && step.kind === "system" && (
+                        <div className="agent-execution-flow-system-divider my-1.5 flex items-center gap-2">
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                            {t("agent.systemPrompt")}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                        </div>
+                      )}
                       <AgentExecutionFlowItem
                         step={step}
                         isExpanded={isStepExpanded(step)}
                         onToggleExpand={() => toggleStepExpanded(step)}
+                        turnStartIndex={turnStartIndex}
                       />
                       {/* 当该 turn 结束且已完成所有步骤时，在下一行左侧展示该 turn 的综合执行数据统计 */}
                       {isTurnEnd &&

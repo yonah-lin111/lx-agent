@@ -12,6 +12,7 @@ export interface AgentExecutionFlowHeaderProps {
   filterCounts: Record<FilterKind, number>
   stats: ExecutionFlowStats
   onFilterChange: (filter: FilterKind) => void
+  showStats?: boolean
 }
 
 /**
@@ -23,6 +24,7 @@ export const AgentExecutionFlowHeader = ({
   filterCounts,
   stats,
   onFilterChange,
+  showStats = true,
 }: AgentExecutionFlowHeaderProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -209,6 +211,8 @@ export const AgentExecutionFlowHeader = ({
 
       {/* 顶部右侧操作栏 */}
       <div className="flex shrink-0 items-center gap-1">
+        {showStats && (
+          <>
         {/* 统计指标浮层 */}
         <LxTooltip
           multiline
@@ -242,7 +246,9 @@ export const AgentExecutionFlowHeader = ({
           <LxIconButton size="small" aria-label={t("agent.viewStats")}>
             <BarChart3 className="h-3.5 w-3.5" />
           </LxIconButton>
-        </LxTooltip>
+          </LxTooltip>
+          </>
+        )}
       </div>
     </div>
   )
