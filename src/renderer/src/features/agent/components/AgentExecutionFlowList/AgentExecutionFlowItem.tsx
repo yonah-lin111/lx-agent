@@ -55,7 +55,6 @@ export const AgentExecutionFlowItem = ({
   const meta = getKindMeta(step)
 
   const isRunning = step.status === "running"
-  const isQuestionStep = step.toolContent?.toolName === "question"
 
   const effectiveExpanded = isExpanded
 

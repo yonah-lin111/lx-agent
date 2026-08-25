@@ -1806,7 +1806,8 @@
     0px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-step {
+[data-theme="minecraft"] .agent-execution-flow-step,
+[data-theme="minecraft"] .agent-execution-flow-group {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #221e2e !important;
@@ -1817,7 +1818,8 @@
   margin-bottom: 4px !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-step:hover {
+[data-theme="minecraft"] .agent-execution-flow-step:hover,
+[data-theme="minecraft"] .agent-execution-flow-group:hover {
   background-color: #282436 !important;
 }
 
@@ -1849,7 +1851,8 @@
   background-color: #1a2e1f !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-step-header {
+[data-theme="minecraft"] .agent-execution-flow-step-header,
+[data-theme="minecraft"] .agent-execution-flow-group-header {
   font-family: var(--theme-font-family) !important;
 }
 

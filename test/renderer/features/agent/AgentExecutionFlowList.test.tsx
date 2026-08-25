@@ -78,18 +78,28 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    render(<AgentExecutionFlowList messages={messages} />)
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
 
     // 筛选 Tab 栏呈现总数与步骤标签
     expect(screen.getByRole("button", { name: /All \(4\)/ })).not.toBeNull()
 
     // 步骤标签与标题（用户步骤默认展开，因此标题与详情均含有文字，使用 getAllByText 验证）
     expect(screen.getAllByText("查找所有测试用例").length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText("MCP · search · code")).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
 
-    // 点击工具步骤展开详情
-    const toolStep = screen.getByText("MCP · search · code")
-    fireEvent.click(toolStep)
+    // 点击 Group 展开内部步骤
+    const groupHeader = container.querySelector(".agent-execution-flow-group-header")
+    expect(groupHeader).not.toBeNull()
+    fireEvent.click(groupHeader!)
+
+    expect(screen.getAllByText("MCP · search · code").length).toBeGreaterThanOrEqual(1)
+
+    // 点击工具步骤头部展开详情
+    const toolStepHeader = container.querySelector(
+      '[data-step-kind="tool"] .agent-execution-flow-step-header',
+    )
+    expect(toolStepHeader).not.toBeNull()
+    fireEvent.click(toolStepHeader!)
 
     // 展开后应显示输入参数与执行结果区域
     expect(screen.getByText("Input Arguments")).not.toBeNull()
@@ -124,15 +134,15 @@ describe("AgentExecutionFlowList", () => {
 
     render(<AgentExecutionFlowList messages={messages} />)
 
-    // 初始展示所有步骤（用户步骤默认展开，使用 getAllByText 验证）
+    // 初始展示所有步骤（用户步骤默认展开，使用 getAllByText 验证；思考与 bash 聚合为 Group）
     expect(screen.getAllByText("问答").length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText("bash")).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
 
     // 切换到工具筛选
     const toolFilterBtn = screen.getByRole("button", { name: /Tool Schema \(1\)/ })
     fireEvent.click(toolFilterBtn)
 
-    // 工具可见，用户输入不可见
+    // 分类筛选下为扁平单项展示：工具可见，用户输入不可见
     expect(screen.getByText("bash")).not.toBeNull()
     expect(screen.queryByText("问答")).toBeNull()
   })
@@ -786,12 +796,12 @@ describe("AgentExecutionFlowList", () => {
         id: "a1",
         role: "assistant",
         blocks: [
-          { kind: "thinking", text: "正在执行命令..." },
+          { kind: "text", text: "好的，即将修改代码：" },
           {
             kind: "toolCall",
-            toolCallId: "c-bash",
-            toolName: "bash",
-            args: { command: "git status" },
+            toolCallId: "c-write",
+            toolName: "write",
+            args: { filePath: "src/main.ts" },
             status: "done",
           },
         ],
@@ -803,9 +813,9 @@ describe("AgentExecutionFlowList", () => {
         blocks: [
           {
             kind: "toolResult",
-            toolCallId: "c-bash",
-            toolName: "bash",
-            text: "On branch main\nnothing to commit",
+            toolCallId: "c-write",
+            toolName: "write",
+            text: "saved successfully",
             isError: false,
           },
         ],
@@ -818,13 +828,13 @@ describe("AgentExecutionFlowList", () => {
     // 用户步骤默认展开
     expect(screen.getByText("执行终端命令")).not.toBeNull()
 
-    // 思考步骤作为中间步骤默认折叠（仅标题出现 1 次）
-    expect(screen.getAllByText("正在执行命令...").length).toBe(1)
+    // 助手文本作为中间步骤默认折叠（仅标题出现 1 次）
+    expect(screen.getAllByText("好的，即将修改代码：").length).toBe(1)
 
-    // 最后一个步骤为 tool 步骤，turn 结束后应默认展开其执行结果详情（标题和展开体均出现 git status）
-    expect(screen.getAllByText("git status").length).toBeGreaterThanOrEqual(2)
+    // 最后一个步骤为写操作 write 步骤，turn 结束后应默认展开其执行结果详情
+    expect(screen.getByText("main.ts")).not.toBeNull()
     expect(screen.getByText("Execution Result")).not.toBeNull()
-    expect(screen.getByText(/On branch main/)).not.toBeNull()
+    expect(screen.getByText("saved successfully")).not.toBeNull()
   })
 
   it("用户和 AI item 展开后具有符合对应 item tag 颜色的背景样式与 class 标识", () => {
@@ -870,14 +880,13 @@ describe("AgentExecutionFlowList", () => {
         id: "m1",
         role: "assistant",
         blocks: [
-          { kind: "thinking", text: "思考中..." },
+          { kind: "text", text: "正在处理..." },
           {
             kind: "toolCall",
             toolCallId: "call_1",
-            toolName: "bash",
-            args: { command: "ls" },
+            toolName: "write",
+            args: { filePath: "src/file1.txt" },
             status: "done",
-            result: "file1.txt",
           },
         ],
         isStreaming: false,
@@ -893,5 +902,74 @@ describe("AgentExecutionFlowList", () => {
     expect(toolBody).not.toBeNull()
     expect(toolBody?.className).toContain("bg-black/25")
     expect(toolBody?.className).not.toContain("bg-sky-500")
+  })
+
+  it("思考与检索类步骤聚合为 Group 默认折叠，写操作（write/edit）保持独立展开/单条，并在 title 实时显示正在执行的 step", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "请帮我重构代码" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-1",
+            toolName: "read",
+            args: { filePath: "src/index.ts" },
+            status: "done",
+            durationMs: 120,
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "call-2",
+            toolName: "grep",
+            args: { pattern: "calculate" },
+            status: "running",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "call-3",
+            toolName: "write",
+            args: { filePath: "src/utils.ts" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // 前置的 read 与 grep 聚合为一个 Group 组件（共 2 项）
+    const group = container.querySelector('[data-flow-group="true"]')
+    expect(group).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("(2)")).not.toBeNull()
+
+    // 运行态下展示第二行（正在执行的 grep 步骤）
+    expect(screen.getByText('"calculate"')).not.toBeNull()
+    expect(group?.querySelector(".animate-spin")).not.toBeNull()
+
+    // 默认折叠：内部的 read 不直接展示 body
+    expect(group?.querySelector(".agent-execution-flow-group-body")).toBeNull()
+
+    // 独立的写操作 write 步骤单独作为一个 step item（不在 Group 内部）
+    const writeStep = container.querySelector('[data-step-kind="tool"]')
+    expect(writeStep).not.toBeNull()
+    expect(screen.getByText("utils.ts")).not.toBeNull()
+
+    // 点击 Group 头部可以展开
+    const groupHeader = group?.querySelector(".agent-execution-flow-group-header")
+    expect(groupHeader).not.toBeNull()
+    fireEvent.click(groupHeader!)
+
+    // 展开后显示内部的 read
+    expect(group?.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
+    expect(screen.getByText("index.ts")).not.toBeNull()
   })
 })

@@ -1,4 +1,8 @@
 export {
+  AgentExecutionFlowGroup,
+  type AgentExecutionFlowGroupProps,
+} from "./AgentExecutionFlowGroup"
+export {
   AgentExecutionFlowHeader,
   type AgentExecutionFlowHeaderProps,
 } from "./AgentExecutionFlowHeader"

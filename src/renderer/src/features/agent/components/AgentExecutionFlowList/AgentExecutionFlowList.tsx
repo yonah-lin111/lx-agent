@@ -18,6 +18,7 @@ import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSugg
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { AgentExecutionFlowGroup } from "./AgentExecutionFlowGroup"
 import { AgentExecutionFlowHeader } from "./AgentExecutionFlowHeader"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 import {
@@ -81,8 +82,11 @@ export const AgentExecutionFlowList = forwardRef<
 
     const [promptAssembly, setPromptAssembly] = useState<PromptAssembly | null>(null)
     const [activeFilter, setActiveFilter] = useState<FilterKind>("all")
-    // 手动展开/折叠覆盖状态字典：用户手动点击过的步骤在此记录覆盖值
+    // 手动展开/折叠覆盖状态字典：用户手动点击过的步骤或 Group 在此记录覆盖值
     const [userExpansionOverrides, setUserExpansionOverrides] = useState<Record<string, boolean>>(
+      {},
+    )
+    const [groupExpansionOverrides, setGroupExpansionOverrides] = useState<Record<string, boolean>>(
       {},
     )
     const pendingQuestionStepIdsRef = useRef(new Set<string>())
@@ -191,11 +195,93 @@ export const AgentExecutionFlowList = forwardRef<
       [isStepExpanded],
     )
 
+    // 切换 Group 展开/折叠状态
+    const toggleGroupExpanded = useCallback((groupId: string) => {
+      setGroupExpansionOverrides((prev) => ({
+        ...prev,
+        [groupId]: !prev[groupId],
+      }))
+    }, [])
+
+    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、todo、question 以及写操作 edit/write/apply_patch）
+    const isGroupableStep = useCallback((step: ExecutionStep): boolean => {
+      if (
+        step.kind === "assistant" ||
+        step.kind === "user" ||
+        step.kind === "compaction" ||
+        step.kind === "error"
+      ) {
+        return false
+      }
+      const toolName = step.toolContent?.toolName
+      if (
+        toolName === "todowrite" ||
+        toolName === "question" ||
+        toolName === "write" ||
+        toolName === "edit" ||
+        toolName === "apply_patch"
+      ) {
+        return false
+      }
+      return true
+    }, [])
+
     // 过滤后的步骤列表
     const filteredSteps = useMemo(() => {
       if (activeFilter === "all") return steps
       return steps.filter((step) => step.kind === activeFilter)
     }, [steps, activeFilter])
+
+    // 按轮次与非聚合项将 filteredSteps 切分为 items / groups
+    const renderedFlowElements = useMemo(() => {
+      if (activeFilter !== "all") {
+        return filteredSteps.map((step) => ({
+          kind: "single" as const,
+          step,
+        }))
+      }
+
+      type RenderElement =
+        | { kind: "single"; step: ExecutionStep }
+        | { kind: "group"; groupId: string; steps: ExecutionStep[]; turnIndex: number }
+
+      const elements: RenderElement[] = []
+      let currentGroupSteps: ExecutionStep[] = []
+      let currentGroupTurn: number = -1
+
+      const flushGroup = () => {
+        if (currentGroupSteps.length === 0) return
+        if (currentGroupSteps.length === 1) {
+          elements.push({ kind: "single", step: currentGroupSteps[0] })
+        } else {
+          const groupId = `flow-group-${currentGroupSteps[0].id}-${currentGroupSteps[currentGroupSteps.length - 1].id}`
+          elements.push({
+            kind: "group",
+            groupId,
+            steps: [...currentGroupSteps],
+            turnIndex: currentGroupTurn,
+          })
+        }
+        currentGroupSteps = []
+        currentGroupTurn = -1
+      }
+
+      for (const step of filteredSteps) {
+        if (isGroupableStep(step)) {
+          if (currentGroupSteps.length > 0 && currentGroupTurn !== step.turnIndex) {
+            flushGroup()
+          }
+          currentGroupTurn = step.turnIndex
+          currentGroupSteps.push(step)
+        } else {
+          flushGroup()
+          elements.push({ kind: "single", step })
+        }
+      }
+      flushGroup()
+
+      return elements
+    }, [filteredSteps, activeFilter, isGroupableStep])
 
     // 当前是否存在正在运行的步骤
     const hasRunningStep = useMemo(() => steps.some((step) => step.status === "running"), [steps])
@@ -491,30 +577,51 @@ export const AgentExecutionFlowList = forwardRef<
           >
             {filteredSteps.length > 0 ? (
               <div className="flex flex-col gap-1.5">
-                {filteredSteps.map((step, idx) => {
-                  const prevStep = filteredSteps[idx - 1]
-                  const nextStep = filteredSteps[idx + 1]
-                  const isNewTurn = !prevStep || prevStep.turnIndex !== step.turnIndex
-                  const isTurnEnd = !nextStep || nextStep.turnIndex !== step.turnIndex
-                  const isSystemStart = !prevStep || prevStep.kind !== "system"
+                {renderedFlowElements.map((element, idx) => {
+                  const prevElement = renderedFlowElements[idx - 1]
+                  const nextElement = renderedFlowElements[idx + 1]
+
+                  const elementTurnIndex =
+                    element.kind === "single"
+                      ? element.step.turnIndex
+                      : element.turnIndex
+                  const prevTurnIndex = prevElement
+                    ? prevElement.kind === "single"
+                      ? prevElement.step.turnIndex
+                      : prevElement.turnIndex
+                    : -1
+                  const nextTurnIndex = nextElement
+                    ? nextElement.kind === "single"
+                      ? nextElement.step.turnIndex
+                      : nextElement.turnIndex
+                    : -1
+
+                  const isNewTurn = !prevElement || prevTurnIndex !== elementTurnIndex
+                  const isTurnEnd = !nextElement || nextTurnIndex !== elementTurnIndex
+                  const isSystemStart =
+                    element.kind === "single" &&
+                    element.step.kind === "system" &&
+                    (!prevElement ||
+                      (prevElement.kind === "single" && prevElement.step.kind !== "system") ||
+                      prevElement.kind === "group")
+
                   const turnStats =
-                    step.turnIndex > 0 ? turnStatsMap.get(step.turnIndex) : undefined
-                  const turnStartIndex = stepTurnStartIndices.get(step.id) ?? step.stepIndex
+                    elementTurnIndex > 0 ? turnStatsMap.get(elementTurnIndex) : undefined
 
                   return (
-                    <Fragment key={step.id}>
+                    <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
                       {/* 轮次分隔线 */}
-                      {isNewTurn && step.turnIndex > 0 && (
+                      {isNewTurn && elementTurnIndex > 0 && (
                         <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-white/10" />
                           <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
-                            {t("agent.turnLabel", { turn: step.turnIndex })}
+                            {t("agent.turnLabel", { turn: elementTurnIndex })}
                           </span>
                           <div className="h-[1px] flex-1 bg-white/10" />
                         </div>
                       )}
                       {/* 上下文压缩分割线说明 */}
-                      {step.kind === "compaction" && (
+                      {element.kind === "single" && element.step.kind === "compaction" && (
                         <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-white/10" />
                           <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/60 uppercase">
@@ -524,7 +631,7 @@ export const AgentExecutionFlowList = forwardRef<
                         </div>
                       )}
                       {/* System 分割线 */}
-                      {isSystemStart && step.kind === "system" && (
+                      {isSystemStart && (
                         <div className="agent-execution-flow-system-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-white/10" />
                           <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
@@ -533,20 +640,37 @@ export const AgentExecutionFlowList = forwardRef<
                           <div className="h-[1px] flex-1 bg-white/10" />
                         </div>
                       )}
-                      <AgentExecutionFlowItem
-                        step={step}
-                        isExpanded={isStepExpanded(step)}
-                        onToggleExpand={() => toggleStepExpanded(step)}
-                        turnStartIndex={turnStartIndex}
-                      />
+
+                      {/* 渲染单个 Step 或 Group */}
+                      {element.kind === "single" ? (
+                        <AgentExecutionFlowItem
+                          step={element.step}
+                          isExpanded={isStepExpanded(element.step)}
+                          onToggleExpand={() => toggleStepExpanded(element.step)}
+                          turnStartIndex={
+                            stepTurnStartIndices.get(element.step.id) ?? element.step.stepIndex
+                          }
+                        />
+                      ) : (
+                        <AgentExecutionFlowGroup
+                          groupId={element.groupId}
+                          steps={element.steps}
+                          isExpanded={Boolean(groupExpansionOverrides[element.groupId])}
+                          onToggleExpand={() => toggleGroupExpanded(element.groupId)}
+                          isStepExpanded={isStepExpanded}
+                          onToggleStepExpand={toggleStepExpanded}
+                          stepTurnStartIndices={stepTurnStartIndices}
+                        />
+                      )}
+
                       {/* 当该 turn 结束且已完成所有步骤时，在下一行左侧展示该 turn 的综合执行数据统计 */}
                       {isTurnEnd &&
-                        step.turnIndex > 0 &&
+                        elementTurnIndex > 0 &&
                         turnStats &&
                         turnStats.isCompleted &&
                         (activeFilter === "all" || activeFilter === "assistant") && (
                           <div
-                            data-testid={`turn-summary-${step.turnIndex}`}
+                            data-testid={`turn-summary-${elementTurnIndex}`}
                             className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
                           >
                             {turnStats.model && (
