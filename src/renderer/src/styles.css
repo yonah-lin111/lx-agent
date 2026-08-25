@@ -1123,7 +1123,8 @@ select {
 
 .agent-question-graphic pre,
 .agent-question-ascii pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace !important;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace !important;
   font-size: 11px !important;
   line-height: 1.25 !important;
   white-space: pre !important;
@@ -1137,7 +1138,53 @@ select {
   margin: 0.5em 0 !important;
 }
 
-/* 解释性可视化展示块（SVG / ASCII / 表格） */
+/* 前端原型草稿常用表单控件与卡片默认质感 */
+.agent-question-graphic button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: #27272a;
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agent-question-graphic button:hover {
+  background-color: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.agent-question-graphic input,
+.agent-question-graphic select,
+.agent-question-graphic textarea {
+  background-color: #18181b;
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.agent-question-graphic input:focus,
+.agent-question-graphic select:focus,
+.agent-question-graphic textarea:focus {
+  border-color: #38bdf8;
+}
+
+.agent-question-graphic label {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+/* 解释性可视化展示块（SVG / ASCII / 表格 / HTML 原型） */
 .agent-visual-block {
   min-width: 0;
 }

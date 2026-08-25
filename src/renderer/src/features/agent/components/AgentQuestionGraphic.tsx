@@ -1,7 +1,7 @@
 import type React from "react"
 import { useMemo } from "react"
 
-// 允许渲染的标签白名单（静态 SVG 元素与基础 HTML 排版标签）。
+// 允许渲染的标签白名单（静态 SVG 元素与完整 HTML 前端原型/排版标签）。
 const ALLOWED_TAGS = new Set([
   // SVG 绘图标签
   "svg",
@@ -27,7 +27,8 @@ const ALLOWED_TAGS = new Set([
   "use",
   "title",
   "desc",
-  // 基础 HTML 排版标签
+  "foreignobject",
+  // 基础 HTML 排版与语义结构标签
   "div",
   "span",
   "p",
@@ -65,14 +66,42 @@ const ALLOWED_TAGS = new Set([
   "h6",
   "section",
   "article",
+  "nav",
+  "aside",
+  "main",
   "header",
   "footer",
   "figure",
   "figcaption",
+  "details",
+  "summary",
+  "dialog",
+  "mark",
+  "time",
+  "kbd",
+  "samp",
+  "var",
+  "abbr",
   "style",
+  // 前端原型与交互组件标签
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "option",
+  "optgroup",
+  "label",
+  "fieldset",
+  "legend",
+  "form",
+  "progress",
+  "meter",
+  "canvas",
+  "img",
+  "a",
 ])
 
-// 必须严格移除的危险标签（含其所有子节点）。
+// 必须严格移除的危险可执行标签（含其所有子节点）。
 const DANGEROUS_TAGS = new Set([
   "script",
   "iframe",
@@ -83,18 +112,8 @@ const DANGEROUS_TAGS = new Set([
   "link",
   "meta",
   "applet",
-  "form",
-  "input",
-  "button",
-  "select",
-  "textarea",
-  "option",
   "base",
   "marquee",
-  "audio",
-  "video",
-  "source",
-  "track",
   "portal",
 ])
 
@@ -107,6 +126,37 @@ const ALLOWED_ATTRS = new Set([
   "title",
   "role",
   "tabindex",
+  "dir",
+  "lang",
+  "hidden",
+  // 表单与原型控件属性
+  "type",
+  "name",
+  "value",
+  "placeholder",
+  "disabled",
+  "readonly",
+  "checked",
+  "selected",
+  "rows",
+  "cols",
+  "min",
+  "max",
+  "step",
+  "for",
+  "autocomplete",
+  "maxlength",
+  "minlength",
+  "pattern",
+  "required",
+  "multiple",
+  "size",
+  "open",
+  "alt",
+  "src",
+  "href",
+  "target",
+  "rel",
   // SVG 专有属性
   "viewbox",
   "width",
@@ -179,7 +229,6 @@ const ALLOWED_ATTRS = new Set([
   "cellspacing",
   "scope",
   "headers",
-  "href",
   "xlink:href",
 ])
 
@@ -246,9 +295,9 @@ const sanitizeNode = (node: Node): void => {
           continue
         }
 
-        // 严格限制 href 与 xlink:href 仅允许内部锚点 #id（SVG 引用所需）。
-        if (attrName === "href" || attrName === "xlink:href") {
-          if (!attrValue.startsWith("#")) {
+        // 严格限制 href、xlink:href 与 src 剔除 javascript: 伪协议。
+        if (attrName === "href" || attrName === "xlink:href" || attrName === "src") {
+          if (/^\s*javascript:/i.test(attrValue)) {
             element.removeAttribute(attr.name)
             continue
           }

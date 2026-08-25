@@ -26,10 +26,15 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     expect(screen.getByText("SVG Test")).not.toBeNull()
   })
 
-  it("正确净化并渲染合法基础 HTML 标签（表格与代码块）", () => {
+  it("正确净化并渲染合法前端原型标签（按钮、输入框、表单、卡片与表格）", () => {
     const htmlCode = `
-      <div>
-        <p>架构对比表格：</p>
+      <div class="prototype-card">
+        <h3>用户注册原型</h3>
+        <form>
+          <label for="username">用户名</label>
+          <input id="username" type="text" placeholder="请输入用户名" value="admin" />
+          <button type="button">提交</button>
+        </form>
         <table>
           <thead>
             <tr><th>模块</th><th>协议</th></tr>
@@ -42,28 +47,29 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
       </div>
     `
     const { container } = render(<AgentQuestionGraphic content={htmlCode} />)
-    expect(screen.getByText("架构对比表格：")).not.toBeNull()
+    expect(screen.getByText("用户注册原型")).not.toBeNull()
+    expect(container.querySelector("form")).not.toBeNull()
+    expect(container.querySelector("input")).not.toBeNull()
+    expect(container.querySelector("button")).not.toBeNull()
+    expect(screen.getByText("提交")).not.toBeNull()
     expect(container.querySelector("table")).not.toBeNull()
     expect(container.querySelector("th")).not.toBeNull()
     expect(screen.getByText("Renderer")).not.toBeNull()
     expect(container.querySelector("pre code")).not.toBeNull()
   })
 
-  it("防 XSS：彻底剔除 script、iframe、form 等危险标签", () => {
+  it("防 XSS：彻底剔除 script、iframe 等危险可执行标签", () => {
     const maliciousCode = `
       <div>
         <p>正常文本</p>
         <script>alert('xss')</script>
         <iframe src="https://example.com"></iframe>
-        <form action="/steal"><input name="pass" /></form>
       </div>
     `
     const sanitized = sanitizeGraphicContent(maliciousCode)
     expect(sanitized).not.toContain("<script")
     expect(sanitized).not.toContain("alert")
     expect(sanitized).not.toContain("<iframe")
-    expect(sanitized).not.toContain("<form")
-    expect(sanitized).not.toContain("<input")
     expect(sanitized).toContain("正常文本")
   })
 
@@ -84,16 +90,18 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     expect(sanitized).not.toContain("alert")
   })
 
-  it("保留合法的 SVG 内部锚点引用（#id），过滤外部 URL 链接", () => {
+  it("保留合法的 SVG 内部锚点引用（#id）与安全链接，过滤危险 javascript: 伪协议", () => {
     const internalRef = `
       <svg>
         <use href="#icon-star" />
-        <a href="https://malicious.com">外部链接</a>
+        <a href="javascript:alert(1)">恶意伪协议</a>
+        <a href="#dashboard">仪表盘</a>
       </svg>
     `
     const sanitized = sanitizeGraphicContent(internalRef)
     expect(sanitized).toContain('href="#icon-star"')
-    expect(sanitized).not.toContain("https://malicious.com")
+    expect(sanitized).toContain('href="#dashboard"')
+    expect(sanitized).not.toContain("javascript:")
   })
 
   it("正确渲染纯文本与 Claude Code 风格字符图案（ASCII Art）", () => {

@@ -20,20 +20,20 @@ const renderAsciiInputSchema = z.object({
     .describe("ASCII 或 Box-drawing 字符画内容（使用 ┌ ─ │ └ 等标准字符对齐）"),
 })
 
-// HTML 结构化内容渲染工具输入 schema。
+// HTML 原型与结构化渲染工具输入 schema。
 const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
     .describe(
-      "HTML 结构化源码（支持表格 <table>、排版 <div>/<p>、列表 <ul>/<ol>、代码块 <pre> 等基础结构）",
+      "HTML 源码（支持完整 HTML 标签体系：button、input、select、form、card、table、nav、flex/grid 布局等，用于快速构建前端原型草稿与界面组件）",
     ),
   style: z
     .string()
     .max(2000)
     .optional()
-    .describe("自定义 CSS 样式规则（选填，如 'table { width: 100%; }'）"),
+    .describe("自定义 CSS 样式规则（选填，如 '.card { display: flex; gap: 8px; }'）"),
 })
 
 /**
@@ -77,20 +77,21 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * 创建 render_html 工具：输出结构化 HTML 内容（表格、对比矩阵与富文本排版）。
+ * 创建 render_html 工具：输出前端原型、UI 草稿、结构化内容与自定义样式。
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
-  label: "HTML 结构化渲染",
+  label: "HTML 原型与排版",
   description:
-    "渲染基础 HTML 结构化排版内容（如多方案对比表格、指标矩阵、API 接口清单、卡片式多字段展示等）。\n" +
-    "【使用说明】：直接传入 html 源码；支持传入 style 设置自定义样式。默认采用黑色主题背景展示，不受外部全局样式干扰。",
+    "渲染 HTML 前端原型草稿与结构化内容（支持各类表单控件、按钮、卡片、导航栏、网格布局、对比表格等完整标签体系与样式）。\n" +
+    "【核心作用】：设计和展示简洁的前端界面原型、交互草稿、UI 视图组件及数据报表。\n" +
+    "【使用说明】：直接传入 html 源码（支持 form、input、button、select、div、table 等各类标签）；支持传入 style 设置自定义 CSS 样式规则。默认采用黑色主题隔离展示，不受全局样式污染。",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [
       {
         type: "text",
-        text: "已成功渲染 HTML 结构化内容。",
+        text: "已成功渲染 HTML 前端原型与结构化内容。",
       },
     ],
   }),

@@ -41,6 +41,6 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       style: "table { color: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染 HTML 结构化内容。")
+    expect(result.content[0]?.text).toContain("已成功渲染 HTML 前端原型与结构化内容。")
   })
 })
