@@ -20,7 +20,7 @@ const questionPromptSchema = z.object({
       "Optional visual diagram, prototype, or structured preview to help the user understand the context. Supports 3 rendering modes:\n" +
         "1. SVG Vector Diagram: <svg>...</svg> for system architecture, sequence flows, topology maps, and charts;\n" +
         "2. ASCII / Box-drawing Art: Text-based tree layouts or flowcharts using standard box characters (┌ ─ │ └);\n" +
-        "3. HTML Prototype & Table: Full HTML markup (<table>, <form>, <button>, <input>, cards, flex/grid layouts) with optional <style> for interactive UI prototypes, metric matrices, and design drafts.",
+        "3. HTML Prototype & Table: Full HTML markup styled with Tailwind CSS classes (forms, buttons, inputs, cards, flex/grid layouts, tables) for concise UI prototypes, design drafts, and metrics.",
     ),
   header: z
     .string()
@@ -79,7 +79,7 @@ export const createQuestionTool = (
     "Supports 3 rich visual rendering capabilities in the 'content' field:\n" +
     "- SVG Diagrams: Embed <svg> tags for architecture topologies, sequence diagrams, and data flows.\n" +
     "- ASCII Art: Monospace box-drawing flowcharts (┌ ─ │ └) for lightweight terminal-style workflow sketches.\n" +
-    "- HTML Prototypes & Tables: Rich HTML with forms, buttons, inputs, tables, and custom CSS styles for UI prototypes and comparison matrices.\n" +
+    "- HTML Prototypes & Tables: Rich HTML styled with Tailwind CSS utility classes for clean UI prototypes and comparison matrices.\n" +
     "Provide 'options' for multiple choice (single or multi-select), or omit 'options' for free-form text answers.",
   inputSchema: questionInputSchema,
   executionMode: "sequential",

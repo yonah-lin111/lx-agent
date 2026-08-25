@@ -368,6 +368,8 @@ export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): 
         line-height: 1.5;
         font-size: 13px;
         box-sizing: border-box;
+        overflow-x: hidden !important;
+        overflow-y: hidden !important;
       }
       *, *::before, *::after {
         box-sizing: inherit;
@@ -397,6 +399,11 @@ export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): 
     `
     if (doc.head) {
       doc.head.insertBefore(baseStyle, doc.head.firstChild)
+
+      // 注入 Tailwind CSS CDN 运行时支持
+      const tailwindScript = doc.createElement("script")
+      tailwindScript.src = "https://cdn.tailwindcss.com"
+      doc.head.appendChild(tailwindScript)
     }
 
     // 若有传入自定义 style，作为最后一项注入 head
@@ -449,12 +456,13 @@ const HtmlIframePreview = ({
 
   return (
     <div
-      className={`agent-question-graphic my-1.5 max-h-[80vh] w-full overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] select-text custom-scrollbar ${className}`}
+      className={`agent-question-graphic my-1.5 max-h-[80vh] w-full overflow-x-hidden overflow-y-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] select-text custom-scrollbar ${className}`}
     >
       <iframe
         ref={iframeRef}
         srcDoc={html}
-        sandbox="allow-same-origin"
+        sandbox="allow-scripts allow-same-origin"
+        scrolling="no"
         title="HTML Preview"
         onLoad={updateHeight}
         style={{
@@ -464,6 +472,7 @@ const HtmlIframePreview = ({
           border: "none",
           display: "block",
           background: "transparent",
+          overflow: "hidden",
         }}
       />
     </div>

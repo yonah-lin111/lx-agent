@@ -49,7 +49,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     const { container } = render(<AgentQuestionGraphic content={htmlCode} />)
     const iframe = container.querySelector("iframe")
     expect(iframe).not.toBeNull()
-    expect(iframe?.getAttribute("sandbox")).toBe("allow-same-origin")
+    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin")
     const srcDoc = iframe?.getAttribute("srcdoc") || ""
     expect(srcDoc).toContain("用户注册原型")
     expect(srcDoc).toContain("<form")

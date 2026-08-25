@@ -27,13 +27,13 @@ const renderHtmlInputSchema = z.object({
     .min(1)
     .max(50000)
     .describe(
-      "HTML source code (supports full HTML tags: button, input, select, form, card, table, nav, flex/grid layouts, etc., for building frontend prototypes, UI drafts, and component views)",
+      "HTML source code using Tailwind CSS utility classes for styling and layout (supports full HTML5: form, input, button, select, card, table, nav, flex, grid, etc.).",
     ),
   style: z
     .string()
     .max(2000)
     .optional()
-    .describe("Custom CSS style rules (optional, e.g. '.card { display: flex; gap: 8px; }')"),
+    .describe("Optional custom CSS rules (prefer using Tailwind CSS utility classes directly)."),
 })
 
 /**
@@ -77,15 +77,16 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * Create render_html tool: outputs concise frontend prototypes, UI drafts, and structured components.
+ * Create render_html tool: outputs concise frontend prototypes and UI drafts using Tailwind CSS.
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
   label: "HTML Prototype",
   description:
-    "Render concise HTML frontend prototypes, UI drafts, and structured layouts (supports form controls, buttons, cards, navbars, grid/flex layouts, tables, and full HTML tags with styles).\n" +
-    "[Primary Purpose]: Design and display concise frontend UI prototypes, interactive drafts, component views, and data matrices.\n" +
-    "[Usage]: Pass the html source directly (supports form, input, button, select, div, table, etc.); optionally pass custom style rules. Rendered in an isolated dark theme by default.",
+    "Render concise HTML frontend prototypes, UI drafts, and interactive mockups.\n" +
+    "[Styling Standard]: ALWAYS use Tailwind CSS utility classes directly on HTML elements (e.g. flex, grid, gap-4, bg-zinc-900, p-6, rounded-2xl, shadow-lg, text-white, border-zinc-800) for clean and modern designs. DO NOT write verbose traditional CSS in <style> tags unless specifically required.\n" +
+    "[Primary Purpose]: Design and display concise frontend UI prototypes, interactive drafts, component views, and data tables.\n" +
+    "[Usage]: Pass the html source directly with Tailwind CSS classes. Rendered in a fully isolated sandbox environment.",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [
