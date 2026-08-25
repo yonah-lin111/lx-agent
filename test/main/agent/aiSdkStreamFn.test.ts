@@ -190,7 +190,52 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
     const finalResult = await stream.result()
     expect(finalResult.stopReason).toBe("stop")
     expect(finalResult.content).toEqual([
-      { type: "text", text: "chunk-0 chunk-1 chunk-2 chunk-3 chunk-4 " },
+      {
+        type: "text",
+        text: "chunk-0 chunk-1 chunk-2 chunk-3 chunk-4 ",
+        durationMs: expect.any(Number),
+      },
     ])
+  })
+
+  it("正确解析 reasoning-start/delta/end 流事件并生成 thinking 块", async () => {
+    async function* createReasoningStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "正在思考方案..." }
+      yield { type: "reasoning-delta" as const, text: "已得出结论。" }
+      yield { type: "reasoning-end" as const }
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "最终回答" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 10, outputTokens: 25, totalTokens: 35 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({
+      fullStream: createReasoningStream(),
+    })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+
+    const events: Array<unknown> = []
+    for await (const event of stream) {
+      events.push(event)
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.stopReason).toBe("stop")
+    expect(finalResult.content).toEqual([
+      { type: "thinking", thinking: "正在思考方案...已得出结论。", durationMs: expect.any(Number) },
+      { type: "text", text: "最终回答", durationMs: expect.any(Number) },
+    ])
+    expect(finalResult.usage).toEqual({
+      input: 10,
+      output: 25,
+      cacheRead: 0,
+      totalTokens: 35,
+    })
   })
 })

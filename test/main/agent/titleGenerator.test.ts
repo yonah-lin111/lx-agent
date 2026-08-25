@@ -7,7 +7,11 @@ const settings = vi.hoisted(() => ({
 }))
 
 // mock ai.streamText：返回可控文本，避免真实 LLM 调用。
-vi.mock("ai", () => ({ streamText: vi.fn() }))
+vi.mock("ai", () => ({
+  streamText: vi.fn(),
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
+  extractReasoningMiddleware: vi.fn(),
+}))
 
 // mock settingsService：titleSummary 指向固定模型。
 vi.mock("@/services/settingsService", () => ({
