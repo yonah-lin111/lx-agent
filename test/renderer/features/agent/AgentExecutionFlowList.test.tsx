@@ -1037,4 +1037,51 @@ describe("AgentExecutionFlowList", () => {
     expect(img).not.toBeNull()
     expect(img?.src).toContain("lx-image://local/path/to/screenshot.png")
   })
+
+  it("当步骤元素数量超出滑动窗口初始大小时，渲染折叠历史按钮并支持点击展开更早步骤（含压缩消息）", () => {
+    // 构造 10 轮（共 20 个 steps），超过默认 15 的初始窗口大小，中间插入压缩消息
+    const messages: ChatMessage[] = []
+    for (let i = 1; i <= 10; i++) {
+      messages.push({
+        id: `u-${i}`,
+        role: "user",
+        blocks: [{ kind: "text", text: `用户提问 ${i}` }],
+        isStreaming: false,
+      })
+      if (i === 5) {
+        messages.push({
+          id: "compaction-1",
+          role: "compactionSummary",
+          blocks: [{ kind: "text", text: "已自动压缩前 5 轮上下文" }],
+          summaryTokens: 120,
+          isStreaming: false,
+        })
+      }
+      messages.push({
+        id: `a-${i}`,
+        role: "assistant",
+        blocks: [{ kind: "text", text: `助手回复 ${i}` }],
+        isStreaming: false,
+      })
+    }
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 应展示折叠历史按钮
+    const loadMoreBtn = screen.getByText(/加载更早步骤/)
+    expect(loadMoreBtn).not.toBeNull()
+    expect(loadMoreBtn.textContent).toContain("个单元未展开")
+
+    // 最早的第 1 轮步骤目前不在 DOM 中
+    expect(screen.queryByText("用户提问 1")).toBeNull()
+    // 最新的第 10 轮步骤在 DOM 中
+    expect(screen.getByText("用户提问 10")).not.toBeNull()
+
+    // 点击加载更早步骤（一次加载 15 个单元）
+    fireEvent.click(loadMoreBtn)
+
+    // 展开后最早的第 1 轮步骤已被渲染出来，压缩消息也正常呈现
+    expect(screen.getByText("用户提问 1")).not.toBeNull()
+    expect(screen.getAllByText("Context Compaction").length).toBeGreaterThanOrEqual(1)
+  })
 })

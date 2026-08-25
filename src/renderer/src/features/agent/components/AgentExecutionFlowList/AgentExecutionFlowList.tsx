@@ -1,5 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { Loader2, Workflow } from "lucide-react"
+import { ChevronUp, Loader2, Workflow } from "lucide-react"
 import {
   Fragment,
   forwardRef,
@@ -56,6 +56,12 @@ export interface AgentExecutionFlowListRef {
 
 // 智能吸底判定阈值：滚动容器距底部小于该值视为处于底部。
 const FOLLOW_BOTTOM_THRESHOLD = 40
+// 触顶加载更多历史阈值。
+const LOAD_MORE_TOP_THRESHOLD = 150
+// 初始滑动窗口大小：默认展示最新的 15 个执行元素（含单步与折叠组）。
+const WINDOW_INITIAL_SIZE = 15
+// 向上滚动触发加载时，每次追加的历史元素数。
+const WINDOW_PAGE_SIZE = 15
 
 /**
  * AgentExecutionFlowList - 与消息列表互斥显示的执行流程视图。
@@ -283,6 +289,67 @@ export const AgentExecutionFlowList = forwardRef<
       return elements
     }, [filteredSteps, activeFilter, isGroupableStep])
 
+    // --- Sliding Window (滑动窗口) ---
+    // 窗口起始索引：从该索引到末尾的 elements 实际渲染到 DOM 中。
+    const [windowStartIndex, setWindowStartIndex] = useState<number>(() =>
+      Math.max(0, renderedFlowElements.length - WINDOW_INITIAL_SIZE),
+    )
+
+    // 记录滚动位置与高度，供上滑追加历史后做滚动高度差补偿。
+    const scrollCompensationRef = useRef<{
+      prevScrollHeight: number
+      prevScrollTop: number
+    } | null>(null)
+
+    // 会话切换（消息列表重置或恢复）或筛选切换时，重置滑动窗口与初次吸底标记。
+    const prevMessagesLengthRef = useRef(messages.length)
+    const prevActiveFilterRef = useRef(activeFilter)
+    useEffect(() => {
+      const isFilterChanged = prevActiveFilterRef.current !== activeFilter
+      prevActiveFilterRef.current = activeFilter
+
+      if (
+        isFilterChanged ||
+        messages.length === 0 ||
+        Math.abs(messages.length - prevMessagesLengthRef.current) > 5
+      ) {
+        setWindowStartIndex(Math.max(0, renderedFlowElements.length - WINDOW_INITIAL_SIZE))
+        hasInitialScrolledRef.current = false
+      }
+      prevMessagesLengthRef.current = messages.length
+    }, [messages.length, activeFilter, renderedFlowElements.length])
+
+    // 当前切片内的可见 elements
+    const visibleElements = useMemo(
+      () => renderedFlowElements.slice(windowStartIndex),
+      [renderedFlowElements, windowStartIndex],
+    )
+
+    // 向上加载更多历史：扩展窗口起始索引，并在渲染后无缝补偿滚动位置。
+    const loadMoreHistory = useCallback((): void => {
+      if (windowStartIndex <= 0) return
+      const el = scrollRef.current
+      if (el) {
+        scrollCompensationRef.current = {
+          prevScrollHeight: el.scrollHeight,
+          prevScrollTop: el.scrollTop,
+        }
+      }
+      setWindowStartIndex((prev) => Math.max(0, prev - WINDOW_PAGE_SIZE))
+    }, [windowStartIndex])
+
+    // 上滑追加历史后，立即做滚动高度差补偿，确保当前视野内容完全静止、无任何跳跃。
+    useLayoutEffect(() => {
+      const compensation = scrollCompensationRef.current
+      if (!compensation) return
+      const el = scrollRef.current
+      if (el) {
+        const heightDiff = el.scrollHeight - compensation.prevScrollHeight
+        el.scrollTop = compensation.prevScrollTop + heightDiff
+      }
+      scrollCompensationRef.current = null
+    }, [visibleElements])
+
     // 运行中的虚拟占位步骤（只要处于流式输出中，且当前筛选允许显示助手/全部，就始终展示 loading 占位）
     const showSkeletonLoading =
       isStreaming && (activeFilter === "all" || activeFilter === "assistant")
@@ -329,7 +396,12 @@ export const AgentExecutionFlowList = forwardRef<
       }
       prevScrollTopRef.current = el.scrollTop
       updateNavState()
-    }, [isNearBottom, updateNavState])
+
+      // 向上滑动接近顶部时，自动拉取上一页历史并无感补偿滚动。
+      if (el.scrollTop < LOAD_MORE_TOP_THRESHOLD && windowStartIndex > 0) {
+        loadMoreHistory()
+      }
+    }, [isNearBottom, loadMoreHistory, updateNavState, windowStartIndex])
 
     // 新建或清空对话后复位滚动状态
     useEffect(() => {
@@ -572,11 +644,26 @@ export const AgentExecutionFlowList = forwardRef<
             onScroll={handleScroll}
             className="custom-scrollbar min-h-0 flex-1 overflow-y-scroll px-3 py-2 pb-16 [scrollbar-gutter:stable]"
           >
+            {/* 滑动窗口：顶部存在折叠历史时，展示加载入口与未展开条数 */}
+            {windowStartIndex > 0 && (
+              <div className="flex w-full justify-center pt-1 pb-2">
+                <button
+                  type="button"
+                  onClick={loadMoreHistory}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                >
+                  <ChevronUp className="h-3 w-3" />
+                  <span>加载更早步骤 ({windowStartIndex} 个单元未展开)</span>
+                </button>
+              </div>
+            )}
+
             {filteredSteps.length > 0 ? (
               <div className="flex flex-col gap-1.5">
-                {renderedFlowElements.map((element, idx) => {
-                  const prevElement = renderedFlowElements[idx - 1]
-                  const nextElement = renderedFlowElements[idx + 1]
+                {visibleElements.map((element, idx) => {
+                  const actualIdx = windowStartIndex + idx
+                  const prevElement = renderedFlowElements[actualIdx - 1]
+                  const nextElement = renderedFlowElements[actualIdx + 1]
 
                   const elementTurnIndex =
                     element.kind === "single"
