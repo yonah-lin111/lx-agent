@@ -1,5 +1,6 @@
 import type React from "react"
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { TAILWIND_PROTOTYPE_CSS } from "./tailwindPreset"
 
 // 允许渲染的标签白名单（静态 SVG 元素与完整 HTML 前端原型/排版标签）。
 const ALLOWED_TAGS = new Set([
@@ -353,57 +354,11 @@ export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): 
     if (doc.head) sanitizeNode(doc.head)
     if (doc.body) sanitizeNode(doc.body)
 
-    // 注入全局默认基准重置样式（作为 head 的第一项，用户自定义样式可自由覆盖）
-    const baseStyle = doc.createElement("style")
-    baseStyle.textContent = `
-      :root {
-        color-scheme: dark;
-      }
-      html, body {
-        margin: 0;
-        padding: 12px;
-        background-color: #0d0d0d;
-        color: #e5e7eb;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.5;
-        font-size: 13px;
-        box-sizing: border-box;
-        overflow-x: hidden !important;
-        overflow-y: hidden !important;
-      }
-      *, *::before, *::after {
-        box-sizing: inherit;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0.5em 0;
-        font-size: 12px;
-        background-color: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 4px;
-      }
-      th, td {
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 6px 10px;
-        text-align: left;
-      }
-      th {
-        background-color: #212121;
-        color: #ffffff;
-        font-weight: 600;
-      }
-      td {
-        color: rgba(255, 255, 255, 0.85);
-      }
-    `
+    // 注入内置自包含 Tailwind CSS 原型样式预设（作为 head 的第一项，完全离线且免 CSP 拦截）
+    const tailwindStyle = doc.createElement("style")
+    tailwindStyle.textContent = TAILWIND_PROTOTYPE_CSS
     if (doc.head) {
-      doc.head.insertBefore(baseStyle, doc.head.firstChild)
-
-      // 注入 Tailwind CSS CDN 运行时支持
-      const tailwindScript = doc.createElement("script")
-      tailwindScript.src = "https://cdn.tailwindcss.com"
-      doc.head.appendChild(tailwindScript)
+      doc.head.insertBefore(tailwindStyle, doc.head.firstChild)
     }
 
     // 若有传入自定义 style，作为最后一项注入 head
