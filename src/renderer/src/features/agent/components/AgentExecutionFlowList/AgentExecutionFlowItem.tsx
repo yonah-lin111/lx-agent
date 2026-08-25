@@ -223,7 +223,7 @@ export const AgentExecutionFlowItem = ({
                         <div className="text-white/80">
                           {t("agent.stepDuration", { duration: formatDurationMs(step.durationMs) })}
                         </div>
-                        <div className="text-sky-400">
+                        <div className="text-amber-400">
                           {t("agent.agentOverhead", {
                             duration: formatDurationMs(step.agentOverheadMs),
                           })}
@@ -244,7 +244,7 @@ export const AgentExecutionFlowItem = ({
                       className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
                     >
                       <span>{formatDurationMs(step.durationMs)}</span>
-                      <span className="text-[10px] font-normal text-sky-400/80 hover:text-sky-300">
+                      <span className="text-[10px] font-normal text-amber-400/80 hover:text-amber-300">
                         (+{formatDurationMs(step.agentOverheadMs)})
                       </span>
                     </span>
@@ -267,7 +267,7 @@ export const AgentExecutionFlowItem = ({
               ) : step.kind === "user" && step.stepSpanMs !== undefined && step.stepSpanMs > 0 ? (
                 <LxTooltip
                   content={
-                    <span className="text-sky-400">
+                    <span className="text-amber-400">
                       {t("agent.agentOverhead", {
                         duration: formatDurationMs(step.stepSpanMs),
                       })}
@@ -277,7 +277,7 @@ export const AgentExecutionFlowItem = ({
                 >
                   <span
                     data-testid="flow-item-duration"
-                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-sky-400/80 hover:text-sky-300 cursor-default"
+                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-amber-400/80 hover:text-amber-300 cursor-default"
                   >
                     {formatDurationMs(step.stepSpanMs)}
                   </span>
