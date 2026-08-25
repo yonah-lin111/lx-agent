@@ -314,10 +314,18 @@ export const LxTooltip = ({
 
   useEffect(() => {
     if (!isVisible || !closeOnScroll) return
-    // 任意滚动条滚动时关闭气泡，排除本气泡范围（含已注册的嵌套浮层）内滚动。
+    // 滚动时检测：只有当滚动的容器包含本 Tooltip 的触发元素时（且不属于气泡浮层自身），才关闭气泡。
+    // 如果滚动的容器是外部其他无关容器（例如消息列表/执行流程列表吸底滚动），则完全不影响外部 Tooltip。
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
-      if (!isInsideTooltip(target)) {
+      if (isInsideTooltip(target)) return
+
+      const triggerNode = containerRef.current
+      if (
+        triggerNode &&
+        target instanceof Element &&
+        (target.contains(triggerNode) || target === document || target === document.documentElement)
+      ) {
         clearTimers()
         syncVisible(false)
       }
