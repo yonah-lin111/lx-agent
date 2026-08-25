@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -159,16 +160,39 @@ export const LxTooltip = ({
     hideTimeoutRef.current = null
   }
 
+  const isMountedRef = useRef(false)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   /**
-   * 根据触发元素和视口尺寸计算气泡位置。
+   * 将更新的坐标同步保存到 coordsRef，供同步读取与计算
    */
-  const updatePosition = (): void => {
-    if (!containerRef.current || !tooltipRef.current) return
+  const calculatePosition = (): {
+    resolvedPlacement: LxTooltipPlacement
+    left: number
+    top: number
+    arrowOffset: number
+  } | null => {
+    if (!containerRef.current) return null
 
     const triggerRect = containerRef.current.getBoundingClientRect()
-    const tooltipRect = tooltipRef.current.getBoundingClientRect()
-    const tooltipWidth = tooltipRef.current.offsetWidth || tooltipRect.width
-    const tooltipHeight = tooltipRef.current.offsetHeight || tooltipRect.height
+    // 如果触发元素宽度/高度为0，或完全不可见/未渲染在视口中
+    if (
+      triggerRect.width === 0 &&
+      triggerRect.height === 0 &&
+      triggerRect.top === 0 &&
+      triggerRect.left === 0
+    ) {
+      return null
+    }
+
+    const tooltipRect = tooltipRef.current?.getBoundingClientRect()
+    const tooltipWidth = tooltipRef.current?.offsetWidth || tooltipRect?.width || 0
+    const tooltipHeight = tooltipRef.current?.offsetHeight || tooltipRect?.height || 0
     const padding = 8
     const gap = 12
     const spaces = {
@@ -223,10 +247,29 @@ export const LxTooltip = ({
     const bubbleSize =
       resolvedPlacement === "top" || resolvedPlacement === "bottom" ? tooltipWidth : tooltipHeight
 
-    setActivePlacement(resolvedPlacement)
-    setCoords({ left, top })
-    setArrowOffset(Math.max(12, Math.min(bubbleSize - 12, triggerCenter - bubbleStart)))
+    return {
+      resolvedPlacement,
+      left,
+      top,
+      arrowOffset: Math.max(12, Math.min(bubbleSize - 12, triggerCenter - bubbleStart)),
+    }
   }
+
+  /**
+   * 根据触发元素和视口尺寸计算气泡位置。
+   */
+  const updatePosition = useCallback((): void => {
+    const pos = calculatePosition()
+    if (!pos) return
+    setActivePlacement((prev) => (prev !== pos.resolvedPlacement ? pos.resolvedPlacement : prev))
+    setCoords((prev) => {
+      if (prev && Math.abs(prev.left - pos.left) < 0.5 && Math.abs(prev.top - pos.top) < 0.5) {
+        return prev
+      }
+      return { left: pos.left, top: pos.top }
+    })
+    setArrowOffset((prev) => (Math.abs(prev - pos.arrowOffset) < 0.5 ? prev : pos.arrowOffset))
+  }, [placement])
 
   useEffect(() => {
     if (open === undefined) return
@@ -248,7 +291,12 @@ export const LxTooltip = ({
       setCoords(null)
     }, 120)
     return () => clearTimeout(timer)
-  }, [isVisible, shouldRender])
+  }, [isVisible])
+
+  useLayoutEffect(() => {
+    if (!shouldRender) return
+    updatePosition()
+  }, [shouldRender, updatePosition])
 
   useEffect(() => {
     if (!shouldRender) return
@@ -418,8 +466,18 @@ export const LxTooltip = ({
             <div
               ref={tooltipRef}
               role="tooltip"
-              className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"} ${contentClassName}`}
-              style={{ left: coords?.left ?? 0, top: coords?.top ?? 0 }}
+              className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${
+                !coords
+                  ? "invisible pointer-events-none"
+                  : isAnimatingOut
+                    ? "animate-tooltip-out"
+                    : "animate-tooltip-in"
+              } ${contentClassName}`}
+              style={{
+                left: coords?.left ?? -9999,
+                top: coords?.top ?? -9999,
+                visibility: coords ? "visible" : "hidden",
+              }}
               onMouseEnter={() => {
                 if (hideTimeoutRef.current) {
                   clearTimeout(hideTimeoutRef.current)
