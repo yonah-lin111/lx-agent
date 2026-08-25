@@ -40,6 +40,7 @@ import {
   MAX_INJECTED_SKILLS,
   resolveCwd,
 } from "./assembly"
+import type { PersonalityName } from "./prompts/personalities"
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
@@ -83,6 +84,7 @@ class AgentRunner {
   private agent?: Agent
   private registry?: ToolRegistry
   private cwd?: string
+  private personality?: PersonalityName
   private unsubscribe?: () => void
   private eventSink?: (event: AgentEvent) => void
   // renderer 最近一次请求的模型选择；未设置时回退到默认模型。
@@ -149,6 +151,9 @@ class AgentRunner {
       lspManager.clearSession(this.currentSessionId)
     }
     this.currentSessionId = sessionId
+    if (sessionId === null) {
+      this.personality = undefined
+    }
   }
 
   // 保证 Agent 就绪；返回错误信息时表示不可用。
@@ -169,11 +174,12 @@ class AgentRunner {
       return { error: modelResult.error }
     }
 
-    // 能力指纹：内置激活集 + MCP 工具 + 注入 skill 任一变化即重建装配。
+    // 能力指纹：内置激活集 + MCP 工具 + 注入 skill + 人格设定 任一变化即重建装配。
     const capabilitiesSignature = JSON.stringify([
       this.activeCapabilities,
       this.activeMcp,
       this.activeSkills.map((skill) => skill.name),
+      this.personality,
     ])
     if (
       !this.agent ||
@@ -187,11 +193,12 @@ class AgentRunner {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
       )
-      // 会话 system prompt：动态分层提示词装配（基础身份 + 核心指导 + 技能分层 + 指令文件）。
+      // 会话 system prompt：动态分层提示词装配（基础身份 + 核心指导 + 技能分层 + 指令文件 + 人格）。
       const systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
         activeSkills: this.activeSkills,
+        personality: this.personality,
       })
       const registry = createRegistry(
         cwd,
@@ -296,6 +303,7 @@ class AgentRunner {
         cwd,
         sessionId: this.currentSessionId ?? undefined,
         activeSkills: this.activeSkills,
+        personality: this.personality,
       })
     }
 
@@ -312,6 +320,9 @@ class AgentRunner {
     }
     const cwd = context.cwd ?? (context.projectItemId ? resolveCwd() : join(homedir(), "Desktop"))
     if (cwd) this.requestedCwd = cwd
+    if (context.personality) {
+      this.personality = context.personality
+    }
     const snapshot = getDefaultCapabilities()
     this.activeCapabilities = snapshot.tools
     this.activeMcp = this.resolveMcpTools()
@@ -457,6 +468,9 @@ class AgentRunner {
     if (context !== undefined) {
       this.freezeNewSession(context)
     }
+    if (options?.personality) {
+      this.personality = options.personality
+    }
 
     // 即时插话（steer）：在流式生成中直接注入当前 run 的 turn 边界
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
@@ -574,6 +588,7 @@ class AgentRunner {
         cwd: this.cwd ?? resolveCwd(),
         sessionId: this.currentSessionId ?? undefined,
         activeSkills: this.activeSkills,
+        personality: this.personality,
       })
       const userMessage: UserMessage = {
         role: "user",

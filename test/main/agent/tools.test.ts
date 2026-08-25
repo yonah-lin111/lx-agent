@@ -178,6 +178,6 @@ describe("bash", () => {
     const cwd = await makeTmp()
     const bash = createBashTool(cwd)
     const r = await bash.execute("t1", { command: "exit 3" })
-    expect(toolText(r)).toMatch(/退出码 3/)
+    expect(toolText(r)).toMatch(/Command exited with code 3|退出码 3/)
   })
 })

@@ -147,8 +147,8 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
     expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
     const prompt = holder.capturedSystemPrompts[0]!
-    expect(prompt).toContain("你是 LX Agent")
-    expect(prompt).toContain("修改文件前先读取确认目标内容")
+    expect(prompt).toContain("You are LX Agent")
+    expect(prompt).toContain("Read a file to confirm its content before modifying it")
     expect(prompt).toContain("Instructions from:")
     expect(prompt).toContain("Do not break production.")
   })
@@ -166,7 +166,7 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
       {
         name: "deployment:persona",
         order: 0,
-        text: "你是一个只输出 JSON 的代码分析引擎。",
+        text: "You are a JSON-only code analysis engine.",
       },
       sessionId,
     )
@@ -178,9 +178,9 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
       expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
       const prompt = holder.capturedSystemPrompts[0]!
-      expect(prompt).toContain("你是 LX Agent")
-      expect(prompt).toContain("你是一个只输出 JSON 的代码分析引擎。")
-      expect(prompt).not.toContain("修改文件前先读取确认目标内容") // 默认 persona 被覆盖
+      expect(prompt).toContain("You are LX Agent")
+      expect(prompt).toContain("You are a JSON-only code analysis engine.")
+      expect(prompt).not.toContain("Read a file to confirm its content before modifying it") // 默认 persona 被覆盖
     } finally {
       unregister()
     }
@@ -192,7 +192,7 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
       await agentRunner.send("hello other", undefined, { page: "/p2", cwd: otherProjectDir })
       expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
       const normalPrompt = holder.capturedSystemPrompts[0]!
-      expect(normalPrompt).toContain("修改文件前先读取确认目标内容")
+      expect(normalPrompt).toContain("Read a file to confirm its content before modifying it")
     } finally {
       rmSync(otherProjectDir, { recursive: true, force: true })
     }

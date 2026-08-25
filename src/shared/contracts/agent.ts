@@ -436,12 +436,16 @@ export interface PromptTemplateItem {
   filePath: string
 }
 
+// Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
+export type AgentPersonality = "pragmatic" | "friendly"
+
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
   projectItemId?: string // 项目 item 会话归属
   projectId?: string // 冗余：项目 id（聚合某项目全部 item 会话）
   page?: string // 非 item 会话的路由（'/' | '/project' | '/settings' …）
   cwd?: string // 工具执行目录（项目页 = project.path；独立页可省略，回退主目录）
+  personality?: AgentPersonality // 会话级指定人格
   files?: {
     name: string
     path: string
@@ -517,6 +521,7 @@ export interface AgentRestoredSession {
 // delivery: "queue"（默认，当前 run 结束后排队执行）| "steer"（即时插话，注入当前 run 的 turn 边界即时引导转向）。
 export interface AgentSendOptions {
   delivery?: "queue" | "steer"
+  personality?: AgentPersonality
 }
 
 // 发送对话请求的返回结果；ok 时携带落库会话 id（首条消息才真正入库）。

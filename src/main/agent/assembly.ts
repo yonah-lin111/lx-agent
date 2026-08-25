@@ -2,6 +2,7 @@ import { execSync } from "node:child_process"
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import { defaultSystemPromptManager, type SystemPromptManager } from "./prompts/systemPromptManager"
+import type { PersonalityName } from "./prompts/personalities"
 import { createReadSkillTool } from "./skills/readSkillTool"
 import type { LoadedSkill } from "./skills/skillLoader"
 import { createApplyPatchTool } from "./tools/applyPatch"
@@ -37,6 +38,7 @@ export interface BuildSystemPromptOptions {
   cwd?: string
   sessionId?: string
   activeSkills?: LoadedSkill[]
+  personality?: PersonalityName
   manager?: SystemPromptManager
   variables?: Record<string, string | undefined>
 }
@@ -90,6 +92,7 @@ export const buildSystemPrompt = async (
     cwd: options.cwd,
     sessionId: options.sessionId,
     activeSkills: options.activeSkills,
+    personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
   })
 }
@@ -102,6 +105,7 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
     cwd: options.cwd,
     sessionId: options.sessionId,
     activeSkills: options.activeSkills,
+    personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
   })
 }
