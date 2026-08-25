@@ -69,6 +69,7 @@ const ALLOWED_TAGS = new Set([
   "footer",
   "figure",
   "figcaption",
+  "style",
 ])
 
 // 必须严格移除的危险标签（含其所有子节点）。
@@ -79,7 +80,6 @@ const DANGEROUS_TAGS = new Set([
   "frameset",
   "object",
   "embed",
-  "style",
   "link",
   "meta",
   "applet",
@@ -220,6 +220,15 @@ const sanitizeNode = (node: Node): void => {
         continue
       }
 
+      // 净化 style 标签内部 CSS 规则。
+      if (tagName === "style") {
+        const cssContent = element.textContent || ""
+        if (/(javascript:|expression|behavior|@import|url\s*\()/i.test(cssContent)) {
+          element.remove()
+          continue
+        }
+      }
+
       // 属性白名单与安全校验。
       const attrs = Array.from(element.attributes)
       for (const attr of attrs) {
@@ -280,17 +289,19 @@ export const sanitizeGraphicContent = (rawContent: string): string => {
 // 提问图形化展示属性。
 export interface AgentQuestionGraphicProps {
   content?: string
+  customStyle?: string
   className?: string
 }
 
 /**
- * AgentQuestionGraphic - 提问工具图形化展示组件：
+ * AgentQuestionGraphic - 图形与结构化排版展示组件：
  * 支持 SVG 矢量绘图、基础 HTML 排版输出及 Claude Code 风格字符图案（ASCII Art），
  * 不使用大型 Markdown 渲染器，内置 DOMParser 严格白名单过滤以防御 XSS 与脚本注入。
- * 面板最大高度设为 80vh，支持长图与多行图表滚动。
+ * 面板最大高度设为 80vh，支持自定义 style 设置且默认采用纯黑主题背景。
  */
 export const AgentQuestionGraphic = ({
   content,
+  customStyle,
   className = "",
 }: AgentQuestionGraphicProps): React.JSX.Element | null => {
   const isHtmlOrSvg = useMemo(() => {
@@ -300,8 +311,9 @@ export const AgentQuestionGraphic = ({
 
   const sanitizedHtml = useMemo(() => {
     if (!content || !isHtmlOrSvg) return ""
-    return sanitizeGraphicContent(content)
-  }, [content, isHtmlOrSvg])
+    const rawToSanitize = customStyle ? `<style>${customStyle}</style>${content}` : content
+    return sanitizeGraphicContent(rawToSanitize)
+  }, [content, customStyle, isHtmlOrSvg])
 
   if (!content) return null
 
@@ -310,7 +322,7 @@ export const AgentQuestionGraphic = ({
     if (!sanitizedHtml) return null
     return (
       <div
-        className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-black/40 p-2.5 text-[12px] text-white/85 select-text custom-scrollbar ${className}`}
+        className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] p-2.5 text-[12px] text-white/85 select-text custom-scrollbar ${className}`}
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     )
@@ -319,7 +331,7 @@ export const AgentQuestionGraphic = ({
   // 纯文本/字符图案（Claude Code 风格 ASCII Art / Box-drawing 拓扑）。
   return (
     <div
-      className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-black/40 p-2.5 text-[12px] select-text custom-scrollbar ${className}`}
+      className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] p-2.5 text-[12px] select-text custom-scrollbar ${className}`}
     >
       <pre className="font-mono text-[11px] leading-[1.25] text-sky-300/90 whitespace-pre m-0 p-0 bg-transparent border-0">
         {content}

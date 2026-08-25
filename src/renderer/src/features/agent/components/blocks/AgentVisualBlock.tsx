@@ -1,8 +1,6 @@
-import { ChevronDown, Code2, CornerDownRight, Palette, Terminal } from "lucide-react"
+import { ChevronDown, Code2, CornerDownRight, Loader2, Palette, Terminal } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
-import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { AgentQuestionGraphic } from "@/features/agent/components/AgentQuestionGraphic"
 import type { ChatBlock } from "@/features/agent/types"
 
@@ -16,25 +14,28 @@ export interface AgentVisualBlockProps {
 // 可视化工具类型配置。
 const VISUAL_CONFIGS = {
   render_svg: {
-    name: "SVG Diagram",
+    name: "render_svg",
+    label: "SVG 矢量绘图",
     icon: Palette,
     iconColor: "text-sky-400",
   },
   render_ascii: {
-    name: "ASCII Diagram",
+    name: "render_ascii",
+    label: "字符画拓扑",
     icon: Terminal,
     iconColor: "text-emerald-400",
   },
   render_html: {
-    name: "HTML View",
+    name: "render_html",
+    label: "HTML 结构化渲染",
     icon: Code2,
     iconColor: "text-amber-400",
   },
 } as const
 
 /**
- * AgentVisualBlock - 渲染解释性可视化工具（render_svg / render_ascii / render_html）：
- * 在消息流内直接展示图形/字符画/HTML 结构化内容以及伴随的 Markdown 说明文本。
+ * AgentVisualBlock - 渲染可视化工具（render_svg / render_ascii / render_html）：
+ * 仅展示绘制的图形/字符画/HTML 结构化内容，固定显示工具名称，调用中展示 loading 效果。
  * 默认展开展示，支持折叠收起。
  */
 export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX.Element | null => {
@@ -46,16 +47,15 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
   const config = VISUAL_CONFIGS[toolName] ?? VISUAL_CONFIGS.render_svg
   const Icon = config.icon
 
+  const isRunning = toolCall.status === "running" || toolCall.status === "pending"
+
   const args = (toolCall.args ?? {}) as {
-    title?: string
-    description?: string
     svg?: string
     ascii?: string
     html?: string
+    style?: string
   }
 
-  const title = args.title?.trim()
-  const description = args.description?.trim()
   const graphicContent = useMemo(() => {
     if (toolName === "render_svg") return args.svg || ""
     if (toolName === "render_ascii") return args.ascii || ""
@@ -77,23 +77,24 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
     observer.observe(element)
 
     return () => observer.disconnect()
-  }, [isExpanded, graphicContent, description])
+  }, [isExpanded, graphicContent, isRunning])
 
-  if (!graphicContent && !description && !title) return null
+  if (!graphicContent && !isRunning) return null
 
   return (
     <div className="agent-visual-block my-0.5 min-w-0">
-      {/* 头部可折叠按钮 */}
+      {/* 头部固定显示工具名称，附带 loading 状态 */}
       <button
         type="button"
         aria-expanded={isExpanded}
-        className="agent-visual-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] transition-all duration-200 hover:text-white/70 focus:outline-none cursor-pointer"
+        className="agent-visual-header flex h-5 w-fit items-center gap-1.5 pr-2 text-[12px] transition-all duration-200 hover:text-white/70 focus:outline-none cursor-pointer"
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <Icon className={`h-3.5 w-3.5 shrink-0 ${config.iconColor}`} />
         <span className={`agent-visual-name font-mono text-[12px] font-bold ${config.iconColor}`}>
-          {title || config.name}
+          {config.name}
         </span>
+        {isRunning && <Loader2 className="h-3 w-3 animate-spin text-sky-400 shrink-0" />}
         <ChevronDown
           className={`h-3.5 w-3.5 text-white/45 transition-transform duration-200 ${
             isExpanded ? "" : "-rotate-90"
@@ -118,19 +119,22 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
         <div ref={innerRef} className="mt-1 flex min-w-0 items-start gap-1 pb-1 pl-1">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            {/* 伴随 Markdown 说明文本 */}
-            {description && (
-              <LxMarkdownPreview
-                html={markdownRenderer.render(description)}
-                previewMode="preview"
-                className="px-0"
-                contentClassName="py-0.5 text-[12px] text-white/80"
-                sanitizeCopy
-              />
+            {/* 执行中的 Loading 态 */}
+            {isRunning && !graphicContent ? (
+              <div className="flex items-center gap-2 rounded-[6px] border border-white/5 bg-[#0d0d0d] px-3 py-2 text-[11px] text-white/50">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400 shrink-0" />
+                <span>正在渲染内容...</span>
+              </div>
+            ) : (
+              /* 绘制图形内容（支持 style 自定义样式） */
+              graphicContent && (
+                <AgentQuestionGraphic
+                  content={graphicContent}
+                  customStyle={args.style}
+                  className="my-0"
+                />
+              )
             )}
-
-            {/* 可视化图形面板 */}
-            {graphicContent && <AgentQuestionGraphic content={graphicContent} className="my-0" />}
           </div>
         </div>
       </div>

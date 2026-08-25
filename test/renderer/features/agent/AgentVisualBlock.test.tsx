@@ -25,46 +25,54 @@ describe("AgentVisualBlock", () => {
     cleanup()
   })
 
-  it("正确渲染 render_svg 工具调用、标题、说明 Markdown 与 SVG 图形", () => {
+  it("正确渲染 render_svg 工具固定名称与 SVG 图形", () => {
     const toolCall: ToolCallBlock = {
       kind: "toolCall",
       toolCallId: "v-call-1",
       toolName: "render_svg",
       status: "done",
       args: {
-        title: "微服务架构拓扑",
-        description: "**核心要点**：通过 API Gateway 进行统一路由鉴权。",
         svg: '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="40" fill="#1e293b" /><text x="50" y="35">Gateway</text></svg>',
       },
     }
 
     const { container } = render(<AgentVisualBlock toolCall={toolCall} />)
-    expect(screen.getByText("微服务架构拓扑")).not.toBeNull()
-    expect(screen.getByText("核心要点")).not.toBeNull()
+    expect(screen.getByText("render_svg")).not.toBeNull()
     expect(screen.getByText("Gateway")).not.toBeNull()
     expect(container.querySelector("svg")).not.toBeNull()
   })
 
-  it("正确渲染 render_ascii 字符图案与说明", () => {
+  it("正确渲染 render_ascii 字符图案与折叠交互", () => {
     const toolCall: ToolCallBlock = {
       kind: "toolCall",
       toolCallId: "v-call-2",
       toolName: "render_ascii",
       status: "done",
       args: {
-        title: "构建流转图",
-        description: "从代码提交到容器部署的全流程：",
         ascii: "┌───┐   ┌───┐\n│Git│──►│ CI│\n└───┘   └───┘",
       },
     }
 
     const { container } = render(<AgentVisualBlock toolCall={toolCall} />)
-    expect(screen.getByText("构建流转图")).not.toBeNull()
-    expect(screen.getByText("从代码提交到容器部署的全流程：")).not.toBeNull()
+    expect(screen.getByText("render_ascii")).not.toBeNull()
     const pre = container.querySelector("pre")
     expect(pre).not.toBeNull()
     expect(pre?.textContent).toContain("┌───┐")
     expect(pre?.textContent).toContain("│Git│")
+  })
+
+  it("在 running 状态且未收到完整数据时展示 Loading 提示", () => {
+    const toolCall: ToolCallBlock = {
+      kind: "toolCall",
+      toolCallId: "v-call-loading",
+      toolName: "render_svg",
+      status: "running",
+      args: {},
+    }
+
+    render(<AgentVisualBlock toolCall={toolCall} />)
+    expect(screen.getByText("render_svg")).not.toBeNull()
+    expect(screen.getByText("正在渲染内容...")).not.toBeNull()
   })
 
   it("正确渲染 render_html 结构化内容与折叠交互", () => {
@@ -74,18 +82,17 @@ describe("AgentVisualBlock", () => {
       toolName: "render_html",
       status: "done",
       args: {
-        title: "方案横向对比",
         html: "<table><thead><tr><th>技术</th><th>延迟</th></tr></thead><tbody><tr><td>Redis</td><td>1ms</td></tr></tbody></table>",
       },
     }
 
     const { container } = render(<AgentVisualBlock toolCall={toolCall} />)
-    expect(screen.getByText("方案横向对比")).not.toBeNull()
+    expect(screen.getByText("render_html")).not.toBeNull()
     expect(screen.getByText("Redis")).not.toBeNull()
     expect(screen.getByText("1ms")).not.toBeNull()
 
     // 测试折叠展开按钮
-    const button = screen.getByRole("button", { name: "方案横向对比" })
+    const button = screen.getByRole("button", { name: "render_html" })
     expect(button.getAttribute("aria-expanded")).toBe("true")
     fireEvent.click(button)
     expect(button.getAttribute("aria-expanded")).toBe("false")

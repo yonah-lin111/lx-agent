@@ -1054,7 +1054,7 @@ select {
   animation: cm-md-line-flash-anim 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* 提问工具图形化展示容器（支持 SVG 矢量绘制、基础 HTML 与字符图案） */
+/* 提问工具与可视化图形展示容器（支持 SVG 矢量绘制、基础 HTML 与字符图案） */
 .agent-question-graphic {
   min-width: 0;
   max-width: 100%;
@@ -1062,6 +1062,10 @@ select {
   overflow-x: auto;
   overflow-y: auto;
   line-height: 1.6;
+  color-scheme: dark;
+  background-color: #0d0d0d !important;
+  color: #e5e7eb !important;
+  border-radius: 6px;
 }
 
 .agent-question-graphic svg {

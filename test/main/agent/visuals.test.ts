@@ -13,11 +13,10 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
 
     const result = await tool.execute("call-1", {
       svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" /></svg>',
-      title: "系统拓扑",
-      description: "这是系统核心架构图",
+      style: "circle { fill: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染 SVG 矢量图表「系统拓扑」")
+    expect(result.content[0]?.text).toContain("已成功渲染 SVG 矢量图表。")
   })
 
   it("render_ascii 正常执行并返回描述性文本", async () => {
@@ -27,11 +26,9 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
 
     const result = await tool.execute("call-2", {
       ascii: "┌───┐\n│ A │\n└───┘",
-      title: "流水线",
-      description: "CI/CD 流程步骤",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染字符画拓扑「流水线」")
+    expect(result.content[0]?.text).toContain("已成功渲染字符画拓扑。")
   })
 
   it("render_html 正常执行并返回描述性文本", async () => {
@@ -41,9 +38,9 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
 
     const result = await tool.execute("call-3", {
       html: "<table><thead><tr><th>方案</th></tr></thead></table>",
-      title: "方案评估",
+      style: "table { color: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("已成功渲染 HTML 结构化内容「方案评估」")
+    expect(result.content[0]?.text).toContain("已成功渲染 HTML 结构化内容。")
   })
 })
