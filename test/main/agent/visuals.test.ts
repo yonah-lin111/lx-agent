@@ -37,8 +37,7 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
     expect(tool.description).toContain("HTML")
 
     const result = await tool.execute("call-3", {
-      html: "<table><thead><tr><th>方案</th></tr></thead></table>",
-      style: "table { color: red; }",
+      html: '<table class="w-full border border-zinc-800"><thead class="bg-zinc-900"><tr class="text-white"><th class="p-2">Plan</th></tr></thead></table>',
     })
 
     expect(result.content[0]?.text).toContain("HTML prototype rendered successfully.")

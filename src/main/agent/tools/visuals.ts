@@ -8,7 +8,7 @@ const renderSvgInputSchema = z.object({
     .string()
     .max(2000)
     .optional()
-    .describe("Custom CSS style rules (optional, e.g. '.node { fill: #38bdf8; }')"),
+    .describe("Optional custom CSS rules for SVG (e.g. '.node { fill: #38bdf8; }')"),
 })
 
 // ASCII / Box-drawing diagram tool input schema.
@@ -20,20 +20,15 @@ const renderAsciiInputSchema = z.object({
     .describe("ASCII or Unicode Box-drawing diagram content (using ┌ ─ │ └ characters)"),
 })
 
-// HTML prototype & structured rendering tool input schema.
+// HTML prototype tool input schema (MANDATORY Tailwind CSS).
 const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
     .describe(
-      "HTML source code using Tailwind CSS utility classes for styling and layout (supports full HTML5: form, input, button, select, card, table, nav, flex, grid, etc.).",
+      "HTML source code styled EXCLUSIVELY with Tailwind CSS utility classes (e.g. class='flex flex-col gap-4 bg-zinc-900 text-white rounded-2xl p-6 shadow-xl border border-zinc-800'). Do NOT use <style> tags or inline style attributes; rely 100% on Tailwind CSS classes.",
     ),
-  style: z
-    .string()
-    .max(2000)
-    .optional()
-    .describe("Optional custom CSS rules (prefer using Tailwind CSS utility classes directly)."),
 })
 
 /**
@@ -77,16 +72,16 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * Create render_html tool: outputs concise frontend prototypes and UI drafts using Tailwind CSS.
+ * Create render_html tool: outputs concise frontend prototypes and UI drafts using Tailwind CSS exclusively.
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
   label: "HTML Prototype",
   description:
     "Render concise HTML frontend prototypes, UI drafts, and interactive mockups.\n" +
-    "[Styling Standard]: ALWAYS use Tailwind CSS utility classes directly on HTML elements (e.g. flex, grid, gap-4, bg-zinc-900, p-6, rounded-2xl, shadow-lg, text-white, border-zinc-800) for clean and modern designs. DO NOT write verbose traditional CSS in <style> tags unless specifically required.\n" +
+    "[MANDATORY STYLING RULE]: MUST use Tailwind CSS utility classes exclusively on HTML elements (e.g. flex, grid, gap-4, bg-zinc-900, p-6, rounded-2xl, shadow-lg, text-white, border-zinc-800). STRICTLY PROHIBITED: Do not write <style> tags, external CSS, or inline style attributes. Rely 100% on Tailwind CSS utility classes.\n" +
     "[Primary Purpose]: Design and display concise frontend UI prototypes, interactive drafts, component views, and data tables.\n" +
-    "[Usage]: Pass the html source directly with Tailwind CSS classes. Rendered in a fully isolated sandbox environment.",
+    "[Usage]: Pass the html source directly with Tailwind CSS utility classes.",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [
