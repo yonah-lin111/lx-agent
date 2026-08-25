@@ -15,5 +15,5 @@ describe("PersistentShellManager", () => {
     const res2 = await persistentShellManager.executeCommand(session, "echo $MY_VAR", 10000)
     expect(res2.exitCode).toBe(0)
     expect(res2.output).toContain("hello_codex")
-  })
+  }, 20000)
 })

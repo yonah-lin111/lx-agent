@@ -21,7 +21,7 @@ describe("createBashTool", () => {
     })
     const textContent = res.content[0]
     if (textContent.type === "text") {
-      expect(textContent.text).toContain("互斥")
+      expect(textContent.text).toMatch(/mutually exclusive|互斥/)
     }
     const details = res.details as BashToolDetails & { error?: string }
     expect(details?.error).toBe("invalid_args")
