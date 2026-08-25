@@ -366,9 +366,9 @@ export const LxTooltip = ({
     arrowStyle.transform = "translateY(-50%) rotate(270deg)"
   }
   const cardClassName = isConfirming
-    ? "w-48 bg-[#303030] p-2.5 text-white"
-    : `bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white ${
-        multiline ? "whitespace-normal max-w-[min(420px,80vw)]" : "whitespace-nowrap"
+    ? "w-fit min-w-[192px] max-w-[min(320px,80vw)] bg-[#303030] p-2.5 text-white"
+    : `w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white ${
+        multiline ? "whitespace-normal" : "whitespace-nowrap"
       }`
   let triggerElement: React.ReactNode = children
   if (React.isValidElement(children)) {

@@ -179,7 +179,13 @@ export interface ExecutionSystemContent {
 
 export interface ExecutionUserContent {
   text: string
-  files?: { name: string; path: string; type: "image" | "text" }[]
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
   command?: UserMessageCommand
   isSteer?: boolean
 }

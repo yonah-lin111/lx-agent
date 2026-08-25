@@ -1,7 +1,7 @@
-import { FileCode } from "lucide-react"
 import type React from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
 import type { ExecutionUserContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -40,17 +40,7 @@ export const FlowItemUserContent = ({
       {content.files && content.files.length > 0 && (
         <div className="flex flex-col gap-1 pt-1">
           <div className="text-[11px] font-mono text-white/40">{t("agent.attachedFiles")}:</div>
-          <div className="flex flex-wrap gap-1">
-            {content.files.map((file) => (
-              <span
-                key={file.path}
-                className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60"
-              >
-                <FileCode className="h-3 w-3" />
-                {file.name}
-              </span>
-            ))}
-          </div>
+          <AgentMessageFiles files={content.files} align="left" className="mb-0" />
         </div>
       )}
     </div>
