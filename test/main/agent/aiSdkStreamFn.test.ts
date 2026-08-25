@@ -57,7 +57,9 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
 
     const finalResult = await stream.result()
     expect(finalResult.stopReason).toBe("stop")
-    expect(finalResult.content).toEqual([{ type: "text", text: "你好，世界！" }])
+    expect(finalResult.content).toEqual([
+      { type: "text", text: "你好，世界！", durationMs: expect.any(Number) },
+    ])
     expect(finalResult.usage).toEqual({
       input: 10,
       output: 20,

@@ -4,12 +4,14 @@ import type { ModelSelection } from "@shared/settings"
 export interface TextContent {
   type: "text"
   text: string
+  durationMs?: number
 }
 
 // 消息内容块：思考。
 export interface ThinkingContent {
   type: "thinking"
   thinking: string
+  durationMs?: number
 }
 
 // 消息内容块：图片。

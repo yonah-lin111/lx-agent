@@ -32,8 +32,8 @@ export type {
 
 // 消息内容块渲染视图。
 export type ChatBlock =
-  | { kind: "text"; text: string }
-  | { kind: "thinking"; text: string }
+  | { kind: "text"; text: string; durationMs?: number }
+  | { kind: "thinking"; text: string; durationMs?: number }
   | {
       kind: "toolCall"
       toolCallId: string

@@ -137,19 +137,23 @@ export const buildExecutionSteps = (
 
       // 思考过程
       if (block.kind === "thinking") {
-        if (!block.text.trim()) continue
+        if (!block.text.trim() && !message.isStreaming) continue
         stepIndex++
+        const thinkingDuration = block.durationMs ?? message.durationMs
         steps.push({
           id: `step-${stepIndex}-thinking`,
           turnIndex: turn,
           stepIndex,
           kind: "thinking",
-          title: formatPreview(block.text, 90),
-          status: "done",
+          title: message.isStreaming ? "..." : formatPreview(block.text, 90),
+          status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
-          thinkingContent: {
-            text: block.text,
-          },
+          durationMs: thinkingDuration,
+          thinkingContent: message.isStreaming
+            ? undefined
+            : {
+                text: block.text,
+              },
         })
         continue
       }
@@ -241,6 +245,7 @@ export const buildExecutionSteps = (
       if (block.kind === "text") {
         if (!block.text.trim() && !message.isStreaming) continue
         stepIndex++
+        const textDuration = block.durationMs ?? message.durationMs
         steps.push({
           id: `step-${stepIndex}-assistant`,
           turnIndex: turn,
@@ -249,7 +254,7 @@ export const buildExecutionSteps = (
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
-          durationMs: message.durationMs,
+          durationMs: textDuration,
           model: message.model,
           tokens: message.usage
             ? {

@@ -120,10 +120,10 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.map((block) => {
     if (block.type === "text") {
-      return { kind: "text", text: block.text }
+      return { kind: "text", text: block.text, durationMs: block.durationMs }
     }
     if (block.type === "thinking") {
-      return { kind: "thinking", text: block.thinking }
+      return { kind: "thinking", text: block.thinking, durationMs: block.durationMs }
     }
     return {
       kind: "toolCall",

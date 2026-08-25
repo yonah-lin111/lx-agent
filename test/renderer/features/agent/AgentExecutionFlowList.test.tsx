@@ -530,4 +530,65 @@ describe("AgentExecutionFlowList", () => {
     // 顶部 All tab 统计仅计算真实 step 数量（user 步骤 1 个）
     expect(screen.getByText("All (1)")).not.toBeNull()
   })
+
+  it("渲染思考步骤的耗时并在展开时显示思考内容", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试思考耗时" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        durationMs: 3200,
+        blocks: [
+          { kind: "thinking", text: "正在思考解决方案..." },
+          { kind: "text", text: "思考完毕" },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 头部耗时展示 (3.2s)
+    const durationElements = screen.getAllByTestId("flow-item-duration")
+    expect(durationElements.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("3.2s").length).toBeGreaterThanOrEqual(1)
+
+    // 点击思考步骤展开详情
+    const thinkingStep = screen.getByText("正在思考解决方案...")
+    fireEvent.click(thinkingStep)
+
+    // 展开后详情正常呈现内容
+    expect(screen.getAllByText("正在思考解决方案...").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("流式输出期间思考步骤和 AI 步骤展示为 running 状态且禁止展开", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "流式测试" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          { kind: "thinking", text: "思考中..." },
+          { kind: "text", text: "回复中..." },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // 流式状态下展示为 "..." 占位
+    const ellipsisElements = screen.getAllByText("...")
+    expect(ellipsisElements.length).toBeGreaterThanOrEqual(2)
+  })
 })

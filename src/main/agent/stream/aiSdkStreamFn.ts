@@ -59,9 +59,27 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
       let partial = createEmptyAssistant(model)
       const getContentIndex = (block: (typeof blocks)[number]) => blocks.indexOf(block)
 
+      let activeBlockStartTime = Date.now()
+      let activeBlockType: "thinking" | "text" | null = null
+
+      const finalizeActiveBlockDuration = () => {
+        if (!activeBlockType) return
+        const now = Date.now()
+        const duration = Math.max(0, now - activeBlockStartTime)
+        const lastBlock = blocks[blocks.length - 1]
+        if (lastBlock && (lastBlock.type === "thinking" || lastBlock.type === "text")) {
+          lastBlock.durationMs = (lastBlock.durationMs ?? 0) + duration
+        }
+        activeBlockStartTime = now
+        activeBlockType = null
+      }
+
       const ensureTextBlock = (): TextContent => {
         const existing = blocks[blocks.length - 1]
         if (existing && existing.type === "text") return existing
+        finalizeActiveBlockDuration()
+        activeBlockType = "text"
+        activeBlockStartTime = Date.now()
         const block: TextContent = { type: "text", text: "" }
         blocks.push(block)
         return block
@@ -70,6 +88,9 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
       const ensureThinkingBlock = (): ThinkingContent => {
         const existing = blocks[blocks.length - 1]
         if (existing && existing.type === "thinking") return existing
+        finalizeActiveBlockDuration()
+        activeBlockType = "thinking"
+        activeBlockStartTime = Date.now()
         const block: ThinkingContent = { type: "thinking", thinking: "" }
         blocks.push(block)
         return block
@@ -80,6 +101,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         name: string,
         args: Record<string, unknown>,
       ): ToolCall => {
+        finalizeActiveBlockDuration()
         const existing = blocks.find(
           (block) => block.type === "toolCall" && block.id === toolCallId,
         )
@@ -178,6 +200,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
               break
             }
             case "finish": {
+              finalizeActiveBlockDuration()
               const usage: Usage = {
                 input: part.totalUsage.inputTokens ?? 0,
                 output: part.totalUsage.outputTokens ?? 0,
@@ -207,6 +230,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         }
 
         // 流提前结束（无 finish 事件）。
+        finalizeActiveBlockDuration()
         const isWatchdogTimeout = watchdog.aborted
         const isUserAbort = options?.signal?.aborted
         const finalMessage: AssistantMessage = {
