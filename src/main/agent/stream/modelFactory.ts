@@ -33,8 +33,11 @@ export const resolveLanguageModel = (model: Model): LanguageModel => {
 
   const rawModel = createLanguageModel(provider, model.id)
   const languageModel = wrapLanguageModel({
-    model: rawModel,
-    middleware: extractReasoningMiddleware({ tagName: "think" }),
+    model: rawModel as any,
+    middleware: [
+      extractReasoningMiddleware({ tagName: "think" }),
+      extractReasoningMiddleware({ tagName: "thinking" }),
+    ],
   })
   modelCache.set(key, languageModel)
   return languageModel
@@ -77,7 +80,7 @@ const createLanguageModel = (provider: ModelProvider, modelId: string): Language
       return createOpenAI({
         apiKey,
         baseURL,
-      }).chat(modelId)
+      }).chat(modelId) as unknown as LanguageModel
     case "anthropic":
       return createAnthropic({
         apiKey,
@@ -86,14 +89,14 @@ const createLanguageModel = (provider: ModelProvider, modelId: string): Language
           "anthropic-beta":
             "interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
         },
-      }).chat(modelId)
+      }).chat(modelId) as unknown as LanguageModel
     case "google":
-      return createGoogleGenerativeAI({ apiKey }).chat(modelId)
+      return createGoogleGenerativeAI({ apiKey }).chat(modelId) as unknown as LanguageModel
     case "openai-compatible":
       return createOpenAICompatible({
         name: provider.id,
         baseURL: provider.options.baseURL,
         apiKey,
-      }).languageModel(modelId)
+      }).languageModel(modelId) as unknown as LanguageModel
   }
 }

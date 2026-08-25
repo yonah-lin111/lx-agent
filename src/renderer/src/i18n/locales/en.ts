@@ -114,6 +114,10 @@ export const en = {
     featuresConfig: "Features Configuration",
     suggestedQuestions: "Suggested Questions",
     contextCompaction: "Context Compaction",
+    streamIdleTimeout: "Agent Max Response Time",
+    streamIdleTimeoutDesc: "Maximum idle wait time (seconds) for a stream chunk, set to 0 for unlimited",
+    streamIdleTimeoutUnit: "s",
+    streamIdleTimeoutInfinite: "s (Unlimited)",
 
     // Providers section
     addProvider: "Add Provider",

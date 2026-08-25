@@ -12,6 +12,7 @@ import type { Model, StreamFn } from "@/agent/core/types"
 import { DEFAULT_STREAM_IDLE_TIMEOUT_MS, IdleWatchdog } from "@/agent/stream/idleWatchdog"
 import { resolveLanguageModel } from "@/agent/stream/modelFactory"
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
+import { getModelProviderSettings } from "@/services/settingsService"
 
 // AI SDK finishReason → 本地 StopReason 映射。
 const mapStopReason = (reason: string): StopReason => {
@@ -116,8 +117,12 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         stream.push(event)
       }
 
+      const configuredTimeout = getModelProviderSettings().streamIdleTimeoutMs
       const idleTimeoutMs =
-        options?.idleTimeoutMs ?? defaultOptions?.idleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
+        options?.idleTimeoutMs ??
+        defaultOptions?.idleTimeoutMs ??
+        configuredTimeout ??
+        DEFAULT_STREAM_IDLE_TIMEOUT_MS
       const watchdog = new IdleWatchdog({
         timeoutMs: idleTimeoutMs,
         errorMessage: `Stream idle timeout after ${idleTimeoutMs}ms`,

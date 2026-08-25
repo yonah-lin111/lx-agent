@@ -11,7 +11,7 @@ import type {
   ProviderTransportType,
   UiSettings,
 } from "@shared/settings"
-import { DEFAULT_COMPACTION_SETTINGS, DEFAULT_UI_SETTINGS } from "@shared/settings"
+import { DEFAULT_COMPACTION_SETTINGS, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DEFAULT_UI_SETTINGS } from "@shared/settings"
 import { getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。
@@ -262,6 +262,10 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
   )
 
   const defaultModel = normalizeSelection(settings.defaultModel, providers)
+  const streamIdleTimeoutMs = clampNonNegativeInt(
+    settings.streamIdleTimeoutMs,
+    DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+  )
   return {
     providers,
     enabledProviders,
@@ -271,6 +275,7 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
     compactionModel: normalizeCompactionSelection(settings.compactionModel, providers),
     suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled === true,
     compactionEnabled: settings.compactionEnabled !== false,
+    streamIdleTimeoutMs,
   }
 }
 
@@ -286,6 +291,10 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
   )
 
   const defaultModel = normalizeSelection(rawAi.defaultModel, providers)
+  const streamIdleTimeoutMs = clampNonNegativeInt(
+    rawAi.streamIdleTimeoutMs,
+    DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+  )
   return {
     providers,
     enabledProviders: (rawAi.enabled_providers ?? Object.keys(providers)).filter((providerId) =>
@@ -297,6 +306,7 @@ export const getModelProviderSettings = (): ModelProviderSettings => {
     compactionModel: normalizeCompactionSelection(rawAi.compactionModel, providers),
     suggestedQuestionsEnabled: rawAi.suggestedQuestionsEnabled === true,
     compactionEnabled: getCompactionSettings().enabled,
+    streamIdleTimeoutMs,
   }
 }
 
@@ -327,6 +337,7 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
       compactionModel: settings.compactionModel,
       suggestedQuestionsEnabled: settings.suggestedQuestionsEnabled,
       compaction: { ...rawCompaction, enabled: settings.compactionEnabled },
+      streamIdleTimeoutMs: settings.streamIdleTimeoutMs,
     },
   }
   const temporaryPath = `${configPath}.tmp`
@@ -395,6 +406,10 @@ export const savePermissionSettings = (input: PermissionSettings): PermissionSet
 
   return settings
 }
+
+// 非负整数（超时时间配置，0 表示无限）；非法回退默认值。
+const clampNonNegativeInt = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback
 
 // 非零正整数（压缩配置字段校验）；非法回退默认值。
 const clampPositiveInt = (value: unknown, fallback: number): number =>

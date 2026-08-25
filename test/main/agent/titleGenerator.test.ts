@@ -95,6 +95,15 @@ describe("generateSessionTitle", () => {
     expect(title).toBe("优化查询性能")
   })
 
+  it("去除 thinking 标签、取第一行非空", async () => {
+    mockStream("<thinking>Minimax思考过程</thinking>\n\n优化索引查询")
+    const title = await generateSessionTitle([
+      { role: "user", content: "优化索引查询", timestamp: 0 },
+      assistant([{ type: "text", text: "done" }]),
+    ])
+    expect(title).toBe("优化索引查询")
+  })
+
   it("超 40 字符截断兜底", async () => {
     const longTitle =
       "这是一个非常非常非常非常长的标题，用来验证超过四十个字符上限时截断行为是否正确表现"

@@ -116,6 +116,10 @@ export const zh: TranslationDictionary = {
     featuresConfig: "功能配置",
     suggestedQuestions: "推荐问题",
     contextCompaction: "上下文压缩",
+    streamIdleTimeout: "Agent 最长响应时间",
+    streamIdleTimeoutDesc: "单次流式响应等待的最长空闲时间（秒），设为 0 表示不限制",
+    streamIdleTimeoutUnit: "秒",
+    streamIdleTimeoutInfinite: "秒 (无限等待)",
 
     // Providers section
     addProvider: "添加 Provider",

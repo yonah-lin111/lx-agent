@@ -169,6 +169,22 @@ describe("generateCompactionSummary", () => {
     })
   })
 
+  it("支持去除 thinking 标签生成摘要", async () => {
+    mockStream("<thinking>这是思考过程</thinking>\n目标：实现登录。已完成：搭建表单。", {
+      inputTokens: 100,
+      outputTokens: 50,
+    })
+    const result = await generateCompactionSummary([
+      user("实现登录页"),
+      assistant("已完成表单搭建"),
+    ])
+    expect(result).toEqual({
+      summary: "目标：实现登录。已完成：搭建表单。",
+      model: "m",
+      usage: { input: 100, output: 50 },
+    })
+  })
+
   it("LLM 抛错返回 null（不抛错）", async () => {
     streamTextMock.mockRejectedValueOnce(new Error("network"))
     const summary = await generateCompactionSummary([user("test")])

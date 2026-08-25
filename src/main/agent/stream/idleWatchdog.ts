@@ -1,3 +1,7 @@
+import { DEFAULT_STREAM_IDLE_TIMEOUT_MS } from "@shared/settings"
+
+export { DEFAULT_STREAM_IDLE_TIMEOUT_MS }
+
 // 流式看门狗配置选项。
 export interface WatchdogOptions {
   // 超时毫秒数。
@@ -5,9 +9,6 @@ export interface WatchdogOptions {
   // 自定义超时错误信息。
   errorMessage?: string
 }
-
-// 默认流式空闲超时时间（30 秒）。
-export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 30_000
 
 /**
  * 流式空闲超时看门狗。
@@ -52,7 +53,8 @@ export class IdleWatchdog implements Disposable {
       clearTimeout(this.timer)
       this.timer = null
     }
-    if (this.disposed || this.controller.signal.aborted) return
+    // timeoutMs <= 0 时表示无限超时，不启动定时器
+    if (this.disposed || this.controller.signal.aborted || this.options.timeoutMs <= 0) return
 
     this.timer = setTimeout(() => {
       this.timer = null

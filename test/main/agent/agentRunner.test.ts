@@ -56,6 +56,7 @@ vi.mock("@/services/settingsService", () => ({
     titleSummary: { provider: "p", model: "m" },
     suggestedQuestions: { provider: "p", model: "m" },
     suggestedQuestionsEnabled: true,
+    streamIdleTimeoutMs: 60000,
   }),
   // 权限配置：允许 task 委托与 write（子代理/快照回滚测试不经弹窗）；其余工具走默认门控。
   getPermissionSettings: () => ({

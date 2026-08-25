@@ -153,7 +153,8 @@ export const buildExecutionSteps = (
           stepIndex,
           kind: "thinking",
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
-          status: message.isStreaming ? "running" : "done",
+          status:
+            message.isStreaming && blockIdx === message.blocks.length - 1 ? "running" : "done",
           timestamp: message.timestamp,
           startedAt: message.timestamp,
           completedAt:
@@ -275,7 +276,8 @@ export const buildExecutionSteps = (
           stepIndex,
           kind: "assistant",
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
-          status: message.isStreaming ? "running" : "done",
+          status:
+            message.isStreaming && blockIdx === message.blocks.length - 1 ? "running" : "done",
           timestamp: message.timestamp,
           startedAt: message.timestamp,
           completedAt:

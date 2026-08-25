@@ -1,3 +1,4 @@
+import { LxInput } from "@/components/ui/LxInput"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { type TranslationKey, useTranslation } from "@/i18n"
@@ -131,6 +132,39 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                 <LxRadio value="enabled" label={t("common.enable")} />
                 <LxRadio value="disabled" label={t("common.disable")} />
               </LxRadioGroup>
+            </div>
+          </div>
+          <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+            <div className="flex flex-col gap-0.5">
+              <h4 className="text-xs text-white/60">{t("settings.streamIdleTimeout")}</h4>
+              <p className="text-[11px] text-white/40">{t("settings.streamIdleTimeoutDesc")}</p>
+            </div>
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="w-28">
+                <LxInput
+                  type="number"
+                  min={0}
+                  max={600}
+                  step={5}
+                  size="xs"
+                  value={Math.round((settings.streamIdleTimeoutMs ?? 60_000) / 1000)}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value)
+                    if (Number.isFinite(parsed) && parsed >= 0) {
+                      setSettings((current) =>
+                        current
+                          ? { ...current, streamIdleTimeoutMs: Math.round(parsed * 1000) }
+                          : current,
+                      )
+                    }
+                  }}
+                />
+              </div>
+              <span className="text-xs text-white/45">
+                {(settings.streamIdleTimeoutMs ?? 60_000) === 0
+                  ? t("settings.streamIdleTimeoutInfinite")
+                  : t("settings.streamIdleTimeoutUnit")}
+              </span>
             </div>
           </div>
         </div>

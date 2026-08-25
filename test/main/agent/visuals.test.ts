@@ -16,7 +16,10 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       style: "circle { fill: red; }",
     })
 
-    expect(result.content[0]?.text).toContain("SVG vector diagram rendered successfully.")
+    const first = result.content[0]
+    expect(first?.type === "text" ? first.text : "").toContain(
+      "SVG vector diagram rendered successfully.",
+    )
   })
 
   it("render_ascii 正常执行并返回描述性文本", async () => {
@@ -28,7 +31,10 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       ascii: "┌───┐\n│ A │\n└───┘",
     })
 
-    expect(result.content[0]?.text).toContain("ASCII diagram rendered successfully.")
+    const first = result.content[0]
+    expect(first?.type === "text" ? first.text : "").toContain(
+      "ASCII diagram rendered successfully.",
+    )
   })
 
   it("render_html 正常执行并返回描述性文本", async () => {
@@ -40,6 +46,9 @@ describe("visuals tools (render_svg, render_ascii, render_html)", () => {
       html: '<table class="w-full border border-zinc-800"><thead class="bg-zinc-900"><tr class="text-white"><th class="p-2">Plan</th></tr></thead></table>',
     })
 
-    expect(result.content[0]?.text).toContain("HTML prototype rendered successfully.")
+    const first = result.content[0]
+    expect(first?.type === "text" ? first.text : "").toContain(
+      "HTML prototype rendered successfully.",
+    )
   })
 })

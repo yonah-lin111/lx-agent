@@ -221,9 +221,12 @@ const extractConversationText = (messages: AgentMessage[]): string => {
   return parts.join("\n")
 }
 
-// 清理摘要生成结果：去 think 标签 + 空白收尾。
+// 清理摘要生成结果：去 think / thinking 标签 + 空白收尾。
 const cleanSummary = (raw: string): string | null => {
-  const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim()
+  const withoutThink = raw
+    .replace(/<think>[\s\S]*?<\/think>\s*/gi, "")
+    .replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, "")
+    .trim()
   return withoutThink || null
 }
 

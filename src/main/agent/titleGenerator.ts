@@ -25,9 +25,11 @@ const extractTurnText = (firstTurn: AgentMessage[]): string => {
   return parts.join("\n")
 }
 
-// 清理生成结果：去 think 标签 → 取第一行非空 → 40 字符截断兜底。
+// 清理生成结果：去 think / thinking 标签 → 取第一行非空 → 40 字符截断兜底。
 const cleanTitle = (raw: string): string | null => {
-  const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+  const withoutThink = raw
+    .replace(/<think>[\s\S]*?<\/think>\s*/gi, "")
+    .replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, "")
   const firstLine = withoutThink
     .split("\n")
     .map((line) => line.trim())

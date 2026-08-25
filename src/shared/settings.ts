@@ -46,7 +46,12 @@ export type ModelProviderSettings = {
   suggestedQuestionsEnabled: boolean
   // 上下文压缩开关（ai.compaction.enabled；设置页功能配置区维护）。
   compactionEnabled: boolean
+  // 流式空闲超时毫秒数（ai.streamIdleTimeoutMs；默认 60000ms / 1 分钟）。
+  streamIdleTimeoutMs?: number
 }
+
+// 默认流式空闲超时时间（60 秒 / 1 分钟）。
+export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 60_000
 
 // 上下文压缩配置（~/.lx/config.json 的 ai.compaction 节点）。
 export type CompactionSettings = {

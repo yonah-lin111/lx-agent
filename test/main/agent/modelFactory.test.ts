@@ -96,9 +96,10 @@ describe("modelFactory", () => {
   it("通过 wrapLanguageModel 和 extractReasoningMiddleware 包装解析出的模型", () => {
     const resolved = resolveLanguageModel({ provider: "compat-p", id: "MiniMax-Text-01" })
     expect(mockExtractReasoningMiddleware).toHaveBeenCalledWith({ tagName: "think" })
+    expect(mockExtractReasoningMiddleware).toHaveBeenCalledWith({ tagName: "thinking" })
     expect(mockWrapLanguageModel).toHaveBeenCalledWith({
       model: { id: "compat-model" },
-      middleware: { name: "extract-reasoning" },
+      middleware: [{ name: "extract-reasoning" }, { name: "extract-reasoning" }],
     })
     expect(resolved).toEqual({ wrapped: { id: "compat-model" } })
   })
@@ -130,6 +131,7 @@ describe("modelFactory", () => {
 
     invalidateModelCache()
     const third = resolveLanguageModel({ provider: "openai-p", id: "gpt-4o" })
+    expect(third).toBeDefined()
     expect(mockCreateOpenAI).toHaveBeenCalledTimes(2)
   })
 

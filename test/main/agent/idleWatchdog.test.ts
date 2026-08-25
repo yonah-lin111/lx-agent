@@ -11,8 +11,8 @@ describe("IdleWatchdog 流式空闲看门狗", () => {
     vi.useRealTimers()
   })
 
-  it("默认常量为 30 秒", () => {
-    expect(DEFAULT_STREAM_IDLE_TIMEOUT_MS).toBe(30_000)
+  it("默认常量为 60 秒", () => {
+    expect(DEFAULT_STREAM_IDLE_TIMEOUT_MS).toBe(60_000)
   })
 
   it("初始状态未中止，定时器超时后触发 abort", () => {
@@ -115,5 +115,17 @@ describe("IdleWatchdog 流式空闲看门狗", () => {
     expect(userController.signal.aborted).toBe(false)
 
     watchdog.dispose()
+  })
+
+  it("当 timeoutMs 为 0 时不启动超时，视为无限等待", () => {
+    const watchdog = new IdleWatchdog({ timeoutMs: 0 })
+    expect(watchdog.aborted).toBe(false)
+
+    vi.advanceTimersByTime(100_000)
+    expect(watchdog.aborted).toBe(false)
+
+    watchdog.feed()
+    vi.advanceTimersByTime(100_000)
+    expect(watchdog.aborted).toBe(false)
   })
 })
