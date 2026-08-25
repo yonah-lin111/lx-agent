@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { ModelProvider, ModelSelection } from "@shared/settings"
 import type { LanguageModel } from "ai"
+import { extractReasoningMiddleware, wrapLanguageModel } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import type { Model } from "../core/types"
 
@@ -30,7 +31,11 @@ export const resolveLanguageModel = (model: Model): LanguageModel => {
     throw new Error(`Provider ${model.provider} 未配置 API Key。请在设置中配置后重试。`)
   }
 
-  const languageModel = createLanguageModel(provider, model.id)
+  const rawModel = createLanguageModel(provider, model.id)
+  const languageModel = wrapLanguageModel({
+    model: rawModel,
+    middleware: extractReasoningMiddleware({ tagName: "think" }),
+  })
   modelCache.set(key, languageModel)
   return languageModel
 }
@@ -66,14 +71,22 @@ export const resolveModelSelection = (
 // 按 settings provider 类型装配 AI SDK 模型。
 const createLanguageModel = (provider: ModelProvider, modelId: string): LanguageModel => {
   const apiKey = provider.options.apiKey || undefined
+  const baseURL = provider.options.baseURL || undefined
   switch (provider.type) {
     case "openai":
       return createOpenAI({
         apiKey,
-        baseURL: provider.options.baseURL || undefined,
+        baseURL,
       }).chat(modelId)
     case "anthropic":
-      return createAnthropic({ apiKey }).chat(modelId)
+      return createAnthropic({
+        apiKey,
+        baseURL,
+        headers: {
+          "anthropic-beta":
+            "interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+        },
+      }).chat(modelId)
     case "google":
       return createGoogleGenerativeAI({ apiKey }).chat(modelId)
     case "openai-compatible":

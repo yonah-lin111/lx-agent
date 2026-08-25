@@ -185,6 +185,11 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
               })
               break
             }
+            case "reasoning-end":
+            case "text-end": {
+              finalizeActiveBlockDuration()
+              break
+            }
             case "tool-call": {
               const block = ensureToolCallBlock(
                 part.toolCallId,

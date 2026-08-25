@@ -3,7 +3,11 @@ import { streamText } from "ai"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // mock ai.streamText：摘要生成返回可控文本，避免真实 LLM 调用。
-vi.mock("ai", () => ({ streamText: vi.fn() }))
+vi.mock("ai", () => ({
+  streamText: vi.fn(),
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
+  extractReasoningMiddleware: vi.fn(),
+}))
 
 // Mock settings with a mutable object so we can change config values in tests.
 const mockSettings = {
