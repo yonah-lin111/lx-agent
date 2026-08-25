@@ -220,10 +220,10 @@ export const AgentExecutionFlowItem = ({
                   <LxTooltip
                     content={
                       <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
-                        <div>
+                        <div className="text-white/80">
                           {t("agent.stepDuration", { duration: formatDurationMs(step.durationMs) })}
                         </div>
-                        <div>
+                        <div className="text-sky-400">
                           {t("agent.agentOverhead", {
                             duration: formatDurationMs(step.agentOverheadMs),
                           })}
@@ -244,7 +244,7 @@ export const AgentExecutionFlowItem = ({
                       className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
                     >
                       <span>{formatDurationMs(step.durationMs)}</span>
-                      <span className="text-[10px] text-white/35 font-normal">
+                      <span className="text-[10px] font-normal text-sky-400/80 hover:text-sky-300">
                         (+{formatDurationMs(step.agentOverheadMs)})
                       </span>
                     </span>
@@ -266,14 +266,18 @@ export const AgentExecutionFlowItem = ({
                 )
               ) : step.kind === "user" && step.stepSpanMs !== undefined && step.stepSpanMs > 0 ? (
                 <LxTooltip
-                  content={t("agent.agentOverhead", {
-                    duration: formatDurationMs(step.stepSpanMs),
-                  })}
+                  content={
+                    <span className="text-sky-400">
+                      {t("agent.agentOverhead", {
+                        duration: formatDurationMs(step.stepSpanMs),
+                      })}
+                    </span>
+                  }
                   placement="left"
                 >
                   <span
                     data-testid="flow-item-duration"
-                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-amber-400/60 hover:text-amber-400/90 cursor-default"
+                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-sky-400/80 hover:text-sky-300 cursor-default"
                   >
                     {formatDurationMs(step.stepSpanMs)}
                   </span>
