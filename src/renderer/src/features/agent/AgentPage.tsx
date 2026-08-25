@@ -239,11 +239,6 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
-      // 若处于执行流程视图，优先切回问答视图（输出中由守卫拦截并提示）
-      if (viewMode === "flow") {
-        toggleExecutionFlow()
-        return
-      }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
       if (activeSubagent !== null) {
         setActiveSubagent(null)
@@ -274,8 +269,6 @@ export const AgentPage = ({
     }
   }, [
     isStreaming,
-    viewMode,
-    toggleExecutionFlow,
     activeSubagent,
     pendingRequest,
     handleStop,
