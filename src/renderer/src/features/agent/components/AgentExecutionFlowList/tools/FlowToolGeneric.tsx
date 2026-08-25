@@ -3,6 +3,7 @@ import type React from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { FlowItemExpandableText } from "../FlowItemExpandableText"
 import { formatDurationMs, formatJsonString } from "../types"
 
 export interface FlowToolGenericProps {
@@ -31,8 +32,8 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
             )}
           </div>
         </div>
-        <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/40 p-2 text-sky-200/90 break-all whitespace-pre-wrap">
-          {formatJsonString(content.args)}
+        <div className="rounded bg-black/40 p-2 text-sky-200/90">
+          <FlowItemExpandableText content={formatJsonString(content.args)} maxLines={3} />
         </div>
       </div>
 
@@ -48,13 +49,17 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
             )}
           </div>
           <div
-            className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2 leading-relaxed break-all whitespace-pre-wrap ${
+            className={`rounded p-2 ${
               content.isError
                 ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
                 : "bg-black/40 text-white/80"
             }`}
           >
-            {content.result || <span className="text-white/30">-</span>}
+            <FlowItemExpandableText
+              content={content.result}
+              fallbackText="-"
+              maxLines={3}
+            />
           </div>
         </div>
       )}

@@ -1,8 +1,12 @@
 import { ChevronDown, Code2, CornerDownRight, Loader2, Palette, Terminal } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
-import { AgentQuestionGraphic } from "@/features/agent/components/AgentQuestionGraphic"
 import type { ChatBlock } from "@/features/agent/types"
+import {
+  AsciiVisualContent,
+  HtmlVisualContent,
+  SvgVisualContent,
+} from "../visuals"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -47,7 +51,7 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
   const config = VISUAL_CONFIGS[toolName] ?? VISUAL_CONFIGS.render_svg
   const Icon = config.icon
 
-  const isRunning = toolCall.status === "running" || toolCall.status === "pending"
+  const isRunning = toolCall.status === "running"
 
   const args = (toolCall.args ?? {}) as {
     svg?: string
@@ -126,14 +130,22 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
                 <span>Rendering content...</span>
               </div>
             ) : (
-              /* 绘制图形内容（支持 style 自定义样式） */
-              graphicContent && (
-                <AgentQuestionGraphic
-                  content={graphicContent}
-                  customStyle={args.style}
-                  className="my-0"
-                />
-              )
+              /* 绘制图形内容（按具体工具分发独立内容组件渲染） */
+              <>
+                {toolName === "render_svg" && (
+                  <SvgVisualContent svg={args.svg} className="my-0" />
+                )}
+                {toolName === "render_ascii" && (
+                  <AsciiVisualContent ascii={args.ascii} className="my-0" />
+                )}
+                {toolName === "render_html" && (
+                  <HtmlVisualContent
+                    html={args.html}
+                    customStyle={args.style}
+                    className="my-0"
+                  />
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
-import {
-  AgentQuestionGraphic,
-  sanitizeGraphicContent,
-} from "@/features/agent/components/AgentQuestionGraphic"
+import { QuestionVisualContent } from "@/features/agent/components/QuestionVisualContent"
+import { sanitizeGraphicContent } from "@/features/agent/components/visuals"
 
-describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
+describe("QuestionVisualContent & sanitizeGraphicContent", () => {
   afterEach(() => {
     cleanup()
   })
@@ -18,7 +16,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
         <text x="50" y="55" text-anchor="middle">SVG Test</text>
       </svg>
     `
-    const { container } = render(<AgentQuestionGraphic content={svgCode} />)
+    const { container } = render(<QuestionVisualContent content={svgCode} />)
     const svg = container.querySelector("svg")
     expect(svg).not.toBeNull()
     expect(svg?.getAttribute("viewBox")).toBe("0 0 100 100")
@@ -46,7 +44,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
         <pre><code>const a = 1;</code></pre>
       </div>
     `
-    const { container } = render(<AgentQuestionGraphic content={htmlCode} />)
+    const { container } = render(<QuestionVisualContent content={htmlCode} />)
     const iframe = container.querySelector("iframe")
     expect(iframe).not.toBeNull()
     expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin")
@@ -108,7 +106,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
 
   it("正确渲染纯文本与 Claude Code 风格字符图案（ASCII Art）", () => {
     const asciiArt = `┌─────┐\n│ Box │\n└─────┘`
-    const { container } = render(<AgentQuestionGraphic content={asciiArt} />)
+    const { container } = render(<QuestionVisualContent content={asciiArt} />)
     const pre = container.querySelector("pre")
     expect(pre).not.toBeNull()
     expect(pre?.textContent).toContain("┌─────┐")
@@ -117,7 +115,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
   })
 
   it("空内容或空字符串不渲染任何 DOM", () => {
-    const { container } = render(<AgentQuestionGraphic content="" />)
+    const { container } = render(<QuestionVisualContent content="" />)
     expect(container.firstChild).toBeNull()
   })
 })

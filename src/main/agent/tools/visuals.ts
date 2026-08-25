@@ -20,14 +20,14 @@ const renderAsciiInputSchema = z.object({
     .describe("ASCII or Unicode Box-drawing diagram content (using ┌ ─ │ └ characters)"),
 })
 
-// HTML prototype tool input schema (MANDATORY Tailwind CSS).
+// HTML prototype tool input schema (Standard HTML & CSS).
 const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
     .describe(
-      "HTML source code styled EXCLUSIVELY with Tailwind CSS utility classes (e.g. class='flex flex-col gap-4 bg-zinc-900 text-white rounded-2xl p-6 shadow-xl border border-zinc-800'). Do NOT use <style> tags or inline style attributes; rely 100% on Tailwind CSS classes.",
+      "Standard HTML source code (<style>...</style>, <div>, tables, forms, inline styles, etc.).",
     ),
 })
 
@@ -72,16 +72,14 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * Create render_html tool: outputs concise frontend prototypes and UI drafts using Tailwind CSS exclusively.
+ * Create render_html tool: outputs concise HTML frontend prototypes, UI drafts, and layouts using standard HTML/CSS.
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
   label: "HTML Prototype",
   description:
-    "Render concise HTML frontend prototypes, UI drafts, and interactive mockups.\n" +
-    "[MANDATORY STYLING RULE]: MUST use Tailwind CSS utility classes exclusively on HTML elements (e.g. flex, grid, gap-4, bg-zinc-900, p-6, rounded-2xl, shadow-lg, text-white, border-zinc-800). STRICTLY PROHIBITED: Do not write <style> tags, external CSS, or inline style attributes. Rely 100% on Tailwind CSS utility classes.\n" +
-    "[Primary Purpose]: Design and display concise frontend UI prototypes, interactive drafts, component views, and data tables.\n" +
-    "[Usage]: Pass the html source directly with Tailwind CSS utility classes.",
+    "Render concise HTML frontend prototypes, UI drafts, tables, and layouts using standard HTML and CSS (<style> tags or inline style).\n" +
+    "[Usage]: Pass standard HTML document/snippets directly in the html field.",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [

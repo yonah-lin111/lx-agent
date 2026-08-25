@@ -3,6 +3,7 @@ import type React from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { FlowItemExpandableText } from "../FlowItemExpandableText"
 import { formatDurationMs } from "../types"
 
 export interface FlowToolBashProps {
@@ -24,7 +25,7 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
       <div className="rounded border border-white/10 bg-black/60 p-2.5">
         <div className="flex items-start gap-2 text-[12px] text-emerald-300">
           <span className="shrink-0 select-none text-white/40">$</span>
-          <span className="whitespace-pre-wrap break-all">{command}</span>
+          <FlowItemExpandableText content={command} maxLines={3} />
         </div>
       </div>
 
@@ -61,13 +62,17 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
             </span>
           </div>
           <div
-            className={`custom-scrollbar max-h-64 overflow-y-auto rounded p-2.5 text-[11px] leading-relaxed break-all whitespace-pre-wrap ${
+            className={`rounded p-2.5 text-[11px] ${
               content.isError
                 ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
                 : "bg-black/40 text-white/80"
             }`}
           >
-            {content.result || <span className="text-white/30">(无输出)</span>}
+            <FlowItemExpandableText
+              content={content.result}
+              fallbackText="(无输出)"
+              maxLines={3}
+            />
           </div>
         </div>
       )}

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { AgentQuestionGraphic } from "@/features/agent/components/AgentQuestionGraphic"
+import { QuestionVisualContent } from "@/features/agent/components/QuestionVisualContent"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { formatJsonString } from "./types"
@@ -127,7 +127,7 @@ export const FlowItemQuestionContent = ({
               <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
                 {question.question}
               </div>
-              {question.content && <AgentQuestionGraphic content={question.content} />}
+              {question.content && <QuestionVisualContent content={question.content} />}
               {answers.length > 0 && (
                 <div className="mt-0.5 flex min-w-0 flex-col gap-0.5 pl-3">
                   {answers.map((answer) => (
@@ -247,7 +247,7 @@ export const FlowItemQuestionContent = ({
               {question.question}
             </div>
 
-            {question.content && <AgentQuestionGraphic content={question.content} />}
+            {question.content && <QuestionVisualContent content={question.content} />}
 
             {question.options ? (
               <>

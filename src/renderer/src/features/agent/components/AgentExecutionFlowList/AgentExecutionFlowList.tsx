@@ -209,7 +209,7 @@ export const AgentExecutionFlowList = forwardRef<
       }))
     }, [])
 
-    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、todo、question 以及写操作 edit/write/apply_patch）
+    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、todo、question、可视化工具 render_svg/render_ascii/render_html 以及写操作 edit/write/apply_patch）
     const isGroupableStep = useCallback((step: ExecutionStep): boolean => {
       if (
         step.kind === "assistant" ||
@@ -225,7 +225,10 @@ export const AgentExecutionFlowList = forwardRef<
         toolName === "question" ||
         toolName === "write" ||
         toolName === "edit" ||
-        toolName === "apply_patch"
+        toolName === "apply_patch" ||
+        toolName === "render_svg" ||
+        toolName === "render_ascii" ||
+        toolName === "render_html"
       ) {
         return false
       }

@@ -6,6 +6,7 @@ import { LxTag } from "@/components/ui/LxTag"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { FlowItemExpandableText } from "../FlowItemExpandableText"
 import { formatDurationMs } from "../types"
 
 export interface FlowToolFileOpsProps {
@@ -123,13 +124,17 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             )}
           </div>
           <div
-            className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2.5 leading-relaxed break-all whitespace-pre-wrap ${
+            className={`rounded p-2.5 ${
               content.isError
                 ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
                 : "bg-black/40 text-white/80"
             }`}
           >
-            {content.result || <span className="text-white/30">(empty)</span>}
+            <FlowItemExpandableText
+              content={content.result}
+              fallbackText="(empty)"
+              maxLines={3}
+            />
           </div>
         </div>
       )}
@@ -138,8 +143,11 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
       {content.toolName === "edit" && content.args?.oldString !== undefined && (
         <div className="flex flex-col gap-1 text-[10px]">
           <span className="text-white/40">Replaced Pattern:</span>
-          <div className="custom-scrollbar max-h-24 overflow-y-auto rounded bg-black/30 p-1.5 text-white/70">
-            {String(content.args.oldString)}
+          <div className="rounded bg-black/30 p-1.5 text-white/70">
+            <FlowItemExpandableText
+              content={String(content.args.oldString)}
+              maxLines={3}
+            />
           </div>
         </div>
       )}
