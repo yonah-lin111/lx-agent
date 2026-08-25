@@ -90,4 +90,20 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
     flushCloseAnimation()
     expect(screen.queryByText("Tip 内容")).toBeNull()
   })
+
+  it("默认与确认态均具备自适应宽度类名（w-fit 与 max-w 防护）", () => {
+    renderTooltip()
+    fireEvent.click(screen.getByText("触发"))
+    const tooltip = screen.getByRole("tooltip")
+    expect(tooltip.className).toContain("w-fit")
+    expect(tooltip.className).toContain("max-w-[min(420px,80vw)]")
+    cleanup()
+
+    renderTooltip({ onConfirm: vi.fn() })
+    fireEvent.click(screen.getByText("触发"))
+    const confirmTooltip = screen.getByRole("tooltip")
+    expect(confirmTooltip.className).toContain("w-fit")
+    expect(confirmTooltip.className).toContain("min-w-[192px]")
+    expect(confirmTooltip.className).toContain("max-w-[min(320px,80vw)]")
+  })
 })
