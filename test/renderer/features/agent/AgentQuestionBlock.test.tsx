@@ -136,4 +136,42 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
       expect(restoredToolCall?.answers).toEqual(answers)
     }
   })
+
+  it("支持在提问中渲染 SVG 与 HTML 图形化 content", () => {
+    const graphicCall: ToolCallBlock = {
+      kind: "toolCall",
+      toolCallId: "call-graphic-1",
+      toolName: "question",
+      status: "done",
+      question: {
+        requestId: "req-g-1",
+        toolCallId: "call-graphic-1",
+        sessionId: "sess-1",
+        questions: [
+          {
+            question: "请确认如下模块架构：",
+            content:
+              '<svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" /></svg><p>架构说明文本</p>',
+            options: [{ label: "确认" }, { label: "取消" }],
+          },
+        ],
+      },
+      args: {
+        questions: [
+          {
+            question: "请确认如下模块架构：",
+            content:
+              '<svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" /></svg><p>架构说明文本</p>',
+            options: [{ label: "确认" }, { label: "取消" }],
+          },
+        ],
+      },
+    }
+
+    const { container } = render(<AgentQuestionBlock toolCall={graphicCall} />)
+    expect(screen.getByText("请确认如下模块架构：")).not.toBeNull()
+    expect(container.querySelector("svg")).not.toBeNull()
+    expect(container.querySelector("circle")).not.toBeNull()
+    expect(screen.getByText("架构说明文本")).not.toBeNull()
+  })
 })

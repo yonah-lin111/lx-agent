@@ -1053,3 +1053,55 @@ select {
 .cm-md-line-flash {
   animation: cm-md-line-flash-anim 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
+
+/* 提问工具图形化展示容器（支持 SVG 矢量绘制与基础 HTML） */
+.agent-question-graphic {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.agent-question-graphic svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.agent-question-graphic table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  font-size: 12px;
+}
+
+.agent-question-graphic th,
+.agent-question-graphic td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.agent-question-graphic th {
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.agent-question-graphic code {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.agent-question-graphic pre {
+  overflow-x: auto;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5em 0.75em;
+  margin: 0.5em 0;
+}

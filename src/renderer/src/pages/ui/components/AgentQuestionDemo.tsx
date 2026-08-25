@@ -108,6 +108,106 @@ const MOCK_ANSWERED_QUESTION_CALL: ToolCallBlock = {
   status: "done",
 }
 
+const MOCK_GRAPHIC_QUESTION_CALL: ToolCallBlock = {
+  kind: "toolCall",
+  toolCallId: "call_question_3",
+  toolName: "question",
+  args: {
+    questions: [
+      {
+        header: "架构确认",
+        question: "请确认以下服务间数据流转架构方案是否符合要求：",
+        content: `
+<div style="text-align: center; margin-bottom: 8px;">
+  <svg viewBox="0 0 420 100" width="100%" height="90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="60" y="54" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">Renderer</text>
+    
+    <path d="M 115 50 L 155 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
+    
+    <rect x="160" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5" />
+    <text x="210" y="54" fill="#c084fc" font-size="12" font-weight="bold" text-anchor="middle">Preload IPC</text>
+    
+    <path d="M 265 50 L 305 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
+    
+    <rect x="310" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#22c55e" stroke-width="1.5" />
+    <text x="360" y="54" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">Main Core</text>
+  </svg>
+</div>
+<table>
+  <thead>
+    <tr><th>模块</th><th>通信协议</th><th>鉴权</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Renderer ↔ Preload</td><td>ContextBridge</td><td>白名单暴露</td></tr>
+    <tr><td>Preload ↔ Main</td><td>Electron IPC</td><td>内部安全通道</td></tr>
+  </tbody>
+</table>
+`,
+        options: [
+          {
+            label: "完全同意该架构",
+            description: "按照此拓扑推进后续模块实现",
+          },
+          {
+            label: "需要微调 IPC 边界",
+            description: "补充双向流式通道设计",
+          },
+        ],
+      },
+    ],
+  },
+  question: {
+    requestId: "q_request_3",
+    toolCallId: "call_question_3",
+    sessionId: "sess_demo",
+    questions: [
+      {
+        header: "架构确认",
+        question: "请确认以下服务间数据流转架构方案是否符合要求：",
+        content: `
+<div style="text-align: center; margin-bottom: 8px;">
+  <svg viewBox="0 0 420 100" width="100%" height="90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="60" y="54" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">Renderer</text>
+    
+    <path d="M 115 50 L 155 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
+    
+    <rect x="160" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5" />
+    <text x="210" y="54" fill="#c084fc" font-size="12" font-weight="bold" text-anchor="middle">Preload IPC</text>
+    
+    <path d="M 265 50 L 305 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
+    
+    <rect x="310" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#22c55e" stroke-width="1.5" />
+    <text x="360" y="54" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">Main Core</text>
+  </svg>
+</div>
+<table>
+  <thead>
+    <tr><th>模块</th><th>通信协议</th><th>鉴权</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Renderer ↔ Preload</td><td>ContextBridge</td><td>白名单暴露</td></tr>
+    <tr><td>Preload ↔ Main</td><td>Electron IPC</td><td>内部安全通道</td></tr>
+  </tbody>
+</table>
+`,
+        options: [
+          {
+            label: "完全同意该架构",
+            description: "按照此拓扑推进后续模块实现",
+          },
+          {
+            label: "需要微调 IPC 边界",
+            description: "补充双向流式通道设计",
+          },
+        ],
+      },
+    ],
+  },
+  status: "done",
+}
+
 export const AgentQuestionDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -126,7 +226,13 @@ export const AgentQuestionDemo = (): React.JSX.Element => {
           </div>
           <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
             <div className="mb-2 text-[11px] font-medium text-white/40">
-              2. 已完成展示/折叠阶段 (Answered / Readonly)
+              2. 图形化与结构化排版提问阶段 (SVG & HTML Graphic)
+            </div>
+            <AgentQuestionBlock toolCall={MOCK_GRAPHIC_QUESTION_CALL} />
+          </div>
+          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+            <div className="mb-2 text-[11px] font-medium text-white/40">
+              3. 已完成展示/折叠阶段 (Answered / Readonly)
             </div>
             <AgentQuestionBlock toolCall={MOCK_ANSWERED_QUESTION_CALL} />
           </div>

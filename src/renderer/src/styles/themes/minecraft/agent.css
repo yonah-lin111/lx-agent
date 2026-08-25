@@ -947,6 +947,24 @@
   opacity: 1 !important;
 }
 
+[data-theme="minecraft"] .agent-question-graphic {
+  border: 2px solid #000000 !important;
+  background-color: #1a1a24 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic th,
+[data-theme="minecraft"] .agent-question-graphic td {
+  border-color: #3e3e58 !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic th {
+  background-color: #2e2e42 !important;
+}
+
 /* ========================================================
  * 11. 任务清单块 (AgentTodoCallBlock) - 3D 浮雕凸起
  * ======================================================== */
