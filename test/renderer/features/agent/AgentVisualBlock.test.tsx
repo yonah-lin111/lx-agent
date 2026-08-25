@@ -88,8 +88,10 @@ describe("AgentVisualBlock", () => {
 
     const { container } = render(<AgentVisualBlock toolCall={toolCall} />)
     expect(screen.getByText("render_html")).not.toBeNull()
-    expect(screen.getByText("Redis")).not.toBeNull()
-    expect(screen.getByText("1ms")).not.toBeNull()
+    const iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute("srcdoc")).toContain("Redis")
+    expect(iframe?.getAttribute("srcdoc")).toContain("1ms")
 
     // 测试折叠展开按钮
     const button = screen.getByRole("button", { name: "render_html" })

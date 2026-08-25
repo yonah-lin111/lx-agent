@@ -26,7 +26,7 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     expect(screen.getByText("SVG Test")).not.toBeNull()
   })
 
-  it("正确净化并渲染合法前端原型标签（按钮、输入框、表单、卡片与表格）", () => {
+  it("正确净化并在独立沙箱 iframe 中渲染合法前端原型标签（按钮、输入框、表单、卡片与表格）", () => {
     const htmlCode = `
       <div class="prototype-card">
         <h3>用户注册原型</h3>
@@ -47,15 +47,17 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
       </div>
     `
     const { container } = render(<AgentQuestionGraphic content={htmlCode} />)
-    expect(screen.getByText("用户注册原型")).not.toBeNull()
-    expect(container.querySelector("form")).not.toBeNull()
-    expect(container.querySelector("input")).not.toBeNull()
-    expect(container.querySelector("button")).not.toBeNull()
-    expect(screen.getByText("提交")).not.toBeNull()
-    expect(container.querySelector("table")).not.toBeNull()
-    expect(container.querySelector("th")).not.toBeNull()
-    expect(screen.getByText("Renderer")).not.toBeNull()
-    expect(container.querySelector("pre code")).not.toBeNull()
+    const iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute("sandbox")).toBe("allow-same-origin")
+    const srcDoc = iframe?.getAttribute("srcdoc") || ""
+    expect(srcDoc).toContain("用户注册原型")
+    expect(srcDoc).toContain("<form")
+    expect(srcDoc).toContain("<input")
+    expect(srcDoc).toContain("<button")
+    expect(srcDoc).toContain("<table")
+    expect(srcDoc).toContain("<th")
+    expect(srcDoc).toContain("Renderer")
   })
 
   it("防 XSS：彻底剔除 script、iframe 等危险可执行标签", () => {

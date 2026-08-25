@@ -1,8 +1,15 @@
 import type React from "react"
-import { useMemo } from "react"
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 // 允许渲染的标签白名单（静态 SVG 元素与完整 HTML 前端原型/排版标签）。
 const ALLOWED_TAGS = new Set([
+  // 文档基础标签
+  "html",
+  "head",
+  "body",
+  "meta",
+  "title",
+  "style",
   // SVG 绘图标签
   "svg",
   "g",
@@ -25,7 +32,6 @@ const ALLOWED_TAGS = new Set([
   "marker",
   "symbol",
   "use",
-  "title",
   "desc",
   "foreignobject",
   // 基础 HTML 排版与语义结构标签
@@ -82,7 +88,6 @@ const ALLOWED_TAGS = new Set([
   "samp",
   "var",
   "abbr",
-  "style",
   // 前端原型与交互组件标签
   "button",
   "input",
@@ -109,8 +114,6 @@ const DANGEROUS_TAGS = new Set([
   "frameset",
   "object",
   "embed",
-  "link",
-  "meta",
   "applet",
   "base",
   "marquee",
@@ -129,6 +132,8 @@ const ALLOWED_ATTRS = new Set([
   "dir",
   "lang",
   "hidden",
+  "charset",
+  "content",
   // 表单与原型控件属性
   "type",
   "name",
@@ -246,7 +251,7 @@ const sanitizeStyle = (styleValue: string): string => {
 /**
  * 深度递归净化 DOM 节点树。
  */
-const sanitizeNode = (node: Node): void => {
+export const sanitizeNode = (node: Node): void => {
   const children = Array.from(node.childNodes)
   for (const child of children) {
     if (child.nodeType === Node.ELEMENT_NODE) {
@@ -321,7 +326,7 @@ const sanitizeNode = (node: Node): void => {
 }
 
 /**
- * 净化 HTML/SVG 图形内容字符串。
+ * 净化 SVG 或简单 HTML 片段字符串。
  */
 export const sanitizeGraphicContent = (rawContent: string): string => {
   if (!rawContent || typeof rawContent !== "string") return ""
@@ -335,7 +340,137 @@ export const sanitizeGraphicContent = (rawContent: string): string => {
   }
 }
 
-// 提问图形化展示属性。
+/**
+ * 净化完整 HTML 文档并注入基准暗色样式，输出完整独立的沙箱 HTML 源码。
+ */
+export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): string => {
+  if (!rawContent || typeof rawContent !== "string") return ""
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(rawContent, "text/html")
+
+    // 净化 head 与 body
+    if (doc.head) sanitizeNode(doc.head)
+    if (doc.body) sanitizeNode(doc.body)
+
+    // 注入全局默认基准重置样式（作为 head 的第一项，用户自定义样式可自由覆盖）
+    const baseStyle = doc.createElement("style")
+    baseStyle.textContent = `
+      :root {
+        color-scheme: dark;
+      }
+      html, body {
+        margin: 0;
+        padding: 12px;
+        background-color: #0d0d0d;
+        color: #e5e7eb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+      *, *::before, *::after {
+        box-sizing: inherit;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.5em 0;
+        font-size: 12px;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+      }
+      th, td {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 6px 10px;
+        text-align: left;
+      }
+      th {
+        background-color: #212121;
+        color: #ffffff;
+        font-weight: 600;
+      }
+      td {
+        color: rgba(255, 255, 255, 0.85);
+      }
+    `
+    if (doc.head) {
+      doc.head.insertBefore(baseStyle, doc.head.firstChild)
+    }
+
+    // 若有传入自定义 style，作为最后一项注入 head
+    if (customStyle && doc.head) {
+      const userStyle = doc.createElement("style")
+      userStyle.textContent = customStyle
+      sanitizeNode(userStyle)
+      doc.head.appendChild(userStyle)
+    }
+
+    return `<!DOCTYPE html><html><head>${doc.head?.innerHTML || ""}</head><body>${doc.body?.innerHTML || ""}</body></html>`
+  } catch {
+    return rawContent
+  }
+}
+
+/**
+ * 具有独立沙箱环境的 HTML 原型 / 文档 Iframe 渲染组件
+ */
+const HtmlIframePreview = ({
+  html,
+  className = "",
+}: {
+  html: string
+  className?: string
+}): React.JSX.Element => {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [iframeHeight, setIframeHeight] = useState<number>(200)
+
+  const updateHeight = useCallback(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document
+      if (doc && doc.body) {
+        const height = Math.max(
+          doc.body.scrollHeight,
+          doc.documentElement.scrollHeight,
+          doc.body.offsetHeight,
+          100,
+        )
+        setIframeHeight(height)
+      }
+    } catch {}
+  }, [])
+
+  useLayoutEffect(() => {
+    updateHeight()
+  }, [html, updateHeight])
+
+  return (
+    <div
+      className={`agent-question-graphic my-1.5 max-h-[80vh] w-full overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] select-text custom-scrollbar ${className}`}
+    >
+      <iframe
+        ref={iframeRef}
+        srcDoc={html}
+        sandbox="allow-same-origin"
+        title="HTML Preview"
+        onLoad={updateHeight}
+        style={{
+          width: "100%",
+          height: `${iframeHeight}px`,
+          maxHeight: "none",
+          border: "none",
+          display: "block",
+          background: "transparent",
+        }}
+      />
+    </div>
+  )
+}
+
+// 提问与图表展示组件属性。
 export interface AgentQuestionGraphicProps {
   content?: string
   customStyle?: string
@@ -343,41 +478,57 @@ export interface AgentQuestionGraphicProps {
 }
 
 /**
- * AgentQuestionGraphic - 图形与结构化排版展示组件：
- * 支持 SVG 矢量绘图、基础 HTML 排版输出及 Claude Code 风格字符图案（ASCII Art），
- * 不使用大型 Markdown 渲染器，内置 DOMParser 严格白名单过滤以防御 XSS 与脚本注入。
- * 面板最大高度设为 80vh，支持自定义 style 设置且默认采用纯黑主题背景。
+ * AgentQuestionGraphic - 图形与前端原型展示组件：
+ * - SVG 矢量图：直接安全沙箱化渲染；
+ * - HTML 前端原型与富文本排版：基于独立 srcDoc Iframe 100% 隔离外部 CSS 干扰，支持完整 <style>、:root 与原型控件；
+ * - 字符画拓扑（ASCII Art）：等宽字体终端质感渲染。
  */
 export const AgentQuestionGraphic = ({
   content,
   customStyle,
   className = "",
 }: AgentQuestionGraphicProps): React.JSX.Element | null => {
-  const isHtmlOrSvg = useMemo(() => {
+  const isPureSvg = useMemo(() => {
     if (!content) return false
-    return /<[a-z][\s\S]*>/i.test(content)
+    const trimmed = content.trim()
+    return trimmed.startsWith("<svg") || (trimmed.startsWith("<?xml") && trimmed.includes("<svg"))
   }, [content])
 
-  const sanitizedHtml = useMemo(() => {
-    if (!content || !isHtmlOrSvg) return ""
-    const rawToSanitize = customStyle ? `<style>${customStyle}</style>${content}` : content
-    return sanitizeGraphicContent(rawToSanitize)
-  }, [content, customStyle, isHtmlOrSvg])
+  const isHtml = useMemo(() => {
+    if (!content || isPureSvg) return false
+    return /<[a-z][\s\S]*>/i.test(content)
+  }, [content, isPureSvg])
+
+  const sanitizedSvg = useMemo(() => {
+    if (!content || !isPureSvg) return ""
+    return sanitizeGraphicContent(content)
+  }, [content, isPureSvg])
+
+  const sanitizedHtmlDoc = useMemo(() => {
+    if (!content || !isHtml) return ""
+    return sanitizeHtmlDocument(content, customStyle)
+  }, [content, customStyle, isHtml])
 
   if (!content) return null
 
-  // 包含 HTML/SVG 标签时经严格白名单净化后渲染。
-  if (isHtmlOrSvg) {
-    if (!sanitizedHtml) return null
+  // 1. 纯 SVG 矢量图渲染。
+  if (isPureSvg) {
+    if (!sanitizedSvg) return null
     return (
       <div
         className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] p-2.5 text-[12px] text-white/85 select-text custom-scrollbar ${className}`}
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
       />
     )
   }
 
-  // 纯文本/字符图案（Claude Code 风格 ASCII Art / Box-drawing 拓扑）。
+  // 2. HTML 前端原型与结构化排版：使用独立沙箱 Iframe 渲染，彻底隔离宿主全局 CSS。
+  if (isHtml) {
+    if (!sanitizedHtmlDoc) return null
+    return <HtmlIframePreview html={sanitizedHtmlDoc} className={className} />
+  }
+
+  // 3. 纯文本/字符图案（Claude Code 风格 ASCII Art / Box-drawing 拓扑）。
   return (
     <div
       className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] p-2.5 text-[12px] select-text custom-scrollbar ${className}`}
