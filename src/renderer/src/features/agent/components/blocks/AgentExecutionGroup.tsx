@@ -63,7 +63,14 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
   if (toolName === "task") {
     return "subagent"
   }
-  if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
+  if (
+    toolName === "edit" ||
+    toolName === "write" ||
+    toolName === "apply_patch" ||
+    toolName === "render_svg" ||
+    toolName === "render_ascii" ||
+    toolName === "render_html"
+  ) {
     return "coding"
   }
   if (
@@ -79,7 +86,15 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
     toolName === "web_search" ||
     toolName === "webfetch" ||
     toolName === "read_skill" ||
-    (!["apply_patch", "job_output", "job_list", "job_kill"].includes(toolName) &&
+    (![
+      "apply_patch",
+      "job_output",
+      "job_list",
+      "job_kill",
+      "render_svg",
+      "render_ascii",
+      "render_html",
+    ].includes(toolName) &&
       toolName.includes("_"))
   ) {
     return "externalInfo"

@@ -12,6 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { AgentQuestionGraphic } from "@/features/agent/components/AgentQuestionGraphic"
 import type { ChatBlock } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -131,6 +132,7 @@ export const AgentQuestionBlock = ({
                       <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
                         {question.question}
                       </div>
+                      {question.content && <AgentQuestionGraphic content={question.content} />}
                     </div>
                     {answers.length > 0 && (
                       <div className="agent-question-answered-answers-container flex flex-col gap-1">
@@ -257,11 +259,13 @@ export const AgentQuestionBlock = ({
             </div>
           )}
 
-          {/* 当前问题：纯文本提问 + 选项/自定义输入。 */}
+          {/* 当前问题：纯文本提问 + 可选图形化内容 + 选项/自定义输入。 */}
           <div className="agent-question-card min-w-0">
             <div className="text-[13px] leading-relaxed text-white/85">
               {activeQuestion.question}
             </div>
+
+            {activeQuestion.content && <AgentQuestionGraphic content={activeQuestion.content} />}
 
             {activeQuestion.options ? (
               <>

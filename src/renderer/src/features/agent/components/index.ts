@@ -4,6 +4,11 @@ export * from "./AgentInput"
 export * from "./AgentMessageList"
 export { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
 export {
+  AgentQuestionGraphic,
+  type AgentQuestionGraphicProps,
+  sanitizeGraphicContent,
+} from "./AgentQuestionGraphic"
+export {
   AgentSuggestedPromptCards,
   type AgentSuggestedPromptCardsProps,
 } from "./AgentSuggestedPromptCards"

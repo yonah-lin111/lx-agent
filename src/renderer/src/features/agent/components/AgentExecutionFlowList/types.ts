@@ -7,6 +7,7 @@ import {
   Compass,
   FileText,
   Minimize2,
+  Palette,
   Search,
   Sparkles,
   Terminal,
@@ -97,11 +98,20 @@ export const getToolCategoryMeta = (
 ): {
   icon: React.ComponentType<{ className?: string }>
   label: string
-  tagColor: "teal" | "purple" | "emerald" | "sky" | "blue" | "default"
+  tagColor: "teal" | "purple" | "emerald" | "sky" | "blue" | "default" | "amber"
   textColor: string
 } => {
   if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
     return { icon: Code2, label: "Coding", tagColor: "emerald", textColor: "text-emerald-300" }
+  }
+  if (toolName === "render_svg") {
+    return { icon: Palette, label: "SVG", tagColor: "sky", textColor: "text-sky-300" }
+  }
+  if (toolName === "render_ascii") {
+    return { icon: Terminal, label: "ASCII", tagColor: "emerald", textColor: "text-emerald-300" }
+  }
+  if (toolName === "render_html") {
+    return { icon: Code2, label: "HTML", tagColor: "amber", textColor: "text-amber-300" }
   }
   if (toolName === "task") {
     return { icon: Bot, label: "Subagent", tagColor: "blue", textColor: "text-blue-300" }

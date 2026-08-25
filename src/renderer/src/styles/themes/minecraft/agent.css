@@ -947,6 +947,60 @@
   opacity: 1 !important;
 }
 
+[data-theme="minecraft"] .agent-question-graphic {
+  border: 2px solid #000000 !important;
+  background-color: #1a1a24 !important;
+  border-radius: 0px !important;
+  max-height: 80vh !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic table {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic th,
+[data-theme="minecraft"] .agent-question-graphic td {
+  border-color: #3e3e58 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic th {
+  background-color: #2e2e42 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic td {
+  background-color: #1a1a24 !important;
+  color: #c4c4d6 !important;
+}
+
+[data-theme="minecraft"] .agent-question-graphic pre,
+[data-theme="minecraft"] .agent-question-ascii pre {
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  font-family: var(--theme-font-family) !important;
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .agent-visual-header {
+  font-family: var(--theme-font-family) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  padding: 2px 8px !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+  height: auto !important;
+}
+
 /* ========================================================
  * 11. 任务清单块 (AgentTodoCallBlock) - 3D 浮雕凸起
  * ======================================================== */

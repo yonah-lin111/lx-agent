@@ -1053,3 +1053,233 @@ select {
 .cm-md-line-flash {
   animation: cm-md-line-flash-anim 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
+
+/* 提问工具与可视化图形展示容器（完全样式隔离与深色模式基准，防止全局 Tailwind 与外部样式污染） */
+.agent-question-graphic {
+  isolation: isolate;
+  contain: paint;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 80vh;
+  overflow-x: auto;
+  overflow-y: auto;
+  line-height: 1.6;
+  color-scheme: dark;
+  background-color: #0d0d0d !important;
+  color: #e5e7eb !important;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  text-align: left;
+}
+
+/* 独立语义排版元素样式重置（解除全局 preflight 压制） */
+.agent-question-graphic h1 {
+  display: block;
+  font-size: 1.5em !important;
+  font-weight: 700 !important;
+  margin: 0.67em 0 !important;
+  color: #ffffff !important;
+}
+
+.agent-question-graphic h2 {
+  display: block;
+  font-size: 1.3em !important;
+  font-weight: 600 !important;
+  margin: 0.75em 0 !important;
+  color: #f3f4f6 !important;
+}
+
+.agent-question-graphic h3 {
+  display: block;
+  font-size: 1.15em !important;
+  font-weight: 600 !important;
+  margin: 0.83em 0 !important;
+  color: #e5e7eb !important;
+}
+
+.agent-question-graphic h4,
+.agent-question-graphic h5,
+.agent-question-graphic h6 {
+  display: block;
+  font-size: 1em !important;
+  font-weight: 600 !important;
+  margin: 1em 0 !important;
+  color: #d1d5db !important;
+}
+
+.agent-question-graphic p {
+  display: block;
+  margin: 0.5em 0 !important;
+  line-height: 1.5 !important;
+  color: #e5e7eb !important;
+}
+
+.agent-question-graphic ul {
+  display: block;
+  list-style-type: disc !important;
+  margin: 0.5em 0 0.5em 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.agent-question-graphic ol {
+  display: block;
+  list-style-type: decimal !important;
+  margin: 0.5em 0 0.5em 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.agent-question-graphic li {
+  display: list-item !important;
+  margin: 0.25em 0 !important;
+}
+
+.agent-question-graphic hr {
+  display: block;
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  margin: 0.75em 0 !important;
+}
+
+.agent-question-graphic blockquote {
+  display: block;
+  margin: 0.5em 0 !important;
+  padding: 4px 10px !important;
+  border-left: 3px solid #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.05) !important;
+  color: #9ca3af !important;
+}
+
+.agent-question-graphic a {
+  color: #38bdf8 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+
+.agent-question-graphic a:hover {
+  color: #7dd3fc !important;
+}
+
+.agent-question-graphic svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.agent-question-graphic table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 0.5em 0 !important;
+  font-size: 12px !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.agent-question-graphic thead {
+  background-color: #212121 !important;
+}
+
+.agent-question-graphic th,
+.agent-question-graphic td {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 6px 10px !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
+}
+
+.agent-question-graphic th {
+  background-color: #212121 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.agent-question-graphic td {
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.agent-question-graphic tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.agent-question-graphic code {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.agent-question-graphic pre,
+.agent-question-ascii pre {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: pre !important;
+  overflow-x: auto !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  padding: 8px 12px !important;
+  color: #38bdf8 !important;
+  letter-spacing: 0px !important;
+  margin: 0.5em 0 !important;
+}
+
+/* 前端原型草稿常用表单控件与卡片默认质感 */
+.agent-question-graphic button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: #27272a;
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.agent-question-graphic button:hover {
+  background-color: #3f3f46;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.agent-question-graphic input,
+.agent-question-graphic select,
+.agent-question-graphic textarea {
+  background-color: #18181b;
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.agent-question-graphic input:focus,
+.agent-question-graphic select:focus,
+.agent-question-graphic textarea:focus {
+  border-color: #38bdf8;
+}
+
+.agent-question-graphic label {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+/* 解释性可视化展示块（SVG / ASCII / 表格 / HTML 原型） */
+.agent-visual-block {
+  min-width: 0;
+}
+
+.agent-visual-header {
+  user-select: none;
+}

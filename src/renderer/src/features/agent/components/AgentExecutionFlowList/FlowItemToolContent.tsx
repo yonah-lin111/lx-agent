@@ -4,6 +4,7 @@ import { FlowToolBash } from "./tools/FlowToolBash"
 import { FlowToolFileOps } from "./tools/FlowToolFileOps"
 import { FlowToolGeneric } from "./tools/FlowToolGeneric"
 import { FlowToolSearch } from "./tools/FlowToolSearch"
+import { FlowToolVisual } from "./tools/FlowToolVisual"
 
 export interface FlowItemToolContentProps {
   content: ExecutionToolContent
@@ -11,6 +12,10 @@ export interface FlowItemToolContentProps {
 
 export const FlowItemToolContent = ({ content }: FlowItemToolContentProps): React.JSX.Element => {
   const toolName = content.toolName
+
+  if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
+    return <FlowToolVisual content={content} />
+  }
 
   if (toolName === "bash") {
     return <FlowToolBash content={content} />

@@ -27,6 +27,7 @@ import {
   AgentThinkingBlock,
   AgentTodoCallBlock,
   AgentToolCallBlock,
+  AgentVisualBlock,
   AgentWebSearchBlock,
   type ExecutionGroupItem,
   getToolExecutionCategory,
@@ -39,14 +40,22 @@ import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 import { AgentMessageFiles } from "./AgentMessageFiles"
 
+// 待作答提问块类型。
+type PendingQuestionBlock = Extract<ChatBlock, { kind: "question" }>
+
+// 待作答权限块类型。
+type PendingPermissionBlock = Extract<ChatBlock, { kind: "permission" }>
+
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
-// 执行组内容块（普通工具调用、思考、MCP、Skill、写操作等各类执行块）。
-type ExecutionBlock = ToolCallBlock | Extract<ChatBlock, { kind: "thinking" }>
-type ExecutionItem = { block: ExecutionBlock; isStreaming: boolean }
-type ExecutionGroup = {
+
+// 执行组类型。
+interface ExecutionGroup {
   kind: "execution"
-  blocks: ExecutionItem[]
+  blocks: {
+    block: ToolCallBlock | Extract<ChatBlock, { kind: "thinking" }>
+    isStreaming: boolean
+  }[]
 }
 // 展示分组联合类型。
 type DisplayGroup =
@@ -56,12 +65,15 @@ type DisplayGroup =
   | { kind: "todo"; block: ToolCallBlock; isStreaming: boolean }
   // 模型提问调用独立组（不参与执行折叠，内联作答）。
   | { kind: "question"; block: ToolCallBlock; isStreaming: boolean }
+  // 可视化图表调用独立组（不参与执行折叠，直观富图形展示）。
+  | { kind: "visual"; block: ToolCallBlock; isStreaming: boolean }
 
 const SKILL_TOOL_NAME = "read_skill"
 const WEB_SEARCH_TOOL_NAME = "web_search"
 const SUBAGENT_TOOL_NAME = "task"
 const TODO_TOOL_NAME = "todowrite"
 const QUESTION_TOOL_NAME = "question"
+const VISUAL_TOOL_NAMES = new Set(["render_svg", "render_ascii", "render_html"])
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
 const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []
@@ -80,6 +92,9 @@ const isTodoToolCall = (toolName: string): boolean => toolName === TODO_TOOL_NAM
 
 // 判断是否为模型提问（question 工具）调用。
 const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
+
+// 判断是否为解释性可视化工具（render_svg / render_ascii / render_html）调用。
+const isVisualToolCall = (toolName: string): boolean => VISUAL_TOOL_NAMES.has(toolName)
 
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，排除内置下划线工具）。
 const BUILTIN_UNDERSCORE_TOOLS = new Set([
@@ -526,6 +541,12 @@ export const AgentMessageItem = ({
       if (isQuestionToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "question", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      // 可视化图表调用独立成组：切断执行组并默认展开展示。
+      if (isVisualToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "visual", block: item.block, isStreaming: item.isStreaming })
         continue
       }
 
@@ -984,6 +1005,10 @@ export const AgentMessageItem = ({
 
             if (group.kind === "question") {
               return <AgentQuestionBlock key={groupIndex} toolCall={group.block} />
+            }
+
+            if (group.kind === "visual") {
+              return <AgentVisualBlock key={groupIndex} toolCall={group.block} />
             }
 
             const executionItems: ExecutionGroupItem[] = group.blocks.flatMap<ExecutionGroupItem>(

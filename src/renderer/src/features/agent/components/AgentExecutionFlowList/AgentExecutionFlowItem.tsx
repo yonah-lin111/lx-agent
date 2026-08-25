@@ -76,6 +76,16 @@ export const AgentExecutionFlowItem = ({
     if (step.userContent) return step.userContent.text
     if (step.thinkingContent) return step.thinkingContent.text
     if (step.toolContent) {
+      const toolName = step.toolContent.toolName
+      if (toolName === "render_svg") {
+        return (step.toolContent.args?.svg as string) || ""
+      }
+      if (toolName === "render_ascii") {
+        return (step.toolContent.args?.ascii as string) || ""
+      }
+      if (toolName === "render_html") {
+        return (step.toolContent.args?.html as string) || ""
+      }
       return `Tool: ${step.toolContent.toolName}\nArgs:\n${formatJsonString(
         step.toolContent.args,
       )}\nResult:\n${step.toolContent.result ?? ""}`
@@ -102,8 +112,18 @@ export const AgentExecutionFlowItem = ({
     if (step.kind === "thinking") {
       return "agent-execution-flow-step-body--thinking agent-execution-flow-step-body--purple border-purple-500/15 bg-purple-500/[0.05]"
     }
+    const toolName = step.toolContent?.toolName
+    if (toolName === "render_svg") {
+      return "agent-execution-flow-step-body--render_svg border-sky-500/20 bg-sky-500/[0.03]"
+    }
+    if (toolName === "render_ascii") {
+      return "agent-execution-flow-step-body--render_ascii border-emerald-500/20 bg-emerald-500/[0.03]"
+    }
+    if (toolName === "render_html") {
+      return "agent-execution-flow-step-body--render_html border-amber-500/20 bg-amber-500/[0.03]"
+    }
     return `agent-execution-flow-step-body--${step.kind} border-white/5 bg-black/25`
-  }, [step.kind])
+  }, [step.kind, step.toolContent?.toolName])
 
   return (
     <div
