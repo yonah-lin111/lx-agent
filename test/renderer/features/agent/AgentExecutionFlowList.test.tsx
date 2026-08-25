@@ -972,4 +972,39 @@ describe("AgentExecutionFlowList", () => {
     expect(group?.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
     expect(screen.getByText("index.ts")).not.toBeNull()
   })
+
+  it("用户步骤中包含附件文件时渲染图片缩略图与文件卡片", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "分析以下附件" }],
+        files: [
+          {
+            name: "screenshot.png",
+            path: "/path/to/screenshot.png",
+            type: "image",
+          },
+          {
+            name: "document.pdf",
+            path: "/path/to/document.pdf",
+            type: "text",
+            extension: "PDF",
+            size: "1.2 MB",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    expect(screen.getByText("Attached Files:")).not.toBeNull()
+    expect(screen.getByText("document.pdf")).not.toBeNull()
+    expect(screen.getByText("PDF · 1.2 MB")).not.toBeNull()
+
+    const img = container.querySelector('img[alt="screenshot.png"]') as HTMLImageElement | null
+    expect(img).not.toBeNull()
+    expect(img?.src).toContain("lx-image://local/path/to/screenshot.png")
+  })
 })

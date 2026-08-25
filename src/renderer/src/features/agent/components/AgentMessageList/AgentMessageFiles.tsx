@@ -4,7 +4,7 @@ import { useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
-interface AgentMessageFile {
+export interface AgentMessageFile {
   name: string
   path: string
   type: "image" | "text"
@@ -12,15 +12,23 @@ interface AgentMessageFile {
   extension?: string
 }
 
-interface AgentMessageFilesProps {
+export interface AgentMessageFilesProps {
   files: AgentMessageFile[]
+  align?: "left" | "right"
+  className?: string
 }
 
-export const AgentMessageFiles = ({ files }: AgentMessageFilesProps): React.JSX.Element | null => {
+export const AgentMessageFiles = ({
+  files,
+  align = "right",
+  className = "",
+}: AgentMessageFilesProps): React.JSX.Element | null => {
   if (!files || files.length === 0) return null
 
+  const justifyClass = align === "left" ? "justify-start" : "justify-end"
+
   return (
-    <div className="mb-2 flex flex-wrap gap-2 justify-end">
+    <div className={`mb-2 flex flex-wrap gap-2 ${justifyClass} ${className}`.trim()}>
       {files.map((file, idx) => {
         if (file.type === "image") {
           return <ImageItem key={idx} file={file} />
@@ -72,7 +80,15 @@ const FileItem = ({ file }: { file: AgentMessageFile }) => {
   const sizeStr = file.size || t("agent.unknownSize")
 
   return (
-    <LxTooltip content={<span className="text-xs font-semibold">{file.name}</span>} placement="top">
+    <LxTooltip
+      content={
+        <div className="flex flex-col gap-0.5 text-xs text-left max-w-[280px]">
+          <span className="font-semibold text-white/95 truncate">{file.name}</span>
+          {file.path && <span className="text-[10px] text-white/40 break-all">{file.path}</span>}
+        </div>
+      }
+      placement="top"
+    >
       <div className="agent-message-file-item flex h-12 w-48 items-center gap-2 rounded-[8px] border border-white/10 bg-white/5 px-2.5 cursor-default">
         <div className="agent-message-file-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] bg-white/10">
           <FileText className="h-4 w-4 text-teal-400" />
