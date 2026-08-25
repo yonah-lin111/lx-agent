@@ -1054,10 +1054,11 @@ select {
   animation: cm-md-line-flash-anim 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* 提问工具图形化展示容器（支持 SVG 矢量绘制与基础 HTML） */
+/* 提问工具图形化展示容器（支持 SVG 矢量绘制、基础 HTML 与字符图案） */
 .agent-question-graphic {
   min-width: 0;
   max-width: 100%;
+  max-height: 80vh;
   overflow-x: auto;
   overflow-y: auto;
   line-height: 1.6;
@@ -1071,23 +1072,41 @@ select {
 }
 
 .agent-question-graphic table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5em 0;
-  font-size: 12px;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 0.5em 0 !important;
+  font-size: 12px !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.agent-question-graphic thead {
+  background-color: #212121 !important;
 }
 
 .agent-question-graphic th,
 .agent-question-graphic td {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 4px 8px;
-  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 6px 10px !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
 }
 
 .agent-question-graphic th {
-  background: rgba(255, 255, 255, 0.06);
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  background-color: #212121 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.agent-question-graphic td {
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.agent-question-graphic tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .agent-question-graphic code {
@@ -1098,10 +1117,18 @@ select {
   font-size: 0.9em;
 }
 
-.agent-question-graphic pre {
-  overflow-x: auto;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 0.5em 0.75em;
-  margin: 0.5em 0;
+.agent-question-graphic pre,
+.agent-question-ascii pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: pre !important;
+  overflow-x: auto !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  padding: 8px 12px !important;
+  color: #38bdf8 !important;
+  letter-spacing: 0px !important;
+  margin: 0.5em 0 !important;
 }

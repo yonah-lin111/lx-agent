@@ -285,24 +285,45 @@ export interface AgentQuestionGraphicProps {
 
 /**
  * AgentQuestionGraphic - 提问工具图形化展示组件：
- * 支持 SVG 矢量绘图与基础 HTML 排版输出，不使用大型 Markdown 渲染器，
- * 内置 DOMParser 严格白名单过滤以防御 XSS 与脚本注入。
+ * 支持 SVG 矢量绘图、基础 HTML 排版输出及 Claude Code 风格字符图案（ASCII Art），
+ * 不使用大型 Markdown 渲染器，内置 DOMParser 严格白名单过滤以防御 XSS 与脚本注入。
+ * 面板最大高度设为 80vh，支持长图与多行图表滚动。
  */
 export const AgentQuestionGraphic = ({
   content,
   className = "",
 }: AgentQuestionGraphicProps): React.JSX.Element | null => {
-  const sanitizedHtml = useMemo(() => {
-    if (!content) return ""
-    return sanitizeGraphicContent(content)
+  const isHtmlOrSvg = useMemo(() => {
+    if (!content) return false
+    return /<[a-z][\s\S]*>/i.test(content)
   }, [content])
 
-  if (!sanitizedHtml) return null
+  const sanitizedHtml = useMemo(() => {
+    if (!content || !isHtmlOrSvg) return ""
+    return sanitizeGraphicContent(content)
+  }, [content, isHtmlOrSvg])
 
+  if (!content) return null
+
+  // 包含 HTML/SVG 标签时经严格白名单净化后渲染。
+  if (isHtmlOrSvg) {
+    if (!sanitizedHtml) return null
+    return (
+      <div
+        className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-black/40 p-2.5 text-[12px] text-white/85 select-text custom-scrollbar ${className}`}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+      />
+    )
+  }
+
+  // 纯文本/字符图案（Claude Code 风格 ASCII Art / Box-drawing 拓扑）。
   return (
     <div
-      className={`agent-question-graphic my-1.5 max-h-80 overflow-auto rounded-[6px] border border-white/10 bg-black/40 p-2.5 text-[12px] text-white/85 select-text custom-scrollbar ${className}`}
-      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-    />
+      className={`agent-question-graphic my-1.5 max-h-[80vh] overflow-auto rounded-[6px] border border-white/10 bg-black/40 p-2.5 text-[12px] select-text custom-scrollbar ${className}`}
+    >
+      <pre className="font-mono text-[11px] leading-[1.25] text-sky-300/90 whitespace-pre m-0 p-0 bg-transparent border-0">
+        {content}
+      </pre>
+    </div>
   )
 }

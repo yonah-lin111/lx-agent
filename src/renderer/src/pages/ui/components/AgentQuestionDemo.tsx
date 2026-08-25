@@ -208,6 +208,82 @@ const MOCK_GRAPHIC_QUESTION_CALL: ToolCallBlock = {
   status: "done",
 }
 
+const MOCK_ASCII_QUESTION_CALL: ToolCallBlock = {
+  kind: "toolCall",
+  toolCallId: "call_question_4",
+  toolName: "question",
+  args: {
+    questions: [
+      {
+        header: "流程分支",
+        question: "检测到多条构建管线，请选择首选的执行路径：",
+        content: `┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│  Git Push   │ ──► │  CI Trigger  │ ──► │  Lint & TS  │
+└─────────────┘     └──────────────┘     └──────┬──────┘
+                                                │
+                     ┌──────────────────────────┴──────────┐
+                     ▼                                     ▼
+             ┌───────────────┐                     ┌───────────────┐
+             │  Unit Tests   │                     │  Integration  │
+             └───────┬───────┘                     └───────┬───────┘
+                     │                                     │
+                     └──────────────────┬──────────────────┘
+                                        ▼
+                               ┌─────────────────┐
+                               │  Deploy Docker  │
+                               └─────────────────┘`,
+        options: [
+          {
+            label: "全量并行验证 (CI + Lint + Tests)",
+            description: "执行完整的单元测试与集成测试流水线",
+          },
+          {
+            label: "极速旁路部署 (Skip Tests)",
+            description: "跳过耗时集成测试，仅执行基础类型检查",
+          },
+        ],
+      },
+    ],
+  },
+  question: {
+    requestId: "q_request_4",
+    toolCallId: "call_question_4",
+    sessionId: "sess_demo",
+    questions: [
+      {
+        header: "流程分支",
+        question: "检测到多条构建管线，请选择首选的执行路径：",
+        content: `┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│  Git Push   │ ──► │  CI Trigger  │ ──► │  Lint & TS  │
+└─────────────┘     └──────────────┘     └──────┬──────┘
+                                                │
+                     ┌──────────────────────────┴──────────┐
+                     ▼                                     ▼
+             ┌───────────────┐                     ┌───────────────┐
+             │  Unit Tests   │                     │  Integration  │
+             └───────┬───────┘                     └───────┬───────┘
+                     │                                     │
+                     └──────────────────┬──────────────────┘
+                                        ▼
+                               ┌─────────────────┐
+                               │  Deploy Docker  │
+                               └─────────────────┘`,
+        options: [
+          {
+            label: "全量并行验证 (CI + Lint + Tests)",
+            description: "执行完整的单元测试与集成测试流水线",
+          },
+          {
+            label: "极速旁路部署 (Skip Tests)",
+            description: "跳过耗时集成测试，仅执行基础类型检查",
+          },
+        ],
+      },
+    ],
+  },
+  status: "done",
+}
+
 export const AgentQuestionDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -218,21 +294,27 @@ export const AgentQuestionDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.agentQuestionDesc")}
       >
         <div className="flex flex-col gap-4">
-          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+          <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
             <div className="mb-2 text-[11px] font-medium text-white/40">
               1. 待作答交互阶段 (Pending)
             </div>
             <AgentQuestionBlock toolCall={MOCK_QUESTION_CALL} />
           </div>
-          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+          <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
             <div className="mb-2 text-[11px] font-medium text-white/40">
-              2. 图形化与结构化排版提问阶段 (SVG & HTML Graphic)
+              2. 字符图案绘画阶段 (Claude Code ASCII Art)
+            </div>
+            <AgentQuestionBlock toolCall={MOCK_ASCII_QUESTION_CALL} />
+          </div>
+          <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+            <div className="mb-2 text-[11px] font-medium text-white/40">
+              3. 图形化与结构化排版提问阶段 (SVG & HTML Graphic)
             </div>
             <AgentQuestionBlock toolCall={MOCK_GRAPHIC_QUESTION_CALL} />
           </div>
-          <div className="w-full max-w-xl rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
+          <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
             <div className="mb-2 text-[11px] font-medium text-white/40">
-              3. 已完成展示/折叠阶段 (Answered / Readonly)
+              4. 已完成展示/折叠阶段 (Answered / Readonly)
             </div>
             <AgentQuestionBlock toolCall={MOCK_ANSWERED_QUESTION_CALL} />
           </div>

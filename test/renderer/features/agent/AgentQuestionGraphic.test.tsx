@@ -96,6 +96,16 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     expect(sanitized).not.toContain("https://malicious.com")
   })
 
+  it("正确渲染纯文本与 Claude Code 风格字符图案（ASCII Art）", () => {
+    const asciiArt = `┌─────┐\n│ Box │\n└─────┘`
+    const { container } = render(<AgentQuestionGraphic content={asciiArt} />)
+    const pre = container.querySelector("pre")
+    expect(pre).not.toBeNull()
+    expect(pre?.textContent).toContain("┌─────┐")
+    expect(pre?.textContent).toContain("│ Box │")
+    expect(pre?.textContent).toContain("└─────┘")
+  })
+
   it("空内容或空字符串不渲染任何 DOM", () => {
     const { container } = render(<AgentQuestionGraphic content="" />)
     expect(container.firstChild).toBeNull()
