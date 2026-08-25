@@ -465,10 +465,8 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    // web_search 并入执行折叠组，标题展示英文计数。
-    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
-    expect(screen.getByText("Web Searches")).not.toBeNull()
-    // 折叠内容仍在 DOM 中，块标题与合并后的搜索条件可见。
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("External Info")).not.toBeNull()
     expect(screen.getByText("Web Search")).not.toBeNull()
     expect(screen.getByText("[react hooks 文档], [tailwind v4 发布]")).not.toBeNull()
   })
@@ -495,7 +493,7 @@ describe("AgentMessageItem", () => {
     expect(screen.getByText(/Web search failed/)).not.toBeNull()
   })
 
-  it("思考块与工具调用合并折叠，头部展示英文计数", () => {
+  it("思考块与工具调用合并折叠，头部展示 Execute Group 与分类行", () => {
     const message: ChatMessage = {
       id: "exec-1",
       role: "assistant",
@@ -521,17 +519,12 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    const groupButton = screen.getByRole("button", { name: "展开执行内容" })
-    expect(groupButton).not.toBeNull()
-    expect(screen.getByText("Tool Calls")).not.toBeNull()
-    expect(screen.getByText("Thought")).not.toBeNull()
-
-    // 默认折叠，点击后展开并切换按钮文案。
-    fireEvent.click(groupButton)
-    expect(screen.getByRole("button", { name: "收起执行内容" })).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("Search CodeBase")).not.toBeNull()
+    expect(screen.getByText("System")).not.toBeNull()
   })
 
-  it("单个工具调用与思考块合并时展示英文单数计数", () => {
+  it("单个工具调用与思考块合并时展示 Execute Group", () => {
     const message: ChatMessage = {
       id: "exec-2",
       role: "assistant",
@@ -550,12 +543,11 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
-    expect(screen.getByText("Tool Call")).not.toBeNull()
-    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("System")).not.toBeNull()
   })
 
-  it("仅单个工具调用且无思考时不折叠", () => {
+  it("单个工具调用渲染在 Execute Group 中", () => {
     const message: ChatMessage = {
       id: "exec-3",
       role: "assistant",
@@ -573,10 +565,10 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.queryByRole("button", { name: "展开执行内容" })).toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
   })
 
-  it("MCP 调用并入执行折叠组，头部展示英文计数", () => {
+  it("MCP 调用并入执行折叠组，头部展示 External Info 分类", () => {
     const message: ChatMessage = {
       id: "exec-4",
       role: "assistant",
@@ -601,16 +593,11 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    const groupButton = screen.getByRole("button", { name: "展开执行内容" })
-    expect(groupButton).not.toBeNull()
-    expect(screen.getByText("MCP Calls")).not.toBeNull()
-
-    // 默认折叠，点击后展开并切换按钮文案。
-    fireEvent.click(groupButton)
-    expect(screen.getByRole("button", { name: "收起执行内容" })).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("External Info")).not.toBeNull()
   })
 
-  it("工具 + 思考 + MCP 合并折叠，头部展示三类英文计数", () => {
+  it("工具 + 思考 + MCP 合并折叠，头部展示分类行", () => {
     const message: ChatMessage = {
       id: "exec-5",
       role: "assistant",
@@ -636,10 +623,9 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.getByRole("button", { name: "展开执行内容" })).not.toBeNull()
-    expect(screen.getByText("Tool Call")).not.toBeNull()
-    expect(screen.getByText("Thought")).not.toBeNull()
-    expect(screen.getByText("MCP Call")).not.toBeNull()
+    expect(screen.getByText("Execute Group")).not.toBeNull()
+    expect(screen.getByText("System")).not.toBeNull()
+    expect(screen.getByText("External Info")).not.toBeNull()
   })
 
   it("即时插话（steer）气泡使用专属底色、移除标签、只展示内容（不出现 /steer 命令）", () => {

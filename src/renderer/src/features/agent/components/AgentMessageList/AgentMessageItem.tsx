@@ -385,7 +385,11 @@ export const AgentMessageItem = ({
 
       // 可合并工具的调用结果只属于前一组，不应打断连续归类。
       if (block.kind === "toolResult" && mergeableToolCallIds.has(block.toolCallId)) continue
-      if (block.kind === "toolCall" || block.kind === "thinking" || block.kind === "text") {
+      if (
+        block.kind === "toolCall" ||
+        block.kind === "thinking" ||
+        (block.kind === "text" && block.text.trim() !== "")
+      ) {
         groups.push([])
       }
     }
@@ -494,8 +498,10 @@ export const AgentMessageItem = ({
 
     for (const item of displayBlocks) {
       if (item.block.kind === "text") {
-        currentExecution = null
-        groups.push({ kind: "text", block: item.block, isStreaming: item.isStreaming })
+        if (item.block.text.trim() !== "") {
+          currentExecution = null
+          groups.push({ kind: "text", block: item.block, isStreaming: item.isStreaming })
+        }
         continue
       }
       if (item.block.kind === "thinking") {
