@@ -223,7 +223,11 @@ export const parsePatch = (patchText: string): ParsedPatch => {
  * 校验并对单个文件应用 Update Hunks，返回替换后的新内容。
  * 遵循严格唯一上下文匹配规则。
  */
-export const applyHunksToFile = (originalText: string, hunks: PatchHunk[], path: string): string => {
+export const applyHunksToFile = (
+  originalText: string,
+  hunks: PatchHunk[],
+  path: string,
+): string => {
   const normOriginal = normalizeToLF(originalText)
   let current = normOriginal
 

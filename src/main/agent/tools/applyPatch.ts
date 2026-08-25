@@ -84,7 +84,13 @@ export const createApplyPatchTool = (
 
     // 2. 预检与内存计算阶段（原子校验：任一失败则中断返回）
     type PlannedWrite =
-      | { type: "write"; absolutePath: string; relativePath: string; content: string; oldContent: string }
+      | {
+          type: "write"
+          absolutePath: string
+          relativePath: string
+          content: string
+          oldContent: string
+        }
       | { type: "delete"; absolutePath: string; relativePath: string; oldContent: string }
 
     const plans: PlannedWrite[] = []
@@ -182,7 +188,10 @@ export const createApplyPatchTool = (
     }
 
     const summary = `成功应用补丁至 ${plans.length} 个文件：\n${plans
-      .map((p) => `  - [${p.type === "delete" ? "删除" : p.oldContent === "" ? "新增" : "更新"}] ${p.relativePath}`)
+      .map(
+        (p) =>
+          `  - [${p.type === "delete" ? "删除" : p.oldContent === "" ? "新增" : "更新"}] ${p.relativePath}`,
+      )
       .join("\n")}`
 
     return {

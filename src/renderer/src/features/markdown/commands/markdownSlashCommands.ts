@@ -273,8 +273,7 @@ export const getMarkdownSlashCommands = (
   return allCommands.filter(
     (command) =>
       (command.scope === expectedScope || command.scope === "both") &&
-      (isFuzzyMatch(query, command.id) ||
-        isFuzzyMatch(query, command.label.replace(/^\//, ""))) &&
+      (isFuzzyMatch(query, command.id) || isFuzzyMatch(query, command.label.replace(/^\//, ""))) &&
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )
 }

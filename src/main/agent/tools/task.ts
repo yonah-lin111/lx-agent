@@ -26,7 +26,9 @@ const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 // task 工具输入 schema。
 const TASK_INPUT_SCHEMA = z.object({
   description: z.string().describe("Brief task description (1-5 words) for progress display"),
-  prompt: z.string().describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
+  prompt: z
+    .string()
+    .describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
   name: z.string().optional().describe("Sub-agent name (e.g., 'explorer' / 'coder')"),
 })
 

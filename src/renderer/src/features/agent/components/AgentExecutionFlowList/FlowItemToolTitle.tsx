@@ -103,12 +103,10 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
   if (toolName === "lsp") {
     const operation =
       typeof toolContent.args?.operation === "string" ? toolContent.args.operation : ""
-    const filePath =
-      typeof toolContent.args?.filePath === "string" ? toolContent.args.filePath : ""
+    const filePath = typeof toolContent.args?.filePath === "string" ? toolContent.args.filePath : ""
     const fileName = filePath ? filePath.split("/").pop() || filePath : ""
     const line = typeof toolContent.args?.line === "number" ? `:${toolContent.args.line}` : ""
-    const query =
-      typeof toolContent.args?.query === "string" ? ` "${toolContent.args.query}"` : ""
+    const query = typeof toolContent.args?.query === "string" ? ` "${toolContent.args.query}"` : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
         <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-teal-300">
@@ -179,8 +177,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
   }
 
   if (toolName === "web_search") {
-    const query =
-      typeof toolContent.args?.query === "string" ? toolContent.args.query.trim() : ""
+    const query = typeof toolContent.args?.query === "string" ? toolContent.args.query.trim() : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
         <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-emerald-300">

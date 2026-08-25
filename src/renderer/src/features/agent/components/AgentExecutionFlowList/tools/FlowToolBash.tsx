@@ -12,7 +12,9 @@ export interface FlowToolBashProps {
 export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element => {
   const { t } = useTranslation()
   const command =
-    typeof content.args?.command === "string" ? content.args.command : String(content.args?.command ?? "")
+    typeof content.args?.command === "string"
+      ? content.args.command
+      : String(content.args?.command ?? "")
   const timeout = typeof content.args?.timeout === "number" ? content.args.timeout : undefined
   const background = Boolean(content.args?.background)
 

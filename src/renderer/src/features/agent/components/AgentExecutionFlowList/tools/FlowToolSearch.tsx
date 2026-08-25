@@ -23,12 +23,9 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
   const path = typeof content.args?.path === "string" ? content.args.path : ""
   const include = typeof content.args?.include === "string" ? content.args.include : ""
 
-  const handleOpenLspLocation = useCallback(
-    async (filePath: string, line: number) => {
-      await agentApi.openFileAt(filePath, line)
-    },
-    [],
-  )
+  const handleOpenLspLocation = useCallback(async (filePath: string, line: number) => {
+    await agentApi.openFileAt(filePath, line)
+  }, [])
 
   return (
     <div className="agent-execution-flow-tool-search flex flex-col gap-2 font-mono text-[11px]">
@@ -64,7 +61,9 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
       {/* 结构化 LSP 结果条目 */}
       {content.lsp && content.lsp.results && content.lsp.results.length > 0 && (
         <div className="flex flex-col gap-1">
-          <div className="text-[10px] text-white/40">LSP References ({content.lsp.results.length})</div>
+          <div className="text-[10px] text-white/40">
+            LSP References ({content.lsp.results.length})
+          </div>
           <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/50 p-1.5 flex flex-col gap-1">
             {content.lsp.results.map((loc, idx) => (
               <div
@@ -75,7 +74,11 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
                 <span className="truncate text-white/80">
                   {loc.filePath}:{loc.line}
                 </span>
-                <LxIconButton size="small" aria-label="Open" className="text-white/30 hover:text-white/70">
+                <LxIconButton
+                  size="small"
+                  aria-label="Open"
+                  className="text-white/30 hover:text-white/70"
+                >
                   <ExternalLink className="h-3 w-3" />
                 </LxIconButton>
               </div>

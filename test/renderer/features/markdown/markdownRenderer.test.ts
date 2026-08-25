@@ -159,17 +159,15 @@ describe("markdownRenderer", () => {
     ].join("\n")
 
     const cleaned = stripEmptyTemplateItems(input, true)
-    expect(cleaned).toBe(["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++"].join("\n"))
+    expect(cleaned).toBe(
+      ["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++"].join("\n"),
+    )
   })
 
   it("stripEmptyTemplateItems 在 preserveSuppleBlocks=false 时清理全部未填项", () => {
-    const input = [
-      "- 参考: ",
-      "- 位置: src/a.ts",
-      "- 要求: ",
-      "  - ",
-      "- 描述: 具体描述",
-    ].join("\n")
+    const input = ["- 参考: ", "- 位置: src/a.ts", "- 要求: ", "  - ", "- 描述: 具体描述"].join(
+      "\n",
+    )
 
     const cleaned = stripEmptyTemplateItems(input, false)
     expect(cleaned).toBe(["- 位置: src/a.ts", "- 描述: 具体描述"].join("\n"))

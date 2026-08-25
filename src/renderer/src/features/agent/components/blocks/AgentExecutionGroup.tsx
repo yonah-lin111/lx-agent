@@ -63,11 +63,7 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
   if (toolName === "task") {
     return "subagent"
   }
-  if (
-    toolName === "edit" ||
-    toolName === "write" ||
-    toolName === "apply_patch"
-  ) {
+  if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
     return "coding"
   }
   if (

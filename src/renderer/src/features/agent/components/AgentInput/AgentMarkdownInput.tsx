@@ -999,7 +999,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         }
 
         // 拦截 /compact 相关命令
-        if (text === "/compact" || text.startsWith("/compact ") || text.startsWith("/compact:") || text.startsWith("/compact-")) {
+        if (
+          text === "/compact" ||
+          text.startsWith("/compact ") ||
+          text.startsWith("/compact:") ||
+          text.startsWith("/compact-")
+        ) {
           onChangeRef.current("")
           const view = editorViewRef.current
           if (view) {
@@ -1012,7 +1017,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         }
 
         // 拦截 /clear 相关命令
-        if (text === "/clear" || text.startsWith("/clear ") || text.startsWith("/clear:") || text.startsWith("/clear-")) {
+        if (
+          text === "/clear" ||
+          text.startsWith("/clear ") ||
+          text.startsWith("/clear:") ||
+          text.startsWith("/clear-")
+        ) {
           onChangeRef.current("")
           const view = editorViewRef.current
           if (view) {
@@ -1025,7 +1035,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         }
 
         // 拦截 /undo 相关命令
-        if (text === "/undo" || text.startsWith("/undo ") || text.startsWith("/undo:") || text.startsWith("/undo-")) {
+        if (
+          text === "/undo" ||
+          text.startsWith("/undo ") ||
+          text.startsWith("/undo:") ||
+          text.startsWith("/undo-")
+        ) {
           onChangeRef.current("")
           const view = editorViewRef.current
           if (view) {

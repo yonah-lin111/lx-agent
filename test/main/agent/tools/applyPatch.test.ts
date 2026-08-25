@@ -23,15 +23,15 @@ describe("applyPatchParser", () => {
     expect(parsed.actions[0]).toEqual({
       type: "add",
       path: "src/hello.ts",
-      content: "export const hello = \"world\"\nexport const value = 42",
+      content: 'export const hello = "world"\nexport const value = 42',
     })
 
     expect(parsed.actions[1].type).toBe("update")
     if (parsed.actions[1].type === "update") {
       expect(parsed.actions[1].path).toBe("src/index.ts")
       expect(parsed.actions[1].hunks).toHaveLength(1)
-      expect(parsed.actions[1].hunks[0].oldLines).toContain("console.log(\"old\")")
-      expect(parsed.actions[1].hunks[0].newLines).toContain("console.log(\"new\")")
+      expect(parsed.actions[1].hunks[0].oldLines).toContain('console.log("old")')
+      expect(parsed.actions[1].hunks[0].newLines).toContain('console.log("new")')
     }
 
     expect(parsed.actions[2]).toEqual({

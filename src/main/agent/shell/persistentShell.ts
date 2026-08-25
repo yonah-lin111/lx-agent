@@ -134,7 +134,11 @@ export class PersistentShellManager {
             const clean = l.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "").trim()
             if (!clean) return false
             if (clean === command.trim()) return false
-            if (clean.startsWith("echo \"__LX_AGENT_END_") || clean.includes(`__LX_AGENT_END_${marker}__`)) return false
+            if (
+              clean.startsWith('echo "__LX_AGENT_END_') ||
+              clean.includes(`__LX_AGENT_END_${marker}__`)
+            )
+              return false
             return true
           })
 

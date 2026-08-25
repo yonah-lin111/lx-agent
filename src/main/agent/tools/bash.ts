@@ -20,7 +20,10 @@ const MAX_TIMEOUT_MS = 2_147_483_647
 
 const bashSchema = z.object({
   command: z.string().describe("Shell command to execute"),
-  timeout: z.number().describe("Timeout in seconds (optional, default 120 for synchronous execution)").optional(),
+  timeout: z
+    .number()
+    .describe("Timeout in seconds (optional, default 120 for synchronous execution)")
+    .optional(),
   background: z
     .boolean()
     .describe(
@@ -29,7 +32,9 @@ const bashSchema = z.object({
     .optional(),
   session: z
     .string()
-    .describe("Persistent shell session name (optional). When specified, commands execute consecutively in a persistent terminal session, preserving environment variables and working directory state.")
+    .describe(
+      "Persistent shell session name (optional). When specified, commands execute consecutively in a persistent terminal session, preserving environment variables and working directory state.",
+    )
     .optional(),
 })
 
@@ -62,7 +67,9 @@ export const createBashTool = (
       await access(cwd, constants.F_OK)
     } catch {
       return {
-        content: [{ type: "text", text: `Working directory not found: ${cwd}\nCannot execute command.` }],
+        content: [
+          { type: "text", text: `Working directory not found: ${cwd}\nCannot execute command.` },
+        ],
         details: { error: "cwd_not_found" },
       }
     }
@@ -72,7 +79,12 @@ export const createBashTool = (
     // 互斥校验：background 与 session 不可同时使用
     if (params.background && params.session) {
       return {
-        content: [{ type: "text", text: "Invalid arguments: background and session are mutually exclusive, cannot start a background job in a persistent session." }],
+        content: [
+          {
+            type: "text",
+            text: "Invalid arguments: background and session are mutually exclusive, cannot start a background job in a persistent session.",
+          },
+        ],
         details: { error: "invalid_args" },
       }
     }
@@ -116,7 +128,7 @@ export const createBashTool = (
     const timeoutMs = Math.min(timeoutSeconds * 1000, MAX_TIMEOUT_MS)
 
     if (signal?.aborted) {
-      return {         content: [{ type: "text", text: "Command aborted." }], details: { aborted: true } }
+      return { content: [{ type: "text", text: "Command aborted." }], details: { aborted: true } }
     }
 
     // 持久 Shell 执行分支
@@ -139,7 +151,9 @@ export const createBashTool = (
 
         if (exitCode !== 0) {
           return {
-            content: [{ type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) }],
+            content: [
+              { type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) },
+            ],
             details: mergedDetails,
           }
         }
@@ -214,7 +228,10 @@ export const createBashTool = (
       if (timedOut) {
         return {
           content: [
-            { type: "text", text: appendStatus(rawOutput, `Command timed out after ${timeoutSeconds} seconds`) },
+            {
+              type: "text",
+              text: appendStatus(rawOutput, `Command timed out after ${timeoutSeconds} seconds`),
+            },
           ],
           details: { timedOut: true },
         }
@@ -225,7 +242,9 @@ export const createBashTool = (
       const { text, details } = formatOutput(rawOutput, truncation, { sessionId, toolCallId })
       if (exitCode !== 0 && exitCode !== null) {
         return {
-          content: [{ type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) }],
+          content: [
+            { type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) },
+          ],
           details,
         }
       }

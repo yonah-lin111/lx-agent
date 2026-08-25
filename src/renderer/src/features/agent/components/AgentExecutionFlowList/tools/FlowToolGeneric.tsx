@@ -43,7 +43,9 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
-            {content.isError && <span className="text-[10px] text-rose-400 font-medium">ERROR</span>}
+            {content.isError && (
+              <span className="text-[10px] text-rose-400 font-medium">ERROR</span>
+            )}
           </div>
           <div
             className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2 leading-relaxed break-all whitespace-pre-wrap ${

@@ -23,12 +23,15 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
   const offset = typeof content.args?.offset === "number" ? content.args.offset : undefined
   const limit = typeof content.args?.limit === "number" ? content.args.limit : undefined
 
-  const handleOpenFile = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (filePath) {
-      await agentApi.openFileAt(filePath, offset ?? 1)
-    }
-  }, [filePath, offset])
+  const handleOpenFile = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (filePath) {
+        await agentApi.openFileAt(filePath, offset ?? 1)
+      }
+    },
+    [filePath, offset],
+  )
 
   return (
     <div className="agent-execution-flow-tool-file-ops flex flex-col gap-2 font-mono text-[11px]">
@@ -115,7 +118,9 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
-            {content.isError && <span className="text-[10px] text-rose-400 font-medium">ERROR</span>}
+            {content.isError && (
+              <span className="text-[10px] text-rose-400 font-medium">ERROR</span>
+            )}
           </div>
           <div
             className={`custom-scrollbar max-h-60 overflow-y-auto rounded p-2.5 leading-relaxed break-all whitespace-pre-wrap ${
