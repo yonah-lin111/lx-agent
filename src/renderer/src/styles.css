@@ -1132,3 +1132,12 @@ select {
   letter-spacing: 0px !important;
   margin: 0.5em 0 !important;
 }
+
+/* 解释性可视化展示块（SVG / ASCII / 表格） */
+.agent-visual-block {
+  min-width: 0;
+}
+
+.agent-visual-header {
+  user-select: none;
+}

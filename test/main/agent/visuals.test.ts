@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest"
+import {
+  createRenderAsciiTool,
+  createRenderSvgTool,
+  createRenderTableTool,
+} from "@/agent/tools/visuals"
+
+describe("visuals tools (render_svg, render_ascii, render_table)", () => {
+  it("render_svg 正常执行并返回描述性文本", async () => {
+    const tool = createRenderSvgTool()
+    expect(tool.name).toBe("render_svg")
+    expect(tool.description).toContain("SVG")
+    expect(tool.description).toContain("深色主题")
+
+    const result = await tool.execute("call-1", {
+      svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" /></svg>',
+      title: "系统拓扑",
+      description: "这是系统核心架构图",
+    })
+
+    expect(result.content[0]?.text).toContain("已成功渲染 SVG 矢量图表「系统拓扑」")
+  })
+
+  it("render_ascii 正常执行并返回描述性文本", async () => {
+    const tool = createRenderAsciiTool()
+    expect(tool.name).toBe("render_ascii")
+    expect(tool.description).toContain("ASCII")
+
+    const result = await tool.execute("call-2", {
+      ascii: "┌───┐\n│ A │\n└───┘",
+      title: "流水线",
+      description: "CI/CD 流程步骤",
+    })
+
+    expect(result.content[0]?.text).toContain("已成功渲染字符画拓扑「流水线」")
+  })
+
+  it("render_table 正常执行并返回描述性文本", async () => {
+    const tool = createRenderTableTool()
+    expect(tool.name).toBe("render_table")
+    expect(tool.description).toContain("表格")
+
+    const result = await tool.execute("call-3", {
+      html: "<table><thead><tr><th>方案</th></tr></thead></table>",
+      title: "方案评估",
+    })
+
+    expect(result.content[0]?.text).toContain("已成功渲染结构化表格「方案评估」")
+  })
+})

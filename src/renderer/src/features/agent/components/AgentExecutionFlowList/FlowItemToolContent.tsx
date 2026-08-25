@@ -1,4 +1,5 @@
 import type React from "react"
+import { AgentVisualBlock } from "@/features/agent/components/blocks"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { FlowToolBash } from "./tools/FlowToolBash"
 import { FlowToolFileOps } from "./tools/FlowToolFileOps"
@@ -11,6 +12,26 @@ export interface FlowItemToolContentProps {
 
 export const FlowItemToolContent = ({ content }: FlowItemToolContentProps): React.JSX.Element => {
   const toolName = content.toolName
+
+  if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_table") {
+    return (
+      <div
+        className="min-w-0"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <AgentVisualBlock
+          toolCall={{
+            kind: "toolCall",
+            toolCallId: content.toolCallId || "",
+            toolName: content.toolName,
+            args: content.args || {},
+            status: content.isError ? "error" : "done",
+          }}
+        />
+      </div>
+    )
+  }
 
   if (toolName === "bash") {
     return <FlowToolBash content={content} />
