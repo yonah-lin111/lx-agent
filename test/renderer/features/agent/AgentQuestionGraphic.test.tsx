@@ -106,6 +106,19 @@ describe("AgentQuestionGraphic & sanitizeGraphicContent", () => {
     expect(pre?.textContent).toContain("└─────┘")
   })
 
+  it("自动将 SVG 亮色/白色背景底板规范化为透明，并将暗色文字转为亮色", () => {
+    const lightSvg = `
+      <svg viewBox="0 0 400 200" style="background: white">
+        <rect width="100%" height="100%" fill="#ffffff" />
+        <rect x="10" y="10" width="100" height="50" fill="#eef2ff" stroke="#3b82f6" />
+        <text x="50" y="40" fill="#000000">Dark Text</text>
+      </svg>
+    `
+    const sanitized = sanitizeGraphicContent(lightSvg)
+    expect(sanitized).toContain('fill="transparent"')
+    expect(sanitized).toContain('fill="#e2e8f0"')
+  })
+
   it("空内容或空字符串不渲染任何 DOM", () => {
     const { container } = render(<AgentQuestionGraphic content="" />)
     expect(container.firstChild).toBeNull()

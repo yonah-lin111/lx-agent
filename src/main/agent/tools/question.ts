@@ -59,8 +59,9 @@ export const createQuestionTool = (
   label: "提问",
   description:
     "向用户提问以澄清需求或确认选择。当信息不足以继续、需要用户在若干选项间做决定或补充说明时使用。" +
-    "question 为简短纯文本提问；content 为可选图形化/排版内容（支持 SVG 矢量绘制与基础 HTML 结构）供用户直观理解；options 提供选择题（可多选），缺省为自由文本输入。" +
-    "用户未作答时工具报错，据此调整或跳过。",
+    "question 为简短纯文本提问；content 为可选图形化/排版内容（支持 SVG 矢量绘制、基础 HTML 结构与字符画拓扑）。" +
+    "【深色主题规范】：LX Agent 为纯黑深色主题，SVG 必须使用透明背景（严禁输出白色/浅色背景底板），节点使用深色/半透明底色配亮色发光边框，文字与连线使用高亮对比色（如 #ffffff、#94a3b8、#38bdf8）。" +
+    "options 提供选择题（可多选），缺省为自由文本输入。用户未作答时工具报错，据此调整或跳过。",
   inputSchema: questionInputSchema,
   executionMode: "sequential",
   execute: async (toolCallId, params, signal) => {
