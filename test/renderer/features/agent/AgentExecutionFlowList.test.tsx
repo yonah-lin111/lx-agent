@@ -441,6 +441,36 @@ describe("AgentExecutionFlowList", () => {
     expect(skeleton.querySelector(".animate-spin")).not.toBeNull()
   })
 
+  it("当已有 running 状态的步骤且 isStreaming 为 true 时，仍始终在底部保留 loading 骨架条目", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "请帮我重构代码" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        isStreaming: true,
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-1",
+            toolName: "bash",
+            args: { command: "ls" },
+            status: "running",
+          },
+        ],
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // 既有 running 步骤，底部也保留 loading 骨架
+    expect(screen.getByTestId("flow-skeleton-loading")).not.toBeNull()
+  })
+
   it("在完成 turn 的底部展示该轮次的汇总指标统计（模型、工具数、token、缓存命中率、耗时等）", () => {
     const messages: ChatMessage[] = [
       {

@@ -283,12 +283,9 @@ export const AgentExecutionFlowList = forwardRef<
       return elements
     }, [filteredSteps, activeFilter, isGroupableStep])
 
-    // 当前是否存在正在运行的步骤
-    const hasRunningStep = useMemo(() => steps.some((step) => step.status === "running"), [steps])
-
-    // 运行中的虚拟占位步骤（当 isStreaming 为 true 且当前步骤列表中没有处于 running 状态的步骤时展示）
+    // 运行中的虚拟占位步骤（只要处于流式输出中，且当前筛选允许显示助手/全部，就始终展示 loading 占位）
     const showSkeletonLoading =
-      isStreaming && !hasRunningStep && (activeFilter === "all" || activeFilter === "assistant")
+      isStreaming && (activeFilter === "all" || activeFilter === "assistant")
 
     const scrollToBottom = useCallback((): void => {
       const el = scrollRef.current

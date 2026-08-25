@@ -13,7 +13,7 @@ export const FlowItemThinkingContent = ({
   previewRef,
 }: FlowItemThinkingContentProps): React.JSX.Element => {
   return (
-    <div className="agent-execution-flow-thinking-content custom-scrollbar max-h-60 overflow-y-auto rounded border border-purple-500/20 bg-purple-950/20 p-2 font-mono text-[11px] leading-relaxed text-purple-200/90">
+    <div className="agent-execution-flow-thinking-content flex flex-col">
       <LxMarkdownPreview
         html={markdownRenderer.render(content.text)}
         previewMode="preview"

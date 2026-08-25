@@ -99,6 +99,9 @@ export const AgentExecutionFlowItem = ({
     if (step.kind === "assistant") {
       return "agent-execution-flow-step-body--assistant agent-execution-flow-step-body--emerald border-emerald-500/15 bg-emerald-500/[0.05]"
     }
+    if (step.kind === "thinking") {
+      return "agent-execution-flow-step-body--thinking agent-execution-flow-step-body--purple border-purple-500/15 bg-purple-500/[0.05]"
+    }
     return `agent-execution-flow-step-body--${step.kind} border-white/5 bg-black/25`
   }, [step.kind])
 
