@@ -63,36 +63,66 @@ export const AgentExecutionFlowGroup = ({
   const isError = Boolean(!isRunning && errorStep)
   const isDone = !isRunning && !isError
 
-  // 聚合静态总耗时与总 Token
-  const { staticDurationMs, totalTokens } = useMemo(() => {
-    let duration = 0
+  // 聚合静态总耗时与总 Token（优先按首尾时间戳跨度计算，兼顾单步累加保底）
+  const { staticDurationMs, totalTokens, firstTimestamp } = useMemo(() => {
+    let sumDuration = 0
     let tokens = 0
+    let firstTs: number | undefined
+    let lastTs: number | undefined
+    let lastStepDuration: number | undefined
+
     for (const step of steps) {
       if (step.durationMs !== undefined) {
-        duration += step.durationMs
+        sumDuration += step.durationMs
       }
       if (step.tokens?.total !== undefined) {
         tokens += step.tokens.total
       }
+      if (step.timestamp !== undefined) {
+        if (firstTs === undefined) {
+          firstTs = step.timestamp
+        }
+        lastTs = step.timestamp
+        lastStepDuration = step.durationMs
+      }
     }
-    return { staticDurationMs: duration, totalTokens: tokens }
+
+    let calculatedDuration = sumDuration
+    if (firstTs !== undefined && lastTs !== undefined && lastTs >= firstTs) {
+      const span =
+        lastTs -
+        firstTs +
+        (lastStepDuration !== undefined && lastStepDuration > 0 ? lastStepDuration : 0)
+      if (span > 0) {
+        calculatedDuration = span
+      }
+    }
+
+    return { staticDurationMs: calculatedDuration, totalTokens: tokens, firstTimestamp: firstTs }
   }, [steps])
 
-  // 运行中的实时动态耗时更新
+  // 运行中的实时动态耗时更新（若存在首个时间戳则直接以 Date.now() - firstTimestamp 动态刷新）
   useEffect(() => {
-    if (!isRunning || !runningStep?.timestamp) {
+    if (!isRunning) {
+      setRunningElapsedMs(0)
+      return
+    }
+    const baseTs = firstTimestamp ?? runningStep?.timestamp
+    if (!baseTs) {
       setRunningElapsedMs(0)
       return
     }
     const updateElapsed = () => {
-      setRunningElapsedMs(Math.max(0, Date.now() - (runningStep.timestamp ?? Date.now())))
+      setRunningElapsedMs(Math.max(0, Date.now() - baseTs))
     }
     updateElapsed()
     const timer = setInterval(updateElapsed, 500)
     return () => clearInterval(timer)
-  }, [isRunning, runningStep?.timestamp])
+  }, [isRunning, firstTimestamp, runningStep?.timestamp])
 
-  const totalDurationMs = isRunning ? staticDurationMs + runningElapsedMs : staticDurationMs
+  const totalDurationMs = isRunning
+    ? (firstTimestamp ? runningElapsedMs : staticDurationMs + runningElapsedMs)
+    : staticDurationMs
 
   // 聚合复制文本
   const copyPayload = useMemo(() => {
@@ -271,7 +301,7 @@ export const AgentExecutionFlowGroup = ({
 
       {/* 展开子步骤列表 */}
       {isExpanded && (
-        <div className="agent-execution-flow-group-body border-t border-white/5 bg-black/20 p-2">
+        <div className="agent-execution-flow-group-body max-h-[360px] overflow-y-auto custom-scrollbar border-t border-white/5 bg-black/20 p-2 [scrollbar-gutter:stable]">
           <div className="flex flex-col gap-1.5">
             {steps.map((step) => (
               <AgentExecutionFlowItem

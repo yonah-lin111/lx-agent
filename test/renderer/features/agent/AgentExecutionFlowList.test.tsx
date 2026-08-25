@@ -998,8 +998,11 @@ describe("AgentExecutionFlowList", () => {
     expect(groupHeader).not.toBeNull()
     fireEvent.click(groupHeader!)
 
-    // 展开后显示内部的 read
-    expect(group?.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
+    // 展开后显示内部的 read，且容器包含最大高度与滚动条样式
+    const body = group?.querySelector(".agent-execution-flow-group-body")
+    expect(body).not.toBeNull()
+    expect(body?.className).toContain("max-h-[360px]")
+    expect(body?.className).toContain("overflow-y-auto")
     expect(screen.getByText("index.ts")).not.toBeNull()
   })
 
@@ -1083,5 +1086,68 @@ describe("AgentExecutionFlowList", () => {
     // 展开后最早的第 1 轮步骤已被渲染出来，压缩消息也正常呈现
     expect(screen.getByText("用户提问 1")).not.toBeNull()
     expect(screen.getAllByText("Context Compaction").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("当 turn 结束时，底部 turn summary 展示整个 turn 的运行时间而不是各 step 耗时直接累加", () => {
+    const startTime = 1700000000000
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        timestamp: startTime,
+        blocks: [{ kind: "text", text: "测试轮次耗时计算" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        timestamp: startTime + 2000,
+        blocks: [
+          { kind: "thinking", text: "正在思考", durationMs: 1500 },
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "search",
+            args: { q: "test" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        timestamp: startTime + 4000,
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "search",
+            text: "done",
+            isError: false,
+            durationMs: 500,
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "a2",
+        role: "assistant",
+        timestamp: startTime + 6000,
+        model: "claude-3-5-sonnet",
+        durationMs: 1000,
+        blocks: [{ kind: "text", text: "完成", durationMs: 1000 }],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // turn 1 从 u1 (timestamp: startTime) 到 a2 (timestamp: startTime + 6000 + durationMs: 1000 = 7000ms 跨度)
+    // 整个 turn took 应为 7.0s（7000ms），而非简单的 step 耗时相加 (1500+500+1000=3000ms -> 3.0s)
+    const turnSummary = screen.getByTestId("turn-summary-1")
+    expect(turnSummary).not.toBeNull()
+    expect(turnSummary.textContent).toContain("took 7.0s")
+    expect(turnSummary.textContent).not.toContain("took 3.0s")
   })
 })

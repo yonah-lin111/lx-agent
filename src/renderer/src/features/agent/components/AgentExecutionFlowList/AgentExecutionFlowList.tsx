@@ -466,7 +466,15 @@ export const AgentExecutionFlowList = forwardRef<
 
     // 每轮执行指标汇总（计算每轮的模型、工具数、token、缓存命中、耗时及是否已完成）
     const turnStatsMap = useMemo<Map<number, TurnStats>>(() => {
-      const map = new Map<number, TurnStats>()
+      const map = new Map<
+        number,
+        TurnStats & {
+          firstTimestamp?: number
+          lastTimestamp?: number
+          lastStepDurationMs?: number
+          sumStepDurationMs: number
+        }
+      >()
 
       for (const step of steps) {
         if (step.turnIndex <= 0) continue
@@ -483,6 +491,7 @@ export const AgentExecutionFlowList = forwardRef<
             totalTokens: 0,
             durationMs: 0,
             isCompleted: true,
+            sumStepDurationMs: 0,
           }
           map.set(step.turnIndex, current)
         }
@@ -500,7 +509,15 @@ export const AgentExecutionFlowList = forwardRef<
         }
 
         if (step.durationMs !== undefined) {
-          current.durationMs += step.durationMs
+          current.sumStepDurationMs += step.durationMs
+        }
+
+        if (step.timestamp !== undefined) {
+          if (current.firstTimestamp === undefined) {
+            current.firstTimestamp = step.timestamp
+          }
+          current.lastTimestamp = step.timestamp
+          current.lastStepDurationMs = step.durationMs
         }
 
         if (step.tokens) {
@@ -508,6 +525,25 @@ export const AgentExecutionFlowList = forwardRef<
           if (step.tokens.output) current.outputTokens += step.tokens.output
           if (step.tokens.cacheRead) current.cacheReadTokens += step.tokens.cacheRead
           if (step.tokens.total) current.totalTokens += step.tokens.total
+        }
+      }
+
+      // 计算每个 turn 的端到端真实运行时间（优先基于首尾时间戳跨度计算）
+      for (const current of map.values()) {
+        if (
+          current.firstTimestamp !== undefined &&
+          current.lastTimestamp !== undefined &&
+          current.lastTimestamp >= current.firstTimestamp
+        ) {
+          const span =
+            current.lastTimestamp -
+            current.firstTimestamp +
+            (current.lastStepDurationMs !== undefined && current.lastStepDurationMs > 0
+              ? current.lastStepDurationMs
+              : 0)
+          current.durationMs = span > 0 ? span : current.sumStepDurationMs
+        } else {
+          current.durationMs = current.sumStepDurationMs
         }
       }
 
