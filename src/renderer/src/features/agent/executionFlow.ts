@@ -48,12 +48,15 @@ export const buildExecutionSteps = (
     return steps
   }
 
-  // 1. 收集所有工具结果块，建立 toolCallId 索引表。
-  const toolResultsByCallId = new Map<string, Extract<ChatBlock, { kind: "toolResult" }>>()
+  // 1. 收集所有工具结果块，建立 toolCallId 索引表（携带所属消息的时间戳）。
+  const toolResultsByCallId = new Map<
+    string,
+    { block: Extract<ChatBlock, { kind: "toolResult" }>; timestamp?: number }
+  >()
   for (const message of messages) {
     for (const block of message.blocks) {
       if (block.kind === "toolResult") {
-        toolResultsByCallId.set(block.toolCallId, block)
+        toolResultsByCallId.set(block.toolCallId, { block, timestamp: message.timestamp })
       }
     }
   }
@@ -81,6 +84,8 @@ export const buildExecutionSteps = (
         title: formatPreview(userText || "(empty prompt)", 90),
         status: "done",
         timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
         userContent: {
           text: userText,
           files: message.files,
@@ -112,6 +117,8 @@ export const buildExecutionSteps = (
         subtitle: message.summaryTokens ? `${message.summaryTokens} tokens` : undefined,
         status: isCompactingNow ? "running" : "done",
         timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
         tokens: message.compactionUsage
           ? {
               input: message.compactionUsage.input,
@@ -148,6 +155,11 @@ export const buildExecutionSteps = (
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
+          startedAt: message.timestamp,
+          completedAt:
+            message.timestamp !== undefined && thinkingDuration !== undefined
+              ? message.timestamp + thinkingDuration
+              : undefined,
           durationMs: thinkingDuration,
           thinkingContent: {
             text: block.text,
@@ -160,7 +172,9 @@ export const buildExecutionSteps = (
       if (block.kind === "toolCall") {
         handledToolCallIds.add(block.toolCallId)
         stepIndex++
-        const pairedResult = toolResultsByCallId.get(block.toolCallId)
+        const paired = toolResultsByCallId.get(block.toolCallId)
+        const pairedResult = paired?.block
+        const pairedTimestamp = paired?.timestamp
         const isSubagent =
           block.toolName === "task" ||
           block.subagent !== undefined ||
@@ -172,6 +186,13 @@ export const buildExecutionSteps = (
         } else if (block.status === "running" && !pairedResult) {
           status = "running"
         }
+
+        const toolDuration = pairedResult?.durationMs
+        const toolCompletedAt = pairedTimestamp
+        const toolStartedAt =
+          toolCompletedAt !== undefined && toolDuration !== undefined
+            ? toolCompletedAt - toolDuration
+            : message.timestamp
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
@@ -187,7 +208,9 @@ export const buildExecutionSteps = (
               : undefined,
             status,
             timestamp: message.timestamp,
-            durationMs: pairedResult?.durationMs,
+            startedAt: toolStartedAt,
+            completedAt: toolCompletedAt,
+            durationMs: toolDuration,
             tokens: subagentData?.usage
               ? {
                   input: subagentData.usage.input,
@@ -206,7 +229,7 @@ export const buildExecutionSteps = (
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
-              durationMs: pairedResult?.durationMs,
+              durationMs: toolDuration,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
             },
@@ -221,14 +244,16 @@ export const buildExecutionSteps = (
             subtitle: formatPreview(JSON.stringify(block.args), 60),
             status,
             timestamp: message.timestamp,
-            durationMs: pairedResult?.durationMs,
+            startedAt: toolStartedAt,
+            completedAt: toolCompletedAt,
+            durationMs: toolDuration,
             toolContent: {
               toolName: block.toolName,
               toolCallId: block.toolCallId,
               args: block.args,
               result: pairedResult?.text,
               isError: pairedResult?.isError,
-              durationMs: pairedResult?.durationMs,
+              durationMs: toolDuration,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
               question: block.question,
@@ -252,6 +277,11 @@ export const buildExecutionSteps = (
           title: message.isStreaming ? "..." : formatPreview(block.text, 90),
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
+          startedAt: message.timestamp,
+          completedAt:
+            message.timestamp !== undefined && textDuration !== undefined
+              ? message.timestamp + textDuration
+              : undefined,
           durationMs: textDuration,
           model: message.model,
           tokens: message.usage
@@ -278,6 +308,10 @@ export const buildExecutionSteps = (
         if (handledToolCallIds.has(block.toolCallId)) continue
         handledToolCallIds.add(block.toolCallId)
         stepIndex++
+        const orphanStartedAt =
+          block.timestamp !== undefined && block.durationMs !== undefined
+            ? block.timestamp - block.durationMs
+            : message.timestamp
         steps.push({
           id: `step-${stepIndex}-orphan-result-${block.toolCallId}`,
           turnIndex: turn,
@@ -287,6 +321,8 @@ export const buildExecutionSteps = (
           subtitle: formatPreview(block.text, 60),
           status: block.isError ? "error" : "done",
           timestamp: message.timestamp,
+          startedAt: orphanStartedAt,
+          completedAt: block.timestamp ?? message.timestamp,
           durationMs: block.durationMs,
           toolContent: {
             toolName: block.toolName,
@@ -318,6 +354,8 @@ export const buildExecutionSteps = (
           title: "Generation cancelled",
           status: "error",
           timestamp: message.timestamp,
+          startedAt: message.timestamp,
+          completedAt: message.timestamp,
           errorContent: {
             message: "Generation was cancelled by user.",
             stopReason: "aborted",
@@ -334,6 +372,8 @@ export const buildExecutionSteps = (
           title: formatPreview(errorText, 90),
           status: "error",
           timestamp: message.timestamp,
+          startedAt: message.timestamp,
+          completedAt: message.timestamp,
           errorContent: {
             message: errorText,
             stopReason: message.stopReason,
@@ -341,6 +381,33 @@ export const buildExecutionSteps = (
           },
         })
       }
+    }
+  }
+
+  // 2. 第二阶段：单次线性扫描，计算流水线步进跨度（stepSpanMs）与 Agent 响应开销（agentOverheadMs）
+  for (let i = 0; i < steps.length; i++) {
+    const current = steps[i]
+    if (current.kind === "system") continue
+
+    const next = steps[i + 1]
+    const currentStart = current.startedAt ?? current.timestamp
+    const nextStart = next?.startedAt ?? next?.timestamp
+
+    if (
+      next &&
+      currentStart !== undefined &&
+      nextStart !== undefined &&
+      nextStart >= currentStart
+    ) {
+      const span = nextStart - currentStart
+      current.stepSpanMs = span
+      if (current.durationMs !== undefined) {
+        current.agentOverheadMs = Math.max(0, span - current.durationMs)
+      } else if (current.kind === "user") {
+        current.agentOverheadMs = span
+      }
+    } else if (current.durationMs !== undefined) {
+      current.stepSpanMs = current.durationMs
     }
   }
 

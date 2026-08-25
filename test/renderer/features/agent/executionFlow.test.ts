@@ -235,5 +235,78 @@ describe("executionFlow", () => {
       expect(compactionStep.compactionContent?.isManual).toBe(true)
       expect(compactionStep.compactionContent?.summaryTokens).toBe(800)
     })
+
+    it("正确计算步骤间跨度与 Agent 响应开销", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "读取文件" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "c1",
+              toolName: "read_file",
+              args: { path: "a.txt" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 2500,
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "c1",
+              toolName: "read_file",
+              text: "content",
+              isError: false,
+              durationMs: 50,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 2550,
+        },
+        {
+          id: "a2",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "文件已读完", durationMs: 200 }],
+          isStreaming: false,
+          timestamp: 4000,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(3)
+
+      // 1. User Step: 从 1000 到 Tool 启动 2500，span = 1500ms（Agent 首字响应时间）
+      expect(steps[0].kind).toBe("user")
+      expect(steps[0].stepSpanMs).toBe(1500)
+      expect(steps[0].agentOverheadMs).toBe(1500)
+
+      // 2. Tool Step: 自身执行 50ms (2500 ~ 2550)，到下个 step 启动 (4000) 跨度 1500ms
+      // overhead = 1500 - 50 = 1450ms（LLM 响应与推理开销）
+      expect(steps[1].kind).toBe("tool")
+      expect(steps[1].durationMs).toBe(50)
+      expect(steps[1].startedAt).toBe(2500)
+      expect(steps[1].completedAt).toBe(2550)
+      expect(steps[1].stepSpanMs).toBe(1500)
+      expect(steps[1].agentOverheadMs).toBe(1450)
+
+      // 3. Assistant Step: 最后一个 step，span = durationMs = 200ms
+      expect(steps[2].kind).toBe("assistant")
+      expect(steps[2].durationMs).toBe(200)
+      expect(steps[2].stepSpanMs).toBe(200)
+      expect(steps[2].agentOverheadMs).toBeUndefined()
+    })
   })
 })

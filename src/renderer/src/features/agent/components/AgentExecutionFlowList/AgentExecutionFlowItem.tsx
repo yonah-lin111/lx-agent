@@ -12,6 +12,7 @@ import type React from "react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
@@ -211,14 +212,74 @@ export const AgentExecutionFlowItem = ({
 
         {/* 右侧状态与指标 */}
         <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
-          {/* 单步耗时指标：必须显示，禁止隐藏 */}
-          {step.durationMs !== undefined && step.status !== "running" && (
-            <span
-              data-testid="flow-item-duration"
-              className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50"
-            >
-              {formatDurationMs(step.durationMs)}
-            </span>
+          {/* 单步耗时指标：区分自身执行耗时与模型响应/步进跨度 */}
+          {step.status !== "running" && (
+            <>
+              {step.durationMs !== undefined ? (
+                step.agentOverheadMs !== undefined && step.agentOverheadMs >= 100 ? (
+                  <LxTooltip
+                    content={
+                      <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
+                        <div>
+                          {t("agent.stepDuration", { duration: formatDurationMs(step.durationMs) })}
+                        </div>
+                        <div>
+                          {t("agent.agentOverhead", {
+                            duration: formatDurationMs(step.agentOverheadMs),
+                          })}
+                        </div>
+                        <div className="border-t border-white/10 pt-0.5 text-white/60">
+                          {t("agent.stepSpan", {
+                            duration: formatDurationMs(
+                              step.stepSpanMs ?? step.durationMs + step.agentOverheadMs,
+                            ),
+                          })}
+                        </div>
+                      </div>
+                    }
+                    placement="left"
+                  >
+                    <span
+                      data-testid="flow-item-duration"
+                      className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                    >
+                      <span>{formatDurationMs(step.durationMs)}</span>
+                      <span className="text-[10px] text-white/35 font-normal">
+                        (+{formatDurationMs(step.agentOverheadMs)})
+                      </span>
+                    </span>
+                  </LxTooltip>
+                ) : (
+                  <LxTooltip
+                    content={t("agent.stepDuration", {
+                      duration: formatDurationMs(step.durationMs),
+                    })}
+                    placement="left"
+                  >
+                    <span
+                      data-testid="flow-item-duration"
+                      className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                    >
+                      {formatDurationMs(step.durationMs)}
+                    </span>
+                  </LxTooltip>
+                )
+              ) : step.kind === "user" && step.stepSpanMs !== undefined && step.stepSpanMs > 0 ? (
+                <LxTooltip
+                  content={t("agent.agentOverhead", {
+                    duration: formatDurationMs(step.stepSpanMs),
+                  })}
+                  placement="left"
+                >
+                  <span
+                    data-testid="flow-item-duration"
+                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-amber-400/60 hover:text-amber-400/90 cursor-default"
+                  >
+                    {formatDurationMs(step.stepSpanMs)}
+                  </span>
+                </LxTooltip>
+              ) : null}
+            </>
           )}
 
           {/* Token 指标（非 assistant 步骤展示） */}

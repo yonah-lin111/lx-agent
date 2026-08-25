@@ -140,8 +140,16 @@ export interface ExecutionStep {
   status: ExecutionStepStatus
   // 产生时间戳。
   timestamp?: number
-  // 单步执行耗时（毫秒）。
+  // 步骤生命周期起始时间戳（毫秒）。
+  startedAt?: number
+  // 步骤生命周期结束时间戳（毫秒）。
+  completedAt?: number
+  // 单步自身执行耗时（毫秒，如工具纯执行耗时或思考/回复流式耗时）。
   durationMs?: number
+  // 步骤流水线总跨度（当前步骤开始到下一个步骤开始的时间间隔，毫秒）。
+  stepSpanMs?: number
+  // 步骤关联的大模型响应/调度等待开销（毫秒）。
+  agentOverheadMs?: number
   // 模型名称（assistant 步骤）。
   model?: string
   // 单步 Token 用量。
