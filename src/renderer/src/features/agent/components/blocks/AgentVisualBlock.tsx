@@ -1,4 +1,4 @@
-import { ChevronDown, CornerDownRight, Palette, Table2, Terminal } from "lucide-react"
+import { ChevronDown, Code2, CornerDownRight, Palette, Terminal } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
@@ -25,16 +25,16 @@ const VISUAL_CONFIGS = {
     icon: Terminal,
     iconColor: "text-emerald-400",
   },
-  render_table: {
-    name: "Data Table",
-    icon: Table2,
+  render_html: {
+    name: "HTML View",
+    icon: Code2,
     iconColor: "text-amber-400",
   },
 } as const
 
 /**
- * AgentVisualBlock - 渲染解释性可视化工具（render_svg / render_ascii / render_table）：
- * 在消息流内直接展示图形/字符画/结构化表格以及伴随的 Markdown 说明文本。
+ * AgentVisualBlock - 渲染解释性可视化工具（render_svg / render_ascii / render_html）：
+ * 在消息流内直接展示图形/字符画/HTML 结构化内容以及伴随的 Markdown 说明文本。
  * 默认展开展示，支持折叠收起。
  */
 export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX.Element | null => {
@@ -59,7 +59,7 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
   const graphicContent = useMemo(() => {
     if (toolName === "render_svg") return args.svg || ""
     if (toolName === "render_ascii") return args.ascii || ""
-    if (toolName === "render_table") return args.html || ""
+    if (toolName === "render_html") return args.html || ""
     return args.svg || args.ascii || args.html || ""
   }, [toolName, args.svg, args.ascii, args.html])
 

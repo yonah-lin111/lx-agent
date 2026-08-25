@@ -18,7 +18,7 @@ export const DEFAULT_TOOLS = [
   "question",
   "render_svg",
   "render_ascii",
-  "render_table",
+  "render_html",
   "lsp",
   "job_output",
   "job_list",

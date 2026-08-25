@@ -73,6 +73,7 @@ const WEB_SEARCH_TOOL_NAME = "web_search"
 const SUBAGENT_TOOL_NAME = "task"
 const TODO_TOOL_NAME = "todowrite"
 const QUESTION_TOOL_NAME = "question"
+const VISUAL_TOOL_NAMES = new Set(["render_svg", "render_ascii", "render_html"])
 
 // 稳定的空上下文（避免每次渲染新数组导致 hook effect 依赖变化触发无限重渲染）。
 const EMPTY_SUGGESTED_QUESTION_CONTEXT: SuggestedQuestionContextMessage[] = []
@@ -92,7 +93,7 @@ const isTodoToolCall = (toolName: string): boolean => toolName === TODO_TOOL_NAM
 // 判断是否为模型提问（question 工具）调用。
 const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
 
-// 判断是否为解释性可视化工具（render_svg / render_ascii / render_table）调用。
+// 判断是否为解释性可视化工具（render_svg / render_ascii / render_html）调用。
 const isVisualToolCall = (toolName: string): boolean => VISUAL_TOOL_NAMES.has(toolName)
 
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，排除内置下划线工具）。

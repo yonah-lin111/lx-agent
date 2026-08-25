@@ -195,91 +195,6 @@ const sanitizeStyle = (styleValue: string): string => {
 }
 
 /**
- * 计算颜色相对亮度（0..1）。
- */
-const getLuminance = (color: string): number => {
-  const c = color.trim().toLowerCase()
-  if (
-    [
-      "white",
-      "#fff",
-      "#ffffff",
-      "#fafafa",
-      "#f8fafc",
-      "#f9fafb",
-      "#f3f4f6",
-      "#f1f5f9",
-      "#e2e8f0",
-      "#e5e7eb",
-      "#dbeafe",
-      "#fef3c7",
-      "#dcfce7",
-    ].includes(c)
-  ) {
-    return 0.9
-  }
-  if (["black", "#000", "#000000", "#0f172a", "#111827", "#1e293b"].includes(c)) {
-    return 0.05
-  }
-  if (c.startsWith("#")) {
-    let r = 0
-    let g = 0
-    let b = 0
-    if (c.length === 7) {
-      r = Number.parseInt(c.slice(1, 3), 16)
-      g = Number.parseInt(c.slice(3, 5), 16)
-      b = Number.parseInt(c.slice(5, 7), 16)
-    } else if (c.length === 4) {
-      r = Number.parseInt(c[1]! + c[1]!, 16)
-      g = Number.parseInt(c[2]! + c[2]!, 16)
-      b = Number.parseInt(c[3]! + c[3]!, 16)
-    }
-    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
-      return (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    }
-  }
-  return 0.5
-}
-
-/**
- * 自动规范化 SVG 节点以适配纯黑深色主题。
- */
-const normalizeSvgDarkTheme = (element: HTMLElement): void => {
-  const tagName = element.tagName.toLowerCase()
-
-  // 1. <svg> 根节点移除亮色背景
-  if (tagName === "svg") {
-    element.style.backgroundColor = "transparent"
-  }
-
-  // 2. <rect> 画布底板/卡片底色深色化
-  if (tagName === "rect") {
-    const width = element.getAttribute("width") || ""
-    const fill = (element.getAttribute("fill") || "").trim()
-    const fillLuminance = getLuminance(fill)
-
-    // 全画幅背景 rect（如 width="100%" 或亮白色无边框背景）转为透明
-    const isFullCanvas =
-      width === "100%" || (!element.getAttribute("stroke") && fillLuminance > 0.75)
-
-    if (isFullCanvas && fillLuminance > 0.7) {
-      element.setAttribute("fill", "transparent")
-    } else if (fillLuminance > 0.75) {
-      // 亮色卡片底色转为半透明暗调
-      element.setAttribute("fill", "rgba(255, 255, 255, 0.06)")
-    }
-  }
-
-  // 3. <text> / <tspan> 暗色文字亮色化（防在黑底上不可读）
-  if (tagName === "text" || tagName === "tspan") {
-    const fill = (element.getAttribute("fill") || "").trim()
-    if (fill && getLuminance(fill) < 0.35) {
-      element.setAttribute("fill", "#e2e8f0")
-    }
-  }
-}
-
-/**
  * 深度递归净化 DOM 节点树。
  */
 const sanitizeNode = (node: Node): void => {
@@ -340,9 +255,6 @@ const sanitizeNode = (node: Node): void => {
           }
         }
       }
-
-      // 规范化 SVG 节点以适配纯黑深色主题。
-      normalizeSvgDarkTheme(element)
 
       // 递归净化合法子节点。
       sanitizeNode(element)

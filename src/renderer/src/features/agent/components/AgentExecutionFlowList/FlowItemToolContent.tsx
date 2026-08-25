@@ -13,7 +13,7 @@ export interface FlowItemToolContentProps {
 export const FlowItemToolContent = ({ content }: FlowItemToolContentProps): React.JSX.Element => {
   const toolName = content.toolName
 
-  if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_table") {
+  if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
     return (
       <div
         className="min-w-0"

@@ -22,7 +22,7 @@ export const EXEMPT_TOOLS = new Set([
   "question",
   "render_svg",
   "render_ascii",
-  "render_table",
+  "render_html",
   "lsp",
 ])
 

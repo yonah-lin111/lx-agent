@@ -67,11 +67,11 @@ describe("AgentVisualBlock", () => {
     expect(pre?.textContent).toContain("│Git│")
   })
 
-  it("正确渲染 render_table 结构化表格与折叠交互", () => {
+  it("正确渲染 render_html 结构化内容与折叠交互", () => {
     const toolCall: ToolCallBlock = {
       kind: "toolCall",
       toolCallId: "v-call-3",
-      toolName: "render_table",
+      toolName: "render_html",
       status: "done",
       args: {
         title: "方案横向对比",

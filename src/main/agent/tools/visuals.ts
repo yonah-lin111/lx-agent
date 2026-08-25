@@ -27,19 +27,21 @@ const renderAsciiInputSchema = z.object({
     .describe("伴随的 Markdown 说明文本，用于解释流程步骤或关键节点（选填）"),
 })
 
-// 结构化表格工具输入 schema。
-const renderTableInputSchema = z.object({
+// HTML 结构化内容渲染工具输入 schema。
+const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
-    .describe("HTML 结构化表格源码（<table><thead>...</thead><tbody>...</tbody></table>）"),
-  title: z.string().max(100).optional().describe("表格标题（选填，如'技术方案多维对比矩阵'）"),
+    .describe(
+      "HTML 结构化源码（支持表格 <table>、排版 <div>/<p>、列表 <ul>/<ol>、代码块 <pre> 等基础结构）",
+    ),
+  title: z.string().max(100).optional().describe("标题（选填，如'技术方案多维对比矩阵'）"),
   description: z
     .string()
     .max(2000)
     .optional()
-    .describe("伴随的 Markdown 说明文本，用于阐明对比结论与选型建议（选填）"),
+    .describe("伴随的 Markdown 说明文本，用于阐明分析结论与选型建议（选填）"),
 })
 
 /**
@@ -49,10 +51,9 @@ export const createRenderSvgTool = (): AgentTool<typeof renderSvgInputSchema> =>
   name: "render_svg",
   label: "SVG 矢量绘图",
   description:
-    "渲染专业高表现力的 SVG 矢量技术图表（如系统架构拓扑、复杂交互时序、状态机、多层网络关系等）。\n" +
-    "【适用场景】：需要精确几何节点、丰富配色与连线指向的复杂视觉架构展示。\n" +
-    "【与其它工具区别】：相比 render_ascii 支持复杂几何曲线与丰富色彩；相比 render_table 专注于拓扑连线与空间布局而非多列数据对比。\n" +
-    "【深色主题规范】：LX Agent 为纯黑深色主题，SVG 必须使用透明背景（严禁使用白色底板），节点使用深色/半透明底色配高亮发光边框，文字与连线使用高亮对比色（如 #ffffff、#94a3b8、#38bdf8）。",
+    "渲染高表现力的 SVG 矢量技术图表（如系统架构拓扑、复杂交互时序、状态机、多层网络关系等）。\n" +
+    "【适用场景】：需要精确几何节点、连线指向与丰富视觉表现的图表展示。\n" +
+    "【与其它工具区别】：相比 render_ascii 支持任意几何曲线与色彩；相比 render_html 专注于空间拓扑连线而非文本排版与多列数据对齐。",
   inputSchema: renderSvgInputSchema,
   execute: async (_, params) => ({
     content: [
@@ -73,7 +74,7 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
   description:
     "渲染终端原生质感的 ASCII / Unicode Box-drawing 字符流转图、树形拓扑或轻量分支流程。\n" +
     "【适用场景】：单向流转（CI/CD 流水线、Git 分支图、数据管道）或目录树形结构。\n" +
-    "【与其它工具区别】：相比 render_svg 更加紧凑极速，具备原生终端质感；相比 render_table 专注于流转指向与层次关系而非多列对比。",
+    "【与其它工具区别】：相比 render_svg 更加紧凑极速，具备原生终端质感；相比 render_html 专注于流转指向与层次关系而非排版布局。",
   inputSchema: renderAsciiInputSchema,
   execute: async (_, params) => ({
     content: [
@@ -86,21 +87,21 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * 创建 render_table 工具：输出结构化 HTML 对比表格与数据矩阵。
+ * 创建 render_html 工具：输出结构化 HTML 内容（表格、卡片、对比矩阵与富文本排版）。
  */
-export const createRenderTableTool = (): AgentTool<typeof renderTableInputSchema> => ({
-  name: "render_table",
-  label: "结构化表格",
+export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
+  name: "render_html",
+  label: "HTML 结构化渲染",
   description:
-    "渲染适配深色主题的 HTML 结构化表格（如方案优缺点对比、多维度指标矩阵、API 接口清单、配置对照表）。\n" +
-    "【适用场景】：需要多列对齐、表头分类、多指标评估的规整数据矩阵。\n" +
-    "【与其它工具区别】：相比 render_svg / render_ascii 专注于多字段对齐与矩阵对比，而非图形化流转关系。",
-  inputSchema: renderTableInputSchema,
+    "渲染基础 HTML 结构化排版内容（如多方案对比表格、指标矩阵、API 接口清单、卡片式多字段展示等）。\n" +
+    "【适用场景】：需要多列规整对齐、表头分类、图文并茂或分栏排版的内容展示。\n" +
+    "【与其它工具区别】：相比 render_svg / render_ascii 专注于多字段对齐与结构化内容排版，而非几何连线与拓扑指向。",
+  inputSchema: renderHtmlInputSchema,
   execute: async (_, params) => ({
     content: [
       {
         type: "text",
-        text: `已成功渲染结构化表格${params.title ? `「${params.title}」` : ""}。`,
+        text: `已成功渲染 HTML 结构化内容${params.title ? `「${params.title}」` : ""}。`,
       },
     ],
   }),
