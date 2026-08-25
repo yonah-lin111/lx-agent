@@ -1821,6 +1821,34 @@
   background-color: #282436 !important;
 }
 
+/* User (Amber / 金矿石方块卡片外框) */
+[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="amber"],
+[data-theme="minecraft"] .agent-execution-flow-step--user {
+  background-color: #261e14 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 170, 0, 0.28),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="amber"]:hover,
+[data-theme="minecraft"] .agent-execution-flow-step--user:hover {
+  background-color: #302418 !important;
+}
+
+/* Assistant (Emerald / 绿宝石方块卡片外框) */
+[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="emerald"],
+[data-theme="minecraft"] .agent-execution-flow-step--assistant {
+  background-color: #142418 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 85, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="emerald"]:hover,
+[data-theme="minecraft"] .agent-execution-flow-step--assistant:hover {
+  background-color: #1a2e1f !important;
+}
+
 [data-theme="minecraft"] .agent-execution-flow-step-header {
   font-family: var(--theme-font-family) !important;
 }
@@ -1929,11 +1957,26 @@
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
-/* 步骤展开内容区：3D 浮雕凹槽效果 */
+/* Error / Aborted: 红石赤红 / 熔岩暖金 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-rose-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-alert-circle) {
+  background-color: #2c1418 !important;
+  color: #ff5555 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-rose-500\/10 svg,
+[data-theme="minecraft"]
+  .agent-execution-flow-step-header
+  .lx-tag:has(svg.lucide-alert-circle)
+  svg {
+  color: #ff5555 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+/* 步骤展开详情区基础凹槽结构 */
 [data-theme="minecraft"] .agent-execution-flow-step-body {
   border-top: 2px solid #000000 !important;
   background-color: #12121a !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%231f1f2e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23222232'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230a0a10'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23222232'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230a0a10'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3C/svg%3E") !important;
   background-repeat: repeat !important;
   image-rendering: pixelated !important;
   box-shadow:
@@ -1941,6 +1984,30 @@
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
   color: #d4d4e4 !important;
   font-family: var(--theme-font-family) !important;
+}
+
+/* 1. Amber / User: 暖棕石质方块 */
+[data-theme="minecraft"] .agent-execution-flow-step-body--amber,
+[data-theme="minecraft"] .agent-execution-flow-step-body--user {
+  background-color: #221a12 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23221a12'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23282016'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231c150e'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23241c13'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232a2118'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23231b13'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232b2219'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231d160f'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23251d14'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23271f16'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23211a12'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232e241a'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231e1710'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%2319130d'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23292017'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23221a12'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232a2118'/%3E%3C/svg%3E") !important;
+  border-top: 2px solid #000000 !important;
+  color: #fffae0 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 170, 0, 0.15) !important;
+}
+
+/* 2. Emerald / Assistant: 苔石墨绿方块 */
+[data-theme="minecraft"] .agent-execution-flow-step-body--emerald,
+[data-theme="minecraft"] .agent-execution-flow-step-body--assistant {
+  background-color: #121e16 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23121e16'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%2317241b'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230e1811'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23142017'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%2319261c'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23132017'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231a281e'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101a13'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23162219'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%2318241b'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23121e16'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231c2a20'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101912'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230d150f'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%2319251c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23132017'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231a271e'/%3E%3C/svg%3E") !important;
+  border-top: 2px solid #000000 !important;
+  color: #e0f8e0 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.15) !important;
 }
 
 /* 展开内文本颜色定制，避免使用纯白，继承 Minecraft 字体与质感 */

@@ -74,9 +74,10 @@ export const AgentExecutionFlowList = forwardRef<
     // 滚动容器引用
     const scrollRef = useRef<HTMLDivElement>(null)
 
-    // 智能吸底：默认跟随底部；用户上翻离开底部暂停跟随，滚回底部自动恢复。
+    // 滚动跟随：仅在滚动条位于底部时跟随；用户向上滚动离开底部暂停跟随，滚回底部恢复跟随。
     const followBottomRef = useRef(true)
     const prevScrollTopRef = useRef<number | null>(null)
+    const hasInitialScrolledRef = useRef(false)
 
     const [promptAssembly, setPromptAssembly] = useState<PromptAssembly | null>(null)
     const [activeFilter, setActiveFilter] = useState<FilterKind>("all")
@@ -101,6 +102,13 @@ export const AgentExecutionFlowList = forwardRef<
       void fetchPromptAssembly()
     }, [fetchPromptAssembly])
 
+    // 会话切换时重置初始吸底标记
+    useEffect(() => {
+      hasInitialScrolledRef.current = false
+      followBottomRef.current = true
+      prevScrollTopRef.current = null
+    }, [sessionId])
+
     // 提取步骤列表：直接由实时 messages 响应式计算，AI 生成输出中实时跟进新步骤与流式内容
     const steps = useMemo(
       () => buildExecutionSteps(messages, promptAssembly),
@@ -118,6 +126,17 @@ export const AgentExecutionFlowList = forwardRef<
       return max
     }, [steps])
 
+    // 获取最后一个 turn（maxTurn）的最后一个步骤 ID（仅在 AI 输出完成即 !isStreaming 时才默认展开）
+    const lastStepOfMaxTurnId = useMemo(() => {
+      if (isStreaming || maxTurn <= 0) return null
+      for (let i = steps.length - 1; i >= 0; i--) {
+        if (steps[i].turnIndex === maxTurn) {
+          return steps[i].id
+        }
+      }
+      return null
+    }, [steps, maxTurn, isStreaming])
+
     // 计算某个步骤当前的展开状态（用户手动覆盖 > 默认展开规则）
     const isStepExpanded = useCallback(
       (step: ExecutionStep): boolean => {
@@ -127,16 +146,16 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.toolContent?.toolName === "question") {
           return step.toolContent.question !== undefined
         }
-        // 默认规则：用户 item 始终默认展开；异常/中断 item 默认展开；最后一轮的 assistant item 默认展开；其余默认折叠
+        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
         if (step.kind === "user" || step.kind === "error") {
           return true
         }
-        if (step.kind === "assistant") {
-          return step.turnIndex === maxTurn && maxTurn > 0
+        if (step.id === lastStepOfMaxTurnId) {
+          return true
         }
         return false
       },
-      [userExpansionOverrides, maxTurn],
+      [userExpansionOverrides, lastStepOfMaxTurnId],
     )
 
     // question 完成后清除其手动展开覆盖，恢复完成态默认折叠；历史 question 仍可由用户再次展开查看。
@@ -192,6 +211,12 @@ export const AgentExecutionFlowList = forwardRef<
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
     }, [])
 
+    const isNearBottom = useCallback((): boolean => {
+      const el = scrollRef.current
+      if (!el) return true
+      return el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_BOTTOM_THRESHOLD
+    }, [])
+
     // 计算导航按钮可用性（基于吸底状态）。
     const computeNavState = useCallback((): AgentFlowNavState => {
       const el = scrollRef.current
@@ -199,36 +224,53 @@ export const AgentExecutionFlowList = forwardRef<
         return { canScrollBottom: false }
       }
       return {
-        canScrollBottom:
-          el.scrollHeight - el.scrollTop - el.clientHeight >= FOLLOW_BOTTOM_THRESHOLD,
+        canScrollBottom: !isNearBottom(),
       }
-    }, [steps.length])
+    }, [isNearBottom, steps.length])
 
     const updateNavState = useCallback((): void => {
       onNavigationStateChange?.(computeNavState())
     }, [computeNavState, onNavigationStateChange])
 
-    // 滚动时更新跟随状态：向上滚动离开底部暂停吸底，向下滚回底部自动恢复。
+    // 滚动时更新跟随状态：向上滚动离开底部暂停跟随，向下滚回底部自动恢复。
     const handleScroll = useCallback((): void => {
       const el = scrollRef.current
-      if (!el) return
+      if (!el || el.clientHeight <= 0) return
+      const nearBottom = isNearBottom()
       const prevScrollTop = prevScrollTopRef.current
       const isScrollingUp = prevScrollTop !== null && prevScrollTop - el.scrollTop > 0.5
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_BOTTOM_THRESHOLD
-      followBottomRef.current = isScrollingUp ? false : nearBottom
+      if (isScrollingUp) {
+        followBottomRef.current = false
+      } else {
+        followBottomRef.current = nearBottom
+      }
       prevScrollTopRef.current = el.scrollTop
       updateNavState()
-    }, [updateNavState])
+    }, [isNearBottom, updateNavState])
 
-    // 记录上一轮消息数量，用于检测用户发送新消息或收到新消息
-    const prevMessagesLengthRef = useRef(messages.length)
-
-    // 用户发送新消息后强制滚动到底部并恢复跟随
+    // 新建或清空对话后复位滚动状态
     useEffect(() => {
-      const prevLength = prevMessagesLengthRef.current
-      prevMessagesLengthRef.current = messages.length
+      if (messages.length !== 0) return
+      hasInitialScrolledRef.current = false
+      followBottomRef.current = true
+      prevScrollTopRef.current = null
+      updateNavState()
+    }, [messages.length, updateNavState])
 
-      if (messages.length <= prevLength) return
+    // 用户发送新消息后平滑滚动到底部
+    const prevMessagesRef = useRef<readonly ChatMessage[]>(messages)
+    useEffect(() => {
+      const prev = prevMessagesRef.current
+      prevMessagesRef.current = messages
+
+      if (
+        !messages
+          .slice(prev.length)
+          .some((message) => message.role === "user" && !message.isQueuedDrain)
+      ) {
+        return
+      }
+
       followBottomRef.current = true
       const el = scrollRef.current
       if (el) {
@@ -238,44 +280,25 @@ export const AgentExecutionFlowList = forwardRef<
           el.scrollTop = el.scrollHeight
         }
       }
-    }, [messages.length])
+    }, [messages])
 
-    // AI 实时输出生成、步骤更新时，处于跟随状态则持续保持在底部
+    // 首次进入吸底；AI 实时输出生成、步骤更新时，处于跟随状态则持续保持在底部
     useLayoutEffect(() => {
-      if (!followBottomRef.current) return
       const el = scrollRef.current
-      if (el) {
+      if (!el || el.clientHeight <= 0) return
+
+      if (!hasInitialScrolledRef.current && filteredSteps.length > 0) {
+        el.scrollTop = el.scrollHeight
+        hasInitialScrolledRef.current = true
+        updateNavState()
+        return
+      }
+
+      if (followBottomRef.current) {
         el.scrollTop = el.scrollHeight
       }
-    }, [filteredSteps, showSkeletonLoading])
-
-    // question 挂起时强制滚动到底部：确保作答面板与提交按钮完整可见（无视用户当前吸底状态）。
-    const pendingQuestionRequestId = useMemo(() => {
-      for (const step of steps) {
-        if (step.toolContent?.toolName === "question" && step.toolContent.question) {
-          return step.toolContent.question.requestId
-        }
-      }
-      return null
-    }, [steps])
-
-    useEffect(() => {
-      if (!pendingQuestionRequestId) return
-      followBottomRef.current = true
-      const el = scrollRef.current
-      if (el) {
-        if (typeof el.scrollTo === "function") {
-          el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
-        } else {
-          el.scrollTop = el.scrollHeight
-        }
-      }
-    }, [pendingQuestionRequestId])
-
-    // 步骤或筛选变化后同步导航按钮可用性。
-    useEffect(() => {
       updateNavState()
-    }, [updateNavState, filteredSteps, showSkeletonLoading])
+    }, [filteredSteps, showSkeletonLoading, updateNavState])
 
     // 暴露命令式句柄（回到底部）。
     useImperativeHandle(
@@ -580,9 +603,6 @@ export const AgentExecutionFlowList = forwardRef<
                     className="agent-execution-flow-step flex h-8 items-center justify-between rounded-[6px] border border-white/5 bg-[#212121] px-2.5"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <span className="shrink-0 font-mono text-[11px] font-medium text-white/20">
-                        #{steps.length}
-                      </span>
                       <div className="h-3.5 w-16 animate-pulse rounded bg-white/10" />
                       <div className="h-3.5 w-32 animate-pulse rounded bg-white/5 sm:w-48" />
                     </div>

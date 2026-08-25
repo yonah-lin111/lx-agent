@@ -57,13 +57,11 @@ export const AgentExecutionFlowItem = ({
   const isRunning = step.status === "running"
   const isQuestionStep = step.toolContent?.toolName === "question"
 
-  // running 期间强制折叠详情（question 挂起面板除外），加载结束后才按默认规则展开
-  const effectiveExpanded = isQuestionStep ? isExpanded : isExpanded && !isRunning
+  const effectiveExpanded = isExpanded
 
   const handleToggleExpand = useCallback((): void => {
-    if (isRunning && !isQuestionStep) return
     onToggleExpand()
-  }, [isRunning, isQuestionStep, onToggleExpand])
+  }, [onToggleExpand])
 
   const handleCopy = useCallback(async (e: React.MouseEvent, contentToCopy: string) => {
     e.stopPropagation()
@@ -95,8 +93,23 @@ export const AgentExecutionFlowItem = ({
     return step.title
   }, [step])
 
+  const bodyStyleClass = useMemo(() => {
+    if (step.kind === "user") {
+      return "agent-execution-flow-step-body--user agent-execution-flow-step-body--amber border-amber-500/15 bg-amber-500/[0.05]"
+    }
+    if (step.kind === "assistant") {
+      return "agent-execution-flow-step-body--assistant agent-execution-flow-step-body--emerald border-emerald-500/15 bg-emerald-500/[0.05]"
+    }
+    return `agent-execution-flow-step-body--${step.kind} border-white/5 bg-black/25`
+  }, [step.kind])
+
   return (
-    <div className="agent-execution-flow-step rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10">
+    <div
+      data-step-kind={step.kind}
+      data-tag-color={meta.tagColor}
+      data-expanded={effectiveExpanded}
+      className={`agent-execution-flow-step agent-execution-flow-step--${step.kind} rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10`}
+    >
       {/* 头部摘要栏 */}
       <div
         role="button"
@@ -121,9 +134,11 @@ export const AgentExecutionFlowItem = ({
           </div>
 
           {/* 步骤当前轮次内的索引 */}
-          <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
-            #{step.stepIndex - turnStartIndex}
-          </span>
+          {!isRunning && (
+            <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
+              #{step.stepIndex - turnStartIndex}
+            </span>
+          )}
 
           {/* 类型标签 */}
           <LxTag size="small" color={meta.tagColor} className="shrink-0 leading-none">
@@ -258,7 +273,9 @@ export const AgentExecutionFlowItem = ({
 
       {/* 展开详情区（question 工具的详情已内嵌展示，跳过空详情体） */}
       {effectiveExpanded && step.toolContent?.toolName !== "question" ? (
-        <div className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+        <div
+          className={`agent-execution-flow-step-body border-t px-3 py-2.5 text-[12px] ${bodyStyleClass}`}
+        >
           {/* 系统提示词与注入详情 */}
           {step.systemContent && <FlowItemSystemContent content={step.systemContent} />}
 

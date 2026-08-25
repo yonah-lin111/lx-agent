@@ -235,7 +235,7 @@ describe("AgentExecutionFlowList", () => {
     expect(questionContent?.hasAttribute("hidden")).toBe(false)
   })
 
-  it("默认展开用户步骤与最后一轮 AI 回复，早期 AI 回复默认折叠，且手动操作状态得以保持", () => {
+  it("进入时默认展开全部用户 item 与最后一个 turn 的最后一个 step，早期非用户步骤默认折叠，且手动操作状态得以保持", () => {
     const messages: ChatMessage[] = [
       // 第一轮
       {
@@ -273,27 +273,27 @@ describe("AgentExecutionFlowList", () => {
 
     const { rerender } = render(<AgentExecutionFlowList messages={messages} />)
 
-    // 用户步骤：默认展开，展示在 userContent 中
+    // 全部用户 item 默认展开，展示在 userContent 中
     expect(screen.getByText("第一轮用户提问")).not.toBeNull()
     expect(screen.getByText("第二轮用户提问")).not.toBeNull()
 
-    // 第一轮（非最后一轮）assistant 步骤默认折叠：只在 title 中出现 1 次（不在 body 中展示）
+    // 早期轮次（第一轮）助手步骤默认折叠：只在 title 中出现 1 次（不在 body 中展示）
     expect(screen.getAllByText("第一轮助手回复详细内容").length).toBe(1)
 
-    // 思考过程默认折叠：只在 title 中出现 1 次
+    // 思考过程作为中间步骤默认折叠：只在 title 中出现 1 次
     expect(screen.getAllByText("第一轮思考过程").length).toBe(1)
     expect(screen.getAllByText("第二轮思考过程").length).toBe(1)
 
-    // 第二轮（最后一轮）assistant 步骤默认展开：title 和 markdown preview body 均出现（>=2）
+    // 第二轮（最后一个 turn）的最后一个 step（助手回复）默认展开：title 和 markdown preview body 均出现（>=2）
     expect(screen.getAllByText("第二轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
 
-    // 手动展开第一轮 assistant
+    // 手动展开第一轮助手回复
     const firstAssistantStepHeader = screen.getAllByText("第一轮助手回复详细内容")[0]
     fireEvent.click(firstAssistantStepHeader)
-    // 展开后其详情内容出现
+    // 手动展开后详情内容出现
     expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
 
-    // 新增第三轮消息后，第一轮手动展开的 assistant 依然保持展开状态
+    // 新增第三轮消息后，第一轮手动展开的助手回复依然保持展开
     const updatedMessages: ChatMessage[] = [
       ...messages,
       {
@@ -312,10 +312,17 @@ describe("AgentExecutionFlowList", () => {
 
     rerender(<AgentExecutionFlowList messages={updatedMessages} />)
 
-    // 第一轮 manually expanded 仍然保持展开
+    // 全部用户 item 保持展开
+    expect(screen.getByText("第一轮用户提问")).not.toBeNull()
+    expect(screen.getByText("第二轮用户提问")).not.toBeNull()
+    expect(screen.getByText("第三轮用户提问")).not.toBeNull()
+
+    // 第一轮手动展开的助手回复依然保持展开
     expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
-    // 第二轮（现在变成非最后一轮且未手动展开）自动变为折叠
+    // 第二轮（非最后一个 turn 且未手动展开）自动折叠
     expect(screen.getAllByText("第二轮助手回复详细内容").length).toBe(1)
+    // 第三轮（最后一个 turn）的最后一个 step 默认展开
+    expect(screen.getAllByText("第三轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
   })
 
   it("当存在上下文压缩步骤时，在 item 顶部展示分割线说明", () => {
@@ -405,7 +412,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Generation was cancelled by user.")).not.toBeNull()
   })
 
-  it("当 isStreaming 为 true 且当前无 running 步骤时，在底部展示骨架屏 loading 条目", () => {
+  it("当 isStreaming 为 true 且当前无 running 步骤时，在底部展示骨架屏 loading 条目且左侧不展示数字 index，右侧展示 loading 图标", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -417,10 +424,11 @@ describe("AgentExecutionFlowList", () => {
 
     render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
 
-    // 应渲染骨架屏加载条目
+    // 应渲染骨架屏加载条目，左侧不包含数字 index，右侧包含 loading 效果
     const skeleton = screen.getByTestId("flow-skeleton-loading")
     expect(skeleton).not.toBeNull()
-    expect(skeleton.textContent).toContain("#1")
+    expect(skeleton.textContent).not.toContain("#1")
+    expect(skeleton.querySelector(".animate-spin")).not.toBeNull()
   })
 
   it("在完成 turn 的底部展示该轮次的汇总指标统计（模型、工具数、token、缓存命中率、耗时等）", () => {
@@ -566,8 +574,8 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getAllByText("正在思考解决方案...").length).toBeGreaterThanOrEqual(1)
   })
 
-  it("流式输出期间思考步骤和 AI 步骤展示为 running 状态且禁止展开", () => {
-    const messages: ChatMessage[] = [
+  it("流式输出期间中间步骤默认折叠且支持中途手动点击展开，输出完成后自动展开最后一个步骤", () => {
+    const streamingMessages: ChatMessage[] = [
       {
         id: "u1",
         role: "user",
@@ -578,17 +586,312 @@ describe("AgentExecutionFlowList", () => {
         id: "a1",
         role: "assistant",
         blocks: [
-          { kind: "thinking", text: "思考中..." },
-          { kind: "text", text: "回复中..." },
+          { kind: "thinking", text: "思考中详细过程..." },
+          { kind: "text", text: "回复中详细内容..." },
         ],
         isStreaming: true,
       },
     ]
 
-    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+    const { rerender } = render(
+      <AgentExecutionFlowList messages={streamingMessages} isStreaming={true} />,
+    )
 
-    // 流式状态下展示为 "..." 占位
-    const ellipsisElements = screen.getAllByText("...")
-    expect(ellipsisElements.length).toBeGreaterThanOrEqual(2)
+    // 流式状态下默认折叠
+    expect(screen.queryByText("思考中详细过程...")).toBeNull()
+    expect(screen.queryByText("回复中详细内容...")).toBeNull()
+
+    // 中途手动点击思考步骤展开
+    const thinkingHeader = screen.getAllByText("...")[0]
+    fireEvent.click(thinkingHeader)
+
+    // 中途展开后应能看到思考详情内容，不会被强制折叠
+    expect(screen.getByText("思考中详细过程...")).not.toBeNull()
+
+    // 输出完成（isStreaming = false）
+    const completedMessages: ChatMessage[] = [
+      streamingMessages[0]!,
+      {
+        ...streamingMessages[1]!,
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} isStreaming={false} />)
+
+    // 完成后自动展开最后一个步骤（assistant 回复详情出现在标题和展开体中）
+    expect(screen.getAllByText("回复中详细内容...").length).toBeGreaterThanOrEqual(2)
+    // 手动展开的思考步骤依然保持展开（标题和展开体均包含）
+    expect(screen.getAllByText("思考中详细过程...").length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("运行中的步骤左侧不展示数字 index，右侧展示 loading 图标，完成后恢复数字 index", () => {
+    const runningMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "开始测试" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-run",
+            toolName: "bash",
+            args: { cmd: "npm test" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    const { rerender, container } = render(
+      <AgentExecutionFlowList messages={runningMessages} isStreaming={true} />,
+    )
+
+    // 步骤为 running 状态，左侧不显示 #1，右侧应有 animate-spin 图标
+    expect(screen.queryByText("#1")).toBeNull()
+    const runningSpinners = container.querySelectorAll(".animate-spin")
+    expect(runningSpinners.length).toBeGreaterThanOrEqual(1)
+
+    // 步骤完成
+    const doneMessages: ChatMessage[] = [
+      runningMessages[0]!,
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-run",
+            toolName: "bash",
+            args: { cmd: "npm test" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "call-run",
+            toolName: "bash",
+            text: "all passed",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={doneMessages} isStreaming={false} />)
+
+    // 完成后应出现数字 index #1
+    expect(screen.getByText("#1")).not.toBeNull()
+  })
+
+  it("用户向上滚动离开底部后，Agent 添加新的 step 消息不会强制滚动到底部", () => {
+    const initialMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "查找文件" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "ls",
+            args: {},
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container, rerender } = render(<AgentExecutionFlowList messages={initialMessages} />)
+    const scrollContainer = container.querySelector(".custom-scrollbar") as HTMLDivElement
+    expect(scrollContainer).not.toBeNull()
+
+    // 模拟容器滚动属性
+    Object.defineProperty(scrollContainer, "scrollHeight", { value: 1000, configurable: true })
+    Object.defineProperty(scrollContainer, "clientHeight", { value: 300, configurable: true })
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      value: 700,
+      writable: true,
+      configurable: true,
+    })
+
+    const scrollToSpy = vi.fn()
+    scrollContainer.scrollTo = scrollToSpy
+
+    // 模拟用户向上滚动：scrollTop 从 700 变为 200（离开底部）
+    scrollContainer.scrollTop = 200
+    fireEvent.scroll(scrollContainer)
+
+    scrollToSpy.mockClear()
+
+    // Agent 添加了新的 assistant / tool 消息
+    const updatedMessages: ChatMessage[] = [
+      ...initialMessages,
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "ls",
+            text: "file1.ts\nfile2.ts",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "a2",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "已找到文件列表" }],
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={updatedMessages} />)
+
+    // 因为用户已离开底部，scrollTo 不应被强制触发滚动到底部
+    expect(scrollToSpy).not.toHaveBeenCalled()
+  })
+
+  it("当 turn 结束时，默认展开该轮的最后一个步骤（无论其为 assistant 还是 tool 等类型）", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "执行终端命令" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          { kind: "thinking", text: "正在执行命令..." },
+          {
+            kind: "toolCall",
+            toolCallId: "c-bash",
+            toolName: "bash",
+            args: { command: "git status" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c-bash",
+            toolName: "bash",
+            text: "On branch main\nnothing to commit",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // 用户步骤默认展开
+    expect(screen.getByText("执行终端命令")).not.toBeNull()
+
+    // 思考步骤作为中间步骤默认折叠（仅标题出现 1 次）
+    expect(screen.getAllByText("正在执行命令...").length).toBe(1)
+
+    // 最后一个步骤为 tool 步骤，turn 结束后应默认展开其执行结果详情（标题和展开体均出现 git status）
+    expect(screen.getAllByText("git status").length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText("Execution Result")).not.toBeNull()
+    expect(screen.getByText(/On branch main/)).not.toBeNull()
+  })
+
+  it("用户和 AI item 展开后具有符合对应 item tag 颜色的背景样式与 class 标识", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "用户提问内容" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "助手回答内容" }],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 用户 step 具备 amber tag 对应的专属背景 class 与 data-tag-color / data-step-kind
+    const userStep = container.querySelector('[data-step-kind="user"]')
+    expect(userStep).not.toBeNull()
+    expect(userStep?.getAttribute("data-tag-color")).toBe("amber")
+    const userBody = userStep?.querySelector(".agent-execution-flow-step-body--user")
+    expect(userBody).not.toBeNull()
+    expect(userBody?.className).toContain("bg-amber-500/[0.05]")
+    expect(userBody?.className).toContain("agent-execution-flow-step-body--amber")
+
+    // AI step 具备 emerald tag 对应的专属背景 class 与 data-tag-color / data-step-kind
+    const assistantStep = container.querySelector('[data-step-kind="assistant"]')
+    expect(assistantStep).not.toBeNull()
+    expect(assistantStep?.getAttribute("data-tag-color")).toBe("emerald")
+    const assistantBody = assistantStep?.querySelector(".agent-execution-flow-step-body--assistant")
+    expect(assistantBody).not.toBeNull()
+    expect(assistantBody?.className).toContain("bg-emerald-500/[0.05]")
+    expect(assistantBody?.className).toContain("agent-execution-flow-step-body--emerald")
+  })
+
+  it("非用户和非 AI item（如工具调用/思考等）使用默认中性背景色", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "m1",
+        role: "assistant",
+        blocks: [
+          { kind: "thinking", text: "思考中..." },
+          {
+            kind: "toolCall",
+            toolCallId: "call_1",
+            toolName: "bash",
+            args: { command: "ls" },
+            status: "done",
+            result: "file1.txt",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // tool step 是最后一个 step，默认展开
+    const toolStep = container.querySelector('[data-step-kind="tool"]')
+    expect(toolStep).not.toBeNull()
+    const toolBody = toolStep?.querySelector(".agent-execution-flow-step-body")
+    expect(toolBody).not.toBeNull()
+    expect(toolBody?.className).toContain("bg-black/25")
+    expect(toolBody?.className).not.toContain("bg-sky-500")
   })
 })

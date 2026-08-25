@@ -149,11 +149,9 @@ export const buildExecutionSteps = (
           status: message.isStreaming ? "running" : "done",
           timestamp: message.timestamp,
           durationMs: thinkingDuration,
-          thinkingContent: message.isStreaming
-            ? undefined
-            : {
-                text: block.text,
-              },
+          thinkingContent: {
+            text: block.text,
+          },
         })
         continue
       }
@@ -264,15 +262,13 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
-          assistantContent: message.isStreaming
-            ? undefined
-            : {
-                text: block.text,
-                model: message.model,
-                provider: message.provider,
-                stopReason: message.stopReason,
-                usage: message.usage,
-              },
+          assistantContent: {
+            text: block.text,
+            model: message.model,
+            provider: message.provider,
+            stopReason: message.stopReason,
+            usage: message.usage,
+          },
         })
         continue
       }
