@@ -66,14 +66,14 @@ describe("question 工具", () => {
   it("用户未回答（null）抛错 → error toolResult", async () => {
     const tool = createQuestionTool({ askQuestion: async () => null })
     await expect(tool.execute("t1", { questions: [{ question: "q1" }] })).rejects.toThrow(
-      /用户未回答/,
+      /dismissed/i,
     )
   })
 
   it("空答案数组抛错", async () => {
     const tool = createQuestionTool({ askQuestion: async (): Promise<QuestionAnswer[]> => [] })
     await expect(tool.execute("t1", { questions: [{ question: "q1" }] })).rejects.toThrow(
-      /用户未回答/,
+      /dismissed/i,
     )
   })
 })
