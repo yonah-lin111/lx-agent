@@ -10,8 +10,8 @@ import { getPermissionSettings, savePermissionSettings } from "@/services/settin
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
-const DENY_RULE_REASON = "该操作已由权限规则拒绝"
-const USER_DENY_REASON = "用户已拒绝该操作"
+const DENY_RULE_REASON = "Action denied by permission rules."
+const USER_DENY_REASON = "Action denied by user."
 
 // 将规则源解析为 ParsedRule[]，非法条目跳过并记警告（与 agent.mcp 降级语义一致）。
 const parseList = (sources: string[]): ParsedRule[] => {

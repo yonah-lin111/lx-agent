@@ -24,31 +24,31 @@ const MAX_WRAPPER_DEPTH = 8
 const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
     pattern: /^\s*rm\s+.*(-[a-zA-Z]*f[a-zA-Z]*|--force)\s+.*(\/|~|\$HOME|\.\.)(\s|$)/,
-    reason: "禁止对系统根目录、家目录或上级目录执行强制删除 (rm -rf)",
+    reason: "Force removal on root, home or parent directory is prohibited (rm -rf).",
   },
   {
     pattern: /^\s*rm\s+.*-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\/|~|\$HOME|\*)\s*$/,
-    reason: "禁止执行全盘或根目录强制递归删除 (rm -rf / 或 rm -rf *)",
+    reason: "Recursive forced removal on root or all files is prohibited (rm -rf / or rm -rf *).",
   },
   {
     pattern: /^\s*git\s+reset\s+--hard(\s|$)/,
-    reason: "禁止直接执行未授权的破坏性 git reset --hard，以防丢失工作区未提交修改",
+    reason: "Destructive git reset --hard is prohibited to prevent uncommitted changes from being lost.",
   },
   {
     pattern: /^\s*git\s+clean\s+.*-[a-zA-Z]*f[a-zA-Z]*(\s|$)/,
-    reason: "禁止直接执行强制清理未跟踪文件 (git clean -f)",
+    reason: "Forced removal of untracked files (git clean -f) is prohibited.",
   },
   {
     pattern: /^\s*mkfs(\.[a-zA-Z0-9]+)?(\s|$)/,
-    reason: "禁止在终端格式化磁盘文件系统",
+    reason: "Formatting disk filesystems is prohibited.",
   },
   {
     pattern: /^\s*dd\s+.*if=.*of=(\/dev\/[a-zA-Z0-9]+)(\s|$)/,
-    reason: "禁止对裸磁盘设备执行底层覆写 (dd of=/dev/...)",
+    reason: "Overwriting raw disk devices (dd of=/dev/...) is prohibited.",
   },
   {
     pattern: /^\s*:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:\s*$/,
-    reason: "禁止执行 Fork 炸弹",
+    reason: "Fork bombs are prohibited.",
   },
 ]
 
@@ -56,19 +56,19 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
 const SENSITIVE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
     pattern: /^\s*git\s+push\s+.*(-[a-zA-Z]*f[a-zA-Z]*|--force)(\s|$)/,
-    reason: "强制推送到远端 Git 仓库可能覆盖他人提交",
+    reason: "Force pushing to remote git repositories may overwrite others' commits.",
   },
   {
     pattern: /^\s*git\s+checkout\s+(--\s+)?\.(\s|$)/,
-    reason: "丢弃工作区所有未暂存改动",
+    reason: "Discarding all unstaged changes in working directory.",
   },
   {
     pattern: /^\s*chmod\s+.*-[a-zA-Z]*R[a-zA-Z]*\s+777(\s|$)/,
-    reason: "全局递归赋予 777 宽松权限存在安全风险",
+    reason: "Recursively granting 777 permissions introduces security risks.",
   },
   {
     pattern: /^\s*shutdown(\s|$)|^\s*reboot(\s|$)/,
-    reason: "关机或重启系统操作",
+    reason: "System shutdown or reboot operation.",
   },
 ]
 
