@@ -8,7 +8,8 @@ import type {
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useLxToast } from "@/components/ui/LxToast"
+import { useLxAgentToast } from "@/components/ui/LxToast"
+import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import type { AgentInputFile } from "../components/AgentInput"
 import type { ChatBlock, ChatMessage } from "../types"
@@ -67,7 +68,8 @@ const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
  * 历史会话的持久化与恢复均由 main 进程 DB 承载。
  */
 export const useAgentChat = (context?: AgentSendContext) => {
-  const { success: successToast, error: errorToast } = useLxToast()
+  const { success: successToast, error: errorToast } = useLxAgentToast()
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<AgentInputFile[]>([])
@@ -452,7 +454,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
       if (last.isManual) {
         undoManualCompaction()
       } else {
-        errorToast("自动压缩不可撤销。")
+        errorToast(t("agent.autoCompactionNotReversible"))
       }
       return
     }
@@ -464,13 +466,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
       .join("\n")
     setInputText(echoed)
     removeTurn(lastUserIndex)
-  }, [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast])
+  }, [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast, t])
 
   // 手动压缩上下文（/compact 命令触发）：流式时阻塞提示；其余情况调用 main 侧强制压缩。
   // 失败或无可压缩内容时由 main 侧直接返回具体原因 error 文案并 toast 提示。
   const compactChat = useCallback(() => {
     if (isStreaming) {
-      errorToast("当前正在生成回复，请等待回复完成后手动压缩。")
+      errorToast(t("agent.compactionBlockedWhileGenerating"))
       return
     }
     void agentApi.compact().then((result) => {
@@ -478,9 +480,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
         errorToast(result.error)
         return
       }
-      successToast("已压缩上下文，早期历史已摘要化。")
+      successToast(t("agent.contextCompactedSuccess"))
     })
-  }, [isStreaming, errorToast, successToast])
+  }, [isStreaming, errorToast, successToast, t])
 
   // 删除指定 AI 消息所在的一轮对话。
   const deleteTurn = useCallback(
@@ -543,15 +545,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
       // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
       if (isCompacting) {
         errorToast(
-          isCompactingManual ? "正在手动压缩上下文，请稍候。" : "正在自动压缩上下文，请稍候。",
+          isCompactingManual ? t("agent.compactingWaitManual") : t("agent.compactingWaitAuto"),
         )
         return
       }
       // 上下文 100%：拒绝发送（无法在溢出前压缩腾出空间，继续发送会超出模型窗口），提示新建对话。
       if (contextUsage && contextUsage.tokens >= contextUsage.contextWindow) {
-        errorToast(
-          "上下文已满（100%）：当前会话可压缩的历史不足以腾出空间，继续发送会超出模型窗口。请新建对话。",
-        )
+        errorToast(t("agent.contextFullError"))
         return
       }
 
@@ -575,7 +575,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
       void agentApi.send(text, selection, sendContext, options).then((result) => {
         if (result.ok) {
           if ("steered" in result) {
-            successToast("已发送即时插话，将在当前步骤完成后生效")
+            successToast(t("agent.steerSentNotice"))
           }
           // 入队/插话消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
           if (result.sessionId && !("queued" in result) && !("steered" in result)) {

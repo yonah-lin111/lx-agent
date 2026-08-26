@@ -2,7 +2,7 @@ import { ArrowDownToLine, Loader2, Maximize2, Minimize2, Send, Square, Zap } fro
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { useLxToast } from "@/components/ui/LxToast"
+import { LxAgentInputToast, useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
@@ -90,7 +90,7 @@ export const AgentInput = ({
   const markdownInputRef = useRef<AgentMarkdownInputRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { error: errorToast } = useLxToast()
+  const { error: errorToast } = useLxAgentToast()
   const { t } = useTranslation()
 
   // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
@@ -269,6 +269,7 @@ export const AgentInput = ({
 
   return (
     <div className="bg-transparent p-0.5 pt-1 pb-0">
+      <LxAgentInputToast />
       {/* 排队消息提示：流式输出期间发送的消息等待当前回复结束后自动发送；hover 展示排队问题列表。 */}
       {queuedCount > 0 && (
         <LxTooltip

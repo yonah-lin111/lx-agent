@@ -15,7 +15,7 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { useLxToast } from "@/components/ui/LxToast"
+import { useLxAgentToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { usePromptHistory } from "@/features/agent/hooks/usePromptHistory"
 import type { GitWorktreeOption } from "@/features/git"
@@ -584,7 +584,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
   ): React.JSX.Element => {
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
-    const { warning: warningToast, success: successToast, error: errorToast } = useLxToast()
+    const { warning: warningToast, success: successToast, error: errorToast } = useLxAgentToast()
     const { t } = useTranslation()
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
     // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
@@ -811,10 +811,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       if (!mention) return
       let current = true
 
-      const fetchPromise = currentPath
-        ? projectApi.searchDirectoryFiles(currentPath, mention.query)
-        : projectId
-          ? projectApi.searchFiles(projectId, mention.query)
+      const fetchPromise = projectId
+        ? projectApi.searchFiles(projectId, mention.query)
+        : currentPath
+          ? projectApi.searchDirectoryFiles(currentPath, mention.query)
           : Promise.resolve([])
 
       void fetchPromise
@@ -989,7 +989,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             .exportSession({ format, openAfterExport: true })
             .then((res) => {
               if (res.ok && !res.canceled && res.filePath) {
-                successToast(`Export (${format.toUpperCase()}): ${res.filePath}`)
+                successToast(
+                  t("agent.exportSuccess", {
+                    format: format.toUpperCase(),
+                    path: res.filePath,
+                  }),
+                )
               } else if (!res.ok) {
                 errorToast(res.error || t("agent.exportFailed"))
               }
@@ -1459,7 +1464,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                       onStopRef.current?.()
                     } else {
                       escStopRef.current = now
-                      warningToast("再次按 Esc 可停止生成")
+                      warningToast(t("agent.pressEscAgainToStop"))
                     }
                     return true
                   }

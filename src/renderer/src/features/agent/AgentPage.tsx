@@ -6,8 +6,8 @@ import type {
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
-import { useLxToast } from "@/components/ui/LxToast"
-import { buildGitWorktreeOptions, useGitWorktrees } from "@/features/git"
+import { useLxAgentToast } from "@/components/ui/LxToast"
+import { buildGitWorktreeOptions, getGitWorktreeDirName, useGitWorktrees } from "@/features/git"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
@@ -178,7 +178,7 @@ export const AgentPage = ({
     return undefined
   }, [effectiveProjectPath, worktrees])
 
-  const { success, error, warning } = useLxToast()
+  const { success, error, warning } = useLxAgentToast()
   const { t } = useTranslation()
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。

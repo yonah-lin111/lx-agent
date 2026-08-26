@@ -115,7 +115,8 @@ export const en = {
     suggestedQuestions: "Suggested Questions",
     contextCompaction: "Context Compaction",
     streamIdleTimeout: "Agent Max Response Time",
-    streamIdleTimeoutDesc: "Maximum idle wait time (seconds) for a stream chunk, set to 0 for unlimited",
+    streamIdleTimeoutDesc:
+      "Maximum idle wait time (seconds) for a stream chunk, set to 0 for unlimited",
     streamIdleTimeoutUnit: "s",
     streamIdleTimeoutInfinite: "s (Unlimited)",
 
@@ -221,6 +222,15 @@ export const en = {
     addAttachment: "Add Attachment",
     compactingManual: "Manually compacting context",
     compactingAuto: "Auto compacting context",
+    compactingWaitManual: "Manually compacting context, please wait.",
+    compactingWaitAuto: "Auto compacting context, please wait.",
+    contextFullError:
+      "Context is full (100%): History cannot be compacted enough to free space. Continuing will exceed the model window. Please create a new chat.",
+    autoCompactionNotReversible: "Auto compaction cannot be undone.",
+    compactionBlockedWhileGenerating:
+      "Currently generating a response. Please wait until finished to compact manually.",
+    contextCompactedSuccess: "Context compacted successfully, earlier history summarized.",
+    exportSuccess: "Export ({{format}}): {{path}}",
     adaptiveHeight: "Adaptive Height",
     expandInput: "Expand Input",
     queuedMessagesCount:
@@ -574,7 +584,8 @@ export const en = {
     noMatchingWorktrees: "No matching worktrees",
     desktopProject: "Default Desktop",
     switchDirectoryTitle: "Switch Execution Directory",
-    switchDirectoryPrompt: "Detected switch to \"{{name}}\". Switch current session directory to this project?",
+    switchDirectoryPrompt:
+      'Detected switch to "{{name}}". Switch current session directory to this project?',
     keepCurrent: "Keep Current",
     confirmSwitch: "Switch Directory",
     branchSwitched: "Switched to branch {{branch}}",
