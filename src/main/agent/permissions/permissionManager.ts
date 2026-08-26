@@ -5,12 +5,13 @@ import type {
   PermissionSettings,
 } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
+import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
-const DENY_RULE_REASON = "该操作已由权限规则拒绝"
-const USER_DENY_REASON = "用户已拒绝该操作"
+const DENY_RULE_REASON = "Action denied by permission rules."
+const USER_DENY_REASON = "Action denied by user."
 
 // 将规则源解析为 ParsedRule[]，非法条目跳过并记警告（与 agent.mcp 降级语义一致）。
 const parseList = (sources: string[]): ParsedRule[] => {
@@ -102,11 +103,28 @@ class PermissionManager {
    */
   evaluate(toolName: string, args: unknown): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
+
+    // 指令安全沙箱（CommandSafetyGuard）检测：破坏性高危指令绝对阻断
+    if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
+      const safety = evaluateCommandSafety(args.command)
+      if (safety.level === "dangerous") {
+        return "deny"
+      }
+    }
+
     // deny 优先于 bypass：`.env` 等敏感路径在 bypass 模式下仍拦截。
     if (matchRule(this.parsed.deny, toolName, args)) return "deny"
     if (mode === "bypassPermissions") return "allow"
     if (EXEMPT_TOOLS.has(toolName)) return "allow"
     if (!GATED_BUILTIN_TOOLS.has(toolName) && !this.mcpTools.has(toolName)) return "allow"
+
+    // 敏感指令即使有 allow 规则也提升为确认 (ask)
+    if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
+      const safety = evaluateCommandSafety(args.command)
+      if (safety.level === "sensitive") {
+        return "ask"
+      }
+    }
 
     const kind = matchRule(this.parsed.ask, toolName, args)
       ? "ask"
@@ -137,7 +155,15 @@ class PermissionManager {
     }
     const decision = this.evaluate(toolName, args)
     if (decision === "allow") return undefined
-    if (decision === "deny") return { block: true, reason: DENY_RULE_REASON }
+    if (decision === "deny") {
+      if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
+        const safety = evaluateCommandSafety(args.command)
+        if (safety.level === "dangerous" && safety.reason) {
+          return { block: true, reason: safety.reason }
+        }
+      }
+      return { block: true, reason: DENY_RULE_REASON }
+    }
     // ask：会话内已允许的同名调用直接放行。
     if (sessionId && this.sessionAllowed.get(sessionId)?.has(toolName)) return undefined
 

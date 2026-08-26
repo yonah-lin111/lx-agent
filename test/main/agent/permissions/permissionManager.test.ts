@@ -193,7 +193,7 @@ describe("permissionManager.gate", () => {
       gateContext("bash", { command: "rm -rf /tmp/x" }),
       "s1",
     )
-    expect(result).toEqual({ block: true, reason: "该操作已由权限规则拒绝" })
+    expect(result).toEqual({ block: true, reason: "Action denied by permission rules." })
     expect(holder.capturedRequests).toHaveLength(0)
   })
 
@@ -228,7 +228,7 @@ describe("permissionManager.gate", () => {
       requestId: holder.capturedRequests[1].requestId,
       decision: "deny",
     })
-    expect(await third).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await third).toEqual({ block: true, reason: "Action denied by user." })
   })
 
   it("ask：请求携带工具名/摘要/模式，拒绝回灌 block+reason", async () => {
@@ -243,7 +243,7 @@ describe("permissionManager.gate", () => {
       mode: "default",
     })
     permissionManager.respond({ requestId: holder.capturedRequests[0].requestId, decision: "deny" })
-    expect(await pending).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
   })
 
   it("未知 requestId 响应返回 false", () => {
@@ -260,7 +260,7 @@ describe("permissionManager.gate", () => {
     )
     expect(holder.capturedRequests).toHaveLength(1)
     controller.abort()
-    expect(await pending).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
     expect((permissionManager as unknown as { pending: Map<string, unknown> }).pending.size).toBe(0)
   })
 
@@ -272,7 +272,7 @@ describe("permissionManager.gate", () => {
 
     permissionManager.clearSession("s1")
 
-    expect(await pending).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
     const manager = permissionManager as unknown as {
       sessionAllowed: Map<string, Set<string>>
       pending: Map<string, unknown>
@@ -294,7 +294,7 @@ describe("permissionManager.gate", () => {
     applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
     ;(permissionManager as unknown as { sendRequest: unknown }).sendRequest = null
     const result = await permissionManager.gate(gateContext("bash", { command: "x" }), "s1")
-    expect(result).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(result).toEqual({ block: true, reason: "Action denied by user." })
   })
 
   it("allowAll：会话级放行全部工具，但 deny 规则仍拦截，新会话恢复询问", async () => {
@@ -317,18 +317,18 @@ describe("permissionManager.gate", () => {
 
     // 同会话 allowAll：命中 deny 的命令仍拦截（保护敏感路径）。
     const denied = permissionManager.gate(gateContext("bash", { command: "rm -rf /tmp" }), "s1")
-    expect(await denied).toEqual({ block: true, reason: "该操作已由权限规则拒绝" })
+    expect(await denied).toEqual({ block: true, reason: "Action denied by permission rules." })
     expect(holder.capturedRequests).toHaveLength(1)
 
     // 新会话：恢复询问（不命中 deny 的命令）。
     const third = permissionManager.gate(gateContext("bash", { command: "npm run build" }), "s2")
     expect(holder.capturedRequests).toHaveLength(2)
     permissionManager.respond({ requestId: holder.capturedRequests[1].requestId, decision: "deny" })
-    expect(await third).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await third).toEqual({ block: true, reason: "Action denied by user." })
 
     // 新会话 deny 规则仍生效：命中 deny 直接 block，不弹窗。
     const fourth = permissionManager.gate(gateContext("bash", { command: "rm -rf x" }), "s2")
-    expect(await fourth).toEqual({ block: true, reason: "该操作已由权限规则拒绝" })
+    expect(await fourth).toEqual({ block: true, reason: "Action denied by permission rules." })
     expect(holder.capturedRequests).toHaveLength(2)
   })
 
@@ -433,7 +433,7 @@ describe("permissionManager 永久决策写回（G5）", () => {
       decision: "deny",
       permanent: true,
     })
-    expect(await pending).toEqual({ block: true, reason: "用户已拒绝该操作" })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
     expect(holder.permissionSettings.deny).toEqual(["Bash(rm -rf /tmp/x)"])
     expect(holder.permissionSettings.allow).toEqual([])
     // 重载后相同命令直接拒绝。
