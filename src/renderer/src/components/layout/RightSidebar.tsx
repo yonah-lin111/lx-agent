@@ -26,7 +26,7 @@ const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH
  * 右侧栏 (集成 Agent 页面与控制按钮)
  */
 export const RightSideBar = (): React.JSX.Element => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { t } = useTranslation()
   const { warning } = useLxToast()

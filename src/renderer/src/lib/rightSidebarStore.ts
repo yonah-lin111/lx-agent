@@ -1,5 +1,5 @@
 // 右侧栏折叠状态：layout 写入，其他区域（如 Markdown 编辑器）只读感知。
-let isRightSidebarCollapsed = true
+let isRightSidebarCollapsed = false
 const listeners = new Set<() => void>()
 
 const notify = (): void => {
