@@ -1,4 +1,4 @@
-import { Code2, ExternalLink, FileCode, FileText } from "lucide-react"
+import { Code2, ExternalLink, FileCode, FileText, Terminal } from "lucide-react"
 import type React from "react"
 import { useCallback } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -7,7 +7,7 @@ import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemExpandableText } from "../FlowItemExpandableText"
-import { formatDurationMs } from "../types"
+import { formatDurationMs, formatJsonString } from "../types"
 
 export interface FlowToolFileOpsProps {
   content: ExecutionToolContent
@@ -80,6 +80,21 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
         )}
       </div>
 
+      {/* 结构化 Input Arguments (输入参数，最多 3 行折叠) */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between text-white/45">
+          <span className="flex items-center gap-1">
+            <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
+          </span>
+          {content.toolCallId && (
+            <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+          )}
+        </div>
+        <div className="rounded bg-black/40 p-2 text-sky-200/90">
+          <FlowItemExpandableText content={formatJsonString(content.args)} maxLines={3} />
+        </div>
+      </div>
+
       {/* 结构化 Diff (针对 write/edit 工具) */}
       {content.diff && content.diff.lines && content.diff.lines.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -133,19 +148,6 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             <FlowItemExpandableText
               content={content.result}
               fallbackText="(empty)"
-              maxLines={3}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 其余参数展示（若存在且非 read/write/edit 常用字段） */}
-      {content.toolName === "edit" && content.args?.oldString !== undefined && (
-        <div className="flex flex-col gap-1 text-[10px]">
-          <span className="text-white/40">Replaced Pattern:</span>
-          <div className="rounded bg-black/30 p-1.5 text-white/70">
-            <FlowItemExpandableText
-              content={String(content.args.oldString)}
               maxLines={3}
             />
           </div>

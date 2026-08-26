@@ -43,7 +43,11 @@ describe("read / write / edit", () => {
 
     const read = createReadTool(cwd)
     const r = await read.execute("t1", { path: "new.txt" })
-    expect(toolText(r)).toContain("line2")
+    const text = toolText(r)
+    expect(text).toContain("<type>file</type>")
+    expect(text).toContain("1: line1")
+    expect(text).toContain("2: line2")
+    expect(text).toContain("(End of file - total 3 lines)")
   })
 
   it("write 新文件产出全量新增 diff", async () => {
@@ -68,16 +72,40 @@ describe("read / write / edit", () => {
     expect(changedLineTexts(diff!, "add")).toEqual(["B!"])
   })
 
-  it("read offset/limit 分页", async () => {
+  it("read offset/limit 分页与行号", async () => {
     const cwd = await makeTmp()
     const lines = Array.from({ length: 10 }, (_, i) => `line${i + 1}`)
     await writeFile(join(cwd, "big.txt"), lines.join("\n"))
     const read = createReadTool(cwd)
     const r = await read.execute("t1", { path: "big.txt", offset: 3, limit: 2 })
-    expect(toolText(r)).toContain("line3")
-    expect(toolText(r)).toContain("line4")
-    expect(toolText(r)).not.toContain("line1")
-    expect(toolText(r)).toMatch(/offset=5/)
+    const text = toolText(r)
+    expect(text).toContain("3: line3")
+    expect(text).toContain("4: line4")
+    expect(text).not.toContain("1: line1")
+    expect(text).toMatch(/Use offset=5 to continue/)
+  })
+
+  it("read 目录输出 entries 格式", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "file.txt"), "content")
+    await mkdir(join(cwd, "subfolder"), { recursive: true })
+    const read = createReadTool(cwd)
+    const r = await read.execute("t1", { path: "." })
+    const text = toolText(r)
+    expect(text).toContain("<type>directory</type>")
+    expect(text).toContain("<entries>")
+    expect(text).toContain("file.txt")
+    expect(text).toContain("subfolder/")
+  })
+
+  it("read 单行超长截断", async () => {
+    const cwd = await makeTmp()
+    const longLine = "a".repeat(2500)
+    await writeFile(join(cwd, "long.txt"), longLine)
+    const read = createReadTool(cwd)
+    const r = await read.execute("t1", { path: "long.txt" })
+    const text = toolText(r)
+    expect(text).toContain("... (line truncated to 2000 chars)")
   })
 
   it("read 允许越界路径（操作其他目录内容）", async () => {
@@ -87,7 +115,7 @@ describe("read / write / edit", () => {
     try {
       const read = createReadTool(cwd)
       const r = await read.execute("t1", { path: "../outside.txt" })
-      expect(toolText(r)).toContain("outside content")
+      expect(toolText(r)).toContain("1: outside content")
     } finally {
       await rm(outsidePath, { force: true })
     }
