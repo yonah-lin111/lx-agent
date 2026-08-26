@@ -268,7 +268,7 @@ export const AgentInput = ({
   )
 
   return (
-    <div className="bg-transparent p-0.5 pt-1 pb-0">
+    <div className="relative bg-transparent p-0.5 pt-1 pb-0">
       <LxAgentInputToast />
       {/* 排队消息提示：流式输出期间发送的消息等待当前回复结束后自动发送；hover 展示排队问题列表。 */}
       {queuedCount > 0 && (

@@ -81,8 +81,11 @@ export const getLxToastColorClass = (type: LxToastType): string => {
  * 返回方位对应的滑入/滑出方向。
  */
 const getSlideStyle = (position: LxToastPosition): React.CSSProperties => {
-  if (position === "top-center" || position === "agent-input") {
+  if (position === "top-center") {
     return { "--toast-slide-x": "0px", "--toast-slide-y": "-8px" } as React.CSSProperties
+  }
+  if (position === "agent-input") {
+    return { "--toast-slide-x": "0px", "--toast-slide-y": "6px" } as React.CSSProperties
   }
   if (position === "breadcrumb" || position.endsWith("left")) {
     return { "--toast-slide-x": "-8px", "--toast-slide-y": "0px" } as React.CSSProperties
@@ -290,7 +293,7 @@ export const useLxAgentInputToast = (): LxToastItem[] => {
 }
 
 /**
- * 渲染 Agent 输入框顶部的消息提示：单条展示，带进出场动画。
+ * 渲染 Agent 输入框顶部的消息提示：绝对定位在 AgentInput 顶部上方，单条展示，带进出场动画。
  */
 export const LxAgentInputToast = (): React.JSX.Element | null => {
   const agentToasts = useLxAgentInputToast()
@@ -299,15 +302,17 @@ export const LxAgentInputToast = (): React.JSX.Element | null => {
   const latestToast = agentToasts[agentToasts.length - 1]
 
   return (
-    <div
-      key={latestToast.id}
-      data-toast-type={latestToast.type}
-      className={`lx-agent-input-toast mb-1.5 flex items-center gap-1.5 px-1 text-xs font-medium select-none ${getLxToastColorClass(
-        latestToast.type,
-      )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
-      style={getSlideStyle("agent-input")}
-    >
-      <span className="truncate">{latestToast.message}</span>
+    <div className="pointer-events-none absolute bottom-full left-2 z-20 mb-1.5 flex max-w-[calc(100%-1rem)] items-center">
+      <span
+        key={latestToast.id}
+        data-toast-type={latestToast.type}
+        className={`lx-agent-input-toast inline-flex select-none items-center gap-1.5 truncate rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
+          latestToast.type,
+        )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
+        style={getSlideStyle("agent-input")}
+      >
+        {latestToast.message}
+      </span>
     </div>
   )
 }

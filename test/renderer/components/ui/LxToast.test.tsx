@@ -112,4 +112,19 @@ describe("LxToast", () => {
     expect(breadcrumbToast.closest(".lx-breadcrumb-toast")).not.toBeNull()
     expect(agentToast.closest(".lx-agent-input-toast")).not.toBeNull()
   })
+
+  it("LxAgentInputToast 外层容器具有绝对定位与点击穿透属性", () => {
+    render(
+      <LxToastProvider>
+        <TestToastComponent />
+      </LxToastProvider>,
+    )
+
+    fireEvent.click(screen.getByText("触发Agent成功"))
+    const toastEl = screen.getByText("Agent成功提示")
+    const wrapperEl = toastEl.parentElement
+    expect(wrapperEl?.className).toContain("absolute")
+    expect(wrapperEl?.className).toContain("bottom-full")
+    expect(wrapperEl?.className).toContain("pointer-events-none")
+  })
 })
