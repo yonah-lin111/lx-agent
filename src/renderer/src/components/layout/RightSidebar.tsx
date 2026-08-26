@@ -248,36 +248,37 @@ export const RightSideBar = (): React.JSX.Element => {
             {newChatButton}
 
             <LxTooltip
-              content={
-                <ChatHistoryPanel
-                  currentSessionId={currentSessionId}
-                  sessions={chatSessions}
-                  currentProjectId={currentProject?.id}
-                  projects={projects}
-                  onRestore={(sessionId) => {
-                    if (blockIfGenerating()) return
-                    restoreChatRef.current?.(sessionId)
-                    setIsHistoryOpen(false)
-                  }}
-                  onDelete={handleDeleteSession}
-                />
-              }
-              contentClassName="!p-2"
-              open={isHistoryOpen}
-              onOpenChange={(open) => {
-                setIsHistoryOpen(open)
-                if (open) {
-                  void sessionListStore.refresh()
-                }
+              hover={{
+                content: t("rightSidebar.chatHistory"),
+                placement: "bottom",
               }}
-              placement="bottom"
-              trigger="click"
+              click={{
+                content: (
+                  <ChatHistoryPanel
+                    currentSessionId={currentSessionId}
+                    sessions={chatSessions}
+                    currentProjectId={currentProject?.id}
+                    projects={projects}
+                    onRestore={(sessionId) => {
+                      if (blockIfGenerating()) return
+                      restoreChatRef.current?.(sessionId)
+                      setIsHistoryOpen(false)
+                    }}
+                    onDelete={handleDeleteSession}
+                  />
+                ),
+                contentClassName: "!p-2",
+                placement: "bottom",
+                open: isHistoryOpen,
+                onOpenChange: (open) => {
+                  setIsHistoryOpen(open)
+                  if (open) {
+                    void sessionListStore.refresh()
+                  }
+                },
+              }}
             >
-              <LxIconButton
-                aria-label={t("rightSidebar.chatHistory")}
-                title={{ content: t("rightSidebar.chatHistory"), placement: "bottom" }}
-                size="small"
-              >
+              <LxIconButton aria-label={t("rightSidebar.chatHistory")} size="small">
                 <History className="h-3.5 w-3.5" />
               </LxIconButton>
             </LxTooltip>

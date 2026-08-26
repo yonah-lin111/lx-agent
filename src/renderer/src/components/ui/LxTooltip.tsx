@@ -18,6 +18,24 @@ export type LxTooltipPlacement = "top" | "bottom" | "left" | "right"
 // Tooltip 触发方式。
 export type LxTooltipTrigger = "hover" | "click" | "both"
 
+// Tooltip 独立配置项（用于 hover/click 分别配置）。
+export interface LxTooltipConfig {
+  title?: React.ReactNode
+  content?: React.ReactNode
+  placement?: LxTooltipPlacement
+  delay?: number
+  contentClassName?: string
+  multiline?: boolean
+  minimizable?: boolean
+  closeOnScroll?: boolean
+  closeOnOutsideClick?: boolean
+  closeOnContentClick?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  onConfirm?: () => void
+  onCancel?: () => void
+}
+
 // Tooltip 组件属性。
 export interface LxTooltipProps {
   children: React.ReactNode
@@ -28,6 +46,10 @@ export interface LxTooltipProps {
   delay?: number
   contentClassName?: string
   className?: string
+  // 独立悬停配置（存在时优先生效）
+  hover?: LxTooltipConfig | React.ReactNode
+  // 独立点击配置（存在时优先生效）
+  click?: LxTooltipConfig | React.ReactNode
   // 内容允许多行/列表展示：宽度随内容自适应，超出视口时受限并可换行。
   multiline?: boolean
   // 是否支持最小化：右上角展示 [-] 按钮，点击关闭/最小化气泡（默认 false）。
@@ -65,45 +87,54 @@ const assignRef = (ref: React.Ref<HTMLElement> | undefined, node: HTMLElement | 
 }
 
 /**
- * Tooltip - 通过 Portal 渲染的统一提示与二次确认气泡。
- * 自动根据可用视口空间调整方向，并避免被父级 overflow 裁剪。
+ * 单个气泡浮层内部渲染组件（复用相同的 Portal、布局计算、动画及事件监听机制）。
  */
-export const LxTooltip = ({
-  children,
+interface TooltipBubbleProps {
+  isOpen: boolean
+  onClose: () => void
+  containerRef: React.RefObject<HTMLElement | null>
+  title?: React.ReactNode
+  content?: React.ReactNode
+  placement: LxTooltipPlacement
+  contentClassName?: string
+  multiline?: boolean
+  minimizable?: boolean
+  closeOnScroll?: boolean
+  closeOnOutsideClick?: boolean
+  closeOnContentClick?: boolean
+  onConfirm?: () => void
+  onCancel?: () => void
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
+}
+
+const TooltipBubble = ({
+  isOpen,
+  onClose,
+  containerRef,
   title,
   content,
-  placement = "top",
-  trigger = "hover",
-  delay = 150,
+  placement,
   contentClassName = "",
-  className = "",
   multiline = false,
   minimizable = false,
   closeOnScroll = true,
   closeOnOutsideClick = true,
   closeOnContentClick = false,
-  open,
-  onOpenChange,
   onConfirm,
   onCancel,
-}: LxTooltipProps): React.JSX.Element => {
-  const [isVisible, setIsVisible] = useState(open ?? false)
+  onMouseEnter,
+  onMouseLeave,
+}: TooltipBubbleProps): React.JSX.Element | null => {
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
   const [activePlacement, setActivePlacement] = useState<LxTooltipPlacement>(placement)
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(null)
   const [arrowOffset, setArrowOffset] = useState(0)
-  const containerRef = useRef<HTMLElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
-  const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isConfirming = typeof onConfirm === "function"
-  const activeTrigger = isConfirming ? "click" : trigger
-  const activeDelay = isConfirming ? 0 : delay
   const { t } = useTranslation()
 
-  // 嵌套浮层注册：维护属于本气泡的 portal 节点集合，并向上传播到父级 Tooltip，
-  // 使深层嵌套（下拉、嵌套气泡）的点击/滚动都不会关闭任意祖先气泡。
   const parentLayer = useContext(TooltipLayerContext)
   const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
   const registerLayer = useCallback(
@@ -125,7 +156,6 @@ export const LxTooltip = ({
     [registerLayer, unregisterLayer],
   )
 
-  // 本 Tooltip 自身的气泡作为嵌套浮层注册到父级 Tooltip。
   useEffect(() => {
     if (!parentLayer || !shouldRender || !tooltipRef.current) return
     const node = tooltipRef.current
@@ -133,45 +163,19 @@ export const LxTooltip = ({
     return () => parentLayer.unregister(node)
   }, [parentLayer, shouldRender])
 
-  // 目标节点是否属于本气泡范围：触发元素、气泡本身，或已注册的嵌套浮层。
-  const isInsideTooltip = useCallback((target: Node): boolean => {
-    if (containerRef.current?.contains(target) || tooltipRef.current?.contains(target)) return true
-    for (const node of layerNodesRef.current) {
-      if (node.contains(target)) return true
-    }
-    return false
-  }, [])
+  const isInsideTooltip = useCallback(
+    (target: Node): boolean => {
+      if (containerRef.current?.contains(target) || tooltipRef.current?.contains(target))
+        return true
+      for (const node of layerNodesRef.current) {
+        if (node.contains(target)) return true
+      }
+      return false
+    },
+    [containerRef],
+  )
 
-  /**
-   * 更新显隐状态并同步受控父组件。
-   */
-  const syncVisible = (visible: boolean): void => {
-    setIsVisible(visible)
-    onOpenChange?.(visible)
-  }
-
-  /**
-   * 清理待执行的显示或隐藏计时器。
-   */
-  const clearTimers = (): void => {
-    if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current)
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current)
-    showTimeoutRef.current = null
-    hideTimeoutRef.current = null
-  }
-
-  const isMountedRef = useRef(false)
-  useEffect(() => {
-    isMountedRef.current = true
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
-
-  /**
-   * 将更新的坐标同步保存到 coordsRef，供同步读取与计算
-   */
-  const calculatePosition = (): {
+  const calculatePosition = useCallback((): {
     resolvedPlacement: LxTooltipPlacement
     left: number
     top: number
@@ -180,7 +184,6 @@ export const LxTooltip = ({
     if (!containerRef.current) return null
 
     const triggerRect = containerRef.current.getBoundingClientRect()
-    // 如果触发元素宽度/高度为0，或完全不可见/未渲染在视口中
     if (
       triggerRect.width === 0 &&
       triggerRect.height === 0 &&
@@ -253,11 +256,8 @@ export const LxTooltip = ({
       top,
       arrowOffset: Math.max(12, Math.min(bubbleSize - 12, triggerCenter - bubbleStart)),
     }
-  }
+  }, [containerRef, placement])
 
-  /**
-   * 根据触发元素和视口尺寸计算气泡位置。
-   */
   const updatePosition = useCallback((): void => {
     const pos = calculatePosition()
     if (!pos) return
@@ -269,15 +269,10 @@ export const LxTooltip = ({
       return { left: pos.left, top: pos.top }
     })
     setArrowOffset((prev) => (Math.abs(prev - pos.arrowOffset) < 0.5 ? prev : pos.arrowOffset))
-  }, [placement])
+  }, [calculatePosition])
 
   useEffect(() => {
-    if (open === undefined) return
-    if (open !== isVisible) syncVisible(open)
-  }, [open])
-
-  useEffect(() => {
-    if (isVisible) {
+    if (isOpen) {
       setShouldRender(true)
       setIsAnimatingOut(false)
       return
@@ -291,7 +286,7 @@ export const LxTooltip = ({
       setCoords(null)
     }, 120)
     return () => clearTimeout(timer)
-  }, [isVisible])
+  }, [isOpen])
 
   useLayoutEffect(() => {
     if (!shouldRender) return
@@ -310,12 +305,10 @@ export const LxTooltip = ({
       resizeObserver?.disconnect()
       window.removeEventListener("resize", updatePosition)
     }
-  }, [shouldRender, placement])
+  }, [shouldRender, updatePosition])
 
   useEffect(() => {
-    if (!isVisible || !closeOnScroll) return
-    // 滚动时检测：只有当滚动的容器包含本 Tooltip 的触发元素时（且不属于气泡浮层自身），才关闭气泡。
-    // 如果滚动的容器是外部其他无关容器（例如消息列表/执行流程列表吸底滚动），则完全不影响外部 Tooltip。
+    if (!isOpen || !closeOnScroll) return
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
       if (isInsideTooltip(target)) return
@@ -326,26 +319,24 @@ export const LxTooltip = ({
         target instanceof Element &&
         (target.contains(triggerNode) || target === document || target === document.documentElement)
       ) {
-        clearTimers()
-        syncVisible(false)
+        onClose()
       }
     }
     document.addEventListener("scroll", handleScroll, true)
     return () => document.removeEventListener("scroll", handleScroll, true)
-  }, [isVisible, closeOnScroll, isInsideTooltip])
+  }, [isOpen, closeOnScroll, isInsideTooltip, containerRef, onClose])
 
   useEffect(() => {
-    if (!isVisible) return
-    // 点击本气泡范围（含已注册的嵌套浮层）外时关闭。
+    if (!isOpen) return
     const handleOutsideClick = (event: MouseEvent): void => {
       const target = event.target as Node
       if (!isInsideTooltip(target)) {
-        syncVisible(false)
+        onClose()
       }
     }
     const handleEscape = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
-        syncVisible(false)
+        onClose()
       }
     }
     if (closeOnOutsideClick) document.addEventListener("mousedown", handleOutsideClick)
@@ -354,49 +345,9 @@ export const LxTooltip = ({
       if (closeOnOutsideClick) document.removeEventListener("mousedown", handleOutsideClick)
       document.removeEventListener("keydown", handleEscape)
     }
-  }, [isVisible, closeOnOutsideClick])
+  }, [isOpen, closeOnOutsideClick, isInsideTooltip, onClose])
 
-  useEffect(() => () => clearTimers(), [])
-
-  /**
-   * 按触发模式延迟显示气泡。
-   */
-  const showTooltip = (): void => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current)
-      hideTimeoutRef.current = null
-    }
-    if (showTimeoutRef.current) {
-      clearTimeout(showTimeoutRef.current)
-      showTimeoutRef.current = null
-    }
-    if (isVisible) return
-    if (activeDelay === 0) {
-      syncVisible(true)
-      return
-    }
-    showTimeoutRef.current = setTimeout(() => syncVisible(true), activeDelay)
-  }
-
-  /**
-   * 为悬停触发保留进入气泡的缓冲时间。
-   */
-  const hideTooltip = (): void => {
-    if (showTimeoutRef.current) {
-      clearTimeout(showTimeoutRef.current)
-      showTimeoutRef.current = null
-    }
-    if (activeTrigger === "hover" || activeTrigger === "both") {
-      if (!hideTimeoutRef.current) {
-        hideTimeoutRef.current = setTimeout(() => {
-          hideTimeoutRef.current = null
-          syncVisible(false)
-        }, 200)
-      }
-      return
-    }
-    syncVisible(false)
-  }
+  if (!shouldRender || (!content && !title)) return null
 
   const arrowStyle: React.CSSProperties = {
     position: "absolute",
@@ -421,11 +372,312 @@ export const LxTooltip = ({
     arrowStyle.top = `${arrowOffset}px`
     arrowStyle.transform = "translateY(-50%) rotate(270deg)"
   }
+
   const cardClassName = isConfirming
     ? "w-fit min-w-[192px] max-w-[min(320px,80vw)] bg-[#303030] p-2.5 text-white"
     : `w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white ${
         multiline ? "whitespace-normal" : "whitespace-nowrap"
       }`
+
+  return createPortal(
+    <TooltipLayerContext.Provider value={layerContextValue}>
+      <div
+        ref={tooltipRef}
+        role="tooltip"
+        className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${
+          !coords
+            ? "invisible pointer-events-none"
+            : isAnimatingOut
+              ? "animate-tooltip-out"
+              : "animate-tooltip-in"
+        } ${contentClassName}`}
+        style={{
+          left: coords?.left ?? -9999,
+          top: coords?.top ?? -9999,
+          visibility: coords ? "visible" : "hidden",
+        }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onClick={(event) => {
+          event.stopPropagation()
+          if (closeOnContentClick) onClose()
+        }}
+      >
+        {minimizable && (
+          <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
+            {title && (
+              <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
+                {title}
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label={t("common.collapse")}
+              onClick={onClose}
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {isConfirming ? (
+          <div className="flex flex-col gap-1.5">
+            {title && <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>}
+            <div className="text-sm leading-snug">{content}</div>
+            <div className="mt-0.5 flex items-center justify-end gap-1">
+              <button
+                aria-label={t("common.cancel")}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onCancel?.()
+                }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+              <button
+                aria-label={t("common.confirm")}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onConfirm()
+                }}
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        ) : title && !minimizable ? (
+          <div className="flex flex-col gap-1">
+            <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
+              {title}
+            </div>
+            {content}
+          </div>
+        ) : (
+          <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : "h-full"}>
+            {content}
+          </div>
+        )}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          style={arrowStyle}
+          className="lx-tooltip-arrow pointer-events-none text-[#303030]"
+        >
+          <path
+            d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+      </div>
+    </TooltipLayerContext.Provider>,
+    document.body,
+  )
+}
+
+/**
+ * 判断配置是否为 LxTooltipConfig 对象。
+ */
+const isConfigObject = (value?: LxTooltipConfig | React.ReactNode): value is LxTooltipConfig => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !React.isValidElement(value) &&
+    ("content" in value ||
+      "title" in value ||
+      "placement" in value ||
+      "delay" in value ||
+      "open" in value ||
+      "onConfirm" in value)
+  )
+}
+
+/**
+ * Tooltip - 通过 Portal 渲染的统一提示与二次确认气泡。
+ * 自动根据可用视口空间调整方向，并避免被父级 overflow 裁剪。
+ * 支持单模式以及同一个触发器上同时配置独立的 hover 与 click 内容。
+ */
+export const LxTooltip = ({
+  children,
+  title,
+  content,
+  placement = "top",
+  trigger = "hover",
+  delay = 150,
+  contentClassName = "",
+  className = "",
+  hover,
+  click,
+  multiline = false,
+  minimizable = false,
+  closeOnScroll = true,
+  closeOnOutsideClick = true,
+  closeOnContentClick = false,
+  open,
+  onOpenChange,
+  onConfirm,
+  onCancel,
+}: LxTooltipProps): React.JSX.Element => {
+  // 解析 hover 与 click 的独立配置
+  const hoverConfig = useMemo<LxTooltipConfig | null>(() => {
+    if (hover !== undefined) {
+      if (isConfigObject(hover)) return hover
+      return { content: hover }
+    }
+    if (trigger === "hover" || trigger === "both") {
+      return {
+        title,
+        content,
+        placement,
+        delay,
+        contentClassName,
+        multiline,
+        minimizable,
+        closeOnScroll,
+        closeOnOutsideClick,
+        closeOnContentClick,
+      }
+    }
+    return null
+  }, [
+    hover,
+    trigger,
+    title,
+    content,
+    placement,
+    delay,
+    contentClassName,
+    multiline,
+    minimizable,
+    closeOnScroll,
+    closeOnOutsideClick,
+    closeOnContentClick,
+  ])
+
+  const clickConfig = useMemo<LxTooltipConfig | null>(() => {
+    if (click !== undefined) {
+      if (isConfigObject(click)) return click
+      return { content: click }
+    }
+    if (trigger === "click" || trigger === "both" || typeof onConfirm === "function") {
+      return {
+        title,
+        content,
+        placement,
+        delay: delay ?? 0,
+        contentClassName,
+        multiline,
+        minimizable,
+        closeOnScroll,
+        closeOnOutsideClick,
+        closeOnContentClick,
+        open,
+        onOpenChange,
+        onConfirm,
+        onCancel,
+      }
+    }
+    return null
+  }, [
+    click,
+    trigger,
+    onConfirm,
+    title,
+    content,
+    placement,
+    delay,
+    contentClassName,
+    multiline,
+    minimizable,
+    closeOnScroll,
+    closeOnOutsideClick,
+    closeOnContentClick,
+    open,
+    onOpenChange,
+    onCancel,
+  ])
+
+  const [hoverVisible, setHoverVisible] = useState(false)
+  const [clickVisible, setClickVisible] = useState(clickConfig?.open ?? open ?? false)
+
+  const containerRef = useRef<HTMLElement>(null)
+  const showHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hideHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 同步受控 click open 状态
+  const targetClickOpen = clickConfig?.open ?? (clickConfig ? open : undefined)
+  useEffect(() => {
+    if (targetClickOpen === undefined) return
+    if (targetClickOpen !== clickVisible) {
+      setClickVisible(targetClickOpen)
+      if (targetClickOpen) {
+        setHoverVisible(false)
+      }
+    }
+  }, [targetClickOpen, clickVisible])
+
+  const clearHoverTimers = (): void => {
+    if (showHoverTimeoutRef.current) clearTimeout(showHoverTimeoutRef.current)
+    if (hideHoverTimeoutRef.current) clearTimeout(hideHoverTimeoutRef.current)
+    showHoverTimeoutRef.current = null
+    hideHoverTimeoutRef.current = null
+  }
+
+  useEffect(() => () => clearHoverTimers(), [])
+
+  const syncClickVisible = useCallback(
+    (visible: boolean): void => {
+      setClickVisible(visible)
+      clickConfig?.onOpenChange?.(visible)
+      if (clickConfig?.open === undefined && open !== undefined) {
+        onOpenChange?.(visible)
+      }
+      if (visible) {
+        clearHoverTimers()
+        setHoverVisible(false)
+      }
+    },
+    [clickConfig, open, onOpenChange],
+  )
+
+  const showHoverTooltip = (): void => {
+    if (clickVisible || !hoverConfig) return
+    if (hideHoverTimeoutRef.current) {
+      clearTimeout(hideHoverTimeoutRef.current)
+      hideHoverTimeoutRef.current = null
+    }
+    if (showHoverTimeoutRef.current) {
+      clearTimeout(showHoverTimeoutRef.current)
+      showHoverTimeoutRef.current = null
+    }
+    if (hoverVisible) return
+    const hoverDelay = hoverConfig.delay ?? delay ?? 150
+    if (hoverDelay === 0) {
+      setHoverVisible(true)
+      return
+    }
+    showHoverTimeoutRef.current = setTimeout(() => {
+      setHoverVisible(true)
+    }, hoverDelay)
+  }
+
+  const hideHoverTooltip = (): void => {
+    if (showHoverTimeoutRef.current) {
+      clearTimeout(showHoverTimeoutRef.current)
+      showHoverTimeoutRef.current = null
+    }
+    if (!hideHoverTimeoutRef.current) {
+      hideHoverTimeoutRef.current = setTimeout(() => {
+        hideHoverTimeoutRef.current = null
+        setHoverVisible(false)
+      }, 200)
+    }
+  }
+
   let triggerElement: React.ReactNode = children
   if (React.isValidElement(children)) {
     const child = children as React.ReactElement<
@@ -439,20 +691,20 @@ export const LxTooltip = ({
       },
       className: `${child.props.className ?? ""} ${className}`.trim(),
       onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
-        if (activeTrigger === "hover" || activeTrigger === "both") showTooltip()
+        if (hoverConfig) showHoverTooltip()
         child.props.onMouseEnter?.(event)
       },
       onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
-        if (activeTrigger === "hover" || activeTrigger === "both") hideTooltip()
+        if (hoverConfig) hideHoverTooltip()
         child.props.onMouseLeave?.(event)
       },
       onClick: (event: React.MouseEvent<HTMLElement>) => {
-        if (activeTrigger === "click" || activeTrigger === "both") {
+        if (clickConfig) {
           event.stopPropagation()
-          syncVisible(!isVisible)
+          syncClickVisible(!clickVisible)
         } else {
-          clearTimers()
-          syncVisible(false)
+          clearHoverTimers()
+          setHoverVisible(false)
         }
         child.props.onClick?.(event)
       },
@@ -468,116 +720,49 @@ export const LxTooltip = ({
   return (
     <>
       {triggerElement}
-      {shouldRender &&
-        createPortal(
-          <TooltipLayerContext.Provider value={layerContextValue}>
-            <div
-              ref={tooltipRef}
-              role="tooltip"
-              className={`fixed z-[999999] rounded-[6px] select-text drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${cardClassName} ${minimizable ? "flex flex-col" : ""} ${
-                !coords
-                  ? "invisible pointer-events-none"
-                  : isAnimatingOut
-                    ? "animate-tooltip-out"
-                    : "animate-tooltip-in"
-              } ${contentClassName}`}
-              style={{
-                left: coords?.left ?? -9999,
-                top: coords?.top ?? -9999,
-                visibility: coords ? "visible" : "hidden",
-              }}
-              onMouseEnter={() => {
-                if (hideTimeoutRef.current) {
-                  clearTimeout(hideTimeoutRef.current)
-                  hideTimeoutRef.current = null
-                }
-              }}
-              onMouseLeave={() => {
-                if (activeTrigger === "hover" || activeTrigger === "both") hideTooltip()
-              }}
-              onClick={(event) => {
-                event.stopPropagation()
-                if (closeOnContentClick) syncVisible(false)
-              }}
-            >
-              {minimizable && (
-                <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
-                  {title && (
-                    <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
-                      {title}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={t("common.collapse")}
-                    onClick={() => syncVisible(false)}
-                    className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-              {isConfirming ? (
-                <div className="flex flex-col gap-1.5">
-                  {title && (
-                    <div className="b pb-1 text-sm font-semibold text-white/80">{title}</div>
-                  )}
-                  <div className="text-sm leading-snug">{content}</div>
-                  <div className="mt-0.5 flex items-center justify-end gap-1">
-                    <button
-                      aria-label={t("common.cancel")}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-white/45 transition-colors hover:bg-white/5 hover:text-white"
-                      type="button"
-                      onClick={() => {
-                        syncVisible(false)
-                        onCancel?.()
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                    <button
-                      aria-label={t("common.confirm")}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[6px] text-emerald-400/80 transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
-                      type="button"
-                      onClick={() => {
-                        syncVisible(false)
-                        onConfirm()
-                      }}
-                    >
-                      <Check className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              ) : title && !minimizable ? (
-                <div className="flex flex-col gap-1">
-                  <div className="border-b border-white/10 pb-1 text-xs font-semibold text-white/80">
-                    {title}
-                  </div>
-                  {content}
-                </div>
-              ) : (
-                // 撑满气泡高度，保证 contentClassName 指定固定高度时内部滚动生效；
-                // 气泡高度自适应时百分比高度退化为 auto，无副作用。
-                <div className={minimizable ? "max-h-[min(60vh,480px)] overflow-y-auto" : "h-full"}>
-                  {content}
-                </div>
-              )}
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 20 20"
-                style={arrowStyle}
-                className="lx-tooltip-arrow pointer-events-none text-[#303030]"
-              >
-                <path
-                  d="M 5,14 L 15,14 Q 17,14 16,12 L 11.5,4 Q 10,1 8.5,4 L 4,12 Q 3,14 5,14 Z"
-                  fill="currentColor"
-                  stroke="none"
-                />
-              </svg>
-            </div>
-          </TooltipLayerContext.Provider>,
-          document.body,
-        )}
+      {/* 悬停气泡：当点击浮层未打开且存在 hover 配置时展示 */}
+      {hoverConfig && !clickVisible && (
+        <TooltipBubble
+          isOpen={hoverVisible}
+          onClose={() => setHoverVisible(false)}
+          containerRef={containerRef}
+          title={hoverConfig.title}
+          content={hoverConfig.content}
+          placement={hoverConfig.placement ?? placement}
+          contentClassName={hoverConfig.contentClassName ?? contentClassName}
+          multiline={hoverConfig.multiline ?? multiline}
+          minimizable={hoverConfig.minimizable ?? minimizable}
+          closeOnScroll={hoverConfig.closeOnScroll ?? closeOnScroll}
+          closeOnOutsideClick={hoverConfig.closeOnOutsideClick ?? closeOnOutsideClick}
+          closeOnContentClick={hoverConfig.closeOnContentClick ?? closeOnContentClick}
+          onMouseEnter={() => {
+            if (hideHoverTimeoutRef.current) {
+              clearTimeout(hideHoverTimeoutRef.current)
+              hideHoverTimeoutRef.current = null
+            }
+          }}
+          onMouseLeave={hideHoverTooltip}
+        />
+      )}
+      {/* 点击气泡 */}
+      {clickConfig && (
+        <TooltipBubble
+          isOpen={clickVisible}
+          onClose={() => syncClickVisible(false)}
+          containerRef={containerRef}
+          title={clickConfig.title ?? title}
+          content={clickConfig.content ?? content}
+          placement={clickConfig.placement ?? placement}
+          contentClassName={clickConfig.contentClassName ?? contentClassName}
+          multiline={clickConfig.multiline ?? multiline}
+          minimizable={clickConfig.minimizable ?? minimizable}
+          closeOnScroll={clickConfig.closeOnScroll ?? closeOnScroll}
+          closeOnOutsideClick={clickConfig.closeOnOutsideClick ?? closeOnOutsideClick}
+          closeOnContentClick={clickConfig.closeOnContentClick ?? closeOnContentClick}
+          onConfirm={clickConfig.onConfirm ?? onConfirm}
+          onCancel={clickConfig.onCancel ?? onCancel}
+        />
+      )}
     </>
   )
 }
