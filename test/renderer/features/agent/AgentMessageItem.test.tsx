@@ -436,8 +436,8 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getAllByText("Read")).toHaveLength(2)
-    expect(screen.getAllByText("/tmp/first.ts")).not.toHaveLength(0)
-    expect(screen.getAllByText("/tmp/second.ts")).not.toHaveLength(0)
+    expect(screen.getAllByText("read /tmp/first.ts")).not.toHaveLength(0)
+    expect(screen.getAllByText("read /tmp/second.ts")).not.toHaveLength(0)
   })
 
   it("将连续的同名 web_search 调用合并为括号分隔的搜索条件，并入执行折叠组", () => {

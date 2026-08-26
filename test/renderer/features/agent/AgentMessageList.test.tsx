@@ -89,7 +89,7 @@ describe("AgentMessageList", () => {
     render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
 
     expect(screen.getAllByText("Read")).toHaveLength(1)
-    expect(screen.getByText("src/main.ts")).not.toBeNull()
+    expect(screen.getByText("read src/main.ts")).not.toBeNull()
   })
 
   it("同一轮 AI 执行只渲染一个底部复制操作", () => {

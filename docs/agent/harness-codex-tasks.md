@@ -33,18 +33,19 @@
   - 文件: `test/main/agent/turnContext.test.ts`
 
 ### Phase 3: 工具链与安全沙箱强化
-- [ ] **Task 3.1: 实现 CommandSafetyGuard 危险指令解析与安全判定**
+- [x] **Task 3.1: 实现 CommandSafetyGuard 危险指令解析与安全判定**
   - 参考 Codex `is_dangerous_command.rs`，递归拆解 `sudo`、`env`、`sh -c` 等 shell 封装，对破坏性指令（`rm -rf /`、`git reset --hard`、`git clean -fdx` 等）实现硬性拦截与安全评级。
-  - 文件: `src/main/agent/guard/commandSafetyGuard.ts` (新建)
-- [ ] **Task 3.2: 接入 PermissionManager 动态拦截流**
+  - 文件: `src/main/agent/guard/commandSafetyGuard.ts`
+- [x] **Task 3.2: 接入 PermissionManager 动态拦截流**
   - 在 `permissionManager.evaluate` 中集成 `commandSafetyGuard`，对危险指令直接 deny，敏感操作动态提升为 ask。
   - 文件: `src/main/agent/permissions/permissionManager.ts`
-- [ ] **Task 3.3: 编写安全沙箱与高危指令拦截单测**
-  - 文件: `test/main/agent/guard/commandSafetyGuard.test.ts` (新建)
+- [x] **Task 3.3: 编写安全沙箱与高危指令拦截单测**
+  - 文件: `test/main/agent/guard/commandSafetyGuard.test.ts`
 
 ### Phase 4: 前端事件同步与全链路回归
-- [ ] **Task 4.1: 前端 AgentPage 与 IPC 事件兼容性复核**
-  - 确认排队消息数、Turn 状态及工作区标识正常展示。
-  - 文件: `src/renderer/src/features/agent/AgentPage.tsx`
-- [ ] **Task 4.2: 全量 Agent 单测与回归验证**
-  - 运行 `pnpm test test/main/agent` 确保 100% 通过。
+- [x] **Task 4.1: 创建 .worktrees/feat-codex-frontend-sync 独立工作区**
+- [ ] **Task 4.2: 前端 useAgentChat 与 AgentPage 状态流对齐**
+  - 确认排队消息数、Turn 状态感知、Abort 中止响应及工作区标识正常展示。
+  - 文件: `src/renderer/src/features/agent/hooks/useAgentChat.ts`、`src/renderer/src/features/agent/AgentPage.tsx`
+- [ ] **Task 4.3: 全量 Agent 单测与回归验证**
+  - 运行 `pnpm test test/main/agent` 以及前端 `test/renderer/features/agent`，确保 100% 通过。
