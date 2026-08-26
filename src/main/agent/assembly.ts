@@ -79,6 +79,26 @@ export const collectEnvironmentVariables = (cwd?: string): Record<string, string
     } catch {
       // 非 git 仓库或超时，静默跳过
     }
+
+    try {
+      const gitCommonDir = execSync("git rev-parse --git-common-dir", {
+        cwd,
+        timeout: 1000,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim()
+      const gitDir = execSync("git rev-parse --git-dir", {
+        cwd,
+        timeout: 1000,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim()
+      if (gitCommonDir && gitDir && gitCommonDir !== gitDir) {
+        vars.is_worktree = "true"
+      }
+    } catch {
+      // 非 git 仓库或超时，静默跳过
+    }
   }
   return vars
 }

@@ -56,7 +56,17 @@ vi.mock("@/services/settingsService", () => ({
 }))
 
 vi.mock("@/services/projectService", () => ({
-  projectService: { listProjects: () => [] },
+  projectService: {
+    listProjects: () => [
+      {
+        id: "proj-1",
+        name: "test-proj",
+        type: "filesystem",
+        path: "/tmp",
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+  },
 }))
 
 vi.mock("@/services/agentSessionService", async (importOriginal) => {
@@ -155,8 +165,40 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
   it("会话级作用域覆盖：按 sessionId 覆盖 persona，不污染其他会话", async () => {
     const { agentRunner } = await import("@/agent/agentRunner")
+    holder.streamResponses = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "ok 1" }],
+        provider: "p",
+        model: "m",
+        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "ok 2" }],
+        provider: "p",
+        model: "m",
+        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "ok 3" }],
+        provider: "p",
+        model: "m",
+        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+    ]
     // 1. 创建第一个会话
     const res1 = await agentRunner.send("init", undefined, { page: "/p1", cwd: projectDir })
+    if (!res1.ok) {
+      console.error("send failed with error:", res1.error)
+    }
     expect(res1.ok).toBe(true)
     if (!res1.ok) return
     const sessionId = res1.sessionId
@@ -200,6 +242,17 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
   it("拦截器动态注入：拦截器可为对话追加 LSP 诊断等上下文", async () => {
     const { agentRunner } = await import("@/agent/agentRunner")
+    holder.streamResponses = [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "ok lsp" }],
+        provider: "p",
+        model: "m",
+        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+    ]
     const unregisterInterceptor = defaultSystemPromptManager.registerInterceptor({
       name: "lsp-mock-interceptor",
       apply: (assembly) => {
@@ -211,6 +264,7 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
     })
 
     try {
+      holder.capturedSystemPrompts = []
       await agentRunner.send("check types", undefined, { page: "/p3", cwd: projectDir })
 
       expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
