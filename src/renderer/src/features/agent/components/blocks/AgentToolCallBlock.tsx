@@ -118,7 +118,22 @@ const compactPath = (path: string): string => {
   return `${isAbsolute ? "/" : ""}${segments[0]}/.../${segments.slice(-2).join("/")}`
 }
 
-// 从工具调用中提取需要展示的文件路径。
+// 格式化 read 工具的路径与分页范围（例如 foo.ts (L1-100)）。
+const formatReadTarget = (args: Record<string, unknown>): string => {
+  const path = typeof args.path === "string" ? compactPath(args.path) : "Unknown file"
+  const offset = typeof args.offset === "number" ? args.offset : undefined
+  const limit = typeof args.limit === "number" ? args.limit : undefined
+
+  if (offset !== undefined || limit !== undefined) {
+    const start = offset ?? 1
+    const range = limit !== undefined ? `${start}-${start + limit - 1}` : `${start}+`
+    return `${path} (L${range})`
+  }
+
+  return path
+}
+
+// 从工具调用中提取需要展示的文件路径或目标说明。
 const getToolCallPaths = (toolCalls: ToolCallBlock[]): string[] =>
   toolCalls.flatMap(({ args }) => {
     const path = args.path
@@ -135,6 +150,7 @@ const getToolCallPaths = (toolCalls: ToolCallBlock[]): string[] =>
 // 按工具类型生成调用摘要，避免将结果正文混入命令展示。
 const formatToolCommand = (toolName: string, args: Record<string, unknown>): string | null => {
   const path = typeof args.path === "string" ? args.path : "."
+  if (toolName === "read") return `read ${formatReadTarget(args)}`
   if (toolName === "edit" || toolName === "write") return `${toolName} ${path}`
   if (toolName === "find") return `find ${String(args.pattern ?? "")} ${path}`.trim()
   if (toolName === "grep") return `grep ${String(args.pattern ?? "")} ${path}`.trim()
@@ -156,7 +172,7 @@ const formatToolGroupSummary = (toolName: string, toolCalls: ToolCallBlock[]): s
   if (!separator || toolCalls.length <= 1) return ""
 
   if (toolName === "read") {
-    return getToolCallPaths(toolCalls).map(compactPath).join(separator)
+    return toolCalls.map(({ args }) => formatReadTarget(args)).join(separator)
   }
 
   const entries = toolCalls.map(({ args }) => {
@@ -301,7 +317,6 @@ export const AgentToolCallBlock = ({
   }
 
   const displayToolName = toolName.charAt(0).toUpperCase() + toolName.slice(1)
-  const readPaths = getToolCallPaths(resolvedToolCalls)
   const simpleSummary = getSimpleToolSummary(toolName)
   const commandSummary = firstToolCall ? formatToolCommand(toolName, firstToolCall.args) : null
   const summary =
@@ -368,14 +383,10 @@ export const AgentToolCallBlock = ({
       ) : isSimpleTool ? (
         <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
           <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
-          {toolName === "read" ? (
-            <span className="agent-tool-call-desc min-w-0 break-all">
-              {readPaths.map(compactPath).join(TOOL_GROUP_SEPARATORS.read)}
-            </span>
-          ) : groupSummary ? (
+          {groupSummary ? (
             <span className="agent-tool-call-desc min-w-0 break-all">{groupSummary}</span>
           ) : (
-            <span className="agent-tool-call-desc">{summary}</span>
+            <span className="agent-tool-call-desc min-w-0 break-all">{summary}</span>
           )}
         </div>
       ) : (
