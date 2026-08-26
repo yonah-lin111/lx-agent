@@ -1210,4 +1210,67 @@ describe("AgentExecutionFlowList", () => {
     expect(turnSummary.textContent).toContain("took 7.0s")
     expect(turnSummary.textContent).not.toContain("took 3.0s")
   })
+
+  it("当 canContinue 为 true 且提供 onContinue 时在最后一轮渲染继续生成按钮并响应点击", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "继续写代码" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        stopReason: "length",
+        blocks: [{ kind: "text", text: "这是被截断的输出" }],
+        isStreaming: false,
+      },
+    ]
+
+    const onContinue = vi.fn()
+    render(
+      <AgentExecutionFlowList
+        messages={messages}
+        canContinue={true}
+        onContinue={onContinue}
+      />,
+    )
+
+    const continueBtn = screen.getByRole("button", { name: /继续生成|Continue Generating/i })
+    expect(continueBtn).not.toBeNull()
+    fireEvent.click(continueBtn)
+    expect(onContinue).toHaveBeenCalledTimes(1)
+  })
+
+  it("当 canContinue 为 false 时不渲染继续生成按钮", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "完成的任务" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        stopReason: "stop",
+        blocks: [{ kind: "text", text: "这是完整的输出" }],
+        isStreaming: false,
+      },
+    ]
+
+    const onContinue = vi.fn()
+    render(
+      <AgentExecutionFlowList
+        messages={messages}
+        canContinue={false}
+        onContinue={onContinue}
+      />,
+    )
+
+    expect(
+      screen.queryByRole("button", { name: /继续生成|Continue Generating/i }),
+    ).toBeNull()
+  })
 })

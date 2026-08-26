@@ -1,5 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { ChevronUp, Loader2, Workflow } from "lucide-react"
+import { ChevronUp, Loader2, RefreshCw, Workflow } from "lucide-react"
 import {
   Fragment,
   forwardRef,
@@ -42,6 +42,10 @@ export interface AgentExecutionFlowListProps {
   onSelectPrompt?: (prompt: string) => void
   // 导航状态变化回调（驱动输入区上一个/下一个/回到底部按钮可用性）
   onNavigationStateChange?: (state: AgentFlowNavState) => void
+  // "继续生成"可用（最后一条 AI 回答被截断/中止且未在流式）
+  canContinue?: boolean
+  // 点击"继续生成"：续写被中断的上一轮输出
+  onContinue?: () => void
 }
 
 // 输入区导航按钮状态。
@@ -73,7 +77,16 @@ export const AgentExecutionFlowList = forwardRef<
   AgentExecutionFlowListProps
 >(
   (
-    { messages, isStreaming = false, sessionId, cwd, onSelectPrompt, onNavigationStateChange },
+    {
+      messages,
+      isStreaming = false,
+      sessionId,
+      cwd,
+      onSelectPrompt,
+      onNavigationStateChange,
+      canContinue = false,
+      onContinue,
+    },
     ref,
   ) => {
     const { t } = useTranslation()
@@ -838,6 +851,23 @@ export const AgentExecutionFlowList = forwardRef<
                                 })}
                               </span>
                             )}
+                          </div>
+                        )}
+
+                      {/* 最后一轮被截断/中止时展示"继续生成"操作按钮 */}
+                      {isTurnEnd &&
+                        elementTurnIndex === maxTurn &&
+                        canContinue &&
+                        onContinue && (
+                          <div className="agent-execution-flow-continue-container mt-1 mb-1.5 flex pl-1">
+                            <button
+                              type="button"
+                              onClick={onContinue}
+                              className="agent-execution-flow-continue-btn flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              {t("agent.continueGenerating")}
+                            </button>
                           </div>
                         )}
                     </Fragment>

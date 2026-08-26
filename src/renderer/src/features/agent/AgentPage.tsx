@@ -469,6 +469,8 @@ export const AgentPage = ({
             cwd={statusBarPath}
             onSelectPrompt={(prompt) => sendMessage(prompt)}
             onNavigationStateChange={setNavState}
+            canContinue={canContinue}
+            onContinue={continueChat}
           />
         ) : (
           <>
