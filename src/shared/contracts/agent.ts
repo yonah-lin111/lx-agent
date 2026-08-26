@@ -588,7 +588,7 @@ export interface AgentApi {
       options?: AgentSendOptions,
     ) => Promise<AgentSendResult>
     // 继续生成：续写被截断/中止的上一轮输出（busy 时返回 { ok: false }）。
-    continue: () => Promise<AgentSendResult>
+    continue: (prompt?: string) => Promise<AgentSendResult>
     // 切换当前会话工作区：更新会话工具执行目录（cwd），下次装配按新目录重建工具集。
     switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
     // 切换当前会话项目：更新会话关联的项目 ID 与工具执行目录（cwd），重新加载工具集与技能。

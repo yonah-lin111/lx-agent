@@ -39,7 +39,7 @@ export const agentApi = {
     context?: AgentSendContext,
     options?: AgentSendOptions,
   ): Promise<AgentSendResult> => window.api.agent.send(text, selection, context, options),
-  continue: (): Promise<AgentSendResult> => window.api.agent.continue(),
+  continue: (prompt?: string): Promise<AgentSendResult> => window.api.agent.continue(prompt),
   compact: (): Promise<AgentCompactResult> => window.api.agent.compact(),
   undoCompaction: (): Promise<AgentUndoCompactionResult> => window.api.agent.undoCompaction(),
   switchWorktree: (path: string): Promise<AgentSwitchWorktreeResult> =>

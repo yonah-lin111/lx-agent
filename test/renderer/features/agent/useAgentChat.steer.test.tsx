@@ -148,4 +148,31 @@ describe("useAgentChat Steer 发送与停止 loading", () => {
     const finalized = result.current.messages.find((m) => m.role === "assistant")
     expect(finalized?.isStreaming).toBe(false)
   })
+
+  it("continueChat 会传入国际化续写提示词调用 agentApi.continue", async () => {
+    vi.mocked(agentApi).continue = vi.fn().mockResolvedValue({ ok: true, sessionId: "sess-1" })
+    const { result } = renderHook(() => useAgentChat())
+    await act(async () => {})
+
+    act(() => {
+      eventHandler({
+        type: "message_start",
+        message: assistant("截断消息", "length"),
+      })
+      eventHandler({
+        type: "message_end",
+        message: assistant("截断消息", "length"),
+      })
+    })
+
+    expect(result.current.canContinue).toBe(true)
+
+    await act(async () => {
+      result.current.continueChat()
+    })
+
+    expect(vi.mocked(agentApi).continue).toHaveBeenCalledWith(
+      expect.stringMatching(/Please continue from where you left off|请继续输出刚才被中断的内容/),
+    )
+  })
 })

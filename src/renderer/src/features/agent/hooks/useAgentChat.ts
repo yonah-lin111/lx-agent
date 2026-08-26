@@ -616,13 +616,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 继续生成：续写被截断/中止的上一轮输出（续写指令由 main 注入为可见 user 气泡）。
   const continueChat = useCallback(() => {
     if (!canContinue) return
-    void agentApi.continue().then((result) => {
+    const prompt = t("agent.continuePrompt")
+    void agentApi.continue(prompt).then((result) => {
       if (result.ok && result.sessionId) {
         sessionListStore.setCurrentSessionId(result.sessionId)
         void sessionListStore.refresh()
       }
     })
-  }, [canContinue])
+  }, [canContinue, t])
 
   // 编辑已发送的消息内容（仅影响显示，不改变 main 侧上下文）。
   const editMessage = useCallback((id: string, newContent: string) => {

@@ -204,7 +204,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     },
   )
 
-  ipcMain.handle(AGENT_CHANNELS.continue, async () => agentRunner.continue())
+  ipcMain.handle(AGENT_CHANNELS.continue, async (_event, prompt?: unknown) => {
+    const text = typeof prompt === "string" ? prompt : undefined
+    return agentRunner.continue(text)
+  })
 
   // 手动压缩（/compact）：renderer 侧已守卫流式；main 侧兜底禁用/忙态/无可压缩内容。
   ipcMain.handle(AGENT_CHANNELS.compact, () => agentRunner.compact())

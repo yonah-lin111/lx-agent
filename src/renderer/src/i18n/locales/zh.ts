@@ -213,6 +213,7 @@ export const zh: TranslationDictionary = {
     forkFromHere: "从此分支",
     editMessage: "编辑消息",
     continueGenerating: "继续生成",
+    continuePrompt: "请继续输出刚才被中断的内容。",
     deleteQaConfirm: "是否删除当前的QA",
     promptStatusTodo: "待处理",
     promptStatusInProgress: "进行中",

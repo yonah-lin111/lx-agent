@@ -41,7 +41,6 @@ import {
   MAX_INJECTED_SKILLS,
   resolveCwd,
 } from "./assembly"
-import type { PersonalityName } from "./prompts/personalities"
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
@@ -53,6 +52,7 @@ import { jobRegistry } from "./jobs/jobRegistry"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
+import type { PersonalityName } from "./prompts/personalities"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
@@ -652,7 +652,7 @@ class AgentRunner {
   // 继续生成：续写被截断/中止的上一轮输出（对齐 pi 后置续跑语义）。
   // 最后一条 assistant 的 stopReason ∈ {length, aborted} 时先注入可见的 user 续写指令再续跑，
   // 使被中断的输出得以续写；续写消息走既有事件流与落库（作为 user 气泡如实展示）。
-  async continue(): Promise<AgentSendResult> {
+  async continue(prompt?: string): Promise<AgentSendResult> {
     await mcpManager.ensureConnected()
     if (this.isBusy()) {
       return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
@@ -674,7 +674,7 @@ class AgentRunner {
       return { ok: false, error: "当前没有可继续的对话。" }
     }
 
-    const continueText = "请继续输出刚才被中断的内容。"
+    const continueText = prompt?.trim() || "请继续输出刚才被中断的内容。"
     // steer 消息在下一轮 loop 前被消费，作为可见 user 气泡随事件流落库。
     agent.steer({ role: "user", content: continueText, timestamp: Date.now() })
     this.beginSessionTurn(continueText)

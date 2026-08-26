@@ -19,7 +19,7 @@ export const agentApi: AgentApi["agent"] = {
     context?: AgentSendContext,
     options?: AgentSendOptions,
   ) => ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context, options),
-  continue: () => ipcRenderer.invoke(AGENT_CHANNELS.continue),
+  continue: (prompt?: string) => ipcRenderer.invoke(AGENT_CHANNELS.continue, prompt),
   compact: () => ipcRenderer.invoke(AGENT_CHANNELS.compact),
   undoCompaction: () => ipcRenderer.invoke(AGENT_CHANNELS.undoCompaction),
   abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),

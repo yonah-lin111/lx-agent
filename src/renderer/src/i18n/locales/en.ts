@@ -214,6 +214,7 @@ export const en = {
     forkFromHere: "Fork From Here",
     editMessage: "Edit Message",
     continueGenerating: "Continue Generating",
+    continuePrompt: "Please continue from where you left off.",
     deleteQaConfirm: "Are you sure you want to delete this QA pair?",
     promptStatusTodo: "Todo",
     promptStatusInProgress: "In Progress",
