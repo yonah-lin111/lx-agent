@@ -1215,8 +1215,15 @@ export const AgentMessageItem = ({
             </LxIconButton>
             {!readOnly && onDelete && (
               <LxTooltip
-                content={t("agent.deleteQaConfirm")}
-                onConfirm={() => onDelete(message.id)}
+                hover={{
+                  content: t("agent.deleteMessage"),
+                  placement: "top",
+                }}
+                click={{
+                  content: t("agent.deleteQaConfirm"),
+                  placement: "top",
+                  onConfirm: () => onDelete(message.id),
+                }}
               >
                 <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
                   <Trash2 className="h-3.5 w-3.5" />

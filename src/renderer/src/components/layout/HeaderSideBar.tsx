@@ -247,31 +247,36 @@ export const HeaderSideBar = ({
               <Tags className="h-3.5 w-3.5" />
             </LxIconButton>
             <LxTooltip
-              placement="bottom"
-              trigger="click"
-              closeOnContentClick
-              content={
-                <div className="theme-menu-dropdown flex flex-col gap-0.5 py-0.5 min-w-[90px]">
-                  {THEME_OPTIONS.map((opt) => {
-                    const isSelected = theme === opt.id
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setTheme(opt.id)}
-                        className={`theme-menu-option flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                          isSelected
-                            ? "bg-white/10 font-semibold text-white"
-                            : "text-white/70 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <span>{opt.label}</span>
-                        {isSelected && <Check className="h-3 w-3 shrink-0 text-emerald-400" />}
-                      </button>
-                    )
-                  })}
-                </div>
-              }
+              hover={{
+                content: t("header.switchTheme"),
+                placement: "bottom",
+              }}
+              click={{
+                content: (
+                  <div className="theme-menu-dropdown flex flex-col gap-0.5 py-0.5 min-w-[90px]">
+                    {THEME_OPTIONS.map((opt) => {
+                      const isSelected = theme === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setTheme(opt.id)}
+                          className={`theme-menu-option flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                            isSelected
+                              ? "bg-white/10 font-semibold text-white"
+                              : "text-white/70 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {isSelected && <Check className="h-3 w-3 shrink-0 text-emerald-400" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ),
+                placement: "bottom",
+                closeOnContentClick: true,
+              }}
             >
               <LxIconButton aria-label={t("header.switchTheme")} size="small">
                 <Palette className="h-3.5 w-3.5" />

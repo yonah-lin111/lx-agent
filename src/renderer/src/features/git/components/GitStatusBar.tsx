@@ -20,12 +20,6 @@ export interface GitStatusBarProps {
   className?: string
   // 当前绑定的项目 ID（交互模式下高亮选中的项目）。
   projectId?: string
-  // 路径切换提示目标（新会话切换页面/项目时触发）。
-  pathPrompt?: { projectId?: string; projectPath: string; projectName?: string } | null
-  // 确认切换路径回调。
-  onAcceptPathPrompt?: () => void
-  // 取消切换路径回调。
-  onDismissPathPrompt?: () => void
   // 是否启用交互模式（支持点击弹出菜单切换项目、分支与工作区）。默认 false。
   interactive?: boolean
   // 是否始终展示工作区（缺省时展示 'none'）。默认 false。
@@ -41,7 +35,7 @@ export interface GitStatusBarProps {
 /**
  * 渲染项目名、git 分支与工作区；非 git 目录仅显示项目名。
  *
- * 交互模式下支持点击弹出 LxTooltip 选择切换项目、本地分支与工作区。
+ * 交互模式下支持 hover 提示以及点击弹出 LxTooltip 选择切换项目、本地分支与工作区。
  * 每个 Tooltip 包含固定的搜索框与标题，不随列表滚动；点击内容区不关闭，选择条目后关闭。
  * 非交互模式下保持只读展示（MarkdownStatusBar 使用）。
  */
@@ -49,9 +43,6 @@ export const GitStatusBar = ({
   projectPath,
   className = "flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50",
   projectId,
-  pathPrompt,
-  onAcceptPathPrompt,
-  onDismissPathPrompt,
   interactive = false,
   alwaysShowWorktree = false,
   onProjectChange,
@@ -66,20 +57,9 @@ export const GitStatusBar = ({
   const [defaultDesktopPath, setDefaultDesktopPath] = useState<string>("")
 
   // Tooltip 开关状态
-  const [isPathPromptOpen, setIsPathPromptOpen] = useState(false)
   const [isProjectSelectOpen, setIsProjectSelectOpen] = useState(false)
   const [isBranchSelectOpen, setIsBranchSelectOpen] = useState(false)
   const [isWorktreeSelectOpen, setIsWorktreeSelectOpen] = useState(false)
-
-  // 当外部传入新 pathPrompt 时自动展开切换提示气泡并关闭选择菜单
-  useEffect(() => {
-    if (pathPrompt) {
-      setIsProjectSelectOpen(false)
-      setIsPathPromptOpen(true)
-    } else {
-      setIsPathPromptOpen(false)
-    }
-  }, [pathPrompt])
 
   // 搜索关键字状态
   const [projectQuery, setProjectQuery] = useState("")
@@ -148,7 +128,8 @@ export const GitStatusBar = ({
     .filter(
       (entry) =>
         Boolean(projectPath) &&
-        (entry.path === projectPath || (projectPath ? projectPath.startsWith(`${entry.path}/`) : false)),
+        (entry.path === projectPath ||
+          (projectPath ? projectPath.startsWith(`${entry.path}/`) : false)),
     )
     .sort((a, b) => b.path.length - a.path.length)[0]
   const worktreeName =
@@ -221,57 +202,10 @@ export const GitStatusBar = ({
       )
     }
 
-    const isShowingPrompt = Boolean(isPathPromptOpen && pathPrompt)
-
-    const targetName =
-      pathPrompt?.projectName ||
-      projects.find(
-        (p) =>
-          (pathPrompt?.projectId && p.id === pathPrompt.projectId) ||
-          p.path === pathPrompt?.projectPath,
-      )?.name ||
-      (defaultDesktopPath && pathPrompt?.projectPath === defaultDesktopPath
-        ? t("git.desktopProject")
-        : pathPrompt?.projectPath
-          ? getGitWorktreeDirName(pathPrompt.projectPath)
-          : "")
-
-    const promptTooltipContent = (
-      <div className="flex max-w-[280px] flex-col gap-2 p-1">
-        <p className="text-xs text-white/80 leading-relaxed break-words whitespace-normal">
-          {t("git.switchDirectoryPrompt", { name: targetName })}
-        </p>
-        <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-white/5">
-          <button
-            type="button"
-            className="cursor-pointer rounded-[4px] px-2 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white transition-colors"
-            onClick={() => {
-              setIsPathPromptOpen(false)
-              onDismissPathPrompt?.()
-            }}
-          >
-            {t("git.keepCurrent")}
-          </button>
-          <button
-            type="button"
-            className="cursor-pointer rounded-[4px] bg-sky-500/20 px-2 py-1 text-xs font-medium text-sky-300 hover:bg-sky-500/30 transition-colors"
-            onClick={() => {
-              setIsPathPromptOpen(false)
-              onAcceptPathPrompt?.()
-            }}
-          >
-            {t("git.confirmSwitch")}
-          </button>
-        </div>
-      </div>
-    )
-
     const projectTooltipContent = (
       <div className="flex w-64 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">
-            {t("git.switchProject")}
-          </div>
+          <div className="text-[11px] font-medium text-white/40">{t("git.switchProject")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchProjects")}
@@ -332,44 +266,28 @@ export const GitStatusBar = ({
       </div>
     )
 
-    const isOpen = isShowingPrompt || isProjectSelectOpen
-
     return (
       <LxTooltip
-        open={isOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            if (!isShowingPrompt) {
+        hover={{
+          content: projectPath,
+          placement: "top",
+        }}
+        click={{
+          content: projectTooltipContent,
+          placement: "top",
+          multiline: true,
+          closeOnScroll: false,
+          closeOnOutsideClick: true,
+          closeOnContentClick: false,
+          open: isProjectSelectOpen,
+          onOpenChange: (open) => {
+            setIsProjectSelectOpen(open)
+            if (open) {
               setProjectQuery("")
               loadProjects()
-              setIsProjectSelectOpen(true)
             }
-          } else {
-            if (isShowingPrompt) {
-              setIsPathPromptOpen(false)
-              onDismissPathPrompt?.()
-            }
-            setIsProjectSelectOpen(false)
-          }
+          },
         }}
-        trigger="click"
-        placement="top"
-        multiline={true}
-        minimizable={isShowingPrompt}
-        closeOnScroll={false}
-        closeOnOutsideClick={true}
-        closeOnContentClick={false}
-        title={
-          isShowingPrompt ? (
-            <span className="flex min-w-0 items-center gap-1.5">
-              <Folder className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-              <span className="shrink-0 text-[13px] font-medium text-white/90">
-                {t("git.switchDirectoryTitle")}
-              </span>
-            </span>
-          ) : undefined
-        }
-        content={isShowingPrompt ? promptTooltipContent : projectTooltipContent}
       >
         <button
           type="button"
@@ -380,9 +298,7 @@ export const GitStatusBar = ({
               isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
             }`}
           />
-          <span
-            className={`truncate ${isCurrentPathDesktop ? "text-violet-300 font-medium" : ""}`}
-          >
+          <span className={`truncate ${isCurrentPathDesktop ? "text-violet-300 font-medium" : ""}`}>
             {projectName}
           </span>
         </button>
@@ -412,9 +328,7 @@ export const GitStatusBar = ({
     const branchTooltipContent = (
       <div className="flex w-56 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">
-            {t("git.switchBranch")}
-          </div>
+          <div className="text-[11px] font-medium text-white/40">{t("git.switchBranch")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchBranches")}
@@ -458,20 +372,25 @@ export const GitStatusBar = ({
 
     return (
       <LxTooltip
-        open={isBranchSelectOpen}
-        onOpenChange={(open) => {
-          setIsBranchSelectOpen(open)
-          if (open) {
-            setBranchQuery("")
-            loadBranches()
-          }
+        hover={{
+          content: t("git.currentBranch", { branch: displayBranch }),
+          placement: "top",
         }}
-        trigger="click"
-        placement="top"
-        multiline={true}
-        closeOnOutsideClick={true}
-        closeOnContentClick={false}
-        content={branchTooltipContent}
+        click={{
+          content: branchTooltipContent,
+          placement: "top",
+          multiline: true,
+          closeOnOutsideClick: true,
+          closeOnContentClick: false,
+          open: isBranchSelectOpen,
+          onOpenChange: (open) => {
+            setIsBranchSelectOpen(open)
+            if (open) {
+              setBranchQuery("")
+              loadBranches()
+            }
+          },
+        }}
       >
         <button
           type="button"
@@ -507,9 +426,7 @@ export const GitStatusBar = ({
     const worktreeTooltipContent = (
       <div className="flex w-64 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">
-            {t("git.switchWorktree")}
-          </div>
+          <div className="text-[11px] font-medium text-white/40">{t("git.switchWorktree")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchWorktrees")}
@@ -526,9 +443,7 @@ export const GitStatusBar = ({
           ) : (
             filteredWorktrees.map((wt) => {
               const isCurrent = wt.path === currentEntry?.path || (wt.isDefault && !currentEntry)
-              const name = wt.isDefault
-                ? t("git.defaultWorktree")
-                : getGitWorktreeDirName(wt.path)
+              const name = wt.isDefault ? t("git.defaultWorktree") : getGitWorktreeDirName(wt.path)
               return (
                 <button
                   key={wt.path}
@@ -557,20 +472,25 @@ export const GitStatusBar = ({
 
     return (
       <LxTooltip
-        open={isWorktreeSelectOpen}
-        onOpenChange={(open) => {
-          setIsWorktreeSelectOpen(open)
-          if (open) {
-            setWorktreeQuery("")
-            reload()
-          }
+        hover={{
+          content: t("git.worktree", { name: displayWorktree }),
+          placement: "top",
         }}
-        trigger="click"
-        placement="top"
-        multiline={true}
-        closeOnOutsideClick={true}
-        closeOnContentClick={false}
-        content={worktreeTooltipContent}
+        click={{
+          content: worktreeTooltipContent,
+          placement: "top",
+          multiline: true,
+          closeOnOutsideClick: true,
+          closeOnContentClick: false,
+          open: isWorktreeSelectOpen,
+          onOpenChange: (open) => {
+            setIsWorktreeSelectOpen(open)
+            if (open) {
+              setWorktreeQuery("")
+              reload()
+            }
+          },
+        }}
       >
         <button
           type="button"

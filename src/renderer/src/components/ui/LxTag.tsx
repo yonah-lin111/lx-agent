@@ -167,7 +167,17 @@ export const LxTag = ({
           {suffix}
           {onClose &&
             (confirmClose ? (
-              <LxTooltip content={resolvedCloseTooltip} onConfirm={onClose} placement="top">
+              <LxTooltip
+                hover={{
+                  content: t("common.delete"),
+                  placement: "top",
+                }}
+                click={{
+                  content: resolvedCloseTooltip,
+                  placement: "top",
+                  onConfirm: onClose,
+                }}
+              >
                 <span
                   aria-label={t("common.delete")}
                   className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
@@ -178,7 +188,12 @@ export const LxTag = ({
                 </span>
               </LxTooltip>
             ) : (
-              <LxTooltip content={resolvedCloseTooltip} placement="top">
+              <LxTooltip
+                hover={{
+                  content: resolvedCloseTooltip,
+                  placement: "top",
+                }}
+              >
                 <span
                   aria-label={t("common.delete")}
                   className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"

@@ -185,7 +185,17 @@ export const MarkdownEditorToolbar = ({
           <Table2 className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
-      <LxTooltip content={shortcutList} placement="bottom" trigger="click" contentClassName="!p-2">
+      <LxTooltip
+        hover={{
+          content: t("markdown.shortcutsHint"),
+          placement: "bottom",
+        }}
+        click={{
+          content: shortcutList,
+          placement: "bottom",
+          contentClassName: "!p-2",
+        }}
+      >
         <LxIconButton aria-label={t("markdown.shortcutsHint")} size="small">
           <Keyboard className="h-3.5 w-3.5" />
         </LxIconButton>

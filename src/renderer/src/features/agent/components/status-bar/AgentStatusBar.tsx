@@ -13,12 +13,6 @@ export interface AgentStatusBarProps {
   projectPath?: string
   // 当前会话绑定的项目 ID。
   projectId?: string
-  // 路径切换提示目标（新会话切换页面/项目时触发）。
-  pathPrompt?: { projectId?: string; projectPath: string; projectName?: string } | null
-  // 确认切换路径回调。
-  onAcceptPathPrompt?: () => void
-  // 取消切换路径回调。
-  onDismissPathPrompt?: () => void
   // 切换项目回调。
   onProjectChange?: (projectId: string, projectPath: string) => void
   // 切换分支回调。
@@ -60,9 +54,6 @@ const contextColor = (percent: number): string => {
 export const AgentStatusBar = ({
   projectPath,
   projectId,
-  pathPrompt,
-  onAcceptPathPrompt,
-  onDismissPathPrompt,
   onProjectChange,
   onBranchChange,
   onWorktreeChange,
@@ -84,9 +75,6 @@ export const AgentStatusBar = ({
         <GitStatusBar
           projectPath={projectPath}
           projectId={projectId}
-          pathPrompt={pathPrompt}
-          onAcceptPathPrompt={onAcceptPathPrompt}
-          onDismissPathPrompt={onDismissPathPrompt}
           interactive={true}
           alwaysShowWorktree={true}
           onProjectChange={onProjectChange}

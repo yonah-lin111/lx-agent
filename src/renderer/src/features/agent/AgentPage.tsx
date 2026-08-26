@@ -135,9 +135,9 @@ export const AgentPage = ({
   )
   const currentSessionPath = currentSessionBinding?.cwd
 
-  // 当新会话处于草稿态且尚未建立 draftBinding 时，初始化锁定到当前页面/项目
+  // 当处于草稿态（未入库）且页面/项目发生切换时，自动同步草稿路径到当前页面/项目
   useEffect(() => {
-    if (!currentSessionId && !currentSessionBinding) {
+    if (!currentSessionId) {
       const initialCwd = currentProjectPath || defaultPath
       if (initialCwd) {
         sessionListStore.setDraftBinding({
@@ -146,79 +146,15 @@ export const AgentPage = ({
         })
       }
     }
-  }, [currentSessionId, currentSessionBinding, currentProjectId, currentProjectPath, defaultPath])
+  }, [currentSessionId, currentProjectId, currentProjectPath, defaultPath])
 
-  // 会话路径锁定：
+  // 会话路径绑定：
   // 1. 已落库会话：使用会话绑定的 cwd
-  // 2. 草稿新会话：使用 draftBinding.cwd（若未就绪则回退到当前页面项目或默认桌面）
-  const effectiveProjectPath =
-    currentSessionBinding?.cwd ?? (currentProjectPath || defaultPath)
+  // 2. 草稿新会话：使用 draftBinding.cwd（若未手动指定则直接使用当前页面项目路径或默认桌面）
+  const effectiveProjectPath = currentSessionBinding?.cwd ?? (currentProjectPath || defaultPath)
   const effectiveProjectId =
     currentSessionBinding !== undefined ? currentSessionBinding.projectId : currentProjectId
   const statusBarPath = effectiveProjectPath
-
-  // 路径切换提示：新会话中切换页面或切换项目时，提示用户是否切换当前草稿会话的执行目录
-  const [pathPrompt, setPathPrompt] = useState<{
-    projectId?: string
-    projectPath: string
-    projectName?: string
-  } | null>(null)
-
-  const prevNavigationRef = useRef<{
-    projectId?: string
-    projectPath?: string
-    page?: string
-  }>({
-    projectId: currentProjectId,
-    projectPath: currentProjectPath,
-    page: context?.page,
-  })
-
-  const isInitialMountRef = useRef(true)
-
-  useEffect(() => {
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false
-      prevNavigationRef.current = {
-        projectId: currentProjectId,
-        projectPath: currentProjectPath,
-        page: context?.page,
-      }
-      return
-    }
-
-    const prev = prevNavigationRef.current
-    const targetProjectId = currentProjectId
-    const targetProjectPath = currentProjectPath || defaultPath
-
-    // 仅在新会话（尚未入库）且检测到页面或项目导航发生变更时触发
-    if (!currentSessionId && targetProjectPath) {
-      const isChanged =
-        prev.projectPath !== currentProjectPath ||
-        prev.projectId !== currentProjectId ||
-        prev.page !== context?.page
-
-      if (isChanged && targetProjectPath !== effectiveProjectPath) {
-        setPathPrompt({
-          projectId: targetProjectId,
-          projectPath: targetProjectPath,
-        })
-      }
-    }
-
-    prevNavigationRef.current = {
-      projectId: currentProjectId,
-      projectPath: currentProjectPath,
-      page: context?.page,
-    }
-  }, [
-    currentProjectId,
-    currentProjectPath,
-    context?.page,
-    defaultPath,
-    currentSessionId,
-    effectiveProjectPath,
-  ])
 
   // git 工作区列表（/gitWorktree 二级面板数据源；当前会话 cwd 即工作区绑定）。
   const { worktrees, projectBranch } = useGitWorktrees(effectiveProjectPath)
@@ -358,14 +294,7 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [
-    isStreaming,
-    activeSubagent,
-    pendingRequest,
-    handleStop,
-    warning,
-    t,
-  ])
+  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -415,18 +344,6 @@ export const AgentPage = ({
     },
     [success, error, t],
   )
-
-  // 确认路径切换提示：应用目标路径并关闭提示
-  const handleAcceptPathPrompt = useCallback(() => {
-    if (!pathPrompt) return
-    handleProjectSelect(pathPrompt.projectId ?? "", pathPrompt.projectPath)
-    setPathPrompt(null)
-  }, [pathPrompt, handleProjectSelect])
-
-  // 取消/忽略路径切换提示
-  const handleDismissPathPrompt = useCallback(() => {
-    setPathPrompt(null)
-  }, [])
 
   // 会话分支：从指定用户轮切割复制历史到新会话，创建后自动切换（输入框留空直接重写）。
   const handleFork = useCallback(
@@ -482,7 +399,6 @@ export const AgentPage = ({
 
   const handleNewChat = useCallback(() => {
     createNewChat()
-    setPathPrompt(null)
     const initialCwd = currentProjectPath || defaultPath
     if (initialCwd) {
       sessionListStore.setDraftBinding({
@@ -494,7 +410,6 @@ export const AgentPage = ({
 
   const handleRestoreChat = useCallback(
     (sessionId: string) => {
-      setPathPrompt(null)
       restoreChat(sessionId)
     },
     [restoreChat],
@@ -597,9 +512,6 @@ export const AgentPage = ({
       <AgentStatusBar
         projectPath={statusBarPath}
         projectId={effectiveProjectId}
-        pathPrompt={pathPrompt}
-        onAcceptPathPrompt={handleAcceptPathPrompt}
-        onDismissPathPrompt={handleDismissPathPrompt}
         onProjectChange={handleProjectSelect}
         onWorktreeChange={handleWorktreeSelect}
         contextUsage={contextUsage}
