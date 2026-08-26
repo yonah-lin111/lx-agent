@@ -135,15 +135,26 @@ export const AgentPage = ({
   )
   const currentSessionPath = currentSessionBinding?.cwd
 
-  // 当处于草稿态（未入库）且页面/项目发生切换时，自动同步草稿路径到当前页面/项目
+  // 当处于草稿态（未入库）且页面/项目发生切换时：
+  // 1. 如果草稿尚未绑定任何项目路径，或者当前草稿路径就是默认桌面路径（未被显式设置项目），则跟随当前页面/项目路径同步；
+  // 2. 如果新 session 已经明确有了项目路径（例如用户在状态栏选择过或已带入项目），切换页面时不强制回退到默认桌面。
   useEffect(() => {
     if (!currentSessionId) {
-      const initialCwd = currentProjectPath || defaultPath
-      if (initialCwd) {
+      if (currentProjectPath) {
+        // 当前全局切换到了具体项目，草稿同步切换到目标项目
         sessionListStore.setDraftBinding({
           projectId: currentProjectId,
-          cwd: initialCwd,
+          cwd: currentProjectPath,
         })
+      } else {
+        // 全局无项目（例如在桌面/非项目页面）：若草稿尚未设置任何路径，才兜底为默认桌面路径
+        const existingDraft = sessionListStore.getCurrentSessionBinding()
+        if (!existingDraft?.cwd && defaultPath) {
+          sessionListStore.setDraftBinding({
+            projectId: undefined,
+            cwd: defaultPath,
+          })
+        }
       }
     }
   }, [currentSessionId, currentProjectId, currentProjectPath, defaultPath])
@@ -298,7 +309,7 @@ export const AgentPage = ({
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
-    (path: string): void => {
+    (path: string, silent = false): void => {
       const sessionId = sessionListStore.getCurrentSessionId()
       if (!sessionId) {
         const currentBinding = sessionListStore.getCurrentSessionBinding()
@@ -309,7 +320,9 @@ export const AgentPage = ({
       }
       void agentApi.switchWorktree(path).then((result) => {
         if (result.ok) {
-          success(t("agent.worktreeSwitched"))
+          if (!silent) {
+            success(t("agent.worktreeSwitched"))
+          }
           if (sessionId) {
             void sessionListStore.refresh()
           }
@@ -320,6 +333,19 @@ export const AgentPage = ({
     },
     [success, error, t],
   )
+
+  // 检测当前工作区路径是否存在；若已被外部删除则自动静默回退至默认主工作区
+  useEffect(() => {
+    if (!worktrees || worktrees.length === 0 || !effectiveProjectPath) return
+    const defaultEntry = worktrees.find((wt) => wt.isDefault)
+    if (!defaultEntry) return
+
+    // 检查当前有效路径是否在当前仓库的工作区列表中
+    const existsInWorktrees = worktrees.some((wt) => wt.path === effectiveProjectPath)
+    if (!existsInWorktrees && effectiveProjectPath !== defaultEntry.path) {
+      handleWorktreeSelect(defaultEntry.path, true)
+    }
+  }, [worktrees, effectiveProjectPath, handleWorktreeSelect])
 
   // 切换会话项目：更新会话 project_id 与 cwd 后刷新会话列表。
   const handleProjectSelect = useCallback(

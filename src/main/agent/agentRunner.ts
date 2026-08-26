@@ -33,6 +33,7 @@ import type { SessionProjectionState } from "@shared/contracts/sessionProjection
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
+import { projectService } from "@/services/projectService"
 import { getAppDataRoot } from "../paths"
 import {
   ALL_TOOL_NAMES,
@@ -163,8 +164,35 @@ class AgentRunner {
     permissionManager.load()
     permissionManager.setMcpTools(this.activeMcp)
 
-    const cwd = this.requestedCwd ?? resolveCwd()
-    if (!cwd) {
+    let cwd = this.requestedCwd ?? resolveCwd()
+
+    // 物理存在性校验与自动兜底回退：若当前路径不存在，尝试回退到所属项目路径或系统默认项目
+    if (cwd && !existsSync(cwd)) {
+      let fallbackCwd: string | undefined
+      if (this.sessionBinding?.projectId) {
+        const projects = projectService.listProjects()
+        const currentProj = projects.find((p) => p.id === this.sessionBinding?.projectId)
+        if (currentProj?.path && existsSync(currentProj.path)) {
+          fallbackCwd = currentProj.path
+        }
+      }
+      if (!fallbackCwd) {
+        fallbackCwd = resolveCwd()
+      }
+      if (fallbackCwd && existsSync(fallbackCwd)) {
+        cwd = fallbackCwd
+        this.requestedCwd = fallbackCwd
+        if (this.currentSessionId) {
+          agentSessionService.updateSessionCwd(
+            this.currentSessionId,
+            fallbackCwd,
+            new Date().toISOString(),
+          )
+        }
+      }
+    }
+
+    if (!cwd || !existsSync(cwd)) {
       return { error: "未找到可用的项目目录。请先在项目管理中创建并绑定文件系统项目。" }
     }
 
