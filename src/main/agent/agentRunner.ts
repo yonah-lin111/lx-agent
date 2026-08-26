@@ -45,6 +45,7 @@ import {
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
+import { TurnContext } from "./core/turnContext"
 import { Agent } from "./core/agent"
 import type { AgentTool } from "./core/types"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
@@ -113,6 +114,8 @@ class AgentRunner {
   private readonly turnStore: TurnStore
   // 上下文压缩与容量估计（摘要边界、自动/手动压缩、状态栏容量）。
   private readonly compactor: ContextCompactor
+  // 当前执行轮次环境上下文（Codex Turn 状态机切片）
+  private currentTurnContext?: TurnContext
 
   constructor() {
     this.compactor = new ContextCompactor({
@@ -257,6 +260,7 @@ class AgentRunner {
       const agent = new Agent({
         streamFn: createAiSdkStreamFn(),
         beforeToolCall: async (context, signal) => {
+          this.currentTurnContext?.recordToolCall()
           if (this.currentSessionId) {
             const guardResult = repeatToolGuard.checkBeforeExecute(
               this.currentSessionId,
@@ -611,12 +615,23 @@ class AgentRunner {
       this.turnStore.clearCopiedFiles()
     }
 
+    // 初始化本轮 Turn 上下文与环境切片
+    const effectiveCwd = this.cwd ?? resolveCwd() ?? homedir()
+    this.currentTurnContext = new TurnContext({
+      turnId: `turn-${Date.now()}`,
+      sessionId: this.currentSessionId ?? "draft-session",
+      cwd: effectiveCwd,
+      modelSelection: this.requestedModel,
+      capabilities: this.activeCapabilities,
+    })
+
     try {
       agent.state.systemPrompt = buildSystemPromptSync({
-        cwd: this.cwd ?? resolveCwd(),
+        cwd: this.currentTurnContext.snapshot.cwd,
         sessionId: this.currentSessionId ?? undefined,
         activeSkills: this.activeSkills,
         personality: this.personality,
+        variables: this.currentTurnContext.snapshot.variables,
       })
       const userMessage: UserMessage = {
         role: "user",
@@ -645,6 +660,7 @@ class AgentRunner {
       }
     } catch (error) {
       this.discardPendingTurn()
+      this.currentTurnContext = undefined
       // 首轮 prompt 失败且会话无任何消息落库：清理刚创建的空会话。
       if (
         isNewSession &&
@@ -728,6 +744,7 @@ class AgentRunner {
   // 中止当前 run 并清空排队消息（stop = 终止一切生成，干净可预期）。
   abort(): void {
     this.agent?.abort()
+    this.currentTurnContext = undefined
     this.clearQueue()
   }
 
