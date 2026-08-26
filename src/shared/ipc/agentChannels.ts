@@ -6,6 +6,7 @@ export const AGENT_CHANNELS = {
   undoCompaction: "agent:undoCompaction",
   abort: "agent:abort",
   switchWorktree: "agent:switchWorktree",
+  switchProject: "agent:switchProject",
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",

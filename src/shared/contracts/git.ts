@@ -26,6 +26,12 @@ export interface GitWorktreeEntry {
   isDefault: boolean
 }
 
+// git 分支检出结果。
+export interface GitCheckoutBranchResult {
+  ok: boolean
+  error?: string
+}
+
 // Git 领域 preload API。
 export interface GitApi {
   git: {
@@ -33,5 +39,9 @@ export interface GitApi {
     getStatus: (directory: string) => Promise<GitStatus | null>
     // 列出指定目录所在仓库的全部工作区；非 git 仓库返回 null。
     listWorktrees: (directory: string) => Promise<GitWorktreeEntry[] | null>
+    // 列出指定目录所在仓库的本地分支列表；非 git 仓库返回 null。
+    listBranches: (directory: string) => Promise<string[] | null>
+    // 在指定目录检出分支；成功返回 { ok: true }，失败返回 { ok: false, error: string }。
+    checkoutBranch: (directory: string, branch: string) => Promise<GitCheckoutBranchResult>
   }
 }

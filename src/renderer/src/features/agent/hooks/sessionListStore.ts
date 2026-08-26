@@ -3,7 +3,6 @@ import { agentApi } from "../api/agentApi"
 
 export interface SessionBinding {
   projectId?: string
-  projectItemId?: string
   cwd?: string
 }
 
@@ -16,12 +15,14 @@ let pendingSessionIds = new Set<string>()
 let currentSessionTitle: string | null = null
 // 缓存当前会话的 SessionBinding 快照对象（保证 useSyncExternalStore 快照引用稳定，避免 React 无限渲染死循环）。
 let cachedSessionBinding: SessionBinding | undefined = undefined
+// 草稿会话（新会话尚未落库）的绑定信息（用户在状态栏临时切换的项目/工作区）。
+let draftBinding: SessionBinding | undefined = undefined
 
 const listeners = new Set<() => void>()
 
 const recomputeBinding = (): void => {
   if (!currentSessionId) {
-    cachedSessionBinding = undefined
+    cachedSessionBinding = draftBinding
     return
   }
   const session = sessions.find((s) => s.id === currentSessionId)
@@ -52,11 +53,20 @@ export const sessionListStore = {
 
   getCurrentSessionId: (): string | null => currentSessionId,
 
-  // 当前会话的工具执行目录；新会话尚未落库时返回 undefined。
+  // 当前会话的工具执行目录；新会话尚未落库时返回 draftBinding 或 undefined。
   getCurrentSessionPath: (): string | undefined => cachedSessionBinding?.cwd,
 
-  // 当前会话的绑定信息（项目 ID、项目项 ID 与 cwd），新会话尚未落库时返回 undefined。
+  // 当前会话的绑定信息（项目 ID 与 cwd），新会话尚未落库时返回 draftBinding 或 undefined。
   getCurrentSessionBinding: (): SessionBinding | undefined => cachedSessionBinding,
+
+  // 设置草稿会话绑定（新会话切换项目或工作区）。
+  setDraftBinding: (binding: SessionBinding | undefined): void => {
+    draftBinding = binding
+    if (!currentSessionId) {
+      cachedSessionBinding = draftBinding
+      notify()
+    }
+  },
 
   // 当前标题生成中的会话 id（占位 pulse 判定）。
   getPendingSessionIds: (): Set<string> => pendingSessionIds,
@@ -69,6 +79,7 @@ export const sessionListStore = {
     if (currentSessionId === id) return
     currentSessionId = id
     currentSessionTitle = null
+    draftBinding = undefined
     recomputeBinding()
     notify()
   },

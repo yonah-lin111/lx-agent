@@ -75,7 +75,45 @@ export class GitStatusService {
     // 首个条目为主工作区。
     return rawEntries.map((entry, index) => ({ ...entry, isDefault: index === 0 }))
   }
+
+  /**
+   * 列出目录所在仓库的本地分支列表；非 git 仓库返回 null。
+   */
+  listBranches(cwd: string): string[] | null {
+    const output = this.run(cwd, ["branch", "--list", "--format=%(refname:short)"])
+    if (output === null) return null
+
+    return output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  }
+
+  /**
+   * 检出指定分支；失败时返回详细错误提示。
+   */
+  checkoutBranch(cwd: string, branch: string): { ok: true } | { ok: false; error: string } {
+    try {
+      execFileSync("git", ["checkout", branch], {
+        cwd,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      })
+      return { ok: true }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error &&
+        "stderr" in err &&
+        typeof (err as { stderr: unknown }).stderr === "string"
+          ? (err as { stderr: string }).stderr.trim()
+          : err instanceof Error
+            ? err.message
+            : "检出分支失败"
+      return { ok: false, error: message || "检出分支失败" }
+    }
+  }
 }
 
 // Git 状态服务单例。
 export const gitStatusService = new GitStatusService()
+

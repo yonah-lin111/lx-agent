@@ -141,16 +141,13 @@ export const RightSideBar = (): React.JSX.Element => {
   }, [isResizing])
 
   // 窗口尺寸变化（含全屏切换）后宽度随 vw 自动重算，无需额外处理。
-  // 会话归属上下文：项目 item 会话或页面会话（item 解析中返回 undefined，避免误建桶）。
+  // 会话归属上下文：项目会话或页面会话。
   const context = useMemo<AgentSendContext | undefined>(() => {
-    const itemId = searchParams.get("itemId")
-    if (itemId) {
-      return currentProject
-        ? { projectItemId: itemId, projectId: currentProject.id, cwd: currentProject.path }
-        : undefined
+    if (currentProject) {
+      return { projectId: currentProject.id, cwd: currentProject.path }
     }
     return { page: pathname }
-  }, [searchParams, currentProject, pathname])
+  }, [currentProject, pathname])
 
   // 挂载时刷新会话列表并初始化为空白新对话；导航切换不改变会话。
   useEffect(() => {

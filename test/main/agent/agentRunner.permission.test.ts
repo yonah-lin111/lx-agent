@@ -234,7 +234,6 @@ describe("agentRunner 权限接线", () => {
     const now = new Date().toISOString()
     agentSessionService.insertSession({
       externalId: sessionId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "源会话",

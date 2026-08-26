@@ -27,7 +27,13 @@ const holder = vi.hoisted(() => ({
 }))
 
 // mock ai.streamText：压缩摘要生成的可控返回（避免真实 LLM 调用）。
-vi.mock("ai", () => ({ streamText: vi.fn() }))
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>()
+  return {
+    ...actual,
+    streamText: vi.fn(),
+  }
+})
 
 // config/appData 指向临时目录（隔离真实用户配置与 ~/.lx/skills）。
 vi.mock("@/paths", async (importOriginal) => {
@@ -210,6 +216,9 @@ describe("agentRunner 持久化", () => {
         "webfetch",
         "task",
         "question",
+        "render_svg",
+        "render_ascii",
+        "render_html",
         "lsp",
         "job_output",
         "job_list",
@@ -279,6 +288,9 @@ describe("agentRunner 持久化", () => {
       "webfetch",
       "task",
       "question",
+      "render_svg",
+      "render_ascii",
+      "render_html",
       "lsp",
       "job_output",
       "job_list",
@@ -524,7 +536,10 @@ describe("agentRunner 持久化", () => {
       assistant([{ type: "text", text: "" }], "error", "context_length_exceeded"),
       assistant([{ type: "text", text: "重试成功" }]),
     ]
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("早期对话摘要") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("早期对话摘要"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     const second = await agentRunner.send("再问".repeat(30), undefined, {
       page: "/",
       cwd: "/tmp",
@@ -564,7 +579,10 @@ describe("agentRunner 持久化", () => {
     if (!first.ok) return
 
     // 第二轮 assistant 带大 usage：估计上下文超阈值触发压缩。
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("早期对话摘要") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("早期对话摘要"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     holder.streamResponses = [
       assistantWithUsage([{ type: "text", text: "第二轮回答".repeat(20) }], {
         input: 300,
@@ -627,7 +645,10 @@ describe("agentRunner 持久化", () => {
     // 手动压缩：摘要生成成功，返回 ok: true。
     const events: AgentEvent[] = []
     agentRunner.attachEventSink((event) => events.push(event))
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动压缩摘要") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("手动压缩摘要"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     const compacted = await agentRunner.compact()
     expect(compacted).toEqual({ ok: true })
     const start = events.find((event) => event.type === "compaction_start")
@@ -680,7 +701,10 @@ describe("agentRunner 持久化", () => {
     if (!first.ok) return
 
     // 单轮（2 条消息）标准切分点 ≤1，手动压缩回退到压缩首条，仍产生摘要。
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("短对话摘要") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("短对话摘要"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     const compacted = await agentRunner.compact()
     expect(compacted).toEqual({ ok: true })
 
@@ -704,7 +728,10 @@ describe("agentRunner 持久化", () => {
     if (!first.ok) return
 
     // 第一次：手动压缩摘要 1 (manual=true)
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动摘要1") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("手动摘要1"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     await agentRunner.compact()
 
     // 第二轮 QA
@@ -712,7 +739,10 @@ describe("agentRunner 持久化", () => {
     await agentRunner.send("第二轮问题", undefined, { page: "/", cwd: "/tmp" })
 
     // 第二次：手动压缩摘要 2 (manual=true)
-    streamTextMock.mockReturnValueOnce({ text: Promise.resolve("手动摘要2") } as never)
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("手动摘要2"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
     await agentRunner.compact()
 
     // restoreSession 应读取到最新的手动摘要2

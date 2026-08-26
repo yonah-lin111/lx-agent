@@ -332,6 +332,14 @@ export const AgentInputCommandPanel = ({
   )
 }
 
+interface AgentInputFilePanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  files: ProjectFileEntry[]
+  activeIndex: number
+  worktreeName?: string
+}
+
 /**
  * 渲染 Agent 输入框的项目文件提及面板。
  */
@@ -340,12 +348,13 @@ export const AgentInputFilePanel = ({
   position,
   files,
   activeIndex,
+  worktreeName,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && files.length > 0
   const animated = usePanelAnimation(
     isOpen && hasData,
-    hasData ? { position, files, activeIndex } : null,
+    hasData ? { position, files, activeIndex, worktreeName } : null,
   )
   const panelRef = useActiveItemScrollIntoView(
     isOpen,
@@ -358,6 +367,7 @@ export const AgentInputFilePanel = ({
     position: displayPosition,
     files: displayFiles,
     activeIndex: displayIndex,
+    worktreeName: displayWorktreeName,
   } = animated.displayData
 
   return (
@@ -404,6 +414,15 @@ export const AgentInputFilePanel = ({
                     size="small"
                   >
                     {directoryTag.label}
+                  </LxTag>
+                )}
+                {displayWorktreeName && (
+                  <LxTag
+                    bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    {displayWorktreeName}
                   </LxTag>
                 )}
               </span>

@@ -443,9 +443,8 @@ export type AgentPersonality = "pragmatic" | "friendly"
 
 // 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
 export interface AgentSendContext {
-  projectItemId?: string // 项目 item 会话归属
-  projectId?: string // 冗余：项目 id（聚合某项目全部 item 会话）
-  page?: string // 非 item 会话的路由（'/' | '/project' | '/settings' …）
+  projectId?: string // 所属项目 id
+  page?: string // 页面路由（'/' | '/project' | '/settings' …）
   cwd?: string // 工具执行目录（项目页 = project.path；独立页可省略，回退主目录）
   personality?: AgentPersonality // 会话级指定人格
   files?: {
@@ -538,6 +537,9 @@ export type AgentSendResult =
 // 切换会话工作区（/gitWorktree）的返回结果。
 export type AgentSwitchWorktreeResult = { ok: true } | { ok: false; error: string }
 
+// 切换会话项目（更新 project_id 与 cwd）的返回结果。
+export type AgentSwitchProjectResult = { ok: true } | { ok: false; error: string }
+
 // 手动压缩（/compact）的返回结果。
 export type AgentCompactResult = { ok: true } | { ok: false; error: string }
 
@@ -589,6 +591,8 @@ export interface AgentApi {
     continue: () => Promise<AgentSendResult>
     // 切换当前会话工作区：更新会话工具执行目录（cwd），下次装配按新目录重建工具集。
     switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
+    // 切换当前会话项目：更新会话关联的项目 ID 与工具执行目录（cwd），重新加载工具集与技能。
+    switchProject: (projectId: string, path: string) => Promise<AgentSwitchProjectResult>
     // 手动触发上下文压缩（/compact）：摘要化早期历史并建立新边界；设置禁用/无可压缩内容时返回原因。
     compact: () => Promise<AgentCompactResult>
     // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。

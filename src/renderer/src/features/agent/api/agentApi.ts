@@ -9,6 +9,7 @@ import type {
   AgentSendOptions,
   AgentSendResult,
   AgentSessionSummary,
+  AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
   CopySessionOptions,
@@ -43,6 +44,8 @@ export const agentApi = {
   undoCompaction: (): Promise<AgentUndoCompactionResult> => window.api.agent.undoCompaction(),
   switchWorktree: (path: string): Promise<AgentSwitchWorktreeResult> =>
     window.api.agent.switchWorktree(path),
+  switchProject: (projectId: string, path: string): Promise<AgentSwitchProjectResult> =>
+    window.api.agent.switchProject(projectId, path),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
   listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),

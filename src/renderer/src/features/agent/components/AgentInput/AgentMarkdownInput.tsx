@@ -70,6 +70,7 @@ export interface AgentMarkdownInputProps {
   modelOptions?: { label: string; value?: string; options?: { label: string; value: string }[] }[]
   onModelChange?: (value: string) => void
   worktreeOptions?: GitWorktreeOption[] | null
+  worktreeName?: string
   onWorktreeSelect?: (path: string) => void
   onClear?: () => void
   onUndo?: () => void
@@ -572,6 +573,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       modelOptions = [],
       onModelChange,
       worktreeOptions,
+      worktreeName,
       onWorktreeSelect,
       onClear,
       onUndo,
@@ -809,10 +811,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       if (!mention) return
       let current = true
 
-      const fetchPromise = projectId
-        ? projectApi.searchFiles(projectId, mention.query)
-        : currentPath
-          ? projectApi.searchDirectoryFiles(currentPath, mention.query)
+      const fetchPromise = currentPath
+        ? projectApi.searchDirectoryFiles(currentPath, mention.query)
+        : projectId
+          ? projectApi.searchFiles(projectId, mention.query)
           : Promise.resolve([])
 
       void fetchPromise
@@ -1668,6 +1670,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           position={panelPosition}
           files={files}
           activeIndex={fileIndex}
+          worktreeName={worktreeName}
         />
         <MarkdownBlockCommandMenu
           commands={blockCommands}

@@ -33,7 +33,6 @@ afterEach(() => {
 const insertSession = (externalId: string, page: string | null, updatedAt: string): void => {
   service.insertSession({
     externalId,
-    projectItemId: page ? null : "item1",
     projectId: page ? null : "p1",
     page,
     title: "会话",
@@ -49,7 +48,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sessionId,
-      projectItemId: "item1",
       projectId: "p1",
       page: null,
       title: "t",
@@ -102,7 +100,6 @@ describe("agentSessionService", () => {
       service.transaction(() => {
         service.insertSession({
           externalId: sessionId,
-          projectItemId: null,
           projectId: null,
           page: "/",
           title: "t",
@@ -132,7 +129,6 @@ describe("agentSessionService", () => {
     service.transaction(() => {
       service.insertSession({
         externalId: sessionId,
-        projectItemId: null,
         projectId: null,
         page: "/",
         title: "t",
@@ -195,7 +191,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sessionId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "t",
@@ -230,7 +225,6 @@ describe("agentSessionService", () => {
     service.transaction(() => {
       service.insertSession({
         externalId: sessionId,
-        projectItemId: null,
         projectId: null,
         page: "/",
         title: "t",
@@ -282,7 +276,6 @@ describe("agentSessionService", () => {
     service.transaction(() => {
       service.insertSession({
         externalId: sessionId,
-        projectItemId: null,
         projectId: null,
         page: "/",
         title: "t",
@@ -331,7 +324,6 @@ describe("agentSessionService", () => {
     service.transaction(() => {
       service.insertSession({
         externalId: sourceId,
-        projectItemId: null,
         projectId: null,
         page: "/",
         title: "源会话",
@@ -426,7 +418,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sourceId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "源会话",
@@ -503,7 +494,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sourceId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "源会话",
@@ -543,7 +533,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sourceId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "t",
@@ -587,7 +576,6 @@ describe("agentSessionService", () => {
     const now = new Date().toISOString()
     service.insertSession({
       externalId: sourceId,
-      projectItemId: null,
       projectId: null,
       page: "/",
       title: "t",

@@ -560,7 +560,6 @@ export const useAgentChat = (context?: AgentSendContext) => {
         ...context,
         ...(sessionBinding?.cwd ? { cwd: sessionBinding.cwd } : {}),
         ...(sessionBinding?.projectId ? { projectId: sessionBinding.projectId } : {}),
-        ...(sessionBinding?.projectItemId ? { projectItemId: sessionBinding.projectItemId } : {}),
         files: selectedFiles.map((file) => ({
           name: file.name,
           path: file.path,

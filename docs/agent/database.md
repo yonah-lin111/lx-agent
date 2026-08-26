@@ -11,7 +11,7 @@ Agent 会话落盘方案。存储框架为 `src/main/db/migrations/` 迁移器�
 | # | 决策 | 结论 |
 |---|------|------|
 | 1 | 存储形态 | 混合：entry 树为真相源 + `agent_call` 独立视图表 |
-| 2 | session 归属 | 全局会话，不按页面分桶；归属（project_item_id/project_id/page）建会话时**冻结**，仅作项目 tag 客户端筛选依据 |
+| 2 | session 归属 | 全局会话，不按页面分桶；归属（project_id/page）建会话时绑定，仅作项目 tag 客户端筛选依据 |
 | 3 | 调用记录 | 统一 `agent_call` + `kind` 四分类（builtin/mcp/subagent/skill）；子代理嵌套经 `parent_call_id` 同表自关联 |
 | 4 | 能力快照 | 激活能力集随会话以 `active_capabilities` entry 冻结；config.json 仅作新建会话的默认装配源 |
 | 5 | id 规范 | `id INTEGER PRIMARY KEY` + `external_id TEXT UNIQUE`（uuid 业务键）+ `created_at/updated_at`；FK 引用 external_id |
@@ -25,12 +25,12 @@ Agent 会话落盘方案。存储框架为 `src/main/db/migrations/` 迁移器�
 | 列 | 说明 |
 |----|------|
 | external_id | uuid 业务键 |
-| project_item_id / project_id / page | 建会话时冻结的归属；互斥 CHECK（item 会话或页面会话二选一） |
+| project_id / page | 归属：绑定所属项目或独立页面路由 |
 | title | 默认 'new chat'，AI 总结 ≤40 字符 |
-| cwd | 工具执行目录，建会话时冻结（最近更新的 filesystem 项目目录，回退桌面路径） |
+| cwd | 工具执行目录（项目目录，回退桌面路径） |
 | created_at / updated_at | updated_at = 最后一次活跃（追加 entry 同事务 touch），历史列表按其倒序 |
 
-索引：`(project_item_id, updated_at DESC)`、`(page, ...)`、`(project_id, ...)`。级联：随 `project_item` / `project` 删除。
+索引：`(page, ...)`、`(project_id, ...)`。级联：随 `project` 删除。
 
 ### 2.2 agent_session_entry —— 会话上下文树（真相源）
 

@@ -11,6 +11,20 @@ import { TodoStatusButton } from "./TodoStatusButton"
 export interface AgentStatusBarProps {
   // 当前会话的工具执行目录。
   projectPath?: string
+  // 当前会话绑定的项目 ID。
+  projectId?: string
+  // 路径切换提示目标（新会话切换页面/项目时触发）。
+  pathPrompt?: { projectId?: string; projectPath: string; projectName?: string } | null
+  // 确认切换路径回调。
+  onAcceptPathPrompt?: () => void
+  // 取消切换路径回调。
+  onDismissPathPrompt?: () => void
+  // 切换项目回调。
+  onProjectChange?: (projectId: string, projectPath: string) => void
+  // 切换分支回调。
+  onBranchChange?: (branch: string) => void
+  // 切换工作区回调。
+  onWorktreeChange?: (worktreePath: string) => void
   // 当前会话上下文容量（估计 token / 压缩窗口；null = 尚无会话数据）。
   contextUsage?: { tokens: number; contextWindow: number } | null
   // 当前会话任务清单（有未完成任务时状态栏右侧展示 todo 计数 icon）。
@@ -45,6 +59,13 @@ const contextColor = (percent: number): string => {
  */
 export const AgentStatusBar = ({
   projectPath,
+  projectId,
+  pathPrompt,
+  onAcceptPathPrompt,
+  onDismissPathPrompt,
+  onProjectChange,
+  onBranchChange,
+  onWorktreeChange,
   contextUsage,
   todos,
   jobs,
@@ -60,11 +81,18 @@ export const AgentStatusBar = ({
   return (
     <div className="agent-status-bar flex min-w-0 items-center">
       <div className="min-w-0 flex-1">
-        {projectPath ? (
-          <GitStatusBar projectPath={projectPath} />
-        ) : (
-          <div aria-hidden className="h-[25px] shrink-0" />
-        )}
+        <GitStatusBar
+          projectPath={projectPath}
+          projectId={projectId}
+          pathPrompt={pathPrompt}
+          onAcceptPathPrompt={onAcceptPathPrompt}
+          onDismissPathPrompt={onDismissPathPrompt}
+          interactive={true}
+          alwaysShowWorktree={true}
+          onProjectChange={onProjectChange}
+          onBranchChange={onBranchChange}
+          onWorktreeChange={onWorktreeChange}
+        />
       </div>
       {contextUsage && percent !== null && (
         <LxTooltip

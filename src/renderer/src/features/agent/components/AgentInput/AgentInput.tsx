@@ -40,6 +40,7 @@ export interface AgentInputProps {
   projectId?: string
   projectPath?: string
   currentPath?: string
+  worktreeName?: string
   // git 工作区选项（/gitWorktree 二级面板；null = 无 git 上下文或非 git 仓库）。
   worktreeOptions: GitWorktreeOption[] | null
   // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
@@ -58,10 +59,10 @@ export interface AgentInputProps {
 export const AgentInput = ({
   inputText,
   isStreaming,
-  isCompacting,
+  isCompacting = false,
   isCompactingManual = false,
-  queuedCount,
-  queuedMessages,
+  queuedCount = 0,
+  queuedMessages = [],
   onInputChange,
   onSend,
   onStop,
@@ -76,6 +77,7 @@ export const AgentInput = ({
   projectId,
   projectPath,
   currentPath,
+  worktreeName,
   worktreeOptions,
   onWorktreeSelect,
   selectedFiles,
@@ -320,6 +322,7 @@ export const AgentInput = ({
           projectId={projectId}
           projectPath={projectPath}
           currentPath={currentPath}
+          worktreeName={worktreeName}
           modelOptions={modelOptions as AgentMarkdownInputProps["modelOptions"]}
           onModelChange={onModelChange}
           worktreeOptions={worktreeOptions}

@@ -20,7 +20,6 @@ import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/trun
 
 // 会话归属上下文。
 export interface SessionBinding {
-  projectItemId?: string
   projectId?: string
   page?: string
 }
@@ -397,7 +396,6 @@ export class TurnStore {
       sessionId = createExternalId()
       agentSessionService.insertSession({
         externalId: sessionId,
-        projectItemId: input.binding.projectItemId ?? null,
         projectId: input.binding.projectId ?? null,
         page: input.binding.page ?? null,
         title: input.title,

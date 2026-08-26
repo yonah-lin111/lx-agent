@@ -82,7 +82,6 @@ const isValidSendContext = (value: unknown): value is AgentSendContext => {
       ))
 
   return (
-    isOptionalString(context.projectItemId) &&
     isOptionalString(context.projectId) &&
     isOptionalString(context.page) &&
     isOptionalString(context.cwd) &&
@@ -218,6 +217,16 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       return { ok: false, error: "工作区路径无效。" }
     }
     return agentRunner.switchWorktree(path.trim())
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.switchProject, (_, projectId: unknown, path: unknown) => {
+    if (typeof projectId !== "string") {
+      return { ok: false, error: "项目 ID 格式无效。" }
+    }
+    if (typeof path !== "string" || !path.trim()) {
+      return { ok: false, error: "项目路径无效。" }
+    }
+    return agentRunner.switchProject(projectId.trim(), path.trim())
   })
 
   ipcMain.handle(AGENT_CHANNELS.abort, () => {

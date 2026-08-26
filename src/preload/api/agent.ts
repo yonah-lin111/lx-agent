@@ -24,6 +24,8 @@ export const agentApi: AgentApi["agent"] = {
   undoCompaction: () => ipcRenderer.invoke(AGENT_CHANNELS.undoCompaction),
   abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),
   switchWorktree: (path: string) => ipcRenderer.invoke(AGENT_CHANNELS.switchWorktree, path),
+  switchProject: (projectId: string, path: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.switchProject, projectId, path),
   restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),
   restoreSession: (sessionId: string) =>

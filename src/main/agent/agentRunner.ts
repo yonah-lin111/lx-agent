@@ -12,6 +12,7 @@ import type {
   AgentSendOptions,
   AgentSendResult,
   AgentSessionSummary,
+  AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
   CopySessionOptions,
@@ -314,11 +315,10 @@ class AgentRunner {
   private freezeNewSession(context: AgentSendContext): void {
     if (this.currentSessionId) return
     this.sessionBinding = {
-      projectItemId: context.projectItemId,
       projectId: context.projectId,
       page: context.page,
     }
-    const cwd = context.cwd ?? (context.projectItemId ? resolveCwd() : join(homedir(), "Desktop"))
+    const cwd = context.cwd ?? (context.projectId ? resolveCwd() : join(homedir(), "Desktop"))
     if (cwd) this.requestedCwd = cwd
     if (context.personality) {
       this.personality = context.personality
@@ -745,7 +745,6 @@ class AgentRunner {
     await mcpManager.ensureConnected()
     this.setSessionId(session.external_id)
     this.sessionBinding = {
-      projectItemId: session.project_item_id ?? undefined,
       projectId: session.project_id ?? undefined,
       page: session.page ?? undefined,
     }
@@ -964,6 +963,33 @@ class AgentRunner {
     this.requestedCwd = path
     if (this.currentSessionId) {
       agentSessionService.updateSessionCwd(this.currentSessionId, path, new Date().toISOString())
+    }
+    return { ok: true }
+  }
+
+  // 切换当前会话项目：streaming 中拒绝；更新装配目标并持久化会话 project_id 与 cwd。
+  // 已落库会话直接改 project_id 与 cwd；空白新会话仅更新 requestedCwd 与 binding。
+  // 下次 send 的 ensureReady 检测到 cwd 变化后按新目录重建工具集与 skill 注入。
+  switchProject(projectId: string, path: string): AgentSwitchProjectResult {
+    if (this.isBusy()) {
+      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
+    }
+    // 项目切换：队列强绑定当前会话上下文，切换即清空排队消息。
+    this.clearQueue()
+    this.requestedCwd = path
+    const normalizedProjectId = projectId || undefined
+    if (this.sessionBinding) {
+      this.sessionBinding.projectId = normalizedProjectId
+    } else {
+      this.sessionBinding = { projectId: normalizedProjectId }
+    }
+    if (this.currentSessionId) {
+      agentSessionService.updateSessionProject(
+        this.currentSessionId,
+        normalizedProjectId ?? null,
+        path,
+        new Date().toISOString(),
+      )
     }
     return { ok: true }
   }

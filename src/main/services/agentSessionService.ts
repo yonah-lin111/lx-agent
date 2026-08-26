@@ -6,7 +6,6 @@ import { getDatabase } from "@/db"
 // 会话数据库记录。
 export type AgentSessionRecord = {
   external_id: string
-  project_item_id: string | null
   project_id: string | null
   page: string | null
   title: string
@@ -49,7 +48,6 @@ export const createAgentSessionService = (getConnection: () => Database.Database
 
   insertSession(input: {
     externalId: string
-    projectItemId: string | null
     projectId: string | null
     page: string | null
     title: string
@@ -59,11 +57,10 @@ export const createAgentSessionService = (getConnection: () => Database.Database
   }): void {
     getConnection()
       .prepare(
-        "INSERT INTO agent_session (external_id, project_item_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO agent_session (external_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         input.externalId,
-        input.projectItemId,
         input.projectId,
         input.page,
         input.title,
@@ -147,6 +144,20 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       .run(cwd, updatedAt, sessionId)
   },
 
+  // 更新会话关联的项目与执行目录（同步 updated_at）。
+  updateSessionProject(
+    sessionId: string,
+    projectId: string | null,
+    cwd: string,
+    updatedAt: string,
+  ): void {
+    getConnection()
+      .prepare(
+        "UPDATE agent_session SET project_id = ?, cwd = ?, updated_at = ? WHERE external_id = ?",
+      )
+      .run(projectId, cwd, updatedAt, sessionId)
+  },
+
   // 批量删除引用指定 entry 的调用记录（entry_id 无级联，必须先删调用再删 entry）。
   deleteCallsByEntryIds(entryIds: string[]): void {
     if (entryIds.length === 0) return
@@ -220,7 +231,6 @@ export const createAgentSessionService = (getConnection: () => Database.Database
       this.transaction(() => {
         this.insertSession({
           externalId: newSessionId,
-          projectItemId: source.project_item_id,
           projectId: source.project_id,
           page: source.page,
           title: forkTitle,

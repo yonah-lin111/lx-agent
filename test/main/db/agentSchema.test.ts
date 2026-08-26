@@ -38,7 +38,6 @@ describe("agent 表结构与约束", () => {
     ])
     expect(indexNames).toEqual(
       expect.arrayContaining([
-        "idx_agent_session_item",
         "idx_agent_session_page",
         "idx_agent_session_project",
         "idx_agent_session_entry_session_seq",
@@ -52,43 +51,37 @@ describe("agent 表结构与约束", () => {
         "idx_agent_snapshot_session",
       ]),
     )
+    expect(indexNames).not.toContain("idx_agent_session_item")
   })
 
-  it("会话归属互斥：item 与 page 不能同时为空或同时存在", () => {
+  it("会话支持绑定 project_id 与 page", () => {
     database = new Database(":memory:")
     database.pragma("foreign_keys = ON")
     runMigrations(database)
     const now = new Date().toISOString()
-    // FK 目标：项目与条目行。
+    // FK 目标：项目行。
     database
       .prepare(
         "INSERT INTO project (external_id, name, type, referenced_folders, created_at, updated_at) VALUES ('p', 'proj', 'filesystem', '[]', ?, ?)",
       )
       .run(now, now)
-    for (const itemId of ["item1", "item2"]) {
-      database
-        .prepare(
-          "INSERT INTO project_item (external_id, project_id, name, item_data, enabled_folder_paths, status, created_at, updated_at) VALUES (?, 'p', 'item', '', '[]', 'todo', ?, ?)",
-        )
-        .run(itemId, now, now)
-    }
+
     const insert = (
       externalId: string,
-      projectItemId: string | null,
+      projectId: string | null,
       page: string | null,
     ): void => {
       database!
         .prepare(
-          "INSERT INTO agent_session (external_id, project_item_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, 't', '/x', ?, ?)",
+          "INSERT INTO agent_session (external_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, 't', '/x', ?, ?)",
         )
-        .run(externalId, projectItemId, projectItemId ? "p" : null, page, now, now)
+        .run(externalId, projectId, page, now, now)
     }
 
-    // item 会话（page 为空）与页面会话（item 为空）合法。
-    expect(() => insert("s1", "item1", null)).not.toThrow()
+    // 项目会话与独立页面会话均合法插入
+    expect(() => insert("s1", "p", null)).not.toThrow()
     expect(() => insert("s2", null, "/")).not.toThrow()
-    // 两者皆空或同时存在违反互斥约束。
-    expect(() => insert("s3", null, null)).toThrow()
-    expect(() => insert("s4", "item2", "/")).toThrow()
+    expect(() => insert("s3", "p", "/")).not.toThrow()
+    expect(() => insert("s4", null, null)).not.toThrow()
   })
 })
