@@ -60,7 +60,10 @@ import {
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
-import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import {
+  buildPasteReferenceOptions,
+  MarkdownPasteCommandMenu,
+} from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
 import {
@@ -381,7 +384,7 @@ export const LxMarkdownEditor = ({
     }
   }, [])
   const { success, warning, error } = useLxToast()
-  const { locale } = useTranslation()
+  const { t, locale } = useTranslation()
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
     rightSidebarStore.isCollapsed,
@@ -1372,6 +1375,20 @@ export const LxMarkdownEditor = ({
           ...standardKeymap,
         ]),
         EditorView.updateListener.of((update) => {
+          if (pasteReferencePanelRef.current) {
+            const panel = pasteReferencePanelRef.current
+            const currentDoc = update.state.doc.toString()
+            const insertedText = currentDoc.slice(panel.from, panel.from + panel.insertion.length)
+            const cursor = update.state.selection.main.head
+            const isCursorInRange =
+              cursor >= panel.from && cursor <= panel.from + panel.insertion.length
+            if (insertedText !== panel.insertion || !isCursorInRange) {
+              pasteReferencePanelRef.current = null
+              activePasteReferenceIndexRef.current = 0
+              setPasteReferencePanel(null)
+              setActivePasteReferenceIndex(0)
+            }
+          }
           if (update.docChanged || update.selectionSet || update.viewportChanged) {
             syncBlockCommandPanel(update.view)
             syncSlashCommandPanel(update.view)
@@ -1434,8 +1451,6 @@ export const LxMarkdownEditor = ({
       view.destroy()
     }
   }, [showLineNumbers, showFolding])
-
-  const { t } = useTranslation()
 
   const splitLabel = t("markdown.splitViewShortcut", {
     shortcut: isMacOS() ? "Cmd+Shift+E" : "Ctrl+Shift+E",
@@ -1507,6 +1522,9 @@ export const LxMarkdownEditor = ({
       <MarkdownStatusBar projectPath={worktreePath ?? projectPath} />
       <MarkdownPasteCommandMenu
         activeIndex={activePasteReferenceIndex}
+        options={
+          pasteReferencePanel ? buildPasteReferenceOptions(pasteReferencePanel.paths, t) : undefined
+        }
         position={pasteReferencePanel?.position}
         visible={Boolean(pasteReferencePanel)}
       />

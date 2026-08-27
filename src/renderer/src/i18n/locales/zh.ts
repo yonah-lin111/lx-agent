@@ -572,6 +572,13 @@ export const zh: TranslationDictionary = {
       "- 期望: ",
       "&&&",
     ].join("\n"),
+    pasteReferenceAria: "粘贴引用方式",
+    pasteReferenceContent: "引用内容",
+    pasteReferenceFile: "引用文件",
+    pasteReferenceImage: "引用图片",
+    pasteReferenceFolder: "引用文件夹",
+    pasteReferencePath: "原地址",
+    pasteUploadFile: "上传文件",
   },
   terminal: {
     newTab: "新建终端",

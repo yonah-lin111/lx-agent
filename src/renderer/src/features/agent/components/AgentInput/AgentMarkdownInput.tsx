@@ -29,7 +29,10 @@ import {
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { createMarkdownReference } from "@/features/markdown/commands/markdownReferenceCommands"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
-import { MarkdownPasteCommandMenu } from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import {
+  buildPasteReferenceOptions,
+  MarkdownPasteCommandMenu,
+} from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import {
   markdownHighlightStyle,
   markdownMarkerHighlight,
@@ -44,6 +47,7 @@ import {
   AgentInputModelPanel,
   getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
+import type { AgentInputFile } from "./AgentInputFiles"
 
 export interface AgentMarkdownInputRef {
   focus: () => void
@@ -76,6 +80,7 @@ export interface AgentMarkdownInputProps {
   onUndo?: () => void
   onCompact?: () => void
   onToggleCollaborationMode?: () => void
+  onAddFiles?: (files: AgentInputFile[]) => void
 }
 
 const BUILTIN_COMMAND_KEYS: {
@@ -580,6 +585,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onUndo,
       onCompact,
       onToggleCollaborationMode,
+      onAddFiles,
       panelAnchorRef,
     },
     ref,
@@ -588,6 +594,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const editorViewRef = useRef<EditorView | null>(null)
     const { warning: warningToast, success: successToast, error: errorToast } = useLxAgentToast()
     const { t } = useTranslation()
+    const onAddFilesRef = useRef(onAddFiles)
+    onAddFilesRef.current = onAddFiles
     const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
     // 面板定位锚点：优先使用外部整个输入框容器，缺省回退到内部 CodeMirror 容器。
     const getPanelAnchor = useCallback((): HTMLElement | null => {
@@ -645,10 +653,32 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       setPasteIndex(0)
     }
 
-    const selectPasteReference = (mode: "reference" | "path"): boolean => {
+    const selectPasteReference = (mode: "reference" | "path" | "upload"): boolean => {
       const view = editorViewRef.current
       const panel = pastePanelRef.current
       if (!view || !panel) return false
+
+      if (mode === "upload") {
+        const uploadablePaths = panel.paths.filter((p) => p.type !== "folder")
+        if (uploadablePaths.length > 0 && onAddFilesRef.current) {
+          const filesToAdd: AgentInputFile[] = uploadablePaths.map((item, index) => {
+            const normalizedPath = item.path.replace(/[\\/]+$/, "")
+            const name = normalizedPath.split(/[\\/]/).pop() || item.path
+            const ext = name.split(".").pop()?.toLowerCase() || ""
+            return {
+              id: `f-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+              name,
+              path: item.path,
+              type: item.type === "image" ? "image" : "text",
+              extension: ext.toUpperCase(),
+            }
+          })
+          onAddFilesRef.current(filesToAdd)
+        }
+        // 恢复原有文本，不插入路径
+        closePastePanel(true)
+        return true
+      }
 
       const text = mode === "reference" ? panel.referenceInsertion : panel.insertion
       view.dispatch({
@@ -732,6 +762,13 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         active = false
       }
     }, [projectPath])
+
+    const pasteOptions = useMemo(() => {
+      if (!pastePanel) return []
+      return buildPasteReferenceOptions(pastePanel.paths, t, true)
+    }, [pastePanel, t])
+    const pasteOptionsRef = useRef(pasteOptions)
+    pasteOptionsRef.current = pasteOptions
 
     const matchedCommands = useMemo(
       () => getMatchedCommands(value, promptTemplates, t),
@@ -1315,7 +1352,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 key: "ArrowDown",
                 run: (view) => {
                   if (pastePanelRef.current) {
-                    setPasteIndex((i) => (i + 1) % 2)
+                    const count = pasteOptionsRef.current.length || 2
+                    setPasteIndex((i) => (i + 1) % count)
                     return true
                   }
                   if (
@@ -1367,7 +1405,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 key: "ArrowUp",
                 run: (view) => {
                   if (pastePanelRef.current) {
-                    setPasteIndex((i) => (i - 1 + 2) % 2)
+                    const count = pasteOptionsRef.current.length || 2
+                    setPasteIndex((i) => (i - 1 + count) % count)
                     return true
                   }
                   if (
@@ -1479,7 +1518,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 key: "Enter",
                 run: () => {
                   if (pastePanelRef.current) {
-                    return selectPasteReference(pasteIndexRef.current === 0 ? "reference" : "path")
+                    const opts = pasteOptionsRef.current
+                    const selected = opts[pasteIndexRef.current] ?? opts[0]
+                    return selectPasteReference(selected?.id ?? "reference")
                   }
                   if (activeModeRef.current === "command") {
                     const cmd =
@@ -1587,6 +1628,20 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           // 用 updateListener 而非 viewPlugin：后者在 DOM 更新前调用，读取布局
           // （coordsAtPos）会抛 "Reading the editor layout isn't allowed during an update"。
           EditorView.updateListener.of((update) => {
+            if (pastePanelRef.current) {
+              const panel = pastePanelRef.current
+              const currentDoc = update.state.doc.toString()
+              const insertedText = currentDoc.slice(panel.from, panel.from + panel.insertion.length)
+              const cursor = update.state.selection.main.head
+              const isCursorInRange =
+                cursor >= panel.from && cursor <= panel.from + panel.insertion.length
+              if (insertedText !== panel.insertion || !isCursorInRange) {
+                pastePanelRef.current = null
+                pasteIndexRef.current = 0
+                setPastePanel(null)
+                setPasteIndex(0)
+              }
+            }
             if (update.docChanged) {
               const newDoc = update.state.doc.toString()
               onChangeRef.current(newDoc)
@@ -1715,6 +1770,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         />
         <MarkdownPasteCommandMenu
           activeIndex={pasteIndex}
+          options={pasteOptions}
           position={pastePanel?.position}
           visible={Boolean(pastePanel)}
         />

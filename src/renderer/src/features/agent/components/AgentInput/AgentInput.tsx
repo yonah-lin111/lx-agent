@@ -191,6 +191,19 @@ export const AgentInput = ({
     event.target.value = ""
   }
 
+  const handleAddFiles = (filesToAdd: AgentInputFile[]): void => {
+    const nextFiles = [...selectedFiles]
+    for (const file of filesToAdd) {
+      if (nextFiles.some((f) => f.path === file.path)) continue
+      if (file.type === "image" && !supportsImages) {
+        errorToast(t("agent.unsupportedImageInput"))
+        continue
+      }
+      nextFiles.push(file)
+    }
+    onFilesChange(nextFiles)
+  }
+
   const handleRemoveFile = (id: string): void => {
     onFilesChange(selectedFiles.filter((f) => f.id !== id))
   }
@@ -334,6 +347,7 @@ export const AgentInput = ({
           onUndo={onUndo}
           onCompact={onCompact}
           onToggleCollaborationMode={onToggleCollaborationMode}
+          onAddFiles={handleAddFiles}
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-2">

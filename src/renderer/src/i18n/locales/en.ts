@@ -579,6 +579,13 @@ export const en = {
       "- Expectations: ",
       "&&&",
     ].join("\n"),
+    pasteReferenceAria: "Paste Reference Mode",
+    pasteReferenceContent: "Reference Content",
+    pasteReferenceFile: "Reference File",
+    pasteReferenceImage: "Reference Image",
+    pasteReferenceFolder: "Reference Folder",
+    pasteReferencePath: "Original Path",
+    pasteUploadFile: "Upload File",
   },
   terminal: {
     newTab: "New Terminal",
