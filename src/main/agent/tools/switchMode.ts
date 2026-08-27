@@ -28,7 +28,7 @@ export const createSwitchModeTool = (deps: SwitchModeDeps): AgentTool<typeof SWI
     description:
       "Switch between 'plan' (strict non-mutating planning) and 'default' (action and code execution) modes. " +
       "Use 'plan' when the user asks for a plan, architecture design, or before major refactors. " +
-      "Use 'default' once the plan is established and ready to execute.",
+      "Call 'switch_mode' with mode='default' IMMEDIATELY once the plan formulation is completed so that subsequent user requests can execute without friction.",
     inputSchema: SWITCH_MODE_INPUT_SCHEMA,
     execute: async (_toolCallId, params) => {
       deps.onSwitchMode(params.mode)
