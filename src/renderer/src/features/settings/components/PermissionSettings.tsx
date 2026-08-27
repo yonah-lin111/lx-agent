@@ -1,9 +1,10 @@
 import type {
+  ApprovalPolicy,
   PermissionMode,
   PermissionSettings as PermissionSettingsConfig,
   SandboxPolicy,
 } from "@shared/contracts/agent"
-import { AlertCircle, Plus, ShieldCheck } from "lucide-react"
+import { AlertCircle, CheckCircle2, Plus, ShieldCheck } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
@@ -31,7 +32,7 @@ export interface PermissionSettingsProps {
 }
 
 /**
- * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + allow/deny/ask 规则编辑器。
+ * 设置页"权限与沙箱"分区：沙箱三态选择 + 审批策略选择 + 权限模式三选一 + allow/deny/ask 规则编辑器。
  * 仅维护编辑态，保存由设置页统一处理（写入 agent.permissions）。
  */
 export const PermissionSettings = ({
@@ -41,6 +42,7 @@ export const PermissionSettings = ({
   const { t } = useTranslation()
 
   const currentSandboxPolicy = settings.sandboxPolicy ?? "workspace-write"
+  const currentApprovalPolicy = settings.approvalPolicy ?? "unless_trusted"
 
   const sandboxOptions: LxSelectOption<SandboxPolicy>[] = [
     { value: "workspace-write", label: t("settings.sandboxWorkspaceWrite") },
@@ -52,6 +54,18 @@ export const PermissionSettings = ({
     "read-only": t("settings.sandboxReadOnlyDesc"),
     "workspace-write": t("settings.sandboxWorkspaceWriteDesc"),
     "danger-full-access": t("settings.sandboxDangerFullAccessDesc"),
+  }
+
+  const approvalOptions: LxSelectOption<ApprovalPolicy>[] = [
+    { value: "unless_trusted", label: t("settings.approvalUnlessTrusted") },
+    { value: "on_request", label: t("settings.approvalOnRequest") },
+    { value: "never", label: t("settings.approvalNever") },
+  ]
+
+  const approvalDescriptions: Record<ApprovalPolicy, string> = {
+    unless_trusted: t("settings.approvalUnlessTrustedDesc"),
+    on_request: t("settings.approvalOnRequestDesc"),
+    never: t("settings.approvalNeverDesc"),
   }
 
   const modeOptions: LxSelectOption<PermissionMode>[] = [
@@ -68,6 +82,10 @@ export const PermissionSettings = ({
 
   const updateSandboxPolicy = (sandboxPolicy: SandboxPolicy): void => {
     setSettings({ ...settings, sandboxPolicy })
+  }
+
+  const updateApprovalPolicy = (approvalPolicy: ApprovalPolicy): void => {
+    setSettings({ ...settings, approvalPolicy })
   }
 
   const updateMode = (defaultMode: PermissionMode): void => {
@@ -119,6 +137,23 @@ export const PermissionSettings = ({
             {t("settings.sandboxDangerFullAccessDesc")}
           </p>
         ) : null}
+      </div>
+
+      {/* 审批策略选择 */}
+      <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 className="h-4 w-4 text-blue-400" />
+          <h3 className="text-sm font-semibold text-white/90">{t("settings.approvalPolicy")}</h3>
+        </div>
+        <p className="text-xs text-white/45">{t("settings.approvalPolicyDesc")}</p>
+        <div className="w-80">
+          <LxSelect
+            value={currentApprovalPolicy}
+            onChange={updateApprovalPolicy}
+            options={approvalOptions}
+          />
+        </div>
+        <p className="text-xs text-white/45">{approvalDescriptions[currentApprovalPolicy]}</p>
       </div>
 
       {/* 模式选择 */}

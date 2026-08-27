@@ -158,6 +158,18 @@ export const en = {
       "Allows modifications inside current workspace; external writes require confirmation.",
     sandboxDangerFullAccessDesc:
       "Unrestricted execution (destructive system commands still protected by safety guard).",
+    approvalPolicy: "Approval Policy",
+    approvalPolicyDesc:
+      "Defines the interactive approval behavior and auto-grant levels when executing actions.",
+    approvalNever: "never — Auto-approve (Except high-risk)",
+    approvalNeverDesc:
+      "Normal commands and tools are executed directly; Guardian high-risk or destructive actions still force approval.",
+    approvalUnlessTrusted: "unless_trusted — Ask on untrusted / risky actions (Default)",
+    approvalUnlessTrustedDesc:
+      "Trusted workspace read-only and whitelisted actions execute directly; untrusted commands or writes require approval.",
+    approvalOnRequest: "on_request — Ask for all gated actions",
+    approvalOnRequestDesc:
+      "All side-effecting gated tools (bash, write, edit, apply_patch, MCP) require explicit confirmation.",
     modeDefault: "default — Ask per rule",
     modeAcceptEdits: "acceptEdits — Auto-allow write/edit",
     modeBypass: "bypassPermissions — Allow all",

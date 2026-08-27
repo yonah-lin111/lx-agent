@@ -85,6 +85,18 @@ describe("PermissionSettings", () => {
     ).toBe("true")
   })
 
+  it("切换审批策略触发 setSettings", () => {
+    const setSettings = vi.fn()
+    render(<PermissionSettings settings={baseSettings()} setSettings={setSettings} />)
+
+    fireEvent.click(screen.getByText("unless_trusted — Ask on untrusted / risky actions (Default)"))
+    fireEvent.mouseDown(screen.getByText("never — Auto-approve (Except high-risk)"))
+
+    expect(setSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalPolicy: "never" }),
+    )
+  })
+
   it("bypassPermissions 模式显示不弹窗提示", () => {
     const settings = baseSettings()
     settings.defaultMode = "bypassPermissions"
