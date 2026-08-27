@@ -1,14 +1,24 @@
 /**
  * 模型家族自适应指令适配器 (Model Adapters)
  *
- * 对齐主流 LLM 厂商（OpenAI Codex、Anthropic Claude、Google Gemini、DeepSeek、Alibaba Qwen）
- * 的前沿 Agent Harness 规范，针对不同模型架构注入定制化操作约束、上下文组织范式与格式规范。
+ * 针对各大主流模型架构（OpenAI Codex、Anthropic Claude、Google Gemini、DeepSeek、
+ * Alibaba Qwen、智谱 GLM、MiniMax、小米 MiMo 以及通用兜底 Generic）
+ * 注入定制化操作约束、上下文组织范式与格式规范。
  */
 
 import type { SandboxPolicy } from "@shared/contracts/agent"
 
 /** 支持的模型架构家族 */
-export type ModelFamily = "gpt-5-codex" | "claude" | "gemini" | "deepseek" | "qwen" | "generic"
+export type ModelFamily =
+  | "gpt-5-codex"
+  | "claude"
+  | "gemini"
+  | "deepseek"
+  | "qwen"
+  | "glm"
+  | "minimax"
+  | "mimo"
+  | "generic"
 
 /**
  * 根据模型标识识别所属模型家族
@@ -42,11 +52,23 @@ export function detectModelFamily(modelId?: string): ModelFamily {
     return "qwen"
   }
 
+  if (normalized.includes("glm") || normalized.includes("codegeex") || normalized.includes("zhipu")) {
+    return "glm"
+  }
+
+  if (normalized.includes("minimax") || normalized.includes("abab")) {
+    return "minimax"
+  }
+
+  if (normalized.includes("mimo") || normalized.includes("xiaomi")) {
+    return "mimo"
+  }
+
   return "generic"
 }
 
 /**
- * GPT-5.2 Codex 专用指令集（完全对齐 codex-rs/core/gpt-5.2-codex_prompt.md）
+ * 1. GPT-5.2 Codex 专用指令集（完全对齐 codex-rs/core/gpt-5.2-codex_prompt.md）
  */
 export const GPT_5_2_CODEX_INSTRUCTIONS = `## Editing constraints
 
@@ -92,7 +114,7 @@ When doing frontend design tasks, avoid collapsing into "AI slop" or safe, avera
 - No "save/copy this file" - the user is working in the same workspace.`.trim()
 
 /**
- * Claude 系列专用指令集（基于 Anthropic XML 分块结构化与严格思维链规范）
+ * 2. Claude 系列专用指令集（Anthropic XML 结构化心理边界与严格思维规范）
  */
 export const CLAUDE_INSTRUCTIONS = `## Operational Guidelines (Anthropic Claude Architecture)
 
@@ -104,7 +126,7 @@ export const CLAUDE_INSTRUCTIONS = `## Operational Guidelines (Anthropic Claude 
 - Output Hygiene: When completing tasks, state the core outcome directly without conversational filler or redundant explanations.`.trim()
 
 /**
- * Google Gemini 系列专用指令集（强化 Plan -> Execute -> Validate 流程与代码执行边界）
+ * 3. Google Gemini 系列专用指令集（Plan -> Execute -> Validate 纪律与代码执行边界）
  */
 export const GEMINI_INSTRUCTIONS = `## Operational Guidelines (Google Gemini Architecture)
 
@@ -115,7 +137,7 @@ export const GEMINI_INSTRUCTIONS = `## Operational Guidelines (Google Gemini Arc
 - Concise Communication: Keep progress updates and final summaries crisp, high-signal, and formatted with clean markdown bullets.`.trim()
 
 /**
- * DeepSeek 系列专用指令集（基于 DeepSeek V3 / R1 推理增强与极简原则）
+ * 4. DeepSeek 系列专用指令集（第一性原理分析、原子小步调用与精准行号引用）
  */
 export const DEEPSEEK_INSTRUCTIONS = `## Operational Guidelines (DeepSeek Architecture)
 
@@ -126,7 +148,7 @@ export const DEEPSEEK_INSTRUCTIONS = `## Operational Guidelines (DeepSeek Archit
 - Code References: Cite exact standalone paths with line numbers (e.g. \`packages/core/index.ts:42\`).`.trim()
 
 /**
- * Alibaba Qwen / Qwen Coder 系列专用指令集（基于 ChatML 模块化与严苛项目规范）
+ * 5. Alibaba Qwen 系列专用指令集（ChatML 模块化职责、严格项目规范与高信息密度）
  */
 export const QWEN_INSTRUCTIONS = `## Operational Guidelines (Qwen Coder Architecture)
 
@@ -137,14 +159,48 @@ export const QWEN_INSTRUCTIONS = `## Operational Guidelines (Qwen Coder Architec
 - High-Density Summary: Conclude with concise, structured bullet points highlighting modified files and next actions.`.trim()
 
 /**
- * Generic 通用兜底指令集
+ * 6. 智谱 GLM / CodeGeeX 系列专用指令集（双向注意力上下文融合与 FIM 精准补全）
  */
-export const GENERIC_INSTRUCTIONS = `## Execution Standards
+export const GLM_INSTRUCTIONS = `## Operational Guidelines (Zhipu GLM / CodeGeeX Architecture)
 
-- Execute tasks autonomously, cleanly, and precisely, adhering to codebase conventions.
-- Confirm file contents before editing and verify results using existing build/test tools where appropriate.
-- Keep final responses concise, structured, and actionable.
-- Format file citations as standalone inline paths (e.g. \`path/to/file.ts:10\`).`.trim()
+- Contextual Integrity: Leverage dual-direction context awareness to ensure edits align seamlessly with preceding and succeeding code.
+- Strict Parameter Compliance: Pass strictly validated arguments matching the JSON Schema when invoking tools.
+- Fill-in-the-Middle Precision: Perform surgical code modifications with full awareness of surrounding symbol scopes.
+- Minimalist Output: Output actionable, structured technical responses; avoid repetitive pleasantries.
+- Standalone References: Always reference files with standalone clickable paths and line numbers (e.g. \`src/main.ts:15\`).`.trim()
+
+/**
+ * 7. MiniMax 系列专用指令集（长上下文事实锚定与防幻觉边界）
+ */
+export const MINIMAX_INSTRUCTIONS = `## Operational Guidelines (MiniMax Architecture)
+
+- Long-Context Grounding: Ground all actions and refactorings in real workspace code; strictly avoid hallucinating non-existent interfaces.
+- Fact Verification: If dependencies, schemas, or variables are uncertain, actively inspect the codebase via \`read\` or \`grep\` first.
+- Disciplined Tool Execution: Structure tool arguments cleanly without escape irregularities.
+- Concise Teammate Style: Present conclusions directly with clear bullet points and explicit next steps.
+- Code References: Use exact file paths with line indicators (e.g. \`src/api/routes.ts:33\`).`.trim()
+
+/**
+ * 8. 小米 MiMo 系列专用指令集（Agentic RL 强化闭环与 MTP 高效生成）
+ */
+export const MIMO_INSTRUCTIONS = `## Operational Guidelines (Xiaomi MiMo Architecture)
+
+- Agentic Execution Loop: Adhere strictly to the execution cycle: Analyze Context -> Atomic Tool Invocation -> Observation Assessment -> Clear Conclusion.
+- Fast & Surgical Edits: Deliver clean, high-precision code modifications without redundant filler comments.
+- Verification Focus: Verify modified units via targeted commands to validate functional correctness.
+- Action-Oriented Summaries: Summarize work concisely using plain markdown bullets and provide actionable next choices (\`1. 2. 3.\`).
+- Clickable Path References: Format file references as standalone paths (e.g. \`src/services/store.ts:50\`).`.trim()
+
+/**
+ * 9. 通用兜底指令集 (Generic Universal Fallback)
+ */
+export const GENERIC_INSTRUCTIONS = `## Execution Standards (Universal Agent Guidelines)
+
+- Autonomous & Precise: Execute tasks autonomously, cleanly, and precisely, adhering to codebase conventions.
+- Inspect Before Write: Always confirm file contents with inspection tools before applying modifications.
+- Minimal Surgical Edits: Keep modifications targeted and minimal; avoid unnecessary refactorings or decorative comments.
+- Targeted Verification: Validate changes with existing build or test suites where appropriate.
+- High-Signal Output: Provide concise, structured markdown responses with standalone clickable paths (\`path/to/file.ts:10\`).`.trim()
 
 /**
  * 根据模型家族获取自适应指令文本
@@ -161,6 +217,12 @@ export function getModelAdaptiveInstructions(family: ModelFamily): string {
       return DEEPSEEK_INSTRUCTIONS
     case "qwen":
       return QWEN_INSTRUCTIONS
+    case "glm":
+      return GLM_INSTRUCTIONS
+    case "minimax":
+      return MINIMAX_INSTRUCTIONS
+    case "mimo":
+      return MIMO_INSTRUCTIONS
     case "generic":
     default:
       return GENERIC_INSTRUCTIONS
