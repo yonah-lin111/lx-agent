@@ -105,6 +105,8 @@ class AgentRunner {
   // 当前会话生效的 MCP 工具（全名）与注入 skill（随能力快照刷新）。
   private activeMcp: string[] = []
   private activeSkills: LoadedSkill[] = []
+  // 当前会话的协作模式（default / plan）
+  private collaborationMode: "default" | "plan" = "default"
   // 最近一次装配的能力指纹；cwd/模型不变且能力未变时跳过重建。
   private builtSignature = ""
   // 流式输出期间排队待发的消息（FIFO，内存态不落库；当前 run 结束后逐条自动发送）。
@@ -235,6 +237,7 @@ class AgentRunner {
         sessionId: this.currentSessionId ?? undefined,
         modelId: modelResult.model.id,
         sandboxPolicy: currentSandboxPolicy,
+        collaborationMode: this.collaborationMode,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -249,7 +252,9 @@ class AgentRunner {
           sandboxPolicy: currentSandboxPolicy,
           subagentPool: this.subagentPool,
           beforeToolCall: (context, signal) =>
-            permissionManager.gate(context, this.currentSessionId, signal),
+            permissionManager.gate(context, this.currentSessionId, signal, {
+              collaborationMode: this.collaborationMode,
+            }),
           getSignal: () => this.agent?.signal,
           recordChildCall: (parentToolCallId, child) =>
             this.turnStore.recordChildCall(parentToolCallId, child),
@@ -262,6 +267,14 @@ class AgentRunner {
           lspManager,
           getSessionId: () => this.currentSessionId,
           cwd,
+        },
+        undefined,
+        {
+          onSwitchMode: (mode) => {
+            this.collaborationMode = mode
+            this.builtSignature = "" // 标记装配失效，触发下轮提示词与门控刷新
+          },
+          getCurrentMode: () => this.collaborationMode,
         },
       )
       const previousMessages = this.agent?.state.messages ?? []
