@@ -196,7 +196,7 @@ export const AgentSubagentPanel = ({
       {data ? (
         <div
           ref={scrollRef}
-          className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-3"
+          className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2"
         >
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
@@ -210,6 +210,17 @@ export const AgentSubagentPanel = ({
                   <SubagentCommItem key={comm.id ?? comm.content.slice(0, 16)} comm={comm} />
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 协议与消息列表之间的轮次/阶段分隔线（参考 AgentExecutionFlowList 分割线规范） */}
+          {data.communications && data.communications.length > 0 && messages.length > 0 && (
+            <div className="agent-subagent-flow-divider my-1 flex items-center gap-2">
+              <div className="h-[1px] flex-1 bg-white/10" />
+              <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                {t("agent.executionSteps")}
+              </span>
+              <div className="h-[1px] flex-1 bg-white/10" />
             </div>
           )}
 
