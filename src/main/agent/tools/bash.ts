@@ -266,7 +266,7 @@ const formatOutput = (
   truncation: TruncationResult,
   options?: { sessionId?: string; toolCallId?: string },
 ): { text: string; details?: BashToolDetails } => {
-  let text = truncation.content || "(无输出)"
+  let text = truncation.content || "(No output)"
   let details: BashToolDetails | undefined
   if (truncation.truncated) {
     details = { truncation }

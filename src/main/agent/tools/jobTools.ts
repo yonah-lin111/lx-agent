@@ -4,19 +4,19 @@ import { jobRegistry } from "../jobs/jobRegistry"
 import type { SessionDeps } from "./read"
 
 const jobOutputSchema = z.object({
-  job_id: z.string().describe("后台任务 ID，如 'bash-1'"),
+  job_id: z.string().describe("Background job ID, e.g. 'bash-1'"),
   wait: z
     .boolean()
-    .describe("是否在无新输出时阻塞等待新日志或任务结束（可选，默认 false 非阻塞）")
+    .describe("Whether to block and wait for new log output or job completion when no new output is available (optional, default false non-blocking)")
     .optional(),
-  timeout_ms: z.number().describe("等待最大毫秒数（默认 10000ms，上限 60000ms）").optional(),
+  timeout_ms: z.number().describe("Maximum milliseconds to wait (default 10000ms, max 60000ms)").optional(),
 })
 
 const jobListSchema = z.object({})
 
 const jobKillSchema = z.object({
-  job_id: z.string().describe("要终止的后台任务 ID，如 'bash-1'"),
-  reason: z.string().describe("终止原因（可选）").optional(),
+  job_id: z.string().describe("Background job ID to terminate, e.g. 'bash-1'"),
+  reason: z.string().describe("Termination reason (optional)").optional(),
 })
 
 const formatDuration = (startedAt: number, finishedAt?: number): string => {
@@ -35,9 +35,9 @@ export const createJobOutputTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof jobOutputSchema> => ({
   name: "job_output",
-  label: "读取后台任务输出",
+  label: "Read job output",
   description:
-    "消费式读取后台任务自上次读取以来的新增日志输出。支持 wait 等待新输出或等待进程退出。每个响应末尾附带当前任务状态 [status: ...]。",
+    "Consumptively read new log output from a background job since last read. Supports 'wait' to block for new output or process exit. Current status [status: ...] is appended to response.",
   inputSchema: jobOutputSchema,
   execute: async (_toolCallId, params) => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
@@ -49,12 +49,12 @@ export const createJobOutputTool = (
     )
     if (!res) {
       return {
-        content: [{ type: "text", text: `未找到任务 ${params.job_id}，请检查任务 ID 是否正确。` }],
+        content: [{ type: "text", text: `Job ${params.job_id} not found. Please verify the job ID.` }],
         details: { error: "job_not_found" },
       }
     }
 
-    const textPart = res.text.trim() ? res.text : "(无新增输出)"
+    const textPart = res.text.trim() ? res.text : "(No new output)"
     const detailPart = res.job.detail ? ` - ${res.job.detail}` : ""
     const statusPart = `[status: ${res.job.status}${detailPart}]`
     const finalText = `${textPart}\n\n${statusPart}`
@@ -71,15 +71,15 @@ export const createJobOutputTool = (
  */
 export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobListSchema> => ({
   name: "job_list",
-  label: "列出后台任务",
-  description: "列出当前会话中所有的后台长任务、运行状态、PID 与执行耗时。",
+  label: "List jobs",
+  description: "List all background jobs, statuses, PIDs, and run durations in the current session.",
   inputSchema: jobListSchema,
   execute: async () => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
     const jobs = jobRegistry.listJobs(sessionId)
     if (jobs.length === 0) {
       return {
-        content: [{ type: "text", text: "(当前会话无后台任务)" }],
+        content: [{ type: "text", text: "(No background jobs in current session)" }],
         details: { jobs: [] },
       }
     }
@@ -87,7 +87,7 @@ export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof j
     const lines = jobs.map((j) => {
       const duration = formatDuration(j.startedAt, j.finishedAt)
       const detail = j.detail ? ` (${j.detail})` : ""
-      return `- ${j.id} [${j.status}] PID: ${j.pid ?? "N/A"} — ${j.label}${detail} (已运行 ${duration})`
+      return `- ${j.id} [${j.status}] PID: ${j.pid ?? "N/A"} — ${j.label}${detail} (running for ${duration})`
     })
 
     return {
@@ -102,15 +102,15 @@ export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof j
  */
 export const createJobKillTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobKillSchema> => ({
   name: "job_kill",
-  label: "终止后台任务",
-  description: "向后台长任务的进程树发送终止信号，安全关闭长耗时进程。",
+  label: "Kill job",
+  description: "Send termination signal to the process tree of a background job to cleanly shut down long-running processes.",
   inputSchema: jobKillSchema,
   execute: async (_toolCallId, params) => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
     const res = await jobRegistry.killJob(params.job_id, params.reason, sessionId)
     if (!res.ok) {
       return {
-        content: [{ type: "text", text: `终止任务失败: ${res.error}` }],
+        content: [{ type: "text", text: `Failed to terminate job: ${res.error}` }],
         details: { error: res.error },
       }
     }
@@ -120,7 +120,7 @@ export const createJobKillTool = (sessionDeps?: SessionDeps): AgentTool<typeof j
       content: [
         {
           type: "text",
-          text: `已请求终止任务 ${params.job_id}${params.reason ? ` (原因: ${params.reason})` : ""}，当前状态: ${job?.status ?? "stopping"}。`,
+          text: `Termination requested for job ${params.job_id}${params.reason ? ` (reason: ${params.reason})` : ""}, current status: ${job?.status ?? "stopping"}.`,
         },
       ],
       details: { job },

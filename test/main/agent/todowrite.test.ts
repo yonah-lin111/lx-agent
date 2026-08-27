@@ -16,7 +16,7 @@ describe("todowrite 工具", () => {
     const result = await tool.execute("tc1", { todos }, undefined, undefined)
 
     const text = result.content.map((block) => (block.type === "text" ? block.text : "")).join("")
-    expect(text).toContain("任务清单（3 项）")
+    expect(text).toContain("Todo list (3 items):")
     expect(text).toContain("#1 [completed] 读取现有配置")
     expect(text).toContain("#2 [in_progress] 实现 todowrite 工具")
     expect(text).toContain("#3 [pending] 补充单测")
@@ -28,7 +28,7 @@ describe("todowrite 工具", () => {
     const tool = createTodoTool()
     const result = await tool.execute("tc2", { todos: [] }, undefined, undefined)
     const text = result.content.map((block) => (block.type === "text" ? block.text : "")).join("")
-    expect(text).toBe("任务清单已清空。")
+    expect(text).toBe("Todo list cleared.")
     expect((result.details as { todos: unknown[] }).todos).toEqual([])
   })
 

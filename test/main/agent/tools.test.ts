@@ -39,7 +39,7 @@ describe("read / write / edit", () => {
     const cwd = await makeTmp()
     const write = createWriteTool(cwd)
     const w = await write.execute("t1", { path: "new.txt", content: "line1\nline2\n" })
-    expect(toolText(w)).toMatch(/已写入/)
+    expect(toolText(w)).toMatch(/Wrote|已写入/)
 
     const read = createReadTool(cwd)
     const r = await read.execute("t1", { path: "new.txt" })
@@ -54,7 +54,7 @@ describe("read / write / edit", () => {
     const cwd = await makeTmp()
     const write = createWriteTool(cwd)
     const w = await write.execute("t1", { path: "new.txt", content: "x\ny\n" })
-    expect(toolText(w)).toMatch(/已写入/)
+    expect(toolText(w)).toMatch(/Wrote|已写入/)
     const diff = toolDiff(w)
     expect(diff?.stats).toEqual({ added: 2, removed: 0 })
     expect(changedLineTexts(diff!, "add")).toEqual(["x", "y"])
@@ -65,7 +65,7 @@ describe("read / write / edit", () => {
     await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
     const write = createWriteTool(cwd)
     const w = await write.execute("t1", { path: "f.txt", content: "a\nB!\nc\n" })
-    expect(toolText(w)).toMatch(/已写入/)
+    expect(toolText(w)).toMatch(/Wrote|已写入/)
     const diff = toolDiff(w)
     expect(diff?.stats).toEqual({ added: 1, removed: 1 })
     expect(changedLineTexts(diff!, "del")).toEqual(["b"])
@@ -126,7 +126,7 @@ describe("read / write / edit", () => {
     await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
     const edit = createEditTool(cwd)
     const e = await edit.execute("t1", { path: "f.txt", edits: [{ oldText: "b", newText: "B!" }] })
-    expect(toolText(e)).toMatch(/已替换/)
+    expect(toolText(e)).toMatch(/Applied|已替换/)
 
     const diff = toolDiff(e)
     expect(diff?.stats).toEqual({ added: 1, removed: 1 })
@@ -141,7 +141,7 @@ describe("read / write / edit", () => {
     await writeFile(join(cwd, "f.txt"), "x\nx\n")
     const edit = createEditTool(cwd)
     const e = await edit.execute("t1", { path: "f.txt", edits: [{ oldText: "x", newText: "y" }] })
-    expect(toolText(e)).toMatch(/不唯一/)
+    expect(toolText(e)).toMatch(/unique|不唯一/)
   })
 })
 
@@ -175,7 +175,7 @@ describe("ls / grep / find", () => {
     const ci = await grep.execute("t1", { pattern: "hello", ignoreCase: true })
     expect(toolText(ci)).toContain("Hello")
     const lit = await grep.execute("t1", { pattern: "w.d", literal: true })
-    expect(toolText(lit)).toContain("未找到匹配")
+    expect(toolText(lit)).toMatch(/No matches found|未找到匹配/)
   })
 
   it("find 按 glob 匹配", async () => {

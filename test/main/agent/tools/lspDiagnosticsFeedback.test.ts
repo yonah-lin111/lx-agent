@@ -115,7 +115,7 @@ describe("LSP Diagnostics Feedback", () => {
     })
 
     const w = await write.execute("t1", { path: "bad.ts", content: "const = 1;" })
-    expect(toolText(w)).toContain("已写入")
+    expect(toolText(w)).toMatch(/Wrote|已写入/)
     expect(toolText(w)).toContain("[LSP Diagnostics after modification (1 error)]:")
     expect(toolText(w)).toContain("- bad.ts:2:1: Identifier expected")
     expect((w.details as any)?.diagnostics).toBeDefined()
@@ -143,7 +143,7 @@ describe("LSP Diagnostics Feedback", () => {
       path: "code.ts",
       edits: [{ oldText: "10", newText: "'hello'" }],
     })
-    expect(toolText(e)).toContain("已替换 1 处内容")
+    expect(toolText(e)).toMatch(/Applied 1 edits|已替换 1 处内容/)
     expect(toolText(e)).toContain("[LSP Diagnostics after modification (1 error)]:")
     expect(toolText(e)).toContain("Type 'string' is not assignable to type 'number'")
     expect((e.details as any)?.diagnostics).toBeDefined()

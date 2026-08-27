@@ -8,8 +8,8 @@ import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
 const writeSchema = z.object({
-  path: z.string().describe("要写入的文件路径（相对项目根目录）"),
-  content: z.string().describe("写入文件的内容"),
+  path: z.string().describe("Path of the file to write (relative to project root)"),
+  content: z.string().describe("Content to write into the file"),
 })
 
 // 创建 write 工具：写入/覆盖 cwd 内文件，自动创建父目录，经 mutation queue 串行化，写后自动进行 LSP 诊断探测。
@@ -18,15 +18,15 @@ export const createWriteTool = (
   lspDeps?: LspFeedbackDeps,
 ): AgentTool<typeof writeSchema> => ({
   name: "write",
-  label: "写入文件",
+  label: "Write file",
   description:
-    "写入内容到文件。文件不存在时创建，存在时覆盖，自动创建缺失的父目录。只允许写项目目录内的文件。",
+    "Write content to a file. Creates the file if it does not exist, overwrites if it does, and automatically creates missing parent directories. Only files within the project root directory are allowed.",
   inputSchema: writeSchema,
   execute: async (_toolCallId, params, signal) => {
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的文件: ${params.path}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
         details: { refused: true },
       }
     }
@@ -62,7 +62,7 @@ export const createWriteTool = (
           ? generateStructuredDiff(oldContent, params.content, params.path)
           : undefined
 
-      const baseText = `已写入 ${Buffer.byteLength(params.content, "utf-8")} 字节到 ${params.path}`
+      const baseText = `Wrote ${Buffer.byteLength(params.content, "utf-8")} bytes to ${params.path}`
       const { textSuffix, errors } = await checkLspDiagnosticsFeedback(
         params.path,
         absolutePath,

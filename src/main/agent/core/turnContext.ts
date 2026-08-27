@@ -1,5 +1,5 @@
 import { collectEnvironmentVariables } from "../assembly"
-import type { ModelSelection } from "@/shared/contracts/agent"
+import type { ModelSelection } from "@shared/settings"
 
 export interface TurnEnvironmentSnapshot {
   cwd: string

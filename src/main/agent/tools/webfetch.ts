@@ -14,18 +14,18 @@ const MAX_TIMEOUT_S = 120
 
 // webfetch 工具输入 schema。
 const webfetchInputSchema = z.object({
-  url: z.string().min(1).max(2048).describe("要拉取的 URL（必须 http/https）"),
+  url: z.string().min(1).max(2048).describe("URL to fetch (must be http/https)"),
   format: z
     .enum(["text", "markdown", "html"])
     .optional()
-    .describe("返回格式：text/markdown/html（默认 markdown）"),
+    .describe("Return format: text/markdown/html (defaults to markdown)"),
   timeout: z
     .number()
     .int()
     .min(1)
     .max(MAX_TIMEOUT_S)
     .optional()
-    .describe("请求超时（秒，默认 30）"),
+    .describe("Request timeout in seconds (default 30)"),
 })
 
 type WebFetchFormat = "text" | "markdown" | "html"
@@ -46,13 +46,13 @@ const parseHttpUrl = (raw: string): URL => {
   try {
     url = new URL(raw)
   } catch {
-    throw new Error("Invalid URL: 请输入合法的 http/https 地址。")
+    throw new Error("Invalid URL: please provide a valid http/https URL.")
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("WebFetch only supports http/https URLs.")
   }
   if (isPrivateHost(url.hostname)) {
-    throw new Error("WebFetch blocked: 私网/内网地址不可访问。")
+    throw new Error("WebFetch blocked: Private/internal network addresses are not allowed.")
   }
   return url
 }
@@ -148,10 +148,10 @@ export const createWebFetchTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof webfetchInputSchema, WebFetchDetails> => ({
   name: "webfetch",
-  label: "抓取网页",
+  label: "Fetch webpage",
   description:
-    "抓取指定 URL 的网页内容并转为 markdown/text，用于读取 web_search 命中结果的原文。" +
-    "仅支持 http/https 公网地址（私网地址被阻断）。HTML 页面默认转为 markdown；纯文本/JSON 原样返回。",
+    "Fetch content of a webpage from a given URL and convert to markdown/text. " +
+    "Only public http/https URLs are supported (private network addresses are blocked). HTML is converted to markdown by default; plain text/JSON is returned as-is.",
   inputSchema: webfetchInputSchema,
   executionMode: "parallel",
   execute: async (toolCallId, params, signal) => {

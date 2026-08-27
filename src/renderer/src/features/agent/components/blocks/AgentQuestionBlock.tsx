@@ -251,7 +251,7 @@ export const AgentQuestionBlock = ({
                         : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
                     }`}
                   >
-                    <span className="truncate">{question.header || `问题 ${index + 1}`}</span>
+                    <span className="truncate">{question.header || `Question ${index + 1}`}</span>
                     {answered && <span className="h-1.5 w-1.5 rounded-full bg-white/60" />}
                   </button>
                 )

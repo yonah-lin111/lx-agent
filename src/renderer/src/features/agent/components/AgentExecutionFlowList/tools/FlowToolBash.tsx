@@ -70,7 +70,7 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
           >
             <FlowItemExpandableText
               content={content.result}
-              fallbackText="(无输出)"
+              fallbackText="(No output)"
               maxLines={3}
             />
           </div>

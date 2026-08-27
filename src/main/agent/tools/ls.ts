@@ -10,8 +10,8 @@ import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 const DEFAULT_LIMIT = 500
 
 const lsSchema = z.object({
-  path: z.string().describe("要列出的目录，默认为项目根目录").optional(),
-  limit: z.number().describe(`最多返回的条目数（默认 ${DEFAULT_LIMIT}）`).optional(),
+  path: z.string().describe("Directory to list, defaults to project root").optional(),
+  limit: z.number().describe(`Maximum entries to return (default: ${DEFAULT_LIMIT})`).optional(),
 })
 
 // 创建 ls 工具：列出 cwd 内目录条目，字母序 + 目录 `/` 后缀，含 dotfiles。
@@ -20,14 +20,14 @@ export const createLsTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof lsSchema> => ({
   name: "ls",
-  label: "列出目录",
-  description: `列出项目目录内指定目录的内容。条目按字母序排列，目录带 "/" 后缀，包含隐藏文件。输出截断到 ${DEFAULT_LIMIT} 条或 ${DEFAULT_MAX_BYTES / 1024}KB。`,
+  label: "List directory",
+  description: `List contents of a directory in the project. Entries are sorted alphabetically, directories have a trailing "/" suffix, and hidden files are included. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.`,
   inputSchema: lsSchema,
   execute: async (toolCallId, params) => {
     const dirPath = resolveToCwd(params.path || ".", cwd)
     if (!dirPath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的路径: ${params.path ?? "."}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
         details: { refused: true },
       }
     }
@@ -36,7 +36,7 @@ export const createLsTool = (
       const statResult = await stat(dirPath)
       if (!statResult.isDirectory()) {
         return {
-          content: [{ type: "text", text: `不是目录: ${params.path ?? "."}` }],
+          content: [{ type: "text", text: `Not a directory: ${params.path ?? "."}` }],
           details: { error: "not_a_directory" },
         }
       }
@@ -63,7 +63,7 @@ export const createLsTool = (
       }
 
       if (results.length === 0) {
-        return { content: [{ type: "text", text: "(空目录)" }] }
+        return { content: [{ type: "text", text: "(Empty directory)" }] }
       }
 
       const rawOutput = results.join("\n")
@@ -71,7 +71,7 @@ export const createLsTool = (
       let output = truncation.content
       const notices: string[] = []
       if (entryLimitReached) {
-        notices.push(`达到 ${effectiveLimit} 条限制，使用 limit=${effectiveLimit * 2} 查看更多`)
+        notices.push(`Reached limit of ${effectiveLimit} entries; use limit=${effectiveLimit * 2} to see more`)
       }
       if (truncation.truncated) {
         const sessionId = sessionDeps?.getSessionId?.() ?? undefined
@@ -95,7 +95,7 @@ export const createLsTool = (
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: "text", text: `列出目录 ${params.path ?? "."} 失败: ${message}` }],
+        content: [{ type: "text", text: `Failed to list directory ${params.path ?? "."}: ${message}` }],
         details: { error: message },
       }
     }

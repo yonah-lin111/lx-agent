@@ -39,10 +39,10 @@ const lspSchema = z.object({
     "incomingCalls",
     "outgoingCalls",
   ]),
-  filePath: z.string().describe("相对于项目根目录的文件路径"),
-  line: z.number().describe("行号（1 起始）").optional(),
-  character: z.number().describe("列号（1 起始）").optional(),
-  query: z.string().describe("workspaceSymbol 的搜索查询").optional(),
+  filePath: z.string().describe("File path relative to project root"),
+  line: z.number().describe("Line number (1-based)").optional(),
+  character: z.number().describe("Character/column number (1-based)").optional(),
+  query: z.string().describe("Search query for workspaceSymbol").optional(),
 })
 
 export interface LspToolDeps {
@@ -256,9 +256,9 @@ export const createLspTool = ({
   cwd,
 }: LspToolDeps): AgentTool<typeof lspSchema> => ({
   name: "lsp",
-  label: "LSP 语义检索",
+  label: "LSP semantic search",
   description:
-    "基于语言服务器（LSP）的项目语义检索。goToDefinition/findReferences/hover/documentSymbol/workspaceSymbol/goToImplementation/prepareCallHierarchy/incomingCalls/outgoingCalls。filePath 为相对于项目根目录的文件路径，line/character 为 1-based。仅支持 TS/JS/JSON/HTML/CSS/Python 语言（对应 server 未安装时报错提示）。",
+    "Language Server Protocol (LSP) semantic search within project. Supports goToDefinition, findReferences, hover, documentSymbol, workspaceSymbol, goToImplementation, prepareCallHierarchy, incomingCalls, outgoingCalls. filePath is relative to project root, line/character are 1-based.",
   inputSchema: lspSchema,
   executionMode: "parallel",
   execute: async (_toolCallId, params) => {
@@ -268,7 +268,7 @@ export const createLspTool = ({
         content: [
           {
             type: "text",
-            text: `lsp ${params.operation} 拒绝访问项目目录之外的文件: ${params.filePath}`,
+            text: `lsp ${params.operation} access denied to path outside project root: ${params.filePath}`,
           },
         ],
         details: { refused: true },
@@ -277,7 +277,7 @@ export const createLspTool = ({
     const sessionId = getSessionId()
     if (!sessionId) {
       return {
-        content: [{ type: "text", text: `lsp ${params.operation} 失败: 无活动会话` }],
+        content: [{ type: "text", text: `lsp ${params.operation} failed: no active session` }],
         details: { refused: true },
       }
     }
@@ -288,7 +288,7 @@ export const createLspTool = ({
         content: [
           {
             type: "text",
-            text: `lsp ${params.operation} 失败: 文件不存在: ${params.filePath}`,
+            text: `lsp ${params.operation} failed: file not found: ${params.filePath}`,
           },
         ],
         details: {
@@ -298,14 +298,14 @@ export const createLspTool = ({
           character: params.character ?? 1,
           query: params.query,
           results: [],
-          error: `文件不存在: ${params.filePath}`,
+          error: `File not found: ${params.filePath}`,
         },
       }
     }
     const clientResult = await manager.getClient(sessionId, absolutePath, cwd)
     if ("error" in clientResult) {
       return {
-        content: [{ type: "text", text: `lsp ${params.operation} 失败: ${clientResult.error}` }],
+        content: [{ type: "text", text: `lsp ${params.operation} failed: ${clientResult.error}` }],
         details: {
           operation: params.operation,
           filePath: absolutePath,
@@ -373,7 +373,7 @@ export const createLspTool = ({
           const body = hover ? hoverText(hover) : ""
           text = body
             ? `hover ${params.filePath}:${line0 + 1}:${character0 + 1}:\n${body}`
-            : `hover ${params.filePath}:${line0 + 1}:${character0 + 1}: 无内容`
+            : `hover ${params.filePath}:${line0 + 1}:${character0 + 1}: (No content)`
           details = { ...baseDetails(params, absolutePath, []), text: body || undefined }
           break
         }
@@ -443,7 +443,7 @@ export const createLspTool = ({
       const details: LspToolDetails = baseDetails(params, absolutePath, [])
       details.error = message
       return {
-        content: [{ type: "text", text: `lsp ${params.operation} 失败: ${message}` }],
+        content: [{ type: "text", text: `lsp ${params.operation} failed: ${message}` }],
         details,
       }
     }
@@ -478,8 +478,8 @@ const formatRows = (
   target: string,
 ): string => {
   const count = collected.results.length
-  const header = `${operation}${target ? ` ${target}` : ""}（${count} 处）`
-  return count === 0 ? `${header}: 未找到结果` : `${header}:\n${collected.lines.join("\n")}`
+  const header = `${operation}${target ? ` ${target}` : ""} (${count} locations)`
+  return count === 0 ? `${header}: No results found` : `${header}:\n${collected.lines.join("\n")}`
 }
 
 // 基础 details（后续按操作补 text/query）。

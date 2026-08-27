@@ -273,9 +273,9 @@ export const createWebSearchTool = (
   { query: string; numResults: number; type: string; provider: WebSearchProvider }
 > => ({
   name: "web_search",
-  label: "联网搜索",
+  label: "Web search",
   description:
-    "搜索公开互联网，获取当前、外部或专有领域信息。当答案依赖最新信息或对话与本地工具中不存在的信息时使用；搜索条件应具体，必要时拆分为多次搜索。",
+    "Search the public internet for current, external, or specialized domain information. Use when information is not present in local files or context. Keep search queries specific and split into multiple queries when needed.",
   inputSchema: webSearchInputSchema,
   execute: async (_toolCallId, params, signal) => {
     const { query, numResults = 8, type = "auto" } = params

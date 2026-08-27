@@ -13,13 +13,13 @@ import { DEFAULT_MAX_BYTES, GREP_MAX_LINE_LENGTH, truncateHead, truncateLine } f
 const DEFAULT_LIMIT = 100
 
 const grepSchema = z.object({
-  pattern: z.string().describe("搜索模式（正则或字面量）"),
-  path: z.string().describe("要搜索的目录或文件，默认项目根目录").optional(),
-  glob: z.string().describe("按 glob 过滤文件，如 '*.ts' 或 '**/*.spec.ts'").optional(),
-  ignoreCase: z.boolean().describe("忽略大小写").optional(),
-  literal: z.boolean().describe("将 pattern 视为字面量而非正则").optional(),
-  context: z.number().describe("匹配行前后各显示的上下文行数").optional(),
-  limit: z.number().describe(`最多返回的匹配数（默认 ${DEFAULT_LIMIT}）`).optional(),
+  pattern: z.string().describe("Search pattern (regex or literal string)"),
+  path: z.string().describe("Directory or file to search in (defaults to project root)").optional(),
+  glob: z.string().describe("Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'").optional(),
+  ignoreCase: z.boolean().describe("Whether to ignore case sensitivity").optional(),
+  literal: z.boolean().describe("Whether to treat pattern as literal string instead of regex").optional(),
+  context: z.number().describe("Number of context lines before and after match").optional(),
+  limit: z.number().describe(`Maximum matches to return (default: ${DEFAULT_LIMIT})`).optional(),
 })
 
 type GrepArgs = z.infer<typeof grepSchema>
@@ -69,7 +69,7 @@ const formatMatches = async (
       fileCache.set(match.filePath, lines)
     }
     if (!lines.length) {
-      outputLines.push(`${formatPath(match.filePath)}:${match.lineNumber}: (无法读取文件)`)
+      outputLines.push(`${formatPath(match.filePath)}:${match.lineNumber}: (Unable to read file)`)
       continue
     }
     const start = contextValue > 0 ? Math.max(1, match.lineNumber - contextValue) : match.lineNumber
@@ -157,7 +157,7 @@ const grepWithRg = async (
   if (exitCode !== 0 && exitCode !== 1) {
     return {
       content: [
-        { type: "text", text: `ripgrep 执行失败: ${stderr.trim() || `退出码 ${exitCode}`}` },
+        { type: "text", text: `ripgrep execution failed: ${stderr.trim() || `exit code ${exitCode}`}` },
       ],
       details: { error: stderr.trim() },
     }
@@ -185,7 +185,7 @@ const formatGrepOutput = async (
   options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof grepSchema>["execute"]>> => {
   if (!matches.length) {
-    return { content: [{ type: "text", text: "未找到匹配" }] }
+    return { content: [{ type: "text", text: "No matches found" }] }
   }
   const { output: rawOutput, linesTruncated } = await formatMatches(
     matches,
@@ -198,7 +198,7 @@ const formatGrepOutput = async (
   const notices: string[] = []
   if (matchLimitReached) {
     notices.push(
-      `达到 ${effectiveLimit} 条匹配限制，使用 limit=${effectiveLimit * 2} 获取更多或细化模式`,
+      `Reached limit of ${effectiveLimit} matches; use limit=${effectiveLimit * 2} to see more or refine pattern`,
     )
   }
   if (truncation.truncated) {
@@ -210,7 +210,7 @@ const formatGrepOutput = async (
     output = text
   } else {
     if (linesTruncated) {
-      notices.push(`部分行截断到 ${GREP_MAX_LINE_LENGTH} 字符，使用 read 工具查看完整内容`)
+      notices.push(`Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars; use 'read' tool to view full content`)
     }
     if (notices.length > 0) {
       output += `\n\n[${notices.join(". ")}]`
@@ -256,7 +256,7 @@ const grepWithNode = async (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return {
-      content: [{ type: "text", text: `无效的正则表达式: ${message}` }],
+      content: [{ type: "text", text: `Invalid regular expression: ${message}` }],
       details: { error: message },
     }
   }
@@ -298,14 +298,14 @@ export const createGrepTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof grepSchema> => ({
   name: "grep",
-  label: "搜索内容",
-  description: `搜索项目内文件内容。支持正则或字面量匹配，可按 glob 过滤文件，支持上下文行。输出截断到 ${DEFAULT_LIMIT} 条匹配或 ${DEFAULT_MAX_BYTES / 1024}KB，单行超 ${GREP_MAX_LINE_LENGTH} 字符截断。`,
+  label: "Search contents",
+  description: `Search file contents in the project. Supports regex and literal strings, glob filtering, and context lines. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB, with lines over ${GREP_MAX_LINE_LENGTH} chars truncated.`,
   inputSchema: grepSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的路径: ${params.path ?? "."}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
         details: { refused: true },
       }
     }
@@ -315,7 +315,7 @@ export const createGrepTool = (
       isDirectory = (await stat(searchPath)).isDirectory()
     } catch {
       return {
-        content: [{ type: "text", text: `路径不存在: ${params.path ?? "."}` }],
+        content: [{ type: "text", text: `Path does not exist: ${params.path ?? "."}` }],
         details: { error: "path_not_found" },
       }
     }

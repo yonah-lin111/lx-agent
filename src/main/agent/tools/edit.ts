@@ -7,15 +7,15 @@ import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
 const replaceEditSchema = z.object({
-  oldText: z.string().describe("需要替换的原文，须在文件中唯一且与其他 edits 不重叠"),
-  newText: z.string().describe("替换后的新文本"),
+  oldText: z.string().describe("Original text to replace, must be unique in the file and non-overlapping with other edits"),
+  newText: z.string().describe("New text to replace oldText with"),
 })
 
 const editSchema = z.object({
-  path: z.string().describe("要编辑的文件路径（相对项目根目录）"),
+  path: z.string().describe("Path of the file to edit (relative to project root)"),
   edits: z
     .array(replaceEditSchema)
-    .describe("一个或多个目标替换。每个 oldText 都基于原始文件匹配，不做增量匹配。"),
+    .describe("One or more replacements. Each oldText matches against the original file."),
 })
 
 type EditInput = z.infer<typeof editSchema>
@@ -74,7 +74,7 @@ const applyEditsToNormalizedContent = (
 
   for (let i = 0; i < normalizedEdits.length; i++) {
     if (normalizedEdits[i].oldText.length === 0) {
-      throw new Error(`edits[${i}] 的 oldText 不能为空（${path}）。`)
+      throw new Error(`edits[${i}].oldText cannot be empty (${path}).`)
     }
   }
 
@@ -89,7 +89,7 @@ const applyEditsToNormalizedContent = (
     const matchIndex = normalizedContent.indexOf(edit.oldText)
     if (matchIndex === -1) {
       throw new Error(
-        `edits[${i}] 未在 ${path} 中找到匹配的 oldText。请确保 oldText 与文件内容完全一致（共 ${normalizedEdits.length} 处编辑）。`,
+        `edits[${i}] oldText not found in ${path}. Ensure oldText matches file content exactly (${normalizedEdits.length} total edits).`,
       )
     }
 
@@ -103,7 +103,7 @@ const applyEditsToNormalizedContent = (
     }
     if (occurrences > 1) {
       throw new Error(
-        `edits[${i}] 的 oldText 在 ${path} 中出现 ${occurrences} 次，不唯一。请补充上下文使 oldText 唯一。`,
+        `edits[${i}] oldText matches ${occurrences} occurrences in ${path} (must be unique). Add more surrounding context to make oldText unique.`,
       )
     }
 
@@ -121,7 +121,7 @@ const applyEditsToNormalizedContent = (
     const current = matchedEdits[i]
     if (previous.matchIndex + previous.matchLength > current.matchIndex) {
       throw new Error(
-        `edits[${previous.editIndex}] 与 edits[${current.editIndex}] 在 ${path} 中重叠。请合并为一次编辑或让目标区域不相交。`,
+        `edits[${previous.editIndex}] and edits[${current.editIndex}] overlap in ${path}. Merge into one edit or ensure targets do not intersect.`,
       )
     }
   }
@@ -137,7 +137,7 @@ const applyEditsToNormalizedContent = (
   }
 
   if (normalizedContent === newContent) {
-    throw new Error(`编辑未产生任何变化（${path}）。`)
+    throw new Error(`Edit produced no changes (${path}).`)
   }
 
   return { baseContent: normalizedContent, newContent }
@@ -149,16 +149,16 @@ export const createEditTool = (
   lspDeps?: LspFeedbackDeps,
 ): AgentTool<typeof editSchema> => ({
   name: "edit",
-  label: "编辑文件",
+  label: "Edit file",
   description:
-    "使用精确文本替换编辑单个文件。每个 edits[].oldText 必须在原文件中唯一且互不重叠。若两处改动相邻，请合并为一次编辑。禁止仅为连接远端改动而包含大段未改动区域。",
+    "Edit a single file using exact text replacements. Each edits[].oldText must be unique and non-overlapping in the original file. If two changes are adjacent, merge them into one edit. Do not include large unchanged regions solely to join distant changes.",
   inputSchema: editSchema,
   prepareArguments: prepareEditArguments,
   execute: async (_toolCallId, params, signal) => {
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的文件: ${params.path}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
         details: { refused: true },
       }
     }
@@ -180,7 +180,7 @@ export const createEditTool = (
             ? (error as NodeJS.ErrnoException).code
             : "unknown"
         return {
-          content: [{ type: "text", text: `无法编辑文件 ${params.path}。错误码: ${code}。` }],
+          content: [{ type: "text", text: `Cannot edit file ${params.path}. Error code: ${code}.` }],
           details: { error: String(code) },
         }
       }
@@ -212,7 +212,7 @@ export const createEditTool = (
       await writeFile(absolutePath, finalContent, "utf-8")
       throwIfAborted()
 
-      const baseText = `已替换 ${params.edits.length} 处内容于 ${params.path}。`
+      const baseText = `Applied ${params.edits.length} edits to ${params.path}.`
       const { textSuffix, errors } = await checkLspDiagnosticsFeedback(
         params.path,
         absolutePath,

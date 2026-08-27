@@ -10,9 +10,9 @@ export const MAX_READ_LINE_SUFFIX = `... (line truncated to ${MAX_READ_LINE_LENG
 export const DEFAULT_READ_LIMIT = 2000
 
 const readSchema = z.object({
-  path: z.string().describe("相对于项目根目录的文件或目录路径"),
-  offset: z.number().describe("起始读取行号（1 起始，默认 1）").optional(),
-  limit: z.number().describe(`最多读取的行数（默认 ${DEFAULT_READ_LIMIT}）`).optional(),
+  path: z.string().describe("Path of the file or directory relative to project root"),
+  offset: z.number().describe("Starting line number to read from (1-based, default 1)").optional(),
+  limit: z.number().describe(`Maximum lines to read (default: ${DEFAULT_READ_LIMIT})`).optional(),
 })
 
 export interface SessionDeps {
@@ -55,16 +55,16 @@ export const createReadTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof readSchema> => ({
   name: "read",
-  label: "读取文件",
+  label: "Read file",
   description:
-    "读取项目目录内指定文件或目录的内容。支持按行号格式（<line>: <content>）分页读取大文件，或以 entries 形式列出目录结构。禁止访问项目目录之外的文件。",
+    "Read content of a file or directory within the project. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Access outside project root is prohibited.",
   inputSchema: readSchema,
   executionMode: "sequential",
   execute: async (toolCallId, params) => {
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的文件: ${params.path}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
         details: { refused: true },
       }
     }
@@ -128,7 +128,7 @@ export const createReadTool = (
           content: [
             {
               type: "text",
-              text: `文件 ${params.path} 是二进制文件（${buffer.length} 字节），无法读取内容。`,
+              text: `File ${params.path} is a binary file (${buffer.length} bytes), content cannot be displayed.`,
             },
           ],
           details: { binary: true, size: buffer.length },
@@ -146,7 +146,7 @@ export const createReadTool = (
           content: [
             {
               type: "text",
-              text: `Offset ${params.offset} 超出文件末尾（共 ${totalFileLines} 行）。`,
+              text: `Offset ${params.offset} exceeds end of file (${totalFileLines} total lines).`,
             },
           ],
           details: { error: "offset_out_of_bounds", totalLines: totalFileLines },
@@ -236,7 +236,7 @@ export const createReadTool = (
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: "text", text: `读取文件 ${params.path} 失败: ${message}` }],
+        content: [{ type: "text", text: `Failed to read file ${params.path}: ${message}` }],
         details: { error: message },
       }
     }

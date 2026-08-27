@@ -11,13 +11,13 @@ import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
 const applyPatchSchema = z.object({
-  patch: z.string().describe(`遵循 V4A 格式的多文件补丁内容。
-语法规范：
+  patch: z.string().describe(`Multi-file patch content following V4A format.
+Syntax specification:
 *** Begin Patch
 *** Add File: <path>
-<新文件内容>
+<new file content>
 *** Update File: <path>
-<上下文与修改内容：'-' 开头表示删除，'+' 开头表示新增，' ' (空格) 开头表示上下文行>
+<context and edits: '-' for removal, '+' for addition, ' ' (space) for context lines>
 *** Delete File: <path>
 *** End Patch`),
 })
@@ -40,9 +40,9 @@ export const createApplyPatchTool = (
   lspDeps?: LspFeedbackDeps,
 ): AgentTool<typeof applyPatchSchema> => ({
   name: "apply_patch",
-  label: "应用多文件补丁",
+  label: "Apply multi-file patch",
   description:
-    "在单个原子操作中对多个文件应用补丁。支持创建新文件 (*** Add File)、修改已有文件 (*** Update File) 以及删除文件 (*** Delete File)。若任意一处匹配失败，所有更改均不会落盘。",
+    "Apply patch across multiple files in a single atomic operation. Supports creating new files (*** Add File), modifying existing files (*** Update File), and deleting files (*** Delete File). If any hunk fails, all changes are aborted.",
   inputSchema: applyPatchSchema,
   execute: async (_toolCallId, params, signal) => {
     let parsed
@@ -51,7 +51,7 @@ export const createApplyPatchTool = (
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       return {
-        content: [{ type: "text", text: `解析补丁失败: ${errorMsg}` }],
+        content: [{ type: "text", text: `Failed to parse patch: ${errorMsg}` }],
         details: { error: errorMsg },
       }
     }
@@ -67,7 +67,7 @@ export const createApplyPatchTool = (
       const abs = resolveToCwd(action.path, cwd)
       if (!abs) {
         return {
-          content: [{ type: "text", text: `拒绝访问项目目录之外的文件: ${action.path}` }],
+          content: [{ type: "text", text: `Access denied to path outside project root: ${action.path}` }],
           details: { refused: true },
         }
       }
@@ -79,7 +79,7 @@ export const createApplyPatchTool = (
     }
 
     if (signal?.aborted) {
-      return { content: [{ type: "text", text: "操作已中止。" }], details: { error: "aborted" } }
+      return { content: [{ type: "text", text: "Operation aborted." }], details: { error: "aborted" } }
     }
 
     // 2. 预检与内存计算阶段（原子校验：任一失败则中断返回）
@@ -105,7 +105,7 @@ export const createApplyPatchTool = (
             exists = false
           }
           if (exists) {
-            throw new Error(`无法创建新文件 ${op.relativePath}：该文件已存在。`)
+            throw new Error(`Cannot create file ${op.relativePath}: file already exists.`)
           }
           plans.push({
             type: "write",
@@ -120,7 +120,7 @@ export const createApplyPatchTool = (
             const buf = await readFile(op.absolutePath)
             oldContent = buf.toString("utf-8")
           } catch (err) {
-            throw new Error(`无法删除文件 ${op.relativePath}：文件不存在或无法读取。`)
+            throw new Error(`Cannot delete file ${op.relativePath}: file does not exist or is unreadable.`)
           }
           plans.push({
             type: "delete",
@@ -134,7 +134,7 @@ export const createApplyPatchTool = (
             const buf = await readFile(op.absolutePath)
             oldContent = buf.toString("utf-8")
           } catch (err) {
-            throw new Error(`无法更新文件 ${op.relativePath}：文件不存在或无法读取。`)
+            throw new Error(`Cannot update file ${op.relativePath}: file does not exist or is unreadable.`)
           }
 
           const newContent = applyHunksToFile(oldContent, op.action.hunks, op.relativePath)
@@ -150,13 +150,13 @@ export const createApplyPatchTool = (
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
       return {
-        content: [{ type: "text", text: `补丁校验失败，已放弃全部修改: ${errorMsg}` }],
+        content: [{ type: "text", text: `Patch validation failed, changes aborted: ${errorMsg}` }],
         details: { error: errorMsg },
       }
     }
 
     if (signal?.aborted) {
-      return { content: [{ type: "text", text: "操作已中止。" }], details: { error: "aborted" } }
+      return { content: [{ type: "text", text: "Operation aborted." }], details: { error: "aborted" } }
     }
 
     // 3. 落盘执行阶段（全部文件锁定与串行写）
@@ -187,10 +187,10 @@ export const createApplyPatchTool = (
       })
     }
 
-    const summary = `成功应用补丁至 ${plans.length} 个文件：\n${plans
+    const summary = `Successfully applied patch to ${plans.length} files:\n${plans
       .map(
         (p) =>
-          `  - [${p.type === "delete" ? "删除" : p.oldContent === "" ? "新增" : "更新"}] ${p.relativePath}`,
+          `  - [${p.type === "delete" ? "delete" : p.oldContent === "" ? "add" : "update"}] ${p.relativePath}`,
       )
       .join("\n")}`
 

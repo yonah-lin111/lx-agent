@@ -11,9 +11,9 @@ import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 const DEFAULT_LIMIT = 1000
 
 const findSchema = z.object({
-  pattern: z.string().describe("匹配文件的 glob 模式，如 '*.ts'、'**/*.json'、'src/**/*.spec.ts'"),
-  path: z.string().describe("要搜索的目录，默认项目根目录").optional(),
-  limit: z.number().describe(`最多返回的结果数（默认 ${DEFAULT_LIMIT}）`).optional(),
+  pattern: z.string().describe("Glob pattern to match files, e.g. '*.ts', '**/*.json', 'src/**/*.spec.ts'"),
+  path: z.string().describe("Directory to search in (defaults to project root)").optional(),
+  limit: z.number().describe(`Maximum results to return (default: ${DEFAULT_LIMIT})`).optional(),
 })
 
 // 尝试使用系统 fd；fd 不可用时返回 undefined 触发纯 Node 降级。
@@ -66,7 +66,7 @@ const findWithFd = async (
   }
   if (exitCode !== 0) {
     return {
-      content: [{ type: "text", text: `fd 执行失败: ${stderr.trim() || `退出码 ${exitCode}`}` }],
+      content: [{ type: "text", text: `fd execution failed: ${stderr.trim() || `exit code ${exitCode}`}` }],
       details: { error: stderr.trim() },
     }
   }
@@ -81,7 +81,7 @@ const formatFindOutput = async (
   options?: { sessionId?: string; toolCallId?: string },
 ): Promise<ReturnType<AgentTool<typeof findSchema>["execute"]>> => {
   if (relativized.length === 0) {
-    return { content: [{ type: "text", text: "未找到匹配文件" }] }
+    return { content: [{ type: "text", text: "No matching files found" }] }
   }
   const resultLimitReached = relativized.length >= effectiveLimit
   const rawOutput = relativized.join("\n")
@@ -89,7 +89,7 @@ const formatFindOutput = async (
   let output = truncation.content
   const notices: string[] = []
   if (resultLimitReached) {
-    notices.push(`达到 ${effectiveLimit} 条结果限制`)
+    notices.push(`Reached limit of ${effectiveLimit} results`)
   }
   if (truncation.truncated) {
     const { text } = spillManager.handleTruncation(rawOutput, truncation, {
@@ -130,14 +130,14 @@ export const createFindTool = (
   sessionDeps?: SessionDeps,
 ): AgentTool<typeof findSchema> => ({
   name: "find",
-  label: "查找文件",
-  description: `按 glob 模式在项目内查找文件，返回相对搜索目录的路径。输出截断到 ${DEFAULT_LIMIT} 条或 ${DEFAULT_MAX_BYTES / 1024}KB。`,
+  label: "Find files",
+  description: `Find files in the project matching a glob pattern, returning paths relative to search directory. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB.`,
   inputSchema: findSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
-        content: [{ type: "text", text: `拒绝访问项目目录之外的路径: ${params.path ?? "."}` }],
+        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
         details: { refused: true },
       }
     }

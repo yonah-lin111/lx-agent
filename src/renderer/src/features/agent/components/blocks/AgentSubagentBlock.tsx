@@ -107,7 +107,7 @@ export const AgentSubagentBlock = ({
       {/* 顶部 label：Subagent 名称 + 子代理名（AI 分发时注明原始名称），点击打开面板。 */}
       <button
         type="button"
-        aria-label={`查看子代理 ${name} 详情`}
+        aria-label={`View subagent ${name} details`}
         onClick={() => onOpen?.(toolCall)}
         className="agent-subagent-header group/label flex w-fit max-w-full items-center gap-1 rounded-[4px] py-px pr-1 transition-colors hover:bg-white/5 focus:outline-none"
       >
