@@ -1,12 +1,14 @@
-import { BarChart3, MessageSquareShare, Shield, X } from "lucide-react"
+import { BarChart3, ChevronDown, ChevronUp, MessageSquareShare, Shield, X } from "lucide-react"
 import type React from "react"
-import { Fragment, useMemo } from "react"
+import { Fragment, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageList"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
-import type { ChatBlock, SubagentData } from "@/features/agent/types"
+import type { ChatBlock, InterAgentCommunication, SubagentData } from "@/features/agent/types"
 import { toChatMessage } from "@/features/agent/utils"
+import { markdownRenderer } from "@/features/markdown/utils/markdownRenderer"
 import { useTranslation } from "@/i18n"
 
 // 子代理调用块类型。
@@ -20,6 +22,58 @@ interface AgentSubagentPanelProps {
   onClose: () => void
   // 面板消息列表滚动容器（面板打开时，AgentMessageList 的滚动按钮接管面板滚动）。
   scrollRef?: React.RefObject<HTMLDivElement | null>
+}
+
+interface CommItemProps {
+  comm: InterAgentCommunication
+}
+
+/**
+ * 结构化多 Agent 信元组件：默认显示 4 行，支持展开/折叠，subagent->orchestrator 走 Markdown 渲染。
+ */
+const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const previewRef = useRef<HTMLElement | null>(null)
+  const isFromSubagent = comm.author.startsWith("subagent") || comm.recipient === "orchestrator"
+
+  return (
+    <div className="flex flex-col gap-1 rounded border border-white/5 bg-white/[0.02] p-2">
+      <div className="flex items-center justify-between text-[11px] text-white/45">
+        <span className="font-bold text-sky-300">
+          {comm.author} &rarr; {comm.recipient}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {comm.triggerTurn && (
+            <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[10px] text-sky-300">trigger</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex cursor-pointer items-center gap-0.5 text-[10px] text-white/40 hover:text-white/80"
+          >
+            <span>{expanded ? t("common.collapse") : t("common.expand")}</span>
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        </div>
+      </div>
+      <div className={`text-white/80 ${expanded ? "" : "line-clamp-4"}`}>
+        {isFromSubagent ? (
+          <LxMarkdownPreview
+            html={markdownRenderer.render(comm.content)}
+            previewMode="preview"
+            previewRef={previewRef}
+            className="px-0 text-white/80"
+            contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
+          />
+        ) : (
+          <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
+            {comm.content}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -39,13 +93,16 @@ export const AgentSubagentPanel = ({
   const messages = useMemo(() => {
     if (!data) return []
     let sequence = 0
-    return data.messages.map((message) =>
-      toChatMessage(
-        message,
-        message.role === "assistant" && message.stopReason === "pending",
-        `subagent-${sequence++}`,
-      ),
-    )
+    // 在子代理面板中，过滤掉用户的原始 prompt 消息（已在顶部的 orchestrator->subagent 结构化展示）
+    return data.messages
+      .filter((message) => message.role !== "user")
+      .map((message) =>
+        toChatMessage(
+          message,
+          message.role === "assistant" && message.stopReason === "pending",
+          `subagent-${sequence++}`,
+        ),
+      )
   }, [data])
 
   // 与 AgentMessageList 相同的 QA 分组：一次子代理运行的 AI 内容（助手消息 + 工具结果 + 续写）合并到一个 AgentMessageItem 内展示。
@@ -108,30 +165,20 @@ export const AgentSubagentPanel = ({
       </div>
 
       {data ? (
-        <>
-          {/* 结构化通信信元（Inter-Agent Communication） */}
+        <div
+          ref={scrollRef}
+          className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-3"
+        >
+          {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
-            <div className="flex shrink-0 flex-col gap-1 border-b border-white/10 bg-black/20 px-3 py-2 text-[11px] font-mono">
-              <div className="flex items-center gap-1 text-white/50 font-semibold">
-                <MessageSquareShare className="h-3 w-3 text-sky-400" />
+            <div className="flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-white/50">
+                <MessageSquareShare className="h-3.5 w-3.5 text-sky-400" />
                 <span>Inter-Agent Protocol</span>
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 {data.communications.map((comm) => (
-                  <div
-                    key={comm.id ?? comm.content.slice(0, 16)}
-                    className="flex flex-col gap-0.5 rounded border border-white/5 bg-white/[0.02] p-1.5"
-                  >
-                    <div className="flex items-center justify-between text-[10px] text-white/40">
-                      <span className="font-bold text-sky-300">
-                        {comm.author} &rarr; {comm.recipient}
-                      </span>
-                      {comm.triggerTurn && (
-                        <span className="rounded bg-sky-500/20 px-1 text-sky-300">trigger</span>
-                      )}
-                    </div>
-                    <div className="line-clamp-2 text-white/70">{comm.content}</div>
-                  </div>
+                  <SubagentCommItem key={comm.id ?? comm.content.slice(0, 16)} comm={comm} />
                 ))}
               </div>
             </div>
@@ -139,40 +186,35 @@ export const AgentSubagentPanel = ({
 
           {/* 子代理内部消息时间轴（只读，不隐藏消息列表）；AI 内容按 QA 组聚合到一个 AgentMessageItem。 */}
           {messages.length > 0 ? (
-            <div
-              ref={scrollRef}
-              className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-1.5"
-            >
-              <div className="flex flex-col gap-1">
-                {messageGroups.map((group) => {
-                  const userMessage = group.userMessage
-                  const assistant = group.assistant
-                  const groupKey = userMessage?.id ?? assistant?.message.id
-                  return (
-                    <Fragment key={groupKey}>
-                      {userMessage && (
-                        <div className="mb-2 w-full">
-                          <AgentMessageItem message={userMessage} isPinned={false} readOnly />
-                        </div>
-                      )}
-                      {assistant && (
-                        <AgentMessageItem
-                          message={assistant.message}
-                          continuationMessages={assistant.continuationMessages}
-                          readOnly
-                        />
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </div>
+            <div className="flex flex-col gap-1">
+              {messageGroups.map((group) => {
+                const userMessage = group.userMessage
+                const assistant = group.assistant
+                const groupKey = userMessage?.id ?? assistant?.message.id
+                return (
+                  <Fragment key={groupKey}>
+                    {userMessage && (
+                      <div className="mb-2 w-full">
+                        <AgentMessageItem message={userMessage} isPinned={false} readOnly />
+                      </div>
+                    )}
+                    {assistant && (
+                      <AgentMessageItem
+                        message={assistant.message}
+                        continuationMessages={assistant.continuationMessages}
+                        readOnly
+                      />
+                    )}
+                  </Fragment>
+                )
+              })}
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/35">
+            <div className="flex min-h-24 flex-1 items-center justify-center text-[12px] text-white/35">
               {t("agent.subagentNoContent")}
             </div>
           )}
-        </>
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/35">
           {t("agent.subagentNoDetails")}

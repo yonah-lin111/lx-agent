@@ -254,8 +254,21 @@ export const AgentPage = ({
     [pendingRequest],
   )
 
-  // 当前打开的子代理面板（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
-  const [activeSubagent, setActiveSubagent] = useState<SubagentToolCall | null>(null)
+  // 当前打开的子代理面板 toolCallId（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
+  const [activeSubagentId, setActiveSubagentId] = useState<string | null>(null)
+
+  // 实时从 messages 中解析最新的 subagent toolCall 块，确保子代理流式更新能够被面板响应
+  const activeSubagent = useMemo<SubagentToolCall | null>(() => {
+    if (!activeSubagentId) return null
+    for (const message of messages) {
+      for (const block of message.blocks) {
+        if (block.kind === "toolCall" && block.toolCallId === activeSubagentId) {
+          return block
+        }
+      }
+    }
+    return null
+  }, [messages, activeSubagentId])
   // 当前视图模式：qa 为消息列表，flow 为执行流程视图；两者互斥并持久化，输出中禁止切换。
   const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
 
@@ -269,12 +282,12 @@ export const AgentPage = ({
     if (!ok) {
       warning(t("agent.viewSwitchBlocked"))
     } else {
-      setActiveSubagent(null)
+      setActiveSubagentId(null)
     }
   }, [warning, t])
 
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
-    setActiveSubagent(toolCall)
+    setActiveSubagentId(toolCall.toolCallId)
   }, [])
   // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
@@ -296,8 +309,8 @@ export const AgentPage = ({
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
       // 若处于子代理面板打开状态，让子代理面板优先关闭
-      if (activeSubagent !== null) {
-        setActiveSubagent(null)
+      if (activeSubagentId !== null) {
+        setActiveSubagentId(null)
         return
       }
       if (!isStreaming) return
@@ -505,8 +518,8 @@ export const AgentPage = ({
               onDeleteMessage={deleteTurn}
               onOpenSubagent={openSubagent}
               onFork={handleFork}
-              isSubagentPanelOpen={activeSubagent !== null}
-              subagentScrollRef={activeSubagent !== null ? subagentScrollRef : undefined}
+              isSubagentPanelOpen={activeSubagentId !== null}
+              subagentScrollRef={activeSubagentId !== null ? subagentScrollRef : undefined}
               canContinue={canContinue}
               onContinue={continueChat}
               onNavigationStateChange={setNavState}
@@ -514,7 +527,7 @@ export const AgentPage = ({
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
             <AgentSubagentPanel
               toolCall={activeSubagent}
-              onClose={() => setActiveSubagent(null)}
+              onClose={() => setActiveSubagentId(null)}
               scrollRef={subagentScrollRef}
             />
           </>

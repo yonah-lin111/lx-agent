@@ -374,10 +374,8 @@ const TooltipBubble = ({
   }
 
   const cardClassName = isConfirming
-    ? "w-fit min-w-[192px] max-w-[min(320px,80vw)] bg-[#303030] p-2.5 text-white"
-    : `w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white ${
-        multiline ? "whitespace-normal" : "whitespace-nowrap"
-      }`
+    ? "w-fit min-w-[192px] max-w-[min(320px,80vw)] bg-[#303030] p-2.5 text-white break-words"
+    : "w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-normal break-words"
 
   return createPortal(
     <TooltipLayerContext.Provider value={layerContextValue}>
