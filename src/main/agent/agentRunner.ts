@@ -667,6 +667,29 @@ class AgentRunner {
         ...(command ? { command } : {}),
       }
       await agent.prompt(userMessage)
+
+      // 规划模式收敛检查：若本轮 Agent 产出了方案（<proposed_plan>）或完成了规划且未显式调用 switch_mode，
+      // 在本轮结束后自动切回 default 模式并通知前端，避免后续用户指令持续被 Plan 模式阻断。
+      if (this.collaborationMode === "plan") {
+        const lastMsg = this.agent?.state.messages[this.agent.state.messages.length - 1]
+        if (lastMsg && lastMsg.role === "assistant") {
+          const textContent = Array.isArray(lastMsg.content)
+            ? lastMsg.content
+                .filter((b) => b.type === "text")
+                .map((b) => (b as { text: string }).text)
+                .join("\n")
+            : ""
+          if (
+            textContent.includes("<proposed_plan>") ||
+            textContent.includes("</proposed_plan>") ||
+            lastMsg.stopReason === "stop"
+          ) {
+            this.collaborationMode = "default"
+            this.builtSignature = ""
+            this.eventSink?.({ type: "collaboration_mode_changed", mode: "default" })
+          }
+        }
+      }
       // context-overflow 自动压缩重试一次（决策 9）：移除错误消息 → 强制压缩 → 续跑重试。
       if (this.turnStore.consumeOverflow()) {
         this.removeLastOverflowMessage()
