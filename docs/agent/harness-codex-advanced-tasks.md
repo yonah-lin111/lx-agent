@@ -14,7 +14,7 @@
 - [x] Phase 11: Unified Exec 统一执行引擎与 HeadTailBuffer 截断缓冲区
 - [x] Phase 12: 多级 Approval Policy 引擎与会话级白名单升级机制
 - [x] Phase 13: Guardian 规则防护网与四维风险评估器 (Exfiltration/Probing/Weakening/Destruction)
-- [ ] Phase 14: 分层记忆系统（Hierarchical Workspace Memories & Citations 解析与注入）
+- [x] Phase 14: 分层记忆系统（Hierarchical Workspace Memories & Citations 解析与注入）
 - [ ] Phase 15: 前端审批覆盖层（ApprovalOverlay）与 Memory 查看器组件
 - [ ] Phase 16: 全链路回归验证与单测套件完备化
 
@@ -74,13 +74,13 @@
 ---
 
 ### Phase 14: 分层记忆系统 (Hierarchical Workspace Memories)
-- [ ] **Task 14.1: MemoryLoader 与 MEMORY.md 索引读取**
+- [x] **Task 14.1: MemoryLoader 与 MEMORY.md 索引读取**
   - 在 `src/main/agent/memories/memoryManager.ts` 中实现工作区记忆加载器。
-  - 解析 `MEMORY.md`、`rollout_summaries/` 与 `extensions/ad_hoc/notes/`。
-- [ ] **Task 14.2: SystemPromptManager MEMORY_SUMMARY 注入与 Citation 解析**
+  - 解析 `<cwd>/.lx/memory/MEMORY.md`、`notes/` 与 `rollout_summaries/`。
+- [x] **Task 14.2: SystemPromptManager MEMORY_SUMMARY 注入与 Citation 解析**
   - 提示词中注入 `<memory_guidance>` 与 `MEMORY_SUMMARY` 分段。
-  - 模型回复后提取 `<oai-mem-citation>` 结构并向前端事件流推送。
-- [ ] **Task 14.3: 单元测试验证**
+  - 模型回复后提取 `<oai-mem-citation>` 结构挂载至 `AssistantMessage.citations`。
+- [x] **Task 14.3: 单元测试验证**
   - 编写 `test/main/agent/memories/memoryManager.test.ts`。
 
 ---

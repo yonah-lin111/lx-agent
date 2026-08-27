@@ -5,8 +5,9 @@
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
-import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
+import type { CollaborationMode, SandboxPolicy, WorkspaceMemorySummary } from "@shared/contracts/agent"
 import { formatInstructions, loadInstructions } from "../instructionLoader"
+import { formatMemorySummaryPrompt, loadWorkspaceMemory } from "../memories/memoryManager"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
 import {
   detectModelFamily,
@@ -30,6 +31,7 @@ export const PROMPT_ORDERS = {
   MODEL_ADAPTIVE: 50,
   SKILLS: 100,
   INSTRUCTIONS: 200,
+  WORKSPACE_MEMORY: 250,
   RUNTIME_CONTEXT: 300,
   ENVIRONMENT: 350,
   CURRENT_TIME: 355,
@@ -46,6 +48,7 @@ export const PROMPT_SECTION_NAMES = {
   MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
   INSTRUCTIONS: "agent:instructions",
+  WORKSPACE_MEMORY: "agent:workspace-memory",
   RUNTIME_CONTEXT: "agent:runtime-context",
   ENVIRONMENT: "agent:environment",
   CURRENT_TIME: "agent:current-time",
@@ -62,6 +65,7 @@ export interface AssembleContext {
   sandboxPolicy?: SandboxPolicy
   collaborationMode?: CollaborationMode
   currentTimeReminder?: string
+  workspaceMemory?: WorkspaceMemorySummary | null
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   variables?: Record<string, string | undefined>
@@ -649,6 +653,20 @@ export function createDefaultSystemPromptManager(
     text: (ctx) => {
       if (!ctx.cwd) return ""
       return formatInstructions(loadInstructions(ctx.cwd)).trim()
+    },
+  })
+
+  // 250: 分层工作区记忆 (MEMORY.md & Citations Guidance)
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.WORKSPACE_MEMORY,
+    order: PROMPT_ORDERS.WORKSPACE_MEMORY,
+    text: (ctx) => {
+      if (ctx.workspaceMemory !== undefined) {
+        return formatMemorySummaryPrompt(ctx.workspaceMemory).trim()
+      }
+      if (!ctx.cwd) return ""
+      const summary = loadWorkspaceMemory(ctx.cwd)
+      return formatMemorySummaryPrompt(summary).trim()
     },
   })
 

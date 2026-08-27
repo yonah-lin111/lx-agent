@@ -283,6 +283,63 @@ markdownRenderer.renderer.rules.markdown_supple = (tokens, index) => {
   return `<section class="markdown-supple-block"${lineAttribute}><header class="markdown-supple-block-header"><span class="markdown-supple-label">suppleTemplate</span></header><div class="markdown-supple-content">${contentHtml}</div></section>`
 }
 
+markdownRenderer.inline.ruler.before("link", "markdown-memory-citation", (state, silent) => {
+  if (
+    state.src.charCodeAt(state.pos) !== 0x5b /* [ */ ||
+    state.src.charCodeAt(state.pos + 1) !== 0x5e /* ^ */ ||
+    state.src.slice(state.pos, state.pos + 6) !== "[^mem:"
+  ) {
+    return false
+  }
+
+  const match = /^\[\^mem:((?:[^\]\[]|\[[^\]]*\])+)\]/.exec(state.src.slice(state.pos))
+  if (!match) return false
+
+  const rawContent = match[1]
+  if (!silent) {
+    const token = state.push("markdown_memory_citation", "", 0)
+    token.meta = { raw: rawContent }
+  }
+
+  state.pos += match[0].length
+  return true
+})
+
+markdownRenderer.renderer.rules.markdown_memory_citation = (tokens, index) => {
+  const meta = tokens[index]?.meta as { raw: string }
+  if (!meta) return ""
+
+  const raw = meta.raw.trim()
+  const noteIndex = raw.lastIndexOf("|note=")
+  let note: string | undefined
+  let location = raw
+
+  if (noteIndex !== -1) {
+    let noteRaw = raw.slice(noteIndex + 6).trim()
+    if (noteRaw.startsWith("[") && noteRaw.endsWith("]")) {
+      noteRaw = noteRaw.slice(1, -1).trim()
+    }
+    note = noteRaw
+    location = raw.slice(0, noteIndex).trim()
+  }
+
+  const colonIndex = location.lastIndexOf(":")
+  let path = location
+  let range = ""
+  if (colonIndex !== -1) {
+    path = location.slice(0, colonIndex).trim()
+    range = location.slice(colonIndex + 1).trim()
+  }
+
+  const encodedPath = encodeURIComponent(path)
+  const encodedRange = encodeURIComponent(range)
+  const encodedNote = encodeURIComponent(note ?? "")
+  const escapedPath = markdownRenderer.utils.escapeHtml(path)
+  const escapedRange = markdownRenderer.utils.escapeHtml(range ? `:${range}` : "")
+
+  return `<span class="markdown-memory-citation" data-memory-path="${encodedPath}" data-memory-range="${encodedRange}" data-memory-note="${encodedNote}"><span class="markdown-memory-citation-chip"><svg class="markdown-memory-citation-icon" viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg><span class="markdown-memory-citation-label">${escapedPath}${escapedRange}</span></span></span>`
+}
+
 markdownRenderer.inline.ruler.before("link", "markdown-reference", (state, silent) => {
   const match = /^@\[(refer-[a-z]+)\]\(((?:[^()\r\n]|\([^()\r\n]*\))+)\)/.exec(
     state.src.slice(state.pos),

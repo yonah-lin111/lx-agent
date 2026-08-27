@@ -375,6 +375,55 @@ export const LxMarkdownPreview = ({
         },
       ),
       ...Array.from(
+        previewContent.querySelectorAll<HTMLElement>(".markdown-memory-citation"),
+        (container) => {
+          const path = container.dataset.memoryPath
+            ? decodeURIComponent(container.dataset.memoryPath)
+            : ""
+          const range = container.dataset.memoryRange
+            ? decodeURIComponent(container.dataset.memoryRange)
+            : ""
+          const note = container.dataset.memoryNote
+            ? decodeURIComponent(container.dataset.memoryNote)
+            : ""
+          const innerHtml = container.innerHTML
+
+          const tooltipContent = (
+            <div className="flex flex-col gap-1 text-xs max-w-[20rem]">
+              <div className="font-semibold text-theme-foreground flex items-center gap-1.5">
+                <span>{path}</span>
+                {range ? (
+                  <span className="text-theme-muted font-mono text-[11px]">{range}</span>
+                ) : null}
+              </div>
+              {note ? (
+                <div className="text-theme-muted leading-relaxed text-[11px]">{note}</div>
+              ) : null}
+            </div>
+          )
+
+          const chipNode = (
+            <span
+              className="inline-flex max-w-full items-center"
+              dangerouslySetInnerHTML={{ __html: innerHtml }}
+            />
+          )
+
+          return {
+            container,
+            content: (
+              <LxTooltip
+                content={tooltipContent}
+                placement="top"
+                contentClassName="whitespace-normal max-w-[22rem]"
+              >
+                {chipNode}
+              </LxTooltip>
+            ),
+          }
+        },
+      ),
+      ...Array.from(
         previewContent.querySelectorAll<HTMLElement>(".markdown-file-mention"),
         (container) => {
           const displayLabel = container.dataset.displayLabel

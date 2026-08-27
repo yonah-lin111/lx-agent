@@ -74,6 +74,26 @@ export interface UserMessage {
   }[]
 }
 
+export interface MemoryCitationEntry {
+  path: string
+  lineStart: number
+  lineEnd: number
+  note?: string
+}
+
+export interface MemoryCitation {
+  entries: MemoryCitationEntry[]
+  rolloutIds?: string[]
+}
+
+export interface WorkspaceMemorySummary {
+  memoryPath: string
+  rawContent: string
+  sections: { title: string; content: string }[]
+  notesCount: number
+  rolloutsCount: number
+}
+
 // 助手消息。
 export interface AssistantMessage {
   role: "assistant"
@@ -85,6 +105,7 @@ export interface AssistantMessage {
   errorMessage?: string
   timestamp: number
   durationMs?: number
+  citations?: MemoryCitation
 }
 
 // 模型切换/初始模型消息：非交互块，记录模型切换及注入的模型厂商自适应提示词。
