@@ -120,7 +120,7 @@ class PermissionManager {
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
     const collaborationMode = contextOptions?.collaborationMode ?? this.settings.collaborationMode ?? "default"
 
-    // 0. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作
+    // 0. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作及 bash 副作用
     if (collaborationMode === "plan") {
       if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
         return "deny"
@@ -194,7 +194,16 @@ class PermissionManager {
     if (decision === "allow") return undefined
     if (decision === "deny") {
       const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-      if (sandboxPolicy === "read-only" && (toolName === "write" || toolName === "edit")) {
+      if (
+        collaborationMode === "plan" &&
+        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+      ) {
+        return { block: true, reason: PLAN_MODE_MUTATION_REASON }
+      }
+      if (
+        sandboxPolicy === "read-only" &&
+        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+      ) {
         return { block: true, reason: READ_ONLY_SANDBOX_REASON }
       }
       if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
