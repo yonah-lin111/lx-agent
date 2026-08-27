@@ -471,4 +471,43 @@ describe("permissionManager 永久决策写回（G5）", () => {
     expect(holder.permissionSettings.allow).toEqual([])
     expect(holder.permissionSettings.deny).toEqual([])
   })
+
+  describe("沙箱策略 (Sandbox Policy)", () => {
+    it("read-only 沙箱模式下直接拒绝写操作 (write/edit)", async () => {
+      applySettings({
+        defaultMode: "default",
+        sandboxPolicy: "read-only",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+      expect(permissionManager.evaluate("write", { path: "src/test.ts" })).toBe("deny")
+      expect(permissionManager.evaluate("edit", { path: "src/test.ts" })).toBe("deny")
+      expect(permissionManager.evaluate("read", { path: "src/test.ts" })).toBe("allow")
+
+      const result = await permissionManager.gate(
+        gateContext("write", { path: "src/test.ts" }),
+        "s1",
+      )
+      expect(result).toEqual({
+        block: true,
+        reason:
+          "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited.",
+      })
+    })
+
+    it("danger-full-access 沙箱模式下默认放行所有操作（破坏性高危命令除外）", async () => {
+      applySettings({
+        defaultMode: "default",
+        sandboxPolicy: "danger-full-access",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+      expect(permissionManager.evaluate("write", { path: "src/test.ts" })).toBe("allow")
+      expect(permissionManager.evaluate("edit", { path: "src/test.ts" })).toBe("allow")
+      expect(permissionManager.evaluate("bash", { command: "npm run build" })).toBe("allow")
+      expect(permissionManager.evaluate("bash", { command: "rm -rf /" })).toBe("deny")
+    })
+  })
 })

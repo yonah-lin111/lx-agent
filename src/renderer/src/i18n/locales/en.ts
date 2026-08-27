@@ -145,9 +145,17 @@ export const en = {
     contextWindow: "Context Window",
     maxOutputTokens: "Max Output Tokens",
 
-    // Permissions section
+    // Permissions & Sandbox section
     permissionMode: "Permission Mode",
     permissionModeDesc: "Determines how gated tools are handled when no rule is matched.",
+    sandboxPolicy: "Sandbox Policy",
+    sandboxPolicyDesc: "Restricts execution boundaries in filesystem and terminal environments.",
+    sandboxReadOnly: "read-only — Read Only Sandbox",
+    sandboxWorkspaceWrite: "workspace-write — Workspace Read & Write (Default)",
+    sandboxDangerFullAccess: "danger-full-access — Full Access (No Sandbox)",
+    sandboxReadOnlyDesc: "Strictly blocks all write/edit operations and destructive commands.",
+    sandboxWorkspaceWriteDesc: "Allows modifications inside current workspace; external writes require confirmation.",
+    sandboxDangerFullAccessDesc: "Unrestricted execution (destructive system commands still protected by safety guard).",
     modeDefault: "default — Ask per rule",
     modeAcceptEdits: "acceptEdits — Auto-allow write/edit",
     modeBypass: "bypassPermissions — Allow all",
