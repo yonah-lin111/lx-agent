@@ -78,7 +78,8 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
     toolName === "ls" ||
     toolName === "grep" ||
     toolName === "find" ||
-    toolName === "lsp"
+    toolName === "lsp" ||
+    toolName === "switch_mode"
   ) {
     return "searchCodebase"
   }
@@ -94,6 +95,7 @@ export const getToolExecutionCategory = (toolName: string): ExecutionCategoryKey
       "render_svg",
       "render_ascii",
       "render_html",
+      "switch_mode",
     ].includes(toolName) &&
       toolName.includes("_"))
   ) {
