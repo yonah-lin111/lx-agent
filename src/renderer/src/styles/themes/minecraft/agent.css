@@ -751,6 +751,7 @@
 }
 
 /* 子代理抽屉面板：深板岩马赛克基底 + 3D 浮雕 */
+[data-theme="minecraft"] .agent-subagent-panel-dialog,
 [data-theme="minecraft"] [aria-label="Subagent 面板"],
 [data-theme="minecraft"] [aria-label="Subagent Panel"] {
   border: 2px solid #000000 !important;
@@ -762,6 +763,68 @@
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05),
     0 8px 24px rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Inter-Agent Protocol 信元卡片及区域主题化 */
+[data-theme="minecraft"] .agent-interagent-section {
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  background-color: #161824 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-interagent-title {
+  font-family: var(--theme-font-family) !important;
+  color: #38bdf8 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-item {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2d !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(56, 189, 248, 0.2),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+  margin-bottom: 2px !important;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-item:hover {
+  background-color: #262638 !important;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-header {
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-route {
+  color: #38bdf8 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-trigger {
+  border: 1px solid #000000 !important;
+  background-color: #0c4a6e !important;
+  color: #7dd3fc !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .agent-subagent-comm-body {
+  border-top: 1px solid #000000 !important;
+  background-color: #12121a !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .agent-subagent-policy {
+  border: 1px solid #000000 !important;
+  background-color: #162238 !important;
+  color: #7dd3fc !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15) !important;
 }
 
 /* ========================================================

@@ -1,4 +1,11 @@
-import { BarChart3, ChevronDown, ChevronUp, MessageSquareShare, Shield, X } from "lucide-react"
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  MessageSquareShare,
+  Shield,
+  X,
+} from "lucide-react"
 import type React from "react"
 import { Fragment, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -29,48 +36,68 @@ interface CommItemProps {
 }
 
 /**
- * 结构化多 Agent 信元组件：默认显示 4 行，支持展开/折叠，subagent->orchestrator 走 Markdown 渲染。
+ * 结构化多 Agent 信元组件：对齐 AgentExecutionFlowItem 的折叠展开交互（ChevronRight/ChevronDown 头部点击展开），
+ * 默认折叠展示 4 行，展开展示全部内容，且 subagent->orchestrator 走 Markdown 渲染。
  */
 const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
-  const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const previewRef = useRef<HTMLElement | null>(null)
   const isFromSubagent = comm.author.startsWith("subagent") || comm.recipient === "orchestrator"
 
   return (
-    <div className="flex flex-col gap-1 rounded border border-white/5 bg-white/[0.02] p-2">
-      <div className="flex items-center justify-between text-[11px] text-white/45">
-        <span className="font-bold text-sky-300">
-          {comm.author} &rarr; {comm.recipient}
-        </span>
-        <div className="flex items-center gap-1.5">
+    <div
+      data-expanded={isExpanded}
+      className="agent-subagent-comm-item rounded-[6px] border border-white/8 bg-[#212121] transition-colors hover:border-white/15"
+    >
+      {/* 头部摘要栏：与 AgentExecutionFlowItem 相同的点击交互与 Chevron 图标 */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setIsExpanded(!isExpanded)
+          }
+        }}
+        className="agent-subagent-comm-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none">
+          <div className="flex shrink-0 items-center text-white/40">
+            {isExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+          </div>
+          <span className="agent-subagent-comm-route font-mono text-[12px] font-bold leading-none text-sky-300">
+            {comm.author} &rarr; {comm.recipient}
+          </span>
           {comm.triggerTurn && (
-            <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[10px] text-sky-300">trigger</span>
+            <span className="agent-subagent-comm-trigger shrink-0 rounded bg-sky-500/20 px-1 py-0.5 font-mono text-[10px] leading-none text-sky-300">
+              trigger
+            </span>
           )}
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="flex cursor-pointer items-center gap-0.5 text-[10px] text-white/40 hover:text-white/80"
-          >
-            <span>{expanded ? t("common.collapse") : t("common.expand")}</span>
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
         </div>
       </div>
-      <div className={`text-white/80 ${expanded ? "" : "line-clamp-4"}`}>
-        {isFromSubagent ? (
-          <LxMarkdownPreview
-            html={markdownRenderer.render(comm.content)}
-            previewMode="preview"
-            previewRef={previewRef}
-            className="px-0 text-white/80"
-            contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
-          />
-        ) : (
-          <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
-            {comm.content}
-          </div>
-        )}
+
+      {/* 正文内容区 */}
+      <div className="agent-subagent-comm-body border-t border-white/5 bg-black/25 px-3 py-2 text-[12px]">
+        <div className={`agent-subagent-comm-content text-white/80 ${isExpanded ? "" : "line-clamp-4"}`}>
+          {isFromSubagent ? (
+            <LxMarkdownPreview
+              html={markdownRenderer.render(comm.content)}
+              previewMode="preview"
+              previewRef={previewRef}
+              className="px-0 text-white/80"
+              contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
+            />
+          ) : (
+            <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
+              {comm.content}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -128,7 +155,7 @@ export const AgentSubagentPanel = ({
             {displayName !== "task" ? ` - ${displayName}(task)` : " - task"}
           </span>
           {data?.sandboxPolicy && (
-            <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
+            <span className="agent-subagent-policy inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
               <Shield className="h-2.5 w-2.5 text-sky-400" />
               {data.sandboxPolicy}
             </span>
@@ -171,8 +198,8 @@ export const AgentSubagentPanel = ({
         >
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
-            <div className="flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
-              <div className="flex items-center gap-1 text-[11px] font-semibold text-white/50">
+            <div className="agent-interagent-section flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
+              <div className="agent-interagent-title flex items-center gap-1 text-[11px] font-semibold text-white/50">
                 <MessageSquareShare className="h-3.5 w-3.5 text-sky-400" />
                 <span>Inter-Agent Protocol</span>
               </div>
