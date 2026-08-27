@@ -36,8 +36,8 @@ interface CommItemProps {
 }
 
 /**
- * 结构化多 Agent 信元组件：对齐 AgentExecutionFlowItem 的折叠展开交互（ChevronRight/ChevronDown 头部点击展开），
- * 默认折叠展示 4 行，展开展示全部内容，且 subagent->orchestrator 走 Markdown 渲染。
+ * 结构化多 Agent 信元组件：对齐 AgentExecutionFlowItem 的折叠展开机制。
+ * 默认完全折叠（不显示 body），点击头部展开完整内容；subagent->orchestrator 走 Markdown 渲染。
  */
 const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -49,15 +49,15 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
       data-expanded={isExpanded}
       className="agent-subagent-comm-item rounded-[6px] border border-white/8 bg-[#212121] transition-colors hover:border-white/15"
     >
-      {/* 头部摘要栏：与 AgentExecutionFlowItem 相同的点击交互与 Chevron 图标 */}
+      {/* 头部摘要栏：与 AgentExecutionFlowItem 一致的点击展开交互 */}
       <div
         role="button"
         tabIndex={0}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setIsExpanded((prev) => !prev)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
-            setIsExpanded(!isExpanded)
+            setIsExpanded((prev) => !prev)
           }
         }}
         className="agent-subagent-comm-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none"
@@ -81,24 +81,26 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
         </div>
       </div>
 
-      {/* 正文内容区 */}
-      <div className="agent-subagent-comm-body border-t border-white/5 bg-black/25 px-3 py-2 text-[12px]">
-        <div className={`agent-subagent-comm-content text-white/80 ${isExpanded ? "" : "line-clamp-4"}`}>
-          {isFromSubagent ? (
-            <LxMarkdownPreview
-              html={markdownRenderer.render(comm.content)}
-              previewMode="preview"
-              previewRef={previewRef}
-              className="px-0 text-white/80"
-              contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
-            />
-          ) : (
-            <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
-              {comm.content}
-            </div>
-          )}
+      {/* 展开详情区：与 AgentExecutionFlowItem 相同的条件渲染 */}
+      {isExpanded ? (
+        <div className="agent-subagent-comm-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+          <div className="agent-subagent-comm-content text-white/80">
+            {isFromSubagent ? (
+              <LxMarkdownPreview
+                html={markdownRenderer.render(comm.content)}
+                previewMode="preview"
+                previewRef={previewRef}
+                className="px-0 text-white/80"
+                contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
+              />
+            ) : (
+              <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
+                {comm.content}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }
