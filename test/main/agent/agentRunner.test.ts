@@ -927,7 +927,7 @@ describe("agentRunner 持久化", () => {
         path: destFilePath,
       })
 
-      // 验证删除消息轮时，附件文件和空目录被清理
+      // 验证当唯一一轮被删除后，会话因只剩初始模型/无消息而被整体删除，附件随之被彻底清理
       const userTimestamps = readUserTimestamps(result.sessionId)
       expect(userTimestamps).toHaveLength(1)
       agentRunner.deleteMessageTurn(result.sessionId, userTimestamps[0]!)

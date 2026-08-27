@@ -45,6 +45,7 @@ import {
   AgentInputFilePanel,
   type AgentInputModel,
   AgentInputModelPanel,
+  AgentUndoConfirmPanel,
   getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
 import type { AgentInputFile } from "./AgentInputFiles"
@@ -78,6 +79,7 @@ export interface AgentMarkdownInputProps {
   onWorktreeSelect?: (path: string) => void
   onClear?: () => void
   onUndo?: () => void
+  isOnlyOneTurnLeft?: () => boolean
   onCompact?: () => void
   onToggleCollaborationMode?: () => void
   onAddFiles?: (files: AgentInputFile[]) => void
@@ -583,6 +585,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onWorktreeSelect,
       onClear,
       onUndo,
+      isOnlyOneTurnLeft,
       onCompact,
       onToggleCollaborationMode,
       onAddFiles,
@@ -602,9 +605,15 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       return panelAnchorRef?.current ?? containerRef.current
     }, [panelAnchorRef])
 
-    const [activeMode, setActiveMode] = useState<"command" | "file" | "model" | "worktree" | null>(
-      null,
-    )
+    const isOnlyOneTurnLeftRef = useRef(isOnlyOneTurnLeft)
+    isOnlyOneTurnLeftRef.current = isOnlyOneTurnLeft
+
+    const [activeMode, setActiveMode] = useState<
+      "command" | "file" | "model" | "worktree" | "undo_confirm" | null
+    >(null)
+    const [undoConfirmIndex, setUndoConfirmIndex] = useState(0)
+    const undoConfirmIndexRef = useRef(undoConfirmIndex)
+    undoConfirmIndexRef.current = undoConfirmIndex
     const [commandIndex, setCommandIndex] = useState(0)
     const [fileIndex, setFileIndex] = useState(0)
     const [modelIndex, setModelIndex] = useState(0)
@@ -816,6 +825,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const isFileMode = activeMode === "file" && files.length > 0
     const isModelMode = activeMode === "model" && matchedModels.length > 0
     const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
+    const isUndoConfirmMode = activeMode === "undo_confirm"
 
     // 计算底部面板相对于输入框容器的位置
     const updatePanelPosition = useCallback((): void => {
@@ -826,7 +836,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       }
       const kind: "command" | "file" | null = isFileMode
         ? "file"
-        : isCommandMode || isModelMode || isWorktreeMode
+        : isCommandMode || isModelMode || isWorktreeMode || isUndoConfirmMode
           ? "command"
           : null
       if (!kind) {
@@ -834,7 +844,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         return
       }
       setPanelPosition(getAgentPanelPosition(kind, anchor.getBoundingClientRect()))
-    }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode, getPanelAnchor])
+    }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode, isUndoConfirmMode, getPanelAnchor])
 
     useEffect(() => {
       updatePanelPosition()
@@ -1089,6 +1099,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           text.startsWith("/undo:") ||
           text.startsWith("/undo-")
         ) {
+          if (isOnlyOneTurnLeftRef.current?.()) {
+            setActiveMode("undo_confirm")
+            setUndoConfirmIndex(0)
+            updatePanelPosition()
+            return
+          }
           onChangeRef.current("")
           const view = editorViewRef.current
           if (view) {
@@ -1185,6 +1201,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           onChangeRef.current("")
           onClear?.()
         } else if (command.id === "undo") {
+          if (isOnlyOneTurnLeftRef.current?.()) {
+            setActiveMode("undo_confirm")
+            setUndoConfirmIndex(0)
+            updatePanelPosition()
+            return
+          }
           onUndo?.()
         } else if (command.id === "steer") {
           const insertText = "/steer [prompt]"
@@ -1356,6 +1378,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     setPasteIndex((i) => (i + 1) % count)
                     return true
                   }
+                  if (activeModeRef.current === "undo_confirm") {
+                    setUndoConfirmIndex((i) => (i + 1) % 2)
+                    return true
+                  }
                   if (
                     activeModeRef.current === "command" &&
                     matchedCommandsRef.current.length > 0
@@ -1407,6 +1433,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   if (pastePanelRef.current) {
                     const count = pasteOptionsRef.current.length || 2
                     setPasteIndex((i) => (i - 1 + count) % count)
+                    return true
+                  }
+                  if (activeModeRef.current === "undo_confirm") {
+                    setUndoConfirmIndex((i) => (i - 1 + 2) % 2)
                     return true
                   }
                   if (
@@ -1521,6 +1551,21 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     const opts = pasteOptionsRef.current
                     const selected = opts[pasteIndexRef.current] ?? opts[0]
                     return selectPasteReference(selected?.id ?? "reference")
+                  }
+                  if (activeModeRef.current === "undo_confirm") {
+                    const isConfirm = undoConfirmIndexRef.current === 0
+                    setActiveMode(null)
+                    if (isConfirm) {
+                      const view = editorViewRef.current
+                      if (view) {
+                        view.dispatch({
+                          changes: { from: 0, to: view.state.doc.length, insert: "" },
+                        })
+                      }
+                      onChangeRef.current("")
+                      onUndo?.()
+                    }
+                    return true
                   }
                   if (activeModeRef.current === "command") {
                     const cmd =
@@ -1742,6 +1787,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           position={panelPosition}
           commands={matchedCommands}
           activeIndex={commandIndex}
+        />
+        <AgentUndoConfirmPanel
+          isOpen={isUndoConfirmMode}
+          position={panelPosition}
+          activeIndex={undoConfirmIndex}
         />
         <AgentInputModelPanel
           isOpen={isModelMode}

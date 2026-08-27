@@ -243,6 +243,106 @@ const getCommandTags = (command: AgentInputCommand): { label: string; bgClass: s
   return tags
 }
 
+export interface AgentUndoConfirmPanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  activeIndex: number
+}
+
+/**
+ * 渲染 /undo 删除会话二次确认面板。
+ */
+export const AgentUndoConfirmPanel = ({
+  isOpen,
+  position,
+  activeIndex,
+}: AgentUndoConfirmPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const hasData = position !== null
+  const animated = usePanelAnimation(isOpen && hasData, hasData ? { position, activeIndex } : null)
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const { position: displayPosition, activeIndex: displayIndex } = animated.displayData
+
+  const options = [
+    {
+      id: "confirm",
+      label: t("agent.confirmUndo"),
+      desc: t("agent.undoConfirmDesc"),
+      danger: true,
+    },
+    {
+      id: "cancel",
+      label: t("agent.cancelUndo"),
+      desc: "",
+      danger: false,
+    },
+  ]
+
+  return (
+    <div
+      ref={panelRef}
+      aria-label={t("agent.undoConfirmTitle")}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
+      role="listbox"
+      style={displayPosition}
+    >
+      <div className="px-2.5 py-1.5 text-[11px] font-medium text-white/50 border-b border-white/10 mb-1">
+        {t("agent.undoConfirmTitle")}
+      </div>
+      {options.map((opt, index) => {
+        const isActive = index === displayIndex
+        return (
+          <div
+            key={opt.id}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`flex h-10 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+              isActive
+                ? opt.danger
+                  ? "bg-red-500/20 text-red-200"
+                  : "bg-white/8 text-white"
+                : opt.danger
+                  ? "text-red-300/80"
+                  : "text-white/75"
+            }`}
+          >
+            <span
+              className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-[11px] font-semibold ${
+                opt.danger ? "bg-red-500/30 text-red-200" : "bg-white/10 text-white/70"
+              }`}
+            >
+              {index + 1}
+            </span>
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span
+                className={`flex shrink-0 items-center text-[13px] font-medium leading-none ${
+                  opt.danger ? "text-red-300" : "text-white"
+                }`}
+              >
+                {opt.label}
+              </span>
+              {opt.desc && (
+                <span className="min-w-0 flex-1 truncate text-[11px] leading-none text-white/40">
+                  {opt.desc}
+                </span>
+              )}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
  * 渲染 Agent 输入框的 Slash 命令面板。
  */

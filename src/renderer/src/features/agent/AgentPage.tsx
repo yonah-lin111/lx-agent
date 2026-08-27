@@ -73,6 +73,7 @@ export const AgentPage = ({
     stopStreaming,
     createNewChat,
     undoLastTurn,
+    isOnlyOneTurnLeft,
     compactChat,
     deleteTurn,
     restoreChat,
@@ -561,6 +562,7 @@ export const AgentPage = ({
         onStop={handleStop}
         onClear={handleNewChat}
         onUndo={undoLastTurn}
+        isOnlyOneTurnLeft={isOnlyOneTurnLeft}
         onCompact={compactChat}
         onToggleCollaborationMode={toggleCollaborationMode}
         selectedModel={selectedModel}
