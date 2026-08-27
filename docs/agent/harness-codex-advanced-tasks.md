@@ -11,9 +11,9 @@
 - [x] Phase 8: Current Time Reminder 状态机与动态注入（<current_time> Injection）
 - [x] Phase 9: 专精 Review Agent 子代理与 Rubric 审查能力（Rubric Evaluation）
 - [x] Phase 10: 前端模式切换交互与全量单测回归
-- [ ] Phase 11: Unified Exec 统一执行引擎与 HeadTailBuffer 截断缓冲区
-- [ ] Phase 12: 多级 Approval Policy 引擎与会话级白名单升级机制
-- [ ] Phase 13: Guardian 规则防护网与四维风险评估器 (Exfiltration/Probing/Weakening/Destruction)
+- [x] Phase 11: Unified Exec 统一执行引擎与 HeadTailBuffer 截断缓冲区
+- [x] Phase 12: 多级 Approval Policy 引擎与会话级白名单升级机制
+- [x] Phase 13: Guardian 规则防护网与四维风险评估器 (Exfiltration/Probing/Weakening/Destruction)
 - [ ] Phase 14: 分层记忆系统（Hierarchical Workspace Memories & Citations 解析与注入）
 - [ ] Phase 15: 前端审批覆盖层（ApprovalOverlay）与 Memory 查看器组件
 - [ ] Phase 16: 全链路回归验证与单测套件完备化
@@ -28,47 +28,47 @@
 ---
 
 ### Phase 11: Unified Exec 统一执行引擎与 HeadTailBuffer
-- [ ] **Task 11.1: HeadTailBuffer 对称式截断缓冲实现**
+- [x] **Task 11.1: HeadTailBuffer 对称式截断缓冲实现**
   - 在 `src/main/agent/shell/headTailBuffer.ts` 中实现对称容量分配（默认 50/50，最大 1MiB 可配置）。
   - 支持 `pushChunk`、`totalBytes`、`retainedBytes`、`omittedBytes`、`toBytes`、`toStringWithOmissionMarker` 与 `pushBuffer` 合并。
   - 超限时中间丢弃并插入 `\n... ${omittedBytes} bytes omitted ...\n` 标记。
-- [ ] **Task 11.2: UnifiedExecManager 统一生命周期与进程调度管理**
+- [x] **Task 11.2: UnifiedExecManager 统一生命周期与进程调度管理**
   - 在 `src/main/agent/shell/unifiedExecManager.ts` 中实现统一进程管理：
     - 支持 PID 递增分配与预留、yieldTimeMs 范围钳位（250ms ~ 30,000ms）。
     - 统一短时命令（`execCommand`）与交互式标准输入交互（`writeStdin`）。
     - 统一接入 AbortSignal 取消与退出码/失败原因捕获。
   - 重构 `src/main/agent/tools/bash.ts` 与 `src/main/agent/jobs/jobRegistry.ts`，委托 `UnifiedExecManager` 处理进程生命周期与 HeadTailBuffer 缓冲。
-- [ ] **Task 11.3: 单元测试验证**
+- [x] **Task 11.3: 单元测试验证**
   - 编写 `test/main/agent/shell/headTailBuffer.test.ts` 与 `test/main/agent/shell/unifiedExecManager.test.ts`。
 
 ---
 
 ### Phase 12: 多级 Approval Policy 引擎与会话级白名单升级
-- [ ] **Task 12.1: ApprovalPolicy 契约扩展**
+- [x] **Task 12.1: ApprovalPolicy 契约扩展**
   - 在 `src/shared/contracts/agent.ts` 中定义 `ApprovalPolicy = "never" | "on_request" | "unless_trusted"` 与 `ApprovalDecision` 决策契约。
   - 在 `AgentSettings` 与 `PermissionSettings` 中增加 `approvalPolicy` 配置字段（默认 `unless_trusted`）。
-- [ ] **Task 12.2: PermissionManager 审批升级与会话白名单机制**
+- [x] **Task 12.2: PermissionManager 审批升级与会话白名单机制**
   - 在 `src/main/agent/permissions/permissionManager.ts` 中强化决策管道：
     - Plan Mode 硬阻断 -> Read-Only 沙箱硬阻断 -> Deny Rules 拦截 -> Session 白名单（工具/前缀/路径）放行 -> Allow Rules -> ApprovalPolicy 评估。
     - 支持 `approve_once`（单次放行）、`approve_session`（会话级工具放行）及 `approve_prefix`（命令前缀放行）。
-- [ ] **Task 12.3: 单元测试验证**
+- [x] **Task 12.3: 单元测试验证**
   - 编写 `test/main/agent/permissions/approvalPolicy.test.ts`，覆盖各策略组合与白名单升级。
 
 ---
 
 ### Phase 13: Guardian 规则防护网与四维风险评估
-- [ ] **Task 13.1: Guardian 四维风险评估器**
+- [x] **Task 13.1: Guardian 四维风险评估器**
   - 在 `src/main/agent/guard/guardianEvaluator.ts` 中实现四维安全规则引擎：
     1. Data Exfiltration（数据外发：检测敏感文件、凭据、Token 外发与未授权网络上传）
     2. Credential Probing（凭据刺探：检测对 SSH、AWS 凭据、Keychain、浏览器 Cookie 的嗅探）
     3. Persistent Security Weakening（持久化降权：检测修改 hosts、sudoers、禁用安全配置、全局 chmod 777）
     4. Destructive Actions（破坏性操作：检测广义 rm -rf、高危 git reset/push 破坏、变量污染如 HOME 覆盖）
   - 输出结构化评估（`riskLevel`、`userAuthorization`、`outcome`、`category`、`rationale`）。
-- [ ] **Task 13.2: 强制拦截与审批兜底升级**
+- [x] **Task 13.2: 强制拦截与审批兜底升级**
   - 在 `PermissionManager.gate` 中集成 Guardian 评估：
     - Plan Mode 下高危操作直接硬阻断拒绝。
     - Default Mode 下高危操作强制绕过 `never`/`unless_trusted` 自动放行，强制升级为用户确认。
-- [ ] **Task 13.3: 单元测试验证**
+- [x] **Task 13.3: 单元测试验证**
   - 编写 `test/main/agent/guard/guardianEvaluator.test.ts`。
 
 ---

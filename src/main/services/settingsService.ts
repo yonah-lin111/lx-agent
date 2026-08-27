@@ -351,6 +351,7 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
 const DEFAULT_PERMISSION_SETTINGS: PermissionSettings = {
   defaultMode: "default",
   sandboxPolicy: "workspace-write",
+  approvalPolicy: "unless_trusted",
   allow: [],
   deny: [],
   ask: [],
@@ -369,11 +370,19 @@ const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
     policy === "read-only" || policy === "danger-full-access" || policy === "workspace-write"
       ? policy
       : "workspace-write"
+  const rawApprovalPolicy = raw.approvalPolicy
+  const approvalPolicy =
+    rawApprovalPolicy === "never" ||
+    rawApprovalPolicy === "on_request" ||
+    rawApprovalPolicy === "unless_trusted"
+      ? rawApprovalPolicy
+      : "unless_trusted"
   const toStringArray = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
   return {
     defaultMode,
     sandboxPolicy,
+    approvalPolicy,
     allow: toStringArray(raw.allow),
     deny: toStringArray(raw.deny),
     ask: toStringArray(raw.ask),

@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process"
 import { constants } from "node:fs"
 import { access } from "node:fs/promises"
 import { z } from "zod"
 import type { AgentTool } from "../core/types"
-import { getShellConfig, jobRegistry, killProcessTree } from "../jobs/jobRegistry"
+import { jobRegistry } from "../jobs/jobRegistry"
 import { persistentShellManager } from "../shell/persistentShell"
+import { unifiedExecManager } from "../shell/unifiedExecManager"
 import { spillManager } from "../spill/spillManager"
 import type { SessionDeps } from "./read"
 import {
@@ -42,14 +42,6 @@ export interface BashToolDetails {
   truncation?: TruncationResult
   backgroundJobId?: string
   session?: string
-}
-
-// 等待子进程结束并返回退出码（不因继承的 stdio 句柄挂起）。
-const waitForChildProcess = (child: ReturnType<typeof spawn>): Promise<number | null> => {
-  return new Promise((resolve) => {
-    child.on("exit", (code) => resolve(code))
-    child.on("error", () => resolve(null))
-  })
 }
 
 // 创建 bash 工具：cwd 内执行命令，默认超时 + 进程树清理 + 尾部截断 + Spill 机制 + 后台作业分支。
@@ -116,8 +108,6 @@ export const createBashTool = (
       }
     }
 
-    const shellConfig = getShellConfig()
-
     const timeoutSeconds = params.timeout ?? DEFAULT_TIMEOUT_SECONDS
     if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
       return {
@@ -167,93 +157,50 @@ export const createBashTool = (
       }
     }
 
-    const child = spawn(
-      shellConfig.shell,
-      shellConfig.commandTransport === "stdin"
-        ? shellConfig.args
-        : [...shellConfig.args, params.command],
-      {
-        cwd,
-        detached: process.platform !== "win32",
-        stdio: [shellConfig.commandTransport === "stdin" ? "pipe" : "ignore", "pipe", "pipe"],
-        windowsHide: true,
-      },
-    )
-    if (shellConfig.commandTransport === "stdin") {
-      child.stdin?.on("error", () => {})
-      child.stdin?.end(params.command)
-    }
+    const execRes = await unifiedExecManager.execCommand({
+      command: params.command,
+      cwd,
+      sessionId,
+      yieldTimeMs: timeoutMs,
+      signal,
+    })
 
-    const chunks: Buffer[] = []
-    let outputBytes = 0
-    let acceptingOutput = true
-    const handleData = (data: Buffer): void => {
-      if (!acceptingOutput) return
-      chunks.push(data)
-      outputBytes += data.length
-      // 输出超过上限后停止累积，避免大输出占内存。
-      if (outputBytes > DEFAULT_MAX_BYTES * 4) {
-        acceptingOutput = false
+    if (execRes.aborted || signal?.aborted) {
+      return {
+        content: [{ type: "text", text: appendStatus(execRes.output, "Command aborted") }],
+        details: { aborted: true },
       }
     }
-    child.stdout?.on("data", handleData)
-    child.stderr?.on("data", handleData)
 
-    let timedOut = false
-    let timeoutHandle: NodeJS.Timeout | undefined
-    const onAbort = (): void => {
-      if (child.pid) killProcessTree(child.pid)
+    if (execRes.isRunning) {
+      unifiedExecManager.killProcess(execRes.processId)
+      return {
+        content: [
+          {
+            type: "text",
+            text: appendStatus(execRes.output, `Command timed out after ${timeoutSeconds} seconds`),
+          },
+        ],
+        details: { timedOut: true },
+      }
     }
 
-    try {
-      if (timeoutMs > 0) {
-        timeoutHandle = setTimeout(() => {
-          timedOut = true
-          if (child.pid) killProcessTree(child.pid)
-        }, timeoutMs)
-      }
-      if (signal) {
-        signal.addEventListener("abort", onAbort, { once: true })
-      }
+    const truncation = truncateTail(execRes.output)
+    const activeSessionId = sessionDeps?.getSessionId?.() ?? undefined
+    const { text, details } = formatOutput(execRes.output, truncation, {
+      sessionId: activeSessionId,
+      toolCallId,
+    })
 
-      const exitCode = await waitForChildProcess(child)
-      const rawOutput = Buffer.concat(chunks).toString("utf-8")
-
-      if (signal?.aborted) {
-        return {
-          content: [{ type: "text", text: appendStatus(rawOutput, "Command aborted") }],
-          details: { aborted: true },
-        }
+    if (execRes.exitCode !== 0 && execRes.exitCode !== null) {
+      return {
+        content: [
+          { type: "text", text: appendStatus(text, `Command exited with code ${execRes.exitCode}`) },
+        ],
+        details,
       }
-      if (timedOut) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: appendStatus(rawOutput, `Command timed out after ${timeoutSeconds} seconds`),
-            },
-          ],
-          details: { timedOut: true },
-        }
-      }
-
-      const truncation = truncateTail(rawOutput)
-      const sessionId = sessionDeps?.getSessionId?.() ?? undefined
-      const { text, details } = formatOutput(rawOutput, truncation, { sessionId, toolCallId })
-      if (exitCode !== 0 && exitCode !== null) {
-        return {
-          content: [
-            { type: "text", text: appendStatus(text, `Command exited with code ${exitCode}`) },
-          ],
-          details,
-        }
-      }
-      return { content: [{ type: "text", text }], details }
-    } finally {
-      acceptingOutput = false
-      if (timeoutHandle) clearTimeout(timeoutHandle)
-      if (signal) signal.removeEventListener("abort", onAbort)
     }
+    return { content: [{ type: "text", text }], details }
   },
 })
 
