@@ -154,4 +154,63 @@ describe("task 子代理工具", () => {
       { toolName: "fail_tool", args: {}, status: "error", result: expect.stringContaining("boom") },
     ])
   })
+
+  it("支持通过 subagent_id 续接已有子代理会话并累加上下文与信元", async () => {
+    const { SubagentPool } = await import("@/agent/subagent/subagentPool")
+    const subagentPool = new SubagentPool()
+
+    const tool = createTaskTool({
+      systemPrompt: "父系统提示词",
+      model: { provider: "p", id: "m" },
+      subagentPool,
+      beforeToolCall: async () => undefined,
+      getSignal: () => undefined,
+      recordChildCall: vi.fn(),
+      getTools: () => [],
+    })
+
+    // 第一轮对话
+    holder.streamResponses.push(assistant([{ type: "text", text: "第一轮分析完成" }]))
+    const res1 = await tool.execute("parent-call-turn1", {
+      name: "analyst",
+      description: "第一步分析",
+      prompt: "请开始分析项目结构",
+    })
+
+    const subagent1 = (res1.details as { subagent: SubagentData }).subagent
+    expect(subagent1.subagentId).toBeDefined()
+    const targetSubagentId = subagent1.subagentId!
+    expect(subagentPool.has(targetSubagentId)).toBe(true)
+    expect(subagent1.communications).toHaveLength(2)
+
+    // 第二轮对话（指定同一 subagent_id 进行追问续接）
+    holder.streamResponses.push(assistant([{ type: "text", text: "第二轮深入结论" }]))
+    const res2 = await tool.execute("parent-call-turn2", {
+      subagent_id: targetSubagentId,
+      description: "第二步深入",
+      prompt: "基于此前的结构，请继续分析数据流",
+    })
+
+    const subagent2 = (res2.details as { subagent: SubagentData }).subagent
+    expect(subagent2.subagentId).toBe(targetSubagentId)
+    // 结构化通信信元累加为 4 条（轮次 1 提问+回答 + 轮次 2 提问+回答）
+    expect(subagent2.communications).toHaveLength(4)
+    expect(subagent2.communications?.[2]?.content).toBe("基于此前的结构，请继续分析数据流")
+    expect(subagent2.communications?.[3]?.content).toBe("第二轮深入结论")
+    // 内部 messages 保留并累积了两轮的用户与助手消息
+    expect(subagent2.messages.filter((m) => m.role === "user")).toHaveLength(2)
+    expect(subagent2.messages.filter((m) => m.role === "assistant")).toHaveLength(2)
+
+    // 第三轮对话（容错测试：通过子代理名称 "analyst" 进行自动寻址与续接）
+    holder.streamResponses.push(assistant([{ type: "text", text: "第三轮按名称续接结论" }]))
+    const res3 = await tool.execute("parent-call-turn3", {
+      name: "analyst",
+      description: "第三步按名寻址",
+      prompt: "总结一下上述两轮的结论",
+    })
+    const subagent3 = (res3.details as { subagent: SubagentData }).subagent
+    expect(subagent3.subagentId).toBe(targetSubagentId)
+    expect(subagent3.communications).toHaveLength(6)
+    expect(subagent3.messages.filter((m) => m.role === "user")).toHaveLength(3)
+  })
 })

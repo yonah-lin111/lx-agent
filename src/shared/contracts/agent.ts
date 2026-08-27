@@ -188,6 +188,8 @@ export interface SubagentStep {
 
 // 子代理面板数据（task 工具产物；随 ToolResultMessage 落库，恢复后重建弹窗）。
 export interface SubagentData {
+  // 子代理唯一标识（跨轮次续接主键）。
+  subagentId?: string
   // AI 分发的子代理名（缺失时回退 "task"）。
   name: string
   // 任务描述（task 输入）。
