@@ -6,11 +6,11 @@
 - [x] Phase 3: 结构化多 Agent 协作通信协议（Task Tool & InterAgentCommunication）
 - [x] Phase 4: 前端设置与交互状态同步（Settings View & Status Bar & 全链路单测）
 - [x] Phase 5: 子代理会话池管理与长程上下文续接（Subagent Pool & Resume & 多轮追问）
-- [ ] Phase 6: Collaboration Mode (Default vs Plan) 契约与主进程状态机
-- [ ] Phase 7: Plan Mode 权限与写操作硬性阻断拦截（Non-mutating Gate）
-- [ ] Phase 8: Current Time Reminder 状态机与动态注入（<current_time> Injection）
-- [ ] Phase 9: 专精 Review Agent 子代理与 Rubric 审查能力（Rubric Evaluation）
-- [ ] Phase 10: 前端模式切换交互与全量单测回归
+- [x] Phase 6: Collaboration Mode (Default vs Plan) 契约与主进程状态机
+- [x] Phase 7: Plan Mode 权限与写操作硬性阻断拦截（Non-mutating Gate）
+- [x] Phase 8: Current Time Reminder 状态机与动态注入（<current_time> Injection）
+- [x] Phase 9: 专精 Review Agent 子代理与 Rubric 审查能力（Rubric Evaluation）
+- [x] Phase 10: 前端模式切换交互与全量单测回归
 
 ---
 
@@ -76,33 +76,33 @@
   - 在 `AgentRunner` 中维护当前会话的 `collaborationMode`，支持 IPC 切换与会话级持久化。
 
 ### Phase 7: Plan Mode 权限与写操作硬性阻断拦截
-- [ ] **Task 7.1: PermissionManager Plan Mode 门控**
+- [x] **Task 7.1: PermissionManager Plan Mode 门控**
   - 在 `permissionManager.evaluate` 中加入 `collaborationMode` 检查。
   - 当处于 `plan` 模式时，任何 `edit`、`write`、`applyPatch` 工具调用以及破坏性 bash 命令直接阻断，返回只读规划提示。
-- [ ] **Task 7.2: 单元测试验证**
+- [x] **Task 7.2: 单元测试验证**
   - 编写 `test/main/agent/guard/planModeGuard.test.ts`，验证 Plan Mode 下只读操作放行、写操作硬拦截。
 
 ### Phase 8: Current Time Reminder 状态机与动态注入
-- [ ] **Task 8.1: TimeReminder 状态机实现**
+- [x] **Task 8.1: TimeReminder 状态机实现**
   - 在 `src/main/agent/core/turnContext.ts` 或独立模块中实现时间追踪器。
   - 记录 `lastDeliveryTime`，超过时间阈值（默认 300 秒）或新窗口时触发注入。
-- [ ] **Task 8.2: 动态 `<current_time>` 注入**
+- [x] **Task 8.2: 动态 `<current_time>` 注入**
   - 在 `assembly.ts` 与 `systemPromptManager.ts` 中注册并格式化时间块。
-- [ ] **Task 8.3: 单元测试验证**
+- [x] **Task 8.3: 单元测试验证**
   - 编写 `test/main/agent/timeReminder.test.ts` 验证时间提醒触发策略。
 
 ### Phase 9: 专精 Review Agent 子代理与 Rubric 审查能力
-- [ ] **Task 9.1: Review Agent 提示词与 Rubric 规范**
+- [x] **Task 9.1: Review Agent 提示词与 Rubric 规范**
   - 在 `src/main/agent/subagent/reviewAgent.ts` 中实现代码审查专用配置与 Rubric 提示词。
   - 审查维度：Defects、Security、Performance、Code Taste。
-- [ ] **Task 9.2: Task 工具与 Review Agent 对齐**
+- [x] **Task 9.2: Task 工具与 Review Agent 对齐**
   - 在 `src/main/agent/tools/task.ts` 中支持调用或识别 `review-agent`，强制指定只读沙箱与审查输出模板。
-- [ ] **Task 9.3: 单元测试验证**
+- [x] **Task 9.3: 单元测试验证**
   - 编写 Review Agent 的单元测试与结构化报告解析测试。
 
 ### Phase 10: 前端模式切换交互与全量单测回归
-- [ ] **Task 10.1: 前端 AgentPage 模式切换与 UI 渲染**
+- [x] **Task 10.1: 前端 AgentPage 模式切换与 UI 渲染**
   - 在输入框或状态栏提供 Default / Plan 模式切换控件。
   - 渲染 `<proposed_plan>` 规范高亮与审查报告卡片。
-- [ ] **Task 10.2: 全链路回归与单测验证**
+- [x] **Task 10.2: 全链路回归与单测验证**
   - 运行 `pnpm test test/main/agent` 与前端测试，确保全部测试通过。
