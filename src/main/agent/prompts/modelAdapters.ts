@@ -1,14 +1,14 @@
 /**
  * 模型家族自适应指令适配器 (Model Adapters)
  *
- * 对齐 OpenAI Codex (gpt-5.2-codex_prompt.md) 与业界前沿 Agent Harness 规范，
- * 针对不同模型架构（GPT-5/Codex、Claude、DeepSeek/Generic）注入定制化操作约束与格式规范。
+ * 对齐主流 LLM 厂商（OpenAI Codex、Anthropic Claude、Google Gemini、DeepSeek、Alibaba Qwen）
+ * 的前沿 Agent Harness 规范，针对不同模型架构注入定制化操作约束、上下文组织范式与格式规范。
  */
 
 import type { SandboxPolicy } from "@shared/contracts/agent"
 
 /** 支持的模型架构家族 */
-export type ModelFamily = "gpt-5-codex" | "claude" | "deepseek" | "generic"
+export type ModelFamily = "gpt-5-codex" | "claude" | "gemini" | "deepseek" | "qwen" | "generic"
 
 /**
  * 根据模型标识识别所属模型家族
@@ -30,8 +30,16 @@ export function detectModelFamily(modelId?: string): ModelFamily {
     return "claude"
   }
 
+  if (normalized.includes("gemini")) {
+    return "gemini"
+  }
+
   if (normalized.includes("deepseek") || normalized.includes("dsh")) {
     return "deepseek"
+  }
+
+  if (normalized.includes("qwen")) {
+    return "qwen"
   }
 
   return "generic"
@@ -84,22 +92,56 @@ When doing frontend design tasks, avoid collapsing into "AI slop" or safe, avera
 - No "save/copy this file" - the user is working in the same workspace.`.trim()
 
 /**
- * Claude 系列专用指令集（强调严谨思维与工具链规范）
+ * Claude 系列专用指令集（基于 Anthropic XML 分块结构化与严格思维链规范）
  */
-export const CLAUDE_INSTRUCTIONS = `## Operational Guidelines
+export const CLAUDE_INSTRUCTIONS = `## Operational Guidelines (Anthropic Claude Architecture)
 
-- Think carefully before acting: formulate a concise plan before complex refactoring or multi-file edits.
-- Maintain minimal surgical edits: preserve existing code style, imports, formatting, and naming conventions.
-- Never add unnecessary explanatory comments to generated code unless specifically requested.
-- When referencing files in responses, use clickable single paths with line numbers (e.g. \`src/index.ts:25\`).
-- If uncertain about file contents or context, inspect the relevant files with read or grep before modifying.`.trim()
+- Structured Disambiguation: Parse constraints and file paths within unambiguous XML-like mental boundaries.
+- Precise Tool Execution: Prefer surgical tool calls (\`edit\` / \`write\`) with adequate surrounding context to guarantee uniqueness.
+- Zero Assumption: If file content or interface signature is ambiguous, inspect with \`read\` or \`grep\` before modifying.
+- Preservation of State: Maintain existing code conventions, imports, formatting, and typing; do not add intrusive inline comments.
+- Actionable Citations: Reference source locations using clickable standalone paths (e.g. \`src/index.ts:25\`).
+- Output Hygiene: When completing tasks, state the core outcome directly without conversational filler or redundant explanations.`.trim()
 
 /**
- * DeepSeek / Generic 通用指令集
+ * Google Gemini 系列专用指令集（强化 Plan -> Execute -> Validate 流程与代码执行边界）
+ */
+export const GEMINI_INSTRUCTIONS = `## Operational Guidelines (Google Gemini Architecture)
+
+- Phased Workflow: Follow a disciplined sequence: Understand -> Plan -> Execute atomic tools -> Verify outcome.
+- Tool Boundary: Distinctly separate read-only diagnostic operations from state-mutating file edits.
+- Deterministic Output: Never invent mock implementations when real codebase context is available via inspection tools.
+- Targeted Verification: After modifying files, run targeted build or test commands to confirm behavioral integrity.
+- Concise Communication: Keep progress updates and final summaries crisp, high-signal, and formatted with clean markdown bullets.`.trim()
+
+/**
+ * DeepSeek 系列专用指令集（基于 DeepSeek V3 / R1 推理增强与极简原则）
+ */
+export const DEEPSEEK_INSTRUCTIONS = `## Operational Guidelines (DeepSeek Architecture)
+
+- First-Principles Reasoning: Focus on root-cause analysis rather than surface-level workarounds.
+- Minimal Intrusiveness: Keep changes minimal, robust, and idiomatic to the surrounding codebase.
+- Atomic File Edits: Break large refactorings into verifiable, atomic tool calls to avoid token budget exhaustion.
+- Clear Diagnostics: When diagnosing issues or failures, present concrete code lines and precise error descriptions.
+- Code References: Cite exact standalone paths with line numbers (e.g. \`packages/core/index.ts:42\`).`.trim()
+
+/**
+ * Alibaba Qwen / Qwen Coder 系列专用指令集（基于 ChatML 模块化与严苛项目规范）
+ */
+export const QWEN_INSTRUCTIONS = `## Operational Guidelines (Qwen Coder Architecture)
+
+- Rigorous Standards: Strictly respect codebase architectural patterns, internationalization tokens, and design variables.
+- Multi-Tool Precision: Use search and navigation tools to discover context before performing code modifications.
+- Minimal Diff: Ensure modifications are localized, clean, and free of extraneous comments or dead code.
+- Verification Mindset: Always verify critical syntax and type contracts after editing files.
+- High-Density Summary: Conclude with concise, structured bullet points highlighting modified files and next actions.`.trim()
+
+/**
+ * Generic 通用兜底指令集
  */
 export const GENERIC_INSTRUCTIONS = `## Execution Standards
 
-- Execute tasks autonomously and precisely, adhering to codebase conventions.
+- Execute tasks autonomously, cleanly, and precisely, adhering to codebase conventions.
 - Confirm file contents before editing and verify results using existing build/test tools where appropriate.
 - Keep final responses concise, structured, and actionable.
 - Format file citations as standalone inline paths (e.g. \`path/to/file.ts:10\`).`.trim()
@@ -113,7 +155,12 @@ export function getModelAdaptiveInstructions(family: ModelFamily): string {
       return GPT_5_2_CODEX_INSTRUCTIONS
     case "claude":
       return CLAUDE_INSTRUCTIONS
+    case "gemini":
+      return GEMINI_INSTRUCTIONS
     case "deepseek":
+      return DEEPSEEK_INSTRUCTIONS
+    case "qwen":
+      return QWEN_INSTRUCTIONS
     case "generic":
     default:
       return GENERIC_INSTRUCTIONS
