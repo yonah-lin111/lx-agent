@@ -146,9 +146,17 @@ export const zh: TranslationDictionary = {
     contextWindow: "上下文窗口",
     maxOutputTokens: "最大输出 Tokens",
 
-    // Permissions section
+    // Permissions & Sandbox section
     permissionMode: "权限模式",
     permissionModeDesc: "决定未命中规则时门控工具的默认处理方式。",
+    sandboxPolicy: "执行沙箱策略 (Sandbox Policy)",
+    sandboxPolicyDesc: "限制 Agent 在文件系统与终端环境中的执行边界。",
+    sandboxReadOnly: "read-only — 只读沙箱",
+    sandboxWorkspaceWrite: "workspace-write — 工作区读写（默认）",
+    sandboxDangerFullAccess: "danger-full-access — 完全访问（无沙箱限制）",
+    sandboxReadOnlyDesc: "严禁任何 write/edit 文件修改与破坏性终端操作。",
+    sandboxWorkspaceWriteDesc: "允许读写当前工作区文件，外部路径写操作需显式确认。",
+    sandboxDangerFullAccessDesc: "完全放开系统与文件操作限制（破坏性系统指令仍受底层安全拦截保护）。",
     modeDefault: "default — 按规则逐次询问",
     modeAcceptEdits: "acceptEdits — write/edit 自动允许",
     modeBypass: "bypassPermissions — 全部放行",

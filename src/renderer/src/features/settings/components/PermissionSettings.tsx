@@ -1,8 +1,9 @@
 import type {
   PermissionMode,
   PermissionSettings as PermissionSettingsConfig,
+  SandboxPolicy,
 } from "@shared/contracts/agent"
-import { AlertCircle, Plus } from "lucide-react"
+import { AlertCircle, Plus, ShieldCheck } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
@@ -30,7 +31,7 @@ export interface PermissionSettingsProps {
 }
 
 /**
- * 设置页"权限"分区：模式三选一 + allow/deny/ask 三组规则编辑器。
+ * 设置页"权限与沙箱"分区：沙箱三态选择 + 权限模式三选一 + allow/deny/ask 规则编辑器。
  * 仅维护编辑态，保存由设置页统一处理（写入 agent.permissions）。
  */
 export const PermissionSettings = ({
@@ -38,6 +39,20 @@ export const PermissionSettings = ({
   setSettings,
 }: PermissionSettingsProps): React.JSX.Element => {
   const { t } = useTranslation()
+
+  const currentSandboxPolicy = settings.sandboxPolicy ?? "workspace-write"
+
+  const sandboxOptions: LxSelectOption<SandboxPolicy>[] = [
+    { value: "workspace-write", label: t("settings.sandboxWorkspaceWrite") },
+    { value: "read-only", label: t("settings.sandboxReadOnly") },
+    { value: "danger-full-access", label: t("settings.sandboxDangerFullAccess") },
+  ]
+
+  const sandboxDescriptions: Record<SandboxPolicy, string> = {
+    "read-only": t("settings.sandboxReadOnlyDesc"),
+    "workspace-write": t("settings.sandboxWorkspaceWriteDesc"),
+    "danger-full-access": t("settings.sandboxDangerFullAccessDesc"),
+  }
 
   const modeOptions: LxSelectOption<PermissionMode>[] = [
     { value: "default", label: t("settings.modeDefault") },
@@ -49,6 +64,10 @@ export const PermissionSettings = ({
     default: t("settings.modeDefaultDesc"),
     acceptEdits: t("settings.modeAcceptEditsDesc"),
     bypassPermissions: t("settings.modeBypassDesc"),
+  }
+
+  const updateSandboxPolicy = (sandboxPolicy: SandboxPolicy): void => {
+    setSettings({ ...settings, sandboxPolicy })
   }
 
   const updateMode = (defaultMode: PermissionMode): void => {
@@ -79,11 +98,34 @@ export const PermissionSettings = ({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
+      {/* 沙箱策略选择 */}
+      <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+          <h3 className="text-sm font-semibold text-white/90">{t("settings.sandboxPolicy")}</h3>
+        </div>
+        <p className="text-xs text-white/45">{t("settings.sandboxPolicyDesc")}</p>
+        <div className="w-80">
+          <LxSelect
+            value={currentSandboxPolicy}
+            onChange={updateSandboxPolicy}
+            options={sandboxOptions}
+          />
+        </div>
+        <p className="text-xs text-white/45">{sandboxDescriptions[currentSandboxPolicy]}</p>
+        {currentSandboxPolicy === "danger-full-access" ? (
+          <p className="flex items-center gap-1 text-xs text-amber-300/80">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {t("settings.sandboxDangerFullAccessDesc")}
+          </p>
+        ) : null}
+      </div>
+
       {/* 模式选择 */}
       <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
         <h3 className="text-sm font-semibold text-white/90">{t("settings.permissionMode")}</h3>
         <p className="text-xs text-white/45">{t("settings.permissionModeDesc")}</p>
-        <div className="w-72">
+        <div className="w-80">
           <LxSelect value={settings.defaultMode} onChange={updateMode} options={modeOptions} />
         </div>
         <p className="text-xs text-white/45">{modeDescriptions[settings.defaultMode]}</p>
