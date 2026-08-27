@@ -17,6 +17,7 @@ import { createLspTool, type LspToolDeps } from "./tools/lsp"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
+import { createSwitchModeTool, type SwitchModeDeps } from "./tools/switchMode"
 import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
@@ -156,6 +157,7 @@ export const ALL_TOOL_NAMES = new Set([
   "bash",
   "time",
   "todowrite",
+  "switch_mode",
   "web_search",
   "webfetch",
   "task",
@@ -195,6 +197,7 @@ export const createRegistry = (
   questionDeps?: QuestionToolDeps,
   lspDeps?: LspToolDeps,
   sessionDeps?: SessionToolDeps,
+  switchModeDeps?: SwitchModeDeps,
 ): ToolRegistry => {
   const effectiveSessionDeps =
     sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
@@ -209,6 +212,9 @@ export const createRegistry = (
   registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())
+  if (switchModeDeps) {
+    registry.register(createSwitchModeTool(switchModeDeps))
+  }
   registry.register(createRenderSvgTool())
   registry.register(createRenderAsciiTool())
   registry.register(createRenderHtmlTool())
