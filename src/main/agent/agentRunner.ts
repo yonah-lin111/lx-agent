@@ -225,10 +225,13 @@ class AgentRunner {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
       )
-      // 会话 system prompt：动态分层提示词装配（基础身份 + 核心指导 + 技能分层 + 指令文件 + 人格）。
+      // 会话 system prompt：动态分层提示词装配（基础身份 + 核心指导 + 模型自适应 + 技能分层 + 指令文件 + 环境 + 沙箱策略）。
+      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
       const systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
+        modelId: modelResult.model.id,
+        sandboxPolicy: currentSandboxPolicy,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -332,9 +335,12 @@ class AgentRunner {
       this.cwd = cwd
       this.builtSignature = capabilitiesSignature
     } else {
+      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
       this.agent.state.systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
+        modelId: modelResult.model.id,
+        sandboxPolicy: currentSandboxPolicy,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -1124,10 +1130,14 @@ class AgentRunner {
     const targetCwd = cwd ?? this.cwd ?? this.requestedCwd ?? resolveCwd() ?? ""
     const targetSessionId = sessionId ?? this.currentSessionId ?? undefined
     const activeSkills = this.activeSkills
+    const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+    const modelId = this.agent?.state.model.id
 
     const assembly = await defaultSystemPromptManager.assemble({
       cwd: targetCwd,
       sessionId: targetSessionId,
+      modelId,
+      sandboxPolicy: currentSandboxPolicy,
       activeSkills,
     })
 

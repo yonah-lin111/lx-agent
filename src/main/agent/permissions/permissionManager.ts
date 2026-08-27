@@ -88,6 +88,13 @@ class PermissionManager {
     }
   }
 
+  /**
+   * 获取当前生效的沙箱策略
+   */
+  getSandboxPolicy(): SandboxPolicy {
+    return this.settings.sandboxPolicy ?? "workspace-write"
+  }
+
   // 注入 MCP 工具全名集合（用于门控集判定）。
   setMcpTools(names: string[]): void {
     this.mcpTools = new Set(names)

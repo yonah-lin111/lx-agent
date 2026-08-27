@@ -107,6 +107,7 @@ vi.mock("@/agent/permissions/permissionManager", () => ({
     load: vi.fn(() => {
       holder.loadCalls += 1
     }),
+    getSandboxPolicy: vi.fn(() => "workspace-write"),
     setMcpTools: vi.fn((names: string[]) => {
       holder.mcpTools = names
     }),

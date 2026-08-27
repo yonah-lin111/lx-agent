@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process"
+import type { SandboxPolicy } from "@shared/contracts/agent"
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
@@ -38,6 +39,8 @@ export const DEFAULT_SYSTEM_PROMPT = [
 export interface BuildSystemPromptOptions {
   cwd?: string
   sessionId?: string
+  modelId?: string
+  sandboxPolicy?: SandboxPolicy
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   manager?: SystemPromptManager
@@ -112,6 +115,8 @@ export const buildSystemPrompt = async (
   return manager.render({
     cwd: options.cwd,
     sessionId: options.sessionId,
+    modelId: options.modelId,
+    sandboxPolicy: options.sandboxPolicy,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
@@ -125,6 +130,8 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
   return manager.renderSync({
     cwd: options.cwd,
     sessionId: options.sessionId,
+    modelId: options.modelId,
+    sandboxPolicy: options.sandboxPolicy,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },

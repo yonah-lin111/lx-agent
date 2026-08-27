@@ -5,8 +5,14 @@
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
+import type { SandboxPolicy } from "@shared/contracts/agent"
 import { formatInstructions, loadInstructions } from "../instructionLoader"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
+import {
+  detectModelFamily,
+  formatSandboxPolicyPrompt,
+  getModelAdaptiveInstructions,
+} from "./modelAdapters"
 import { getPersonalityPrompt, type PersonalityName } from "./personalities"
 
 /** 变量名称规范：小写字母开头，小写字母、数字及下划线组合 */
@@ -20,10 +26,12 @@ export const PROMPT_ORDERS = {
   IDENTITY: -100,
   BEHAVIOR: -50,
   PERSONA: 0,
+  MODEL_ADAPTIVE: 50,
   SKILLS: 100,
   INSTRUCTIONS: 200,
   RUNTIME_CONTEXT: 300,
   ENVIRONMENT: 350,
+  SANDBOX_POLICY: 360,
   INTERCEPTOR: 400,
 } as const
 
@@ -32,10 +40,12 @@ export const PROMPT_SECTION_NAMES = {
   IDENTITY: "harness:identity",
   BEHAVIOR: "harness:behavior",
   PERSONA: "deployment:persona",
+  MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
   INSTRUCTIONS: "agent:instructions",
   RUNTIME_CONTEXT: "agent:runtime-context",
   ENVIRONMENT: "agent:environment",
+  SANDBOX_POLICY: "agent:sandbox-policy",
   LSP_FEEDBACK: "agent:lsp-feedback",
 } as const
 
@@ -44,6 +54,8 @@ export interface AssembleContext {
   sessionId?: string
   cwd?: string
   signal?: AbortSignal
+  modelId?: string
+  sandboxPolicy?: SandboxPolicy
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   variables?: Record<string, string | undefined>
@@ -344,7 +356,12 @@ export class SystemPromptManager {
 
     const effectiveSections = completeSectionResult ? [completeSectionResult] : assembledSections
 
-    const rendered = effectiveSections.map((s) => s.text).join("\n\n")
+    const allParts = [
+      ...effectiveSections.map((s) => s.text),
+      ...(completeSectionResult ? [] : assembledContexts.map((c) => c.text)),
+    ]
+
+    const rendered = allParts.join("\n\n")
 
     let assembly: PromptAssembly = {
       sections: effectiveSections,
@@ -449,7 +466,12 @@ export class SystemPromptManager {
 
     const effectiveSections = completeSectionResult ? [completeSectionResult] : assembledSections
 
-    const rendered = effectiveSections.map((s) => s.text).join("\n\n")
+    const allParts = [
+      ...effectiveSections.map((s) => s.text),
+      ...(completeSectionResult ? [] : assembledContexts.map((c) => c.text)),
+    ]
+
+    const rendered = allParts.join("\n\n")
 
     let assembly: PromptAssembly = {
       sections: effectiveSections,
@@ -572,6 +594,16 @@ export function createDefaultSystemPromptManager(
     },
   })
 
+  // 50: 模型自适应指令段（根据 ctx.modelId 注入 GPT-5.2 Codex / Claude / Generic 定制约束）
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.MODEL_ADAPTIVE,
+    order: PROMPT_ORDERS.MODEL_ADAPTIVE,
+    text: (ctx) => {
+      const family = detectModelFamily(ctx.modelId)
+      return getModelAdaptiveInstructions(family)
+    },
+  })
+
   // 100: 技能分层（动态根据 context.activeSkills 生成）
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.SKILLS,
@@ -620,6 +652,16 @@ export function createDefaultSystemPromptManager(
       if (lines.length === 1) return ""
       lines.push("</env>")
       return lines.join("\n")
+    },
+  })
+
+  // 360: 沙箱策略约束上下文（动态渲染 <sandbox_policy> 块）
+  manager.registerContext({
+    name: PROMPT_SECTION_NAMES.SANDBOX_POLICY,
+    order: PROMPT_ORDERS.SANDBOX_POLICY,
+    text: (ctx) => {
+      const policy = ctx.sandboxPolicy ?? "workspace-write"
+      return formatSandboxPolicyPrompt(policy)
     },
   })
 
