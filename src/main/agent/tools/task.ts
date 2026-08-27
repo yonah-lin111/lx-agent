@@ -34,12 +34,12 @@ const TASK_INPUT_SCHEMA = z.object({
   prompt: z
     .string()
     .describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
-  name: z.string().optional().describe("Sub-agent name (e.g., 'explorer' / 'coder')"),
+  name: z.string().optional().describe("Sub-agent name or role (e.g., 'code-explorer' / 'coder')"),
   subagent_id: z
     .string()
     .optional()
     .describe(
-      "Optional subagent ID returned from a previous task call to resume the same sub-agent session with its full context",
+      "Subagent ID or name from a previous task call to resume the same sub-agent session with its full context history (e.g., 'subagent-1787802448377-dz12z' or 'code-explorer')",
     ),
 })
 
@@ -178,8 +178,15 @@ export const createTaskTool = (
       "Use when a task can be decomposed into independent sub-tasks; do not delegate tasks that require parent context decisions.",
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
-      const subagentId = params.subagent_id?.trim() || `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      const existingManaged = deps.subagentPool?.get(subagentId)
+      // 1. 优先通过 subagent_id 或 name 寻址解析已有子代理
+      const lookupKey = params.subagent_id?.trim() || params.name?.trim()
+      const existingManaged = lookupKey ? deps.subagentPool?.resolve(lookupKey) : undefined
+
+      // 2. 确定真实的 subagentId（复用已有 id 或为新子代理分配唯一 id）
+      const subagentId =
+        existingManaged?.subagentId ??
+        params.subagent_id?.trim() ??
+        `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
       const subAgent =
         existingManaged?.agent ??
@@ -348,12 +355,12 @@ export const createTaskTool = (
       if (text) {
         const sessionId = deps.getSessionId?.() ?? undefined
         const bounded = boundSubagentOutput(text, { sessionId, toolCallId })
-        content = bounded.content
+        content = `${bounded.content}\n\n[Subagent ID: ${subagentId}]`
         if (bounded.filePath) details.subagent.filePath = bounded.filePath
       } else if (error) {
-        content = `Subagent execution failed: ${error}`
+        content = `Subagent execution failed: ${error}\n\n[Subagent ID: ${subagentId}]`
       } else {
-        content = "(Subagent produced no text output)"
+        content = `(Subagent produced no text output)\n\n[Subagent ID: ${subagentId}]`
       }
       return { content: [{ type: "text", text: content }], details }
     },

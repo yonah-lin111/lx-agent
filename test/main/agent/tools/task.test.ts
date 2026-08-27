@@ -200,5 +200,17 @@ describe("task 子代理工具", () => {
     // 内部 messages 保留并累积了两轮的用户与助手消息
     expect(subagent2.messages.filter((m) => m.role === "user")).toHaveLength(2)
     expect(subagent2.messages.filter((m) => m.role === "assistant")).toHaveLength(2)
+
+    // 第三轮对话（容错测试：通过子代理名称 "analyst" 进行自动寻址与续接）
+    holder.streamResponses.push(assistant([{ type: "text", text: "第三轮按名称续接结论" }]))
+    const res3 = await tool.execute("parent-call-turn3", {
+      name: "analyst",
+      description: "第三步按名寻址",
+      prompt: "总结一下上述两轮的结论",
+    })
+    const subagent3 = (res3.details as { subagent: SubagentData }).subagent
+    expect(subagent3.subagentId).toBe(targetSubagentId)
+    expect(subagent3.communications).toHaveLength(6)
+    expect(subagent3.messages.filter((m) => m.role === "user")).toHaveLength(3)
   })
 })
