@@ -15,15 +15,16 @@
 ### 新增进阶演进（Phase 11 ~ Phase 16）
 7. **Unified Exec（统一进程执行引擎与 HeadTailBuffer）**：
    - 参考 `codex-rs/core/src/unified_exec/`。
-   - 对称式 `HeadTailBuffer`（前后各 50% 容量，超出部分中间丢弃并插入 `[...N bytes omitted...]` 标记）。
-   - 统一管理短命令执行、交互式命令与长时任务生命周期。
+   - 对称式 `HeadTailBuffer`（前后各 50% 容量，超出部分中间丢弃并插入 `\n... ${omittedBytes} bytes omitted ...\n` 标记）。
+   - 统一管理短命令执行、交互式标准输入交互（`writeStdin`）与长时任务生命周期，统一钳位 yieldTimeMs（250ms ~ 30,000ms）。
 8. **多级审批策略体系（Multi-Level Approval & Escalation）**：
    - 参考 `codex-rs/core/src/tools/approvals.rs` 与 `codex-rs/protocol/src/approvals.rs`。
    - 三级策略（`never` / `on_request` / `unless_trusted`）。
-   - 支持 `Approve Once`（单次放行）、`Approve Session`（会话级前缀/路径放行）、`Deny`（注入错误回流）。
+   - 支持 `approve_once`（单次放行）、`approve_session`（会话级工具/路径放行）、`approve_prefix`（命令前缀放行）、`deny`（注入错误回流）。
 9. **Guardian 安全防护网（Security Guardian Policy）**：
    - 参考 `codex-rs/core/src/guardian/policy.md` 与 `codex-rs/core/src/guardian/prompt.rs`。
    - 维度：数据外发（Data Exfiltration）、凭据刺探（Credential Probing）、持久化降权（Persistent Security Weakening）、破坏性操作（Destructive Actions）。
+   - 具有最高安全阻断权：Plan 模式检测到高危硬阻断；Default 模式下绕过 `never` 策略强制升级至人工审批。
 10. **分层记忆系统（Hierarchical Workspace Memories & Citations）**：
     - 参考 `codex-rs/ext/memories/` 与 `templates/memories/read_path.md`。
     - 结构：`MEMORY.md` 索引、`rollout_summaries/` 历史沉淀、`extensions/ad_hoc/notes/` 动态提取。
@@ -72,14 +73,16 @@
 |  | PermissionManager & Multi-Gate Sandbox & Guardian                         |  |
 |  | - Plan Mode Gate: Hard block on mutating tools                            |  |
 |  | - Sandbox Policy Gate (ReadOnly / WorkspaceWrite / DangerFullAccess)       |  |
+|  | - Deny / Allow Rule Matching                                              |  |
+|  | - Session Whitelist Gate (session tools, command prefixes, paths)         |  |
 |  | - Approval Policy Engine (never / on_request / unless_trusted)            |  |
-|  | - Guardian Risk Evaluator (Exfiltration / Probing / Destruction)          |  |
+|  | - Guardian Risk Evaluator (Exfiltration / Probing / Weakening / Destroy)  |  |
 |  +-------------------------------------+-------------------------------------+  |
 |                                        |                                        |
 |  +-------------------------------------v-------------------------------------+  |
 |  | UnifiedExecManager (Unified Execution Engine)                             |  |
 |  | - HeadTailBuffer (symmetric capping 50/50 + omission marker)              |  |
-|  | - Process Registry & PTY Stream Adapter                                   |  |
+|  | - Process Registry & Interactive PID & Yield Clamping (250ms - 30s)       |  |
 |  +-------------------------------------+-------------------------------------+  |
 |                                        |                                        |
 |  +-------------------------------------v-------------------------------------+  |
@@ -100,9 +103,12 @@ export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-acces
 export type CollaborationMode = "default" | "plan"
 export type ApprovalPolicy = "never" | "on_request" | "unless_trusted"
 
+export type ApprovalDecision = "approve_once" | "approve_session" | "approve_prefix" | "deny"
+
 export interface ApprovalDecisionPayload {
   requestId: string
-  decision: "approve_once" | "approve_session" | "deny"
+  decision: ApprovalDecision
+  prefix?: string
   reason?: string
 }
 
@@ -119,13 +125,16 @@ export interface MemoryCitation {
 }
 ```
 
-### 3.2 模式、沙箱与审批矩阵
-| 模式 + 沙箱 | 审批策略 | 执行白名单命令 | 执行未受信任写/高危命令 | 行为 |
-| :--- | :--- | :--- | :--- | :--- |
-| `Plan Mode` | 任意 | 放行（只读） | **硬拦截（拒绝）** | 注入 Plan Mode 只读说明 |
-| `Default` + `read-only` | 任意 | 放行（只读） | **硬拦截（拒绝）** | 注入 Sandbox 只读说明 |
-| `Default` + `workspace-write` | `on_request` | 放行 | 弹出 Approval 弹窗 | 支持 Once / Session / Deny |
-| `Default` + `workspace-write` | `never` | 放行 | 直接放行/Guardian 兜底 | 自动放行非致命操作 |
+### 3.2 模式、沙箱、Guardian 与审批矩阵
+| 模式 + 沙箱 | 审批策略 | Guardian 风险判定 | 执行白名单命令 | 执行未受信任写/高危命令 | 行为 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `Plan Mode` | 任意 | 任意 | 放行（只读） | **硬拦截（拒绝）** | 注入 Plan Mode 只读说明 |
+| `Plan Mode` | 任意 | `High` / `Critical` | **硬拦截（拒绝）** | **硬拦截（拒绝）** | 注入 Guardian Plan Mode 违规说明 |
+| `Default` + `read-only` | 任意 | 任意 | 放行（只读） | **硬拦截（拒绝）** | 注入 Sandbox 只读说明 |
+| `Default` + `workspace-write` | `never` | `Low` / `Medium` | 放行 | 直接放行 | 自动放行非高危操作 |
+| `Default` + `workspace-write` | `never` | `High` / `Critical`| 放行 | **强制升级审批** | Guardian 强制绕过 never 升级弹窗 |
+| `Default` + `workspace-write` | `unless_trusted` | `Low` (受信任工作区内) | 放行 | 弹出 Approval 弹窗 | 支持 Once / Session / Prefix / Deny |
+| `Default` + `workspace-write` | `on_request` | 任意 | 放行 | 弹出 Approval 弹窗 | 支持 Once / Session / Prefix / Deny |
 
 ---
 
