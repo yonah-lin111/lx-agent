@@ -105,6 +105,15 @@ describe("task 子代理工具", () => {
       { toolName: "test_tool", args: {}, status: "done", result: "工具结果 OK" },
     ])
     expect(subagent.usage.totalTokens).toBe(0)
+    // 结构化通信信元（InterAgentCommunication）
+    expect(subagent.communications).toBeDefined()
+    expect(subagent.communications?.length).toBe(2)
+    expect(subagent.communications?.[0]?.author).toBe("orchestrator")
+    expect(subagent.communications?.[0]?.recipient).toBe("subagent:查询列表")
+    expect(subagent.communications?.[0]?.triggerTurn).toBe(true)
+    expect(subagent.communications?.[1]?.author).toBe("subagent:查询列表")
+    expect(subagent.communications?.[1]?.recipient).toBe("orchestrator")
+    expect(subagent.communications?.[1]?.content).toBe("子代理任务完成")
     // 最终文本有界回传。
     expect(result.content[0]?.type).toBe("text")
   })

@@ -243,6 +243,7 @@ class AgentRunner {
         {
           systemPrompt,
           model: modelResult.model,
+          sandboxPolicy: currentSandboxPolicy,
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal),
           getSignal: () => this.agent?.signal,

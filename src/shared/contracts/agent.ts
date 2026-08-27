@@ -159,6 +159,24 @@ export interface AgentDiff {
   }
 }
 
+// 结构化多 Agent 协作通信信元（对齐 Codex InterAgentCommunication 协议）。
+export interface InterAgentCommunication {
+  // 消息唯一标识
+  id?: string
+  // 发送者（例如 "orchestrator", "task:explorer"）
+  author: string
+  // 接收者（例如 "task:explorer", "orchestrator"）
+  recipient: string
+  // 抄送或次要接收者
+  otherRecipients?: string[]
+  // 结构化消息正文或任务指令
+  content: string
+  // 是否立即触发目标 Agent 的新一轮执行推理
+  triggerTurn: boolean
+  // 消息元数据（时间戳、类型等）
+  metadata?: Record<string, unknown>
+}
+
 // 子代理工具步骤（时间轴展示）。
 export interface SubagentStep {
   toolName: string
@@ -176,6 +194,10 @@ export interface SubagentData {
   description: string
   // 委托任务全文（task 输入）。
   prompt: string
+  // 结构化通信记录（主 Agent 与子代理的交互流）
+  communications?: InterAgentCommunication[]
+  // 继承自父级的沙箱策略
+  sandboxPolicy?: SandboxPolicy
   // 子代理完整内部上下文（弹窗展示真相源，含工具/MCP/skill/文本）。
   messages: AgentMessage[]
   // 工具步骤（时间轴展示；含内部工具/思考/MCP/skill 调用）。

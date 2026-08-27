@@ -1,6 +1,7 @@
 import type {
   AgentSendContext,
   PermissionRequest,
+  SandboxPolicy,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import type React from "react"
@@ -8,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { buildGitWorktreeOptions, getGitWorktreeDirName, useGitWorktrees } from "@/features/git"
+import { settingsApi } from "@/features/settings/api/settingsApi"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
@@ -107,6 +109,22 @@ export const AgentPage = ({
   useEffect(() => {
     refreshContextUsage(selectedSelection)
   }, [selectedSelection, refreshContextUsage])
+
+  const [currentSandboxPolicy, setCurrentSandboxPolicy] =
+    useState<SandboxPolicy>("workspace-write")
+
+  const loadPermissionSettings = useCallback(() => {
+    void settingsApi.getPermissionSettings().then((settings) => {
+      if (settings?.sandboxPolicy) {
+        setCurrentSandboxPolicy(settings.sandboxPolicy)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    loadPermissionSettings()
+    return subscribeSettingsChanged("permissions", loadPermissionSettings)
+  }, [loadPermissionSettings])
 
   // 配置变更（设置页保存）后刷新状态栏上下文窗口，无需刷新页面。
   const selectedSelectionRef = useRef(selectedSelection)
@@ -546,6 +564,7 @@ export const AgentPage = ({
         todos={todos}
         jobs={jobs}
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
+        sandboxPolicy={currentSandboxPolicy}
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />

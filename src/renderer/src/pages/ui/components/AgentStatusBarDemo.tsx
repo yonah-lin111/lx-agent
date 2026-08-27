@@ -51,7 +51,8 @@ export const AgentStatusBarDemo = (): React.JSX.Element => {
             <span className="text-xs text-white/50">状态按钮单独展示：</span>
             <TodoStatusButton todos={MOCK_TODOS} />
             <PermissionStatusButton
-              pendingRequest={pendingReq}
+              request={pendingReq}
+              sandboxPolicy="workspace-write"
               onRespond={(decision) => {
                 toast.info(`权限响应: ${decision}`)
                 setPendingReq(null)

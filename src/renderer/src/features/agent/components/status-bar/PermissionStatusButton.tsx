@@ -1,5 +1,5 @@
-import type { PermissionRequest } from "@shared/contracts/agent"
-import { ShieldAlert } from "lucide-react"
+import type { PermissionRequest, SandboxPolicy } from "@shared/contracts/agent"
+import { Shield, ShieldAlert, ShieldCheck, ShieldOff } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -69,8 +69,10 @@ const toneClass = (tone: PermissionPanelOption["tone"], active: boolean): string
 }
 
 interface PermissionStatusButtonProps {
-  // 挂起的权限请求（null = 无请求，整体不渲染）。
+  // 挂起的权限请求（null = 无请求）。
   request: PermissionRequest | null
+  // 当前全局沙箱策略（用于常驻盾牌展示）。
+  sandboxPolicy?: SandboxPolicy
   // 权限决策回传 main（允许全部 = session 级放行；永久允许/拒绝写回配置）。
   onRespond: (
     decision: "allow" | "deny",
@@ -81,15 +83,15 @@ interface PermissionStatusButtonProps {
 }
 
 /**
- * Agent 状态栏权限请求指示（对齐 TodoStatusButton）：agent 发起权限请求时展示琥珀色盾牌 icon，
- * 请求到达自动展开常驻 LxTooltip（closeOnScroll/closeOnOutsideClick 均 false，右上角 [-] 或 Esc 最小化）。
- * 挂起期间 document 级捕获键：↑↓ 循环切换、Enter 确认、Esc 最小化；鼠标点击同样可选。
- * 选中"允许全部"进入确认态（确认/返回）。请求结束（agent_end）整体收起。
+ * Agent 状态栏权限请求与沙箱模式指示：
+ * 1. 当有挂起权限请求时展示琥珀色 ShieldAlert，自动弹出常驻操作面板；
+ * 2. 平时常驻展示当前沙箱策略盾牌（read-only: 蓝色只读, workspace-write: 绿色工作区读写, danger-full-access: 橙色完全访问）。
  */
 export const PermissionStatusButton = ({
   request,
+  sandboxPolicy = "workspace-write",
   onRespond,
-}: PermissionStatusButtonProps): React.JSX.Element | null => {
+}: PermissionStatusButtonProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [phase, setPhase] = useState<PermissionPanelPhase>("select")
@@ -172,68 +174,121 @@ export const PermissionStatusButton = ({
     return () => document.removeEventListener("keydown", handleKeyDown, true)
   }, [request])
 
-  if (!request) return null
+  // 如果有权限请求，展示请求弹窗与告警盾牌
+  if (request) {
+    const options = phase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
 
-  const options = phase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
-
-  const tooltipContent = (
-    <div className="flex min-w-[240px] flex-col gap-1.5">
-      <span className="block w-fit max-w-full truncate rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-[12px] text-amber-300">
-        {request.toolName}
-      </span>
-      {phase === "confirm" && (
-        <p className="text-xs text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
-      )}
-      <div className="flex flex-col gap-0.5">
-        {options.map((option, index) => (
-          <button
-            key={option.key}
-            type="button"
-            role="option"
-            tabIndex={-1}
-            aria-selected={index === activeIndex}
-            onMouseEnter={() => setActiveIndex(index)}
-            onClick={() => handleAction(index)}
-            className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left outline-none transition-colors focus:outline-none focus-visible:outline-none ${toneClass(
-              option.tone,
-              index === activeIndex,
-            )}`}
-          >
-            <span className="min-w-0 max-w-[45%] truncate text-[13px] font-medium leading-none">
-              {t(option.labelKey)}
-            </span>
-            <span className="ml-auto min-w-0 max-w-[55%] truncate text-[12px] leading-none opacity-60">
-              {t(option.descriptionKey)}
-            </span>
-          </button>
-        ))}
+    const tooltipContent = (
+      <div className="flex min-w-[240px] flex-col gap-1.5">
+        <span className="block w-fit max-w-full truncate rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-[12px] text-amber-300">
+          {request.toolName}
+        </span>
+        {phase === "confirm" && (
+          <p className="text-xs text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
+        )}
+        <div className="flex flex-col gap-0.5">
+          {options.map((option, index) => (
+            <button
+              key={option.key}
+              type="button"
+              role="option"
+              tabIndex={-1}
+              aria-selected={index === activeIndex}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => handleAction(index)}
+              className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left outline-none transition-colors focus:outline-none focus-visible:outline-none ${toneClass(
+                option.tone,
+                index === activeIndex,
+              )}`}
+            >
+              <span className="min-w-0 max-w-[45%] truncate text-[13px] font-medium leading-none">
+                {t(option.labelKey)}
+              </span>
+              <span className="ml-auto min-w-0 max-w-[55%] truncate text-[12px] leading-none opacity-60">
+                {t(option.descriptionKey)}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-  )
+    )
+
+    return (
+      <LxTooltip
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        trigger="click"
+        placement="top"
+        minimizable
+        closeOnScroll={false}
+        closeOnOutsideClick={true}
+        title={
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+            <span className="shrink-0 text-[13px] font-medium text-white/90">Permission</span>
+            <span className="ml-auto shrink-0 text-[12px] text-white/50">{request.mode}</span>
+          </span>
+        }
+        content={tooltipContent}
+      >
+        <span
+          aria-label={t("agent.permissionTitle")}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+        >
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+        </span>
+      </LxTooltip>
+    )
+  }
+
+  // 常态展示沙箱策略盾牌指示器
+  const renderSandboxIcon = (): React.JSX.Element => {
+    switch (sandboxPolicy) {
+      case "read-only":
+        return <Shield className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+      case "danger-full-access":
+        return <ShieldOff className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+      case "workspace-write":
+      default:
+        return <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+    }
+  }
+
+  const getSandboxLabel = (): string => {
+    switch (sandboxPolicy) {
+      case "read-only":
+        return t("settings.sandboxReadOnly")
+      case "danger-full-access":
+        return t("settings.sandboxDangerFullAccess")
+      case "workspace-write":
+      default:
+        return t("settings.sandboxWorkspaceWrite")
+    }
+  }
 
   return (
     <LxTooltip
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      trigger="click"
       placement="top"
-      minimizable
-      closeOnScroll={false}
-      closeOnOutsideClick={true}
-      title={
-        <span className="flex min-w-0 items-center gap-1.5">
-          <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-          <span className="shrink-0 text-[13px] font-medium text-white/90">Permission</span>
-          <span className="ml-auto shrink-0 text-[12px] text-white/50">{request.mode}</span>
-        </span>
+      content={
+        <div className="flex flex-col gap-0.5 text-xs">
+          <span className="font-semibold text-white/90">
+            {t("settings.sandboxPolicy")}: {getSandboxLabel()}
+          </span>
+          <span className="text-white/60">
+            {sandboxPolicy === "read-only"
+              ? t("settings.sandboxReadOnlyDesc")
+              : sandboxPolicy === "danger-full-access"
+                ? t("settings.sandboxDangerFullAccessDesc")
+                : t("settings.sandboxWorkspaceWriteDesc")}
+          </span>
+        </div>
       }
-      content={tooltipContent}
     >
       <span
-        aria-label={t("agent.permissionTitle")}
-        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+        aria-label={t("settings.sandboxPolicy")}
+        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/60 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none"
       >
-        <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+        {renderSandboxIcon()}
       </span>
     </LxTooltip>
   )

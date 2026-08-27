@@ -1,6 +1,8 @@
 import type {
   AgentMessage,
   AssistantMessage,
+  InterAgentCommunication,
+  SandboxPolicy,
   SubagentData,
   SubagentStep,
   TextContent,
@@ -18,12 +20,13 @@ const SUBAGENT_PROMPT_SUFFIX = [
   "You are now a sub-agent focused on completing the delegated independent sub-task.",
   "Only use tools necessary to complete the task; stop immediately after achieving the goal and briefly summarize the result.",
   "Do not perform unnecessary exploration beyond the task scope.",
+  "Adhere strictly to the inherited sandbox policy and safety constraints.",
 ].join("\n")
 
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
 const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
-// task 工具输入 schema。
+// task 工具输入 schema（对齐 Codex multi_agents 协议）。
 const TASK_INPUT_SCHEMA = z.object({
   description: z.string().describe("Brief task description (1-5 words) for progress display"),
   prompt: z
@@ -70,6 +73,8 @@ export interface TaskToolDeps {
   systemPrompt: string
   // 父会话模型（子代理沿用）。
   model: Model
+  // 父会话沙箱策略（继承至子代理）。
+  sandboxPolicy?: SandboxPolicy
   // 父权限门控（子代理内部工具复用同一 permissionManager.gate，不豁免）。
   beforeToolCall: (
     context: BeforeToolCallContext,
@@ -142,10 +147,8 @@ const aggregateUsage = (messages: AgentMessage[]): Usage => {
 /**
  * 创建 task 工具：委托独立子任务到进程内嵌套 Agent。
  *
- * 子代理在同一 cwd 内以独立上下文运行自己的工具循环（复用父权限门控），
- * 内部消息/工具步骤聚合为 SubagentData 快照，经 onUpdate 与 tool 结果回传
- * （renderer 展示时间轴 + 弹窗；随 ToolResultMessage 落库，恢复后重建），
- * 最终文本有界回传；父 run abort 级联中止子代理。
+ * 子代理在同一 cwd 内以独立上下文运行自己的工具循环（复用父权限门控与沙箱策略），
+ * 结构化交互对齐 Codex InterAgentCommunication 规范（author / recipient / triggerTurn）。
  */
 export const createTaskTool = (
   deps: TaskToolDeps & { getTools: () => AgentTool<any>[] },
@@ -174,6 +177,24 @@ export const createTaskTool = (
 
       // 子代理名（AI 分发；缺失回退 "task"）。
       const subagentName = params.name?.trim() || "task"
+      const recipientName = `subagent:${subagentName}`
+      const orchestratorName = "orchestrator"
+
+      // 结构化通信信元列表
+      const communications: InterAgentCommunication[] = [
+        {
+          id: `comm-init-${Date.now()}`,
+          author: orchestratorName,
+          recipient: recipientName,
+          content: params.prompt,
+          triggerTurn: true,
+          metadata: {
+            description: params.description,
+            timestamp: Date.now(),
+          },
+        },
+      ]
+
       // 工具步骤（按 toolCallId 定位，start 推 running / end 更新状态与结果）。
       const steps = new Map<string, SubagentStep>()
 
@@ -190,6 +211,8 @@ export const createTaskTool = (
         name: subagentName,
         description: params.description,
         prompt: params.prompt,
+        communications: [...communications],
+        sandboxPolicy: deps.sandboxPolicy,
         messages: collectMessages(),
         steps: [...steps.values()],
         usage: aggregateUsage(subAgent.state.messages),
@@ -265,6 +288,20 @@ export const createTaskTool = (
       }
 
       const { text, error } = extractSubagentResult(subAgent.state.messages)
+      
+      // 子代理产出最终结论，回传结构化通信信元
+      communications.push({
+        id: `comm-done-${Date.now()}`,
+        author: recipientName,
+        recipient: orchestratorName,
+        content: text || (error ? `Error: ${error}` : ""),
+        triggerTurn: false,
+        metadata: {
+          status: error ? "error" : "done",
+          timestamp: Date.now(),
+        },
+      })
+
       const details: SubagentDetails = { subagent: buildSubagentData() }
       let content: string
       if (text) {

@@ -1,4 +1,4 @@
-import type { JobSnapshot, PermissionRequest, TodoList } from "@shared/contracts/agent"
+import type { JobSnapshot, PermissionRequest, SandboxPolicy, TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { GitStatusBar } from "@/features/git"
@@ -27,6 +27,8 @@ export interface AgentStatusBarProps {
   jobs?: JobSnapshot[]
   // 打开后台长任务监控面板。
   onOpenJobs?: () => void
+  // 当前全局沙箱策略。
+  sandboxPolicy?: SandboxPolicy
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
   pendingRequest: PermissionRequest | null
   // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
@@ -61,6 +63,7 @@ export const AgentStatusBar = ({
   todos,
   jobs,
   onOpenJobs,
+  sandboxPolicy,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
@@ -101,7 +104,11 @@ export const AgentStatusBar = ({
       )}
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <TodoStatusButton todos={todos} />
-      <PermissionStatusButton request={pendingRequest} onRespond={onPermissionRespond} />
+      <PermissionStatusButton
+        request={pendingRequest}
+        sandboxPolicy={sandboxPolicy}
+        onRespond={onPermissionRespond}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { BarChart3, X } from "lucide-react"
+import { BarChart3, MessageSquareShare, Shield, X } from "lucide-react"
 import type React from "react"
 import { Fragment, useMemo } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -65,11 +65,17 @@ export const AgentSubagentPanel = ({
     >
       {/* 面板头部：Subagent 名称 + 关闭。 */}
       <div className="agent-subagent-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="font-mono text-[13px] font-bold text-blue-300">Subagent</span>
           <span className="truncate text-[13px] text-white/70">
             {displayName !== "task" ? ` - ${displayName}(task)` : " - task"}
           </span>
+          {data?.sandboxPolicy && (
+            <span className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
+              <Shield className="h-2.5 w-2.5 text-sky-400" />
+              {data.sandboxPolicy}
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {/* 统计：token 用量（3 行，一行一个类型）。 */}
@@ -103,6 +109,34 @@ export const AgentSubagentPanel = ({
 
       {data ? (
         <>
+          {/* 结构化通信信元（Inter-Agent Communication） */}
+          {data.communications && data.communications.length > 0 && (
+            <div className="flex shrink-0 flex-col gap-1 border-b border-white/10 bg-black/20 px-3 py-2 text-[11px] font-mono">
+              <div className="flex items-center gap-1 text-white/50 font-semibold">
+                <MessageSquareShare className="h-3 w-3 text-sky-400" />
+                <span>Inter-Agent Protocol</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {data.communications.map((comm) => (
+                  <div
+                    key={comm.id ?? comm.content.slice(0, 16)}
+                    className="flex flex-col gap-0.5 rounded border border-white/5 bg-white/[0.02] p-1.5"
+                  >
+                    <div className="flex items-center justify-between text-[10px] text-white/40">
+                      <span className="font-bold text-sky-300">
+                        {comm.author} &rarr; {comm.recipient}
+                      </span>
+                      {comm.triggerTurn && (
+                        <span className="rounded bg-sky-500/20 px-1 text-sky-300">trigger</span>
+                      )}
+                    </div>
+                    <div className="line-clamp-2 text-white/70">{comm.content}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 子代理内部消息时间轴（只读，不隐藏消息列表）；AI 内容按 QA 组聚合到一个 AgentMessageItem。 */}
           {messages.length > 0 ? (
             <div
