@@ -122,20 +122,61 @@ export const AgentSubagentPanel = ({
   const messages = useMemo(() => {
     if (!data) return []
     let sequence = 0
-    // 在子代理面板中，过滤掉用户的原始 prompt 消息（已在顶部的 orchestrator->subagent 结构化展示）
-    return data.messages
-      .filter((message) => message.role !== "user")
-      .map((message) =>
-        toChatMessage(
-          message,
-          message.role === "assistant" && message.stopReason === "pending",
-          `subagent-${sequence++}`,
-        ),
-      )
+    // 在子代理面板中，保留消息流转换
+    return data.messages.map((message) =>
+      toChatMessage(
+        message,
+        message.role === "assistant" && message.stopReason === "pending",
+        `subagent-${sequence++}`,
+      ),
+    )
   }, [data])
 
-  // 与 AgentMessageList 相同的 QA 分组：一次子代理运行的 AI 内容（助手消息 + 工具结果 + 续写）合并到一个 AgentMessageItem 内展示。
-  const messageGroups = useMemo(() => buildQaGroups(groupAgentMessages(messages)), [messages])
+  // 按轮次/独立消息条目拆分：为每一个 AI 回答保留独立的消息块，不强制把全部历史 assistant 消息折叠进同一组 continuation
+  const messageGroups = useMemo(() => {
+    // 将每一个 assistant 消息和它紧随其后的 toolResult 单独作为一组，保证多次 AI 回答独立渲染
+    const groups: {
+      userMessage?: typeof messages[number]
+      assistant?: {
+        message: typeof messages[number]
+        continuationMessages: typeof messages[number][]
+      }
+    }[] = []
+
+    let currentAssistant: {
+      message: typeof messages[number]
+      continuationMessages: typeof messages[number][]
+    } | null = null
+
+    for (const msg of messages) {
+      if (msg.role === "user") {
+        if (currentAssistant) {
+          groups.push({ assistant: currentAssistant })
+          currentAssistant = null
+        }
+        groups.push({ userMessage: msg })
+      } else if (msg.role === "assistant") {
+        if (currentAssistant) {
+          groups.push({ assistant: currentAssistant })
+        }
+        currentAssistant = { message: msg, continuationMessages: [] }
+      } else if (msg.role === "toolResult" || msg.role === "compactionSummary") {
+        if (currentAssistant) {
+          currentAssistant.continuationMessages.push(msg)
+        } else {
+          groups.push({
+            assistant: { message: msg, continuationMessages: [] },
+          })
+        }
+      }
+    }
+
+    if (currentAssistant) {
+      groups.push({ assistant: currentAssistant })
+    }
+
+    return groups
+  }, [messages])
 
   return (
     <div
