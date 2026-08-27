@@ -258,9 +258,13 @@ export interface SuggestedQuestionContextMessage {
 // 权限确认模式（对齐 Claude Code 权限体系三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
+// 沙箱策略（对齐 Codex 执行沙箱三态）。
+export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
+
 // 权限配置（~/.lx/config.json 的 agent.permissions 节点）。
 export interface PermissionSettings {
   defaultMode: PermissionMode
+  sandboxPolicy?: SandboxPolicy
   allow: string[]
   deny: string[]
   ask: string[]

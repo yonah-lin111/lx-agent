@@ -350,6 +350,7 @@ export const saveModelProviderSettings = (input: ModelProviderSettings): ModelPr
 // 权限配置默认值（缺失/损坏时回退，默认安全）。
 const DEFAULT_PERMISSION_SETTINGS: PermissionSettings = {
   defaultMode: "default",
+  sandboxPolicy: "workspace-write",
   allow: [],
   deny: [],
   ask: [],
@@ -363,10 +364,16 @@ const normalizePermissionSettings = (raw: unknown): PermissionSettings => {
   if (!isRecord(raw)) return DEFAULT_PERMISSION_SETTINGS
   const mode = raw.defaultMode
   const defaultMode = mode === "acceptEdits" || mode === "bypassPermissions" ? mode : "default"
+  const policy = raw.sandboxPolicy
+  const sandboxPolicy =
+    policy === "read-only" || policy === "danger-full-access" || policy === "workspace-write"
+      ? policy
+      : "workspace-write"
   const toStringArray = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
   return {
     defaultMode,
+    sandboxPolicy,
     allow: toStringArray(raw.allow),
     deny: toStringArray(raw.deny),
     ask: toStringArray(raw.ask),

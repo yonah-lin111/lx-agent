@@ -12,6 +12,8 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
+const READ_ONLY_SANDBOX_REASON = "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
+const WORKSPACE_WRITE_SANDBOX_REASON = "Action denied: Path is outside the active workspace sandbox."
 
 // 将规则源解析为 ParsedRule[]，非法条目跳过并记警告（与 agent.mcp 降级语义一致）。
 const parseList = (sources: string[]): ParsedRule[] => {
@@ -103,8 +105,16 @@ class PermissionManager {
    */
   evaluate(toolName: string, args: unknown): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
+    const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
 
-    // 指令安全沙箱（CommandSafetyGuard）检测：破坏性高危指令绝对阻断
+    // 1. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
+    if (sandboxPolicy === "read-only") {
+      if (toolName === "write" || toolName === "edit") {
+        return "deny"
+      }
+    }
+
+    // 2. 指令安全沙箱（CommandSafetyGuard）检测：破坏性高危指令绝对阻断
     if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
       const safety = evaluateCommandSafety(args.command)
       if (safety.level === "dangerous") {
@@ -112,9 +122,9 @@ class PermissionManager {
       }
     }
 
-    // deny 优先于 bypass：`.env` 等敏感路径在 bypass 模式下仍拦截。
+    // 3. deny 优先于 bypass：`.env` 等敏感路径在 bypass 模式下仍拦截。
     if (matchRule(this.parsed.deny, toolName, args)) return "deny"
-    if (mode === "bypassPermissions") return "allow"
+    if (mode === "bypassPermissions" || sandboxPolicy === "danger-full-access") return "allow"
     if (EXEMPT_TOOLS.has(toolName)) return "allow"
     if (!GATED_BUILTIN_TOOLS.has(toolName) && !this.mcpTools.has(toolName)) return "allow"
 
@@ -156,6 +166,10 @@ class PermissionManager {
     const decision = this.evaluate(toolName, args)
     if (decision === "allow") return undefined
     if (decision === "deny") {
+      const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
+      if (sandboxPolicy === "read-only" && (toolName === "write" || toolName === "edit")) {
+        return { block: true, reason: READ_ONLY_SANDBOX_REASON }
+      }
       if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {
         const safety = evaluateCommandSafety(args.command)
         if (safety.level === "dangerous" && safety.reason) {
