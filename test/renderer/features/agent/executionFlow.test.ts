@@ -71,20 +71,20 @@ describe("executionFlow", () => {
       // 1. User
       expect(steps[0].kind).toBe("user")
       expect(steps[0].turnIndex).toBe(1)
-      expect(steps[0].stepIndex).toBe(1)
+      expect(steps[0].stepIndex).toBe(0)
       expect(steps[0].title).toBe("请帮我查找 main.ts 文件")
       expect(steps[0].userContent?.text).toBe("请帮我查找 main.ts 文件")
 
       // 2. Thinking
       expect(steps[1].kind).toBe("thinking")
       expect(steps[1].turnIndex).toBe(1)
-      expect(steps[1].stepIndex).toBe(2)
+      expect(steps[1].stepIndex).toBe(1)
       expect(steps[1].thinkingContent?.text).toContain("用户需要查找 main.ts")
 
       // 3. Tool Call & Paired Result
       expect(steps[2].kind).toBe("tool")
       expect(steps[2].turnIndex).toBe(1)
-      expect(steps[2].stepIndex).toBe(3)
+      expect(steps[2].stepIndex).toBe(2)
       expect(steps[2].title).toBe("find_by_name")
       expect(steps[2].status).toBe("done")
       expect(steps[2].toolContent?.args).toEqual({ Pattern: "main.ts" })
@@ -94,7 +94,7 @@ describe("executionFlow", () => {
       // 4. Assistant Text
       expect(steps[3].kind).toBe("assistant")
       expect(steps[3].turnIndex).toBe(1)
-      expect(steps[3].stepIndex).toBe(4)
+      expect(steps[3].stepIndex).toBe(3)
       expect(steps[3].title).toBe("已找到 main.ts 文件如下：")
       expect(steps[3].tokens?.total).toBe(150)
     })
@@ -227,13 +227,101 @@ describe("executionFlow", () => {
 
       const steps = buildExecutionSteps(messages)
       expect(steps).toHaveLength(5)
-      expect(steps.map((s) => s.turnIndex)).toEqual([1, 1, 1, 2, 2])
-      expect(steps.map((s) => s.stepIndex)).toEqual([1, 2, 3, 4, 5])
+      expect(steps.map((s) => s.turnIndex)).toEqual([1, 1, 0, 2, 2])
+      expect(steps.map((s) => s.stepIndex)).toEqual([0, 1, 2, 3, 4])
 
       const compactionStep = steps[2]
       expect(compactionStep.kind).toBe("compaction")
       expect(compactionStep.compactionContent?.isManual).toBe(true)
       expect(compactionStep.compactionContent?.summaryTokens).toBe(800)
+    })
+
+    it("正确处理初始模型与后续模型切换为独立步骤（turnIndex 为 0，不计入对话轮次）且统一顺序编号", () => {
+      const promptAssembly = {
+        sections: [{ name: "identity", text: "You are LX Agent" }],
+        contexts: [],
+        variables: {},
+        rendered: "You are LX Agent",
+      }
+
+      const messages: ChatMessage[] = [
+        {
+          id: "m0",
+          role: "modelSwitch",
+          model: "gpt-4o",
+          provider: "openai",
+          family: "gpt",
+          instructions: "GPT instructions",
+          isInitial: true,
+          isStreaming: false,
+          blocks: [],
+        },
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "你是谁" }],
+          isStreaming: false,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "我是 LX Agent" }],
+          isStreaming: false,
+        },
+        {
+          id: "m1",
+          role: "modelSwitch",
+          model: "gemini-2.5-pro",
+          provider: "google",
+          family: "gemini",
+          instructions: "Gemini instructions",
+          isInitial: false,
+          isStreaming: false,
+          blocks: [],
+        },
+        {
+          id: "u2",
+          role: "user",
+          blocks: [{ kind: "text", text: "写个测试" }],
+          isStreaming: false,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages, promptAssembly)
+      expect(steps).toHaveLength(6)
+
+      // #0 System
+      expect(steps[0].id).toBe("step-0-system-prompt")
+      expect(steps[0].kind).toBe("system")
+      expect(steps[0].stepIndex).toBe(0)
+      expect(steps[0].turnIndex).toBe(0)
+
+      // #1 Initial Model (独立 item，不与 system 合并，不计入轮次 turnIndex: 0)
+      expect(steps[1].kind).toBe("modelSwitch")
+      expect(steps[1].stepIndex).toBe(1)
+      expect(steps[1].turnIndex).toBe(0)
+      expect(steps[1].modelSwitchContent?.isInitial).toBe(true)
+
+      // #2 User Turn 1
+      expect(steps[2].kind).toBe("user")
+      expect(steps[2].stepIndex).toBe(2)
+      expect(steps[2].turnIndex).toBe(1)
+
+      // #3 Assistant Turn 1
+      expect(steps[3].kind).toBe("assistant")
+      expect(steps[3].stepIndex).toBe(3)
+      expect(steps[3].turnIndex).toBe(1)
+
+      // #4 Switched Model (独立 item/QA，不与 Turn 1 合并，不计入轮次 turnIndex: 0)
+      expect(steps[4].kind).toBe("modelSwitch")
+      expect(steps[4].stepIndex).toBe(4)
+      expect(steps[4].turnIndex).toBe(0)
+      expect(steps[4].modelSwitchContent?.isInitial).toBe(false)
+
+      // #5 User Turn 2
+      expect(steps[5].kind).toBe("user")
+      expect(steps[5].stepIndex).toBe(5)
+      expect(steps[5].turnIndex).toBe(2)
     })
 
     it("正确计算步骤间跨度与 Agent 响应开销", () => {

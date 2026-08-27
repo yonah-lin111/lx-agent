@@ -18,6 +18,7 @@ import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
 import { FlowItemErrorContent } from "./FlowItemErrorContent"
+import { FlowItemModelSwitchContent } from "./FlowItemModelSwitchContent"
 import { FlowItemQuestionContent } from "./FlowItemQuestionContent"
 import { FlowItemSubagentContent } from "./FlowItemSubagentContent"
 import { FlowItemSystemContent } from "./FlowItemSystemContent"
@@ -37,7 +38,6 @@ export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
   isExpanded: boolean
   onToggleExpand: () => void
-  turnStartIndex?: number
 }
 
 /**
@@ -47,7 +47,6 @@ export const AgentExecutionFlowItem = ({
   step,
   isExpanded,
   onToggleExpand,
-  turnStartIndex = 0,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -96,6 +95,9 @@ export const AgentExecutionFlowItem = ({
         step.subagentContent.subagent,
       )}`
     }
+    if (step.modelSwitchContent) {
+      return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
+    }
     if (step.assistantContent) return step.assistantContent.text
     if (step.errorContent) {
       return step.errorContent.message || step.title
@@ -112,6 +114,9 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.kind === "thinking") {
       return "agent-execution-flow-step-body--thinking agent-execution-flow-step-body--purple border-purple-500/15 bg-purple-500/[0.05]"
+    }
+    if (step.kind === "modelSwitch") {
+      return "agent-execution-flow-step-body--modelSwitch agent-execution-flow-step-body--cyan border-cyan-500/15 bg-cyan-500/[0.05]"
     }
     const toolName = step.toolContent?.toolName
     if (toolName === "render_svg") {
@@ -156,10 +161,10 @@ export const AgentExecutionFlowItem = ({
             )}
           </div>
 
-          {/* 步骤当前轮次内的索引 */}
+          {/* 步骤全局统一顺序索引 */}
           {!isRunning && (
             <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
-              #{step.stepIndex - turnStartIndex}
+              #{step.stepIndex}
             </span>
           )}
 
@@ -394,6 +399,14 @@ export const AgentExecutionFlowItem = ({
           {/* 助手回复详情 */}
           {step.assistantContent && !step.compactionContent && (
             <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
+          )}
+
+          {/* 模型切换/初始模型详情 */}
+          {step.modelSwitchContent && (
+            <FlowItemModelSwitchContent
+              content={step.modelSwitchContent}
+              previewRef={previewRef}
+            />
           )}
 
           {/* 异常/中断详情 */}

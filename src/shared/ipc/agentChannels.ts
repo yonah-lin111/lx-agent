@@ -7,6 +7,7 @@ export const AGENT_CHANNELS = {
   abort: "agent:abort",
   switchWorktree: "agent:switchWorktree",
   switchProject: "agent:switchProject",
+  switchModel: "agent:switchModel",
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",

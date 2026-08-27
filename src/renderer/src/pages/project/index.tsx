@@ -93,12 +93,12 @@ export const ProjectPage = (): React.JSX.Element => {
         />
       )}
       {!isItemLoading && !itemId && (
-        <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
+        <div className="project-empty-card flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
           <span className="text-sm text-white/60">{t("project.selectItemEmpty")}</span>
         </div>
       )}
       {!isItemLoading && itemId && !hasItem && (
-        <div className="flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
+        <div className="project-empty-card flex min-w-0 flex-1 items-center justify-center rounded-[6px] border border-white/5 bg-[#212121]">
           <span className="text-sm text-white/60">{t("project.itemNotFound")}</span>
         </div>
       )}

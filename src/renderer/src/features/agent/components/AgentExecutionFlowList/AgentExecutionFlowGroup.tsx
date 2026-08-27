@@ -29,7 +29,6 @@ export interface AgentExecutionFlowGroupProps {
   onToggleExpand: () => void
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
-  stepTurnStartIndices: Map<string, number>
 }
 
 /**
@@ -42,7 +41,6 @@ export const AgentExecutionFlowGroup = ({
   onToggleExpand,
   isStepExpanded,
   onToggleStepExpand,
-  stepTurnStartIndices,
 }: AgentExecutionFlowGroupProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -309,7 +307,6 @@ export const AgentExecutionFlowGroup = ({
                 step={step}
                 isExpanded={isStepExpanded(step)}
                 onToggleExpand={() => onToggleStepExpand(step)}
-                turnStartIndex={stepTurnStartIndices.get(step.id) ?? step.stepIndex}
               />
             ))}
           </div>

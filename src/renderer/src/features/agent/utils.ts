@@ -83,6 +83,21 @@ export const toChatMessage = (
     }
   }
 
+  if (message.role === "modelSwitch") {
+    return {
+      id,
+      role: "modelSwitch",
+      blocks: message.instructions ? [{ kind: "text", text: message.instructions }] : [],
+      isStreaming: false,
+      timestamp: message.timestamp,
+      model: message.model,
+      provider: message.provider,
+      family: message.family,
+      instructions: message.instructions,
+      isInitial: message.isInitial,
+    }
+  }
+
   if (message.role === "toolResult") {
     return {
       id,

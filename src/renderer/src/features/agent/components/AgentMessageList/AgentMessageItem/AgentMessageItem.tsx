@@ -1,6 +1,7 @@
 import type React from "react"
 import { AgentCompactionSummary } from "@/features/agent/components/blocks"
 import { AgentAssistantMessage } from "./AgentAssistantMessage"
+import { AgentModelSwitchItem } from "./AgentModelSwitchItem"
 import { AgentUserMessage } from "./AgentUserMessage"
 import { useMessageItemGroups } from "./hooks/useMessageItemGroups"
 import type { AgentMessageItemProps } from "./types"
@@ -43,6 +44,11 @@ export const AgentMessageItem = ({
         summaryTokens={message.summaryTokens}
       />
     )
+  }
+
+  // 模型切换/初始模型条目：非交互（不可编辑/删除），标注模型切换并可折叠查看厂商提示词。
+  if (message.role === "modelSwitch") {
+    return <AgentModelSwitchItem message={message} />
   }
 
   // 用户消息分支。

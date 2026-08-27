@@ -173,7 +173,7 @@ export const BottomSideBar = ({
 
   return (
     <aside
-      className={`relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+      className={`bottom-sidebar relative w-full shrink-0 overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
         isResizing
           ? "transition-none"
           : "transition-[height,min-height,max-height] duration-300 ease-in-out"

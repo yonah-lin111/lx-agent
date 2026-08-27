@@ -153,7 +153,11 @@ export const AgentExecutionFlowList = forwardRef<
     const lastStepOfMaxTurnId = useMemo(() => {
       if (isStreaming || maxTurn <= 0) return null
       for (let i = steps.length - 1; i >= 0; i--) {
-        if (steps[i].turnIndex === maxTurn) {
+        if (
+          steps[i].turnIndex === maxTurn &&
+          steps[i].kind !== "modelSwitch" &&
+          steps[i].kind !== "compaction"
+        ) {
           return steps[i].id
         }
       }
@@ -173,7 +177,11 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.kind === "user" || step.kind === "error") {
           return true
         }
-        if (step.id === lastStepOfMaxTurnId) {
+        if (
+          step.id === lastStepOfMaxTurnId &&
+          step.kind !== "modelSwitch" &&
+          step.kind !== "compaction"
+        ) {
           return true
         }
         return false
@@ -228,6 +236,7 @@ export const AgentExecutionFlowList = forwardRef<
         step.kind === "assistant" ||
         step.kind === "user" ||
         step.kind === "compaction" ||
+        step.kind === "modelSwitch" ||
         step.kind === "error"
       ) {
         return false
@@ -620,6 +629,7 @@ export const AgentExecutionFlowList = forwardRef<
         subagent: 0,
         compaction: 0,
         assistant: 0,
+        modelSwitch: 0,
         error: 0,
       }
       for (const step of steps) {
@@ -627,21 +637,6 @@ export const AgentExecutionFlowList = forwardRef<
       }
       return counts
     }, [steps])
-
-    // 计算每个step对应的turn起始索引
-    const stepTurnStartIndices = useMemo(() => {
-      const map = new Map<string, number>()
-      let currentTurn = -1
-      let turnStartIndex = 0
-      for (const step of filteredSteps) {
-        if (step.turnIndex !== currentTurn) {
-          currentTurn = step.turnIndex
-          turnStartIndex = step.stepIndex
-        }
-        map.set(step.id, turnStartIndex)
-      }
-      return map
-    }, [filteredSteps])
 
     return (
       <div
@@ -674,7 +669,6 @@ export const AgentExecutionFlowList = forwardRef<
                     step={step}
                     isExpanded={isStepExpanded(step)}
                     onToggleExpand={() => toggleStepExpanded(step)}
-                    turnStartIndex={stepTurnStartIndices.get(step.id) ?? step.stepIndex}
                   />
                 ))}
               </div>
@@ -747,21 +741,39 @@ export const AgentExecutionFlowList = forwardRef<
                   return (
                     <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
                       {/* 轮次分隔线 */}
-                      {isNewTurn && elementTurnIndex > 0 && (
-                        <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
-                            {t("agent.turnLabel", { turn: elementTurnIndex })}
-                          </span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                        </div>
-                      )}
+                      {/* 轮次分隔线（仅非 compaction / 非 modelSwitch 的用户交互轮次展示） */}
+                      {isNewTurn &&
+                        elementTurnIndex > 0 &&
+                        !(
+                          element.kind === "single" &&
+                          (element.step.kind === "compaction" || element.step.kind === "modelSwitch")
+                        ) && (
+                          <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
+                            <div className="h-[1px] flex-1 bg-white/10" />
+                            <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                              {t("agent.turnLabel", { turn: elementTurnIndex })}
+                            </span>
+                            <div className="h-[1px] flex-1 bg-white/10" />
+                          </div>
+                        )}
                       {/* 上下文压缩分割线说明 */}
                       {element.kind === "single" && element.step.kind === "compaction" && (
                         <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-white/10" />
                           <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/60 uppercase">
                             {t("settings.contextCompaction")}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                        </div>
+                      )}
+                      {/* 模型切换/初始模型分割线说明 */}
+                      {element.kind === "single" && element.step.kind === "modelSwitch" && (
+                        <div className="agent-execution-flow-model-switch-divider my-1.5 flex items-center gap-2">
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-cyan-300/70 uppercase">
+                            {element.step.modelSwitchContent?.isInitial
+                              ? t("agent.initialModel") || "INITIAL MODEL"
+                              : t("agent.modelSwitched") || "MODEL SWITCHED"}
                           </span>
                           <div className="h-[1px] flex-1 bg-white/10" />
                         </div>
@@ -783,9 +795,6 @@ export const AgentExecutionFlowList = forwardRef<
                           step={element.step}
                           isExpanded={isStepExpanded(element.step)}
                           onToggleExpand={() => toggleStepExpanded(element.step)}
-                          turnStartIndex={
-                            stepTurnStartIndices.get(element.step.id) ?? element.step.stepIndex
-                          }
                         />
                       ) : (
                         <AgentExecutionFlowGroup
@@ -795,7 +804,6 @@ export const AgentExecutionFlowList = forwardRef<
                           onToggleExpand={() => toggleGroupExpanded(element.groupId)}
                           isStepExpanded={isStepExpanded}
                           onToggleStepExpand={toggleStepExpanded}
-                          stepTurnStartIndices={stepTurnStartIndices}
                         />
                       )}
 
@@ -804,6 +812,7 @@ export const AgentExecutionFlowList = forwardRef<
                         elementTurnIndex > 0 &&
                         turnStats &&
                         turnStats.isCompleted &&
+                        (turnStats.outputTokens > 0 || turnStats.toolCallsCount > 0) &&
                         (activeFilter === "all" || activeFilter === "assistant") && (
                           <div
                             data-testid={`turn-summary-${elementTurnIndex}`}

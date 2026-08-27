@@ -5,6 +5,7 @@ import {
   Brain,
   Code2,
   Compass,
+  Cpu,
   FileText,
   Minimize2,
   Palette,
@@ -161,6 +162,8 @@ export const getKindMeta = (
       return { icon: Bot, labelKey: "agent.kindSubagent", tagColor: "blue" }
     case "compaction":
       return { icon: Minimize2, labelKey: "agent.kindCompaction", tagColor: "indigo" }
+    case "modelSwitch":
+      return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
     case "assistant":
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
     case "error": {

@@ -3,6 +3,7 @@ import type {
   PermissionRequest,
   PermissionResponse,
   PermissionSettings,
+  SandboxPolicy,
 } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
@@ -13,7 +14,6 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
 const READ_ONLY_SANDBOX_REASON = "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
-const WORKSPACE_WRITE_SANDBOX_REASON = "Action denied: Path is outside the active workspace sandbox."
 
 // 将规则源解析为 ParsedRule[]，非法条目跳过并记警告（与 agent.mcp 降级语义一致）。
 const parseList = (sources: string[]): ParsedRule[] => {

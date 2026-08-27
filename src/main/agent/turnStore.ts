@@ -2,12 +2,14 @@ import type {
   AgentCapabilitySnapshot,
   AgentEvent,
   AgentMessage,
+  ModelSwitchMessage,
   TodoList,
 } from "@shared/contracts/agent"
 import {
   type SessionProjectionState,
   SessionProjectionStore,
 } from "@shared/contracts/sessionProjection"
+import type { ModelSelection } from "@shared/settings"
 import {
   type AgentCallKind,
   agentSessionService,
@@ -15,6 +17,7 @@ import {
 } from "@/services/agentSessionService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { isContextOverflowFailure } from "./compaction"
+import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { ChildCallInput } from "./tools/task"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
 
@@ -54,14 +57,16 @@ type PendingSessionInput = {
   cwd: string
   title: string
   capabilities: AgentCapabilitySnapshot
+  modelSelection?: ModelSelection
 }
 
-// beginTurn 输入（宿主注入会话归属、cwd 与能力快照）。
+// beginTurn 输入（宿主注入会话归属、cwd 与能力快照与模型选择）。
 export interface BeginTurnInput {
   text: string
   binding: SessionBinding
   cwd: string
   capabilities: AgentCapabilitySnapshot
+  modelSelection?: ModelSelection
 }
 
 // 宿主状态访问接口（解耦 turn 持久化与 AgentRunner 状态）。
@@ -154,6 +159,7 @@ export class TurnStore {
       cwd: input.cwd,
       title: createTitle(input.text),
       capabilities: input.capabilities,
+      modelSelection: input.modelSelection,
     }
   }
 
@@ -213,7 +219,7 @@ export class TurnStore {
     const sessionId = this.deps.getCurrentSessionId()
     if (sessionId) {
       for (const entry of agentSessionService.listEntries(sessionId)) {
-        if (entry.type !== "message") continue
+        if (entry.type !== "message" && entry.type !== "model_change") continue
         try {
           const message = JSON.parse(entry.payload) as AgentMessage
           if (typeof message.timestamp === "number" && !seqByTimestamp.has(message.timestamp)) {
@@ -390,8 +396,12 @@ export class TurnStore {
   }
 
   // 会话不存在时创建会话行 + 能力快照；已存在则直接返回（须在事务内调用）。
-  createSessionIfNeeded(input: PendingSessionInput, now: string): string {
+  createSessionIfNeeded(
+    input: PendingSessionInput,
+    now: string,
+  ): { sessionId: string; initialModelMessage?: ModelSwitchMessage } {
     let sessionId = this.deps.getCurrentSessionId()
+    let initialModelMessage: ModelSwitchMessage | undefined
     if (!sessionId) {
       sessionId = createExternalId()
       agentSessionService.insertSession({
@@ -412,11 +422,33 @@ export class TurnStore {
         payload: JSON.stringify(input.capabilities),
         createdAt: now,
       })
+      if (input.modelSelection) {
+        const family = detectModelFamily(input.modelSelection.model)
+        const instructions = getModelAdaptiveInstructions(family)
+        initialModelMessage = {
+          role: "modelSwitch",
+          provider: input.modelSelection.provider,
+          model: input.modelSelection.model,
+          family,
+          instructions,
+          timestamp: Date.now(),
+          isInitial: true,
+        }
+        agentSessionService.insertEntry({
+          externalId: createExternalId(),
+          sessionId,
+          seq: seq++,
+          type: "model_change",
+          payload: JSON.stringify(initialModelMessage),
+          createdAt: now,
+        })
+        this.messageSeqs.push(seq - 1)
+      }
       this.deps.setSessionId(sessionId)
       this.deps.setSessionBinding(input.binding)
       this.projection.apply({ type: "session_title", sessionId, title: input.title })
     }
-    return sessionId
+    return { sessionId, initialModelMessage }
   }
 
   // 会话是否已落库消息（首轮 prompt 失败清理空会话判定）。
@@ -464,7 +496,7 @@ export class TurnStore {
     const snapshotRecord = this.computeSnapshotRecord(messages)
 
     agentSessionService.transaction(() => {
-      const sessionId = this.createSessionIfNeeded(input, now)
+      const { sessionId } = this.createSessionIfNeeded(input, now)
 
       let seq = agentSessionService.nextSeq(sessionId)
       const appendedSeqs: number[] = []
@@ -570,12 +602,12 @@ export class TurnStore {
     let todos: TodoList = []
 
     for (const entry of agentSessionService.listEntries(sessionId)) {
-      if (entry.type === "message") {
+      if (entry.type === "message" || entry.type === "model_change") {
         try {
           messages.push(JSON.parse(entry.payload) as AgentMessage)
           seqs.push(entry.seq)
         } catch {
-          // 损坏的 message entry 跳过，不阻断恢复。
+          // 损坏的 message / model_change entry 跳过，不阻断恢复。
         }
       } else if (entry.type === "active_capabilities") {
         const parsed = JSON.parse(entry.payload) as Partial<AgentCapabilitySnapshot>

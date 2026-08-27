@@ -19,24 +19,23 @@ const MOCK_SUBAGENT_CALL: ToolCallBlock = {
   subagent: {
     name: "explore",
     description: "检索并分析项目中的所有 Agent 相关组件",
+    prompt: "请扫描 src/renderer/src/features/agent/components 目录下的所有文件并返回汇总",
+    usage: { input: 360, output: 130, cacheRead: 0, totalTokens: 490 },
     steps: [
       {
-        id: "step_1",
         toolName: "glob",
         args: { pattern: "src/renderer/src/features/agent/components/*" },
-        state: "completed",
+        status: "done",
       },
       {
-        id: "step_2",
         toolName: "mcp_read_resource",
         args: { uri: "file://components" },
-        state: "completed",
+        status: "done",
       },
       {
-        id: "step_3",
         toolName: "web_search",
         args: { query: "lucide icons" },
-        state: "completed",
+        status: "done",
       },
     ],
     messages: [

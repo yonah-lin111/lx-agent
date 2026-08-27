@@ -133,19 +133,7 @@ const formatReadTarget = (args: Record<string, unknown>): string => {
   return path
 }
 
-// 从工具调用中提取需要展示的文件路径或目标说明。
-const getToolCallPaths = (toolCalls: ToolCallBlock[]): string[] =>
-  toolCalls.flatMap(({ args }) => {
-    const path = args.path
-    if (typeof path === "string") return [path]
 
-    if (Array.isArray(path)) {
-      const paths = path.filter((item): item is string => typeof item === "string")
-      if (paths.length > 0) return paths
-    }
-
-    return ["Unknown file"]
-  })
 
 // 按工具类型生成调用摘要，避免将结果正文混入命令展示。
 const formatToolCommand = (toolName: string, args: Record<string, unknown>): string | null => {

@@ -209,6 +209,13 @@ export function projectSessionEvent(
       }
     }
 
+    case "model_switch": {
+      return {
+        ...state,
+        messages: [...state.messages, event.message],
+      }
+    }
+
     case "job_started":
     case "job_settled": {
       return {

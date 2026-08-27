@@ -210,6 +210,20 @@ export const AgentPage = ({
   const { success, error, warning } = useLxAgentToast()
   const { t } = useTranslation()
 
+  // 切换模型：同步更新本地选择；若处于已有会话中，立即落库 model_change entry
+  const handleModelSelectChange = useCallback(
+    (value: string) => {
+      handleModelChange(value)
+      const [provider, model] = value.split("::")
+      if (provider && model && currentSessionId) {
+        void agentApi.switchModel({ provider, model }).catch((err) => {
+          console.error("Failed to switch model in session:", err)
+        })
+      }
+    },
+    [handleModelChange, currentSessionId],
+  )
+
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
   const handleStop = useCallback(() => {
     if (queuedCount > 0) {
@@ -548,7 +562,7 @@ export const AgentPage = ({
         onUndo={undoLastTurn}
         onCompact={compactChat}
         selectedModel={selectedModel}
-        onModelChange={handleModelChange}
+        onModelChange={handleModelSelectChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
         projectId={effectiveProjectId}

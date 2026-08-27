@@ -87,6 +87,18 @@ export interface AssistantMessage {
   durationMs?: number
 }
 
+// 模型切换/初始模型消息：非交互块，记录模型切换及注入的模型厂商自适应提示词。
+export interface ModelSwitchMessage {
+  role: "modelSwitch"
+  provider: string
+  model: string
+  family: string
+  instructions?: string
+  timestamp: number
+  // 是否为会话创建时的初始模型条目
+  isInitial?: boolean
+}
+
 // 上下文压缩摘要消息：可见的非交互块，标注"此处已压缩"。
 // 不落 message entry（compaction entry 的 payload 即摘要）；UI 与模型上下文共用同一份。
 export interface CompactionSummaryMessage {
@@ -272,6 +284,7 @@ export type AgentMessage =
   | CompactionSummaryMessage
   | TodoStateMessage
   | ToolResultMessage
+  | ModelSwitchMessage
 
 // 建议问题生成请求的对话上下文消息。
 export interface SuggestedQuestionContextMessage {
@@ -424,6 +437,8 @@ export type AgentEvent =
   | { type: "todo_updated"; todos: TodoList }
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
   | { type: "queue_changed"; length: number; messages: string[] }
+  // 模型切换/初始模型广播事件
+  | { type: "model_switch"; message: ModelSwitchMessage }
   // 后台长任务生命周期事件（JobRegistry 驱动，支持抽屉与状态指示器实时刷新）。
   | { type: "job_started"; job: JobSnapshot }
   | { type: "job_output_chunk"; jobId: JobId; chunk: string }
@@ -621,6 +636,10 @@ export interface AgentApi {
     switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
     // 切换当前会话项目：更新会话关联的项目 ID 与工具执行目录（cwd），重新加载工具集与技能。
     switchProject: (projectId: string, path: string) => Promise<AgentSwitchProjectResult>
+    // 切换当前会话大模型：在已有会话中插入 model_change entry 并推送事件。
+    switchModel: (
+      selection: ModelSelection,
+    ) => Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }>
     // 手动触发上下文压缩（/compact）：摘要化早期历史并建立新边界；设置禁用/无可压缩内容时返回原因。
     compact: () => Promise<AgentCompactResult>
     // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。
