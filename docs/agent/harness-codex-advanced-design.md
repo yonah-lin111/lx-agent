@@ -1,8 +1,8 @@
-# Codex 级完整 Harness 与系统架构进阶设计方案
+# Codex 级完整 Harness 与系统架构进阶设计方案 (Full Specification)
 
 ## 1. 背景与目标
 
-在 Phase 1~4 基础重构（环境感知 `<env>`、Turn 状态切片、命令安全拦截、FIFO 排队与双击中断）已合入 `dev` 的基础上，参考 `codex-main`（`/Users/yonah/projects/agent/codex-main`）核心规范，实现工业级全量 Harness 能力：
+参考 `codex-main`（`/Users/yonah/projects/agent/codex-main`）核心架构规范，在 LX Agent 基础 Harness 之上构建工业级 Harness 全景能力：
 
 1. **三档沙箱策略（Sandbox Policy）**：
    - `ReadOnly`（全只读工作区与系统）
@@ -12,92 +12,103 @@
 2. **模型自适应提示词装配（Model-Adaptive Prompt Assembly）**：
    - 对齐 `gpt-5.2-codex_prompt.md` 规范：精准单行文件引用（`file:line` 单独成行）、ASCII 优先编辑约束、极简注释哲学、Anti-AI-Slop 前端规范。
    - 按模型家族（GPT-5/Codex、Claude、DeepSeek/Generic）自适应组装差异化指令。
-3. **结构化多 Agent 协作协议（Inter-Agent Communication Protocol）**：
+3. **结构化多 Agent 协作协议（Inter-Agent Communication Protocol）与子代理池（SubagentPool）**：
    - 对齐 `codex-rs/protocol/src/protocol.rs` 中的 `InterAgentCommunication`。
    - 支持主 Agent 与子代理之间带 `author`、`recipient`、`trigger_turn`、`metadata` 的多轮移交与结果回传。
-4. **前端控制与体验对齐**：
-   - 设置页集成沙箱策略配置。
-   - 状态栏与消息气泡精准展示沙箱模式与多 Agent 通信状态。
+   - 会话级 SubagentPool 维护，支持基于 `subagent_id` 续接历史上下文。
+4. **双协作模式状态机（Collaboration Modes: Default vs Plan Mode）**：
+   - 参考 `codex-rs/collaboration-mode-templates/templates/plan.md` 与 `default.md`。
+   - **Plan Mode 核心约束**：严格只读（Non-mutating），硬性拦截任何 `edit`、`write`、`applyPatch` 与破坏性终端命令。模型只通过只读工具或 `request_user_input` 消除歧义，最终产出 `<proposed_plan>` 规范块。
+   - **Default Mode 核心约束**：面向行动、快速执行与手术刀式精准修改。
+5. **专精 Review Agent（代码审查子代理）**：
+   - 参考 `codex-rs/core/src/session/review.rs` 与 `codex-rs/prompts/templates/review/rubric.md`。
+   - 强制只读沙箱隔离，按 Rubric 维度（Defects、Security、Performance、Taste）深度审查 Diff 并输出结构化报告。
+6. **Current Time Reminder（Turn 级周期动态时间感知）**：
+   - 参考 `codex-rs/core/src/session/time_reminder.rs`。
+   - 在 Turn 状态机中跨越时间阈值（默认 300s）或窗口切换时，动态向模型注入 `<current_time>` 片段。
 
 ---
 
-## 2. 核心架构与数据结构
+## 2. 核心架构与数据流
 
 ```text
-+-------------------------------------------------------------------------------+
-|                                UI / Settings                                  |
-|         (Sandbox Policy Selector / AgentPage / Status Bar Indicator)          |
-+---------------------------------------+---------------------------------------+
-                                        | IPC / Settings Stream
-                                        v
-+-------------------------------------------------------------------------------+
-|                                  Main Process                                 |
-|                                                                               |
-|  +-------------------------------------------------------------------------+  |
-|  | SettingsStore (agent.sandboxPolicy: read-only | workspace-write | full) |  |
-|  +------------------------------------+------------------------------------+  |
-|                                       |                                       |
-|  +------------------------------------v------------------------------------+  |
-|  | Dynamic SystemPromptManager (Model-Adaptive & Sandbox-Aware)             |  |
-|  | - Layer 0: Core Identity                                                |  |
-|  | - Layer 1: Model-Adaptive Instructions (GPT-5 Codex / Claude / Generic) |  |
-|  | - Layer 2: Sandbox Constraints & Safety Boundary (<sandbox_policy>)    |  |
-|  | - Layer 3: Environment Snapshot (<env> Git / Worktree / Platform)       |  |
-|  | - Layer 4: Cascade Instructions (AGENTS.md)                             |  |
-|  | - Layer 5: Active Skills & Tools Registry                               |  |
-|  +------------------------------------+------------------------------------+  |
-|                                       |                                       |
-|  +------------------------------------v------------------------------------+  |
-|  | PermissionManager & FileSystemSandboxGuard                              |  |
-|  | - Evaluates sandbox rules (CWD Jail / Path Traversal / Command Safety)  |  |
-|  | - Escalation Policy (UnlessTrusted / OnRequest / Granular / Never)      |  |
-|  +------------------------------------+------------------------------------+  |
-|                                       |                                       |
-|  +------------------------------------v------------------------------------+  |
-|  | Subagent Communication Bus (InterAgentCommunication)                    |  |
-|  | - Structured dispatch between orchestrator and specialized subagents    |  |
-|  +-------------------------------------------------------------------------+  |
-+-------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------+
+|                                 Renderer UI                                     |
+|   (Sandbox Selector | Collaboration Mode Switcher | Status Bar | Subagent Drawer) |
++----------------------------------------+----------------------------------------+
+                                         | IPC (Settings / Mode / Event Stream)
+                                         v
++---------------------------------------------------------------------------------+
+|                                  Main Process                                   |
+|                                                                                 |
+|  +---------------------------------------------------------------------------+  |
+|  | SettingsStore (sandboxPolicy, collaborationMode)                          |  |
+|  +-------------------------------------+-------------------------------------+  |
+|                                        |                                        |
+|  +-------------------------------------v-------------------------------------+  |
+|  | AgentRunner & TurnContext State Machine                                   |  |
+|  | - Time Reminder State (calculates elapsed seconds & injects fragment)     |  |
+|  | - Active CollaborationMode (default | plan)                                |  |
+|  | - Environment Snapshot (<env> Git / Worktree / Platform)                  |  |
+|  +-------------------------------------+-------------------------------------+  |
+|                                        |                                        |
+|  +-------------------------------------v-------------------------------------+  |
+|  | Dynamic SystemPromptManager (Adaptive, Sandbox & Mode Aware)              |  |
+|  | - Layer 0: Core Identity                                                  |  |
+|  | - Layer 1: Collaboration Mode Template (plan.md / default.md)             |  |
+|  | - Layer 2: Model-Adaptive Instructions (Codex / Claude / Generic)         |  |
+|  | - Layer 3: Sandbox Constraints (<sandbox_policy>)                          |  |
+|  | - Layer 4: Time Reminder Context (<current_time>)                         |  |
+|  | - Layer 5: Cascade Instructions (AGENTS.md)                               |  |
+|  | - Layer 6: Active Skills & Tools Registry                                 |  |
+|  +-------------------------------------+-------------------------------------+  |
+|                                        |                                        |
+|  +-------------------------------------v-------------------------------------+  |
+|  | PermissionManager & Multi-Gate Sandbox                                    |  |
+|  | - Plan Mode Gate: Hard block on all mutating tools (write/edit/side-effects)|
+|  | - Sandbox Policy Gate (ReadOnly / WorkspaceWrite / DangerFullAccess)       |  |
+|  | - Command Safety Guard (Destructive shell commands filter)                |  |
+|  +-------------------------------------+-------------------------------------+  |
+|                                        |                                        |
+|  +-------------------------------------v-------------------------------------+  |
+|  | SubagentPool & Specialized Agents                                         |  |
+|  | - Subagent Pool: Context resume via subagent_id                          |  |
+|  | - Review Agent: Read-only sandbox + Rubric Evaluation + Structured Diff   |  |
+|  +---------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 3. 核心模块详细设计
+## 3. 核心数据结构与契约定义
 
-### 3.1 沙箱策略模型（Sandbox Policy Model）
-在 `src/shared/contracts/agent.ts` 与 `PermissionSettings` 中增加：
+### 3.1 协议契约 (`src/shared/contracts/agent.ts`)
 ```typescript
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
+export type CollaborationMode = "default" | "plan"
 
 export interface AgentSettings {
   sandboxPolicy: SandboxPolicy
-  // ... 其他现有配置
+  collaborationMode?: CollaborationMode
+  // ... 其他配置
+}
+
+export interface InterAgentCommunication {
+  author: string
+  recipient: string
+  triggerTurn: boolean
+  content: string
+  metadata?: Record<string, unknown>
 }
 ```
 
-#### 行为语义矩阵：
-| 沙箱策略 | 读文件 | 当前工作区写文件 | 跨工作区写文件 | 只读终端命令 | 破坏性/高危终端命令 |
+### 3.2 模式与沙箱行为语义矩阵
+| 模式与沙箱组合 | 读文件 | 当前工作区写文件 | 跨工作区写文件 | 只读命令 | 破坏性/高危命令 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `read-only` | 允许 | 拒绝（报错或提升） | 拒绝 | 允许 | 拒绝 |
-| `workspace-write` | 允许 | 允许 | 提示用户审批 | 允许 | 拦截/审批 |
-| `danger-full-access` | 允许 | 允许 | 允许 | 允许 | 拦截高危命令 |
-
-### 3.2 提示词装配引擎自适应重构（Model-Adaptive Prompt Assembly）
-在 `src/main/agent/prompts/systemPromptManager.ts` 中根据当前选中的 `modelId` 与 `sandboxPolicy` 动态生成指令：
-- **GPT-5 / Codex 族**：注入严苛的 ASCII 优先、单行引用格式、极简注释、Anti-AI-Slop 前端规范；
-- **沙箱约束注入**：在 `<env>` 后增加 `<sandbox>` 标签，明确告知模型当前写操作受限范围。
-
-### 3.3 结构化多 Agent 协议与会话持久化（Inter-Agent Communication & Subagent Pool）
-扩展 `task` 工具、`SubagentData` 与 `AgentSubagentPanel`：
-- **数据结构协议**：对齐 Codex `InterAgentCommunication`，包含 `author`（发出者 Agent 身份）、`recipient`（目标 Agent）、`triggerTurn`（是否立即触发下一轮推理）、`content`（正文与 Markdown 结论）、`metadata`；
-- **子代理池管理器（SubagentPool）与上下文续接（Resume）**：
-  - 在当前父会话（Session）作用域内建立 `SubagentPool`（`Map<subagentId, Agent>`）；
-  - `task` 工具支持 `subagent_id`（可选）参数；
-  - 若传入已存在的 `subagent_id`，直接唤醒并续接该 Agent 实例的 `state.messages` 历史，实现多轮长程交互；
-  - 若未传或不存在则创建新 Agent 实例并登记入池，分配唯一 `subagent_id`；
-  - 继承父级 `sandboxPolicy` 与权限门控（Gate）。
-- **前端协同呈现**：
-  - 子代理抽屉面板顶部渲染 `Inter-Agent Protocol` 信元时间线，且同一个 `subagent_id` 的多轮执行记录自动归并到同一时间轴。
+| `Plan Mode` (任意沙箱) | 允许 | **拒绝 (Plan Mode 只读)** | **拒绝** | 允许 | **拒绝** |
+| `Default Mode` + `read-only` | 允许 | 拒绝 | 拒绝 | 允许 | 拒绝 |
+| `Default Mode` + `workspace-write` | 允许 | 允许 | 提示用户审批 | 允许 | 拦截/审批 |
+| `Default Mode` + `danger-full-access` | 允许 | 允许 | 允许 | 允许 | 拦截高危命令 |
 
 ---
 
