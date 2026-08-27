@@ -30,6 +30,7 @@ export interface AgentInputProps {
   onStop: () => void
   onClear: () => void
   onUndo: () => void
+  isOnlyOneTurnLeft?: () => boolean
   onCompact: () => void
   onToggleCollaborationMode?: () => void
   selectedModel: string
@@ -69,6 +70,7 @@ export const AgentInput = ({
   onStop,
   onClear,
   onUndo,
+  isOnlyOneTurnLeft,
   onCompact,
   onToggleCollaborationMode,
   selectedModel,
@@ -345,6 +347,7 @@ export const AgentInput = ({
           onWorktreeSelect={onWorktreeSelect}
           onClear={onClear}
           onUndo={onUndo}
+          isOnlyOneTurnLeft={isOnlyOneTurnLeft}
           onCompact={onCompact}
           onToggleCollaborationMode={onToggleCollaborationMode}
           onAddFiles={handleAddFiles}

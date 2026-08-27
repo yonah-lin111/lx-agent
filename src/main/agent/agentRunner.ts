@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -930,22 +930,6 @@ class AgentRunner {
       }
       if (entry.type === "message" || entry.type === "todo") {
         turnEntryIds.push(entry.external_id)
-
-        // 检测并删除附件文件
-        if (entry.type === "message") {
-          try {
-            const msg = JSON.parse(entry.payload) as AgentMessage
-            if (msg.role === "user" && msg.files) {
-              for (const file of msg.files) {
-                if (existsSync(file.path)) {
-                  rmSync(file.path, { force: true })
-                }
-              }
-            }
-          } catch {
-            // 忽略损坏的消息 payload
-          }
-        }
       }
     }
 
@@ -972,22 +956,38 @@ class AgentRunner {
     const now = new Date().toISOString()
     // 删除区间可能带走最新 todo entry：事务后按会话存续状态同步内存清单。
     const wasCurrent = this.currentSessionId === sessionId
+    let shouldDeleteSession = false
     agentSessionService.transaction(() => {
       agentSessionService.deleteCallsByEntryIds(turnEntryIds)
       agentSessionService.deleteEntries(turnEntryIds)
       // 该轮快照随消息一并清理（回滚已完成，快照不再有效）。
       agentSessionService.deleteSnapshotsByUserTimestamp(sessionId, userMessageTimestamp)
-      if (agentSessionService.listMessageEntries(sessionId).length === 0) {
-        agentSessionService.deleteSessionRow(sessionId)
-        if (this.currentSessionId === sessionId) {
-          this.setSessionId(null)
-          this.sessionBinding = null
+
+      // 检查剩余 entry：若无 message 或剩余消息仅有初始模型（isInitial: true 的 model_change），整体删除会话
+      const remainingEntries = agentSessionService.listEntries(sessionId)
+      const hasMeaningfulMessages = remainingEntries.some((entry) => {
+        if (entry.type === "message") return true
+        if (entry.type === "model_change") {
+          try {
+            const parsed = JSON.parse(entry.payload) as ModelSwitchMessage
+            return !parsed.isInitial
+          } catch {
+            return false
+          }
         }
+        return false
+      })
+
+      if (!hasMeaningfulMessages) {
+        shouldDeleteSession = true
       } else {
         agentSessionService.touchSession(sessionId, now)
       }
     })
-    if (wasCurrent) {
+
+    if (shouldDeleteSession) {
+      this.deleteSession(sessionId)
+    } else if (wasCurrent) {
       if (this.currentSessionId === sessionId) {
         // 会话仍在：重读最后一条 todo entry（删除区间可能带走最新清单）。
         this.turnStore.loadTodo(this.turnStore.readLastTodoEntry(sessionId))
@@ -997,22 +997,6 @@ class AgentRunner {
       }
       this.eventSink?.({ type: "todo_updated", todos: this.turnStore.getTodo() })
     }
-
-    // 删除区间文件后清理空文件夹
-    try {
-      const sessionDir = join(getAppDataRoot(), "session", sessionId)
-      const cleanEmptyDir = (dir: string) => {
-        if (existsSync(dir)) {
-          const filesList = readdirSync(dir)
-          if (filesList.length === 0) {
-            rmSync(dir, { recursive: true, force: true })
-          }
-        }
-      }
-      cleanEmptyDir(join(sessionDir, "image"))
-      cleanEmptyDir(join(sessionDir, "text"))
-      cleanEmptyDir(sessionDir)
-    } catch {}
   }
 
   // 重命名会话标题（仅当会话存在）。

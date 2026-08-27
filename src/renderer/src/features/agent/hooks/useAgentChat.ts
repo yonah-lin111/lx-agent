@@ -439,8 +439,17 @@ export const useAgentChat = (context?: AgentSendContext) => {
           // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
         })
     }
-    if (nextMessages.length === 0) {
+
+    // 检查剩余消息：若全空或只剩初始模型（isInitial: true），脱离当前会话
+    const hasMeaningfulMessages = nextMessages.some(
+      (m) => !(m.role === "modelSwitch" && m.isInitial),
+    )
+    if (!hasMeaningfulMessages) {
       sessionListStore.setCurrentSessionId(null)
+      if (nextMessages.length > 0) {
+        setMessages([])
+        void agentApi.restore([])
+      }
     }
   }, [])
 
@@ -479,11 +488,28 @@ export const useAgentChat = (context?: AgentSendContext) => {
     }
     const lastUserIndex = list.findLastIndex((message) => message.role === "user")
     if (lastUserIndex < 0) return
-    const echoed = list[lastUserIndex].blocks
+    const userMessage = list[lastUserIndex]
+    const echoed = userMessage.blocks
       .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
       .map((block) => block.text)
       .join("\n")
     setInputText(echoed)
+
+    // 回显附件文件到输入框：直接使用复制路径回显
+    if (userMessage.files && userMessage.files.length > 0) {
+      const echoedFiles: AgentInputFile[] = userMessage.files.map((file, idx) => ({
+        id: `undo-${Date.now()}-${idx}`,
+        name: file.name,
+        path: file.path,
+        type: file.type,
+        size: file.size,
+        extension: file.extension,
+      }))
+      setSelectedFiles(echoedFiles)
+    } else {
+      setSelectedFiles([])
+    }
+
     removeTurn(lastUserIndex)
   }, [isStreaming, isCompacting, removeTurn, undoManualCompaction, errorToast, t])
 
@@ -676,6 +702,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
     })
   }, [])
 
+  // 检查当前是否仅剩最后一轮用户对话（用于 /undo 二次确认判定）。
+  const isOnlyOneTurnLeft = useCallback((): boolean => {
+    const list = messagesRef.current
+    const userTurnCount = list.filter((m) => m.role === "user").length
+    return userTurnCount === 1
+  }, [])
+
   return {
     messages,
     todos,
@@ -698,6 +731,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     stopStreaming,
     createNewChat,
     undoLastTurn,
+    isOnlyOneTurnLeft,
     compactChat,
     deleteTurn,
     restoreChat,
