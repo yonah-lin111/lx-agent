@@ -8,7 +8,7 @@ import {
   GENERIC_INSTRUCTIONS,
   GLM_INSTRUCTIONS,
   getModelAdaptiveInstructions,
-  GPT_5_2_CODEX_INSTRUCTIONS,
+  GPT_INSTRUCTIONS,
   MIMO_INSTRUCTIONS,
   MINIMAX_INSTRUCTIONS,
   QWEN_INSTRUCTIONS,
@@ -17,10 +17,11 @@ import { createDefaultSystemPromptManager } from "@/agent/prompts/systemPromptMa
 
 describe("ModelAdapters and Sandbox Policy Prompts", () => {
   it("detects model family accurately across all supported LLM providers", () => {
-    // OpenAI / Codex
-    expect(detectModelFamily("gpt-5.2-codex")).toBe("gpt-5-codex")
-    expect(detectModelFamily("openai/o3-mini")).toBe("gpt-5-codex")
-    expect(detectModelFamily("gpt-5-turbo")).toBe("gpt-5-codex")
+    // OpenAI / GPT / Codex
+    expect(detectModelFamily("gpt-5.2-codex")).toBe("gpt")
+    expect(detectModelFamily("openai/o3-mini")).toBe("gpt")
+    expect(detectModelFamily("gpt-4o")).toBe("gpt")
+    expect(detectModelFamily("chatgpt-4o-latest")).toBe("gpt")
 
     // Anthropic Claude
     expect(detectModelFamily("claude-3-7-sonnet")).toBe("claude")
@@ -57,7 +58,7 @@ describe("ModelAdapters and Sandbox Policy Prompts", () => {
   })
 
   it("provides correct adaptive instructions per family", () => {
-    expect(getModelAdaptiveInstructions("gpt-5-codex")).toBe(GPT_5_2_CODEX_INSTRUCTIONS)
+    expect(getModelAdaptiveInstructions("gpt")).toBe(GPT_INSTRUCTIONS)
     expect(getModelAdaptiveInstructions("claude")).toBe(CLAUDE_INSTRUCTIONS)
     expect(getModelAdaptiveInstructions("gemini")).toBe(GEMINI_INSTRUCTIONS)
     expect(getModelAdaptiveInstructions("deepseek")).toBe(DEEPSEEK_INSTRUCTIONS)

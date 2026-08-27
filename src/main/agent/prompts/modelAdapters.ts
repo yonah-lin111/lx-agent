@@ -10,7 +10,7 @@ import type { SandboxPolicy } from "@shared/contracts/agent"
 
 /** 支持的模型架构家族 */
 export type ModelFamily =
-  | "gpt-5-codex"
+  | "gpt"
   | "claude"
   | "gemini"
   | "deepseek"
@@ -28,19 +28,21 @@ export function detectModelFamily(modelId?: string): ModelFamily {
   const normalized = modelId.toLowerCase()
 
   if (
+    normalized.includes("gpt") ||
     normalized.includes("codex") ||
-    normalized.includes("gpt-5") ||
+    normalized.includes("openai") ||
     normalized.includes("o1") ||
-    normalized.includes("o3")
+    normalized.includes("o3") ||
+    normalized.includes("chatgpt")
   ) {
-    return "gpt-5-codex"
+    return "gpt"
   }
 
-  if (normalized.includes("claude")) {
+  if (normalized.includes("claude") || normalized.includes("anthropic")) {
     return "claude"
   }
 
-  if (normalized.includes("gemini")) {
+  if (normalized.includes("gemini") || normalized.includes("google")) {
     return "gemini"
   }
 
@@ -68,9 +70,9 @@ export function detectModelFamily(modelId?: string): ModelFamily {
 }
 
 /**
- * 1. GPT-5.2 Codex 专用指令集（完全对齐 codex-rs/core/gpt-5.2-codex_prompt.md）
+ * 1. OpenAI GPT / Codex 专用指令集（完全对齐 codex-rs/core/gpt-5.2-codex_prompt.md）
  */
-export const GPT_5_2_CODEX_INSTRUCTIONS = `## Editing constraints
+export const GPT_INSTRUCTIONS = `## Editing constraints
 
 - Default to ASCII when editing or creating files. Only introduce non-ASCII or other Unicode characters when there is a clear justification and the file already uses them.
 - Add succinct code comments that explain what is going on if code is not self-explanatory. You should not add comments like "Assigns the value to the variable", but a brief comment might be useful ahead of a complex code block that the user would otherwise have to spend time parsing out. Usage of these comments should be rare.
@@ -207,8 +209,8 @@ export const GENERIC_INSTRUCTIONS = `## Execution Standards (Universal Agent Gui
  */
 export function getModelAdaptiveInstructions(family: ModelFamily): string {
   switch (family) {
-    case "gpt-5-codex":
-      return GPT_5_2_CODEX_INSTRUCTIONS
+    case "gpt":
+      return GPT_INSTRUCTIONS
     case "claude":
       return CLAUDE_INSTRUCTIONS
     case "gemini":
