@@ -482,6 +482,8 @@ export const AgentPage = ({
     onToggleExecutionFlowRef(toggleExecutionFlow)
   }
 
+  const [collaborationMode, setCollaborationMode] = useState<"default" | "plan">("default")
+
   return (
     <div
       className={`agent-page-container relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent ${
@@ -578,6 +580,10 @@ export const AgentPage = ({
         jobs={jobs}
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
         sandboxPolicy={currentSandboxPolicy}
+        collaborationMode={collaborationMode}
+        onToggleCollaborationMode={() =>
+          setCollaborationMode((m) => (m === "default" ? "plan" : "default"))
+        }
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />

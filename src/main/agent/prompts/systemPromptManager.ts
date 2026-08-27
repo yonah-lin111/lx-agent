@@ -683,6 +683,19 @@ export function createDefaultSystemPromptManager(
     },
   })
 
+  // 355: 动态当前时间提醒（<current_time> 块）
+  manager.registerContext({
+    name: PROMPT_SECTION_NAMES.CURRENT_TIME,
+    order: PROMPT_ORDERS.CURRENT_TIME,
+    text: (ctx) => {
+      if (ctx.currentTimeReminder) {
+        return ctx.currentTimeReminder
+      }
+      const now = new Date()
+      return `<current_time>\nUTC: ${now.toISOString()}\nLocal: ${now.toString()}\n</current_time>`
+    },
+  })
+
   // 360: 沙箱策略约束上下文（动态渲染 <sandbox_policy> 块）
   manager.registerContext({
     name: PROMPT_SECTION_NAMES.SANDBOX_POLICY,
