@@ -1,14 +1,14 @@
 /**
  * 模型家族自适应指令适配器 (Model Adapters)
  *
- * 针对各大主流模型架构（OpenAI Codex、Anthropic Claude、Google Gemini、DeepSeek、
- * Alibaba Qwen、智谱 GLM、MiniMax、小米 MiMo 以及通用兜底 Generic）
- * 注入定制化操作约束、上下文组织范式与格式规范。
+ * 针对各大厂商模型架构（OpenAI/GPT, Anthropic/Claude, Google/Gemini, DeepSeek,
+ * Alibaba/Qwen, 智谱/GLM, MiniMax, 小米/MiMo 以及通用兜底 Generic）
+ * 仅基于厂商特定标识 (Vendor Identifiers) 进行自适应，完全解耦具体模型版本号。
  */
 
 import type { SandboxPolicy } from "@shared/contracts/agent"
 
-/** 支持的模型架构家族 */
+/** 支持的厂商模型架构家族 */
 export type ModelFamily =
   | "gpt"
   | "claude"
@@ -21,56 +21,61 @@ export type ModelFamily =
   | "generic"
 
 /**
- * 根据模型标识识别所属模型家族
+ * 厂商特征签名映射表：纯厂商/系列标识，不绑定任何版本号
+ */
+const VENDOR_SIGNATURES: Array<{ family: ModelFamily; tokens: string[] }> = [
+  {
+    family: "gpt",
+    tokens: ["gpt", "codex", "openai", "o1", "o3", "chatgpt", "text-davinci"],
+  },
+  {
+    family: "claude",
+    tokens: ["claude", "anthropic"],
+  },
+  {
+    family: "gemini",
+    tokens: ["gemini", "google"],
+  },
+  {
+    family: "deepseek",
+    tokens: ["deepseek", "dsh"],
+  },
+  {
+    family: "qwen",
+    tokens: ["qwen", "tongyi", "alibaba"],
+  },
+  {
+    family: "glm",
+    tokens: ["glm", "codegeex", "zhipu", "chatglm"],
+  },
+  {
+    family: "minimax",
+    tokens: ["minimax", "abab"],
+  },
+  {
+    family: "mimo",
+    tokens: ["mimo", "xiaomi"],
+  },
+]
+
+/**
+ * 根据模型标识提取厂商特定标志，匹配对应模型家族（版本无关）
  */
 export function detectModelFamily(modelId?: string): ModelFamily {
   if (!modelId) return "generic"
   const normalized = modelId.toLowerCase()
 
-  if (
-    normalized.includes("gpt") ||
-    normalized.includes("codex") ||
-    normalized.includes("openai") ||
-    normalized.includes("o1") ||
-    normalized.includes("o3") ||
-    normalized.includes("chatgpt")
-  ) {
-    return "gpt"
-  }
-
-  if (normalized.includes("claude") || normalized.includes("anthropic")) {
-    return "claude"
-  }
-
-  if (normalized.includes("gemini") || normalized.includes("google")) {
-    return "gemini"
-  }
-
-  if (normalized.includes("deepseek") || normalized.includes("dsh")) {
-    return "deepseek"
-  }
-
-  if (normalized.includes("qwen")) {
-    return "qwen"
-  }
-
-  if (normalized.includes("glm") || normalized.includes("codegeex") || normalized.includes("zhipu")) {
-    return "glm"
-  }
-
-  if (normalized.includes("minimax") || normalized.includes("abab")) {
-    return "minimax"
-  }
-
-  if (normalized.includes("mimo") || normalized.includes("xiaomi")) {
-    return "mimo"
+  for (const entry of VENDOR_SIGNATURES) {
+    if (entry.tokens.some((token) => normalized.includes(token))) {
+      return entry.family
+    }
   }
 
   return "generic"
 }
 
 /**
- * 1. OpenAI GPT / Codex 专用指令集（完全对齐 codex-rs/core/gpt-5.2-codex_prompt.md）
+ * 1. OpenAI / GPT 系列专用指令集
  */
 export const GPT_INSTRUCTIONS = `## Editing constraints
 

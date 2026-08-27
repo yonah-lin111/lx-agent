@@ -16,44 +16,55 @@ import {
 import { createDefaultSystemPromptManager } from "@/agent/prompts/systemPromptManager"
 
 describe("ModelAdapters and Sandbox Policy Prompts", () => {
-  it("detects model family accurately across all supported LLM providers", () => {
-    // OpenAI / GPT / Codex
-    expect(detectModelFamily("gpt-5.2-codex")).toBe("gpt")
-    expect(detectModelFamily("openai/o3-mini")).toBe("gpt")
+  it("detects model family accurately based purely on vendor signatures (version-agnostic)", () => {
+    // OpenAI / GPT (不限任何未来版本号：gpt-4o, gpt-5.2, gpt-6, codex-next 等)
     expect(detectModelFamily("gpt-4o")).toBe("gpt")
-    expect(detectModelFamily("chatgpt-4o-latest")).toBe("gpt")
+    expect(detectModelFamily("gpt-5.2-codex")).toBe("gpt")
+    expect(detectModelFamily("gpt-6-turbo")).toBe("gpt")
+    expect(detectModelFamily("openai/o3-mini")).toBe("gpt")
+    expect(detectModelFamily("openai/o4-high")).toBe("gpt")
+    expect(detectModelFamily("chatgpt-plus")).toBe("gpt")
 
-    // Anthropic Claude
+    // Anthropic Claude (claude-3, claude-3.5, claude-4 等)
     expect(detectModelFamily("claude-3-7-sonnet")).toBe("claude")
-    expect(detectModelFamily("anthropic/claude-3-5-haiku")).toBe("claude")
+    expect(detectModelFamily("claude-4-opus")).toBe("claude")
+    expect(detectModelFamily("anthropic/custom-claude")).toBe("claude")
 
-    // Google Gemini
+    // Google Gemini (gemini-1.5, gemini-2.0, gemini-3.0 等)
     expect(detectModelFamily("gemini-2.5-pro")).toBe("gemini")
-    expect(detectModelFamily("google/gemini-2.0-flash")).toBe("gemini")
+    expect(detectModelFamily("gemini-3.0-ultra")).toBe("gemini")
+    expect(detectModelFamily("google/gemini-flash")).toBe("gemini")
 
-    // DeepSeek
-    expect(detectModelFamily("deepseek-reasoner")).toBe("deepseek")
+    // DeepSeek (deepseek-v2, deepseek-v3, deepseek-r1, deepseek-r2 等)
     expect(detectModelFamily("deepseek-chat")).toBe("deepseek")
+    expect(detectModelFamily("deepseek-reasoner-v2")).toBe("deepseek")
+    expect(detectModelFamily("dsh-agent-v3")).toBe("deepseek")
 
-    // Alibaba Qwen
+    // Alibaba Qwen (qwen-2, qwen-2.5, qwen-3 等)
     expect(detectModelFamily("qwen-2.5-coder-32b")).toBe("qwen")
-    expect(detectModelFamily("qwen-plus")).toBe("qwen")
+    expect(detectModelFamily("qwen-3-max")).toBe("qwen")
+    expect(detectModelFamily("tongyi-coder-next")).toBe("qwen")
 
-    // 智谱 GLM / CodeGeeX
+    // 智谱 GLM / CodeGeeX (glm-4, glm-5, chatglm, codegeex 等)
     expect(detectModelFamily("glm-4-plus")).toBe("glm")
-    expect(detectModelFamily("codegeex-4")).toBe("glm")
-    expect(detectModelFamily("zhipu/glm-4-flash")).toBe("glm")
+    expect(detectModelFamily("glm-5-zero")).toBe("glm")
+    expect(detectModelFamily("chatglm-pro")).toBe("glm")
+    expect(detectModelFamily("codegeex-5")).toBe("glm")
 
-    // MiniMax
+    // MiniMax (minimax-text, abab-6.5, abab-7 等)
     expect(detectModelFamily("minimax-text-01")).toBe("minimax")
-    expect(detectModelFamily("abab6.5s-chat")).toBe("minimax")
+    expect(detectModelFamily("minimax-next-m4")).toBe("minimax")
+    expect(detectModelFamily("abab7-chat")).toBe("minimax")
 
-    // 小米 MiMo
+    // 小米 MiMo (mimo-v2, mimo-v3 等)
     expect(detectModelFamily("mimo-v2-flash")).toBe("mimo")
-    expect(detectModelFamily("xiaomi/mimo")).toBe("mimo")
+    expect(detectModelFamily("mimo-v3-pro")).toBe("mimo")
+    expect(detectModelFamily("xiaomi/mimo-coder")).toBe("mimo")
 
-    // 通用兜底
-    expect(detectModelFamily("unknown-custom-model")).toBe("generic")
+    // 通用兜底（无任何厂商匹配）
+    expect(detectModelFamily("mistral-large")).toBe("generic")
+    expect(detectModelFamily("llama-3.3-70b")).toBe("generic")
+    expect(detectModelFamily("my-custom-model")).toBe("generic")
     expect(detectModelFamily(undefined)).toBe("generic")
   })
 
