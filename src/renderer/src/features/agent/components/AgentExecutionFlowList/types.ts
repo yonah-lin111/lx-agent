@@ -122,7 +122,7 @@ export const getToolCategoryMeta = (
   if (toolName === "web_search" || toolName === "webfetch") {
     return { icon: Search, label: "Web", tagColor: "emerald", textColor: "text-emerald-300" }
   }
-  if (toolName.startsWith("job_")) {
+  if (toolName.startsWith("job_") || toolName === "switch_mode") {
     return { icon: Terminal, label: "Tool", tagColor: "sky", textColor: "text-sky-300" }
   }
   if (toolName.includes("_")) {

@@ -1,8 +1,9 @@
-import type { JobSnapshot, PermissionRequest, SandboxPolicy, TodoList } from "@shared/contracts/agent"
+import type { CollaborationMode, JobSnapshot, PermissionRequest, SandboxPolicy, TodoList } from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { GitStatusBar } from "@/features/git"
 import { useTranslation } from "@/i18n"
+import { CollaborationModeButton } from "./CollaborationModeButton"
 import { JobStatusButton } from "./JobStatusButton"
 import { PermissionStatusButton } from "./PermissionStatusButton"
 import { TodoStatusButton } from "./TodoStatusButton"
@@ -29,6 +30,8 @@ export interface AgentStatusBarProps {
   onOpenJobs?: () => void
   // 当前全局沙箱策略。
   sandboxPolicy?: SandboxPolicy
+  // 当前协作模式。
+  collaborationMode?: CollaborationMode
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
   pendingRequest: PermissionRequest | null
   // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
@@ -64,6 +67,7 @@ export const AgentStatusBar = ({
   jobs,
   onOpenJobs,
   sandboxPolicy,
+  collaborationMode,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
@@ -102,6 +106,7 @@ export const AgentStatusBar = ({
           </span>
         </LxTooltip>
       )}
+      <CollaborationModeButton mode={collaborationMode} />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <TodoStatusButton todos={todos} />
       <PermissionStatusButton

@@ -111,9 +111,48 @@ export function evaluateCommandSafety(commandStr: string): CommandSafetyEvaluati
     return { level: "safe" }
   }
 
+  // 针对复合命令（如 `cmd1 && cmd2`、`cmd1 ; cmd2`、`cmd1 | cmd2`）拆分子命令逐个评估
+  const subCommands = commandStr
+    .split(/&&|\|\||;|\|/)
+    .map((c) => c.trim())
+    .filter(Boolean)
+
+  for (const rawSubCmd of subCommands) {
+    const unwrapped = unwrapCommand(rawSubCmd)
+
+    // 1. 优先检查绝对破坏性指令
+    for (const { pattern, reason } of DANGEROUS_PATTERNS) {
+      if (pattern.test(unwrapped) || pattern.test(rawSubCmd)) {
+        return {
+          level: "dangerous",
+          reason: `[Security Guard] ${reason}`,
+          matchedCommand: unwrapped,
+        }
+      }
+    }
+
+    // 2. 检查重定向写文件模式（如 echo ... > file 或 cat << EOF > file）
+    if (/(?:>|>>)\s*[^\s&|;]+/.test(unwrapped) || /(?:>|>>)\s*[^\s&|;]+/.test(rawSubCmd)) {
+      return {
+        level: "dangerous",
+        reason: "[Security Guard] File redirection or file creation via shell commands is prohibited in read-only / plan mode.",
+        matchedCommand: unwrapped,
+      }
+    }
+
+    // 3. 检查常见写/变异文件命令
+    if (/^\s*(touch|mkdir|rmdir|cp|mv|tee|sed\s+-i|truncate)\b/.test(unwrapped)) {
+      return {
+        level: "dangerous",
+        reason: "[Security Guard] Filesystem mutation commands are prohibited in read-only / plan mode.",
+        matchedCommand: unwrapped,
+      }
+    }
+  }
+
   const unwrapped = unwrapCommand(commandStr)
 
-  // 1. 优先检查绝对破坏性指令
+  // 4. 检查全局绝对破坏性指令
   for (const { pattern, reason } of DANGEROUS_PATTERNS) {
     if (pattern.test(unwrapped) || pattern.test(commandStr)) {
       return {
@@ -124,7 +163,7 @@ export function evaluateCommandSafety(commandStr: string): CommandSafetyEvaluati
     }
   }
 
-  // 2. 检查敏感需确认指令
+  // 5. 检查敏感需确认指令
   for (const { pattern, reason } of SENSITIVE_PATTERNS) {
     if (pattern.test(unwrapped) || pattern.test(commandStr)) {
       return {

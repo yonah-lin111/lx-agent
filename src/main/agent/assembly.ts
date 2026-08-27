@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import type { SandboxPolicy } from "@shared/contracts/agent"
+import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
@@ -17,6 +17,7 @@ import { createLspTool, type LspToolDeps } from "./tools/lsp"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
+import { createSwitchModeTool, type SwitchModeDeps } from "./tools/switchMode"
 import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
@@ -41,6 +42,8 @@ export interface BuildSystemPromptOptions {
   sessionId?: string
   modelId?: string
   sandboxPolicy?: SandboxPolicy
+  collaborationMode?: CollaborationMode
+  currentTimeReminder?: string
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   manager?: SystemPromptManager
@@ -117,6 +120,8 @@ export const buildSystemPrompt = async (
     sessionId: options.sessionId,
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
+    collaborationMode: options.collaborationMode,
+    currentTimeReminder: options.currentTimeReminder,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
@@ -132,6 +137,8 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
     sessionId: options.sessionId,
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
+    collaborationMode: options.collaborationMode,
+    currentTimeReminder: options.currentTimeReminder,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
@@ -150,6 +157,7 @@ export const ALL_TOOL_NAMES = new Set([
   "bash",
   "time",
   "todowrite",
+  "switch_mode",
   "web_search",
   "webfetch",
   "task",
@@ -189,6 +197,7 @@ export const createRegistry = (
   questionDeps?: QuestionToolDeps,
   lspDeps?: LspToolDeps,
   sessionDeps?: SessionToolDeps,
+  switchModeDeps?: SwitchModeDeps,
 ): ToolRegistry => {
   const effectiveSessionDeps =
     sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
@@ -203,6 +212,9 @@ export const createRegistry = (
   registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())
+  if (switchModeDeps) {
+    registry.register(createSwitchModeTool(switchModeDeps))
+  }
   registry.register(createRenderSvgTool())
   registry.register(createRenderAsciiTool())
   registry.register(createRenderHtmlTool())

@@ -54,6 +54,7 @@ export const AgentPage = ({
   const {
     messages,
     todos,
+    collaborationMode,
     queuedCount,
     queuedMessages,
     contextUsage,
@@ -578,6 +579,7 @@ export const AgentPage = ({
         jobs={jobs}
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
         sandboxPolicy={currentSandboxPolicy}
+        collaborationMode={collaborationMode}
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />

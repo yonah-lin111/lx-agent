@@ -305,6 +305,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
       "render_svg",
       "render_ascii",
       "render_html",
+      "switch_mode",
     ].includes(toolName) &&
     toolName.includes("_")
   ) {

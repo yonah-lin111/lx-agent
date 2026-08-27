@@ -12,6 +12,7 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 // 拒绝语义的固定 reason（回灌模型的 error toolResult 文案）。
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
+const PLAN_MODE_MUTATION_REASON = "Action denied: Current collaboration mode is Plan Mode. Mutating actions (edit, write, apply_patch) and destructive commands are strictly prohibited in Plan Mode."
 const READ_ONLY_SANDBOX_REASON = "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 const WORKSPACE_WRITE_SANDBOX_REASON = "Action denied: Path is outside the active workspace sandbox."
 
@@ -110,13 +111,25 @@ class PermissionManager {
    * 门控集 = bash/write/edit + 已注册 MCP 工具；豁免集与未知工具默认放行。
    * deny 规则先于一切（含 bypassPermissions）——敏感路径在绕过模式下仍受保护。
    */
-  evaluate(toolName: string, args: unknown): "allow" | "deny" | "ask" {
+  evaluate(
+    toolName: string,
+    args: unknown,
+    contextOptions?: { collaborationMode?: "default" | "plan" },
+  ): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
+    const collaborationMode = contextOptions?.collaborationMode ?? this.settings.collaborationMode ?? "default"
+
+    // 0. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作及 bash 副作用
+    if (collaborationMode === "plan") {
+      if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
+        return "deny"
+      }
+    }
 
     // 1. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
     if (sandboxPolicy === "read-only") {
-      if (toolName === "write" || toolName === "edit") {
+      if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
         return "deny"
       }
     }
@@ -161,9 +174,16 @@ class PermissionManager {
     context: BeforeToolCallContext,
     sessionId: string | null,
     signal?: AbortSignal,
+    options?: { collaborationMode?: "default" | "plan" },
   ): Promise<BeforeToolCallResult | undefined> {
     const toolName = context.toolCall.name
     const args = context.args
+    const collaborationMode = options?.collaborationMode ?? this.settings.collaborationMode ?? "default"
+
+    // Plan Mode 门控硬拦截
+    if (collaborationMode === "plan" && (toolName === "write" || toolName === "edit" || toolName === "apply_patch")) {
+      return { block: true, reason: PLAN_MODE_MUTATION_REASON }
+    }
     // 会话级"允许全部"：先查 deny（G6——绕过模式下敏感路径仍拦截），否则完全跳过规则与询问。
     if (sessionId && this.sessionAllowAll.has(sessionId)) {
       if (matchRule(this.parsed.deny, toolName, args))
@@ -174,7 +194,16 @@ class PermissionManager {
     if (decision === "allow") return undefined
     if (decision === "deny") {
       const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-      if (sandboxPolicy === "read-only" && (toolName === "write" || toolName === "edit")) {
+      if (
+        collaborationMode === "plan" &&
+        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+      ) {
+        return { block: true, reason: PLAN_MODE_MUTATION_REASON }
+      }
+      if (
+        sandboxPolicy === "read-only" &&
+        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+      ) {
         return { block: true, reason: READ_ONLY_SANDBOX_REASON }
       }
       if (toolName === "bash" && isRecord(args) && typeof args.command === "string") {

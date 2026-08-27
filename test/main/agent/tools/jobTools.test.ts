@@ -34,7 +34,7 @@ describe("Job Tools and Bash Background Execution", () => {
 
     // 初始无任务
     const res1 = await listTool.execute("call-list-1", {})
-    expect((res1.content[0] as any).text).toBe("(当前会话无后台任务)")
+    expect((res1.content[0] as any).text).toContain("No background jobs in current session")
 
     // 启动任务后列出
     jobRegistry.startJob({
@@ -91,7 +91,7 @@ describe("Job Tools and Bash Background Execution", () => {
     })
 
     const text = (res.content[0] as any).text
-    expect(text).toContain(`已请求终止任务 ${job.id}`)
-    expect(text).toContain("原因: 不需要了")
+    expect(text).toContain(`Termination requested for job ${job.id}`)
+    expect(text).toContain("reason: 不需要了")
   })
 })
