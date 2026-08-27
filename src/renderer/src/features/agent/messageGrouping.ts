@@ -16,12 +16,16 @@ export interface MessageQaGroup {
 
 export const groupAgentMessages = (messages: ChatMessage[]): MessageGroupEntry[] =>
   messages.reduce<MessageGroupEntry[]>((entries, message) => {
+    // modelSwitch 消息不应在 AgentMessageList 中显示，只在 AgentExecutionFlowList 中显示
+    if (message.role === "modelSwitch") {
+      return entries
+    }
+
     const previousEntry = entries.at(-1)
 
     if (
       message.role !== "user" &&
       message.role !== "compactionSummary" &&
-      message.role !== "modelSwitch" &&
       previousEntry?.message.role === "assistant"
     ) {
       previousEntry.continuationMessages.push(message)
@@ -43,8 +47,7 @@ export const buildQaGroups = (entries: MessageGroupEntry[]): MessageQaGroup[] =>
     if (
       lastGroup?.userMessage &&
       !lastGroup.assistant &&
-      entry.message.role !== "compactionSummary" &&
-      entry.message.role !== "modelSwitch"
+      entry.message.role !== "compactionSummary"
     ) {
       lastGroup.assistant = entry
     } else {

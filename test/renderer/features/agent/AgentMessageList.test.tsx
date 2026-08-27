@@ -298,4 +298,36 @@ describe("AgentMessageList", () => {
     expect(screen.getByText("第一轮回复")).not.toBeNull()
     expect(screen.getAllByRole("button", { name: "Copy message" }).length).toBeGreaterThan(0)
   })
+
+  it("不渲染 modelSwitch 角色消息（模型切换与初始化模型仅在执行流中显示）", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "switch-1",
+        role: "modelSwitch",
+        model: "gpt-4o",
+        provider: "openai",
+        isInitial: true,
+        instructions: "Do good things.",
+        blocks: [],
+        isStreaming: false,
+      },
+      userMessage("u1", "用户问题"),
+      {
+        id: "switch-2",
+        role: "modelSwitch",
+        model: "claude-3-5-sonnet",
+        provider: "anthropic",
+        isInitial: false,
+        blocks: [],
+        isStreaming: false,
+      },
+    ]
+
+    render(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
+
+    expect(screen.getByText("用户问题")).not.toBeNull()
+    expect(screen.queryByText(/gpt-4o/i)).toBeNull()
+    expect(screen.queryByText(/claude-3-5-sonnet/i)).toBeNull()
+    expect(screen.queryByText(/Do good things/i)).toBeNull()
+  })
 })
