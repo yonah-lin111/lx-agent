@@ -32,8 +32,6 @@ export interface AgentStatusBarProps {
   sandboxPolicy?: SandboxPolicy
   // 当前协作模式。
   collaborationMode?: CollaborationMode
-  // 切换协作模式回调。
-  onToggleCollaborationMode?: () => void
   // 挂起的权限请求（非空时状态栏展示权限 icon 与常驻 tooltip）。
   pendingRequest: PermissionRequest | null
   // 权限决策回传（主进程挂起请求的内部语义；由 AgentPage 提供）。
@@ -70,7 +68,6 @@ export const AgentStatusBar = ({
   onOpenJobs,
   sandboxPolicy,
   collaborationMode,
-  onToggleCollaborationMode,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
@@ -109,10 +106,7 @@ export const AgentStatusBar = ({
           </span>
         </LxTooltip>
       )}
-      <CollaborationModeButton
-        mode={collaborationMode}
-        onToggle={onToggleCollaborationMode}
-      />
+      <CollaborationModeButton mode={collaborationMode} />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <TodoStatusButton todos={todos} />
       <PermissionStatusButton

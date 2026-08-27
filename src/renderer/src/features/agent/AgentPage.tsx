@@ -581,9 +581,6 @@ export const AgentPage = ({
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
         sandboxPolicy={currentSandboxPolicy}
         collaborationMode={collaborationMode}
-        onToggleCollaborationMode={() =>
-          setCollaborationMode((m) => (m === "default" ? "plan" : "default"))
-        }
         pendingRequest={pendingRequest}
         onPermissionRespond={respondPermission}
       />
