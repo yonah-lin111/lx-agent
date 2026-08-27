@@ -660,6 +660,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
     )
   }, [])
 
+  // 主动切换协作模式（default / plan 循环切换）。
+  const toggleCollaborationMode = useCallback(() => {
+    const nextMode: CollaborationMode = collaborationMode === "plan" ? "default" : "plan"
+    void agentApi.setCollaborationMode(nextMode).catch((err) => {
+      console.error("Failed to set collaboration mode:", err)
+    })
+  }, [collaborationMode])
+
   // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。
   // 无会话（prev 为 null）时保持不显示，避免状态栏误现 0%。
   const refreshContextUsage = useCallback((selection?: ModelSelection) => {
@@ -672,6 +680,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
     messages,
     todos,
     collaborationMode,
+    toggleCollaborationMode,
     queuedCount,
     queuedMessages,
     contextUsage,

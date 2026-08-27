@@ -55,6 +55,7 @@ export const AgentPage = ({
     messages,
     todos,
     collaborationMode,
+    toggleCollaborationMode,
     queuedCount,
     queuedMessages,
     contextUsage,
@@ -111,8 +112,7 @@ export const AgentPage = ({
     refreshContextUsage(selectedSelection)
   }, [selectedSelection, refreshContextUsage])
 
-  const [currentSandboxPolicy, setCurrentSandboxPolicy] =
-    useState<SandboxPolicy>("workspace-write")
+  const [currentSandboxPolicy, setCurrentSandboxPolicy] = useState<SandboxPolicy>("workspace-write")
 
   const loadPermissionSettings = useCallback(() => {
     void settingsApi.getPermissionSettings().then((settings) => {
@@ -562,6 +562,7 @@ export const AgentPage = ({
         onClear={handleNewChat}
         onUndo={undoLastTurn}
         onCompact={compactChat}
+        onToggleCollaborationMode={toggleCollaborationMode}
         selectedModel={selectedModel}
         onModelChange={handleModelSelectChange}
         modelOptions={selectOptions}

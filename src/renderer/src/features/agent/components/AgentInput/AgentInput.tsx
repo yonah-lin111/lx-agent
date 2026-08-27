@@ -31,6 +31,7 @@ export interface AgentInputProps {
   onClear: () => void
   onUndo: () => void
   onCompact: () => void
+  onToggleCollaborationMode?: () => void
   selectedModel: string
   onModelChange: (value: string) => void
   modelOptions: AgentModelSelectProps["options"]
@@ -69,6 +70,7 @@ export const AgentInput = ({
   onClear,
   onUndo,
   onCompact,
+  onToggleCollaborationMode,
   selectedModel,
   onModelChange,
   modelOptions,
@@ -331,6 +333,7 @@ export const AgentInput = ({
           onClear={onClear}
           onUndo={onUndo}
           onCompact={onCompact}
+          onToggleCollaborationMode={onToggleCollaborationMode}
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-2">

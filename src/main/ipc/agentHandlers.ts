@@ -239,6 +239,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return agentRunner.switchModel(selection)
   })
 
+  ipcMain.handle(AGENT_CHANNELS.setCollaborationMode, (_, mode: unknown) => {
+    if (mode !== "default" && mode !== "plan") {
+      return { ok: false, error: "协作模式参数无效。" }
+    }
+    return agentRunner.setCollaborationMode(mode)
+  })
+
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()
   })

@@ -645,6 +645,10 @@ export interface AgentApi {
     switchModel: (
       selection: ModelSelection,
     ) => Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }>
+    // 切换协作模式（default / plan）。
+    setCollaborationMode: (
+      mode: CollaborationMode,
+    ) => Promise<{ ok: true } | { ok: false; error: string }>
     // 手动触发上下文压缩（/compact）：摘要化早期历史并建立新边界；设置禁用/无可压缩内容时返回原因。
     compact: () => Promise<AgentCompactResult>
     // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。

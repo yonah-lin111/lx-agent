@@ -51,6 +51,10 @@ export const agentApi = {
     selection: ModelSelection,
   ): Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }> =>
     window.api.agent.switchModel(selection),
+  setCollaborationMode: (
+    mode: "default" | "plan",
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    window.api.agent.setCollaborationMode(mode),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
   listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),

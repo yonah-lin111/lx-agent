@@ -16,20 +16,26 @@ export const CollaborationModeButton = ({
 }: CollaborationModeButtonProps): React.JSX.Element => {
   const { t } = useTranslation()
   const isPlan = mode === "plan"
+  const displayName = isPlan ? "Plan" : "Build"
 
   return (
     <LxTooltip
       placement="top"
       content={
-        <div className="flex flex-col gap-0.5 text-xs">
-          <span className="font-semibold text-white/90">
-            {isPlan ? t("agent.collaborationModePlan") : t("agent.collaborationModeDefault")}
-          </span>
-          <span className="text-white/60">
-            {isPlan
-              ? t("agent.collaborationModePlanDesc")
-              : t("agent.collaborationModeDefaultDesc")}
-          </span>
+        <div className="flex flex-col gap-1 text-xs">
+          <div className="flex flex-col gap-0.5">
+            <span className="font-semibold text-white/90">
+              {isPlan ? t("agent.collaborationModePlan") : t("agent.collaborationModeDefault")}
+            </span>
+            <span className="text-white/60">
+              {isPlan
+                ? t("agent.collaborationModePlanDesc")
+                : t("agent.collaborationModeDefaultDesc")}
+            </span>
+          </div>
+          <div className="border-t border-white/10 pt-1 text-[11px] text-white/45">
+            {t("agent.collaborationModeShortcutHint")}
+          </div>
         </div>
       }
     >
@@ -38,8 +44,12 @@ export const CollaborationModeButton = ({
           isPlan ? "text-sky-400 font-medium" : "text-white/60"
         }`}
       >
-        {isPlan ? <Compass className="h-3.5 w-3.5 shrink-0" /> : <Zap className="h-3.5 w-3.5 shrink-0" />}
-        <span className="capitalize">{mode}</span>
+        {isPlan ? (
+          <Compass className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <Zap className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <span>{displayName}</span>
       </span>
     </LxTooltip>
   )

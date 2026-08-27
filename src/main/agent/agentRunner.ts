@@ -46,8 +46,8 @@ import {
 import { createCompactionSummaryMessage } from "./compaction"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
-import { TurnContext } from "./core/turnContext"
 import { Agent } from "./core/agent"
+import { TurnContext } from "./core/turnContext"
 import type { AgentTool } from "./core/types"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
 import { repeatToolGuard } from "./guard/repeatToolGuard"
@@ -64,9 +64,9 @@ import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillL
 import { spillManager } from "./spill/spillManager"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
+import { SubagentPool } from "./subagent/subagentPool"
 import { generateSessionTitle } from "./titleGenerator"
 import { ToolRegistry } from "./tools/registry"
-import { SubagentPool } from "./subagent/subagentPool"
 import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } from "./turnStore"
 
 // 排队消息上限（流式中入队；超限明确报错，不覆盖、不静默丢）。
@@ -627,7 +627,10 @@ class AgentRunner {
     // 新建会话：发送后立即建会话行并触发 AI 标题生成（输入只用用户消息，不等一轮输出完成）。
     if (isNewSession && this.turnStore.getSessionInput()) {
       let createResult:
-        | { sessionId: string; initialModelMessage?: import("@shared/contracts/agent").ModelSwitchMessage }
+        | {
+            sessionId: string
+            initialModelMessage?: import("@shared/contracts/agent").ModelSwitchMessage
+          }
         | undefined
       agentSessionService.transaction(() => {
         createResult = this.turnStore.createSessionIfNeeded(
@@ -1144,6 +1147,14 @@ class AgentRunner {
 
     this.eventSink?.({ type: "model_switch", message })
     return { ok: true, message }
+  }
+
+  // 切换协作模式（default / plan），并通知 UI
+  setCollaborationMode(mode: "default" | "plan"): { ok: true } {
+    this.collaborationMode = mode
+    this.builtSignature = "" // 标记装配失效，触发下轮提示词与门控刷新
+    this.eventSink?.({ type: "collaboration_mode_changed", mode })
+    return { ok: true }
   }
 
   // 删除整个会话（含消息与调用）；若是当前会话则脱离，避免残留事件写入已删会话。

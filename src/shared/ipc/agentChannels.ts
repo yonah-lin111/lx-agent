@@ -8,6 +8,7 @@ export const AGENT_CHANNELS = {
   switchWorktree: "agent:switchWorktree",
   switchProject: "agent:switchProject",
   switchModel: "agent:switchModel",
+  setCollaborationMode: "agent:setCollaborationMode",
   restore: "agent:restore",
   listSessions: "agent:listSessions",
   restoreSession: "agent:restoreSession",

@@ -75,6 +75,7 @@ export interface AgentMarkdownInputProps {
   onClear?: () => void
   onUndo?: () => void
   onCompact?: () => void
+  onToggleCollaborationMode?: () => void
 }
 
 const BUILTIN_COMMAND_KEYS: {
@@ -578,6 +579,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onClear,
       onUndo,
       onCompact,
+      onToggleCollaborationMode,
       panelAnchorRef,
     },
     ref,
@@ -688,6 +690,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     isStreamingRef.current = isStreaming
     const onStopRef = useRef(onStop)
     onStopRef.current = onStop
+    const onToggleCollaborationModeRef = useRef(onToggleCollaborationMode)
+    onToggleCollaborationModeRef.current = onToggleCollaborationMode
     const valueRef = useRef(value)
     valueRef.current = value
     // Esc 停止生成的连按计时（间隔 ≤1s 视为双击）；单按仅 toast 提示，不打断。
@@ -1561,6 +1565,21 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   return false
                 },
               },
+              {
+                key: "Shift-Tab",
+                preventDefault: true,
+                run: () => {
+                  onToggleCollaborationModeRef.current?.()
+                  return true
+                },
+              },
+              {
+                key: "Tab",
+                preventDefault: true,
+                run: () => {
+                  return true
+                },
+              },
             ]),
           ),
           keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -1579,6 +1598,17 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             }
           }),
           EditorView.domEventHandlers({
+            keydown: (event) => {
+              if (event.key === "Tab") {
+                event.preventDefault()
+                event.stopPropagation()
+                if (event.shiftKey) {
+                  onToggleCollaborationModeRef.current?.()
+                }
+                return true
+              }
+              return false
+            },
             paste: (event, view) => {
               const files = getClipboardFiles(event)
               if (files.length === 0) return false
