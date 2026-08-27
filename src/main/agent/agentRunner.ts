@@ -273,6 +273,7 @@ class AgentRunner {
           onSwitchMode: (mode) => {
             this.collaborationMode = mode
             this.builtSignature = "" // 标记装配失效，触发下轮提示词与门控刷新
+            this.eventSink?.({ type: "collaboration_mode_changed", mode })
           },
           getCurrentMode: () => this.collaborationMode,
         },

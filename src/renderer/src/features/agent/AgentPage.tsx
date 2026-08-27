@@ -54,6 +54,7 @@ export const AgentPage = ({
   const {
     messages,
     todos,
+    collaborationMode,
     queuedCount,
     queuedMessages,
     contextUsage,
@@ -481,8 +482,6 @@ export const AgentPage = ({
   if (onToggleExecutionFlowRef) {
     onToggleExecutionFlowRef(toggleExecutionFlow)
   }
-
-  const [collaborationMode, setCollaborationMode] = useState<"default" | "plan">("default")
 
   return (
     <div

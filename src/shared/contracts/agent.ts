@@ -409,6 +409,7 @@ export type AgentEvent =
       durationMs?: number
     }
   | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
+  | { type: "collaboration_mode_changed"; mode: CollaborationMode }
   | { type: "session_title"; sessionId: string; title: string | null }
   | { type: "permission_request"; request: PermissionRequest }
   | { type: "question_request"; request: QuestionRequest }

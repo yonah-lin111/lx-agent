@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
+  CollaborationMode,
   QuestionAnswer,
   SubagentData,
   TodoList,
@@ -86,6 +87,8 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const [isCompactingManual, setIsCompactingManual] = useState(false)
   // 任务清单（状态栏 todo 指示数据源：订阅 todo_updated / 恢复时提取；空数组 = 指示不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
+  // 当前协作模式（订阅 collaboration_mode_changed 事件同步；默认为 default）。
+  const [collaborationMode, setCollaborationMode] = useState<CollaborationMode>("default")
   // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
   const [contextUsage, setContextUsage] = useState<{
     tokens: number
@@ -304,6 +307,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
         case "todo_updated":
           // 任务清单整表替换（模型经 todowrite 更新；驱动状态栏 todo 指示）。
           setTodos(event.todos)
+          break
+
+        case "collaboration_mode_changed":
+          // 协作模式更新（模型经 switch_mode 更新；驱动状态栏指示器）。
+          setCollaborationMode(event.mode)
           break
 
         case "queue_changed":
@@ -652,6 +660,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
   return {
     messages,
     todos,
+    collaborationMode,
     queuedCount,
     queuedMessages,
     contextUsage,
