@@ -12,6 +12,7 @@ export const DEFAULT_TOOLS = [
   "bash",
   "time",
   "todowrite",
+  "switch_mode",
   "web_search",
   "webfetch",
   "task",
