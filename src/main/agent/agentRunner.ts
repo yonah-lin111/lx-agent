@@ -293,7 +293,9 @@ class AgentRunner {
               return { block: true, reason: guardResult.blockReason }
             }
           }
-          return permissionManager.gate(context, this.currentSessionId, signal)
+          return permissionManager.gate(context, this.currentSessionId, signal, {
+            collaborationMode: this.collaborationMode,
+          })
         },
         afterToolCall: async (context) => {
           if (this.currentSessionId) {

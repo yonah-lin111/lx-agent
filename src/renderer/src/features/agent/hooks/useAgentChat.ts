@@ -310,8 +310,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
 
         case "collaboration_mode_changed":
-          // 协作模式更新（模型经 switch_mode 更新；驱动状态栏指示器）。
+          // 协作模式更新（模型经 switch_mode 更新；驱动状态栏指示器并 Toast 提示用户）。
           setCollaborationMode(event.mode)
+          if (event.mode === "plan") {
+            successToast(t("agent.collaborationModeSwitchedToPlan"))
+          } else {
+            successToast(t("agent.collaborationModeSwitchedToDefault"))
+          }
           break
 
         case "queue_changed":

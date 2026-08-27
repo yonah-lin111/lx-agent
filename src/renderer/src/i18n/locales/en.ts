@@ -214,6 +214,8 @@ export const en = {
     collaborationModeDefaultDesc: "Action and code execution mode with surgical precision.",
     collaborationModePlan: "Plan Mode",
     collaborationModePlanDesc: "Strictly non-mutating exploration mode, focusing on producing decision-complete plans.",
+    collaborationModeSwitchedToDefault: "Switched to Default Mode",
+    collaborationModeSwitchedToPlan: "Switched to Plan Mode (Read-Only)",
     suggestedQuestions: "Suggested Questions",
     historyTitle: "Chat History",
     searchHistory: "Search history sessions...",

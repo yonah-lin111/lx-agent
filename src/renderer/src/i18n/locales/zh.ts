@@ -213,6 +213,8 @@ export const zh: TranslationDictionary = {
     collaborationModeDefaultDesc: "标准执行模式，支持精准代码修改与工具调用。",
     collaborationModePlan: "规划模式",
     collaborationModePlanDesc: "严格只读探索，禁止文件修改，聚焦生成决策完备的实施方案。",
+    collaborationModeSwitchedToDefault: "已切换至默认执行模式",
+    collaborationModeSwitchedToPlan: "已切换至规划模式（只读）",
     suggestedQuestions: "推荐问题",
     historyTitle: "历史对话",
     searchHistory: "搜索历史会话...",

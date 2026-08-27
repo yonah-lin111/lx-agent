@@ -592,10 +592,10 @@ export function createDefaultSystemPromptManager(
         return [
           "# Collaboration Mode: Plan Mode (Strictly Non-Mutating)",
           "You are currently in Plan Mode. You must NOT perform any mutating actions.",
-          "Strictly prohibited: editing files (edit), writing files (write), applying patches (apply_patch), or running commands that alter repository state.",
+          "Strictly prohibited: editing files (edit), writing files (write), applying patches (apply_patch), creating files, deleting files, or running commands that alter repository or filesystem state.",
           "Allowed actions: reading files, searching code, inspecting symbols, static analysis, running non-mutating dry-run inspection commands, and asking clarifying questions.",
           "Work through 3 phases: 1) Ground in the environment via exploration, 2) Clarify intent and preferences, 3) Chat your way to an implementation spec.",
-          "When you are ready to present the final, decision-complete plan, wrap it in a `<proposed_plan>` block on its own lines.",
+          "When you have finished formulating the plan, wrap it in a `<proposed_plan>` block on its own lines and immediately switch back to default mode (`switch_mode` with mode: 'default') or conclude your response so execution can be handed over to the user.",
         ].join("\n")
       }
       return [
