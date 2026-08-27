@@ -156,6 +156,11 @@ export const AgentSubagentPanel = ({
           <span className="truncate text-[13px] text-white/70">
             {displayName !== "task" ? ` - ${displayName}(task)` : " - task"}
           </span>
+          {data?.subagentId && (
+            <span className="agent-subagent-id inline-flex items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
+              ID: {data.subagentId}
+            </span>
+          )}
           {data?.sandboxPolicy && (
             <span className="agent-subagent-policy inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
               <Shield className="h-2.5 w-2.5 text-sky-400" />

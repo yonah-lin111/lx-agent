@@ -23,6 +23,8 @@ const SUBAGENT_PROMPT_SUFFIX = [
   "Adhere strictly to the inherited sandbox policy and safety constraints.",
 ].join("\n")
 
+import type { SubagentPool } from "../subagent/subagentPool"
+
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
 const SUBAGENT_MAX_BYTES = DEFAULT_MAX_BYTES
 
@@ -33,6 +35,12 @@ const TASK_INPUT_SCHEMA = z.object({
     .string()
     .describe("Complete task prompt to delegate to the sub-agent, must include sufficient context"),
   name: z.string().optional().describe("Sub-agent name (e.g., 'explorer' / 'coder')"),
+  subagent_id: z
+    .string()
+    .optional()
+    .describe(
+      "Optional subagent ID returned from a previous task call to resume the same sub-agent session with its full context",
+    ),
 })
 
 export type TaskInput = z.infer<typeof TASK_INPUT_SCHEMA>
@@ -75,6 +83,8 @@ export interface TaskToolDeps {
   model: Model
   // 父会话沙箱策略（继承至子代理）。
   sandboxPolicy?: SandboxPolicy
+  // 会话级子代理池（跨轮次复用 Agent 实例）。
+  subagentPool?: SubagentPool
   // 父权限门控（子代理内部工具复用同一 permissionManager.gate，不豁免）。
   beforeToolCall: (
     context: BeforeToolCallContext,
@@ -107,9 +117,13 @@ const boundSubagentOutput = (
   return { content, filePath }
 }
 
-// 提取子代理上下文的全部助手文本（最终输出）与错误信息。
-const extractSubagentResult = (messages: AgentMessage[]): { text: string; error?: string } => {
-  const text = messages
+// 提取子代理最新一轮（或指定起始索引）的助手文本（最终输出）与错误信息。
+const extractSubagentResult = (
+  messages: AgentMessage[],
+  startIndex = 0,
+): { text: string; error?: string } => {
+  const targetMessages = messages.slice(startIndex)
+  const text = targetMessages
     .filter((message) => message.role === "assistant")
     .flatMap((message) =>
       message.content
@@ -118,7 +132,7 @@ const extractSubagentResult = (messages: AgentMessage[]): { text: string; error?
     )
     .filter(Boolean)
     .join("\n\n")
-  const error = messages
+  const error = targetMessages
     .filter(
       (message): message is AssistantMessage =>
         message.role === "assistant" && message.errorMessage !== undefined,
@@ -164,39 +178,52 @@ export const createTaskTool = (
       "Use when a task can be decomposed into independent sub-tasks; do not delegate tasks that require parent context decisions.",
     inputSchema: TASK_INPUT_SCHEMA,
     execute: async (toolCallId, params, signal, onUpdate) => {
-      const subAgent = new Agent({
-        streamFn: createAiSdkStreamFn(),
-        beforeToolCall: deps.beforeToolCall,
-        initialState: {
-          systemPrompt: subAgentPrompt,
-          model: deps.model,
-          // 子代理工具集 = 父激活集去 task（斩断递归嵌套；含 web_search）。
-          tools: deps.getTools().filter((tool) => tool.name !== "task"),
-        },
-      })
+      const subagentId = params.subagent_id?.trim() || `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const existingManaged = deps.subagentPool?.get(subagentId)
 
-      // 子代理名（AI 分发；缺失回退 "task"）。
-      const subagentName = params.name?.trim() || "task"
+      const subAgent =
+        existingManaged?.agent ??
+        new Agent({
+          streamFn: createAiSdkStreamFn(),
+          beforeToolCall: deps.beforeToolCall,
+          initialState: {
+            systemPrompt: subAgentPrompt,
+            model: deps.model,
+            // 子代理工具集 = 父激活集去 task（斩断递归嵌套；含 web_search）。
+            tools: deps.getTools().filter((tool) => tool.name !== "task"),
+          },
+        })
+
+      // 子代理名（AI 分发；优先用参数，其次复用旧名，缺失回退 "task"）。
+      const subagentName = params.name?.trim() || existingManaged?.name || "task"
       const recipientName = `subagent:${subagentName}`
       const orchestratorName = "orchestrator"
 
-      // 结构化通信信元列表
-      const communications: InterAgentCommunication[] = [
-        {
-          id: `comm-init-${Date.now()}`,
-          author: orchestratorName,
-          recipient: recipientName,
-          content: params.prompt,
-          triggerTurn: true,
-          metadata: {
-            description: params.description,
-            timestamp: Date.now(),
-          },
-        },
-      ]
+      // 结构化通信信元列表（从已有子代理历史中继承并追加）
+      const communications: InterAgentCommunication[] = existingManaged?.data?.communications
+        ? [...existingManaged.data.communications]
+        : []
 
-      // 工具步骤（按 toolCallId 定位，start 推 running / end 更新状态与结果）。
+      communications.push({
+        id: `comm-turn-${Date.now()}`,
+        author: orchestratorName,
+        recipient: recipientName,
+        content: params.prompt,
+        triggerTurn: true,
+        metadata: {
+          subagentId,
+          description: params.description,
+          timestamp: Date.now(),
+        },
+      })
+
+      // 工具步骤（按 toolCallId 定位，继承已有步骤并追加新步骤）。
       const steps = new Map<string, SubagentStep>()
+      if (existingManaged?.data?.steps) {
+        existingManaged.data.steps.forEach((s, idx) => {
+          steps.set(`historical-${idx}`, s)
+        })
+      }
 
       // 聚合子代理完整上下文（已提交 + 正在流式消息）。
       const collectMessages = (): AgentMessage[] => {
@@ -208,6 +235,7 @@ export const createTaskTool = (
 
       // 构建 SubagentData 快照（每次子代理事件推一次，renderer 覆盖不做增量合并）。
       const buildSubagentData = (filePath?: string): SubagentData => ({
+        subagentId,
         name: subagentName,
         description: params.description,
         prompt: params.prompt,
@@ -218,6 +246,8 @@ export const createTaskTool = (
         usage: aggregateUsage(subAgent.state.messages),
         ...(filePath ? { filePath } : {}),
       })
+
+      const startIndex = subAgent.state.messages.length
 
       // 子代理事件 → 快照桥接：内部步骤始终捕获，onUpdate 存在时回传快照。
       const unsubscribe = subAgent.subscribe((event) => {
@@ -287,7 +317,7 @@ export const createTaskTool = (
         signal?.removeEventListener("abort", onAbort)
       }
 
-      const { text, error } = extractSubagentResult(subAgent.state.messages)
+      const { text, error } = extractSubagentResult(subAgent.state.messages, startIndex)
       
       // 子代理产出最终结论，回传结构化通信信元
       communications.push({
@@ -303,6 +333,17 @@ export const createTaskTool = (
       })
 
       const details: SubagentDetails = { subagent: buildSubagentData() }
+
+      // 在会话池中登记/更新该子代理实例与历史快照数据
+      deps.subagentPool?.set(subagentId, {
+        subagentId,
+        name: subagentName,
+        agent: subAgent,
+        data: details.subagent,
+        createdAt: existingManaged?.createdAt ?? Date.now(),
+        lastActiveAt: Date.now(),
+      })
+
       let content: string
       if (text) {
         const sessionId = deps.getSessionId?.() ?? undefined

@@ -64,6 +64,7 @@ import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { generateSessionTitle } from "./titleGenerator"
 import { ToolRegistry } from "./tools/registry"
+import { SubagentPool } from "./subagent/subagentPool"
 import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } from "./turnStore"
 
 // 排队消息上限（流式中入队；超限明确报错，不覆盖、不静默丢）。
@@ -86,6 +87,7 @@ const createTodoStateMessage = (todos: TodoList): TodoStateMessage => ({
 class AgentRunner {
   private agent?: Agent
   private registry?: ToolRegistry
+  private subagentPool = new SubagentPool()
   private cwd?: string
   private personality?: PersonalityName
   private unsubscribe?: () => void
@@ -147,13 +149,14 @@ class AgentRunner {
     this.eventSink = sink
   }
 
-  // 切换当前会话 id：旧会话的权限内存态、挂起的提问与 LSP server 进程随之清理。
+  // 切换当前会话 id：旧会话的权限内存态、挂起的提问、LSP server 进程及子代理实例随之清理。
   private setSessionId(sessionId: string | null): void {
     if (this.currentSessionId === sessionId) return
     if (this.currentSessionId) {
       permissionManager.clearSession(this.currentSessionId)
       questionManager.clearSession(this.currentSessionId)
       lspManager.clearSession(this.currentSessionId)
+      this.subagentPool.clear()
     }
     this.currentSessionId = sessionId
     if (sessionId === null) {
@@ -244,6 +247,7 @@ class AgentRunner {
           systemPrompt,
           model: modelResult.model,
           sandboxPolicy: currentSandboxPolicy,
+          subagentPool: this.subagentPool,
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal),
           getSignal: () => this.agent?.signal,
