@@ -69,6 +69,8 @@ export const AgentStatusBar = ({
   jobs,
   onOpenJobs,
   sandboxPolicy,
+  collaborationMode,
+  onToggleCollaborationMode,
   pendingRequest,
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
