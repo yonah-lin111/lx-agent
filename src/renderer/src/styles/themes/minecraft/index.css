@@ -699,9 +699,23 @@
 }
 
 /* ========================================================
- * 顶部栏与面包屑（HeaderSideBar & Theme Menu）
+ * 页面主体容器（PageContent）
  * ======================================================== */
-[data-theme="minecraft"] .header-sidebar {
+[data-theme="minecraft"] .page-content {
+  font-family: var(--theme-font-family) !important;
+}
+
+/* ========================================================
+ * 核心布局容器与边栏（Layout Sidebars & Content Cards）
+ * ======================================================== */
+[data-theme="minecraft"] .header-sidebar,
+[data-theme="minecraft"] .left-sidebar,
+[data-theme="minecraft"] .right-sidebar,
+[data-theme="minecraft"] .bottom-sidebar,
+[data-theme="minecraft"] .project-empty-card,
+[data-theme="minecraft"] .home-page-card,
+[data-theme="minecraft"] .settings-page,
+[data-theme="minecraft"] .ui-preview-page-container {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #222232 !important;
@@ -713,6 +727,13 @@
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
     2px 2px 0px 0px #000000 !important;
   font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .project-empty-card span,
+[data-theme="minecraft"] .home-page-card span {
+  color: #a6a6bc !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="minecraft"] .header-breadcrumb-slash {

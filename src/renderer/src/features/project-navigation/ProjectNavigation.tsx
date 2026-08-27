@@ -39,6 +39,7 @@ import { useProjectNavigationActions } from "@/features/project-navigation/hooks
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
 import type {
   ProjectNavigationFilterScope,
+  ProjectNavigationProject,
   ProjectNavigationSortDirection,
   ProjectNavigationSortKey,
 } from "@/features/project-navigation/types"

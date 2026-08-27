@@ -3,7 +3,7 @@ import type { QuestionRequest } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
-import type { ChatMessage } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
 describe("AgentExecutionFlowList", () => {
   afterEach(() => {
@@ -125,7 +125,6 @@ describe("AgentExecutionFlowList", () => {
             toolName: "render_svg",
             args: { svg: "<svg><circle cx='50' cy='50' r='40'/></svg>" },
             status: "done",
-            durationMs: 450,
           },
         ],
         isStreaming: false,
@@ -284,7 +283,7 @@ describe("AgentExecutionFlowList", () => {
         ...pendingMessages[0]!,
         blocks: [
           {
-            ...pendingMessages[0]!.blocks[0]!,
+            ...(pendingMessages[0]!.blocks[0] as Extract<ChatBlock, { kind: "toolCall" }>),
             question: undefined,
             status: "done",
           },
@@ -1012,7 +1011,6 @@ describe("AgentExecutionFlowList", () => {
             toolName: "read",
             args: { filePath: "src/index.ts" },
             status: "done",
-            durationMs: 120,
           },
           {
             kind: "toolCall",

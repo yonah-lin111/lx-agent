@@ -116,7 +116,7 @@ const TooltipBubble = ({
   content,
   placement,
   contentClassName = "",
-  multiline = false,
+  multiline: _multiline = false,
   minimizable = false,
   closeOnScroll = true,
   closeOnOutsideClick = true,
@@ -317,7 +317,7 @@ const TooltipBubble = ({
       if (
         triggerNode &&
         target instanceof Element &&
-        (target.contains(triggerNode) || target === document || target === document.documentElement)
+        (target.contains(triggerNode) || target === document.documentElement)
       ) {
         onClose()
       }

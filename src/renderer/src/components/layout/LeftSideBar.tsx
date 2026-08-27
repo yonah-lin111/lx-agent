@@ -26,7 +26,7 @@ export const LeftSideBar = ({ children }: LeftSideBarProps): React.JSX.Element =
 
   return (
     <aside
-      className={`relative flex h-40 shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,max-width,min-width,padding] duration-300 ease-in-out lg:h-full ${
+      className={`left-sidebar relative flex h-40 shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] transition-[width,max-width,min-width,padding] duration-300 ease-in-out lg:h-full ${
         isCollapsed
           ? "w-10 min-w-10 max-w-10 py-2 px-1"
           : "w-full min-w-full max-w-full p-2 lg:w-56 lg:min-w-56 lg:max-w-56"

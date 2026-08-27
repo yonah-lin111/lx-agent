@@ -295,7 +295,7 @@ const MarkdownTemplateStatusButton = ({
  */
 export const LxMarkdownPreview = ({
   html,
-  previewMode,
+  previewMode: _previewMode,
   previewRef,
   className = "px-5",
   contentClassName = "py-4",

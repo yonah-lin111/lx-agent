@@ -203,7 +203,7 @@ export const RightSideBar = (): React.JSX.Element => {
 
   return (
     <aside
-      className={`relative flex h-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
+      className={`right-sidebar relative flex h-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121] ${
         isResizing
           ? "transition-none"
           : "transition-[width,min-width,max-width] duration-300 ease-in-out"

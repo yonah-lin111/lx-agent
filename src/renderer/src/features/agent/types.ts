@@ -19,7 +19,9 @@ export type {
   AgentSendOptions,
   CompactionUsage,
   DiffLinePart,
+  InterAgentCommunication,
   LspToolDetails,
+  ModelSwitchMessage,
   QuestionAnswer,
   QuestionRequest,
   StopReason,
@@ -69,7 +71,13 @@ export interface ChatMessage {
   role: AgentMessage["role"]
   blocks: ChatBlock[]
   isStreaming: boolean
-  files?: { name: string; path: string; type: "image" | "text" }[]
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
   // 原始消息时间戳（删除一轮对话时定位 DB entry 用）。
   timestamp?: number
   error?: string
@@ -96,6 +104,10 @@ export interface ChatMessage {
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
   model?: string
   provider?: string
+  // 模型切换/初始模型相关属性
+  family?: string
+  instructions?: string
+  isInitial?: boolean
   // 单次生成执行耗时（毫秒）。
   durationMs?: number
 }
@@ -117,6 +129,7 @@ export type ExecutionStepKind =
   | "subagent"
   | "compaction"
   | "assistant"
+  | "modelSwitch"
   | "error"
 
 // 执行步骤状态。
@@ -173,8 +186,18 @@ export interface ExecutionStep {
   compactionContent?: ExecutionCompactionContent
   // 助手最终回复内容。
   assistantContent?: ExecutionAssistantContent
+  // 模型切换/初始模型内容。
+  modelSwitchContent?: ExecutionModelSwitchContent
   // 异常/中断说明内容。
   errorContent?: ExecutionErrorContent
+}
+
+export interface ExecutionModelSwitchContent {
+  provider?: string
+  model?: string
+  family?: string
+  instructions?: string
+  isInitial?: boolean
 }
 
 export interface ExecutionSystemContent {

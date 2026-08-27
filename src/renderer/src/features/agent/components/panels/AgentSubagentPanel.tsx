@@ -223,7 +223,7 @@ export const AgentSubagentPanel = ({
             <div className="agent-subagent-flow-divider my-1 flex items-center gap-2">
               <div className="h-[1px] flex-1 bg-white/10" />
               <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
-                {t("agent.executionSteps")}
+                {t("agent.executionFlow")}
               </span>
               <div className="h-[1px] flex-1 bg-white/10" />
             </div>

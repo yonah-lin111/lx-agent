@@ -19,6 +19,7 @@ import type {
   LspInstallResult,
   LspServerStatusItem,
   McpServerStatusItem,
+  ModelSwitchMessage,
   PermissionResponse,
   PromptAssembly,
   PromptTemplateItem,
@@ -46,6 +47,10 @@ export const agentApi = {
     window.api.agent.switchWorktree(path),
   switchProject: (projectId: string, path: string): Promise<AgentSwitchProjectResult> =>
     window.api.agent.switchProject(projectId, path),
+  switchModel: (
+    selection: ModelSelection,
+  ): Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }> =>
+    window.api.agent.switchModel(selection),
   abort: (): Promise<void> => window.api.agent.abort(),
   restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
   listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),

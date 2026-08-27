@@ -6,7 +6,6 @@ import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList/
 import type { ChatMessage } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
-import type { AgentMessageItemProps } from "./types"
 import { extractUserText, getUserBubbleClass, resolveCommandTag } from "./utils"
 
 // 用户消息组件 Props 接口。

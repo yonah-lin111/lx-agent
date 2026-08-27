@@ -25,7 +25,7 @@ export const AgentCompactionDemo = (): React.JSX.Element => {
               summary={MOCK_SUMMARY}
               isManual={false}
               modelName="claude-3-7-sonnet"
-              usage={{ inputTokens: 48500, outputTokens: 620 }}
+              usage={{ input: 48500, output: 620 }}
               summaryTokens={180}
             />
           </div>

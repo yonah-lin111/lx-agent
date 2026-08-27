@@ -7,18 +7,18 @@ import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 const MOCK_TODOS: TodoList = [
-  { content: "编写 Agent 状态栏组件 Demo", status: "in_progress", priority: "high" },
-  { content: "编写 权限与待办按钮 单体预览", status: "completed", priority: "medium" },
-  { content: "完成端到端验证", status: "pending", priority: "low" },
+  { content: "编写 Agent 状态栏组件 Demo", status: "in_progress" },
+  { content: "编写 权限与待办按钮 单体预览", status: "completed" },
+  { content: "完成端到端验证", status: "pending" },
 ]
 
 const MOCK_PERMISSION: PermissionRequest = {
-  id: "perm_req_1",
-  sessionID: "sess_demo",
-  permission: "bash",
-  patterns: ["npm test", "git status"],
-  metadata: { description: "执行测试脚本" },
-  always: ["allow", "deny"],
+  requestId: "perm_req_1",
+  sessionId: "sess_demo",
+  toolName: "bash",
+  args: { command: "npm test" },
+  summary: "执行测试脚本",
+  mode: "default",
 }
 
 export const AgentStatusBarDemo = (): React.JSX.Element => {

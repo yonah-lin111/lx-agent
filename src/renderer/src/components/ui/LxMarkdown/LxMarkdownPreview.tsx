@@ -11,7 +11,7 @@ import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
 interface LxMarkdownPreviewProps {
   html: string
   previewMode: MarkdownPreviewMode
-  previewRef: React.RefObject<HTMLElement | null>
+  previewRef?: React.RefObject<HTMLElement | null>
   className?: string
   contentClassName?: string
   // 复制选中文本时剥离选区末尾的块边界换行伪影。
@@ -150,7 +150,7 @@ const CodeBlockCollapseButton = (): React.JSX.Element => {
  */
 export const LxMarkdownPreview = ({
   html,
-  previewMode,
+  previewMode: _previewMode,
   previewRef,
   className = "px-5",
   contentClassName = "py-4",

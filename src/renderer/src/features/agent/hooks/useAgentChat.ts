@@ -251,6 +251,12 @@ export const useAgentChat = (context?: AgentSendContext) => {
           }
           break
 
+        case "model_switch": {
+          const item = toChatMessage(event.message, false, `m${++messageSequence}`)
+          setMessages((prev) => [...prev, item])
+          break
+        }
+
         case "compaction_summary": {
           // 上下文压缩完成：仅替换同一次压缩的 loading 占位，避免旧摘要或并行事件被误删。
           activeCompactionIdsRef.current.delete(event.compactionId)

@@ -114,6 +114,8 @@ const messageCharCount = (message: AgentMessage): number => {
         .join("\n").length
     case "compactionSummary":
       return message.summary.length
+    case "modelSwitch":
+      return (message.instructions ?? "").length
     case "todoState":
       // 任务清单消息仅存在于 transformContext 输出（不进 state.messages），不参与上下文估计。
       return 0
@@ -215,7 +217,11 @@ const extractConversationText = (messages: AgentMessage[]): string => {
                   .map((block) => (block.type === "text" ? block.text : "[图片]"))
                   .join("\n")
               : message.content
-            : message.summary
+            : message.role === "compactionSummary"
+            ? message.summary
+            : message.role === "modelSwitch"
+              ? `[Model Switched to ${message.model}]`
+              : ""
     if (text.trim()) parts.push(`${prefix}: ${text}`)
   }
   return parts.join("\n")

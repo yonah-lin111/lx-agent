@@ -23,6 +23,7 @@ import type {
   JobReadResult,
   JobSnapshot,
   JobStatus,
+  ModelSwitchMessage,
   PromptAssembly,
   TodoList,
   TodoStateMessage,
@@ -31,7 +32,7 @@ import type {
 } from "@shared/contracts/agent"
 import type { SessionProjectionState } from "@shared/contracts/sessionProjection"
 import type { ModelSelection } from "@shared/settings"
-import { agentSessionService } from "@/services/agentSessionService"
+import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
 import { getAppDataRoot } from "../paths"
@@ -54,6 +55,7 @@ import { jobRegistry } from "./jobs/jobRegistry"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
+import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { PersonalityName } from "./prompts/personalities"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
@@ -624,12 +626,22 @@ class AgentRunner {
     this.turnStore.captureSnapshot()
     // 新建会话：发送后立即建会话行并触发 AI 标题生成（输入只用用户消息，不等一轮输出完成）。
     if (isNewSession && this.turnStore.getSessionInput()) {
+      let createResult:
+        | { sessionId: string; initialModelMessage?: import("@shared/contracts/agent").ModelSwitchMessage }
+        | undefined
       agentSessionService.transaction(() => {
-        this.turnStore.createSessionIfNeeded(
+        createResult = this.turnStore.createSessionIfNeeded(
           this.turnStore.getSessionInput()!,
           new Date().toISOString(),
         )
       })
+      if (createResult?.initialModelMessage) {
+        agent.state.messages.push(createResult.initialModelMessage)
+        this.eventSink?.({
+          type: "model_switch",
+          message: createResult.initialModelMessage,
+        })
+      }
       if (this.currentSessionId) {
         this.generateTitle(this.currentSessionId, text)
       }
@@ -1089,6 +1101,51 @@ class AgentRunner {
     return { ok: true }
   }
 
+  // 切换当前会话模型：若处于已有已落库会话中，立即插入 model_change entry 并向 UI 广播事件。
+  switchModel(
+    selection: ModelSelection,
+  ): { ok: true; message?: ModelSwitchMessage } | { ok: false; error: string } {
+    this.requestedModel = selection
+    const sessionId = this.currentSessionId
+    if (!sessionId) {
+      return { ok: true }
+    }
+
+    const family = detectModelFamily(selection.model)
+    const instructions = getModelAdaptiveInstructions(family)
+    const message: ModelSwitchMessage = {
+      role: "modelSwitch",
+      provider: selection.provider,
+      model: selection.model,
+      family,
+      instructions,
+      timestamp: Date.now(),
+      isInitial: false,
+    }
+
+    const now = new Date().toISOString()
+    agentSessionService.transaction(() => {
+      const seq = agentSessionService.nextSeq(sessionId)
+      agentSessionService.insertEntry({
+        externalId: createExternalId(),
+        sessionId,
+        seq,
+        type: "model_change",
+        payload: JSON.stringify(message),
+        createdAt: now,
+      })
+      agentSessionService.touchSession(sessionId, now)
+      this.turnStore.getMessageSeqs().push(seq)
+    })
+
+    if (this.agent) {
+      this.agent.state.messages.push(message)
+    }
+
+    this.eventSink?.({ type: "model_switch", message })
+    return { ok: true, message }
+  }
+
   // 删除整个会话（含消息与调用）；若是当前会话则脱离，避免残留事件写入已删会话。
   deleteSession(sessionId: string): void {
     this.discardPendingTurn()
@@ -1131,7 +1188,7 @@ class AgentRunner {
     return this.cwd ?? this.requestedCwd ?? resolveCwd()
   }
 
-  // run 开始：重置 turn 缓冲并捕获本次落盘输入（会话归属、cwd 与能力快照）。
+  // run 开始：重置 turn 缓冲并捕获本次落盘输入（会话归属、cwd 与能力快照与模型选择）。
   private beginSessionTurn(text: string): void {
     this.turnStore.beginTurn({
       text,
@@ -1142,6 +1199,7 @@ class AgentRunner {
         mcp: [...this.activeMcp],
         skills: this.activeSkills.map((skill) => skill.name),
       },
+      modelSelection: this.requestedModel,
     })
   }
 

@@ -10,7 +10,6 @@ import {
   CircleHelp,
   Code2,
   Component,
-  FileCode,
   FileText,
   Globe,
   History,
@@ -30,7 +29,6 @@ import {
   TextCursorInput,
   WandSparkles,
   Wrench,
-  Zap,
 } from "lucide-react"
 import type { TranslationKey } from "@/i18n"
 

@@ -63,9 +63,78 @@ export const buildExecutionSteps = (
 
   const handledToolCallIds = new Set<string>()
   let currentTurn = 0
-  let stepIndex = 0
+  let stepIndex = steps.length > 0 ? 0 : -1
 
   for (const message of messages) {
+    // 处理上下文压缩摘要（独立步骤，不计入对话轮次）
+    if (message.role === "compactionSummary") {
+      stepIndex++
+      const summaryText =
+        message.blocks.find((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
+          ?.text ?? ""
+      const isCompactingNow = Boolean(message.isCompacting)
+      steps.push({
+        id: `step-${stepIndex}-compaction`,
+        turnIndex: 0,
+        stepIndex,
+        kind: "compaction",
+        title: isCompactingNow
+          ? message.isManual
+            ? "Compressing context manually..."
+            : "Compressing context automatically..."
+          : "Context Compaction",
+        subtitle: message.summaryTokens ? `${message.summaryTokens} tokens` : undefined,
+        status: isCompactingNow ? "running" : "done",
+        timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
+        tokens: message.compactionUsage
+          ? {
+              input: message.compactionUsage.input,
+              output: message.compactionUsage.output,
+              total: message.compactionUsage.input + message.compactionUsage.output,
+            }
+          : undefined,
+        compactionContent: {
+          isManual: message.isManual,
+          compactionUsage: message.compactionUsage,
+          summaryTokens: message.summaryTokens,
+        },
+        assistantContent: summaryText ? { text: summaryText } : undefined,
+      })
+      continue
+    }
+
+    // 处理模型切换 / 初始模型注入（独立步骤，不计入对话轮次）
+    if (message.role === "modelSwitch") {
+      stepIndex++
+      const isInitial = message.isInitial === true
+      const modelName = message.model || "Unknown Model"
+      steps.push({
+        id: `step-${stepIndex}-model-switch`,
+        turnIndex: 0,
+        stepIndex,
+        kind: "modelSwitch",
+        title: isInitial ? `Initial Model: ${modelName}` : `Model Switched: ${modelName}`,
+        subtitle: message.provider
+          ? `Provider: ${message.provider}${message.family ? ` (${message.family})` : ""}`
+          : undefined,
+        status: "done",
+        timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
+        model: message.model,
+        modelSwitchContent: {
+          provider: message.provider,
+          model: message.model,
+          family: message.family,
+          instructions: message.instructions,
+          isInitial: message.isInitial,
+        },
+      })
+      continue
+    }
+
     // 处理用户轮次开始
     if (message.role === "user") {
       currentTurn++
@@ -92,46 +161,6 @@ export const buildExecutionSteps = (
           command: message.command,
           isSteer: message.isSteer,
         },
-      })
-      continue
-    }
-
-    // 处理上下文压缩摘要
-    if (message.role === "compactionSummary") {
-      stepIndex++
-      const turn = currentTurn > 0 ? currentTurn : 1
-      const summaryText =
-        message.blocks.find((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
-          ?.text ?? ""
-      const isCompactingNow = Boolean(message.isCompacting)
-      steps.push({
-        id: `step-${stepIndex}-compaction`,
-        turnIndex: turn,
-        stepIndex,
-        kind: "compaction",
-        title: isCompactingNow
-          ? message.isManual
-            ? "Compressing context manually..."
-            : "Compressing context automatically..."
-          : "Context Compaction",
-        subtitle: message.summaryTokens ? `${message.summaryTokens} tokens` : undefined,
-        status: isCompactingNow ? "running" : "done",
-        timestamp: message.timestamp,
-        startedAt: message.timestamp,
-        completedAt: message.timestamp,
-        tokens: message.compactionUsage
-          ? {
-              input: message.compactionUsage.input,
-              output: message.compactionUsage.output,
-              total: message.compactionUsage.input + message.compactionUsage.output,
-            }
-          : undefined,
-        compactionContent: {
-          isManual: message.isManual,
-          compactionUsage: message.compactionUsage,
-          summaryTokens: message.summaryTokens,
-        },
-        assistantContent: summaryText ? { text: summaryText } : undefined,
       })
       continue
     }
@@ -311,8 +340,8 @@ export const buildExecutionSteps = (
         handledToolCallIds.add(block.toolCallId)
         stepIndex++
         const orphanStartedAt =
-          block.timestamp !== undefined && block.durationMs !== undefined
-            ? block.timestamp - block.durationMs
+          message.timestamp !== undefined && block.durationMs !== undefined
+            ? message.timestamp - block.durationMs
             : message.timestamp
         steps.push({
           id: `step-${stepIndex}-orphan-result-${block.toolCallId}`,
@@ -324,7 +353,7 @@ export const buildExecutionSteps = (
           status: block.isError ? "error" : "done",
           timestamp: message.timestamp,
           startedAt: orphanStartedAt,
-          completedAt: block.timestamp ?? message.timestamp,
+          completedAt: message.timestamp,
           durationMs: block.durationMs,
           toolContent: {
             toolName: block.toolName,

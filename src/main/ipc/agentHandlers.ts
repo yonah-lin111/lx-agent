@@ -232,6 +232,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return agentRunner.switchProject(projectId.trim(), path.trim())
   })
 
+  ipcMain.handle(AGENT_CHANNELS.switchModel, (_, selection: unknown) => {
+    if (!isValidModelSelection(selection)) {
+      return { ok: false, error: "模型选择参数无效。" }
+    }
+    return agentRunner.switchModel(selection)
+  })
+
   ipcMain.handle(AGENT_CHANNELS.abort, () => {
     agentRunner.abort()
   })

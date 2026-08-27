@@ -36,18 +36,22 @@ export const FlowItemSystemContent = ({
   content,
 }: FlowItemSystemContentProps): React.JSX.Element => {
   const { t } = useTranslation()
+  // 系统项中不展示当前模型的自适应提示词段，统一在 Initial Model / Model Switched 项中展示
+  const visibleSections = content.sections.filter(
+    (sec) => !sec.name.toLowerCase().includes("model-adaptive"),
+  )
 
   return (
     <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-[11px]">
       {/* 分段概览 */}
-      {content.sections.length > 0 && (
+      {visibleSections.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1 text-indigo-300 font-semibold">
             <Layers className="h-3 w-3" />
             <span>{t("agent.systemPrompt")}</span>
           </div>
           <div className="flex flex-col gap-1">
-            {content.sections.map((sec) => (
+            {visibleSections.map((sec) => (
               <details
                 key={sec.name}
                 className="group rounded border border-white/5 bg-white/[0.02] p-2"

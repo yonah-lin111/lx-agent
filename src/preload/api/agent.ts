@@ -26,6 +26,8 @@ export const agentApi: AgentApi["agent"] = {
   switchWorktree: (path: string) => ipcRenderer.invoke(AGENT_CHANNELS.switchWorktree, path),
   switchProject: (projectId: string, path: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.switchProject, projectId, path),
+  switchModel: (selection: ModelSelection) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.switchModel, selection),
   restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),
   restoreSession: (sessionId: string) =>
