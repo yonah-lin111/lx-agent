@@ -77,7 +77,7 @@ describe("createLspTool", () => {
       character: 1,
     })
     expect(result.content[0]).toMatchObject({ type: "text" })
-    expect((result.content[0] as { text: string }).text).toContain("文件不存在: ../escape.ts")
+    expect((result.content[0] as { text: string }).text).toContain("file not found: ../escape.ts")
   })
 
   it("目标文件不存在显式报错（而非静默 0 处）", async () => {
@@ -94,8 +94,8 @@ describe("createLspTool", () => {
       line: 1,
       character: 1,
     })
-    expect((result.content[0] as { text: string }).text).toContain("文件不存在")
-    expect((result.details as { error?: string }).error).toContain("文件不存在")
+    expect((result.content[0] as { text: string }).text.toLowerCase()).toContain("file not found")
+    expect((result.details as { error?: string }).error?.toLowerCase()).toContain("file not found")
   })
 
   it("无活动会话返回错误", async () => {
@@ -106,7 +106,7 @@ describe("createLspTool", () => {
       line: 1,
       character: 1,
     })
-    expect((result.content[0] as { text: string }).text).toContain("无活动会话")
+    expect((result.content[0] as { text: string }).text).toContain("no active session")
   })
 
   it("不支持语言 / 无启动器错误回灌", async () => {

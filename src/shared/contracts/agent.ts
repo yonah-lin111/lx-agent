@@ -282,6 +282,9 @@ export interface SuggestedQuestionContextMessage {
 // 权限确认模式（对齐 Claude Code 权限体系三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
+// 协作模式（对齐 Codex 执行协作模式双态）。
+export type CollaborationMode = "default" | "plan"
+
 // 沙箱策略（对齐 Codex 执行沙箱三态）。
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
 
@@ -289,6 +292,7 @@ export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-acces
 export interface PermissionSettings {
   defaultMode: PermissionMode
   sandboxPolicy?: SandboxPolicy
+  collaborationMode?: CollaborationMode
   allow: string[]
   deny: string[]
   ask: string[]

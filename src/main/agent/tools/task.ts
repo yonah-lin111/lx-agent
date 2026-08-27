@@ -23,6 +23,7 @@ const SUBAGENT_PROMPT_SUFFIX = [
   "Adhere strictly to the inherited sandbox policy and safety constraints.",
 ].join("\n")
 
+import { REVIEW_AGENT_NAME, REVIEW_AGENT_SYSTEM_PROMPT } from "../subagent/reviewAgent"
 import type { SubagentPool } from "../subagent/subagentPool"
 
 // 子代理最终输出超限阈值（写 spill 文件，父上下文只收有界预览 + 路径标记）。
@@ -188,13 +189,20 @@ export const createTaskTool = (
         params.subagent_id?.trim() ??
         `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
+      const subagentName = params.name?.trim() || existingManaged?.name || "task"
+      const isReviewAgent = subagentName === REVIEW_AGENT_NAME || params.name?.toLowerCase().includes("review")
+
+      const effectivePrompt = isReviewAgent
+        ? `${deps.systemPrompt}\n\n${REVIEW_AGENT_SYSTEM_PROMPT}`
+        : subAgentPrompt
+
       const subAgent =
         existingManaged?.agent ??
         new Agent({
           streamFn: createAiSdkStreamFn(),
           beforeToolCall: deps.beforeToolCall,
           initialState: {
-            systemPrompt: subAgentPrompt,
+            systemPrompt: effectivePrompt,
             model: deps.model,
             // 子代理工具集 = 父激活集去 task（斩断递归嵌套；含 web_search）。
             tools: deps.getTools().filter((tool) => tool.name !== "task"),
@@ -202,7 +210,6 @@ export const createTaskTool = (
         })
 
       // 子代理名（AI 分发；优先用参数，其次复用旧名，缺失回退 "task"）。
-      const subagentName = params.name?.trim() || existingManaged?.name || "task"
       const recipientName = `subagent:${subagentName}`
       const orchestratorName = "orchestrator"
 

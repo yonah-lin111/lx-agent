@@ -5,7 +5,7 @@
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
-import type { SandboxPolicy } from "@shared/contracts/agent"
+import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
 import { formatInstructions, loadInstructions } from "../instructionLoader"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"
 import {
@@ -25,12 +25,14 @@ const GROUP_AT = /^\{\{([^{}]*)\}\}/
 export const PROMPT_ORDERS = {
   IDENTITY: -100,
   BEHAVIOR: -50,
+  COLLABORATION_MODE: -25,
   PERSONA: 0,
   MODEL_ADAPTIVE: 50,
   SKILLS: 100,
   INSTRUCTIONS: 200,
   RUNTIME_CONTEXT: 300,
   ENVIRONMENT: 350,
+  CURRENT_TIME: 355,
   SANDBOX_POLICY: 360,
   INTERCEPTOR: 400,
 } as const
@@ -39,12 +41,14 @@ export const PROMPT_ORDERS = {
 export const PROMPT_SECTION_NAMES = {
   IDENTITY: "harness:identity",
   BEHAVIOR: "harness:behavior",
+  COLLABORATION_MODE: "harness:collaboration-mode",
   PERSONA: "deployment:persona",
   MODEL_ADAPTIVE: "harness:model-adaptive",
   SKILLS: "agent:skills",
   INSTRUCTIONS: "agent:instructions",
   RUNTIME_CONTEXT: "agent:runtime-context",
   ENVIRONMENT: "agent:environment",
+  CURRENT_TIME: "agent:current-time",
   SANDBOX_POLICY: "agent:sandbox-policy",
   LSP_FEEDBACK: "agent:lsp-feedback",
 } as const
@@ -56,6 +60,8 @@ export interface AssembleContext {
   signal?: AbortSignal
   modelId?: string
   sandboxPolicy?: SandboxPolicy
+  collaborationMode?: CollaborationMode
+  currentTimeReminder?: string
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   variables?: Record<string, string | undefined>
@@ -575,6 +581,28 @@ export function createDefaultSystemPromptManager(
     name: PROMPT_SECTION_NAMES.BEHAVIOR,
     order: PROMPT_ORDERS.BEHAVIOR,
     text: DEFAULT_BEHAVIOR_PROMPT,
+  })
+
+  // -25: 协作模式 (Collaboration Mode: Default / Plan Mode)
+  manager.registerSection({
+    name: PROMPT_SECTION_NAMES.COLLABORATION_MODE,
+    order: PROMPT_ORDERS.COLLABORATION_MODE,
+    text: (ctx) => {
+      if (ctx.collaborationMode === "plan") {
+        return [
+          "# Collaboration Mode: Plan Mode (Strictly Non-Mutating)",
+          "You are currently in Plan Mode. You must NOT perform any mutating actions.",
+          "Strictly prohibited: editing files (edit), writing files (write), applying patches (apply_patch), or running commands that alter repository state.",
+          "Allowed actions: reading files, searching code, inspecting symbols, static analysis, running non-mutating dry-run inspection commands, and asking clarifying questions.",
+          "Work through 3 phases: 1) Ground in the environment via exploration, 2) Clarify intent and preferences, 3) Chat your way to an implementation spec.",
+          "When you are ready to present the final, decision-complete plan, wrap it in a `<proposed_plan>` block on its own lines.",
+        ].join("\n")
+      }
+      return [
+        "# Collaboration Mode: Default",
+        "You are in Default execution mode. Strive for action, surgical precision, and direct execution.",
+      ].join("\n")
+    },
   })
 
   // 0: 核心操作规范与角色指导 (结合动态人格与操作规则)

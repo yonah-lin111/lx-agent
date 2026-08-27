@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process"
-import type { SandboxPolicy } from "@shared/contracts/agent"
+import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
 import { projectService } from "@/services/projectService"
 import { mcpManager, wrapMcpTool } from "./mcp/mcpManager"
 import type { PersonalityName } from "./prompts/personalities"
@@ -41,6 +41,8 @@ export interface BuildSystemPromptOptions {
   sessionId?: string
   modelId?: string
   sandboxPolicy?: SandboxPolicy
+  collaborationMode?: CollaborationMode
+  currentTimeReminder?: string
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
   manager?: SystemPromptManager
@@ -117,6 +119,8 @@ export const buildSystemPrompt = async (
     sessionId: options.sessionId,
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
+    collaborationMode: options.collaborationMode,
+    currentTimeReminder: options.currentTimeReminder,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
@@ -132,6 +136,8 @@ export const buildSystemPromptSync = (options: BuildSystemPromptOptions = {}): s
     sessionId: options.sessionId,
     modelId: options.modelId,
     sandboxPolicy: options.sandboxPolicy,
+    collaborationMode: options.collaborationMode,
+    currentTimeReminder: options.currentTimeReminder,
     activeSkills: options.activeSkills,
     personality: options.personality,
     variables: { ...envVars, ...(options.variables ?? {}) },
