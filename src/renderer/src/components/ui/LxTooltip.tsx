@@ -116,7 +116,7 @@ const TooltipBubble = ({
   content,
   placement,
   contentClassName = "",
-  multiline: _multiline = false,
+  multiline = false,
   minimizable = false,
   closeOnScroll = true,
   closeOnOutsideClick = true,
@@ -375,7 +375,9 @@ const TooltipBubble = ({
 
   const cardClassName = isConfirming
     ? "w-fit min-w-[192px] max-w-[min(320px,80vw)] bg-[#303030] p-2.5 text-white break-words"
-    : "w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-normal break-words"
+    : multiline
+      ? "w-max max-w-[min(90vw,680px)] bg-[#303030] px-2.5 py-1.5 text-xs text-white"
+      : "w-fit max-w-[min(420px,80vw)] bg-[#303030] px-2.5 py-1.5 text-xs font-semibold text-white whitespace-normal break-words"
 
   return createPortal(
     <TooltipLayerContext.Provider value={layerContextValue}>

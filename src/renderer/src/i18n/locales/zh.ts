@@ -158,17 +158,6 @@ export const zh: TranslationDictionary = {
     sandboxWorkspaceWriteDesc: "允许读写当前工作区文件，外部路径写操作需显式确认。",
     sandboxDangerFullAccessDesc:
       "完全放开系统与文件操作限制（破坏性系统指令仍受底层安全拦截保护）。",
-    approvalPolicy: "审批策略 (Approval Policy)",
-    approvalPolicyDesc: "定义 Agent 执行操作时的交互式审批行为与自动放行级别。",
-    approvalNever: "never — 自动放行（高危操作除外）",
-    approvalNeverDesc:
-      "常规命令与工具直接放行执行；若触发 Guardian 高危或破坏性检测，仍将强制升级为人工审批。",
-    approvalUnlessTrusted: "unless_trusted — 仅对未受信任/高危操作询问（默认）",
-    approvalUnlessTrustedDesc:
-      "受信任的工作区只读与白名单操作自动放行，未受信任命令或写操作需人工审批。",
-    approvalOnRequest: "on_request — 每次门控操作均询问",
-    approvalOnRequestDesc:
-      "所有带有副作用的门控工具（bash、write、edit、apply_patch、MCP）每次执行均需人工确认。",
     modeDefault: "default — 按规则逐次询问",
     modeAcceptEdits: "acceptEdits — write/edit 自动允许",
     modeBypass: "bypassPermissions — 全部放行",

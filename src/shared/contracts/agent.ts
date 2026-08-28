@@ -322,26 +322,11 @@ export type CollaborationMode = "default" | "plan"
 // 沙箱策略（对齐 Codex 执行沙箱三态）。
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"
 
-// 审批策略（对齐 Codex 多级审批体系三态）。
-export type ApprovalPolicy = "never" | "on_request" | "unless_trusted"
-
-// 审批决策（单次 / 会话 / 命令前缀 / 拒绝）。
-export type ApprovalDecision = "approve_once" | "approve_session" | "approve_prefix" | "deny"
-
-// 审批决策响应负载。
-export interface ApprovalDecisionPayload {
-  requestId: string
-  decision: ApprovalDecision
-  prefix?: string
-  reason?: string
-}
-
 // 权限配置（~/.lx/config.json 的 agent.permissions 节点）。
 export interface PermissionSettings {
   defaultMode: PermissionMode
   sandboxPolicy?: SandboxPolicy
   collaborationMode?: CollaborationMode
-  approvalPolicy?: ApprovalPolicy
   allow: string[]
   deny: string[]
   ask: string[]
@@ -363,6 +348,7 @@ export interface PermissionRequest {
 export type PermissionDecision = {
   decision: "allow" | "deny"
   rememberForSession?: boolean
+  prefix?: string
   allowAll?: boolean
   permanent?: boolean
 }
@@ -372,6 +358,7 @@ export interface PermissionResponse {
   requestId: string
   decision: "allow" | "deny"
   rememberForSession?: boolean
+  prefix?: string
   allowAll?: boolean
   // 永久允许/拒绝写回配置（allowAll 不写回）。
   permanent?: boolean

@@ -85,15 +85,15 @@ describe("PermissionSettings", () => {
     ).toBe("true")
   })
 
-  it("切换审批策略触发 setSettings", () => {
+  it("切换沙箱策略触发 setSettings", () => {
     const setSettings = vi.fn()
     render(<PermissionSettings settings={baseSettings()} setSettings={setSettings} />)
 
-    fireEvent.click(screen.getByText("unless_trusted — Ask on untrusted / risky actions (Default)"))
-    fireEvent.mouseDown(screen.getByText("never — Auto-approve (Except high-risk)"))
+    fireEvent.click(screen.getByText("workspace-write — Workspace Read & Write (Default)"))
+    fireEvent.mouseDown(screen.getByText("read-only — Read Only Sandbox"))
 
     expect(setSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ approvalPolicy: "never" }),
+      expect.objectContaining({ sandboxPolicy: "read-only" }),
     )
   })
 

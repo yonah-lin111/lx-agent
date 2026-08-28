@@ -1,7 +1,6 @@
 import type {
-  ApprovalDecisionPayload,
-  ApprovalPolicy,
   PermissionDecision,
+  PermissionMode,
   PermissionRequest,
   PermissionResponse,
   PermissionSettings,
@@ -106,17 +105,17 @@ class PermissionManager {
   }
 
   /**
-   * 获取当前生效的审批策略
+   * 获取当前生效的权限确认模式
    */
-  getApprovalPolicy(): ApprovalPolicy {
-    return this.settings.approvalPolicy ?? "unless_trusted"
+  getPermissionMode(): PermissionMode {
+    return this.settings.defaultMode ?? "default"
   }
 
   /**
-   * 设置审批策略
+   * 设置权限确认模式
    */
-  setApprovalPolicy(policy: ApprovalPolicy): void {
-    this.settings.approvalPolicy = policy
+  setPermissionMode(mode: PermissionMode): void {
+    this.settings.defaultMode = mode
   }
 
   // 注入 MCP 工具全名集合。
@@ -220,7 +219,6 @@ class PermissionManager {
   ): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-    const approvalPolicy = this.getApprovalPolicy()
     const collaborationMode =
       contextOptions?.collaborationMode ?? this.settings.collaborationMode ?? "default"
     const sessionId = contextOptions?.sessionId
@@ -262,7 +260,7 @@ class PermissionManager {
       if (collaborationMode === "plan") {
         return "deny"
       }
-      // 在 Default 模式下，即使处于 bypass 或 never，高危风险也强制升级为 ask (人工审批)
+      // 在 Default 模式下，即使处于 bypassPermissions，高危风险也强制升级为 ask (人工审批)
       return "ask"
     }
 
@@ -307,12 +305,10 @@ class PermissionManager {
         : null
     if (kind) return kind
 
-    // 10. 多级审批策略 (ApprovalPolicy) 判定
-    if (approvalPolicy === "never") {
+    // 10. acceptEdits 模式下自动放行文件修改类工具
+    if (mode === "acceptEdits" && (toolName === "write" || toolName === "edit" || toolName === "apply_patch")) {
       return "allow"
     }
-
-    if (mode === "acceptEdits" && (toolName === "write" || toolName === "edit")) return "allow"
 
     return "ask"
   }
@@ -423,39 +419,22 @@ class PermissionManager {
   }
 
   /**
-   * 处理 renderer 的权限/审批决策。
+   * 处理 renderer 的权限决策。
    */
-  respond(response: PermissionResponse | ApprovalDecisionPayload): boolean {
+  respond(response: PermissionResponse): boolean {
     const pending = this.pending.get(response.requestId)
     if (!pending) return false
     this.pending.delete(response.requestId)
     const { resolve, toolName, args } = pending
 
-    // 处理 ApprovalDecisionPayload 格式
-    if (
-      "decision" in response &&
-      (response.decision === "approve_once" ||
-        response.decision === "approve_session" ||
-        response.decision === "approve_prefix")
-    ) {
-      const isApproveSession = response.decision === "approve_session"
-      const prefix = response.decision === "approve_prefix" ? response.prefix : undefined
-      resolve({
-        decision: "allow",
-        rememberForSession: isApproveSession,
-        prefix,
-      })
-      return true
-    }
-
-    const legacyResp = response as PermissionResponse
-    if (legacyResp.permanent === true) {
-      this.persistRule(legacyResp.decision === "deny" ? "deny" : "allow", toolName, args)
+    if (response.permanent === true) {
+      this.persistRule(response.decision === "deny" ? "deny" : "allow", toolName, args)
     }
     resolve({
-      decision: legacyResp.decision === "deny" ? "deny" : "allow",
-      rememberForSession: legacyResp.rememberForSession === true,
-      allowAll: legacyResp.allowAll === true,
+      decision: response.decision === "deny" ? "deny" : "allow",
+      rememberForSession: response.rememberForSession === true,
+      prefix: response.prefix,
+      allowAll: response.allowAll === true,
     })
     return true
   }

@@ -179,12 +179,12 @@ export const PermissionStatusButton = ({
     const options = phase === "select" ? PERMISSION_SELECT_OPTIONS : PERMISSION_CONFIRM_OPTIONS
 
     const tooltipContent = (
-      <div className="flex min-w-[240px] flex-col gap-1.5">
-        <span className="block w-fit max-w-full truncate rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-[12px] text-amber-300">
+      <div className="flex w-max flex-col gap-1.5 whitespace-nowrap">
+        <span className="block w-fit max-w-full rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-[12px] text-amber-300">
           {request.toolName}
         </span>
         {phase === "confirm" && (
-          <p className="text-xs text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
+          <p className="text-xs whitespace-normal text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
         )}
         <div className="flex flex-col gap-0.5">
           {options.map((option, index) => (
@@ -196,15 +196,15 @@ export const PermissionStatusButton = ({
               aria-selected={index === activeIndex}
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => handleAction(index)}
-              className={`flex h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left outline-none transition-colors focus:outline-none focus-visible:outline-none ${toneClass(
+              className={`flex h-8 w-full cursor-pointer items-center justify-between gap-4 rounded-[4px] px-2 text-left whitespace-nowrap outline-none transition-colors focus:outline-none focus-visible:outline-none ${toneClass(
                 option.tone,
                 index === activeIndex,
               )}`}
             >
-              <span className="min-w-0 max-w-[45%] truncate text-[13px] font-medium leading-none">
+              <span className="shrink-0 text-[13px] font-medium leading-none whitespace-nowrap">
                 {t(option.labelKey)}
               </span>
-              <span className="ml-auto min-w-0 max-w-[55%] truncate text-[12px] leading-none opacity-60">
+              <span className="shrink-0 text-[12px] leading-none opacity-60 whitespace-nowrap">
                 {t(option.descriptionKey)}
               </span>
             </button>
@@ -219,6 +219,7 @@ export const PermissionStatusButton = ({
         onOpenChange={setIsOpen}
         trigger="click"
         placement="top"
+        multiline
         minimizable
         closeOnScroll={false}
         closeOnOutsideClick={true}
