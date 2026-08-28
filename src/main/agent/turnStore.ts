@@ -17,7 +17,6 @@ import {
 } from "@/services/agentSessionService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { isContextOverflowFailure } from "./compaction"
-import { parseMemoryCitation } from "./memories/memoryManager"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
 import type { ChildCallInput } from "./tools/task"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateHead } from "./tools/truncate"
@@ -320,18 +319,6 @@ export class TurnStore {
         } else {
           if (event.message.role === "user" && this.pendingCopiedFiles) {
             event.message.files = this.pendingCopiedFiles
-          }
-          // Assistant 消息：提取 <oai-mem-citation> 引用块并挂载 citations 属性
-          if (event.message.role === "assistant") {
-            for (const part of event.message.content) {
-              if (part.type === "text") {
-                const { citation, cleanText } = parseMemoryCitation(part.text)
-                if (citation) {
-                  event.message.citations = citation
-                  part.text = cleanText
-                }
-              }
-            }
           }
           this.runMessages.push(event.message)
         }

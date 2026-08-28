@@ -365,45 +365,6 @@ select {
   vertical-align: middle;
 }
 
-.markdown-preview .markdown-memory-citation {
-  display: inline-flex;
-  vertical-align: baseline;
-  margin: 0 2px;
-}
-
-.markdown-preview .markdown-memory-citation-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 5px;
-  font-size: 11px;
-  line-height: 1.2;
-  font-family: var(--font-mono, monospace);
-  color: var(--color-theme-primary, #60a5fa);
-  background-color: var(--color-theme-primary-subtle, rgba(96, 165, 250, 0.12));
-  border: 1px solid var(--color-theme-primary-border, rgba(96, 165, 250, 0.25));
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 150ms ease;
-  user-select: none;
-}
-
-.markdown-preview .markdown-memory-citation-chip:hover {
-  background-color: var(--color-theme-primary-hover, rgba(96, 165, 250, 0.22));
-}
-
-.markdown-preview .markdown-memory-citation-icon {
-  flex: none;
-  opacity: 0.85;
-}
-
-.markdown-preview .markdown-memory-citation-label {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .markdown-preview .markdown-reference-icon {
   display: inline-flex;
   flex: none;

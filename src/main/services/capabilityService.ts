@@ -17,6 +17,7 @@ export const DEFAULT_TOOLS = [
   "webfetch",
   "task",
   "question",
+  "memory",
   "render_svg",
   "render_ascii",
   "render_html",

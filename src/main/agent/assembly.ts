@@ -14,6 +14,7 @@ import { createGrepTool } from "./tools/grep"
 import { createJobKillTool, createJobListTool, createJobOutputTool } from "./tools/jobTools"
 import { createLsTool } from "./tools/ls"
 import { createLspTool, type LspToolDeps } from "./tools/lsp"
+import { createMemoryTool } from "./tools/memory"
 import { createQuestionTool, type QuestionToolDeps } from "./tools/question"
 import { createReadTool } from "./tools/read"
 import { ToolRegistry } from "./tools/registry"
@@ -162,6 +163,7 @@ export const ALL_TOOL_NAMES = new Set([
   "webfetch",
   "task",
   "question",
+  "memory",
   "render_svg",
   "render_ascii",
   "render_html",
@@ -203,6 +205,7 @@ export const createRegistry = (
     sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd, effectiveSessionDeps))
+  registry.register(createMemoryTool(cwd))
   registry.register(createLsTool(cwd, effectiveSessionDeps))
   registry.register(createGrepTool(cwd, effectiveSessionDeps))
   registry.register(createFindTool(cwd, effectiveSessionDeps))

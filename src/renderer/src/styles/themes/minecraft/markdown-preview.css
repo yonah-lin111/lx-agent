@@ -507,26 +507,6 @@
 }
 
 /* 11. 文件引用标签与 Mention 胶囊：3D 像素立体胶囊 */
-[data-theme="minecraft"] .markdown-preview .markdown-memory-citation-chip {
-  background-color: #242436 !important;
-  color: #55ffff !important;
-  border: 1px solid #000000 !important;
-  border-radius: 0px !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
-  font-family: var(--theme-font-family) !important;
-}
-
-[data-theme="minecraft"] .markdown-preview .markdown-memory-citation-chip:hover {
-  background-color: #383852 !important;
-  color: #55ffff !important;
-  border-color: #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7) !important;
-}
-
 [data-theme="minecraft"] .markdown-preview .markdown-reference {
   border: 2px solid #000000 !important;
   border-radius: 0px !important;
