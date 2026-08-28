@@ -174,6 +174,31 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
 }
 
 /**
+ * 移除文本中包含的所有 +++ suppleTemplate / +++ supple 补充块及其内容。
+ */
+export const stripMarkdownSuppleBlocks = (content: string): string => {
+  const lines = content.split("\n")
+  const keptLines: string[] = []
+  let insideSupple = false
+
+  for (const line of lines) {
+    if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+      insideSupple = true
+      continue
+    }
+    if (insideSupple) {
+      if (MARKDOWN_SUPPLE_END_RE.test(line)) {
+        insideSupple = false
+      }
+      continue
+    }
+    keptLines.push(line)
+  }
+
+  return keptLines.join("\n")
+}
+
+/**
  * 移除模板块内容中的注释行（// 开头），供复制场景使用。
  */
 export const stripMarkdownTemplateComments = (content: string): string =>
@@ -575,7 +600,9 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
   const status = meta.status ?? "todo"
   const encodedContent = encodeURIComponent(
-    stripEmptyTemplateItems(stripMarkdownTemplateComments(meta.content)),
+    stripEmptyTemplateItems(
+      stripMarkdownTemplateComments(stripMarkdownSuppleBlocks(meta.content)),
+    ),
   )
   const contentHtml = renderTemplateContent(meta.content)
   const sourceLine = token.attrGet("data-line")

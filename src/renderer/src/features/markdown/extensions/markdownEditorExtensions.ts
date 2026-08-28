@@ -39,6 +39,7 @@ import {
 import type { MarkdownTableAlignment, MarkdownTableSize } from "@/features/markdown/types"
 import {
   stripEmptyTemplateItems,
+  stripMarkdownSuppleBlocks,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 
@@ -1092,7 +1093,9 @@ const buildMarkdownMarkerDecorations = (
         to: offset + line.length,
         widget: new CodeBlockActionWidget(
           stripEmptyTemplateItems(
-            stripMarkdownTemplateComments(currentTemplateTextLines.join("\n")),
+            stripMarkdownTemplateComments(
+              stripMarkdownSuppleBlocks(currentTemplateTextLines.join("\n")),
+            ),
           ),
           currentTemplateFolded,
           () => onToggleTemplateFold(currentTemplateIndex),

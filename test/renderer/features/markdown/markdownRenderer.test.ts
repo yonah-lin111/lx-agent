@@ -3,6 +3,7 @@ import { getMarkdownReferenceImageSource } from "@/features/markdown/commands/ma
 import {
   markdownRenderer,
   stripEmptyTemplateItems,
+  stripMarkdownSuppleBlocks,
 } from "@/features/markdown/utils/markdownRenderer"
 
 describe("markdownRenderer", () => {
@@ -164,12 +165,31 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("stripEmptyTemplateItems 在 preserveSuppleBlocks=false 时清理全部未填项", () => {
-    const input = ["- 参考: ", "- 位置: src/a.ts", "- 要求: ", "  - ", "- 描述: 具体描述"].join(
-      "\n",
-    )
+  it("stripMarkdownSuppleBlocks 移除全部 +++ 补充块及其内容", () => {
+    const input = [
+      "- 位置: src/a.ts",
+      "+++ suppleTemplate",
+      "- 补充内容 1",
+      "- 补充内容 2",
+      "+++",
+      "- 要求: 具体要求",
+    ].join("\n")
 
-    const cleaned = stripEmptyTemplateItems(input, false)
-    expect(cleaned).toBe(["- 位置: src/a.ts", "- 描述: 具体描述"].join("\n"))
+    expect(stripMarkdownSuppleBlocks(input)).toBe(["- 位置: src/a.ts", "- 要求: 具体要求"].join("\n"))
+  })
+
+  it("渲染模板块时复制数据剔除内部 +++ 补充块内容", () => {
+    const content = [
+      "- 位置: src/a.ts",
+      "+++ suppleTemplate",
+      "- 补充项: 内部信息",
+      "+++",
+      "- 描述: 任务描述",
+    ].join("\n")
+    const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
+
+    const expectedCopied = ["- 位置: src/a.ts", "- 描述: 任务描述"].join("\n")
+    expect(html).toContain(`data-template-content="${encodeURIComponent(expectedCopied)}"`)
+    expect(html).not.toContain(encodeURIComponent("内部信息"))
   })
 })
