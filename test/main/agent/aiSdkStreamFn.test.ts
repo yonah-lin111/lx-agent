@@ -238,4 +238,55 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
       totalTokens: 35,
     })
   })
+
+  it("当 text 块后紧随 tool-input 时，正确在 tool 开始时结算 text 耗时并立即创建 toolCall 块", async () => {
+    async function* createTextAndToolStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "正在渲染：" }
+      yield { type: "tool-input-start" as const, id: "c-html", toolName: "render_html" }
+      yield { type: "tool-input-delta" as const, id: "c-html", delta: '{"html":' }
+      yield { type: "tool-input-delta" as const, id: "c-html", delta: '"<h1>App</h1>"}' }
+      yield {
+        type: "tool-call" as const,
+        toolCallId: "c-html",
+        toolName: "render_html",
+        input: { html: "<h1>App</h1>" },
+      }
+      yield {
+        type: "finish" as const,
+        finishReason: "tool-calls",
+        totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({
+      fullStream: createTextAndToolStream(),
+    })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+
+    const events: Array<{ type: string; toolCall?: unknown }> = []
+    for await (const event of stream) {
+      events.push(event as { type: string; toolCall?: unknown })
+    }
+
+    // 验证 toolcall_start 在 tool-input-start 阶段已立即分发
+    expect(events.some((e) => e.type === "toolcall_start")).toBe(true)
+    expect(events.some((e) => e.type === "toolcall_end")).toBe(true)
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toHaveLength(2)
+    expect(finalResult.content[0]).toEqual({
+      type: "text",
+      text: "正在渲染：",
+      durationMs: expect.any(Number),
+    })
+    expect(finalResult.content[1]).toEqual({
+      type: "toolCall",
+      id: "c-html",
+      name: "render_html",
+      arguments: { html: "<h1>App</h1>" },
+    })
+  })
 })

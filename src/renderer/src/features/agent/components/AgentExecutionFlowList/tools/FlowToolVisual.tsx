@@ -51,25 +51,14 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
         </div>
         {graphicContent ? (
           <>
-            {toolName === "render_svg" && (
-              <SvgVisualContent svg={args.svg} className="my-0" />
-            )}
+            {toolName === "render_svg" && <SvgVisualContent svg={args.svg} className="my-0" />}
             {toolName === "render_ascii" && (
               <AsciiVisualContent ascii={args.ascii} className="my-0" />
             )}
             {toolName === "render_html" && (
-              <HtmlVisualContent
-                html={args.html}
-                customStyle={args.style}
-                className="my-0"
-              />
+              <HtmlVisualContent html={args.html} customStyle={args.style} className="my-0" />
             )}
           </>
-        ) : isRunning ? (
-          <div className="flex items-center gap-2 rounded-[6px] border border-white/5 bg-[#0d0d0d] px-3 py-2 text-white/50">
-            <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
-            <span>Rendering content...</span>
-          </div>
         ) : (
           <div className="rounded border border-white/5 bg-black/40 p-2 text-white/40">
             (No render content)
@@ -110,11 +99,7 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
                 : "bg-black/40 text-white/80"
             }`}
           >
-            <FlowItemExpandableText
-              content={content.result}
-              fallbackText="-"
-              maxLines={3}
-            />
+            <FlowItemExpandableText content={content.result} fallbackText="-" maxLines={3} />
           </div>
         </div>
       )}

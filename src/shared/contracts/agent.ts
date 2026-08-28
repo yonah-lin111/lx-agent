@@ -104,6 +104,8 @@ export interface AssistantMessage {
   stopReason: StopReason
   errorMessage?: string
   timestamp: number
+  // 首字/首个事件到达的时间戳（用于精准统计 TTFT 及 User 提示词响应耗时）。
+  firstChunkTimestamp?: number
   durationMs?: number
   citations?: MemoryCitation
 }

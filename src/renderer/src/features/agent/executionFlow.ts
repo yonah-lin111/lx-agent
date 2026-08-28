@@ -151,7 +151,7 @@ export const buildExecutionSteps = (
         stepIndex,
         kind: "user",
         title: formatPreview(userText || "(empty prompt)", 90),
-        status: "done",
+        status: "running",
         timestamp: message.timestamp,
         startedAt: message.timestamp,
         completedAt: message.timestamp,
@@ -167,29 +167,41 @@ export const buildExecutionSteps = (
 
     // 处理助手消息或工具消息
     const turn = currentTurn > 0 ? currentTurn : 1
+    let currentBlockStartedAt = message.firstChunkTimestamp ?? message.timestamp
 
     for (let blockIdx = 0; blockIdx < message.blocks.length; blockIdx++) {
       const block = message.blocks[blockIdx]
 
       // 思考过程
       if (block.kind === "thinking") {
-        if (!block.text.trim() && !message.isStreaming) continue
+        if (!block.text.trim()) continue
         stepIndex++
         const thinkingDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          block.durationMs === undefined
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && thinkingDuration !== undefined
+            ? start + thinkingDuration
+            : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
         steps.push({
           id: `step-${stepIndex}-thinking`,
           turnIndex: turn,
           stepIndex,
           kind: "thinking",
-          title: message.isStreaming ? "..." : formatPreview(block.text, 90),
-          status:
-            message.isStreaming && blockIdx === message.blocks.length - 1 ? "running" : "done",
-          timestamp: message.timestamp,
-          startedAt: message.timestamp,
-          completedAt:
-            message.timestamp !== undefined && thinkingDuration !== undefined
-              ? message.timestamp + thinkingDuration
-              : undefined,
+          title:
+            message.isStreaming && block.durationMs === undefined
+              ? "..."
+              : formatPreview(block.text, 90) || "...",
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
           durationMs: thinkingDuration,
           thinkingContent: {
             text: block.text,
@@ -213,7 +225,17 @@ export const buildExecutionSteps = (
         let status: ExecutionStepStatus = "done"
         if (pairedResult?.isError || block.status === "error") {
           status = "error"
-        } else if (block.status === "running" && !pairedResult) {
+        } else if (pairedResult) {
+          status = "done"
+        } else if (block.status === "done") {
+          status = "done"
+        } else if (
+          message.error ||
+          message.stopReason === "error" ||
+          message.stopReason === "aborted"
+        ) {
+          status = "error"
+        } else {
           status = "running"
         }
 
@@ -222,7 +244,10 @@ export const buildExecutionSteps = (
         const toolStartedAt =
           toolCompletedAt !== undefined && toolDuration !== undefined
             ? toolCompletedAt - toolDuration
-            : message.timestamp
+            : (currentBlockStartedAt ?? message.timestamp)
+        if (toolCompletedAt !== undefined) {
+          currentBlockStartedAt = toolCompletedAt
+        }
 
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
@@ -237,7 +262,7 @@ export const buildExecutionSteps = (
               ? formatPreview(subagentData.description, 60)
               : undefined,
             status,
-            timestamp: message.timestamp,
+            timestamp: toolStartedAt ?? message.timestamp,
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
             durationMs: toolDuration,
@@ -273,7 +298,7 @@ export const buildExecutionSteps = (
             title: block.toolName,
             subtitle: formatPreview(JSON.stringify(block.args), 60),
             status,
-            timestamp: message.timestamp,
+            timestamp: toolStartedAt ?? message.timestamp,
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
             durationMs: toolDuration,
@@ -296,23 +321,32 @@ export const buildExecutionSteps = (
 
       // 文本回复
       if (block.kind === "text") {
-        if (!block.text.trim() && !message.isStreaming) continue
+        if (!block.text.trim()) continue
         stepIndex++
         const textDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          block.durationMs === undefined
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && textDuration !== undefined ? start + textDuration : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
         steps.push({
           id: `step-${stepIndex}-assistant`,
           turnIndex: turn,
           stepIndex,
           kind: "assistant",
-          title: message.isStreaming ? "..." : formatPreview(block.text, 90),
-          status:
-            message.isStreaming && blockIdx === message.blocks.length - 1 ? "running" : "done",
-          timestamp: message.timestamp,
-          startedAt: message.timestamp,
-          completedAt:
-            message.timestamp !== undefined && textDuration !== undefined
-              ? message.timestamp + textDuration
-              : undefined,
+          title:
+            message.isStreaming && block.durationMs === undefined
+              ? "..."
+              : formatPreview(block.text, 90) || "...",
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
           durationMs: textDuration,
           model: message.model,
           tokens: message.usage
@@ -416,29 +450,77 @@ export const buildExecutionSteps = (
   }
 
   // 2. 第二阶段：单次线性扫描，计算流水线步进跨度（stepSpanMs）与 Agent 响应开销（agentOverheadMs）
+  // 规则：item i-1 到 item i 之间的间隔时间（模型推理、生成、工具准备开销）归属于 item i。
+  let lastCompletedAt: number | undefined
+
   for (let i = 0; i < steps.length; i++) {
     const current = steps[i]
-    if (current.kind === "system") continue
+    if (current.kind === "system") {
+      lastCompletedAt = current.completedAt ?? current.timestamp
+      continue
+    }
 
-    const next = steps[i + 1]
-    const currentStart = current.startedAt ?? current.timestamp
-    const nextStart = next?.startedAt ?? next?.timestamp
+    const currentCompleted =
+      current.completedAt ??
+      (current.startedAt !== undefined && current.durationMs !== undefined
+        ? current.startedAt + current.durationMs
+        : (current.startedAt ?? current.timestamp))
+
+    if (current.kind === "user") {
+      const next = steps[i + 1]
+      const userStart = current.startedAt ?? current.timestamp
+      const nextStart = next?.startedAt ?? next?.timestamp
+
+      if (next) {
+        current.status = "done"
+        if (userStart !== undefined && nextStart !== undefined && nextStart >= userStart) {
+          const responseTime = nextStart - userStart
+          current.durationMs = responseTime
+          current.stepSpanMs = responseTime
+          current.agentOverheadMs = undefined
+          current.completedAt = nextStart
+          lastCompletedAt = nextStart
+        } else {
+          current.durationMs = undefined
+          current.stepSpanMs = 0
+          current.agentOverheadMs = undefined
+          current.completedAt = current.startedAt ?? current.timestamp
+          if (current.completedAt !== undefined) {
+            lastCompletedAt = current.completedAt
+          }
+        }
+      } else {
+        current.status = "running"
+        current.durationMs = undefined
+        current.stepSpanMs = 0
+        current.agentOverheadMs = undefined
+        if (current.startedAt !== undefined) {
+          lastCompletedAt = current.startedAt
+        }
+      }
+      continue
+    }
 
     if (
-      next &&
-      currentStart !== undefined &&
-      nextStart !== undefined &&
-      nextStart >= currentStart
+      lastCompletedAt !== undefined &&
+      currentCompleted !== undefined &&
+      currentCompleted >= lastCompletedAt
     ) {
-      const span = nextStart - currentStart
+      const span = currentCompleted - lastCompletedAt
       current.stepSpanMs = span
       if (current.durationMs !== undefined) {
         current.agentOverheadMs = Math.max(0, span - current.durationMs)
-      } else if (current.kind === "user") {
-        current.agentOverheadMs = span
+      } else {
+        current.durationMs = span
+        current.agentOverheadMs = 0
       }
     } else if (current.durationMs !== undefined) {
       current.stepSpanMs = current.durationMs
+      current.agentOverheadMs = 0
+    }
+
+    if (currentCompleted !== undefined) {
+      lastCompletedAt = currentCompleted
     }
   }
 

@@ -15,12 +15,7 @@ import type { ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
-import {
-  copyToClipboard,
-  formatDurationMs,
-  formatJsonString,
-  formatTokenCount,
-} from "./types"
+import { copyToClipboard, formatDurationMs, formatJsonString, formatTokenCount } from "./types"
 
 export interface AgentExecutionFlowGroupProps {
   groupId: string
@@ -119,7 +114,9 @@ export const AgentExecutionFlowGroup = ({
   }, [isRunning, firstTimestamp, runningStep?.timestamp])
 
   const totalDurationMs = isRunning
-    ? (firstTimestamp ? runningElapsedMs : staticDurationMs + runningElapsedMs)
+    ? firstTimestamp
+      ? runningElapsedMs
+      : staticDurationMs + runningElapsedMs
     : staticDurationMs
 
   // 聚合复制文本
@@ -147,14 +144,17 @@ export const AgentExecutionFlowGroup = ({
       .join("\n\n---\n\n")
   }, [steps])
 
-  const handleCopy = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    const success = await copyToClipboard(copyPayload)
-    if (success) {
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), 1500)
-    }
-  }, [copyPayload])
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation()
+      const success = await copyToClipboard(copyPayload)
+      if (success) {
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 1500)
+      }
+    },
+    [copyPayload],
+  )
 
   return (
     <div
@@ -191,19 +191,13 @@ export const AgentExecutionFlowGroup = ({
             <span
               aria-hidden
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                isRunning
-                  ? "bg-sky-400 animate-pulse"
-                  : isError
-                    ? "bg-rose-400"
-                    : "bg-white/80"
+                isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
               }`}
             />
             <span className="shrink-0 font-mono text-[12px] font-semibold text-white/90">
               Execute Group
             </span>
-            <span className="shrink-0 font-mono text-[11px] text-white/40">
-              ({steps.length})
-            </span>
+            <span className="shrink-0 font-mono text-[11px] text-white/40">({steps.length})</span>
           </div>
 
           {/* 右侧总运行时间与状态指标 */}
@@ -282,9 +276,7 @@ export const AgentExecutionFlowGroup = ({
         {activeStep && (
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-[11px] leading-none text-white/70">
             <CornerDownRight
-              className={`h-3 w-3 shrink-0 ${
-                isRunning ? "text-sky-400/80" : "text-white/40"
-              }`}
+              className={`h-3 w-3 shrink-0 ${isRunning ? "text-sky-400/80" : "text-white/40"}`}
             />
             {activeStep.kind === "tool" && activeStep.toolContent ? (
               <FlowItemToolTitle toolContent={activeStep.toolContent} />
@@ -299,7 +291,7 @@ export const AgentExecutionFlowGroup = ({
 
       {/* 展开子步骤列表 */}
       {isExpanded && (
-        <div className="agent-execution-flow-group-body max-h-[360px] overflow-y-auto custom-scrollbar border-t border-white/5 bg-black/20 p-2 [scrollbar-gutter:stable]">
+        <div className="agent-execution-flow-group-body border-t border-white/5 bg-black/20 p-2">
           <div className="flex flex-col gap-1.5">
             {steps.map((step) => (
               <AgentExecutionFlowItem

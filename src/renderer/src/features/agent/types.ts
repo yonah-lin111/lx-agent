@@ -80,6 +80,8 @@ export interface ChatMessage {
   }[]
   // 原始消息时间戳（删除一轮对话时定位 DB entry 用）。
   timestamp?: number
+  // 首字/首个事件到达时间戳。
+  firstChunkTimestamp?: number
   error?: string
   // 助手消息的停止原因（判断"继续生成"可用性）。
   stopReason?: StopReason

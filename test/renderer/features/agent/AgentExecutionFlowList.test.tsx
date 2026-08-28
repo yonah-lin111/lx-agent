@@ -1052,11 +1052,9 @@ describe("AgentExecutionFlowList", () => {
     expect(groupHeader).not.toBeNull()
     fireEvent.click(groupHeader!)
 
-    // 展开后显示内部的 read，且容器包含最大高度与滚动条样式
+    // 展开后显示内部的 read，自然展开无内部滚动条
     const body = group?.querySelector(".agent-execution-flow-group-body")
     expect(body).not.toBeNull()
-    expect(body?.className).toContain("max-h-[360px]")
-    expect(body?.className).toContain("overflow-y-auto")
     expect(screen.getByText("index.ts")).not.toBeNull()
   })
 
@@ -1224,11 +1222,7 @@ describe("AgentExecutionFlowList", () => {
 
     const onContinue = vi.fn()
     render(
-      <AgentExecutionFlowList
-        messages={messages}
-        canContinue={true}
-        onContinue={onContinue}
-      />,
+      <AgentExecutionFlowList messages={messages} canContinue={true} onContinue={onContinue} />,
     )
 
     const continueBtn = screen.getByRole("button", { name: /继续生成|Continue Generating/i })
@@ -1256,15 +1250,9 @@ describe("AgentExecutionFlowList", () => {
 
     const onContinue = vi.fn()
     render(
-      <AgentExecutionFlowList
-        messages={messages}
-        canContinue={false}
-        onContinue={onContinue}
-      />,
+      <AgentExecutionFlowList messages={messages} canContinue={false} onContinue={onContinue} />,
     )
 
-    expect(
-      screen.queryByRole("button", { name: /继续生成|Continue Generating/i }),
-    ).toBeNull()
+    expect(screen.queryByRole("button", { name: /继续生成|Continue Generating/i })).toBeNull()
   })
 })

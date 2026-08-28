@@ -145,7 +145,7 @@ export const toChatMessage = (
       toolCallId: block.id,
       toolName: block.name,
       args: block.arguments,
-      status: "done",
+      status: "running",
       ...(block.answers ? { answers: block.answers } : {}),
     }
   })
@@ -156,6 +156,7 @@ export const toChatMessage = (
     blocks,
     isStreaming,
     timestamp: message.timestamp,
+    firstChunkTimestamp: message.firstChunkTimestamp,
     error: message.errorMessage,
     stopReason: message.stopReason,
     model: message.model,

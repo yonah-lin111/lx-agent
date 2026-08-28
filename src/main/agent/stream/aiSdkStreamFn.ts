@@ -61,17 +61,18 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
       const getContentIndex = (block: (typeof blocks)[number]) => blocks.indexOf(block)
 
       let activeBlockStartTime = Date.now()
+      let lastChunkTime = Date.now()
       let activeBlockType: "thinking" | "text" | null = null
 
       const finalizeActiveBlockDuration = () => {
         if (!activeBlockType) return
-        const now = Date.now()
-        const duration = Math.max(0, now - activeBlockStartTime)
+        const duration = Math.max(0, lastChunkTime - activeBlockStartTime)
         const lastBlock = blocks[blocks.length - 1]
         if (lastBlock && (lastBlock.type === "thinking" || lastBlock.type === "text")) {
           lastBlock.durationMs = (lastBlock.durationMs ?? 0) + duration
         }
-        activeBlockStartTime = now
+        activeBlockStartTime = Date.now()
+        lastChunkTime = activeBlockStartTime
         activeBlockType = null
       }
 
@@ -81,6 +82,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         finalizeActiveBlockDuration()
         activeBlockType = "text"
         activeBlockStartTime = Date.now()
+        lastChunkTime = activeBlockStartTime
         const block: TextContent = { type: "text", text: "" }
         blocks.push(block)
         return block
@@ -92,9 +94,17 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         finalizeActiveBlockDuration()
         activeBlockType = "thinking"
         activeBlockStartTime = Date.now()
+        lastChunkTime = activeBlockStartTime
         const block: ThinkingContent = { type: "thinking", thinking: "" }
         blocks.push(block)
         return block
+      }
+
+      const pruneEmptyTrailingTextBlock = () => {
+        const last = blocks[blocks.length - 1]
+        if (last && last.type === "text" && !last.text.trim()) {
+          blocks.pop()
+        }
       }
 
       const ensureToolCallBlock = (
@@ -103,17 +113,30 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         args: Record<string, unknown>,
       ): ToolCall => {
         finalizeActiveBlockDuration()
+        pruneEmptyTrailingTextBlock()
         const existing = blocks.find(
           (block) => block.type === "toolCall" && block.id === toolCallId,
         )
-        if (existing && existing.type === "toolCall") return existing
+        if (existing && existing.type === "toolCall") {
+          if (name) existing.name = name
+          if (args && Object.keys(args).length > 0) existing.arguments = args
+          return existing
+        }
         const block: ToolCall = { type: "toolCall", id: toolCallId, name, arguments: args }
         blocks.push(block)
         return block
       }
 
+      let firstChunkTimestamp: number | undefined
+      const markFirstChunk = () => {
+        if (firstChunkTimestamp === undefined) {
+          firstChunkTimestamp = Date.now()
+        }
+      }
+
       const emitUpdate = (event: Parameters<typeof stream.push>[0]): void => {
-        partial = { ...partial, content: [...blocks] }
+        markFirstChunk()
+        partial = { ...partial, firstChunkTimestamp, content: [...blocks] }
         stream.push(event)
       }
 
@@ -150,6 +173,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
           switch (part.type) {
             case "text-start": {
               const block = ensureTextBlock()
+              lastChunkTime = Date.now()
               emitUpdate({
                 type: "text_start",
                 contentIndex: getContentIndex(block),
@@ -161,6 +185,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             case "text-delta": {
               const block = ensureTextBlock()
               block.text += part.text
+              lastChunkTime = Date.now()
               emitUpdate({
                 type: "text_delta",
                 contentIndex: getContentIndex(block),
@@ -171,6 +196,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             }
             case "reasoning-start": {
               const block = ensureThinkingBlock()
+              lastChunkTime = Date.now()
               emitUpdate({
                 type: "thinking_start",
                 contentIndex: getContentIndex(block),
@@ -182,6 +208,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             case "reasoning-delta": {
               const block = ensureThinkingBlock()
               block.thinking += part.text
+              lastChunkTime = Date.now()
               emitUpdate({
                 type: "thinking_delta",
                 contentIndex: getContentIndex(block),
@@ -193,6 +220,26 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             case "reasoning-end":
             case "text-end": {
               finalizeActiveBlockDuration()
+              break
+            }
+            case "tool-input-start": {
+              const block = ensureToolCallBlock(part.id, part.toolName, {})
+              emitUpdate({
+                type: "toolcall_start",
+                contentIndex: getContentIndex(block),
+                toolCall: block,
+                partial,
+              })
+              break
+            }
+            case "tool-input-delta": {
+              finalizeActiveBlockDuration()
+              emitUpdate({
+                type: "toolcall_delta",
+                contentIndex: Math.max(0, blocks.length - 1),
+                delta: part.delta,
+                partial,
+              })
               break
             }
             case "tool-call": {
@@ -211,6 +258,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             }
             case "finish": {
               finalizeActiveBlockDuration()
+              pruneEmptyTrailingTextBlock()
               const usage: Usage = {
                 input: part.totalUsage.inputTokens ?? 0,
                 output: part.totalUsage.outputTokens ?? 0,
@@ -223,7 +271,8 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
                 content: blocks,
                 usage,
                 stopReason: mapStopReason(part.finishReason),
-                timestamp: Date.now(),
+                timestamp: requestStartTime,
+                firstChunkTimestamp,
                 durationMs: Math.max(0, Date.now() - requestStartTime),
               }
               stream.push({ type: "done", reason: finalMessage.stopReason, message: finalMessage })
@@ -241,6 +290,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
 
         // 流提前结束（无 finish 事件）。
         finalizeActiveBlockDuration()
+        pruneEmptyTrailingTextBlock()
         const isWatchdogTimeout = watchdog.aborted
         const isUserAbort = options?.signal?.aborted
         const finalMessage: AssistantMessage = {
@@ -252,7 +302,8 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             : isWatchdogTimeout
               ? `Stream idle timeout after ${idleTimeoutMs}ms`
               : "Stream ended without finish",
-          timestamp: Date.now(),
+          timestamp: requestStartTime,
+          firstChunkTimestamp,
           durationMs: Math.max(0, Date.now() - requestStartTime),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
@@ -264,12 +315,15 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
         if (isWatchdogTimeout && !errorMessage.includes("idle timeout")) {
           errorMessage = `Stream idle timeout after ${idleTimeoutMs}ms`
         }
+        finalizeActiveBlockDuration()
+        pruneEmptyTrailingTextBlock()
         const finalMessage: AssistantMessage = {
           ...partial,
           content: blocks,
           stopReason: isUserAbort ? "aborted" : "error",
           errorMessage: isUserAbort ? "Request was aborted" : errorMessage,
-          timestamp: Date.now(),
+          timestamp: requestStartTime,
+          firstChunkTimestamp,
           durationMs: Math.max(0, Date.now() - requestStartTime),
         }
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })

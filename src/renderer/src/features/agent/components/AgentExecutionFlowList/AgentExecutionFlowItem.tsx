@@ -221,7 +221,27 @@ export const AgentExecutionFlowItem = ({
           {step.status !== "running" && (
             <>
               {step.durationMs !== undefined ? (
-                step.agentOverheadMs !== undefined && step.agentOverheadMs >= 100 ? (
+                step.kind === "user" ? (
+                  step.durationMs > 0 ? (
+                    <LxTooltip
+                      content={
+                        <span className="text-white/80">
+                          {t("agent.agentOverhead", {
+                            duration: formatDurationMs(step.durationMs),
+                          })}
+                        </span>
+                      }
+                      placement="left"
+                    >
+                      <span
+                        data-testid="flow-item-duration"
+                        className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                      >
+                        {formatDurationMs(step.durationMs)}
+                      </span>
+                    </LxTooltip>
+                  ) : null
+                ) : step.agentOverheadMs !== undefined && step.agentOverheadMs >= 100 ? (
                   <LxTooltip
                     content={
                       <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
@@ -269,24 +289,6 @@ export const AgentExecutionFlowItem = ({
                     </span>
                   </LxTooltip>
                 )
-              ) : step.kind === "user" && step.stepSpanMs !== undefined && step.stepSpanMs > 0 ? (
-                <LxTooltip
-                  content={
-                    <span className="text-amber-400">
-                      {t("agent.agentOverhead", {
-                        duration: formatDurationMs(step.stepSpanMs),
-                      })}
-                    </span>
-                  }
-                  placement="left"
-                >
-                  <span
-                    data-testid="flow-item-duration"
-                    className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-amber-400/80 hover:text-amber-300 cursor-default"
-                  >
-                    {formatDurationMs(step.stepSpanMs)}
-                  </span>
-                </LxTooltip>
               ) : null}
             </>
           )}
@@ -403,10 +405,7 @@ export const AgentExecutionFlowItem = ({
 
           {/* 模型切换/初始模型详情 */}
           {step.modelSwitchContent && (
-            <FlowItemModelSwitchContent
-              content={step.modelSwitchContent}
-              previewRef={previewRef}
-            />
+            <FlowItemModelSwitchContent content={step.modelSwitchContent} previewRef={previewRef} />
           )}
 
           {/* 异常/中断详情 */}
