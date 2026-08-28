@@ -147,10 +147,21 @@ export const zh: TranslationDictionary = {
     maxOutputTokens: "最大输出 Tokens",
 
     // Permissions & Sandbox section
-    permissionMode: "权限模式",
-    permissionModeDesc: "决定未命中规则时门控工具的默认处理方式。",
     sandboxPolicy: "执行沙箱策略 (Sandbox Policy)",
     sandboxPolicyDesc: "限制 Agent 在文件系统与终端环境中的执行边界。",
+    sandboxPolicyDoc: `### 执行沙箱策略 (Sandbox Policy)
+
+定义 Agent 的**物理与环境操作红线**，决定工具是否具备写入或访问外部资源的物理能力。
+
+- **\`workspace-write\` (工作区读写 - 推荐)**: 仅允许读写当前工作区项目目录下的文件。向工作区外写文件将被物理拦截。
+- **\`read-only\` (只读沙箱)**: 严禁任何 \`write\` / \`edit\` 文件修改，物理阻断副作用操作。
+- **\`danger-full-access\` (完全访问)**: 允许访问与修改操作系统任意目录（破坏性系统指令仍受底层安全 Guard 保护）。
+
+---
+
+#### 💡 组合生效逻辑
+- **Sandbox 决定能力红线**：若沙箱为 \`read-only\`，即便权限模式设为 \`bypassPermissions\`，写文件仍会被**直接硬拦截**（不弹窗）。
+- **Permission 决定交互模式**：在沙箱允许的操作范围内，再由权限模式决定是否停下来询问人工确认。`,
     sandboxReadOnly: "read-only — 只读沙箱",
     sandboxWorkspaceWrite: "workspace-write — 工作区读写（默认）",
     sandboxDangerFullAccess: "danger-full-access — 完全访问（无沙箱限制）",
@@ -158,6 +169,23 @@ export const zh: TranslationDictionary = {
     sandboxWorkspaceWriteDesc: "允许读写当前工作区文件，外部路径写操作需显式确认。",
     sandboxDangerFullAccessDesc:
       "完全放开系统与文件操作限制（破坏性系统指令仍受底层安全拦截保护）。",
+    permissionMode: "权限模式 (Permission Mode)",
+    permissionModeDesc: "决定未命中规则时门控工具的默认处理方式。",
+    permissionModeDoc: `### 权限模式 (Permission Mode)
+
+控制 Agent 执行操作时与人类的**交互与确认行为**（对齐 Claude Code 权限体系）。
+
+- **\`default\` (逐次询问 - 推荐)**: 未命中白名单规则时，终端命令 (\`bash\`) 与 MCP 工具调用均需人工弹窗确认。
+- **\`acceptEdits\` (自动放行编辑)**: 自动信任并放行所有代码与文件修改 (\`write\`, \`edit\`, \`apply_patch\`)，终端命令仍会询问确认。
+- **\`bypassPermissions\` (全部放行)**: 所有门控工具直接放行执行，不再弹窗询问（极度高危凭据嗅探等仍受 Guardian 强制安全防线保护）。
+
+---
+
+#### 💡 核心判定流程
+1. **Plan 协作模式 / Read-Only 沙箱**：修改操作直接硬阻断。
+2. **Guardian 四维安全网**：高危凭据嗅探与外发强制升级为人工审批。
+3. **会话白名单 / 规则组**：命中会话临时授权或 Allow 规则直接放行。
+4. **Permission Mode**：无匹配时依据当前模式执行自动放行或弹窗询问。`,
     modeDefault: "default — 按规则逐次询问",
     modeAcceptEdits: "acceptEdits — write/edit 自动允许",
     modeBypass: "bypassPermissions — 全部放行",

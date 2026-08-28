@@ -146,10 +146,21 @@ export const en = {
     maxOutputTokens: "Max Output Tokens",
 
     // Permissions & Sandbox section
-    permissionMode: "Permission Mode",
-    permissionModeDesc: "Determines how gated tools are handled when no rule is matched.",
     sandboxPolicy: "Sandbox Policy",
     sandboxPolicyDesc: "Restricts execution boundaries in filesystem and terminal environments.",
+    sandboxPolicyDoc: `### Sandbox Policy
+
+Defines the **physical boundaries and safety restrictions** for the Agent's environment.
+
+- **\`workspace-write\` (Workspace Read & Write - Recommended)**: Only allows modifying files inside the current workspace. External writes are blocked.
+- **\`read-only\` (Read Only Sandbox)**: Strictly prevents all \`write\` / \`edit\` modifications, enforcing read-only operation.
+- **\`danger-full-access\` (Full Access)**: Unrestricted access across the system (destructive commands remain protected by system Guard).
+
+---
+
+#### 💡 Combination Logic
+- **Sandbox enforces hard capabilities**: In \`read-only\` mode, even if permission mode is \`bypassPermissions\`, mutations are **immediately blocked** without prompting.
+- **Permission controls interactive flow**: Within sandbox boundaries, Permission Mode dictates whether human confirmation is requested.`,
     sandboxReadOnly: "read-only — Read Only Sandbox",
     sandboxWorkspaceWrite: "workspace-write — Workspace Read & Write (Default)",
     sandboxDangerFullAccess: "danger-full-access — Full Access (No Sandbox)",
@@ -158,6 +169,23 @@ export const en = {
       "Allows modifications inside current workspace; external writes require confirmation.",
     sandboxDangerFullAccessDesc:
       "Unrestricted execution (destructive system commands still protected by safety guard).",
+    permissionMode: "Permission Mode",
+    permissionModeDesc: "Determines how gated tools are handled when no rule is matched.",
+    permissionModeDoc: `### Permission Mode
+
+Controls the **interactive approval behavior** between Agent and human user (aligned with Claude Code).
+
+- **\`default\` (Ask per rule - Recommended)**: Non-exempt tools like \`bash\` or MCP require interactive confirmation when no rule matches.
+- **\`acceptEdits\` (Auto-allow write/edit)**: Automatically grants file edits (\`write\`, \`edit\`, \`apply_patch\`), while \`bash\` commands still prompt.
+- **\`bypassPermissions\` (Allow all)**: Runs all tools directly without prompts (high-risk credential access remains protected by Guardian).
+
+---
+
+#### 💡 Evaluation Pipeline
+1. **Plan Collaboration Mode / Read-Only Sandbox**: Block mutations immediately.
+2. **Guardian Safety Guard**: High-risk credential probing escalates to approval.
+3. **Session Whitelist / Rules**: Matched whitelist items execute directly.
+4. **Permission Mode**: Evaluates default fallback behavior.`,
     modeDefault: "default — Ask per rule",
     modeAcceptEdits: "acceptEdits — Auto-allow write/edit",
     modeBypass: "bypassPermissions — Allow all",

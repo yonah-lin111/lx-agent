@@ -6,6 +6,7 @@ import type {
 import { AlertCircle, Plus, ShieldCheck } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -103,6 +104,7 @@ export const PermissionSettings = ({
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="h-4 w-4 text-emerald-400" />
           <h3 className="text-sm font-semibold text-white/90">{t("settings.sandboxPolicy")}</h3>
+          <LxInfoTooltip markdown={t("settings.sandboxPolicyDoc")} placement="right" />
         </div>
         <p className="text-xs text-white/45">{t("settings.sandboxPolicyDesc")}</p>
         <div className="w-80">
@@ -123,7 +125,10 @@ export const PermissionSettings = ({
 
       {/* 模式选择 */}
       <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
-        <h3 className="text-sm font-semibold text-white/90">{t("settings.permissionMode")}</h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-white/90">{t("settings.permissionMode")}</h3>
+          <LxInfoTooltip markdown={t("settings.permissionModeDoc")} placement="right" />
+        </div>
         <p className="text-xs text-white/45">{t("settings.permissionModeDesc")}</p>
         <div className="w-80">
           <LxSelect value={settings.defaultMode} onChange={updateMode} options={modeOptions} />
