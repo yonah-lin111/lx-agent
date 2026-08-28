@@ -22,6 +22,8 @@ export interface GitStatusBarProps {
   projectId?: string
   // 是否启用交互模式（支持点击弹出菜单切换项目、分支与工作区）。默认 false。
   interactive?: boolean
+  // 是否允许切换项目（例如非新 session 下禁止切换项目，仅展示）。默认 true。
+  allowProjectChange?: boolean
   // 是否始终展示工作区（缺省时展示 'none'）。默认 false。
   alwaysShowWorktree?: boolean
   // 切换项目回调。
@@ -44,6 +46,7 @@ export const GitStatusBar = ({
   className = "flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50",
   projectId,
   interactive = false,
+  allowProjectChange = true,
   alwaysShowWorktree = false,
   onProjectChange,
   onBranchChange,
@@ -108,7 +111,7 @@ export const GitStatusBar = ({
   }, [interactive, projectPath, loadProjects, loadBranches])
 
   const currentProject = projects.find(
-    (p) => (projectId && p.id === projectId) || (projectPath && p.path === projectPath),
+    (p) => (projectPath && p.path === projectPath) || (projectId && p.id === projectId),
   )
   const isCurrentPathDesktop = Boolean(
     defaultDesktopPath &&
@@ -183,7 +186,7 @@ export const GitStatusBar = ({
 
   // 渲染项目部分
   const renderProjectItem = (): React.JSX.Element => {
-    if (!interactive) {
+    if (!interactive || !allowProjectChange) {
       return (
         <LxTooltip content={projectPath} placement="top">
           <span className="git-status-item flex min-w-0 items-center gap-1">
@@ -226,18 +229,24 @@ export const GitStatusBar = ({
                 p.name === "Desktop" ||
                 p.name === "桌面"
               const isCurrent =
-                (p.id ? p.id === projectId : !projectId && isDesktop) ||
-                (Boolean(p.path) && p.path === projectPath)
+                Boolean(projectPath) && Boolean(p.path)
+                  ? p.path === projectPath
+                  : Boolean(projectId) && Boolean(p.id)
+                    ? p.id === projectId
+                    : isCurrentPathDesktop && isDesktop
               return (
                 <button
                   key={p.id || p.path || "desktop"}
                   type="button"
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/10 ${
-                    isCurrent ? "bg-white/8 text-white font-medium" : "text-white/70"
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
+                    isCurrent
+                      ? "bg-white/8 text-white font-medium hover:bg-white/10"
+                      : "text-white/70 hover:bg-white/10"
                   }`}
                   onClick={() => {
-                    if (p.path && onProjectChange) {
-                      onProjectChange(p.id, p.path)
+                    const targetPath = p.path || defaultDesktopPath
+                    if (onProjectChange && targetPath) {
+                      onProjectChange(p.id, targetPath)
                     }
                     setIsProjectSelectOpen(false)
                   }}

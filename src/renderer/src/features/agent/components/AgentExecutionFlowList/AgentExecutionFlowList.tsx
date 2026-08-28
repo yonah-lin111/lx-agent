@@ -13,11 +13,10 @@ import {
 } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
-import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
 import { AgentExecutionFlowGroup } from "./AgentExecutionFlowGroup"
 import { AgentExecutionFlowHeader } from "./AgentExecutionFlowHeader"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
@@ -660,29 +659,7 @@ export const AgentExecutionFlowList = forwardRef<
             onScroll={handleScroll}
             className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-3 py-2 [scrollbar-gutter:stable]"
           >
-            {/* 非空列表时展示步骤项 */}
-            {messages.length > 0 && filteredSteps.length > 0 && (
-              <div className="flex shrink-0 flex-col gap-1.5">
-                {filteredSteps.map((step) => (
-                  <AgentExecutionFlowItem
-                    key={step.id}
-                    step={step}
-                    isExpanded={isStepExpanded(step)}
-                    onToggleExpand={() => toggleStepExpanded(step)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* 空状态品牌与当前模式说明 */}
-            <AgentEmptyHero mode="flow" className="my-auto py-6" />
-
-            {/* 推荐问题 */}
-            {onSelectPrompt && (
-              <div className="mt-auto mb-1 shrink-0">
-                <AgentSuggestedPromptCards onSelectPrompt={onSelectPrompt} />
-              </div>
-            )}
+            <AgentExecutionFlowEmpty onSelectPrompt={onSelectPrompt} className="my-auto" />
           </div>
         ) : steps.length > 0 ? (
           <div

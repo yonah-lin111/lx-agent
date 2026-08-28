@@ -14,6 +14,8 @@ export interface AgentStatusBarProps {
   projectPath?: string
   // 当前会话绑定的项目 ID。
   projectId?: string
+  // 是否允许切换项目（非新 session 禁止切换项目）。默认 true。
+  allowProjectChange?: boolean
   // 切换项目回调。
   onProjectChange?: (projectId: string, projectPath: string) => void
   // 切换分支回调。
@@ -59,6 +61,7 @@ const contextColor = (percent: number): string => {
 export const AgentStatusBar = ({
   projectPath,
   projectId,
+  allowProjectChange = true,
   onProjectChange,
   onBranchChange,
   onWorktreeChange,
@@ -83,6 +86,7 @@ export const AgentStatusBar = ({
           projectPath={projectPath}
           projectId={projectId}
           interactive={true}
+          allowProjectChange={allowProjectChange}
           alwaysShowWorktree={true}
           onProjectChange={onProjectChange}
           onBranchChange={onBranchChange}

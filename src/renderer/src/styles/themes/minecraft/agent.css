@@ -1234,7 +1234,10 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-[data-theme="minecraft"] .agent-empty-prompt-card {
+[data-theme="minecraft"] .agent-empty-prompt-card,
+[data-theme="minecraft"] .agent-flow-empty-header,
+[data-theme="minecraft"] .agent-flow-empty-step,
+[data-theme="minecraft"] .agent-flow-empty-prompt-card {
   font-family: var(--theme-font-family) !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;
@@ -1245,8 +1248,82 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-empty-prompt-card:hover {
+[data-theme="minecraft"] .agent-empty-prompt-card:hover,
+[data-theme="minecraft"] .agent-flow-empty-step:hover,
+[data-theme="minecraft"] .agent-flow-empty-prompt-card:hover {
   background-color: #2b2b3b !important;
+}
+
+/* 流程空状态中图标槽的 3D 浮雕凹槽样式 */
+[data-theme="minecraft"] .agent-flow-step-icon-box,
+[data-theme="minecraft"] .agent-flow-prompt-icon-box {
+  border: 2px solid #000000 !important;
+  background-color: #14141e !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+}
+
+/* READY 状态胶囊与 4 STAGES 标记 */
+[data-theme="minecraft"] .agent-flow-ready-badge {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #163520 !important;
+  color: #55ff55 !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-flow-stages-badge {
+  font-family: var(--theme-font-family) !important;
+  color: #a6a6bc !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* STEP 1~4 徽章的 3D 像素立体槽 */
+[data-theme="minecraft"] .agent-flow-badge {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-flow-badge--amber {
+  background-color: #352510 !important;
+  color: #ffaa00 !important;
+}
+
+[data-theme="minecraft"] .agent-flow-badge--purple {
+  background-color: #2c1a3a !important;
+  color: #c084fc !important;
+}
+
+[data-theme="minecraft"] .agent-flow-badge--sky {
+  background-color: #122538 !important;
+  color: #55ffff !important;
+}
+
+[data-theme="minecraft"] .agent-flow-badge--emerald {
+  background-color: #143020 !important;
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .agent-flow-empty-title {
+  color: #ffea88 !important;
+  font-weight: 600;
+  text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="minecraft"] .agent-empty-prompt-title {

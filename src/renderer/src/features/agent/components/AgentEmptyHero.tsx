@@ -12,7 +12,7 @@ export interface AgentEmptyHeroProps {
 }
 
 /**
- * AgentEmptyHero - 空状态品牌展示与当前模式功能说明组件。
+ * AgentEmptyHero - 空状态品牌展示与当前模式功能说明组件（主要用于问答对话视图）。
  */
 export const AgentEmptyHero = ({
   mode = "qa",

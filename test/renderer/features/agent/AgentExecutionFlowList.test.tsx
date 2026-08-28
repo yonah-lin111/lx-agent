@@ -13,18 +13,14 @@ describe("AgentExecutionFlowList", () => {
     const onSelectPrompt = vi.fn()
     render(<AgentExecutionFlowList messages={[]} onSelectPrompt={onSelectPrompt} />)
 
-    expect(screen.getByText("LX Agent")).not.toBeNull()
-    expect(
-      screen.getByText(
-        "Your AI development assistant, ready to help with architecture, refactoring, and tests.",
-      ),
-    ).not.toBeNull()
+    expect(screen.getByText("LX Agent · Execution Flow View")).not.toBeNull()
     expect(
       screen.getByText("Flow Mode: Full system prompt assembly & tool execution traces"),
     ).not.toBeNull()
     expect(
       screen.queryByText("Q&A Mode: Focused conversational chat & code interactions"),
     ).toBeNull()
+    expect(screen.getByText("Execution Pipeline Preview")).not.toBeNull()
     expect(screen.getByText("Suggested Prompts")).not.toBeNull()
     expect(screen.getByText("Code Refactoring")).not.toBeNull()
 

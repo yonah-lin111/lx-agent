@@ -155,36 +155,53 @@ export const AgentPage = ({
   )
   const currentSessionPath = currentSessionBinding?.cwd
 
-  // 当处于草稿态（未入库）且页面/项目发生切换时：
-  // 1. 如果草稿尚未绑定任何项目路径，或者当前草稿路径就是默认桌面路径（未被显式设置项目），则跟随当前页面/项目路径同步；
-  // 2. 如果新 session 已经明确有了项目路径（例如用户在状态栏选择过或已带入项目），切换页面时不强制回退到默认桌面。
+  const { success, error, warning } = useLxAgentToast()
+  const { t } = useTranslation()
+
+  // 追踪上一个页面的项目状态，用于判断是否是从“非项目页面”切换到“项目页面”
+  const prevProjectRef = useRef<{ id?: string; path?: string } | null>(null)
+
   useEffect(() => {
+    const prev = prevProjectRef.current
+    prevProjectRef.current = { id: currentProjectId, path: currentProjectPath }
+
+    // 仅针对新 session（尚未落库草稿态）：
     if (!currentSessionId) {
-      if (currentProjectPath) {
-        // 当前全局切换到了具体项目，草稿同步切换到目标项目
+      const currentDraft = sessionListStore.getCurrentSessionBinding()
+      const isDraftSet = currentDraft !== undefined && currentDraft.cwd !== undefined
+      const isDefaultDesktop = Boolean(defaultPath && currentDraft?.cwd === defaultPath)
+      const isFromNonProjectToProject = !prev?.path && Boolean(currentProjectPath)
+
+      // 新session + 默认桌面路径 从其他页面切换到项目页面且有 active 项目时，自动切换到该 active 项目
+      if ((!isDraftSet || isDefaultDesktop) && isFromNonProjectToProject && currentProjectPath) {
         sessionListStore.setDraftBinding({
           projectId: currentProjectId,
           cwd: currentProjectPath,
         })
-      } else {
-        // 全局无项目（例如在桌面/非项目页面）：若草稿尚未设置任何路径，才兜底为默认桌面路径
-        const existingDraft = sessionListStore.getCurrentSessionBinding()
-        if (!existingDraft?.cwd && defaultPath) {
-          sessionListStore.setDraftBinding({
-            projectId: undefined,
-            cwd: defaultPath,
-          })
-        }
+      } else if (!isDraftSet && defaultPath) {
+        sessionListStore.setDraftBinding({
+          projectId: undefined,
+          cwd: defaultPath,
+        })
       }
     }
   }, [currentSessionId, currentProjectId, currentProjectPath, defaultPath])
 
   // 会话路径绑定：
   // 1. 已落库会话：使用会话绑定的 cwd
-  // 2. 草稿新会话：使用 draftBinding.cwd（若未手动指定则直接使用当前页面项目路径或默认桌面）
-  const effectiveProjectPath = currentSessionBinding?.cwd ?? (currentProjectPath || defaultPath)
+  // 2. 草稿新会话：优先使用 draftBinding（若未设置则兜底当前页面项目或默认桌面）
+  const effectiveProjectPath =
+    currentSessionBinding !== undefined
+      ? currentSessionBinding.cwd
+      : currentSessionId
+        ? undefined
+        : currentProjectPath || defaultPath
   const effectiveProjectId =
-    currentSessionBinding !== undefined ? currentSessionBinding.projectId : currentProjectId
+    currentSessionBinding !== undefined
+      ? currentSessionBinding.projectId
+      : currentSessionId
+        ? undefined
+        : currentProjectId
   const statusBarPath = effectiveProjectPath
 
   // git 工作区列表（/gitWorktree 二级面板数据源；当前会话 cwd 即工作区绑定）。
@@ -208,9 +225,6 @@ export const AgentPage = ({
     }
     return undefined
   }, [effectiveProjectPath, worktrees])
-
-  const { success, error, warning } = useLxAgentToast()
-  const { t } = useTranslation()
 
   // 切换模型：同步更新本地选择；若处于已有会话中，立即落库 model_change entry
   const handleModelSelectChange = useCallback(
@@ -381,11 +395,23 @@ export const AgentPage = ({
     [success, error, t],
   )
 
-  // 检测当前工作区路径是否存在；若已被外部删除则自动静默回退至默认主工作区
+  // 408 行左右
+  // 切换工作区
   useEffect(() => {
+    // 仅在已存在 worktrees 且当前路径属于此仓库的某个工作区体系时，才执行工作区丢失回退检查
     if (!worktrees || worktrees.length === 0 || !effectiveProjectPath) return
     const defaultEntry = worktrees.find((wt) => wt.isDefault)
     if (!defaultEntry) return
+
+    // 如果当前 effectiveProjectPath 根本不属于该 git 仓库的任何已知工作区（例如用户刚切换到了另一个项目或普通目录），
+    // 此时绝对不能盲目用旧 worktrees 列表将其覆盖回退！
+    const belongsToCurrentRepo = worktrees.some(
+      (wt) =>
+        wt.path === effectiveProjectPath ||
+        effectiveProjectPath.startsWith(`${wt.path}/`) ||
+        wt.path.startsWith(`${effectiveProjectPath}/`),
+    )
+    if (!belongsToCurrentRepo) return
 
     // 检查当前有效路径是否在当前仓库的工作区列表中
     const existsInWorktrees = worktrees.some((wt) => wt.path === effectiveProjectPath)
@@ -471,12 +497,14 @@ export const AgentPage = ({
   )
 
   const handleNewChat = useCallback(() => {
+    const previousBinding = sessionListStore.getCurrentSessionBinding()
     createNewChat()
-    const initialCwd = currentProjectPath || defaultPath
-    if (initialCwd) {
+    const targetProjectId = previousBinding?.projectId ?? currentProjectId
+    const targetCwd = previousBinding?.cwd ?? currentProjectPath ?? defaultPath
+    if (targetCwd) {
       sessionListStore.setDraftBinding({
-        projectId: currentProjectId,
-        cwd: initialCwd,
+        projectId: targetProjectId,
+        cwd: targetCwd,
       })
     }
   }, [createNewChat, currentProjectId, currentProjectPath, defaultPath])
@@ -589,6 +617,7 @@ export const AgentPage = ({
       <AgentStatusBar
         projectPath={statusBarPath}
         projectId={effectiveProjectId}
+        allowProjectChange={!currentSessionId}
         onProjectChange={handleProjectSelect}
         onWorktreeChange={handleWorktreeSelect}
         contextUsage={contextUsage}
