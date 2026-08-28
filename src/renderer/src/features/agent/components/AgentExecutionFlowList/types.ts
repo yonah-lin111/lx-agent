@@ -96,6 +96,19 @@ export const formatTokensShort = (count: number): string => {
 }
 
 /**
+ * 并行调用批次颜色循环池（同一 turn 内不同批次异色，同批次同色）
+ */
+export const PARALLEL_BATCH_COLORS = [
+  "text-sky-400",
+  "text-purple-400",
+  "text-emerald-400",
+  "text-amber-400",
+  "text-rose-400",
+  "text-cyan-400",
+  "text-indigo-400",
+] as const
+
+/**
  * 格式化时间戳
  */
 export const formatTimestampTime = (timestamp?: number): string => {

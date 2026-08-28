@@ -690,6 +690,78 @@ describe("executionFlow", () => {
         cacheRead: 300,
         total: 1245,
       })
+      expect(steps[1].parallel).toBeUndefined()
+    })
+
+    it("当 assistant 消息包含多个并发 toolCall 时，正确标记 parallel 元数据并均匀分摊 tokens", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "并发调用" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "c1",
+              toolName: "read_file",
+              args: { path: "a.ts" },
+              status: "done",
+            },
+            {
+              kind: "toolCall",
+              toolCallId: "c2",
+              toolName: "read_file",
+              args: { path: "b.ts" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: {
+            input: 7400,
+            output: 62,
+            cacheRead: 1000,
+            totalTokens: 7462,
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(3)
+
+      expect(steps[1].kind).toBe("tool")
+      expect(steps[1].parallel).toEqual({
+        index: 1,
+        total: 2,
+        batchId: "a1",
+        batchIndex: 0,
+      })
+      expect(steps[1].tokens).toEqual({
+        input: 3700,
+        output: 31,
+        cacheRead: 500,
+        total: 3731,
+      })
+
+      expect(steps[2].kind).toBe("tool")
+      expect(steps[2].parallel).toEqual({
+        index: 2,
+        total: 2,
+        batchId: "a1",
+        batchIndex: 0,
+      })
+      expect(steps[2].tokens).toEqual({
+        input: 3700,
+        output: 31,
+        cacheRead: 500,
+        total: 3731,
+      })
     })
   })
 })

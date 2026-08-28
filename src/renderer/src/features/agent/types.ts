@@ -174,6 +174,8 @@ export interface ExecutionStep {
     cacheRead?: number
     total?: number
   }
+  // 并行调用元数据（单次模型响应并发触发多个工具调用时存在）。
+  parallel?: ExecutionStepParallel
   // 系统提示词与注入配置内容。
   systemContent?: ExecutionSystemContent
   // 用户输入内容。
@@ -192,6 +194,13 @@ export interface ExecutionStep {
   modelSwitchContent?: ExecutionModelSwitchContent
   // 异常/中断说明内容。
   errorContent?: ExecutionErrorContent
+}
+
+export interface ExecutionStepParallel {
+  index: number
+  total: number
+  batchId?: string
+  batchIndex?: number
 }
 
 export interface ExecutionModelSwitchContent {

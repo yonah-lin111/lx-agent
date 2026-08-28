@@ -65,6 +65,8 @@ export const buildExecutionSteps = (
   const handledToolCallIds = new Set<string>()
   let currentTurn = 0
   let stepIndex = steps.length > 0 ? 0 : -1
+  let lastTurnForParallelBatch = -1
+  let turnParallelBatchCount = 0
 
   for (const message of messages) {
     // 处理上下文压缩摘要（独立步骤，不计入对话轮次）
@@ -176,6 +178,15 @@ export const buildExecutionSteps = (
       (b) => b.kind === "text" && Boolean(b.text.trim()),
     )
     const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
+    let toolCallIndexInMessage = 0
+
+    if (turn !== lastTurnForParallelBatch) {
+      lastTurnForParallelBatch = turn
+      turnParallelBatchCount = 0
+    }
+
+    const currentBatchIndexInTurn =
+      toolCallBlocksCount > 1 ? turnParallelBatchCount++ : undefined
 
     for (let blockIdx = 0; blockIdx < message.blocks.length; blockIdx++) {
       const block = message.blocks[blockIdx]
@@ -229,6 +240,7 @@ export const buildExecutionSteps = (
 
       // 工具调用
       if (block.kind === "toolCall") {
+        toolCallIndexInMessage++
         handledToolCallIds.add(block.toolCallId)
         stepIndex++
         const paired = toolResultsByCallId.get(block.toolCallId)
@@ -265,6 +277,16 @@ export const buildExecutionSteps = (
         if (toolCompletedAt !== undefined) {
           currentBlockStartedAt = toolCompletedAt
         }
+
+        const parallelMeta =
+          toolCallBlocksCount > 1
+            ? {
+                index: toolCallIndexInMessage,
+                total: toolCallBlocksCount,
+                batchId: message.id,
+                batchIndex: currentBatchIndexInTurn ?? 0,
+              }
+            : undefined
 
         const toolTokens =
           !hasTextBlock && message.usage
@@ -303,6 +325,7 @@ export const buildExecutionSteps = (
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
             durationMs: toolDuration,
+            parallel: parallelMeta,
             tokens: subagentData?.usage
               ? {
                   input: subagentData.usage.input,
@@ -339,6 +362,7 @@ export const buildExecutionSteps = (
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
             durationMs: toolDuration,
+            parallel: parallelMeta,
             tokens: toolTokens,
             toolContent: {
               toolName: block.toolName,

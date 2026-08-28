@@ -335,6 +335,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     stepSpan: "Total span {{duration}}",
     agentOverhead: "Agent response {{duration}}",
     toolCallsCount: "{{count}} tool calls",
+    parallelCall: "Parallel {{index}}/{{total}}",
+    parallelToolNotice: "Parallel call from single model response ({{index}}/{{total}}, shared context)",
     copyContent: "Copy Content",
     copyJson: "Copy JSON",
     copied: "Copied",

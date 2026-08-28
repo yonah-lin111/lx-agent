@@ -328,6 +328,8 @@ export const zh: TranslationDictionary = {
     stepSpan: "总跨度 {{duration}}",
     agentOverhead: "Agent 响应 {{duration}}",
     toolCallsCount: "共 {{count}} 次工具调用",
+    parallelCall: "并行 {{index}}/{{total}}",
+    parallelToolNotice: "单次大模型响应并发触发（第 {{index}}/{{total}} 项，共享该次请求的上下文）",
     copyContent: "复制内容",
     copyJson: "复制 JSON",
     copied: "已复制",

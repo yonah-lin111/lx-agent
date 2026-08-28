@@ -1353,4 +1353,93 @@ describe("AgentExecutionFlowList", () => {
     // 4. Header 顶栏右侧不再显示旧版的 "xxx tok"
     expect(screen.queryByText(/tok$/)).toBeNull()
   })
+
+  it("当单条助手消息产生多个工具调用时，在底部 Token 栏右侧展示纯文字 Parallel 1/N 且同批次同色、异批次异色", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "并发工具测试" }],
+        isStreaming: false,
+      },
+      // 批次 1 (2 个工具)
+      {
+        id: "a1",
+        role: "assistant",
+        usage: { input: 1000, output: 50, cacheRead: 0, totalTokens: 1050 },
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "render_svg",
+            args: { svg: "<svg></svg>" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "render_html",
+            args: { html: "<div></div>" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          { kind: "toolResult", toolCallId: "c1", toolName: "render_svg", text: "ok", isError: false },
+          { kind: "toolResult", toolCallId: "c2", toolName: "render_html", text: "ok", isError: false },
+        ],
+        isStreaming: false,
+      },
+      // 批次 2 (2 个工具)
+      {
+        id: "a2",
+        role: "assistant",
+        usage: { input: 1200, output: 60, cacheRead: 0, totalTokens: 1260 },
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c3",
+            toolName: "read",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c4",
+            toolName: "read",
+            args: { path: "b.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={false} />)
+
+    // 展开 Execute Group（如果折叠了）
+    const groupHeader = container.querySelector(".agent-execution-flow-group-header")
+    if (groupHeader) {
+      fireEvent.click(groupHeader)
+    }
+
+    const parallelElements = screen.getAllByTestId("flow-item-parallel")
+    expect(parallelElements).toHaveLength(4)
+
+    // 批次 1 中的两个工具共享颜色 text-sky-400
+    expect(parallelElements[0].textContent).toBe("Parallel 1/2")
+    expect(parallelElements[0].className).toContain("text-sky-400")
+    expect(parallelElements[1].textContent).toBe("Parallel 2/2")
+    expect(parallelElements[1].className).toContain("text-sky-400")
+
+    // 同一 turn 内的批次 2 中的工具使用不同颜色 text-purple-400
+    expect(parallelElements[2].textContent).toBe("Parallel 1/2")
+    expect(parallelElements[2].className).toContain("text-purple-400")
+    expect(parallelElements[3].textContent).toBe("Parallel 2/2")
+    expect(parallelElements[3].className).toContain("text-purple-400")
+  })
 })
