@@ -32,7 +32,8 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   },
   {
     pattern: /^\s*git\s+reset\s+--hard(\s|$)/,
-    reason: "Destructive git reset --hard is prohibited to prevent uncommitted changes from being lost.",
+    reason:
+      "Destructive git reset --hard is prohibited to prevent uncommitted changes from being lost.",
   },
   {
     pattern: /^\s*git\s+clean\s+.*-[a-zA-Z]*f[a-zA-Z]*(\s|$)/,
@@ -90,7 +91,10 @@ export function unwrapCommand(commandStr: string, depth = 0): string {
 
   // 处理 env 包装: env [VAR=VAL ...] <command>
   if (/^env\s+/.test(trimmed)) {
-    const withoutEnv = trimmed.replace(/^env(\s+[a-zA-Z_][a-zA-Z0-9_]*=[^\s]*|\s+-[a-zA-Z0-9]+)*\s+/, "")
+    const withoutEnv = trimmed.replace(
+      /^env(\s+[a-zA-Z_][a-zA-Z0-9_]*=[^\s]*|\s+-[a-zA-Z0-9]+)*\s+/,
+      "",
+    )
     return unwrapCommand(withoutEnv, depth + 1)
   }
 
@@ -135,7 +139,8 @@ export function evaluateCommandSafety(commandStr: string): CommandSafetyEvaluati
     if (/(?:>|>>)\s*[^\s&|;]+/.test(unwrapped) || /(?:>|>>)\s*[^\s&|;]+/.test(rawSubCmd)) {
       return {
         level: "dangerous",
-        reason: "[Security Guard] File redirection or file creation via shell commands is prohibited in read-only / plan mode.",
+        reason:
+          "[Security Guard] File redirection or file creation via shell commands is prohibited in read-only / plan mode.",
         matchedCommand: unwrapped,
       }
     }
@@ -144,7 +149,8 @@ export function evaluateCommandSafety(commandStr: string): CommandSafetyEvaluati
     if (/^\s*(touch|mkdir|rmdir|cp|mv|tee|sed\s+-i|truncate)\b/.test(unwrapped)) {
       return {
         level: "dangerous",
-        reason: "[Security Guard] Filesystem mutation commands are prohibited in read-only / plan mode.",
+        reason:
+          "[Security Guard] Filesystem mutation commands are prohibited in read-only / plan mode.",
         matchedCommand: unwrapped,
       }
     }

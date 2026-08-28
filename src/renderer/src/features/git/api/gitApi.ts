@@ -1,8 +1,4 @@
-import type {
-  GitCheckoutBranchResult,
-  GitStatus,
-  GitWorktreeEntry,
-} from "@shared/contracts/git"
+import type { GitCheckoutBranchResult, GitStatus, GitWorktreeEntry } from "@shared/contracts/git"
 
 // Git feature 对 preload API 的访问层。
 export const gitApi = {
@@ -14,4 +10,3 @@ export const gitApi = {
   checkoutBranch: (directory: string, branch: string): Promise<GitCheckoutBranchResult> =>
     window.api.git.checkoutBranch(directory, branch),
 }
-

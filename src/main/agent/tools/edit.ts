@@ -7,7 +7,11 @@ import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
 const replaceEditSchema = z.object({
-  oldText: z.string().describe("Original text to replace, must be unique in the file and non-overlapping with other edits"),
+  oldText: z
+    .string()
+    .describe(
+      "Original text to replace, must be unique in the file and non-overlapping with other edits",
+    ),
   newText: z.string().describe("New text to replace oldText with"),
 })
 
@@ -158,7 +162,9 @@ export const createEditTool = (
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
+        content: [
+          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
+        ],
         details: { refused: true },
       }
     }
@@ -180,7 +186,9 @@ export const createEditTool = (
             ? (error as NodeJS.ErrnoException).code
             : "unknown"
         return {
-          content: [{ type: "text", text: `Cannot edit file ${params.path}. Error code: ${code}.` }],
+          content: [
+            { type: "text", text: `Cannot edit file ${params.path}. Error code: ${code}.` },
+          ],
           details: { error: String(code) },
         }
       }

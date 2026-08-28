@@ -15,9 +15,15 @@ const DEFAULT_LIMIT = 100
 const grepSchema = z.object({
   pattern: z.string().describe("Search pattern (regex or literal string)"),
   path: z.string().describe("Directory or file to search in (defaults to project root)").optional(),
-  glob: z.string().describe("Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'").optional(),
+  glob: z
+    .string()
+    .describe("Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'")
+    .optional(),
   ignoreCase: z.boolean().describe("Whether to ignore case sensitivity").optional(),
-  literal: z.boolean().describe("Whether to treat pattern as literal string instead of regex").optional(),
+  literal: z
+    .boolean()
+    .describe("Whether to treat pattern as literal string instead of regex")
+    .optional(),
   context: z.number().describe("Number of context lines before and after match").optional(),
   limit: z.number().describe(`Maximum matches to return (default: ${DEFAULT_LIMIT})`).optional(),
 })
@@ -157,7 +163,10 @@ const grepWithRg = async (
   if (exitCode !== 0 && exitCode !== 1) {
     return {
       content: [
-        { type: "text", text: `ripgrep execution failed: ${stderr.trim() || `exit code ${exitCode}`}` },
+        {
+          type: "text",
+          text: `ripgrep execution failed: ${stderr.trim() || `exit code ${exitCode}`}`,
+        },
       ],
       details: { error: stderr.trim() },
     }
@@ -210,7 +219,9 @@ const formatGrepOutput = async (
     output = text
   } else {
     if (linesTruncated) {
-      notices.push(`Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars; use 'read' tool to view full content`)
+      notices.push(
+        `Some lines truncated to ${GREP_MAX_LINE_LENGTH} chars; use 'read' tool to view full content`,
+      )
     }
     if (notices.length > 0) {
       output += `\n\n[${notices.join(". ")}]`
@@ -305,7 +316,12 @@ export const createGrepTool = (
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
+        content: [
+          {
+            type: "text",
+            text: `Access denied to path outside project root: ${params.path ?? "."}`,
+          },
+        ],
         details: { refused: true },
       }
     }

@@ -184,7 +184,9 @@ export const PermissionStatusButton = ({
           {request.toolName}
         </span>
         {phase === "confirm" && (
-          <p className="text-xs whitespace-normal text-amber-300/90">{t("agent.permissionConfirmAllText")}</p>
+          <p className="text-xs whitespace-normal text-amber-300/90">
+            {t("agent.permissionConfirmAllText")}
+          </p>
         )}
         <div className="flex flex-col gap-0.5">
           {options.map((option, index) => (

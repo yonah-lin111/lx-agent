@@ -63,13 +63,17 @@ describe("PermissionStatusButton", () => {
       expect(screen.getByText(label)).not.toBeNull()
     }
     expect(optionCount()).toBe(6)
-    expect(screen.getAllByRole("option", { hidden: true })[0]!.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getAllByRole("option", { hidden: true })[0]!.getAttribute("aria-selected")).toBe(
+      "true",
+    )
   })
 
   it("鼠标悬停高亮，点击选中触发 onRespond", () => {
     const { onRespond } = renderButton()
     fireEvent.mouseEnter(screen.getByText("Deny"))
-    expect(screen.getAllByRole("option", { hidden: true })[3]!.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getAllByRole("option", { hidden: true })[3]!.getAttribute("aria-selected")).toBe(
+      "true",
+    )
     fireEvent.click(screen.getByText("Deny"))
     expect(onRespond).toHaveBeenCalledWith("deny")
     fireEvent.click(screen.getByText("Allow for Session"))
@@ -79,7 +83,9 @@ describe("PermissionStatusButton", () => {
   it("键盘 ↑↓ 切换、Enter 确认", () => {
     const { onRespond } = renderButton()
     fireEvent.keyDown(document, { key: "ArrowDown" })
-    expect(screen.getAllByRole("option", { hidden: true })[1]!.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getAllByRole("option", { hidden: true })[1]!.getAttribute("aria-selected")).toBe(
+      "true",
+    )
     fireEvent.keyDown(document, { key: "Enter" })
     expect(onRespond).toHaveBeenCalledWith("allow", true)
   })
@@ -101,7 +107,9 @@ describe("PermissionStatusButton", () => {
     fireEvent.click(screen.getByText("Allow All"))
     fireEvent.click(screen.getByText("Back"))
     expect(optionCount()).toBe(6)
-    expect(screen.getAllByRole("option", { hidden: true })[5]!.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getAllByRole("option", { hidden: true })[5]!.getAttribute("aria-selected")).toBe(
+      "true",
+    )
   })
 
   it("Esc 最小化：收起 tooltip，请求仍挂起且 icon 可重新展开", () => {

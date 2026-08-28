@@ -1,12 +1,4 @@
-import {
-  Brain,
-  Code2,
-  FileCode,
-  Layers,
-  Sparkles,
-  Terminal,
-  Workflow,
-} from "lucide-react"
+import { Brain, Code2, FileCode, Layers, Sparkles, Terminal, Workflow } from "lucide-react"
 import type React from "react"
 import { DEFAULT_PROMPT_CARDS } from "@/features/agent/constants"
 import { useTranslation } from "@/i18n"

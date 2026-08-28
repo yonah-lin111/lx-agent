@@ -1,5 +1,6 @@
 import type React from "react"
 import { AgentCompactionSummary } from "@/features/agent/components/blocks"
+import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { AgentAssistantMessage } from "./AgentAssistantMessage"
 import { AgentUserMessage } from "./AgentUserMessage"
 import { useMessageItemGroups } from "./hooks/useMessageItemGroups"
@@ -29,6 +30,7 @@ export const AgentMessageItem = ({
   onContinue,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
+  const settings = useModelSettings()
 
   // 上下文压缩摘要块：非交互（不可编辑/删除），诚实地标注"此处已压缩"；压缩中展示 loading 占位。
   if (message.role === "compactionSummary") {
@@ -38,7 +40,7 @@ export const AgentMessageItem = ({
         summary={summary}
         isLoading={message.isCompacting}
         isManual={message.isManual}
-        modelName={message.model}
+        modelName={getModelDisplayName(message.model, undefined, settings)}
         usage={message.compactionUsage}
         summaryTokens={message.summaryTokens}
       />

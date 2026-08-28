@@ -37,8 +37,6 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
           ? args.html || ""
           : ""
 
-  const isRunning = !content.result && !content.isError
-
   return (
     <div className="agent-execution-flow-tool-visual flex flex-col gap-2.5 font-mono text-[11px]">
       {/* 1. Visual Graphic Preview (置于首位) */}

@@ -55,7 +55,9 @@ describe("webfetch 工具", () => {
       return fakeResponse("should not fetch")
     }) as typeof fetch)
     for (const url of hosts) {
-      await expect(tool.execute("t1", { url })).rejects.toThrow(/Private\/internal network addresses are not allowed|私网|内网/)
+      await expect(tool.execute("t1", { url })).rejects.toThrow(
+        /Private\/internal network addresses are not allowed|私网|内网/,
+      )
     }
     expect(fetchCalls).toBe(0)
   })

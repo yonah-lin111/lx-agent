@@ -2,6 +2,8 @@ import { Sparkles } from "lucide-react"
 import type React from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { LxTooltip } from "@/components/ui/LxTooltip"
+import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type { ExecutionModelSwitchContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -15,15 +17,23 @@ export const FlowItemModelSwitchContent = ({
   previewRef,
 }: FlowItemModelSwitchContentProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const settings = useModelSettings()
+  const modelDisplayName = getModelDisplayName(content.model, content.provider, settings)
 
   return (
     <div className="agent-execution-flow-model-switch-content flex flex-col gap-2 font-mono text-[11px] text-white/70">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <div className="flex items-center gap-1.5">
           <span className="text-white/40">Model:</span>
-          <span className="font-semibold text-cyan-300">
-            {content.model || "(Unknown model)"}
-          </span>
+          {content.model && content.model !== modelDisplayName ? (
+            <LxTooltip placement="top" content={content.model}>
+              <span className="font-semibold text-cyan-300">{modelDisplayName}</span>
+            </LxTooltip>
+          ) : (
+            <span className="font-semibold text-cyan-300">
+              {modelDisplayName || "(Unknown model)"}
+            </span>
+          )}
         </div>
         {content.provider && (
           <div className="flex items-center gap-1.5">
@@ -57,9 +67,7 @@ export const FlowItemModelSwitchContent = ({
           </div>
         </div>
       ) : (
-        <div className="italic text-white/35">
-          {t("agent.noVendorPrompt")}
-        </div>
+        <div className="italic text-white/35">{t("agent.noVendorPrompt")}</div>
       )}
     </div>
   )

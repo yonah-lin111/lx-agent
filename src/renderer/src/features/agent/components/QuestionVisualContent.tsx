@@ -1,9 +1,5 @@
 import type React from "react"
-import {
-  AsciiVisualContent,
-  HtmlVisualContent,
-  SvgVisualContent,
-} from "./visuals"
+import { AsciiVisualContent, HtmlVisualContent, SvgVisualContent } from "./visuals"
 
 export interface QuestionVisualContentProps {
   content?: string
@@ -22,7 +18,8 @@ export const QuestionVisualContent = ({
   if (!content) return null
 
   const trimmed = content.trim()
-  const isSvg = trimmed.startsWith("<svg") || (trimmed.startsWith("<?xml") && trimmed.includes("<svg"))
+  const isSvg =
+    trimmed.startsWith("<svg") || (trimmed.startsWith("<?xml") && trimmed.includes("<svg"))
   if (isSvg) {
     return <SvgVisualContent svg={content} className={className} />
   }

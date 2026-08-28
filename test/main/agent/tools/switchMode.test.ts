@@ -12,7 +12,9 @@ describe("switch_mode tool", () => {
     })
 
     expect(onSwitchMode).toHaveBeenCalledWith("plan")
-    expect((result.content[0] as any).text).toContain("Successfully switched collaboration mode to 'plan'")
+    expect((result.content[0] as any).text).toContain(
+      "Successfully switched collaboration mode to 'plan'",
+    )
   })
 
   it("should switch mode to default and trigger callback", async () => {
@@ -25,6 +27,8 @@ describe("switch_mode tool", () => {
     })
 
     expect(onSwitchMode).toHaveBeenCalledWith("default")
-    expect((result.content[0] as any).text).toContain("Successfully switched collaboration mode to 'default'")
+    expect((result.content[0] as any).text).toContain(
+      "Successfully switched collaboration mode to 'default'",
+    )
   })
 })

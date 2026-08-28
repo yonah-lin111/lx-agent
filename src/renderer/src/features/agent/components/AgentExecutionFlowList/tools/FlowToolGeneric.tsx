@@ -55,11 +55,7 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
                 : "bg-black/40 text-white/80"
             }`}
           >
-            <FlowItemExpandableText
-              content={content.result}
-              fallbackText="-"
-              maxLines={3}
-            />
+            <FlowItemExpandableText content={content.result} fallbackText="-" maxLines={3} />
           </div>
         </div>
       )}

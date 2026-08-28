@@ -82,17 +82,14 @@ describe("Claude Code Workspace Memory Manager & Tool", () => {
     const tool = createMemoryTool(testDir)
 
     // 1. Save
-    const saveResult = await tool.execute(
-      "call_1",
-      {
-        action: "save",
-        topic: "coding_guidelines",
-        name: "Coding Guidelines",
-        description: "Strict typescript and unit tests rules",
-        type: "project",
-        content: "## Rules\n1. Always run vitest.\n2. No any types.",
-      },
-    )
+    const saveResult = await tool.execute("call_1", {
+      action: "save",
+      topic: "coding_guidelines",
+      name: "Coding Guidelines",
+      description: "Strict typescript and unit tests rules",
+      type: "project",
+      content: "## Rules\n1. Always run vitest.\n2. No any types.",
+    })
     const saveFirst = saveResult.content[0]
     if (saveFirst.type === "text") {
       expect(saveFirst.text).toContain("Successfully saved memory note")

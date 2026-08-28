@@ -86,6 +86,16 @@ export const formatTokenCount = (n: number): string => {
 }
 
 /**
+ * 格式化 Token 简短计数（IN / OUT 展示用）
+ */
+export const formatTokensShort = (count: number): string => {
+  if (count < 1000) return count.toString()
+  if (count < 10000) return `${(count / 1000).toFixed(1)}k`
+  if (count < 1000000) return `${Math.round(count / 1000)}k`
+  return `${(count / 1000000).toFixed(1)}M`
+}
+
+/**
  * 格式化时间戳
  */
 export const formatTimestampTime = (timestamp?: number): string => {

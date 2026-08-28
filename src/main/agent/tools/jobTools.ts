@@ -7,9 +7,14 @@ const jobOutputSchema = z.object({
   job_id: z.string().describe("Background job ID, e.g. 'bash-1'"),
   wait: z
     .boolean()
-    .describe("Whether to block and wait for new log output or job completion when no new output is available (optional, default false non-blocking)")
+    .describe(
+      "Whether to block and wait for new log output or job completion when no new output is available (optional, default false non-blocking)",
+    )
     .optional(),
-  timeout_ms: z.number().describe("Maximum milliseconds to wait (default 10000ms, max 60000ms)").optional(),
+  timeout_ms: z
+    .number()
+    .describe("Maximum milliseconds to wait (default 10000ms, max 60000ms)")
+    .optional(),
 })
 
 const jobListSchema = z.object({})
@@ -49,7 +54,9 @@ export const createJobOutputTool = (
     )
     if (!res) {
       return {
-        content: [{ type: "text", text: `Job ${params.job_id} not found. Please verify the job ID.` }],
+        content: [
+          { type: "text", text: `Job ${params.job_id} not found. Please verify the job ID.` },
+        ],
         details: { error: "job_not_found" },
       }
     }
@@ -72,7 +79,8 @@ export const createJobOutputTool = (
 export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobListSchema> => ({
   name: "job_list",
   label: "List jobs",
-  description: "List all background jobs, statuses, PIDs, and run durations in the current session.",
+  description:
+    "List all background jobs, statuses, PIDs, and run durations in the current session.",
   inputSchema: jobListSchema,
   execute: async () => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
@@ -103,7 +111,8 @@ export const createJobListTool = (sessionDeps?: SessionDeps): AgentTool<typeof j
 export const createJobKillTool = (sessionDeps?: SessionDeps): AgentTool<typeof jobKillSchema> => ({
   name: "job_kill",
   label: "Kill job",
-  description: "Send termination signal to the process tree of a background job to cleanly shut down long-running processes.",
+  description:
+    "Send termination signal to the process tree of a background job to cleanly shut down long-running processes.",
   inputSchema: jobKillSchema,
   execute: async (_toolCallId, params) => {
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined

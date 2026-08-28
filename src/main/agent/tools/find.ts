@@ -11,7 +11,9 @@ import { DEFAULT_MAX_BYTES, truncateHead } from "./truncate"
 const DEFAULT_LIMIT = 1000
 
 const findSchema = z.object({
-  pattern: z.string().describe("Glob pattern to match files, e.g. '*.ts', '**/*.json', 'src/**/*.spec.ts'"),
+  pattern: z
+    .string()
+    .describe("Glob pattern to match files, e.g. '*.ts', '**/*.json', 'src/**/*.spec.ts'"),
   path: z.string().describe("Directory to search in (defaults to project root)").optional(),
   limit: z.number().describe(`Maximum results to return (default: ${DEFAULT_LIMIT})`).optional(),
 })
@@ -66,7 +68,9 @@ const findWithFd = async (
   }
   if (exitCode !== 0) {
     return {
-      content: [{ type: "text", text: `fd execution failed: ${stderr.trim() || `exit code ${exitCode}`}` }],
+      content: [
+        { type: "text", text: `fd execution failed: ${stderr.trim() || `exit code ${exitCode}`}` },
+      ],
       details: { error: stderr.trim() },
     }
   }
@@ -137,7 +141,12 @@ export const createFindTool = (
     const searchPath = resolveToCwd(params.path || ".", cwd)
     if (!searchPath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
+        content: [
+          {
+            type: "text",
+            text: `Access denied to path outside project root: ${params.path ?? "."}`,
+          },
+        ],
         details: { refused: true },
       }
     }

@@ -218,10 +218,10 @@ const extractConversationText = (messages: AgentMessage[]): string => {
                   .join("\n")
               : message.content
             : message.role === "compactionSummary"
-            ? message.summary
-            : message.role === "modelSwitch"
-              ? `[Model Switched to ${message.model}]`
-              : ""
+              ? message.summary
+              : message.role === "modelSwitch"
+                ? `[Model Switched to ${message.model}]`
+                : ""
     if (text.trim()) parts.push(`${prefix}: ${text}`)
   }
   return parts.join("\n")

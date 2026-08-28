@@ -1,4 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
+import { getModelDisplayName } from "./hooks/modelsStore"
 import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionStepStatus } from "./types"
 
 /**
@@ -109,13 +110,16 @@ export const buildExecutionSteps = (
     if (message.role === "modelSwitch") {
       stepIndex++
       const isInitial = message.isInitial === true
-      const modelName = message.model || "Unknown Model"
+      const rawModel = message.model || "Unknown Model"
+      const modelDisplayName = getModelDisplayName(message.model, message.provider) || rawModel
       steps.push({
         id: `step-${stepIndex}-model-switch`,
         turnIndex: 0,
         stepIndex,
         kind: "modelSwitch",
-        title: isInitial ? `Initial Model: ${modelName}` : `Model Switched: ${modelName}`,
+        title: isInitial
+          ? `Initial Model: ${modelDisplayName}`
+          : `Model Switched: ${modelDisplayName}`,
         subtitle: message.provider
           ? `Provider: ${message.provider}${message.family ? ` (${message.family})` : ""}`
           : undefined,
@@ -168,6 +172,10 @@ export const buildExecutionSteps = (
     // 处理助手消息或工具消息
     const turn = currentTurn > 0 ? currentTurn : 1
     let currentBlockStartedAt = message.firstChunkTimestamp ?? message.timestamp
+    const hasTextBlock = message.blocks.some(
+      (b) => b.kind === "text" && Boolean(b.text.trim()),
+    )
+    const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
 
     for (let blockIdx = 0; blockIdx < message.blocks.length; blockIdx++) {
       const block = message.blocks[blockIdx]
@@ -203,6 +211,15 @@ export const buildExecutionSteps = (
           startedAt: start,
           completedAt: completed,
           durationMs: thinkingDuration,
+          tokens:
+            !hasTextBlock && toolCallBlocksCount === 0 && message.usage
+              ? {
+                  input: message.usage.input,
+                  output: message.usage.output,
+                  cacheRead: message.usage.cacheRead,
+                  total: message.usage.totalTokens,
+                }
+              : undefined,
           thinkingContent: {
             text: block.text,
           },
@@ -249,6 +266,26 @@ export const buildExecutionSteps = (
           currentBlockStartedAt = toolCompletedAt
         }
 
+        const toolTokens =
+          !hasTextBlock && message.usage
+            ? toolCallBlocksCount > 1
+              ? {
+                  input: Math.round(message.usage.input / toolCallBlocksCount),
+                  output: Math.round(message.usage.output / toolCallBlocksCount),
+                  cacheRead:
+                    message.usage.cacheRead !== undefined
+                      ? Math.round(message.usage.cacheRead / toolCallBlocksCount)
+                      : undefined,
+                  total: Math.round(message.usage.totalTokens / toolCallBlocksCount),
+                }
+              : {
+                  input: message.usage.input,
+                  output: message.usage.output,
+                  cacheRead: message.usage.cacheRead,
+                  total: message.usage.totalTokens,
+                }
+            : undefined
+
         if (isSubagent) {
           const subagentData = block.subagent ?? pairedResult?.subagent
           const subagentName = subagentData?.name || block.toolName
@@ -273,7 +310,7 @@ export const buildExecutionSteps = (
                   cacheRead: subagentData.usage.cacheRead,
                   total: subagentData.usage.totalTokens,
                 }
-              : undefined,
+              : toolTokens,
             subagentContent: {
               name: subagentName,
               subagent: subagentData,
@@ -302,6 +339,7 @@ export const buildExecutionSteps = (
             startedAt: toolStartedAt,
             completedAt: toolCompletedAt,
             durationMs: toolDuration,
+            tokens: toolTokens,
             toolContent: {
               toolName: block.toolName,
               toolCallId: block.toolCallId,

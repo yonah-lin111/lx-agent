@@ -4,15 +4,15 @@ export * from "./AgentInput"
 export * from "./AgentMessageList"
 export { AgentModelSelect, type AgentModelSelectProps } from "./AgentModelSelect"
 export {
-  QuestionVisualContent,
-  type QuestionVisualContentProps,
-} from "./QuestionVisualContent"
-export {
   AgentSuggestedPromptCards,
   type AgentSuggestedPromptCardsProps,
 } from "./AgentSuggestedPromptCards"
 export * from "./blocks"
 export * from "./panels"
-export * from "./visuals"
+export {
+  QuestionVisualContent,
+  type QuestionVisualContentProps,
+} from "./QuestionVisualContent"
 export { SuggestedQuestions } from "./SuggestedQuestions"
 export * from "./status-bar"
+export * from "./visuals"

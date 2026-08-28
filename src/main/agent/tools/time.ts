@@ -5,7 +5,8 @@ import type { AgentTool } from "../core/types"
 export const createTimeTool = (): AgentTool<z.ZodType<Record<string, never>>> => ({
   name: "time",
   label: "Current time",
-  description: "Get the current local time and timezone on the machine. Use when you need to know the current date, time, or timezone.",
+  description:
+    "Get the current local time and timezone on the machine. Use when you need to know the current date, time, or timezone.",
   inputSchema: z.object({}),
   execute: async () => {
     const now = new Date()

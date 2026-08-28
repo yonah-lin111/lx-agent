@@ -1,6 +1,6 @@
+import type { PermissionSettings } from "@shared/contracts/agent"
 import { describe, expect, it, vi } from "vitest"
 import { evaluateCommandSafety, unwrapCommand } from "@/agent/guard/commandSafetyGuard"
-import type { PermissionSettings } from "@shared/contracts/agent"
 
 const holder = vi.hoisted(() => ({
   permissionSettings: {
@@ -63,7 +63,8 @@ describe("CommandSafetyGuard", () => {
     expect(permissionManager.evaluate("bash", { command: "git reset --hard HEAD~1" })).toBe("deny")
 
     // 敏感指令即使在 allow 规则中也提升为 ask
-    expect(permissionManager.evaluate("bash", { command: "git push --force origin main" })).toBe("ask")
+    expect(permissionManager.evaluate("bash", { command: "git push --force origin main" })).toBe(
+      "ask",
+    )
   })
 })
-

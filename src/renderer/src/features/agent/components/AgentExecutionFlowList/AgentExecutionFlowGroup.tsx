@@ -11,11 +11,17 @@ import {
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
-import { copyToClipboard, formatDurationMs, formatJsonString, formatTokenCount } from "./types"
+import {
+  copyToClipboard,
+  formatDurationMs,
+  formatJsonString,
+  formatTokensShort,
+} from "./types"
 
 export interface AgentExecutionFlowGroupProps {
   groupId: string
@@ -57,9 +63,19 @@ export const AgentExecutionFlowGroup = ({
   const isDone = !isRunning && !isError
 
   // 聚合静态总耗时与总 Token（优先按首尾时间戳跨度计算，兼顾单步累加保底）
-  const { staticDurationMs, totalTokens, firstTimestamp } = useMemo(() => {
+  const {
+    staticDurationMs,
+    totalTokens,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    firstTimestamp,
+  } = useMemo(() => {
     let sumDuration = 0
     let tokens = 0
+    let input = 0
+    let output = 0
+    let cacheRead = 0
     let firstTs: number | undefined
     let lastTs: number | undefined
     let lastStepDuration: number | undefined
@@ -68,8 +84,19 @@ export const AgentExecutionFlowGroup = ({
       if (step.durationMs !== undefined) {
         sumDuration += step.durationMs
       }
-      if (step.tokens?.total !== undefined) {
-        tokens += step.tokens.total
+      if (step.tokens) {
+        if (step.tokens.total !== undefined) {
+          tokens += step.tokens.total
+        }
+        if (step.tokens.input !== undefined) {
+          input += step.tokens.input
+        }
+        if (step.tokens.output !== undefined) {
+          output += step.tokens.output
+        }
+        if (step.tokens.cacheRead !== undefined) {
+          cacheRead += step.tokens.cacheRead
+        }
       }
       if (step.timestamp !== undefined) {
         if (firstTs === undefined) {
@@ -91,7 +118,14 @@ export const AgentExecutionFlowGroup = ({
       }
     }
 
-    return { staticDurationMs: calculatedDuration, totalTokens: tokens, firstTimestamp: firstTs }
+    return {
+      staticDurationMs: calculatedDuration,
+      totalTokens: tokens,
+      inputTokens: input,
+      outputTokens: output,
+      cacheReadTokens: cacheRead,
+      firstTimestamp: firstTs,
+    }
   }, [steps])
 
   // 运行中的实时动态耗时更新（若存在首个时间戳则直接以 Date.now() - firstTimestamp 动态刷新）
@@ -213,11 +247,7 @@ export const AgentExecutionFlowGroup = ({
               </span>
             )}
 
-            {totalTokens > 0 && !isRunning && (
-              <span className="hidden shrink-0 leading-none text-white/35 sm:inline">
-                {formatTokenCount(totalTokens)} tok
-              </span>
-            )}
+
 
             {/* 状态图标 */}
             {isRunning && (
@@ -302,6 +332,40 @@ export const AgentExecutionFlowGroup = ({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 底部 Token 指标栏：折叠与展开状态下均可见，仅在非 running 且存在有效 Token 时渲染 */}
+      {!isRunning && (inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
+        <div className="agent-execution-flow-group-footer flex items-center justify-start border-t border-white/5 px-2.5 py-1 select-none">
+          <LxTooltip
+            placement="top"
+            content={
+              <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+                <span>Input: {inputTokens.toLocaleString()}</span>
+                <span>Output: {outputTokens.toLocaleString()}</span>
+                {cacheReadTokens > 0 && (
+                  <span>Cache read: {cacheReadTokens.toLocaleString()}</span>
+                )}
+              </div>
+            }
+          >
+            <span className="flex items-center gap-1 font-mono text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
+              <span>IN {formatTokensShort(inputTokens)}</span>
+              <span aria-hidden="true" className="opacity-40">
+                ·
+              </span>
+              <span>OUT {formatTokensShort(outputTokens)}</span>
+              {cacheReadTokens > 0 && (
+                <>
+                  <span aria-hidden="true" className="opacity-40">
+                    ·
+                  </span>
+                  <span>CACHE {formatTokensShort(cacheReadTokens)}</span>
+                </>
+              )}
+            </span>
+          </LxTooltip>
         </div>
       )}
     </div>

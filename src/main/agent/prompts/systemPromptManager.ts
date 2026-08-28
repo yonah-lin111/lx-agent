@@ -5,7 +5,11 @@
  * 提供有序系统片段、作用域覆盖 (Scope Overrides)、严格模板变量插值、运行时上下文快照与拦截器支持。
  */
 
-import type { CollaborationMode, SandboxPolicy, WorkspaceMemorySummary } from "@shared/contracts/agent"
+import type {
+  CollaborationMode,
+  SandboxPolicy,
+  WorkspaceMemorySummary,
+} from "@shared/contracts/agent"
 import { formatInstructions, loadInstructions } from "../instructionLoader"
 import { formatMemorySummaryPrompt, loadWorkspaceMemory } from "../memories/memoryManager"
 import { formatSkillsForPrompt, type LoadedSkill } from "../skills/skillLoader"

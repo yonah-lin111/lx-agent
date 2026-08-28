@@ -30,7 +30,7 @@ import {
   copyToClipboard,
   formatDurationMs,
   formatJsonString,
-  formatTokenCount,
+  formatTokensShort,
   getKindMeta,
 } from "./types"
 
@@ -293,14 +293,7 @@ export const AgentExecutionFlowItem = ({
             </>
           )}
 
-          {/* Token 指标（非 assistant 步骤展示） */}
-          {step.kind !== "assistant" &&
-            step.tokens?.total !== undefined &&
-            step.status !== "running" && (
-              <span className="hidden shrink-0 leading-none text-white/35 sm:inline">
-                {formatTokenCount(step.tokens.total)} tok
-              </span>
-            )}
+
 
           {/* 状态图标按钮 */}
           {step.status === "running" && (
@@ -414,6 +407,44 @@ export const AgentExecutionFlowItem = ({
           )}
         </div>
       ) : null}
+
+      {/* 底部 Token 指标栏：折叠与展开状态下均可见，仅在非 running 且存在有效 Token 时渲染 */}
+      {step.status !== "running" &&
+        step.tokens &&
+        ((step.tokens.input !== undefined && step.tokens.input > 0) ||
+          (step.tokens.output !== undefined && step.tokens.output > 0) ||
+          (step.tokens.total !== undefined && step.tokens.total > 0)) && (
+          <div className="agent-execution-flow-step-footer flex items-center justify-start border-t border-white/5 px-2.5 py-1 select-none">
+            <LxTooltip
+              placement="top"
+              content={
+                <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+                  <span>Input: {(step.tokens.input ?? 0).toLocaleString()}</span>
+                  <span>Output: {(step.tokens.output ?? 0).toLocaleString()}</span>
+                  {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
+                    <span>Cache read: {step.tokens.cacheRead.toLocaleString()}</span>
+                  )}
+                </div>
+              }
+            >
+              <span className="flex items-center gap-1 font-mono text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
+                <span>IN {formatTokensShort(step.tokens.input ?? 0)}</span>
+                <span aria-hidden="true" className="opacity-40">
+                  ·
+                </span>
+                <span>OUT {formatTokensShort(step.tokens.output ?? 0)}</span>
+                {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
+                  <>
+                    <span aria-hidden="true" className="opacity-40">
+                      ·
+                    </span>
+                    <span>CACHE {formatTokensShort(step.tokens.cacheRead)}</span>
+                  </>
+                )}
+              </span>
+            </LxTooltip>
+          </div>
+        )}
     </div>
   )
 }

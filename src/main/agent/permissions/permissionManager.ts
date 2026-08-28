@@ -306,7 +306,10 @@ class PermissionManager {
     if (kind) return kind
 
     // 10. acceptEdits 模式下自动放行文件修改类工具
-    if (mode === "acceptEdits" && (toolName === "write" || toolName === "edit" || toolName === "apply_patch")) {
+    if (
+      mode === "acceptEdits" &&
+      (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+    ) {
       return "allow"
     }
 

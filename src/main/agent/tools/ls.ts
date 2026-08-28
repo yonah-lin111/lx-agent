@@ -27,7 +27,12 @@ export const createLsTool = (
     const dirPath = resolveToCwd(params.path || ".", cwd)
     if (!dirPath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path ?? "."}` }],
+        content: [
+          {
+            type: "text",
+            text: `Access denied to path outside project root: ${params.path ?? "."}`,
+          },
+        ],
         details: { refused: true },
       }
     }
@@ -71,7 +76,9 @@ export const createLsTool = (
       let output = truncation.content
       const notices: string[] = []
       if (entryLimitReached) {
-        notices.push(`Reached limit of ${effectiveLimit} entries; use limit=${effectiveLimit * 2} to see more`)
+        notices.push(
+          `Reached limit of ${effectiveLimit} entries; use limit=${effectiveLimit * 2} to see more`,
+        )
       }
       if (truncation.truncated) {
         const sessionId = sessionDeps?.getSessionId?.() ?? undefined
@@ -95,7 +102,9 @@ export const createLsTool = (
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return {
-        content: [{ type: "text", text: `Failed to list directory ${params.path ?? "."}: ${message}` }],
+        content: [
+          { type: "text", text: `Failed to list directory ${params.path ?? "."}: ${message}` },
+        ],
         details: { error: message },
       }
     }

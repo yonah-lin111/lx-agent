@@ -133,8 +133,6 @@ const formatReadTarget = (args: Record<string, unknown>): string => {
   return path
 }
 
-
-
 // 按工具类型生成调用摘要，避免将结果正文混入命令展示。
 const formatToolCommand = (toolName: string, args: Record<string, unknown>): string | null => {
   const path = typeof args.path === "string" ? args.path : "."

@@ -701,4 +701,21 @@ describe("AgentMessageItem", () => {
     expect(screen.getByText("Generation cancelled")).not.toBeNull()
     expect(screen.getByText("Generation cancelled").className).toContain("text-amber-400")
   })
+
+  it("助手消息展示模型名称徽章", () => {
+    const message: ChatMessage = {
+      id: "assistant-model-1",
+      role: "assistant",
+      model: "gpt-4o",
+      provider: "openai",
+      blocks: [{ kind: "text", text: "模型回答测试" }],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    const modelBadge = document.querySelector(".agent-message-model")
+    expect(modelBadge).not.toBeNull()
+    expect(modelBadge?.textContent).toBe("gpt-4o")
+  })
 })

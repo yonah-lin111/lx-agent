@@ -633,5 +633,63 @@ describe("executionFlow", () => {
       expect(respondedSteps[1].kind).toBe("thinking")
       expect(respondedSteps[1].status).toBe("running")
     })
+
+    it("当 assistant 消息仅包含 toolCall 时，正确将 message.usage 赋值给 tool 步骤", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "读取配置" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "toolCall",
+              toolCallId: "call-1",
+              toolName: "read_file",
+              args: { path: "config.json" },
+              status: "done",
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+          usage: {
+            input: 1200,
+            output: 45,
+            cacheRead: 300,
+            totalTokens: 1245,
+          },
+        },
+        {
+          id: "t1",
+          role: "toolResult",
+          blocks: [
+            {
+              kind: "toolResult",
+              toolCallId: "call-1",
+              toolName: "read_file",
+              text: "{}",
+              isError: false,
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1020,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(2)
+      expect(steps[1].kind).toBe("tool")
+      expect(steps[1].tokens).toEqual({
+        input: 1200,
+        output: 45,
+        cacheRead: 300,
+        total: 1245,
+      })
+    })
   })
 })

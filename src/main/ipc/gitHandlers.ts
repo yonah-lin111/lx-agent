@@ -22,14 +22,10 @@ export const registerGitHandlers = (): void => {
     if (!isValidDirectory(directory)) return null
     return gitStatusService.listBranches(directory)
   })
-  ipcMain.handle(
-    GIT_CHANNELS.checkoutBranch,
-    (_event, directory: unknown, branch: unknown) => {
-      if (!isValidDirectory(directory) || typeof branch !== "string" || !branch.trim()) {
-        return { ok: false, error: "无效的目录或分支名" }
-      }
-      return gitStatusService.checkoutBranch(directory, branch.trim())
-    },
-  )
+  ipcMain.handle(GIT_CHANNELS.checkoutBranch, (_event, directory: unknown, branch: unknown) => {
+    if (!isValidDirectory(directory) || typeof branch !== "string" || !branch.trim()) {
+      return { ok: false, error: "无效的目录或分支名" }
+    }
+    return gitStatusService.checkoutBranch(directory, branch.trim())
+  })
 }
-

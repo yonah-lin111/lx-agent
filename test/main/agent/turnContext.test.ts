@@ -1,8 +1,8 @@
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { TurnContext } from "@/agent/core/turnContext"
-import { tmpdir } from "node:os"
-import { mkdtempSync, rmSync } from "node:fs"
-import { join } from "node:path"
 
 describe("TurnContext", () => {
   it("正确初始化环境切片与快照元数据", () => {

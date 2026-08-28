@@ -66,11 +66,7 @@ describe("agent 表结构与约束", () => {
       )
       .run(now, now)
 
-    const insert = (
-      externalId: string,
-      projectId: string | null,
-      page: string | null,
-    ): void => {
+    const insert = (externalId: string, projectId: string | null, page: string | null): void => {
       database!
         .prepare(
           "INSERT INTO agent_session (external_id, project_id, page, title, cwd, created_at, updated_at) VALUES (?, ?, ?, 't', '/x', ?, ?)",

@@ -64,7 +64,9 @@ export const createReadTool = (
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
+        content: [
+          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
+        ],
         details: { refused: true },
       }
     }
@@ -168,7 +170,8 @@ export const createReadTool = (
             ? `${rawLine.slice(0, MAX_READ_LINE_LENGTH)}${MAX_READ_LINE_SUFFIX}`
             : rawLine
         const numberedLine = `${i + 1}: ${lineText}`
-        const lineBytes = Buffer.byteLength(numberedLine, "utf-8") + (numberedLines.length > 0 ? 1 : 0)
+        const lineBytes =
+          Buffer.byteLength(numberedLine, "utf-8") + (numberedLines.length > 0 ? 1 : 0)
 
         if (bytesCount + lineBytes > DEFAULT_MAX_BYTES && numberedLines.length > 0) {
           byteTruncated = true

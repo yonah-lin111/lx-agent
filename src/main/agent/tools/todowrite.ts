@@ -7,9 +7,7 @@ const TODO_ITEM_SCHEMA = z.object({
   content: z.string().min(1).max(500).describe("Todo item description"),
   status: z
     .enum(["pending", "in_progress", "completed", "cancelled"])
-    .describe(
-      "Todo item status: pending / in_progress / completed / cancelled",
-    ),
+    .describe("Todo item status: pending / in_progress / completed / cancelled"),
 })
 
 // 生成清单摘要文本（作为工具结果回灌模型；details.todos 由 runner 解析落地）。

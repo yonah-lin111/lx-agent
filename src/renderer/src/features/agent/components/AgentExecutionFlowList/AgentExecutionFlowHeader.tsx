@@ -213,40 +213,40 @@ export const AgentExecutionFlowHeader = ({
       <div className="flex shrink-0 items-center gap-1">
         {showStats && (
           <>
-        {/* 统计指标浮层 */}
-        <LxTooltip
-          multiline
-          placement="bottom"
-          content={
-            <div className="flex flex-col gap-1 whitespace-nowrap text-[12px]">
-              <div className="font-bold text-white/90">
-                {t("agent.turnCount", { count: stats.turnsCount })} · {stats.totalSteps}
-              </div>
-              <div className="text-white/60">
-                {t("agent.toolCallsCount", { count: stats.toolCallsCount })}
-              </div>
-              <div className="my-0.5 h-[1px] bg-white/10" />
-              {stats.inputTokens > 0 && (
-                <span>{t("agent.inputTokens", { count: stats.inputTokens })}</span>
-              )}
-              {stats.outputTokens > 0 && (
-                <span>{t("agent.outputTokens", { count: stats.outputTokens })}</span>
-              )}
-              {stats.cacheReadTokens > 0 && (
-                <span className="text-sky-300">
-                  {t("agent.cacheReadTokens", { count: stats.cacheReadTokens })}
-                </span>
-              )}
-              {stats.totalTokens > 0 && (
-                <span>{t("agent.totalTokens", { count: stats.totalTokens })}</span>
-              )}
-            </div>
-          }
-        >
-          <LxIconButton size="small" aria-label={t("agent.viewStats")}>
-            <BarChart3 className="h-3.5 w-3.5" />
-          </LxIconButton>
-          </LxTooltip>
+            {/* 统计指标浮层 */}
+            <LxTooltip
+              multiline
+              placement="bottom"
+              content={
+                <div className="flex flex-col gap-1 whitespace-nowrap text-[12px]">
+                  <div className="font-bold text-white/90">
+                    {t("agent.turnCount", { count: stats.turnsCount })} · {stats.totalSteps}
+                  </div>
+                  <div className="text-white/60">
+                    {t("agent.toolCallsCount", { count: stats.toolCallsCount })}
+                  </div>
+                  <div className="my-0.5 h-[1px] bg-white/10" />
+                  {stats.inputTokens > 0 && (
+                    <span>{t("agent.inputTokens", { count: stats.inputTokens })}</span>
+                  )}
+                  {stats.outputTokens > 0 && (
+                    <span>{t("agent.outputTokens", { count: stats.outputTokens })}</span>
+                  )}
+                  {stats.cacheReadTokens > 0 && (
+                    <span className="text-sky-300">
+                      {t("agent.cacheReadTokens", { count: stats.cacheReadTokens })}
+                    </span>
+                  )}
+                  {stats.totalTokens > 0 && (
+                    <span>{t("agent.totalTokens", { count: stats.totalTokens })}</span>
+                  )}
+                </div>
+              }
+            >
+              <LxIconButton size="small" aria-label={t("agent.viewStats")}>
+                <BarChart3 className="h-3.5 w-3.5" />
+              </LxIconButton>
+            </LxTooltip>
           </>
         )}
       </div>

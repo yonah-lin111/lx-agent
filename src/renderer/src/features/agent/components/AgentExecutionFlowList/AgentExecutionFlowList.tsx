@@ -12,8 +12,10 @@ import {
   useState,
 } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
+import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
@@ -89,6 +91,7 @@ export const AgentExecutionFlowList = forwardRef<
     ref,
   ) => {
     const { t } = useTranslation()
+    const settings = useModelSettings()
 
     // 滚动容器引用
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -689,9 +692,7 @@ export const AgentExecutionFlowList = forwardRef<
                   const nextElement = renderedFlowElements[actualIdx + 1]
 
                   const elementTurnIndex =
-                    element.kind === "single"
-                      ? element.step.turnIndex
-                      : element.turnIndex
+                    element.kind === "single" ? element.step.turnIndex : element.turnIndex
                   const prevTurnIndex = prevElement
                     ? prevElement.kind === "single"
                       ? prevElement.step.turnIndex
@@ -723,7 +724,8 @@ export const AgentExecutionFlowList = forwardRef<
                         elementTurnIndex > 0 &&
                         !(
                           element.kind === "single" &&
-                          (element.step.kind === "compaction" || element.step.kind === "modelSwitch")
+                          (element.step.kind === "compaction" ||
+                            element.step.kind === "modelSwitch")
                         ) && (
                           <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                             <div className="h-[1px] flex-1 bg-white/10" />
@@ -796,9 +798,11 @@ export const AgentExecutionFlowList = forwardRef<
                             className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
                           >
                             {turnStats.model && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-model font-medium text-white/70">
-                                {turnStats.model}
-                              </span>
+                              <LxTooltip placement="top" content={turnStats.model}>
+                                <span className="agent-turn-summary-pill agent-turn-summary-pill-model font-medium text-white/70">
+                                  {getModelDisplayName(turnStats.model, undefined, settings)}
+                                </span>
+                              </LxTooltip>
                             )}
                             {turnStats.toolCallsCount > 0 && (
                               <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-amber-300/90">
@@ -841,21 +845,18 @@ export const AgentExecutionFlowList = forwardRef<
                         )}
 
                       {/* 最后一轮被截断/中止时展示"继续生成"操作按钮 */}
-                      {isTurnEnd &&
-                        elementTurnIndex === maxTurn &&
-                        canContinue &&
-                        onContinue && (
-                          <div className="agent-execution-flow-continue-container mt-1 mb-1.5 flex pl-1">
-                            <button
-                              type="button"
-                              onClick={onContinue}
-                              className="agent-execution-flow-continue-btn flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                              {t("agent.continueGenerating")}
-                            </button>
-                          </div>
-                        )}
+                      {isTurnEnd && elementTurnIndex === maxTurn && canContinue && onContinue && (
+                        <div className="agent-execution-flow-continue-container mt-1 mb-1.5 flex pl-1">
+                          <button
+                            type="button"
+                            onClick={onContinue}
+                            className="agent-execution-flow-continue-btn flex w-fit items-center gap-1 rounded-[6px] border border-white/10 px-2 py-1 text-xs text-white/65 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            {t("agent.continueGenerating")}
+                          </button>
+                        </div>
+                      )}
                     </Fragment>
                   )
                 })}

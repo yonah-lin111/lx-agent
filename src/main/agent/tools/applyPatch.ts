@@ -67,7 +67,9 @@ export const createApplyPatchTool = (
       const abs = resolveToCwd(action.path, cwd)
       if (!abs) {
         return {
-          content: [{ type: "text", text: `Access denied to path outside project root: ${action.path}` }],
+          content: [
+            { type: "text", text: `Access denied to path outside project root: ${action.path}` },
+          ],
           details: { refused: true },
         }
       }
@@ -79,7 +81,10 @@ export const createApplyPatchTool = (
     }
 
     if (signal?.aborted) {
-      return { content: [{ type: "text", text: "Operation aborted." }], details: { error: "aborted" } }
+      return {
+        content: [{ type: "text", text: "Operation aborted." }],
+        details: { error: "aborted" },
+      }
     }
 
     // 2. 预检与内存计算阶段（原子校验：任一失败则中断返回）
@@ -120,7 +125,9 @@ export const createApplyPatchTool = (
             const buf = await readFile(op.absolutePath)
             oldContent = buf.toString("utf-8")
           } catch (err) {
-            throw new Error(`Cannot delete file ${op.relativePath}: file does not exist or is unreadable.`)
+            throw new Error(
+              `Cannot delete file ${op.relativePath}: file does not exist or is unreadable.`,
+            )
           }
           plans.push({
             type: "delete",
@@ -134,7 +141,9 @@ export const createApplyPatchTool = (
             const buf = await readFile(op.absolutePath)
             oldContent = buf.toString("utf-8")
           } catch (err) {
-            throw new Error(`Cannot update file ${op.relativePath}: file does not exist or is unreadable.`)
+            throw new Error(
+              `Cannot update file ${op.relativePath}: file does not exist or is unreadable.`,
+            )
           }
 
           const newContent = applyHunksToFile(oldContent, op.action.hunks, op.relativePath)
@@ -156,7 +165,10 @@ export const createApplyPatchTool = (
     }
 
     if (signal?.aborted) {
-      return { content: [{ type: "text", text: "Operation aborted." }], details: { error: "aborted" } }
+      return {
+        content: [{ type: "text", text: "Operation aborted." }],
+        details: { error: "aborted" },
+      }
     }
 
     // 3. 落盘执行阶段（全部文件锁定与串行写）

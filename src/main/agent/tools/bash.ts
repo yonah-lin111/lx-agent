@@ -195,7 +195,10 @@ export const createBashTool = (
     if (execRes.exitCode !== 0 && execRes.exitCode !== null) {
       return {
         content: [
-          { type: "text", text: appendStatus(text, `Command exited with code ${execRes.exitCode}`) },
+          {
+            type: "text",
+            text: appendStatus(text, `Command exited with code ${execRes.exitCode}`),
+          },
         ],
         details,
       }

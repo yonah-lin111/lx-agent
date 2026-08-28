@@ -11,19 +11,27 @@ const memoryInputSchema = z.discriminatedUnion("action", [
     path: z
       .string()
       .optional()
-      .describe("Relative path to a note file under .lx/memory/ (e.g. notes/user_preferences.md). Omit to view the main MEMORY.md index."),
+      .describe(
+        "Relative path to a note file under .lx/memory/ (e.g. notes/user_preferences.md). Omit to view the main MEMORY.md index.",
+      ),
   }),
   z.object({
     action: z.literal("save").describe("Save or update a memory topic note and update MEMORY.md"),
     topic: z
       .string()
-      .describe("Topic identifier/filename without extension (e.g. 'user_preferences', 'architecture_rules')"),
+      .describe(
+        "Topic identifier/filename without extension (e.g. 'user_preferences', 'architecture_rules')",
+      ),
     name: z.string().describe("Human readable title of the memory topic"),
-    description: z.string().describe("Concise 1-line description of what this memory topic covers for the index"),
+    description: z
+      .string()
+      .describe("Concise 1-line description of what this memory topic covers for the index"),
     type: z
       .enum(["user", "feedback", "project", "reference"])
       .default("project")
-      .describe("Category of the memory (user: preferences/role, feedback: lessons/corrections, project: context/goals, reference: external info)"),
+      .describe(
+        "Category of the memory (user: preferences/role, feedback: lessons/corrections, project: context/goals, reference: external info)",
+      ),
     content: z.string().describe("Detailed markdown body of the topic note"),
   }),
   z.object({
@@ -31,7 +39,9 @@ const memoryInputSchema = z.discriminatedUnion("action", [
     query: z.string().describe("Keywords to search in memory files"),
   }),
   z.object({
-    action: z.literal("delete").describe("Delete a memory topic note and remove its entry from MEMORY.md"),
+    action: z
+      .literal("delete")
+      .describe("Delete a memory topic note and remove its entry from MEMORY.md"),
     topic: z
       .string()
       .optional()
@@ -39,7 +49,9 @@ const memoryInputSchema = z.discriminatedUnion("action", [
     path: z
       .string()
       .optional()
-      .describe("Relative path to the note file under .lx/memory/ (e.g. 'notes/user_preferences.md')"),
+      .describe(
+        "Relative path to the note file under .lx/memory/ (e.g. 'notes/user_preferences.md')",
+      ),
   }),
 ])
 
@@ -168,7 +180,11 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         }
       }
 
-      const updatedIndexContent = newLines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n"
+      const updatedIndexContent =
+        newLines
+          .join("\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim() + "\n"
       await writeFile(paths.memoryFile, updatedIndexContent, "utf-8")
       throwIfAborted()
 
@@ -304,7 +320,11 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         })
 
         if (indexModified) {
-          const updatedIndex = filteredLines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n"
+          const updatedIndex =
+            filteredLines
+              .join("\n")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim() + "\n"
           await writeFile(paths.memoryFile, updatedIndex, "utf-8")
         }
       } catch {

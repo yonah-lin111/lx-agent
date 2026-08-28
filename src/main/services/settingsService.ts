@@ -11,7 +11,11 @@ import type {
   ProviderTransportType,
   UiSettings,
 } from "@shared/settings"
-import { DEFAULT_COMPACTION_SETTINGS, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DEFAULT_UI_SETTINGS } from "@shared/settings"
+import {
+  DEFAULT_COMPACTION_SETTINGS,
+  DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+  DEFAULT_UI_SETTINGS,
+} from "@shared/settings"
 import { getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。

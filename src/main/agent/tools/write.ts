@@ -26,7 +26,9 @@ export const createWriteTool = (
     const absolutePath = resolveToCwd(params.path, cwd)
     if (!absolutePath) {
       return {
-        content: [{ type: "text", text: `Access denied to path outside project root: ${params.path}` }],
+        content: [
+          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
+        ],
         details: { refused: true },
       }
     }

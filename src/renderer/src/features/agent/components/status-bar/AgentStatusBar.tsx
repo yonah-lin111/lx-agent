@@ -1,4 +1,10 @@
-import type { CollaborationMode, JobSnapshot, PermissionRequest, SandboxPolicy, TodoList } from "@shared/contracts/agent"
+import type {
+  CollaborationMode,
+  JobSnapshot,
+  PermissionRequest,
+  SandboxPolicy,
+  TodoList,
+} from "@shared/contracts/agent"
 import { Layers } from "lucide-react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { GitStatusBar } from "@/features/git"

@@ -4,15 +4,27 @@ import { permissionManager } from "@/agent/permissions/permissionManager"
 describe("Plan Mode Permission Guard", () => {
   it("should deny write/edit/apply_patch tools in plan mode", () => {
     expect(
-      permissionManager.evaluate("write", { path: "src/test.ts", content: "hi" }, { collaborationMode: "plan" }),
+      permissionManager.evaluate(
+        "write",
+        { path: "src/test.ts", content: "hi" },
+        { collaborationMode: "plan" },
+      ),
     ).toBe("deny")
 
     expect(
-      permissionManager.evaluate("edit", { path: "src/test.ts", oldString: "a", newString: "b" }, { collaborationMode: "plan" }),
+      permissionManager.evaluate(
+        "edit",
+        { path: "src/test.ts", oldString: "a", newString: "b" },
+        { collaborationMode: "plan" },
+      ),
     ).toBe("deny")
 
     expect(
-      permissionManager.evaluate("apply_patch", { patch: "diff ..." }, { collaborationMode: "plan" }),
+      permissionManager.evaluate(
+        "apply_patch",
+        { patch: "diff ..." },
+        { collaborationMode: "plan" },
+      ),
     ).toBe("deny")
   })
 

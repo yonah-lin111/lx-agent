@@ -251,7 +251,9 @@ describe("SystemPromptManager", () => {
       expect(assembly.rendered).toContain("test-skill")
 
       // 默认 pragmatic 人格验证
-      expect(assembly.rendered).toContain("You are a pragmatic, direct, and high-signal engineering collaborator.")
+      expect(assembly.rendered).toContain(
+        "You are a pragmatic, direct, and high-signal engineering collaborator.",
+      )
 
       const envCtx = assembly.contexts.find((c) => c.name === PROMPT_SECTION_NAMES.ENVIRONMENT)
       expect(envCtx?.text).toContain("<env>")
@@ -269,8 +271,12 @@ describe("SystemPromptManager", () => {
         personality: "friendly",
       })
 
-      expect(assembly.rendered).toContain("You are an encouraging, collaborative, and insightful engineering co-builder.")
-      expect(assembly.rendered).not.toContain("You are a pragmatic, direct, and high-signal engineering collaborator.")
+      expect(assembly.rendered).toContain(
+        "You are an encouraging, collaborative, and insightful engineering co-builder.",
+      )
+      expect(assembly.rendered).not.toContain(
+        "You are a pragmatic, direct, and high-signal engineering collaborator.",
+      )
     })
   })
 })

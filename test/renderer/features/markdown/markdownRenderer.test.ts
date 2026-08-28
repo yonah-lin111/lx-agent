@@ -175,7 +175,9 @@ describe("markdownRenderer", () => {
       "- 要求: 具体要求",
     ].join("\n")
 
-    expect(stripMarkdownSuppleBlocks(input)).toBe(["- 位置: src/a.ts", "- 要求: 具体要求"].join("\n"))
+    expect(stripMarkdownSuppleBlocks(input)).toBe(
+      ["- 位置: src/a.ts", "- 要求: 具体要求"].join("\n"),
+    )
   })
 
   it("渲染模板块时复制数据剔除内部 +++ 补充块内容", () => {

@@ -1,5 +1,5 @@
-import type { Agent } from "../core/agent"
 import type { SubagentData } from "@shared/contracts/agent"
+import type { Agent } from "../core/agent"
 
 export interface ManagedSubagent {
   subagentId: string

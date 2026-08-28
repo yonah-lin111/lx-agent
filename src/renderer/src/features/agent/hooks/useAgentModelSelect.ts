@@ -1,10 +1,9 @@
 import type { ModelSelection } from "@shared/settings"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
-import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import type { ModelProviderSettingsData } from "@/features/settings/types"
 import { useTranslation } from "@/i18n"
-import { modelsApi } from "../api/modelsApi"
+import { getModelDisplayName, modelsStore } from "./modelsStore"
 
 // localStorage 中保存上次所选模型的键。
 const STORAGE_KEY = "agent-selected-model"
@@ -40,44 +39,28 @@ const readSavedSelection = (): ModelSelection | null => {
 }
 
 /**
- * useAgentModelSelect - 管理 Agent 模型选择：加载已启用 Provider、构建分组选项、
+ * useAgentModelSelect - 管理 Agent 模型选择：基于 modelsStore 加载已启用 Provider、构建分组选项、
  * 持久化所选模型，并在持久化失效时回退到系统默认模型。
  */
 export const useAgentModelSelect = () => {
-  const [settings, setSettings] = useState<ModelProviderSettingsData | null>(null)
+  const settings = useSyncExternalStore(modelsStore.subscribe, modelsStore.getSettings)
   const [selectedModel, setSelectedModel] = useState<string>("")
 
-  // 拉取已启用 Provider 并恢复/回退模型选择；配置变更（设置页保存）时重新执行。
-  const mountedRef = useRef(true)
-  const loadProviders = useCallback(() => {
-    modelsApi
-      .getProviders()
-      .then((data) => {
-        if (!mountedRef.current) return
-        setSettings(data)
-        const saved = readSavedSelection()
-        if (saved && isValidSelection(saved, data)) {
-          setSelectedModel(`${saved.provider}::${saved.model}`)
-        } else if (isValidSelection(data.defaultModel, data)) {
-          setSelectedModel(`${data.defaultModel.provider}::${data.defaultModel.model}`)
-        }
-      })
-      .catch(() => {
-        if (!mountedRef.current) return
-        setSettings(null)
-        setSelectedModel("")
-      })
-  }, [])
-
+  // 配置数据更新后同步校验并恢复/回退模型选择
   useEffect(() => {
-    mountedRef.current = true
-    loadProviders()
-    const unsubscribe = subscribeSettingsChanged("models", loadProviders)
-    return () => {
-      mountedRef.current = false
-      unsubscribe()
+    if (!settings) {
+      setSelectedModel("")
+      return
     }
-  }, [loadProviders])
+    const saved = readSavedSelection()
+    if (saved && isValidSelection(saved, settings)) {
+      setSelectedModel(`${saved.provider}::${saved.model}`)
+    } else if (isValidSelection(settings.defaultModel, settings)) {
+      setSelectedModel(`${settings.defaultModel.provider}::${settings.defaultModel.model}`)
+    } else {
+      setSelectedModel("")
+    }
+  }, [settings])
 
   const { t } = useTranslation()
 
@@ -139,5 +122,7 @@ export const useAgentModelSelect = () => {
     handleModelChange,
     suggestedQuestionsEnabled,
     settings,
+    getModelDisplayName: (modelId?: string, providerId?: string) =>
+      getModelDisplayName(modelId, providerId, settings),
   }
 }

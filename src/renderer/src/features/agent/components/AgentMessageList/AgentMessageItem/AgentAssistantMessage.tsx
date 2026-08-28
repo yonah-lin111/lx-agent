@@ -22,6 +22,7 @@ import {
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
+import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
 import type { ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -94,6 +95,9 @@ export const AgentAssistantMessage = ({
     isAborted,
   } = groupsResult
 
+  const settings = useModelSettings()
+  const modelDisplayName = getModelDisplayName(message.model, message.provider, settings)
+
   const canSuggestSuggestedQuestions = Boolean(
     message.role !== "compactionSummary" &&
       message.role !== "user" &&
@@ -147,9 +151,12 @@ export const AgentAssistantMessage = ({
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {!readOnly && message.model && (
-        <LxTooltip placement="top" content={`${message.provider} / ${message.model}`}>
+        <LxTooltip
+          placement="top"
+          content={message.provider ? `${message.provider} / ${message.model}` : message.model}
+        >
           <span className="agent-message-model flex w-fit select-text items-center text-[11px] leading-none text-white/40">
-            {message.model}
+            {modelDisplayName}
           </span>
         </LxTooltip>
       )}

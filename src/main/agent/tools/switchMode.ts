@@ -1,5 +1,5 @@
-import { z } from "zod"
 import type { CollaborationMode } from "@shared/contracts/agent"
+import { z } from "zod"
 import type { AgentTool } from "../core/types"
 
 const SWITCH_MODE_INPUT_SCHEMA = z.object({
@@ -10,7 +10,9 @@ const SWITCH_MODE_INPUT_SCHEMA = z.object({
     ),
   reason: z
     .string()
-    .describe("Brief justification for switching modes (e.g., 'Planning complex architecture' or 'Plan approved, starting execution')"),
+    .describe(
+      "Brief justification for switching modes (e.g., 'Planning complex architecture' or 'Plan approved, starting execution')",
+    ),
 })
 
 export interface SwitchModeDeps {
@@ -21,7 +23,9 @@ export interface SwitchModeDeps {
 /**
  * 切换 Agent 协作模式（Default / Plan Mode）
  */
-export const createSwitchModeTool = (deps: SwitchModeDeps): AgentTool<typeof SWITCH_MODE_INPUT_SCHEMA> => {
+export const createSwitchModeTool = (
+  deps: SwitchModeDeps,
+): AgentTool<typeof SWITCH_MODE_INPUT_SCHEMA> => {
   return {
     name: "switch_mode",
     label: "Switch Collaboration Mode",

@@ -1255,4 +1255,102 @@ describe("AgentExecutionFlowList", () => {
 
     expect(screen.queryByRole("button", { name: /继续生成|Continue Generating/i })).toBeNull()
   })
+
+  it("在具有 Token 数据的 Item 和 Group 底部展示 IN / OUT / CACHE 指标栏，且无 Token 步骤不展示", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试 Token 展示" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        usage: {
+          input: 2400,
+          output: 650,
+          cacheRead: 1200,
+          totalTokens: 3050,
+        },
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c-subagent",
+            toolName: "task",
+            args: { description: "子任务" },
+            subagent: {
+              name: "CodeReviewer",
+              usage: {
+                input: 800,
+                output: 200,
+                cacheRead: 100,
+                totalTokens: 1000,
+              },
+            },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c-read",
+            toolName: "read_file",
+            args: { path: "src/a.ts" },
+            status: "done",
+          },
+          { kind: "text", text: "最终回复" },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c-subagent",
+            toolName: "task",
+            text: "review passed",
+            isError: false,
+          },
+          {
+            kind: "toolResult",
+            toolCallId: "c-read",
+            toolName: "read_file",
+            text: "content",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={false} />)
+
+    // 1. 用户 item 无 Token 数据，不应渲染 footer
+    const userStep = container.querySelector('[data-step-kind="user"]')
+    expect(userStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
+
+    // 2. Assistant item 底部展示 IN 2.4k · OUT 650 · CACHE 1.2k
+    const assistantStep = container.querySelector('[data-step-kind="assistant"]')
+    const assistantFooter = assistantStep?.querySelector(".agent-execution-flow-step-footer")
+    expect(assistantFooter).not.toBeNull()
+    expect(assistantFooter?.textContent).toContain("IN 2.4k")
+    expect(assistantFooter?.textContent).toContain("OUT 650")
+    expect(assistantFooter?.textContent).toContain("CACHE 1.2k")
+
+    // 3. Subagent 步骤作为 Group 内子步骤或独立步骤：包含 subagent.usage
+    // 展开 Group
+    const groupHeader = container.querySelector(".agent-execution-flow-group-header")
+    if (groupHeader) {
+      fireEvent.click(groupHeader)
+    }
+    const groupFooter = container.querySelector(".agent-execution-flow-group-footer")
+    expect(groupFooter).not.toBeNull()
+    expect(groupFooter?.textContent).toContain("IN 800")
+    expect(groupFooter?.textContent).toContain("OUT 200")
+    expect(groupFooter?.textContent).toContain("CACHE 100")
+
+    // 4. Header 顶栏右侧不再显示旧版的 "xxx tok"
+    expect(screen.queryByText(/tok$/)).toBeNull()
+  })
 })

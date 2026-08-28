@@ -543,9 +543,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
   const status = meta.status ?? "todo"
   const encodedContent = encodeURIComponent(
-    stripEmptyTemplateItems(
-      stripMarkdownTemplateComments(stripMarkdownSuppleBlocks(meta.content)),
-    ),
+    stripEmptyTemplateItems(stripMarkdownTemplateComments(stripMarkdownSuppleBlocks(meta.content))),
   )
   const contentHtml = renderTemplateContent(meta.content)
   const sourceLine = token.attrGet("data-line")

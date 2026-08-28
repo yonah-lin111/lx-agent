@@ -35,7 +35,12 @@ vi.mock("@/services/settingsService", () => ({
         type: "anthropic",
         name: "Anthropic",
         options: { apiKey: "mock-key" },
-        models: { "claude-3-5-sonnet-20241022": { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" } },
+        models: {
+          "claude-3-5-sonnet-20241022": {
+            id: "claude-3-5-sonnet-20241022",
+            name: "Claude 3.5 Sonnet",
+          },
+        },
       },
     },
     enabledProviders: ["openai", "anthropic"],
@@ -126,7 +131,11 @@ describe("Model Switch and Initial Model Entries", () => {
     const events: AgentEvent[] = []
     agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
 
-    const res = await agentRunner.send("Hello world", { provider: "openai", model: "gpt-4o" }, { cwd: tmpWorkspace })
+    const res = await agentRunner.send(
+      "Hello world",
+      { provider: "openai", model: "gpt-4o" },
+      { cwd: tmpWorkspace },
+    )
     expect(res.ok).toBe(true)
     if (!res.ok) return
     expect(res.sessionId).toBeDefined()
@@ -174,7 +183,11 @@ describe("Model Switch and Initial Model Entries", () => {
     agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
 
     // 先发送一条消息建立会话
-    const res = await agentRunner.send("First message", { provider: "openai", model: "gpt-4o" }, { cwd: tmpWorkspace })
+    const res = await agentRunner.send(
+      "First message",
+      { provider: "openai", model: "gpt-4o" },
+      { cwd: tmpWorkspace },
+    )
     expect(res.ok).toBe(true)
     if (!res.ok) return
     const sessionId = res.sessionId!
@@ -187,7 +200,9 @@ describe("Model Switch and Initial Model Entries", () => {
     expect(switchRes.ok).toBe(true)
 
     // 检查事件流是否推送了初始与切换后的 model_switch 事件
-    const modelSwitchEvents = events.filter((e): e is Extract<AgentEvent, { type: "model_switch" }> => e.type === "model_switch")
+    const modelSwitchEvents = events.filter(
+      (e): e is Extract<AgentEvent, { type: "model_switch" }> => e.type === "model_switch",
+    )
     expect(modelSwitchEvents).toHaveLength(2)
     expect(modelSwitchEvents[0].message.isInitial).toBe(true)
     expect(modelSwitchEvents[0].message.provider).toBe("openai")

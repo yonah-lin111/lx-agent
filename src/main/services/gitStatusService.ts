@@ -116,4 +116,3 @@ export class GitStatusService {
 
 // Git 状态服务单例。
 export const gitStatusService = new GitStatusService()
-

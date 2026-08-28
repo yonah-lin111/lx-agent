@@ -190,7 +190,8 @@ export const createTaskTool = (
         `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
       const subagentName = params.name?.trim() || existingManaged?.name || "task"
-      const isReviewAgent = subagentName === REVIEW_AGENT_NAME || params.name?.toLowerCase().includes("review")
+      const isReviewAgent =
+        subagentName === REVIEW_AGENT_NAME || params.name?.toLowerCase().includes("review")
 
       const effectivePrompt = isReviewAgent
         ? `${deps.systemPrompt}\n\n${REVIEW_AGENT_SYSTEM_PROMPT}`
@@ -332,7 +333,7 @@ export const createTaskTool = (
       }
 
       const { text, error } = extractSubagentResult(subAgent.state.messages, startIndex)
-      
+
       // 子代理产出最终结论，回传结构化通信信元
       communications.push({
         id: `comm-done-${Date.now()}`,

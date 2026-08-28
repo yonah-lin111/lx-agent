@@ -1,6 +1,6 @@
-import { collectEnvironmentVariables } from "../assembly"
 import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
+import { collectEnvironmentVariables } from "../assembly"
 
 export interface TurnEnvironmentSnapshot {
   cwd: string
