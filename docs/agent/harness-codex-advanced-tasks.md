@@ -12,7 +12,7 @@
 - [x] Phase 9: 专精 Review Agent 子代理与 Rubric 审查能力（Rubric Evaluation）
 - [x] Phase 10: 前端模式切换交互与全量单测回归
 - [x] Phase 11: Unified Exec 统一执行引擎与 HeadTailBuffer 截断缓冲区
-- [x] Phase 12: 多级 Approval Policy 引擎与会话级白名单升级机制
+- [x] Phase 12: 级多级 Approval Policy 引擎与会话级白名单升机制
 - [x] Phase 13: Guardian 规则防护网与四维风险评估器 (Exfiltration/Probing/Weakening/Destruction)
 - [x] Phase 14: 分层记忆系统（Hierarchical Workspace Memories & Citations 解析与注入）
 - [ ] Phase 15: 前端审批覆盖层（ApprovalOverlay）与 Memory 查看器组件
