@@ -287,7 +287,7 @@ export const AgentExecutionFlowList = forwardRef<
         if (currentGroupSteps.length === 1) {
           elements.push({ kind: "single", step: currentGroupSteps[0] })
         } else {
-          const groupId = `flow-group-${currentGroupSteps[0].id}-${currentGroupSteps[currentGroupSteps.length - 1].id}`
+          const groupId = `flow-group-${currentGroupSteps[0].id}`
           elements.push({
             kind: "group",
             groupId,

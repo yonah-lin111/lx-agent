@@ -335,8 +335,8 @@ export const AgentExecutionFlowGroup = ({
         </div>
       )}
 
-      {/* 底部 Token 指标栏：折叠与展开状态下均可见，仅在非 running 且存在有效 Token 时渲染 */}
-      {!isRunning && (inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
+      {/* 底部 Token 指标栏：折叠与展开状态下均可见，存在有效 Token 时始终渲染（包括 running 状态） */}
+      {(inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
         <div className="agent-execution-flow-group-footer flex items-center justify-start border-t border-white/5 px-2.5 py-1 select-none">
           <LxTooltip
             placement="top"

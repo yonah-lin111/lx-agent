@@ -1442,4 +1442,153 @@ describe("AgentExecutionFlowList", () => {
     expect(parallelElements[3].textContent).toBe("Parallel 2/2")
     expect(parallelElements[3].className).toContain("text-purple-400")
   })
+
+  it("当 Group 处于运行中（loading / running 状态）时，底部 Token 统计栏依然始终展示", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "执行连续任务" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        usage: { input: 3500, output: 80, cacheRead: 500, totalTokens: 3580 },
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "src/main.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "grep",
+            args: { pattern: "App" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "read_file",
+            text: "content",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+
+    // Group 处于 running 状态（包含 running 状态的 grep 工具）
+    const group = container.querySelector('[data-flow-group="true"]')
+    expect(group).not.toBeNull()
+    expect(group?.querySelector(".animate-spin")).not.toBeNull()
+
+    // 验证 Group 底部 Token 统计栏依然始终展示，不会被隐藏
+    const groupFooter = group?.querySelector(".agent-execution-flow-group-footer")
+    expect(groupFooter).not.toBeNull()
+    expect(groupFooter?.textContent).toContain("IN 3.5k")
+    expect(groupFooter?.textContent).toContain("OUT 80")
+    expect(groupFooter?.textContent).toContain("CACHE 500")
+  })
+
+  it("在 loading / 流式执行过程中用户手动打开 Group 后，后续新步骤产生时保持展开状态不被重置折叠", () => {
+    const initialMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "执行长任务" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "read_file",
+            args: { path: "b.ts" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    const { container, rerender } = render(
+      <AgentExecutionFlowList messages={initialMessages} isStreaming={true} />,
+    )
+
+    // 初始状态：Group 默认折叠
+    const groupHeader = container.querySelector(".agent-execution-flow-group-header")
+    expect(groupHeader).not.toBeNull()
+    expect(container.querySelector(".agent-execution-flow-group-body")).toBeNull()
+
+    // 用户在 loading 过程中手动点击展开 Group
+    if (groupHeader) {
+      fireEvent.click(groupHeader)
+    }
+
+    // 展开成功
+    expect(container.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
+
+    // 模拟 loading 过程中新生成了步骤 c3
+    const updatedMessages: ChatMessage[] = [
+      initialMessages[0],
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "read_file",
+            args: { path: "b.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c3",
+            toolName: "read_file",
+            args: { path: "c.ts" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    // 触发 rerender
+    rerender(<AgentExecutionFlowList messages={updatedMessages} isStreaming={true} />)
+
+    // 验证：新步骤加入后，Group 依然保持展开状态，没有被错误折叠
+    expect(container.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
+  })
 })

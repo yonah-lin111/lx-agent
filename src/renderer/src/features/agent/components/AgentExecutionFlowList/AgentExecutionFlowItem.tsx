@@ -409,12 +409,11 @@ export const AgentExecutionFlowItem = ({
         </div>
       ) : null}
 
-      {/* 底部 Token 指标与并行状态栏：折叠与展开状态下均可见，仅在非 running 且存在有效 Token 或并行状态时渲染 */}
-      {step.status !== "running" &&
-        (((step.tokens?.input !== undefined && step.tokens.input > 0) ||
-          (step.tokens?.output !== undefined && step.tokens.output > 0) ||
-          (step.tokens?.total !== undefined && step.tokens.total > 0)) ||
-          Boolean(step.parallel)) && (
+      {/* 底部 Token 指标与并行状态栏：折叠与展开状态下均可见，存在有效 Token 或并行状态时始终渲染（包括 running 状态） */}
+      {(((step.tokens?.input !== undefined && step.tokens.input > 0) ||
+        (step.tokens?.output !== undefined && step.tokens.output > 0) ||
+        (step.tokens?.total !== undefined && step.tokens.total > 0)) ||
+        Boolean(step.parallel)) && (
           <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-[10px]">
             {/* 左侧 Token 指标 */}
             {step.tokens &&
