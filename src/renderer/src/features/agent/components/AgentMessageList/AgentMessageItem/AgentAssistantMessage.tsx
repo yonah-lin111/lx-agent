@@ -17,8 +17,6 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
-  type ExecutionGroupItem,
-  getToolExecutionCategory,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
@@ -181,6 +179,18 @@ export const AgentAssistantMessage = ({
               )
             }
 
+            if (group.kind === "writing") {
+              return (
+                <AgentToolCallBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
+                  diff={diffByToolCallId.get(group.block.toolCallId)}
+                  defaultExpanded={isStreamingNow}
+                />
+              )
+            }
+
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
             }
@@ -193,88 +203,65 @@ export const AgentAssistantMessage = ({
               return <AgentVisualBlock key={groupIndex} toolCall={group.block} />
             }
 
-            const executionItems: ExecutionGroupItem[] = group.blocks.flatMap<ExecutionGroupItem>(
+            const executionItems = group.blocks.flatMap<React.ReactNode>(
               ({ block, isStreaming }, blockIndex) => {
                 if (block.kind === "thinking") {
-                  return [
-                    {
-                      category: "system",
-                      node: (
-                        <AgentThinkingBlock
-                          content={block.text}
-                          isGenerating={
-                            isStreaming &&
-                            groupIndex === executionGroups.length - 1 &&
-                            blockIndex === group.blocks.length - 1
-                          }
-                        />
-                      ),
-                    },
-                  ]
+                  return (
+                    <AgentThinkingBlock
+                      key={`thinking-${blockIndex}`}
+                      content={block.text}
+                      isGenerating={
+                        isStreaming &&
+                        groupIndex === executionGroups.length - 1 &&
+                        blockIndex === group.blocks.length - 1
+                      }
+                    />
+                  )
                 }
 
                 if (isSubagentToolCall(block.toolName)) {
-                  return [
-                    {
-                      category: "subagent",
-                      node: <AgentSubagentBlock toolCall={block} onOpen={onOpenSubagent} />,
-                    },
-                  ]
+                  return (
+                    <AgentSubagentBlock
+                      key={block.toolCallId}
+                      toolCall={block}
+                      onOpen={onOpenSubagent}
+                    />
+                  )
                 }
 
                 if (isSkillToolCall(block.toolName)) {
                   const skillGroup = skillCallGroupById.get(block.toolCallId)
                   if (!skillGroup || block.toolCallId !== skillGroup[0]?.toolCallId) return []
-                  return [
-                    {
-                      category: "externalInfo",
-                      node: <AgentSkillCallBlock toolCalls={skillGroup} />,
-                    },
-                  ]
+                  return <AgentSkillCallBlock key={block.toolCallId} toolCalls={skillGroup} />
                 }
 
                 if (isWriteToolCall(block.toolName)) {
-                  return [
-                    {
-                      category: "coding",
-                      node: (
-                        <AgentToolCallBlock
-                          toolCall={block}
-                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                          diff={diffByToolCallId.get(block.toolCallId)}
-                          defaultExpanded={isStreamingNow}
-                        />
-                      ),
-                    },
-                  ]
+                  return (
+                    <AgentToolCallBlock
+                      key={block.toolCallId}
+                      toolCall={block}
+                      toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                      diff={diffByToolCallId.get(block.toolCallId)}
+                      defaultExpanded={isStreamingNow}
+                    />
+                  )
                 }
 
                 if (isWebSearchToolCall(block.toolName)) {
                   const searchGroup = webSearchCallGroupById.get(block.toolCallId)
                   if (!searchGroup || block.toolCallId !== searchGroup[0]?.toolCallId) return []
-                  return [
-                    {
-                      category: "externalInfo",
-                      node: <AgentWebSearchBlock toolCalls={searchGroup} />,
-                    },
-                  ]
+                  return <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />
                 }
 
                 if (isMcpToolCall(block.toolName)) {
                   const mcpGroup = mcpCallGroupById.get(block.toolCallId)
                   if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return []
-                  return [
-                    {
-                      category: "externalInfo",
-                      node: <AgentMcpCallBlock toolCalls={mcpGroup} />,
-                    },
-                  ]
+                  return <AgentMcpCallBlock key={block.toolCallId} toolCalls={mcpGroup} />
                 }
 
                 if (block.toolName in TOOL_GROUP_SEPARATORS) {
                   const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
                   if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
-                  const category = getToolExecutionCategory(block.toolName)
                   const toolResults = toolGroup
                     .map((call) => toolResultByToolCallId.get(call.toolCallId))
                     .filter(
@@ -285,45 +272,32 @@ export const AgentAssistantMessage = ({
                     const lspDetails = toolGroup
                       .map((call) => lspDetailsByToolCallId.get(call.toolCallId))
                       .filter((entry): entry is LspToolDetails => entry !== undefined)
-                    return [
-                      {
-                        category,
-                        node: (
-                          <AgentToolCallBlock
-                            toolCalls={toolGroup}
-                            toolResults={toolResults}
-                            lspDetails={lspDetails}
-                          />
-                        ),
-                      },
-                    ]
+                    return (
+                      <AgentToolCallBlock
+                        key={block.toolCallId}
+                        toolCalls={toolGroup}
+                        toolResults={toolResults}
+                        lspDetails={lspDetails}
+                      />
+                    )
                   }
-                  return [
-                    {
-                      category,
-                      node: (
-                        <AgentToolCallBlock
-                          toolCalls={toolGroup}
-                          toolResults={toolResults}
-                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                        />
-                      ),
-                    },
-                  ]
+                  return (
+                    <AgentToolCallBlock
+                      key={block.toolCallId}
+                      toolCalls={toolGroup}
+                      toolResults={toolResults}
+                      toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                    />
+                  )
                 }
 
-                const category = getToolExecutionCategory(block.toolName)
-                return [
-                  {
-                    category,
-                    node: (
-                      <AgentToolCallBlock
-                        toolCall={block}
-                        toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                      />
-                    ),
-                  },
-                ]
+                return (
+                  <AgentToolCallBlock
+                    key={block.toolCallId}
+                    toolCall={block}
+                    toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                  />
+                )
               },
             )
             return <AgentExecutionGroup key={groupIndex} items={executionItems} />

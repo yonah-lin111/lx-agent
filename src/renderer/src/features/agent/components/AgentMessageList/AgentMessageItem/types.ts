@@ -23,6 +23,8 @@ export interface ExecutionGroup {
 export type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   | ExecutionGroup
+  // 编写操作调用独立组（不参与执行折叠，直接平铺展示）。
+  | { kind: "writing"; block: ToolCallBlock; isStreaming: boolean }
   // 任务清单调用独立组（不参与执行折叠，逐条展示清单）。
   | { kind: "todo"; block: ToolCallBlock; isStreaming: boolean }
   // 模型提问调用独立组（不参与执行折叠，内联作答）。

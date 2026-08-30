@@ -2,11 +2,6 @@ export { AgentCompactionSummary } from "./AgentCompactionSummary"
 export {
   AgentExecutionGroup,
   type AgentExecutionGroupProps,
-  CATEGORY_ORDER,
-  EXECUTION_CATEGORIES,
-  type ExecutionCategoryKey,
-  type ExecutionGroupItem,
-  getToolExecutionCategory,
 } from "./AgentExecutionGroup"
 export { AgentLspBlock } from "./AgentLspBlock"
 export { AgentMcpCallBlock } from "./AgentMcpCallBlock"

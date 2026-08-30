@@ -1,11 +1,10 @@
 import { Layers, Sliders, Wrench } from "lucide-react"
 import type React from "react"
 import {
-  CATEGORY_ORDER,
-  EXECUTION_CATEGORIES,
-  type ExecutionCategoryKey,
-  getToolExecutionCategory,
-} from "@/features/agent/components/blocks"
+  BUILTIN_UNDERSCORE_TOOLS,
+  SKILL_TOOL_NAME,
+  WEB_SEARCH_TOOL_NAME,
+} from "@/features/agent/components/AgentMessageList/AgentMessageItem/constants"
 import type { ExecutionSystemContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -13,12 +12,58 @@ export interface FlowItemSystemContentProps {
   content: ExecutionSystemContent
 }
 
+export type ToolSourceCategoryKey = "mcp" | "tool" | "skill" | "webSearch"
+
+export interface ToolSourceCategoryConfig {
+  key: ToolSourceCategoryKey
+  label: string
+  dotColor: string
+}
+
+export const TOOL_SOURCE_CATEGORIES: Record<ToolSourceCategoryKey, ToolSourceCategoryConfig> = {
+  tool: {
+    key: "tool",
+    label: "Tool",
+    dotColor: "bg-emerald-400",
+  },
+  mcp: {
+    key: "mcp",
+    label: "MCP",
+    dotColor: "bg-cyan-400",
+  },
+  skill: {
+    key: "skill",
+    label: "Skill",
+    dotColor: "bg-purple-400",
+  },
+  webSearch: {
+    key: "webSearch",
+    label: "Web Search",
+    dotColor: "bg-blue-400",
+  },
+}
+
+export const TOOL_SOURCE_ORDER: ToolSourceCategoryKey[] = ["tool", "mcp", "skill", "webSearch"]
+
+const getToolSourceCategory = (toolName: string): ToolSourceCategoryKey => {
+  if (toolName === SKILL_TOOL_NAME || toolName === "read_skill") {
+    return "skill"
+  }
+  if (toolName === WEB_SEARCH_TOOL_NAME || toolName === "webfetch") {
+    return "webSearch"
+  }
+  if (!BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_")) {
+    return "mcp"
+  }
+  return "tool"
+}
+
 const groupToolsByCategory = (
   tools: string[],
-): { category: ExecutionCategoryKey; tools: string[] }[] => {
-  const map = new Map<ExecutionCategoryKey, string[]>()
+): { category: ToolSourceCategoryKey; tools: string[] }[] => {
+  const map = new Map<ToolSourceCategoryKey, string[]>()
   for (const tool of tools) {
-    const cat = getToolExecutionCategory(tool)
+    const cat = getToolSourceCategory(tool)
     const list = map.get(cat)
     if (list) {
       list.push(tool)
@@ -26,7 +71,7 @@ const groupToolsByCategory = (
       map.set(cat, [tool])
     }
   }
-  return CATEGORY_ORDER.filter((cat) => (map.get(cat)?.length ?? 0) > 0).map((cat) => ({
+  return TOOL_SOURCE_ORDER.filter((cat) => (map.get(cat)?.length ?? 0) > 0).map((cat) => ({
     category: cat,
     tools: map.get(cat)!,
   }))
@@ -98,7 +143,7 @@ export const FlowItemSystemContent = ({
           </div>
           <div className="flex flex-col gap-1.5 pl-1">
             {groupToolsByCategory(content.activeTools).map(({ category, tools }) => {
-              const catConfig = EXECUTION_CATEGORIES[category]
+              const catConfig = TOOL_SOURCE_CATEGORIES[category]
               return (
                 <div key={category} className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 text-[10px] text-white/50">
@@ -125,3 +170,4 @@ export const FlowItemSystemContent = ({
     </div>
   )
 }
+

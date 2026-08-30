@@ -131,14 +131,7 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.agentToolCallGroupDesc")}
       >
         <div className="flex max-w-lg flex-col">
-          <AgentExecutionGroup
-            items={[
-              {
-                category: "searchCodebase",
-                node: <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} />,
-              },
-            ]}
-          />
+          <AgentExecutionGroup items={[<AgentToolCallBlock toolCalls={READ_GROUP_CALLS} />]} />
         </div>
       </UiPreviewSection>
       <UiPreviewSection
@@ -148,20 +141,9 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
         <div className="flex max-w-lg flex-col">
           <AgentExecutionGroup
             items={[
-              {
-                category: "system",
-                node: (
-                  <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
-                ),
-              },
-              {
-                category: "searchCodebase",
-                node: <AgentToolCallBlock toolCall={READ_CALL} />,
-              },
-              {
-                category: "system",
-                node: <AgentToolCallBlock toolCall={BASH_CALL} />,
-              },
+              <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />,
+              <AgentToolCallBlock toolCall={READ_CALL} />,
+              <AgentToolCallBlock toolCall={BASH_CALL} />,
             ]}
           />
         </div>
@@ -173,20 +155,9 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
         <div className="flex max-w-lg flex-col">
           <AgentExecutionGroup
             items={[
-              {
-                category: "system",
-                node: (
-                  <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
-                ),
-              },
-              {
-                category: "searchCodebase",
-                node: <AgentToolCallBlock toolCall={GREP_CALL} />,
-              },
-              {
-                category: "externalInfo",
-                node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
-              },
+              <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />,
+              <AgentToolCallBlock toolCall={GREP_CALL} />,
+              <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
             ]}
           />
         </div>
@@ -198,24 +169,10 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
         <div className="flex max-w-lg flex-col">
           <AgentExecutionGroup
             items={[
-              {
-                category: "system",
-                node: (
-                  <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
-                ),
-              },
-              {
-                category: "searchCodebase",
-                node: <AgentToolCallBlock toolCall={GREP_CALL} />,
-              },
-              {
-                category: "externalInfo",
-                node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
-              },
-              {
-                category: "externalInfo",
-                node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} />,
-              },
+              <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />,
+              <AgentToolCallBlock toolCall={GREP_CALL} />,
+              <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
+              <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} />,
             ]}
           />
         </div>
