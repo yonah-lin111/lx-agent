@@ -25,7 +25,7 @@ export const TOOL_SOURCE_CATEGORIES: Record<ToolSourceCategoryKey, ToolSourceCat
   tool: {
     key: "tool",
     label: "Tool",
-    dotColor: "bg-emerald-400",
+    dotColor: "bg-amber-400",
   },
   mcp: {
     key: "mcp",
@@ -40,7 +40,7 @@ export const TOOL_SOURCE_CATEGORIES: Record<ToolSourceCategoryKey, ToolSourceCat
   webSearch: {
     key: "webSearch",
     label: "Web Search",
-    dotColor: "bg-blue-400",
+    dotColor: "bg-sky-400",
   },
 }
 
