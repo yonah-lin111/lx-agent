@@ -170,6 +170,8 @@ export const getKindMeta = (
   switch (step.kind) {
     case "system":
       return { icon: Compass, labelKey: "agent.kindSystem", tagColor: "indigo" }
+    case "capabilities":
+      return { icon: Wrench, labelKey: "agent.kindCapabilities", tagColor: "amber", textColor: "text-amber-300" }
     case "user":
       return { icon: User, labelKey: "agent.kindUser", tagColor: "amber" }
     case "thinking":

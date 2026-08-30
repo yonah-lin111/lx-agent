@@ -627,6 +627,7 @@ export const AgentExecutionFlowList = forwardRef<
       const counts: Record<FilterKind, number> = {
         all: steps.length,
         system: 0,
+        capabilities: 0,
         user: 0,
         thinking: 0,
         tool: 0,

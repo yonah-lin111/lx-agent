@@ -35,6 +35,11 @@ const FILTER_TAB_COLORS: Record<
     inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
     dot: "bg-indigo-400",
   },
+  capabilities: {
+    active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
+    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
+    dot: "bg-amber-400",
+  },
   tool: {
     active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
     inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
@@ -184,6 +189,8 @@ export const AgentExecutionFlowHeader = ({
           >
             {renderTab("all", t("agent.filterAll"), filterCounts.all)}
             {filterCounts.system > 0 && renderTab("system", t("agent.filterSystem"), filterCounts.system)}
+            {filterCounts.capabilities > 0 &&
+              renderTab("capabilities", t("agent.filterCapabilities"), filterCounts.capabilities)}
             {filterCounts.tool > 0 && renderTab("tool", t("agent.filterTools"), filterCounts.tool)}
             {filterCounts.thinking > 0 &&
               renderTab("thinking", t("agent.filterThinking"), filterCounts.thinking)}

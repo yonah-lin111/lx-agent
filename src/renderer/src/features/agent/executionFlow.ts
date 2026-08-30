@@ -20,7 +20,7 @@ export const buildExecutionSteps = (
 ): ExecutionStep[] => {
   const steps: ExecutionStep[] = []
 
-  // 0. 若存在系统提示词装配，注入步骤 0 (System & Injections)
+  // 0. 若存在系统提示词装配，注入步骤 0 (System Prompt)
   if (
     promptAssembly &&
     (promptAssembly.sections.length > 0 ||
@@ -32,15 +32,35 @@ export const buildExecutionSteps = (
       turnIndex: 0,
       stepIndex: 0,
       kind: "system",
-      title: "System & Injections",
+      title: "System Prompt",
       subtitle: `${promptAssembly.sections.length} sections, ${promptAssembly.contexts.length} contexts`,
       status: "done",
       systemContent: {
         sections: promptAssembly.sections,
         contexts: promptAssembly.contexts,
         variables: promptAssembly.variables,
-        activeTools: promptAssembly.activeTools,
         rendered: promptAssembly.rendered,
+      },
+    })
+  }
+
+  // 0.1 注册的系统能力（Turn 0 独立 Capabilities 步骤）
+  if (promptAssembly && promptAssembly.activeTools && promptAssembly.activeTools.length > 0) {
+    const nextIdx = steps.length > 0 ? 1 : 0
+    steps.push({
+      id: "step-0-capabilities",
+      turnIndex: 0,
+      stepIndex: nextIdx,
+      kind: "capabilities",
+      title: "Available Capabilities",
+      subtitle: `${promptAssembly.activeTools.length} tools registered`,
+      status: "done",
+      systemContent: {
+        sections: [],
+        contexts: [],
+        variables: {},
+        activeTools: promptAssembly.activeTools,
+        rendered: "",
       },
     })
   }
