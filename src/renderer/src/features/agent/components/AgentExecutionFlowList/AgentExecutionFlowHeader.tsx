@@ -158,9 +158,8 @@ export const AgentExecutionFlowHeader = ({
             }`}
           />
         )}
-        <span>{label}</span>
-        <span className={isActive ? "opacity-75 font-normal" : "opacity-40 font-normal"}>
-          ({count})
+        <span>
+          {label} ({count})
         </span>
       </button>
     )

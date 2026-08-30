@@ -1338,17 +1338,13 @@ describe("AgentExecutionFlowList", () => {
     expect(assistantFooter?.textContent).toContain("OUT 650")
     expect(assistantFooter?.textContent).toContain("CACHE 1.2k")
 
-    // 3. Subagent 步骤作为 Group 内子步骤或独立步骤：包含 subagent.usage
-    // 展开 Group
-    const groupHeader = container.querySelector(".agent-execution-flow-group-header")
-    if (groupHeader) {
-      fireEvent.click(groupHeader)
-    }
-    const groupFooter = container.querySelector(".agent-execution-flow-group-footer")
-    expect(groupFooter).not.toBeNull()
-    expect(groupFooter?.textContent).toContain("IN 800")
-    expect(groupFooter?.textContent).toContain("OUT 200")
-    expect(groupFooter?.textContent).toContain("CACHE 100")
+    // 3. Subagent 步骤与独立步骤：包含 subagent.usage
+    const subagentStep = container.querySelector('[data-step-kind="subagent"]')
+    const subagentFooter = subagentStep?.querySelector(".agent-execution-flow-step-footer")
+    expect(subagentFooter).not.toBeNull()
+    expect(subagentFooter?.textContent).toContain("IN 800")
+    expect(subagentFooter?.textContent).toContain("OUT 200")
+    expect(subagentFooter?.textContent).toContain("CACHE 100")
 
     // 4. Header 顶栏右侧不再显示旧版的 "xxx tok"
     expect(screen.queryByText(/tok$/)).toBeNull()
