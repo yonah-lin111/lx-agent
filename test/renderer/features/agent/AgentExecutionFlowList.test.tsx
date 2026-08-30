@@ -194,7 +194,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Execute Group")).not.toBeNull()
 
     // 切换到工具筛选
-    const toolFilterBtn = screen.getByRole("button", { name: /Tool Schema \(1\)/ })
+    const toolFilterBtn = screen.getByRole("button", { name: /Tool Calls \(1\)/ })
     fireEvent.click(toolFilterBtn)
 
     // 分类筛选下为扁平单项展示：工具可见，用户输入不可见
