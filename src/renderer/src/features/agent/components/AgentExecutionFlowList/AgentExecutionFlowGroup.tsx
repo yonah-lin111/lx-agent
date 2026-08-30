@@ -194,7 +194,7 @@ export const AgentExecutionFlowGroup = ({
     <div
       data-flow-group="true"
       data-expanded={isExpanded}
-      className="agent-execution-flow-group rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10"
+      className="agent-execution-flow-group rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,#212121)] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))]"
     >
       {/* 头部摘要栏（固定双行展示） */}
       <div
@@ -207,13 +207,13 @@ export const AgentExecutionFlowGroup = ({
             onToggleExpand()
           }
         }}
-        className="agent-execution-flow-group-header flex cursor-pointer flex-col justify-center gap-1 py-1.5 px-2.5 select-none transition-colors"
+        className="agent-execution-flow-group-header flex cursor-pointer flex-col justify-center gap-1 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
       >
         {/* 第一行：折叠箭头、Group 标题、数量、右侧总耗时与状态图标 */}
         <div className="flex h-5 w-full items-center justify-between gap-2 leading-none">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none overflow-hidden">
             {/* 折叠箭头 */}
-            <div className="flex shrink-0 items-center text-white/40">
+            <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
               {isExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5" />
               ) : (
@@ -228,10 +228,12 @@ export const AgentExecutionFlowGroup = ({
                 isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
               }`}
             />
-            <span className="shrink-0 font-mono text-[12px] font-semibold text-white/90">
+            <span className="shrink-0 font-mono text-[12px] font-semibold text-[var(--color-theme-text,#ffffff)]/90">
               Execute Group
             </span>
-            <span className="shrink-0 font-mono text-[11px] text-white/40">({steps.length})</span>
+            <span className="shrink-0 font-mono text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+              ({steps.length})
+            </span>
           </div>
 
           {/* 右侧总运行时间与状态指标 */}
@@ -240,14 +242,12 @@ export const AgentExecutionFlowGroup = ({
               <span
                 data-testid="flow-group-duration"
                 className={`agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none ${
-                  isRunning ? "text-sky-300" : "text-white/50"
+                  isRunning ? "text-sky-300" : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
                 }`}
               >
                 {formatDurationMs(totalDurationMs)}
               </span>
             )}
-
-
 
             {/* 状态图标 */}
             {isRunning && (
@@ -295,7 +295,7 @@ export const AgentExecutionFlowGroup = ({
                 {isCopied ? (
                   <Check className="h-3 w-3 text-emerald-400" />
                 ) : (
-                  <Copy className="h-3 w-3 text-white/40" />
+                  <Copy className="h-3 w-3 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
                 )}
               </LxIconButton>
             )}
@@ -304,14 +304,14 @@ export const AgentExecutionFlowGroup = ({
 
         {/* 第二行：展示代表步骤标题（运行中为正在运行项，完成态为最后项） */}
         {activeStep && (
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-[11px] leading-none text-white/70">
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-[11px] leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
             <CornerDownRight
-              className={`h-3 w-3 shrink-0 ${isRunning ? "text-sky-400/80" : "text-white/40"}`}
+              className={`h-3 w-3 shrink-0 ${isRunning ? "text-sky-400/80" : "text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"}`}
             />
             {activeStep.kind === "tool" && activeStep.toolContent ? (
               <FlowItemToolTitle toolContent={activeStep.toolContent} />
             ) : (
-              <span className="truncate font-mono text-[11px] text-white/70">
+              <span className="truncate font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
                 {activeStep.title}
               </span>
             )}
@@ -321,7 +321,7 @@ export const AgentExecutionFlowGroup = ({
 
       {/* 展开子步骤列表 */}
       {isExpanded && (
-        <div className="agent-execution-flow-group-body border-t border-white/5 bg-black/20 p-2">
+        <div className="agent-execution-flow-group-body border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-bg,#000000)]/20 p-2">
           <div className="flex flex-col gap-1.5">
             {steps.map((step) => (
               <AgentExecutionFlowItem
@@ -337,7 +337,7 @@ export const AgentExecutionFlowGroup = ({
 
       {/* 底部 Token 指标栏：折叠与展开状态下均可见，存在有效 Token 时始终渲染（包括 running 状态） */}
       {(inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
-        <div className="agent-execution-flow-group-footer flex items-center justify-start border-t border-white/5 px-2.5 py-1 select-none">
+        <div className="agent-execution-flow-group-footer flex items-center justify-start border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2.5 py-1 select-none">
           <LxTooltip
             placement="top"
             content={
@@ -350,7 +350,7 @@ export const AgentExecutionFlowGroup = ({
               </div>
             }
           >
-            <span className="flex items-center gap-1 font-mono text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
+            <span className="flex items-center gap-1 font-mono text-[10px] leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))] select-text tabular-nums whitespace-nowrap cursor-default hover:text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] transition-colors">
               <span>IN {formatTokensShort(inputTokens)}</span>
               <span aria-hidden="true" className="opacity-40">
                 ·

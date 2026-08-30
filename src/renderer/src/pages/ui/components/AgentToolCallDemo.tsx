@@ -134,7 +134,8 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
           <AgentExecutionGroup
             items={[
               {
-                category: "searchCodebase",
+                type: "tool",
+                dotColor: "bg-amber-300",
                 node: <AgentToolCallBlock toolCalls={READ_GROUP_CALLS} />,
               },
             ]}
@@ -149,17 +150,20 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
           <AgentExecutionGroup
             items={[
               {
-                category: "system",
+                type: "thinking",
+                dotColor: "bg-rose-300",
                 node: (
                   <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
                 ),
               },
               {
-                category: "searchCodebase",
+                type: "tool",
+                dotColor: "bg-amber-300",
                 node: <AgentToolCallBlock toolCall={READ_CALL} />,
               },
               {
-                category: "system",
+                type: "tool",
+                dotColor: "bg-amber-300",
                 node: <AgentToolCallBlock toolCall={BASH_CALL} />,
               },
             ]}
@@ -174,17 +178,20 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
           <AgentExecutionGroup
             items={[
               {
-                category: "system",
+                type: "thinking",
+                dotColor: "bg-rose-300",
                 node: (
                   <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
                 ),
               },
               {
-                category: "searchCodebase",
+                type: "tool",
+                dotColor: "bg-amber-300",
                 node: <AgentToolCallBlock toolCall={GREP_CALL} />,
               },
               {
-                category: "externalInfo",
+                type: "mcp",
+                dotColor: "bg-cyan-300",
                 node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
               },
             ]}
@@ -199,21 +206,25 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
           <AgentExecutionGroup
             items={[
               {
-                category: "system",
+                type: "thinking",
+                dotColor: "bg-rose-300",
                 node: (
                   <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
                 ),
               },
               {
-                category: "searchCodebase",
+                type: "tool",
+                dotColor: "bg-amber-300",
                 node: <AgentToolCallBlock toolCall={GREP_CALL} />,
               },
               {
-                category: "externalInfo",
+                type: "mcp",
+                dotColor: "bg-cyan-300",
                 node: <AgentMcpCallBlock toolCalls={MCP_CALLS} />,
               },
               {
-                category: "externalInfo",
+                type: "webSearch",
+                dotColor: "bg-emerald-300",
                 node: <AgentWebSearchBlock toolCalls={WEB_SEARCH_CALLS} />,
               },
             ]}

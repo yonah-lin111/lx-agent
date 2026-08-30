@@ -126,13 +126,13 @@ export const getToolCategoryMeta = (
   textColor: string
 } => {
   if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
-    return { icon: Code2, label: "Coding", tagColor: "emerald", textColor: "text-emerald-300" }
+    return { icon: Code2, label: "Coding", tagColor: "amber", textColor: "text-amber-300" }
   }
   if (toolName === "render_svg") {
-    return { icon: Palette, label: "SVG", tagColor: "sky", textColor: "text-sky-300" }
+    return { icon: Palette, label: "SVG", tagColor: "amber", textColor: "text-amber-300" }
   }
   if (toolName === "render_ascii") {
-    return { icon: Terminal, label: "ASCII", tagColor: "emerald", textColor: "text-emerald-300" }
+    return { icon: Terminal, label: "ASCII", tagColor: "amber", textColor: "text-amber-300" }
   }
   if (toolName === "render_html") {
     return { icon: Code2, label: "HTML", tagColor: "amber", textColor: "text-amber-300" }
@@ -144,15 +144,15 @@ export const getToolCategoryMeta = (
     return { icon: Sparkles, label: "Skill", tagColor: "purple", textColor: "text-violet-300" }
   }
   if (toolName === "web_search" || toolName === "webfetch") {
-    return { icon: Search, label: "Web", tagColor: "emerald", textColor: "text-emerald-300" }
+    return { icon: Search, label: "Web", tagColor: "sky", textColor: "text-sky-300" }
   }
   if (toolName.startsWith("job_") || toolName === "switch_mode") {
-    return { icon: Terminal, label: "Tool", tagColor: "sky", textColor: "text-sky-300" }
+    return { icon: Terminal, label: "Tool", tagColor: "amber", textColor: "text-amber-300" }
   }
   if (toolName.includes("_")) {
     return { icon: Terminal, label: "MCP", tagColor: "teal", textColor: "text-cyan-300" }
   }
-  return { icon: Wrench, label: "Tool", tagColor: "sky", textColor: "text-amber-300" }
+  return { icon: Wrench, label: "Tool", tagColor: "amber", textColor: "text-amber-300" }
 }
 
 /**
@@ -176,9 +176,9 @@ export const getKindMeta = (
       return { icon: Brain, labelKey: "agent.kindThinking", tagColor: "purple" }
     case "tool": {
       return {
-        customLabel: "tool_schema",
-        tagColor: "sky",
-        textColor: "text-sky-300",
+        labelKey: "agent.kindTool",
+        tagColor: "amber",
+        textColor: "text-amber-300",
       }
     }
     case "subagent":

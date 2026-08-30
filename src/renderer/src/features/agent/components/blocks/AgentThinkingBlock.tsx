@@ -42,7 +42,7 @@ export const AgentThinkingBlock = ({
   }, [content, isExpanded])
 
   return (
-    <div className="agent-thinking-block my-1.5 w-full">
+    <div className="agent-thinking-block my-0.5 w-full">
       <div className="min-w-0">
         <button
           type="button"

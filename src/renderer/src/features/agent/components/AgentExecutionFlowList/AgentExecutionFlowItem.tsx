@@ -137,7 +137,7 @@ export const AgentExecutionFlowItem = ({
       data-step-kind={step.kind}
       data-tag-color={meta.tagColor}
       data-expanded={effectiveExpanded}
-      className={`agent-execution-flow-step agent-execution-flow-step--${step.kind} rounded-[6px] border border-white/5 bg-[#212121] transition-colors hover:border-white/10`}
+      className={`agent-execution-flow-step agent-execution-flow-step--${step.kind} rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,#212121)] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))]`}
     >
       {/* 头部摘要栏 */}
       <div
@@ -150,11 +150,11 @@ export const AgentExecutionFlowItem = ({
             handleToggleExpand()
           }
         }}
-        className="agent-execution-flow-step-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none"
+        className="agent-execution-flow-step-header flex h-8 cursor-pointer items-center justify-between gap-2 px-2.5 select-none hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none">
           {/* 折叠箭头 */}
-          <div className="flex shrink-0 items-center text-white/40">
+          <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
             {effectiveExpanded ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
@@ -164,7 +164,7 @@ export const AgentExecutionFlowItem = ({
 
           {/* 步骤全局统一顺序索引 */}
           {!isRunning && (
-            <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-white/35">
+            <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
               #{step.stepIndex}
             </span>
           )}
@@ -196,7 +196,7 @@ export const AgentExecutionFlowItem = ({
                     ? step.errorContent?.isAborted
                       ? "text-amber-300"
                       : "text-red-400"
-                    : "text-white/85"
+                    : "text-[var(--color-theme-text,#ffffff)]/90"
                 }`}
               >
                 {step.status === "running" &&
@@ -209,7 +209,7 @@ export const AgentExecutionFlowItem = ({
               step.kind !== "user" &&
               step.subtitle &&
               step.status !== "running" && (
-                <span className="hidden min-w-0 truncate text-[11px] leading-none text-white/40 sm:inline">
+                <span className="hidden min-w-0 truncate text-[11px] leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
                   {step.subtitle}
                 </span>
               )}
@@ -226,7 +226,7 @@ export const AgentExecutionFlowItem = ({
                   step.durationMs > 0 ? (
                     <LxTooltip
                       content={
-                        <span className="text-white/80">
+                        <span className="text-[var(--color-theme-text,#ffffff)]/80">
                           {t("agent.agentOverhead", {
                             duration: formatDurationMs(step.durationMs),
                           })}
@@ -236,7 +236,7 @@ export const AgentExecutionFlowItem = ({
                     >
                       <span
                         data-testid="flow-item-duration"
-                        className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                        className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                       >
                         {formatDurationMs(step.durationMs)}
                       </span>
@@ -246,7 +246,7 @@ export const AgentExecutionFlowItem = ({
                   <LxTooltip
                     content={
                       <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
-                        <div className="text-white/80">
+                        <div className="text-[var(--color-theme-text,#ffffff)]/80">
                           {t("agent.stepDuration", { duration: formatDurationMs(step.durationMs) })}
                         </div>
                         <div className="text-amber-400">
@@ -254,7 +254,7 @@ export const AgentExecutionFlowItem = ({
                             duration: formatDurationMs(step.agentOverheadMs),
                           })}
                         </div>
-                        <div className="border-t border-white/10 pt-0.5 text-white/60">
+                        <div className="border-t border-[var(--color-theme-border,rgba(255,255,255,0.1))] pt-0.5 text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                           {t("agent.stepSpan", {
                             duration: formatDurationMs(
                               step.stepSpanMs ?? step.durationMs + step.agentOverheadMs,
@@ -267,7 +267,7 @@ export const AgentExecutionFlowItem = ({
                   >
                     <span
                       data-testid="flow-item-duration"
-                      className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                      className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                     >
                       <span>{formatDurationMs(step.durationMs)}</span>
                       <span className="text-[10px] font-normal text-amber-400/80 hover:text-amber-300">
@@ -284,7 +284,7 @@ export const AgentExecutionFlowItem = ({
                   >
                     <span
                       data-testid="flow-item-duration"
-                      className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-white/50 hover:text-white/80 cursor-default"
+                      className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                     >
                       {formatDurationMs(step.durationMs)}
                     </span>
@@ -293,8 +293,6 @@ export const AgentExecutionFlowItem = ({
               ) : null}
             </>
           )}
-
-
 
           {/* 状态图标按钮 */}
           {step.status === "running" && (
@@ -342,7 +340,7 @@ export const AgentExecutionFlowItem = ({
               {isCopied ? (
                 <Check className="h-3 w-3 text-emerald-400" />
               ) : (
-                <Copy className="h-3 w-3 text-white/40" />
+                <Copy className="h-3 w-3 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
               )}
             </LxIconButton>
           )}

@@ -232,19 +232,21 @@ export const AgentExecutionFlowList = forwardRef<
       }))
     }, [])
 
-    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、todo、question、可视化工具 render_svg/render_ascii/render_html 以及写操作 edit/write/apply_patch）
+    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、子代理 subagent、todo、question、可视化工具 render_svg/render_ascii/render_html 以及写操作 edit/write/apply_patch）
     const isGroupableStep = useCallback((step: ExecutionStep): boolean => {
       if (
         step.kind === "assistant" ||
         step.kind === "user" ||
         step.kind === "compaction" ||
         step.kind === "modelSwitch" ||
-        step.kind === "error"
+        step.kind === "error" ||
+        step.kind === "subagent"
       ) {
         return false
       }
       const toolName = step.toolContent?.toolName
       if (
+        toolName === "task" ||
         toolName === "todowrite" ||
         toolName === "question" ||
         toolName === "write" ||

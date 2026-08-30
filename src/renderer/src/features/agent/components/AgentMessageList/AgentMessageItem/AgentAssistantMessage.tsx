@@ -17,8 +17,7 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
-  type ExecutionGroupItem,
-  getToolExecutionCategory,
+  type ExecutionItemMeta,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
@@ -181,6 +180,28 @@ export const AgentAssistantMessage = ({
               )
             }
 
+            if (group.kind === "writing") {
+              return (
+                <AgentToolCallBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  toolResult={toolResultByToolCallId.get(group.block.toolCallId)}
+                  diff={diffByToolCallId.get(group.block.toolCallId)}
+                  defaultExpanded={isStreamingNow}
+                />
+              )
+            }
+
+            if (group.kind === "subagent") {
+              return (
+                <AgentSubagentBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  onOpen={onOpenSubagent}
+                />
+              )
+            }
+
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
             }
@@ -193,14 +214,16 @@ export const AgentAssistantMessage = ({
               return <AgentVisualBlock key={groupIndex} toolCall={group.block} />
             }
 
-            const executionItems: ExecutionGroupItem[] = group.blocks.flatMap<ExecutionGroupItem>(
+            const executionItems = group.blocks.flatMap<ExecutionItemMeta>(
               ({ block, isStreaming }, blockIndex) => {
                 if (block.kind === "thinking") {
                   return [
                     {
-                      category: "system",
+                      type: "thinking",
+                      dotColor: "bg-rose-300",
                       node: (
                         <AgentThinkingBlock
+                          key={`thinking-${blockIndex}`}
                           content={block.text}
                           isGenerating={
                             isStreaming &&
@@ -213,38 +236,14 @@ export const AgentAssistantMessage = ({
                   ]
                 }
 
-                if (isSubagentToolCall(block.toolName)) {
-                  return [
-                    {
-                      category: "subagent",
-                      node: <AgentSubagentBlock toolCall={block} onOpen={onOpenSubagent} />,
-                    },
-                  ]
-                }
-
                 if (isSkillToolCall(block.toolName)) {
                   const skillGroup = skillCallGroupById.get(block.toolCallId)
                   if (!skillGroup || block.toolCallId !== skillGroup[0]?.toolCallId) return []
                   return [
                     {
-                      category: "externalInfo",
-                      node: <AgentSkillCallBlock toolCalls={skillGroup} />,
-                    },
-                  ]
-                }
-
-                if (isWriteToolCall(block.toolName)) {
-                  return [
-                    {
-                      category: "coding",
-                      node: (
-                        <AgentToolCallBlock
-                          toolCall={block}
-                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                          diff={diffByToolCallId.get(block.toolCallId)}
-                          defaultExpanded={isStreamingNow}
-                        />
-                      ),
+                      type: "skill",
+                      dotColor: "bg-violet-300",
+                      node: <AgentSkillCallBlock key={block.toolCallId} toolCalls={skillGroup} />,
                     },
                   ]
                 }
@@ -254,8 +253,11 @@ export const AgentAssistantMessage = ({
                   if (!searchGroup || block.toolCallId !== searchGroup[0]?.toolCallId) return []
                   return [
                     {
-                      category: "externalInfo",
-                      node: <AgentWebSearchBlock toolCalls={searchGroup} />,
+                      type: "webSearch",
+                      dotColor: "bg-emerald-300",
+                      node: (
+                        <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />
+                      ),
                     },
                   ]
                 }
@@ -265,8 +267,9 @@ export const AgentAssistantMessage = ({
                   if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return []
                   return [
                     {
-                      category: "externalInfo",
-                      node: <AgentMcpCallBlock toolCalls={mcpGroup} />,
+                      type: "mcp",
+                      dotColor: "bg-cyan-300",
+                      node: <AgentMcpCallBlock key={block.toolCallId} toolCalls={mcpGroup} />,
                     },
                   ]
                 }
@@ -274,7 +277,6 @@ export const AgentAssistantMessage = ({
                 if (block.toolName in TOOL_GROUP_SEPARATORS) {
                   const toolGroup = mergeableToolCallGroupById.get(block.toolCallId)
                   if (!toolGroup || block.toolCallId !== toolGroup[0]?.toolCallId) return []
-                  const category = getToolExecutionCategory(block.toolName)
                   const toolResults = toolGroup
                     .map((call) => toolResultByToolCallId.get(call.toolCallId))
                     .filter(
@@ -287,9 +289,11 @@ export const AgentAssistantMessage = ({
                       .filter((entry): entry is LspToolDetails => entry !== undefined)
                     return [
                       {
-                        category,
+                        type: "tool",
+                        dotColor: "bg-cyan-300",
                         node: (
                           <AgentToolCallBlock
+                            key={block.toolCallId}
                             toolCalls={toolGroup}
                             toolResults={toolResults}
                             lspDetails={lspDetails}
@@ -300,9 +304,11 @@ export const AgentAssistantMessage = ({
                   }
                   return [
                     {
-                      category,
+                      type: "tool",
+                      dotColor: "bg-amber-300",
                       node: (
                         <AgentToolCallBlock
+                          key={block.toolCallId}
                           toolCalls={toolGroup}
                           toolResults={toolResults}
                           toolResult={toolResultByToolCallId.get(block.toolCallId)}
@@ -312,12 +318,13 @@ export const AgentAssistantMessage = ({
                   ]
                 }
 
-                const category = getToolExecutionCategory(block.toolName)
                 return [
                   {
-                    category,
+                    type: "tool",
+                    dotColor: "bg-amber-300",
                     node: (
                       <AgentToolCallBlock
+                        key={block.toolCallId}
                         toolCall={block}
                         toolResult={toolResultByToolCallId.get(block.toolCallId)}
                       />

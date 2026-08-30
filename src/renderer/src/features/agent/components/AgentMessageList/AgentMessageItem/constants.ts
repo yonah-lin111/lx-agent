@@ -19,4 +19,7 @@ export const BUILTIN_UNDERSCORE_TOOLS = new Set([
   "job_list",
   "job_kill",
   "switch_mode",
+  "render_svg",
+  "render_ascii",
+  "render_html",
 ])

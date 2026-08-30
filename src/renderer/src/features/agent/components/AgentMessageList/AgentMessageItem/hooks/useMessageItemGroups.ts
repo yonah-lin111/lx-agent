@@ -8,9 +8,11 @@ import {
   isMcpToolCall,
   isQuestionToolCall,
   isSkillToolCall,
+  isSubagentToolCall,
   isTodoToolCall,
   isVisualToolCall,
   isWebSearchToolCall,
+  isWriteToolCall,
 } from "../utils"
 
 // 消息项分组解析结果接口。
@@ -254,6 +256,16 @@ export const useMessageItemGroups = (
       if (item.block.kind !== "toolCall") continue
 
       const toolName = item.block.toolName
+      if (isWriteToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "writing", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      if (isSubagentToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "subagent", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
       if (isTodoToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "todo", block: item.block, isStreaming: item.isStreaming })

@@ -47,7 +47,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     const fileName = filePath ? filePath.split("/").pop() || filePath : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-emerald-300">
+        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-amber-300">
           {toolName}
         </span>
         {fileName && (
@@ -66,14 +66,14 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     )
   }
 
-  if (toolName === "grep" || toolName === "find") {
+  if (toolName === "grep" || toolName === "find" || toolName === "glob") {
     const pattern =
       typeof toolContent.args?.pattern === "string" ? toolContent.args.pattern.trim() : ""
     const path = typeof toolContent.args?.path === "string" ? toolContent.args.path.trim() : ""
     const glob = typeof toolContent.args?.glob === "string" ? toolContent.args.glob.trim() : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-sky-300">
+        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-amber-300">
           {toolName}
         </span>
         {pattern && (
@@ -100,7 +100,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     const path = typeof toolContent.args?.path === "string" ? toolContent.args.path.trim() : "."
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-sky-300">
+        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-amber-300">
           ls
         </span>
         <span className="flex min-w-0 items-center gap-1 truncate font-mono text-[11px] leading-none text-white/60">
@@ -120,11 +120,11 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     const query = typeof toolContent.args?.query === "string" ? ` "${toolContent.args.query}"` : ""
     return (
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-teal-300">
+        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-amber-300">
           lsp
         </span>
         {operation && (
-          <span className="shrink-0 font-mono text-[11px] leading-none text-teal-400/80">
+          <span className="shrink-0 font-mono text-[11px] leading-none text-amber-400/80">
             {operation}
           </span>
         )}
