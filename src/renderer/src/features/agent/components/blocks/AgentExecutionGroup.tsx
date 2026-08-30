@@ -80,6 +80,26 @@ export const AgentExecutionGroup = ({
     return null
   }
 
+  const renderStatsRow = (): React.JSX.Element | null => {
+    if (statsSegments.length === 0) return null
+    return (
+      <div className="agent-execution-group-stats-row flex min-w-0 items-start gap-1 pl-1 text-[12px] text-white/45">
+        <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/40" />
+        <span className="agent-execution-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
+          {statsSegments.map((segment, index) => (
+            <Fragment key={segment.plural}>
+              {index > 0 && <span className="px-1 text-white/25">·</span>}
+              <span>{segment.count}</span>
+              <span className="ml-0.5">
+                {segment.count === 1 ? segment.singular : segment.plural}
+              </span>
+            </Fragment>
+          ))}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className="agent-execution-group my-0.5 flex min-w-0 flex-col gap-1">
       {/* 顶部折叠按钮 */}
@@ -100,23 +120,8 @@ export const AgentExecutionGroup = ({
         />
       </button>
 
-      {/* 直角 icon 与类型汇总统计行 */}
-      {statsSegments.length > 0 && (
-        <div className="agent-execution-group-stats-row flex min-w-0 items-start gap-1 pl-1 text-[12px] text-white/45">
-          <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/40" />
-          <span className="agent-execution-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
-            {statsSegments.map((segment, index) => (
-              <Fragment key={segment.plural}>
-                {index > 0 && <span className="px-1 text-white/25">·</span>}
-                <span>{segment.count}</span>
-                <span className="ml-0.5">
-                  {segment.count === 1 ? segment.singular : segment.plural}
-                </span>
-              </Fragment>
-            ))}
-          </span>
-        </div>
-      )}
+      {/* 折叠状态下：在顶部 header 下方展示统计 */}
+      {!isExpanded && renderStatsRow()}
 
       {/* 展开的条目列表：左侧贯穿轴线 + 节点对齐小圆点 */}
       <div
@@ -129,21 +134,24 @@ export const AgentExecutionGroup = ({
         }}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="relative ml-2.5 flex min-w-0 flex-col gap-2 border-l border-white/10 pl-3 py-1">
+          <div className="relative ml-2.5 flex min-w-0 flex-col gap-1.5 border-l border-white/10 pl-3 py-1">
             {items.map((item, itemIndex) => {
               const { dotColor, node } = resolveItemMeta(item)
               return (
                 <div key={itemIndex} className="agent-execution-item relative min-w-0">
-                  {/* 左侧贯穿线上的彩色小圆点 */}
+                  {/* 左侧贯穿线上的彩色小圆点：与 header 高度 (20px / 1.25rem) 中心 10px 精准对齐 */}
                   <span
                     aria-hidden
-                    className={`absolute -left-[15.5px] top-[7px] h-1.5 w-1.5 rounded-full ring-2 ring-[#303030] ${dotColor}`}
+                    className={`absolute -left-[15.5px] top-[9.5px] h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-[#303030] ${dotColor}`}
                   />
                   {node}
                 </div>
               )
             })}
           </div>
+
+          {/* 展开状态下：在展开条目容器下方展示统计 */}
+          <div className="mt-1">{renderStatsRow()}</div>
         </div>
       </div>
     </div>
