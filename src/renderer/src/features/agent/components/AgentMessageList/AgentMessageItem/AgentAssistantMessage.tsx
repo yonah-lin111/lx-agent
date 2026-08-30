@@ -17,6 +17,7 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
+  type ExecutionItemMeta,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
@@ -191,6 +192,16 @@ export const AgentAssistantMessage = ({
               )
             }
 
+            if (group.kind === "subagent") {
+              return (
+                <AgentSubagentBlock
+                  key={groupIndex}
+                  toolCall={group.block}
+                  onOpen={onOpenSubagent}
+                />
+              )
+            }
+
             if (group.kind === "todo") {
               return <AgentTodoCallBlock key={groupIndex} toolCall={group.block} />
             }
@@ -203,60 +214,64 @@ export const AgentAssistantMessage = ({
               return <AgentVisualBlock key={groupIndex} toolCall={group.block} />
             }
 
-            const executionItems = group.blocks.flatMap<React.ReactNode>(
+            const executionItems = group.blocks.flatMap<ExecutionItemMeta>(
               ({ block, isStreaming }, blockIndex) => {
                 if (block.kind === "thinking") {
-                  return (
-                    <AgentThinkingBlock
-                      key={`thinking-${blockIndex}`}
-                      content={block.text}
-                      isGenerating={
-                        isStreaming &&
-                        groupIndex === executionGroups.length - 1 &&
-                        blockIndex === group.blocks.length - 1
-                      }
-                    />
-                  )
-                }
-
-                if (isSubagentToolCall(block.toolName)) {
-                  return (
-                    <AgentSubagentBlock
-                      key={block.toolCallId}
-                      toolCall={block}
-                      onOpen={onOpenSubagent}
-                    />
-                  )
+                  return [
+                    {
+                      type: "thinking",
+                      dotColor: "bg-rose-300",
+                      node: (
+                        <AgentThinkingBlock
+                          key={`thinking-${blockIndex}`}
+                          content={block.text}
+                          isGenerating={
+                            isStreaming &&
+                            groupIndex === executionGroups.length - 1 &&
+                            blockIndex === group.blocks.length - 1
+                          }
+                        />
+                      ),
+                    },
+                  ]
                 }
 
                 if (isSkillToolCall(block.toolName)) {
                   const skillGroup = skillCallGroupById.get(block.toolCallId)
                   if (!skillGroup || block.toolCallId !== skillGroup[0]?.toolCallId) return []
-                  return <AgentSkillCallBlock key={block.toolCallId} toolCalls={skillGroup} />
-                }
-
-                if (isWriteToolCall(block.toolName)) {
-                  return (
-                    <AgentToolCallBlock
-                      key={block.toolCallId}
-                      toolCall={block}
-                      toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                      diff={diffByToolCallId.get(block.toolCallId)}
-                      defaultExpanded={isStreamingNow}
-                    />
-                  )
+                  return [
+                    {
+                      type: "skill",
+                      dotColor: "bg-violet-300",
+                      node: <AgentSkillCallBlock key={block.toolCallId} toolCalls={skillGroup} />,
+                    },
+                  ]
                 }
 
                 if (isWebSearchToolCall(block.toolName)) {
                   const searchGroup = webSearchCallGroupById.get(block.toolCallId)
                   if (!searchGroup || block.toolCallId !== searchGroup[0]?.toolCallId) return []
-                  return <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />
+                  return [
+                    {
+                      type: "webSearch",
+                      dotColor: "bg-emerald-300",
+                      node: (
+                        <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />
+                      ),
+                    },
+                  ]
                 }
 
                 if (isMcpToolCall(block.toolName)) {
                   const mcpGroup = mcpCallGroupById.get(block.toolCallId)
                   if (!mcpGroup || block.toolCallId !== mcpGroup[0]?.toolCallId) return []
-                  return <AgentMcpCallBlock key={block.toolCallId} toolCalls={mcpGroup} />
+                  return [
+                    {
+                      type: "mcp",
+                      dotColor: "bg-cyan-300",
+                      node: <AgentMcpCallBlock key={block.toolCallId} toolCalls={mcpGroup} />,
+                    },
+                  ]
                 }
 
                 if (block.toolName in TOOL_GROUP_SEPARATORS) {
@@ -272,32 +287,50 @@ export const AgentAssistantMessage = ({
                     const lspDetails = toolGroup
                       .map((call) => lspDetailsByToolCallId.get(call.toolCallId))
                       .filter((entry): entry is LspToolDetails => entry !== undefined)
-                    return (
-                      <AgentToolCallBlock
-                        key={block.toolCallId}
-                        toolCalls={toolGroup}
-                        toolResults={toolResults}
-                        lspDetails={lspDetails}
-                      />
-                    )
+                    return [
+                      {
+                        type: "tool",
+                        dotColor: "bg-cyan-300",
+                        node: (
+                          <AgentToolCallBlock
+                            key={block.toolCallId}
+                            toolCalls={toolGroup}
+                            toolResults={toolResults}
+                            lspDetails={lspDetails}
+                          />
+                        ),
+                      },
+                    ]
                   }
-                  return (
-                    <AgentToolCallBlock
-                      key={block.toolCallId}
-                      toolCalls={toolGroup}
-                      toolResults={toolResults}
-                      toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                    />
-                  )
+                  return [
+                    {
+                      type: "tool",
+                      dotColor: "bg-amber-300",
+                      node: (
+                        <AgentToolCallBlock
+                          key={block.toolCallId}
+                          toolCalls={toolGroup}
+                          toolResults={toolResults}
+                          toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                        />
+                      ),
+                    },
+                  ]
                 }
 
-                return (
-                  <AgentToolCallBlock
-                    key={block.toolCallId}
-                    toolCall={block}
-                    toolResult={toolResultByToolCallId.get(block.toolCallId)}
-                  />
-                )
+                return [
+                  {
+                    type: "tool",
+                    dotColor: "bg-amber-300",
+                    node: (
+                      <AgentToolCallBlock
+                        key={block.toolCallId}
+                        toolCall={block}
+                        toolResult={toolResultByToolCallId.get(block.toolCallId)}
+                      />
+                    ),
+                  },
+                ]
               },
             )
             return <AgentExecutionGroup key={groupIndex} items={executionItems} />

@@ -2,6 +2,8 @@ export { AgentCompactionSummary } from "./AgentCompactionSummary"
 export {
   AgentExecutionGroup,
   type AgentExecutionGroupProps,
+  type ExecutionItemMeta,
+  type ExecutionItemType,
 } from "./AgentExecutionGroup"
 export { AgentLspBlock } from "./AgentLspBlock"
 export { AgentMcpCallBlock } from "./AgentMcpCallBlock"

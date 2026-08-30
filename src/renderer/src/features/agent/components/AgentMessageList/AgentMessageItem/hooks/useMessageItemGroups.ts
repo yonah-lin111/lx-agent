@@ -8,6 +8,7 @@ import {
   isMcpToolCall,
   isQuestionToolCall,
   isSkillToolCall,
+  isSubagentToolCall,
   isTodoToolCall,
   isVisualToolCall,
   isWebSearchToolCall,
@@ -258,6 +259,11 @@ export const useMessageItemGroups = (
       if (isWriteToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "writing", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
+      if (isSubagentToolCall(toolName)) {
+        currentExecution = null
+        groups.push({ kind: "subagent", block: item.block, isStreaming: item.isStreaming })
         continue
       }
       if (isTodoToolCall(toolName)) {
