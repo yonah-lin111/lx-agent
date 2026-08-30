@@ -125,7 +125,6 @@ export interface AgentPromptCard {
 // 执行步骤类型。
 export type ExecutionStepKind =
   | "system"
-  | "capabilities"
   | "user"
   | "thinking"
   | "tool"

@@ -264,6 +264,9 @@ export const AgentExecutionFlowList = forwardRef<
     // 过滤后的步骤列表
     const filteredSteps = useMemo(() => {
       if (activeFilter === "all") return steps
+      if (activeFilter === "calls") {
+        return steps.filter((step) => step.kind === "tool" || step.kind === "subagent")
+      }
       return steps.filter((step) => step.kind === activeFilter)
     }, [steps, activeFilter])
 
@@ -626,8 +629,8 @@ export const AgentExecutionFlowList = forwardRef<
     const filterCounts = useMemo<Record<FilterKind, number>>(() => {
       const counts: Record<FilterKind, number> = {
         all: steps.length,
+        calls: 0,
         system: 0,
-        capabilities: 0,
         user: 0,
         thinking: 0,
         tool: 0,
@@ -639,6 +642,9 @@ export const AgentExecutionFlowList = forwardRef<
       }
       for (const step of steps) {
         counts[step.kind]++
+        if (step.kind === "tool" || step.kind === "subagent") {
+          counts.calls++
+        }
       }
       return counts
     }, [steps])

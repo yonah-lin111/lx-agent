@@ -107,9 +107,6 @@ export const FlowItemSystemContent = ({
     (sec) => !sec.name.toLowerCase().includes("model-adaptive"),
   )
 
-  const hasSystemPromptOrContext = visibleSections.length > 0 || content.contexts.length > 0
-  const hasActiveTools = Boolean(content.activeTools && content.activeTools.length > 0)
-
   return (
     <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-[11px]">
       {/* 分段概览 */}
@@ -162,15 +159,15 @@ export const FlowItemSystemContent = ({
         </div>
       )}
 
-      {/* 激活的工具全集（在独立的 Capabilities 步骤或旧版兼容兜底中渲染） */}
-      {hasActiveTools && !hasSystemPromptOrContext && (
+      {/* 激活的工具全集（按分类展示，MCP 内部按服务名进一步分组） */}
+      {content.activeTools && content.activeTools.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1 text-amber-300 font-semibold">
             <Wrench className="h-3 w-3" />
             <span>{t("agent.activeToolsList")}</span>
           </div>
           <div className="flex flex-col gap-1.5 pl-1">
-            {groupToolsByCategory(content.activeTools!).map(({ category, tools }) => {
+            {groupToolsByCategory(content.activeTools).map(({ category, tools }) => {
               const catConfig = TOOL_SOURCE_CATEGORIES[category]
 
               if (category === "mcp") {

@@ -30,15 +30,15 @@ const FILTER_TAB_COLORS: Record<
     active: "bg-white/15 text-[var(--color-theme-text,#ffffff)] font-semibold shadow-sm",
     inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
   },
+  calls: {
+    active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
+    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
+    dot: "bg-amber-400",
+  },
   system: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
     inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
     dot: "bg-indigo-400",
-  },
-  capabilities: {
-    active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
-    dot: "bg-amber-400",
   },
   tool: {
     active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
@@ -188,9 +188,9 @@ export const AgentExecutionFlowHeader = ({
             className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
           >
             {renderTab("all", t("agent.filterAll"), filterCounts.all)}
+            {filterCounts.calls > 0 &&
+              renderTab("calls", t("agent.filterCalls"), filterCounts.calls)}
             {filterCounts.system > 0 && renderTab("system", t("agent.filterSystem"), filterCounts.system)}
-            {filterCounts.capabilities > 0 &&
-              renderTab("capabilities", t("agent.filterCapabilities"), filterCounts.capabilities)}
             {filterCounts.tool > 0 && renderTab("tool", t("agent.filterTools"), filterCounts.tool)}
             {filterCounts.thinking > 0 &&
               renderTab("thinking", t("agent.filterThinking"), filterCounts.thinking)}

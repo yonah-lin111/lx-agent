@@ -21,7 +21,7 @@ import type { LxTagColor } from "@/components/ui/LxTag"
 import type { ExecutionStep, ExecutionStepKind } from "@/features/agent/types"
 import type { TranslationKey } from "@/i18n"
 
-export type FilterKind = "all" | ExecutionStepKind
+export type FilterKind = "all" | "calls" | ExecutionStepKind
 
 export interface ExecutionFlowStats {
   turnsCount: number
@@ -170,8 +170,6 @@ export const getKindMeta = (
   switch (step.kind) {
     case "system":
       return { icon: Compass, labelKey: "agent.kindSystem", tagColor: "indigo" }
-    case "capabilities":
-      return { icon: Wrench, labelKey: "agent.kindCapabilities", tagColor: "amber", textColor: "text-amber-300" }
     case "user":
       return { icon: User, labelKey: "agent.kindUser", tagColor: "amber" }
     case "thinking":
