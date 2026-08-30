@@ -134,10 +134,10 @@ export const AgentExecutionGroup = ({
               const { dotColor, node } = resolveItemMeta(item)
               return (
                 <div key={itemIndex} className="agent-execution-item relative min-w-0">
-                  {/* 左侧贯穿线上的彩色小圆点 */}
+                  {/* 左侧贯穿线上的彩色小圆点，精准与 20px 高的 header 中线（10px）居中对齐 */}
                   <span
                     aria-hidden
-                    className={`absolute -left-[15.5px] top-[7px] h-1.5 w-1.5 rounded-full ring-2 ring-[#303030] ${dotColor}`}
+                    className={`absolute -left-[15.5px] top-[9px] h-1.5 w-1.5 rounded-full ring-2 ring-[#303030] ${dotColor}`}
                   />
                   {node}
                 </div>
