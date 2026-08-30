@@ -319,7 +319,7 @@ export const zh: TranslationDictionary = {
     noMatchingSteps: "暂无匹配的执行步骤",
     turnLabel: "第 {{turn}} 轮",
     turnCount: "共 {{count}} 轮对话",
-    turnToolsCount: "{{count}} 次工具调用",
+    turnToolsCount: "{{count}} 次调用",
     turnInputTokens: "输入 {{count}}",
     turnOutputTokens: "输出 {{count}}",
     turnCacheHit: "缓存命中 {{percent}}%",

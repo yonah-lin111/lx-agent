@@ -326,7 +326,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     noMatchingSteps: "No matching execution steps",
     turnLabel: "Turn {{turn}}",
     turnCount: "{{count}} turns",
-    turnToolsCount: "{{count}} tool calls",
+    turnToolsCount: "{{count}} calls",
     turnInputTokens: "{{count}} in",
     turnOutputTokens: "{{count}} out",
     turnCacheHit: "{{percent}}% cache hit",

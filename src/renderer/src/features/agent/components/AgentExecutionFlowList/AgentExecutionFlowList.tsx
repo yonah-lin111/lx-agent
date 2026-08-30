@@ -814,7 +814,7 @@ export const AgentExecutionFlowList = forwardRef<
                               </LxTooltip>
                             )}
                             {turnStats.toolCallsCount > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-amber-300/90">
+                              <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-cyan-300/90">
                                 {t("agent.turnToolsCount", { count: turnStats.toolCallsCount })}
                               </span>
                             )}

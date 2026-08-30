@@ -579,7 +579,7 @@ describe("AgentExecutionFlowList", () => {
     const summary = screen.getByTestId("turn-summary-1")
     expect(summary).not.toBeNull()
     expect(summary.textContent).toContain("claude-3-5-sonnet")
-    expect(summary.textContent).toContain("1 tool calls")
+    expect(summary.textContent).toContain("1 calls")
     expect(summary.textContent).toContain("1.2k in")
     expect(summary.textContent).toContain("300 out")
     expect(summary.textContent).toContain("25% cache hit")

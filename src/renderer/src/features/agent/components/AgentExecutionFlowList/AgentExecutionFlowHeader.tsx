@@ -31,9 +31,9 @@ const FILTER_TAB_COLORS: Record<
     inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
   },
   calls: {
-    active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
-    dot: "bg-amber-400",
+    active: "bg-cyan-500/20 text-cyan-300 font-semibold ring-1 ring-cyan-500/30",
+    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-cyan-500/10 hover:text-cyan-300",
+    dot: "bg-cyan-400",
   },
   system: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
