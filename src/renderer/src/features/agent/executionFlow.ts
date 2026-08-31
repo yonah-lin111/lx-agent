@@ -108,6 +108,41 @@ export const buildExecutionSteps = (
       continue
     }
 
+    // 处理撤销/删除摘要（独立步骤，不计入对话轮次）
+    if (message.role === "undoSummary") {
+      stepIndex++
+      const payload = message.undoPayload
+      const title = "Turn Undone / Reverted"
+      const subtitle = payload
+        ? `${payload.toolCallCount ?? 0} tools, ${payload.fileChangeCount ?? 0} files`
+        : undefined
+      steps.push({
+        id: `step-${stepIndex}-undo`,
+        turnIndex: 0,
+        stepIndex,
+        kind: "undo",
+        title,
+        subtitle,
+        status: "done",
+        timestamp: message.timestamp,
+        startedAt: message.timestamp,
+        completedAt: message.timestamp,
+        undoContent: {
+          userPrompt: payload?.userPrompt,
+          files: payload?.files,
+          assistantSnippet: payload?.assistantSnippet,
+          modelName: payload?.modelName,
+          turnDurationMs: payload?.turnDurationMs,
+          diffs: payload?.diffs,
+          toolCalls: payload?.toolCalls,
+          toolCallCount: payload?.toolCallCount,
+          fileChangeCount: payload?.fileChangeCount,
+          undoneAt: payload?.undoneAt,
+        },
+      })
+      continue
+    }
+
     // 处理模型切换 / 初始模型注入（独立步骤，不计入对话轮次）
     if (message.role === "modelSwitch") {
       stepIndex++

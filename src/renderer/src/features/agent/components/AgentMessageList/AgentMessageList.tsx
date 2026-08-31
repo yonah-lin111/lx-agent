@@ -570,15 +570,21 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                 const assistant = group.assistant
                 const groupKey = userMessage?.id ?? assistant?.message.id
                 const isLastGroup = index === visibleGroups.length - 1
-                const isLastGroupAi = isLastGroup && assistant?.message.role !== "compactionSummary"
+                const isLastGroupAi =
+                  isLastGroup &&
+                  assistant?.message.role !== "compactionSummary" &&
+                  assistant?.message.role !== "undoSummary"
                 const isLastGroupCompaction =
                   isLastGroup && assistant?.message.role === "compactionSummary"
+                const isLastGroupUndo = isLastGroup && assistant?.message.role === "undoSummary"
 
                 return (
                   <div
                     key={groupKey}
                     ref={groupKey ? attachMessageGroupRef(groupKey) : undefined}
-                    className={isLastGroupAi || isLastGroupCompaction ? "mb-16" : ""}
+                    className={
+                      isLastGroupAi || isLastGroupCompaction || isLastGroupUndo ? "mb-16" : ""
+                    }
                   >
                     {userMessage && (
                       <>

@@ -26,6 +26,7 @@ export const groupAgentMessages = (messages: ChatMessage[]): MessageGroupEntry[]
     if (
       message.role !== "user" &&
       message.role !== "compactionSummary" &&
+      message.role !== "undoSummary" &&
       previousEntry?.message.role === "assistant"
     ) {
       previousEntry.continuationMessages.push(message)
@@ -47,7 +48,8 @@ export const buildQaGroups = (entries: MessageGroupEntry[]): MessageQaGroup[] =>
     if (
       lastGroup?.userMessage &&
       !lastGroup.assistant &&
-      entry.message.role !== "compactionSummary"
+      entry.message.role !== "compactionSummary" &&
+      entry.message.role !== "undoSummary"
     ) {
       lastGroup.assistant = entry
     } else {

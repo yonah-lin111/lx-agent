@@ -26,6 +26,7 @@ import { FlowItemSystemContent } from "./FlowItemSystemContent"
 import { FlowItemThinkingContent } from "./FlowItemThinkingContent"
 import { FlowItemToolContent } from "./FlowItemToolContent"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
+import { FlowItemUndoContent } from "./FlowItemUndoContent"
 import { FlowItemUserContent } from "./FlowItemUserContent"
 import {
   copyToClipboard,
@@ -99,6 +100,9 @@ export const AgentExecutionFlowItem = ({
         step.subagentContent.subagent,
       )}`
     }
+    if (step.undoContent) {
+      return `${step.title}\n${step.undoContent.userPrompt || ""}`
+    }
     if (step.modelSwitchContent) {
       return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
     }
@@ -118,6 +122,9 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.kind === "thinking") {
       return "agent-execution-flow-step-body--thinking agent-execution-flow-step-body--purple border-purple-500/15 bg-purple-500/[0.05]"
+    }
+    if (step.kind === "undo") {
+      return "agent-execution-flow-step-body--undo agent-execution-flow-step-body--rose border-rose-500/15 bg-rose-500/[0.05]"
     }
     if (step.kind === "modelSwitch") {
       return "agent-execution-flow-step-body--modelSwitch agent-execution-flow-step-body--cyan border-cyan-500/15 bg-cyan-500/[0.05]"
@@ -391,6 +398,11 @@ export const AgentExecutionFlowItem = ({
               assistantContent={step.assistantContent}
               previewRef={previewRef}
             />
+          )}
+
+          {/* 撤销/删除详情 */}
+          {step.undoContent && (
+            <FlowItemUndoContent content={step.undoContent} previewRef={previewRef} />
           )}
 
           {/* 助手回复详情 */}

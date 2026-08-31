@@ -83,6 +83,19 @@ export const toChatMessage = (
     }
   }
 
+  if (message.role === "undoSummary") {
+    return {
+      id,
+      role: "undoSummary",
+      blocks: message.undoPayload?.userPrompt
+        ? [{ kind: "text", text: message.undoPayload.userPrompt }]
+        : [],
+      isStreaming: false,
+      timestamp: message.timestamp,
+      undoPayload: message.undoPayload,
+    }
+  }
+
   if (message.role === "modelSwitch") {
     return {
       id,
@@ -169,8 +182,8 @@ export const toChatMessage = (
 // 将展示条目转回 shared AgentMessage（恢复会话时发送给 main）。
 export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
   messages.flatMap((message): AgentMessage[] => {
-    // 压缩摘要为派生数据：不落库、不进 main 上下文（由 compaction entry 重建）。
-    if (message.role === "compactionSummary") return []
+    // 压缩摘要与撤销摘要为派生/展示数据：不落库、不进 main 上下文。
+    if (message.role === "compactionSummary" || message.role === "undoSummary") return []
 
     if (message.role === "user") {
       const text = message.blocks

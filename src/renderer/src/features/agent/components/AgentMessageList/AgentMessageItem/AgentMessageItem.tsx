@@ -1,5 +1,5 @@
 import type React from "react"
-import { AgentCompactionSummary } from "@/features/agent/components/blocks"
+import { AgentCompactionSummary, AgentUndoSummary } from "@/features/agent/components/blocks"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { AgentAssistantMessage } from "./AgentAssistantMessage"
 import { AgentUserMessage } from "./AgentUserMessage"
@@ -45,6 +45,11 @@ export const AgentMessageItem = ({
         summaryTokens={message.summaryTokens}
       />
     )
+  }
+
+  // 撤销摘要块：展示被撤销/删除轮次的问题、工具调用与代码变更 Diff。
+  if (message.role === "undoSummary") {
+    return <AgentUndoSummary payload={message.undoPayload} />
   }
 
   // 用户消息分支。

@@ -193,7 +193,8 @@ export const AgentExecutionFlowList = forwardRef<
         if (
           steps[i].turnIndex === maxTurn &&
           steps[i].kind !== "modelSwitch" &&
-          steps[i].kind !== "compaction"
+          steps[i].kind !== "compaction" &&
+          steps[i].kind !== "undo"
         ) {
           return steps[i].id
         }
@@ -217,7 +218,8 @@ export const AgentExecutionFlowList = forwardRef<
         if (
           step.id === lastStepOfMaxTurnId &&
           step.kind !== "modelSwitch" &&
-          step.kind !== "compaction"
+          step.kind !== "compaction" &&
+          step.kind !== "undo"
         ) {
           return true
         }
@@ -671,6 +673,7 @@ export const AgentExecutionFlowList = forwardRef<
         tool: 0,
         subagent: 0,
         compaction: 0,
+        undo: 0,
         assistant: 0,
         modelSwitch: 0,
         error: 0,

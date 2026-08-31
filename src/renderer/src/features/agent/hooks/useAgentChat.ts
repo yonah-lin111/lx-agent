@@ -458,7 +458,7 @@ export const useAgentChat = (
     void agentApi.restore([], undefined, tabId)
   }, [stopStreaming, tabId])
 
-  // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并同步 main 侧上下文与 DB。
+  // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并插入撤销摘要，同步 main 侧上下文与 DB。
   // 未命中 DB 用户消息 timestamp（幽灵消息）时仅做本地移除。
   const removeTurn = useCallback(
     (userIndex: number): void => {
@@ -471,12 +471,84 @@ export const useAgentChat = (
           break
         }
       }
+
+      // 提取被撤销轮次中的核心数据（问题、助手回复、工具调用与代码 Diff）。
+      const removedMessages = list.slice(userIndex, nextUserIndex)
+      const userMessage = removedMessages[0]
+      const assistantMessage = removedMessages.find((m) => m.role === "assistant")
+
+      const userPrompt = userMessage?.blocks
+        .filter((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
+        .map((b) => b.text)
+        .join("\n")
+
+      const assistantSnippet = assistantMessage?.blocks
+        .filter((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
+        .map((b) => b.text)
+        .join("\n")
+
+      const diffs: AgentUndoDiffSummary[] = []
+      const toolCalls: { toolName: string; summary?: string }[] = []
+
+      for (const msg of removedMessages) {
+        for (const block of msg.blocks) {
+          if (block.kind === "toolCall") {
+            const summary =
+              typeof block.args?.path === "string"
+                ? block.args.path
+                : typeof block.args?.filePath === "string"
+                  ? block.args.filePath
+                  : typeof block.args?.command === "string"
+                    ? block.args.command.slice(0, 60)
+                    : typeof block.args?.pattern === "string"
+                      ? String(block.args.pattern)
+                      : undefined
+            toolCalls.push({
+              toolName: block.toolName,
+              summary,
+            })
+          }
+          if (block.kind === "toolResult" && block.diff) {
+            const filePath =
+              block.diff.filePath ||
+              toolCalls.find((tc) => tc.toolName === block.toolName)?.summary ||
+              "Modified file"
+            diffs.push({
+              filePath,
+              diff: block.diff,
+              toolName: block.toolName,
+            })
+          }
+        }
+      }
+
+      const undoSummaryMessage: ChatMessage = {
+        id: `undo-summary-${Date.now()}`,
+        role: "undoSummary",
+        blocks: userPrompt ? [{ kind: "text", text: userPrompt }] : [],
+        isStreaming: false,
+        timestamp: Date.now(),
+        undoPayload: {
+          userPrompt,
+          files: userMessage?.files,
+          assistantSnippet,
+          modelName: assistantMessage?.model,
+          turnDurationMs: assistantMessage?.durationMs,
+          diffs,
+          toolCalls,
+          toolCallCount: toolCalls.length,
+          fileChangeCount: diffs.length,
+          undoneAt: Date.now(),
+        },
+      }
+
       // 保留被移除范围内的压缩摘要（自动压缩不可随轮撤销消失；手动摘要由撤销压缩路径单独处理）。
-      const keptSummaries = list
-        .slice(userIndex, nextUserIndex)
-        .filter((message) => message.role === "compactionSummary")
+      const keptSummaries = removedMessages.filter(
+        (message) => message.role === "compactionSummary",
+      )
       const nextMessages = [
         ...list.slice(0, userIndex),
+        undoSummaryMessage,
         ...keptSummaries,
         ...list.slice(nextUserIndex),
       ]
@@ -495,19 +567,16 @@ export const useAgentChat = (
           })
       }
 
-      // 检查剩余消息：若全空或只剩初始模型（isInitial: true），脱离当前会话
+      // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离当前会话
       const hasMeaningfulMessages = nextMessages.some(
-        (m) => !(m.role === "modelSwitch" && m.isInitial),
+        (m) => !(m.role === "modelSwitch" && m.isInitial) && m.role !== "undoSummary",
       )
       if (!hasMeaningfulMessages) {
         setCurrentSessionId(null)
         if (tabId) {
           agentTabStore.setTabSessionId(tabId, null)
         }
-        if (nextMessages.length > 0) {
-          setMessages([])
-          void agentApi.restore([], undefined, tabId)
-        }
+        void agentApi.restore([], undefined, tabId)
       }
     },
     [tabId],

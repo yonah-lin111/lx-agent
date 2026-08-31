@@ -199,9 +199,11 @@ describe("useAgentChat 压缩事件消息流", () => {
     act(() => result.current.undoLastTurn())
     await act(async () => {})
 
-    // 撤销 QA 轮：回显用户消息原文，而非清空。
+    // 撤销 QA 轮：回显用户消息原文，而非清空；插入撤销摘要。
     expect(result.current.inputText).toBe("hi")
-    expect(result.current.messages).toHaveLength(0)
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0].role).toBe("undoSummary")
+    expect(result.current.messages[0].undoPayload?.userPrompt).toBe("hi")
   })
 
   it("末条为自动压缩摘要时 /undo 不做任何事（自动压缩不可撤销）", async () => {

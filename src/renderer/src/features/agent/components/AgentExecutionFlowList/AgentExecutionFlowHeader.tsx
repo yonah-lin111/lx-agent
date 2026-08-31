@@ -79,6 +79,12 @@ const FILTER_TAB_COLORS: Record<
       "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
     dot: "bg-indigo-400",
   },
+  undo: {
+    active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-rose-500/10 hover:text-rose-300",
+    dot: "bg-rose-400",
+  },
   modelSwitch: {
     active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
     inactive:
@@ -211,6 +217,7 @@ export const AgentExecutionFlowHeader = ({
             {filterCounts.user > 0 && renderTab("user", t("agent.filterUser"), filterCounts.user)}
             {filterCounts.assistant > 0 &&
               renderTab("assistant", t("agent.filterAssistant"), filterCounts.assistant)}
+            {filterCounts.undo > 0 && renderTab("undo", t("agent.kindUndo"), filterCounts.undo)}
             {filterCounts.error > 0 &&
               renderTab("error", t("agent.filterError"), filterCounts.error)}
           </div>
