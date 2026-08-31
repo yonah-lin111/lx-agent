@@ -13,7 +13,7 @@ export const editorTheme = EditorView.theme(
     },
     ".cm-content": {
       minHeight: "100%",
-      padding: "12px 16px 35vh",
+      padding: "12px 16px calc(100cqh - 1.85em - 12px)",
       caretColor: "#ffffff",
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
       lineHeight: "1.65",
@@ -25,6 +25,7 @@ export const editorTheme = EditorView.theme(
       position: "relative",
     },
     ".cm-scroller": {
+      containerType: "size",
       overflow: "auto",
       scrollbarGutter: "stable",
     },
