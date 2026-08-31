@@ -231,7 +231,10 @@ export const AgentExecutionFlowItem = ({
           {/* 单步耗时指标：区分自身执行耗时与模型响应/步进跨度 */}
           {step.status !== "running" && (
             <>
-              {step.durationMs !== undefined ? (
+              {step.durationMs !== undefined &&
+              step.kind !== "undo" &&
+              step.kind !== "modelSwitch" &&
+              step.kind !== "compaction" ? (
                 step.kind === "user" ? (
                   step.durationMs > 0 ? (
                     <LxTooltip

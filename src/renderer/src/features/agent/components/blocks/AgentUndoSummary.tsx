@@ -35,13 +35,6 @@ const getLineNumber = (line: AgentDiffLine): string => {
   return line.newLine !== undefined ? String(line.newLine) : ""
 }
 
-// 格式化时间戳为时分秒。
-const formatTimestampTime = (timestamp?: number): string => {
-  if (!timestamp) return ""
-  const date = new Date(timestamp)
-  return date.toTimeString().split(" ")[0] || ""
-}
-
 export interface AgentUndoSummaryProps {
   payload?: AgentUndoSummaryPayload
   continuationMessages?: ChatMessage[]
@@ -122,15 +115,11 @@ export const AgentUndoSummary = ({
       undoneTurns.reduce((sum, turn) => sum + (turn.diffs?.length ?? turn.fileChangeCount ?? 0), 0),
     [undoneTurns],
   )
-  const latestUndoneAt = payload?.undoneAt ?? undoneTurns[0]?.undoneAt
   const latestModelName = payload?.modelName ?? undoneTurns[0]?.modelName
 
-  // 指标行片段（时间 / 工具调用数 / 文件变更数 / 模型名）。
+  // 指标行片段（模型名 / 工具调用数 / 文件变更数）。
   const metricSegments: React.ReactNode[] = useMemo(() => {
     const segments: React.ReactNode[] = []
-    if (latestUndoneAt) {
-      segments.push(<span key="time">{formatTimestampTime(latestUndoneAt)}</span>)
-    }
     if (latestModelName) {
       segments.push(<span key="model">MODEL {latestModelName}</span>)
     }
@@ -141,7 +130,7 @@ export const AgentUndoSummary = ({
       segments.push(<span key="files">{t("agent.undoFileCount", { count: totalFiles })}</span>)
     }
     return segments
-  }, [latestUndoneAt, latestModelName, totalToolCalls, totalFiles, t])
+  }, [latestModelName, totalToolCalls, totalFiles, t])
 
   const renderDiffSnippet = (diff: AgentDiff, filePath: string): React.JSX.Element => {
     const language = languageFromFileName(filePath)

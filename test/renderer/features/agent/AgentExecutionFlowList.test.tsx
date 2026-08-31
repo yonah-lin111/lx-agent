@@ -1695,4 +1695,38 @@ describe("AgentExecutionFlowList", () => {
     // 面板重新收起
     expect(panel?.getAttribute("inert")).toBe("")
   })
+
+  it("渲染撤销步骤的独立分割线与步骤内容", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "提问" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "undo-1",
+        role: "undoSummary",
+        blocks: [],
+        isStreaming: false,
+        timestamp: 1050,
+        undoPayload: {
+          userPrompt: "被撤销的提示词",
+          toolCallCount: 1,
+          fileChangeCount: 0,
+        },
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 验证专属的撤销分割线存在
+    const undoDivider = container.querySelector(".agent-execution-flow-undo-divider")
+    expect(undoDivider).not.toBeNull()
+    expect(undoDivider?.textContent).toContain("Undo/Revert Summary")
+
+    // 验证步骤标题
+    expect(screen.getByText("Turn Undone / Reverted")).not.toBeNull()
+  })
 })
