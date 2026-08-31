@@ -1,5 +1,6 @@
 import { FileCode, FileText, Terminal, User } from "lucide-react"
 import type React from "react"
+import { useMemo } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import type { AgentDiff, AgentDiffLine, ExecutionUndoContent } from "@/features/agent/types"

@@ -32,7 +32,15 @@ const MAX_TITLE_LENGTH = 40
 const isValidAgentMessage = (value: unknown): value is AgentMessage => {
   if (!value || typeof value !== "object" || !("role" in value)) return false
   const role = (value as { role: unknown }).role
-  return role === "user" || role === "assistant" || role === "toolResult"
+  return (
+    role === "user" ||
+    role === "assistant" ||
+    role === "toolResult" ||
+    role === "undoSummary" ||
+    role === "modelSwitch" ||
+    role === "compactionSummary" ||
+    role === "todoState"
+  )
 }
 
 // 校验模型选择为合法 ModelSelection（IPC 输入边界）。
