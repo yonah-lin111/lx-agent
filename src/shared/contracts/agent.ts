@@ -147,9 +147,32 @@ export interface AgentUndoDiffSummary {
   toolName?: string
 }
 
-// 撤销摘要专用数据结构。
+// 撤销/删除单个轮次的详情项。
+export interface AgentUndoSummaryItem {
+  userPrompt?: string
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
+  assistantSnippet?: string
+  modelName?: string
+  turnDurationMs?: number
+  diffs?: AgentUndoDiffSummary[]
+  toolCalls?: {
+    toolName: string
+    summary?: string
+  }[]
+  undoneAt?: number
+}
+
+// 撤销摘要专用数据结构（支持单轮与多轮堆叠合并）。
 export interface AgentUndoSummaryPayload {
-  // 被撤销的用户提示词。
+  // 多轮连续撤销时的堆叠项列表。
+  items?: AgentUndoSummaryItem[]
+  // 被撤销的用户提示词（单轮）。
   userPrompt?: string
   // 被撤销的用户附件文件。
   files?: {

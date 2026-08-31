@@ -2,6 +2,7 @@ import type {
   AgentDiff,
   AgentMessage,
   AgentUndoDiffSummary,
+  AgentUndoSummaryItem,
   AgentUndoSummaryPayload,
   CompactionUsage,
   LspToolDetails,
@@ -21,6 +22,7 @@ export type {
   AgentMessage,
   AgentSendOptions,
   AgentUndoDiffSummary,
+  AgentUndoSummaryItem,
   AgentUndoSummaryPayload,
   CompactionUsage,
   DiffLinePart,
@@ -274,6 +276,7 @@ export interface ExecutionCompactionContent {
 }
 
 export interface ExecutionUndoContent {
+  items?: AgentUndoSummaryItem[]
   userPrompt?: string
   files?: {
     name: string

@@ -24,13 +24,14 @@ import type {
   JobStatus,
   ModelSwitchMessage,
   PromptAssembly,
+  UndoSummaryMessage,
 } from "@shared/contracts/agent"
 import {
   createInitialSessionProjectionState,
   type SessionProjectionState,
 } from "@shared/contracts/sessionProjection"
 import type { ModelSelection } from "@shared/settings"
-import { agentSessionService } from "@/services/agentSessionService"
+import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getAppDataRoot } from "../paths"
 import { copySessionText, exportSessionToFile } from "./export/sessionExporter"
 import { jobRegistry } from "./jobs/jobRegistry"
@@ -263,6 +264,100 @@ export class SessionRunnerManager {
       runner.getTurnStore().revertTurnFiles(sessionId, userMessageTimestamp)
     }
 
+    // 提取被删除轮次的结构化数据用于生成持久化 undoSummary entry
+    const turnEntries = allEntries.filter((e) => turnEntryIds.includes(e.external_id))
+    let userPrompt = ""
+    let userFiles: UndoSummaryMessage["undoPayload"] extends infer P
+      ? P extends { files?: infer F }
+        ? F
+        : never
+      : never = undefined
+    let assistantSnippet = ""
+    let assistantModel: string | undefined
+    let turnDurationMs: number | undefined
+    const diffs: NonNullable<UndoSummaryMessage["undoPayload"]>["diffs"] = []
+    const toolCalls: NonNullable<UndoSummaryMessage["undoPayload"]>["toolCalls"] = []
+
+    for (const entry of turnEntries) {
+      if (entry.type === "message") {
+        try {
+          const msg = JSON.parse(entry.payload) as AgentMessage
+          if (msg.role === "user") {
+            const textContent = msg.content
+              .filter(
+                (c): c is Extract<(typeof msg.content)[number], { type: "text" }> =>
+                  c.type === "text",
+              )
+              .map((c) => c.text)
+              .join("\n")
+            userPrompt = textContent
+            if (msg.files) userFiles = msg.files
+          } else if (msg.role === "assistant") {
+            const textContent = msg.content
+              .filter(
+                (c): c is Extract<(typeof msg.content)[number], { type: "text" }> =>
+                  c.type === "text",
+              )
+              .map((c) => c.text)
+              .join("\n")
+            assistantSnippet = textContent
+            assistantModel = msg.model
+            turnDurationMs = msg.durationMs
+            for (const item of msg.content) {
+              if (item.type === "toolCall") {
+                const args = item.arguments
+                const summary =
+                  typeof args?.path === "string"
+                    ? args.path
+                    : typeof args?.filePath === "string"
+                      ? args.filePath
+                      : typeof args?.command === "string"
+                        ? String(args.command).slice(0, 60)
+                        : typeof args?.pattern === "string"
+                          ? String(args.pattern)
+                          : undefined
+                toolCalls.push({
+                  toolName: item.name,
+                  summary,
+                })
+              }
+            }
+          } else if (msg.role === "toolResult") {
+            if (msg.diff) {
+              const filePath =
+                msg.diff.fileName ||
+                toolCalls.find((tc) => tc.toolName === msg.toolName)?.summary ||
+                "Modified file"
+              diffs.push({
+                filePath,
+                diff: msg.diff,
+                toolName: msg.toolName,
+              })
+            }
+          }
+        } catch {
+          // 忽略损坏 payload
+        }
+      }
+    }
+
+    const undoMessage: UndoSummaryMessage = {
+      role: "undoSummary",
+      timestamp: Date.now(),
+      undoPayload: {
+        userPrompt,
+        files: userFiles,
+        assistantSnippet,
+        modelName: assistantModel,
+        turnDurationMs,
+        diffs,
+        toolCalls,
+        toolCallCount: toolCalls.length,
+        fileChangeCount: diffs.length,
+        undoneAt: Date.now(),
+      },
+    }
+
     const now = new Date().toISOString()
     let shouldDeleteSession = false
     agentSessionService.transaction(() => {
@@ -270,9 +365,27 @@ export class SessionRunnerManager {
       agentSessionService.deleteEntries(turnEntryIds)
       agentSessionService.deleteSnapshotsByUserTimestamp(sessionId, userMessageTimestamp)
 
+      // 插入撤销记录 entry，保证在 restoreSession 时能重建并展示
+      agentSessionService.insertEntry({
+        externalId: createExternalId(),
+        sessionId,
+        seq: agentSessionService.nextSeq(sessionId),
+        parentId: null,
+        type: "message",
+        payload: JSON.stringify(undoMessage),
+        createdAt: now,
+      })
+
       const remainingEntries = agentSessionService.listEntries(sessionId)
       const hasMeaningfulMessages = remainingEntries.some((entry) => {
-        if (entry.type === "message") return true
+        if (entry.type === "message") {
+          try {
+            const parsed = JSON.parse(entry.payload) as AgentMessage
+            return parsed.role !== "undoSummary"
+          } catch {
+            return true
+          }
+        }
         if (entry.type === "model_change") {
           try {
             const parsed = JSON.parse(entry.payload) as ModelSwitchMessage
@@ -294,6 +407,7 @@ export class SessionRunnerManager {
     if (shouldDeleteSession) {
       this.deleteSession(sessionId)
     } else if (runner && runner.currentSessionId === sessionId) {
+      runner.getTurnStore().restoreMessages(sessionId)
       runner.getTurnStore().loadTodo(runner.getTurnStore().readLastTodoEntry(sessionId))
       runner.emitEvent({ type: "todo_updated", todos: runner.getTurnStore().getTodo() })
     }

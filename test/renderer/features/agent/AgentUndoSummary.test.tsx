@@ -84,4 +84,44 @@ describe("AgentUndoSummary", () => {
     expect(screen.getByText("bash")).not.toBeNull()
     expect(screen.getByText("npm test")).not.toBeNull()
   })
+
+  it("支持多轮撤销连续堆叠合并展示", () => {
+    const message1: ChatMessage = {
+      id: "undo-msg-1",
+      role: "undoSummary",
+      isStreaming: false,
+      blocks: [],
+      undoPayload: {
+        userPrompt: "第一轮问题",
+        toolCallCount: 1,
+        toolCalls: [{ toolName: "read", summary: "file1.ts" }],
+      },
+    }
+
+    const message2: ChatMessage = {
+      id: "undo-msg-2",
+      role: "undoSummary",
+      isStreaming: false,
+      blocks: [],
+      undoPayload: {
+        userPrompt: "第二轮问题",
+        toolCallCount: 2,
+        toolCalls: [{ toolName: "edit", summary: "file2.ts" }],
+      },
+    }
+
+    render(<AgentMessageItem message={message1} continuationMessages={[message2]} />)
+
+    // 应展示 2 轮撤销标题与总数 2 次调用
+    expect(screen.getByText("2 turns and operations undone")).not.toBeNull()
+    expect(screen.getByText("2 calls")).not.toBeNull()
+
+    const toggleButton = screen.getByRole("button")
+    fireEvent.click(toggleButton)
+
+    expect(screen.getByText("#1")).not.toBeNull()
+    expect(screen.getByText("#2")).not.toBeNull()
+    expect(screen.getByText("第一轮问题")).not.toBeNull()
+    expect(screen.getByText("第二轮问题")).not.toBeNull()
+  })
 })

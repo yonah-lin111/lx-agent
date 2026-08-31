@@ -763,5 +763,54 @@ describe("executionFlow", () => {
         total: 3731,
       })
     })
+
+    it("undo 步骤跟随当前对话轮次位置，且连续多个 undo 消息自动堆叠合并", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "第一轮" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "undo-1",
+          role: "undoSummary",
+          blocks: [],
+          isStreaming: false,
+          timestamp: 1050,
+          undoPayload: {
+            userPrompt: "被撤销的轮次 1",
+            toolCallCount: 1,
+            fileChangeCount: 1,
+          },
+        },
+        {
+          id: "undo-2",
+          role: "undoSummary",
+          blocks: [],
+          isStreaming: false,
+          timestamp: 1060,
+          undoPayload: {
+            userPrompt: "被撤销的轮次 2",
+            toolCallCount: 2,
+            fileChangeCount: 0,
+          },
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      // 1 user step + 1 merged undo step
+      expect(steps).toHaveLength(2)
+
+      const undoStep = steps[1]
+      expect(undoStep.kind).toBe("undo")
+      expect(undoStep.turnIndex).toBe(1) // 跟随当前 turn，而非 0
+      expect(undoStep.title).toBe("Undone (2 turns)")
+      expect(undoStep.subtitle).toBe("3 tools, 1 files")
+      expect(undoStep.undoContent?.items).toHaveLength(2)
+      expect(undoStep.undoContent?.items?.[0].userPrompt).toBe("被撤销的轮次 1")
+      expect(undoStep.undoContent?.items?.[1].userPrompt).toBe("被撤销的轮次 2")
+    })
   })
 })

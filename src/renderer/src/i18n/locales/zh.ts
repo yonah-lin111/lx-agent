@@ -281,6 +281,7 @@ export const zh: TranslationDictionary = {
     compactionSummary: "上下文压缩摘要",
     undoSummary: "撤销/删除摘要",
     turnUndoneSummary: "本轮对话与操作已被撤销",
+    turnUndoneSummaryCount: "已撤销 {{count}} 轮对话与操作",
     undoUndonePrompt: "被撤销的用户问题",
     undoRevokedChanges: "已撤销的代码变更",
     undoRevokedTools: "已撤销的工具调用",

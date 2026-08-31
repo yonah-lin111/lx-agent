@@ -287,6 +287,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     compactionSummary: "Context Compaction Summary",
     undoSummary: "Undo/Revert Summary",
     turnUndoneSummary: "Conversation turn and operations undone",
+    turnUndoneSummaryCount: "{{count}} turns and operations undone",
     undoUndonePrompt: "Undone Prompt",
     undoRevokedChanges: "Revoked Code Changes",
     undoRevokedTools: "Revoked Tool Calls",

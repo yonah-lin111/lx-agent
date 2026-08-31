@@ -47,9 +47,11 @@ export const AgentMessageItem = ({
     )
   }
 
-  // 撤销摘要块：展示被撤销/删除轮次的问题、工具调用与代码变更 Diff。
+  // 撤销摘要块：展示被撤销/删除轮次的问题、工具调用与代码变更 Diff（支持连续多次撤销堆叠）。
   if (message.role === "undoSummary") {
-    return <AgentUndoSummary payload={message.undoPayload} />
+    return (
+      <AgentUndoSummary payload={message.undoPayload} continuationMessages={continuationMessages} />
+    )
   }
 
   // 用户消息分支。

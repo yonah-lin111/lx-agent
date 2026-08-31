@@ -60,6 +60,24 @@ describe("groupAgentMessages", () => {
     const entries = groupAgentMessages([assistant("a1"), compactionSummary("c"), assistant("a2")])
     expect(entries.map((entry) => entry.message.id)).toEqual(["a1", "c", "a2"])
   })
+
+  it("连续的撤销摘要块堆叠合并到同一个 entry", () => {
+    const undo1: ChatMessage = {
+      id: "undo-1",
+      role: "undoSummary",
+      blocks: [],
+      isStreaming: false,
+    }
+    const undo2: ChatMessage = {
+      id: "undo-2",
+      role: "undoSummary",
+      blocks: [],
+      isStreaming: false,
+    }
+    const entries = groupAgentMessages([user("u"), undo1, undo2])
+    expect(entries.map((entry) => entry.message.id)).toEqual(["u", "undo-1"])
+    expect(entries[1].continuationMessages.map((m) => m.id)).toEqual(["undo-2"])
+  })
 })
 
 describe("buildQaGroups", () => {

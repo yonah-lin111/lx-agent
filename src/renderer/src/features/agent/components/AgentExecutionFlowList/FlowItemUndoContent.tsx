@@ -82,106 +82,135 @@ export const FlowItemUndoContent = ({
     )
   }
 
-  const hasDiffs = Boolean(content.diffs && content.diffs.length > 0)
-  const hasToolCalls = Boolean(content.toolCalls && content.toolCalls.length > 0)
-  const hasPrompt = Boolean(content.userPrompt?.trim())
-  const hasAssistant = Boolean(content.assistantSnippet?.trim())
+  const items = useMemo(() => {
+    if (content.items && content.items.length > 0) {
+      return content.items
+    }
+    return [content]
+  }, [content])
+
+  const isMultiple = items.length > 1
 
   return (
-    <div className="agent-execution-flow-undo-content flex flex-col gap-2.5 font-mono text-[11px] text-white/70">
-      {/* 1. 被撤销的用户提示词 */}
-      {hasPrompt && content.userPrompt && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-amber-300/80 font-sans font-semibold">
-            <User className="h-3.5 w-3.5" />
-            <span>{t("agent.undoUndonePrompt")}</span>
-          </div>
-          <div className="rounded bg-black/40 p-2 text-white/80">
-            <LxMarkdownPreview
-              html={markdownRenderer.render(content.userPrompt)}
-              previewMode="preview"
-              previewRef={previewRef}
-              className="px-0"
-              contentClassName="py-0 text-white/80 [&_*]:!text-white/80"
-              sanitizeCopy
-            />
-          </div>
-        </div>
-      )}
+    <div className="agent-execution-flow-undo-content flex flex-col gap-3 font-mono text-[11px] text-white/70">
+      {items.map((item, itemIdx) => {
+        const hasDiffs = Boolean(item.diffs && item.diffs.length > 0)
+        const hasToolCalls = Boolean(item.toolCalls && item.toolCalls.length > 0)
+        const hasPrompt = Boolean(item.userPrompt?.trim())
+        const hasAssistant = Boolean(item.assistantSnippet?.trim())
 
-      {/* 2. 被撤销的代码变更 */}
-      {hasDiffs && content.diffs && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-rose-300/90 font-sans font-semibold">
-            <span className="flex items-center gap-1.5">
-              <FileCode className="h-3.5 w-3.5" />
-              <span>{t("agent.undoRevokedChanges")}</span>
-            </span>
-            <span className="text-[10px] text-white/40">
-              {t("agent.undoFileCount", { count: content.diffs.length })}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {content.diffs.map((item, idx) => (
-              <div
-                key={idx}
-                className="rounded border border-white/5 bg-black/40 p-2 flex flex-col gap-1"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 truncate text-white/85">
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
-                    <span className="truncate">{item.filePath}</span>
-                  </div>
-                  {item.diff?.stats && (
-                    <div className="flex items-center gap-1 text-[10px] shrink-0">
-                      <span className="text-emerald-400">+{item.diff.stats.added}</span>
-                      <span className="text-white/20">/</span>
-                      <span className="text-rose-400">−{item.diff.stats.removed}</span>
-                    </div>
-                  )}
-                </div>
-                {item.diff &&
-                  item.diff.lines &&
-                  item.diff.lines.length > 0 &&
-                  renderDiffSnippet(item.diff, item.filePath)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 3. 被撤销的工具调用 */}
-      {hasToolCalls && content.toolCalls && (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-white/50 font-sans font-semibold">
-            <Terminal className="h-3.5 w-3.5 text-amber-300/80" />
-            <span>{t("agent.undoRevokedTools")}</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {content.toolCalls.map((tc, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-white/70"
-              >
-                <span className="text-amber-300/90">{tc.toolName}</span>
-                {tc.summary && (
-                  <span className="text-white/40 truncate max-w-[200px]">{tc.summary}</span>
+        return (
+          <div
+            key={itemIdx}
+            className={`flex flex-col gap-2.5 ${
+              itemIdx > 0 ? "border-t border-white/10 pt-2.5" : ""
+            }`}
+          >
+            {isMultiple && (
+              <div className="flex items-center justify-between text-rose-300/80 font-sans font-semibold">
+                <span>#{itemIdx + 1}</span>
+                {item.modelName && (
+                  <span className="text-[10px] text-white/40">{item.modelName}</span>
                 )}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+              </div>
+            )}
 
-      {/* 4. 助手回复摘要 */}
-      {!hasDiffs && hasAssistant && content.assistantSnippet && (
-        <div className="flex flex-col gap-1">
-          <div className="text-white/40 font-sans font-semibold">
-            {t("agent.undoAssistantPreview")}
+            {/* 1. 被撤销的用户提示词 */}
+            {hasPrompt && item.userPrompt && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-amber-300/80 font-sans font-semibold">
+                  <User className="h-3.5 w-3.5" />
+                  <span>{t("agent.undoUndonePrompt")}</span>
+                </div>
+                <div className="rounded bg-black/40 p-2 text-white/80">
+                  <LxMarkdownPreview
+                    html={markdownRenderer.render(item.userPrompt)}
+                    previewMode="preview"
+                    previewRef={previewRef}
+                    className="px-0"
+                    contentClassName="py-0 text-white/80 [&_*]:!text-white/80"
+                    sanitizeCopy
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 2. 被撤销的代码变更 */}
+            {hasDiffs && item.diffs && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-rose-300/90 font-sans font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <FileCode className="h-3.5 w-3.5" />
+                    <span>{t("agent.undoRevokedChanges")}</span>
+                  </span>
+                  <span className="text-[10px] text-white/40">
+                    {t("agent.undoFileCount", { count: item.diffs.length })}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {item.diffs.map((diffItem, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded border border-white/5 bg-black/40 p-2 flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 truncate text-white/85">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                          <span className="truncate">{diffItem.filePath}</span>
+                        </div>
+                        {diffItem.diff?.stats && (
+                          <div className="flex items-center gap-1 text-[10px] shrink-0">
+                            <span className="text-emerald-400">+{diffItem.diff.stats.added}</span>
+                            <span className="text-white/20">/</span>
+                            <span className="text-rose-400">−{diffItem.diff.stats.removed}</span>
+                          </div>
+                        )}
+                      </div>
+                      {diffItem.diff &&
+                        diffItem.diff.lines &&
+                        diffItem.diff.lines.length > 0 &&
+                        renderDiffSnippet(diffItem.diff, diffItem.filePath)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. 被撤销的工具调用 */}
+            {hasToolCalls && item.toolCalls && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-white/50 font-sans font-semibold">
+                  <Terminal className="h-3.5 w-3.5 text-amber-300/80" />
+                  <span>{t("agent.undoRevokedTools")}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {item.toolCalls.map((tc, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-white/70"
+                    >
+                      <span className="text-amber-300/90">{tc.toolName}</span>
+                      {tc.summary && (
+                        <span className="text-white/40 truncate max-w-[200px]">{tc.summary}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. 助手回复摘要 */}
+            {!hasDiffs && hasAssistant && item.assistantSnippet && (
+              <div className="flex flex-col gap-1">
+                <div className="text-white/40 font-sans font-semibold">
+                  {t("agent.undoAssistantPreview")}
+                </div>
+                <div className="rounded bg-black/40 p-2 text-white/60">{item.assistantSnippet}</div>
+              </div>
+            )}
           </div>
-          <div className="rounded bg-black/40 p-2 text-white/60">{content.assistantSnippet}</div>
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }

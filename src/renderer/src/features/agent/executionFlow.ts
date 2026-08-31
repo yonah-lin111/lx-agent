@@ -108,17 +108,71 @@ export const buildExecutionSteps = (
       continue
     }
 
-    // 处理撤销/删除摘要（独立步骤，不计入对话轮次）
+    // 处理撤销/删除摘要（不新增对话轮次，跟随当前轮次流位置，连续撤销自动堆叠合并）
     if (message.role === "undoSummary") {
-      stepIndex++
       const payload = message.undoPayload
-      const title = "Turn Undone / Reverted"
+      const lastStep = steps.at(-1)
+
+      // 连续出现的 undoSummary：合并到同一个 Flow Step 中
+      if (lastStep && lastStep.kind === "undo" && lastStep.undoContent) {
+        const prevContent = lastStep.undoContent
+        const prevItems =
+          prevContent.items && prevContent.items.length > 0
+            ? prevContent.items
+            : [
+                {
+                  userPrompt: prevContent.userPrompt,
+                  files: prevContent.files,
+                  assistantSnippet: prevContent.assistantSnippet,
+                  modelName: prevContent.modelName,
+                  turnDurationMs: prevContent.turnDurationMs,
+                  diffs: prevContent.diffs,
+                  toolCalls: prevContent.toolCalls,
+                  undoneAt: prevContent.undoneAt,
+                },
+              ]
+
+        const currentItems =
+          payload?.items && payload.items.length > 0
+            ? payload.items
+            : payload
+              ? [
+                  {
+                    userPrompt: payload.userPrompt,
+                    files: payload.files,
+                    assistantSnippet: payload.assistantSnippet,
+                    modelName: payload.modelName,
+                    turnDurationMs: payload.turnDurationMs,
+                    diffs: payload.diffs,
+                    toolCalls: payload.toolCalls,
+                    undoneAt: payload.undoneAt,
+                  },
+                ]
+              : []
+
+        const mergedItems = [...prevItems, ...currentItems]
+        const totalTools = (prevContent.toolCallCount ?? 0) + (payload?.toolCallCount ?? 0)
+        const totalFiles = (prevContent.fileChangeCount ?? 0) + (payload?.fileChangeCount ?? 0)
+
+        lastStep.undoContent.items = mergedItems
+        lastStep.undoContent.toolCallCount = totalTools
+        lastStep.undoContent.fileChangeCount = totalFiles
+        lastStep.title =
+          mergedItems.length > 1 ? `Undone (${mergedItems.length} turns)` : "Turn Undone / Reverted"
+        lastStep.subtitle = `${totalTools} tools, ${totalFiles} files`
+        continue
+      }
+
+      stepIndex++
+      const count = payload?.items?.length || 1
+      const title = count > 1 ? `Undone (${count} turns)` : "Turn Undone / Reverted"
       const subtitle = payload
         ? `${payload.toolCallCount ?? 0} tools, ${payload.fileChangeCount ?? 0} files`
         : undefined
+
       steps.push({
         id: `step-${stepIndex}-undo`,
-        turnIndex: 0,
+        turnIndex: currentTurn > 0 ? currentTurn : 1,
         stepIndex,
         kind: "undo",
         title,
@@ -128,6 +182,7 @@ export const buildExecutionSteps = (
         startedAt: message.timestamp,
         completedAt: message.timestamp,
         undoContent: {
+          items: payload?.items,
           userPrompt: payload?.userPrompt,
           files: payload?.files,
           assistantSnippet: payload?.assistantSnippet,
