@@ -1,13 +1,17 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
-import { Bot, ChevronLeft, ChevronRight, Loader2, Plus, X } from "lucide-react"
+import type { Project } from "@shared/project"
+import { ChevronLeft, ChevronRight, Cpu, Folder, MessageSquare, Plus, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { projectApi } from "@/features/project/api/projectApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import { type AgentTab, agentTabStore } from "../hooks/agentTabStore"
+import { getModelDisplayName, modelsStore } from "../hooks/modelsStore"
 import { sessionListStore } from "../hooks/sessionListStore"
 
 /**
@@ -23,6 +27,13 @@ export const AgentTabBar = (): React.JSX.Element => {
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
   const streamingMap = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getStreamingMap)
   const sessions = useSyncExternalStore(sessionListStore.subscribe, sessionListStore.getSessions)
+  const modelSettings = useSyncExternalStore(modelsStore.subscribe, modelsStore.getSettings)
+  const projectItemsVersion = useProjectItemsVersionStore((state) => state.version)
+  const [projects, setProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    void projectApi.listProjects().then(setProjects).catch(() => {})
+  }, [projectItemsVersion])
 
   const tabScrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -103,14 +114,36 @@ export const AgentTabBar = (): React.JSX.Element => {
       (tab.title && tab.title.trim()) ||
       session?.title ||
       t("agent.tabNumber", { number: index + 1 })
-    const timeStr = session?.updatedAt
-      ? new Date(session.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      : undefined
+
+    const projectId = tab.draftBinding?.projectId ?? session?.projectId
+    const currentProject = projectId ? projects.find((p) => p.id === projectId) : undefined
+    const projectName = currentProject?.name ?? t("git.desktopProject")
+
+    // 解析当前生效的模型名称
+    let modelName: string | undefined
+    try {
+      const saved = localStorage.getItem("agent-selected-model")
+      if (saved) {
+        const parsed = JSON.parse(saved) as { provider?: string; model?: string }
+        if (parsed?.model) {
+          modelName = getModelDisplayName(parsed.model, parsed.provider, modelSettings)
+        }
+      }
+    } catch {
+      // ignore
+    }
+    if (!modelName && modelSettings?.defaultModel?.model) {
+      modelName = getModelDisplayName(
+        modelSettings.defaultModel.model,
+        modelSettings.defaultModel.provider,
+        modelSettings,
+      )
+    }
 
     return (
-      <div className="flex min-w-[150px] max-w-[240px] flex-col gap-1 py-0.5 text-[11px] font-sans">
-        <div className="font-semibold text-white truncate">{title}</div>
-        <div className="flex items-center gap-1.5 text-white/65 text-[10px]">
+      <div className="flex min-w-[140px] max-w-[260px] flex-col gap-1.5 py-0.5 text-[11px] font-sans">
+        <div className="font-semibold text-white leading-snug break-words">{title}</div>
+        <div className="flex items-center gap-1.5 text-white/70 text-[10px]">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${
               isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
@@ -118,10 +151,22 @@ export const AgentTabBar = (): React.JSX.Element => {
           />
           <span>{isStreaming ? t("agent.statusRunning") : t("agent.statusReady")}</span>
         </div>
-        {session?.cwd && (
-          <div className="truncate text-white/40 font-mono text-[10px]">{session.cwd}</div>
+        {typeof tab.turnCount === "number" && tab.turnCount > 0 && (
+          <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+            <MessageSquare className="h-3 w-3 shrink-0 text-sky-400/70" />
+            <span className="truncate">{t("agent.turnCount", { count: tab.turnCount })}</span>
+          </div>
         )}
-        {timeStr && <div className="text-white/30 text-[10px]">{timeStr}</div>}
+        {modelName && (
+          <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+            <Cpu className="h-3 w-3 shrink-0 text-teal-300/60" />
+            <span className="truncate">{modelName}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+          <Folder className="h-3 w-3 shrink-0 text-white/40" />
+          <span className="truncate">{projectName}</span>
+        </div>
       </div>
     )
   }
@@ -173,15 +218,13 @@ export const AgentTabBar = (): React.JSX.Element => {
                         : "text-[var(--color-theme-text-secondary,#888)] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
                   }`}
                 >
-                  {isStreaming ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-400" />
-                  ) : (
-                    <Bot
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        isActive ? "text-[var(--color-theme-accent,#38bdf8)]" : "text-white/40"
-                      }`}
-                    />
-                  )}
+                  <span
+                    aria-label={isStreaming ? t("agent.statusRunning") : t("agent.statusReady")}
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                    }`}
+                    role="status"
+                  />
                   <span className="min-w-0 truncate font-mono text-[11px] leading-none">
                     {label}
                   </span>

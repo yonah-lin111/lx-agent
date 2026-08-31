@@ -7,6 +7,7 @@ export interface AgentTab {
   id: string
   sessionId: string | null
   title?: string
+  turnCount?: number
   draftBinding?: AgentTabDraftBinding
   createdAt: number
 }
@@ -153,6 +154,14 @@ export const agentTabStore = {
    */
   setTabTitle: (tabId: string, title: string): void => {
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, title } : t))
+    notify()
+  },
+
+  /**
+   * 更新指定 Tab 的对话轮数。
+   */
+  setTabTurnCount: (tabId: string, turnCount: number): void => {
+    tabs = tabs.map((t) => (t.id === tabId ? { ...t, turnCount } : t))
     notify()
   },
 

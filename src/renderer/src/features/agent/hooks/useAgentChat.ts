@@ -85,7 +85,7 @@ export const useAgentChat = (
   const [selectedFiles, setSelectedFiles] = useState<AgentInputFile[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
 
-  // 同步当前 Tab 的流式运行状态至 agentTabStore，供顶部 Tab 栏展示 loading 与拦截关闭。
+  // 同步当前 Tab 的流式运行状态与对话轮数至 agentTabStore，供顶部 Tab 栏展示。
   useEffect(() => {
     if (tabId) {
       agentTabStore.setTabStreaming(tabId, isStreaming)
@@ -96,6 +96,13 @@ export const useAgentChat = (
       }
     }
   }, [tabId, isStreaming])
+
+  useEffect(() => {
+    if (tabId) {
+      const userTurns = messages.filter((m) => m.role === "user").length
+      agentTabStore.setTabTurnCount(tabId, userTurns)
+    }
+  }, [tabId, messages])
 
   // 排队消息计数（流式输出期间发送的消息；订阅 queue_changed 维护权威值）。
   const [queuedCount, setQueuedCount] = useState(0)
