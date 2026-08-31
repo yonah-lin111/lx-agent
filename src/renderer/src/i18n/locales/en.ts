@@ -364,6 +364,17 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     executionFlowView: "Execution Flow View",
     viewSwitchBlocked: "Cannot switch view while generating",
     sessionSwitchBlocked: "Cannot switch session while generating",
+    newTab: "New Tab",
+    closeTab: "Close Tab",
+    tabNumber: "Tab {{number}}",
+    maxTabsReached: "Maximum of 8 tabs reached",
+    switchedToExistingTab: "Switched to tab with existing session",
+    cannotCloseLastTab: "Cannot close the last tab",
+    closeTabConfirmGenerating:
+      "Agent is currently generating in this tab. Closing it will abort the task. Confirm close?",
+    statusRunning: "Generating",
+    statusReady: "Ready",
+    turnsCountShort: "{{count}} turns",
     emptyTitle: "LX Agent",
     emptyDescription:
       "Your AI development assistant, ready to help with architecture, refactoring, and tests.",

@@ -81,9 +81,18 @@ export const AgentStatusBar = ({
   onPermissionRespond,
 }: AgentStatusBarProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const percent = contextUsage
-    ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
-    : null
+  const percent =
+    contextUsage && contextUsage.contextWindow > 0
+      ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
+      : 0
+
+  const tooltipContent =
+    contextUsage && contextUsage.contextWindow > 0
+      ? t("agent.contextUsed", {
+          used: contextUsage.tokens.toLocaleString(),
+          total: contextUsage.contextWindow.toLocaleString(),
+        })
+      : t("agent.contextCapacity")
 
   return (
     <div className="agent-status-bar flex min-w-0 items-center">
@@ -99,23 +108,15 @@ export const AgentStatusBar = ({
           onWorktreeChange={onWorktreeChange}
         />
       </div>
-      {contextUsage && percent !== null && (
-        <LxTooltip
-          placement="top"
-          content={t("agent.contextUsed", {
-            used: contextUsage.tokens.toLocaleString(),
-            total: contextUsage.contextWindow.toLocaleString(),
-          })}
+      <LxTooltip placement="top" content={tooltipContent}>
+        <span
+          aria-label={t("agent.contextCapacity")}
+          className={`agent-status-context-pill flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
         >
-          <span
-            aria-label={t("agent.contextCapacity")}
-            className={`agent-status-context-pill flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/5 ${contextColor(percent)}`}
-          >
-            <Layers className="h-3.5 w-3.5 shrink-0" />
-            <span className="tabular-nums">{percent}%</span>
-          </span>
-        </LxTooltip>
-      )}
+          <Layers className="h-3.5 w-3.5 shrink-0" />
+          <span className="tabular-nums">{percent}%</span>
+        </span>
+      </LxTooltip>
       <CollaborationModeButton mode={collaborationMode} />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
       <TodoStatusButton todos={todos} />

@@ -22,6 +22,7 @@ import {
   toAgentMessages,
   toChatMessage,
 } from "../utils"
+import { agentTabStore } from "./agentTabStore"
 import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
@@ -66,15 +67,36 @@ const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
 
 /**
  * 管理 Agent 对话：订阅 main 进程事件流，驱动消息列表、流式更新与工具状态。
- * 历史会话的持久化与恢复均由 main 进程 DB 承载。
+ * 历史会话的持久化与恢复均由 main 进程 DB 承载。支持多 Tab 实例隔离与精准事件路由。
  */
-export const useAgentChat = (context?: AgentSendContext) => {
+export const useAgentChat = (
+  context?: AgentSendContext,
+  tabId?: string,
+  initialSessionId?: string | null,
+  onSessionBound?: (sessionId: string) => void,
+) => {
   const { success: successToast, error: errorToast } = useLxAgentToast()
   const { t } = useTranslation()
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId ?? null)
+  const currentSessionIdRef = useRef<string | null>(currentSessionId)
+  currentSessionIdRef.current = currentSessionId
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<AgentInputFile[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+
+  // 同步当前 Tab 的流式运行状态至 agentTabStore，供顶部 Tab 栏展示 loading 与拦截关闭。
+  useEffect(() => {
+    if (tabId) {
+      agentTabStore.setTabStreaming(tabId, isStreaming)
+    }
+    return () => {
+      if (tabId) {
+        agentTabStore.setTabStreaming(tabId, false)
+      }
+    }
+  }, [tabId, isStreaming])
+
   // 排队消息计数（流式输出期间发送的消息；订阅 queue_changed 维护权威值）。
   const [queuedCount, setQueuedCount] = useState(0)
   // 排队消息原文（queue_changed 携带；输入区排队提示条 tooltip 展示）。
@@ -127,9 +149,28 @@ export const useAgentChat = (context?: AgentSendContext) => {
     [],
   )
 
-  // 分发 main 进程推送的 AgentEvent。
+  // 分发 main 进程推送的 AgentEvent，支持基于 sessionId 与 tabId 的精准路由。
   const dispatchEvent = useCallback(
     (event: AgentEvent) => {
+      const activeSessionId = currentSessionIdRef.current
+      if (event.sessionId && activeSessionId && event.sessionId !== activeSessionId) {
+        return
+      }
+      if (event.tabId && tabId && event.tabId !== tabId) {
+        return
+      }
+      if (event.sessionId && !activeSessionId) {
+        if (event.tabId === tabId || !event.tabId) {
+          setCurrentSessionId(event.sessionId)
+          if (tabId) {
+            agentTabStore.setTabSessionId(tabId, event.sessionId)
+          }
+          onSessionBound?.(event.sessionId)
+        } else {
+          return
+        }
+      }
+
       switch (event.type) {
         case "agent_start":
           setIsStreaming(true)
@@ -240,14 +281,18 @@ export const useAgentChat = (context?: AgentSendContext) => {
 
         case "session_title":
           if (event.title === null) {
-            // 标题生成中：新建会话尚未落库（currentSessionId 为空），先同步标记当前会话，
-            // 让右侧栏标题位立即显示 pulse 占位；幂等（同值早退），不干扰后续 send 返回设置。
-            if (!sessionListStore.getCurrentSessionId()) {
-              sessionListStore.setCurrentSessionId(event.sessionId)
+            if (!currentSessionIdRef.current) {
+              setCurrentSessionId(event.sessionId)
+              if (tabId) {
+                agentTabStore.setTabSessionId(tabId, event.sessionId)
+              }
             }
             sessionListStore.setSessionTitlePending(event.sessionId)
           } else {
             sessionListStore.updateSessionTitle(event.sessionId, event.title)
+            if (tabId) {
+              agentTabStore.setTabTitle(tabId, event.title)
+            }
           }
           break
 
@@ -359,7 +404,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
           break
       }
     },
-    [updateToolStatus],
+    [updateToolStatus, tabId, onSessionBound, successToast, t],
   )
 
   // 挂载时订阅事件流；卸载时退订。
@@ -370,13 +415,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
 
   // 停止流式生成：中止 main 侧 run（排队消息由 main 清空并推 queue_changed{0}，此处先本地归零）。
   const stopStreaming = useCallback(() => {
-    void agentApi.abort()
+    void agentApi.abort(currentSessionIdRef.current ?? undefined, tabId)
     setIsStreaming(false)
     streamingRef.current = null
     setQueuedCount(0)
     setQueuedMessages([])
-    // 中止后立即清除消息列表中的流式标记并标记已取消，避免 AI 消息残留 loading 效果、
-    // 并在气泡底部展示"已取消生成"提示（agent_end/message_end 可能滞后或缺失，不能依赖事件流收尾）。
     setMessages((prev) =>
       prev.map((message) =>
         message.isStreaming
@@ -388,7 +431,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
           : message,
       ),
     )
-  }, [])
+  }, [tabId])
 
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
   const createNewChat = useCallback(() => {
@@ -400,74 +443,88 @@ export const useAgentChat = (context?: AgentSendContext) => {
     setMessages([])
     setInputText("")
     setTodos([])
-    sessionListStore.setCurrentSessionId(null)
-    void agentApi.restore([])
-  }, [stopStreaming])
+    setCurrentSessionId(null)
+    if (tabId) {
+      agentTabStore.setTabSessionId(tabId, null)
+      agentTabStore.setTabTitle(tabId, "")
+    }
+    void agentApi.restore([], undefined, tabId)
+  }, [stopStreaming, tabId])
 
   // 删除一轮对话：移除该轮（问题 + 回答 + 工具调用）并同步 main 侧上下文与 DB。
   // 未命中 DB 用户消息 timestamp（幽灵消息）时仅做本地移除。
-  const removeTurn = useCallback((userIndex: number): void => {
-    const list = messagesRef.current
-    const userTimestamp = list[userIndex]?.timestamp
-    let nextUserIndex = list.length
-    for (let index = userIndex + 1; index < list.length; index++) {
-      if (list[index].role === "user") {
-        nextUserIndex = index
-        break
+  const removeTurn = useCallback(
+    (userIndex: number): void => {
+      const list = messagesRef.current
+      const userTimestamp = list[userIndex]?.timestamp
+      let nextUserIndex = list.length
+      for (let index = userIndex + 1; index < list.length; index++) {
+        if (list[index].role === "user") {
+          nextUserIndex = index
+          break
+        }
       }
-    }
-    // 保留被移除范围内的压缩摘要（自动压缩不可随轮撤销消失；手动摘要由撤销压缩路径单独处理）。
-    const keptSummaries = list
-      .slice(userIndex, nextUserIndex)
-      .filter((message) => message.role === "compactionSummary")
-    const nextMessages = [
-      ...list.slice(0, userIndex),
-      ...keptSummaries,
-      ...list.slice(nextUserIndex),
-    ]
-    setMessages(nextMessages)
-    void agentApi.restore(toAgentMessages(nextMessages))
-    const sessionId = sessionListStore.getCurrentSessionId()
-    if (sessionId && typeof userTimestamp === "number") {
-      // 落库成功后再刷新列表，避免读到删除前的旧会话。
-      void agentApi
-        .deleteMessageTurn(sessionId, userTimestamp)
-        .then(() => {
-          void sessionListStore.refresh()
-        })
-        .catch(() => {
-          // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
-        })
-    }
+      // 保留被移除范围内的压缩摘要（自动压缩不可随轮撤销消失；手动摘要由撤销压缩路径单独处理）。
+      const keptSummaries = list
+        .slice(userIndex, nextUserIndex)
+        .filter((message) => message.role === "compactionSummary")
+      const nextMessages = [
+        ...list.slice(0, userIndex),
+        ...keptSummaries,
+        ...list.slice(nextUserIndex),
+      ]
+      setMessages(nextMessages)
+      const sessionId = currentSessionIdRef.current
+      void agentApi.restore(toAgentMessages(nextMessages), sessionId ?? undefined, tabId)
+      if (sessionId && typeof userTimestamp === "number") {
+        // 落库成功后再刷新列表，避免读到删除前的旧会话。
+        void agentApi
+          .deleteMessageTurn(sessionId, userTimestamp)
+          .then(() => {
+            void sessionListStore.refresh()
+          })
+          .catch(() => {
+            // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
+          })
+      }
 
-    // 检查剩余消息：若全空或只剩初始模型（isInitial: true），脱离当前会话
-    const hasMeaningfulMessages = nextMessages.some(
-      (m) => !(m.role === "modelSwitch" && m.isInitial),
-    )
-    if (!hasMeaningfulMessages) {
-      sessionListStore.setCurrentSessionId(null)
-      if (nextMessages.length > 0) {
-        setMessages([])
-        void agentApi.restore([])
+      // 检查剩余消息：若全空或只剩初始模型（isInitial: true），脱离当前会话
+      const hasMeaningfulMessages = nextMessages.some(
+        (m) => !(m.role === "modelSwitch" && m.isInitial),
+      )
+      if (!hasMeaningfulMessages) {
+        setCurrentSessionId(null)
+        if (tabId) {
+          agentTabStore.setTabSessionId(tabId, null)
+        }
+        if (nextMessages.length > 0) {
+          setMessages([])
+          void agentApi.restore([], undefined, tabId)
+        }
       }
-    }
-  }, [])
+    },
+    [tabId],
+  )
 
   // 撤销最后一次手动压缩（/undo 对压缩摘要触发）：清 main 侧边界/entry 后移除可见摘要，并同步 main 侧消息列表。
   // 自动压缩摘要不可撤销，不进入此路径。
   const undoManualCompaction = useCallback(() => {
-    void agentApi.undoCompaction().then((result) => {
+    void agentApi.undoCompaction(currentSessionIdRef.current ?? undefined, tabId).then((result) => {
       if (result.ok) {
         const nextMessages = messagesRef.current.filter(
           (message) => !(message.role === "compactionSummary" && message.isManual),
         )
         setMessages(nextMessages)
-        void agentApi.restore(toAgentMessages(nextMessages))
+        void agentApi.restore(
+          toAgentMessages(nextMessages),
+          currentSessionIdRef.current ?? undefined,
+          tabId,
+        )
       } else {
         errorToast(result.error)
       }
     })
-  }, [errorToast])
+  }, [errorToast, tabId])
 
   // 撤销上一轮对话：删除最近一轮（含问题/回答/工具调用）并同步 main 侧与 DB。
   // 被撤销的用户消息回显到输入框，便于修改后重新发送。
@@ -520,14 +577,14 @@ export const useAgentChat = (context?: AgentSendContext) => {
       errorToast(t("agent.compactionBlockedWhileGenerating"))
       return
     }
-    void agentApi.compact().then((result) => {
+    void agentApi.compact(currentSessionIdRef.current ?? undefined, tabId).then((result) => {
       if (!result.ok) {
         errorToast(result.error)
         return
       }
       successToast(t("agent.contextCompactedSuccess"))
     })
-  }, [isStreaming, errorToast, successToast, t])
+  }, [isStreaming, errorToast, successToast, t, tabId])
 
   // 删除指定 AI 消息所在的一轮对话。
   const deleteTurn = useCallback(
@@ -553,8 +610,13 @@ export const useAgentChat = (context?: AgentSendContext) => {
       setIsCompacting(false)
       setIsCompactingManual(false)
       setIsRestoring(true)
+      setCurrentSessionId(sessionId)
+      if (tabId) {
+        agentTabStore.setTabSessionId(tabId, sessionId)
+      }
+      onSessionBound?.(sessionId)
       void agentApi
-        .restoreSession(sessionId)
+        .restoreSession(sessionId, tabId)
         .then((restored) => {
           const chatMessages = restored.messages.map((message) =>
             toChatMessage(message, false, `m${++messageSequence}`),
@@ -562,7 +624,6 @@ export const useAgentChat = (context?: AgentSendContext) => {
           setMessages(mergeSubagentSnapshots(chatMessages))
           setTodos(restored.todos ?? [])
           setInputText("")
-          sessionListStore.setCurrentSessionId(sessionId)
         })
         .catch(() => {
           // 会话已不存在等错误：保持当前展示，不做额外处理。
@@ -571,7 +632,7 @@ export const useAgentChat = (context?: AgentSendContext) => {
           setIsRestoring(false)
         })
     },
-    [stopStreaming],
+    [stopStreaming, tabId, onSessionBound],
   )
 
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
@@ -600,9 +661,12 @@ export const useAgentChat = (context?: AgentSendContext) => {
         return
       }
 
-      const sessionBinding = sessionListStore.getCurrentSessionBinding()
+      const activeTab = tabId ? agentTabStore.getTabs().find((t) => t.id === tabId) : undefined
+      const sessionBinding = activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()
       const sendContext: AgentSendContext = {
         ...context,
+        tabId,
+        sessionId: currentSessionIdRef.current ?? undefined,
         ...(sessionBinding?.cwd ? { cwd: sessionBinding.cwd } : {}),
         ...(sessionBinding?.projectId ? { projectId: sessionBinding.projectId } : {}),
         files: selectedFiles.map((file) => ({
@@ -624,7 +688,11 @@ export const useAgentChat = (context?: AgentSendContext) => {
           }
           // 入队/插话消息处理于既有会话：仅真正新建/切换会话时更新会话 id 并刷新列表。
           if (result.sessionId && !("queued" in result) && !("steered" in result)) {
-            sessionListStore.setCurrentSessionId(result.sessionId)
+            setCurrentSessionId(result.sessionId)
+            if (tabId) {
+              agentTabStore.setTabSessionId(tabId, result.sessionId)
+            }
+            onSessionBound?.(result.sessionId)
             void sessionListStore.refresh()
           }
         } else if (contentToSend === undefined) {
@@ -646,6 +714,9 @@ export const useAgentChat = (context?: AgentSendContext) => {
       successToast,
       isCompacting,
       isCompactingManual,
+      tabId,
+      onSessionBound,
+      t,
     ],
   )
 
@@ -662,13 +733,19 @@ export const useAgentChat = (context?: AgentSendContext) => {
   const continueChat = useCallback(() => {
     if (!canContinue) return
     const prompt = t("agent.continuePrompt")
-    void agentApi.continue(prompt).then((result) => {
-      if (result.ok && result.sessionId) {
-        sessionListStore.setCurrentSessionId(result.sessionId)
-        void sessionListStore.refresh()
-      }
-    })
-  }, [canContinue, t])
+    void agentApi
+      .continue(prompt, currentSessionIdRef.current ?? undefined, tabId)
+      .then((result) => {
+        if (result.ok && result.sessionId) {
+          setCurrentSessionId(result.sessionId)
+          if (tabId) {
+            agentTabStore.setTabSessionId(tabId, result.sessionId)
+          }
+          onSessionBound?.(result.sessionId)
+          void sessionListStore.refresh()
+        }
+      })
+  }, [canContinue, tabId, onSessionBound, t])
 
   // 编辑已发送的消息内容（仅影响显示，不改变 main 侧上下文）。
   const editMessage = useCallback((id: string, newContent: string) => {
@@ -689,18 +766,25 @@ export const useAgentChat = (context?: AgentSendContext) => {
   // 主动切换协作模式（default / plan 循环切换）。
   const toggleCollaborationMode = useCallback(() => {
     const nextMode: CollaborationMode = collaborationMode === "plan" ? "default" : "plan"
-    void agentApi.setCollaborationMode(nextMode).catch((err) => {
-      console.error("Failed to set collaboration mode:", err)
-    })
-  }, [collaborationMode])
+    void agentApi
+      .setCollaborationMode(nextMode, currentSessionIdRef.current ?? undefined, tabId)
+      .catch((err) => {
+        console.error("Failed to set collaboration mode:", err)
+      })
+  }, [collaborationMode, tabId])
 
   // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。
   // 无会话（prev 为 null）时保持不显示，避免状态栏误现 0%。
-  const refreshContextUsage = useCallback((selection?: ModelSelection) => {
-    void agentApi.getContextUsage(selection).then((usage) => {
-      setContextUsage((prev) => (prev === null ? null : usage))
-    })
-  }, [])
+  const refreshContextUsage = useCallback(
+    (selection?: ModelSelection) => {
+      void agentApi
+        .getContextUsage(selection, currentSessionIdRef.current ?? undefined, tabId)
+        .then((usage) => {
+          setContextUsage((prev) => (prev === null ? null : usage))
+        })
+    },
+    [tabId],
+  )
 
   // 检查当前是否仅剩最后一轮用户对话（用于 /undo 二次确认判定）。
   const isOnlyOneTurnLeft = useCallback((): boolean => {
@@ -737,5 +821,6 @@ export const useAgentChat = (context?: AgentSendContext) => {
     restoreChat,
     editMessage,
     refreshContextUsage,
+    currentSessionId,
   }
 }

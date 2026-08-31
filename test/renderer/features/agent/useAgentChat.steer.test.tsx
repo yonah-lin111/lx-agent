@@ -173,6 +173,8 @@ describe("useAgentChat Steer 发送与停止 loading", () => {
 
     expect(vi.mocked(agentApi).continue).toHaveBeenCalledWith(
       expect.stringMatching(/Please continue from where you left off|请继续输出刚才被中断的内容/),
+      undefined,
+      undefined,
     )
   })
 })

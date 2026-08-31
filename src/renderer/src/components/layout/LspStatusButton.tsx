@@ -1,26 +1,27 @@
+import { Code2, Loader2 } from "lucide-react"
+import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useLspStatus } from "@/features/agent/hooks/useLspStatus"
 import { useTranslation } from "@/i18n"
 
-// 聚合状态圆点颜色：全部安装绿 / 全部未装灰 / 部分缺失红（异常）。
-const dotColor = (isLoading: boolean, installed: number, total: number): string => {
-  if (isLoading) return "bg-white/30"
-  if (installed === 0) return "bg-zinc-500"
-  if (installed === total) return "bg-emerald-400"
-  return "bg-red-400"
+// 聚合状态颜色：全部安装绿 / 全部未装灰 / 部分缺失红（异常）/ 加载中淡灰。
+const iconColor = (isLoading: boolean, installed: number, total: number): string => {
+  if (isLoading) return "text-white/30"
+  if (installed === 0) return "text-zinc-500"
+  if (installed === total && total > 0) return "text-emerald-400"
+  return "text-red-400"
 }
 
 /**
  * LspStatusButton - Agent 状态栏 LSP server 安装状态指示：
- * 绿=全部已安装 / 红=部分缺失（异常）/ 灰=未安装，数字为已安装数。
- * hover 展示每包状态（绿=已装 / 红=缺失，无文字标签）；存在缺失时点击弹出安装确认，
- * 确认后一键安装（npm install -g），安装中圆点位置显示 loading。
+ * 采用 Icon + 数字 格式，Icon 颜色表达状态（绿=已装 / 红=缺失 / 灰=未配置），数字为已安装数。
+ * hover 展示每包状态；存在缺失时点击弹出安装确认。
  */
 export const LspStatusButton = (): React.JSX.Element => {
   const { summary, isLoading, isInstalling, lastResult, installMissing } = useLspStatus()
   const { t } = useTranslation()
   const needsInstall = summary.missing > 0
-  const color = dotColor(isLoading, summary.installed, summary.total)
+  const color = iconColor(isLoading, summary.installed, summary.total)
 
   const statusLines = summary.names.map((name) => {
     const installed = summary.installedNames.includes(name)
@@ -64,17 +65,16 @@ export const LspStatusButton = (): React.JSX.Element => {
     >
       <span
         aria-label={t("agent.lspStatusAria")}
-        className={`agent-status-btn agent-lsp-status-btn flex shrink-0 items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/5 ${needsInstall ? "cursor-pointer" : "cursor-default"}`}
+        className={`agent-status-btn agent-lsp-status-btn flex shrink-0 items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs text-white/60 transition-colors hover:bg-white/5 ${needsInstall ? "cursor-pointer" : "cursor-default"}`}
       >
         {isInstalling ? (
-          <span className="agent-status-dot h-1.5 w-1.5 shrink-0 animate-spin rounded-full border border-white/50 border-t-transparent" />
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-white/50" />
         ) : (
-          <span className={`agent-status-dot h-1.5 w-1.5 shrink-0 rounded-full ${color}`} />
+          <Code2 className={`h-3.5 w-3.5 shrink-0 ${color}`} />
         )}
-        <span className="agent-status-count tabular-nums">
+        <span className="agent-status-count font-mono text-[11px] tabular-nums">
           {isLoading ? "…" : summary.installed}
         </span>
-        <span className="agent-status-label">LSP</span>
       </span>
     </LxTooltip>
   )

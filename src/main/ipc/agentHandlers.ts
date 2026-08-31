@@ -178,12 +178,22 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   }
 
   agentRunner.attachEventSink(sendToRenderer)
-  // 权限确认请求经事件流推送到 renderer 命令面板（与 agent:event 同路径）。
+  // 权限确认请求经事件流推送到 renderer 命令面板（附带目标会话 sessionId）。
   permissionManager.attachSender((request) =>
-    sendToRenderer({ type: "permission_request", request }),
+    sendToRenderer({
+      type: "permission_request",
+      sessionId: request.sessionId ?? undefined,
+      request,
+    }),
   )
-  // 模型提问请求经事件流推送到 renderer 命令面板。
-  questionManager.attachSender((request) => sendToRenderer({ type: "question_request", request }))
+  // 模型提问请求经事件流推送到 renderer 命令面板（附带目标会话 sessionId）。
+  questionManager.attachSender((request) =>
+    sendToRenderer({
+      type: "question_request",
+      sessionId: request.sessionId ?? undefined,
+      request,
+    }),
+  )
 
   ipcMain.handle(
     AGENT_CHANNELS.send,
@@ -204,50 +214,85 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     },
   )
 
-  ipcMain.handle(AGENT_CHANNELS.continue, async (_event, prompt?: unknown) => {
-    const text = typeof prompt === "string" ? prompt : undefined
-    return agentRunner.continue(text)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.continue,
+    async (_event, prompt?: unknown, sessionId?: unknown, tabId?: unknown) => {
+      const text = typeof prompt === "string" ? prompt : undefined
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.continue(text, sId, tId)
+    },
+  )
 
   // 手动压缩（/compact）：renderer 侧已守卫流式；main 侧兜底禁用/忙态/无可压缩内容。
-  ipcMain.handle(AGENT_CHANNELS.compact, () => agentRunner.compact())
+  ipcMain.handle(AGENT_CHANNELS.compact, (_, sessionId?: unknown, tabId?: unknown) => {
+    const sId = typeof sessionId === "string" ? sessionId : undefined
+    const tId = typeof tabId === "string" ? tabId : undefined
+    return agentRunner.compact(sId, tId)
+  })
 
   // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。
-  ipcMain.handle(AGENT_CHANNELS.undoCompaction, () => agentRunner.undoCompaction())
-
-  ipcMain.handle(AGENT_CHANNELS.switchWorktree, (_, path: unknown) => {
-    if (typeof path !== "string" || !path.trim()) {
-      return { ok: false, error: "工作区路径无效。" }
-    }
-    return agentRunner.switchWorktree(path.trim())
+  ipcMain.handle(AGENT_CHANNELS.undoCompaction, (_, sessionId?: unknown, tabId?: unknown) => {
+    const sId = typeof sessionId === "string" ? sessionId : undefined
+    const tId = typeof tabId === "string" ? tabId : undefined
+    return agentRunner.undoCompaction(sId, tId)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.switchProject, (_, projectId: unknown, path: unknown) => {
-    if (typeof projectId !== "string") {
-      return { ok: false, error: "项目 ID 格式无效。" }
-    }
-    if (typeof path !== "string" || !path.trim()) {
-      return { ok: false, error: "项目路径无效。" }
-    }
-    return agentRunner.switchProject(projectId.trim(), path.trim())
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.switchWorktree,
+    (_, path: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (typeof path !== "string" || !path.trim()) {
+        return { ok: false, error: "工作区路径无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.switchWorktree(path.trim(), sId, tId)
+    },
+  )
 
-  ipcMain.handle(AGENT_CHANNELS.switchModel, (_, selection: unknown) => {
-    if (!isValidModelSelection(selection)) {
-      return { ok: false, error: "模型选择参数无效。" }
-    }
-    return agentRunner.switchModel(selection)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.switchProject,
+    (_, projectId: unknown, path: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (typeof projectId !== "string") {
+        return { ok: false, error: "项目 ID 格式无效。" }
+      }
+      if (typeof path !== "string" || !path.trim()) {
+        return { ok: false, error: "项目路径无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.switchProject(projectId.trim(), path.trim(), sId, tId)
+    },
+  )
 
-  ipcMain.handle(AGENT_CHANNELS.setCollaborationMode, (_, mode: unknown) => {
-    if (mode !== "default" && mode !== "plan") {
-      return { ok: false, error: "协作模式参数无效。" }
-    }
-    return agentRunner.setCollaborationMode(mode)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.switchModel,
+    (_, selection: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (!isValidModelSelection(selection)) {
+        return { ok: false, error: "模型选择参数无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.switchModel(selection, sId, tId)
+    },
+  )
 
-  ipcMain.handle(AGENT_CHANNELS.abort, () => {
-    agentRunner.abort()
+  ipcMain.handle(
+    AGENT_CHANNELS.setCollaborationMode,
+    (_, mode: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (mode !== "default" && mode !== "plan") {
+        return { ok: false, error: "协作模式参数无效。" }
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.setCollaborationMode(mode, sId, tId)
+    },
+  )
+
+  ipcMain.handle(AGENT_CHANNELS.abort, (_, sessionId?: unknown, tabId?: unknown) => {
+    const sId = typeof sessionId === "string" ? sessionId : undefined
+    const tId = typeof tabId === "string" ? tabId : undefined
+    agentRunner.abort(sId, tId)
   })
 
   // MCP 连接状态变更推送到渲染层（启动异步连接完成 / 运行中断连等）。
@@ -296,20 +341,26 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
 
   ipcMain.handle(AGENT_CHANNELS.getDefaultPath, () => join(homedir(), "Desktop"))
 
-  ipcMain.handle(AGENT_CHANNELS.restore, (_, messages: unknown) => {
-    if (!Array.isArray(messages) || !messages.every(isValidAgentMessage)) {
-      throw new Error("INVALID_AGENT_RESTORE_MESSAGES")
-    }
-    agentRunner.restoreMessages(messages)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.restore,
+    (_, messages: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (!Array.isArray(messages) || !messages.every(isValidAgentMessage)) {
+        throw new Error("INVALID_AGENT_RESTORE_MESSAGES")
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      agentRunner.restoreMessages(messages, sId, tId)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.listSessions, () => agentRunner.listSessions())
 
-  ipcMain.handle(AGENT_CHANNELS.restoreSession, (_, sessionId: unknown) => {
+  ipcMain.handle(AGENT_CHANNELS.restoreSession, (_, sessionId: unknown, tabId?: unknown) => {
     if (typeof sessionId !== "string" || !sessionId.trim()) {
       throw new Error("INVALID_SESSION_ID")
     }
-    return agentRunner.restoreSession(sessionId)
+    const tId = typeof tabId === "string" ? tabId : undefined
+    return agentRunner.restoreSession(sessionId, tId)
   })
 
   ipcMain.handle(AGENT_CHANNELS.renameSession, (_, sessionId: unknown, title: unknown) => {
@@ -384,12 +435,17 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     }
   })
 
-  ipcMain.handle(AGENT_CHANNELS.getContextUsage, (_, selection: unknown) => {
-    if (selection !== undefined && !isValidModelSelection(selection)) {
-      throw new Error("INVALID_MODEL_SELECTION")
-    }
-    return agentRunner.getContextUsage(selection as ModelSelection | undefined)
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.getContextUsage,
+    (_, selection: unknown, sessionId?: unknown, tabId?: unknown) => {
+      if (selection !== undefined && !isValidModelSelection(selection)) {
+        throw new Error("INVALID_MODEL_SELECTION")
+      }
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.getContextUsage(selection as ModelSelection | undefined, sId, tId)
+    },
+  )
 
   ipcMain.handle(AGENT_CHANNELS.listJobs, (_, sessionId: unknown) => {
     return agentRunner.listJobs(typeof sessionId === "string" ? sessionId : undefined)
@@ -427,10 +483,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     },
   )
 
-  ipcMain.handle(AGENT_CHANNELS.getPromptAssembly, async (_, sessionId: unknown, cwd: unknown) => {
-    return agentRunner.getPromptAssembly(
-      typeof sessionId === "string" ? sessionId : undefined,
-      typeof cwd === "string" ? cwd : undefined,
-    )
-  })
+  ipcMain.handle(
+    AGENT_CHANNELS.getPromptAssembly,
+    async (_, sessionId: unknown, cwd: unknown, tabId?: unknown) => {
+      const sId = typeof sessionId === "string" ? sessionId : undefined
+      const c = typeof cwd === "string" ? cwd : undefined
+      const tId = typeof tabId === "string" ? tabId : undefined
+      return agentRunner.getPromptAssembly(sId, c, tId)
+    },
+  )
 }

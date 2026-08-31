@@ -1,6 +1,8 @@
 import { ArrowDownToLine, Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import { LspStatusButton } from "@/components/layout/LspStatusButton"
+import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxAgentInputToast, useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -353,7 +355,7 @@ export const AgentInput = ({
           onAddFiles={handleAddFiles}
         />
         <div className="flex w-full items-center justify-between pt-1.5">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
             {addButton}
             <AgentModelSelect
               value={selectedModel}
@@ -361,6 +363,8 @@ export const AgentInput = ({
               options={modelOptions}
               disabled={!hasModelOptions}
             />
+            <LspStatusButton />
+            <McpStatusButton />
           </div>
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5 mr-0.5">

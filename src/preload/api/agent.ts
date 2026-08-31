@@ -19,20 +19,27 @@ export const agentApi: AgentApi["agent"] = {
     context?: AgentSendContext,
     options?: AgentSendOptions,
   ) => ipcRenderer.invoke(AGENT_CHANNELS.send, text, selection, context, options),
-  continue: (prompt?: string) => ipcRenderer.invoke(AGENT_CHANNELS.continue, prompt),
-  compact: () => ipcRenderer.invoke(AGENT_CHANNELS.compact),
-  undoCompaction: () => ipcRenderer.invoke(AGENT_CHANNELS.undoCompaction),
-  abort: () => ipcRenderer.invoke(AGENT_CHANNELS.abort),
-  switchWorktree: (path: string) => ipcRenderer.invoke(AGENT_CHANNELS.switchWorktree, path),
-  switchProject: (projectId: string, path: string) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.switchProject, projectId, path),
-  switchModel: (selection: ModelSelection) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.switchModel, selection),
-  setCollaborationMode: (mode) => ipcRenderer.invoke(AGENT_CHANNELS.setCollaborationMode, mode),
-  restore: (messages) => ipcRenderer.invoke(AGENT_CHANNELS.restore, messages),
+  continue: (prompt?: string, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.continue, prompt, sessionId, tabId),
+  compact: (sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.compact, sessionId, tabId),
+  undoCompaction: (sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.undoCompaction, sessionId, tabId),
+  abort: (sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.abort, sessionId, tabId),
+  switchWorktree: (path: string, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.switchWorktree, path, sessionId, tabId),
+  switchProject: (projectId: string, path: string, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.switchProject, projectId, path, sessionId, tabId),
+  switchModel: (selection: ModelSelection, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.switchModel, selection, sessionId, tabId),
+  setCollaborationMode: (mode, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.setCollaborationMode, mode, sessionId, tabId),
+  restore: (messages, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.restore, messages, sessionId, tabId),
   listSessions: () => ipcRenderer.invoke(AGENT_CHANNELS.listSessions),
-  restoreSession: (sessionId: string) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.restoreSession, sessionId),
+  restoreSession: (sessionId: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.restoreSession, sessionId, tabId),
   renameSession: (sessionId: string, title: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.renameSession, sessionId, title),
   deleteSession: (sessionId: string) => ipcRenderer.invoke(AGENT_CHANNELS.deleteSession, sessionId),
@@ -58,8 +65,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.openFileAt, filePath, line),
   showItemInFolder: (filePath: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.showItemInFolder, filePath),
-  getContextUsage: (selection?: ModelSelection) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.getContextUsage, selection),
+  getContextUsage: (selection?: ModelSelection, sessionId?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.getContextUsage, selection, sessionId, tabId),
   listJobs: (sessionId?: string) => ipcRenderer.invoke(AGENT_CHANNELS.listJobs, sessionId),
   killJob: (jobId: string, reason?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.killJob, jobId, reason),
@@ -68,8 +75,8 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.clearSettledJobs, sessionId),
   readJobOutput: (jobId: string, wait?: boolean, timeoutMs?: number) =>
     ipcRenderer.invoke(AGENT_CHANNELS.readJobOutput, jobId, wait, timeoutMs),
-  getPromptAssembly: (sessionId?: string, cwd?: string) =>
-    ipcRenderer.invoke(AGENT_CHANNELS.getPromptAssembly, sessionId, cwd),
+  getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.getPromptAssembly, sessionId, cwd, tabId),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

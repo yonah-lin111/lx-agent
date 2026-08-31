@@ -7,6 +7,7 @@ export {
   AgentSuggestedPromptCards,
   type AgentSuggestedPromptCardsProps,
 } from "./AgentSuggestedPromptCards"
+export { AgentTabBar } from "./AgentTabBar"
 export * from "./blocks"
 export * from "./panels"
 export {

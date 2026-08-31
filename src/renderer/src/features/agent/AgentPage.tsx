@@ -21,8 +21,9 @@ import { AgentInput } from "./components/AgentInput"
 import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentSubagentPanel } from "./components/panels"
 import { AgentStatusBar } from "./components/status-bar"
+import { agentTabStore } from "./hooks/agentTabStore"
 import { agentViewStore } from "./hooks/agentViewStore"
-import { sessionListStore } from "./hooks/sessionListStore"
+import { type SessionBinding, sessionListStore } from "./hooks/sessionListStore"
 import { useAgentChat } from "./hooks/useAgentChat"
 import { useAgentJobs } from "./hooks/useAgentJobs"
 import { useAgentModelSelect } from "./hooks/useAgentModelSelect"
@@ -32,6 +33,9 @@ import type { ChatBlock } from "./types"
 type SubagentToolCall = Extract<ChatBlock, { kind: "toolCall" }>
 
 export interface AgentPageProps {
+  tabId?: string
+  initialSessionId?: string | null
+  onSessionBound?: (sessionId: string) => void
   onNewChatRef?: (fn: () => void) => void
   onRestoreChatRef?: (fn: (sessionId: string) => void) => void
   onToggleExecutionFlowRef?: (fn: () => void) => void
@@ -44,6 +48,9 @@ export interface AgentPageProps {
  * Agent 独立页面与对话集成组件。
  */
 export const AgentPage = ({
+  tabId,
+  initialSessionId,
+  onSessionBound,
   onNewChatRef,
   onRestoreChatRef,
   onToggleExecutionFlowRef,
@@ -79,7 +86,8 @@ export const AgentPage = ({
     restoreChat,
     editMessage,
     refreshContextUsage,
-  } = useAgentChat(context)
+    currentSessionId,
+  } = useAgentChat(context, tabId, initialSessionId, onSessionBound)
 
   const { jobs } = useAgentJobs()
 
@@ -145,14 +153,32 @@ export const AgentPage = ({
     })
   }, [])
 
-  const currentSessionBinding = useSyncExternalStore(
+  const chatSessions = useSyncExternalStore(
     sessionListStore.subscribe,
-    sessionListStore.getCurrentSessionBinding,
+    sessionListStore.getSessions,
   )
-  const currentSessionId = useSyncExternalStore(
-    sessionListStore.subscribe,
-    sessionListStore.getCurrentSessionId,
+  const boundSession = useMemo(() => {
+    if (!currentSessionId) return undefined
+    return chatSessions.find((s) => s.id === currentSessionId)
+  }, [chatSessions, currentSessionId])
+
+  const activeTab = useSyncExternalStore(agentTabStore.subscribe, () =>
+    tabId ? agentTabStore.getTabs().find((t) => t.id === tabId) : undefined,
   )
+
+  const currentSessionBinding = useMemo<SessionBinding | undefined>(() => {
+    if (boundSession) {
+      return {
+        projectId: boundSession.projectId ?? undefined,
+        cwd: boundSession.cwd,
+      }
+    }
+    if (activeTab?.draftBinding) {
+      return activeTab.draftBinding
+    }
+    return sessionListStore.getCurrentSessionBinding()
+  }, [boundSession, activeTab])
+
   const currentSessionPath = currentSessionBinding?.cwd
 
   const { success, error, warning } = useLxAgentToast()
@@ -167,25 +193,27 @@ export const AgentPage = ({
 
     // 仅针对新 session（尚未落库草稿态）：
     if (!currentSessionId) {
-      const currentDraft = sessionListStore.getCurrentSessionBinding()
+      const currentDraft = activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()
       const isDraftSet = currentDraft !== undefined && currentDraft.cwd !== undefined
       const isDefaultDesktop = Boolean(defaultPath && currentDraft?.cwd === defaultPath)
       const isFromNonProjectToProject = !prev?.path && Boolean(currentProjectPath)
 
       // 新session + 默认桌面路径 从其他页面切换到项目页面且有 active 项目时，自动切换到该 active 项目
       if ((!isDraftSet || isDefaultDesktop) && isFromNonProjectToProject && currentProjectPath) {
-        sessionListStore.setDraftBinding({
-          projectId: currentProjectId,
-          cwd: currentProjectPath,
-        })
+        const nextBinding = { projectId: currentProjectId, cwd: currentProjectPath }
+        if (tabId) {
+          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+        }
+        sessionListStore.setDraftBinding(nextBinding)
       } else if (!isDraftSet && defaultPath) {
-        sessionListStore.setDraftBinding({
-          projectId: undefined,
-          cwd: defaultPath,
-        })
+        const nextBinding = { projectId: undefined, cwd: defaultPath }
+        if (tabId) {
+          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+        }
+        sessionListStore.setDraftBinding(nextBinding)
       }
     }
-  }, [currentSessionId, currentProjectId, currentProjectPath, defaultPath])
+  }, [currentSessionId, currentProjectId, currentProjectPath, defaultPath, tabId, activeTab])
 
   // 会话路径绑定：
   // 1. 已落库会话：使用会话绑定的 cwd
@@ -232,12 +260,12 @@ export const AgentPage = ({
       handleModelChange(value)
       const [provider, model] = value.split("::")
       if (provider && model && currentSessionId) {
-        void agentApi.switchModel({ provider, model }).catch((err) => {
+        void agentApi.switchModel({ provider, model }, currentSessionId, tabId).catch((err) => {
           console.error("Failed to switch model in session:", err)
         })
       }
     },
-    [handleModelChange, currentSessionId],
+    [handleModelChange, currentSessionId, tabId],
   )
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
@@ -371,20 +399,22 @@ export const AgentPage = ({
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
     (path: string, silent = false): void => {
-      const sessionId = sessionListStore.getCurrentSessionId()
-      if (!sessionId) {
-        const currentBinding = sessionListStore.getCurrentSessionBinding()
-        sessionListStore.setDraftBinding({
-          ...currentBinding,
+      if (!currentSessionId) {
+        const nextBinding = {
+          ...(activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()),
           cwd: path,
-        })
+        }
+        if (tabId) {
+          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+        }
+        sessionListStore.setDraftBinding(nextBinding)
       }
-      void agentApi.switchWorktree(path).then((result) => {
+      void agentApi.switchWorktree(path, currentSessionId ?? undefined, tabId).then((result) => {
         if (result.ok) {
           if (!silent) {
             success(t("agent.worktreeSwitched"))
           }
-          if (sessionId) {
+          if (currentSessionId) {
             void sessionListStore.refresh()
           }
         } else {
@@ -392,7 +422,7 @@ export const AgentPage = ({
         }
       })
     },
-    [success, error, t],
+    [currentSessionId, tabId, activeTab, success, error, t],
   )
 
   // 408 行左右
@@ -423,33 +453,37 @@ export const AgentPage = ({
   // 切换会话项目：更新会话 project_id 与 cwd 后刷新会话列表。
   const handleProjectSelect = useCallback(
     (projectId: string, path: string): void => {
-      const sessionId = sessionListStore.getCurrentSessionId()
-      if (!sessionId) {
-        sessionListStore.setDraftBinding({
+      if (!currentSessionId) {
+        const nextBinding = {
           projectId,
           cwd: path,
-        })
-      }
-      void agentApi.switchProject(projectId, path).then((result) => {
-        if (result.ok) {
-          success(t("agent.projectSwitched"))
-          if (sessionId) {
-            void sessionListStore.refresh()
-          }
-        } else {
-          error(result.error)
         }
-      })
+        if (tabId) {
+          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+        }
+        sessionListStore.setDraftBinding(nextBinding)
+      }
+      void agentApi
+        .switchProject(projectId, path, currentSessionId ?? undefined, tabId)
+        .then((result) => {
+          if (result.ok) {
+            success(t("agent.projectSwitched"))
+            if (currentSessionId) {
+              void sessionListStore.refresh()
+            }
+          } else {
+            error(result.error)
+          }
+        })
     },
-    [success, error, t],
+    [currentSessionId, tabId, success, error, t],
   )
 
   // 会话分支：从指定用户轮切割复制历史到新会话，创建后自动切换（输入框留空直接重写）。
   const handleFork = useCallback(
     (userMessageTimestamp: number): void => {
-      const sessionId = sessionListStore.getCurrentSessionId()
-      if (!sessionId) return
-      void agentApi.forkSession(sessionId, userMessageTimestamp).then((result) => {
+      if (!currentSessionId) return
+      void agentApi.forkSession(currentSessionId, userMessageTimestamp).then((result) => {
         if (result.ok) {
           success(t("agent.forkSessionCreated"))
           void sessionListStore.refresh()
@@ -459,7 +493,7 @@ export const AgentPage = ({
         }
       })
     },
-    [success, error, restoreChat, t],
+    [currentSessionId, success, error, restoreChat, t],
   )
 
   // 建议问题输入框聚焦引用（回显后定位光标）。
@@ -497,17 +531,24 @@ export const AgentPage = ({
   )
 
   const handleNewChat = useCallback(() => {
-    const previousBinding = sessionListStore.getCurrentSessionBinding()
+    const previousBinding = activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()
     createNewChat()
+    if (tabId) {
+      agentTabStore.setTabTitle(tabId, "")
+    }
     const targetProjectId = previousBinding?.projectId ?? currentProjectId
     const targetCwd = previousBinding?.cwd ?? currentProjectPath ?? defaultPath
     if (targetCwd) {
-      sessionListStore.setDraftBinding({
+      const nextBinding = {
         projectId: targetProjectId,
         cwd: targetCwd,
-      })
+      }
+      if (tabId) {
+        agentTabStore.setTabDraftBinding(tabId, nextBinding)
+      }
+      sessionListStore.setDraftBinding(nextBinding)
     }
-  }, [createNewChat, currentProjectId, currentProjectPath, defaultPath])
+  }, [createNewChat, activeTab, tabId, currentProjectId, currentProjectPath, defaultPath])
 
   const handleRestoreChat = useCallback(
     (sessionId: string) => {

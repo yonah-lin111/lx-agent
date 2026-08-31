@@ -30,9 +30,9 @@ import type { ModelSelection } from "@shared/settings"
 
 // Agent feature 对 preload API 的访问层。
 export const agentApi = {
-  getPromptAssembly: (sessionId?: string, cwd?: string): Promise<PromptAssembly> =>
+  getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string): Promise<PromptAssembly> =>
     window?.api?.agent?.getPromptAssembly
-      ? window.api.agent.getPromptAssembly(sessionId, cwd)
+      ? window.api.agent.getPromptAssembly(sessionId, cwd, tabId)
       : Promise.resolve({ sections: [], contexts: [], variables: {}, rendered: "" }),
   send: (
     text: string,
@@ -40,26 +40,43 @@ export const agentApi = {
     context?: AgentSendContext,
     options?: AgentSendOptions,
   ): Promise<AgentSendResult> => window.api.agent.send(text, selection, context, options),
-  continue: (prompt?: string): Promise<AgentSendResult> => window.api.agent.continue(prompt),
-  compact: (): Promise<AgentCompactResult> => window.api.agent.compact(),
-  undoCompaction: (): Promise<AgentUndoCompactionResult> => window.api.agent.undoCompaction(),
-  switchWorktree: (path: string): Promise<AgentSwitchWorktreeResult> =>
-    window.api.agent.switchWorktree(path),
-  switchProject: (projectId: string, path: string): Promise<AgentSwitchProjectResult> =>
-    window.api.agent.switchProject(projectId, path),
+  continue: (prompt?: string, sessionId?: string, tabId?: string): Promise<AgentSendResult> =>
+    window.api.agent.continue(prompt, sessionId, tabId),
+  compact: (sessionId?: string, tabId?: string): Promise<AgentCompactResult> =>
+    window.api.agent.compact(sessionId, tabId),
+  undoCompaction: (sessionId?: string, tabId?: string): Promise<AgentUndoCompactionResult> =>
+    window.api.agent.undoCompaction(sessionId, tabId),
+  switchWorktree: (
+    path: string,
+    sessionId?: string,
+    tabId?: string,
+  ): Promise<AgentSwitchWorktreeResult> => window.api.agent.switchWorktree(path, sessionId, tabId),
+  switchProject: (
+    projectId: string,
+    path: string,
+    sessionId?: string,
+    tabId?: string,
+  ): Promise<AgentSwitchProjectResult> =>
+    window.api.agent.switchProject(projectId, path, sessionId, tabId),
   switchModel: (
     selection: ModelSelection,
+    sessionId?: string,
+    tabId?: string,
   ): Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }> =>
-    window.api.agent.switchModel(selection),
+    window.api.agent.switchModel(selection, sessionId, tabId),
   setCollaborationMode: (
     mode: "default" | "plan",
+    sessionId?: string,
+    tabId?: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> =>
-    window.api.agent.setCollaborationMode(mode),
-  abort: (): Promise<void> => window.api.agent.abort(),
-  restore: (messages: AgentMessage[]): Promise<void> => window.api.agent.restore(messages),
+    window.api.agent.setCollaborationMode(mode, sessionId, tabId),
+  abort: (sessionId?: string, tabId?: string): Promise<void> =>
+    window.api.agent.abort(sessionId, tabId),
+  restore: (messages: AgentMessage[], sessionId?: string, tabId?: string): Promise<void> =>
+    window.api.agent.restore(messages, sessionId, tabId),
   listSessions: (): Promise<AgentSessionSummary[]> => window.api.agent.listSessions(),
-  restoreSession: (sessionId: string): Promise<AgentRestoredSession> =>
-    window.api.agent.restoreSession(sessionId),
+  restoreSession: (sessionId: string, tabId?: string): Promise<AgentRestoredSession> =>
+    window.api.agent.restoreSession(sessionId, tabId),
   renameSession: (sessionId: string, title: string): Promise<void> =>
     window.api.agent.renameSession(sessionId, title),
   deleteSession: (sessionId: string): Promise<void> => window.api.agent.deleteSession(sessionId),
@@ -67,9 +84,14 @@ export const agentApi = {
     window.api.agent.deleteMessageTurn(sessionId, userMessageTimestamp),
   forkSession: (sessionId: string, userMessageTimestamp?: number): Promise<AgentForkResult> =>
     window.api.agent.forkSession(sessionId, userMessageTimestamp),
-  getMcpStatus: (): Promise<McpServerStatusItem[]> => window.api.agent.getMcpStatus(),
-  getLspStatus: (): Promise<LspServerStatusItem[]> => window.api.agent.getLspStatus(),
-  installLspServers: (): Promise<LspInstallResult> => window.api.agent.installLspServers(),
+  getMcpStatus: (): Promise<McpServerStatusItem[]> =>
+    window?.api?.agent?.getMcpStatus ? window.api.agent.getMcpStatus() : Promise.resolve([]),
+  getLspStatus: (): Promise<LspServerStatusItem[]> =>
+    window?.api?.agent?.getLspStatus ? window.api.agent.getLspStatus() : Promise.resolve([]),
+  installLspServers: (): Promise<LspInstallResult> =>
+    window?.api?.agent?.installLspServers
+      ? window.api.agent.installLspServers()
+      : Promise.resolve({ installed: [], failed: [] }),
   listPromptTemplates: (cwd?: string): Promise<PromptTemplateItem[]> =>
     window?.api?.agent?.listPromptTemplates
       ? window.api.agent.listPromptTemplates(cwd)
@@ -91,8 +113,11 @@ export const agentApi = {
     window.api.agent.openFileAt(filePath, line),
   showItemInFolder: (filePath: string): Promise<{ ok: boolean }> =>
     window.api.agent.showItemInFolder(filePath),
-  getContextUsage: (selection?: ModelSelection): Promise<AgentContextUsage> =>
-    window.api.agent.getContextUsage(selection),
+  getContextUsage: (
+    selection?: ModelSelection,
+    sessionId?: string,
+    tabId?: string,
+  ): Promise<AgentContextUsage> => window.api.agent.getContextUsage(selection, sessionId, tabId),
   listJobs: (sessionId?: string) => window.api.agent.listJobs(sessionId),
   killJob: (jobId: string, reason?: string) => window.api.agent.killJob(jobId, reason),
   removeJob: (jobId: string) => window.api.agent.removeJob(jobId),
@@ -100,5 +125,5 @@ export const agentApi = {
   readJobOutput: (jobId: string, wait?: boolean, timeoutMs?: number) =>
     window.api.agent.readJobOutput(jobId, wait, timeoutMs),
   onEvent: (handler: (event: AgentEvent) => void): (() => void) =>
-    window.api.agent.onEvent(handler),
+    window?.api?.agent?.onEvent ? window.api.agent.onEvent(handler) : () => {},
 }

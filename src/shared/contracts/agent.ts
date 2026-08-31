@@ -421,18 +421,39 @@ export type AssistantMessageEvent =
   | { type: "done"; reason: StopReason; message: AssistantMessage }
   | { type: "error"; reason: StopReason; error: AssistantMessage }
 
-// Agent 运行生命周期事件（main → renderer 的唯一流式负载）。
+// Agent 运行生命周期事件（main → renderer 的唯一流式负载，支持多会话/多 Tab 路由）。
 export type AgentEvent =
-  | { type: "agent_start" }
-  | { type: "agent_end"; messages: AgentMessage[] }
-  | { type: "turn_start" }
-  | { type: "turn_end"; message: AgentMessage; toolResults: ToolResultMessage[] }
-  | { type: "message_start"; message: AgentMessage }
-  | { type: "message_update"; message: AgentMessage; assistantMessageEvent: AssistantMessageEvent }
-  | { type: "message_end"; message: AgentMessage }
-  | { type: "tool_execution_start"; toolCallId: string; toolName: string; args: unknown }
+  | { type: "agent_start"; sessionId?: string; tabId?: string }
+  | { type: "agent_end"; sessionId?: string; tabId?: string; messages: AgentMessage[] }
+  | { type: "turn_start"; sessionId?: string; tabId?: string }
+  | {
+      type: "turn_end"
+      sessionId?: string
+      tabId?: string
+      message: AgentMessage
+      toolResults: ToolResultMessage[]
+    }
+  | { type: "message_start"; sessionId?: string; tabId?: string; message: AgentMessage }
+  | {
+      type: "message_update"
+      sessionId?: string
+      tabId?: string
+      message: AgentMessage
+      assistantMessageEvent: AssistantMessageEvent
+    }
+  | { type: "message_end"; sessionId?: string; tabId?: string; message: AgentMessage }
+  | {
+      type: "tool_execution_start"
+      sessionId?: string
+      tabId?: string
+      toolCallId: string
+      toolName: string
+      args: unknown
+    }
   | {
       type: "tool_execution_update"
+      sessionId?: string
+      tabId?: string
       toolCallId: string
       toolName: string
       args: unknown
@@ -440,39 +461,78 @@ export type AgentEvent =
     }
   | {
       type: "tool_execution_end"
+      sessionId?: string
+      tabId?: string
       toolCallId: string
       toolName: string
       result: unknown
       isError: boolean
       durationMs?: number
     }
-  | { type: "mcp_status_changed"; servers: McpServerStatusItem[] }
-  | { type: "collaboration_mode_changed"; mode: CollaborationMode }
-  | { type: "session_title"; sessionId: string; title: string | null }
-  | { type: "permission_request"; request: PermissionRequest }
-  | { type: "question_request"; request: QuestionRequest }
+  | {
+      type: "mcp_status_changed"
+      sessionId?: string
+      tabId?: string
+      servers: McpServerStatusItem[]
+    }
+  | {
+      type: "collaboration_mode_changed"
+      sessionId?: string
+      tabId?: string
+      mode: CollaborationMode
+    }
+  | { type: "session_title"; sessionId: string; tabId?: string; title: string | null }
+  | { type: "permission_request"; sessionId?: string; tabId?: string; request: PermissionRequest }
+  | { type: "question_request"; sessionId?: string; tabId?: string; request: QuestionRequest }
   // 上下文压缩完成：同一次压缩以 compactionId 关联 loading 占位与可见摘要（摘要不落 message entry）。
   | {
       type: "compaction_summary"
+      sessionId?: string
+      tabId?: string
       compactionId: string
       message: CompactionSummaryMessage
     }
   // 上下文压缩开始（摘要生成进行中，耗时数秒）：renderer 追加对应 loading 占位并禁止发送。
-  | { type: "compaction_start"; compactionId: string; manual: boolean; model?: string }
+  | {
+      type: "compaction_start"
+      sessionId?: string
+      tabId?: string
+      compactionId: string
+      manual: boolean
+      model?: string
+    }
   // 上下文压缩失败（摘要生成失败/超时）：renderer 仅移除对应 loading 占位并恢复发送。
-  | { type: "compaction_failed"; compactionId: string; manual: boolean }
+  | {
+      type: "compaction_failed"
+      sessionId?: string
+      tabId?: string
+      compactionId: string
+      manual: boolean
+    }
   // 上下文容量快照：当前会话估计 token 与压缩窗口（agent_end / 压缩 / 删除 / 恢复后推送，驱动状态栏百分比）。
-  | { type: "context_usage"; tokens: number; contextWindow: number }
+  | {
+      type: "context_usage"
+      sessionId?: string
+      tabId?: string
+      tokens: number
+      contextWindow: number
+    }
   // 任务清单更新：模型经 todowrite 整表替换（renderer 驱动状态栏 todo 指示；不落 message entry）。
-  | { type: "todo_updated"; todos: TodoList }
+  | { type: "todo_updated"; sessionId?: string; tabId?: string; todos: TodoList }
   // 排队消息计数与内容变化（入队/每条出队/清空时推送；renderer 订阅维护权威计数，messages 供 tooltip 展示）。
-  | { type: "queue_changed"; length: number; messages: string[] }
+  | {
+      type: "queue_changed"
+      sessionId?: string
+      tabId?: string
+      length: number
+      messages: string[]
+    }
   // 模型切换/初始模型广播事件
-  | { type: "model_switch"; message: ModelSwitchMessage }
+  | { type: "model_switch"; sessionId?: string; tabId?: string; message: ModelSwitchMessage }
   // 后台长任务生命周期事件（JobRegistry 驱动，支持抽屉与状态指示器实时刷新）。
-  | { type: "job_started"; job: JobSnapshot }
-  | { type: "job_output_chunk"; jobId: JobId; chunk: string }
-  | { type: "job_settled"; job: JobSnapshot }
+  | { type: "job_started"; sessionId?: string; tabId?: string; job: JobSnapshot }
+  | { type: "job_output_chunk"; sessionId?: string; tabId?: string; jobId: JobId; chunk: string }
+  | { type: "job_settled"; sessionId?: string; tabId?: string; job: JobSnapshot }
 
 // 后台任务唯一标识（会话内自增：bash-1, bash-2 等）。
 export type JobId = string
@@ -514,7 +574,7 @@ export interface PromptTemplateItem {
 // Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
 export type AgentPersonality = "pragmatic" | "friendly"
 
-// 会话归属上下文（发送消息时声明；决定会话建在哪个桶内）。
+// 会话归属上下文（发送消息时声明；决定会话建在哪个桶内，支持多会话/多 Tab 路由）。
 export interface AgentSendContext {
   projectId?: string // 所属项目 id
   page?: string // 页面路由（'/' | '/project' | '/settings' …）
@@ -527,6 +587,8 @@ export interface AgentSendContext {
     size?: string
     extension?: string
   }[]
+  sessionId?: string // 目标会话 ID
+  tabId?: string // 目标 Tab ID
 }
 
 // 系统提示词分段装配结果。
@@ -661,27 +723,40 @@ export interface AgentApi {
       options?: AgentSendOptions,
     ) => Promise<AgentSendResult>
     // 继续生成：续写被截断/中止的上一轮输出（busy 时返回 { ok: false }）。
-    continue: (prompt?: string) => Promise<AgentSendResult>
+    continue: (prompt?: string, sessionId?: string, tabId?: string) => Promise<AgentSendResult>
     // 切换当前会话工作区：更新会话工具执行目录（cwd），下次装配按新目录重建工具集。
-    switchWorktree: (path: string) => Promise<AgentSwitchWorktreeResult>
+    switchWorktree: (
+      path: string,
+      sessionId?: string,
+      tabId?: string,
+    ) => Promise<AgentSwitchWorktreeResult>
     // 切换当前会话项目：更新会话关联的项目 ID 与工具执行目录（cwd），重新加载工具集与技能。
-    switchProject: (projectId: string, path: string) => Promise<AgentSwitchProjectResult>
+    switchProject: (
+      projectId: string,
+      path: string,
+      sessionId?: string,
+      tabId?: string,
+    ) => Promise<AgentSwitchProjectResult>
     // 切换当前会话大模型：在已有会话中插入 model_change entry 并推送事件。
     switchModel: (
       selection: ModelSelection,
+      sessionId?: string,
+      tabId?: string,
     ) => Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }>
     // 切换协作模式（default / plan）。
     setCollaborationMode: (
       mode: CollaborationMode,
+      sessionId?: string,
+      tabId?: string,
     ) => Promise<{ ok: true } | { ok: false; error: string }>
     // 手动触发上下文压缩（/compact）：摘要化早期历史并建立新边界；设置禁用/无可压缩内容时返回原因。
-    compact: () => Promise<AgentCompactResult>
+    compact: (sessionId?: string, tabId?: string) => Promise<AgentCompactResult>
     // 撤销最后一次手动压缩（/undo 对压缩摘要触发；自动压缩不可撤销）。
-    undoCompaction: () => Promise<AgentUndoCompactionResult>
-    abort: () => Promise<void>
-    restore: (messages: AgentMessage[]) => Promise<void>
+    undoCompaction: (sessionId?: string, tabId?: string) => Promise<AgentUndoCompactionResult>
+    abort: (sessionId?: string, tabId?: string) => Promise<void>
+    restore: (messages: AgentMessage[], sessionId?: string, tabId?: string) => Promise<void>
     listSessions: () => Promise<AgentSessionSummary[]>
-    restoreSession: (sessionId: string) => Promise<AgentRestoredSession>
+    restoreSession: (sessionId: string, tabId?: string) => Promise<AgentRestoredSession>
     renameSession: (sessionId: string, title: string) => Promise<void>
     deleteSession: (sessionId: string) => Promise<void>
     // 删除一轮对话：以该轮用户消息的 timestamp 定位（问题 + 回答 + 工具调用级联删除）。
@@ -716,7 +791,11 @@ export interface AgentApi {
     // 在系统文件管理器/资源管理器中高亮定位文件。
     showItemInFolder: (filePath: string) => Promise<{ ok: boolean }>
     // 查询当前会话上下文容量（模型切换后状态栏主动刷新；selection 指定要显示的模型窗口）。
-    getContextUsage: (selection?: ModelSelection) => Promise<AgentContextUsage>
+    getContextUsage: (
+      selection?: ModelSelection,
+      sessionId?: string,
+      tabId?: string,
+    ) => Promise<AgentContextUsage>
     // 查询当前会话全部可见后台任务。
     listJobs: (sessionId?: string) => Promise<JobSnapshot[]>
     // 终止指定后台长任务（向进程树发送 SIGTERM / taskkill）。
@@ -735,7 +814,7 @@ export interface AgentApi {
       timeoutMs?: number,
     ) => Promise<JobReadResult | null>
     // 查询当前会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
-    getPromptAssembly: (sessionId?: string, cwd?: string) => Promise<PromptAssembly>
+    getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) => Promise<PromptAssembly>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

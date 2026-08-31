@@ -16,7 +16,12 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
-import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  ExecutionStep,
+  ExecutionSubagentContent,
+} from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"

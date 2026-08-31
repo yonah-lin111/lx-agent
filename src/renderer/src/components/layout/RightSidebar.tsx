@@ -3,13 +3,12 @@ import { ChevronLeft, ChevronRight, History, MessageSquare, Plus, Workflow } fro
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
-import { LspStatusButton } from "@/components/layout/LspStatusButton"
-import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentPage, agentViewStore, ChatHistoryPanel } from "@/features/agent"
+import { AgentPage, AgentTabBar, agentViewStore, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectNavigationApi } from "@/features/project-navigation/api/projectNavigationApi"
 import { useTranslation } from "@/i18n"
@@ -23,13 +22,28 @@ const MAX_WIDTH_VW = 40
 const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH_VW), MAX_WIDTH_VW)
 
 /**
- * 右侧栏 (集成 Agent 页面与控制按钮)
+ * 右侧栏 (集成多 Tab Agent 管理与控制按钮)
  */
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { t } = useTranslation()
   const { warning } = useLxToast()
+
+  const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
+  const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
+  const activeTab = useMemo(() => tabs.find((t) => t.id === activeTabId), [tabs, activeTabId])
+
+  const tabActionsRef = useRef<
+    Record<
+      string,
+      {
+        newChat?: () => void
+        restoreChat?: (sessionId: string) => void
+        toggleExecutionFlow?: () => void
+      }
+    >
+  >({})
 
   const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
 
@@ -60,26 +74,22 @@ export const RightSideBar = (): React.JSX.Element => {
   const [currentProject, setCurrentProject] = useState<{ id: string; path?: string }>()
   // 项目列表（历史面板项目 tag 筛选用）。
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
-  const restoreChatRef = useRef<((sessionId: string) => void) | null>(null)
-  const newChatRef = useRef<(() => void) | null>(null)
-  const toggleExecutionFlowRef = useRef<(() => void) | null>(null)
+
   const chatSessions = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getSessions,
   )
-  const currentSessionId = useSyncExternalStore(
-    sessionListStore.subscribe,
-    sessionListStore.getCurrentSessionId,
-  )
-  // 删除会话：确认后删除并本地移除；删除当前会话时新建对话（Agent 运行中禁止）。
+
+  // 删除会话：确认后删除并本地移除；若某个 Tab 打开了该会话，则重置该 Tab 为新对话。
   const handleDeleteSession = (sessionId: string): void => {
-    if (sessionId === currentSessionId && blockIfGenerating()) return
+    const tabWithSession = agentTabStore.findTabBySessionId(sessionId)
+    if (tabWithSession?.id === activeTabId && blockIfGenerating()) return
     void agentApi
       .deleteSession(sessionId)
       .then(() => {
         sessionListStore.removeSession(sessionId)
-        if (sessionId === currentSessionId) {
-          newChatRef.current?.()
+        if (tabWithSession) {
+          tabActionsRef.current[tabWithSession.id]?.newChat?.()
         }
       })
       .catch(() => {
@@ -140,7 +150,6 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [isResizing])
 
-  // 窗口尺寸变化（含全屏切换）后宽度随 vw 自动重算，无需额外处理。
   // 会话归属上下文：项目会话或页面会话。
   const context = useMemo<AgentSendContext | undefined>(() => {
     if (currentProject) {
@@ -149,10 +158,9 @@ export const RightSideBar = (): React.JSX.Element => {
     return { page: pathname }
   }, [currentProject, pathname])
 
-  // 挂载时刷新会话列表并初始化为空白新对话；导航切换不改变会话。
+  // 挂载时刷新会话列表。
   useEffect(() => {
     void sessionListStore.refresh()
-    newChatRef.current?.()
   }, [])
 
   // 拉取项目列表（历史面板项目 tag 筛选用）。
@@ -167,38 +175,22 @@ export const RightSideBar = (): React.JSX.Element => {
     }
   }, [])
 
-  // 新对话（未入库）不显示标题；仅会话落库（currentSessionId 存在）后展示。
+  // 新对话按钮：仅在当前激活 Tab 已经有会话绑定时高亮可用。
   const newChatButton = (
     <LxIconButton
       aria-label={t("rightSidebar.newChat")}
-      disabled={!currentSessionId}
+      disabled={!activeTab?.sessionId}
       title={{ content: t("rightSidebar.newChat"), placement: "bottom" }}
       onClick={() => {
         if (blockIfGenerating()) return
-        newChatRef.current?.()
+        if (activeTab) {
+          tabActionsRef.current[activeTab.id]?.newChat?.()
+        }
       }}
       size="small"
     >
       <Plus className="h-3.5 w-3.5" />
     </LxIconButton>
-  )
-
-  // Agent 页面折叠时隐藏而非卸载，避免折叠再展开后消息列表被清空。
-  const agentPage = (
-    <AgentPage
-      onNewChatRef={(fn) => {
-        newChatRef.current = fn
-      }}
-      onRestoreChatRef={(fn) => {
-        restoreChatRef.current = fn
-      }}
-      onToggleExecutionFlowRef={(fn) => {
-        toggleExecutionFlowRef.current = fn
-      }}
-      context={context}
-      currentProjectId={currentProject?.id}
-      currentProjectPath={currentProject?.path}
-    />
   )
 
   return (
@@ -207,7 +199,7 @@ export const RightSideBar = (): React.JSX.Element => {
         isResizing
           ? "transition-none"
           : "transition-[width,min-width,max-width] duration-300 ease-in-out"
-      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-2 pb-0"}`}
+      } ${isCollapsed ? "w-10 max-w-10 min-w-10 items-center pt-2 px-1.5 pb-1.5" : "p-0"}`}
       style={
         isCollapsed
           ? undefined
@@ -217,7 +209,7 @@ export const RightSideBar = (): React.JSX.Element => {
       {!isCollapsed && (
         <div
           aria-label={t("rightSidebar.resizeSidebar")}
-          className="absolute top-0 left-0 z-10 h-full w-1.5 cursor-col-resize touch-none hover:bg-white/10 transition-colors"
+          className="absolute top-0 left-0 z-20 h-full w-1.5 cursor-col-resize touch-none hover:bg-white/10 transition-colors"
           onPointerCancel={handleResizeEnd}
           onPointerDown={handleResizeStart}
           onPointerMove={handleResizeMove}
@@ -236,102 +228,129 @@ export const RightSideBar = (): React.JSX.Element => {
           </LxIconButton>
         </div>
       ) : (
-        <div
-          className="mb-2 flex shrink-0 items-center justify-between border-b border-white/5"
-          style={{
-            width: `calc(${width}vw - 16px)`,
-            minWidth: `calc(${width}vw - 16px)`,
-            maxWidth: `calc(${width}vw - 16px)`,
-          }}
-        >
-          <div className="flex min-w-0 items-center gap-1">
-            {newChatButton}
+        <div className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden p-2 pb-0">
+          {/* 顶部控制栏 */}
+          <div className="mb-2 flex h-7 shrink-0 items-center justify-between border-b border-white/5 pb-1 gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              {newChatButton}
 
-            <LxTooltip
-              hover={{
-                content: t("rightSidebar.chatHistory"),
-                placement: "bottom",
-              }}
-              click={{
-                content: (
-                  <ChatHistoryPanel
-                    currentSessionId={currentSessionId}
-                    sessions={chatSessions}
-                    currentProjectId={currentProject?.id}
-                    projects={projects}
-                    onRestore={(sessionId) => {
-                      if (blockIfGenerating()) return
-                      restoreChatRef.current?.(sessionId)
-                      setIsHistoryOpen(false)
-                    }}
-                    onDelete={handleDeleteSession}
-                  />
-                ),
-                contentClassName: "!p-2",
-                placement: "bottom",
-                open: isHistoryOpen,
-                onOpenChange: (open) => {
-                  setIsHistoryOpen(open)
-                  if (open) {
-                    void sessionListStore.refresh()
-                  }
-                },
-              }}
-            >
-              <LxIconButton aria-label={t("rightSidebar.chatHistory")} size="small">
-                <History className="h-3.5 w-3.5" />
+              <LxTooltip
+                hover={{
+                  content: t("rightSidebar.chatHistory"),
+                  placement: "bottom",
+                }}
+                click={{
+                  content: (
+                    <ChatHistoryPanel
+                      currentSessionId={activeTab?.sessionId ?? null}
+                      sessions={chatSessions}
+                      currentProjectId={currentProject?.id}
+                      projects={projects}
+                      onRestore={(sessionId) => {
+                        if (blockIfGenerating()) return
+                        const existingTab = agentTabStore.findTabBySessionId(sessionId)
+                        if (existingTab) {
+                          agentTabStore.switchTab(existingTab.id)
+                          warning(t("agent.switchedToExistingTab"))
+                        } else {
+                          const current = agentTabStore.getActiveTab()
+                          if (current) {
+                            tabActionsRef.current[current.id]?.restoreChat?.(sessionId)
+                          }
+                        }
+                        setIsHistoryOpen(false)
+                      }}
+                      onDelete={handleDeleteSession}
+                    />
+                  ),
+                  contentClassName: "!p-2",
+                  placement: "bottom",
+                  open: isHistoryOpen,
+                  onOpenChange: (open) => {
+                    setIsHistoryOpen(open)
+                    if (open) {
+                      void sessionListStore.refresh()
+                    }
+                  },
+                }}
+              >
+                <LxIconButton aria-label={t("rightSidebar.chatHistory")} size="small">
+                  <History className="h-3.5 w-3.5" />
+                </LxIconButton>
+              </LxTooltip>
+
+              <LxIconButton
+                aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
+                title={{
+                  content: viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView"),
+                  placement: "bottom",
+                }}
+                onClick={handleToggleViewMode}
+                size="small"
+              >
+                {viewMode === "flow" ? (
+                  <MessageSquare className="h-3.5 w-3.5" />
+                ) : (
+                  <Workflow className="h-3.5 w-3.5" />
+                )}
               </LxIconButton>
-            </LxTooltip>
+            </div>
 
-            <LxIconButton
-              aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
-              title={{
-                content: viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView"),
-                placement: "bottom",
-              }}
-              onClick={handleToggleViewMode}
-              size="small"
-            >
-              {viewMode === "flow" ? (
-                <MessageSquare className="h-3.5 w-3.5" />
-              ) : (
-                <Workflow className="h-3.5 w-3.5" />
-              )}
-            </LxIconButton>
+            {/* 中间横向 Tab 栏 */}
+            <AgentTabBar />
+
+            <div className="flex shrink-0 items-center justify-end gap-1">
+              <LxIconButton
+                aria-label={t("rightSidebar.collapseSidebar")}
+                title={{ content: t("rightSidebar.collapseSidebar"), placement: "top" }}
+                onClick={() => setIsCollapsed(true)}
+                size="small"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </LxIconButton>
+            </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
-            <LspStatusButton />
-            <McpStatusButton />
-
-            <LxIconButton
-              aria-label={t("rightSidebar.collapseSidebar")}
-              title={{ content: t("rightSidebar.collapseSidebar"), placement: "top" }}
-              onClick={() => setIsCollapsed(true)}
-              size="small"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </LxIconButton>
+          {/* 多 AgentPage 实例保活渲染 */}
+          <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className={`h-full w-full ${tab.id === activeTabId ? "flex flex-col" : "hidden"}`}
+              >
+                <AgentPage
+                  tabId={tab.id}
+                  initialSessionId={tab.sessionId}
+                  onSessionBound={(sessionId) => {
+                    agentTabStore.setTabSessionId(tab.id, sessionId)
+                  }}
+                  onNewChatRef={(fn) => {
+                    tabActionsRef.current[tab.id] = {
+                      ...tabActionsRef.current[tab.id],
+                      newChat: fn,
+                    }
+                  }}
+                  onRestoreChatRef={(fn) => {
+                    tabActionsRef.current[tab.id] = {
+                      ...tabActionsRef.current[tab.id],
+                      restoreChat: fn,
+                    }
+                  }}
+                  onToggleExecutionFlowRef={(fn) => {
+                    tabActionsRef.current[tab.id] = {
+                      ...tabActionsRef.current[tab.id],
+                      toggleExecutionFlow: fn,
+                    }
+                  }}
+                  context={context}
+                  currentProjectId={currentProject?.id}
+                  currentProjectPath={currentProject?.path}
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-      {/* 内部内容区保持恒定展开宽度（宽度减去左右各 8px padding），
-          避免 300ms 宽度过渡动画期间消息文本被挤压换行引起 scrollHeight 剧烈波动与滚动条上下窜动 */}
-      <div
-        className={isCollapsed ? "hidden" : "flex-1 min-h-0 overflow-hidden"}
-        style={
-          isCollapsed
-            ? undefined
-            : {
-                width: `calc(${width}vw - 16px)`,
-                minWidth: `calc(${width}vw - 16px)`,
-                maxWidth: `calc(${width}vw - 16px)`,
-              }
-        }
-      >
-        {agentPage}
-      </div>
     </aside>
   )
 }

@@ -466,8 +466,7 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByText("Execute Group")).not.toBeNull()
-    expect(screen.getByText("External Info")).not.toBeNull()
-    expect(screen.getByText("Web Search")).not.toBeNull()
+    expect(screen.getAllByText("Web Search").length).toBeGreaterThan(0)
     expect(screen.getByText("[react hooks 文档], [tailwind v4 发布]")).not.toBeNull()
   })
 
@@ -489,7 +488,7 @@ describe("AgentMessageItem", () => {
 
     render(<AgentMessageItem message={message} />)
 
-    expect(screen.getByText("Web Search")).not.toBeNull()
+    expect(screen.getAllByText("Web Search").length).toBeGreaterThan(0)
     expect(screen.getByText(/Web search failed/)).not.toBeNull()
   })
 
@@ -520,8 +519,8 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByText("Execute Group")).not.toBeNull()
-    expect(screen.getByText("Search CodeBase")).not.toBeNull()
-    expect(screen.getByText("System")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("Tool Call")).not.toBeNull()
   })
 
   it("单个工具调用与思考块合并时展示 Execute Group", () => {
@@ -544,7 +543,8 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByText("Execute Group")).not.toBeNull()
-    expect(screen.getByText("System")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("Tool Call")).not.toBeNull()
   })
 
   it("单个工具调用渲染在 Execute Group 中", () => {
@@ -594,7 +594,7 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByText("Execute Group")).not.toBeNull()
-    expect(screen.getByText("External Info")).not.toBeNull()
+    expect(screen.getByText("MCP Call")).not.toBeNull()
   })
 
   it("工具 + 思考 + MCP 合并折叠，头部展示分类行", () => {
@@ -624,8 +624,9 @@ describe("AgentMessageItem", () => {
     render(<AgentMessageItem message={message} />)
 
     expect(screen.getByText("Execute Group")).not.toBeNull()
-    expect(screen.getByText("System")).not.toBeNull()
-    expect(screen.getByText("External Info")).not.toBeNull()
+    expect(screen.getByText("Thought")).not.toBeNull()
+    expect(screen.getByText("Tool Call")).not.toBeNull()
+    expect(screen.getByText("MCP Call")).not.toBeNull()
   })
 
   it("即时插话（steer）气泡使用专属底色、移除标签、只展示内容（不出现 /steer 命令）", () => {
