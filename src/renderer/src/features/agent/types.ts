@@ -1,12 +1,16 @@
 import type {
   AgentDiff,
   AgentMessage,
+  AgentUndoDiffSummary,
+  AgentUndoSummaryItem,
+  AgentUndoSummaryPayload,
   CompactionUsage,
   LspToolDetails,
   QuestionAnswer,
   QuestionRequest,
   StopReason,
   SubagentData,
+  UndoSummaryMessage,
   Usage,
   UserMessageCommand,
 } from "@shared/contracts/agent"
@@ -17,6 +21,9 @@ export type {
   AgentEvent,
   AgentMessage,
   AgentSendOptions,
+  AgentUndoDiffSummary,
+  AgentUndoSummaryItem,
+  AgentUndoSummaryPayload,
   CompactionUsage,
   DiffLinePart,
   InterAgentCommunication,
@@ -28,6 +35,7 @@ export type {
   SubagentData,
   SubagentStep,
   ToolResultMessage,
+  UndoSummaryMessage,
   Usage,
   UserMessageCommand,
 } from "@shared/contracts/agent"
@@ -103,6 +111,8 @@ export interface ChatMessage {
   compactionUsage?: CompactionUsage
   // 压缩摘要本身的估计 token 数（compactionSummary 专用，压缩后上下文规模）。
   summaryTokens?: number
+  // 撤销摘要专用数据（undoSummary 专用：被撤销轮次的用户问题、工具调用与代码 Diff）。
+  undoPayload?: AgentUndoSummaryPayload
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
   model?: string
   provider?: string
@@ -130,6 +140,7 @@ export type ExecutionStepKind =
   | "tool"
   | "subagent"
   | "compaction"
+  | "undo"
   | "assistant"
   | "modelSwitch"
   | "error"
@@ -188,6 +199,8 @@ export interface ExecutionStep {
   subagentContent?: ExecutionSubagentContent
   // 压缩内容。
   compactionContent?: ExecutionCompactionContent
+  // 撤销内容。
+  undoContent?: ExecutionUndoContent
   // 助手最终回复内容。
   assistantContent?: ExecutionAssistantContent
   // 模型切换/初始模型内容。
@@ -260,6 +273,29 @@ export interface ExecutionCompactionContent {
   isManual?: boolean
   compactionUsage?: CompactionUsage
   summaryTokens?: number
+}
+
+export interface ExecutionUndoContent {
+  items?: AgentUndoSummaryItem[]
+  userPrompt?: string
+  files?: {
+    name: string
+    path: string
+    type: "image" | "text"
+    size?: string
+    extension?: string
+  }[]
+  assistantSnippet?: string
+  modelName?: string
+  turnDurationMs?: number
+  diffs?: AgentUndoDiffSummary[]
+  toolCalls?: {
+    toolName: string
+    summary?: string
+  }[]
+  toolCallCount?: number
+  fileChangeCount?: number
+  undoneAt?: number
 }
 
 export interface ExecutionAssistantContent {

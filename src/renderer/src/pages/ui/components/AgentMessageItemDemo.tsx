@@ -34,6 +34,48 @@ const ASSISTANT_MESSAGE: ChatMessage = {
   ],
 }
 
+// 示例撤销/删除摘要消息。
+const UNDO_MESSAGE: ChatMessage = {
+  id: "undo-demo",
+  role: "undoSummary",
+  isStreaming: false,
+  blocks: [{ kind: "text", text: "优化 AgentMessageList 的滚动吸底逻辑" }],
+  undoPayload: {
+    userPrompt: "优化 AgentMessageList 的滚动吸底逻辑并添加单元测试",
+    modelName: "claude-3-7-sonnet",
+    undoneAt: Date.now() - 60000,
+    toolCallCount: 2,
+    fileChangeCount: 1,
+    toolCalls: [
+      { toolName: "read", summary: "src/renderer/src/features/agent/AgentMessageList.tsx" },
+      { toolName: "edit", summary: "src/renderer/src/features/agent/AgentMessageList.tsx" },
+    ],
+    diffs: [
+      {
+        filePath: "src/renderer/src/features/agent/AgentMessageList.tsx",
+        toolName: "edit",
+        diff: {
+          filePath: "src/renderer/src/features/agent/AgentMessageList.tsx",
+          stats: { added: 3, removed: 1 },
+          lines: [
+            {
+              type: "context",
+              text: "  const handleScroll = (): void => {",
+              newLine: 320,
+              oldLine: 320,
+            },
+            { type: "del", text: "-   stickToBottomRef.current = nearBottom", oldLine: 321 },
+            { type: "add", text: "+   if (isScrollingUp) {", newLine: 321 },
+            { type: "add", text: "+     stickToBottomRef.current = false", newLine: 322 },
+            { type: "add", text: "+   }", newLine: 323 },
+            { type: "context", text: "  }", newLine: 324, oldLine: 322 },
+          ],
+        },
+      },
+    ],
+  },
+}
+
 /**
  * 预览 AgentMessageItem 组件。
  */
@@ -73,6 +115,11 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
       >
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
           <AgentMessageItem message={ASSISTANT_MESSAGE} onDelete={() => {}} />
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection title={t("agent.turnUndoneSummary")} description={t("agent.undoSummary")}>
+        <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
+          <AgentMessageItem message={UNDO_MESSAGE} onDelete={() => {}} />
         </div>
       </UiPreviewSection>
     </div>

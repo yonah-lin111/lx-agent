@@ -85,6 +85,7 @@ const normalizeLanguage = (language: string): string =>
  * 生成语法高亮 HTML（hljs 已转义内容），未注册语言按纯文本转义处理。
  */
 export const highlightCode = (content: string, language: string | null | undefined): string => {
+  if (typeof content !== "string") return ""
   const normalized = normalizeLanguage(language ?? "")
   if (!hljs.getLanguage(normalized)) {
     return hljs.highlight(content, { language: "plaintext", ignoreIllegals: true }).value

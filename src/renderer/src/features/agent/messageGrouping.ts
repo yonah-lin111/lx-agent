@@ -23,9 +23,16 @@ export const groupAgentMessages = (messages: ChatMessage[]): MessageGroupEntry[]
 
     const previousEntry = entries.at(-1)
 
+    // 连续出现的 undoSummary 消息：堆叠合并到同一个 entry 中
+    if (message.role === "undoSummary" && previousEntry?.message.role === "undoSummary") {
+      previousEntry.continuationMessages.push(message)
+      return entries
+    }
+
     if (
       message.role !== "user" &&
       message.role !== "compactionSummary" &&
+      message.role !== "undoSummary" &&
       previousEntry?.message.role === "assistant"
     ) {
       previousEntry.continuationMessages.push(message)
@@ -47,7 +54,8 @@ export const buildQaGroups = (entries: MessageGroupEntry[]): MessageQaGroup[] =>
     if (
       lastGroup?.userMessage &&
       !lastGroup.assistant &&
-      entry.message.role !== "compactionSummary"
+      entry.message.role !== "compactionSummary" &&
+      entry.message.role !== "undoSummary"
     ) {
       lastGroup.assistant = entry
     } else {

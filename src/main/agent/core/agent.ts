@@ -52,7 +52,7 @@ function defaultConvertToLlm(messages: AgentMessage[]): LlmMessage[] {
         },
       ]
     }
-    if (message.role === "modelSwitch") {
+    if (message.role === "modelSwitch" || message.role === "undoSummary") {
       return []
     }
     if (message.role === "user" || message.role === "assistant" || message.role === "toolResult") {

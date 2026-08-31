@@ -1,5 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { ChevronUp, Loader2, RefreshCw, Workflow } from "lucide-react"
+import { ChevronUp, Loader2, RefreshCw, Undo2, Workflow } from "lucide-react"
 import {
   Fragment,
   forwardRef,
@@ -193,7 +193,8 @@ export const AgentExecutionFlowList = forwardRef<
         if (
           steps[i].turnIndex === maxTurn &&
           steps[i].kind !== "modelSwitch" &&
-          steps[i].kind !== "compaction"
+          steps[i].kind !== "compaction" &&
+          steps[i].kind !== "undo"
         ) {
           return steps[i].id
         }
@@ -217,7 +218,8 @@ export const AgentExecutionFlowList = forwardRef<
         if (
           step.id === lastStepOfMaxTurnId &&
           step.kind !== "modelSwitch" &&
-          step.kind !== "compaction"
+          step.kind !== "compaction" &&
+          step.kind !== "undo"
         ) {
           return true
         }
@@ -671,6 +673,7 @@ export const AgentExecutionFlowList = forwardRef<
         tool: 0,
         subagent: 0,
         compaction: 0,
+        undo: 0,
         assistant: 0,
         modelSwitch: 0,
         error: 0,
@@ -762,14 +765,14 @@ export const AgentExecutionFlowList = forwardRef<
 
                   return (
                     <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
-                      {/* 轮次分隔线 */}
-                      {/* 轮次分隔线（仅非 compaction / 非 modelSwitch 的用户交互轮次展示） */}
+                      {/* 轮次分隔线（仅非 compaction / 非 modelSwitch / 非 undo 的用户交互轮次展示） */}
                       {isNewTurn &&
                         elementTurnIndex > 0 &&
                         !(
                           element.kind === "single" &&
                           (element.step.kind === "compaction" ||
-                            element.step.kind === "modelSwitch")
+                            element.step.kind === "modelSwitch" ||
+                            element.step.kind === "undo")
                         ) && (
                           <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                             <div className="h-[1px] flex-1 bg-white/10" />
@@ -779,6 +782,17 @@ export const AgentExecutionFlowList = forwardRef<
                             <div className="h-[1px] flex-1 bg-white/10" />
                           </div>
                         )}
+                      {/* 撤销独立分割线 */}
+                      {element.kind === "single" && element.step.kind === "undo" && (
+                        <div className="agent-execution-flow-undo-divider my-1.5 flex items-center gap-2">
+                          <div className="h-[1px] flex-1 bg-rose-500/20" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-rose-300/80 uppercase flex items-center gap-1.5">
+                            <Undo2 className="h-3 w-3" />
+                            {t("agent.undoSummary")}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-rose-500/20" />
+                        </div>
+                      )}
                       {/* 上下文压缩分割线说明 */}
                       {element.kind === "single" && element.step.kind === "compaction" && (
                         <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">

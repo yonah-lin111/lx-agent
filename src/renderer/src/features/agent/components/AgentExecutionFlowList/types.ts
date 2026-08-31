@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
   Terminal,
+  Undo2,
   User,
   Workflow,
   Wrench,
@@ -185,6 +186,13 @@ export const getKindMeta = (
       return { icon: Bot, labelKey: "agent.kindSubagent", tagColor: "blue" }
     case "compaction":
       return { icon: Minimize2, labelKey: "agent.kindCompaction", tagColor: "indigo" }
+    case "undo":
+      return {
+        icon: Undo2,
+        labelKey: "agent.kindUndo",
+        tagColor: "rose",
+        textColor: "text-rose-300",
+      }
     case "modelSwitch":
       return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
     case "assistant":

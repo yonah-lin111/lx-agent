@@ -83,7 +83,7 @@ describe("agent IPC handlers", () => {
     expect(agentRunner.listSessions).toHaveBeenCalledWith()
 
     await restoreHandler(undefined, "sess-1")
-    expect(agentRunner.restoreSession).toHaveBeenCalledWith("sess-1")
+    expect(agentRunner.restoreSession).toHaveBeenCalledWith("sess-1", undefined)
 
     // 同步抛错（IPC 层会转为拒绝）校验非法输入。
     expect(() => restoreHandler(undefined, "")).toThrow("INVALID_SESSION_ID")
@@ -151,5 +151,34 @@ describe("agent IPC handlers", () => {
     const result = await handler(undefined, messages, ["旧问题"])
     expect(generateSuggestedQuestions).toHaveBeenCalledWith(messages, ["旧问题"])
     expect(result).toEqual(["问题一", "问题二"])
+  })
+
+  it("restore handler 接受合法的 undoSummary 消息并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const restoreHandler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.restore,
+    )?.[1]
+    expect(restoreHandler).toBeTypeOf("function")
+
+    const messages = [
+      { role: "user", content: "hi", timestamp: 1000 },
+      {
+        role: "undoSummary",
+        timestamp: 1050,
+        undoPayload: { userPrompt: "hi" },
+      },
+    ]
+
+    await restoreHandler(undefined, messages, "sess-1", "tab-1")
+    expect(agentRunner.restoreMessages).toHaveBeenCalledWith(messages, "sess-1", "tab-1")
+
+    expect(() => restoreHandler(undefined, [{ role: "invalid" }])).toThrow(
+      "INVALID_AGENT_RESTORE_MESSAGES",
+    )
   })
 })
