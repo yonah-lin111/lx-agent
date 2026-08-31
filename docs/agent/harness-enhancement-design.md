@@ -62,12 +62,33 @@ flowchart TD
 
 ---
 
-## 3. 模块变更规划
+## 4. 进阶 Harness 与新能力扩展 (基于 Codex 深度挖掘)
 
-- **Main 进程 (`src/main/agent/`)**:
-  - `core/worldState.ts` (新增): 实现增量差分上下文快照管理器。
-  - `prompts/systemPromptManager.ts` (增强): 引入 Guidance、Budget 与三阶段 Plan 强化模版。
-  - `guard/harnessFeedbackGuard.ts` (新增): 收集运行时警告并动态回灌 Context。
-  - `subagent/subagentPool.ts` (增强): 增强结构化父子代理通知注入。
-- **Renderer 进程 (`src/renderer/src/features/agent/`)**:
-  - `components/AgentExecutionFlowList.tsx`: 优化阶段状态流展示（对齐 Plan 3 阶段与 Subagent 树）。
+基于对 `codex-main` 源码库的进一步深度分析，以下功能和 Harness 机制可作为后续迭代的扩展设计：
+
+### 4.1 内存级单轮 Diff 追踪引擎 (`TurnDiffTracker`)
+* **参考实现**: `codex-rs/core/src/turn_diff_tracker.rs`
+* **设计目标**: 
+  - 维护当前 Turn 内通过 `apply_patch` / `edit` / `write` 修改的所有文件版本历史。
+  - 在无需重复扫描磁盘的前提下，实时生成 Turn 内的聚合 Unified Diff。
+  - 支持向用户端（Renderer）或 ReviewAgent 极速推送本次 Turn 产生的确切改动范围，规避大文件 Git Diff 开销。
+
+### 4.2 AGENTS.md 层次化发现与动态失效缓存 (`AgentsMdManager`)
+* **参考实现**: `codex-rs/core/src/agents_md_manager.rs`
+* **设计目标**:
+  - 当前 `lx-agent` 在每个目录单次读取 `AGENTS.md`。
+  - 引入树状继承解析与缓存层（根据工作区选择、项目信任级别和子目录路径哈希建立快照）。
+  - 支持跨层级 `AGENTS.md` 的增量级联叠加，当子目录切换或环境变更时自动触发局部失效与刷新。
+
+### 4.3 优雅会话挂起与恢复机制 (`TurnSuspension`)
+* **参考实现**: `codex-rs/core/src/session/turn_suspension.rs`
+* **设计目标**:
+  - 当用户在 Agent 执行复杂多步任务（或子代理树并行）中途切换窗口、暂停或退出时，执行安全的中断协议。
+  - 持久化当前 Turn 的断点快照（包括已消费的工具输出、待处理的任务栈与未提交的文件 Patch）。
+  - 下次唤醒或恢复时，自动重建上下文并以非破坏性方式继续运行。
+
+### 4.4 结构化跨 Agent 通信与遥测总线 (`AgentCommunicationBus`)
+* **参考实现**: `codex-rs/core/src/agent_communication.rs`
+* **设计目标**:
+  - 建立统一的跨 Agent 事件总线，涵盖 `spawn`（派生）、`message`（双向通信）、`followup`（追问）与 `result`（成果交付）。
+  - 每一条通信消息均携带 `communication_id`、`sender_thread_id` 与 `receiver_thread_id`，并与系统级的 OpenTelemetry/日志系统联动，实现多 Agent 调度的全局可视化。

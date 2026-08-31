@@ -65,3 +65,33 @@
   - **内容**:
     - 视觉呈现 Plan 模式的 3 阶段流转指示器与子代理树状折叠。
   - **验证**: UI 组件渲染与交互测试。
+
+---
+
+## 阶段五：进阶 Harness 与新特性规划 (Advanced Harness Backlog)
+
+以下任务为参考 `codex-main` 源码提炼的新增能力，待用户确认后可排入后续开发：
+
+- [ ] **Task 5.1: 内存级单轮 Diff 追踪器 (`TurnDiffTracker`)**
+  - **位置**: `src/main/agent/core/turnDiffTracker.ts` (新建)
+  - **内容**:
+    - 实现对 `apply_patch` / `edit` / `write` 改动的内存聚合，无需触发全量 Git Diff 即时生成当前 Turn 的 Unified Diff。
+  - **验证**: 编写单元测试验证多次连续文件变更的 Diff 聚合正确性。
+
+- [ ] **Task 5.2: 层次化 AGENTS.md 发现与动态刷新缓存 (`AgentsMdManager`)**
+  - **位置**: `src/main/agent/assembly/agentsMdManager.ts` (新建/重构)
+  - **内容**:
+    - 支持多层级子目录 AGENTS.md 级联叠加与工作区环境哈希缓存。
+  - **验证**: 单元测试模拟目录切换与指令动态重载。
+
+- [ ] **Task 5.3: 优雅会话中断与恢复协议 (`TurnSuspension`)**
+  - **位置**: `src/main/agent/session/turnSuspension.ts` (新建)
+  - **内容**:
+    - 实现任务在执行中途安全挂起、上下文快照落盘与断点恢复。
+  - **验证**: 模拟中途取消与恢复执行。
+
+- [ ] **Task 5.4: 跨 Agent 结构化通信事件总线 (`AgentCommunicationBus`)**
+  - **位置**: `src/main/agent/subagent/agentCommunicationBus.ts` (新建)
+  - **内容**:
+    - 建立带有 `sender_thread_id`、`receiver_thread_id`、`kind`（spawn/message/followup/result）的标准通信总线与遥测。
+  - **验证**: 单元测试验证跨 Agent 消息派发与日志投递。
