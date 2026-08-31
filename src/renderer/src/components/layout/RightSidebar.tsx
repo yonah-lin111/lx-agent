@@ -230,7 +230,7 @@ export const RightSideBar = (): React.JSX.Element => {
       ) : (
         <div className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden p-2 pb-0">
           {/* 顶部控制栏 */}
-          <div className="mb-2 flex h-7 shrink-0 items-center justify-between border-b border-white/5 pb-1 gap-1">
+          <div className="mb-2 flex h-7 shrink-0 items-center justify-between border-b border-white/5 gap-1">
             <div className="flex shrink-0 items-center gap-1">
               {newChatButton}
 

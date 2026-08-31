@@ -175,7 +175,7 @@ export const AgentTabBar = (): React.JSX.Element => {
   }
 
   return (
-    <div className="agent-tab-bar flex h-6 min-w-0 flex-1 items-center gap-0.5 overflow-hidden px-0.5 select-none">
+    <div className="agent-tab-bar flex h-7 min-w-0 flex-1 items-center gap-0.5 px-0.5 select-none">
       {/* 左翻页按钮 */}
       {canScrollLeft && (
         <LxIconButton
@@ -191,7 +191,7 @@ export const AgentTabBar = (): React.JSX.Element => {
       {/* 横向滚动标签容器 */}
       <div
         ref={tabScrollRef}
-        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5"
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId
