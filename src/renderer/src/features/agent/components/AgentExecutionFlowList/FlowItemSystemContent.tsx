@@ -79,9 +79,7 @@ const groupToolsByCategory = (
 }
 
 // 将 MCP 工具按服务前缀（Server Name）二级分组
-const groupMcpToolsByServer = (
-  mcpTools: string[],
-): { serverName: string; tools: string[] }[] => {
+const groupMcpToolsByServer = (mcpTools: string[]): { serverName: string; tools: string[] }[] => {
   const map = new Map<string, string[]>()
   for (const tool of mcpTools) {
     const serverName = getMcpServerName(tool)
@@ -228,4 +226,3 @@ export const FlowItemSystemContent = ({
     </div>
   )
 }
-

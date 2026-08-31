@@ -2,6 +2,7 @@
 
 import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
+import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
@@ -16,6 +17,7 @@ declare global {
       SettingsApi &
       AgentApi &
       MarkdownApi &
+      CustomCommandApi &
       GitApi &
       PromptHistoryApi &
       TerminalApi

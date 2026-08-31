@@ -28,14 +28,7 @@ import { useTranslation } from "@/i18n"
 import { EMPTY_SUGGESTED_QUESTION_CONTEXT } from "./constants"
 import type { MessageItemGroupsResult } from "./hooks/useMessageItemGroups"
 import type { ToolCallBlock } from "./types"
-import {
-  formatTokensShort,
-  isMcpToolCall,
-  isSkillToolCall,
-  isSubagentToolCall,
-  isWebSearchToolCall,
-  isWriteToolCall,
-} from "./utils"
+import { formatTokensShort, isMcpToolCall, isSkillToolCall, isWebSearchToolCall } from "./utils"
 
 // 助手消息组件 Props 接口。
 export interface AgentAssistantMessageProps {
@@ -255,9 +248,7 @@ export const AgentAssistantMessage = ({
                     {
                       type: "webSearch",
                       dotColor: "bg-emerald-300",
-                      node: (
-                        <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />
-                      ),
+                      node: <AgentWebSearchBlock key={block.toolCallId} toolCalls={searchGroup} />,
                     },
                   ]
                 }

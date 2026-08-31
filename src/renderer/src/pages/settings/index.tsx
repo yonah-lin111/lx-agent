@@ -1,10 +1,11 @@
-import { AlertCircle, Save } from "lucide-react"
+import { AlertCircle, RotateCcw, Save } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
+  CustomCommandSettings,
   GeneralSettings,
   ModelProviderSettings,
   ModelSettings,
@@ -12,6 +13,7 @@ import {
   PermissionSettings,
   SETTINGS_SECTIONS,
   settingsApi,
+  settingsDirtyStore,
   usePermissionSettings,
   useSettingsData,
   useSettingsMutations,
@@ -23,6 +25,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
   permissions: "settings.permissionsDesc",
+  "custom-commands": "settings.customCommandsDesc",
 }
 
 /**
@@ -35,6 +38,7 @@ export const SettingsPage = (): React.JSX.Element => {
   const { isSaving, saveSettings } = useSettingsMutations()
   const { permissionSettings, setPermissionSettings, permissionError } = usePermissionSettings()
   const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
+  const [resetKey, setResetKey] = useState(0)
   const addProviderRef = useRef<(() => void) | null>(null)
   const toast = useLxToast()
   const { t } = useTranslation()
@@ -45,17 +49,74 @@ export const SettingsPage = (): React.JSX.Element => {
     }
   }, [settings, permissionSettings, lastSavedSettings])
 
-  const isSaved = useMemo(() => {
-    if (!settings || !permissionSettings || lastSavedSettings === null) return true
+  const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    setDirtyMap(settingsDirtyStore.getDirtyState())
+    return settingsDirtyStore.subscribe(() => {
+      setDirtyMap({ ...settingsDirtyStore.getDirtyState() })
+    })
+  }, [])
+
+  const isModelsOrPermsDirty = useMemo(() => {
+    if (!settings || !permissionSettings || lastSavedSettings === null) return false
     return (
-      JSON.stringify({ models: settings, permissions: permissionSettings }) === lastSavedSettings
+      JSON.stringify({ models: settings, permissions: permissionSettings }) !== lastSavedSettings
     )
   }, [settings, permissionSettings, lastSavedSettings])
 
+  useEffect(() => {
+    settingsDirtyStore.setSectionDirty("models", isModelsOrPermsDirty)
+    settingsDirtyStore.setSectionDirty("providers", isModelsOrPermsDirty)
+    settingsDirtyStore.setSectionDirty("permissions", isModelsOrPermsDirty)
+  }, [isModelsOrPermsDirty])
+
+  const handleReset = (): void => {
+    // 1. 恢复 models / permissions 数据到 lastSavedSettings 快照
+    if (lastSavedSettings) {
+      try {
+        const parsed = JSON.parse(lastSavedSettings) as {
+          models: typeof settings
+          permissions: typeof permissionSettings
+        }
+        if (parsed.models) setSettings(JSON.parse(JSON.stringify(parsed.models)))
+        if (parsed.permissions)
+          setPermissionSettings(JSON.parse(JSON.stringify(parsed.permissions)))
+      } catch {
+        // ignore
+      }
+    }
+    // 2. 触发各分区注册的 reset 回调（例如 custom-commands 清空 draft）
+    settingsDirtyStore.resetAllSections()
+    settingsDirtyStore.setSectionDirty("custom-commands", false)
+    setResetKey((k) => k + 1)
+    setError("")
+    toast.success(t("settings.resetSuccess"))
+  }
+
+  const isCurrentSectionDirty = useMemo(() => {
+    if (activeSection === "custom-commands") {
+      return Boolean(dirtyMap["custom-commands"])
+    }
+    return isModelsOrPermsDirty
+  }, [activeSection, dirtyMap, isModelsOrPermsDirty])
+
+  const hasAnyDirty = useMemo(() => {
+    return isModelsOrPermsDirty || Object.values(dirtyMap).some(Boolean)
+  }, [isModelsOrPermsDirty, dirtyMap])
+
+  const isSaved = !isCurrentSectionDirty
+
   const save = async (): Promise<void> => {
-    if (!settings || !permissionSettings) return
     setError("")
     try {
+      if (activeSection === "custom-commands") {
+        await settingsDirtyStore.saveSection("custom-commands")
+        toast.success(t("settings.saveSuccess"))
+        return
+      }
+
+      if (!settings || !permissionSettings) return
       const saved = await saveSettings(settings)
       const savedPermission = await settingsApi.savePermissionSettings(permissionSettings)
       setSettings(saved)
@@ -87,6 +148,18 @@ export const SettingsPage = (): React.JSX.Element => {
               onClick={() => addProviderRef.current?.()}
             />
           ) : null}
+          <LxIconButton
+            aria-label={t("settings.resetSettings")}
+            title={{
+              title: t("settings.confirmResetTitle"),
+              content: t("settings.confirmResetContent"),
+              placement: "bottom",
+              onConfirm: handleReset,
+            }}
+            disabled={!hasAnyDirty}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </LxIconButton>
           <LxIconButton
             preset="save"
             aria-label={t("settings.saveSettings")}
@@ -122,7 +195,7 @@ export const SettingsPage = (): React.JSX.Element => {
           <span>{error || t("settings.loadSettingsFailed")}</span>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div key={resetKey} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {error ? <p className="px-3 pt-2 text-xs text-rose-300">{error}</p> : null}
           {permissionError ? (
             <p className="px-3 pt-2 text-xs text-rose-300">{permissionError}</p>
@@ -145,6 +218,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "permissions" && permissionSettings ? (
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}
+          {activeSection === "custom-commands" ? <CustomCommandSettings /> : null}
         </div>
       )}
     </section>

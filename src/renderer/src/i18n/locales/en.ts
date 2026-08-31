@@ -90,7 +90,14 @@ export const en = {
     modelsDesc: "Select default models for various tasks",
     providersDesc: "Configure and manage model providers and parameters",
     permissionsDesc: "Configure agent tool execution permissions and confirmation modes",
+    customCommands: "Custom Commands",
+    customCommandsDesc: "Manage custom / slash commands for Agent input and Markdown editor",
     saveSettings: "Save Settings",
+    resetSettings: "Reset Settings",
+    confirmResetTitle: "Confirm reset all unsaved changes?",
+    confirmResetContent:
+      "All unsaved changes and new drafts will be discarded and restored to the last saved state",
+    resetSuccess: "Restored to previous state",
     confirmSaveTitle: "Confirm save settings?",
     confirmSaveContent: "Changes will take effect immediately without reloading",
     saveSuccess: "Settings saved successfully",
@@ -210,6 +217,57 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     ruleInvalidFormat: "Format should be ToolName(arg), e.g. Bash(git status)",
     ruleSyntaxHint:
       "Syntax: ToolName(arg). Bash uses prefix match; write/edit uses path glob; MCP tools use parameter substring match.",
+
+    // Custom Commands section
+    customCommandAgentInputTab: "Chat Commands (AgentInput)",
+    customCommandAgentMDTab: "Markdown Template Commands (AgentMD)",
+    customCommandGlobalScope: "Global",
+    customCommandProjectScope: "Project",
+    customCommandSelectProject: "Select an imported project",
+    customCommandsList: "Commands List",
+    addCustomCommand: "New Command",
+    customCommandsEmpty: "No custom commands in the current scope",
+    customCommandsEmptyTip: "Click 'New Command' to create your customized slash commands",
+    customCommandsLoadFailed: "Failed to load custom commands",
+    newCustomCommandDraft: "New Command",
+    confirmDeleteCustomCommand: "Are you sure you want to delete command /{{name}}?",
+    createCustomCommandTitle: "Create Custom Command",
+    editCustomCommandTitle: "Edit Command /{{name}}",
+    customCommandName: "Command Name",
+    customCommandDescription: "Description",
+    customCommandDescriptionPlaceholder: "Brief description of what this command does",
+    customCommandArgumentHint: "Argument Hint (argument-hint)",
+    customCommandArgumentHintHelp:
+      "Placeholder hint displayed in the command menu, e.g. [feature] [branch]",
+    customCommandMDScope: "Insertion Scope (scope)",
+    customCommandScopeGlobal: "Global (Document body & inside template blocks)",
+    customCommandScopeTemplateOnly: "Template Only (inside &&& blocks)",
+    customCommandContent: "Template Content",
+    customCommandContentPlaceholder: "Enter Markdown template or Prompt content here...",
+    customCommandNameRequired: "Command name is required",
+    customCommandProjectPathRequired: "Project-scoped commands require selecting a valid project",
+    customCommandSaveSuccess: "Custom command saved successfully",
+    customCommandSaveFailed: "Failed to save custom command",
+    customCommandDeleteSuccess: "Custom command deleted successfully",
+    customCommandDeleteFailed: "Failed to delete custom command",
+
+    customCommandAgentInputHelpTitle: "Agent Input Commands Guide",
+    customCommandAgentInputHelpDesc:
+      "Locally saved Prompt templates that can be triggered by typing /command in the chat box.",
+    customCommandMacroTitle: "Macros & Placeholders",
+    customCommandMacroPositional: "N-th positional argument (space separated)",
+    customCommandMacroAll: "All passed arguments as a single string",
+    customCommandMacroDefault: "Argument with fallback default value",
+    customCommandMacroSlice: "All arguments starting from index N",
+
+    customCommandAgentMDHelpTitle: "Markdown Template Commands Guide",
+    customCommandAgentMDHelpDesc:
+      "Type / in the Markdown editor to open the slash menu and insert rich text or template blocks directly.",
+    customCommandMDScopeTitle: "Scope Details",
+    customCommandMDGlobalScopeDesc:
+      "Can be invoked both in normal text and inside &&& template blocks",
+    customCommandMDTemplateScopeDesc:
+      "Only available inside &&& template blocks (e.g. nested sub-templates)",
   },
   agent: {
     inputPlaceholder: "Send a message or type / for commands...",
@@ -336,7 +394,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     agentOverhead: "Agent response {{duration}}",
     toolCallsCount: "{{count}} tool calls",
     parallelCall: "Parallel {{index}}/{{total}}",
-    parallelToolNotice: "Parallel call from single model response ({{index}}/{{total}}, shared context)",
+    parallelToolNotice:
+      "Parallel call from single model response ({{index}}/{{total}}, shared context)",
     copyContent: "Copy Content",
     copyJson: "Copy JSON",
     copied: "Copied",

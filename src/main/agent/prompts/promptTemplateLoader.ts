@@ -26,7 +26,7 @@ export interface LoadedMarkdownTemplateCommand {
 }
 
 // 排除的内置命令及前缀（避免与内置 slash 命令冲突）。
-const RESERVED_COMMANDS = new Set([
+export const RESERVED_COMMANDS = new Set([
   "clear",
   "new",
   "undo",

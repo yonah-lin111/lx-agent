@@ -28,56 +28,67 @@ const FILTER_TAB_COLORS: Record<
 > = {
   all: {
     active: "bg-white/15 text-[var(--color-theme-text,#ffffff)] font-semibold shadow-sm",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
   },
   calls: {
     active: "bg-cyan-500/20 text-cyan-300 font-semibold ring-1 ring-cyan-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-cyan-500/10 hover:text-cyan-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-cyan-500/10 hover:text-cyan-300",
     dot: "bg-cyan-400",
   },
   system: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
     dot: "bg-indigo-400",
   },
   tool: {
     active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
     dot: "bg-amber-400",
   },
   thinking: {
     active: "bg-purple-500/20 text-purple-300 font-semibold ring-1 ring-purple-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-purple-500/10 hover:text-purple-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-purple-500/10 hover:text-purple-300",
     dot: "bg-purple-400",
   },
   subagent: {
     active: "bg-blue-500/20 text-blue-300 font-semibold ring-1 ring-blue-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-blue-500/10 hover:text-blue-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-blue-500/10 hover:text-blue-300",
     dot: "bg-blue-400",
   },
   user: {
     active: "bg-sky-500/20 text-sky-300 font-semibold ring-1 ring-sky-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-sky-500/10 hover:text-sky-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-sky-500/10 hover:text-sky-300",
     dot: "bg-sky-400",
   },
   assistant: {
     active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-emerald-500/10 hover:text-emerald-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-emerald-500/10 hover:text-emerald-300",
     dot: "bg-emerald-400",
   },
   compaction: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
     dot: "bg-indigo-400",
   },
   modelSwitch: {
     active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
     dot: "bg-teal-400",
   },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
-    inactive: "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-rose-500/10 hover:text-rose-300",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-rose-500/10 hover:text-rose-300",
     dot: "bg-rose-400",
   },
 }
@@ -190,7 +201,8 @@ export const AgentExecutionFlowHeader = ({
             {renderTab("all", t("agent.filterAll"), filterCounts.all)}
             {filterCounts.calls > 0 &&
               renderTab("calls", t("agent.filterCalls"), filterCounts.calls)}
-            {filterCounts.system > 0 && renderTab("system", t("agent.filterSystem"), filterCounts.system)}
+            {filterCounts.system > 0 &&
+              renderTab("system", t("agent.filterSystem"), filterCounts.system)}
             {filterCounts.tool > 0 && renderTab("tool", t("agent.filterTools"), filterCounts.tool)}
             {filterCounts.thinking > 0 &&
               renderTab("thinking", t("agent.filterThinking"), filterCounts.thinking)}
@@ -199,7 +211,8 @@ export const AgentExecutionFlowHeader = ({
             {filterCounts.user > 0 && renderTab("user", t("agent.filterUser"), filterCounts.user)}
             {filterCounts.assistant > 0 &&
               renderTab("assistant", t("agent.filterAssistant"), filterCounts.assistant)}
-            {filterCounts.error > 0 && renderTab("error", t("agent.filterError"), filterCounts.error)}
+            {filterCounts.error > 0 &&
+              renderTab("error", t("agent.filterError"), filterCounts.error)}
           </div>
           <LxIconButton
             aria-label={t("project.scrollRight")}

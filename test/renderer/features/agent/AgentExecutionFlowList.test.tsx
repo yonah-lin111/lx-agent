@@ -1281,6 +1281,10 @@ describe("AgentExecutionFlowList", () => {
             args: { description: "子任务" },
             subagent: {
               name: "CodeReviewer",
+              description: "子任务",
+              prompt: "review",
+              messages: [],
+              steps: [],
               usage: {
                 input: 800,
                 output: 200,
@@ -1385,8 +1389,20 @@ describe("AgentExecutionFlowList", () => {
         id: "t1",
         role: "toolResult",
         blocks: [
-          { kind: "toolResult", toolCallId: "c1", toolName: "render_svg", text: "ok", isError: false },
-          { kind: "toolResult", toolCallId: "c2", toolName: "render_html", text: "ok", isError: false },
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "render_svg",
+            text: "ok",
+            isError: false,
+          },
+          {
+            kind: "toolResult",
+            toolCallId: "c2",
+            toolName: "render_html",
+            text: "ok",
+            isError: false,
+          },
         ],
         isStreaming: false,
       },

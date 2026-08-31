@@ -16,12 +16,7 @@ import type { ExecutionStep } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
-import {
-  copyToClipboard,
-  formatDurationMs,
-  formatJsonString,
-  formatTokensShort,
-} from "./types"
+import { copyToClipboard, formatDurationMs, formatJsonString, formatTokensShort } from "./types"
 
 export interface AgentExecutionFlowGroupProps {
   groupId: string
@@ -242,7 +237,9 @@ export const AgentExecutionFlowGroup = ({
               <span
                 data-testid="flow-group-duration"
                 className={`agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none ${
-                  isRunning ? "text-sky-300" : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
+                  isRunning
+                    ? "text-sky-300"
+                    : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
                 }`}
               >
                 {formatDurationMs(totalDurationMs)}
@@ -344,9 +341,7 @@ export const AgentExecutionFlowGroup = ({
               <div className="flex flex-col gap-0.5 font-mono text-[11px]">
                 <span>Input: {inputTokens.toLocaleString()}</span>
                 <span>Output: {outputTokens.toLocaleString()}</span>
-                {cacheReadTokens > 0 && (
-                  <span>Cache read: {cacheReadTokens.toLocaleString()}</span>
-                )}
+                {cacheReadTokens > 0 && <span>Cache read: {cacheReadTokens.toLocaleString()}</span>}
               </div>
             }
           >

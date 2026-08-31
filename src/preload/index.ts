@@ -1,5 +1,6 @@
 import type { ClipboardApi } from "@shared/clipboard"
 import type { AgentApi } from "@shared/contracts/agent"
+import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
@@ -10,6 +11,7 @@ import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { agentApi } from "./api/agent"
+import { customCommandApi } from "./api/customCommand"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
 import { promptHistoryApi } from "./api/promptHistory"
@@ -20,6 +22,7 @@ const api: ProjectApi &
   SettingsApi &
   AgentApi &
   MarkdownApi &
+  CustomCommandApi &
   GitApi &
   PromptHistoryApi &
   TerminalApi = {
@@ -67,6 +70,7 @@ const api: ProjectApi &
   },
   agent: agentApi,
   markdown: markdownApi,
+  customCommand: customCommandApi,
   git: gitApi,
   promptHistory: promptHistoryApi,
   terminal: terminalApi,

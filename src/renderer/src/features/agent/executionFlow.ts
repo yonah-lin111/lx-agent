@@ -174,9 +174,7 @@ export const buildExecutionSteps = (
     // 处理助手消息或工具消息
     const turn = currentTurn > 0 ? currentTurn : 1
     let currentBlockStartedAt = message.firstChunkTimestamp ?? message.timestamp
-    const hasTextBlock = message.blocks.some(
-      (b) => b.kind === "text" && Boolean(b.text.trim()),
-    )
+    const hasTextBlock = message.blocks.some((b) => b.kind === "text" && Boolean(b.text.trim()))
     const toolCallBlocksCount = message.blocks.filter((b) => b.kind === "toolCall").length
     let toolCallIndexInMessage = 0
 
@@ -185,8 +183,7 @@ export const buildExecutionSteps = (
       turnParallelBatchCount = 0
     }
 
-    const currentBatchIndexInTurn =
-      toolCallBlocksCount > 1 ? turnParallelBatchCount++ : undefined
+    const currentBatchIndexInTurn = toolCallBlocksCount > 1 ? turnParallelBatchCount++ : undefined
 
     for (let blockIdx = 0; blockIdx < message.blocks.length; blockIdx++) {
       const block = message.blocks[blockIdx]

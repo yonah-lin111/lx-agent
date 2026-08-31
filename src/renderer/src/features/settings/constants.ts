@@ -1,8 +1,20 @@
-import { Bot, type LucideIcon, Server, Settings as SettingsIcon, Shield } from "lucide-react"
+import {
+  Bot,
+  type LucideIcon,
+  Server,
+  Settings as SettingsIcon,
+  Shield,
+  Terminal,
+} from "lucide-react"
 
 export interface SettingsSection {
   id: string
-  labelKey: "settings.general" | "settings.models" | "settings.providers" | "settings.permissions"
+  labelKey:
+    | "settings.general"
+    | "settings.models"
+    | "settings.providers"
+    | "settings.permissions"
+    | "settings.customCommands"
   icon: LucideIcon
 }
 
@@ -12,4 +24,5 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "models", labelKey: "settings.models", icon: Bot },
   { id: "providers", labelKey: "settings.providers", icon: Server },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
+  { id: "custom-commands", labelKey: "settings.customCommands", icon: Terminal },
 ] as const

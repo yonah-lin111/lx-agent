@@ -7,6 +7,7 @@ import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
+import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
@@ -62,6 +63,7 @@ app.whenReady().then(() => {
   registerSettingsHandlers()
   registerMarkdownHandlers()
   registerGitHandlers()
+  registerCustomCommandHandlers()
   registerPromptHistoryHandlers()
   registerTerminalHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)

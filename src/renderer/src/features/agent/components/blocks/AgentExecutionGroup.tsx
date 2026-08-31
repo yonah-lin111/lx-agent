@@ -149,5 +149,3 @@ export const AgentExecutionGroup = ({
     </div>
   )
 }
-
-
