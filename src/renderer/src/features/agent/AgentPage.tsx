@@ -195,18 +195,24 @@ export const AgentPage = ({
     if (!currentSessionId) {
       const currentDraft = activeTab?.draftBinding ?? sessionListStore.getCurrentSessionBinding()
       const isDraftSet = currentDraft !== undefined && currentDraft.cwd !== undefined
-      const isDefaultDesktop = Boolean(defaultPath && currentDraft?.cwd === defaultPath)
       const isFromNonProjectToProject = !prev?.path && Boolean(currentProjectPath)
 
-      // 新session + 默认桌面路径 从其他页面切换到项目页面且有 active 项目时，自动切换到该 active 项目
-      if ((!isDraftSet || isDefaultDesktop) && isFromNonProjectToProject && currentProjectPath) {
-        const nextBinding = { projectId: currentProjectId, cwd: currentProjectPath }
-        if (tabId) {
-          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+      // 仅在 draftBinding 从未设置过时，若有当前项目则跟随当前项目，否则默认桌面
+      if (!isDraftSet) {
+        const nextBinding = currentProjectPath
+          ? { projectId: currentProjectId, cwd: currentProjectPath }
+          : defaultPath
+            ? { projectId: undefined, cwd: defaultPath }
+            : undefined
+        if (nextBinding) {
+          if (tabId) {
+            agentTabStore.setTabDraftBinding(tabId, nextBinding)
+          }
+          sessionListStore.setDraftBinding(nextBinding)
         }
-        sessionListStore.setDraftBinding(nextBinding)
-      } else if (!isDraftSet && defaultPath) {
-        const nextBinding = { projectId: undefined, cwd: defaultPath }
+      } else if (isFromNonProjectToProject && currentProjectPath && !currentDraft.projectId) {
+        // 如果是从非项目页面进入项目页面，且草稿未锁定具体项目，可更新为当前项目
+        const nextBinding = { projectId: currentProjectId, cwd: currentProjectPath }
         if (tabId) {
           agentTabStore.setTabDraftBinding(tabId, nextBinding)
         }

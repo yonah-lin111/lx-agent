@@ -246,7 +246,7 @@ export const GitStatusBar = ({
                   onClick={() => {
                     const targetPath = p.path || defaultDesktopPath
                     if (onProjectChange && targetPath) {
-                      onProjectChange(p.id, targetPath)
+                      onProjectChange(isDesktop ? "" : p.id, targetPath)
                     }
                     setIsProjectSelectOpen(false)
                   }}
