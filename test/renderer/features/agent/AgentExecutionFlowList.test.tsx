@@ -1729,4 +1729,41 @@ describe("AgentExecutionFlowList", () => {
     // 验证步骤标题
     expect(screen.getByText("Turn Undone / Reverted")).not.toBeNull()
   })
+
+  it("渲染撤销步骤展开后的上传文件附件", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "undo-1",
+        role: "undoSummary",
+        blocks: [],
+        isStreaming: false,
+        timestamp: 1050,
+        undoPayload: {
+          userPrompt: "分析文件",
+          files: [
+            {
+              name: "config.yaml",
+              path: "/app/config.yaml",
+              type: "text",
+            },
+          ],
+          toolCallCount: 0,
+          fileChangeCount: 0,
+        },
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 点击展开步骤
+    const stepHeader = container.querySelector(
+      '[data-step-kind="undo"] .agent-execution-flow-step-header',
+    )
+    expect(stepHeader).not.toBeNull()
+    fireEvent.click(stepHeader!)
+
+    // 验证附件展示
+    expect(screen.getByText("Attached Files:")).not.toBeNull()
+    expect(screen.getByText("config.yaml")).not.toBeNull()
+  })
 })

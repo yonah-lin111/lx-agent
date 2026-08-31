@@ -124,4 +124,34 @@ describe("AgentUndoSummary", () => {
     expect(screen.getByText("第一轮问题")).not.toBeNull()
     expect(screen.getByText("第二轮问题")).not.toBeNull()
   })
+
+  it("正确渲染撤销轮次中的上传文件附件", () => {
+    const payload = {
+      userPrompt: "分析带附件的问题",
+      files: [
+        {
+          name: "schema.prisma",
+          path: "/tmp/schema.prisma",
+          type: "text" as const,
+          size: "2.4 KB",
+        },
+        {
+          name: "architecture.png",
+          path: "/tmp/architecture.png",
+          type: "image" as const,
+        },
+      ],
+      undoneAt: 1700000000000,
+    }
+
+    render(<AgentUndoSummary payload={payload} />)
+
+    const toggleButton = screen.getByRole("button")
+    fireEvent.click(toggleButton)
+
+    // 应展示附件文件标识与文件名
+    expect(screen.getByText("Attached Files:")).not.toBeNull()
+    expect(screen.getByText("schema.prisma")).not.toBeNull()
+    expect(screen.getByAltText("architecture.png")).not.toBeNull()
+  })
 })

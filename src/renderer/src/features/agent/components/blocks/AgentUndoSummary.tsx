@@ -3,6 +3,7 @@ import type React from "react"
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
 import type { AgentDiff, AgentDiffLine, AgentUndoSummaryPayload } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
@@ -246,33 +247,32 @@ export const AgentUndoSummary = ({
                     </div>
                   )}
 
-                  {/* 1. 被撤销的用户提示词 */}
-                  {hasTurnPrompt && turn.userPrompt && (
+                  {/* 1. 被撤销的用户提示词与附件文件 */}
+                  {(hasTurnPrompt || (turn.files && turn.files.length > 0)) && (
                     <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300/80">
-                        <User className="h-3.5 w-3.5 shrink-0" />
-                        <span>{t("agent.undoUndonePrompt")}</span>
-                      </div>
-                      <div className="rounded-[10px] bg-black/30 px-3 py-2 text-[12px] text-white/80">
-                        <LxMarkdownPreview
-                          html={markdownRenderer.render(turn.userPrompt)}
-                          previewMode="preview"
-                          previewRef={previewRef}
-                          className="px-0"
-                          contentClassName="py-0 [&_*]:!text-white/80"
-                        />
-                      </div>
+                      {hasTurnPrompt && turn.userPrompt && (
+                        <>
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300/80">
+                            <User className="h-3.5 w-3.5 shrink-0" />
+                            <span>{t("agent.undoUndonePrompt")}</span>
+                          </div>
+                          <div className="rounded-[10px] bg-black/30 px-3 py-2 text-[12px] text-white/80">
+                            <LxMarkdownPreview
+                              html={markdownRenderer.render(turn.userPrompt)}
+                              previewMode="preview"
+                              previewRef={previewRef}
+                              className="px-0"
+                              contentClassName="py-0 [&_*]:!text-white/80"
+                            />
+                          </div>
+                        </>
+                      )}
                       {turn.files && turn.files.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {turn.files.map((file, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-2 py-0.5 text-[10px] text-white/60"
-                            >
-                              <FileText className="h-3 w-3" />
-                              <span className="truncate max-w-[180px]">{file.name}</span>
-                            </span>
-                          ))}
+                        <div className="flex flex-col gap-1 pt-0.5">
+                          <div className="text-[11px] font-mono text-white/40">
+                            {t("agent.attachedFiles")}:
+                          </div>
+                          <AgentMessageFiles files={turn.files} align="left" className="mb-0" />
                         </div>
                       )}
                     </div>

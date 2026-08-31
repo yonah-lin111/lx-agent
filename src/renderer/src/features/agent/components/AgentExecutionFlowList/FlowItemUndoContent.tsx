@@ -3,6 +3,7 @@ import type React from "react"
 import { useMemo } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
 import type { AgentDiff, AgentDiffLine, ExecutionUndoContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
@@ -116,23 +117,35 @@ export const FlowItemUndoContent = ({
               </div>
             )}
 
-            {/* 1. 被撤销的用户提示词 */}
-            {hasPrompt && item.userPrompt && (
+            {/* 1. 被撤销的用户提示词与附件文件 */}
+            {(hasPrompt || (item.files && item.files.length > 0)) && (
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5 text-amber-300/80 font-sans font-semibold">
-                  <User className="h-3.5 w-3.5" />
-                  <span>{t("agent.undoUndonePrompt")}</span>
-                </div>
-                <div className="rounded bg-black/40 p-2 text-white/80">
-                  <LxMarkdownPreview
-                    html={markdownRenderer.render(item.userPrompt)}
-                    previewMode="preview"
-                    previewRef={previewRef}
-                    className="px-0"
-                    contentClassName="py-0 text-white/80 [&_*]:!text-white/80"
-                    sanitizeCopy
-                  />
-                </div>
+                {hasPrompt && item.userPrompt && (
+                  <>
+                    <div className="flex items-center gap-1.5 text-amber-300/80 font-sans font-semibold">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{t("agent.undoUndonePrompt")}</span>
+                    </div>
+                    <div className="rounded bg-black/40 p-2 text-white/80">
+                      <LxMarkdownPreview
+                        html={markdownRenderer.render(item.userPrompt)}
+                        previewMode="preview"
+                        previewRef={previewRef}
+                        className="px-0"
+                        contentClassName="py-0 text-white/80 [&_*]:!text-white/80"
+                        sanitizeCopy
+                      />
+                    </div>
+                  </>
+                )}
+                {item.files && item.files.length > 0 && (
+                  <div className="flex flex-col gap-1 pt-0.5">
+                    <div className="text-[11px] font-mono text-white/40">
+                      {t("agent.attachedFiles")}:
+                    </div>
+                    <AgentMessageFiles files={item.files} align="left" className="mb-0" />
+                  </div>
+                )}
               </div>
             )}
 
