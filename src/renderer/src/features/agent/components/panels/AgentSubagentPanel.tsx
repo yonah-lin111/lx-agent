@@ -4,6 +4,7 @@ import { Fragment, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
 import { AgentMessageItem } from "@/features/agent/components/AgentMessageList"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, InterAgentCommunication, SubagentData } from "@/features/agent/types"
@@ -22,6 +23,8 @@ interface AgentSubagentPanelProps {
   onClose: () => void
   // 面板消息列表滚动容器（面板打开时，AgentMessageList 的滚动按钮接管面板滚动）。
   scrollRef?: React.RefObject<HTMLDivElement | null>
+  // 视图模式：qa 渲染消息气泡时间轴，flow 渲染执行流程流水线
+  mode?: "qa" | "flow"
 }
 
 interface CommItemProps {
@@ -106,6 +109,7 @@ export const AgentSubagentPanel = ({
   toolCall,
   onClose,
   scrollRef,
+  mode = "qa",
 }: AgentSubagentPanelProps): React.JSX.Element => {
   const { t } = useTranslation()
   const isOpen = toolCall !== null
@@ -222,31 +226,37 @@ export const AgentSubagentPanel = ({
             </div>
           )}
 
-          {/* 子代理内部消息时间轴（只读，不隐藏消息列表）；AI 内容按 QA 组聚合到一个 AgentMessageItem。 */}
+          {/* 子代理内部消息时间轴（只读，不隐藏消息列表） */}
           {messages.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              {messageGroups.map((group) => {
-                const userMessage = group.userMessage
-                const assistant = group.assistant
-                const groupKey = userMessage?.id ?? assistant?.message.id
-                return (
-                  <Fragment key={groupKey}>
-                    {userMessage && (
-                      <div className="mb-2 w-full">
-                        <AgentMessageItem message={userMessage} isPinned={false} readOnly />
-                      </div>
-                    )}
-                    {assistant && (
-                      <AgentMessageItem
-                        message={assistant.message}
-                        continuationMessages={assistant.continuationMessages}
-                        readOnly
-                      />
-                    )}
-                  </Fragment>
-                )
-              })}
-            </div>
+            mode === "flow" ? (
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <AgentExecutionFlowList messages={messages} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {messageGroups.map((group) => {
+                  const userMessage = group.userMessage
+                  const assistant = group.assistant
+                  const groupKey = userMessage?.id ?? assistant?.message.id
+                  return (
+                    <Fragment key={groupKey}>
+                      {userMessage && (
+                        <div className="mb-2 w-full">
+                          <AgentMessageItem message={userMessage} isPinned={false} readOnly />
+                        </div>
+                      )}
+                      {assistant && (
+                        <AgentMessageItem
+                          message={assistant.message}
+                          continuationMessages={assistant.continuationMessages}
+                          readOnly
+                        />
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </div>
+            )
           ) : (
             <div className="flex min-h-24 flex-1 items-center justify-center text-[12px] text-white/35">
               {t("agent.subagentNoContent")}

@@ -343,6 +343,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     steerSentNotice: "Interruption sent, will take effect after current step",
     unsupportedImageInput: "Current model does not support image input, please switch models.",
     fillInput: "Fill into input",
+    subagentDetail: "Detail",
+    viewSubagentDetails: "View subagent execution details",
     subagentPanel: "Subagent Panel",
     closeSubagentPanel: "Close Subagent Panel",
     collapsePanel: "Collapse Panel",

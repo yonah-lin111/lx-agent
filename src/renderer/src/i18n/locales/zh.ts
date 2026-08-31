@@ -334,6 +334,8 @@ export const zh: TranslationDictionary = {
     steerSentNotice: "已发送即时插话，将在当前步骤完成后生效",
     unsupportedImageInput: "当前所选模型不支持图片多模态输入，请切换模型。",
     fillInput: "填入输入框",
+    subagentDetail: "详情",
+    viewSubagentDetails: "查看子代理执行详情",
     subagentPanel: "子代理面板",
     closeSubagentPanel: "关闭子代理面板",
     collapsePanel: "收起面板",

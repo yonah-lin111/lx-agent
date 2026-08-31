@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  ExternalLink,
   Loader2,
   Zap,
 } from "lucide-react"
@@ -13,7 +14,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import type { ExecutionStep } from "@/features/agent/types"
+import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
@@ -39,6 +40,7 @@ export interface AgentExecutionFlowItemProps {
   step: ExecutionStep
   isExpanded: boolean
   onToggleExpand: () => void
+  onOpenSubagent?: (content: ExecutionSubagentContent) => void
 }
 
 /**
@@ -48,6 +50,7 @@ export const AgentExecutionFlowItem = ({
   step,
   isExpanded,
   onToggleExpand,
+  onOpenSubagent,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -407,48 +410,69 @@ export const AgentExecutionFlowItem = ({
         </div>
       ) : null}
 
-      {/* 底部 Token 指标与并行状态栏：折叠与展开状态下均可见，存在有效 Token 或并行状态时始终渲染（包括 running 状态） */}
+      {/* 底部 Token 指标与并行状态栏：折叠与展开状态下均可见，存在有效 Token、并行状态或 Subagent 详情时始终渲染（包括 running 状态） */}
       {((step.tokens?.input !== undefined && step.tokens.input > 0) ||
         (step.tokens?.output !== undefined && step.tokens.output > 0) ||
         (step.tokens?.total !== undefined && step.tokens.total > 0) ||
-        Boolean(step.parallel)) && (
+        Boolean(step.parallel) ||
+        (step.kind === "subagent" && Boolean(step.subagentContent))) && (
         <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-[10px]">
-          {/* 左侧 Token 指标 */}
-          {step.tokens &&
-          ((step.tokens.input !== undefined && step.tokens.input > 0) ||
-            (step.tokens.output !== undefined && step.tokens.output > 0) ||
-            (step.tokens.total !== undefined && step.tokens.total > 0)) ? (
-            <LxTooltip
-              placement="top"
-              content={
-                <div className="flex flex-col gap-0.5 font-mono text-[11px]">
-                  <span>Input: {(step.tokens.input ?? 0).toLocaleString()}</span>
-                  <span>Output: {(step.tokens.output ?? 0).toLocaleString()}</span>
+          {/* 左侧 Token 指标与 Subagent Detail 按钮 */}
+          <div className="flex items-center gap-2">
+            {step.tokens &&
+            ((step.tokens.input !== undefined && step.tokens.input > 0) ||
+              (step.tokens.output !== undefined && step.tokens.output > 0) ||
+              (step.tokens.total !== undefined && step.tokens.total > 0)) ? (
+              <LxTooltip
+                placement="top"
+                content={
+                  <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+                    <span>Input: {(step.tokens.input ?? 0).toLocaleString()}</span>
+                    <span>Output: {(step.tokens.output ?? 0).toLocaleString()}</span>
+                    {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
+                      <span>Cache read: {step.tokens.cacheRead.toLocaleString()}</span>
+                    )}
+                  </div>
+                }
+              >
+                <span className="flex items-center gap-1 leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
+                  <span>IN {formatTokensShort(step.tokens.input ?? 0)}</span>
+                  <span aria-hidden="true" className="opacity-40">
+                    ·
+                  </span>
+                  <span>OUT {formatTokensShort(step.tokens.output ?? 0)}</span>
                   {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
-                    <span>Cache read: {step.tokens.cacheRead.toLocaleString()}</span>
+                    <>
+                      <span aria-hidden="true" className="opacity-40">
+                        ·
+                      </span>
+                      <span>CACHE {formatTokensShort(step.tokens.cacheRead)}</span>
+                    </>
                   )}
-                </div>
-              }
-            >
-              <span className="flex items-center gap-1 leading-none text-white/35 select-text tabular-nums whitespace-nowrap cursor-default hover:text-white/60 transition-colors">
-                <span>IN {formatTokensShort(step.tokens.input ?? 0)}</span>
-                <span aria-hidden="true" className="opacity-40">
-                  ·
                 </span>
-                <span>OUT {formatTokensShort(step.tokens.output ?? 0)}</span>
-                {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
-                  <>
-                    <span aria-hidden="true" className="opacity-40">
-                      ·
-                    </span>
-                    <span>CACHE {formatTokensShort(step.tokens.cacheRead)}</span>
-                  </>
-                )}
-              </span>
-            </LxTooltip>
-          ) : (
-            <div />
-          )}
+              </LxTooltip>
+            ) : null}
+
+            {/* Subagent 步骤下的 Detail 按钮 */}
+            {step.kind === "subagent" && step.subagentContent && (
+              <LxTooltip placement="top" content={t("agent.viewSubagentDetails")}>
+                <button
+                  type="button"
+                  data-testid="flow-item-subagent-detail-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (step.subagentContent) {
+                      onOpenSubagent?.(step.subagentContent)
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
+                >
+                  <span>{t("agent.subagentDetail")}</span>
+                  <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                </button>
+              </LxTooltip>
+            )}
+          </div>
 
           {/* 右侧纯文字并行标记（同一批次同色，同一 turn 不同批次异色） */}
           {step.parallel && (

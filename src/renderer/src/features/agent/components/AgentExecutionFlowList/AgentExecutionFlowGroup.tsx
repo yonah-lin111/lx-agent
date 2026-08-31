@@ -12,7 +12,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import type { ExecutionStep } from "@/features/agent/types"
+import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
@@ -25,6 +25,7 @@ export interface AgentExecutionFlowGroupProps {
   onToggleExpand: () => void
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
+  onOpenSubagent?: (content: ExecutionSubagentContent) => void
 }
 
 /**
@@ -37,6 +38,7 @@ export const AgentExecutionFlowGroup = ({
   onToggleExpand,
   isStepExpanded,
   onToggleStepExpand,
+  onOpenSubagent,
 }: AgentExecutionFlowGroupProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -326,6 +328,7 @@ export const AgentExecutionFlowGroup = ({
                 step={step}
                 isExpanded={isStepExpanded(step)}
                 onToggleExpand={() => onToggleStepExpand(step)}
+                onOpenSubagent={onOpenSubagent}
               />
             ))}
           </div>

@@ -1603,4 +1603,96 @@ describe("AgentExecutionFlowList", () => {
     // 验证：新步骤加入后，Group 依然保持展开状态，没有被错误折叠
     expect(container.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
   })
+
+  it("Subagent 步骤底部展示 Detail 按钮并支持点击打开/关闭 AgentSubagentPanel", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "调度子代理" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "task-call-1",
+            toolName: "task",
+            args: { description: "子任务执行", prompt: "检索并分析数据" },
+            status: "done",
+            subagent: {
+              subagentId: "sub-123",
+              name: "task_explorer",
+              description: "子任务执行",
+              prompt: "检索并分析数据",
+              usage: { input: 120, output: 45, cacheRead: 0, totalTokens: 165 },
+              messages: [
+                {
+                  role: "assistant",
+                  provider: "anthropic",
+                  model: "claude-3-5-sonnet",
+                  usage: { input: 120, output: 45, cacheRead: 0, totalTokens: 165 },
+                  stopReason: "stop",
+                  timestamp: 1000,
+                  content: [{ type: "text", text: "子代理内部执行完成" }],
+                },
+              ],
+              steps: [
+                {
+                  toolName: "read",
+                  args: { path: "src/index.ts" },
+                  result: "file content",
+                  status: "done",
+                },
+              ],
+            },
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "task-call-1",
+            toolName: "task",
+            text: "子任务执行完毕",
+            isError: false,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 验证 Detail 按钮存在
+    const detailBtn = screen.getByTestId("flow-item-subagent-detail-btn")
+    expect(detailBtn).not.toBeNull()
+    expect(detailBtn.textContent).toContain("Detail")
+
+    // 初始状态下面板处于收起（inert/translateY）
+    const panel = container.querySelector(".agent-subagent-panel-dialog")
+    expect(panel).not.toBeNull()
+    expect(panel?.getAttribute("inert")).toBe("")
+
+    // 点击 Detail 按钮
+    fireEvent.click(detailBtn)
+
+    // 面板展开（inert 为 null 或 false）
+    expect(panel?.getAttribute("inert")).toBeNull()
+    expect(screen.getByText("ID: sub-123")).not.toBeNull()
+
+    // 点击关闭按钮
+    const closeBtns = screen.getAllByRole("button", { name: /Close Subagent Panel/i })
+    expect(closeBtns.length).toBeGreaterThan(0)
+    fireEvent.click(closeBtns[0])
+
+    // 面板重新收起
+    expect(panel?.getAttribute("inert")).toBe("")
+  })
 })

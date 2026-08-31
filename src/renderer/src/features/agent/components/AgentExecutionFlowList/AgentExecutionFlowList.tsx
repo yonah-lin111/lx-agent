@@ -16,8 +16,9 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { buildExecutionSteps } from "@/features/agent/executionFlow"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
-import type { ChatMessage, ExecutionStep } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
 import { AgentExecutionFlowGroup } from "./AgentExecutionFlowGroup"
 import { AgentExecutionFlowHeader } from "./AgentExecutionFlowHeader"
@@ -111,6 +112,35 @@ export const AgentExecutionFlowList = forwardRef<
       {},
     )
     const pendingQuestionStepIdsRef = useRef(new Set<string>())
+
+    // 当前选中的 Subagent 详情展示对象（对应 AgentSubagentPanel 的 toolCall 参数）
+    const [activeSubagentContent, setActiveSubagentContent] =
+      useState<ExecutionSubagentContent | null>(null)
+    const subagentScrollRef = useRef<HTMLDivElement>(null)
+
+    // 转换选中的 SubagentContent 为 AgentSubagentPanel 所需的 ToolCallBlock 格式
+    const activeSubagentToolCall = useMemo<Extract<ChatBlock, { kind: "toolCall" }> | null>(() => {
+      if (!activeSubagentContent) return null
+      return {
+        kind: "toolCall",
+        toolCallId: activeSubagentContent.subagent?.subagentId || "flow-subagent-detail",
+        toolName: "task",
+        args: {
+          description: activeSubagentContent.subagent?.description || "",
+          prompt: activeSubagentContent.subagent?.prompt || "",
+        },
+        status: "done",
+        subagent: activeSubagentContent.subagent,
+      }
+    }, [activeSubagentContent])
+
+    const handleOpenSubagent = useCallback((content: ExecutionSubagentContent) => {
+      setActiveSubagentContent(content)
+    }, [])
+
+    const handleCloseSubagent = useCallback(() => {
+      setActiveSubagentContent(null)
+    }, [])
 
     // 获取完整系统提示词装配
     const fetchPromptAssembly = useCallback(async () => {
@@ -783,6 +813,7 @@ export const AgentExecutionFlowList = forwardRef<
                           step={element.step}
                           isExpanded={isStepExpanded(element.step)}
                           onToggleExpand={() => toggleStepExpanded(element.step)}
+                          onOpenSubagent={handleOpenSubagent}
                         />
                       ) : (
                         <AgentExecutionFlowGroup
@@ -792,6 +823,7 @@ export const AgentExecutionFlowList = forwardRef<
                           onToggleExpand={() => toggleGroupExpanded(element.groupId)}
                           isStepExpanded={isStepExpanded}
                           onToggleStepExpand={toggleStepExpanded}
+                          onOpenSubagent={handleOpenSubagent}
                         />
                       )}
 
@@ -910,6 +942,14 @@ export const AgentExecutionFlowList = forwardRef<
             </div>
           </div>
         )}
+
+        {/* 子代理面板：点击 Subagent 步骤底部 Detail 展开，只读展示内部运行记录 */}
+        <AgentSubagentPanel
+          toolCall={activeSubagentToolCall}
+          onClose={handleCloseSubagent}
+          scrollRef={subagentScrollRef}
+          mode="flow"
+        />
       </div>
     )
   },
