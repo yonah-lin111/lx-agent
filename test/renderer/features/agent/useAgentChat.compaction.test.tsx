@@ -186,7 +186,7 @@ describe("useAgentChat 压缩事件消息流", () => {
     expect(result.current.inputText).toBe("")
   })
 
-  it("撤销普通轮时回显该轮用户消息到输入框（QA 回显不受影响）", async () => {
+  it("撤销唯一的 QA 轮时回显用户消息并移除会话，撤销摘要一并清空", async () => {
     const { result } = renderHook(() => useAgentChat())
     await act(async () => {})
 
@@ -199,11 +199,51 @@ describe("useAgentChat 压缩事件消息流", () => {
     act(() => result.current.undoLastTurn())
     await act(async () => {})
 
-    // 撤销 QA 轮：回显用户消息原文，而非清空；插入撤销摘要。
+    // 撤销唯一的 QA 轮：回显用户消息原文，会话移除，撤销摘要一并清空
     expect(result.current.inputText).toBe("hi")
-    expect(result.current.messages).toHaveLength(1)
-    expect(result.current.messages[0].role).toBe("undoSummary")
-    expect(result.current.messages[0].undoPayload?.userPrompt).toBe("hi")
+    expect(result.current.messages).toHaveLength(0)
+    expect(result.current.currentSessionId).toBeNull()
+  })
+
+  it("存在多轮时撤销一轮保留撤销摘要，撤销最后一轮时清空全部撤销摘要", async () => {
+    const { result } = renderHook(() => useAgentChat())
+    await act(async () => {})
+
+    const user2: AgentMessage = {
+      role: "user",
+      content: "hi 2",
+      timestamp: 3000,
+    }
+    const assistant2: AgentMessage = {
+      role: "assistant",
+      content: [{ type: "text", text: "hello 2" }],
+      timestamp: 3010,
+    }
+
+    act(() => {
+      eventHandler({ type: "message_start", message: user })
+      eventHandler({ type: "message_start", message: assistant })
+      eventHandler({ type: "message_start", message: user2 })
+      eventHandler({ type: "message_start", message: assistant2 })
+    })
+    expect(result.current.messages).toHaveLength(4)
+
+    // 撤销第 2 轮：还剩第 1 轮，保留 undoSummary
+    act(() => result.current.undoLastTurn())
+    await act(async () => {})
+
+    expect(result.current.inputText).toBe("hi 2")
+    expect(result.current.messages).toHaveLength(3) // user1 + assistant1 + undoSummary
+    expect(result.current.messages[2].role).toBe("undoSummary")
+    expect(result.current.messages[2].undoPayload?.userPrompt).toBe("hi 2")
+
+    // 再撤销第 1 轮：无剩余有效 QA 轮，触发会话移除，所有 undoSummary 清空
+    act(() => result.current.undoLastTurn())
+    await act(async () => {})
+
+    expect(result.current.inputText).toBe("hi")
+    expect(result.current.messages).toHaveLength(0)
+    expect(result.current.currentSessionId).toBeNull()
   })
 
   it("末条为自动压缩摘要时 /undo 不做任何事（自动压缩不可撤销）", async () => {

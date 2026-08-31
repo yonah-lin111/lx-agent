@@ -552,9 +552,29 @@ export const useAgentChat = (
         ...keptSummaries,
         ...list.slice(nextUserIndex),
       ]
-      setMessages(nextMessages)
+
+      // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离并移除当前会话（会话的所有 undo 记录随之清空）
+      const hasMeaningfulMessages = nextMessages.some(
+        (m) => !(m.role === "modelSwitch" && m.isInitial) && m.role !== "undoSummary",
+      )
+      if (!hasMeaningfulMessages) {
+        const initialModelMessage = nextMessages.find(
+          (m) => m.role === "modelSwitch" && m.isInitial,
+        )
+        const emptyMessages = initialModelMessage ? [initialModelMessage] : []
+        setMessages(emptyMessages)
+        setCurrentSessionId(null)
+        if (tabId) {
+          agentTabStore.setTabSessionId(tabId, null)
+        }
+        void agentApi.restore([], undefined, tabId)
+      } else {
+        setMessages(nextMessages)
+        const sessionId = currentSessionIdRef.current
+        void agentApi.restore(toAgentMessages(nextMessages), sessionId ?? undefined, tabId)
+      }
+
       const sessionId = currentSessionIdRef.current
-      void agentApi.restore(toAgentMessages(nextMessages), sessionId ?? undefined, tabId)
       if (sessionId && typeof userTimestamp === "number") {
         // 落库成功后再刷新列表，避免读到删除前的旧会话。
         void agentApi
@@ -565,18 +585,6 @@ export const useAgentChat = (
           .catch(() => {
             // 写库失败为尽力而为：本地已移除，DB 仅多留一轮。
           })
-      }
-
-      // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离当前会话
-      const hasMeaningfulMessages = nextMessages.some(
-        (m) => !(m.role === "modelSwitch" && m.isInitial) && m.role !== "undoSummary",
-      )
-      if (!hasMeaningfulMessages) {
-        setCurrentSessionId(null)
-        if (tabId) {
-          agentTabStore.setTabSessionId(tabId, null)
-        }
-        void agentApi.restore([], undefined, tabId)
       }
     },
     [tabId],
