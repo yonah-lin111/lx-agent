@@ -45,7 +45,10 @@ export const FlowItemUndoContent = ({
 
   const renderDiffSnippet = (diff: AgentDiff, filePath: string): React.JSX.Element => {
     const language = languageFromFileName(filePath)
-    const highlightedCodeLines = diff.lines.map((line) => highlightCode(line.content, language))
+    const highlightedCodeLines = diff.lines.map((line) => {
+      const lineText = line.text ?? (line as unknown as { content?: string }).content ?? ""
+      return highlightCode(lineText, language)
+    })
 
     return (
       <div className="custom-scrollbar max-h-[220px] overflow-y-auto rounded bg-black/60 py-1 font-mono text-[11px] select-text">
@@ -54,7 +57,8 @@ export const FlowItemUndoContent = ({
           const signColor = SIGN_COLORS[line.type]
           const bg = ROW_BACKGROUND[line.type]
           const lineNumber = getLineNumber(line)
-          const highlighted = highlightedCodeLines[idx] ?? line.content
+          const lineText = line.text ?? (line as unknown as { content?: string }).content ?? ""
+          const highlighted = highlightedCodeLines[idx] || lineText
 
           return (
             <div

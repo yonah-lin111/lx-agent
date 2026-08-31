@@ -38,9 +38,9 @@ describe("AgentUndoSummary", () => {
             filePath: "src/sort.ts",
             stats: { added: 5, removed: 2 },
             lines: [
-              { type: "context" as const, content: "function sort() {", newLine: 1, oldLine: 1 },
-              { type: "del" as const, content: "- return []", oldLine: 2 },
-              { type: "add" as const, content: "+ return arr.sort()", newLine: 2 },
+              { type: "context" as const, text: "function sort() {", newLine: 1, oldLine: 1 },
+              { type: "del" as const, text: "- return []", oldLine: 2 },
+              { type: "add" as const, text: "+ return arr.sort()", newLine: 2 },
             ],
           },
         },

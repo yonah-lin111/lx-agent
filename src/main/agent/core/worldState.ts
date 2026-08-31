@@ -63,7 +63,8 @@ export class ContextWindowGuidanceSection implements WorldStateSection<string> {
   ) {}
 
   public snapshot(): string {
-    const bracket = this.usageRatio > 0.85 ? "critical" : this.usageRatio > 0.65 ? "warning" : "nominal"
+    const bracket =
+      this.usageRatio > 0.85 ? "critical" : this.usageRatio > 0.65 ? "warning" : "nominal"
     return `${bracket}:${this.isManualCompactAllowed}`
   }
 

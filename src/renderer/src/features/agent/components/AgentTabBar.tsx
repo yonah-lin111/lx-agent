@@ -32,7 +32,10 @@ export const AgentTabBar = (): React.JSX.Element => {
   const [projects, setProjects] = useState<Project[]>([])
 
   useEffect(() => {
-    void projectApi.listProjects().then(setProjects).catch(() => {})
+    void projectApi
+      .listProjects()
+      .then(setProjects)
+      .catch(() => {})
   }, [projectItemsVersion])
 
   const tabScrollRef = useRef<HTMLDivElement>(null)
