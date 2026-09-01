@@ -362,5 +362,40 @@ describe("Markdown 斜杠命令武装判定", () => {
       instance: "task-1",
       flag: null,
     })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt grok:task-grok -enter")).toEqual({
+      target: "grok",
+      instance: "task-grok",
+      flag: "-enter",
+    })
+  })
+
+
+
+  it("getMarkdownSendPromptOptions 严格遵从 enabledCliIds 过滤静态项与运行中项", () => {
+    const tabs = [
+      {
+        title: "opencode-dev",
+        panes: { p1: { id: "p1", title: "opencode-dev", detectedCli: "opencode" as const } },
+      },
+      {
+        title: "cc-switch-main",
+        panes: { p2: { id: "p2", title: "cc-switch-main", detectedCli: "claude" as const } },
+      },
+    ]
+
+    // 仅启用 claude
+    const optionsClaudeOnly = getMarkdownSendPromptOptions("zh", tabs, ["claude"])
+    expect(optionsClaudeOnly.some((o) => o.id === "lx")).toBe(true) // agent 始终可用
+    expect(optionsClaudeOnly.some((o) => o.id === "claude" && !o.isRunning)).toBe(true)
+    expect(optionsClaudeOnly.some((o) => o.targetType === "claude" && o.isRunning)).toBe(true)
+    expect(optionsClaudeOnly.some((o) => o.id === "opencode")).toBe(false)
+    expect(optionsClaudeOnly.some((o) => o.targetType === "opencode" && o.isRunning)).toBe(false)
+
+    // 全部禁用 CLI，仅保留 Agent
+    const optionsAgentOnly = getMarkdownSendPromptOptions("zh", tabs, [])
+    expect(optionsAgentOnly.length).toBe(1)
+    expect(optionsAgentOnly[0].id).toBe("lx")
   })
 })
+

@@ -7,4 +7,9 @@ export const SETTINGS_CHANNELS = {
   savePermissionSettings: "settings:permissions:save",
   getUiSettings: "settings:ui:get",
   saveUiSettings: "settings:ui:save",
+  getCliSettings: "settings:cli:get",
+  saveCliSettings: "settings:cli:save",
+  getCliVersions: "settings:cli:get-versions",
+  runCliLifecycleAction: "settings:cli:run-lifecycle-action",
 } as const
+

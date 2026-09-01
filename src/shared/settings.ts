@@ -93,6 +93,62 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   locale: "en",
 }
 
+// 支持的 CLI 工具标识。
+export type CliId =
+  | "claude"
+  | "codex"
+  | "gemini"
+  | "opencode"
+  | "agy"
+  | "grok"
+
+// CLI 设置（~/.lx/config.json 的 cli 节点）。
+export interface CliSettings {
+  enabled: CliId[]
+  customPaths?: Partial<Record<CliId, string>>
+}
+
+export const ALL_CLI_IDS: readonly CliId[] = [
+  "claude",
+  "codex",
+  "gemini",
+  "opencode",
+  "agy",
+  "grok",
+] as const
+
+
+
+export const DEFAULT_CLI_SETTINGS: CliSettings = {
+  enabled: [...ALL_CLI_IDS],
+  customPaths: {},
+}
+
+// CLI 版本与运行时检测信息。
+export interface CliVersionInfo {
+  id: CliId
+  name: string
+  displayName: string
+  command?: string
+  installed: boolean
+  version: string | null
+  latestVersion: string | null
+  hasUpdate: boolean
+  path: string | null
+  error: string | null
+  installedButBroken: boolean
+  npmPackage?: string
+  homepage?: string
+}
+
+
+// CLI 生命周期操作结果。
+export interface CliLifecycleResult {
+  success: boolean
+  message?: string
+  detail?: string
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -103,5 +159,13 @@ export interface SettingsApi {
     savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
     getUiSettings: () => Promise<UiSettings>
     saveUiSettings: (settings: UiSettings) => Promise<UiSettings>
+    getCliSettings: () => Promise<CliSettings>
+    saveCliSettings: (settings: CliSettings) => Promise<CliSettings>
+    getCliVersions: (options?: { force?: boolean }) => Promise<CliVersionInfo[]>
+    runCliLifecycleAction: (
+      cliId: CliId,
+      action: "install" | "update",
+    ) => Promise<CliLifecycleResult>
   }
 }
+

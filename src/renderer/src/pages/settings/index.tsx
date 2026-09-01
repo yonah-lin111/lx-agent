@@ -5,6 +5,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
+  CliSettings,
   CustomCommandSettings,
   GeneralSettings,
   ModelProviderSettings,
@@ -22,11 +23,13 @@ import { type TranslationKey, useTranslation } from "@/i18n"
 
 const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   general: "settings.generalDesc",
+  cli: "settings.cliDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
   permissions: "settings.permissionsDesc",
   "custom-commands": "settings.customCommandsDesc",
 }
+
 
 /**
  * 渲染设置页面。
@@ -89,6 +92,7 @@ export const SettingsPage = (): React.JSX.Element => {
     // 2. 触发各分区注册的 reset 回调（例如 custom-commands 清空 draft）
     settingsDirtyStore.resetAllSections()
     settingsDirtyStore.setSectionDirty("custom-commands", false)
+    settingsDirtyStore.setSectionDirty("cli", false)
     setResetKey((k) => k + 1)
     setError("")
     toast.success(t("settings.resetSuccess"))
@@ -97,6 +101,9 @@ export const SettingsPage = (): React.JSX.Element => {
   const isCurrentSectionDirty = useMemo(() => {
     if (activeSection === "custom-commands") {
       return Boolean(dirtyMap["custom-commands"])
+    }
+    if (activeSection === "cli") {
+      return Boolean(dirtyMap["cli"])
     }
     return isModelsOrPermsDirty
   }, [activeSection, dirtyMap, isModelsOrPermsDirty])
@@ -116,6 +123,12 @@ export const SettingsPage = (): React.JSX.Element => {
         return
       }
 
+      if (activeSection === "cli") {
+        await settingsDirtyStore.saveSection("cli")
+        toast.success(t("settings.saveSuccess"))
+        return
+      }
+
       if (!settings || !permissionSettings) return
       const saved = await saveSettings(settings)
       const savedPermission = await settingsApi.savePermissionSettings(permissionSettings)
@@ -131,6 +144,7 @@ export const SettingsPage = (): React.JSX.Element => {
       toast.error(errorMessage)
     }
   }
+
 
   const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
   const currentDescription = descKey ? t(descKey) : ""
@@ -201,9 +215,11 @@ export const SettingsPage = (): React.JSX.Element => {
             <p className="px-3 pt-2 text-xs text-rose-300">{permissionError}</p>
           ) : null}
           {activeSection === "general" ? <GeneralSettings /> : null}
+          {activeSection === "cli" ? <CliSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}
+
           {activeSection === "providers" ? (
             <ModelProviderSettings
               settings={settings}

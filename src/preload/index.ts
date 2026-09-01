@@ -67,7 +67,13 @@ const api: ProjectApi &
       ipcRenderer.invoke(SETTINGS_CHANNELS.savePermissionSettings, settings),
     getUiSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getUiSettings),
     saveUiSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveUiSettings, settings),
+    getCliSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getCliSettings),
+    saveCliSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveCliSettings, settings),
+    getCliVersions: (options) => ipcRenderer.invoke(SETTINGS_CHANNELS.getCliVersions, options),
+    runCliLifecycleAction: (cliId, action) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.runCliLifecycleAction, cliId, action),
   },
+
   agent: agentApi,
   markdown: markdownApi,
   customCommand: customCommandApi,

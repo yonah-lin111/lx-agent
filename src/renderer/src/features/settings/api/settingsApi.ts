@@ -1,5 +1,9 @@
 import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
+  CliId,
+  CliLifecycleResult,
+  CliSettings,
+  CliVersionInfo,
   FetchedProviderModel,
   FetchModelsInput,
   ModelProviderSettings,
@@ -20,4 +24,14 @@ export const settingsApi = {
   getUiSettings: (): Promise<UiSettings> => window.api.settings.getUiSettings(),
   saveUiSettings: (settings: UiSettings): Promise<UiSettings> =>
     window.api.settings.saveUiSettings(settings),
+  getCliSettings: (): Promise<CliSettings> => window.api.settings.getCliSettings(),
+  saveCliSettings: (settings: CliSettings): Promise<CliSettings> =>
+    window.api.settings.saveCliSettings(settings),
+  getCliVersions: (options?: { force?: boolean }): Promise<CliVersionInfo[]> =>
+    window.api.settings.getCliVersions(options),
+  runCliLifecycleAction: (
+    cliId: CliId,
+    action: "install" | "update",
+  ): Promise<CliLifecycleResult> => window.api.settings.runCliLifecycleAction(cliId, action),
 }
+

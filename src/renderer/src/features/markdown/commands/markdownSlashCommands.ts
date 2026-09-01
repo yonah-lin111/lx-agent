@@ -1,4 +1,5 @@
 import type { Locale } from "@shared/settings"
+import { getCachedCliSettings } from "@/features/settings"
 import { en } from "@/i18n/locales/en"
 import { zh } from "@/i18n/locales/zh"
 
@@ -20,7 +21,17 @@ export type MarkdownSlashCommandId =
   | (string & {})
 
 // Markdown /sendPrompt 目标标识。
-export type MarkdownSendPromptTargetId = "agent" | "claude" | "opencode" | "codex" | "agy"
+export type MarkdownSendPromptTargetId =
+  | "agent"
+  | "claude"
+  | "opencode"
+  | "codex"
+  | "gemini"
+  | "agy"
+  | "grok"
+
+
+
 
 // Markdown /sendPrompt 标志位标识。
 export type MarkdownSendPromptFlagId = "-enter"
@@ -286,6 +297,20 @@ export const identifyCliTypeFromTitle = (title: string): MarkdownSendPromptTarge
   ) {
     return "agy"
   }
+  if (
+    t.includes("grok") ||
+    t.startsWith("gk ") ||
+    t.startsWith("gk|") ||
+    t.startsWith("gk |") ||
+    t.startsWith("gk-") ||
+    t.startsWith("gk:") ||
+    t.includes("gk |") ||
+    t.includes("gk -") ||
+    t.includes("gk:") ||
+    t === "gk"
+  ) {
+    return "grok"
+  }
   return null
 }
 
@@ -316,6 +341,8 @@ export const isDefaultCliTitle = (
     "ag",
     "antigravity",
     "anti-gravity",
+    "grok",
+    "gk",
     "terminal",
     "new terminal",
     "zsh",
@@ -324,6 +351,9 @@ export const isDefaultCliTitle = (
   ]
   return defaultKeywords.includes(t)
 }
+
+
+
 
 /**
  * 解析终端实例的有效标题与是否默认状态。
@@ -365,14 +395,17 @@ export const getMarkdownSendPromptOptions = (
     title: string
     panes?: Record<
       string,
-      {
-        title?: string
-        detectedCli?: "claude" | "opencode" | "codex" | "gemini" | "agy"
-      }
+      | {
+          title?: string
+          detectedCli?: MarkdownSendPromptTargetId
+        }
+      | undefined
     >
   }[] = [],
+  enabledCliIds?: string[],
 ): MarkdownSendPromptOption[] => {
   const dict = locale === "en" ? en : zh
+  const enabledSet = new Set(enabledCliIds ?? getCachedCliSettings().enabled)
 
   const options: MarkdownSendPromptOption[] = [
     {
@@ -386,7 +419,7 @@ export const getMarkdownSendPromptOptions = (
     },
   ]
 
-  // 1. 扫描当前打开的终端 Tab 与 Panes，提取已运行的 CLI 实例
+  // 1. 扫描当前打开的终端 Tab 与 Panes，提取已运行且在设置中启用的 CLI 实例
   const cliInstances: {
     cliType: MarkdownSendPromptTargetId
     effectiveTitle: string
@@ -395,15 +428,17 @@ export const getMarkdownSendPromptOptions = (
 
   for (const tab of tabs) {
     const tabTitle = tab.title || ""
-    const panes = tab.panes ? Object.values(tab.panes) : []
+    const rawPanes = tab.panes ? Object.values(tab.panes) : []
+    const panes = rawPanes.filter((p): p is NonNullable<typeof p> => Boolean(p))
     const hasMultiplePanes = panes.length > 1
+
 
     if (panes.length > 0) {
       for (const pane of panes) {
         const paneTitle = pane.title || ""
-        // 严格以实际检测出的 detectedCli 为准；只有检测到 CLI 运行时才加入运行中列表
+        // 严格以实际检测出的 detectedCli 为准；只有检测到 CLI 运行时且在设置中启用才加入运行中列表
         const cliType = pane.detectedCli
-        if (cliType) {
+        if (cliType && enabledSet.has(cliType)) {
           const { effectiveTitle, isDefault } = resolveEffectiveCliTitle(
             paneTitle,
             tabTitle,
@@ -428,14 +463,17 @@ export const getMarkdownSendPromptOptions = (
     }
   }
 
+  const targetNameMap: Record<string, string> = {
+    claude: "Claude Code",
+    opencode: "OpenCode",
+    codex: "Codex",
+    gemini: "Gemini CLI",
+    agy: "Antigravity",
+    grok: "Grok Build",
+    hermes: "Hermes",
+  }
+
   for (const inst of cliInstances) {
-    const targetNameMap: Record<string, string> = {
-      claude: "Claude Code",
-      opencode: "OpenCode",
-      codex: "Codex",
-      gemini: "Gemini CLI",
-      agy: "Antigravity",
-    }
     const displayName = targetNameMap[inst.cliType] || inst.cliType
 
     let instanceId: string
@@ -460,7 +498,7 @@ export const getMarkdownSendPromptOptions = (
         displayLabel = `${displayName}:${inst.effectiveTitle} #${currentIdx}`
       } else {
         instanceName = inst.effectiveTitle
-        instanceId = `${inst.cliType}:${inst.effectiveTitle}`
+        instanceId = `${inst.cliType}:${instanceName}`
         displayLabel = `${displayName}:${inst.effectiveTitle}`
       }
     }
@@ -477,49 +515,38 @@ export const getMarkdownSendPromptOptions = (
     })
   }
 
-  // 3. 追加通用静态目标
-  options.push(
-    {
-      id: "claude",
-      targetType: "claude",
-      name: "Claude Code",
-      label: "Claude Code",
-      description: dict.markdown.sendPromptTargetClaudeDesc,
-      tag: "CLI",
-    },
-    {
-      id: "opencode",
-      targetType: "opencode",
-      name: "OpenCode",
-      label: "OpenCode",
-      description: dict.markdown.sendPromptTargetOpencodeDesc,
-      tag: "CLI",
-    },
-    {
-      id: "codex",
-      targetType: "codex",
-      name: "Codex",
-      label: "Codex",
-      description: dict.markdown.sendPromptTargetCodexDesc,
-      tag: "CLI",
-    },
-    {
-      id: "gemini",
-      targetType: "gemini",
-      name: "Gemini CLI",
-      label: "Gemini CLI",
-      description: dict.markdown.sendPromptTargetGeminiDesc,
-      tag: "CLI",
-    },
-    {
-      id: "agy",
-      targetType: "agy",
-      name: "Antigravity",
-      label: "Antigravity",
-      description: dict.markdown.sendPromptTargetAgyDesc,
-      tag: "CLI",
-    },
-  )
+  // 3. 追加通用静态目标（仅列出在设置中已启用的 CLI）
+  const allStaticTargets: {
+    id: MarkdownSendPromptTargetId
+    name: string
+    descriptionKey:
+      | "sendPromptTargetClaudeDesc"
+      | "sendPromptTargetOpencodeDesc"
+      | "sendPromptTargetCodexDesc"
+      | "sendPromptTargetGeminiDesc"
+      | "sendPromptTargetAgyDesc"
+      | "sendPromptTargetGrokDesc"
+  }[] = [
+    { id: "claude", name: "Claude Code", descriptionKey: "sendPromptTargetClaudeDesc" },
+    { id: "opencode", name: "OpenCode", descriptionKey: "sendPromptTargetOpencodeDesc" },
+    { id: "codex", name: "Codex", descriptionKey: "sendPromptTargetCodexDesc" },
+    { id: "gemini", name: "Gemini CLI", descriptionKey: "sendPromptTargetGeminiDesc" },
+    { id: "agy", name: "Antigravity", descriptionKey: "sendPromptTargetAgyDesc" },
+    { id: "grok", name: "Grok Build", descriptionKey: "sendPromptTargetGrokDesc" },
+  ]
+
+  for (const staticTarget of allStaticTargets) {
+    if (enabledSet.has(staticTarget.id)) {
+      options.push({
+        id: staticTarget.id,
+        targetType: staticTarget.id,
+        name: staticTarget.name,
+        label: staticTarget.name,
+        description: dict.markdown[staticTarget.descriptionKey],
+        tag: "CLI",
+      })
+    }
+  }
 
   return options
 }
@@ -600,11 +627,16 @@ export const parseMarkdownSendPromptCommandLine = (
               ? "gemini"
               : normalizedTarget === "antigravity" || normalizedTarget === "ag"
                 ? "agy"
-                : normalizedTarget
+                : normalizedTarget === "grok" || normalizedTarget === "gk"
+                  ? "grok"
+                  : normalizedTarget
   ) as MarkdownSendPromptTargetId
+
+
 
   return { target, instance, flag }
 }
+
 
 // 默认内置命令（中文兜底与单测兼容）。
 export const builtinMarkdownSlashCommands: MarkdownSlashCommand[] =

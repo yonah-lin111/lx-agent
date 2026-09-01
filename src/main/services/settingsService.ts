@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname } from "node:path"
 import type { PermissionSettings } from "@shared/contracts/agent"
 import type {
+  CliId,
+  CliSettings,
   CompactionSettings,
   Locale,
   ModelProvider,
@@ -12,10 +14,13 @@ import type {
   UiSettings,
 } from "@shared/settings"
 import {
+  ALL_CLI_IDS,
+  DEFAULT_CLI_SETTINGS,
   DEFAULT_COMPACTION_SETTINGS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DEFAULT_UI_SETTINGS,
 } from "@shared/settings"
+
 import { getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。
@@ -494,3 +499,63 @@ export const saveUiSettings = (input: UiSettings): UiSettings => {
 
   return settings
 }
+
+/**
+ * 规范化 CLI 配置。
+ */
+const normalizeCliSettings = (raw: unknown): CliSettings => {
+  if (!isRecord(raw)) return DEFAULT_CLI_SETTINGS
+
+  const validIds = new Set<string>(ALL_CLI_IDS)
+  const enabled = Array.isArray(raw.enabled)
+    ? raw.enabled.filter((id): id is CliId => typeof id === "string" && validIds.has(id))
+    : [...ALL_CLI_IDS]
+
+  const customPaths: Partial<Record<CliId, string>> = {}
+  if (isRecord(raw.customPaths)) {
+    for (const [key, val] of Object.entries(raw.customPaths)) {
+      if (validIds.has(key) && typeof val === "string" && val.trim()) {
+        customPaths[key as CliId] = val.trim()
+      }
+    }
+  }
+
+  return {
+    enabled,
+    customPaths,
+  }
+}
+
+/**
+ * 读取 CLI 设置。
+ */
+export const getCliSettings = (): CliSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  return normalizeCliSettings(rawConfig.cli)
+}
+
+/**
+ * 保存 CLI 设置。
+ */
+export const saveCliSettings = (input: CliSettings): CliSettings => {
+  const settings = normalizeCliSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawCliObj = isRecord(rawConfig.cli) ? { ...rawConfig.cli } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    cli: {
+      ...rawCliObj,
+      ...settings,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
+}
+
