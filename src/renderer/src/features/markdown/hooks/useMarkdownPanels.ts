@@ -235,36 +235,18 @@ export const useMarkdownPanels = ({
   const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
   const [activeTemplateFileIndex, setActiveTemplateFileIndex] = useState(0)
 
-  useEffect(() => {
-    onSearchFilesRef.current = onSearchFiles
-    onSearchReferencedFilesRef.current = onSearchReferencedFiles
-    onSearchDirectoryFilesRef.current = onSearchDirectoryFiles
-    projectIdRef.current = projectId
-    projectPathRef.current = projectPath
-    worktreePathRef.current = worktreePath
-    worktreesRef.current = worktrees
-    projectBranchRef.current = projectBranch
-    reloadWorktreesRef.current = reloadWorktrees
-    referencedProjectPathsRef.current = referencedProjectPaths
-    customSlashCommandsRef.current = customSlashCommands
-  }, [
-    onSearchFiles,
-    onSearchReferencedFiles,
-    onSearchDirectoryFiles,
-    projectId,
-    projectPath,
-    worktreePath,
-    worktrees,
-    projectBranch,
-    reloadWorktrees,
-    referencedProjectPaths,
-    customSlashCommands,
-    locale,
-  ])
-
-  useEffect(() => {
-    localeRef.current = locale
-  }, [locale])
+  onSearchFilesRef.current = onSearchFiles
+  onSearchReferencedFilesRef.current = onSearchReferencedFiles
+  onSearchDirectoryFilesRef.current = onSearchDirectoryFiles
+  projectIdRef.current = projectId
+  projectPathRef.current = projectPath
+  worktreePathRef.current = worktreePath
+  worktreesRef.current = worktrees
+  projectBranchRef.current = projectBranch
+  reloadWorktreesRef.current = reloadWorktrees
+  referencedProjectPathsRef.current = referencedProjectPaths
+  customSlashCommandsRef.current = customSlashCommands
+  localeRef.current = locale
 
   // 监听终端 Store 变化（如用户退出/关闭某个终端 Tab），实时刷新二级选择菜单中的可用实例列表
   useEffect(() => {

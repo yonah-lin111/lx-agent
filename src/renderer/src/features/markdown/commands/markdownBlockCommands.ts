@@ -132,9 +132,9 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
   in_progress: " in_progress",
 }
 
-// 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate 为状态/子块保留词。
+// 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate 为状态/子块保留词，{id:/{wt: 为结束行元数据。
 const MARKDOWN_TEMPLATE_START_RE =
-  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b)/
+  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b|\{id:|\{wt:)/
 
 // 模板块 id：uuid 去连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
 const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
@@ -273,6 +273,14 @@ export const getMarkdownTemplateBlockContent = (text: string, position: number):
     }
 
     currentOffset = lineEnd
+  }
+
+  if (
+    activeStartOffset !== null &&
+    activeBodyStart !== null &&
+    boundedPosition >= activeStartOffset
+  ) {
+    return text.slice(activeBodyStart)
   }
 
   return null

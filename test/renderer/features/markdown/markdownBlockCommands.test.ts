@@ -41,8 +41,8 @@ describe("Markdown 块命令", () => {
   it("识别带状态标记的模板块结束行并关闭块", () => {
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n")).toBe(true)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate 「title: 标题」\n")).toBe(true)
-    expect(isInsideMarkdownTemplateBlock("&&& addTemplate done\n")).toBe(false)
-    expect(isInsideMarkdownTemplateBlock("&&& addTemplate in_progress\n")).toBe(false)
+    expect(isInsideMarkdownTemplateBlock("&&& done\n")).toBe(false)
+    expect(isInsideMarkdownTemplateBlock("&&& in_progress\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& done\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& in_progress\n")).toBe(false)
