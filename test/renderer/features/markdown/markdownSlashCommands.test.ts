@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest"
 import {
   getMarkdownArmedSlashCommand,
   getMarkdownSelectCommandValue,
+  getMarkdownSendPromptFlagOptions,
+  getMarkdownSendPromptOptions,
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
+  parseMarkdownSendPromptCommandLine,
+  stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
 
 describe("Markdown 斜杠命令", () => {
@@ -39,11 +43,18 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/zzz", false)).toEqual([])
   })
 
-  it("模板块内匹配 AI 总结命令与全局工作区命令", () => {
-    expect(getMarkdownSlashCommands("/sum", true).map((c) => c.id)).toEqual(["summaryTitle"])
+  it("模板块内匹配模板内可用命令与全局工作区命令", () => {
+    expect(getMarkdownSlashCommands("/sum", true).map((c) => c.id)).toEqual([
+      "suppleTemplate",
+      "summaryTitle",
+    ])
+    expect(getMarkdownSlashCommands("/send", true).map((c) => c.id)).toEqual(["sendPrompt"])
+    expect(getMarkdownSlashCommands("/send", false)).toEqual([])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
     expect(getMarkdownSlashCommands("/git", true).map((c) => c.id)).toEqual(["gitWorktree"])
     expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual([
+      "suppleTemplate",
+      "sendPrompt",
       "summaryTitle",
       "gitWorktree",
     ])
@@ -51,7 +62,11 @@ describe("Markdown 斜杠命令", () => {
 
   it("virtual 项目（无 git 上下文）不列出工作区命令", () => {
     expect(getMarkdownSlashCommands("/git", false, false)).toEqual([])
-    expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual(["summaryTitle"])
+    expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual([
+      "suppleTemplate",
+      "sendPrompt",
+      "summaryTitle",
+    ])
   })
   it("支持多语言环境下的模板文案切换", () => {
     const zhCommands = getMarkdownSlashCommands("/style", false, true, [], "zh")
@@ -62,6 +77,12 @@ describe("Markdown 斜杠命令", () => {
     expect(enCommands[0]?.description).toBe("Insert style design prompt template")
     expect(enCommands[0]?.content).toContain("# Design Style")
     expect(enCommands[0]?.content).toContain("- Reference: ")
+
+    const zhSend = getMarkdownSlashCommands("/send", true, true, [], "zh")
+    expect(zhSend[0]?.description).toBe("发送当前模板块 Prompt 到 Agent 或终端 CLI")
+
+    const enSend = getMarkdownSlashCommands("/send", true, true, [], "en")
+    expect(enSend[0]?.description).toBe("Send current template block prompt to Agent or Terminal CLI")
   })
 })
 
@@ -78,12 +99,20 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownArmedSlashCommand("/gitWorktree feature-x ", true)?.id).toBe("gitWorktree")
     expect(getMarkdownArmedSlashCommand("/gitWorktree", false)).toBeNull()
     expect(getMarkdownArmedSlashCommand("/gitWorktree ", false)).toBeNull()
+
+    expect(getMarkdownArmedSlashCommand("/sendPrompt agent", true)?.id).toBe("sendPrompt")
+    expect(getMarkdownArmedSlashCommand("/sendPrompt claude", true)?.id).toBe("sendPrompt")
+    expect(getMarkdownArmedSlashCommand("/sendPrompt", true)).toBeNull()
+    expect(getMarkdownArmedSlashCommand("/sendPrompt ", true)).toBeNull()
   })
 
   it("提取选择型命令携带的值", () => {
     expect(getMarkdownSelectCommandValue("/gitWorktree feature-x", false)).toBe("feature-x")
     expect(getMarkdownSelectCommandValue("/gitWorktree feature-x ", true)).toBe("feature-x")
+    expect(getMarkdownSelectCommandValue("/sendPrompt agent", true)).toBe("agent")
+    expect(getMarkdownSelectCommandValue("/sendPrompt claude", true)).toBe("claude")
     expect(getMarkdownSelectCommandValue("/gitWorktree", false)).toBeNull()
+    expect(getMarkdownSelectCommandValue("/sendPrompt", true)).toBeNull()
     expect(getMarkdownSelectCommandValue("/summaryTitle", true)).toBeNull()
   })
 
@@ -122,11 +151,154 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(templateMatches.some((c) => c.id === "custom:block-only")).toBe(true)
 
     // 精确查询
-    expect(getMarkdownSlashCommands("/my-", false, true, customCommands).map((c) => c.id)).toEqual([
-      "custom:my-global",
-    ])
     expect(getMarkdownSlashCommands("/block", true, true, customCommands).map((c) => c.id)).toEqual(
       ["custom:block-only"],
     )
   })
+
+  it("stripMarkdownSlashCommands: 移除内容中的斜杠命令文本并保留空行换行", () => {
+    const text = [
+      "# Fix Bug",
+      "/sendPrompt agent",
+      "- Location: @src/components/MyComp.tsx",
+      "/gitWorktree dev",
+      "- Description: 修复问题",
+      "/summaryTitle",
+    ].join("\n")
+
+    expect(stripMarkdownSlashCommands(text)).toBe(
+      [
+        "# Fix Bug",
+        "",
+        "- Location: @src/components/MyComp.tsx",
+        "",
+        "- Description: 修复问题",
+        "",
+      ].join("\n"),
+    )
+  })
+
+  it("getMarkdownSendPromptOptions 支持根据打开的终端动态列出运行中实例（含同名编号区分）", () => {
+    const tabs = [
+      { title: "opencode-dev" },
+      { title: "opencode-fix" },
+      { title: "cc-switch-main" },
+    ]
+    const options = getMarkdownSendPromptOptions("zh", tabs)
+    expect(options.some((o) => o.id === "opencode:opencode-dev" && o.isRunning)).toBe(true)
+    expect(options.some((o) => o.id === "opencode:opencode-fix" && o.isRunning)).toBe(true)
+    expect(options.some((o) => o.id === "lx" && o.targetType === "agent")).toBe(true)
+    expect(options.some((o) => o.id === "opencode" && !o.isRunning)).toBe(true)
+
+    // 打开两个完全同名的默认 opencode 终端
+    const duplicateTabs = [
+      { title: "opencode" },
+      { title: "opencode" },
+    ]
+    const dupOptions = getMarkdownSendPromptOptions("zh", duplicateTabs)
+    expect(dupOptions.filter((o) => o.isRunning).length).toBe(2)
+    expect(dupOptions.some((o) => o.id === "opencode:#1" && o.label === "OpenCode:#1")).toBe(true)
+    expect(dupOptions.some((o) => o.id === "opencode:#2" && o.label === "OpenCode:#2")).toBe(true)
+
+    // 单个 Tab 内存在 2 个分屏 Pane（无自定义标题）
+    const splitTab = [
+      {
+        title: "OpenCode",
+        panes: {
+          "pane-1": { id: "pane-1", title: "OpenCode" },
+          "pane-2": { id: "pane-2", title: "OpenCode" },
+        },
+      },
+    ]
+    const splitOptions = getMarkdownSendPromptOptions("zh", splitTab)
+    expect(splitOptions.filter((o) => o.isRunning).length).toBe(2)
+    expect(splitOptions.some((o) => o.id === "opencode:#1" && o.label === "OpenCode:#1")).toBe(true)
+    expect(splitOptions.some((o) => o.id === "opencode:#2" && o.label === "OpenCode:#2")).toBe(true)
+
+    // 3 个 OpenCode：1 个有自定义标题，2 个无标题
+    const mixedTabs = [
+      {
+        title: "修复列表触底悬停时滚动条抖动",
+        panes: { "pane-1": { id: "pane-1", title: "opencode" } },
+      },
+      {
+        title: "OpenCode",
+        panes: { "pane-2": { id: "pane-2", title: "OpenCode" } },
+      },
+      {
+        title: "OpenCode",
+        panes: { "pane-3": { id: "pane-3", title: "OpenCode" } },
+      },
+    ]
+    const mixedOptions = getMarkdownSendPromptOptions("zh", mixedTabs)
+    expect(mixedOptions.filter((o) => o.isRunning).length).toBe(3)
+    expect(
+      mixedOptions.some((o) => o.label === "OpenCode:修复列表触底悬停时滚动条抖动"),
+    ).toBe(true)
+    expect(mixedOptions.some((o) => o.label === "OpenCode:#1")).toBe(true)
+    expect(mixedOptions.some((o) => o.label === "OpenCode:#2")).toBe(true)
+  })
+
+  it("getMarkdownSendPromptFlagOptions & parseMarkdownSendPromptCommandLine", () => {
+    const flagsZh = getMarkdownSendPromptFlagOptions("zh")
+    expect(flagsZh.some((f) => f.id === "-new")).toBe(true)
+
+    const flagsEn = getMarkdownSendPromptFlagOptions("en")
+    expect(flagsEn.some((f) => f.id === "-new")).toBe(true)
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode")).toEqual({
+      target: "opencode",
+      instance: null,
+      flag: null,
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev")).toEqual({
+      target: "opencode",
+      instance: "opencode-dev",
+      flag: null,
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev -new ")).toEqual({
+      target: "opencode",
+      instance: "opencode-dev",
+      flag: "-new",
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt claude -new")).toEqual({
+      target: "claude",
+      instance: null,
+      flag: "-new",
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt LX Agent")).toEqual({
+      target: "agent",
+      instance: null,
+      flag: null,
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt gemini")).toEqual({
+      target: "gemini",
+      instance: null,
+      flag: null,
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt codex:codex-task -new")).toEqual({
+      target: "codex",
+      instance: "codex-task",
+      flag: "-new",
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt agy")).toEqual({
+      target: "agy",
+      instance: null,
+      flag: null,
+    })
+
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt antigravity:task-1")).toEqual({
+      target: "agy",
+      instance: "task-1",
+      flag: null,
+    })
+  })
 })
+

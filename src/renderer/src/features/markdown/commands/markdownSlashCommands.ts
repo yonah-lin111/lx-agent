@@ -16,7 +16,36 @@ export type MarkdownSlashCommandId =
   | MarkdownTemplateCommandId
   | "summaryTitle"
   | "gitWorktree"
+  | "sendPrompt"
   | (string & {})
+
+// Markdown /sendPrompt 目标标识。
+export type MarkdownSendPromptTargetId = "agent" | "claude" | "opencode" | "codex" | "agy"
+
+// Markdown /sendPrompt 标志位标识。
+export type MarkdownSendPromptFlagId = "-new"
+
+// Markdown /sendPrompt 二级选择目标选项配置。
+export interface MarkdownSendPromptOption {
+  id: string
+  targetType: MarkdownSendPromptTargetId
+  instanceName?: string
+  name: string
+  label: string
+  description: string
+  tag: string
+  isDefault?: boolean
+  isRunning?: boolean
+}
+
+// Markdown /sendPrompt 三级运行选项配置。
+export interface MarkdownSendPromptFlagOption {
+  id: MarkdownSendPromptFlagId
+  name: string
+  label: string
+  description: string
+  tag: string
+}
 
 // Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，both = 两者皆可。
 export type MarkdownSlashCommandScope = "normal" | "template" | "both"
@@ -144,6 +173,17 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: getTemplateCursorOffset(suppleContent),
   }
 
+  const sendPrompt: MarkdownSlashCommand = {
+    id: "sendPrompt",
+    label: "/sendPrompt",
+    description: dict.markdown.templateSendPromptDesc,
+    scope: "template",
+    kind: "select",
+    source: "builtin",
+    content: "/sendPrompt ",
+    cursorOffset: "/sendPrompt ".length,
+  }
+
   const summaryTitle: MarkdownSlashCommand = {
     id: "summaryTitle",
     label: "/summaryTitle",
@@ -166,7 +206,399 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: "/gitWorktree ".length,
   }
 
-  return [...templates, suppleTemplate, summaryTitle, gitWorktree]
+  return [...templates, suppleTemplate, sendPrompt, summaryTitle, gitWorktree]
+}
+
+/**
+ * 根据标题识别对应的 CLI 类型（如 opencode-dev -> opencode，OC | xxx -> opencode，cc-switch -> claude 等）。
+ */
+export const identifyCliTypeFromTitle = (title: string): MarkdownSendPromptTargetId | null => {
+  const t = title.toLowerCase().trim()
+  if (!t) return null
+  if (
+    t.includes("opencode") ||
+    t.startsWith("oc ") ||
+    t.startsWith("oc|") ||
+    t.startsWith("oc |") ||
+    t.startsWith("oc-") ||
+    t.startsWith("oc:") ||
+    t.includes("oc |") ||
+    t.includes("oc -") ||
+    t.includes("oc:") ||
+    t === "oc"
+  ) {
+    return "opencode"
+  }
+  if (
+    t.includes("claude") ||
+    t.includes("claudecode") ||
+    t.includes("cc-") ||
+    t.startsWith("cc ") ||
+    t.startsWith("cc|") ||
+    t.startsWith("cc |") ||
+    t.startsWith("cc:") ||
+    t === "cc"
+  ) {
+    return "claude"
+  }
+  if (
+    t.includes("codex") ||
+    t.includes("openai") ||
+    t.startsWith("cx ") ||
+    t.startsWith("cx|") ||
+    t.startsWith("cx |") ||
+    t.startsWith("cx-") ||
+    t.startsWith("cx:") ||
+    t.includes("cx |") ||
+    t.includes("cx -") ||
+    t.includes("cx:") ||
+    t === "cx"
+  ) {
+    return "codex"
+  }
+  if (
+    t.includes("gemini") ||
+    t.startsWith("gm ") ||
+    t.startsWith("gm|") ||
+    t.startsWith("gm |") ||
+    t.startsWith("gm-") ||
+    t.startsWith("gm:") ||
+    t.includes("gm |") ||
+    t.includes("gm -") ||
+    t.includes("gm:") ||
+    t === "gm"
+  ) {
+    return "gemini"
+  }
+  if (
+    t.includes("agy") ||
+    t.includes("antigravity") ||
+    t.includes("anti-gravity") ||
+    t.startsWith("ag ") ||
+    t.startsWith("ag|") ||
+    t.startsWith("ag |") ||
+    t.startsWith("ag-") ||
+    t.startsWith("ag:") ||
+    t.includes("ag |") ||
+    t.includes("ag -") ||
+    t.includes("ag:") ||
+    t === "ag"
+  ) {
+    return "agy"
+  }
+  return null
+}
+
+/**
+ * 判断标题是否属于未命名的默认 CLI / 终端名称。
+ */
+export const isDefaultCliTitle = (
+  title: string,
+  _cliType?: MarkdownSendPromptTargetId | null,
+): boolean => {
+  const t = title.trim().toLowerCase()
+  if (!t) return true
+  const defaultKeywords = [
+    "opencode",
+    "oc",
+    "claude",
+    "cc",
+    "claudecode",
+    "codex",
+    "cx",
+    "openai",
+    "openai codex",
+    "gemini",
+    "gemini cli",
+    "gemini-cli",
+    "gm",
+    "agy",
+    "ag",
+    "antigravity",
+    "anti-gravity",
+    "terminal",
+    "new terminal",
+    "zsh",
+    "bash",
+    "sh",
+  ]
+  return defaultKeywords.includes(t)
+}
+
+/**
+ * 解析终端实例的有效标题与是否默认状态。
+ */
+export const resolveEffectiveCliTitle = (
+  paneTitle: string,
+  tabTitle: string,
+  cliType: MarkdownSendPromptTargetId,
+  hasMultiplePanes = false,
+): { effectiveTitle: string; isDefault: boolean } => {
+  const isPaneDefault = isDefaultCliTitle(paneTitle, cliType)
+  const isTabDefault = isDefaultCliTitle(tabTitle, cliType)
+
+  // 如果当前分屏 pane 自带非默认自定义标题，直接使用 paneTitle
+  if (!isPaneDefault) {
+    return { effectiveTitle: paneTitle, isDefault: false }
+  }
+
+  // 如果同一个 Tab 内有多个分屏 pane，且当前 pane 为默认标题（如 OpenCode），即使 tabTitle 被主分屏更新，当前 pane 依然是默认无标题分屏
+  if (hasMultiplePanes) {
+    return { effectiveTitle: paneTitle || "Terminal", isDefault: true }
+  }
+
+  // 单 pane 情况下，如果 tabTitle 有自定义标题，优先使用 tabTitle
+  if (!isTabDefault) {
+    return { effectiveTitle: tabTitle, isDefault: false }
+  }
+
+  return { effectiveTitle: paneTitle || tabTitle || "Terminal", isDefault: true }
+}
+
+/**
+ * 根据语言环境与当前打开的终端列表获取 /sendPrompt 二级选择目标列表。
+ * 若已存在打开的同名 CLI 实例，优先作为运行中选项列出。
+ */
+export const getMarkdownSendPromptOptions = (
+  locale: Locale = "zh",
+  tabs: { title: string; panes?: Record<string, { title?: string }> }[] = [],
+): MarkdownSendPromptOption[] => {
+  const dict = locale === "en" ? en : zh
+
+  const options: MarkdownSendPromptOption[] = [
+    {
+      id: "lx",
+      targetType: "agent",
+      name: "LX Agent",
+      label: "LX Agent",
+      description: "",
+      tag: "Default",
+      isDefault: true,
+    },
+  ]
+
+  // 1. 扫描当前打开的终端 Tab 与 Panes，提取已运行的 CLI 实例
+  const cliInstances: {
+    cliType: MarkdownSendPromptTargetId
+    effectiveTitle: string
+    isDefault: boolean
+  }[] = []
+
+  for (const tab of tabs) {
+    const tabTitle = tab.title || ""
+    const panes = tab.panes ? Object.values(tab.panes) : []
+    const hasMultiplePanes = panes.length > 1
+
+    if (panes.length > 0) {
+      for (const pane of panes) {
+        const paneTitle = pane.title || ""
+        const cliType =
+          identifyCliTypeFromTitle(paneTitle) || identifyCliTypeFromTitle(tabTitle)
+        if (cliType) {
+          const { effectiveTitle, isDefault } = resolveEffectiveCliTitle(
+            paneTitle,
+            tabTitle,
+            cliType,
+            hasMultiplePanes,
+          )
+          cliInstances.push({ cliType, effectiveTitle, isDefault })
+        }
+      }
+    } else {
+      const cliType = identifyCliTypeFromTitle(tabTitle)
+      if (cliType) {
+        const isDefault = isDefaultCliTitle(tabTitle, cliType)
+        cliInstances.push({ cliType, effectiveTitle: tabTitle, isDefault })
+      }
+    }
+  }
+
+  // 2. 统计每个 CLI 下无标题实例序号，以及自定义标题的同名频次
+  const defaultIndexCounter: Record<string, number> = {}
+  const customTitleCounts: Record<string, number> = {}
+  const customTitleSeen: Record<string, number> = {}
+
+  for (const inst of cliInstances) {
+    if (!inst.isDefault) {
+      const key = `${inst.cliType}:${inst.effectiveTitle}`
+      customTitleCounts[key] = (customTitleCounts[key] || 0) + 1
+    }
+  }
+
+  for (const inst of cliInstances) {
+    const targetNameMap: Record<string, string> = {
+      claude: "Claude Code",
+      opencode: "OpenCode",
+      codex: "Codex",
+      gemini: "Gemini CLI",
+      agy: "Antigravity",
+    }
+    const displayName = targetNameMap[inst.cliType] || inst.cliType
+
+    let instanceId: string
+    let displayLabel: string
+    let instanceName: string
+
+    if (inst.isDefault) {
+      defaultIndexCounter[inst.cliType] = (defaultIndexCounter[inst.cliType] || 0) + 1
+      const idx = defaultIndexCounter[inst.cliType]
+      instanceName = `#${idx}`
+      instanceId = `${inst.cliType}:#${idx}`
+      displayLabel = `${displayName}:#${idx}`
+    } else {
+      const key = `${inst.cliType}:${inst.effectiveTitle}`
+      const total = customTitleCounts[key] || 1
+      customTitleSeen[key] = (customTitleSeen[key] || 0) + 1
+      const currentIdx = customTitleSeen[key]
+
+      if (total > 1) {
+        instanceName = `${inst.effectiveTitle}#${currentIdx}`
+        instanceId = `${inst.cliType}:${instanceName}`
+        displayLabel = `${displayName}:${inst.effectiveTitle} #${currentIdx}`
+      } else {
+        instanceName = inst.effectiveTitle
+        instanceId = `${inst.cliType}:${inst.effectiveTitle}`
+        displayLabel = `${displayName}:${inst.effectiveTitle}`
+      }
+    }
+
+    options.push({
+      id: instanceId,
+      targetType: inst.cliType,
+      instanceName,
+      name: displayLabel,
+      label: displayLabel,
+      description: "",
+      tag: dict.markdown.sendPromptRunningTag,
+      isRunning: true,
+    })
+  }
+
+  // 3. 追加通用静态目标
+  options.push(
+    {
+      id: "claude",
+      targetType: "claude",
+      name: "Claude Code",
+      label: "Claude Code",
+      description: "",
+      tag: "CLI",
+    },
+    {
+      id: "opencode",
+      targetType: "opencode",
+      name: "OpenCode",
+      label: "OpenCode",
+      description: "",
+      tag: "CLI",
+    },
+    {
+      id: "codex",
+      targetType: "codex",
+      name: "Codex",
+      label: "Codex",
+      description: "",
+      tag: "CLI",
+    },
+    {
+      id: "gemini",
+      targetType: "gemini",
+      name: "Gemini CLI",
+      label: "Gemini CLI",
+      description: "",
+      tag: "CLI",
+    },
+    {
+      id: "agy",
+      targetType: "agy",
+      name: "Antigravity",
+      label: "Antigravity",
+      description: "",
+      tag: "CLI",
+    },
+  )
+
+  return options
+}
+
+/**
+ * 获取 Markdown /sendPrompt 命令三级运行选项配置列表。
+ */
+export const getMarkdownSendPromptFlagOptions = (
+  locale: Locale = "zh",
+): MarkdownSendPromptFlagOption[] => {
+  const dict = locale === "en" ? en : zh
+  return [
+    {
+      id: "-new",
+      name: "-new",
+      label: "-new",
+      description: dict.markdown.sendPromptFlagNewDesc,
+      tag: dict.markdown.sendPromptFlagNewTag,
+    },
+  ]
+}
+
+export interface MarkdownSendPromptCommandParsed {
+  target: MarkdownSendPromptTargetId
+  instance: string | null
+  flag: MarkdownSendPromptFlagId | null
+}
+
+/**
+ * 解析 /sendPrompt 命令行中携带的目标、实例与可选标志位。
+ * 支持：
+ * - /sendPrompt agent
+ * - /sendPrompt opencode
+ * - /sendPrompt opencode:opencode-dev
+ * - /sendPrompt opencode:opencode-dev -new
+ * - /sendPrompt opencode -new
+ */
+export const parseMarkdownSendPromptCommandLine = (
+  lineText: string,
+): MarkdownSendPromptCommandParsed | null => {
+  const trimmed = lineText.trim()
+  if (!trimmed.startsWith("/sendPrompt")) return null
+
+  const remainder = trimmed.slice("/sendPrompt".length).trim()
+  if (!remainder) return null
+
+  // 提取尾部可选的 Flag（如 -new）
+  const flagMatch = /\s+(-[a-zA-Z0-9_-]+)$/.exec(remainder)
+  const flag = (flagMatch ? flagMatch[1] : null) as MarkdownSendPromptFlagId | null
+  const withoutFlag = flagMatch ? remainder.slice(0, flagMatch.index).trim() : remainder
+
+  let rawTarget = withoutFlag
+  let instance: string | null = null
+
+  if (withoutFlag.includes(":")) {
+    const colonIndex = withoutFlag.indexOf(":")
+    rawTarget = withoutFlag.slice(0, colonIndex).trim()
+    instance = withoutFlag.slice(colonIndex + 1).trim() || null
+  }
+
+  const normalizedTarget = rawTarget.toLowerCase()
+  const target = (
+    normalizedTarget === "lx" ||
+    normalizedTarget === "lx agent" ||
+    normalizedTarget === "lx-agent" ||
+    normalizedTarget === "agent" ||
+    normalizedTarget === "agentinput"
+      ? "agent"
+      : normalizedTarget === "claudecode" || normalizedTarget === "cc"
+        ? "claude"
+        : normalizedTarget === "oc"
+          ? "opencode"
+          : normalizedTarget === "openai" || normalizedTarget === "cx"
+            ? "codex"
+            : normalizedTarget === "gemini-cli" || normalizedTarget === "geminicli" || normalizedTarget === "gm"
+              ? "gemini"
+              : normalizedTarget === "antigravity" || normalizedTarget === "ag"
+                ? "agy"
+                : normalizedTarget
+  ) as MarkdownSendPromptTargetId
+
+  return { target, instance, flag }
 }
 
 // 默认内置命令（中文兜底与单测兼容）。
@@ -277,3 +709,14 @@ export const getMarkdownSlashCommands = (
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),
   )
 }
+
+/**
+ * 移除文本中包含的所有 Markdown 斜杠命令行（例如 /sendPrompt agent、/gitWorktree dev、/summaryTitle 等），
+ * 保留该行的换行位置（置空该行文本），避免命令清除后破坏段落或标题的换行结构。
+ */
+export const stripMarkdownSlashCommands = (content: string): string =>
+  content
+    .split("\n")
+    .map((line) => (/^\s*\/[a-zA-Z0-9_-]+(?:\s+.*)?$/.test(line) ? "" : line))
+    .join("\n")
+

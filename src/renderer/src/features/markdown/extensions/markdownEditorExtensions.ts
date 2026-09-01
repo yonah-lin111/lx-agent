@@ -32,6 +32,7 @@ import {
   MarkdownActionFoldButton,
   TemplateStatusButton,
 } from "@/features/markdown/extensions/markdownActionWidgets"
+import { stripMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_FILE_MENTION_PATTERN,
@@ -1095,7 +1096,9 @@ const buildMarkdownMarkerDecorations = (
         widget: new CodeBlockActionWidget(
           stripEmptyTemplateItems(
             stripMarkdownTemplateComments(
-              stripMarkdownSuppleBlocks(currentTemplateTextLines.join("\n")),
+              stripMarkdownSlashCommands(
+                stripMarkdownSuppleBlocks(currentTemplateTextLines.join("\n")),
+              ),
             ),
           ),
           currentTemplateFolded,

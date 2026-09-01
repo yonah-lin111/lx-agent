@@ -153,6 +153,14 @@ export const AgentPage = ({
     })
   }, [])
 
+  // 注册当前 Tab 的输入框设置回调，支持从外部（如 Markdown /sendPrompt）填充 Prompt
+  useEffect(() => {
+    if (tabId) {
+      return agentTabStore.registerInputSetter(tabId, setInputText)
+    }
+    return undefined
+  }, [tabId, setInputText])
+
   const chatSessions = useSyncExternalStore(
     sessionListStore.subscribe,
     sessionListStore.getSessions,
