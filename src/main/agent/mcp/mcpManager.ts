@@ -166,9 +166,22 @@ class McpManager {
     this.emitStatusChange()
   }
 
-  // 全部 server 的连接状态快照（供渲染层展示）。
+  // 全部 server 的连接状态快照（供渲染层与设置页面展示）。
   getStatus(): McpServerStatusItem[] {
-    return [...this.states.values()].map(({ server, status }) => ({ name: server, status }))
+    return [...this.states.values()].map(({ server, status, tools, error }) => ({
+      name: server,
+      status,
+      toolsCount: tools?.length || 0,
+      tools: tools?.map((t) => t.name) || [],
+      error,
+    }))
+  }
+
+  // 重新加载配置并重连所有 MCP 服务
+  async reloadAndReconnect(): Promise<void> {
+    await this.disconnectAll()
+    this.connectPromise = undefined
+    await this.connectAll()
   }
 
   // 读取 agent.mcp 配置（disabled / 非法条目跳过）。

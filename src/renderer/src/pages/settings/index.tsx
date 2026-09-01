@@ -8,6 +8,8 @@ import {
   CliSettings,
   CustomCommandSettings,
   GeneralSettings,
+  LspSettings,
+  McpSettings,
   ModelProviderSettings,
   ModelSettings,
   notifySettingsChanged,
@@ -24,12 +26,13 @@ import { type TranslationKey, useTranslation } from "@/i18n"
 const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   general: "settings.generalDesc",
   cli: "settings.cliDesc",
+  lsp: "settings.lspDesc",
+  mcp: "settings.mcpDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
   permissions: "settings.permissionsDesc",
   "custom-commands": "settings.customCommandsDesc",
 }
-
 
 /**
  * 渲染设置页面。
@@ -93,6 +96,8 @@ export const SettingsPage = (): React.JSX.Element => {
     settingsDirtyStore.resetAllSections()
     settingsDirtyStore.setSectionDirty("custom-commands", false)
     settingsDirtyStore.setSectionDirty("cli", false)
+    settingsDirtyStore.setSectionDirty("lsp", false)
+    settingsDirtyStore.setSectionDirty("mcp", false)
     setResetKey((k) => k + 1)
     setError("")
     toast.success(t("settings.resetSuccess"))
@@ -104,6 +109,12 @@ export const SettingsPage = (): React.JSX.Element => {
     }
     if (activeSection === "cli") {
       return Boolean(dirtyMap["cli"])
+    }
+    if (activeSection === "lsp") {
+      return Boolean(dirtyMap["lsp"])
+    }
+    if (activeSection === "mcp") {
+      return Boolean(dirtyMap["mcp"])
     }
     return isModelsOrPermsDirty
   }, [activeSection, dirtyMap, isModelsOrPermsDirty])
@@ -129,6 +140,18 @@ export const SettingsPage = (): React.JSX.Element => {
         return
       }
 
+      if (activeSection === "lsp") {
+        await settingsDirtyStore.saveSection("lsp")
+        toast.success(t("settings.saveSuccess"))
+        return
+      }
+
+      if (activeSection === "mcp") {
+        await settingsDirtyStore.saveSection("mcp")
+        toast.success(t("settings.saveSuccess"))
+        return
+      }
+
       if (!settings || !permissionSettings) return
       const saved = await saveSettings(settings)
       const savedPermission = await settingsApi.savePermissionSettings(permissionSettings)
@@ -144,7 +167,6 @@ export const SettingsPage = (): React.JSX.Element => {
       toast.error(errorMessage)
     }
   }
-
 
   const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
   const currentDescription = descKey ? t(descKey) : ""
@@ -216,6 +238,8 @@ export const SettingsPage = (): React.JSX.Element => {
           ) : null}
           {activeSection === "general" ? <GeneralSettings /> : null}
           {activeSection === "cli" ? <CliSettings /> : null}
+          {activeSection === "lsp" ? <LspSettings /> : null}
+          {activeSection === "mcp" ? <McpSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}

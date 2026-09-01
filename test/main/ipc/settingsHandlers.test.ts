@@ -7,6 +7,26 @@ vi.mock("electron", () => ({ ipcMain: { handle } }))
 vi.mock("@/services/settingsService", () => ({
   getModelProviderSettings: vi.fn(),
   saveModelProviderSettings: vi.fn(),
+  getPermissionSettings: vi.fn(),
+  savePermissionSettings: vi.fn(),
+  getUiSettings: vi.fn(),
+  saveUiSettings: vi.fn(),
+  getCliSettings: vi.fn(),
+  saveCliSettings: vi.fn(),
+  getLspSettings: vi.fn(() => ({ languages: {} })),
+  saveLspSettings: vi.fn(),
+  getMcpSettings: vi.fn(() => ({ servers: {} })),
+  saveMcpSettings: vi.fn(),
+}))
+vi.mock("@/services/modelFetchService", () => ({
+  fetchProviderModels: vi.fn(),
+}))
+vi.mock("@/services/cliToolService", () => ({
+  getCliVersions: vi.fn(),
+  runCliLifecycleAction: vi.fn(),
+}))
+vi.mock("@/agent/stream/modelFactory", () => ({
+  invalidateModelCache: vi.fn(),
 }))
 
 describe("settings IPC handlers", () => {

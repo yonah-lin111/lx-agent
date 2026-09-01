@@ -10,9 +10,9 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  Terminal,
   XCircle,
 } from "lucide-react"
+
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -21,11 +21,10 @@ import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
-import { CliIcon } from "./CliIcon"
 import { settingsApi } from "../api/settingsApi"
 import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
 import { notifySettingsChanged } from "../settingsChangeNotifier"
-
+import { CliIcon } from "./CliIcon"
 
 export const CliSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -37,7 +36,9 @@ export const CliSettings = (): React.JSX.Element => {
   const [cliSettings, setCliSettings] = useState<CliSettingsType>({ enabled: [], customPaths: {} })
   const [initialSettings, setInitialSettings] = useState<CliSettingsType | null>(null)
   const [versions, setVersions] = useState<CliVersionInfo[]>([])
-  const [operatingMap, setOperatingMap] = useState<Record<string, "install" | "update" | undefined>>({})
+  const [operatingMap, setOperatingMap] = useState<
+    Record<string, "install" | "update" | undefined>
+  >({})
   const [showCustomPathMap, setShowCustomPathMap] = useState<Record<string, boolean>>({})
 
   // 加载配置与版本列表
@@ -166,7 +167,6 @@ export const CliSettings = (): React.JSX.Element => {
     }
     const cmd = defaultCommands[cliId] || `npm i -g ${cliId}@latest`
 
-
     try {
       await navigator.clipboard.writeText(cmd)
       toast.success(t("settings.cliCopyInstallCommandSuccess"))
@@ -254,7 +254,9 @@ export const CliSettings = (): React.JSX.Element => {
                     <div className="settings-cli-icon flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] bg-white/5 text-white/70">
                       <CliIcon id={tool.id} className="h-3.5 w-3.5" />
                     </div>
-                    <span className="truncate text-sm font-medium text-white">{tool.displayName}</span>
+                    <span className="truncate text-sm font-medium text-white">
+                      {tool.displayName}
+                    </span>
 
                     <code className="settings-cli-command shrink-0 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-white/40">
                       {displayCommand}
@@ -275,16 +277,28 @@ export const CliSettings = (): React.JSX.Element => {
                   {/* 右侧：状态徽标 + 启用开关 */}
                   <div className="flex shrink-0 items-center gap-2">
                     {tool.installedButBroken ? (
-                      <LxTag color="amber" size="small" prefix={<AlertTriangle className="h-2.5 w-2.5" />}>
+                      <LxTag
+                        color="amber"
+                        size="small"
+                        prefix={<AlertTriangle className="h-2.5 w-2.5" />}
+                      >
                         {t("settings.cliBroken")}
                       </LxTag>
                     ) : tool.installed ? (
                       tool.hasUpdate ? (
-                        <LxTag color="purple" size="small" prefix={<ArrowUpCircle className="h-2.5 w-2.5" />}>
+                        <LxTag
+                          color="purple"
+                          size="small"
+                          prefix={<ArrowUpCircle className="h-2.5 w-2.5" />}
+                        >
                           {t("settings.cliHasUpdate")}: {tool.version} → {tool.latestVersion}
                         </LxTag>
                       ) : (
-                        <LxTag color="emerald" size="small" prefix={<CheckCircle2 className="h-2.5 w-2.5" />}>
+                        <LxTag
+                          color="emerald"
+                          size="small"
+                          prefix={<CheckCircle2 className="h-2.5 w-2.5" />}
+                        >
                           {t("settings.cliInstalled")} (v{tool.version})
                         </LxTag>
                       )
@@ -352,7 +366,11 @@ export const CliSettings = (): React.JSX.Element => {
                         ) : (
                           <ArrowUpCircle className="h-2.5 w-2.5" />
                         )}
-                        <span>{operating === "update" ? t("settings.cliUpdating") : t("settings.cliUpdate")}</span>
+                        <span>
+                          {operating === "update"
+                            ? t("settings.cliUpdating")
+                            : t("settings.cliUpdate")}
+                        </span>
                       </button>
                     ) : !tool.installed ? (
                       <button
@@ -366,10 +384,13 @@ export const CliSettings = (): React.JSX.Element => {
                         ) : (
                           <Download className="h-2.5 w-2.5" />
                         )}
-                        <span>{operating === "install" ? t("settings.cliInstalling") : t("settings.cliInstall")}</span>
+                        <span>
+                          {operating === "install"
+                            ? t("settings.cliInstalling")
+                            : t("settings.cliInstall")}
+                        </span>
                       </button>
                     ) : null}
-
 
                     <LxTooltip content={t("settings.cliCopyInstallCommand")} placement="top">
                       <LxIconButton
@@ -402,7 +423,9 @@ export const CliSettings = (): React.JSX.Element => {
                 {/* 展开的自定义路径输入框 */}
                 {(isCustomPathOpen || currentCustomPath) && (
                   <div className="settings-cli-custom-path flex items-center gap-2 border-t border-white/5 pt-2">
-                    <span className="shrink-0 text-xs text-white/40">{t("settings.cliCustomPath")}:</span>
+                    <span className="shrink-0 text-xs text-white/40">
+                      {t("settings.cliCustomPath")}:
+                    </span>
                     <div className="flex-1">
                       <LxInput
                         size="xs"
@@ -417,7 +440,6 @@ export const CliSettings = (): React.JSX.Element => {
                 )}
               </div>
             )
-
           })
         )}
       </div>

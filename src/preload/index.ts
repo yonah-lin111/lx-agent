@@ -72,6 +72,14 @@ const api: ProjectApi &
     getCliVersions: (options) => ipcRenderer.invoke(SETTINGS_CHANNELS.getCliVersions, options),
     runCliLifecycleAction: (cliId, action) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.runCliLifecycleAction, cliId, action),
+    getLspSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getLspSettings),
+    saveLspSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveLspSettings, settings),
+    getLspStatus: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getLspStatus),
+    installLspServer: (packageName) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.installLspServer, packageName),
+    getMcpSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getMcpSettings),
+    saveMcpSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveMcpSettings, settings),
+    reconnectMcp: () => ipcRenderer.invoke(SETTINGS_CHANNELS.reconnectMcp),
   },
 
   agent: agentApi,

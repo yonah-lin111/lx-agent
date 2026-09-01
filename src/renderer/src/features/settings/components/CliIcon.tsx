@@ -10,7 +10,10 @@ export interface CliIconProps {
 /**
  * 统一渲染 AI CLI / Agent 厂商品牌 Logo。
  */
-export const CliIcon = ({ id, className = "h-3.5 w-3.5 flex-none" }: CliIconProps): React.JSX.Element => {
+export const CliIcon = ({
+  id,
+  className = "h-3.5 w-3.5 flex-none",
+}: CliIconProps): React.JSX.Element => {
   const normalized = id.toLowerCase().trim()
 
   switch (normalized) {
@@ -103,7 +106,6 @@ export const CliIcon = ({ id, className = "h-3.5 w-3.5 flex-none" }: CliIconProp
     case "lx":
     case "agent":
       return (
-
         <svg
           viewBox="0 0 24 24"
           className={className}

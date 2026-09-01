@@ -11,5 +11,11 @@ export const SETTINGS_CHANNELS = {
   saveCliSettings: "settings:cli:save",
   getCliVersions: "settings:cli:get-versions",
   runCliLifecycleAction: "settings:cli:run-lifecycle-action",
+  getLspSettings: "settings:lsp:get",
+  saveLspSettings: "settings:lsp:save",
+  getLspStatus: "settings:lsp:get-status",
+  installLspServer: "settings:lsp:install-server",
+  getMcpSettings: "settings:mcp:get",
+  saveMcpSettings: "settings:mcp:save",
+  reconnectMcp: "settings:mcp:reconnect",
 } as const
-

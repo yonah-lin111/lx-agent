@@ -94,13 +94,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
 }
 
 // 支持的 CLI 工具标识。
-export type CliId =
-  | "claude"
-  | "codex"
-  | "gemini"
-  | "opencode"
-  | "agy"
-  | "grok"
+export type CliId = "claude" | "codex" | "gemini" | "opencode" | "agy" | "grok"
 
 // CLI 设置（~/.lx/config.json 的 cli 节点）。
 export interface CliSettings {
@@ -116,8 +110,6 @@ export const ALL_CLI_IDS: readonly CliId[] = [
   "agy",
   "grok",
 ] as const
-
-
 
 export const DEFAULT_CLI_SETTINGS: CliSettings = {
   enabled: [...ALL_CLI_IDS],
@@ -141,12 +133,74 @@ export interface CliVersionInfo {
   homepage?: string
 }
 
-
 // CLI 生命周期操作结果。
 export interface CliLifecycleResult {
   success: boolean
   message?: string
   detail?: string
+}
+
+// 支持的 LSP 语言标识。
+export type LspLanguageId = "typescript" | "python" | "json" | "html" | "css"
+
+export const ALL_LSP_LANGUAGE_IDS: readonly LspLanguageId[] = [
+  "typescript",
+  "python",
+  "json",
+  "html",
+  "css",
+] as const
+
+// 单个语言 LSP 配置。
+export interface LspLanguageConfig {
+  enabled: boolean
+  customPath?: string
+  args?: string[]
+}
+
+// LSP 设置（~/.lx/config.json 的 agent.lsp 节点）。
+export interface LspSettings {
+  languages: Partial<Record<LspLanguageId, LspLanguageConfig>>
+}
+
+export const DEFAULT_LSP_SETTINGS: LspSettings = {
+  languages: {
+    typescript: { enabled: true, customPath: "", args: [] },
+    python: { enabled: true, customPath: "", args: [] },
+    json: { enabled: true, customPath: "", args: [] },
+    html: { enabled: true, customPath: "", args: [] },
+    css: { enabled: true, customPath: "", args: [] },
+  },
+}
+
+// LSP 服务详细检测状态。
+export interface LspServerDetailInfo {
+  id: LspLanguageId
+  name: string
+  packageName: string
+  defaultBin: string
+  installed: boolean
+  detectedPath: string | null
+  customPath?: string
+  enabled: boolean
+}
+
+// MCP server 配置（~/.lx/config.json 的 agent.mcp 节点）。
+export interface McpServerConfig {
+  command: string[]
+  cwd?: string
+  environment?: Record<string, string>
+  disabled?: boolean
+  timeout?: number
+}
+
+// MCP 设置（~/.lx/config.json 的 agent.mcp 节点）。
+export interface McpSettings {
+  servers: Record<string, McpServerConfig>
+}
+
+export const DEFAULT_MCP_SETTINGS: McpSettings = {
+  servers: {},
 }
 
 // 渲染进程可调用的设置 IPC 接口。
@@ -166,6 +220,12 @@ export interface SettingsApi {
       cliId: CliId,
       action: "install" | "update",
     ) => Promise<CliLifecycleResult>
+    getLspSettings: () => Promise<LspSettings>
+    saveLspSettings: (settings: LspSettings) => Promise<LspSettings>
+    getLspStatus: () => Promise<LspServerDetailInfo[]>
+    installLspServer: (packageName: string) => Promise<boolean>
+    getMcpSettings: () => Promise<McpSettings>
+    saveMcpSettings: (settings: McpSettings) => Promise<McpSettings>
+    reconnectMcp: () => Promise<void>
   }
 }
-

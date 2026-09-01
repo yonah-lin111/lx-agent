@@ -37,17 +37,17 @@ class FakeClient {
 }
 
 interface MakeManagerOptions {
-  // 从首个 client 起连续多少个 client 以 ENOENT 失败（懒安装触发）。
   enoentClients?: number
   shouldFail?: boolean
   installer?: PackageInstaller
+  settings?: () => any
 }
 
 const makeManager = (
   created: FakeClient[] = [],
   options: MakeManagerOptions = {},
 ): { manager: LspManager; installs: string[] } => {
-  const { enoentClients = 0, shouldFail = false, installer } = options
+  const { enoentClients = 0, shouldFail = false, installer, settings } = options
   const installs: string[] = []
   let enoentLeft = enoentClients
   const manager = new LspManager(
@@ -66,6 +66,7 @@ const makeManager = (
         installs.push(packageName)
         return true
       }),
+    settings ?? (() => ({ languages: {} })),
   )
   return { manager, installs }
 }
@@ -147,7 +148,7 @@ describe("LspManager", () => {
     if ("error" in result) {
       expect(result.error).toContain("init failed")
     }
-    // 非命令缺失（普通启动失败）不触发懒安装。
+    // 非命令缺失（普通启动失败）不触发安装。
     expect(installs).toEqual([])
     expect(created[0]?.shutdownCalls).toBe(1)
     // 失败不缓存：再次调用重新 spawn。
@@ -155,47 +156,50 @@ describe("LspManager", () => {
     expect(created).toHaveLength(2)
   })
 
-  it("命令缺失（ENOENT）时懒安装后重建 client 成功", async () => {
+  it("命令缺失（ENOENT）时直接返回错误，不自动触发 npm 安装", async () => {
     const created: FakeClient[] = []
     const { manager, installs } = makeManager(created, { enoentClients: 1 })
     const result = await manager.getClient("s1", "/tmp/lx-session/a.ts", "/tmp/lx-session")
-    expect("client" in result).toBe(true)
-    expect(installs).toEqual(["typescript-language-server"])
-    // 首 client ENOENT 失败（关闭）后重建成功。
+    expect("error" in result).toBe(true)
+    // 严禁自动执行 npm install
+    expect(installs).toEqual([])
     expect(created[0]?.failWithEnOent).toBe(true)
     expect(created[0]?.shutdownCalls).toBe(1)
-    expect(created[1]?.initializeCalls).toBe(1)
-    expect(created).toHaveLength(2)
   })
 
-  it("懒安装失败回退手动安装提示", async () => {
-    let installCalls = 0
-    const { manager } = makeManager([], {
-      enoentClients: 1,
-      installer: async () => {
-        installCalls += 1
-        return false
-      },
+  it("设置中禁用语言时 getClient 直接返回禁用错误", async () => {
+    const created: FakeClient[] = []
+    const { manager } = makeManager(created, {
+      settings: () => ({
+        languages: {
+          typescript: { enabled: false },
+        },
+      }),
     })
     const result = await manager.getClient("s1", "/tmp/lx-session/a.ts", "/tmp/lx-session")
     expect("error" in result).toBe(true)
-    expect(installCalls).toBe(1)
     if ("error" in result) {
-      expect(result.error).toContain("自动安装失败")
-      expect(result.error).toContain("npm install -g typescript-language-server")
+      expect(result.error).toContain("已在设置中禁用")
     }
+    expect(created).toHaveLength(0)
   })
 
-  it("并行缺失并发去重安装（同一包只装一次）", async () => {
+  it("支持使用自定义路径与参数启动", async () => {
     const created: FakeClient[] = []
-    const { manager, installs } = makeManager(created, { enoentClients: 2 })
-    const [first, second] = await Promise.all([
-      manager.getClient("s1", "/tmp/lx-session/a.ts", "/tmp/lx-session"),
-      manager.getClient("s1", "/tmp/lx-session/b.ts", "/tmp/lx-session"),
-    ])
-    expect("client" in first && "client" in second).toBe(true)
-    expect(installs).toEqual(["typescript-language-server"])
-    // 两个 ENOENT 失败 client + 各自重建成功 client。
-    expect(created).toHaveLength(4)
+    const { manager } = makeManager(created, {
+      settings: () => ({
+        languages: {
+          typescript: {
+            enabled: true,
+            customPath: "/custom/bin/ts-lsp",
+            args: ["--custom-arg"],
+          },
+        },
+      }),
+    })
+    const result = await manager.getClient("s1", "/tmp/lx-session/a.ts", "/tmp/lx-session")
+    expect("client" in result).toBe(true)
+    expect(created[0]?.spec.command).toBe("/custom/bin/ts-lsp")
+    expect(created[0]?.spec.args).toEqual(["--custom-arg"])
   })
 })

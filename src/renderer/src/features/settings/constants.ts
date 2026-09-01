@@ -1,7 +1,9 @@
 import {
   Bot,
   Code,
+  Code2,
   type LucideIcon,
+  Plug,
   Server,
   Settings as SettingsIcon,
   Shield,
@@ -17,6 +19,8 @@ export interface SettingsSection {
     | "settings.permissions"
     | "settings.customCommands"
     | "settings.cli"
+    | "settings.lsp"
+    | "settings.mcp"
   icon: LucideIcon
 }
 
@@ -24,9 +28,10 @@ export interface SettingsSection {
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "general", labelKey: "settings.general", icon: SettingsIcon },
   { id: "cli", labelKey: "settings.cli", icon: Terminal },
+  { id: "lsp", labelKey: "settings.lsp", icon: Code2 },
+  { id: "mcp", labelKey: "settings.mcp", icon: Plug },
   { id: "models", labelKey: "settings.models", icon: Bot },
   { id: "providers", labelKey: "settings.providers", icon: Server },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
   { id: "custom-commands", labelKey: "settings.customCommands", icon: Code },
 ] as const
-

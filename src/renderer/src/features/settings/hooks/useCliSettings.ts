@@ -28,7 +28,6 @@ if (typeof window !== "undefined" && window.api?.settings) {
   void loadCliSettings()
 }
 
-
 // 订阅 CLI 配置变更
 subscribeSettingsChanged("cli", () => {
   void loadCliSettings()

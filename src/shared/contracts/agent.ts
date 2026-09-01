@@ -689,10 +689,13 @@ export interface AgentCapabilitySnapshot {
   skills: string[]
 }
 
-// MCP server 连接状态（全局状态 icon 展示）。
+// MCP server 连接状态（全局状态与设置页面展示）。
 export interface McpServerStatusItem {
   name: string
   status: "connected" | "disabled" | "failed"
+  toolsCount?: number
+  tools?: string[]
+  error?: string
 }
 
 // LSP server 包安装状态（状态栏指示；按 npm 包粒度）。

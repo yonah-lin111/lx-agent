@@ -1,9 +1,8 @@
 import { ArrowDownToLine, Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
-import { LspStatusButton } from "@/components/layout/LspStatusButton"
-import { McpStatusButton } from "@/components/layout/McpStatusButton"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+
 import { LxAgentInputToast, useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
@@ -363,9 +362,8 @@ export const AgentInput = ({
               options={modelOptions}
               disabled={!hasModelOptions}
             />
-            <LspStatusButton />
-            <McpStatusButton />
           </div>
+
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5 mr-0.5">
               <LxIconButton

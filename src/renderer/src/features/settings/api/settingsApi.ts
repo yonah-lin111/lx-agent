@@ -6,6 +6,9 @@ import type {
   CliVersionInfo,
   FetchedProviderModel,
   FetchModelsInput,
+  LspServerDetailInfo,
+  LspSettings,
+  McpSettings,
   ModelProviderSettings,
   UiSettings,
 } from "@shared/settings"
@@ -33,5 +36,14 @@ export const settingsApi = {
     cliId: CliId,
     action: "install" | "update",
   ): Promise<CliLifecycleResult> => window.api.settings.runCliLifecycleAction(cliId, action),
+  getLspSettings: (): Promise<LspSettings> => window.api.settings.getLspSettings(),
+  saveLspSettings: (settings: LspSettings): Promise<LspSettings> =>
+    window.api.settings.saveLspSettings(settings),
+  getLspStatus: (): Promise<LspServerDetailInfo[]> => window.api.settings.getLspStatus(),
+  installLspServer: (packageName: string): Promise<boolean> =>
+    window.api.settings.installLspServer(packageName),
+  getMcpSettings: (): Promise<McpSettings> => window.api.settings.getMcpSettings(),
+  saveMcpSettings: (settings: McpSettings): Promise<McpSettings> =>
+    window.api.settings.saveMcpSettings(settings),
+  reconnectMcp: (): Promise<void> => window.api.settings.reconnectMcp(),
 }
-

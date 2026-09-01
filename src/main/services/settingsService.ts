@@ -6,6 +6,11 @@ import type {
   CliSettings,
   CompactionSettings,
   Locale,
+  LspLanguageConfig,
+  LspLanguageId,
+  LspSettings,
+  McpServerConfig,
+  McpSettings,
   ModelProvider,
   ModelProviderModel,
   ModelProviderSettings,
@@ -15,8 +20,11 @@ import type {
 } from "@shared/settings"
 import {
   ALL_CLI_IDS,
+  ALL_LSP_LANGUAGE_IDS,
   DEFAULT_CLI_SETTINGS,
   DEFAULT_COMPACTION_SETTINGS,
+  DEFAULT_LSP_SETTINGS,
+  DEFAULT_MCP_SETTINGS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DEFAULT_UI_SETTINGS,
 } from "@shared/settings"
@@ -559,3 +567,136 @@ export const saveCliSettings = (input: CliSettings): CliSettings => {
   return settings
 }
 
+/**
+ * 规范化 LSP 配置。
+ */
+const normalizeLspSettings = (raw: unknown): LspSettings => {
+  if (!isRecord(raw)) return DEFAULT_LSP_SETTINGS
+
+  const rawLanguages = isRecord(raw.languages) ? raw.languages : raw
+  const languages: Partial<Record<LspLanguageId, LspLanguageConfig>> = {}
+
+  for (const id of ALL_LSP_LANGUAGE_IDS) {
+    const item = rawLanguages[id]
+    if (isRecord(item)) {
+      const enabled = typeof item.enabled === "boolean" ? item.enabled : true
+      const customPath = typeof item.customPath === "string" ? item.customPath.trim() : ""
+      const args = Array.isArray(item.args)
+        ? item.args.filter((arg): arg is string => typeof arg === "string")
+        : []
+      languages[id] = { enabled, customPath, args }
+    } else {
+      languages[id] = { ...DEFAULT_LSP_SETTINGS.languages[id]! }
+    }
+  }
+
+  return { languages }
+}
+
+/**
+ * 读取 LSP 设置。
+ */
+export const getLspSettings = (): LspSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawAgent = isRecord(rawConfig.agent) ? rawConfig.agent : {}
+  return normalizeLspSettings(rawAgent.lsp)
+}
+
+/**
+ * 保存 LSP 设置。
+ */
+export const saveLspSettings = (input: LspSettings): LspSettings => {
+  const settings = normalizeLspSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawAgentObj = isRecord(rawConfig.agent) ? { ...rawConfig.agent } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    agent: {
+      ...rawAgentObj,
+      lsp: settings,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
+}
+
+/**
+ * 规范化 MCP 配置。
+ */
+const normalizeMcpSettings = (raw: unknown): McpSettings => {
+  if (!isRecord(raw)) return DEFAULT_MCP_SETTINGS
+
+  const rawServers = isRecord(raw.servers) ? raw.servers : raw
+  const servers: Record<string, McpServerConfig> = {}
+
+  for (const [name, val] of Object.entries(rawServers)) {
+    if (!isRecord(val)) continue
+    const serverName = name.trim()
+    if (!serverName) continue
+
+    const command = Array.isArray(val.command)
+      ? val.command.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+      : []
+    if (command.length === 0) continue
+
+    const environment: Record<string, string> = {}
+    if (isRecord(val.environment)) {
+      for (const [envK, envV] of Object.entries(val.environment)) {
+        if (typeof envK === "string" && envK.trim() && typeof envV === "string") {
+          environment[envK.trim()] = envV
+        }
+      }
+    }
+
+    servers[serverName] = {
+      command,
+      ...(typeof val.cwd === "string" && val.cwd.trim() ? { cwd: val.cwd.trim() } : {}),
+      ...(Object.keys(environment).length > 0 ? { environment } : {}),
+      ...(typeof val.disabled === "boolean" ? { disabled: val.disabled } : {}),
+      ...(typeof val.timeout === "number" && val.timeout > 0 ? { timeout: val.timeout } : {}),
+    }
+  }
+
+  return { servers }
+}
+
+/**
+ * 读取 MCP 设置。
+ */
+export const getMcpSettings = (): McpSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawAgent = isRecord(rawConfig.agent) ? rawConfig.agent : {}
+  return normalizeMcpSettings(rawAgent.mcp)
+}
+
+/**
+ * 保存 MCP 设置。
+ */
+export const saveMcpSettings = (input: McpSettings): McpSettings => {
+  const settings = normalizeMcpSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawAgentObj = isRecord(rawConfig.agent) ? { ...rawConfig.agent } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    agent: {
+      ...rawAgentObj,
+      mcp: settings.servers,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
+}
