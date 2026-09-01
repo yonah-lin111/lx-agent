@@ -584,7 +584,7 @@ export const zh: TranslationDictionary = {
     columnsAndRows: "{{columns}} 列 {{rows}} 行",
     shortcutSave: "保存当前内容",
     shortcutTab: "增加缩进",
-    shortcutShiftTab: "减少缩进",
+    shortcutShiftTab: "减少缩进 / 切换模板块任务状态",
     shortcutDeleteLine: "删除当前行",
     shortcutBold: "粗体",
     shortcutItalic: "斜体",

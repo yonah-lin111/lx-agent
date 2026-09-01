@@ -1327,8 +1327,28 @@ export const LxMarkdownEditor = ({
             },
           },
           { key: "Tab", run: indentMore },
-          { key: "Shift-Tab", run: indentLess },
+          {
+            key: "Shift-Tab",
+            run: (view) => {
+              const docText = view.state.doc.toString()
+              const cursor = view.state.selection.main.head
+              const endLineNumber = getMarkdownTemplateBlockEndLine(docText, cursor)
+              if (endLineNumber !== null) {
+                const docLine = view.state.doc.line(endLineNumber)
+                const nextLineText = cycleMarkdownTemplateStatus(docLine.text)
+                if (nextLineText !== null) {
+                  view.dispatch({
+                    changes: { from: docLine.from, to: docLine.to, insert: nextLineText },
+                  })
+                  return true
+                }
+              }
+              return indentLess(view)
+            },
+          },
           { key: "Mod-d", run: deleteLine },
+          { key: "Mod-Alt-k", mac: "Cmd-Alt-k", run: () => (insertCodeBlock(), true) },
+          { key: "Mod-Alt-K", mac: "Cmd-Alt-K", run: () => (insertCodeBlock(), true) },
           {
             key: "Mod-/",
             run: (view) => {
@@ -1360,17 +1380,26 @@ export const LxMarkdownEditor = ({
           { key: "Mod-6", run: () => (addHeading(6), true) },
           { key: "Mod-o", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-l", run: () => (wrapSelection("[", "](https://)", "link text"), true) },
-          { key: "Mod-Shift-s", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
-          { key: "Mod-Shift-u", run: () => (prefixLines("- ", "Item"), true) },
-          { key: "Mod-Shift-c", run: () => (insertCodeBlock(), true) },
-          { key: "Mod-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
-          { key: "Mod-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
-          { key: "Mod-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
+          { key: "Mod-Shift-s", mac: "Cmd-Shift-s", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
+          { key: "Mod-Shift-S", mac: "Cmd-Shift-S", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
+          { key: "Mod-Shift-u", mac: "Cmd-Shift-u", run: () => (prefixLines("- ", "Item"), true) },
+          { key: "Mod-Shift-U", mac: "Cmd-Shift-U", run: () => (prefixLines("- ", "Item"), true) },
+          { key: "Mod-Shift-8", mac: "Cmd-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
+          { key: "Mod-Shift-9", mac: "Cmd-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
+          { key: "Mod-Alt-c", mac: "Cmd-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
+          { key: "Mod-Alt-C", mac: "Cmd-Alt-C", run: () => (wrapSelection("`", "`", "code"), true) },
           {
             key: "Mod-Shift-Alt-t",
+            mac: "Cmd-Shift-Alt-t",
             run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
           },
-          { key: "Mod-Shift-f", run: () => (formatDocument(), true) },
+          {
+            key: "Mod-Shift-Alt-T",
+            mac: "Cmd-Shift-Alt-T",
+            run: () => (insertText(createMarkdownTable({ columns: 2, rows: 2 })), true),
+          },
+          { key: "Mod-Shift-f", mac: "Cmd-Shift-f", run: () => (formatDocument(), true) },
+          { key: "Mod-Shift-F", mac: "Cmd-Shift-F", run: () => (formatDocument(), true) },
           ...historyKeymap,
           ...standardKeymap,
         ]),

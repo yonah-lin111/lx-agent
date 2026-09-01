@@ -597,7 +597,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     columnsAndRows: "{{columns}} columns {{rows}} rows",
     shortcutSave: "Save current content",
     shortcutTab: "Increase indent",
-    shortcutShiftTab: "Decrease indent",
+    shortcutShiftTab: "Decrease indent / Cycle template block status",
     shortcutDeleteLine: "Delete current line",
     shortcutBold: "Bold",
     shortcutItalic: "Italic",

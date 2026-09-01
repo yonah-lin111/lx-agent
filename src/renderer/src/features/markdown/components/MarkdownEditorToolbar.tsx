@@ -229,7 +229,7 @@ const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
   { keys: "Cmd / Ctrl + L", descKey: "markdown.shortcutLink" },
   { keys: "Cmd / Ctrl + Shift + S", descKey: "markdown.shortcutStrikethrough" },
   { keys: "Cmd / Ctrl + Shift + U", descKey: "markdown.shortcutUnorderedList" },
-  { keys: "Cmd / Ctrl + Shift + C", descKey: "markdown.shortcutCodeBlock" },
+  { keys: "Cmd / Ctrl + Alt + K", descKey: "markdown.shortcutCodeBlock" },
   { keys: "Cmd / Ctrl + Shift + 8", descKey: "markdown.shortcutOrderedList" },
   { keys: "Cmd / Ctrl + Shift + 9", descKey: "markdown.shortcutUnorderedList" },
   { keys: "Cmd / Ctrl + Z", descKey: "markdown.shortcutUndo" },

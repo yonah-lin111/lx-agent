@@ -134,7 +134,7 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
 
 // 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate 为状态/子块保留词。
 const MARKDOWN_TEMPLATE_START_RE =
-  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b)[A-Za-z]\w*(?:\s+「title:[^」\n]*」)?\s*$/
+  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b)/
 
 // 模板块 id：uuid 去连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
 const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
@@ -158,7 +158,7 @@ const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
 
 // supple 补充块开始行：+++ suppleTemplate 或 +++ supple（向下兼容）。
-export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s*$/
+export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)/
 
 // supple 补充块结束行：+++ 独占一行。
 export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s*$/
@@ -220,61 +220,62 @@ export const toggleMarkdownTemplateCommentLines = (text: string): string => {
 }
 
 /**
+ * 判断一行是否为模板块开始标记（&&& <command> [「title:...」]）。
+ */
+export const isMarkdownTemplateStartLine = (line: string): boolean =>
+  MARKDOWN_TEMPLATE_START_RE.test(line)
+
+/**
+ * 判断一行是否为模板块结束标记（&&& [done|in_progress] [{id:...}] [{wt:...}]）。
+ */
+export const isMarkdownTemplateEndLine = (line: string): boolean =>
+  MARKDOWN_TEMPLATE_END_RE.test(line)
+
+/**
+ * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate 或 +++ supple）。
+ */
+export const isMarkdownSuppleStartLine = (line: string): boolean =>
+  MARKDOWN_SUPPLE_START_RE.test(line)
+
+/**
+ * 判断一行是否为 supple 补充块结束标记（+++ 独占一行）。
+ */
+export const isMarkdownSuppleEndLine = (line: string): boolean =>
+  MARKDOWN_SUPPLE_END_RE.test(line)
+
+/**
  * 提取文本中 position 所在模板块的正文（不含 &&& 标记行）；不在模板块内返回 null。
+ * 光标位于开始行、正文或结束行自身均视为处于该块内。
  */
 export const getMarkdownTemplateBlockContent = (text: string, position: number): string | null => {
   const lines = text.split("\n")
   const boundedPosition = Math.min(Math.max(position, 0), text.length)
-  let inBlock = false
-  let bodyStart = 0
-  let offset = 0
+  let activeStartOffset: number | null = null
+  let activeBodyStart: number | null = null
+  let currentOffset = 0
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index]
-    const lineStart = offset
-    const lineEnd = offset + line.length + 1
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const lineStart = currentOffset
+    const lineEnd = lineStart + line.length + 1
 
-    if (inBlock) {
-      if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
-        if (boundedPosition < lineEnd) {
-          return text.slice(bodyStart, lineStart)
+    if (isMarkdownTemplateStartLine(line)) {
+      activeStartOffset = lineStart
+      activeBodyStart = lineEnd
+    } else if (isMarkdownTemplateEndLine(line)) {
+      if (activeStartOffset !== null && activeBodyStart !== null) {
+        if (boundedPosition >= activeStartOffset && boundedPosition <= lineEnd) {
+          return text.slice(activeBodyStart, lineStart)
         }
-        inBlock = false
       }
-    } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
-      inBlock = true
-      bodyStart = lineEnd
-    } else if (boundedPosition <= lineEnd) {
-      return null
+      activeStartOffset = null
+      activeBodyStart = null
     }
 
-    offset = lineEnd
+    currentOffset = lineEnd
   }
 
-  return inBlock ? text.slice(bodyStart) : null
-}
-
-/**
- * 返回 position 所在模板块开始行的行号（1-based）；光标位于开始行自身时返回该行；不在模板块内返回 null。
- */
-export const getMarkdownTemplateBlockStartLine = (
-  text: string,
-  position: number,
-): number | null => {
-  const lines = text.split("\n")
-  let offset = 0
-  let startLine: number | null = null
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const lineStart = offset
-    const lineEnd = offset + lines[index].length + 1
-    if (MARKDOWN_TEMPLATE_START_RE.test(lines[index])) startLine = index + 1
-    if (position >= lineStart && position < lineEnd) return startLine
-    if (MARKDOWN_TEMPLATE_END_RE.test(lines[index])) startLine = null
-    offset = lineEnd
-  }
-
-  return startLine
+  return null
 }
 
 /**
@@ -283,17 +284,22 @@ export const getMarkdownTemplateBlockStartLine = (
  */
 export const getMarkdownTemplateBlockEndLine = (text: string, position: number): number | null => {
   const lines = text.split("\n")
+  const boundedPosition = Math.min(Math.max(position, 0), text.length)
   let offset = 0
-  let startLine: number | null = null
+  let startOffset: number | null = null
 
   for (let index = 0; index < lines.length; index += 1) {
-    const lineEnd = offset + lines[index].length + 1
+    const lineStart = offset
+    const lineContentEnd = lineStart + lines[index].length
+    const lineEnd = lineContentEnd + 1
 
-    if (MARKDOWN_TEMPLATE_END_RE.test(lines[index])) {
-      if (startLine !== null && position < lineEnd) return index + 1
-      startLine = null
-    } else if (MARKDOWN_TEMPLATE_START_RE.test(lines[index])) {
-      startLine = index + 1
+    if (isMarkdownTemplateStartLine(lines[index])) {
+      startOffset = lineStart
+    } else if (isMarkdownTemplateEndLine(lines[index])) {
+      if (startOffset !== null && boundedPosition >= startOffset && boundedPosition <= lineEnd) {
+        return index + 1
+      }
+      startOffset = null
     }
 
     offset = lineEnd
