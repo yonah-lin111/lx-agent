@@ -206,7 +206,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       return (
         Boolean(formData.name.trim()) ||
         Boolean(formData.description.trim()) ||
-        Boolean(formData.content.trim())
+        Boolean(formData.content.trimEnd())
       )
     }
     if (!selectedCommandName) return false
@@ -216,7 +216,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     return (
       formData.name.trim() !== orig.name ||
       formData.description.trim() !== (orig.description || "") ||
-      formData.content.trim() !== (orig.content || "") ||
+      formData.content.trimEnd() !== (orig.content || "").trimEnd() ||
       (activeTab === "agentInput" && formData.argumentHint.trim() !== (orig.argumentHint || "")) ||
       (activeTab === "agentMD" && (formData.mdScope || "global") !== (orig.mdScope || "global"))
     )
@@ -225,7 +225,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   // 全局是否有任何未保存的改动（包含其他分类下的 Draft 或已修改项）
   const hasAnyCustomCommandDirty = useMemo(() => {
     const hasAnyDraft = Object.values(draftStore).some((d) =>
-      Boolean(d.name.trim() || d.description.trim() || d.content.trim()),
+      Boolean(d.name.trim() || d.description.trim() || d.content.trimEnd()),
     )
     const hasAnyModified = Object.keys(modifiedStore).length > 0
     return isDirty || hasDraft || hasAnyDraft || hasAnyModified
@@ -285,7 +285,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       oldName: isEditingDraft ? undefined : (selectedCommandName ?? undefined),
       name: trimmedName,
       description: formData.description.trim(),
-      content: formData.content.trim(),
+      content: formData.content.trimEnd(),
       argumentHint: activeTab === "agentInput" ? formData.argumentHint.trim() : undefined,
       mdScope: activeTab === "agentMD" ? formData.mdScope : undefined,
     })

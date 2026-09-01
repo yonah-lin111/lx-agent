@@ -134,6 +134,8 @@ export class CustomCommandService {
 
     const targetFile = join(targetDir, `${name.trim()}.md`)
 
+    const normalizedContent = (content || "").replace(/^\r?\n+/, "").trimEnd()
+
     // 组装 frontmatter
     const lines: string[] = ["---"]
     lines.push(`description: ${JSON.stringify(description.trim())}`)
@@ -147,7 +149,7 @@ export class CustomCommandService {
     }
     lines.push("---")
     lines.push("")
-    lines.push(content.trim())
+    lines.push(normalizedContent)
     lines.push("")
 
     writeFileSync(targetFile, lines.join("\n"), "utf8")
@@ -158,7 +160,7 @@ export class CustomCommandService {
       scope,
       filePath: targetFile,
       description: description.trim(),
-      content: content.trim(),
+      content: normalizedContent,
       argumentHint: argumentHint?.trim(),
       mdScope: type === "agentMD" ? (mdScope === "template" ? "template" : "global") : undefined,
     }
