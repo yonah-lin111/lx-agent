@@ -1,13 +1,87 @@
 import { exec } from "node:child_process"
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, join } from "node:path"
 import type {
   CreateTerminalOptions,
   CreateTerminalResult,
   TerminalExitEvent,
+  TerminalRunningCliInfo,
 } from "@shared/contracts/terminal"
 import { app } from "electron"
 import * as pty from "node-pty"
+
+/**
+ * 从可执行文件名或路径提取基础名称并规范化。
+ */
+const normalizeExecutableName = (rawName: string): string => {
+  let name = basename(rawName.trim().replace(/^['"]|['"]$/g, "")).toLowerCase()
+  for (const ext of [".exe", ".cmd", ".bat", ".ps1", ".js"]) {
+    if (name.endsWith(ext)) {
+      name = name.slice(0, -ext.length)
+      break
+    }
+  }
+  return name
+}
+
+/**
+ * 判定命令名或参数是否匹配已知的 AI Agent CLI 类型。
+ */
+const identifyCliType = (
+  rawName: string,
+  args?: string[],
+): "claude" | "opencode" | "codex" | "gemini" | "agy" | null => {
+  const norm = normalizeExecutableName(rawName)
+
+  // 1. 直接匹配进程名
+  if (norm === "claude" || norm === "claude-code" || norm === "claudecode") return "claude"
+  if (norm === "opencode" || norm === "opencode2" || norm === "open-code") return "opencode"
+  if (norm === "codex" || norm === "openai" || norm === "openai-codex") return "codex"
+  if (norm === "gemini" || norm === "gemini-cli" || norm === "geminicli") return "gemini"
+  if (norm === "agy" || norm === "antigravity" || norm === "anti-gravity" || norm === "antigravity-cli")
+    return "agy"
+
+  // 2. 如果是通用运行时（node, python, bun, sh, bash, zsh, cmd, pwsh 等），检查其参数中执行的脚本
+  const isGenericRuntime =
+    norm === "node" ||
+    norm === "bun" ||
+    norm === "python" ||
+    norm === "python3" ||
+    norm === "sh" ||
+    norm === "bash" ||
+    norm === "zsh" ||
+    norm === "cmd" ||
+    norm === "powershell" ||
+    norm === "pwsh"
+
+  if (isGenericRuntime && args && args.length > 0) {
+    for (const arg of args) {
+      if (!arg || arg.startsWith("-")) continue
+      const scriptType = identifyCliType(arg)
+      if (scriptType) return scriptType
+
+      // 匹配包含特定 npm/bin 路径的特征
+      const lowerArg = arg.toLowerCase()
+      if (lowerArg.includes("@openai/codex") || lowerArg.includes("/codex/") || lowerArg.endsWith("/codex.js")) {
+        return "codex"
+      }
+      if (lowerArg.includes("@anthropic/claude") || lowerArg.includes("/claude/") || lowerArg.endsWith("/claude.js")) {
+        return "claude"
+      }
+      if (lowerArg.includes("/opencode/") || lowerArg.endsWith("/opencode.js")) {
+        return "opencode"
+      }
+      if (lowerArg.includes("/gemini/") || lowerArg.endsWith("/gemini.js")) {
+        return "gemini"
+      }
+      if (lowerArg.includes("/antigravity/") || lowerArg.includes("/agy/") || lowerArg.endsWith("/agy.js")) {
+        return "agy"
+      }
+    }
+  }
+
+  return null
+}
 
 /**
  * 原生 PTY 终端服务：管理系统进程生命周期、输入输出与视口同步。
@@ -277,6 +351,101 @@ alias egrep='egrep --color=auto'
             .map((p) => p.trim())
             .filter(Boolean)
           resolve(pids.length > 0)
+        })
+      }
+    })
+  }
+
+  /**
+   * 探测指定终端实例前台运行的 AI CLI 代理类型（如 claude, opencode, codex, gemini, agy）。
+   */
+  async detectRunningCli(id: string): Promise<TerminalRunningCliInfo | null> {
+    const ptyProcess = this.ptyProcesses.get(id)
+    if (!ptyProcess || !ptyProcess.pid) return null
+
+    return new Promise<TerminalRunningCliInfo | null>((resolve) => {
+      if (process.platform === "win32") {
+        exec(
+          `wmic process where (ParentProcessId=${ptyProcess.pid}) get Caption,CommandLine`,
+          (err, stdout) => {
+            if (err || !stdout) {
+              resolve(null)
+              return
+            }
+            const lines = stdout
+              .trim()
+              .split("\n")
+              .map((l) => l.trim())
+              .filter((l) => l && !l.startsWith("Caption"))
+
+            for (const line of lines) {
+              const parts = line.split(/\s+/)
+              const caption = parts[0] || ""
+              const commandLine = line.slice(caption.length).trim()
+              const args = commandLine.split(/\s+/)
+              const detected = identifyCliType(caption, args)
+              if (detected) {
+                resolve({
+                  cliType: detected,
+                  processName: caption,
+                  command: commandLine,
+                })
+                return
+              }
+            }
+            resolve(null)
+          },
+        )
+      } else {
+        // macOS / Linux: 使用 ps 获取由该 PTY shell 派生的所有子孙进程 command 与 args
+        exec(`pgrep -P ${ptyProcess.pid}`, (err, stdout) => {
+          if (err || !stdout) {
+            resolve(null)
+            return
+          }
+          const pids = stdout
+            .trim()
+            .split("\n")
+            .map((p) => p.trim())
+            .filter(Boolean)
+          if (pids.length === 0) {
+            resolve(null)
+            return
+          }
+
+          // 查询子进程以及可能更深层的孙子进程 (ps -o pid,comm,command -p <pids>)
+          exec(`ps -o pid=,comm=,command= -p ${pids.join(",")}`, (psErr, psStdout) => {
+            if (psErr || !psStdout) {
+              resolve(null)
+              return
+            }
+
+            const rows = psStdout
+              .trim()
+              .split("\n")
+              .map((r) => r.trim())
+              .filter(Boolean)
+
+            for (const row of rows) {
+              // 格式: <pid> <comm> <command...>
+              const parts = row.split(/\s+/)
+              if (parts.length >= 2) {
+                const comm = parts[1]
+                const fullCommand = parts.slice(2).join(" ")
+                const args = parts.slice(2)
+                const detected = identifyCliType(comm, args) || identifyCliType(fullCommand, args)
+                if (detected) {
+                  resolve({
+                    cliType: detected,
+                    processName: comm,
+                    command: fullCommand,
+                  })
+                  return
+                }
+              }
+            }
+            resolve(null)
+          })
         })
       }
     })

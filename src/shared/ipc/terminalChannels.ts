@@ -6,6 +6,7 @@ export const TERMINAL_CHANNELS = {
   kill: "terminal:kill",
   getDesktopPath: "terminal:getDesktopPath",
   hasRunningProcess: "terminal:hasRunningProcess",
+  detectRunningCli: "terminal:detectRunningCli",
   data: (id: string): string => `terminal:data:${id}`,
   exit: (id: string): string => `terminal:exit:${id}`,
 } as const

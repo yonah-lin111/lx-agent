@@ -180,9 +180,18 @@ describe("Markdown 斜杠命令武装判定", () => {
 
   it("getMarkdownSendPromptOptions 支持根据打开的终端动态列出运行中实例（含同名编号区分）", () => {
     const tabs = [
-      { title: "opencode-dev" },
-      { title: "opencode-fix" },
-      { title: "cc-switch-main" },
+      {
+        title: "opencode-dev",
+        panes: { p1: { id: "p1", title: "opencode-dev", detectedCli: "opencode" as const } },
+      },
+      {
+        title: "opencode-fix",
+        panes: { p2: { id: "p2", title: "opencode-fix", detectedCli: "opencode" as const } },
+      },
+      {
+        title: "cc-switch-main",
+        panes: { p3: { id: "p3", title: "cc-switch-main", detectedCli: "claude" as const } },
+      },
     ]
     const options = getMarkdownSendPromptOptions("zh", tabs)
     expect(options.some((o) => o.id === "opencode:opencode-dev" && o.isRunning)).toBe(true)
@@ -192,8 +201,14 @@ describe("Markdown 斜杠命令武装判定", () => {
 
     // 打开两个完全同名的默认 opencode 终端
     const duplicateTabs = [
-      { title: "opencode" },
-      { title: "opencode" },
+      {
+        title: "opencode",
+        panes: { p1: { id: "p1", title: "opencode", detectedCli: "opencode" as const } },
+      },
+      {
+        title: "opencode",
+        panes: { p2: { id: "p2", title: "opencode", detectedCli: "opencode" as const } },
+      },
     ]
     const dupOptions = getMarkdownSendPromptOptions("zh", duplicateTabs)
     expect(dupOptions.filter((o) => o.isRunning).length).toBe(2)
@@ -205,8 +220,8 @@ describe("Markdown 斜杠命令武装判定", () => {
       {
         title: "OpenCode",
         panes: {
-          "pane-1": { id: "pane-1", title: "OpenCode" },
-          "pane-2": { id: "pane-2", title: "OpenCode" },
+          "pane-1": { id: "pane-1", title: "OpenCode", detectedCli: "opencode" as const },
+          "pane-2": { id: "pane-2", title: "OpenCode", detectedCli: "opencode" as const },
         },
       },
     ]
@@ -219,15 +234,25 @@ describe("Markdown 斜杠命令武装判定", () => {
     const mixedTabs = [
       {
         title: "修复列表触底悬停时滚动条抖动",
-        panes: { "pane-1": { id: "pane-1", title: "opencode" } },
+        panes: {
+          "pane-1": {
+            id: "pane-1",
+            title: "opencode",
+            detectedCli: "opencode" as const,
+          },
+        },
       },
       {
         title: "OpenCode",
-        panes: { "pane-2": { id: "pane-2", title: "OpenCode" } },
+        panes: {
+          "pane-2": { id: "pane-2", title: "OpenCode", detectedCli: "opencode" as const },
+        },
       },
       {
         title: "OpenCode",
-        panes: { "pane-3": { id: "pane-3", title: "OpenCode" } },
+        panes: {
+          "pane-3": { id: "pane-3", title: "OpenCode", detectedCli: "opencode" as const },
+        },
       },
     ]
     const mixedOptions = getMarkdownSendPromptOptions("zh", mixedTabs)
@@ -237,14 +262,50 @@ describe("Markdown 斜杠命令武装判定", () => {
     ).toBe(true)
     expect(mixedOptions.some((o) => o.label === "OpenCode:#1")).toBe(true)
     expect(mixedOptions.some((o) => o.label === "OpenCode:#2")).toBe(true)
+
+    // 已退出的终端（detectedCli 为 undefined，即便标题为 OpenCode 也绝不列为 running）
+    const exitedTabs = [
+      {
+        title: "OpenCode",
+        panes: {
+          "pane-exited": { id: "pane-exited", title: "OpenCode", detectedCli: undefined },
+        },
+      },
+    ]
+    const exitedOptions = getMarkdownSendPromptOptions("zh", exitedTabs)
+    expect(exitedOptions.filter((o) => o.isRunning).length).toBe(0)
+
+    // 测试通过 detectedCli 检测出的 codex、gemini、agy（即使标题为默认 New Terminal）
+    const detectedTabs = [
+      {
+        title: "New Terminal",
+        panes: {
+          "p-codex": { id: "p-codex", title: "New Terminal", detectedCli: "codex" as const },
+          "p-gemini": { id: "p-gemini", title: "New Terminal", detectedCli: "gemini" as const },
+          "p-agy": { id: "p-agy", title: "New Terminal", detectedCli: "agy" as const },
+        },
+      },
+    ]
+    const detectedOptions = getMarkdownSendPromptOptions("zh", detectedTabs)
+    expect(detectedOptions.some((o) => o.targetType === "codex" && o.isRunning)).toBe(true)
+    expect(detectedOptions.some((o) => o.targetType === "gemini" && o.isRunning)).toBe(true)
+    expect(detectedOptions.some((o) => o.targetType === "agy" && o.isRunning)).toBe(true)
+
+    // 验证静态 CLI 选项配置了多语言 description 说明
+    const staticClaude = detectedOptions.find((o) => o.id === "claude" && !o.isRunning)
+    expect(staticClaude?.description).toBe("新建并打开 Claude Code CLI")
+
+    const detectedOptionsEn = getMarkdownSendPromptOptions("en", detectedTabs)
+    const staticClaudeEn = detectedOptionsEn.find((o) => o.id === "claude" && !o.isRunning)
+    expect(staticClaudeEn?.description).toBe("Create and launch Claude Code CLI")
   })
 
   it("getMarkdownSendPromptFlagOptions & parseMarkdownSendPromptCommandLine", () => {
     const flagsZh = getMarkdownSendPromptFlagOptions("zh")
-    expect(flagsZh.some((f) => f.id === "-new")).toBe(true)
+    expect(flagsZh.some((f) => f.id === "-enter")).toBe(true)
 
     const flagsEn = getMarkdownSendPromptFlagOptions("en")
-    expect(flagsEn.some((f) => f.id === "-new")).toBe(true)
+    expect(flagsEn.some((f) => f.id === "-enter")).toBe(true)
 
     expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode")).toEqual({
       target: "opencode",
@@ -258,16 +319,16 @@ describe("Markdown 斜杠命令武装判定", () => {
       flag: null,
     })
 
-    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev -new ")).toEqual({
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev -enter ")).toEqual({
       target: "opencode",
       instance: "opencode-dev",
-      flag: "-new",
+      flag: "-enter",
     })
 
-    expect(parseMarkdownSendPromptCommandLine("/sendPrompt claude -new")).toEqual({
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt claude -enter")).toEqual({
       target: "claude",
       instance: null,
-      flag: "-new",
+      flag: "-enter",
     })
 
     expect(parseMarkdownSendPromptCommandLine("/sendPrompt LX Agent")).toEqual({
@@ -282,10 +343,10 @@ describe("Markdown 斜杠命令武装判定", () => {
       flag: null,
     })
 
-    expect(parseMarkdownSendPromptCommandLine("/sendPrompt codex:codex-task -new")).toEqual({
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt codex:codex-task -enter")).toEqual({
       target: "codex",
       instance: "codex-task",
-      flag: "-new",
+      flag: "-enter",
     })
 
     expect(parseMarkdownSendPromptCommandLine("/sendPrompt agy")).toEqual({

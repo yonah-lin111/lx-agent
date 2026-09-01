@@ -14,7 +14,7 @@ import { rightSidebarStore } from "@/lib/rightSidebarStore"
 export interface DispatchPromptOptions {
   projectPath?: string
   worktreePath?: string
-  isNew?: boolean
+  autoEnter?: boolean
   t: (key: TranslationKey, options?: Record<string, unknown>) => string
   showToast?: {
     success: (msg: string) => void
@@ -125,6 +125,7 @@ export const collectMatchingCliPanes = (
         const paneTitle = pane.title?.trim() || ""
         const effectiveTitle = paneTitle || tabTitle || "Terminal"
         if (
+          pane.detectedCli === cliTarget ||
           isTitleMatchingCli(cliTarget, paneTitle) ||
           isTitleMatchingCli(cliTarget, tabTitle)
         ) {
@@ -227,6 +228,87 @@ export const findMatchingCliPane = (
 export const escapeShellArg = (arg: string): string => `'${arg.replace(/'/g, "'\\''")}'`
 
 /**
+ * 启动新的终端 CLI 会话（不派发 Prompt 内容，仅打开并运行该 CLI）。
+ * 支持 auto（自动按空闲/水平分屏）、horizontal（向右分屏）、vertical（向下分屏）、tab（新建标签页）。
+ */
+export const launchNewCliTerminal = async (
+  cliTarget: string,
+  options: {
+    projectPath?: string
+    worktreePath?: string
+    title?: string
+    mode?: "auto" | "horizontal" | "vertical" | "tab"
+  },
+): Promise<{ tabId: string; paneId: string } | null> => {
+  // 唤起底边栏并切到终端视图（但不抢占编辑器焦点）
+  useBottomSideBarStore.getState().setExpanded(true)
+  useBottomSideBarStore.getState().setViewMode("terminal")
+
+  const targetCwd = options.worktreePath || options.projectPath || undefined
+  const terminalStore = useTerminalStore.getState()
+  const targetTitle = options.title || cliTarget
+  const mode = options.mode || "auto"
+
+  let targetTabId = terminalStore.activeTabId
+  let targetPaneId: string | null = null
+
+  if (mode === "tab" || terminalStore.tabs.length === 0) {
+    targetTabId = terminalStore.addTab({ cwd: targetCwd, title: targetTitle })
+    const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
+    targetPaneId = newTab?.activePaneId ?? null
+  } else if (mode === "horizontal" || mode === "vertical") {
+    const currentTab =
+      terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
+    targetTabId = currentTab.id
+    const splitId = terminalStore.splitPane(targetTabId, mode, targetCwd)
+    if (splitId) {
+      targetPaneId = splitId
+    } else {
+      targetTabId = terminalStore.addTab({ cwd: targetCwd, title: targetTitle })
+      const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
+      targetPaneId = newTab?.activePaneId ?? null
+    }
+  } else {
+    // mode === "auto"
+    const currentTab =
+      terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
+    targetTabId = currentTab.id
+    const currentPaneId = currentTab.activePaneId || Object.keys(currentTab.panes)[0]
+
+    const isBusy = currentPaneId
+      ? await terminalApi.hasRunningProcess(currentPaneId).catch(() => false)
+      : false
+
+    if (isBusy) {
+      const splitId = terminalStore.splitPane(targetTabId, "horizontal", targetCwd)
+      if (splitId) {
+        targetPaneId = splitId
+      } else {
+        targetTabId = terminalStore.addTab({ cwd: targetCwd, title: targetTitle })
+        const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
+        targetPaneId = newTab?.activePaneId ?? null
+      }
+    } else {
+      targetPaneId = currentPaneId
+    }
+  }
+
+  if (!targetPaneId) return null
+
+  // 发送启动命令进入交互式 CLI
+  setTimeout(() => {
+    if (targetPaneId) {
+      void terminalApi.write(targetPaneId, `${cliTarget}\r`)
+      // 启动后即刻请求刷新检测
+      setTimeout(() => {
+        void useTerminalStore.getState().refreshRunningClis()
+      }, 100)
+    }
+  }, 60)
+
+  return { tabId: targetTabId, paneId: targetPaneId }
+}
+/**
  * 派发模板块 Prompt 到指定目标（AgentInput 或终端 CLI）。
  */
 export const dispatchTemplatePrompt = async (
@@ -300,29 +382,30 @@ export const dispatchTemplatePrompt = async (
   const displayTargetName = targetNameMap[cliTarget] || cliTarget
   const toastDisplayName = instanceName ? `${displayTargetName} (${instanceName})` : displayTargetName
 
-  // 检查是否未显式要求新建，且存在已打开的对应 CLI / 实例终端
-  const matched = !options.isNew
-    ? findMatchingCliPane(cliTarget, terminalStore.tabs, instanceName)
-    : null
+  // 检查是否存在已打开的对应 CLI / 实例终端
+  const matched = findMatchingCliPane(cliTarget, terminalStore.tabs, instanceName)
 
-  // Case A: 找到已打开的 CLI / 实例终端 Pane ➔ 聚焦并使用 Bracketed Paste 回显到输入框（不自动发送回车）
+  // Case A: 找到已打开的 CLI / 实例终端 Pane ➔ 聚焦并使用 Bracketed Paste 回显到输入框
   if (matched) {
     terminalStore.setActiveTab(matched.tabId)
     terminalStore.setActivePane(matched.tabId, matched.paneId)
-    // 括号粘贴模式注入多行 Prompt（不带 \r，保留在输入框等待人工回车）
-    await terminalApi.write(matched.paneId, `\x1b[200~${cleanPrompt}\x1b[201~`)
-    options.showToast?.success(
-      options.t("markdown.promptEchoedToTerminal", { target: toastDisplayName }),
-    )
+    // 括号粘贴模式注入多行 Prompt（根据 autoEnter 决定是否自动追加回车发送）
+    const pastePayload = options.autoEnter
+      ? `\x1b[200~${cleanPrompt}\x1b[201~\r`
+      : `\x1b[200~${cleanPrompt}\x1b[201~`
+    await terminalApi.write(matched.paneId, pastePayload)
+    const successMsg = options.autoEnter
+      ? options.t("markdown.promptSentToTerminal", { target: toastDisplayName })
+      : options.t("markdown.promptEchoedToTerminal", { target: toastDisplayName })
+    options.showToast?.success(successMsg)
     return true
   }
 
-  // Case B: 显式要求新建 (-new) 或未找到已运行的同名 CLI ➔ 准备终端执行
+  // Case B: 未找到已运行的同名 CLI ➔ 准备终端执行
   let targetTabId = terminalStore.activeTabId
   let targetPaneId: string | null = null
 
-  if (options.isNew || terminalStore.tabs.length === 0) {
-    // 显式新建或无终端：直接新建 Tab
+  if (terminalStore.tabs.length === 0) {
     targetTabId = terminalStore.addTab({ cwd: targetCwd, title: toastDisplayName })
     const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
     targetPaneId = newTab?.activePaneId ?? null
@@ -353,35 +436,29 @@ export const dispatchTemplatePrompt = async (
 
   if (!targetPaneId) return false
 
-  // 拼装 Shell 启动命令
-  const escaped = escapeShellArg(cleanPrompt)
-  let launchCmd = ""
-  switch (cliTarget) {
-    case "claude":
-      launchCmd = `claude ${escaped}`
-      break
-    case "opencode":
-      launchCmd = `opencode run ${escaped}`
-      break
-    case "codex":
-      launchCmd = `codex ${escaped}`
-      break
-    case "gemini":
-      launchCmd = `gemini ${escaped}`
-      break
-    case "agy":
-      launchCmd = `agy ${escaped}`
-      break
-  }
+  // 纯交互式启动 CLI（如 opencode、claude、codex 等），进入后以 Bracketed Paste 填充 Prompt 到输入框
+  const launchCmd = cliTarget
 
+  // 1. 发送交互式 CLI 启动命令
   setTimeout(() => {
     if (targetPaneId) {
       void terminalApi.write(targetPaneId, `${launchCmd}\r`)
     }
   }, 60)
 
-  options.showToast?.success(
-    options.t("markdown.promptSentToTerminal", { target: toastDisplayName }),
-  )
+  // 2. 等待 CLI 启动完成后，将多行内容安全粘贴到其输入框（根据 autoEnter 决定是否回车执行）
+  setTimeout(() => {
+    if (targetPaneId) {
+      const pastePayload = options.autoEnter
+        ? `\x1b[200~${cleanPrompt}\x1b[201~\r`
+        : `\x1b[200~${cleanPrompt}\x1b[201~`
+      void terminalApi.write(targetPaneId, pastePayload)
+    }
+  }, 350)
+
+  const successMsg = options.autoEnter
+    ? options.t("markdown.promptSentToTerminal", { target: toastDisplayName })
+    : options.t("markdown.promptEchoedToTerminal", { target: toastDisplayName })
+  options.showToast?.success(successMsg)
   return true
 }

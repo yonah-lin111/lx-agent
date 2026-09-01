@@ -47,6 +47,7 @@ import {
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
+import { launchNewCliTerminal } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 
 /**
@@ -248,6 +249,9 @@ export const useMarkdownPanels = ({
   customSlashCommandsRef.current = customSlashCommands
   localeRef.current = locale
 
+  // 追踪用户主动通过面板触发新建的 CLI 类型，用于在新 Running 实例就绪后自动聚焦
+  const pendingAutoSelectCliRef = useRef<string | null>(null)
+
   // 监听终端 Store 变化（如用户退出/关闭某个终端 Tab），实时刷新二级选择菜单中的可用实例列表
   useEffect(() => {
     const unsubscribe = useTerminalStore.subscribe((state) => {
@@ -263,10 +267,26 @@ export const useMarkdownPanels = ({
           }
           sendPromptPanelRef.current = nextPanel
           setSendPromptPanel(nextPanel)
-          const nextActiveIndex = Math.min(
-            activeSendPromptIndexRef.current,
-            Math.max(0, nextOptions.length - 1),
-          )
+
+          let nextActiveIndex = activeSendPromptIndexRef.current
+
+          // 如果存在刚触发新建的 CLI，自动聚焦到新生成的对应 running 选项
+          if (pendingAutoSelectCliRef.current) {
+            const targetType = pendingAutoSelectCliRef.current
+            const foundIndex = nextOptions.findIndex(
+              (o) => o.targetType === targetType && o.isRunning,
+            )
+            if (foundIndex !== -1) {
+              nextActiveIndex = foundIndex
+              pendingAutoSelectCliRef.current = null
+            }
+          } else {
+            nextActiveIndex = Math.min(
+              activeSendPromptIndexRef.current,
+              Math.max(0, nextOptions.length - 1),
+            )
+          }
+
           activeSendPromptIndexRef.current = nextActiveIndex
           setActiveSendPromptIndex(nextActiveIndex)
         }
@@ -274,6 +294,19 @@ export const useMarkdownPanels = ({
     })
     return unsubscribe
   }, [])
+
+  // 当 /sendPrompt 二级面板打开时，启动 800ms 轻量轮询刷新底层 PTY 进程状态，面板关闭时自动停止
+  useEffect(() => {
+    if (!sendPromptPanel) return
+
+    const timer = setInterval(() => {
+      void useTerminalStore.getState().refreshRunningClis()
+    }, 800)
+
+    return () => {
+      clearInterval(timer)
+    }
+  }, [Boolean(sendPromptPanel)])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -372,8 +405,8 @@ export const useMarkdownPanels = ({
       view.state.doc.sliceString(0, line.from),
     )
 
-    // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt claude -n）
-    const flagMatch = /^\/sendPrompt\s+([a-zA-Z0-9_-]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
+    // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt opencode:my-dev -n）
+    const flagMatch = /^\/sendPrompt\s+([^\s]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
       commandLine?.value ?? "",
     )
     if (flagMatch && isInsideTemplateBlock) {
@@ -514,16 +547,39 @@ export const useMarkdownPanels = ({
     activeSendPromptIndexRef.current = 0
     setSendPromptPanel(panel)
     setActiveSendPromptIndex(0)
+
+    // 异步触发一次底层 PTY 进程探测刷新，以确保动态启动的 CLI 能即时反映
+    void useTerminalStore.getState().refreshRunningClis()
   }
 
   /**
-   * 选中 Prompt 发送目标：把目标标识（如 agent / claude）回显到命令行为 `/sendPrompt <目标> `，
-   * 等待二次回车触发发送。
-   */
-  const selectSendPrompt = (option: MarkdownSendPromptOption): void => {
+  * 选中 Prompt 发送目标：
+  * - 如果是带有 CLI 标签的未运行项（如 Claude Code / OpenCode 等静态启动项），仅在终端打开并启动对应 CLI，
+  *   保持二级命令面板打开，并在探测到新 CLI 实例就绪后自动选中该 Running 项；
+  * - 支持通过 mode 参数指定打开方式（auto: 自动/默认水平, horizontal: 向右分屏, vertical: 向下分屏, tab: 新建 Tab）；
+  * - 如果是 Agent 或已在运行中的 CLI 实例（Running 项），把目标标识回显到命令行为 `/sendPrompt <目标> ` 并关闭面板，等待二次回车触发发送。
+  */
+  const selectSendPrompt = (
+    option: MarkdownSendPromptOption,
+    mode: "auto" | "horizontal" | "vertical" | "tab" = "auto",
+  ): void => {
     const view = editorViewRef.current
     const panel = sendPromptPanelRef.current
     if (!view || !panel) return
+
+    // 针对未运行的静态 CLI 选项：仅打开终端并启动 CLI，不关闭面板，等待启动后自动选中 Running 实例
+    if (option.tag === "CLI" && !option.isRunning) {
+      pendingAutoSelectCliRef.current = option.targetType
+      void launchNewCliTerminal(option.targetType, {
+        projectPath: projectPathRef.current,
+        worktreePath: worktreePathRef.current ?? undefined,
+        title: option.label,
+        mode,
+      })
+      // 保持焦点在编辑器内
+      view.focus()
+      return
+    }
 
     const insert = `${panel.line.value.split(" ")[0]} ${option.id} `
     view.dispatch({

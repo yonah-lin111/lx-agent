@@ -38,6 +38,13 @@ export interface TerminalTab {
   createdAt: number
 }
 
+// 终端识别出的前台运行 CLI 信息。
+export interface TerminalRunningCliInfo {
+  cliType: "claude" | "opencode" | "codex" | "gemini" | "agy"
+  processName?: string
+  command?: string
+}
+
 // 终端领域 Preload API。
 export interface TerminalApi {
   terminal: {
@@ -53,6 +60,8 @@ export interface TerminalApi {
     getDesktopPath: () => Promise<string>
     // 检查指定终端实例是否存在运行中的子进程任务。
     hasRunningProcess: (id: string) => Promise<boolean>
+    // 检测指定终端实例前台运行的 Agent CLI 类型。
+    detectRunningCli: (id: string) => Promise<TerminalRunningCliInfo | null>
     // 监听指定终端的数据输出事件。
     onData: (id: string, handler: (data: string) => void) => () => void
     // 监听指定终端的退出事件。
