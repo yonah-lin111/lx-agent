@@ -6,6 +6,7 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
   getMarkdownTemplateStatuses,
@@ -127,6 +128,14 @@ describe("Markdown 块命令", () => {
   it("未闭合模板块正文延伸到文档末尾", () => {
     const doc = "&&& addTemplate\n- 位置: lxmded"
     expect(getMarkdownTemplateBlockContent(doc, doc.length)).toBe("- 位置: lxmded")
+    expect(getMarkdownTemplateBlockStartLine(doc, doc.length)).toBe(1)
+  })
+
+  it("定位模板块开始行", () => {
+    const doc = ["前文", "&&& addTemplate", "- 正文", "&&&", "后文"].join("\n")
+    const bodyPos = doc.indexOf("- 正文")
+    expect(getMarkdownTemplateBlockStartLine(doc, bodyPos)).toBe(2)
+    expect(getMarkdownTemplateBlockStartLine(doc, 0)).toBeNull()
   })
 
   it("为每行添加模板块注释，空行保持原样", () => {

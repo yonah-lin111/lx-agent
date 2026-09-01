@@ -287,6 +287,30 @@ export const getMarkdownTemplateBlockContent = (text: string, position: number):
 }
 
 /**
+ * 返回 position 所在模板块开始行的行号（1-based）；光标位于开始行自身时返回该行；不在模板块内返回 null。
+ */
+export const getMarkdownTemplateBlockStartLine = (
+  text: string,
+  position: number,
+): number | null => {
+  const lines = text.split("\n")
+  const boundedPosition = Math.min(Math.max(position, 0), text.length)
+  let offset = 0
+  let startLine: number | null = null
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineStart = offset
+    const lineEnd = offset + lines[index].length + 1
+    if (isMarkdownTemplateStartLine(lines[index])) startLine = index + 1
+    if (boundedPosition >= lineStart && boundedPosition < lineEnd) return startLine
+    if (isMarkdownTemplateEndLine(lines[index])) startLine = null
+    offset = lineEnd
+  }
+
+  return startLine
+}
+
+/**
  * 返回 position 所在模板块结束行的行号（1-based）；不在模板块内或块未闭合返回 null。
  * 光标位于开始行、正文或结束行自身均返回所属块的结束行。
  */
