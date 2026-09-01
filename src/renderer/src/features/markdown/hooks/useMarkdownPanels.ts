@@ -27,10 +27,14 @@ import {
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { getMarkdownReferenceProjectPaths } from "@/features/markdown/commands/markdownReferenceCommands"
 import type {
+  MarkdownSendPromptFlagOption,
+  MarkdownSendPromptOption,
   MarkdownSlashCommand,
   MarkdownSlashCommandLine,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
+  getMarkdownSendPromptFlagOptions,
+  getMarkdownSendPromptOptions,
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   isMarkdownConfirmCommandArmed,
@@ -43,6 +47,26 @@ import {
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
+import { useTerminalStore } from "@/features/terminal/terminalStore"
+
+/**
+ * Prompt 发送目标面板状态。
+ */
+export interface MarkdownSendPromptPanelState {
+  options: MarkdownSendPromptOption[]
+  line: MarkdownSlashCommandLine
+  position: CSSProperties
+}
+
+/**
+ * Prompt 发送标志位（三级面板）状态。
+ */
+export interface MarkdownSendPromptFlagPanelState {
+  options: MarkdownSendPromptFlagOption[]
+  line: MarkdownSlashCommandLine
+  target: string
+  position: CSSProperties
+}
 
 /**
  * Markdown 块命令面板状态。
@@ -169,6 +193,10 @@ export const useMarkdownPanels = ({
   const activeSlashCommandIndexRef = useRef(0)
   const gitWorktreePanelRef = useRef<GitWorktreePanelState | null>(null)
   const activeGitWorktreeIndexRef = useRef(0)
+  const sendPromptPanelRef = useRef<MarkdownSendPromptPanelState | null>(null)
+  const activeSendPromptIndexRef = useRef(0)
+  const sendPromptFlagPanelRef = useRef<MarkdownSendPromptFlagPanelState | null>(null)
+  const activeSendPromptFlagIndexRef = useRef(0)
   const fileMentionPanelRef = useRef<FileMentionPanelState | null>(null)
   const activeFileMentionIndexRef = useRef(0)
   const fileSearchRequestRef = useRef(0)
@@ -197,6 +225,11 @@ export const useMarkdownPanels = ({
   const [activeSlashCommandIndex, setActiveSlashCommandIndex] = useState(0)
   const [gitWorktreePanel, setGitWorktreePanel] = useState<GitWorktreePanelState | null>(null)
   const [activeGitWorktreeIndex, setActiveGitWorktreeIndex] = useState(0)
+  const [sendPromptPanel, setSendPromptPanel] = useState<MarkdownSendPromptPanelState | null>(null)
+  const [activeSendPromptIndex, setActiveSendPromptIndex] = useState(0)
+  const [sendPromptFlagPanel, setSendPromptFlagPanel] =
+    useState<MarkdownSendPromptFlagPanelState | null>(null)
+  const [activeSendPromptFlagIndex, setActiveSendPromptFlagIndex] = useState(0)
   const [fileMentionPanel, setFileMentionPanel] = useState<FileMentionPanelState | null>(null)
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
   const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
@@ -232,6 +265,33 @@ export const useMarkdownPanels = ({
   useEffect(() => {
     localeRef.current = locale
   }, [locale])
+
+  // 监听终端 Store 变化（如用户退出/关闭某个终端 Tab），实时刷新二级选择菜单中的可用实例列表
+  useEffect(() => {
+    const unsubscribe = useTerminalStore.subscribe((state) => {
+      const currentSendPrompt = sendPromptPanelRef.current
+      if (currentSendPrompt) {
+        const nextOptions = getMarkdownSendPromptOptions(localeRef.current, state.tabs)
+        const currentIds = currentSendPrompt.options.map((o) => o.id).join(",")
+        const nextIds = nextOptions.map((o) => o.id).join(",")
+        if (currentIds !== nextIds) {
+          const nextPanel = {
+            ...currentSendPrompt,
+            options: nextOptions,
+          }
+          sendPromptPanelRef.current = nextPanel
+          setSendPromptPanel(nextPanel)
+          const nextActiveIndex = Math.min(
+            activeSendPromptIndexRef.current,
+            Math.max(0, nextOptions.length - 1),
+          )
+          activeSendPromptIndexRef.current = nextActiveIndex
+          setActiveSendPromptIndex(nextActiveIndex)
+        }
+      }
+    })
+    return unsubscribe
+  }, [])
 
   /**
    * 关闭文件提及面板并取消过期查询结果。
@@ -275,6 +335,26 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 关闭 Prompt 发送目标选择面板。
+   */
+  const closeSendPromptPanel = (): void => {
+    sendPromptPanelRef.current = null
+    activeSendPromptIndexRef.current = 0
+    setSendPromptPanel(null)
+    setActiveSendPromptIndex(0)
+  }
+
+  /**
+   * 关闭 Prompt 发送标志位选择面板。
+   */
+  const closeSendPromptFlagPanel = (): void => {
+    sendPromptFlagPanelRef.current = null
+    activeSendPromptFlagIndexRef.current = 0
+    setSendPromptFlagPanel(null)
+    setActiveSendPromptFlagIndex(0)
+  }
+
+  /**
    * 同步 Markdown 光标处的模板命令面板。
    * 模板命令（/addTemplate 等）仅在模板块外可用；AI 总结命令（/summaryTitle）仅在模板块内可用。
    */
@@ -290,9 +370,39 @@ export const useMarkdownPanels = ({
     ) {
       closeGitWorktreePanel()
     }
+    const sendPromptPanel = sendPromptPanelRef.current
+    if (
+      sendPromptPanel &&
+      (commandLine?.from !== sendPromptPanel.line.from ||
+        commandLine?.value !== sendPromptPanel.line.value)
+    ) {
+      closeSendPromptPanel()
+    }
+    const sendPromptFlagPanel = sendPromptFlagPanelRef.current
+    if (
+      sendPromptFlagPanel &&
+      (commandLine?.from !== sendPromptFlagPanel.line.from ||
+        commandLine?.value !== sendPromptFlagPanel.line.value)
+    ) {
+      closeSendPromptFlagPanel()
+    }
     const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
       view.state.doc.sliceString(0, line.from),
     )
+
+    // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt claude -n）
+    const flagMatch = /^\/sendPrompt\s+([a-zA-Z0-9_-]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
+      commandLine?.value ?? "",
+    )
+    if (flagMatch && isInsideTemplateBlock) {
+      closeSlashCommandPanel()
+      closeSendPromptPanel()
+      openSendPromptFlagPanel(view, flagMatch[1], flagMatch[2])
+      return
+    } else if (sendPromptFlagPanelRef.current) {
+      closeSendPromptFlagPanel()
+    }
+
     // 已武装的确认命令行不弹面板，等待二次回车触发。
     const isArmed = commandLine
       ? isMarkdownConfirmCommandArmed(
@@ -402,6 +512,122 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 打开 Prompt 发送目标选择面板：以当前光标处命令行为锚，列出目标选项。
+   */
+  const openSendPromptPanel = (view: EditorView): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const coords = view.coordsAtPos(cursor)
+    if (!commandLine || !coords) return
+
+    const tabs = useTerminalStore.getState().tabs
+    const options = getMarkdownSendPromptOptions(localeRef.current, tabs)
+    const panel = {
+      options,
+      line: commandLine,
+      position: getMarkdownPanelPosition("file", coords),
+    }
+    sendPromptPanelRef.current = panel
+    activeSendPromptIndexRef.current = 0
+    setSendPromptPanel(panel)
+    setActiveSendPromptIndex(0)
+  }
+
+  /**
+   * 选中 Prompt 发送目标：把目标标识（如 agent / claude）回显到命令行为 `/sendPrompt <目标> `，
+   * 等待二次回车触发发送。
+   */
+  const selectSendPrompt = (option: MarkdownSendPromptOption): void => {
+    const view = editorViewRef.current
+    const panel = sendPromptPanelRef.current
+    if (!view || !panel) return
+
+    const insert = `${panel.line.value.split(" ")[0]} ${option.id} `
+    view.dispatch({
+      changes: { from: panel.line.from, to: panel.line.to, insert },
+      selection: { anchor: panel.line.from + insert.length },
+    })
+    view.focus()
+    closeSendPromptPanel()
+  }
+
+  /**
+   * 更新 Prompt 发送目标选择面板的当前选项。
+   */
+  const handleSendPromptKey = (offset: number): boolean => {
+    const panel = sendPromptPanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeSendPromptIndexRef.current + offset + panel.options.length) % panel.options.length
+    activeSendPromptIndexRef.current = nextIndex
+    setActiveSendPromptIndex(nextIndex)
+    return true
+  }
+
+  /**
+   * 打开 Prompt 发送标志位选择面板：以当前光标处命令行为锚，列出三级标志位选项（如 -new）。
+   */
+  const openSendPromptFlagPanel = (view: EditorView, target: string, flagQuery = "-"): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const coords = view.coordsAtPos(cursor)
+    if (!commandLine || !coords) return
+
+    const allOptions = getMarkdownSendPromptFlagOptions(localeRef.current)
+    const options = allOptions.filter((opt) => opt.id.startsWith(flagQuery.toLowerCase()))
+    if (options.length === 0) {
+      closeSendPromptFlagPanel()
+      return
+    }
+
+    const panel = {
+      options,
+      line: commandLine,
+      target,
+      position: getMarkdownPanelPosition("file", coords),
+    }
+    sendPromptFlagPanelRef.current = panel
+    activeSendPromptFlagIndexRef.current = 0
+    setSendPromptFlagPanel(panel)
+    setActiveSendPromptFlagIndex(0)
+  }
+
+  /**
+   * 选中 Prompt 发送标志位：把标志位（如 -new）回显到命令行为 `/sendPrompt <目标> <flag> `，
+   * 等待二次回车触发发送。
+   */
+  const selectSendPromptFlag = (option: MarkdownSendPromptFlagOption): void => {
+    const view = editorViewRef.current
+    const panel = sendPromptFlagPanelRef.current
+    if (!view || !panel) return
+
+    const insert = `/sendPrompt ${panel.target} ${option.id} `
+    view.dispatch({
+      changes: { from: panel.line.from, to: panel.line.to, insert },
+      selection: { anchor: panel.line.from + insert.length },
+    })
+    view.focus()
+    closeSendPromptFlagPanel()
+  }
+
+  /**
+   * 更新 Prompt 发送标志位选择面板的当前选项。
+   */
+  const handleSendPromptFlagKey = (offset: number): boolean => {
+    const panel = sendPromptFlagPanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeSendPromptFlagIndexRef.current + offset + panel.options.length) % panel.options.length
+    activeSendPromptFlagIndexRef.current = nextIndex
+    setActiveSendPromptFlagIndex(nextIndex)
+    return true
+  }
+
+  /**
    * 用选中的模板替换当前斜杠命令行。
    */
   const selectSlashCommand = (command: MarkdownSlashCommand): void => {
@@ -420,7 +646,7 @@ export const useMarkdownPanels = ({
       return
     }
 
-    // 选择型命令（/gitWorktree）：回显命令文本后打开二级工作区面板，选中后回显分支名、回车触发切换。
+    // 选择型命令（/gitWorktree、/sendPrompt）：回显命令文本后打开二级工作区/目标面板，选中后回显分支名/目标、回车触发。
     if (command.kind === "select") {
       view.dispatch({
         changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
@@ -428,7 +654,11 @@ export const useMarkdownPanels = ({
       })
       view.focus()
       closeSlashCommandPanel()
-      openGitWorktreePanel(view)
+      if (command.id === "sendPrompt") {
+        openSendPromptPanel(view)
+      } else {
+        openGitWorktreePanel(view)
+      }
       return
     }
 
@@ -868,6 +1098,10 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndex,
     gitWorktreePanel,
     activeGitWorktreeIndex,
+    sendPromptPanel,
+    activeSendPromptIndex,
+    sendPromptFlagPanel,
+    activeSendPromptFlagIndex,
     fileMentionPanel,
     activeFileMentionIndex,
     blockCommandPanelRef,
@@ -876,16 +1110,28 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndexRef,
     gitWorktreePanelRef,
     activeGitWorktreeIndexRef,
+    sendPromptPanelRef,
+    activeSendPromptIndexRef,
+    sendPromptFlagPanelRef,
+    activeSendPromptFlagIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
     closeGitWorktreePanel,
+    closeSendPromptPanel,
+    closeSendPromptFlagPanel,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,
     selectGitWorktree,
     handleGitWorktreeKey,
+    openSendPromptPanel,
+    selectSendPrompt,
+    handleSendPromptKey,
+    openSendPromptFlagPanel,
+    selectSendPromptFlag,
+    handleSendPromptFlagKey,
     syncFileMentionPanel,
     selectFileMention,
     handleFileMentionKey,

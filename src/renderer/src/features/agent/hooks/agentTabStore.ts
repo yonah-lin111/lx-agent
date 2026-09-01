@@ -31,6 +31,8 @@ const initialDefaultTab = createDefaultTab()
 let tabs: AgentTab[] = [initialDefaultTab]
 let activeTabId: string = initialDefaultTab.id
 let streamingMap: Record<string, boolean> = {}
+type AgentInputSetter = (updater: string | ((prev: string) => string)) => void
+const inputSetters = new Map<string, AgentInputSetter>()
 const listeners = new Set<() => void>()
 
 const notify = (): void => {
@@ -171,6 +173,29 @@ export const agentTabStore = {
   setTabDraftBinding: (tabId: string, draftBinding: AgentTabDraftBinding | undefined): void => {
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, draftBinding } : t))
     notify()
+  },
+
+  /**
+   * 注册指定 Tab 的输入框设值函数。
+   */
+  registerInputSetter: (tabId: string, setter: AgentInputSetter): (() => void) => {
+    inputSetters.set(tabId, setter)
+    return () => {
+      if (inputSetters.get(tabId) === setter) {
+        inputSetters.delete(tabId)
+      }
+    }
+  },
+
+  /**
+   * 向当前激活 Tab 注入提示词（若已有草稿则换行追加，否则直接填充）。
+   */
+  insertPromptToActiveTab: (prompt: string): boolean => {
+    const activeId = activeTabId
+    const setter = inputSetters.get(activeId)
+    if (!setter) return false
+    setter((prev) => (prev && prev.trim() ? `${prev}\n${prompt}` : prompt))
+    return true
   },
 
   /**

@@ -53,6 +53,8 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const tabId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
     const paneId = `pane_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
     const defaultTitle = "New Terminal"
+    const hasCustomTitle = Boolean(params?.title?.trim() && params.title.trim() !== defaultTitle)
+    const customTitle = hasCustomTitle ? params!.title!.trim() : undefined
 
     const initialPane: TerminalPaneItem = {
       id: paneId,
@@ -66,6 +68,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const newTab: TerminalTabItem = {
       id: tabId,
       title: params?.title?.trim() || defaultTitle,
+      customTitle,
       panes: { [paneId]: initialPane },
       rootNode: { type: "leaf", paneId },
       activePaneId: paneId,

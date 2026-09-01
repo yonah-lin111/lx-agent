@@ -407,6 +407,66 @@
     0px 0px 8px rgba(85, 255, 85, 0.2) !important;
 }
 
+/* Minecraft 特化：Default 目标项（末影/紫水晶主题色，常态保持 4px 透明左边框占位，高亮时激活紫色指示条） */
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-default="true"],
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-default="true"] {
+  background-color: #241c30 !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid transparent !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(168, 85, 247, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]),
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]) {
+  background-color: #322544 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-default="true"][aria-selected="true"],
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-default="true"][aria-selected="true"] {
+  background-color: #171120 !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #c084fc !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(192, 132, 252, 0.35),
+    0px 0px 8px rgba(192, 132, 252, 0.3) !important;
+}
+
+/* Minecraft 特化：Running 目标项（绿宝石主题色，常态保持 4px 透明左边框占位，高亮时激活荧光绿指示条） */
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-running="true"],
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-running="true"] {
+  background-color: #16261d !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid transparent !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(34, 197, 94, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]),
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]) {
+  background-color: #203629 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-running="true"][aria-selected="true"],
+[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-running="true"][aria-selected="true"] {
+  background-color: #0c1711 !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #55ff55 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.35),
+    0px 0px 8px rgba(85, 255, 85, 0.3) !important;
+}
+
 /* ========================================================
  * LxTooltip 提示气泡魔改（经典直角石质像素凹槽与硬边缘黑阴影）
  * ======================================================== */

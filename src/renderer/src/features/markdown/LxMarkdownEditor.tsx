@@ -56,16 +56,18 @@ import { createMarkdownReference } from "@/features/markdown/commands/markdownRe
 import {
   getMarkdownArmedSlashCommand,
   getMarkdownSelectCommandValue,
+  parseMarkdownSendPromptCommandLine,
+  stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
-import {
-  buildPasteReferenceOptions,
-  MarkdownPasteCommandMenu,
-} from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import { MarkdownPasteCommandMenu, buildPasteReferenceOptions } from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/MarkdownSendPromptCommandMenu"
+import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
+import { dispatchTemplatePrompt } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import {
   createMarkdownTable,
   editorTheme,
@@ -92,6 +94,7 @@ import type {
 import {
   markdownRenderer,
   stripEmptyTemplateItems,
+  stripMarkdownSuppleBlocks,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 import { useTranslation } from "@/i18n"
@@ -574,6 +577,10 @@ export const LxMarkdownEditor = ({
     activeSlashCommandIndex,
     gitWorktreePanel,
     activeGitWorktreeIndex,
+    sendPromptPanel,
+    activeSendPromptIndex,
+    sendPromptFlagPanel,
+    activeSendPromptFlagIndex,
     fileMentionPanel,
     activeFileMentionIndex,
     blockCommandPanelRef,
@@ -582,16 +589,26 @@ export const LxMarkdownEditor = ({
     activeSlashCommandIndexRef,
     gitWorktreePanelRef,
     activeGitWorktreeIndexRef,
+    sendPromptPanelRef,
+    activeSendPromptIndexRef,
+    sendPromptFlagPanelRef,
+    activeSendPromptFlagIndexRef,
     fileMentionPanelRef,
     activeFileMentionIndexRef,
     closeFileMentionPanel,
     closeSlashCommandPanel,
     closeGitWorktreePanel,
+    closeSendPromptPanel,
+    closeSendPromptFlagPanel,
     syncSlashCommandPanel,
     selectSlashCommand,
     handleSlashCommandKey,
     selectGitWorktree,
     handleGitWorktreeKey,
+    selectSendPrompt,
+    handleSendPromptKey,
+    selectSendPromptFlag,
+    handleSendPromptFlagKey,
     syncFileMentionPanel,
     selectFileMention,
     handleFileMentionKey,
@@ -1001,6 +1018,53 @@ export const LxMarkdownEditor = ({
     view.focus()
   }
 
+  /**
+   * 触发 Prompt 派发：解析 /sendPrompt <目标> [-flag] 命令行并发送到对应目标（AgentInput 或终端 CLI）。
+   */
+  const runSendPromptDispatch = (view: EditorView): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const docText = view.state.doc.toString()
+    const isInsideTemplate = isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
+    if (!isInsideTemplate) return
+
+    const blockContent = getMarkdownTemplateBlockContent(docText, cursor)
+    if (!blockContent) return
+
+    const parsed = parseMarkdownSendPromptCommandLine(line.text)
+    const rawTarget = parsed
+      ? parsed.instance
+        ? `${parsed.target}:${parsed.instance}`
+        : parsed.target
+      : getMarkdownSelectCommandValue(line.text, isInsideTemplate) || "agent"
+    const isNew = parsed?.flag === "-new"
+    const cleanedPrompt = stripEmptyTemplateItems(
+      stripMarkdownTemplateComments(
+        stripMarkdownSlashCommands(
+          stripMarkdownSuppleBlocks(blockContent),
+        ),
+      ),
+    ).trim()
+
+    // 清空当前行命令文本，保留该行的换行
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: "" },
+      selection: { anchor: line.from },
+    })
+
+    void dispatchTemplatePrompt(rawTarget, cleanedPrompt, {
+      projectPath,
+      worktreePath: worktreePath ?? undefined,
+      isNew,
+      t,
+      showToast: {
+        success: (msg) => success(msg),
+        error: (msg) => error(msg),
+      },
+    })
+    view.focus()
+  }
+
   useEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
@@ -1065,6 +1129,8 @@ export const LxMarkdownEditor = ({
                 handlePasteReferenceKey(1) ||
                 handleFileMentionKey("ArrowDown") ||
                 handleGitWorktreeKey(1) ||
+                handleSendPromptKey(1) ||
+                handleSendPromptFlagKey(1) ||
                 handleSlashCommandKey(1) ||
                 handleBlockCommandKey(1) ||
                 handleTemplateFileKey(1),
@@ -1075,6 +1141,8 @@ export const LxMarkdownEditor = ({
                 handlePasteReferenceKey(-1) ||
                 handleFileMentionKey("ArrowUp") ||
                 handleGitWorktreeKey(-1) ||
+                handleSendPromptKey(-1) ||
+                handleSendPromptFlagKey(-1) ||
                 handleSlashCommandKey(-1) ||
                 handleBlockCommandKey(-1) ||
                 handleTemplateFileKey(-1),
@@ -1102,6 +1170,24 @@ export const LxMarkdownEditor = ({
                   selectGitWorktree(
                     gitWorktree.options[activeGitWorktreeIndexRef.current] ??
                       gitWorktree.options[0],
+                  )
+                  return true
+                }
+
+                const sendPrompt = sendPromptPanelRef.current
+                if (sendPrompt) {
+                  selectSendPrompt(
+                    sendPrompt.options[activeSendPromptIndexRef.current] ??
+                      sendPrompt.options[0],
+                  )
+                  return true
+                }
+
+                const sendPromptFlag = sendPromptFlagPanelRef.current
+                if (sendPromptFlag) {
+                  selectSendPromptFlag(
+                    sendPromptFlag.options[activeSendPromptFlagIndexRef.current] ??
+                      sendPromptFlag.options[0],
                   )
                   return true
                 }
@@ -1138,10 +1224,12 @@ export const LxMarkdownEditor = ({
                   view.state.doc.sliceString(0, line.from),
                 )
 
-                // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成；/gitWorktree 命令行触发工作区切换。
+                // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成；/gitWorktree 命令行触发工作区切换；/sendPrompt 触发 Prompt 派发。
                 const armedCommand = getMarkdownArmedSlashCommand(line.text, isInsideTemplate)
                 if (armedCommand) {
-                  if (armedCommand.kind === "select") {
+                  if (armedCommand.id === "sendPrompt") {
+                    runSendPromptDispatch(view)
+                  } else if (armedCommand.kind === "select") {
                     runGitWorktreeSwitch(view)
                   } else {
                     runTemplateTitleGeneration(view)
@@ -1210,6 +1298,14 @@ export const LxMarkdownEditor = ({
                 }
                 if (gitWorktreePanelRef.current) {
                   closeGitWorktreePanel()
+                  return true
+                }
+                if (sendPromptPanelRef.current) {
+                  closeSendPromptPanel()
+                  return true
+                }
+                if (sendPromptFlagPanelRef.current) {
+                  closeSendPromptFlagPanel()
                   return true
                 }
                 if (blockCommandPanelRef.current) {
@@ -1574,6 +1670,18 @@ export const LxMarkdownEditor = ({
         options={gitWorktreePanel?.options}
         position={gitWorktreePanel?.position}
         visible={Boolean(gitWorktreePanel)}
+      />
+      <MarkdownSendPromptCommandMenu
+        activeIndex={activeSendPromptIndex}
+        options={sendPromptPanel?.options}
+        position={sendPromptPanel?.position}
+        visible={Boolean(sendPromptPanel)}
+      />
+      <MarkdownSendPromptFlagCommandMenu
+        activeIndex={activeSendPromptFlagIndex}
+        options={sendPromptFlagPanel?.options}
+        position={sendPromptFlagPanel?.position}
+        visible={Boolean(sendPromptFlagPanel)}
       />
       <FileMentionCommandMenu
         activeIndex={activeFileMentionIndex}

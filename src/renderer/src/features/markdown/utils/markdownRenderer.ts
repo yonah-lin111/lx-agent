@@ -31,6 +31,7 @@ import {
   getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,
 } from "@/features/markdown/commands/markdownReferenceCommands"
+import { stripMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   getFileMentionDisplayLabel,
   isPathUnderReferencedRoots,
@@ -543,7 +544,13 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const titleHtml = title ? `<span class="markdown-template-title">${title}</span>` : ""
   const status = meta.status ?? "todo"
   const encodedContent = encodeURIComponent(
-    stripEmptyTemplateItems(stripMarkdownTemplateComments(stripMarkdownSuppleBlocks(meta.content))),
+    stripEmptyTemplateItems(
+      stripMarkdownTemplateComments(
+        stripMarkdownSlashCommands(
+          stripMarkdownSuppleBlocks(meta.content),
+        ),
+      ),
+    ),
   )
   const contentHtml = renderTemplateContent(meta.content)
   const sourceLine = token.attrGet("data-line")
