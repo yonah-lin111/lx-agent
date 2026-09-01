@@ -62,12 +62,14 @@ import {
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
-import { MarkdownPasteCommandMenu, buildPasteReferenceOptions } from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import {
+  buildPasteReferenceOptions,
+  MarkdownPasteCommandMenu,
+} from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/MarkdownSendPromptCommandMenu"
 import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
-import { dispatchTemplatePrompt } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import {
   createMarkdownTable,
   editorTheme,
@@ -97,6 +99,7 @@ import {
   stripMarkdownSuppleBlocks,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
+import { dispatchTemplatePrompt } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTranslation } from "@/i18n"
 import { isMacOS } from "@/lib/platform"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
@@ -1040,9 +1043,7 @@ export const LxMarkdownEditor = ({
     const autoEnter = parsed?.flag === "-enter"
     const cleanedPrompt = stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
-        stripMarkdownSlashCommands(
-          stripMarkdownSuppleBlocks(blockContent),
-        ),
+        stripMarkdownSlashCommands(stripMarkdownSuppleBlocks(blockContent)),
       ),
     ).trim()
 
@@ -1177,8 +1178,7 @@ export const LxMarkdownEditor = ({
                 const sendPrompt = sendPromptPanelRef.current
                 if (sendPrompt) {
                   selectSendPrompt(
-                    sendPrompt.options[activeSendPromptIndexRef.current] ??
-                      sendPrompt.options[0],
+                    sendPrompt.options[activeSendPromptIndexRef.current] ?? sendPrompt.options[0],
                     "auto",
                   )
                   return true
@@ -1288,8 +1288,7 @@ export const LxMarkdownEditor = ({
                 const sendPrompt = sendPromptPanelRef.current
                 if (sendPrompt) {
                   selectSendPrompt(
-                    sendPrompt.options[activeSendPromptIndexRef.current] ??
-                      sendPrompt.options[0],
+                    sendPrompt.options[activeSendPromptIndexRef.current] ?? sendPrompt.options[0],
                     "horizontal",
                   )
                   return true
@@ -1303,8 +1302,7 @@ export const LxMarkdownEditor = ({
                 const sendPrompt = sendPromptPanelRef.current
                 if (sendPrompt) {
                   selectSendPrompt(
-                    sendPrompt.options[activeSendPromptIndexRef.current] ??
-                      sendPrompt.options[0],
+                    sendPrompt.options[activeSendPromptIndexRef.current] ?? sendPrompt.options[0],
                     "vertical",
                   )
                   return true
@@ -1318,8 +1316,7 @@ export const LxMarkdownEditor = ({
                 const sendPrompt = sendPromptPanelRef.current
                 if (sendPrompt) {
                   selectSendPrompt(
-                    sendPrompt.options[activeSendPromptIndexRef.current] ??
-                      sendPrompt.options[0],
+                    sendPrompt.options[activeSendPromptIndexRef.current] ?? sendPrompt.options[0],
                     "tab",
                   )
                   return true
@@ -1522,14 +1519,30 @@ export const LxMarkdownEditor = ({
           { key: "Mod-6", run: () => (addHeading(6), true) },
           { key: "Mod-o", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-l", run: () => (wrapSelection("[", "](https://)", "link text"), true) },
-          { key: "Mod-Shift-s", mac: "Cmd-Shift-s", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
-          { key: "Mod-Shift-S", mac: "Cmd-Shift-S", run: () => (wrapSelection("~~", "~~", "strikethrough"), true) },
+          {
+            key: "Mod-Shift-s",
+            mac: "Cmd-Shift-s",
+            run: () => (wrapSelection("~~", "~~", "strikethrough"), true),
+          },
+          {
+            key: "Mod-Shift-S",
+            mac: "Cmd-Shift-S",
+            run: () => (wrapSelection("~~", "~~", "strikethrough"), true),
+          },
           { key: "Mod-Shift-u", mac: "Cmd-Shift-u", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Shift-U", mac: "Cmd-Shift-U", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Shift-8", mac: "Cmd-Shift-8", run: () => (prefixLines("1. ", "Item"), true) },
           { key: "Mod-Shift-9", mac: "Cmd-Shift-9", run: () => (prefixLines("- ", "Item"), true) },
-          { key: "Mod-Alt-c", mac: "Cmd-Alt-c", run: () => (wrapSelection("`", "`", "code"), true) },
-          { key: "Mod-Alt-C", mac: "Cmd-Alt-C", run: () => (wrapSelection("`", "`", "code"), true) },
+          {
+            key: "Mod-Alt-c",
+            mac: "Cmd-Alt-c",
+            run: () => (wrapSelection("`", "`", "code"), true),
+          },
+          {
+            key: "Mod-Alt-C",
+            mac: "Cmd-Alt-C",
+            run: () => (wrapSelection("`", "`", "code"), true),
+          },
           {
             key: "Mod-Shift-Alt-t",
             mac: "Cmd-Shift-Alt-t",

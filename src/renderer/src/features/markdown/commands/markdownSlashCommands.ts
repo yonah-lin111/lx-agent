@@ -594,7 +594,9 @@ export const parseMarkdownSendPromptCommandLine = (
           ? "opencode"
           : normalizedTarget === "openai" || normalizedTarget === "cx"
             ? "codex"
-            : normalizedTarget === "gemini-cli" || normalizedTarget === "geminicli" || normalizedTarget === "gm"
+            : normalizedTarget === "gemini-cli" ||
+                normalizedTarget === "geminicli" ||
+                normalizedTarget === "gm"
               ? "gemini"
               : normalizedTarget === "antigravity" || normalizedTarget === "ag"
                 ? "agy"
@@ -722,4 +724,3 @@ export const stripMarkdownSlashCommands = (content: string): string =>
     .split("\n")
     .map((line) => (/^\s*\/[a-zA-Z0-9_-]+(?:\s+.*)?$/.test(line) ? "" : line))
     .join("\n")
-

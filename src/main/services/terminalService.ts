@@ -38,7 +38,12 @@ const identifyCliType = (
   if (norm === "opencode" || norm === "opencode2" || norm === "open-code") return "opencode"
   if (norm === "codex" || norm === "openai" || norm === "openai-codex") return "codex"
   if (norm === "gemini" || norm === "gemini-cli" || norm === "geminicli") return "gemini"
-  if (norm === "agy" || norm === "antigravity" || norm === "anti-gravity" || norm === "antigravity-cli")
+  if (
+    norm === "agy" ||
+    norm === "antigravity" ||
+    norm === "anti-gravity" ||
+    norm === "antigravity-cli"
+  )
     return "agy"
 
   // 2. 如果是通用运行时（node, python, bun, sh, bash, zsh, cmd, pwsh 等），检查其参数中执行的脚本
@@ -62,10 +67,18 @@ const identifyCliType = (
 
       // 匹配包含特定 npm/bin 路径的特征
       const lowerArg = arg.toLowerCase()
-      if (lowerArg.includes("@openai/codex") || lowerArg.includes("/codex/") || lowerArg.endsWith("/codex.js")) {
+      if (
+        lowerArg.includes("@openai/codex") ||
+        lowerArg.includes("/codex/") ||
+        lowerArg.endsWith("/codex.js")
+      ) {
         return "codex"
       }
-      if (lowerArg.includes("@anthropic/claude") || lowerArg.includes("/claude/") || lowerArg.endsWith("/claude.js")) {
+      if (
+        lowerArg.includes("@anthropic/claude") ||
+        lowerArg.includes("/claude/") ||
+        lowerArg.endsWith("/claude.js")
+      ) {
         return "claude"
       }
       if (lowerArg.includes("/opencode/") || lowerArg.endsWith("/opencode.js")) {
@@ -74,7 +87,11 @@ const identifyCliType = (
       if (lowerArg.includes("/gemini/") || lowerArg.endsWith("/gemini.js")) {
         return "gemini"
       }
-      if (lowerArg.includes("/antigravity/") || lowerArg.includes("/agy/") || lowerArg.endsWith("/agy.js")) {
+      if (
+        lowerArg.includes("/antigravity/") ||
+        lowerArg.includes("/agy/") ||
+        lowerArg.endsWith("/agy.js")
+      ) {
         return "agy"
       }
     }

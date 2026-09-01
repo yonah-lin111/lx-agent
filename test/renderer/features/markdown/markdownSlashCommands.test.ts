@@ -82,7 +82,9 @@ describe("Markdown 斜杠命令", () => {
     expect(zhSend[0]?.description).toBe("发送当前模板块 Prompt 到 Agent 或终端 CLI")
 
     const enSend = getMarkdownSlashCommands("/send", true, true, [], "en")
-    expect(enSend[0]?.description).toBe("Send current template block prompt to Agent or Terminal CLI")
+    expect(enSend[0]?.description).toBe(
+      "Send current template block prompt to Agent or Terminal CLI",
+    )
   })
 })
 
@@ -257,9 +259,7 @@ describe("Markdown 斜杠命令武装判定", () => {
     ]
     const mixedOptions = getMarkdownSendPromptOptions("zh", mixedTabs)
     expect(mixedOptions.filter((o) => o.isRunning).length).toBe(3)
-    expect(
-      mixedOptions.some((o) => o.label === "OpenCode:修复列表触底悬停时滚动条抖动"),
-    ).toBe(true)
+    expect(mixedOptions.some((o) => o.label === "OpenCode:修复列表触底悬停时滚动条抖动")).toBe(true)
     expect(mixedOptions.some((o) => o.label === "OpenCode:#1")).toBe(true)
     expect(mixedOptions.some((o) => o.label === "OpenCode:#2")).toBe(true)
 
@@ -319,11 +319,13 @@ describe("Markdown 斜杠命令武装判定", () => {
       flag: null,
     })
 
-    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev -enter ")).toEqual({
-      target: "opencode",
-      instance: "opencode-dev",
-      flag: "-enter",
-    })
+    expect(parseMarkdownSendPromptCommandLine("/sendPrompt opencode:opencode-dev -enter ")).toEqual(
+      {
+        target: "opencode",
+        instance: "opencode-dev",
+        flag: "-enter",
+      },
+    )
 
     expect(parseMarkdownSendPromptCommandLine("/sendPrompt claude -enter")).toEqual({
       target: "claude",
@@ -362,4 +364,3 @@ describe("Markdown 斜杠命令武装判定", () => {
     })
   })
 })
-

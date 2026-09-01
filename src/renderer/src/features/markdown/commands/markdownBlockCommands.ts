@@ -240,8 +240,7 @@ export const isMarkdownSuppleStartLine = (line: string): boolean =>
 /**
  * 判断一行是否为 supple 补充块结束标记（+++ 独占一行）。
  */
-export const isMarkdownSuppleEndLine = (line: string): boolean =>
-  MARKDOWN_SUPPLE_END_RE.test(line)
+export const isMarkdownSuppleEndLine = (line: string): boolean => MARKDOWN_SUPPLE_END_RE.test(line)
 
 /**
  * 提取文本中 position 所在模板块的正文（不含 &&& 标记行）；不在模板块内返回 null。

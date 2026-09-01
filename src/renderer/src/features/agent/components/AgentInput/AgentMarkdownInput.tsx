@@ -1,9 +1,15 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
-import { bracketMatching, indentOnInput, syntaxHighlighting } from "@codemirror/language"
+import {
+  bracketMatching,
+  HighlightStyle,
+  indentOnInput,
+  syntaxHighlighting,
+} from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
 import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
+import { tags } from "@lezer/highlight"
 import { GFM } from "@lezer/markdown"
 import type { PromptTemplateItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
@@ -33,10 +39,7 @@ import {
   buildPasteReferenceOptions,
   MarkdownPasteCommandMenu,
 } from "@/features/markdown/components/MarkdownPasteCommandMenu"
-import {
-  markdownHighlightStyle,
-  markdownMarkerHighlight,
-} from "@/features/markdown/extensions/markdownEditorExtensions"
+import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import {
@@ -258,6 +261,38 @@ const getMentionQuery = (
   return { start, query }
 }
 
+const agentHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading1, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading2, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading3, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading4, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading5, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.heading6, color: "#e9a339", fontWeight: "700" },
+  { tag: tags.emphasis, color: "#fcd34d", fontStyle: "italic" },
+  { tag: tags.strong, color: "#f59e0b", fontWeight: "700" },
+  { tag: tags.strikethrough, color: "#fda4af", textDecoration: "line-through" },
+  { tag: tags.link, color: "#93c5fd", textDecoration: "underline" },
+  { tag: tags.url, color: "#67e8f9" },
+  { tag: tags.quote, color: "#c4b5fd", fontStyle: "italic" },
+  {
+    tag: tags.monospace,
+    color: "#fca5a5",
+    backgroundColor: "rgba(252, 165, 165, 0.12)",
+    borderRadius: "3px",
+    padding: "1px 4px",
+  },
+  { tag: [tags.meta, tags.processingInstruction], color: "#7dd3fc" },
+  { tag: tags.keyword, color: "#c4b5fd" },
+  { tag: tags.string, color: "#86efac" },
+  { tag: tags.number, color: "#fda4af" },
+  { tag: tags.comment, color: "#94a3b8", fontStyle: "italic" },
+  { tag: tags.variableName, color: "#e2e8f0" },
+  { tag: tags.typeName, color: "#67e8f9" },
+  { tag: tags.propertyName, color: "#93c5fd" },
+  { tag: tags.operator, color: "#fcd34d" },
+])
+
 const agentEditorTheme = EditorView.theme({
   "&": {
     height: "var(--agent-input-height, auto)",
@@ -274,19 +309,23 @@ const agentEditorTheme = EditorView.theme({
   ".cm-content": {
     minHeight: "var(--agent-input-height, 44px)",
     maxHeight: "244px",
-    padding: "2px 4px",
+    padding: "6px 4px 6px 4px",
     caretColor: "#ffffff",
     fontFamily: "inherit",
+    fontSize: "12px",
     lineHeight: "20px",
   },
   ".cm-line": {
     lineHeight: "20px",
     padding: "0",
     position: "relative",
+    fontSize: "12px",
   },
   ".cm-scroller": {
     overflow: "auto",
     fontFamily: "inherit",
+    scrollPaddingTop: "4px",
+    scrollPaddingBottom: "4px",
   },
   ".cm-placeholder": {
     color: "rgba(255, 255, 255, 0.35)",
@@ -304,38 +343,47 @@ const agentEditorTheme = EditorView.theme({
   ".cm-md-heading-marker, .cm-md-heading-marker *": {
     color: "#e9a339 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-strong-marker, .cm-md-strong-marker *": {
     color: "#fb923c !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-emphasis-marker, .cm-md-emphasis-marker *": {
     color: "#f472b6 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-table-marker, .cm-md-table-marker *": {
     color: "#38bdf8 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-task-marker, .cm-md-task-marker *": {
     color: "#a3e635 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-unordered-list-marker, .cm-md-unordered-list-marker *": {
     color: "#2dd4bf !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-ordered-list-marker, .cm-md-ordered-list-marker *": {
     color: "#c084fc !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-code-fence-marker, .cm-md-code-fence-marker *": {
     color: "#e879f9 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-code-fence-language, .cm-md-code-fence-language *": {
     color: "#38bdf8 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
     backgroundColor: "rgba(56, 189, 248, 0.12) !important",
     padding: "1px 6px !important",
     borderRadius: "3px !important",
@@ -405,16 +453,19 @@ const agentEditorTheme = EditorView.theme({
     fontWeight: "700",
   },
   ".cm-md-bracket-content-marker, .cm-md-bracket-content-marker *": {
+    fontSize: "12px !important",
     textDecoration: "underline",
     textDecorationColor: "rgba(255, 255, 255, 0.4)",
   },
   ".cm-md-template-marker, .cm-md-template-marker *": {
     color: "#818cf8 !important",
     fontWeight: "700",
+    fontSize: "12px !important",
   },
   ".cm-md-template-command, .cm-md-template-command *": {
     color: "#c4b5fd !important",
     fontWeight: "700",
+    fontSize: "12px !important",
     backgroundColor: "rgba(196, 181, 253, 0.12) !important",
     padding: "1px 6px !important",
     borderRadius: "3px !important",
@@ -422,22 +473,27 @@ const agentEditorTheme = EditorView.theme({
   ".cm-md-template-command-addTemplate, .cm-md-template-command-addTemplate *": {
     color: "#34d399 !important",
     backgroundColor: "rgba(52, 211, 153, 0.15) !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-command-bugTemplate, .cm-md-template-command-bugTemplate *": {
     color: "#fb7185 !important",
     backgroundColor: "rgba(251, 113, 133, 0.15) !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-command-refactorTemplate, .cm-md-template-command-refactorTemplate *": {
     color: "#c084fc !important",
     backgroundColor: "rgba(192, 132, 252, 0.15) !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-command-commonTemplate, .cm-md-template-command-commonTemplate *": {
     color: "#38bdf8 !important",
     backgroundColor: "rgba(56, 189, 248, 0.15) !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-command-styleTemplate, .cm-md-template-command-styleTemplate *": {
     color: "#f472b6 !important",
     backgroundColor: "rgba(244, 114, 182, 0.15) !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-title, .cm-md-template-title *": {
     color: "#fde68a !important",
@@ -446,18 +502,21 @@ const agentEditorTheme = EditorView.theme({
     textDecorationColor: "rgba(253, 230, 138, 0.6)",
     padding: "1px 6px !important",
     borderRadius: "3px !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-done, .cm-md-template-done *": {
     color: "#34d399 !important",
     backgroundColor: "rgba(52, 211, 153, 0.15) !important",
     padding: "1px 6px !important",
     borderRadius: "3px !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-in-progress, .cm-md-template-in-progress *": {
     color: "#fbbf24 !important",
     backgroundColor: "rgba(251, 191, 36, 0.15) !important",
     padding: "1px 6px !important",
     borderRadius: "3px !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-id, .cm-md-template-id *": {
     color: "#f0abfc !important",
@@ -465,6 +524,7 @@ const agentEditorTheme = EditorView.theme({
     padding: "1px 6px !important",
     borderRadius: "3px !important",
     fontWeight: "600 !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-wt, .cm-md-template-wt *": {
     color: "#22d3ee !important",
@@ -472,6 +532,7 @@ const agentEditorTheme = EditorView.theme({
     padding: "1px 6px !important",
     borderRadius: "3px !important",
     fontWeight: "600 !important",
+    fontSize: "12px !important",
   },
   ".cm-md-template-start-line": {
     borderTop: "1px solid rgba(129, 140, 248, 0.2)",
@@ -1362,7 +1423,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             codeLanguages: languages,
             extensions: [GFM, { remove: ["SetextHeading"] }],
           }),
-          syntaxHighlighting(markdownHighlightStyle),
+          syntaxHighlighting(agentHighlightStyle),
           agentEditorTheme,
           markdownMarkerHighlight(),
           EditorView.lineWrapping,

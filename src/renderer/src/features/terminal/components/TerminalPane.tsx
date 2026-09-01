@@ -66,7 +66,8 @@ export const TerminalPane = ({
 
     // 仅当挂载时当前活动焦点本身就在终端内部时才聚焦终端，不主动剥夺主编辑器或其他界面的焦点
     const activeEl = document.activeElement
-    const isAlreadyInsideTerminal = activeEl && (container.contains(activeEl) || activeEl.closest(".ghostty-terminal-view"))
+    const isAlreadyInsideTerminal =
+      activeEl && (container.contains(activeEl) || activeEl.closest(".ghostty-terminal-view"))
     if (isFocused && isAlreadyInsideTerminal) {
       session.term.focus()
     }

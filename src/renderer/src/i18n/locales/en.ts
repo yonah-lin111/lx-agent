@@ -633,7 +633,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     sendPromptFlagEnterDesc: "Automatically submit prompt with Enter after filling",
     sendPromptFlagEnterTag: "Auto-enter",
     sendPromptRunningTag: "Running",
-    sendPromptTargetInstanceDesc: "Send to active terminal instance \"{{title}}\"",
+    sendPromptTargetInstanceDesc: 'Send to active terminal instance "{{title}}"',
     sendPromptTargetAgentDesc: "Populate into active Agent chat input and focus",
     sendPromptTargetClaudeDesc: "Create and launch Claude Code CLI",
     sendPromptTargetOpencodeDesc: "Create and launch OpenCode CLI",

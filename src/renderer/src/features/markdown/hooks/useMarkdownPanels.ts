@@ -553,12 +553,12 @@ export const useMarkdownPanels = ({
   }
 
   /**
-  * 选中 Prompt 发送目标：
-  * - 如果是带有 CLI 标签的未运行项（如 Claude Code / OpenCode 等静态启动项），仅在终端打开并启动对应 CLI，
-  *   保持二级命令面板打开，并在探测到新 CLI 实例就绪后自动选中该 Running 项；
-  * - 支持通过 mode 参数指定打开方式（auto: 自动/默认水平, horizontal: 向右分屏, vertical: 向下分屏, tab: 新建 Tab）；
-  * - 如果是 Agent 或已在运行中的 CLI 实例（Running 项），把目标标识回显到命令行为 `/sendPrompt <目标> ` 并关闭面板，等待二次回车触发发送。
-  */
+   * 选中 Prompt 发送目标：
+   * - 如果是带有 CLI 标签的未运行项（如 Claude Code / OpenCode 等静态启动项），仅在终端打开并启动对应 CLI，
+   *   保持二级命令面板打开，并在探测到新 CLI 实例就绪后自动选中该 Running 项；
+   * - 支持通过 mode 参数指定打开方式（auto: 自动/默认水平, horizontal: 向右分屏, vertical: 向下分屏, tab: 新建 Tab）；
+   * - 如果是 Agent 或已在运行中的 CLI 实例（Running 项），把目标标识回显到命令行为 `/sendPrompt <目标> ` 并关闭面板，等待二次回车触发发送。
+   */
   const selectSendPrompt = (
     option: MarkdownSendPromptOption,
     mode: "auto" | "horizontal" | "vertical" | "tab" = "auto",

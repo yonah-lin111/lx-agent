@@ -99,10 +99,7 @@ describe("markdownSendPromptDispatcher", () => {
       expect(result).toBe(true)
       expect(useBottomSideBarStore.getState().isExpanded).toBe(true)
       expect(useBottomSideBarStore.getState().viewMode).toBe("terminal")
-      expect(writeSpy).toHaveBeenCalledWith(
-        "pane-claude",
-        "\x1b[200~优化代码结构\x1b[201~",
-      )
+      expect(writeSpy).toHaveBeenCalledWith("pane-claude", "\x1b[200~优化代码结构\x1b[201~")
       expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:Claude Code")
     })
 
@@ -136,10 +133,7 @@ describe("markdownSendPromptDispatcher", () => {
       expect(result).toBe(true)
       expect(useBottomSideBarStore.getState().isExpanded).toBe(true)
       expect(useBottomSideBarStore.getState().viewMode).toBe("terminal")
-      expect(writeSpy).toHaveBeenCalledWith(
-        "pane-claude",
-        "\x1b[200~优化代码结构\x1b[201~\r",
-      )
+      expect(writeSpy).toHaveBeenCalledWith("pane-claude", "\x1b[200~优化代码结构\x1b[201~\r")
       expect(successToast).toHaveBeenCalledWith("markdown.promptSentToTerminal:Claude Code")
     })
 
@@ -226,9 +220,7 @@ describe("markdownSendPromptDispatcher", () => {
       expect(result).toBe(true)
       expect(useTerminalStore.getState().activeTabId).toBe("tab-dup-2")
       expect(writeSpy).toHaveBeenCalledWith("pane-dup-2", "\x1b[200~发送给第二个同名实例\x1b[201~")
-      expect(successToast).toHaveBeenCalledWith(
-        "markdown.promptEchoedToTerminal:OpenCode (#2)",
-      )
+      expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:OpenCode (#2)")
     })
 
     it("同一个 Tab 内存在左右分屏的两个 OpenCode 时，支持精准路由到第 2 个分屏 Pane", async () => {
@@ -269,9 +261,7 @@ describe("markdownSendPromptDispatcher", () => {
 
       expect(result).toBe(true)
       expect(writeSpy).toHaveBeenCalledWith("pane-right", "\x1b[200~发送给右侧分屏\x1b[201~")
-      expect(successToast).toHaveBeenCalledWith(
-        "markdown.promptEchoedToTerminal:OpenCode (#2)",
-      )
+      expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:OpenCode (#2)")
     })
 
     it("目标为 opencode/codex/agy 且无匹配终端时在空闲终端启动对应 CLI", async () => {

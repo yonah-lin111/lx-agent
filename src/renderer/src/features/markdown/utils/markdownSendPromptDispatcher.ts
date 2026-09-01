@@ -257,8 +257,7 @@ export const launchNewCliTerminal = async (
     const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
     targetPaneId = newTab?.activePaneId ?? null
   } else if (mode === "horizontal" || mode === "vertical") {
-    const currentTab =
-      terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
+    const currentTab = terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
     targetTabId = currentTab.id
     const splitId = terminalStore.splitPane(targetTabId, mode, targetCwd)
     if (splitId) {
@@ -270,8 +269,7 @@ export const launchNewCliTerminal = async (
     }
   } else {
     // mode === "auto"
-    const currentTab =
-      terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
+    const currentTab = terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
     targetTabId = currentTab.id
     const currentPaneId = currentTab.activePaneId || Object.keys(currentTab.panes)[0]
 
@@ -380,7 +378,9 @@ export const dispatchTemplatePrompt = async (
     agy: "Antigravity",
   }
   const displayTargetName = targetNameMap[cliTarget] || cliTarget
-  const toastDisplayName = instanceName ? `${displayTargetName} (${instanceName})` : displayTargetName
+  const toastDisplayName = instanceName
+    ? `${displayTargetName} (${instanceName})`
+    : displayTargetName
 
   // 检查是否存在已打开的对应 CLI / 实例终端
   const matched = findMatchingCliPane(cliTarget, terminalStore.tabs, instanceName)
@@ -410,8 +410,7 @@ export const dispatchTemplatePrompt = async (
     const newTab = useTerminalStore.getState().tabs.find((t) => t.id === targetTabId)
     targetPaneId = newTab?.activePaneId ?? null
   } else {
-    const currentTab =
-      terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
+    const currentTab = terminalStore.tabs.find((t) => t.id === targetTabId) ?? terminalStore.tabs[0]
     targetTabId = currentTab.id
     const currentPaneId = currentTab.activePaneId || Object.keys(currentTab.panes)[0]
 

@@ -51,12 +51,16 @@ describe("CustomCommandService", () => {
     expect(existsSync(saved.filePath)).toBe(true)
 
     const diskFile = readFileSync(saved.filePath, "utf8")
-    expect(diskFile).toContain("---\ndescription: \"command description\"\nargument-hint: \"[foo] [bar]\"\n---\n\n  - line 1 with 2 spaces indent\n    - line 2 with 4 spaces indent\n")
+    expect(diskFile).toContain(
+      '---\ndescription: "command description"\nargument-hint: "[foo] [bar]"\n---\n\n  - line 1 with 2 spaces indent\n    - line 2 with 4 spaces indent\n',
+    )
 
     const list = service.list({ type: "agentInput", scope: "user" })
     const found = list.find((c) => c.name === "myCmd")
     expect(found).toBeDefined()
-    expect(found?.content).toBe("  - line 1 with 2 spaces indent\n    - line 2 with 4 spaces indent")
+    expect(found?.content).toBe(
+      "  - line 1 with 2 spaces indent\n    - line 2 with 4 spaces indent",
+    )
   })
 
   it("handles empty and normal content without errors", () => {

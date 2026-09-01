@@ -419,14 +419,22 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]),
-[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]) {
+[data-theme="minecraft"]
+  .markdown-command-menu
+  [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]),
+[data-theme="minecraft"]
+  [role="listbox"]
+  [role="option"][data-is-default="true"]:hover:not([aria-selected="true"]) {
   background-color: #322544 !important;
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-default="true"][aria-selected="true"],
-[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-default="true"][aria-selected="true"] {
+[data-theme="minecraft"]
+  .markdown-command-menu
+  [role="option"][data-is-default="true"][aria-selected="true"],
+[data-theme="minecraft"]
+  [role="listbox"]
+  [role="option"][data-is-default="true"][aria-selected="true"] {
   background-color: #171120 !important;
   color: #ffffff !important;
   border: 2px solid #000000 !important;
@@ -449,14 +457,22 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]),
-[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]) {
+[data-theme="minecraft"]
+  .markdown-command-menu
+  [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]),
+[data-theme="minecraft"]
+  [role="listbox"]
+  [role="option"][data-is-running="true"]:hover:not([aria-selected="true"]) {
   background-color: #203629 !important;
   color: #ffffff !important;
 }
 
-[data-theme="minecraft"] .markdown-command-menu [role="option"][data-is-running="true"][aria-selected="true"],
-[data-theme="minecraft"] [role="listbox"] [role="option"][data-is-running="true"][aria-selected="true"] {
+[data-theme="minecraft"]
+  .markdown-command-menu
+  [role="option"][data-is-running="true"][aria-selected="true"],
+[data-theme="minecraft"]
+  [role="listbox"]
+  [role="option"][data-is-running="true"][aria-selected="true"] {
   background-color: #0c1711 !important;
   color: #ffffff !important;
   border: 2px solid #000000 !important;

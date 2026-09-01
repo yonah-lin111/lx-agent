@@ -546,9 +546,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const encodedContent = encodeURIComponent(
     stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
-        stripMarkdownSlashCommands(
-          stripMarkdownSuppleBlocks(meta.content),
-        ),
+        stripMarkdownSlashCommands(stripMarkdownSuppleBlocks(meta.content)),
       ),
     ),
   )
