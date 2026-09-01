@@ -1,4 +1,4 @@
-import { PlusSquare } from "lucide-react"
+import { CornerDownLeft } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
@@ -86,7 +86,7 @@ export const MarkdownSendPromptFlagCommandMenu = ({
             }`}
             role="option"
           >
-            <PlusSquare className="h-3.5 w-3.5 flex-none text-emerald-400" />
+            <CornerDownLeft className="h-3.5 w-3.5 flex-none text-sky-400" />
             <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
               <span className="shrink-0 text-[13px] font-mono leading-none text-white">
                 {option.label}
@@ -95,7 +95,7 @@ export const MarkdownSendPromptFlagCommandMenu = ({
                 {option.description}
               </span>
               <LxTag
-                bgClass="bg-emerald-500/20 text-emerald-300"
+                bgClass="bg-sky-500/20 text-sky-300"
                 className="pointer-events-none shrink-0"
                 size="small"
               >

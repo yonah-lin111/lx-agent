@@ -206,6 +206,8 @@ export const getOrCreateTerminalSession = (paneId: string, cwd?: string): Termin
   // 订阅后端 PTY
   const unsubscribeData = terminalApi.onData(paneId, (data) => {
     term.write(data)
+    // 当终端有数据输出时（例如命令执行或进程退出打印 prompt），触发一次轻量防抖的 CLI 状态检测
+    void useTerminalStore.getState().refreshRunningClis()
   })
 
   const unsubscribeExit = terminalApi.onExit(paneId, ({ exitCode }) => {

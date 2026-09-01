@@ -25,6 +25,8 @@ export interface TerminalPaneItem {
   id: string
   // 分屏标题（由 CLI 动态输出或默认值）。
   title?: string
+  // 探测到的前台运行 CLI 类型（如 claude, opencode, codex, gemini, agy）。
+  detectedCli?: "claude" | "opencode" | "codex" | "gemini" | "agy"
   // 终端启动工作目录。
   cwd?: string
   // 关联项目 ID。

@@ -23,7 +23,7 @@ export type MarkdownSlashCommandId =
 export type MarkdownSendPromptTargetId = "agent" | "claude" | "opencode" | "codex" | "agy"
 
 // Markdown /sendPrompt 标志位标识。
-export type MarkdownSendPromptFlagId = "-new"
+export type MarkdownSendPromptFlagId = "-enter"
 
 // Markdown /sendPrompt 二级选择目标选项配置。
 export interface MarkdownSendPromptOption {
@@ -361,7 +361,16 @@ export const resolveEffectiveCliTitle = (
  */
 export const getMarkdownSendPromptOptions = (
   locale: Locale = "zh",
-  tabs: { title: string; panes?: Record<string, { title?: string }> }[] = [],
+  tabs: {
+    title: string
+    panes?: Record<
+      string,
+      {
+        title?: string
+        detectedCli?: "claude" | "opencode" | "codex" | "gemini" | "agy"
+      }
+    >
+  }[] = [],
 ): MarkdownSendPromptOption[] => {
   const dict = locale === "en" ? en : zh
 
@@ -392,8 +401,8 @@ export const getMarkdownSendPromptOptions = (
     if (panes.length > 0) {
       for (const pane of panes) {
         const paneTitle = pane.title || ""
-        const cliType =
-          identifyCliTypeFromTitle(paneTitle) || identifyCliTypeFromTitle(tabTitle)
+        // 严格以实际检测出的 detectedCli 为准；只有检测到 CLI 运行时才加入运行中列表
+        const cliType = pane.detectedCli
         if (cliType) {
           const { effectiveTitle, isDefault } = resolveEffectiveCliTitle(
             paneTitle,
@@ -403,12 +412,6 @@ export const getMarkdownSendPromptOptions = (
           )
           cliInstances.push({ cliType, effectiveTitle, isDefault })
         }
-      }
-    } else {
-      const cliType = identifyCliTypeFromTitle(tabTitle)
-      if (cliType) {
-        const isDefault = isDefaultCliTitle(tabTitle, cliType)
-        cliInstances.push({ cliType, effectiveTitle: tabTitle, isDefault })
       }
     }
   }
@@ -481,7 +484,7 @@ export const getMarkdownSendPromptOptions = (
       targetType: "claude",
       name: "Claude Code",
       label: "Claude Code",
-      description: "",
+      description: dict.markdown.sendPromptTargetClaudeDesc,
       tag: "CLI",
     },
     {
@@ -489,7 +492,7 @@ export const getMarkdownSendPromptOptions = (
       targetType: "opencode",
       name: "OpenCode",
       label: "OpenCode",
-      description: "",
+      description: dict.markdown.sendPromptTargetOpencodeDesc,
       tag: "CLI",
     },
     {
@@ -497,7 +500,7 @@ export const getMarkdownSendPromptOptions = (
       targetType: "codex",
       name: "Codex",
       label: "Codex",
-      description: "",
+      description: dict.markdown.sendPromptTargetCodexDesc,
       tag: "CLI",
     },
     {
@@ -505,7 +508,7 @@ export const getMarkdownSendPromptOptions = (
       targetType: "gemini",
       name: "Gemini CLI",
       label: "Gemini CLI",
-      description: "",
+      description: dict.markdown.sendPromptTargetGeminiDesc,
       tag: "CLI",
     },
     {
@@ -513,7 +516,7 @@ export const getMarkdownSendPromptOptions = (
       targetType: "agy",
       name: "Antigravity",
       label: "Antigravity",
-      description: "",
+      description: dict.markdown.sendPromptTargetAgyDesc,
       tag: "CLI",
     },
   )
@@ -530,11 +533,11 @@ export const getMarkdownSendPromptFlagOptions = (
   const dict = locale === "en" ? en : zh
   return [
     {
-      id: "-new",
-      name: "-new",
-      label: "-new",
-      description: dict.markdown.sendPromptFlagNewDesc,
-      tag: dict.markdown.sendPromptFlagNewTag,
+      id: "-enter",
+      name: "-enter",
+      label: "-enter",
+      description: dict.markdown.sendPromptFlagEnterDesc,
+      tag: dict.markdown.sendPromptFlagEnterTag,
     },
   ]
 }
@@ -551,8 +554,8 @@ export interface MarkdownSendPromptCommandParsed {
  * - /sendPrompt agent
  * - /sendPrompt opencode
  * - /sendPrompt opencode:opencode-dev
- * - /sendPrompt opencode:opencode-dev -new
- * - /sendPrompt opencode -new
+ * - /sendPrompt opencode:opencode-dev -enter
+ * - /sendPrompt opencode -enter
  */
 export const parseMarkdownSendPromptCommandLine = (
   lineText: string,

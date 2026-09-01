@@ -66,4 +66,9 @@ export const registerTerminalHandlers = (): void => {
     if (typeof id !== "string") return false
     return terminalService.hasRunningProcess(id)
   })
+
+  ipcMain.handle(TERMINAL_CHANNELS.detectRunningCli, async (_event, id: unknown) => {
+    if (typeof id !== "string") return null
+    return terminalService.detectRunningCli(id)
+  })
 }

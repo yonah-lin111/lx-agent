@@ -4,6 +4,7 @@ import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import {
   dispatchTemplatePrompt,
   escapeShellArg,
+  launchNewCliTerminal,
 } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { terminalApi } from "@/features/terminal/api/terminalApi"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
@@ -105,7 +106,7 @@ describe("markdownSendPromptDispatcher", () => {
       expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:Claude Code")
     })
 
-    it("显式指定 isNew: true 时即使有已有同名终端也新建 Tab 执行", async () => {
+    it("指定 autoEnter: true 时将注入 Prompt 并追加回车自动执行", async () => {
       const successToast = vi.fn()
       const errorToast = vi.fn()
       const writeSpy = vi.spyOn(terminalApi, "write").mockResolvedValue()
@@ -113,38 +114,33 @@ describe("markdownSendPromptDispatcher", () => {
       useTerminalStore.setState({
         tabs: [
           {
-            id: "tab-opencode-existing",
-            title: "opencode-dev",
+            id: "tab-claude",
+            title: "Claude Code",
             panes: {
-              "pane-opencode-existing": {
-                id: "pane-opencode-existing",
-                title: "opencode",
-                createdAt: Date.now(),
-              },
+              "pane-claude": { id: "pane-claude", title: "claude", createdAt: Date.now() },
             },
-            rootNode: { type: "leaf", paneId: "pane-opencode-existing" },
-            activePaneId: "pane-opencode-existing",
+            rootNode: { type: "leaf", paneId: "pane-claude" },
+            activePaneId: "pane-claude",
             createdAt: Date.now(),
           },
         ],
-        activeTabId: "tab-opencode-existing",
+        activeTabId: "tab-claude",
       })
 
-      const result = await dispatchTemplatePrompt("opencode", "新建运行任务", {
-        isNew: true,
+      const result = await dispatchTemplatePrompt("claude", "优化代码结构", {
+        autoEnter: true,
         t: mockT,
         showToast: { error: errorToast, success: successToast },
       })
 
       expect(result).toBe(true)
-      const tabs = useTerminalStore.getState().tabs
-      expect(tabs.length).toBe(2)
-      const newTab = tabs.find((t) => t.id !== "tab-opencode-existing")!
-      expect(newTab.title).toBe("OpenCode")
-
-      await new Promise((resolve) => setTimeout(resolve, 80))
-      expect(writeSpy).toHaveBeenCalledWith(newTab.activePaneId, "opencode run '新建运行任务'\r")
-      expect(successToast).toHaveBeenCalledWith("markdown.promptSentToTerminal:OpenCode")
+      expect(useBottomSideBarStore.getState().isExpanded).toBe(true)
+      expect(useBottomSideBarStore.getState().viewMode).toBe("terminal")
+      expect(writeSpy).toHaveBeenCalledWith(
+        "pane-claude",
+        "\x1b[200~优化代码结构\x1b[201~\r",
+      )
+      expect(successToast).toHaveBeenCalledWith("markdown.promptSentToTerminal:Claude Code")
     })
 
     it("存在多个同名 CLI 时，支持通过 opencode:instance 语法精确路由到指定实例", async () => {
@@ -310,11 +306,13 @@ describe("markdownSendPromptDispatcher", () => {
       })
 
       expect(result).toBe(true)
-      expect(successToast).toHaveBeenCalledWith("markdown.promptSentToTerminal:OpenCode")
+      expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:OpenCode")
 
       // 等待 timeout 执行
       await new Promise((resolve) => setTimeout(resolve, 80))
-      expect(writeSpy).toHaveBeenCalledWith("pane-shell", "opencode run '测试任务'\r")
+      expect(writeSpy).toHaveBeenCalledWith("pane-shell", "opencode\r")
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(writeSpy).toHaveBeenCalledWith("pane-shell", "\x1b[200~测试任务\x1b[201~")
     })
 
     it("支持将 Prompt 派发至 gemini / codex / agy 终端", async () => {
@@ -346,6 +344,80 @@ describe("markdownSendPromptDispatcher", () => {
       expect(geminiResult).toBe(true)
       expect(writeSpy).toHaveBeenCalledWith("pane-gemini", "\x1b[200~Gemini 提示词\x1b[201~")
       expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:Gemini CLI")
+    })
+
+    it("当终端通过 detectedCli 识别出 codex / agy 时能够正确匹配并使用 Bracketed Paste 回显", async () => {
+      const successToast = vi.fn()
+      const errorToast = vi.fn()
+      const writeSpy = vi.spyOn(terminalApi, "write").mockResolvedValue()
+
+      useTerminalStore.setState({
+        tabs: [
+          {
+            id: "tab-generic",
+            title: "New Terminal",
+            panes: {
+              "pane-codex": {
+                id: "pane-codex",
+                title: "New Terminal",
+                detectedCli: "codex",
+                createdAt: Date.now(),
+              },
+            },
+            rootNode: { type: "leaf", paneId: "pane-codex" },
+            activePaneId: "pane-codex",
+            createdAt: Date.now(),
+          },
+        ],
+        activeTabId: "tab-generic",
+      })
+
+      const codexResult = await dispatchTemplatePrompt("codex", "Codex 提示词", {
+        t: mockT,
+        showToast: { error: errorToast, success: successToast },
+      })
+      expect(codexResult).toBe(true)
+      expect(writeSpy).toHaveBeenCalledWith("pane-codex", "\x1b[200~Codex 提示词\x1b[201~")
+      expect(successToast).toHaveBeenCalledWith("markdown.promptEchoedToTerminal:Codex")
+    })
+
+    it("launchNewCliTerminal 支持 auto / horizontal / vertical / tab 模式并正确分屏或建 Tab", async () => {
+      const writeSpy = vi.spyOn(terminalApi, "write").mockResolvedValue()
+      vi.spyOn(terminalApi, "hasRunningProcess").mockResolvedValue(false)
+
+      useTerminalStore.setState({
+        tabs: [
+          {
+            id: "tab-1",
+            title: "Default",
+            panes: { "pane-1": { id: "pane-1", title: "zsh", createdAt: Date.now() } },
+            rootNode: { type: "leaf", paneId: "pane-1" },
+            activePaneId: "pane-1",
+            createdAt: Date.now(),
+          },
+        ],
+        activeTabId: "tab-1",
+      })
+
+      // 1. horizontal 分屏
+      const horizRes = await launchNewCliTerminal("opencode", { mode: "horizontal" })
+      expect(horizRes).not.toBeNull()
+      expect(Object.keys(useTerminalStore.getState().tabs[0].panes).length).toBe(2)
+
+      // 2. vertical 分屏
+      const vertRes = await launchNewCliTerminal("claude", { mode: "vertical" })
+      expect(vertRes).not.toBeNull()
+      expect(Object.keys(useTerminalStore.getState().tabs[0].panes).length).toBe(3)
+
+      // 3. tab 新建标签
+      const tabRes = await launchNewCliTerminal("codex", { mode: "tab" })
+      expect(tabRes).not.toBeNull()
+      expect(useTerminalStore.getState().tabs.length).toBe(2)
+
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      expect(writeSpy).toHaveBeenCalledWith(horizRes?.paneId, "opencode\r")
+      expect(writeSpy).toHaveBeenCalledWith(vertRes?.paneId, "claude\r")
+      expect(writeSpy).toHaveBeenCalledWith(tabRes?.paneId, "codex\r")
     })
   })
 })

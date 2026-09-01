@@ -185,7 +185,14 @@ export const MarkdownSendPromptCommandMenu = ({
           >
             {renderProductLogo(option.targetType || option.id)}
             <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-              <span className="truncate text-[13px] leading-none text-white">{option.label}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="shrink-0 text-[13px] leading-none text-white">{option.label}</span>
+                {option.description && (
+                  <span className="min-w-0 truncate text-[12px] leading-none text-white/45">
+                    {option.description}
+                  </span>
+                )}
+              </span>
               <LxTag
                 bgClass={
                   isDefault

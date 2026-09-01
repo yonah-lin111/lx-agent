@@ -26,6 +26,7 @@ export const GhosttyTerminalView = ({
   const addTab = useTerminalStore((state) => state.addTab)
 
   const hasAutoCreatedRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // 创建新标签页，根据当前选中条目解析对应工作目录。
   const handleCreateTab = useCallback(async (): Promise<void> => {
@@ -41,11 +42,17 @@ export const GhosttyTerminalView = ({
     }
   }, [isExpanded, tabs.length, handleCreateTab])
 
-  // 快捷键全局监听：在展开态下支持新建标签 (Cmd/Ctrl+T)、关闭 Pane/标签 (Cmd/Ctrl+W)、切标签 (Cmd/Ctrl+Shift+[/] 或 Cmd/Ctrl+1~9)、分屏 (Cmd/Ctrl+D 左右，Cmd/Ctrl+Shift+D 上下)
+  // 快捷键监听：仅在底栏展开且焦点位于终端容器内部时触发
   useEffect(() => {
     if (!isExpanded) return
 
-    const handleGlobalKeyDown = (event: KeyboardEvent): void => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      // 检查当前激活的活动元素是否在终端容器内部
+      const activeEl = document.activeElement
+      if (!containerRef.current || !activeEl || !containerRef.current.contains(activeEl)) {
+        return
+      }
+
       const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
       const isModifier = isMac ? event.metaKey : event.ctrlKey
 
@@ -127,14 +134,14 @@ export const GhosttyTerminalView = ({
       }
     }
 
-    window.addEventListener("keydown", handleGlobalKeyDown, true)
+    window.addEventListener("keydown", handleKeyDown, true)
     return () => {
-      window.removeEventListener("keydown", handleGlobalKeyDown, true)
+      window.removeEventListener("keydown", handleKeyDown, true)
     }
   }, [isExpanded, activeTabId, handleCreateTab])
 
   return (
-    <div className="ghostty-terminal-view flex h-full w-full flex-col overflow-hidden">
+    <div ref={containerRef} className="ghostty-terminal-view flex h-full w-full flex-col overflow-hidden">
       {/* 顶部水平栏：左侧图标 + 滚动按钮 + Tab 列表 + 添加按钮 + 右侧滚动按钮 + 右侧扩展控制 */}
       <div className="flex h-8 shrink-0 items-center px-1 select-none">
         <TerminalTabs onAddTab={() => void handleCreateTab()} rightActions={rightActions} />

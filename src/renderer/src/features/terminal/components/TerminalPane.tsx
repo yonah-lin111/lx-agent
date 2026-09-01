@@ -64,7 +64,10 @@ export const TerminalPane = ({
       // 忽略
     }
 
-    if (isFocused) {
+    // 仅当挂载时当前活动焦点本身就在终端内部时才聚焦终端，不主动剥夺主编辑器或其他界面的焦点
+    const activeEl = document.activeElement
+    const isAlreadyInsideTerminal = activeEl && (container.contains(activeEl) || activeEl.closest(".ghostty-terminal-view"))
+    if (isFocused && isAlreadyInsideTerminal) {
       session.term.focus()
     }
   }, [pane.id, pane.cwd, isFocused])
@@ -111,9 +114,15 @@ export const TerminalPane = ({
     }
   }, [pane.id, pane.cwd, isActive, isExpanded, showHeader])
 
-  // 3. 激活或聚焦时自动获得焦点
+  // 3. 当用户在终端内部切换分屏/Tab 时保持聚焦，但不主动抢夺外部（如 Markdown 编辑器）的焦点
   useEffect(() => {
     if (!isActive || !isFocused || !isExpanded) return
+
+    const container = containerRef.current
+    const activeEl = document.activeElement
+    const isInsideTerminal =
+      activeEl && (container?.contains(activeEl) || activeEl.closest(".ghostty-terminal-view"))
+    if (!isInsideTerminal) return
 
     const session = getOrCreateTerminalSession(pane.id, pane.cwd)
 

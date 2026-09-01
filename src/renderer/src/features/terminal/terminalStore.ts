@@ -24,6 +24,11 @@ interface TerminalStoreState {
   setActiveTab: (id: string) => void
   updateTabTitle: (id: string, title: string) => void
   updatePaneTitle: (paneId: string, title: string) => void
+  updatePaneDetectedCli: (
+    paneId: string,
+    detectedCli?: "claude" | "opencode" | "codex" | "gemini" | "agy",
+  ) => void
+  refreshRunningClis: () => Promise<void>
   splitPane: (tabId: string, direction: SplitDirection, cwd?: string) => string | null
   removePane: (tabId: string, paneId: string) => void
   requestClosePane: (tabId: string, paneId: string) => Promise<boolean>
@@ -190,6 +195,86 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
           panes: nextPanes,
           title: nextTitle,
         }
+      }),
+    }))
+  },
+
+  updatePaneDetectedCli: (paneId, detectedCli) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => {
+        if (!tab.panes[paneId]) return tab
+        if (tab.panes[paneId].detectedCli === detectedCli) return tab
+
+        return {
+          ...tab,
+          panes: {
+            ...tab.panes,
+            [paneId]: {
+              ...tab.panes[paneId],
+              detectedCli,
+            },
+          },
+        }
+      }),
+    }))
+  },
+
+  refreshRunningClis: async () => {
+    const tabs = get().tabs
+    const paneIds: string[] = []
+    for (const tab of tabs) {
+      if (tab.panes) {
+        paneIds.push(...Object.keys(tab.panes))
+      }
+    }
+    if (paneIds.length === 0) return
+
+    const results = await Promise.all(
+      paneIds.map(async (paneId) => {
+        try {
+          const hasRunning = await terminalApi.hasRunningProcess(paneId).catch(() => false)
+          if (!hasRunning) {
+            return { paneId, detectedCli: undefined, hasRunning: false }
+          }
+          const res = await terminalApi.detectRunningCli(paneId).catch(() => null)
+          return { paneId, detectedCli: res?.cliType, hasRunning: true }
+        } catch {
+          return { paneId, detectedCli: undefined, hasRunning: false }
+        }
+      }),
+    )
+
+    set((state) => ({
+      tabs: state.tabs.map((tab) => {
+        let changed = false
+        const nextPanes = { ...tab.panes }
+        let nextTabTitle = tab.title
+        for (const { paneId, detectedCli, hasRunning } of results) {
+          if (nextPanes[paneId]) {
+            // 如果进程已经不在运行中，清空 detectedCli；若 detectedCli 有更新，同步更新
+            const targetCli = hasRunning ? detectedCli : undefined
+            const currentPane = nextPanes[paneId]
+            const hadCliOrRunning = Boolean(currentPane.detectedCli)
+            const fallbackTitle = resolveCwdDisplayName(currentPane.cwd) || "New Terminal"
+
+            if (currentPane.detectedCli !== targetCli) {
+              // 当之前运行着 CLI 但现在退出无任务时，如果标题是 CLI 自动设置的非用户自定义标题，回退为目录名或默认终端名
+              const shouldResetTitle = !hasRunning && hadCliOrRunning && !tab.customTitle
+              const paneTitle = shouldResetTitle ? fallbackTitle : currentPane.title
+
+              nextPanes[paneId] = {
+                ...currentPane,
+                title: paneTitle,
+                detectedCli: targetCli,
+              }
+              if (shouldResetTitle && tab.activePaneId === paneId) {
+                nextTabTitle = fallbackTitle
+              }
+              changed = true
+            }
+          }
+        }
+        return changed ? { ...tab, panes: nextPanes, title: nextTabTitle } : tab
       }),
     }))
   },

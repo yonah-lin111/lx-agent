@@ -145,14 +145,14 @@ describe("LxMarkdownEditor /sendPrompt 派发", () => {
     expect(writeSpy).toBeDefined()
   })
 
-  it("模板块内：/sendPrompt opencode -new 回车触发新建终端实例并清除命令行", async () => {
+  it("模板块内：/sendPrompt opencode -enter 回车触发带回车自动执行并清除命令行", async () => {
     const writeSpy = vi.spyOn(terminalApi, "write").mockResolvedValue()
 
     const initialText = [
       "&&& addTemplate 「title: 新建终端任务」",
       "# 新建任务详情",
-      "- 描述: 测试 -new 标志位",
-      "/sendPrompt opencode -new",
+      "- 描述: 测试 -enter 标志位",
+      "/sendPrompt opencode -enter",
       "&&&",
     ].join("\n")
 
@@ -162,7 +162,7 @@ describe("LxMarkdownEditor /sendPrompt 派发", () => {
 
     const view = EditorView.findFromDOM(getCm()!)!
     const commandOffset =
-      initialText.indexOf("/sendPrompt opencode -new") + "/sendPrompt opencode -new".length
+      initialText.indexOf("/sendPrompt opencode -enter") + "/sendPrompt opencode -enter".length
     view.dispatch({
       selection: { anchor: commandOffset },
     })
@@ -179,7 +179,7 @@ describe("LxMarkdownEditor /sendPrompt 派发", () => {
 
     expect(useBottomSideBarStore.getState().isExpanded).toBe(true)
     expect(useBottomSideBarStore.getState().viewMode).toBe("terminal")
-    expect(view.state.doc.toString()).not.toContain("/sendPrompt opencode -new")
+    expect(view.state.doc.toString()).not.toContain("/sendPrompt opencode -enter")
     expect(writeSpy).toBeDefined()
   })
 

@@ -2,6 +2,7 @@ import type {
   CreateTerminalOptions,
   CreateTerminalResult,
   TerminalExitEvent,
+  TerminalRunningCliInfo,
 } from "@shared/contracts/terminal"
 
 /**
@@ -25,6 +26,9 @@ export const terminalApi = {
   },
   hasRunningProcess: (id: string): Promise<boolean> => {
     return window.api.terminal.hasRunningProcess(id)
+  },
+  detectRunningCli: (id: string): Promise<TerminalRunningCliInfo | null> => {
+    return window.api.terminal.detectRunningCli(id)
   },
   onData: (id: string, handler: (data: string) => void): (() => void) => {
     return window.api.terminal.onData(id, handler)

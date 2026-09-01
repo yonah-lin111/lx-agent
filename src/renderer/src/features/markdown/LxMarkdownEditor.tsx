@@ -1037,7 +1037,7 @@ export const LxMarkdownEditor = ({
         ? `${parsed.target}:${parsed.instance}`
         : parsed.target
       : getMarkdownSelectCommandValue(line.text, isInsideTemplate) || "agent"
-    const isNew = parsed?.flag === "-new"
+    const autoEnter = parsed?.flag === "-enter"
     const cleanedPrompt = stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
         stripMarkdownSlashCommands(
@@ -1055,7 +1055,7 @@ export const LxMarkdownEditor = ({
     void dispatchTemplatePrompt(rawTarget, cleanedPrompt, {
       projectPath,
       worktreePath: worktreePath ?? undefined,
-      isNew,
+      autoEnter,
       t,
       showToast: {
         success: (msg) => success(msg),
@@ -1179,6 +1179,7 @@ export const LxMarkdownEditor = ({
                   selectSendPrompt(
                     sendPrompt.options[activeSendPromptIndexRef.current] ??
                       sendPrompt.options[0],
+                    "auto",
                   )
                   return true
                 }
@@ -1278,6 +1279,51 @@ export const LxMarkdownEditor = ({
                   }
                 }
 
+                return false
+              },
+            },
+            {
+              key: "Mod-d",
+              run: () => {
+                const sendPrompt = sendPromptPanelRef.current
+                if (sendPrompt) {
+                  selectSendPrompt(
+                    sendPrompt.options[activeSendPromptIndexRef.current] ??
+                      sendPrompt.options[0],
+                    "horizontal",
+                  )
+                  return true
+                }
+                return false
+              },
+            },
+            {
+              key: "Mod-Shift-d",
+              run: () => {
+                const sendPrompt = sendPromptPanelRef.current
+                if (sendPrompt) {
+                  selectSendPrompt(
+                    sendPrompt.options[activeSendPromptIndexRef.current] ??
+                      sendPrompt.options[0],
+                    "vertical",
+                  )
+                  return true
+                }
+                return false
+              },
+            },
+            {
+              key: "Mod-t",
+              run: () => {
+                const sendPrompt = sendPromptPanelRef.current
+                if (sendPrompt) {
+                  selectSendPrompt(
+                    sendPrompt.options[activeSendPromptIndexRef.current] ??
+                      sendPrompt.options[0],
+                    "tab",
+                  )
+                  return true
+                }
                 return false
               },
             },
