@@ -40,10 +40,23 @@ export type {
   UserMessageCommand,
 } from "@shared/contracts/agent"
 
+// 拟定实施计划结构。
+export interface ProposedPlanData {
+  title?: string
+  content: string
+  raw: string
+  isStreaming?: boolean
+}
+
 // 消息内容块渲染视图。
 export type ChatBlock =
   | { kind: "text"; text: string; durationMs?: number }
   | { kind: "thinking"; text: string; durationMs?: number }
+  | {
+      kind: "proposedPlan"
+      plan: ProposedPlanData
+      durationMs?: number
+    }
   | {
       kind: "toolCall"
       toolCallId: string

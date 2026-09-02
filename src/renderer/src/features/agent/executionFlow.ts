@@ -468,6 +468,53 @@ export const buildExecutionSteps = (
         continue
       }
 
+      // 拟定实施计划
+      if (block.kind === "proposedPlan") {
+        if (!block.plan.content.trim()) continue
+        stepIndex++
+        const textDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          Boolean(block.plan.isStreaming)
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && textDuration !== undefined ? start + textDuration : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
+        steps.push({
+          id: `step-${stepIndex}-proposed-plan`,
+          turnIndex: turn,
+          stepIndex,
+          kind: "assistant",
+          title: block.plan.title ? `Plan: ${block.plan.title}` : "Proposed Implementation Plan",
+          subtitle: block.plan.isStreaming ? "Generating plan..." : undefined,
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
+          durationMs: textDuration,
+          model: message.model,
+          tokens: message.usage
+            ? {
+                input: message.usage.input,
+                output: message.usage.output,
+                cacheRead: message.usage.cacheRead,
+                total: message.usage.totalTokens,
+              }
+            : undefined,
+          assistantContent: {
+            text: block.plan.raw,
+            model: message.model,
+            provider: message.provider,
+            stopReason: message.stopReason,
+            usage: message.usage,
+          },
+        })
+        continue
+      }
+
       // 文本回复
       if (block.kind === "text") {
         if (!block.text.trim()) continue

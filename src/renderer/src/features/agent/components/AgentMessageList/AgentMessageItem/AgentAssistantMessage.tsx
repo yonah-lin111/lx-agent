@@ -17,13 +17,14 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
+  ProposedPlanCard,
   type ExecutionItemMeta,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
-import type { ChatBlock, ChatMessage, LspToolDetails } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage, LspToolDetails, ProposedPlanData } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { EMPTY_SUGGESTED_QUESTION_CONTEXT } from "./constants"
 import type { MessageItemGroupsResult } from "./hooks/useMessageItemGroups"
@@ -45,6 +46,7 @@ export interface AgentAssistantMessageProps {
   showScrollToBottom?: boolean
   canContinue?: boolean
   onContinue?: () => void
+  onAcceptPlan?: (plan: ProposedPlanData) => void
 }
 
 // 助手消息气泡与执行组渲染组件。
@@ -62,6 +64,7 @@ export const AgentAssistantMessage = ({
   showScrollToBottom = false,
   canContinue = false,
   onContinue,
+  onAcceptPlan,
 }: AgentAssistantMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const previewRef = useRef<HTMLDivElement>(null)
@@ -169,6 +172,18 @@ export const AgentAssistantMessage = ({
                   className="px-0"
                   contentClassName="py-1"
                   sanitizeCopy
+                />
+              )
+            }
+
+            if (group.kind === "proposedPlan") {
+              return (
+                <ProposedPlanCard
+                  key={groupIndex}
+                  plan={group.block.plan}
+                  isStreaming={group.isStreaming}
+                  onAccept={onAcceptPlan}
+                  readOnly={readOnly}
                 />
               )
             }

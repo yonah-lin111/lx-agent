@@ -86,6 +86,7 @@ export const AgentPage = ({
     restoreChat,
     editMessage,
     refreshContextUsage,
+    acceptAndExecutePlan,
     currentSessionId,
   } = useAgentChat(context, tabId, initialSessionId, onSessionBound)
 
@@ -621,6 +622,7 @@ export const AgentPage = ({
               subagentScrollRef={activeSubagentId !== null ? subagentScrollRef : undefined}
               canContinue={canContinue}
               onContinue={continueChat}
+              onAcceptPlan={acceptAndExecutePlan}
               onNavigationStateChange={setNavState}
             />
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}

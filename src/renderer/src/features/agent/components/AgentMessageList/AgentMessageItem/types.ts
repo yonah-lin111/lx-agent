@@ -1,5 +1,5 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import type { ChatBlock, ChatMessage } from "@/features/agent/types"
+import type { ChatBlock, ChatMessage, ProposedPlanData } from "@/features/agent/types"
 
 // 待作答提问块类型。
 export type PendingQuestionBlock = Extract<ChatBlock, { kind: "question" }>
@@ -22,6 +22,8 @@ export interface ExecutionGroup {
 // 展示分组联合类型。
 export type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
+  // 拟定实施计划独立组（不参与执行折叠，突出渲染卡片并提供一键转执行操作）。
+  | { kind: "proposedPlan"; block: Extract<ChatBlock, { kind: "proposedPlan" }>; isStreaming: boolean }
   | ExecutionGroup
   // 编写操作调用独立组（不参与执行折叠，直接平铺展示）。
   | { kind: "writing"; block: ToolCallBlock; isStreaming: boolean }
@@ -81,4 +83,6 @@ export interface AgentMessageItemProps {
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
   onContinue?: () => void
+  // 采纳并执行实施方案（切换至 default 模式并发送执行指令）。
+  onAcceptPlan?: (plan: ProposedPlanData) => void
 }

@@ -28,6 +28,7 @@ export const AgentMessageItem = ({
   showScrollToBottom = false,
   canContinue = false,
   onContinue,
+  onAcceptPlan,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
   const settings = useModelSettings()
@@ -89,6 +90,7 @@ export const AgentMessageItem = ({
       showScrollToBottom={showScrollToBottom}
       canContinue={canContinue}
       onContinue={onContinue}
+      onAcceptPlan={onAcceptPlan}
     />
   )
 }

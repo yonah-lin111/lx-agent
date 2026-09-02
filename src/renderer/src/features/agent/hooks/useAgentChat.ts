@@ -13,7 +13,7 @@ import { useLxAgentToast } from "@/components/ui/LxToast"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import type { AgentInputFile } from "../components/AgentInput"
-import type { ChatBlock, ChatMessage } from "../types"
+import type { ChatBlock, ChatMessage, ProposedPlanData } from "../types"
 import {
   extractQuestionAnswers,
   extractSubagentData,
@@ -857,6 +857,27 @@ export const useAgentChat = (
       })
   }, [collaborationMode, tabId])
 
+  // 采纳并执行实施方案（若处于 plan 模式自动切换至 default 模式并发送标准执行提示词）。
+  const acceptAndExecutePlan = useCallback(
+    async (_plan: ProposedPlanData) => {
+      if (collaborationMode === "plan") {
+        try {
+          await agentApi.setCollaborationMode(
+            "default",
+            currentSessionIdRef.current ?? undefined,
+            tabId,
+          )
+          setCollaborationMode("default")
+        } catch (err) {
+          console.error("Failed to switch collaboration mode to default:", err)
+        }
+      }
+      const prompt = "Plan approved. Proceed with implementation step-by-step using todowrite."
+      await sendMessage(prompt)
+    },
+    [collaborationMode, sendMessage, tabId],
+  )
+
   // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。
   // 无会话（prev 为 null）时保持不显示，避免状态栏误现 0%。
   const refreshContextUsage = useCallback(
@@ -905,6 +926,7 @@ export const useAgentChat = (
     restoreChat,
     editMessage,
     refreshContextUsage,
+    acceptAndExecutePlan,
     currentSessionId,
   }
 }

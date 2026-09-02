@@ -47,6 +47,70 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
+const PROPOSED_PLAN_OPEN_TAG = "<proposed_plan>"
+const PROPOSED_PLAN_CLOSE_TAG = "</proposed_plan>"
+
+// 提取计划内容中的首个一级标题。
+export const extractPlanTitle = (content: string): string | undefined => {
+  const match = /^#\s+(.+)$/m.exec(content)
+  return match ? match[1].trim() : undefined
+}
+
+// 解析文本块，若包含 <proposed_plan> 标签则拆分为独立 proposedPlan 块与文本块。
+export const parseTextWithProposedPlan = (text: string, durationMs?: number): ChatBlock[] => {
+  if (!text) return []
+
+  const openIndex = text.indexOf(PROPOSED_PLAN_OPEN_TAG)
+  if (openIndex === -1) {
+    return [{ kind: "text", text, durationMs }]
+  }
+
+  const result: ChatBlock[] = []
+  const before = text.slice(0, openIndex).trim()
+  if (before.length > 0) {
+    result.push({ kind: "text", text: before })
+  }
+
+  const contentStartIndex = openIndex + PROPOSED_PLAN_OPEN_TAG.length
+  const closeIndex = text.indexOf(PROPOSED_PLAN_CLOSE_TAG, contentStartIndex)
+
+  if (closeIndex === -1) {
+    // 方案正在流式输出，标签尚未闭合
+    const planContent = text.slice(contentStartIndex).trim()
+    result.push({
+      kind: "proposedPlan",
+      plan: {
+        title: extractPlanTitle(planContent),
+        content: planContent,
+        raw: text.slice(openIndex),
+        isStreaming: true,
+      },
+      durationMs,
+    })
+  } else {
+    // 方案已完整闭合
+    const planContent = text.slice(contentStartIndex, closeIndex).trim()
+    const after = text.slice(closeIndex + PROPOSED_PLAN_CLOSE_TAG.length).trim()
+
+    result.push({
+      kind: "proposedPlan",
+      plan: {
+        title: extractPlanTitle(planContent),
+        content: planContent,
+        raw: text.slice(openIndex, closeIndex + PROPOSED_PLAN_CLOSE_TAG.length),
+        isStreaming: false,
+      },
+      durationMs,
+    })
+
+    if (after.length > 0) {
+      result.push({ kind: "text", text: after })
+    }
+  }
+
+  return result
+}
+
 // 将 shared AgentMessage 转换为展示条目。
 export const toChatMessage = (
   message: AgentMessage,
@@ -146,21 +210,23 @@ export const toChatMessage = (
     }
   }
 
-  const blocks: ChatBlock[] = message.content.map((block) => {
+  const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return { kind: "text", text: block.text, durationMs: block.durationMs }
+      return parseTextWithProposedPlan(block.text, block.durationMs)
     }
     if (block.type === "thinking") {
-      return { kind: "thinking", text: block.thinking, durationMs: block.durationMs }
+      return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]
     }
-    return {
-      kind: "toolCall",
-      toolCallId: block.id,
-      toolName: block.name,
-      args: block.arguments,
-      status: "running",
-      ...(block.answers ? { answers: block.answers } : {}),
-    }
+    return [
+      {
+        kind: "toolCall",
+        toolCallId: block.id,
+        toolName: block.name,
+        args: block.arguments,
+        status: "running",
+        ...(block.answers ? { answers: block.answers } : {}),
+      },
+    ]
   })
 
   return {

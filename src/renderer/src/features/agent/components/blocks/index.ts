@@ -16,4 +16,8 @@ export { AgentToolCallBlock } from "./AgentToolCallBlock"
 export { AgentUndoSummary, type AgentUndoSummaryProps } from "./AgentUndoSummary"
 export { AgentVisualBlock, type AgentVisualBlockProps } from "./AgentVisualBlock"
 export { AgentWebSearchBlock } from "./AgentWebSearchBlock"
+export {
+  ProposedPlanCard,
+  type ProposedPlanCardProps,
+} from "./ProposedPlanCard"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"

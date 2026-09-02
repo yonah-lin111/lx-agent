@@ -244,6 +244,11 @@ export const useMessageItemGroups = (
         }
         continue
       }
+      if (item.block.kind === "proposedPlan") {
+        currentExecution = null
+        groups.push({ kind: "proposedPlan", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
       if (item.block.kind === "thinking") {
         if (!currentExecution) {
           currentExecution = { kind: "execution", blocks: [] }
@@ -303,12 +308,19 @@ export const useMessageItemGroups = (
     message.isStreaming || continuationMessages.some((currentMessage) => currentMessage.isStreaming)
 
   const hasOutput = displayBlocks.some(
-    ({ block }) => block.kind === "text" && block.text.trim() !== "",
+    ({ block }) =>
+      (block.kind === "text" && block.text.trim() !== "") ||
+      (block.kind === "proposedPlan" && block.plan.content.trim() !== ""),
   )
 
   const hasActionableContent =
     hasOutput ||
-    displayBlocks.some(({ block }) => block.kind === "toolCall" || block.kind === "thinking")
+    displayBlocks.some(
+      ({ block }) =>
+        block.kind === "toolCall" ||
+        block.kind === "thinking" ||
+        block.kind === "proposedPlan",
+    )
 
   const isAborted =
     !isUser &&
