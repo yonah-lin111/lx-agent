@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -229,9 +230,12 @@ export const LspSettings = (): React.JSX.Element => {
         </LxIconButton>
       </div>
 
-      {/* 提示信息说明 */}
-      <div className="rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
-        {t("settings.lspExplanation")}
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.lspExplanation")}</span>
+          <LxInfoTooltip markdown={t("settings.lspDoc")} placement="right" />
+        </div>
       </div>
 
       {/* LSP 列表卡片 */}
@@ -279,16 +283,20 @@ export const LspSettings = (): React.JSX.Element => {
                         content={item.detectedPath || t("settings.lspDetected")}
                         placement="top"
                       >
-                        <span className="flex items-center gap-1 rounded-[4px] bg-emerald-500/10 px-1.5 py-0.5 text-[11px] text-emerald-400">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span>{t("settings.lspDetected")}</span>
+                        <span className="inline-flex">
+                          <LxTag
+                            size="small"
+                            color="emerald"
+                            prefix={<CheckCircle2 className="h-3 w-3" />}
+                          >
+                            {t("settings.lspDetected")}
+                          </LxTag>
                         </span>
                       </LxTooltip>
                     ) : (
-                      <span className="flex items-center gap-1 rounded-[4px] bg-red-500/10 px-1.5 py-0.5 text-[11px] text-red-400">
-                        <XCircle className="h-3 w-3" />
-                        <span>{t("settings.lspNotDetected")}</span>
-                      </span>
+                      <LxTag size="small" color="rose" prefix={<XCircle className="h-3 w-3" />}>
+                        {t("settings.lspNotDetected")}
+                      </LxTag>
                     )}
 
                     <div className="h-3.5 w-px bg-white/10" />

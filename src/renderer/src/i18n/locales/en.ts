@@ -123,7 +123,46 @@ export const en = {
 
     // LSP section
     lsp: "LSP Settings",
+    lspTitle: "Language Server Protocol (LSP)",
     lspDesc: "Configure Language Server Protocol (LSP) services and custom paths",
+    lspDoc: `### Language Server Protocol (LSP) Configuration
+
+Provides **syntax analysis, error diagnostics, and code intelligence** for Agent tools and code editing across multiple programming languages.
+
+#### 💡 Core Principles
+- **Auto Detection & Probing**: The system scans system \`PATH\` for default server binaries and automatically attaches them when detected.
+- **No Implicit Installation**: The app will never silently run global package managers in the background. Your environment remains strictly under your control.
+- **Custom Binaries & Args**: Easily point to specific virtual environments (e.g., Conda, venv) or versioned Node binaries by providing custom absolute paths.
+
+---
+
+#### 🛠️ Default Supported Languages
+- **TypeScript / JavaScript**: \`typescript-language-server\` (\`npm i -g typescript-language-server typescript\`)
+- **Python**: \`pyright\` (\`npm i -g pyright\`)
+- **JSON / HTML / CSS**: \`vscode-langservers-extracted\` (\`npm i -g vscode-langservers-extracted\`)
+
+---
+
+#### 📝 Custom Configuration Example
+In \`~/.lx/config.json\` under \`agent.lsp\`:
+\`\`\`json
+{
+  "agent": {
+    "lsp": {
+      "python": {
+        "enabled": true,
+        "customPath": "/Users/user/.venv/bin/pyright-langserver",
+        "args": ["--stdio"]
+      },
+      "typescript": {
+        "enabled": true,
+        "customPath": "/usr/local/bin/typescript-language-server",
+        "args": ["--stdio"]
+      }
+    }
+  }
+}
+\`\`\``,
     lspSearchPlaceholder: "Search LSP servers...",
     lspRefresh: "Refresh LSP Status",
     lspExplanation:
@@ -146,7 +185,59 @@ export const en = {
 
     // MCP section
     mcp: "MCP Servers",
+    mcpTitle: "Model Context Protocol (MCP) Servers",
     mcpDesc: "Configure Model Context Protocol (MCP) server integrations and environment",
+    mcpDoc: `### Model Context Protocol (MCP) Configuration
+
+Connect external data sources, local development tools, and custom scripts to your Agent using the open **MCP standard**.
+
+#### 💡 Core Mechanism
+- **Stdio IPC Transport**: The Agent launches MCP servers as subprocesses communicating over standard I/O streams.
+- **Dynamic Tool Discovery**: Upon connection, all tools advertised by the server are automatically imported into the Agent runtime toolset.
+- **Live Reload & Fault Isolation**: Modifying and saving configurations triggers an instant hot-reconnect. Failures in one server will not disrupt other integrations.
+
+---
+
+#### ⚙️ Configuration Fields
+- **Server Name (ID)**：Unique key used to namespace tools (e.g. \`filesystem_read_file\`).
+- **Executable Command**：Process binary (e.g., \`npx\`, \`node\`, \`python\`, \`docker\`).
+- **Command Arguments**：Arguments passed to the process (space-separated).
+- **Environment Variables**：Key-value pairs injected into the server process.
+- **Working Directory (CWD)**：Working directory (defaults to home workspace).
+
+---
+
+#### 📝 Common MCP Examples
+
+**1. Local Filesystem Server**
+\`\`\`json
+{
+  "filesystem": {
+    "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/user/projects"]
+  }
+}
+\`\`\`
+
+**2. GitHub Server**
+\`\`\`json
+{
+  "github": {
+    "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+    "environment": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_xxxx"
+    }
+  }
+}
+\`\`\`
+
+**3. SQLite Database Server**
+\`\`\`json
+{
+  "sqlite": {
+    "command": ["uvx", "mcp-server-sqlite", "--db-path", "/path/to/database.db"]
+  }
+}
+\`\`\``,
     mcpSearchPlaceholder: "Search MCP servers...",
     mcpReconnectAll: "Reconnect All MCP Servers",
     mcpExplanation:

@@ -18,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxTag } from "@/components/ui/LxTag"
@@ -317,7 +318,7 @@ export const McpSettings = (): React.JSX.Element => {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 rounded-[6px] bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/15 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/75 hover:border-white/20 hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>{t("settings.mcpAddServer")}</span>
@@ -325,9 +326,12 @@ export const McpSettings = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* 提示信息说明 */}
-      <div className="rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
-        {t("settings.mcpExplanation")}
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.mcpExplanation")}</span>
+          <LxInfoTooltip markdown={t("settings.mcpDoc")} placement="right" />
+        </div>
       </div>
 
       {/* MCP 服务卡片列表 */}
@@ -339,7 +343,7 @@ export const McpSettings = (): React.JSX.Element => {
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="flex items-center gap-1 rounded-[6px] bg-white/10 px-2.5 py-1 text-xs text-white/80 hover:bg-white/15 transition-colors cursor-pointer"
+                className="flex items-center gap-1 rounded-[6px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/75 hover:border-white/20 hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>{t("settings.mcpAddServer")}</span>
@@ -377,7 +381,7 @@ export const McpSettings = (): React.JSX.Element => {
                             {t("settings.disabled")}
                           </LxTag>
                         ) : isConnected ? (
-                          <LxTag size="small" color="emerald">
+                          <LxTag size="small" color="emerald" prefix={<Plug className="h-3 w-3" />}>
                             {t("settings.mcpConnected")}
                           </LxTag>
                         ) : isFailed ? (
@@ -385,8 +389,12 @@ export const McpSettings = (): React.JSX.Element => {
                             content={statusItem?.error || t("settings.mcpFailed")}
                             placement="top"
                           >
-                            <span>
-                              <LxTag size="small" color="rose">
+                            <span className="inline-flex">
+                              <LxTag
+                                size="small"
+                                color="rose"
+                                prefix={<AlertTriangle className="h-3 w-3" />}
+                              >
                                 {t("settings.mcpFailed")}
                               </LxTag>
                             </span>
@@ -397,8 +405,7 @@ export const McpSettings = (): React.JSX.Element => {
                           </LxTag>
                         )}
                         {toolsCount > 0 && (
-                          <LxTag size="small" color="sky">
-                            <Wrench className="mr-1 h-3 w-3 inline" />
+                          <LxTag size="small" color="sky" prefix={<Wrench className="h-3 w-3" />}>
                             {toolsCount} {t("settings.mcpTools")}
                           </LxTag>
                         )}
@@ -657,7 +664,7 @@ export const McpSettings = (): React.JSX.Element => {
             <button
               type="button"
               onClick={handleSaveModal}
-              className="rounded-[6px] bg-white/20 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors cursor-pointer"
+              className="rounded-[6px] border border-white/15 bg-white/[0.08] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-white/[0.12] transition-colors cursor-pointer"
             >
               {t("settings.confirm")}
             </button>

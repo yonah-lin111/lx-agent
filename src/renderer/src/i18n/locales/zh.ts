@@ -125,7 +125,46 @@ export const zh: TranslationDictionary = {
 
     // LSP section
     lsp: "LSP 设置",
+    lspTitle: "语言服务协议 (LSP)",
     lspDesc: "管理代码语言服务协议 (LSP) 服务的安装探测与自定义路径配置",
+    lspDoc: `### 语言服务协议 (LSP) 服务配置
+
+为代码编辑与 Agent 工具提供跨语言的**语法分析、错误诊断与代码智能**能力。
+
+#### 💡 核心机制
+- **自动探测与装配**：系统会自动在系统的 \`PATH\` 中探测对应的默认可执行文件。若检测到已安装，将自动启用。
+- **无隐式安装**：系统不会在后台隐式执行全局安装命令，环境完全受控。
+- **自定义路径与参数**：若使用特定虚拟环境（如 Conda/venv）或特定 Node 版本，可指定绝对路径和参数。
+
+---
+
+#### 🛠️ 默认支持语言与服务
+- **TypeScript / JavaScript**: \`typescript-language-server\` (\`npm i -g typescript-language-server typescript\`)
+- **Python**: \`pyright\` (\`npm i -g pyright\`)
+- **JSON / HTML / CSS**: \`vscode-langservers-extracted\` (\`npm i -g vscode-langservers-extracted\`)
+
+---
+
+#### 📝 自定义配置示例
+在 \`~/.lx/config.json\` 的 \`agent.lsp\` 节点中：
+\`\`\`json
+{
+  "agent": {
+    "lsp": {
+      "python": {
+        "enabled": true,
+        "customPath": "/Users/user/.venv/bin/pyright-langserver",
+        "args": ["--stdio"]
+      },
+      "typescript": {
+        "enabled": true,
+        "customPath": "/usr/local/bin/typescript-language-server",
+        "args": ["--stdio"]
+      }
+    }
+  }
+}
+\`\`\``,
     lspSearchPlaceholder: "搜索 LSP 服务...",
     lspRefresh: "刷新 LSP 状态",
     lspExplanation:
@@ -148,7 +187,59 @@ export const zh: TranslationDictionary = {
 
     // MCP section
     mcp: "MCP 服务",
+    mcpTitle: "Model Context Protocol (MCP) 服务",
     mcpDesc: "配置与管理模型上下文协议 (MCP) 扩展服务器及环境变量",
+    mcpDoc: `### 模型上下文协议 (MCP) 服务配置
+
+通过开放的 **MCP 协议**为 Agent 接入外部数据源、本地工具及自动化脚本。
+
+#### 💡 核心机制
+- **Stdio 进程通信**：Agent 启动子进程并通过标准输入输出与 MCP Server 进行双向通信。
+- **动态工具发现**：连接成功后，Agent 会自动拉取所有暴露的 Tools 并注册到运行时工具箱。
+- **热重连与隔离**：保存配置后自动重新加载并连接，单个 Server 失败不会影响其他服务。
+
+---
+
+#### ⚙️ 配置字段说明
+- **服务名称 (ID)**：唯一标识，用于生成隔离的工具名前缀（如 \`filesystem_read_file\`）。
+- **可执行命令**：启动进程命令（如 \`npx\`, \`node\`, \`python\`, \`docker\` 等）。
+- **命令参数**：传递给进程的参数（空格分隔）。
+- **环境变量**：注入进程的环境变量（如 API Token）。
+- **工作目录**：进程运行目录（默认继承主工作区）。
+
+---
+
+#### 📝 常用 MCP 服务示例
+
+**1. 本地文件系统 (Filesystem)**
+\`\`\`json
+{
+  "filesystem": {
+    "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/user/projects"]
+  }
+}
+\`\`\`
+
+**2. GitHub 服务**
+\`\`\`json
+{
+  "github": {
+    "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+    "environment": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_xxxx"
+    }
+  }
+}
+\`\`\`
+
+**3. SQLite 数据库服务**
+\`\`\`json
+{
+  "sqlite": {
+    "command": ["uvx", "mcp-server-sqlite", "--db-path", "/path/to/database.db"]
+  }
+}
+\`\`\``,
     mcpSearchPlaceholder: "搜索 MCP 服务...",
     mcpReconnectAll: "重连所有 MCP 服务",
     mcpExplanation:
