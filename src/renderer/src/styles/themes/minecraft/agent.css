@@ -2463,11 +2463,11 @@
 }
 
 /* ========================================================
- * 15. Plan Mode 实施方案卡片 (ProposedPlanCard) 黑曜石/铁矿石暗色浮雕槽
+ * 15. Plan Mode 实施方案卡片 (ProposedPlanCard) 淡绿黑曜石浮雕槽
  * ======================================================== */
 [data-theme="minecraft"] .proposed-plan-card {
   border: 2px solid #000000 !important;
-  background-color: #1e1e2a !important; /* 黑曜石暗石灰 */
+  background-color: #14221a !important; /* 淡绿黑曜石基底 */
   border-radius: 0px !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
@@ -2483,28 +2483,9 @@
   border-top: 2px solid #000000 !important;
 }
 
-[data-theme="minecraft"] .proposed-plan-copy-btn {
-  font-family: var(--theme-font-family) !important;
-  border: 2px solid #000000 !important;
-  background-color: #262638 !important;
-  color: #d4d4e4 !important;
-  border-radius: 0px !important;
-  font-weight: 700;
-  text-shadow: 1px 1px 0px #000000;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
-    1px 1px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .proposed-plan-copy-btn:hover {
-  background-color: #383850 !important;
-  color: #ffffff !important;
-}
-
 [data-theme="minecraft"] .proposed-plan-icon-wrapper {
   border: 2px solid #000000 !important;
-  background-color: #28283a !important;
+  background-color: #1b3626 !important;
   border-radius: 0px !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
@@ -2513,14 +2494,14 @@
 }
 
 [data-theme="minecraft"] .proposed-plan-icon-wrapper svg {
-  color: #d4d4e8 !important;
+  color: #72e896 !important;
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
 [data-theme="minecraft"] .proposed-plan-badge {
   border: 1px solid #000000 !important;
-  background-color: #2c2c3e !important;
-  color: #e0e0f0 !important;
+  background-color: #1c3d2a !important;
+  color: #72e896 !important;
   font-family: var(--theme-font-family) !important;
   font-weight: 700;
   border-radius: 0px !important;
@@ -2529,7 +2510,7 @@
 
 [data-theme="minecraft"] .proposed-plan-title {
   font-family: var(--theme-font-family) !important;
-  color: #f0f0ff !important;
+  color: #f0fdf4 !important;
   font-weight: 700;
   text-shadow: 1px 1px 0px #000000;
 }
@@ -2537,7 +2518,7 @@
 [data-theme="minecraft"] .proposed-plan-accept-btn {
   font-family: var(--theme-font-family) !important;
   border: 2px solid #000000 !important;
-  background-color: #3a3a52 !important;
+  background-color: #1f6437 !important;
   color: #ffffff !important;
   border-radius: 0px !important;
   font-weight: 700;
@@ -2549,20 +2530,21 @@
 }
 
 [data-theme="minecraft"] .proposed-plan-accept-btn:hover:not(:disabled) {
-  background-color: #4e4e6c !important;
+  background-color: #298048 !important;
 }
 
 [data-theme="minecraft"] .proposed-plan-accept-btn[data-accepted="true"],
 [data-theme="minecraft"] .proposed-plan-accept-btn:disabled {
-  background-color: #1a1a24 !important;
-  color: #727288 !important;
-  opacity: 0.85 !important;
+  background-color: #121814 !important;
+  color: #485a4e !important;
+  border: 2px solid #000000 !important;
+  opacity: 0.4 !important;
   box-shadow: none !important;
 }
 
 [data-theme="minecraft"] .proposed-plan-expand-toggle {
   font-family: var(--theme-font-family) !important;
-  color: #a0a0c0 !important;
+  color: #72e896 !important;
   text-shadow: 1px 1px 0px #000000;
 }
 

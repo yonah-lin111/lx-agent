@@ -18,24 +18,27 @@
     - Plan 模式下 prompt 输出包含严格的 `<proposed_plan>` 规范与 3 阶段英文指令。
     - 在 Plan 模式下调用 `write`、`edit`、`apply_patch`、`todowrite` 时 `PermissionManager.checkAction()` 必须坚决返回 `deny`。
 
-- [ ] **Task 2: 渲染器 ProposedPlanBlock 契约与 AST/Tag 消息解析器**
+- [x] **Task 2: 渲染器 ProposedPlanBlock 契约与 AST/Tag 消息解析器**
   - **目标**：在 Renderer 层支持 `<proposed_plan>` 的提取与结构化 Block 构建。
   - **涉及文件**：
     - `src/renderer/src/features/agent/types.ts`
+    - `src/renderer/src/features/agent/utils.ts`
     - `src/renderer/src/features/agent/executionFlow.ts`
-    - `src/renderer/src/features/agent/messageGrouping.ts`
+    - `src/renderer/src/features/agent/components/AgentMessageList/AgentMessageItem/hooks/useMessageItemGroups.ts`
   - **验证指标**：
     - Assistant 消息中的 `<proposed_plan>` 能被正确提取为 `kind: "proposedPlan"` 块，正文中多余 tag 标记被干净剥离。
     - 普通文本和思考块不受影响，支持流式解析下的容错。
 
-- [ ] **Task 3: ProposedPlanCard 交互组件与状态机流转闭环**
+- [x] **Task 3: ProposedPlanCard 交互组件与状态机流转闭环**
   - **目标**：实现高质感 Plan 计划卡片，支持一键采纳执行、复制计划及国际化适配。
   - **涉及文件**：
     - `src/renderer/src/features/agent/components/blocks/ProposedPlanCard.tsx` (新建)
+    - `src/renderer/src/features/agent/components/AgentMessageList/AgentMessageItem/AgentAssistantMessage.tsx`
     - `src/renderer/src/features/agent/components/AgentMessageList/AgentMessageList.tsx`
-    - `src/renderer/src/features/agent/components/AgentExecutionFlowList/AgentExecutionFlowList.tsx`
-    - `src/renderer/src/i18n/locales/zh-CN.json`
-    - `src/renderer/src/i18n/locales/en-US.json`
+    - `src/renderer/src/features/agent/hooks/useAgentChat.ts`
+    - `src/renderer/src/renderer/src/features/agent/AgentPage.tsx`
+    - `src/renderer/src/i18n/locales/zh.ts`
+    - `src/renderer/src/i18n/locales/en.ts`
   - **验证指标**：
     - 点击「采纳并执行」能成功切换 `collaborationMode` 至 `default` 并自动发送 `"Plan approved. Proceed with implementation step-by-step using todowrite."`。
     - 样式全部基于 `--color-theme-*` CSS Token，多语言完整覆盖无硬编码中文。
