@@ -16,7 +16,7 @@ export interface ProposedPlanCardProps {
   hasSubsequentUserMessage?: boolean
 }
 
-const DEFAULT_MAX_LINES = 30
+const DEFAULT_MAX_LINES = 20
 const ESTIMATED_LINE_HEIGHT_PX = 22
 
 /**
