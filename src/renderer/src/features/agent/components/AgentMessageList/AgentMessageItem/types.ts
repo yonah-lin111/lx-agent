@@ -1,5 +1,10 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import type { ChatBlock, ChatMessage, ProposedPlanData } from "@/features/agent/types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
 
 // 待作答提问块类型。
 export type PendingQuestionBlock = Extract<ChatBlock, { kind: "question" }>
@@ -26,6 +31,12 @@ export type DisplayGroup =
   | {
       kind: "proposedPlan"
       block: Extract<ChatBlock, { kind: "proposedPlan" }>
+      isStreaming: boolean
+    }
+  // 审查发现独立组（不参与执行折叠，高亮渲染审查卡片并提供一键修复操作）。
+  | {
+      kind: "reviewFindings"
+      block: Extract<ChatBlock, { kind: "reviewFindings" }>
       isStreaming: boolean
     }
   | ExecutionGroup
@@ -84,8 +95,10 @@ export interface AgentMessageItemProps {
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
   onContinue?: () => void
-  // 采纳并执行实施方案（切换至 default 模式并发送执行指令）。
+  // 采纳并执行实施方案（切换至 build 模式并发送执行指令）。
   onAcceptPlan?: (plan: ProposedPlanData) => void
-  // 下方是否存在后续用户消息（用于禁用历史方案的采纳按钮）。
+  // 采纳并修复审查项（切换至 build 模式并发送修复指令）。
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
+  // 下方是否已存在用户消息（方案/审查卡片执行后置灰禁用）。
   hasSubsequentUserMessage?: boolean
 }

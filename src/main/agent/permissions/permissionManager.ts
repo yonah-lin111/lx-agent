@@ -1,4 +1,5 @@
 import type {
+  CollaborationMode,
   PermissionDecision,
   PermissionMode,
   PermissionRequest,
@@ -6,6 +7,7 @@ import type {
   PermissionSettings,
   SandboxPolicy,
 } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { guardianEvaluator } from "@/agent/guard/guardianEvaluator"
@@ -17,6 +19,8 @@ const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
 const PLAN_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and modifying filesystem state are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
+const REVIEW_MODE_MUTATION_REASON =
+  "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 
@@ -215,18 +219,19 @@ class PermissionManager {
   evaluate(
     toolName: string,
     args: unknown,
-    contextOptions?: { collaborationMode?: "default" | "plan"; sessionId?: string },
+    contextOptions?: { collaborationMode?: CollaborationMode; sessionId?: string },
   ): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-    const collaborationMode =
-      contextOptions?.collaborationMode ?? this.settings.collaborationMode ?? "default"
+    const collaborationMode = normalizeCollaborationMode(
+      contextOptions?.collaborationMode ?? this.settings.collaborationMode,
+    )
     const sessionId = contextOptions?.sessionId
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作、todowrite 任务清单及 bash 副作用
-    if (collaborationMode === "plan") {
+    // 1. 协作模式 (Plan / Review Mode)：严禁任何写文件/编辑/修改操作与 todowrite 任务清单
+    if (collaborationMode === "plan" || collaborationMode === "review") {
       if (
         toolName === "write" ||
         toolName === "edit" ||
@@ -255,17 +260,17 @@ class PermissionManager {
     // 4. deny 规则绝对优先
     if (matchRule(this.parsed.deny, toolName, args)) return "deny"
 
-    // 5. Guardian 风险评估器检测 (在 Plan 模式下高危硬阻断；在 Default 模式下高危强制升级为 ask)
+    // 5. Guardian 风险评估器检测 (在 Plan / Review 模式下高危硬阻断；在 Build 模式下高危强制升级为 ask)
     const guardianAssessment = guardianEvaluator.evaluateAction({
       toolName,
       args: record,
     })
 
     if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
-      if (collaborationMode === "plan") {
+      if (collaborationMode === "plan" || collaborationMode === "review") {
         return "deny"
       }
-      // 在 Default 模式下，即使处于 bypassPermissions，高危风险也强制升级为 ask (人工审批)
+      // 在 Build 模式下，即使处于 bypassPermissions，高危风险也强制升级为 ask (人工审批)
       return "ask"
     }
 
@@ -328,12 +333,13 @@ class PermissionManager {
     context: BeforeToolCallContext,
     sessionId: string | null,
     signal?: AbortSignal,
-    options?: { collaborationMode?: "default" | "plan" },
+    options?: { collaborationMode?: CollaborationMode },
   ): Promise<BeforeToolCallResult | undefined> {
     const toolName = context.toolCall.name
     const args = context.args
-    const collaborationMode =
-      options?.collaborationMode ?? this.settings.collaborationMode ?? "default"
+    const collaborationMode = normalizeCollaborationMode(
+      options?.collaborationMode ?? this.settings.collaborationMode,
+    )
     const record = isRecord(args) ? args : {}
 
     // Guardian 评估
@@ -360,6 +366,24 @@ class PermissionManager {
       }
     }
 
+    // Review Mode 门控硬拦截
+    if (collaborationMode === "review") {
+      if (
+        toolName === "write" ||
+        toolName === "edit" ||
+        toolName === "apply_patch" ||
+        toolName === "todowrite"
+      ) {
+        return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
+      }
+      if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
+        return {
+          block: true,
+          reason: `Action denied: Guardian risk detected in Review Mode [${guardianAssessment.category}] - ${guardianAssessment.rationale}`,
+        }
+      }
+    }
+
     const decision = this.evaluate(toolName, args, {
       collaborationMode,
       sessionId: sessionId ?? undefined,
@@ -375,6 +399,15 @@ class PermissionManager {
           toolName === "todowrite")
       ) {
         return { block: true, reason: PLAN_MODE_MUTATION_REASON }
+      }
+      if (
+        collaborationMode === "review" &&
+        (toolName === "write" ||
+          toolName === "edit" ||
+          toolName === "apply_patch" ||
+          toolName === "todowrite")
+      ) {
+        return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
       }
       if (
         sandboxPolicy === "read-only" &&

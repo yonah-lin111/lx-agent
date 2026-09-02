@@ -1,4 +1,5 @@
 import type { CollaborationMode, SandboxPolicy } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { collectEnvironmentVariables } from "../assembly"
 
@@ -41,7 +42,7 @@ export class TurnContext {
     this.modelSelection = options.modelSelection
     this.capabilities = [...options.capabilities]
     this.sandboxPolicy = options.sandboxPolicy
-    this.collaborationMode = options.collaborationMode ?? "default"
+    this.collaborationMode = normalizeCollaborationMode(options.collaborationMode)
     this.startTime = Date.now()
 
     const vars = collectEnvironmentVariables(options.cwd)

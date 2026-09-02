@@ -516,6 +516,54 @@ export const buildExecutionSteps = (
         continue
       }
 
+      // 代码审查发现
+      if (block.kind === "reviewFindings") {
+        if (!block.findings.summary.trim() && block.findings.findings.length === 0) continue
+        stepIndex++
+        const textDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          Boolean(block.findings.isStreaming)
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && textDuration !== undefined ? start + textDuration : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
+        steps.push({
+          id: `step-${stepIndex}-review-findings`,
+          turnIndex: turn,
+          stepIndex,
+          kind: "reviewFindings",
+          title: `Code Review (${block.findings.findings.length} findings)`,
+          subtitle: block.findings.isStreaming ? "Auditing codebase..." : formatPreview(block.findings.summary, 60),
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
+          durationMs: textDuration,
+          model: message.model,
+          tokens: message.usage
+            ? {
+                input: message.usage.input,
+                output: message.usage.output,
+                cacheRead: message.usage.cacheRead,
+                total: message.usage.totalTokens,
+              }
+            : undefined,
+          reviewFindingsContent: block.findings,
+          assistantContent: {
+            text: block.findings.raw,
+            model: message.model,
+            provider: message.provider,
+            stopReason: message.stopReason,
+            usage: message.usage,
+          },
+        })
+        continue
+      }
+
       // 文本回复
       if (block.kind === "text") {
         if (!block.text.trim()) continue

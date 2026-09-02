@@ -18,13 +18,20 @@ import {
   AgentVisualBlock,
   AgentWebSearchBlock,
   ProposedPlanCard,
+  ReviewFindingsCard,
   type ExecutionItemMeta,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import { useSuggestedQuestions } from "@/features/agent/hooks/useSuggestedQuestions"
-import type { ChatBlock, ChatMessage, LspToolDetails, ProposedPlanData } from "@/features/agent/types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  LspToolDetails,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { EMPTY_SUGGESTED_QUESTION_CONTEXT } from "./constants"
 import type { MessageItemGroupsResult } from "./hooks/useMessageItemGroups"
@@ -47,6 +54,7 @@ export interface AgentAssistantMessageProps {
   canContinue?: boolean
   onContinue?: () => void
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   hasSubsequentUserMessage?: boolean
 }
 
@@ -66,6 +74,7 @@ export const AgentAssistantMessage = ({
   canContinue = false,
   onContinue,
   onAcceptPlan,
+  onApplyReviewFixes,
   hasSubsequentUserMessage = false,
 }: AgentAssistantMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -185,6 +194,20 @@ export const AgentAssistantMessage = ({
                   plan={group.block.plan}
                   isStreaming={group.isStreaming}
                   onAccept={onAcceptPlan}
+                  readOnly={readOnly}
+                  hasSubsequentUserMessage={hasSubsequentUserMessage}
+                />
+              )
+            }
+
+            if (group.kind === "reviewFindings") {
+              return (
+                <ReviewFindingsCard
+                  key={groupIndex}
+                  findingsData={group.block.findings}
+                  isStreaming={group.isStreaming}
+                  onApplyFixes={onApplyReviewFixes}
+                  onFillInput={onEchoToInput}
                   readOnly={readOnly}
                   hasSubsequentUserMessage={hasSubsequentUserMessage}
                 />

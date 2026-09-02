@@ -12,6 +12,7 @@ import type {
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  CollaborationMode,
   CopySessionOptions,
   CopySessionResult,
   ExportSessionOptions,
@@ -65,7 +66,7 @@ export const agentApi = {
   ): Promise<{ ok: true; message?: ModelSwitchMessage } | { ok: false; error: string }> =>
     window.api.agent.switchModel(selection, sessionId, tabId),
   setCollaborationMode: (
-    mode: "default" | "plan",
+    mode: CollaborationMode,
     sessionId?: string,
     tabId?: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> =>

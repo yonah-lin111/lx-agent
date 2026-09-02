@@ -14,6 +14,7 @@ import type {
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  CollaborationMode,
   CopySessionOptions,
   CopySessionResult,
   ExportSessionOptions,
@@ -496,7 +497,7 @@ export class SessionRunnerManager {
   }
 
   public setCollaborationMode(
-    mode: "default" | "plan",
+    mode: CollaborationMode,
     sessionId?: string,
     tabId?: string,
   ): { ok: true } {

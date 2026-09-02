@@ -91,6 +91,18 @@ const FILTER_TAB_COLORS: Record<
       "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
     dot: "bg-teal-400",
   },
+  proposedPlan: {
+    active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-emerald-500/10 hover:text-emerald-300",
+    dot: "bg-emerald-400",
+  },
+  reviewFindings: {
+    active: "bg-violet-500/20 text-violet-300 font-semibold ring-1 ring-violet-500/30",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-violet-500/10 hover:text-violet-300",
+    dot: "bg-violet-400",
+  },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
     inactive:

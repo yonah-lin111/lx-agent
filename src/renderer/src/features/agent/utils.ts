@@ -1,5 +1,11 @@
 import type { AgentMessage, QuestionAnswer, SubagentData } from "@shared/contracts/agent"
-import type { ChatBlock, ChatMessage } from "./types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  ReviewFindingItem,
+  ReviewFindingsData,
+  ReviewSeverity,
+} from "./types"
 
 // 提取助手消息的错误信息。
 export const getAssistantError = (message: AgentMessage): string | undefined =>
@@ -50,6 +56,9 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
 const PROPOSED_PLAN_OPEN_REGEX = /<proposed_plan>/i
 const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 
+const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
+const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
+
 // 提取计划内容中的首个标题（支持 # 或 ##）。
 export const extractPlanTitle = (content: string): string | undefined => {
   const matchH1 = /^#\s+(.+)$/m.exec(content)
@@ -59,10 +68,138 @@ export const extractPlanTitle = (content: string): string | undefined => {
   return undefined
 }
 
-// 解析文本块，若包含 <proposed_plan> 标签则拆分为独立 proposedPlan 块与文本块。
+// 解析 Review Findings 文本内容，提取摘要和结构化 Finding 列表
+export const parseReviewFindingsContent = (
+  content: string,
+  raw: string,
+  isStreaming: boolean,
+): ReviewFindingsData => {
+  let summary = ""
+  const findings: ReviewFindingItem[] = []
+
+  // 1. 提取 Summary
+  const summaryMatch = /##\s*Summary\s*([\s\S]*?)(?=###\s*Finding|\s*$)/i.exec(content)
+  if (summaryMatch) {
+    summary = summaryMatch[1].trim()
+  }
+
+  // 2. 提取每个 Finding 块
+  const findingRegex =
+    /###\s*Finding(?:\s*\d+)?:\s*([^\n]+)\n([\s\S]*?)(?=(?:###\s*Finding|\s*$))/gi
+  let match: RegExpExecArray | null = null
+  let count = 0
+
+  while ((match = findingRegex.exec(content)) !== null) {
+    count++
+    const title = match[1].trim()
+    const body = match[2]
+
+    // 解析 Severity
+    const severityMatch = /-\s*\*\*Severity\*\*:\s*(Critical|High|Medium|Low)/i.exec(body)
+    const severityRaw = severityMatch ? severityMatch[1].toLowerCase() : "medium"
+    const severity = (
+      ["critical", "high", "medium", "low"].includes(severityRaw) ? severityRaw : "medium"
+    ) as ReviewSeverity
+
+    // 解析 Location (`path/to/file.ts:42` 或 `path/to/file.ts:42-50`)
+    const locationMatch =
+      /-\s*\*\*Location\*\*:\s*`?([^\n:`]+?)(?::(\d+)(?:-(\d+))?)?`?(?:\s|$)/i.exec(body)
+    let filePath = "workspace"
+    let lineStart = 1
+    let lineEnd: number | undefined
+
+    if (locationMatch) {
+      filePath = locationMatch[1].trim()
+      if (locationMatch[2]) {
+        lineStart = parseInt(locationMatch[2], 10)
+      }
+      if (locationMatch[3]) {
+        lineEnd = parseInt(locationMatch[3], 10)
+      }
+    }
+
+    // 解析 Description
+    const descriptionMatch =
+      /-\s*\*\*Description\*\*:\s*([\s\S]*?)(?=-\s*\*\*Suggestion\*\*|\s*$)/i.exec(body)
+    const description = descriptionMatch ? descriptionMatch[1].trim() : body.trim()
+
+    // 解析 Suggestion
+    const suggestionMatch = /-\s*\*\*Suggestion\*\*:\s*([\s\S]*?)$/i.exec(body)
+    const suggestion = suggestionMatch ? suggestionMatch[1].trim() : undefined
+
+    findings.push({
+      id: `finding-${count}-${Date.now()}`,
+      title,
+      severity,
+      location: {
+        filePath,
+        lineStart,
+        lineEnd,
+      },
+      description,
+      suggestion,
+    })
+  }
+
+  return {
+    summary: summary || (findings.length > 0 ? "Code review audit completed." : content.trim()),
+    findings,
+    raw,
+    isStreaming,
+  }
+}
+
+// 解析文本块，若包含 <proposed_plan> 或 <review_findings> 标签则拆分为独立结构化块与文本块。
 export const parseTextWithProposedPlan = (text: string, durationMs?: number): ChatBlock[] => {
   if (!text) return []
 
+  // 1. 检测 <review_findings>
+  const reviewOpenMatch = REVIEW_FINDINGS_OPEN_REGEX.exec(text)
+  if (reviewOpenMatch) {
+    const openIndex = reviewOpenMatch.index
+    const openTagLength = reviewOpenMatch[0].length
+
+    const result: ChatBlock[] = []
+    const before = text.slice(0, openIndex).trim()
+    if (before.length > 0) {
+      result.push({ kind: "text", text: before })
+    }
+
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = REVIEW_FINDINGS_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch) {
+      const findingsContent = remainingText.trim()
+      result.push({
+        kind: "reviewFindings",
+        findings: parseReviewFindingsContent(findingsContent, text.slice(openIndex), true),
+        durationMs,
+      })
+    } else {
+      const closeIndexInRemaining = closeMatch.index
+      const findingsContent = remainingText.slice(0, closeIndexInRemaining).trim()
+      const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
+
+      result.push({
+        kind: "reviewFindings",
+        findings: parseReviewFindingsContent(
+          findingsContent,
+          text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
+          false,
+        ),
+        durationMs,
+      })
+
+      if (after.length > 0) {
+        result.push(...parseTextWithProposedPlan(after))
+      }
+    }
+
+    return result
+  }
+
+  // 2. 检测 <proposed_plan>
   const openMatch = PROPOSED_PLAN_OPEN_REGEX.exec(text)
   if (!openMatch) {
     return [{ kind: "text", text, durationMs }]
@@ -112,7 +249,7 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
     })
 
     if (after.length > 0) {
-      result.push({ kind: "text", text: after })
+      result.push(...parseTextWithProposedPlan(after))
     }
   }
 
