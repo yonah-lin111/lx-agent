@@ -74,11 +74,15 @@ export const ProposedPlanCard = ({
         <div className="flex shrink-0 items-center gap-1.5">
           <LxTooltip content={copied ? t("agent.copied") : t("agent.copyPlan")}>
             <LxIconButton
-              icon={copied ? Check : Copy}
+              icon={
+                copied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )
+              }
               onClick={handleCopy}
-              className={`h-7 w-7 text-white/60 hover:text-white ${
-                copied ? "text-emerald-400" : ""
-              }`}
+              className="h-7 w-7 text-white/60 hover:text-white"
             />
           </LxTooltip>
 
