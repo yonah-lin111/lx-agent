@@ -389,19 +389,15 @@ export const AgentPage = ({
         return
       }
 
-      // 检查事件目标或当前活动元素是否在当前 AgentPage 容器内
+      // 严格检查事件目标或当前活动元素是否在当前 AgentPage 容器内
       const target = e.target as Node | null
       const isTargetInPage = target ? pageContainerRef.current?.contains(target) : false
       const isActiveElementInPage = document.activeElement
         ? pageContainerRef.current?.contains(document.activeElement)
         : false
 
-      if (!isTargetInPage && !isActiveElementInPage && pageContainerRef.current) {
-        // 如果焦点在整个窗口但在当前 Tab 页，依然允许触发
-        const activeTabId = agentTabStore.getActiveTabId()
-        if (tabId && activeTabId !== tabId) {
-          return
-        }
+      if (!isTargetInPage && !isActiveElementInPage) {
+        return
       }
 
       e.preventDefault()
