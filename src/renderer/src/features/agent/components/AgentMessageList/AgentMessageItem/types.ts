@@ -85,4 +85,6 @@ export interface AgentMessageItemProps {
   onContinue?: () => void
   // 采纳并执行实施方案（切换至 default 模式并发送执行指令）。
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  // 下方是否存在后续用户消息（用于禁用历史方案的采纳按钮）。
+  hasSubsequentUserMessage?: boolean
 }

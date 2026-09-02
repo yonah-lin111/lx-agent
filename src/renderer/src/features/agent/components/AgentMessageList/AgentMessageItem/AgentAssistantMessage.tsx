@@ -47,6 +47,7 @@ export interface AgentAssistantMessageProps {
   canContinue?: boolean
   onContinue?: () => void
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  hasSubsequentUserMessage?: boolean
 }
 
 // 助手消息气泡与执行组渲染组件。
@@ -65,6 +66,7 @@ export const AgentAssistantMessage = ({
   canContinue = false,
   onContinue,
   onAcceptPlan,
+  hasSubsequentUserMessage = false,
 }: AgentAssistantMessageProps): React.JSX.Element => {
   const { t } = useTranslation()
   const previewRef = useRef<HTMLDivElement>(null)
@@ -184,6 +186,7 @@ export const AgentAssistantMessage = ({
                   isStreaming={group.isStreaming}
                   onAccept={onAcceptPlan}
                   readOnly={readOnly}
+                  hasSubsequentUserMessage={hasSubsequentUserMessage}
                 />
               )
             }

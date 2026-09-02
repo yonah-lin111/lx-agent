@@ -21,6 +21,7 @@ import type {
   ChatMessage,
   ExecutionStep,
   ExecutionSubagentContent,
+  ProposedPlanData,
 } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
@@ -53,6 +54,8 @@ export interface AgentExecutionFlowListProps {
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出
   onContinue?: () => void
+  // 采纳并执行实施方案
+  onAcceptPlan?: (plan: ProposedPlanData) => void
 }
 
 // 输入区导航按钮状态。
@@ -93,6 +96,7 @@ export const AgentExecutionFlowList = forwardRef<
       onNavigationStateChange,
       canContinue = false,
       onContinue,
+      onAcceptPlan,
     },
     ref,
   ) => {
@@ -211,8 +215,8 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.toolContent?.toolName === "question") {
           return step.toolContent.question !== undefined
         }
-        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
-        if (step.kind === "user" || step.kind === "error") {
+        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
+        if (step.kind === "user" || step.kind === "error" || step.kind === "proposedPlan") {
           return true
         }
         if (
@@ -269,7 +273,7 @@ export const AgentExecutionFlowList = forwardRef<
       }))
     }, [])
 
-    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、子代理 subagent、todo、question、可视化工具 render_svg/render_ascii/render_html 以及写操作 edit/write/apply_patch）
+    // 判断 step 是否属于可折叠进 group 的类别（检索工具/其他工具/思考/系统；排除 ai、用户输入、压缩、子代理 subagent、proposedPlan、todo、question、可视化工具 render_svg/render_ascii/render_html 以及写操作 edit/write/apply_patch）
     const isGroupableStep = useCallback((step: ExecutionStep): boolean => {
       if (
         step.kind === "assistant" ||
@@ -277,7 +281,8 @@ export const AgentExecutionFlowList = forwardRef<
         step.kind === "compaction" ||
         step.kind === "modelSwitch" ||
         step.kind === "error" ||
-        step.kind === "subagent"
+        step.kind === "subagent" ||
+        step.kind === "proposedPlan"
       ) {
         return false
       }
@@ -833,6 +838,10 @@ export const AgentExecutionFlowList = forwardRef<
                           isExpanded={isStepExpanded(element.step)}
                           onToggleExpand={() => toggleStepExpanded(element.step)}
                           onOpenSubagent={handleOpenSubagent}
+                          onAcceptPlan={onAcceptPlan}
+                          hasSubsequentUserMessage={steps.some(
+                            (s) => s.turnIndex > element.step.turnIndex && s.kind === "user",
+                          )}
                         />
                       ) : (
                         <AgentExecutionFlowGroup

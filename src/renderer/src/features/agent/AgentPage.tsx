@@ -602,6 +602,7 @@ export const AgentPage = ({
             onNavigationStateChange={setNavState}
             canContinue={canContinue}
             onContinue={continueChat}
+            onAcceptPlan={acceptAndExecutePlan}
           />
         ) : (
           <>

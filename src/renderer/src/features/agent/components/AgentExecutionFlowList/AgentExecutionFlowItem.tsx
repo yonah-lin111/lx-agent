@@ -15,7 +15,11 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { ProposedPlanCard } from "@/features/agent/components/blocks"
-import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
+import type {
+  ExecutionStep,
+  ExecutionSubagentContent,
+  ProposedPlanData,
+} from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
 import { FlowItemCompactionContent } from "./FlowItemCompactionContent"
@@ -43,6 +47,8 @@ export interface AgentExecutionFlowItemProps {
   isExpanded: boolean
   onToggleExpand: () => void
   onOpenSubagent?: (content: ExecutionSubagentContent) => void
+  onAcceptPlan?: (plan: ProposedPlanData) => void
+  hasSubsequentUserMessage?: boolean
 }
 
 /**
@@ -53,6 +59,8 @@ export const AgentExecutionFlowItem = ({
   isExpanded,
   onToggleExpand,
   onOpenSubagent,
+  onAcceptPlan,
+  hasSubsequentUserMessage = false,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -413,7 +421,12 @@ export const AgentExecutionFlowItem = ({
           {/* 实施方案详情 */}
           {step.planContent && (
             <div className="agent-execution-flow-plan-content">
-              <ProposedPlanCard plan={step.planContent} readOnly={true} />
+              <ProposedPlanCard
+                plan={step.planContent}
+                onAccept={onAcceptPlan}
+                readOnly={!onAcceptPlan}
+                hasSubsequentUserMessage={hasSubsequentUserMessage}
+              />
             </div>
           )}
 

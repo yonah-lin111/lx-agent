@@ -581,6 +581,11 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                   isLastGroup && assistant?.message.role === "compactionSummary"
                 const isLastGroupUndo = isLastGroup && assistant?.message.role === "undoSummary"
 
+                const groupGlobalIndex = messageGroups.indexOf(group)
+                const hasSubsequentUserMessage = messageGroups
+                  .slice(groupGlobalIndex + 1)
+                  .some((g) => Boolean(g.userMessage))
+
                 return (
                   <div
                     key={groupKey}
@@ -639,6 +644,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                         canContinue={isLastGroupAi ? canContinue : false}
                         onContinue={isLastGroupAi ? onContinue : undefined}
                         onAcceptPlan={onAcceptPlan}
+                        hasSubsequentUserMessage={hasSubsequentUserMessage}
                       />
                     )}
                   </div>
