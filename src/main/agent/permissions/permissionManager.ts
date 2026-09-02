@@ -16,7 +16,7 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
 const PLAN_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (edit, write, apply_patch) and destructive commands are strictly prohibited in Plan Mode."
+  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and modifying filesystem state are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 
@@ -225,9 +225,14 @@ class PermissionManager {
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作及 bash 副作用
+    // 1. 协作模式 (Plan Mode)：严禁任何写文件/编辑/修改操作、todowrite 任务清单及 bash 副作用
     if (collaborationMode === "plan") {
-      if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
+      if (
+        toolName === "write" ||
+        toolName === "edit" ||
+        toolName === "apply_patch" ||
+        toolName === "todowrite"
+      ) {
         return "deny"
       }
     }
@@ -339,7 +344,12 @@ class PermissionManager {
 
     // Plan Mode 门控硬拦截
     if (collaborationMode === "plan") {
-      if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
+      if (
+        toolName === "write" ||
+        toolName === "edit" ||
+        toolName === "apply_patch" ||
+        toolName === "todowrite"
+      ) {
         return { block: true, reason: PLAN_MODE_MUTATION_REASON }
       }
       if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
@@ -359,7 +369,10 @@ class PermissionManager {
       const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
       if (
         collaborationMode === "plan" &&
-        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
+        (toolName === "write" ||
+          toolName === "edit" ||
+          toolName === "apply_patch" ||
+          toolName === "todowrite")
       ) {
         return { block: true, reason: PLAN_MODE_MUTATION_REASON }
       }
