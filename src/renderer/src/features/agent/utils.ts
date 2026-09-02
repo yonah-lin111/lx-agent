@@ -47,23 +47,29 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
-const PROPOSED_PLAN_OPEN_TAG = "<proposed_plan>"
-const PROPOSED_PLAN_CLOSE_TAG = "</proposed_plan>"
+const PROPOSED_PLAN_OPEN_REGEX = /<proposed_plan>/i
+const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 
-// 提取计划内容中的首个一级标题。
+// 提取计划内容中的首个标题（支持 # 或 ##）。
 export const extractPlanTitle = (content: string): string | undefined => {
-  const match = /^#\s+(.+)$/m.exec(content)
-  return match ? match[1].trim() : undefined
+  const matchH1 = /^#\s+(.+)$/m.exec(content)
+  if (matchH1) return matchH1[1].trim()
+  const matchH2 = /^##\s+(.+)$/m.exec(content)
+  if (matchH2) return matchH2[1].trim()
+  return undefined
 }
 
 // 解析文本块，若包含 <proposed_plan> 标签则拆分为独立 proposedPlan 块与文本块。
 export const parseTextWithProposedPlan = (text: string, durationMs?: number): ChatBlock[] => {
   if (!text) return []
 
-  const openIndex = text.indexOf(PROPOSED_PLAN_OPEN_TAG)
-  if (openIndex === -1) {
+  const openMatch = PROPOSED_PLAN_OPEN_REGEX.exec(text)
+  if (!openMatch) {
     return [{ kind: "text", text, durationMs }]
   }
+
+  const openIndex = openMatch.index
+  const openTagLength = openMatch[0].length
 
   const result: ChatBlock[] = []
   const before = text.slice(0, openIndex).trim()
@@ -71,12 +77,13 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
     result.push({ kind: "text", text: before })
   }
 
-  const contentStartIndex = openIndex + PROPOSED_PLAN_OPEN_TAG.length
-  const closeIndex = text.indexOf(PROPOSED_PLAN_CLOSE_TAG, contentStartIndex)
+  const contentStartIndex = openIndex + openTagLength
+  const remainingText = text.slice(contentStartIndex)
+  const closeMatch = PROPOSED_PLAN_CLOSE_REGEX.exec(remainingText)
 
-  if (closeIndex === -1) {
+  if (!closeMatch) {
     // 方案正在流式输出，标签尚未闭合
-    const planContent = text.slice(contentStartIndex).trim()
+    const planContent = remainingText.trim()
     result.push({
       kind: "proposedPlan",
       plan: {
@@ -89,15 +96,16 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
     })
   } else {
     // 方案已完整闭合
-    const planContent = text.slice(contentStartIndex, closeIndex).trim()
-    const after = text.slice(closeIndex + PROPOSED_PLAN_CLOSE_TAG.length).trim()
+    const closeIndexInRemaining = closeMatch.index
+    const planContent = remainingText.slice(0, closeIndexInRemaining).trim()
+    const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
 
     result.push({
       kind: "proposedPlan",
       plan: {
         title: extractPlanTitle(planContent),
         content: planContent,
-        raw: text.slice(openIndex, closeIndex + PROPOSED_PLAN_CLOSE_TAG.length),
+        raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
         isStreaming: false,
       },
       durationMs,

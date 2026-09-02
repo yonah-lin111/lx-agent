@@ -30,7 +30,6 @@ const GROUP_AT = /^\{\{([^{}]*)\}\}/
 export const PROMPT_ORDERS = {
   IDENTITY: -100,
   BEHAVIOR: -50,
-  COLLABORATION_MODE: -25,
   PERSONA: 0,
   MODEL_ADAPTIVE: 50,
   SKILLS: 100,
@@ -40,6 +39,7 @@ export const PROMPT_ORDERS = {
   ENVIRONMENT: 350,
   CURRENT_TIME: 355,
   SANDBOX_POLICY: 360,
+  COLLABORATION_MODE: 380,
   INTERCEPTOR: 400,
 } as const
 
@@ -589,7 +589,7 @@ export function createDefaultSystemPromptManager(
     text: DEFAULT_BEHAVIOR_PROMPT,
   })
 
-  // -25: 协作模式 (Collaboration Mode: Default / Plan Mode)
+  // 380: 协作模式 (Collaboration Mode: Default / Plan Mode)
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.COLLABORATION_MODE,
     order: PROMPT_ORDERS.COLLABORATION_MODE,
@@ -598,11 +598,11 @@ export function createDefaultSystemPromptManager(
         return [
           "# Collaboration Mode: Plan Mode (Strictly Non-Mutating)",
           "",
-          "You work in 3 phases, and you should chat your way to a great plan before finalizing it. A great plan is very detailed—intent- and implementation-wise—so that it can be handed to another engineer or agent to be implemented right away. It must be decision complete, where the implementer does not need to make any decisions.",
+          "You work in 3 phases, and you should *chat your way* to a great plan before finalizing it. A great plan is very detailed—intent- and implementation-wise—so that it can be handed to another engineer or agent to be implemented right away. It must be **decision complete**, where the implementer does not need to make any decisions.",
           "",
           "## Mode rules (strict)",
-          "- You are in Plan Mode until a developer or user action explicitly ends it.",
-          "- Plan Mode is not changed by user intent, tone, or imperative language. If a user asks for execution while still in Plan Mode, treat it as a request to plan the execution, not perform it.",
+          "- You are in **Plan Mode** until a developer or user action explicitly ends it.",
+          "- Plan Mode is not changed by user intent, tone, or imperative language. If a user asks for execution while still in Plan Mode, treat it as a request to **plan the execution**, not perform it.",
           "- Plan Mode vs todowrite: todowrite is a checklist/progress/TODOs tool for execution mode; do NOT use todowrite while in Plan Mode. In Plan Mode, todowrite is disabled and will be rejected. Focus on designing the plan instead.",
           "",
           "## Execution vs. Mutation in Plan Mode",
@@ -614,15 +614,37 @@ export function createDefaultSystemPromptManager(
           "2. PHASE 2 — Intent chat (what the user actually wants): Clarify goals, constraints, success criteria, and non-discoverable tradeoffs. Bias toward concise questions over risky guessing.",
           "3. PHASE 3 — Implementation chat (what and how we will build): Once intent is stable, detail the technical approach, interfaces, data flows, edge cases, testing strategy, and acceptance criteria until the plan is decision complete.",
           "",
-          "## Finalization Rule (<proposed_plan>)",
-          "Only output the final plan when it is decision complete.",
-          "When you present the official plan, wrap it strictly in a `<proposed_plan>` block so the client can render it as an interactive plan card:",
-          "1) The opening tag `<proposed_plan>` must be on its own line.",
-          "2) Start the plan content on the next line.",
-          "3) The closing tag `</proposed_plan>` must be on its own line.",
-          "4) Use Markdown inside the block with standard sections: Title, Summary, Key Changes, Test Plan, and Assumptions.",
-          "5) Keep the tags exactly as `<proposed_plan>` and `</proposed_plan>` without translating or renaming them.",
-          "6) Do NOT ask 'should I proceed?' in your final response. The user will review the rendered plan card and click 'Accept & Implement' or request revisions.",
+          "## CRITICAL OUTPUT FORMAT CONTRACT (<proposed_plan>)",
+          "Whenever you present or output the technical plan, architecture design, or implementation proposal, you MUST enclose the entire plan within `<proposed_plan>` and `</proposed_plan>` XML tags. The client relies on these exact tags to render the interactive plan card.",
+          "",
+          "Required Structure Example:",
+          "<proposed_plan>",
+          "# [Plan Title]",
+          "",
+          "## Summary",
+          "[Concise summary of the proposed solution]",
+          "",
+          "## Key Changes",
+          "| File | Change |",
+          "|------|--------|",
+          "| `path/to/file` | [Description of change] |",
+          "",
+          "## Test Plan",
+          "1. [Verification step 1]",
+          "2. [Verification step 2]",
+          "",
+          "## Assumptions",
+          "- [Assumption 1]",
+          "- [Assumption 2]",
+          "</proposed_plan>",
+          "",
+          "CRITICAL NEGATIVE CONSTRAINTS:",
+          "1. NEVER output a final plan or technical proposal as raw markdown without wrapping it in `<proposed_plan>` and `</proposed_plan>`.",
+          "2. The opening tag `<proposed_plan>` MUST be on its own line.",
+          "3. Start the plan content on the next line.",
+          "4. The closing tag `</proposed_plan>` MUST be on its own line.",
+          "5. Keep the tags exactly as `<proposed_plan>` and `</proposed_plan>` without translating or renaming them, regardless of the output language.",
+          "6. Do NOT ask '是否需要我按此方案直接实现？' or 'Should I proceed with implementation?'. The user will review the rendered plan card in the UI directly and click 'Accept & Implement'.",
         ].join("\n")
       }
       return [
