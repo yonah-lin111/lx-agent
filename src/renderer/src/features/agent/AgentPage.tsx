@@ -87,6 +87,7 @@ export const AgentPage = ({
     editMessage,
     refreshContextUsage,
     acceptAndExecutePlan,
+    acceptAndExecuteReviewFixes,
     currentSessionId,
   } = useAgentChat(context, tabId, initialSessionId, onSessionBound)
 
@@ -376,7 +377,7 @@ export const AgentPage = ({
   }, [viewMode])
   const pageContainerRef = useRef<HTMLDivElement>(null)
 
-  // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Plan / Build 模式）
+  // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Build / Plan / Review 循环切换）
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Tab" || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
@@ -395,8 +396,12 @@ export const AgentPage = ({
         ? pageContainerRef.current?.contains(document.activeElement)
         : false
 
-      if (!isTargetInPage && !isActiveElementInPage) {
-        return
+      if (!isTargetInPage && !isActiveElementInPage && pageContainerRef.current) {
+        // 如果焦点在整个窗口但在当前 Tab 页，依然允许触发
+        const activeTabId = agentTabStore.getActiveTabId()
+        if (tabId && activeTabId !== tabId) {
+          return
+        }
       }
 
       e.preventDefault()
@@ -641,6 +646,8 @@ export const AgentPage = ({
             canContinue={canContinue}
             onContinue={continueChat}
             onAcceptPlan={acceptAndExecutePlan}
+            onApplyReviewFixes={acceptAndExecuteReviewFixes}
+            onFillInput={echoToInput}
           />
         ) : (
           <>
@@ -662,6 +669,7 @@ export const AgentPage = ({
               canContinue={canContinue}
               onContinue={continueChat}
               onAcceptPlan={acceptAndExecutePlan}
+              onApplyReviewFixes={acceptAndExecuteReviewFixes}
               onNavigationStateChange={setNavState}
             />
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}

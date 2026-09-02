@@ -14,6 +14,7 @@ import type {
   QuestionResponse,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import { AGENT_CHANNELS } from "@shared/ipc/agentChannels"
 import type { ModelSelection } from "@shared/settings"
 import { ipcMain, shell, type WebContents } from "electron"
@@ -288,12 +289,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(
     AGENT_CHANNELS.setCollaborationMode,
     (_, mode: unknown, sessionId?: unknown, tabId?: unknown) => {
-      if (mode !== "default" && mode !== "plan") {
+      if (mode !== "default" && mode !== "build" && mode !== "plan" && mode !== "review") {
         return { ok: false, error: "协作模式参数无效。" }
       }
       const sId = typeof sessionId === "string" ? sessionId : undefined
       const tId = typeof tabId === "string" ? tabId : undefined
-      return agentRunner.setCollaborationMode(mode, sId, tId)
+      const normalizedMode = normalizeCollaborationMode(mode)
+      return agentRunner.setCollaborationMode(normalizedMode, sId, tId)
     },
   )
 

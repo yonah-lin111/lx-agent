@@ -249,6 +249,11 @@ export const useMessageItemGroups = (
         groups.push({ kind: "proposedPlan", block: item.block, isStreaming: item.isStreaming })
         continue
       }
+      if (item.block.kind === "reviewFindings") {
+        currentExecution = null
+        groups.push({ kind: "reviewFindings", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
       if (item.block.kind === "thinking") {
         if (!currentExecution) {
           currentExecution = { kind: "execution", blocks: [] }
@@ -310,7 +315,9 @@ export const useMessageItemGroups = (
   const hasOutput = displayBlocks.some(
     ({ block }) =>
       (block.kind === "text" && block.text.trim() !== "") ||
-      (block.kind === "proposedPlan" && block.plan.content.trim() !== ""),
+      (block.kind === "proposedPlan" && block.plan.content.trim() !== "") ||
+      (block.kind === "reviewFindings" &&
+        (block.findings.summary.trim() !== "" || block.findings.findings.length > 0)),
   )
 
   const hasActionableContent =
@@ -319,7 +326,8 @@ export const useMessageItemGroups = (
       ({ block }) =>
         block.kind === "toolCall" ||
         block.kind === "thinking" ||
-        block.kind === "proposedPlan",
+        block.kind === "proposedPlan" ||
+        block.kind === "reviewFindings",
     )
 
   const isAborted =

@@ -116,8 +116,8 @@ export const useAgentChat = (
   const [isCompactingManual, setIsCompactingManual] = useState(false)
   // 任务清单（状态栏 todo 指示数据源：订阅 todo_updated / 恢复时提取；空数组 = 指示不渲染）。
   const [todos, setTodos] = useState<TodoList>([])
-  // 当前协作模式（订阅 collaboration_mode_changed 事件同步；默认为 default）。
-  const [collaborationMode, setCollaborationMode] = useState<CollaborationMode>("default")
+  // 当前协作模式（订阅 collaboration_mode_changed 事件同步；默认为 build）。
+  const [collaborationMode, setCollaborationMode] = useState<CollaborationMode>("build")
   // 当前会话上下文容量（订阅 context_usage：估计 token / 压缩窗口，驱动状态栏百分比）。
   const [contextUsage, setContextUsage] = useState<{
     tokens: number
@@ -368,12 +368,14 @@ export const useAgentChat = (
           break
 
         case "collaboration_mode_changed":
-          // 协作模式更新（模型经 switch_mode 更新；驱动状态栏指示器并 Toast 提示用户）。
+          // 协作模式更新（驱动状态栏指示器并 Toast 提示用户）。
           setCollaborationMode(event.mode)
           if (event.mode === "plan") {
             successToast(t("agent.collaborationModeSwitchedToPlan"))
+          } else if (event.mode === "review") {
+            successToast(t("agent.collaborationModeSwitchedToReview"))
           } else {
-            successToast(t("agent.collaborationModeSwitchedToDefault"))
+            successToast(t("agent.collaborationModeSwitchedToBuild"))
           }
           break
 
@@ -847,9 +849,13 @@ export const useAgentChat = (
     )
   }, [])
 
-  // 主动切换协作模式（default / plan 循环切换）。
+  // 主动切换协作模式（build -> plan -> review 循环切换）。
   const toggleCollaborationMode = useCallback(() => {
-    const nextMode: CollaborationMode = collaborationMode === "plan" ? "default" : "plan"
+    let nextMode: CollaborationMode = "build"
+    if (collaborationMode === "build") nextMode = "plan"
+    else if (collaborationMode === "plan") nextMode = "review"
+    else if (collaborationMode === "review") nextMode = "build"
+
     void agentApi
       .setCollaborationMode(nextMode, currentSessionIdRef.current ?? undefined, tabId)
       .catch((err) => {
@@ -857,25 +863,52 @@ export const useAgentChat = (
       })
   }, [collaborationMode, tabId])
 
-  // 采纳并执行实施方案（若处于 plan 模式自动切换至 default 模式并发送标准执行提示词）。
+  // 采纳并执行实施方案（若处于 plan 或 review 模式自动切换至 build 模式并发送标准执行提示词）。
   const acceptAndExecutePlan = useCallback(
     async (_plan: ProposedPlanData) => {
-      if (collaborationMode === "plan") {
+      if (collaborationMode === "plan" || collaborationMode === "review") {
         try {
           await agentApi.setCollaborationMode(
-            "default",
+            "build",
             currentSessionIdRef.current ?? undefined,
             tabId,
           )
-          setCollaborationMode("default")
+          setCollaborationMode("build")
         } catch (err) {
-          console.error("Failed to switch collaboration mode to default:", err)
+          console.error("Failed to switch collaboration mode to build:", err)
         }
       }
       const prompt = "Plan approved. Proceed with implementation step-by-step using todowrite."
       await sendMessage(prompt)
     },
     [collaborationMode, sendMessage, tabId],
+  )
+
+  // 采纳并执行代码审查修复（切换至 build 模式并自动发送结构化修复任务指令）。
+  const acceptAndExecuteReviewFixes = useCallback(
+    async (selectedFindings: { title: string; location: { filePath: string; lineStart: number }; suggestion?: string }[]) => {
+      try {
+        await agentApi.setCollaborationMode(
+          "build",
+          currentSessionIdRef.current ?? undefined,
+          tabId,
+        )
+        setCollaborationMode("build")
+      } catch (err) {
+        console.error("Failed to switch collaboration mode to build:", err)
+      }
+
+      const issuesList = selectedFindings
+        .map(
+          (f, idx) =>
+            `${idx + 1}. **${f.title}** at \`${f.location.filePath}:${f.location.lineStart}\`\n   - Fix suggestion: ${f.suggestion || "Fix the identified defect."}`,
+        )
+        .join("\n")
+
+      const prompt = `Please fix the following issues identified during code review:\n\n${issuesList}\n\nProceed with precision and verify the fixes.`
+      await sendMessage(prompt)
+    },
+    [sendMessage, tabId],
   )
 
   // 主动刷新上下文容量（模型切换后调用；selection 指定目标模型窗口，不必等下一 turn 推送）。
@@ -927,6 +960,7 @@ export const useAgentChat = (
     editMessage,
     refreshContextUsage,
     acceptAndExecutePlan,
+    acceptAndExecuteReviewFixes,
     currentSessionId,
   }
 }

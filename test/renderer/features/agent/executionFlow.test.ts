@@ -812,5 +812,53 @@ describe("executionFlow", () => {
       expect(undoStep.undoContent?.items?.[0].userPrompt).toBe("被撤销的轮次 1")
       expect(undoStep.undoContent?.items?.[1].userPrompt).toBe("被撤销的轮次 2")
     })
+
+    it("正确解析 reviewFindings 步骤与结构化元数据", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "u1",
+          role: "user",
+          blocks: [{ kind: "text", text: "审查这段代码" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "reviewFindings",
+              findings: {
+                summary: "发现 1 个高危安全缺陷",
+                findings: [
+                  {
+                    id: "f1",
+                    title: "SQL 注入漏洞",
+                    severity: "critical",
+                    location: {
+                      filePath: "src/db.ts",
+                      lineStart: 42,
+                    },
+                    description: "拼接了未转义的用户输入",
+                    suggestion: "使用参数化查询",
+                  },
+                ],
+                raw: "<review_findings>...</review_findings>",
+              },
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(2)
+      const reviewStep = steps[1]
+      expect(reviewStep.kind).toBe("reviewFindings")
+      expect(reviewStep.title).toBe("Code Review (1 findings)")
+      expect(reviewStep.reviewFindingsContent?.findings).toHaveLength(1)
+      expect(reviewStep.reviewFindingsContent?.findings[0].severity).toBe("critical")
+    })
   })
 })

@@ -2551,3 +2551,159 @@
 [data-theme="minecraft"] .agent-execution-flow-plan-content {
   width: 100% !important;
 }
+
+/* ========================================================
+ * 16. Review Mode 代码审查卡片 (ReviewFindingsCard) 柔和低饱和深紫黑曜石
+ * ======================================================== */
+[data-theme="minecraft"] .review-findings-card {
+  border: 2px solid #000000 !important;
+  background-color: #17141e !important; /* 降低饱和度与亮度，柔和暗调 */
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-header {
+  border-bottom: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-footer {
+  border-top: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-icon-wrapper {
+  border: 2px solid #000000 !important;
+  background-color: #221a2c !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-icon-wrapper svg {
+  color: #a87ffb !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="minecraft"] .review-findings-badge {
+  border: 1px solid #000000 !important;
+  background-color: #2a1f38 !important;
+  color: #bfa5ff !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  border-radius: 0px !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .review-findings-title {
+  font-family: var(--theme-font-family) !important;
+  color: #ede9fe !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .review-findings-summary {
+  border: 1px solid #000000 !important;
+  background-color: #100d16 !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="minecraft"] .review-finding-item {
+  border: 2px solid #000000 !important;
+  background-color: #120f18 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-finding-item[data-selected="true"] {
+  background-color: #1c1527 !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #9361e2 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-finding-severity {
+  border: 1px solid #000000 !important;
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .review-finding-title {
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .review-finding-suggestion-content {
+  border: 1px solid #000000 !important;
+  background-color: #0b0810 !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="minecraft"] .review-findings-apply-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #552778 !important; /* 低饱和柔和紫晶色，不刺眼 */
+  color: #ffffff !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-apply-btn:hover:not(:disabled) {
+  background-color: #673190 !important;
+}
+
+[data-theme="minecraft"] .review-findings-apply-btn[data-accepted="true"],
+[data-theme="minecraft"] .review-findings-apply-btn:disabled {
+  background-color: #14101a !important;
+  color: #3b3145 !important;
+  border: 2px solid #000000 !important;
+  opacity: 0.4 !important;
+  box-shadow: none !important;
+}
+
+[data-theme="minecraft"] .review-findings-fill-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #1b1624 !important;
+  color: #d8b4fe !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .review-findings-fill-btn:hover:not(:disabled) {
+  background-color: #251e32 !important;
+}
+
+[data-theme="minecraft"] .review-findings-expand-toggle {
+  font-family: var(--theme-font-family) !important;
+  color: #bfa5ff !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-review-content {
+  width: 100% !important;
+}

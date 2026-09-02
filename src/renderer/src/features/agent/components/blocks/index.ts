@@ -20,4 +20,8 @@ export {
   ProposedPlanCard,
   type ProposedPlanCardProps,
 } from "./ProposedPlanCard"
+export {
+  ReviewFindingsCard,
+  type ReviewFindingsCardProps,
+} from "./ReviewFindingsCard"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"

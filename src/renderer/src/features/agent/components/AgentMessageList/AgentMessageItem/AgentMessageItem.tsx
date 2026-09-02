@@ -27,6 +27,7 @@ export const AgentMessageItem = ({
   canContinue = false,
   onContinue,
   onAcceptPlan,
+  onApplyReviewFixes,
   hasSubsequentUserMessage = false,
 }: AgentMessageItemProps): React.JSX.Element => {
   const isUser = message.role === "user"
@@ -88,6 +89,7 @@ export const AgentMessageItem = ({
       canContinue={canContinue}
       onContinue={onContinue}
       onAcceptPlan={onAcceptPlan}
+      onApplyReviewFixes={onApplyReviewFixes}
       hasSubsequentUserMessage={hasSubsequentUserMessage}
     />
   )

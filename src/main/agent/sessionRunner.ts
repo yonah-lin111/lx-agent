@@ -12,6 +12,7 @@ import type {
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  CollaborationMode,
   ModelSwitchMessage,
   PromptAssembly,
   TodoList,
@@ -19,6 +20,7 @@ import type {
   UserMessage,
   UserMessageCommand,
 } from "@shared/contracts/agent"
+import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
@@ -90,7 +92,7 @@ export class AgentSessionRunner {
   private activeCapabilities: string[] = getDefaultCapabilities().tools
   private activeMcp: string[] = []
   private activeSkills: LoadedSkill[] = []
-  private collaborationMode: "default" | "plan" = "default"
+  private collaborationMode: CollaborationMode = "build"
   private builtSignature = ""
   private messageQueue: string[] = []
   private draining = false
@@ -892,10 +894,10 @@ export class AgentSessionRunner {
     return { ok: true, message }
   }
 
-  public setCollaborationMode(mode: "default" | "plan"): { ok: true } {
-    this.collaborationMode = mode
+  public setCollaborationMode(mode: CollaborationMode): { ok: true } {
+    this.collaborationMode = normalizeCollaborationMode(mode)
     this.builtSignature = ""
-    this.emitEvent({ type: "collaboration_mode_changed", mode })
+    this.emitEvent({ type: "collaboration_mode_changed", mode: this.collaborationMode })
     return { ok: true }
   }
 

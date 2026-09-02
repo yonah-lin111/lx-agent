@@ -388,8 +388,18 @@ export interface SuggestedQuestionContextMessage {
 // 权限确认模式（对齐 Claude Code 权限体系三态）。
 export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 
-// 协作模式（对齐 Codex 执行协作模式双态）。
-export type CollaborationMode = "default" | "plan"
+// 协作模式（对齐 Codex 执行协作模式三态，支持向后兼容 "default" 归一化为 "build"）。
+export type CollaborationMode = "build" | "plan" | "review"
+
+// 协作模式向后兼容与归一化辅助函数
+export const normalizeCollaborationMode = (
+  mode?: string | null,
+): CollaborationMode => {
+  if (mode === "plan" || mode === "review" || mode === "build") {
+    return mode
+  }
+  return "build"
+}
 
 // 沙箱策略（对齐 Codex 执行沙箱三态）。
 export type SandboxPolicy = "read-only" | "workspace-write" | "danger-full-access"

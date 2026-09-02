@@ -15,7 +15,12 @@ import {
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
-import type { ChatBlock, ChatMessage, ProposedPlanData } from "@/features/agent/types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  ProposedPlanData,
+  ReviewFindingItem,
+} from "@/features/agent/types"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 import { AgentMessageItem } from "./AgentMessageItem"
 import { AgentMessageListSkeleton } from "./AgentMessageListSkeleton"
@@ -55,8 +60,10 @@ export interface AgentMessageListProps {
   canContinue?: boolean
   // 点击"继续生成"：续写被中断的上一轮输出。
   onContinue?: () => void
-  // 采纳并执行实施方案（切换至 default 模式并发送执行指令）。
+  // 采纳并执行实施方案（切换至 build 模式并发送执行指令）。
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  // 采纳并修复审查项（切换至 build 模式并发送修复指令）。
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 滚动导航状态变动通知（供外部按钮响应 disabled 状态更新）。
   onNavigationStateChange?: (state: { canScrollBottom: boolean }) => void
 }
@@ -103,6 +110,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       canContinue,
       onContinue,
       onAcceptPlan,
+      onApplyReviewFixes,
       onNavigationStateChange,
     },
     ref,
@@ -521,6 +529,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                         canContinue={isLastGroupAi ? canContinue : false}
                         onContinue={isLastGroupAi ? onContinue : undefined}
                         onAcceptPlan={onAcceptPlan}
+                        onApplyReviewFixes={onApplyReviewFixes}
                         hasSubsequentUserMessage={hasSubsequentUserMessage}
                       />
                     )}

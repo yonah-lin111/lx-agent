@@ -22,6 +22,7 @@ import type {
   ExecutionStep,
   ExecutionSubagentContent,
   ProposedPlanData,
+  ReviewFindingItem,
 } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
@@ -56,6 +57,10 @@ export interface AgentExecutionFlowListProps {
   onContinue?: () => void
   // 采纳并执行实施方案
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  // 采纳并修复代码审查项
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
+  // 审查项回填到输入框
+  onFillInput?: (text: string) => void
 }
 
 // 输入区导航按钮状态。
@@ -97,6 +102,8 @@ export const AgentExecutionFlowList = forwardRef<
       canContinue = false,
       onContinue,
       onAcceptPlan,
+      onApplyReviewFixes,
+      onFillInput,
     },
     ref,
   ) => {
@@ -215,8 +222,13 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.toolContent?.toolName === "question") {
           return step.toolContent.question !== undefined
         }
-        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
-        if (step.kind === "user" || step.kind === "error" || step.kind === "proposedPlan") {
+        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
+        if (
+          step.kind === "user" ||
+          step.kind === "error" ||
+          step.kind === "proposedPlan" ||
+          step.kind === "reviewFindings"
+        ) {
           return true
         }
         if (
@@ -282,7 +294,8 @@ export const AgentExecutionFlowList = forwardRef<
         step.kind === "modelSwitch" ||
         step.kind === "error" ||
         step.kind === "subagent" ||
-        step.kind === "proposedPlan"
+        step.kind === "proposedPlan" ||
+        step.kind === "reviewFindings"
       ) {
         return false
       }
@@ -681,6 +694,8 @@ export const AgentExecutionFlowList = forwardRef<
         undo: 0,
         assistant: 0,
         modelSwitch: 0,
+        proposedPlan: 0,
+        reviewFindings: 0,
         error: 0,
       }
       for (const step of steps) {
@@ -832,6 +847,8 @@ export const AgentExecutionFlowList = forwardRef<
                           onToggleExpand={() => toggleStepExpanded(element.step)}
                           onOpenSubagent={handleOpenSubagent}
                           onAcceptPlan={onAcceptPlan}
+                          onApplyReviewFixes={onApplyReviewFixes}
+                          onFillInput={onFillInput}
                           hasSubsequentUserMessage={steps.some(
                             (s) => s.turnIndex > element.step.turnIndex && s.kind === "user",
                           )}

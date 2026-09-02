@@ -48,6 +48,34 @@ export interface ProposedPlanData {
   isStreaming?: boolean
 }
 
+// 审查问题严重级别。
+export type ReviewSeverity = "critical" | "high" | "medium" | "low"
+
+// 审查问题代码位置定位。
+export interface ReviewFindingLocation {
+  filePath: string
+  lineStart: number
+  lineEnd?: number
+}
+
+// 单个审查发现项。
+export interface ReviewFindingItem {
+  id: string
+  title: string
+  severity: ReviewSeverity
+  location: ReviewFindingLocation
+  description: string
+  suggestion?: string
+}
+
+// 审查结果数据结构。
+export interface ReviewFindingsData {
+  summary: string
+  findings: ReviewFindingItem[]
+  raw: string
+  isStreaming?: boolean
+}
+
 // 消息内容块渲染视图。
 export type ChatBlock =
   | { kind: "text"; text: string; durationMs?: number }
@@ -55,6 +83,11 @@ export type ChatBlock =
   | {
       kind: "proposedPlan"
       plan: ProposedPlanData
+      durationMs?: number
+    }
+  | {
+      kind: "reviewFindings"
+      findings: ReviewFindingsData
       durationMs?: number
     }
   | {
@@ -158,6 +191,7 @@ export type ExecutionStepKind =
   | "modelSwitch"
   | "error"
   | "proposedPlan"
+  | "reviewFindings"
 
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
@@ -219,6 +253,8 @@ export interface ExecutionStep {
   assistantContent?: ExecutionAssistantContent
   // 实施方案内容。
   planContent?: ProposedPlanData
+  // 审查结果内容。
+  reviewFindingsContent?: ReviewFindingsData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
   // 异常/中断说明内容。

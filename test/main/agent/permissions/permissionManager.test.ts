@@ -510,4 +510,47 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(permissionManager.evaluate("bash", { command: "rm -rf /" })).toBe("deny")
     })
   })
+
+  describe("审查模式 (Review Mode 门禁)", () => {
+    it("Review 模式下硬拦截写/改工具 (write/edit/apply_patch/todowrite)", async () => {
+      applySettings({
+        defaultMode: "default",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+
+      expect(
+        permissionManager.evaluate("write", { path: "src/test.ts" }, { collaborationMode: "review" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("edit", { path: "src/test.ts" }, { collaborationMode: "review" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate(
+          "apply_patch",
+          { patch: "diff" },
+          { collaborationMode: "review" },
+        ),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("todowrite", { todos: [] }, { collaborationMode: "review" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("read", { path: "src/test.ts" }, { collaborationMode: "review" }),
+      ).toBe("allow")
+
+      const result = await permissionManager.gate(
+        gateContext("write", { path: "src/test.ts" }),
+        "s1",
+        undefined,
+        { collaborationMode: "review" },
+      )
+      expect(result).toEqual({
+        block: true,
+        reason:
+          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+      })
+    })
+  })
 })

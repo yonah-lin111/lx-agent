@@ -14,11 +14,12 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { ProposedPlanCard } from "@/features/agent/components/blocks"
+import { ProposedPlanCard, ReviewFindingsCard } from "@/features/agent/components/blocks"
 import type {
   ExecutionStep,
   ExecutionSubagentContent,
   ProposedPlanData,
+  ReviewFindingItem,
 } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
@@ -48,6 +49,8 @@ export interface AgentExecutionFlowItemProps {
   onToggleExpand: () => void
   onOpenSubagent?: (content: ExecutionSubagentContent) => void
   onAcceptPlan?: (plan: ProposedPlanData) => void
+  onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
+  onFillInput?: (text: string) => void
   hasSubsequentUserMessage?: boolean
 }
 
@@ -60,6 +63,8 @@ export const AgentExecutionFlowItem = ({
   onToggleExpand,
   onOpenSubagent,
   onAcceptPlan,
+  onApplyReviewFixes,
+  onFillInput,
   hasSubsequentUserMessage = false,
 }: AgentExecutionFlowItemProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -116,6 +121,7 @@ export const AgentExecutionFlowItem = ({
       return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
     }
     if (step.planContent) return step.planContent.content
+    if (step.reviewFindingsContent) return step.reviewFindingsContent.raw
     if (step.assistantContent) return step.assistantContent.text
     if (step.errorContent) {
       return step.errorContent.message || step.title
@@ -430,10 +436,26 @@ export const AgentExecutionFlowItem = ({
             </div>
           )}
 
-          {/* 助手回复详情 */}
-          {step.assistantContent && !step.compactionContent && !step.planContent && (
-            <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
+          {/* 代码审查详情 */}
+          {step.reviewFindingsContent && (
+            <div className="agent-execution-flow-review-content">
+              <ReviewFindingsCard
+                findingsData={step.reviewFindingsContent}
+                onApplyFixes={onApplyReviewFixes}
+                onFillInput={onFillInput}
+                readOnly={!onApplyReviewFixes}
+                hasSubsequentUserMessage={hasSubsequentUserMessage}
+              />
+            </div>
           )}
+
+          {/* 助手回复详情 */}
+          {step.assistantContent &&
+            !step.compactionContent &&
+            !step.planContent &&
+            !step.reviewFindingsContent && (
+              <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
+            )}
 
           {/* 模型切换/初始模型详情 */}
           {step.modelSwitchContent && (

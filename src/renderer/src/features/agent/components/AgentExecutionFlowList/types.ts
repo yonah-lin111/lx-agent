@@ -11,6 +11,7 @@ import {
   Minimize2,
   Palette,
   Search,
+  ShieldAlert,
   Sparkles,
   Terminal,
   Undo2,
@@ -200,6 +201,8 @@ export const getKindMeta = (
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
     case "proposedPlan":
       return { icon: ClipboardCheck, labelKey: "agent.proposedPlanBadge", tagColor: "emerald" }
+    case "reviewFindings":
+      return { icon: ShieldAlert, labelKey: "agent.review.badge", tagColor: "purple" }
     case "error": {
       const isAborted = step.errorContent?.isAborted ?? step.errorContent?.stopReason === "aborted"
       if (isAborted) {

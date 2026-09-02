@@ -1748,7 +1748,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           }),
           EditorView.domEventHandlers({
             keydown: (event) => {
-              if (event.key === "Tab") {
+              if (event.key === "Tab" && !event.shiftKey) {
                 event.preventDefault()
                 return true
               }
