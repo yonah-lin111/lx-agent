@@ -96,10 +96,10 @@ select {
   background: transparent;
 }
 
-/* 初始状态滑块完全透明隐藏 */
+/* 初始状态滑块微弱可见 */
 ::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 6px;
 }
 
@@ -126,13 +126,6 @@ select {
 [class*="overflow"]:hover::-webkit-scrollbar-thumb:active,
 .cm-scroller:hover::-webkit-scrollbar-thumb:active {
   background: #666666 !important;
-}
-
-/* 强制 Chromium 引擎在容器 hover 变化时重新绘制滚动条图层 */
-.custom-scrollbar:hover,
-[class*="overflow"]:hover,
-.cm-scroller:hover {
-  box-shadow: inset 0 0 0 1px transparent;
 }
 
 #root {
