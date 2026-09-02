@@ -84,7 +84,6 @@ export interface AgentMarkdownInputProps {
   onUndo?: () => void
   isOnlyOneTurnLeft?: () => boolean
   onCompact?: () => void
-  onToggleCollaborationMode?: () => void
   onAddFiles?: (files: AgentInputFile[]) => void
 }
 
@@ -648,7 +647,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onUndo,
       isOnlyOneTurnLeft,
       onCompact,
-      onToggleCollaborationMode,
       onAddFiles,
       panelAnchorRef,
     },
@@ -790,8 +788,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     isStreamingRef.current = isStreaming
     const onStopRef = useRef(onStop)
     onStopRef.current = onStop
-    const onToggleCollaborationModeRef = useRef(onToggleCollaborationMode)
-    onToggleCollaborationModeRef.current = onToggleCollaborationMode
     const valueRef = useRef(value)
     valueRef.current = value
     // Esc 停止生成的连按计时（间隔 ≤1s 视为双击）；单按仅 toast 提示，不打断。
@@ -1713,14 +1709,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                 },
               },
               {
-                key: "Shift-Tab",
-                preventDefault: true,
-                run: () => {
-                  onToggleCollaborationModeRef.current?.()
-                  return true
-                },
-              },
-              {
                 key: "Tab",
                 preventDefault: true,
                 run: () => {
@@ -1762,10 +1750,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
             keydown: (event) => {
               if (event.key === "Tab") {
                 event.preventDefault()
-                event.stopPropagation()
-                if (event.shiftKey) {
-                  onToggleCollaborationModeRef.current?.()
-                }
                 return true
               }
               return false

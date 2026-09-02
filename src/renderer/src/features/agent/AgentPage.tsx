@@ -374,6 +374,42 @@ export const AgentPage = ({
   useEffect(() => {
     setNavState({ canScrollBottom: false })
   }, [viewMode])
+  const pageContainerRef = useRef<HTMLDivElement>(null)
+
+  // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Plan / Build 模式）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== "Tab" || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) {
+        return
+      }
+
+      // 检查当前 Tab 是否激活（多 Tab 场景下避免非激活 Tab 触发）
+      if (tabId && agentTabStore.getActiveTabId() !== tabId) {
+        return
+      }
+
+      // 检查事件目标或当前活动元素是否在当前 AgentPage 容器内
+      const target = e.target as Node | null
+      const isTargetInPage = target ? pageContainerRef.current?.contains(target) : false
+      const isActiveElementInPage = document.activeElement
+        ? pageContainerRef.current?.contains(document.activeElement)
+        : false
+
+      if (!isTargetInPage && !isActiveElementInPage) {
+        return
+      }
+
+      e.preventDefault()
+      e.stopPropagation()
+      toggleCollaborationMode()
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true)
+    }
+  }, [tabId, toggleCollaborationMode])
+
   // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
   const escStopRef = useRef(0)
 
@@ -584,7 +620,9 @@ export const AgentPage = ({
 
   return (
     <div
-      className={`agent-page-container relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent ${
+      ref={pageContainerRef}
+      tabIndex={-1}
+      className={`agent-page-container relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent focus:outline-none ${
         pendingRequest ? "permission-pending" : ""
       }`}
     >
@@ -650,7 +688,6 @@ export const AgentPage = ({
         onUndo={undoLastTurn}
         isOnlyOneTurnLeft={isOnlyOneTurnLeft}
         onCompact={compactChat}
-        onToggleCollaborationMode={toggleCollaborationMode}
         selectedModel={selectedModel}
         onModelChange={handleModelSelectChange}
         modelOptions={selectOptions}

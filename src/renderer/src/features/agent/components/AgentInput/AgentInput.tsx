@@ -33,7 +33,6 @@ export interface AgentInputProps {
   onUndo: () => void
   isOnlyOneTurnLeft?: () => boolean
   onCompact: () => void
-  onToggleCollaborationMode?: () => void
   selectedModel: string
   onModelChange: (value: string) => void
   modelOptions: AgentModelSelectProps["options"]
@@ -73,7 +72,6 @@ export const AgentInput = ({
   onUndo,
   isOnlyOneTurnLeft,
   onCompact,
-  onToggleCollaborationMode,
   selectedModel,
   onModelChange,
   modelOptions,
@@ -350,7 +348,6 @@ export const AgentInput = ({
           onUndo={onUndo}
           isOnlyOneTurnLeft={isOnlyOneTurnLeft}
           onCompact={onCompact}
-          onToggleCollaborationMode={onToggleCollaborationMode}
           onAddFiles={handleAddFiles}
         />
         <div className="flex w-full items-center justify-between pt-1.5">
