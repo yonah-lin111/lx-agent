@@ -2479,6 +2479,29 @@
   border-bottom: 2px solid #000000 !important;
 }
 
+[data-theme="minecraft"] .proposed-plan-footer {
+  border-top: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-copy-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #222234 !important;
+  color: #d4d4e4 !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-copy-btn:hover {
+  background-color: #32324a !important;
+  color: #ffffff !important;
+}
+
 [data-theme="minecraft"] .proposed-plan-icon-wrapper {
   border: 2px solid #000000 !important;
   background-color: #1a3c28 !important;
