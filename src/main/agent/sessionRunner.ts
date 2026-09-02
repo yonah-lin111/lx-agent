@@ -289,15 +289,6 @@ export class AgentSessionRunner {
           getSessionId: () => this.currentSessionId,
           cwd,
         },
-        undefined,
-        {
-          onSwitchMode: (mode) => {
-            this.collaborationMode = mode
-            this.builtSignature = ""
-            this.emitEvent({ type: "collaboration_mode_changed", mode })
-          },
-          getCurrentMode: () => this.collaborationMode,
-        },
       )
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
