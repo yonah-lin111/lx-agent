@@ -240,6 +240,7 @@ export class AgentSessionRunner {
       this.activeMcp,
       this.activeSkills.map((skill) => skill.name),
       this.personality,
+      this.collaborationMode,
     ])
     if (
       !this.agent ||
@@ -371,6 +372,7 @@ export class AgentSessionRunner {
         sessionId: this.currentSessionId ?? undefined,
         modelId: modelResult.model.id,
         sandboxPolicy: currentSandboxPolicy,
+        collaborationMode: this.collaborationMode,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -638,12 +640,17 @@ export class AgentSessionRunner {
       cwd: effectiveCwd,
       modelSelection: this.requestedModel,
       capabilities: this.activeCapabilities,
+      collaborationMode: this.collaborationMode,
     })
 
     try {
+      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
       agent.state.systemPrompt = buildSystemPromptSync({
         cwd: this.currentTurnContext.snapshot.cwd,
         sessionId: this.currentSessionId ?? undefined,
+        modelId: agent.state.model.id,
+        sandboxPolicy: currentSandboxPolicy,
+        collaborationMode: this.collaborationMode,
         activeSkills: this.activeSkills,
         personality: this.personality,
         variables: this.currentTurnContext.snapshot.variables,
