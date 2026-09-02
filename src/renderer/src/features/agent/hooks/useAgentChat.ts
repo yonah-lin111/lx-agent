@@ -555,19 +555,17 @@ export const useAgentChat = (
         ...list.slice(nextUserIndex),
       ]
 
-      // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离并移除当前会话（会话的所有 undo 记录随之清空）
+      // 检查剩余消息：若全空或只剩初始模型/撤销摘要，脱离并移除当前会话（会话的所有 undo 记录随之清空，直接回到新会话草稿态）
       const hasMeaningfulMessages = nextMessages.some(
         (m) => !(m.role === "modelSwitch" && m.isInitial) && m.role !== "undoSummary",
       )
       if (!hasMeaningfulMessages) {
-        const initialModelMessage = nextMessages.find(
-          (m) => m.role === "modelSwitch" && m.isInitial,
-        )
-        const emptyMessages = initialModelMessage ? [initialModelMessage] : []
-        setMessages(emptyMessages)
+        setMessages([])
+        setTodos([])
         setCurrentSessionId(null)
         if (tabId) {
           agentTabStore.setTabSessionId(tabId, null)
+          agentTabStore.setTabTitle(tabId, "")
         }
         void agentApi.restore([], undefined, tabId)
       } else {

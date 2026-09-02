@@ -434,7 +434,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
 
     return (
       <div className="agent-message-list-container relative flex min-h-0 min-w-0 flex-1 flex-col">
-        {messages.length === 0 ? (
+        {messageGroups.length === 0 ? (
           <div className="agent-empty-state flex h-full flex-col justify-between p-1 select-none">
             <AgentEmptyHero mode="qa" className="flex-1" />
 
