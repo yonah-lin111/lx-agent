@@ -7,6 +7,7 @@ import { LxAgentInputToast, useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
+import { AgentContextUsagePill } from "../AgentContextUsagePill"
 import { AgentModelSelect, type AgentModelSelectProps } from "../AgentModelSelect"
 import { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 import {
@@ -37,6 +38,8 @@ export interface AgentInputProps {
   onModelChange: (value: string) => void
   modelOptions: AgentModelSelectProps["options"]
   hasModelOptions: boolean
+  // 当前会话上下文容量（估计 token / 压缩窗口；null = 尚无会话数据）。
+  contextUsage?: { tokens: number; contextWindow: number } | null
   // 外部输入框引用（父级用于建议问题回显聚焦），与内部 ref 合并。
   inputTextareaRef?: React.Ref<HTMLTextAreaElement | AgentMarkdownInputRef | null>
   projectId?: string
@@ -76,6 +79,7 @@ export const AgentInput = ({
   onModelChange,
   modelOptions,
   hasModelOptions,
+  contextUsage,
   inputTextareaRef,
   projectId,
   projectPath,
@@ -359,6 +363,7 @@ export const AgentInput = ({
               options={modelOptions}
               disabled={!hasModelOptions}
             />
+            <AgentContextUsagePill contextUsage={contextUsage} />
           </div>
 
           <div className="flex items-center gap-1.5">

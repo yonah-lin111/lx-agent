@@ -1,6 +1,6 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
 import type { Project } from "@shared/project"
-import { ChevronLeft, ChevronRight, Cpu, Folder, MessageSquare, Plus, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Cpu, Folder, MessageSquare, Plus, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -46,8 +46,8 @@ export const AgentTabBar = (): React.JSX.Element => {
     const el = tabScrollRef.current
     if (!el) return
     const { scrollLeft, scrollWidth, clientWidth } = el
-    setCanScrollLeft(scrollLeft > 2)
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2)
+    setCanScrollLeft(scrollLeft > 1)
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
   }, [])
 
   useEffect(() => {
@@ -58,9 +58,10 @@ export const AgentTabBar = (): React.JSX.Element => {
 
     const onScroll = (): void => updateScrollState()
     const onWheel = (event: WheelEvent): void => {
-      if (!event.deltaY) return
+      const delta = event.deltaX || event.deltaY
+      if (!delta) return
       event.preventDefault()
-      el.scrollLeft += event.deltaY
+      el.scrollLeft += delta
     }
 
     el.addEventListener("scroll", onScroll, { passive: true })
@@ -75,12 +76,12 @@ export const AgentTabBar = (): React.JSX.Element => {
       el.removeEventListener("wheel", onWheel)
       observer?.disconnect()
     }
-  }, [tabs.length, updateScrollState])
+  }, [tabs, updateScrollState])
 
   const handleTabScroll = useCallback((direction: "left" | "right"): void => {
     const el = tabScrollRef.current
     if (!el) return
-    el.scrollBy({ left: direction === "left" ? -120 : 120, behavior: "smooth" })
+    el.scrollBy({ left: direction === "left" ? -140 : 140, behavior: "smooth" })
   }, [])
 
   const handleCreateTab = useCallback(() => {
@@ -175,23 +176,22 @@ export const AgentTabBar = (): React.JSX.Element => {
   }
 
   return (
-    <div className="agent-tab-bar flex h-7 min-w-0 flex-1 items-center gap-0.5 px-0.5 select-none">
+    <div className="agent-tab-bar flex h-7 min-w-0 flex-1 items-center gap-0.5 overflow-hidden px-0.5 select-none">
       {/* 左翻页按钮 */}
-      {canScrollLeft && (
-        <LxIconButton
-          size="small"
-          aria-label={t("project.scrollLeft")}
-          onClick={() => handleTabScroll("left")}
-          className="shrink-0 text-white/50 hover:text-white"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </LxIconButton>
-      )}
+      <LxIconButton
+        size="small"
+        disabled={!canScrollLeft}
+        aria-label={t("project.scrollLeft")}
+        onClick={() => handleTabScroll("left")}
+        className="shrink-0 text-white/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+      </LxIconButton>
 
       {/* 横向滚动标签容器 */}
       <div
         ref={tabScrollRef}
-        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5"
+        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-0.5"
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId
@@ -200,7 +200,7 @@ export const AgentTabBar = (): React.JSX.Element => {
           const label = getTabLabel(index, tab.sessionId, tab.title)
 
           return (
-            <div key={tab.id} className="group relative flex shrink-0 items-center">
+            <div key={tab.id} className="group relative flex max-w-[140px] shrink-0 items-center">
               <LxTooltip
                 hover={{
                   content: renderTabTooltip(index, tab, session),
@@ -211,14 +211,14 @@ export const AgentTabBar = (): React.JSX.Element => {
                   type="button"
                   onClick={() => agentTabStore.switchTab(tab.id)}
                   aria-selected={isActive}
-                  className={`flex h-6 max-w-[130px] items-center gap-1.5 rounded-[6px] px-2 text-xs transition-all duration-150 cursor-pointer ${
+                  className={`flex h-6 max-w-[140px] items-center gap-1.5 rounded-[6px] border px-2 text-xs transition-all duration-150 cursor-pointer ${
                     isStreaming
                       ? isActive
-                        ? "bg-amber-500/20 text-amber-200 font-medium ring-1 ring-amber-500/50 shadow-sm"
-                        : "bg-amber-500/10 text-amber-300/80 ring-1 ring-amber-500/25 hover:bg-amber-500/15"
+                        ? "border-amber-500/50 bg-amber-500/20 text-amber-200 font-medium shadow-sm"
+                        : "border-amber-500/25 bg-amber-500/10 text-amber-300/80 hover:bg-amber-500/15"
                       : isActive
-                        ? "bg-[var(--color-theme-surface-active,rgba(255,255,255,0.12))] text-[var(--color-theme-text-primary,#fff)] font-medium ring-1 ring-white/10 shadow-sm"
-                        : "text-[var(--color-theme-text-secondary,#888)] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
+                        ? "border-white/10 bg-[var(--color-theme-surface-active,rgba(255,255,255,0.12))] text-[var(--color-theme-text-primary,#fff)] font-medium shadow-sm"
+                        : "border-transparent text-[var(--color-theme-text-secondary,#888)] hover:border-white/10 hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
                   }`}
                 >
                   <span
@@ -228,7 +228,7 @@ export const AgentTabBar = (): React.JSX.Element => {
                     }`}
                     role="status"
                   />
-                  <span className="min-w-0 truncate font-mono text-[11px] leading-none">
+                  <span className="min-w-0 flex-1 truncate text-left font-mono text-[11px] leading-none">
                     {label}
                   </span>
                   {tabs.length > 1 &&
@@ -293,16 +293,15 @@ export const AgentTabBar = (): React.JSX.Element => {
       </div>
 
       {/* 右翻页按钮 */}
-      {canScrollRight && (
-        <LxIconButton
-          size="small"
-          aria-label={t("project.scrollRight")}
-          onClick={() => handleTabScroll("right")}
-          className="shrink-0 text-white/50 hover:text-white"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </LxIconButton>
-      )}
+      <LxIconButton
+        size="small"
+        disabled={!canScrollRight}
+        aria-label={t("project.scrollRight")}
+        onClick={() => handleTabScroll("right")}
+        className="shrink-0 text-white/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+      >
+        <ArrowRight className="h-3.5 w-3.5" />
+      </LxIconButton>
     </div>
   )
 }

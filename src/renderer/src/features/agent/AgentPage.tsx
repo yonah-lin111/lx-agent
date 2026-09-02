@@ -696,6 +696,7 @@ export const AgentPage = ({
         onModelChange={handleModelSelectChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
+        contextUsage={contextUsage}
         projectId={effectiveProjectId}
         projectPath={effectiveProjectPath}
         currentPath={statusBarPath}
@@ -719,7 +720,6 @@ export const AgentPage = ({
         allowProjectChange={!currentSessionId}
         onProjectChange={handleProjectSelect}
         onWorktreeChange={handleWorktreeSelect}
-        contextUsage={contextUsage}
         todos={todos}
         jobs={jobs}
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
