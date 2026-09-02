@@ -656,27 +656,6 @@ export class AgentSessionRunner {
       }
       await agent.prompt(userMessage)
 
-      if (this.collaborationMode === "plan") {
-        const lastMsg = this.agent?.state.messages[this.agent.state.messages.length - 1]
-        if (lastMsg && lastMsg.role === "assistant") {
-          const textContent = Array.isArray(lastMsg.content)
-            ? lastMsg.content
-                .filter((b) => b.type === "text")
-                .map((b) => (b as { text: string }).text)
-                .join("\n")
-            : ""
-          if (
-            textContent.includes("<proposed_plan>") ||
-            textContent.includes("</proposed_plan>") ||
-            lastMsg.stopReason === "stop"
-          ) {
-            this.collaborationMode = "default"
-            this.builtSignature = ""
-            this.emitEvent({ type: "collaboration_mode_changed", mode: "default" })
-          }
-        }
-      }
-
       if (this.turnStore.consumeOverflow()) {
         this.removeLastOverflowMessage()
         const compacted = await this.compactor.compactIfNeeded(true)
