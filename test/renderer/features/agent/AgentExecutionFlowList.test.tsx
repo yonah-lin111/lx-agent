@@ -1730,6 +1730,58 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Turn Undone / Reverted")).not.toBeNull()
   })
 
+  it("撤销/删除摘要步骤不会渲染属于前一轮的 turn-summary", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "第一轮问题" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "call-1",
+            toolName: "run_command",
+            args: { command: "ls" },
+            status: "done",
+          },
+          { kind: "text", text: "第一轮回答" },
+        ],
+        usage: { input: 100, output: 50, cacheRead: 0, totalTokens: 150 },
+        isStreaming: false,
+        timestamp: 1010,
+      },
+      {
+        id: "undo-1",
+        role: "undoSummary",
+        blocks: [],
+        isStreaming: false,
+        timestamp: 1050,
+        undoPayload: {
+          userPrompt: "被撤销的提示词",
+          toolCallCount: 1,
+          fileChangeCount: 0,
+        },
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // turn 1 summary 应该存在且位于第一轮结束位置
+    const turn1Summary = screen.getByTestId("turn-summary-1")
+    expect(turn1Summary).not.toBeNull()
+
+    // 撤销步骤位于 turn1Summary 之后，且不应附带任何 turn summary
+    const undoStep = container.querySelector('[data-step-kind="undo"]')
+    expect(undoStep).not.toBeNull()
+    expect(screen.queryByTestId("turn-summary-0")).toBeNull()
+  })
+
   it("渲染撤销步骤展开后的上传文件附件", () => {
     const messages: ChatMessage[] = [
       {

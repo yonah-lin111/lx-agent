@@ -771,22 +771,15 @@ export const AgentExecutionFlowList = forwardRef<
                   return (
                     <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
                       {/* 轮次分隔线（仅非 compaction / 非 modelSwitch / 非 undo 的用户交互轮次展示） */}
-                      {isNewTurn &&
-                        elementTurnIndex > 0 &&
-                        !(
-                          element.kind === "single" &&
-                          (element.step.kind === "compaction" ||
-                            element.step.kind === "modelSwitch" ||
-                            element.step.kind === "undo")
-                        ) && (
-                          <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
-                            <div className="h-[1px] flex-1 bg-white/10" />
-                            <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
-                              {t("agent.turnLabel", { turn: elementTurnIndex })}
-                            </span>
-                            <div className="h-[1px] flex-1 bg-white/10" />
-                          </div>
-                        )}
+                      {isNewTurn && elementTurnIndex > 0 && (
+                        <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                            {t("agent.turnLabel", { turn: elementTurnIndex })}
+                          </span>
+                          <div className="h-[1px] flex-1 bg-white/10" />
+                        </div>
+                      )}
                       {/* 撤销独立分割线 */}
                       {element.kind === "single" && element.step.kind === "undo" && (
                         <div className="agent-execution-flow-undo-divider my-1.5 flex items-center gap-2">

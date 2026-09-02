@@ -172,7 +172,7 @@ export const buildExecutionSteps = (
 
       steps.push({
         id: `step-${stepIndex}-undo`,
-        turnIndex: currentTurn > 0 ? currentTurn : 1,
+        turnIndex: 0,
         stepIndex,
         kind: "undo",
         title,

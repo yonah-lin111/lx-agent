@@ -805,7 +805,7 @@ describe("executionFlow", () => {
 
       const undoStep = steps[1]
       expect(undoStep.kind).toBe("undo")
-      expect(undoStep.turnIndex).toBe(1) // 跟随当前 turn，而非 0
+      expect(undoStep.turnIndex).toBe(0) // 元信息步骤 turnIndex 为 0，不与用户交互轮次混淆
       expect(undoStep.title).toBe("Undone (2 turns)")
       expect(undoStep.subtitle).toBe("3 tools, 1 files")
       expect(undoStep.undoContent?.items).toHaveLength(2)
