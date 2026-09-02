@@ -2,7 +2,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentMessageList } from "@/features/agent/components/AgentMessageList"
-import * as useMessagePinHook from "@/features/agent/hooks/useMessagePin"
 import type { ChatMessage } from "@/features/agent/types"
 
 // jsdom 未实现 ResizeObserver（用户消息折叠重测依赖它），用空实现代替。
@@ -198,64 +197,63 @@ describe("AgentMessageList", () => {
     expect(screen.getByText("对话摘要内容")).toBeTruthy()
   })
 
-  it("吸顶时绝对定位容器渲染，带有 animate-pinned-in 动画；关闭时过渡到 animate-pinned-out，动画结束后卸载", () => {
-    const useMessagePinSpy = vi.spyOn(useMessagePinHook, "useMessagePin").mockReturnValue({
-      pinnedUserMessageId: "qa-q",
-      attachUserMessageEndRef: () => () => {},
-      updatePinnedQuestion: () => {},
-    })
+  it("在底部附近向上滚动时，释放吸底锁，即使触发 visibleGroups 更新也不应自动滚到底部", () => {
+    const clientHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(600)
+    const scrollHeightSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(1000)
+    let scrollTopValue = 400
+    const scrollTopGetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "get")
+      .mockImplementation(() => scrollTopValue)
+    const scrollTopSetSpy = vi
+      .spyOn(window.HTMLElement.prototype, "scrollTop", "set")
+      .mockImplementation((val) => {
+        scrollTopValue = val
+      })
 
-    const messages: ChatMessage[] = [
-      userMessage("qa-q", "问题一"),
-      {
-        id: "qa-a",
-        role: "assistant",
-        blocks: [{ kind: "text", text: "回答一" }],
-        isStreaming: false,
-      },
-    ]
+    const originalScrollTo = window.HTMLElement.prototype.scrollTo
+    window.HTMLElement.prototype.scrollTo = vi.fn()
 
-    const { container, rerender } = render(
-      <AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />,
-    )
-
-    // 吸顶时绝对定位容器渲染，带有 animate-pinned-in
-    const absoluteContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
-    expect(absoluteContainer).not.toBeNull()
-    expect(absoluteContainer?.className).toContain("animate-pinned-in")
-
-    // 变为不吸顶时，设置 isClosing 为 true 并挂载 animate-pinned-out
-    useMessagePinSpy.mockReturnValue({
-      pinnedUserMessageId: null,
-      attachUserMessageEndRef: () => () => {},
-      updatePinnedQuestion: () => {},
-    })
-
-    rerender(<AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />)
-
-    // 应该依然渲染，但 class 变为 animate-pinned-out
-    const closingContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
-    expect(closingContainer).not.toBeNull()
-    expect(closingContainer?.className).toContain("animate-pinned-out")
-
-    // 模拟动画结束（通过 React 内部属性直接触发 onAnimationEnd 绕过 JSDOM 动画事件局限）
-    act(() => {
-      const reactPropsKey = Object.keys(closingContainer!).find((key) =>
-        key.startsWith("__reactProps"),
+    try {
+      const messages: ChatMessage[] = [
+        userMessage("q1", "问题一"),
+        {
+          id: "a1",
+          role: "assistant",
+          blocks: [{ kind: "text", text: "回答一" }],
+          isStreaming: false,
+        },
+      ]
+      const { container, rerender } = render(
+        <AgentMessageList messages={messages} onSelectPrompt={vi.fn()} />,
       )
-      if (reactPropsKey) {
-        ;(closingContainer as any)[reactPropsKey].onAnimationEnd({
-          target: closingContainer,
-          currentTarget: closingContainer,
-        })
-      }
-    })
+      const scrollEl = container.querySelector(".custom-scrollbar") as HTMLDivElement
 
-    // 之后完全不渲染
-    const unmountedContainer = container.querySelector(".absolute.top-0.left-0.right-0.z-30")
-    expect(unmountedContainer).toBeNull()
+      // 触发初始滚动（此时在最底部，锁定在底部）
+      fireEvent.scroll(scrollEl)
 
-    useMessagePinSpy.mockRestore()
+      // 稍微向上滚动 (scrollTop = 390)，仍在 250px 阈值内
+      scrollTopValue = 390
+      fireEvent.scroll(scrollEl)
+
+      // 追加一条新消息，这会改变 visibleGroups，从而触发 layoutEffect
+      const nextMessages = [...messages, userMessage("q2", "问题二")]
+      rerender(<AgentMessageList messages={nextMessages} onSelectPrompt={vi.fn()} />)
+
+      // 如果吸底锁没有释放，scrollTop 会被强制设置为 scrollHeight (1000)
+      // 如果正确释放了，它应该保持在原来的位置 (390)
+      expect(scrollEl.scrollTop).not.toBe(1000)
+      expect(scrollEl.scrollTop).toBe(390)
+    } finally {
+      clientHeightSpy.mockRestore()
+      scrollHeightSpy.mockRestore()
+      scrollTopGetSpy.mockRestore()
+      scrollTopSetSpy.mockRestore()
+      window.HTMLElement.prototype.scrollTo = originalScrollTo
+    }
   })
 
   it("触发 steer 后，上一条 AI 消息底部的操作按钮仍显示", async () => {

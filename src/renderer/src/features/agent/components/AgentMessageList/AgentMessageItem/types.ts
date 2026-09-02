@@ -23,7 +23,11 @@ export interface ExecutionGroup {
 export type DisplayGroup =
   | { kind: "text"; block: Extract<ChatBlock, { kind: "text" }>; isStreaming: boolean }
   // 拟定实施计划独立组（不参与执行折叠，突出渲染卡片并提供一键转执行操作）。
-  | { kind: "proposedPlan"; block: Extract<ChatBlock, { kind: "proposedPlan" }>; isStreaming: boolean }
+  | {
+      kind: "proposedPlan"
+      block: Extract<ChatBlock, { kind: "proposedPlan" }>
+      isStreaming: boolean
+    }
   | ExecutionGroup
   // 编写操作调用独立组（不参与执行折叠，直接平铺展示）。
   | { kind: "writing"; block: ToolCallBlock; isStreaming: boolean }
@@ -55,7 +59,6 @@ export interface AgentMessageItemProps {
   message: ChatMessage
   continuationMessages?: ChatMessage[]
   isLoading?: boolean
-  isPinned?: boolean
   isEditing?: boolean
   // 是否为当前最后一条 AI 回答（仅该条目展示建议问题）。
   isLastAssistant?: boolean
@@ -71,8 +74,6 @@ export interface AgentMessageItemProps {
   onDelete?: (messageId: string) => void
   // 点击"从此分支"：从该用户轮切割复制历史到新会话（assistant / toolResult 消息不显示）。
   onFork?: (userMessageTimestamp: number) => void
-  // 吸顶状态下点击"定位"：滚动回该消息在自然流中的原始位置（消息顶对齐列表视口顶部）。
-  onLocate?: () => void
   // 点击子代理 label 打开面板弹窗。
   onOpenSubagent?: (toolCall: ToolCallBlock) => void
   // 只读模式（子代理面板内渲染，隐藏编辑/删除操作，保留复制）。

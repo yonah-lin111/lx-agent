@@ -11,7 +11,6 @@ export const AgentMessageItem = ({
   message,
   continuationMessages = [],
   isLoading,
-  isPinned = false,
   isEditing,
   isLastAssistant = false,
   suggestedQuestionContext,
@@ -22,7 +21,6 @@ export const AgentMessageItem = ({
   onEdit,
   onDelete,
   onFork,
-  onLocate,
   onOpenSubagent,
   readOnly = false,
   showScrollToBottom = false,
@@ -61,14 +59,12 @@ export const AgentMessageItem = ({
     return (
       <AgentUserMessage
         message={message}
-        isPinned={isPinned}
         isEditing={isEditing}
         readOnly={readOnly}
         onStartEdit={onStartEdit}
         onCancelEdit={onCancelEdit}
         onEdit={onEdit}
         onFork={onFork}
-        onLocate={onLocate}
       />
     )
   }

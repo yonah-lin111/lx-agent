@@ -190,14 +190,8 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .animate-sidebar-content-slide-in,
   .animate-header-breadcrumb-in,
-  .animate-header-breadcrumb-out,
-  .animate-pinned-in,
-  .animate-pinned-out {
+  .animate-header-breadcrumb-out {
     animation: none;
-  }
-
-  .agent-pinned-shift {
-    transition: none;
   }
 }
 
@@ -231,41 +225,6 @@ select {
 
 .animate-tooltip-out {
   animation: tooltip-out 120ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-@keyframes pinned-in {
-  from {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-pinned-in {
-  animation: pinned-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes pinned-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-.animate-pinned-out {
-  animation: pinned-out 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* 吸顶居中/回位：transform 表达 items-end↔center 的水平位移，进入与退出双向都能过渡。 */
-.agent-pinned-shift {
-  transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @keyframes fade-in {

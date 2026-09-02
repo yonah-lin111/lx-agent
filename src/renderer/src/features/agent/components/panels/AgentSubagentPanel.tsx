@@ -242,7 +242,7 @@ export const AgentSubagentPanel = ({
                     <Fragment key={groupKey}>
                       {userMessage && (
                         <div className="mb-2 w-full">
-                          <AgentMessageItem message={userMessage} isPinned={false} readOnly />
+                          <AgentMessageItem message={userMessage} readOnly />
                         </div>
                       )}
                       {assistant && (

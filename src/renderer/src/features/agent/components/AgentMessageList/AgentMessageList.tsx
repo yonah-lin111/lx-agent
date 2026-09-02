@@ -14,7 +14,6 @@ import {
 } from "react"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
-import { useMessagePin } from "@/features/agent/hooks/useMessagePin"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, ChatMessage, ProposedPlanData } from "@/features/agent/types"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
@@ -76,7 +75,6 @@ const AgentMessageItemMemo = memo(AgentMessageItem, (prev, next) => {
     prev.message === next.message &&
     prev.continuationMessages === next.continuationMessages &&
     prev.isLoading === next.isLoading &&
-    prev.isPinned === next.isPinned &&
     prev.isEditing === next.isEditing &&
     prev.isLastAssistant === next.isLastAssistant &&
     prev.readOnly === next.readOnly &&
@@ -136,9 +134,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       prevScrollTop: number
     } | null>(null)
 
-    // 待跳转定位的目标用户消息 ID（当定位目标在当前窗口之外时暂存）。
-    const pendingLocateMessageIdRef = useRef<string | null>(null)
-
     // 会话切换（消息列表重置或恢复）时，重置滑动窗口与初次吸底标记。
     const prevMessagesLengthRef = useRef(messages.length)
     useEffect(() => {
@@ -159,43 +154,8 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     const lastGroup = messageGroups.at(-1)
     // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
     const isLastGroupLoading = Boolean(isStreaming) && lastGroup?.assistant != null
-    // 各 QA 组的 DOM 引用（按组头用户消息 id 索引）。
+    // 各 QA 组的 DOM 引用（按组头消息 id 索引），用于侧边栏展开时的视口锚点恢复。
     const messageGroupRefs = useRef(new Map<string, HTMLDivElement>())
-    const { pinnedUserMessageId, attachUserMessageEndRef, updatePinnedQuestion } =
-      useMessagePin(messageGroupRefs)
-    const pinnedUserMessage = useMemo(() => {
-      if (!pinnedUserMessageId) return undefined
-      return messages.find((m) => m.id === pinnedUserMessageId)
-    }, [messages, pinnedUserMessageId])
-
-    // Pinned message state for smooth exit transition.
-    const currentPinnedMessage = useMemo(() => {
-      return !isSubagentPanelOpen && pinnedUserMessage ? pinnedUserMessage : null
-    }, [isSubagentPanelOpen, pinnedUserMessage])
-
-    const [displayPinnedMessage, setDisplayPinnedMessage] = useState<ChatMessage | null>(null)
-    const [isClosing, setIsClosing] = useState(false)
-
-    useEffect(() => {
-      if (currentPinnedMessage) {
-        setDisplayPinnedMessage(currentPinnedMessage)
-        setIsClosing(false)
-      } else {
-        if (displayPinnedMessage && !isClosing) {
-          setIsClosing(true)
-        }
-      }
-    }, [currentPinnedMessage, displayPinnedMessage, isClosing])
-
-    const handleAnimationEnd = useCallback(
-      (e: React.AnimationEvent) => {
-        if (isClosing && e.currentTarget === e.target) {
-          setDisplayPinnedMessage(null)
-          setIsClosing(false)
-        }
-      },
-      [isClosing],
-    )
 
     // 仅当存在 ≥2 个 QA 对时展示"从此分支"。
     const canFork = useMemo(
@@ -240,47 +200,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       }
       scrollCompensationRef.current = null
     }, [visibleGroups])
-
-    // 定位吸顶的用户消息：滚动到其在自然流中的位置。
-    const performLocate = useCallback((messageId: string): void => {
-      const el = scrollRef.current
-      const group = messageGroupRefs.current.get(messageId)
-      if (!el || !group) return
-      const containerRect = el.getBoundingClientRect()
-      const groupRect = group.getBoundingClientRect()
-      const paddingTop = Number.parseFloat(window.getComputedStyle(el).paddingTop) || 0
-      const delta = groupRect.top - (containerRect.top + paddingTop)
-      const nextScrollTop = el.scrollTop + delta
-      el.scrollTo({ top: nextScrollTop, behavior: "smooth" })
-      stickToBottomRef.current = false
-      activeScrollTopRef.current = nextScrollTop
-      setShowScrollToBottom(true)
-    }, [])
-
-    // 定位用户消息入口：如果目标在当前滑动窗口之前，先扩展窗口再在 layoutEffect 中精确定位。
-    const handleLocateMessage = useCallback(
-      (messageId: string): void => {
-        const targetIndex = messageGroups.findIndex((group) => group.userMessage?.id === messageId)
-        if (targetIndex === -1) return
-
-        if (targetIndex < windowStartIndex) {
-          pendingLocateMessageIdRef.current = messageId
-          setWindowStartIndex(Math.max(0, targetIndex - 5))
-          return
-        }
-
-        performLocate(messageId)
-      },
-      [messageGroups, performLocate, windowStartIndex],
-    )
-
-    // 暂存的定位请求在 DOM 挂载更新后执行。
-    useLayoutEffect(() => {
-      const pendingId = pendingLocateMessageIdRef.current
-      if (!pendingId) return
-      performLocate(pendingId)
-      pendingLocateMessageIdRef.current = null
-    }, [visibleGroups, performLocate])
 
     const scrollToBottom = useCallback((): void => {
       // 面板打开时滚动面板消息列表，否则滚动主消息列表。
@@ -359,7 +278,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       }
 
       setShowScrollToBottom(!nearBottom)
-      updatePinnedQuestion(el)
       updateNavState()
 
       // 向上滑动接近顶部时，自动拉取上一页历史并无感补偿滚动。
@@ -518,37 +436,6 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
           </div>
         ) : (
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Pinned absolute floating user message at the top */}
-            {displayPinnedMessage && (
-              <div
-                className={`absolute top-0 left-0 right-0 z-30 px-1 pt-1 ${
-                  isClosing ? "animate-pinned-out" : "animate-pinned-in"
-                }`}
-                onAnimationEnd={handleAnimationEnd}
-              >
-                <AgentMessageItemMemo
-                  key={displayPinnedMessage.id}
-                  message={displayPinnedMessage}
-                  isPinned={true}
-                  onLocate={() => handleLocateMessage(displayPinnedMessage.id)}
-                  isEditing={editingMessageId === displayPinnedMessage.id}
-                  onStartEdit={() => setEditingMessageId(displayPinnedMessage.id)}
-                  onCancelEdit={() => {
-                    if (editingMessageId === displayPinnedMessage.id) {
-                      setEditingMessageId(null)
-                    }
-                  }}
-                  onEdit={(id, newContent) => {
-                    onEditMessage?.(id, newContent)
-                    setEditingMessageId(null)
-                  }}
-                  onDelete={onDeleteMessage}
-                  onFork={canFork ? onFork : undefined}
-                  onOpenSubagent={onOpenSubagent}
-                />
-              </div>
-            )}
-
             <div
               ref={scrollRef}
               onScroll={handleScroll}
@@ -595,35 +482,25 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                     }
                   >
                     {userMessage && (
-                      <>
-                        {/* 用户消息普通容器，不再有 sticky 属性 */}
-                        <div className="mb-4 w-full">
-                          <AgentMessageItemMemo
-                            message={userMessage}
-                            isPinned={false}
-                            onLocate={undefined}
-                            isEditing={editingMessageId === userMessage.id}
-                            onStartEdit={() => setEditingMessageId(userMessage.id)}
-                            onCancelEdit={() => {
-                              if (editingMessageId === userMessage.id) {
-                                setEditingMessageId(null)
-                              }
-                            }}
-                            onEdit={(id, newContent) => {
-                              onEditMessage?.(id, newContent)
+                      <div className="mb-4 w-full">
+                        <AgentMessageItemMemo
+                          message={userMessage}
+                          isEditing={editingMessageId === userMessage.id}
+                          onStartEdit={() => setEditingMessageId(userMessage.id)}
+                          onCancelEdit={() => {
+                            if (editingMessageId === userMessage.id) {
                               setEditingMessageId(null)
-                            }}
-                            onDelete={onDeleteMessage}
-                            onFork={canFork ? onFork : undefined}
-                            onOpenSubagent={onOpenSubagent}
-                          />
-                        </div>
-                        <div
-                          ref={attachUserMessageEndRef(userMessage.id)}
-                          className="h-0 -translate-y-4"
-                          aria-hidden="true"
+                            }
+                          }}
+                          onEdit={(id, newContent) => {
+                            onEditMessage?.(id, newContent)
+                            setEditingMessageId(null)
+                          }}
+                          onDelete={onDeleteMessage}
+                          onFork={canFork ? onFork : undefined}
+                          onOpenSubagent={onOpenSubagent}
                         />
-                      </>
+                      </div>
                     )}
                     {assistant && (
                       <AgentMessageItemMemo
