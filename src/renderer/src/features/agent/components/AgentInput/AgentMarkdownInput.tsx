@@ -42,6 +42,7 @@ import {
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { type TranslationKey, useTranslation } from "@/i18n"
+import { getClipboardFilesAsync } from "@/lib/clipboard"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
@@ -186,66 +187,6 @@ const getArgumentSelectionRange = (
     }
   }
   return { anchor: commandNameLength + 1, head: insertText.length }
-}
-
-const getClipboardFiles = (
-  event: ClipboardEvent,
-): { path: string; type: "folder" | "file" | "image" }[] => {
-  const clipboardData = event.clipboardData
-  if (!clipboardData) return []
-
-  const files = Array.from(clipboardData.files)
-  const entries = Array.from(clipboardData.items).filter((item) => item.kind === "file")
-  const clipboardFiles = files.flatMap((file, index) => {
-    try {
-      const path = window.api.getPathForFile(file)
-      if (!path) return []
-      const entry = (
-        entries[index] as
-          | (DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean } | null })
-          | undefined
-      )?.webkitGetAsEntry?.()
-      const isImage =
-        file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path)
-      const fileType: "image" | "file" | "folder" = entry?.isDirectory
-        ? "folder"
-        : isImage
-          ? "image"
-          : "file"
-      return [{ path, type: fileType }]
-    } catch {
-      return []
-    }
-  })
-  if (clipboardFiles.length > 0) return clipboardFiles
-
-  const plainText = clipboardData.getData("text/plain").trim()
-  if (plainText.startsWith("/")) {
-    return [
-      {
-        path: plainText,
-        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(plainText) ? "image" : "file",
-      },
-    ]
-  }
-
-  const fileUri = clipboardData
-    .getData("text/uri-list")
-    .split(/\r?\n/)
-    .find((value) => value.trim() && !value.trim().startsWith("#"))
-  if (!fileUri?.startsWith("file://")) return []
-
-  try {
-    const path = decodeURIComponent(new URL(fileUri.trim()).pathname)
-    return [
-      {
-        path,
-        type: /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(path) ? "image" : "file",
-      },
-    ]
-  } catch {
-    return []
-  }
 }
 
 const getMentionQuery = (
@@ -1755,38 +1696,49 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               return false
             },
             paste: (event, view) => {
-              const files = getClipboardFiles(event)
-              if (files.length === 0) return false
+              const clipboardData = event.clipboardData
+              const hasItems =
+                clipboardData &&
+                (clipboardData.files.length > 0 ||
+                  Array.from(clipboardData.items).some((i) => i.kind === "file") ||
+                  clipboardData.getData("text/plain").trim().startsWith("/") ||
+                  clipboardData.getData("text/uri-list").includes("file://"))
+
+              if (!hasItems) return false
 
               event.preventDefault()
-              const { from, to } = view.state.selection.main
-              const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
-              const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
-              const referenceInsertion = `${leadingSpace}${files
-                .map(({ path, type }) => createMarkdownReference(type, path))
-                .join(" ")} `
-              const insertion = `${leadingSpace}${files.map(({ path }) => path).join(" ")} `
-              const anchor = getPanelAnchor()
-              const position = anchor
-                ? getAgentPanelPosition("command", anchor.getBoundingClientRect())
-                : { left: 8, top: 8 }
+              void getClipboardFilesAsync(event).then((files) => {
+                if (files.length === 0) return
+                const { from, to } = view.state.selection.main
+                const prevChar = from > 0 ? view.state.doc.sliceString(from - 1, from) : ""
+                const leadingSpace = prevChar && !/\s/.test(prevChar) ? " " : ""
+                const referenceInsertion = `${leadingSpace}${files
+                  .map(({ path, type }) => createMarkdownReference(type, path))
+                  .join(" ")} `
+                const insertion = `${leadingSpace}${files.map(({ path }) => path).join(" ")} `
+                const anchor = getPanelAnchor()
+                const position = anchor
+                  ? getAgentPanelPosition("command", anchor.getBoundingClientRect())
+                  : { left: 8, top: 8 }
 
-              const panel = {
-                from,
-                insertion,
-                referenceInsertion,
-                originalText: view.state.doc.sliceString(from, to),
-                paths: files,
-                position,
-              }
-              pastePanelRef.current = panel
-              pasteIndexRef.current = 0
-              setPastePanel(panel)
-              setPasteIndex(0)
-              view.dispatch({
-                changes: { from, to, insert: insertion },
-                selection: { anchor: from + insertion.length },
-                userEvent: "input.paste",
+                const panel = {
+                  from,
+                  insertion,
+                  referenceInsertion,
+                  originalText: view.state.doc.sliceString(from, to),
+                  paths: files,
+                  position,
+                }
+                pastePanelRef.current = panel
+                pasteIndexRef.current = 0
+                setPastePanel(panel)
+                setPasteIndex(0)
+                view.dispatch({
+                  changes: { from, to, insert: insertion },
+                  selection: { anchor: from + insertion.length },
+                  userEvent: "input.paste",
+                })
+                view.focus()
               })
               return true
             },

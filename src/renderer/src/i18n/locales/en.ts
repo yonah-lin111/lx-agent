@@ -296,6 +296,10 @@ Connect external data sources, local development tools, and custom scripts to yo
     languageDesc: "Choose interface display language",
     languageEn: "English",
     languageZh: "简体中文 (Chinese)",
+    screenshotCleanup: "Screenshot Cache Cleanup",
+    screenshotCleanupDesc:
+      "Automatically clean up clipboard screenshot files older than 14 days periodically",
+    screenshotCleanupLabel: "Auto-clean screenshots older than 14 days",
 
     // Models section
     defaultModels: "Default Models",

@@ -5,6 +5,7 @@ import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { TerminalApi } from "@shared/contracts/terminal"
+import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
 import type { ProjectApi } from "@shared/project"
@@ -27,6 +28,8 @@ const api: ProjectApi &
   PromptHistoryApi &
   TerminalApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
+  saveClipboardImage: (buffer, mimeType) =>
+    ipcRenderer.invoke(CLIPBOARD_CHANNELS.saveImage, buffer, mimeType),
   project: {
     projects: {
       list: () => ipcRenderer.invoke(PROJECT_CHANNELS.listProjects),

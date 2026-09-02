@@ -83,7 +83,8 @@ export const I18nProvider = ({ children }: I18nProviderProps): React.JSX.Element
   const setLocale = async (nextLocale: Locale): Promise<void> => {
     setLocaleState(nextLocale)
     try {
-      await settingsApi.saveUiSettings({ locale: nextLocale })
+      const current = await settingsApi.getUiSettings()
+      await settingsApi.saveUiSettings({ ...current, locale: nextLocale })
     } catch (err) {
       console.error("Failed to save ui locale", err)
     }

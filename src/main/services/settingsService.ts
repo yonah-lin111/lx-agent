@@ -470,8 +470,13 @@ const normalizeUiSettings = (raw: unknown): UiSettings => {
   if (!isRecord(raw)) return DEFAULT_UI_SETTINGS
   const locale =
     raw.locale === "zh" || raw.locale === "en" ? (raw.locale as Locale) : DEFAULT_UI_SETTINGS.locale
+  const screenshotCleanupEnabled =
+    typeof raw.screenshotCleanupEnabled === "boolean"
+      ? raw.screenshotCleanupEnabled
+      : DEFAULT_UI_SETTINGS.screenshotCleanupEnabled
   return {
     locale,
+    screenshotCleanupEnabled,
   }
 }
 

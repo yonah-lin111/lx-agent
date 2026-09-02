@@ -87,10 +87,13 @@ export type Locale = "en" | "zh"
 // UI 客户端配置（~/.lx/config.json 的 ui 节点）。
 export type UiSettings = {
   locale: Locale
+  // 是否自动清理超过 14 天的剪贴板截图缓存（默认启用）。
+  screenshotCleanupEnabled?: boolean
 }
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
   locale: "en",
+  screenshotCleanupEnabled: true,
 }
 
 // 支持的 CLI 工具标识。

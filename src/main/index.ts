@@ -7,6 +7,7 @@ import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
 import { registerAgentHandlers } from "@/ipc/agentHandlers"
+import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
@@ -15,6 +16,7 @@ import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
+import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
 
 protocol.registerSchemesAsPrivileged([
@@ -60,6 +62,7 @@ app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
   registerProjectHandlers()
+  registerClipboardHandlers()
   registerSettingsHandlers()
   registerMarkdownHandlers()
   registerGitHandlers()
@@ -68,9 +71,12 @@ app.whenReady().then(() => {
   registerTerminalHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
+  const stopScreenshotCleanup = startScreenshotCleanupScheduler()
+
   // MCP server 连接（幂等；失败降级不阻塞），退出时断开避免残留子进程。
   void mcpManager.ensureConnected()
   app.on("will-quit", () => {
+    stopScreenshotCleanup()
     terminalService.disposeAll()
     void mcpManager.disconnectAll()
     // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。

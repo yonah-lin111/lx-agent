@@ -23,6 +23,11 @@ export const getPromptHistoryPath = (): string => join(getAppDataRoot(), "prompt
 export const getDatabaseDir = (): string => join(getAppDataRoot(), "db")
 
 /**
+ * 获取截图存储目录。
+ */
+export const getScreenshotsDir = (): string => join(getAppDataRoot(), "screenshots")
+
+/**
  * 获取 SQLite 数据库文件路径。
  */
 export const getDatabasePath = (): string => join(getDatabaseDir(), "lx.db")

@@ -297,6 +297,9 @@ export const zh: TranslationDictionary = {
     languageDesc: "选择软件界面的显示语言",
     languageEn: "English (英文)",
     languageZh: "简体中文 (Chinese)",
+    screenshotCleanup: "截图缓存清理",
+    screenshotCleanupDesc: "是否自动定期清理保存超过 14 天的剪贴板截图文件",
+    screenshotCleanupLabel: "自动清理超过 14 天的截图",
 
     // Models section
     defaultModels: "默认模型",
