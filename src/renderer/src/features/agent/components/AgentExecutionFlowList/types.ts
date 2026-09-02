@@ -3,6 +3,7 @@ import {
   AlertOctagon,
   Bot,
   Brain,
+  ClipboardCheck,
   Code2,
   Compass,
   Cpu,
@@ -197,6 +198,8 @@ export const getKindMeta = (
       return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
     case "assistant":
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
+    case "proposedPlan":
+      return { icon: ClipboardCheck, labelKey: "agent.proposedPlanBadge", tagColor: "emerald" }
     case "error": {
       const isAborted = step.errorContent?.isAborted ?? step.errorContent?.stopReason === "aborted"
       if (isAborted) {

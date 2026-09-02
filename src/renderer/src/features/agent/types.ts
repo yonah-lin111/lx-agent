@@ -157,6 +157,7 @@ export type ExecutionStepKind =
   | "assistant"
   | "modelSwitch"
   | "error"
+  | "proposedPlan"
 
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
@@ -216,6 +217,8 @@ export interface ExecutionStep {
   undoContent?: ExecutionUndoContent
   // 助手最终回复内容。
   assistantContent?: ExecutionAssistantContent
+  // 实施方案内容。
+  planContent?: ProposedPlanData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
   // 异常/中断说明内容。

@@ -2461,3 +2461,87 @@
   background-color: #16281a !important;
   color: #55ff55 !important;
 }
+
+/* ========================================================
+ * 15. Plan Mode 实施方案卡片 (ProposedPlanCard) 绿宝石浮雕槽魔改
+ * ======================================================== */
+[data-theme="minecraft"] .proposed-plan-card {
+  border: 2px solid #000000 !important;
+  background-color: #15241b !important; /* 绿宝石矿石深黑绿 */
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-header {
+  border-bottom: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-icon-wrapper {
+  border: 2px solid #000000 !important;
+  background-color: #1a3c28 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-icon-wrapper svg {
+  color: #55ff55 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="minecraft"] .proposed-plan-badge {
+  border: 1px solid #000000 !important;
+  background-color: #1f4832 !important;
+  color: #55ff55 !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  border-radius: 0px !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .proposed-plan-title {
+  font-family: var(--theme-font-family) !important;
+  color: #55ff55 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .proposed-plan-accept-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #1b5e34 !important;
+  color: #ffffff !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.35),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-accept-btn:hover:not(:disabled) {
+  background-color: #247d46 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-accept-btn[data-accepted="true"],
+[data-theme="minecraft"] .proposed-plan-accept-btn:disabled {
+  background-color: #182c20 !important;
+  color: #55ff55 !important;
+  opacity: 0.85 !important;
+}
+
+[data-theme="minecraft"] .proposed-plan-expand-toggle {
+  font-family: var(--theme-font-family) !important;
+  color: #55ff55 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-plan-content {
+  width: 100% !important;
+}

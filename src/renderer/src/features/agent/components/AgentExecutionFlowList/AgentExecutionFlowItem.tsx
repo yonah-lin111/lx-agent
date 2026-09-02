@@ -14,6 +14,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { ProposedPlanCard } from "@/features/agent/components/blocks"
 import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { FlowItemAssistantContent } from "./FlowItemAssistantContent"
@@ -106,6 +107,7 @@ export const AgentExecutionFlowItem = ({
     if (step.modelSwitchContent) {
       return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
     }
+    if (step.planContent) return step.planContent.content
     if (step.assistantContent) return step.assistantContent.text
     if (step.errorContent) {
       return step.errorContent.message || step.title
@@ -408,8 +410,15 @@ export const AgentExecutionFlowItem = ({
             <FlowItemUndoContent content={step.undoContent} previewRef={previewRef} />
           )}
 
+          {/* 实施方案详情 */}
+          {step.planContent && (
+            <div className="agent-execution-flow-plan-content">
+              <ProposedPlanCard plan={step.planContent} readOnly={true} />
+            </div>
+          )}
+
           {/* 助手回复详情 */}
-          {step.assistantContent && !step.compactionContent && (
+          {step.assistantContent && !step.compactionContent && !step.planContent && (
             <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
           )}
 

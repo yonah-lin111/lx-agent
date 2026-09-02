@@ -487,7 +487,7 @@ export const buildExecutionSteps = (
           id: `step-${stepIndex}-proposed-plan`,
           turnIndex: turn,
           stepIndex,
-          kind: "assistant",
+          kind: "proposedPlan",
           title: block.plan.title ? `Plan: ${block.plan.title}` : "Proposed Implementation Plan",
           subtitle: block.plan.isStreaming ? "Generating plan..." : undefined,
           status: isRunning ? "running" : "done",
@@ -504,6 +504,7 @@ export const buildExecutionSteps = (
                 total: message.usage.totalTokens,
               }
             : undefined,
+          planContent: block.plan,
           assistantContent: {
             text: block.plan.raw,
             model: message.model,
