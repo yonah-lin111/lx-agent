@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -226,6 +227,14 @@ export const CliSettings = (): React.JSX.Element => {
         >
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
         </LxIconButton>
+      </div>
+
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.cliDesc")}</span>
+          <LxInfoTooltip markdown={t("settings.cliDoc")} placement="right" />
+        </div>
       </div>
 
       {/* CLI 列表展示卡片 */}

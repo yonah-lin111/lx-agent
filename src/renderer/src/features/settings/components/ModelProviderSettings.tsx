@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -477,6 +478,14 @@ export const ModelProviderSettings = ({
 
   return (
     <div className="@container flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 p-3">
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.providersDesc")}</span>
+          <LxInfoTooltip markdown={t("settings.providersDoc")} placement="right" />
+        </div>
+      </div>
+
       <div className="grid min-h-0 flex-1 gap-3 @[520px]:grid-cols-[180px_minmax(0,1fr)]">
         <nav
           className="min-h-0 overflow-y-auto border-r border-white/8 pr-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"

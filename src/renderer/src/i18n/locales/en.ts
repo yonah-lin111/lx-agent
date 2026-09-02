@@ -89,13 +89,45 @@ export const en = {
     providers: "Model Providers",
     permissions: "Permissions",
     generalDesc: "Configure interface language and general application preferences",
+    generalDoc: `### General Preferences
+
+Configure application runtime preferences and system maintenance policies.
+
+#### 💡 Core Options
+- **Interface Language**: Switch the application display language (supports English and Simplified Chinese).
+- **Screenshot Cache Cleanup**: Automatically clean up clipboard screenshot cache files older than 14 days to free disk space.`,
     modelsDesc: "Select default models for various tasks",
+    modelsDoc: `### Default Model Configuration
+
+Specify default models and providers for different workflow tasks.
+
+#### 💡 Task Types
+- **Default Chat Model**: The primary LLM used in the chat panel and agent interactions.
+- **Title Summary Model**: Generates a concise title after the first turn of a conversation.
+- **Suggested Questions Model**: Recommends follow-up inquiries or exploration topics after agent responses.
+- **Context Compaction Model**: Summarizes conversation history when token limits are reached.`,
     providersDesc: "Configure and manage model providers and parameters",
+    providersDoc: `### Model Provider Management
+
+Centrally manage LLM provider endpoints, authentication credentials, and model configurations.
+
+#### 💡 Key Features
+- **Standard & Compatible Protocols**: Supports OpenAI Compatible, OpenAI, Anthropic, Google, and more.
+- **Auto Model Discovery**: Automatically fetch available models by providing Base URL and API Key.
+- **Custom Models**: Manually add, edit, or delete specific model identifiers and display labels.`,
     permissionsDesc: "Configure agent tool execution permissions and confirmation modes",
     customCommands: "Custom Commands",
     customCommandsDesc: "Manage custom / slash commands for Agent input and Markdown editor",
     cli: "CLI Tools",
     cliDesc: "Detect and manage local AI CLI tools (Claude Code, Codex, etc.) status and versions",
+    cliDoc: `### External AI CLI Integration
+
+Detect and manage local installations of popular AI command-line interfaces.
+
+#### 💡 Capabilities
+- **Version Detection**: Probes local executables and compares against the latest remote releases.
+- **One-click Install & Update**: Execute global install scripts or copy package manager commands.
+- **Prompt Dispatch**: Use \`/sendPrompt\` in the chat box to dispatch prompts directly to configured CLI tools.`,
     cliSearchPlaceholder: "Search CLI tools...",
     cliRefresh: "Refresh Status",
     cliRefreshing: "Probing...",

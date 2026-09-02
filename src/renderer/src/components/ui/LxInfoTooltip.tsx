@@ -26,6 +26,10 @@ export interface LxInfoTooltipProps {
    * 气泡内容额外类名
    */
   contentClassName?: string
+  /**
+   * 气泡内容最大高度（默认 "max-h-[min(70vh,460px)]"）
+   */
+  maxHeight?: string | number
 }
 
 /**
@@ -38,11 +42,22 @@ export const LxInfoTooltip = ({
   className = "",
   iconSize = 14,
   contentClassName = "",
+  maxHeight,
 }: LxInfoTooltipProps): React.JSX.Element => {
   const html = useMemo(() => markdownRenderer.render(markdown), [markdown])
 
+  const parsedMaxHeight = useMemo(() => {
+    if (typeof maxHeight === "number") return `${maxHeight}px`
+    return maxHeight
+  }, [maxHeight])
+
   const tooltipContent = (
-    <div className={`max-w-[420px] text-xs leading-relaxed ${contentClassName}`}>
+    <div
+      className={`custom-scrollbar max-w-[420px] overflow-y-auto text-xs leading-relaxed ${
+        !parsedMaxHeight ? "max-h-[min(70vh,460px)]" : ""
+      } ${contentClassName}`}
+      style={parsedMaxHeight ? { maxHeight: parsedMaxHeight } : undefined}
+    >
       <LxMarkdownPreview
         html={html}
         previewMode="preview"

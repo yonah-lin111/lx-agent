@@ -91,13 +91,45 @@ export const zh: TranslationDictionary = {
     providers: "模型 Provider",
     permissions: "权限",
     generalDesc: "配置界面语言和通用偏好设置",
+    generalDoc: `### 通用偏好设置
+
+配置界面的基本运行偏好与系统维护策略。
+
+#### 💡 核心配置项
+- **界面语言 (Language)**：切换软件界面的多语言本地化显示（支持简体中文与英文）。
+- **截图缓存清理 (Screenshot Cleanup)**：定期自动清理保存超过 14 天的剪贴板截图缓存文件，释放磁盘存储空间。`,
     modelsDesc: "选择各类任务默认使用的模型",
+    modelsDoc: `### 默认任务模型配置
+
+为不同场景的任务指定默认调用的模型与 Provider。
+
+#### 💡 任务类型说明
+- **默认对话模型**：主对话面板与 Agent 交互时默认使用的基础大语言模型。
+- **标题总结模型**：用于在新会话首轮交互后自动生成简短对话标题的模型。
+- **推荐问题模型**：在 Agent 回复完毕后生成推荐追问或后续探索问题的模型。
+- **上下文压缩模型**：当会话长度超出窗口限制时，负责提炼历史上下文并压缩记忆的模型。`,
     providersDesc: "配置与管理模型 Provider 及模型参数",
+    providersDoc: `### 模型 Provider 配置与管理
+
+统一管理接入的各个大语言模型服务商（Provider）及其 API 鉴权和模型参数。
+
+#### 💡 核心功能
+- **标准与兼容协议**：支持 OpenAI Compatible、OpenAI、Anthropic、Google 等主流接口协议。
+- **模型自动获取**：填入 Base URL 与 API Key 后，可一键自动拉取服务商支持的全部模型列表。
+- **自定义模型**：支持手动新增、编辑或删除特定模型 ID 与显示名称。`,
     permissionsDesc: "配置 Agent 工具执行权限与确认模式",
     customCommands: "自定义命令",
     customCommandsDesc: "管理对话输入框与 Markdown 编辑器的自定义 / 快捷命令",
     cli: "CLI 工具",
     cliDesc: "检测与管理本地 AI CLI 工具（Claude Code、Codex 等）的安装状态与版本",
+    cliDoc: `### 外部 AI CLI 工具集成
+
+探测与管理本地安装的各类主流 AI 命令行工具。
+
+#### 💡 核心能力
+- **自动版本探测**：检测本地环境中的可执行文件并对比云端最新发布版本。
+- **快捷安装与升级**：支持一键触发全局安装/升级脚本或快速复制命令。
+- **指令调用集成**：启用后可在主输入框中通过 \`/sendPrompt\` 快捷调度指定 CLI 工具处理当前上下文。`,
     cliSearchPlaceholder: "搜索 CLI 工具...",
     cliRefresh: "刷新状态",
     cliRefreshing: "正在探测...",

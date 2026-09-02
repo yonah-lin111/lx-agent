@@ -1,3 +1,4 @@
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -48,6 +49,14 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
 
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.modelsDesc")}</span>
+          <LxInfoTooltip markdown={t("settings.modelsDoc")} placement="right" />
+        </div>
+      </div>
+
       <div>
         <h3 className="mb-2.5 text-sm font-medium text-white">{t("settings.defaultModels")}</h3>
         <div className="grid gap-3 lg:grid-cols-2">

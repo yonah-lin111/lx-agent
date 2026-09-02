@@ -1,6 +1,7 @@
 import type { Locale, UiSettings } from "@shared/settings"
 import { useEffect, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
@@ -39,6 +40,14 @@ export const GeneralSettings = (): React.JSX.Element => {
 
   return (
     <div className="custom-scrollbar flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
+      {/* 提示信息说明与文档 */}
+      <div className="flex items-center justify-between gap-2 rounded-[6px] border border-white/6 bg-white/[0.02] p-3 text-xs text-white/60 leading-relaxed">
+        <div className="flex items-center gap-2">
+          <span>{t("settings.generalDesc")}</span>
+          <LxInfoTooltip markdown={t("settings.generalDoc")} placement="right" />
+        </div>
+      </div>
+
       <div>
         <h3 className="mb-2.5 text-sm font-medium text-white">{t("settings.language")}</h3>
         <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
