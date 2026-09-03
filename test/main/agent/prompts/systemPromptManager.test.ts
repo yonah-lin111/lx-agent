@@ -278,5 +278,55 @@ describe("SystemPromptManager", () => {
         "You are a pragmatic, direct, and high-signal engineering collaborator.",
       )
     })
+
+    describe("上下文容量感知与 Guidance 注入 (Context Window Guidance)", () => {
+      it("低于 75% 时不产生任何引导注入（零 Token 开销）", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          contextUsage: { tokens: 70_000, contextWindow: 100_000 },
+        })
+
+        const guidance = assembly.contexts.find(
+          (c) => c.name === PROMPT_SECTION_NAMES.CONTEXT_WINDOW_GUIDANCE,
+        )
+        expect(guidance).toBeUndefined()
+        expect(assembly.rendered).not.toContain("<context_window_guidance")
+      })
+
+      it("处于 75% ~ 90% 时生成 warning 级别引导 XML 块", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          contextUsage: { tokens: 80_000, contextWindow: 100_000 },
+        })
+
+        const guidance = assembly.contexts.find(
+          (c) => c.name === PROMPT_SECTION_NAMES.CONTEXT_WINDOW_GUIDANCE,
+        )
+        expect(guidance).toBeDefined()
+        expect(guidance?.text).toContain('<context_window_guidance level="warning">')
+        expect(guidance?.text).toContain("Current context window usage: 80%")
+        expect(guidance?.text).toContain("approx. 20,000 tokens remaining")
+        expect(guidance?.text).toContain("Refrain from dumping large files")
+        expect(assembly.rendered).toContain('<context_window_guidance level="warning">')
+      })
+
+      it("达到或超过 90% 时生成 critical 级别收敛与 /compact 建议 XML 块", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          contextUsage: { tokens: 95_000, contextWindow: 100_000 },
+        })
+
+        const guidance = assembly.contexts.find(
+          (c) => c.name === PROMPT_SECTION_NAMES.CONTEXT_WINDOW_GUIDANCE,
+        )
+        expect(guidance).toBeDefined()
+        expect(guidance?.text).toContain('<context_window_guidance level="critical">')
+        expect(guidance?.text).toContain("Current context window usage: 95%")
+        expect(guidance?.text).toContain("approx. 5,000 tokens remaining")
+        expect(guidance?.text).toContain("CRITICAL: You are near the maximum context capacity")
+        expect(guidance?.text).toContain("/compact")
+        expect(assembly.rendered).toContain('<context_window_guidance level="critical">')
+      })
+    })
   })
 })

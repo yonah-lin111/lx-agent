@@ -709,6 +709,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     emptyPrompt: "(Empty Prompt)",
     contextCapacity: "Context Capacity",
     contextUsed: "Used {{used}} / {{total}} tokens",
+    contextWarningTip: "Context usage is high (consider surgical lookups)",
+    contextCriticalTip: "Context is near limit (recommend using /compact)",
     todoList: "Todo List",
     todoCount: "Todo List · {{done}}/{{total}}",
     backgroundJobsCount: "Background Jobs · {{running}} running / {{total}} total",

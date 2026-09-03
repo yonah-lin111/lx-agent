@@ -7,10 +7,10 @@ export interface AgentContextUsagePillProps {
   className?: string
 }
 
-// 状态小圆点背景颜色：≥100% 红（已满）/ >85% 琥珀（接近压缩触发区）/ 其余绿色（健康空闲）。
+// 状态小圆点背景颜色：≥90% 红（严重预警区）/ ≥75% 琥珀（引导感知区）/ 其余绿色（健康空闲）。
 const dotColor = (percent: number): string => {
-  if (percent >= 100) return "bg-red-400"
-  if (percent > 85) return "bg-amber-400"
+  if (percent >= 90) return "bg-red-400 animate-pulse"
+  if (percent >= 75) return "bg-amber-400"
   return "bg-emerald-400"
 }
 
@@ -27,13 +27,22 @@ export const AgentContextUsagePill = ({
       ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
       : 0
 
-  const tooltipContent =
+  const baseText =
     contextUsage && contextUsage.contextWindow > 0
       ? t("agent.contextUsed", {
           used: contextUsage.tokens.toLocaleString(),
           total: contextUsage.contextWindow.toLocaleString(),
         })
       : t("agent.contextCapacity")
+
+  const extraTip =
+    percent >= 90
+      ? ` · ${t("agent.contextCriticalTip")}`
+      : percent >= 75
+        ? ` · ${t("agent.contextWarningTip")}`
+        : ""
+
+  const tooltipContent = `${baseText}${extraTip}`
 
   return (
     <LxTooltip placement="top" content={tooltipContent}>

@@ -24,36 +24,40 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  getPermissionSettings: () => ({
-    defaultMode: "default",
-    allow: [],
-    deny: [],
-    ask: [],
-  }),
-  getCompactionSettings: () => ({
-    enabled: false,
-    contextWindow: 128000,
-    keepRecentTokens: 20000,
-    reserveTokens: 16384,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    getPermissionSettings: () => ({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+    }),
+    getCompactionSettings: () => ({
+      enabled: false,
+      contextWindow: 128000,
+      keepRecentTokens: 20000,
+      reserveTokens: 16384,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: {
@@ -273,5 +277,68 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
     } finally {
       unregisterInterceptor()
     }
+  })
+
+  it("当会话上下文容量超过 75% 时，getPromptAssembly 透明暴露 <context_window_guidance>", async () => {
+    const { agentRunner } = await import("@/agent/agentRunner")
+    const runner = agentRunner.getOrCreateRunner("sess-guidance-test")
+    // Mock compactor usage 为 80%
+    vi.spyOn(runner.getCompactor(), "getUsage").mockReturnValue({
+      tokens: 80000,
+      contextWindow: 100000,
+    })
+
+    const assembly = await runner.getPromptAssembly(projectDir)
+    const guidanceContext = assembly.contexts.find(
+      (c) => c.name === "harness:context-window-guidance",
+    )
+    expect(guidanceContext).toBeDefined()
+    expect(guidanceContext?.text).toContain('<context_window_guidance level="warning">')
+    expect(guidanceContext?.text).toContain("Current context window usage: 80%")
+    expect(assembly.rendered).toContain('<context_window_guidance level="warning">')
+
+    // 验证 runOne 发送消息时，agent 实际持有的 systemPrompt 中也注入了 warning
+    holder.capturedSystemPrompts = []
+    await runner.send("hello after high usage", undefined, { page: "/p", cwd: projectDir })
+    expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
+    expect(holder.capturedSystemPrompts[0]).toContain('<context_window_guidance level="warning">')
+  })
+
+  it("动态生命周期流转：容量从低到高触发 Warning -> 达到 Critical -> 压缩回落后 Warning 自动消失", async () => {
+    const { agentRunner } = await import("@/agent/agentRunner")
+    const runner = agentRunner.getOrCreateRunner("sess-lifecycle-test")
+    let currentTokens = 50000
+    const contextWindow = 100000
+
+    vi.spyOn(runner.getCompactor(), "getUsage").mockImplementation(() => ({
+      tokens: currentTokens,
+      contextWindow,
+    }))
+
+    // 1. 初始 50%：无 guidance
+    holder.capturedSystemPrompts = []
+    await runner.send("turn 1", undefined, { page: "/p", cwd: projectDir })
+    expect(holder.capturedSystemPrompts[0]).not.toContain("<context_window_guidance")
+
+    // 2. 增长至 82%：触发 Warning
+    currentTokens = 82000
+    holder.capturedSystemPrompts = []
+    await runner.send("turn 2", undefined, { page: "/p", cwd: projectDir })
+    expect(holder.capturedSystemPrompts[0]).toContain('<context_window_guidance level="warning">')
+    expect(holder.capturedSystemPrompts[0]).toContain("82%")
+
+    // 3. 增长至 94%：升级为 Critical
+    currentTokens = 94000
+    holder.capturedSystemPrompts = []
+    await runner.send("turn 3", undefined, { page: "/p", cwd: projectDir })
+    expect(holder.capturedSystemPrompts[0]).toContain('<context_window_guidance level="critical">')
+    expect(holder.capturedSystemPrompts[0]).toContain("94%")
+    expect(holder.capturedSystemPrompts[0]).toContain("/compact")
+
+    // 4. 执行压缩后回落至 30%：Guidance 自动干净剥离，零残留
+    currentTokens = 30000
+    holder.capturedSystemPrompts = []
+    await runner.send("turn 4", undefined, { page: "/p", cwd: projectDir })
+    expect(holder.capturedSystemPrompts[0]).not.toContain("<context_window_guidance")
   })
 })

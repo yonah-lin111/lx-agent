@@ -6,6 +6,7 @@
  */
 
 import type {
+  AgentContextUsage,
   CollaborationMode,
   SandboxPolicy,
   WorkspaceMemorySummary,
@@ -38,6 +39,7 @@ export const PROMPT_ORDERS = {
   RUNTIME_CONTEXT: 300,
   ENVIRONMENT: 350,
   CURRENT_TIME: 355,
+  CONTEXT_WINDOW_GUIDANCE: 358,
   SANDBOX_POLICY: 360,
   COLLABORATION_MODE: 380,
   INTERCEPTOR: 400,
@@ -56,6 +58,7 @@ export const PROMPT_SECTION_NAMES = {
   RUNTIME_CONTEXT: "agent:runtime-context",
   ENVIRONMENT: "agent:environment",
   CURRENT_TIME: "agent:current-time",
+  CONTEXT_WINDOW_GUIDANCE: "harness:context-window-guidance",
   SANDBOX_POLICY: "agent:sandbox-policy",
   LSP_FEEDBACK: "agent:lsp-feedback",
 } as const
@@ -69,6 +72,7 @@ export interface AssembleContext {
   sandboxPolicy?: SandboxPolicy
   collaborationMode?: CollaborationMode
   currentTimeReminder?: string
+  contextUsage?: AgentContextUsage | null
   workspaceMemory?: WorkspaceMemorySummary | null
   activeSkills?: LoadedSkill[]
   personality?: PersonalityName
@@ -809,6 +813,38 @@ export function createDefaultSystemPromptManager(
       }
       const now = new Date()
       return `<current_time>\nUTC: ${now.toISOString()}\nLocal: ${now.toString()}\n</current_time>`
+    },
+  })
+
+  // 358: 动态上下文容量感知与告警 Harness (对齐 Codex Context Window Guidance)
+  manager.registerContext({
+    name: PROMPT_SECTION_NAMES.CONTEXT_WINDOW_GUIDANCE,
+    order: PROMPT_ORDERS.CONTEXT_WINDOW_GUIDANCE,
+    text: (ctx) => {
+      const usage = ctx.contextUsage
+      if (!usage || !usage.contextWindow || usage.contextWindow <= 0) return ""
+      const ratio = usage.tokens / usage.contextWindow
+      if (ratio < 0.75) return ""
+
+      const remaining = Math.max(0, usage.contextWindow - usage.tokens)
+      const percent = Math.min(100, Math.round(ratio * 100))
+      const isCritical = ratio >= 0.9
+
+      if (isCritical) {
+        return [
+          `<context_window_guidance level="critical">`,
+          `Current context window usage: ${percent}% (approx. ${remaining.toLocaleString()} tokens remaining out of ${usage.contextWindow.toLocaleString()}).`,
+          `CRITICAL: You are near the maximum context capacity. Keep responses concise, finish immediate edits, and recommend the user run /compact to summarize history before further broad inquiries.`,
+          `</context_window_guidance>`,
+        ].join("\n")
+      }
+
+      return [
+        `<context_window_guidance level="warning">`,
+        `Current context window usage: ${percent}% (approx. ${remaining.toLocaleString()} tokens remaining out of ${usage.contextWindow.toLocaleString()}).`,
+        `Guidance: You are approaching the context limit. Refrain from dumping large files or redundant grep outputs. Prefer surgical symbol lookups. If continuing a long task, consider completing the current sub-goal cleanly.`,
+        `</context_window_guidance>`,
+      ].join("\n")
     },
   })
 

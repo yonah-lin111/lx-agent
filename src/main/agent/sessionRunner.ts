@@ -256,12 +256,14 @@ export class AgentSessionRunner {
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
       )
       const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+      const contextUsage = this.compactor.getUsage()
       const systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
         modelId: modelResult.model.id,
         sandboxPolicy: currentSandboxPolicy,
         collaborationMode: this.collaborationMode,
+        contextUsage,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -369,12 +371,14 @@ export class AgentSessionRunner {
       this.builtSignature = capabilitiesSignature
     } else {
       const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+      const contextUsage = this.compactor.getUsage()
       this.agent.state.systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
         modelId: modelResult.model.id,
         sandboxPolicy: currentSandboxPolicy,
         collaborationMode: this.collaborationMode,
+        contextUsage,
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
@@ -647,12 +651,14 @@ export class AgentSessionRunner {
 
     try {
       const currentSandboxPolicy = permissionManager.getSandboxPolicy()
+      const contextUsage = this.compactor.getUsage()
       agent.state.systemPrompt = buildSystemPromptSync({
         cwd: this.currentTurnContext.snapshot.cwd,
         sessionId: this.currentSessionId ?? undefined,
         modelId: agent.state.model.id,
         sandboxPolicy: currentSandboxPolicy,
         collaborationMode: this.collaborationMode,
+        contextUsage,
         activeSkills: this.activeSkills,
         personality: this.personality,
         variables: this.currentTurnContext.snapshot.variables,
@@ -940,12 +946,15 @@ export class AgentSessionRunner {
     const activeSkills = this.activeSkills
     const currentSandboxPolicy = permissionManager.getSandboxPolicy()
     const modelId = this.agent?.state.model.id
+    const contextUsage = this.compactor.getUsage()
 
     const assembly = await defaultSystemPromptManager.assemble({
       cwd: targetCwd,
       sessionId: targetSessionId,
       modelId,
       sandboxPolicy: currentSandboxPolicy,
+      collaborationMode: this.collaborationMode,
+      contextUsage,
       activeSkills,
     })
 
