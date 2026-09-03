@@ -3,7 +3,6 @@ import { AsciiVisualContent, HtmlVisualContent, SvgVisualContent } from "./visua
 
 export interface QuestionVisualContentProps {
   content?: string
-  customStyle?: string
   className?: string
 }
 
@@ -12,7 +11,6 @@ export interface QuestionVisualContentProps {
  */
 export const QuestionVisualContent = ({
   content,
-  customStyle,
   className = "",
 }: QuestionVisualContentProps): React.JSX.Element | null => {
   if (!content) return null
@@ -26,7 +24,7 @@ export const QuestionVisualContent = ({
 
   const isHtml = /<[a-z][\s\S]*>/i.test(content)
   if (isHtml) {
-    return <HtmlVisualContent html={content} customStyle={customStyle} className={className} />
+    return <HtmlVisualContent html={content} className={className} />
   }
 
   return <AsciiVisualContent ascii={content} className={className} />

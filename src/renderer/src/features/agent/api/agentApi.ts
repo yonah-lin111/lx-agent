@@ -35,6 +35,10 @@ export const agentApi = {
     window?.api?.agent?.getPromptAssembly
       ? window.api.agent.getPromptAssembly(sessionId, cwd, tabId)
       : Promise.resolve({ sections: [], contexts: [], variables: {}, rendered: "" }),
+  compileTailwind: (html: string): Promise<string> =>
+    window?.api?.agent?.compileTailwind
+      ? window.api.agent.compileTailwind(html)
+      : Promise.resolve(""),
   send: (
     text: string,
     selection?: ModelSelection,

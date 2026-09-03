@@ -25,6 +25,7 @@ import { permissionManager } from "@/agent/permissions/permissionManager"
 import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
+import { compileTailwindCss } from "@/services/tailwindCompilerService"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
 const MAX_TITLE_LENGTH = 40
@@ -502,4 +503,9 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       return agentRunner.getPromptAssembly(sId, c, tId)
     },
   )
+
+  ipcMain.handle(AGENT_CHANNELS.compileTailwind, async (_, html: unknown) => {
+    if (typeof html !== "string") return ""
+    return compileTailwindCss(html)
+  })
 }

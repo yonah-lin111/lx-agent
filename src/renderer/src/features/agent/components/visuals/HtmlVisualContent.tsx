@@ -1,28 +1,72 @@
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { sanitizeHtmlDocument } from "./sanitizeVisual"
 
 export interface HtmlVisualContentProps {
   html?: string
-  customStyle?: string
   className?: string
 }
 
 /**
- * HtmlVisualContent - render_html 专用独立渲染组件（基于独立沙箱 Iframe）
+ * HtmlVisualContent - render_html 专用独立渲染组件（基于独立沙箱 Iframe，自动编译注入 Tailwind CSS 规则）
  */
 export const HtmlVisualContent = ({
   html,
-  customStyle,
   className = "",
 }: HtmlVisualContentProps): React.JSX.Element | null => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [iframeHeight, setIframeHeight] = useState<number>(200)
+  const [compiledCss, setCompiledCss] = useState<string>("")
+
+  // 调用主进程 Tailwind CSS 编译器，静态生成所需完整 CSS 样式
+  useEffect(() => {
+    if (!html || typeof html !== "string") {
+      setCompiledCss("")
+      return
+    }
+
+    let isCancelled = false
+    void agentApi.compileTailwind(html).then((css) => {
+      if (!isCancelled) {
+        setCompiledCss(css)
+      }
+    })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [html])
 
   const sanitizedHtmlDoc = useMemo(() => {
     if (!html || typeof html !== "string") return ""
-    return sanitizeHtmlDocument(html, customStyle)
-  }, [html, customStyle])
+    const baseDoc = sanitizeHtmlDocument(html)
+    if (!compiledCss) return baseDoc
+
+    // 将编译好的 Tailwind CSS 作为独立 <style> 注入 head 头部，并重置 min-h-screen/100vh 为适合内联预览的适配值
+    const resetOverrides = `
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow-x: hidden !important;
+      }
+      body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 24px 16px !important;
+        box-sizing: border-box !important;
+      }
+    `
+    const styleTag = `<style id="lx-tailwind-generated">${compiledCss}\n${resetOverrides}</style>`
+    if (baseDoc.includes("</head>")) {
+      return baseDoc.replace("</head>", `${styleTag}</head>`)
+    }
+    return `${styleTag}${baseDoc}`
+  }, [html, compiledCss])
 
   const updateHeight = useCallback(() => {
     const iframe = iframeRef.current
@@ -31,14 +75,22 @@ export const HtmlVisualContent = ({
       const win = iframe.contentWindow
       const doc = iframe.contentDocument || win?.document
       if (doc && doc.body) {
-        const height = Math.max(
+        // 计算真实内容高度，避免负定位或绝对定位元素虚高影响
+        let maxBottom = 0
+        for (const child of Array.from(doc.body.children)) {
+          if (child.tagName === "STYLE" || child.tagName === "SCRIPT") continue
+          const rect = (child as HTMLElement).getBoundingClientRect?.()
+          if (rect) {
+            maxBottom = Math.max(maxBottom, (child as HTMLElement).offsetTop + rect.height)
+          }
+        }
+        const naturalHeight = Math.max(
+          maxBottom > 0 ? maxBottom + 32 : 0,
           doc.body.scrollHeight,
           doc.documentElement.scrollHeight,
-          doc.body.offsetHeight,
-          doc.documentElement.offsetHeight,
           100,
         )
-        setIframeHeight(height)
+        setIframeHeight(naturalHeight)
       }
     } catch {}
   }, [])
@@ -85,7 +137,7 @@ export const HtmlVisualContent = ({
 
   return (
     <div
-      className={`agent-visual-html my-1.5 max-h-[80vh] w-full overflow-x-hidden overflow-y-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] py-3.5 select-text custom-scrollbar flex items-center justify-center ${className}`}
+      className={`agent-visual-html my-1.5 max-h-[80vh] w-full overflow-x-hidden overflow-y-auto rounded-[6px] border border-white/10 bg-[#0d0d0d] select-text custom-scrollbar ${className}`}
     >
       <iframe
         ref={iframeRef}

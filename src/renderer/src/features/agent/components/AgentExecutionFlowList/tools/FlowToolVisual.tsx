@@ -53,9 +53,7 @@ export const FlowToolVisual = ({ content }: FlowToolVisualProps): React.JSX.Elem
             {toolName === "render_ascii" && (
               <AsciiVisualContent ascii={args.ascii} className="my-0" />
             )}
-            {toolName === "render_html" && (
-              <HtmlVisualContent html={args.html} customStyle={args.style} className="my-0" />
-            )}
+            {toolName === "render_html" && <HtmlVisualContent html={args.html} className="my-0" />}
           </>
         ) : (
           <div className="rounded border border-white/5 bg-black/40 p-2 text-white/40">

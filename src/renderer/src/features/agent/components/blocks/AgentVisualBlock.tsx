@@ -133,7 +133,7 @@ export const AgentVisualBlock = ({ toolCall }: AgentVisualBlockProps): React.JSX
                   <AsciiVisualContent ascii={args.ascii} className="my-0" />
                 )}
                 {toolName === "render_html" && (
-                  <HtmlVisualContent html={args.html} customStyle={args.style} className="my-0" />
+                  <HtmlVisualContent html={args.html} className="my-0" />
                 )}
               </>
             )}

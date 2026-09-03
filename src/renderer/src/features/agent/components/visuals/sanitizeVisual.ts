@@ -7,6 +7,7 @@ const ALLOWED_TAGS = new Set([
   "meta",
   "title",
   "style",
+  "link",
   // SVG 绘图标签
   "svg",
   "g",
@@ -340,7 +341,7 @@ export const sanitizeGraphicContent = (rawContent: string): string => {
 /**
  * 净化完整 HTML 文档并注入基准样式，输出完整独立的沙箱 HTML 源码。
  */
-export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): string => {
+export const sanitizeHtmlDocument = (rawContent: string): string => {
   if (!rawContent || typeof rawContent !== "string") return ""
   try {
     const parser = new DOMParser()
@@ -349,14 +350,6 @@ export const sanitizeHtmlDocument = (rawContent: string, customStyle?: string): 
     // 净化 head 与 body
     if (doc.head) sanitizeNode(doc.head)
     if (doc.body) sanitizeNode(doc.body)
-
-    // 若有传入自定义 style，作为最后一项注入 head
-    if (customStyle && doc.head) {
-      const userStyle = doc.createElement("style")
-      userStyle.textContent = customStyle
-      sanitizeNode(userStyle)
-      doc.head.appendChild(userStyle)
-    }
 
     return `<!DOCTYPE html><html><head>${doc.head?.innerHTML || ""}</head><body>${doc.body?.innerHTML || ""}</body></html>`
   } catch {

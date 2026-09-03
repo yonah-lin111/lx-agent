@@ -44,5 +44,7 @@ export const AGENT_CHANNELS = {
   readJobOutput: "agent:readJobOutput",
   // 查询会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
   getPromptAssembly: "agent:getPromptAssembly",
+  // 编译 HTML 中包含的 Tailwind CSS 实用类。
+  compileTailwind: "agent:compileTailwind",
   event: "agent:event",
 } as const

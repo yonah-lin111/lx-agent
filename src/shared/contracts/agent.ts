@@ -392,9 +392,7 @@ export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions"
 export type CollaborationMode = "build" | "plan" | "review"
 
 // 协作模式向后兼容与归一化辅助函数
-export const normalizeCollaborationMode = (
-  mode?: string | null,
-): CollaborationMode => {
+export const normalizeCollaborationMode = (mode?: string | null): CollaborationMode => {
   if (mode === "plan" || mode === "review" || mode === "build") {
     return mode
   }
@@ -898,6 +896,8 @@ export interface AgentApi {
     ) => Promise<JobReadResult | null>
     // 查询当前会话装配的完整系统提示词与注入配置（执行流程面板展示用）。
     getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) => Promise<PromptAssembly>
+    // 编译 HTML 中使用的 Tailwind CSS 样式
+    compileTailwind: (html: string) => Promise<string>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

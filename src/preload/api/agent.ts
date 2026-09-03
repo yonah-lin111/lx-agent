@@ -77,6 +77,7 @@ export const agentApi: AgentApi["agent"] = {
     ipcRenderer.invoke(AGENT_CHANNELS.readJobOutput, jobId, wait, timeoutMs),
   getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getPromptAssembly, sessionId, cwd, tabId),
+  compileTailwind: (html: string) => ipcRenderer.invoke(AGENT_CHANNELS.compileTailwind, html),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

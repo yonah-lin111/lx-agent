@@ -20,14 +20,14 @@ const renderAsciiInputSchema = z.object({
     .describe("ASCII or Unicode Box-drawing diagram content (using ┌ ─ │ └ characters)"),
 })
 
-// HTML prototype tool input schema (Standard HTML & CSS).
+// HTML prototype tool input schema (Tailwind CSS & Standard HTML).
 const renderHtmlInputSchema = z.object({
   html: z
     .string()
     .min(1)
     .max(50000)
     .describe(
-      "Standard HTML source code (<style>...</style>, <div>, tables, forms, inline styles, etc.).",
+      "Standard HTML source code styled with Tailwind CSS utility classes (flex, grid, bg-*, text-*, rounded-*, forms, tables, etc.).",
     ),
 })
 
@@ -72,14 +72,14 @@ export const createRenderAsciiTool = (): AgentTool<typeof renderAsciiInputSchema
 })
 
 /**
- * Create render_html tool: outputs concise HTML frontend prototypes, UI drafts, and layouts using standard HTML/CSS.
+ * Create render_html tool: outputs concise HTML frontend prototypes, UI drafts, and layouts using Tailwind CSS.
  */
 export const createRenderHtmlTool = (): AgentTool<typeof renderHtmlInputSchema> => ({
   name: "render_html",
   label: "HTML Prototype",
   description:
-    "Render concise HTML frontend prototypes, UI drafts, tables, and layouts using standard HTML and CSS (<style> tags or inline style).\n" +
-    "[Usage]: Pass standard HTML document/snippets directly in the html field.",
+    "Render concise HTML frontend prototypes, UI drafts, tables, and layouts using standard HTML and Tailwind CSS utility classes.\n" +
+    "[Usage]: Pass HTML markup directly in the html field. Built-in Tailwind CSS v4 runtime automatically compiles all utility classes in the sandbox iframe. Avoid external <script> CDN tags.",
   inputSchema: renderHtmlInputSchema,
   execute: async () => ({
     content: [
