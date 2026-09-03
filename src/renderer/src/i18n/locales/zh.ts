@@ -1001,6 +1001,7 @@ export const zh: TranslationDictionary = {
     defaultWorktree: "默认工作区",
   },
   project: {
+    temporaryPrompt: "临时提示词",
     newProject: "新建项目",
     openProject: "打开项目",
     noProjects: "暂无项目",

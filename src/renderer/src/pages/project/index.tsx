@@ -41,6 +41,15 @@ export const ProjectPage = (): React.JSX.Element => {
   // 全局 git 工作区切换：持久化到条目并同步本地状态；返回是否成功供编辑器据实提示。
   const handleWorktreePathChange = (path: string | null): Promise<boolean> => {
     if (!itemId) return Promise.resolve(false)
+    if (itemId.startsWith("temp-")) {
+      setWorktreePath(path)
+      try {
+        localStorage.setItem(`lx-agent-temp-worktree-${itemId}`, path ?? "")
+      } catch {
+        // 忽略存储写入异常
+      }
+      return Promise.resolve(true)
+    }
     return projectApi
       .update(itemId, { worktreePath: path })
       .then(() => {

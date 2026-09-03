@@ -108,6 +108,21 @@ const ProjectReferencedFolderTagsContent = ({
     setIsLoading(true)
     const startedAt = Date.now()
 
+    if (itemId.startsWith("temp-")) {
+      const targetProjectId = itemId.slice("temp-".length)
+      setProjectId(targetProjectId)
+      try {
+        const raw = localStorage.getItem(`lx-agent-temp-referenced-${itemId}`)
+        const savedPaths = raw ? (JSON.parse(raw) as string[]) : []
+        setItemEnabledPaths(itemId, Array.isArray(savedPaths) ? savedPaths : [])
+      } catch {
+        setItemEnabledPaths(itemId, [])
+      }
+      setIsLoading(false)
+      setIsFadingOut(false)
+      return
+    }
+
     void projectApi
       .list()
       .then((items) => {
@@ -231,6 +246,16 @@ const ProjectReferencedFolderTagsContent = ({
         ? enabledFolderPaths.filter((itemPath) => itemPath !== path)
         : [...enabledFolderPaths, path]
       setItemEnabledPaths(itemId, nextPaths)
+
+      if (itemId.startsWith("temp-")) {
+        try {
+          localStorage.setItem(`lx-agent-temp-referenced-${itemId}`, JSON.stringify(nextPaths))
+        } catch {
+          // 忽略存储写入异常
+        }
+        return
+      }
+
       void projectApi.update(itemId, { enabledFolderPaths: nextPaths }).catch(() => {
         setItemEnabledPaths(itemId, enabledFolderPaths)
       })

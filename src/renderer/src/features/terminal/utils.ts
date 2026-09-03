@@ -11,6 +11,20 @@ export const resolveInitialTerminalCwd = async (itemId?: string | null): Promise
   }
 
   try {
+    if (itemId.startsWith("temp-")) {
+      const targetProjectId = itemId.slice("temp-".length)
+      const savedWorktree = localStorage.getItem(`lx-agent-temp-worktree-${itemId}`)
+      if (savedWorktree) {
+        return savedWorktree
+      }
+      const projects = await projectApi.listProjects()
+      const project = projects.find((entry) => entry.id === targetProjectId)
+      if (project?.type === "filesystem" && project.path) {
+        return project.path
+      }
+      return terminalApi.getDesktopPath()
+    }
+
     const items = await projectApi.list()
     const item = items.find((entry) => entry.id === itemId)
     if (item?.worktreePath && typeof item.worktreePath === "string") {

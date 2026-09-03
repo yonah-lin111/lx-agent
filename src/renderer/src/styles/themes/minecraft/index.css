@@ -152,6 +152,22 @@
   background-color: #2b2b3b !important;
 }
 
+/* Level 3-Special: 根位置临时提示词（青金石暗蓝微凸/末影矿质感） */
+[data-theme="minecraft"] [data-item-level="temp-prompt"]:not([aria-current]) {
+  background-color: #24385a !important;
+  color: #93c5fd !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(147, 197, 253, 0.3),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] [data-item-level="temp-prompt"]:not([aria-current]):hover {
+  background-color: #2e4773 !important;
+  color: #bfdbfe !important;
+}
+
 /* --------------------------------------------------------
  * 2. UI Preview 组件展示页左侧栏层级区分（3D 凸起）
  * -------------------------------------------------------- */
@@ -795,6 +811,18 @@
   color: #34d399 !important;
 }
 
+/* 临时提示词专属状态非高亮底色与文字颜色（青金石暗蓝） */
+[data-theme="minecraft"] .project-recent-tag[data-color="sky"]:not([data-highlighted="true"]) {
+  background-color: #1c2b42 !important;
+  color: #7dd3fc !important;
+}
+
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="sky"]:not([data-highlighted="true"])
+  span {
+  color: #7dd3fc !important;
+}
+
 [data-theme="minecraft"] .project-recent-tag:hover:not([data-highlighted="true"]) {
   background-color: #343448 !important;
   color: #ffffff !important;
@@ -822,6 +850,18 @@
   .project-recent-tag[data-color="emerald"]:hover:not([data-highlighted="true"])
   span {
   color: #6ee7b7 !important;
+}
+
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="sky"]:hover:not([data-highlighted="true"]) {
+  background-color: #24385a !important;
+  color: #bae6fd !important;
+}
+
+[data-theme="minecraft"]
+  .project-recent-tag[data-color="sky"]:hover:not([data-highlighted="true"])
+  span {
+  color: #bae6fd !important;
 }
 
 /* 1. 待办/默认状态高亮（纯白指示边条与文本） */
@@ -870,6 +910,22 @@
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(52, 211, 153, 0.25),
     0px 0px 8px rgba(52, 211, 153, 0.25) !important;
+}
+
+/* 4. 临时提示词状态高亮（天蓝指示边条与文本） */
+[data-theme="minecraft"] .project-recent-tag[data-color="sky"][data-highlighted="true"],
+[data-theme="minecraft"] .project-recent-tag[data-color="sky"][data-highlighted="true"] span {
+  color: #38bdf8 !important;
+}
+
+[data-theme="minecraft"] .project-recent-tag[data-color="sky"][data-highlighted="true"] {
+  background-color: #0f1c29 !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #38bdf8 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(56, 189, 248, 0.25),
+    0px 0px 8px rgba(56, 189, 248, 0.25) !important;
 }
 
 /* ========================================================

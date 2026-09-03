@@ -1,4 +1,4 @@
-import { Boxes, CheckCircle2, ChevronDown, Circle, File, Folder } from "lucide-react"
+import { Boxes, CheckCircle2, ChevronDown, Circle, File, FileText, Folder } from "lucide-react"
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -138,6 +138,47 @@ export const ProjectNavigationList = ({
   }
 
   /**
+   * 渲染项目根位置的专属临时提示词条目（不可删除，高亮背景，无状态切换）。
+   */
+  const renderTemporaryPrompt = (projectId: string): React.JSX.Element => {
+    const tempPromptId = `temp-${projectId}`
+    const isActive = activePromptId === tempPromptId
+
+    return (
+      <div
+        key={tempPromptId}
+        role="button"
+        tabIndex={0}
+        data-item-level="temp-prompt"
+        aria-current={isActive ? "page" : undefined}
+        style={{ marginLeft: "10px" }}
+        className={`project-nav-temp-prompt flex h-7 items-center gap-2 rounded-[6px] border px-1.5 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+          isActive
+            ? "border-[var(--color-theme-accent,rgba(56,189,248,0.4))] bg-[rgba(56,189,248,0.2)] text-[var(--color-theme-text,#ffffff)] font-medium"
+            : "border-[var(--color-theme-border,rgba(255,255,255,0.1))] bg-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.2))] hover:bg-white/5"
+        }`}
+        onClick={() => {
+          onItemOpen(tempPromptId)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
+        }}
+      >
+        <FileText
+          className={`h-3.5 w-3.5 shrink-0 ${
+            isActive
+              ? "text-[var(--color-theme-accent,#38bdf8)]"
+              : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
+          }`}
+        />
+        <span className="min-w-0 flex-1 truncate select-none font-medium">
+          {t("project.temporaryPrompt")}
+        </span>
+      </div>
+    )
+  }
+
+  /**
    * 渲染可选择的条目节点。
    */
   const renderPrompt = (prompt: ProjectNavigationPrompt, depth: number): React.JSX.Element => {
@@ -267,6 +308,7 @@ export const ProjectNavigationList = ({
 
               {!isProjectCollapsed && (
                 <div className="space-y-0.5">
+                  {renderTemporaryPrompt(project.id)}
                   {project.projectFolders.map((folder) => renderFolder(folder, 1, project.id))}
                   {project.prompts.map((prompt) => renderPrompt(prompt, 1))}
                 </div>

@@ -106,6 +106,18 @@ export const RightSideBar = (): React.JSX.Element => {
     }
 
     let current = true
+    if (itemId.startsWith("temp-")) {
+      const targetProjectId = itemId.slice("temp-".length)
+      void projectNavigationApi.listProjects().then((projects) => {
+        if (!current) return
+        const project = projects.find((entry) => entry.id === targetProjectId)
+        setCurrentProject(project ? { id: project.id, path: project.path } : undefined)
+      })
+      return () => {
+        current = false
+      }
+    }
+
     void Promise.all([projectNavigationApi.listItems(), projectNavigationApi.listProjects()]).then(
       ([items, projects]) => {
         if (!current) return

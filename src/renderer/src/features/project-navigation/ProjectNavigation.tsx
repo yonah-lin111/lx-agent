@@ -172,6 +172,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
   // 当前激活条目所属的项目 id，用于"当前项目"范围筛选。
   const activeProjectId = useMemo(() => {
     if (!activePromptId) return undefined
+    if (activePromptId.startsWith("temp-")) {
+      return activePromptId.slice("temp-".length)
+    }
     const hasPrompt = (folders: ProjectNavigationProject["projectFolders"]): boolean =>
       folders.some(
         (folder) =>
@@ -656,6 +659,15 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const locatePrompt = (promptId: string): boolean => {
     if (!promptId) return false
 
+    if (promptId.startsWith("temp-")) {
+      const targetProjectId = promptId.slice("temp-".length)
+      if (projects.some((p) => p.id === targetProjectId)) {
+        setCollapsedProjects((currentValue) => ({ ...currentValue, [targetProjectId]: true }))
+        return true
+      }
+      return false
+    }
+
     const expandFolderWithPrompt = (
       folders: ProjectNavigationProject["projectFolders"],
     ): boolean => {
@@ -709,6 +721,18 @@ export const ProjectNavigation = (): React.JSX.Element => {
       if (!lastItemId) return
 
       try {
+        if (lastItemId.startsWith("temp-")) {
+          const targetProjectId = lastItemId.slice("temp-".length)
+          const projectsList = await projectNavigationApi.listProjects()
+          if (!isCurrent) return
+          if (projectsList.some((p) => p.id === targetProjectId)) {
+            navigate(`${PAGE_ROUTES.project}?itemId=${lastItemId}`, { replace: true })
+          } else {
+            clearLastOperatedItemId()
+          }
+          return
+        }
+
         const items = await projectNavigationApi.listItems()
         if (!isCurrent) return
         if (items.some((item) => item.id === lastItemId)) {

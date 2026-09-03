@@ -1019,6 +1019,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     defaultWorktree: "Default worktree",
   },
   project: {
+    temporaryPrompt: "Scratchpad Prompt",
     newProject: "New Project",
     openProject: "Open Project",
     noProjects: "No projects yet",

@@ -112,7 +112,33 @@ export const resolveRecentItemCards = async (
   const cards: RecentItemCard[] = []
   for (const id of ids) {
     const item = itemById.get(id)
-    if (!item) continue
+    if (!item) {
+      if (id.startsWith("temp-")) {
+        const targetProjectId = id.slice("temp-".length)
+        const targetProject = projectById.get(targetProjectId)
+        if (targetProject) {
+          validIds.push(id)
+          let rawData = ""
+          try {
+            rawData = localStorage.getItem(`lx-agent-temp-prompt-${id}`) ?? ""
+          } catch {
+            rawData = ""
+          }
+          const counts = countTemplateBlocks(rawData)
+          cards.push({
+            id,
+            itemName: "project.temporaryPrompt",
+            projectName: targetProject.name,
+            folderName: null,
+            status: "todo",
+            todo: counts.todo,
+            inProgress: counts.inProgress,
+            done: counts.done,
+          })
+        }
+      }
+      continue
+    }
     validIds.push(id)
     const counts = countTemplateBlocks(item.itemData)
     const folder = item.projectFolderId ? folderById.get(item.projectFolderId) : undefined

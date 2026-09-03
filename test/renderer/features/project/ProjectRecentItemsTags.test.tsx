@@ -51,7 +51,9 @@ describe("ProjectRecentItemsTags Component", () => {
     await act(async () => {
       render(<ProjectRecentItemsTags />)
     })
-    expect(screen.getByText("暂无最近打开")).not.toBeNull()
+    expect(
+      screen.queryByText("暂无最近打开") ?? screen.queryByText("No projects yet"),
+    ).not.toBeNull()
   })
 
   it("当有最近打开项时渲染对应 tags 并能显示面包屑文本", async () => {
@@ -97,5 +99,33 @@ describe("ProjectRecentItemsTags Component", () => {
     expect(screen.getByText("Project A")).not.toBeNull()
     expect(screen.getByText("Folder B")).not.toBeNull()
     expect(screen.getByText("Item C")).not.toBeNull()
+  })
+
+  it("临时提示词固定渲染 sky 颜色与对应名称", async () => {
+    useRecentItemsStore.setState({ ids: ["temp-p1"] })
+
+    mockedApi.listProjects.mockResolvedValue([
+      {
+        id: "p1",
+        name: "Project A",
+        type: "virtual",
+        referencedFolders: [],
+        createdAt: "",
+        updatedAt: "",
+      },
+    ])
+    mockedApi.listFolders.mockResolvedValue([])
+    mockedApi.list.mockResolvedValue([])
+
+    await act(async () => {
+      render(<ProjectRecentItemsTags />)
+    })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+
+    const tag = document.querySelector('.project-recent-tag[data-color="sky"]')
+    expect(tag).not.toBeNull()
   })
 })

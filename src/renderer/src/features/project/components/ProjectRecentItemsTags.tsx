@@ -1,4 +1,13 @@
-import { Boxes, BrushCleaning, ChevronLeft, ChevronRight, File, Folder, X } from "lucide-react"
+import {
+  Boxes,
+  BrushCleaning,
+  ChevronLeft,
+  ChevronRight,
+  File,
+  FileText,
+  Folder,
+  X,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
@@ -16,7 +25,10 @@ import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 渲染「项目/文件夹/条目」单行标签文本。
-const renderTagLabel = (card: RecentItemCard): React.ReactNode => (
+const renderTagLabel = (
+  card: RecentItemCard,
+  t: (key: any, params?: any) => string,
+): React.ReactNode => (
   <span className="inline-flex min-w-0 items-center gap-0.5">
     {card.projectName && (
       <>
@@ -30,7 +42,9 @@ const renderTagLabel = (card: RecentItemCard): React.ReactNode => (
         <span>/</span>
       </>
     )}
-    <span className="truncate">{card.itemName}</span>
+    <span className="truncate">
+      {card.id.startsWith("temp-") ? t("project.temporaryPrompt") : card.itemName}
+    </span>
   </span>
 )
 
@@ -70,7 +84,10 @@ const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
   )
 }
 
-const getCardTagColor = (card: RecentItemCard): "default" | "amber" | "emerald" => {
+const getCardTagColor = (card: RecentItemCard): "default" | "amber" | "emerald" | "sky" => {
+  if (card.id.startsWith("temp-")) {
+    return "sky"
+  }
   if (card.status === "completed" || (card.done > 0 && card.todo === 0 && card.inProgress === 0)) {
     return "emerald"
   }
@@ -81,7 +98,10 @@ const getCardTagColor = (card: RecentItemCard): "default" | "amber" | "emerald" 
 }
 
 // 渲染 tag 悬停详情：项目/文件夹/条目树与状态数量，带直角分支缩进与 icon 颜色。
-const renderCardDetails = (card: RecentItemCard): React.ReactNode => (
+const renderCardDetails = (
+  card: RecentItemCard,
+  t: (key: any, params?: any) => string,
+): React.ReactNode => (
   <div className="flex flex-col gap-1">
     {card.projectName && (
       <div className="flex items-center gap-1 pl-1">
@@ -102,8 +122,14 @@ const renderCardDetails = (card: RecentItemCard): React.ReactNode => (
     )}
     <div className={`flex items-center gap-1 ${card.folderName ? "pl-3" : "pl-1"}`}>
       <TreeBranchIcon />
-      <File className="h-3.5 w-3.5 shrink-0 text-white/50" />
-      <span className="min-w-0 truncate text-xs font-semibold text-white/90">{card.itemName}</span>
+      {card.id.startsWith("temp-") ? (
+        <FileText className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+      ) : (
+        <File className="h-3.5 w-3.5 shrink-0 text-white/50" />
+      )}
+      <span className="min-w-0 truncate text-xs font-semibold text-white/90">
+        {card.id.startsWith("temp-") ? t("project.temporaryPrompt") : card.itemName}
+      </span>
     </div>
     {renderStatusBadges(card)}
   </div>
@@ -244,7 +270,12 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
             const isActive = card.id === itemId
             const isDragging = draggingId === card.id
             return (
-              <LxTooltip key={card.id} content={renderCardDetails(card)} multiline placement="top">
+              <LxTooltip
+                key={card.id}
+                content={renderCardDetails(card, t)}
+                multiline
+                placement="top"
+              >
                 <div
                   draggable
                   onDragStart={(event) => {
@@ -271,7 +302,13 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                     highlighted={isActive}
                     className="project-recent-tag"
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
-                    prefix={<File className="h-3 w-3" />}
+                    prefix={
+                      card.id.startsWith("temp-") ? (
+                        <FileText className="h-3 w-3" />
+                      ) : (
+                        <File className="h-3 w-3" />
+                      )
+                    }
                     suffix={
                       <span
                         aria-label={t("agent.removeFromRecent")}
@@ -286,7 +323,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                       </span>
                     }
                   >
-                    {renderTagLabel(card)}
+                    {renderTagLabel(card, t)}
                   </LxTag>
                 </div>
               </LxTooltip>

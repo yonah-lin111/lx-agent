@@ -39,6 +39,7 @@ export const HeaderSideBar = ({
   onExpandedChange,
   children,
 }: HeaderSideBarProps): React.JSX.Element => {
+  const { t } = useTranslation()
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const itemId = searchParams.get("itemId")
@@ -66,6 +67,21 @@ export const HeaderSideBar = ({
     let isCurrent = true
     const loadProjectBreadcrumb = async (): Promise<void> => {
       try {
+        if (itemId.startsWith("temp-")) {
+          const targetProjectId = itemId.slice("temp-".length)
+          const projects = await projectNavigationApi.listProjects()
+          if (!isCurrent) return
+          const project = projects.find((p) => p.id === targetProjectId)
+          if (project) {
+            setProjectBreadcrumb({
+              projectName: project.name,
+              folderNames: [],
+              itemName: t("project.temporaryPrompt"),
+            })
+          }
+          return
+        }
+
         const [projects, folders, items] = await Promise.all([
           projectNavigationApi.listProjects(),
           projectNavigationApi.listFolders(),
@@ -123,7 +139,7 @@ export const HeaderSideBar = ({
     return () => {
       isCurrent = false
     }
-  }, [itemId, pathname])
+  }, [itemId, pathname, t])
 
   // 切换 tag 栏显示：关闭时先播放退场动画，结束后再卸载。
   const handleToggleRecentTags = (): void => {
@@ -154,8 +170,6 @@ export const HeaderSideBar = ({
       }
     }
   }, [])
-
-  const { t } = useTranslation()
 
   const breadcrumbParts =
     pathname === PAGE_ROUTES.project && projectBreadcrumb

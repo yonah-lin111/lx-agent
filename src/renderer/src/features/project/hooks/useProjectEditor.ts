@@ -95,6 +95,44 @@ export const useProjectEditor = (
       setProjectId(null)
       setWorktreePathState(null)
       try {
+        if (itemId && itemId.startsWith("temp-")) {
+          const derivedProjectId = itemId.slice("temp-".length)
+          const projects = await projectApi.listProjects()
+          if (!isCurrent) return
+          const targetProject = projects.find((p) => p.id === derivedProjectId)
+          if (!targetProject) {
+            setHasItem(false)
+            return
+          }
+          let rawData = ""
+          try {
+            rawData = localStorage.getItem(`lx-agent-temp-prompt-${itemId}`) ?? ""
+          } catch {
+            rawData = ""
+          }
+          let localWorktree: string | null = null
+          try {
+            localWorktree = localStorage.getItem(`lx-agent-temp-worktree-${itemId}`) || null
+          } catch {
+            localWorktree = null
+          }
+
+          const nextPages = parseMarkdownPages(rawData)
+          const nextContent = serializePages(nextPages)
+          pagesRef.current = nextPages
+          contentRef.current = nextContent
+          savedContentRef.current = nextContent
+          itemStatusRef.current = "todo"
+          setPagesState(nextPages)
+          setContentState(nextContent)
+          setHasItem(true)
+          setProjectId(derivedProjectId)
+          setWorktreePathState(localWorktree)
+          setIsSaved(true)
+          setLoadedItemId(itemId)
+          return
+        }
+
         const item = itemId
           ? (await projectApi.list()).find((entry) => entry.id === itemId)
           : undefined
@@ -137,6 +175,19 @@ export const useProjectEditor = (
     const contentToSave = contentRef.current
     const requestId = saveRequestRef.current + 1
     saveRequestRef.current = requestId
+
+    if (itemId.startsWith("temp-")) {
+      try {
+        localStorage.setItem(`lx-agent-temp-prompt-${itemId}`, contentToSave)
+        savedContentRef.current = contentToSave
+        setIsSaved(true)
+      } catch (error) {
+        console.error("Failed to save temp prompt", error)
+        setIsSaved(false)
+      }
+      return
+    }
+
     void projectApi
       .update(itemId, { itemData: contentToSave })
       .then(() => {
@@ -161,7 +212,7 @@ export const useProjectEditor = (
 
   // 模板块状态变化时同步推导条目状态并持久化，通知侧边栏刷新。
   useEffect(() => {
-    if (!itemId || isLoading || loadedItemId !== itemId) return
+    if (!itemId || itemId.startsWith("temp-") || isLoading || loadedItemId !== itemId) return
 
     const derived = deriveItemStatus(pagesRef.current, itemStatusRef.current)
     if (derived === itemStatusRef.current) return
