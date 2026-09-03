@@ -727,7 +727,7 @@ export const AgentExecutionFlowList = forwardRef<
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-3 py-2 [scrollbar-gutter:stable]"
+            className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-1 [scrollbar-gutter:stable]"
           >
             <AgentExecutionFlowEmpty onSelectPrompt={onSelectPrompt} className="my-auto" />
           </div>
@@ -735,7 +735,7 @@ export const AgentExecutionFlowList = forwardRef<
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-2 pb-16 [scrollbar-gutter:stable]"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-1 pb-16 [scrollbar-gutter:stable]"
           >
             {/* 滑动窗口：顶部存在折叠历史时，展示加载入口与未展开条数 */}
             {windowStartIndex > 0 && (
