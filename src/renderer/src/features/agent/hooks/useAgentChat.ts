@@ -719,6 +719,15 @@ export const useAgentChat = (
     [stopStreaming, tabId, onSessionBound],
   )
 
+  // 页面加载/刷新时，如果指定了 initialSessionId 且尚未恢复消息，自动执行 restoreChat 恢复历史
+  const initialRestoredRef = useRef(false)
+  useEffect(() => {
+    if (!initialRestoredRef.current && initialSessionId) {
+      initialRestoredRef.current = true
+      restoreChat(initialSessionId)
+    }
+  }, [initialSessionId, restoreChat])
+
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
   // 流式输出期间发送 → main 侧入队（deferred queue）或即时插话（steer）；输入框立即清空。
   const sendMessage = useCallback(

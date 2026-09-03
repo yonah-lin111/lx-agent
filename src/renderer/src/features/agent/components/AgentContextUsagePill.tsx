@@ -22,18 +22,25 @@ export const AgentContextUsagePill = ({
   className = "",
 }: AgentContextUsagePillProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const percent =
-    contextUsage && contextUsage.contextWindow > 0
-      ? Math.min(100, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100))
-      : 0
+  const hasValidUsage =
+    contextUsage !== null &&
+    contextUsage !== undefined &&
+    typeof contextUsage.tokens === "number" &&
+    Number.isFinite(contextUsage.tokens) &&
+    typeof contextUsage.contextWindow === "number" &&
+    Number.isFinite(contextUsage.contextWindow) &&
+    contextUsage.contextWindow > 0
 
-  const baseText =
-    contextUsage && contextUsage.contextWindow > 0
-      ? t("agent.contextUsed", {
-          used: contextUsage.tokens.toLocaleString(),
-          total: contextUsage.contextWindow.toLocaleString(),
-        })
-      : t("agent.contextCapacity")
+  const percent = hasValidUsage
+    ? Math.min(100, Math.max(0, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100)))
+    : 0
+
+  const baseText = hasValidUsage
+    ? t("agent.contextUsed", {
+        used: Math.max(0, Math.round(contextUsage.tokens)).toLocaleString(),
+        total: Math.max(0, Math.round(contextUsage.contextWindow)).toLocaleString(),
+      })
+    : t("agent.contextCapacity")
 
   const extraTip =
     percent >= 90

@@ -123,8 +123,11 @@ const messageCharCount = (message: AgentMessage): number => {
 }
 
 // 单条消息 token 启发式估计（char/4，对齐 pi estimateContextTokens）。
-export const estimateMessageTokens = (message: AgentMessage): number =>
-  Math.max(1, Math.ceil(messageCharCount(message) / 4))
+export const estimateMessageTokens = (message: AgentMessage): number => {
+  const chars = messageCharCount(message)
+  if (!Number.isFinite(chars) || chars <= 0) return 1
+  return Math.max(1, Math.ceil(chars / 4))
+}
 
 /**
  * 估计整组上下文 token 数：复用最后一条 assistant 的 usage.totalTokens 作锚点
@@ -136,7 +139,8 @@ export const estimateContextTokens = (messages: AgentMessage[]): number => {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index]
     if (message.role === "assistant") {
-      anchor = message.usage.totalTokens || 0
+      const rawTokens = message.usage?.totalTokens
+      anchor = typeof rawTokens === "number" && Number.isFinite(rawTokens) ? Math.max(0, rawTokens) : 0
       anchorIndex = index
       break
     }
@@ -148,7 +152,7 @@ export const estimateContextTokens = (messages: AgentMessage[]): number => {
   for (let index = anchorIndex + 1; index < messages.length; index++) {
     total += estimateMessageTokens(messages[index])
   }
-  return total
+  return Number.isFinite(total) ? Math.max(0, total) : 0
 }
 
 /**
