@@ -251,11 +251,11 @@ export const SkillSettings = (): React.JSX.Element => {
   }, [skills, searchQuery])
 
   // 项目下拉框选项
-  const projectOptions: LxSelectOption[] = useMemo(() => {
+  const projectOptions: LxSelectOption<string>[] = useMemo(() => {
     return [
       { label: t("settings.skillsAllProjects"), value: "" },
       ...projects.map((p) => ({
-        label: p.name || p.path,
+        label: p.name || p.path || p.id || "",
         value: p.id,
       })),
     ]
@@ -280,7 +280,7 @@ export const SkillSettings = (): React.JSX.Element => {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] pb-3">
         <div className="flex min-w-[200px] max-w-sm flex-1 items-center gap-2">
           <LxInput
-            size="small"
+            size="sm"
             prefix={
               <Search className="h-3.5 w-3.5 text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]" />
             }
@@ -540,6 +540,7 @@ export const SkillSettings = (): React.JSX.Element => {
                     </div>
                   ) : selectedSkillContent ? (
                     <LxMarkdownPreview
+                      previewMode="preview"
                       html={previewHtml}
                       className="px-0"
                       contentClassName="py-0 text-xs"
@@ -561,16 +562,35 @@ export const SkillSettings = (): React.JSX.Element => {
         isOpen={deleteTarget !== null}
         onClose={() => !deleting && setDeleteTarget(null)}
         title={t("settings.skillsConfirmDeleteTitle")}
-        description={
-          deleteTarget
-            ? t("settings.skillsConfirmDeleteContent", { name: deleteTarget.name })
-            : undefined
-        }
-        confirmText={t("common.delete")}
-        cancelText={t("common.cancel")}
-        onConfirm={handleConfirmDelete}
-        confirmDisabled={deleting}
-      />
+        width="420px"
+      >
+        <div className="flex flex-col gap-3.5 p-1 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+          <p>
+            {deleteTarget
+              ? t("settings.skillsConfirmDeleteContent", { name: deleteTarget.name })
+              : ""}
+          </p>
+          <div className="mt-2 flex items-center justify-end gap-2 border-t border-[var(--color-theme-border,rgba(255,255,255,0.1))] pt-3">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setDeleteTarget(null)}
+              className="rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.1))] px-3 py-1.5 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+              className="flex items-center gap-1 rounded-[6px] border border-rose-500/30 bg-rose-500/15 px-3.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              {t("common.delete")}
+            </button>
+          </div>
+        </div>
+      </LxModal>
     </div>
   )
 }

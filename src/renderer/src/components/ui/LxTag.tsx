@@ -22,7 +22,7 @@ export type LxTagColor =
   | "orange"
 
 // Tag 组件属性。
-export interface LxTagProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface LxTagProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, "prefix"> {
   children: React.ReactNode
   size?: LxTagSize
   prefix?: React.ReactNode
@@ -143,6 +143,7 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
   const { t } = useTranslation()
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
+  const isInteractive = isClickable || typeof onClose === "function"
   const activeColorStyle = colorStyles[color] ?? colorStyles.default
   const defaultBg = bgClass ?? activeColorStyle.bg
   const defaultHighlightBg = highlightBgClass ?? activeColorStyle.highlightBg
