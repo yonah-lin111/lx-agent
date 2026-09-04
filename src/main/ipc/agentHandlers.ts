@@ -326,7 +326,10 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return promptTemplateLoader.list(validCwd)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.listSkills, (_, cwd: unknown) => {
+  ipcMain.handle(AGENT_CHANNELS.listSkills, (_, cwd: unknown, force?: unknown) => {
+    if (Boolean(force)) {
+      skillLoader.clearCache()
+    }
     const validCwd =
       typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
     const globalSkillDir = resolve(skillLoader.getSkillDir())

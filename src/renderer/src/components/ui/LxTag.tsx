@@ -143,10 +143,10 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
   const { t } = useTranslation()
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
-  const isInteractive = isClickable || typeof onClose === "function"
-  const defaultBg = bgClass ?? colorStyles[color].bg
-  const defaultHighlightBg = highlightBgClass ?? colorStyles[color].highlightBg
-  const defaultHover = hoverClass ?? colorStyles[color].hover
+  const activeColorStyle = colorStyles[color] ?? colorStyles.default
+  const defaultBg = bgClass ?? activeColorStyle.bg
+  const defaultHighlightBg = highlightBgClass ?? activeColorStyle.highlightBg
+  const defaultHover = hoverClass ?? activeColorStyle.hover
   const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
 
   return (

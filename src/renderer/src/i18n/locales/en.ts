@@ -141,6 +141,7 @@ Centrally manage LLM provider endpoints, authentication credentials, and model c
     skillsContentPreview: "SKILL.md Content Reference",
     skillsNoContent: "Content is empty",
     skillsLoadingContent: "Loading reference content...",
+    skillsRefreshed: "Skills refreshed",
     cli: "CLI Tools",
     cliDesc: "Detect and manage local AI CLI tools (Claude Code, Codex, etc.) status and versions",
     cliDoc: `### External AI CLI Integration

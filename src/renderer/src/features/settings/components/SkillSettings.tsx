@@ -1,6 +1,16 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { Project } from "@shared/project"
-import { Check, Copy, Folder, Globe, Loader2, Search, Sparkles, Trash2 } from "lucide-react"
+import {
+  Check,
+  Copy,
+  Folder,
+  Globe,
+  Loader2,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -24,6 +34,7 @@ export const SkillSettings = (): React.JSX.Element => {
   const toast = useLxToast()
 
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [skills, setSkills] = useState<SkillItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [projects, setProjects] = useState<Project[]>([])
@@ -68,34 +79,49 @@ export const SkillSettings = (): React.JSX.Element => {
   const effectiveCwd = currentProject?.path || undefined
 
   // 2. 加载 Skill 列表与配置数据
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true)
-      const [skillList, config] = await Promise.all([
-        window.api.agent.listSkills(effectiveCwd),
-        settingsApi.getSkillSettings(),
-      ])
+  const loadData = useCallback(
+    async (force = false) => {
+      try {
+        if (force) setRefreshing(true)
+        else setLoading(true)
 
-      setSkills(skillList)
-      setDisabledSkills(config.disabled)
-      setInitialDisabled([...config.disabled])
+        const [skillList, config] = await Promise.all([
+          window.api.agent.listSkills(effectiveCwd, force),
+          settingsApi.getSkillSettings(),
+        ])
 
-      // 默认选中首个 Skill
-      if (skillList.length > 0) {
-        setSelectedSkillName((prev) => {
-          if (prev && skillList.some((s) => s.name === prev)) return prev
-          return skillList[0].name
-        })
-      } else {
-        setSelectedSkillName(null)
+        setSkills(skillList)
+        setDisabledSkills(config.disabled)
+        setInitialDisabled([...config.disabled])
+
+        if (force) {
+          setContentCache({})
+        }
+
+        // 默认选中首个 Skill
+        if (skillList.length > 0) {
+          setSelectedSkillName((prev) => {
+            if (prev && skillList.some((s) => s.name === prev)) return prev
+            return skillList[0].name
+          })
+        } else {
+          setSelectedSkillName(null)
+        }
+      } catch (err) {
+        console.error("[SkillSettings] Failed to load skill data:", err)
+        toast.error(t("settings.loadSettingsFailed"))
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
       }
-    } catch (err) {
-      console.error("[SkillSettings] Failed to load skill data:", err)
-      toast.error(t("settings.loadSettingsFailed"))
-    } finally {
-      setLoading(false)
-    }
-  }, [effectiveCwd, t, toast])
+    },
+    [effectiveCwd, t, toast],
+  )
+
+  const handleRefresh = async () => {
+    await loadData(true)
+    toast.success(t("settings.skillsRefreshed"))
+  }
 
   useEffect(() => {
     void loadData()
@@ -262,6 +288,16 @@ export const SkillSettings = (): React.JSX.Element => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <LxIconButton
+            preset="default"
+            size="small"
+            aria-label={t("common.refresh")}
+            title={{ content: t("common.refresh"), placement: "bottom" }}
+            disabled={refreshing || loading}
+            onClick={() => void handleRefresh()}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+          </LxIconButton>
         </div>
 
         {projects.length > 0 ? (
@@ -376,19 +412,19 @@ export const SkillSettings = (): React.JSX.Element => {
 
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {skill.isGlobal ? (
-                        <LxTag size="small" variant="outline" color="neutral">
+                        <LxTag size="small" color="gray">
                           <Globe className="h-2.5 w-2.5 mr-0.5 inline" />
                           {t("settings.skillsScopeGlobal")}
                         </LxTag>
                       ) : (
-                        <LxTag size="small" variant="outline" color="blue">
+                        <LxTag size="small" color="blue">
                           <Folder className="h-2.5 w-2.5 mr-0.5 inline" />
                           {t("settings.skillsScopeProject")}
                         </LxTag>
                       )}
 
                       {isDisabled ? (
-                        <LxTag size="small" color="red">
+                        <LxTag size="small" color="rose">
                           {t("common.disabled")}
                         </LxTag>
                       ) : null}
@@ -427,19 +463,19 @@ export const SkillSettings = (): React.JSX.Element => {
                     ) : null}
 
                     {selectedSkill.isGlobal ? (
-                      <LxTag size="small" variant="outline" color="neutral">
+                      <LxTag size="small" color="gray">
                         <Globe className="h-2.5 w-2.5 mr-0.5 inline" />
                         {t("settings.skillsScopeGlobal")}
                       </LxTag>
                     ) : (
-                      <LxTag size="small" variant="outline" color="blue">
+                      <LxTag size="small" color="blue">
                         <Folder className="h-2.5 w-2.5 mr-0.5 inline" />
                         {t("settings.skillsScopeProject")}
                       </LxTag>
                     )}
 
                     {selectedSkill.disableModelInvocation ? (
-                      <LxTag size="small" color="yellow">
+                      <LxTag size="small" color="amber">
                         {t("settings.skillsDisableModelInvocation")}
                       </LxTag>
                     ) : null}
