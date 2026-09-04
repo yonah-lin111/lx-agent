@@ -2034,21 +2034,17 @@
 [data-theme="minecraft"] .agent-execution-flow-group {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
-  background-color: #221e2e !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
-    2px 2px 0px 0px #000000 !important;
+  background-color: #2a2638 !important;
+  box-shadow: none !important;
   margin-bottom: 4px !important;
 }
 
 [data-theme="minecraft"] .agent-execution-flow-step:hover,
 [data-theme="minecraft"] .agent-execution-flow-group:hover {
-  background-color: #282436 !important;
+  background-color: #343044 !important;
 }
 
 /* User (Amber / 金矿石方块卡片外框) */
-[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="amber"],
 [data-theme="minecraft"] .agent-execution-flow-step--user {
   background-color: #261e14 !important;
   box-shadow:
@@ -2056,13 +2052,11 @@
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
     2px 2px 0px 0px #000000 !important;
 }
-[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="amber"]:hover,
 [data-theme="minecraft"] .agent-execution-flow-step--user:hover {
   background-color: #302418 !important;
 }
 
 /* Assistant (Emerald / 绿宝石方块卡片外框) */
-[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="emerald"],
 [data-theme="minecraft"] .agent-execution-flow-step--assistant {
   background-color: #142418 !important;
   box-shadow:
@@ -2070,7 +2064,6 @@
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
     2px 2px 0px 0px #000000 !important;
 }
-[data-theme="minecraft"] .agent-execution-flow-step[data-tag-color="emerald"]:hover,
 [data-theme="minecraft"] .agent-execution-flow-step--assistant:hover {
   background-color: #1a2e1f !important;
 }
@@ -2199,8 +2192,9 @@
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
-/* 步骤展开详情区基础凹槽结构 */
-[data-theme="minecraft"] .agent-execution-flow-step-body {
+/* 步骤与折叠组展开详情区基础凹槽结构 */
+[data-theme="minecraft"] .agent-execution-flow-step-body,
+[data-theme="minecraft"] .agent-execution-flow-group-body {
   border-top: 2px solid #000000 !important;
   background-color: #12121a !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2312121a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23171723'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%230f0f16'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23151520'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%231a1a28'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2314141e'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%231b1b29'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23101017'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23161622'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23171724'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2313131c'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%231e1e2d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23101017'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%230e0e14'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23191926'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2314141e'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%231b1b29'/%3E%3C/svg%3E") !important;

@@ -5,8 +5,9 @@ import {
 } from "@/features/markdown/extensions/markdownFileMentions"
 
 // 模板块文件快捷输入片段：必须为非 @ 开头、仅含常见路径字符，且前一个字符是边界。
+// 排除 -- 前缀（如 --start / --end），避免输入 flag 时误触发快捷输入。
 const MARKDOWN_TEMPLATE_FILE_TRIGGER_RE =
-  /(^|[^A-Za-z0-9_@.\/\\-])([A-Za-z0-9_][A-Za-z0-9_.\/\\-]*)$/
+  /(^|[^A-Za-z0-9_@.\/\\-])(?!--)([A-Za-z0-9_][A-Za-z0-9_.\/\\-]*)$/
 
 // 最小片段长度，避免单字符弹出噪音。
 const MARKDOWN_TEMPLATE_FILE_MIN_QUERY_LENGTH = 2
@@ -88,11 +89,13 @@ export const getMarkdownTemplateFileCandidates = (
   }
 
   for (const match of content.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
-    const mention = (match[0] ?? "").replace(/^@/, "")
+    const rawMatch = match[0] ?? ""
+    const mention = (match[1] ?? rawMatch).replace(/^@/, "")
+    if (mention === "start" || mention === "end") continue
     // @ 提及无法从文本判断目录性，按文件处理；是否位于引用根下决定归属。
     addCandidate(
       mention,
-      isPathUnderReferencedRoots(match[0] ?? "", roots) ? "referenceMention" : "currentMention",
+      isPathUnderReferencedRoots(rawMatch, roots) ? "referenceMention" : "currentMention",
     )
   }
 

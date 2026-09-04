@@ -42,6 +42,11 @@ describe("模板块文件快捷输入命令", () => {
     expect(getMarkdownTemplateFileTrigger("a@lxmded")).toBeNull()
   })
 
+  it("-- 前缀不触发，避免 flag 输入误触发", () => {
+    expect(getMarkdownTemplateFileTrigger("--start")).toBeNull()
+    expect(getMarkdownTemplateFileTrigger("--end")).toBeNull()
+  })
+
   it("判断路径是否为图片", () => {
     expect(isMarkdownTemplateImagePath("a.png")).toBe(true)
     expect(isMarkdownTemplateImagePath("a.PNG")).toBe(true)

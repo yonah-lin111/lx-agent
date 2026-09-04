@@ -909,7 +909,7 @@ export const useMarkdownPanels = ({
     const prefix = view.state.doc.sliceString(0, cursor)
     const lineText = view.state.doc.lineAt(cursor).text
 
-    if (isInsideMarkdownCodeFence(prefix) || /^\s*&&&/.test(lineText)) {
+    if (isInsideMarkdownCodeFence(prefix) || /^\s*(?:&&&|\+\+\+)/.test(lineText)) {
       closeTemplateFilePanel()
       return
     }

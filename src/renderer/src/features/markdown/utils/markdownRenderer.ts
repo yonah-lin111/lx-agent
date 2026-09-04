@@ -190,6 +190,31 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
 }
 
 /**
+ * 移除文本中所有子块（如 supple / log）及其内部完整内容，供父模板块复制场景使用。
+ */
+export const stripMarkdownSubblocks = (content: string): string => {
+  const lines = content.split("\n")
+  const keptLines: string[] = []
+  let insideSubblock = false
+
+  for (const line of lines) {
+    if (MARKDOWN_SUPPLE_START_RE.test(line) || MARKDOWN_LOG_START_RE.test(line)) {
+      insideSubblock = true
+      continue
+    }
+    if (insideSubblock) {
+      if (MARKDOWN_SUPPLE_END_RE.test(line) || MARKDOWN_LOG_END_RE.test(line)) {
+        insideSubblock = false
+      }
+      continue
+    }
+    keptLines.push(line)
+  }
+
+  return keptLines.join("\n")
+}
+
+/**
  * 移除文本中所有子块（如 supple / log）的 +++ 标记行，但完整保留内部子块正文。
  */
 export const stripMarkdownSubblockFences = (content: string): string => {
@@ -613,7 +638,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
     stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
         stripMarkdownSlashCommands(
-          stripMarkdownSubblockFences(meta.content),
+          stripMarkdownSubblocks(meta.content),
         ),
       ),
     ),

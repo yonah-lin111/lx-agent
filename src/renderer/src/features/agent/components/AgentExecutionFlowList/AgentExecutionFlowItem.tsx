@@ -172,7 +172,7 @@ export const AgentExecutionFlowItem = ({
       return "agent-execution-flow-step-body--assistant agent-execution-flow-step-body--emerald border-emerald-500/15 bg-emerald-500/[0.05]"
     }
     if (step.kind === "thinking") {
-      return "agent-execution-flow-step-body--thinking agent-execution-flow-step-body--purple border-purple-500/15 bg-purple-500/[0.05]"
+      return "agent-execution-flow-step-body--thinking border-white/5 bg-black/25"
     }
     if (step.kind === "undo") {
       return "agent-execution-flow-step-body--undo agent-execution-flow-step-body--rose border-rose-500/15 bg-rose-500/[0.05]"
@@ -193,12 +193,18 @@ export const AgentExecutionFlowItem = ({
     return `agent-execution-flow-step-body--${step.kind} border-white/5 bg-black/25`
   }, [step.kind, step.toolContent?.toolName])
 
+  const isSolidBackground = step.kind === "user" || step.kind === "assistant"
+
   return (
     <div
       data-step-kind={step.kind}
       data-tag-color={meta.tagColor}
       data-expanded={effectiveExpanded}
-      className={`agent-execution-flow-step agent-execution-flow-step--${step.kind} rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,#212121)] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))]`}
+      className={`agent-execution-flow-step agent-execution-flow-step--${step.kind} rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] ${
+        isSolidBackground
+          ? "bg-[var(--color-theme-surface,#212121)]"
+          : "bg-white/[0.06] hover:bg-white/[0.09]"
+      } transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))]`}
     >
       {/* 头部摘要栏 */}
       <div

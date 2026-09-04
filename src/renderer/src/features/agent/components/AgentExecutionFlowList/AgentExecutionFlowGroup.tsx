@@ -26,6 +26,7 @@ export interface AgentExecutionFlowGroupProps {
   isStepExpanded: (step: ExecutionStep) => boolean
   onToggleStepExpand: (step: ExecutionStep) => void
   onOpenSubagent?: (content: ExecutionSubagentContent) => void
+  isStreamingActive?: boolean
 }
 
 /**
@@ -39,6 +40,7 @@ export const AgentExecutionFlowGroup = ({
   isStepExpanded,
   onToggleStepExpand,
   onOpenSubagent,
+  isStreamingActive = false,
 }: AgentExecutionFlowGroupProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
@@ -55,7 +57,7 @@ export const AgentExecutionFlowGroup = ({
 
   // 计算运行时长（支持 running 动态累计计时）
   const [runningElapsedMs, setRunningElapsedMs] = useState(0)
-  const isRunning = Boolean(runningStep)
+  const isRunning = Boolean(runningStep || isStreamingActive)
   const isError = Boolean(!isRunning && errorStep)
   const isDone = !isRunning && !isError
 
@@ -191,7 +193,7 @@ export const AgentExecutionFlowGroup = ({
     <div
       data-flow-group="true"
       data-expanded={isExpanded}
-      className="agent-execution-flow-group rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,#212121)] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))]"
+      className="agent-execution-flow-group rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-white/[0.06] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))] hover:bg-white/[0.09]"
     >
       {/* 头部摘要栏（固定双行展示） */}
       <div

@@ -1174,7 +1174,7 @@ export const LxMarkdownEditor = ({
                   return true
                 }
                 const templateEndMatch =
-                  /^(\s*)&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.exec(
+                  /^(\s*)&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.exec(
                     line.text,
                   )
                 if (cursor === line.to && templateEndMatch && isInsideTemplate) {

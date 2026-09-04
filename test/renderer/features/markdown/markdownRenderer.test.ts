@@ -3,6 +3,7 @@ import { getMarkdownReferenceImageSource } from "@/features/markdown/commands/ma
 import {
   markdownRenderer,
   stripEmptyTemplateItems,
+  stripMarkdownSubblocks,
   stripMarkdownSubblockFences,
 } from "@/features/markdown/utils/markdownRenderer"
 
@@ -186,7 +187,21 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("渲染模板块时复制数据仅移除 +++ 标记行，完整保留内部子块正文", () => {
+  it("stripMarkdownSubblocks 移除子块及其全部内部内容", () => {
+    const input = [
+      "- 位置: src/a.ts",
+      "+++ suppleTemplate --start",
+      "- 补充内容 1",
+      "+++ suppleTemplate --end",
+      "- 描述: 任务描述",
+    ].join("\n")
+
+    expect(stripMarkdownSubblocks(input)).toBe(
+      ["- 位置: src/a.ts", "- 描述: 任务描述"].join("\n"),
+    )
+  })
+
+  it("渲染模板块时复制数据排除 +++ 子块内容", () => {
     const content = [
       "- 位置: src/a.ts",
       "+++ suppleTemplate --start",
@@ -201,13 +216,11 @@ describe("markdownRenderer", () => {
 
     const expectedCopied = [
       "- 位置: src/a.ts",
-      "- 补充项: 内部信息",
-      "- 日志项: 排查记录",
       "- 描述: 任务描述",
     ].join("\n")
     expect(html).toContain(`data-template-content="${encodeURIComponent(expectedCopied)}"`)
-    expect(html).toContain(encodeURIComponent("内部信息"))
-    expect(html).toContain(encodeURIComponent("排查记录"))
+    expect(html).not.toContain(encodeURIComponent("内部信息"))
+    expect(html).not.toContain(encodeURIComponent("排查记录"))
     expect(html).not.toContain(encodeURIComponent("+++ suppleTemplate --start"))
     expect(html).not.toContain(encodeURIComponent("+++ logTemplate --start"))
   })

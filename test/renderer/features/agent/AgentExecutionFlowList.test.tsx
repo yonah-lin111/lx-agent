@@ -1604,6 +1604,69 @@ describe("AgentExecutionFlowList", () => {
     expect(container.querySelector(".agent-execution-flow-group-body")).not.toBeNull()
   })
 
+  it("在流式执行过程中，折叠组后方未产生非折叠 item 时保持 loading 状态，不会在两个步骤间瞬间跳变完成", () => {
+    const initialMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "执行批处理" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "read_file",
+            args: { path: "b.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: true,
+      },
+    ]
+
+    const { container, rerender } = render(
+      <AgentExecutionFlowList messages={initialMessages} isStreaming={true} />,
+    )
+
+    // 两个已完成 tool 都在 group 内，但由于处于 isStreaming 且后续尚无非折叠 item，group 依然保持 loading 状态，不闪烁为 Done
+    const group = container.querySelector('[data-flow-group="true"]')
+    expect(group).not.toBeNull()
+    const groupRunningIcon = group?.querySelector('[aria-label="Running"]')
+    expect(groupRunningIcon).not.toBeNull()
+    expect(group?.querySelector('[aria-label="Done"]')).toBeNull()
+
+    // 产生非折叠 item（assistant 文本回复），group 正式标记完成
+    const completedMessages: ChatMessage[] = [
+      initialMessages[0],
+      {
+        id: "a1",
+        role: "assistant",
+        blocks: [
+          ...initialMessages[1].blocks,
+          {
+            kind: "text",
+            text: "全部读取完成",
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} isStreaming={false} />)
+    expect(container.querySelector('[aria-label="Done"]')).not.toBeNull()
+  })
+
   it("Subagent 步骤底部展示 Detail 按钮并支持点击打开/关闭 AgentSubagentPanel", () => {
     const messages: ChatMessage[] = [
       {

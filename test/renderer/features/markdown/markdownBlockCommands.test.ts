@@ -43,11 +43,13 @@ describe("Markdown 块命令", () => {
   it("识别带状态标记的模板块结束行并关闭块", () => {
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n")).toBe(true)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate 「title: 标题」\n")).toBe(true)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate --start 「title: 标题」\n")).toBe(true)
     expect(isInsideMarkdownTemplateBlock("&&& done\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& in_progress\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& done\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& in_progress\n")).toBe(false)
+    expect(isInsideMarkdownTemplateBlock("&&& addTemplate --start\n内容\n&&& addTemplate --end\n")).toBe(false)
     expect(isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n")).toBe(true)
     expect(isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n+++ logTemplate --end\n")).toBe(false)
   })
@@ -139,6 +141,11 @@ describe("Markdown 块命令", () => {
     const bodyPos = doc.indexOf("- 正文")
     expect(getMarkdownTemplateBlockStartLine(doc, bodyPos)).toBe(2)
     expect(getMarkdownTemplateBlockStartLine(doc, 0)).toBeNull()
+
+    const docWithFlags = ["前文", "&&& addTemplate --start 「title: 标题」", "- 正文", "&&& addTemplate --end", "后文"].join("\n")
+    const bodyPos2 = docWithFlags.indexOf("- 正文")
+    expect(getMarkdownTemplateBlockStartLine(docWithFlags, bodyPos2)).toBe(2)
+    expect(getMarkdownTemplateBlockContent(docWithFlags, bodyPos2)).toBe("- 正文\n")
   })
 
   it("为每行添加模板块注释，空行保持原样", () => {

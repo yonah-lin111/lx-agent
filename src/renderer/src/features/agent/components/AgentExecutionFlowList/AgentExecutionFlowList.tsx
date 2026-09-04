@@ -783,6 +783,14 @@ export const AgentExecutionFlowList = forwardRef<
                   const turnStats =
                     elementTurnIndex > 0 ? turnStatsMap.get(elementTurnIndex) : undefined
 
+                  const isGroupStreamingActive =
+                    isStreaming &&
+                    element.kind === "group" &&
+                    element.turnIndex === maxTurn &&
+                    !renderedFlowElements
+                      .slice(actualIdx + 1)
+                      .some((el) => el.kind === "single" && !isGroupableStep(el.step))
+
                   return (
                     <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
                       {/* 轮次分隔线（仅非 compaction / 非 modelSwitch / 非 undo 的用户交互轮次展示） */}
@@ -862,6 +870,7 @@ export const AgentExecutionFlowList = forwardRef<
                           isStepExpanded={isStepExpanded}
                           onToggleStepExpand={toggleStepExpanded}
                           onOpenSubagent={handleOpenSubagent}
+                          isStreamingActive={isGroupStreamingActive}
                         />
                       )}
 
