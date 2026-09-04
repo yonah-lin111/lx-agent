@@ -15,6 +15,7 @@ import {
   notifySettingsChanged,
   PermissionSettings,
   SETTINGS_SECTIONS,
+  SkillSettings,
   settingsApi,
   settingsDirtyStore,
   usePermissionSettings,
@@ -28,6 +29,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   cli: "settings.cliDesc",
   lsp: "settings.lspDesc",
   mcp: "settings.mcpDesc",
+  skills: "settings.skillsDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
   permissions: "settings.permissionsDesc",
@@ -98,6 +100,7 @@ export const SettingsPage = (): React.JSX.Element => {
     settingsDirtyStore.setSectionDirty("cli", false)
     settingsDirtyStore.setSectionDirty("lsp", false)
     settingsDirtyStore.setSectionDirty("mcp", false)
+    settingsDirtyStore.setSectionDirty("skills", false)
     setResetKey((k) => k + 1)
     setError("")
     toast.success(t("settings.resetSuccess"))
@@ -115,6 +118,9 @@ export const SettingsPage = (): React.JSX.Element => {
     }
     if (activeSection === "mcp") {
       return Boolean(dirtyMap["mcp"])
+    }
+    if (activeSection === "skills") {
+      return Boolean(dirtyMap["skills"])
     }
     return isModelsOrPermsDirty
   }, [activeSection, dirtyMap, isModelsOrPermsDirty])
@@ -148,6 +154,12 @@ export const SettingsPage = (): React.JSX.Element => {
 
       if (activeSection === "mcp") {
         await settingsDirtyStore.saveSection("mcp")
+        toast.success(t("settings.saveSuccess"))
+        return
+      }
+
+      if (activeSection === "skills") {
+        await settingsDirtyStore.saveSection("skills")
         toast.success(t("settings.saveSuccess"))
         return
       }
@@ -240,6 +252,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "cli" ? <CliSettings /> : null}
           {activeSection === "lsp" ? <LspSettings /> : null}
           {activeSection === "mcp" ? <McpSettings /> : null}
+          {activeSection === "skills" ? <SkillSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />
           ) : null}

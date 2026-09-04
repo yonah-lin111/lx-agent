@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { z } from "zod"
+import { getSkillSettings } from "@/services/settingsService"
 import type { AgentTool } from "../core/types"
 import { mcpManager } from "../mcp/mcpManager"
 import { truncateHead } from "../tools/truncate"
@@ -29,10 +30,24 @@ export const createReadSkillTool = (
     inputSchema: readSkillSchema,
     executionMode: "sequential",
     execute: async (_toolCallId, params) => {
+      const disabledSkills = new Set(getSkillSettings().disabled)
+      if (disabledSkills.has(params.name)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Skill "${params.name}" is disabled in settings.`,
+            },
+          ],
+          details: { error: "skill_disabled" },
+        }
+      }
+
       const skill = skillLoader.get(params.name, cwd)
       if (!skill) {
         const available = skillLoader
           .load(cwd)
+          .filter((item) => !disabledSkills.has(item.name))
           .map((item) => item.name)
           .join(", ")
         return {

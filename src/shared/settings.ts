@@ -206,6 +206,15 @@ export const DEFAULT_MCP_SETTINGS: McpSettings = {
   servers: {},
 }
 
+// Skill 设置（~/.lx/config.json 的 agent.skills 节点）。
+export interface SkillSettings {
+  disabled: string[]
+}
+
+export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
+  disabled: [],
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -230,5 +239,8 @@ export interface SettingsApi {
     getMcpSettings: () => Promise<McpSettings>
     saveMcpSettings: (settings: McpSettings) => Promise<McpSettings>
     reconnectMcp: () => Promise<void>
+    getSkillSettings: () => Promise<SkillSettings>
+    saveSkillSettings: (settings: SkillSettings) => Promise<SkillSettings>
+    deleteSkill: (filePath: string) => Promise<{ success: boolean; error?: string }>
   }
 }

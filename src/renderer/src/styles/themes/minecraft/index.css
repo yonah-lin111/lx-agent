@@ -648,6 +648,77 @@
     1px 1px 0px 0px #000000 !important;
 }
 
+/* Skill 设置页面专属 Minecraft 风格槽位与像素化质感 */
+[data-theme="minecraft"] .settings-skill-list-card,
+[data-theme="minecraft"] .settings-skill-detail-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e1e2a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a1a24'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%2321212e'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23262636'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2320202c'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23272737'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23222230'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%231f1f2b'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232a2a3b'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23181822'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23252534'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2320202c'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23272737'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%232d2d3e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23303042'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2315151e'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23303042'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2315151e'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .settings-skill-item {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #1a1a26 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+  transition: none !important;
+}
+
+[data-theme="minecraft"] .settings-skill-item:hover {
+  border: 1px solid #000000 !important;
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .settings-skill-item[data-selected="true"],
+[data-theme="minecraft"] .settings-skill-item.active {
+  border: 1px solid #000000 !important;
+  border-left: 3px solid #55ff55 !important;
+  background-color: #2a2a3e !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    0px 0px 6px rgba(85, 255, 85, 0.25),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .settings-skill-item[data-selected="true"] span,
+[data-theme="minecraft"] .settings-skill-item.active span {
+  color: #55ff55 !important;
+}
+
+[data-theme="minecraft"] .settings-skill-detail-header {
+  border-radius: 0px !important;
+  background-color: #20202e !important;
+  border-bottom: 2px solid #000000 !important;
+  box-shadow: 0px 1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="minecraft"] .settings-skill-preview-header {
+  border-radius: 0px !important;
+  background-color: #1b1b26 !important;
+  border-bottom: 2px solid #000000 !important;
+  box-shadow: 0px 1px 0px 0px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="minecraft"] .settings-skill-preview-body {
+  border-radius: 0px !important;
+  background-color: #14141d !important;
+  box-shadow: inset 2px 2px 4px 0px rgba(0, 0, 0, 0.8) !important;
+}
 
 /* ========================================================
  * 终端与选项卡模块（Terminal & Tab & Ghostty View & Xterm）
@@ -818,9 +889,7 @@
   color: #7dd3fc !important;
 }
 
-[data-theme="minecraft"]
-  .project-recent-tag[data-color="sky"]:not([data-highlighted="true"])
-  span {
+[data-theme="minecraft"] .project-recent-tag[data-color="sky"]:not([data-highlighted="true"]) span {
   color: #7dd3fc !important;
 }
 

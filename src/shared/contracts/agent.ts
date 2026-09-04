@@ -658,6 +658,7 @@ export interface SkillItem {
   filePath: string
   baseDir: string
   disableModelInvocation: boolean
+  isGlobal?: boolean
 }
 
 // Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
@@ -864,7 +865,7 @@ export interface AgentApi {
     // 加载可用 Prompt 模板列表。
     listPromptTemplates: (cwd?: string) => Promise<PromptTemplateItem[]>
     // 加载可用 Skill 列表。
-    listSkills: (cwd?: string) => Promise<SkillItem[]>
+    listSkills: (cwd?: string, force?: boolean) => Promise<SkillItem[]>
     // 获取指定 Skill 的 Markdown 正文内容。
     getSkillContent: (name: string, cwd?: string) => Promise<string | null>
     // 导出会话（HTML / Markdown / JSONL）。

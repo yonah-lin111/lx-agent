@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import type {
   AgentEvent,
   AgentMessage,
@@ -326,9 +326,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     return promptTemplateLoader.list(validCwd)
   })
 
-  ipcMain.handle(AGENT_CHANNELS.listSkills, (_, cwd: unknown) => {
+  ipcMain.handle(AGENT_CHANNELS.listSkills, (_, cwd: unknown, force?: unknown) => {
+    if (Boolean(force)) {
+      skillLoader.clearCache()
+    }
     const validCwd =
       typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
+    const globalSkillDir = resolve(skillLoader.getSkillDir())
     return skillLoader.load(validCwd).map((skill) => ({
       name: skill.name,
       description: skill.description,
@@ -337,6 +341,7 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
       filePath: skill.filePath,
       baseDir: skill.baseDir,
       disableModelInvocation: skill.disableModelInvocation,
+      isGlobal: resolve(skill.filePath).startsWith(globalSkillDir),
     }))
   })
 

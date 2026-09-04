@@ -18,4 +18,7 @@ export const SETTINGS_CHANNELS = {
   getMcpSettings: "settings:mcp:get",
   saveMcpSettings: "settings:mcp:save",
   reconnectMcp: "settings:mcp:reconnect",
+  getSkillSettings: "settings:skills:get",
+  saveSkillSettings: "settings:skills:save",
+  deleteSkill: "settings:skills:delete",
 } as const

@@ -52,7 +52,8 @@ export const agentApi: AgentApi["agent"] = {
   installLspServers: () => ipcRenderer.invoke(AGENT_CHANNELS.installLspServers),
   listPromptTemplates: (cwd?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.listPromptTemplates, cwd),
-  listSkills: (cwd?: string) => ipcRenderer.invoke(AGENT_CHANNELS.listSkills, cwd),
+  listSkills: (cwd?: string, force?: boolean) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.listSkills, cwd, force),
   getSkillContent: (name: string, cwd?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getSkillContent, name, cwd),
   exportSession: (options) => ipcRenderer.invoke(AGENT_CHANNELS.exportSession, options),

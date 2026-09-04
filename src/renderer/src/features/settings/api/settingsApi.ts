@@ -10,6 +10,7 @@ import type {
   LspSettings,
   McpSettings,
   ModelProviderSettings,
+  SkillSettings,
   UiSettings,
 } from "@shared/settings"
 
@@ -46,4 +47,9 @@ export const settingsApi = {
   saveMcpSettings: (settings: McpSettings): Promise<McpSettings> =>
     window.api.settings.saveMcpSettings(settings),
   reconnectMcp: (): Promise<void> => window.api.settings.reconnectMcp(),
+  getSkillSettings: (): Promise<SkillSettings> => window.api.settings.getSkillSettings(),
+  saveSkillSettings: (settings: SkillSettings): Promise<SkillSettings> =>
+    window.api.settings.saveSkillSettings(settings),
+  deleteSkill: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    window.api.settings.deleteSkill(filePath),
 }

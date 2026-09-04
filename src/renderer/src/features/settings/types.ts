@@ -10,4 +10,5 @@ export type {
   ModelProviderSettings as ModelProviderSettingsData,
   ModelSelection,
   ProviderTransportType,
+  SkillSettings,
 } from "@shared/settings"

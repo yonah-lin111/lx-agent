@@ -25,6 +25,7 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
+import { getSkillSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
 import {
   ALL_TOOL_NAMES,
@@ -49,8 +50,8 @@ import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
 import {
-  type LoadedSkill,
   extractSkillMentions,
+  type LoadedSkill,
   skillLoader,
   stripFrontmatter,
 } from "./skills/skillLoader"
@@ -242,6 +243,10 @@ export class AgentSessionRunner {
       return { error: modelResult.error }
     }
 
+    if (cwd) {
+      this.activeSkills = this.resolveInjectedSkills(cwd)
+    }
+
     const capabilitiesSignature = JSON.stringify([
       this.activeCapabilities,
       this.activeMcp,
@@ -414,7 +419,10 @@ export class AgentSessionRunner {
   }
 
   private resolveInjectedSkills(cwd: string): LoadedSkill[] {
-    const available = skillLoader.load(cwd).filter((skill) => !skill.disableModelInvocation)
+    const disabledSkills = new Set(getSkillSettings().disabled)
+    const available = skillLoader
+      .load(cwd)
+      .filter((skill) => !skill.disableModelInvocation && !disabledSkills.has(skill.name))
     return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
   }
 
@@ -447,6 +455,7 @@ export class AgentSessionRunner {
     command?: UserMessageCommand
   } {
     const cwd = overrideCwd ?? this.getEffectiveCwd()
+    const disabledSkills = new Set(getSkillSettings().disabled)
 
     // 1. 兼容 /skill:<name> 命令语法
     if (text.startsWith("/skill:")) {
@@ -454,7 +463,7 @@ export class AgentSessionRunner {
       const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
       const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim()
       const skill = cwd ? skillLoader.get(skillName, cwd) : undefined
-      if (skill) {
+      if (skill && !disabledSkills.has(skill.name)) {
         const skillBlock = this._buildSkillPromptBlock(skill)
         return {
           expanded: args ? `${skillBlock}\n\n${args}` : skillBlock,
@@ -471,6 +480,7 @@ export class AgentSessionRunner {
       const mentionedNames = extractSkillMentions(text)
       if (mentionedNames.length > 0) {
         const matchedSkills = mentionedNames
+          .filter((name) => !disabledSkills.has(name))
           .map((name) => skillLoader.get(name, cwd))
           .filter((s): s is LoadedSkill => s !== undefined)
 
