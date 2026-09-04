@@ -143,6 +143,8 @@ export const zh: TranslationDictionary = {
     skillsNoContent: "正文内容为空",
     skillsLoadingContent: "正在加载参考正文...",
     skillsRefreshed: "已刷新技能列表",
+    skillsEnabledSuccess: '已启用 Skill "{{name}}"',
+    skillsDisabledSuccess: '已禁用 Skill "{{name}}"',
     cli: "CLI 工具",
     cliDesc: "检测与管理本地 AI CLI 工具（Claude Code、Codex 等）的安装状态与版本",
     cliDoc: `### 外部 AI CLI 工具集成

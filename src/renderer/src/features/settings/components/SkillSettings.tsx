@@ -195,17 +195,32 @@ export const SkillSettings = (): React.JSX.Element => {
       })
   }, [selectedSkill, effectiveCwd, contentCache])
 
-  // 5. 启用/禁用切换
-  const handleToggleDisabled = (skillName: string, enabled: boolean) => {
-    setDisabledSkills((prev) => {
-      if (enabled) {
-        return prev.filter((name) => name !== skillName)
-      }
-      if (!prev.includes(skillName)) {
-        return [...prev, skillName]
-      }
-      return prev
-    })
+  // 5. 启用/禁用切换：即时持久化并向系统广播
+  const handleToggleDisabled = async (skillName: string, enabled: boolean) => {
+    const nextDisabled = enabled
+      ? disabledSkills.filter((name) => name !== skillName)
+      : Array.from(new Set([...disabledSkills, skillName]))
+
+    setDisabledSkills(nextDisabled)
+    setInitialDisabled([...nextDisabled])
+    settingsDirtyStore.setSectionDirty("skills", false)
+
+    try {
+      const saved = await settingsApi.saveSkillSettings({ disabled: nextDisabled })
+      setDisabledSkills(saved.disabled)
+      setInitialDisabled([...saved.disabled])
+      notifySettingsChanged("skills")
+      toast.success(
+        enabled
+          ? t("settings.skillsEnabledSuccess", { name: skillName })
+          : t("settings.skillsDisabledSuccess", { name: skillName }),
+      )
+    } catch (err) {
+      console.error("[SkillSettings] Failed to update skill disabled status:", err)
+      toast.error(t("settings.saveFailed"))
+      setDisabledSkills(disabledSkills)
+      setInitialDisabled(initialDisabled)
+    }
   }
 
   // 6. 物理删除（移入废纸篓）
@@ -372,12 +387,15 @@ export const SkillSettings = (): React.JSX.Element => {
                           content={isDisabled ? t("common.enable") : t("common.disable")}
                           placement="top"
                         >
-                          <span>
+                          <label
+                            className="inline-flex items-center cursor-pointer p-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <LxCheckbox
                               checked={!isDisabled}
-                              onChange={(checked) => handleToggleDisabled(skill.name, checked)}
+                              onChange={(checked) => void handleToggleDisabled(skill.name, checked)}
                             />
-                          </span>
+                          </label>
                         </LxTooltip>
 
                         {skill.isGlobal ? (
@@ -511,7 +529,7 @@ export const SkillSettings = (): React.JSX.Element => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <label className="flex items-center gap-2 shrink-0 cursor-pointer">
                   <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                     {disabledSkills.includes(selectedSkill.name)
                       ? t("common.disabled")
@@ -519,9 +537,9 @@ export const SkillSettings = (): React.JSX.Element => {
                   </span>
                   <LxCheckbox
                     checked={!disabledSkills.includes(selectedSkill.name)}
-                    onChange={(checked) => handleToggleDisabled(selectedSkill.name, checked)}
+                    onChange={(checked) => void handleToggleDisabled(selectedSkill.name, checked)}
                   />
-                </div>
+                </label>
               </div>
 
               {/* 参考内容预览区 */}

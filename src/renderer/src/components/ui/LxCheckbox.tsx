@@ -19,11 +19,11 @@ export const LxCheckbox = ({
       {...props}
       type="checkbox"
       onChange={(event) => onChange(event.target.checked)}
-      className="peer sr-only"
+      className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
     />
     <span
       aria-hidden="true"
-      className="absolute inset-0 rounded-[4px] border border-white/25 transition-colors before:absolute before:left-[5px] before:top-[3px] before:h-[7px] before:w-[4px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-black before:opacity-0 before:transition-opacity peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40 peer-disabled:cursor-not-allowed peer-disabled:opacity-40"
+      className="pointer-events-none absolute inset-0 rounded-[4px] border border-white/25 transition-colors before:absolute before:left-[5px] before:top-[3px] before:h-[7px] before:w-[4px] before:rotate-45 before:border-r-2 before:border-b-2 before:border-black before:opacity-0 before:transition-opacity peer-checked:border-white peer-checked:bg-white peer-checked:before:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-white/40 peer-disabled:cursor-not-allowed peer-disabled:opacity-40"
     />
   </span>
 )

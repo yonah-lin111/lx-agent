@@ -243,6 +243,10 @@ export class AgentSessionRunner {
       return { error: modelResult.error }
     }
 
+    if (cwd) {
+      this.activeSkills = this.resolveInjectedSkills(cwd)
+    }
+
     const capabilitiesSignature = JSON.stringify([
       this.activeCapabilities,
       this.activeMcp,
