@@ -19,6 +19,8 @@ import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
 import {
+  MARKDOWN_LOG_END_RE,
+  MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
@@ -117,12 +119,12 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
     if (preserveSuppleBlocks) {
-      if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+      if (MARKDOWN_SUPPLE_START_RE.test(line) || MARKDOWN_LOG_START_RE.test(line)) {
         insideSupple = true
         continue
       }
       if (insideSupple) {
-        if (MARKDOWN_SUPPLE_END_RE.test(line)) {
+        if (MARKDOWN_SUPPLE_END_RE.test(line) || MARKDOWN_LOG_END_RE.test(line)) {
           insideSupple = false
         }
         continue
@@ -142,7 +144,13 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
 
     let hasFilledChild = false
     for (let j = i + 1; j < lines.length; j += 1) {
-      if (preserveSuppleBlocks && (MARKDOWN_SUPPLE_START_RE.test(lines[j]) || insideSupple)) break
+      if (
+        preserveSuppleBlocks &&
+        (MARKDOWN_SUPPLE_START_RE.test(lines[j]) ||
+          MARKDOWN_LOG_START_RE.test(lines[j]) ||
+          insideSupple)
+      )
+        break
       const childMatch = isTemplateListItemLine(lines[j])
       if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
       const childBody = (childMatch[3] ?? "").trim()
@@ -155,7 +163,13 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
 
     remove[i] = true
     for (let j = i + 1; j < lines.length; j += 1) {
-      if (preserveSuppleBlocks && (MARKDOWN_SUPPLE_START_RE.test(lines[j]) || insideSupple)) break
+      if (
+        preserveSuppleBlocks &&
+        (MARKDOWN_SUPPLE_START_RE.test(lines[j]) ||
+          MARKDOWN_LOG_START_RE.test(lines[j]) ||
+          insideSupple)
+      )
+        break
       const childMatch = isTemplateListItemLine(lines[j])
       if (!childMatch || (childMatch[1] ?? "").length <= itemIndent) break
       remove[j] = true
@@ -190,6 +204,31 @@ export const stripMarkdownSuppleBlocks = (content: string): string => {
     if (insideSupple) {
       if (MARKDOWN_SUPPLE_END_RE.test(line)) {
         insideSupple = false
+      }
+      continue
+    }
+    keptLines.push(line)
+  }
+
+  return keptLines.join("\n")
+}
+
+/**
+ * 移除文本中包含的所有 +++ logTemplate / +++ log 日志块及其内容。
+ */
+export const stripMarkdownLogBlocks = (content: string): string => {
+  const lines = content.split("\n")
+  const keptLines: string[] = []
+  let insideLog = false
+
+  for (const line of lines) {
+    if (MARKDOWN_LOG_START_RE.test(line)) {
+      insideLog = true
+      continue
+    }
+    if (insideLog) {
+      if (MARKDOWN_LOG_END_RE.test(line)) {
+        insideLog = false
       }
       continue
     }
@@ -298,6 +337,57 @@ const markdownSuppleBlock = (
 markdownRenderer.block.ruler.before("markdown_template", "markdown_supple", markdownSuppleBlock, {
   alt: ["paragraph", "reference", "blockquote", "list"],
 })
+
+const markdownLogBlock = (
+  state: MarkdownBlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean => {
+  if (state.env?.disableTemplateBlocks) return false
+
+  const startText = state.src.slice(
+    state.bMarks[startLine] + state.tShift[startLine],
+    state.eMarks[startLine],
+  )
+  const startMatch = /^\+\+\+\s+(?:logTemplate|log)\s*$/.exec(startText)
+  if (!startMatch) return false
+
+  let closeLine = startLine + 1
+  while (closeLine < endLine) {
+    const lineText = state.src.slice(
+      state.bMarks[closeLine] + state.tShift[closeLine],
+      state.eMarks[closeLine],
+    )
+    if (/^\+\+\+\s*$/.test(lineText)) break
+    closeLine += 1
+  }
+  if (closeLine >= endLine) return false
+  if (silent) return true
+
+  const token = state.push("markdown_log", "", 0)
+  token.block = true
+  token.map = [startLine, closeLine + 1]
+  token.meta = {
+    content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
+  }
+  state.line = closeLine + 1
+  return true
+}
+
+markdownRenderer.block.ruler.before("markdown_template", "markdown_log", markdownLogBlock, {
+  alt: ["paragraph", "reference", "blockquote", "list"],
+})
+
+markdownRenderer.renderer.rules.markdown_log = (tokens, index) => {
+  const token = tokens[index]
+  const meta = token?.meta as { content: string }
+  const contentHtml = markdownRenderer.render(meta.content, { disableTemplateBlocks: true })
+  const sourceLine = token.attrGet("data-line")
+  const lineAttribute = sourceLine === null ? "" : ` data-line="${sourceLine}"`
+
+  return `<section class="markdown-log-block"${lineAttribute}><header class="markdown-log-block-header"><span class="markdown-log-label">logTemplate</span></header><div class="markdown-log-content">${contentHtml}</div></section>`
+}
 
 markdownRenderer.renderer.rules.markdown_supple = (tokens, index) => {
   const token = tokens[index]
@@ -546,7 +636,9 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const encodedContent = encodeURIComponent(
     stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
-        stripMarkdownSlashCommands(stripMarkdownSuppleBlocks(meta.content)),
+        stripMarkdownSlashCommands(
+          stripMarkdownLogBlocks(stripMarkdownSuppleBlocks(meta.content)),
+        ),
       ),
     ),
   )

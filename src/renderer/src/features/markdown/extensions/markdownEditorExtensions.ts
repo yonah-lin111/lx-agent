@@ -14,6 +14,8 @@ import { createRoot, type Root } from "react-dom/client"
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateStatus,
+  MARKDOWN_LOG_END_RE,
+  MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
@@ -347,6 +349,9 @@ export const editorTheme = EditorView.theme(
     ".cm-md-supple-hidden-line": {
       display: "none !important",
     },
+    ".cm-md-log-hidden-line": {
+      display: "none !important",
+    },
     ".cm-md-supple-command, .cm-md-supple-command *": {
       color: "#38bdf8 !important",
       backgroundColor: "rgba(56, 189, 248, 0.15) !important",
@@ -386,6 +391,48 @@ export const editorTheme = EditorView.theme(
       borderBottomLeftRadius: "4px",
       borderBottomRightRadius: "4px",
       backgroundColor: "rgba(56, 189, 248, 0.05)",
+      paddingLeft: "8px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-log-command, .cm-md-log-command *": {
+      color: "#2dd4bf !important",
+      backgroundColor: "rgba(45, 212, 191, 0.15) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-log-marker, .cm-md-log-marker *": {
+      color: "#2dd4bf !important",
+      fontWeight: "700",
+    },
+    ".cm-md-log-start-line": {
+      borderTop: "1.5px solid rgba(45, 212, 191, 0.45)",
+      borderLeft: "2px solid rgba(45, 212, 191, 0.45)",
+      borderRight: "2px solid rgba(45, 212, 191, 0.45)",
+      borderBottom: "1px solid rgba(45, 212, 191, 0.25)",
+      borderTopLeftRadius: "4px",
+      borderTopRightRadius: "4px",
+      backgroundColor: "rgba(45, 212, 191, 0.05)",
+      paddingLeft: "8px",
+      // 操作按钮绝对定位在行末，预留空间避免遮挡。
+      paddingRight: "72px",
+      boxSizing: "border-box",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-log-middle-line": {
+      borderLeft: "2px solid rgba(45, 212, 191, 0.45)",
+      borderRight: "2px solid rgba(45, 212, 191, 0.45)",
+      backgroundColor: "rgba(45, 212, 191, 0.05)",
+      paddingLeft: "8px",
+    },
+    ".cm-md-log-end-line": {
+      borderBottom: "1.5px solid rgba(45, 212, 191, 0.45)",
+      borderLeft: "2px solid rgba(45, 212, 191, 0.45)",
+      borderRight: "2px solid rgba(45, 212, 191, 0.45)",
+      borderBottomLeftRadius: "4px",
+      borderBottomRightRadius: "4px",
+      backgroundColor: "rgba(45, 212, 191, 0.05)",
       paddingLeft: "8px",
       paddingBottom: "4px",
     },
@@ -588,6 +635,7 @@ class CodeBlockActionWidget extends WidgetType {
     readonly onDeleteTemplate: (() => void) | null = null,
     readonly onCleanTemplate: (() => void) | null = null,
     readonly isSupple = false,
+    readonly isLog = false,
   ) {
     super()
   }
@@ -601,7 +649,8 @@ class CodeBlockActionWidget extends WidgetType {
       this.templateStatus?.line === other.templateStatus?.line &&
       this.templateStatus?.status === other.templateStatus?.status &&
       this.templateStartLine === other.templateStartLine &&
-      this.isSupple === other.isSupple
+      this.isSupple === other.isSupple &&
+      this.isLog === other.isLog
     )
   }
 
@@ -631,19 +680,21 @@ class CodeBlockActionWidget extends WidgetType {
         }),
       )
     }
-    if ((this.templateStatus || this.isSupple) && this.onCleanTemplate) {
+    if ((this.templateStatus || this.isSupple || this.isLog) && this.onCleanTemplate) {
       actionNodes.push(
         createElement(MarkdownActionCleanButton, {
           onClean: this.onCleanTemplate,
           isSupple: this.isSupple,
+          isLog: this.isLog,
         }),
       )
     }
-    if ((this.templateStatus || this.isSupple) && this.onDeleteTemplate) {
+    if ((this.templateStatus || this.isSupple || this.isLog) && this.onDeleteTemplate) {
       actionNodes.push(
         createElement(MarkdownActionDeleteButton, {
           onDelete: this.onDeleteTemplate,
           isSupple: this.isSupple,
+          isLog: this.isLog,
         }),
       )
     }
@@ -653,6 +704,7 @@ class CodeBlockActionWidget extends WidgetType {
         label: this.copyTitle,
         isTemplate,
         isSupple: this.isSupple,
+        isLog: this.isLog,
       }),
     )
     if (this.showFoldBtn) {
@@ -663,6 +715,7 @@ class CodeBlockActionWidget extends WidgetType {
           unfoldLabel: this.unfoldTitle,
           isTemplate,
           isSupple: this.isSupple,
+          isLog: this.isLog,
           onToggle: this.onToggleFold,
         }),
       )
@@ -694,10 +747,13 @@ export const markdownMarkerHighlight = (
       foldedIndices = new Set<number>()
       templateFoldedIndices = new Set<number>()
       suppleFoldedIndices = new Set<number>()
+      logFoldedIndices = new Set<number>()
+      initialLogScanned = false
       wasComposing = false
       referencedNamesKey = ""
 
       constructor(view: EditorView) {
+        this.scanInitialLogs(view)
         this.decorations = buildMarkdownMarkerDecorations(
           view,
           this.foldedIndices,
@@ -713,7 +769,23 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleSuppleFold(view, index),
           (startLine, endLine) => this.deleteSuppleBlock(view, startLine, endLine),
           (startLine, endLine) => this.cleanSuppleBlock(view, startLine, endLine),
+          this.logFoldedIndices,
+          (index) => this.toggleLogFold(view, index),
+          (startLine, endLine) => this.deleteLogBlock(view, startLine, endLine),
+          (startLine, endLine) => this.cleanLogBlock(view, startLine, endLine),
         )
+      }
+
+      scanInitialLogs(view: EditorView) {
+        if (this.initialLogScanned) return
+        this.initialLogScanned = true
+        let logIndex = 0
+        for (const line of view.state.doc.iterLines()) {
+          if (MARKDOWN_LOG_START_RE.test(line)) {
+            // 刷新页面或重新进入默认为折叠
+            this.logFoldedIndices.add(logIndex++)
+          }
+        }
       }
 
       update(update: ViewUpdate): void {
@@ -758,6 +830,10 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleSuppleFold(update.view, index),
           (startLine, endLine) => this.deleteSuppleBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.cleanSuppleBlock(update.view, startLine, endLine),
+          this.logFoldedIndices,
+          (index) => this.toggleLogFold(update.view, index),
+          (startLine, endLine) => this.deleteLogBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.cleanLogBlock(update.view, startLine, endLine),
         )
       }
 
@@ -784,6 +860,15 @@ export const markdownMarkerHighlight = (
           this.suppleFoldedIndices.delete(index)
         } else {
           this.suppleFoldedIndices.add(index)
+        }
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
+      }
+
+      toggleLogFold(view: EditorView, index: number) {
+        if (this.logFoldedIndices.has(index)) {
+          this.logFoldedIndices.delete(index)
+        } else {
+          this.logFoldedIndices.add(index)
         }
         view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
       }
@@ -870,6 +955,43 @@ export const markdownMarkerHighlight = (
           },
         })
       }
+
+      deleteLogBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const startDocLine = doc.line(startLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
+
+      cleanLogBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        if (safeEndLine <= startLine + 1) return
+
+        const innerLines: string[] = []
+        for (let l = startLine + 1; l < safeEndLine; l++) {
+          innerLines.push(doc.line(l + 1).text)
+        }
+
+        const cleaned = stripEmptyTemplateItems(innerLines.join("\n"), false)
+        const firstInnerLine = doc.line(startLine + 2)
+        const lastInnerLine = doc.line(safeEndLine)
+
+        view.dispatch({
+          changes: {
+            from: firstInnerLine.from,
+            to: lastInnerLine.to,
+            insert: cleaned,
+          },
+        })
+      }
     },
     { decorations: (plugin) => plugin.decorations },
   )
@@ -895,6 +1017,10 @@ const buildMarkdownMarkerDecorations = (
   onToggleSuppleFold: (index: number) => void = () => {},
   onDeleteSuppleBlock: (startLine: number, endLine: number) => void = () => {},
   onCleanSuppleBlock: (startLine: number, endLine: number) => void = () => {},
+  logFoldedIndices = new Set<number>(),
+  onToggleLogFold: (index: number) => void = () => {},
+  onDeleteLogBlock: (startLine: number, endLine: number) => void = () => {},
+  onCleanLogBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: (
@@ -916,6 +1042,10 @@ const buildMarkdownMarkerDecorations = (
   let currentSuppleFolded = false
   let suppleBlockIndex = 0
   let currentSuppleTextLines: string[] = []
+  let isInsideLogBlock = false
+  let currentLogFolded = false
+  let logBlockIndex = 0
+  let currentLogTextLines: string[] = []
 
   const templateStatusLineClass = (status: MarkdownTemplateStatus): string =>
     status === "todo" ? "" : ` cm-md-template-line-${status.replace("_", "-")}`
@@ -1254,9 +1384,91 @@ const buildMarkdownMarkerDecorations = (
               : "cm-md-supple-middle-line",
         })
       }
+
+      // log 补充块：识别 +++ logTemplate / +++ log 起止行，给予独立装饰。
+      if (MARKDOWN_LOG_START_RE.test(line)) {
+        const currentLogIndex = logBlockIndex++
+        currentLogFolded = logFoldedIndices.has(currentLogIndex)
+        currentLogTextLines = []
+        let logEndIndex = -1
+        for (let j = i + 1; j < lines.length; j++) {
+          const subLine = lines[j]
+          if (MARKDOWN_LOG_END_RE.test(subLine)) {
+            logEndIndex = j
+            break
+          }
+          currentLogTextLines.push(subLine)
+        }
+
+        const markerStart = line.indexOf("+++")
+        addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
+        const commandMatch = line.match(/\+\+\+\s+(logTemplate|log)/)
+        if (commandMatch && commandMatch.index !== undefined) {
+          const commandStart = line.indexOf(commandMatch[1], markerStart + 3)
+          if (commandStart !== -1) {
+            addMarkerAlways(commandStart, commandStart + commandMatch[1].length, "cm-md-log-command")
+          }
+        }
+        allDecos.push({
+          type: "widget",
+          from: offset + line.length,
+          to: offset + line.length,
+          widget: new CodeBlockActionWidget(
+            stripEmptyTemplateItems(stripMarkdownTemplateComments(currentLogTextLines.join("\n"))),
+            currentLogFolded,
+            () => onToggleLogFold(currentLogIndex),
+            showFolding,
+            "cm-supple-block-action-wrap",
+            undefined,
+            undefined,
+            undefined,
+            null,
+            null,
+            () => onDeleteLogBlock(i, logEndIndex),
+            () => onCleanLogBlock(i, logEndIndex),
+            false,
+            true,
+          ),
+        })
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: "cm-md-log-start-line",
+        })
+        isInsideLogBlock = true
+        offset += line.length + 1
+        continue
+      }
+
+      if (isInsideLogBlock && MARKDOWN_LOG_END_RE.test(line)) {
+        const markerStart = line.indexOf("+++")
+        addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: currentLogFolded ? "cm-md-log-hidden-line" : "cm-md-log-end-line",
+        })
+        isInsideLogBlock = false
+        currentLogFolded = false
+        offset += line.length + 1
+        continue
+      }
+
+      if (isInsideLogBlock) {
+        const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(line)
+        allDecos.push({
+          type: "line",
+          from: offset,
+          className: currentLogFolded
+            ? "cm-md-log-hidden-line"
+            : isCommentLine
+              ? "cm-md-template-comment-line"
+              : "cm-md-log-middle-line",
+        })
+      }
     }
 
-    if (isInsideTemplateBlock && !isInsideSuppleBlock) {
+    if (isInsideTemplateBlock && !isInsideSuppleBlock && !isInsideLogBlock) {
       const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(line)
       allDecos.push({
         type: "line",

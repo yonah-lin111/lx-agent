@@ -50,10 +50,13 @@ describe("Markdown 斜杠命令", () => {
     ])
     expect(getMarkdownSlashCommands("/send", true).map((c) => c.id)).toEqual(["sendPrompt"])
     expect(getMarkdownSlashCommands("/send", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/log", true).map((c) => c.id)).toEqual(["logTemplate"])
+    expect(getMarkdownSlashCommands("/log", false)).toEqual([])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
     expect(getMarkdownSlashCommands("/git", true).map((c) => c.id)).toEqual(["gitWorktree"])
     expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual([
       "suppleTemplate",
+      "logTemplate",
       "sendPrompt",
       "summaryTitle",
       "gitWorktree",
@@ -64,6 +67,7 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/git", false, false)).toEqual([])
     expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual([
       "suppleTemplate",
+      "logTemplate",
       "sendPrompt",
       "summaryTitle",
     ])

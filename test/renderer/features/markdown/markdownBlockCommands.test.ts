@@ -13,6 +13,7 @@ import {
   getMarkdownTemplateWorktree,
   getMarkdownTemplateWtRanges,
   isInsideMarkdownCodeFence,
+  isInsideMarkdownLogBlock,
   isInsideMarkdownTemplateBlock,
   setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
@@ -47,6 +48,8 @@ describe("Markdown 块命令", () => {
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& done\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& in_progress\n")).toBe(false)
+    expect(isInsideMarkdownLogBlock("+++ logTemplate\n- log 1\n")).toBe(true)
+    expect(isInsideMarkdownLogBlock("+++ logTemplate\n- log 1\n+++\n")).toBe(false)
   })
 
   it("解析模板块结束行的源码状态", () => {
