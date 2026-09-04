@@ -195,32 +195,17 @@ export const SkillSettings = (): React.JSX.Element => {
       })
   }, [selectedSkill, effectiveCwd, contentCache])
 
-  // 5. 启用/禁用切换：即时持久化并向系统广播
-  const handleToggleDisabled = async (skillName: string, enabled: boolean) => {
-    const nextDisabled = enabled
-      ? disabledSkills.filter((name) => name !== skillName)
-      : Array.from(new Set([...disabledSkills, skillName]))
-
-    setDisabledSkills(nextDisabled)
-    setInitialDisabled([...nextDisabled])
-    settingsDirtyStore.setSectionDirty("skills", false)
-
-    try {
-      const saved = await settingsApi.saveSkillSettings({ disabled: nextDisabled })
-      setDisabledSkills(saved.disabled)
-      setInitialDisabled([...saved.disabled])
-      notifySettingsChanged("skills")
-      toast.success(
-        enabled
-          ? t("settings.skillsEnabledSuccess", { name: skillName })
-          : t("settings.skillsDisabledSuccess", { name: skillName }),
-      )
-    } catch (err) {
-      console.error("[SkillSettings] Failed to update skill disabled status:", err)
-      toast.error(t("settings.saveFailed"))
-      setDisabledSkills(disabledSkills)
-      setInitialDisabled(initialDisabled)
-    }
+  // 5. 启用/禁用切换：仅暂存于内存草稿，由右上角保存统一持久化
+  const handleToggleDisabled = (skillName: string, enabled: boolean) => {
+    setDisabledSkills((prev) => {
+      if (enabled) {
+        return prev.filter((name) => name !== skillName)
+      }
+      if (!prev.includes(skillName)) {
+        return [...prev, skillName]
+      }
+      return prev
+    })
   }
 
   // 6. 物理删除（移入废纸篓）
@@ -240,6 +225,11 @@ export const SkillSettings = (): React.JSX.Element => {
           delete next[deleteTarget.name]
           return next
         })
+        // 同步清除已删除项的 disabled 状态
+        setDisabledSkills((prev) => prev.filter((name) => name !== deleteTarget.name))
+        setInitialDisabled((prev) =>
+          prev ? prev.filter((name) => name !== deleteTarget.name) : [],
+        )
         notifySettingsChanged("skills")
         await loadData()
       } else {
@@ -335,7 +325,7 @@ export const SkillSettings = (): React.JSX.Element => {
       {/* 主体两栏布局：左侧 Skill 列表，右侧参考详情 */}
       <div className="grid min-h-0 flex-1 gap-3 grid-cols-[280px_minmax(0,1fr)]">
         {/* 左侧列表 */}
-        <div className="flex min-h-0 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
+        <div className="settings-item-card settings-skill-list-card flex min-h-0 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))]">
           <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-2">
             <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
               {t("settings.skills")} ({filteredSkills.length})
@@ -362,6 +352,7 @@ export const SkillSettings = (): React.JSX.Element => {
                     key={skill.name}
                     role="button"
                     tabIndex={0}
+                    data-selected={isSelected ? "true" : undefined}
                     onClick={() => setSelectedSkillName(skill.name)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -369,9 +360,9 @@ export const SkillSettings = (): React.JSX.Element => {
                         setSelectedSkillName(skill.name)
                       }
                     }}
-                    className={`group flex flex-col gap-1 rounded-[6px] border p-2 transition-colors cursor-pointer text-left ${
+                    className={`settings-skill-item group flex flex-col gap-1 rounded-[6px] border p-2 transition-colors cursor-pointer text-left ${
                       isSelected
-                        ? "border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
+                        ? "settings-skill-item-active active border-[var(--color-theme-border-strong,rgba(255,255,255,0.18))] bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.08))] text-[var(--color-theme-text,#ffffff)]"
                         : "border-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border,rgba(255,255,255,0.06))] hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.04))]"
                     }`}
                   >
@@ -459,7 +450,7 @@ export const SkillSettings = (): React.JSX.Element => {
         </div>
 
         {/* 右侧详情 / 参考面板 */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] overflow-hidden">
+        <div className="settings-item-card settings-skill-detail-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] overflow-hidden">
           {!selectedSkill ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
               <Sparkles className="h-8 w-8 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.2))]" />
@@ -468,7 +459,7 @@ export const SkillSettings = (): React.JSX.Element => {
           ) : (
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
               {/* 详情头部 */}
-              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
+              <div className="settings-skill-detail-header flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-sm font-semibold text-[var(--color-theme-text,#ffffff)]">
@@ -544,13 +535,13 @@ export const SkillSettings = (): React.JSX.Element => {
 
               {/* 参考内容预览区 */}
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-4 py-2 bg-[var(--color-theme-surface,rgba(255,255,255,0.01))]">
+                <div className="settings-skill-preview-header flex shrink-0 items-center justify-between border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-4 py-2 bg-[var(--color-theme-surface,rgba(255,255,255,0.01))]">
                   <span className="text-xs font-medium text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                     {t("settings.skillsContentPreview")}
                   </span>
                 </div>
 
-                <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+                <div className="settings-skill-preview-body custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
                   {loadingContent ? (
                     <div className="flex h-32 items-center justify-center text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                       <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
