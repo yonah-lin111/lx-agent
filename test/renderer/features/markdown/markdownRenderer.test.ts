@@ -3,8 +3,7 @@ import { getMarkdownReferenceImageSource } from "@/features/markdown/commands/ma
 import {
   markdownRenderer,
   stripEmptyTemplateItems,
-  stripMarkdownLogBlocks,
-  stripMarkdownSuppleBlocks,
+  stripMarkdownSubblockFences,
 } from "@/features/markdown/utils/markdownRenderer"
 
 describe("markdownRenderer", () => {
@@ -165,37 +164,29 @@ describe("markdownRenderer", () => {
     )
   })
 
-  it("stripMarkdownSuppleBlocks 移除全部 +++ 补充块及其内容", () => {
+  it("stripMarkdownSubblockFences 仅移除 +++ 标记行并保留内部正文内容", () => {
     const input = [
       "- 位置: src/a.ts",
       "+++ suppleTemplate --start",
       "- 补充内容 1",
-      "- 补充内容 2",
       "+++ suppleTemplate --end",
-      "- 要求: 具体要求",
-    ].join("\n")
-
-    expect(stripMarkdownSuppleBlocks(input)).toBe(
-      ["- 位置: src/a.ts", "- 要求: 具体要求"].join("\n"),
-    )
-  })
-
-  it("stripMarkdownLogBlocks 移除全部 +++ log 块及其内容", () => {
-    const input = [
-      "- 位置: src/a.ts",
       "+++ logTemplate --start",
       "- 运行日志 1",
-      "- 运行日志 2",
       "+++ logTemplate --end",
       "- 要求: 具体要求",
     ].join("\n")
 
-    expect(stripMarkdownLogBlocks(input)).toBe(
-      ["- 位置: src/a.ts", "- 要求: 具体要求"].join("\n"),
+    expect(stripMarkdownSubblockFences(input)).toBe(
+      [
+        "- 位置: src/a.ts",
+        "- 补充内容 1",
+        "- 运行日志 1",
+        "- 要求: 具体要求",
+      ].join("\n"),
     )
   })
 
-  it("渲染模板块时复制数据剔除内部 +++ 补充块与日志块内容", () => {
+  it("渲染模板块时复制数据仅移除 +++ 标记行，完整保留内部子块正文", () => {
     const content = [
       "- 位置: src/a.ts",
       "+++ suppleTemplate --start",
@@ -208,9 +199,16 @@ describe("markdownRenderer", () => {
     ].join("\n")
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
 
-    const expectedCopied = ["- 位置: src/a.ts", "- 描述: 任务描述"].join("\n")
+    const expectedCopied = [
+      "- 位置: src/a.ts",
+      "- 补充项: 内部信息",
+      "- 日志项: 排查记录",
+      "- 描述: 任务描述",
+    ].join("\n")
     expect(html).toContain(`data-template-content="${encodeURIComponent(expectedCopied)}"`)
-    expect(html).not.toContain(encodeURIComponent("内部信息"))
-    expect(html).not.toContain(encodeURIComponent("排查记录"))
+    expect(html).toContain(encodeURIComponent("内部信息"))
+    expect(html).toContain(encodeURIComponent("排查记录"))
+    expect(html).not.toContain(encodeURIComponent("+++ suppleTemplate --start"))
+    expect(html).not.toContain(encodeURIComponent("+++ logTemplate --start"))
   })
 })

@@ -42,7 +42,7 @@ import {
 import type { MarkdownTableAlignment, MarkdownTableSize } from "@/features/markdown/types"
 import {
   stripEmptyTemplateItems,
-  stripMarkdownSuppleBlocks,
+  stripMarkdownSubblockFences,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 
@@ -1243,7 +1243,7 @@ const buildMarkdownMarkerDecorations = (
           stripEmptyTemplateItems(
             stripMarkdownTemplateComments(
               stripMarkdownSlashCommands(
-                stripMarkdownSuppleBlocks(currentTemplateTextLines.join("\n")),
+                stripMarkdownSubblockFences(currentTemplateTextLines.join("\n")),
               ),
             ),
           ),

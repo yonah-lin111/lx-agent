@@ -189,47 +189,19 @@ export const stripEmptyTemplateItems = (content: string, preserveSuppleBlocks = 
 }
 
 /**
- * 移除文本中包含的所有 +++ suppleTemplate / +++ supple 补充块及其内容。
+ * 移除文本中所有子块（如 supple / log）的 +++ 标记行，但完整保留内部子块正文。
  */
-export const stripMarkdownSuppleBlocks = (content: string): string => {
+export const stripMarkdownSubblockFences = (content: string): string => {
   const lines = content.split("\n")
   const keptLines: string[] = []
-  let insideSupple = false
 
   for (const line of lines) {
-    if (insideSupple) {
-      if (MARKDOWN_SUPPLE_END_RE.test(line)) {
-        insideSupple = false
-      }
-      continue
-    }
-    if (MARKDOWN_SUPPLE_START_RE.test(line)) {
-      insideSupple = true
-      continue
-    }
-    keptLines.push(line)
-  }
-
-  return keptLines.join("\n")
-}
-
-/**
- * 移除文本中包含的所有 +++ logTemplate / +++ log 日志块及其内容。
- */
-export const stripMarkdownLogBlocks = (content: string): string => {
-  const lines = content.split("\n")
-  const keptLines: string[] = []
-  let insideLog = false
-
-  for (const line of lines) {
-    if (insideLog) {
-      if (MARKDOWN_LOG_END_RE.test(line)) {
-        insideLog = false
-      }
-      continue
-    }
-    if (MARKDOWN_LOG_START_RE.test(line)) {
-      insideLog = true
+    if (
+      MARKDOWN_SUPPLE_START_RE.test(line) ||
+      MARKDOWN_SUPPLE_END_RE.test(line) ||
+      MARKDOWN_LOG_START_RE.test(line) ||
+      MARKDOWN_LOG_END_RE.test(line)
+    ) {
       continue
     }
     keptLines.push(line)
@@ -637,7 +609,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
     stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
         stripMarkdownSlashCommands(
-          stripMarkdownLogBlocks(stripMarkdownSuppleBlocks(meta.content)),
+          stripMarkdownSubblockFences(meta.content),
         ),
       ),
     ),
