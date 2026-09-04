@@ -277,9 +277,15 @@ export class AgentSessionRunner {
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
+      const effectiveCapabilities =
+        this.collaborationMode === "design"
+          ? this.activeCapabilities.filter(
+              (name) => name !== "render_svg" && name !== "render_ascii" && name !== "render_html",
+            )
+          : this.activeCapabilities
       const registry = createRegistry(
         cwd,
-        this.activeCapabilities,
+        effectiveCapabilities,
         this.activeMcp,
         this.activeSkills.length > 0,
         {

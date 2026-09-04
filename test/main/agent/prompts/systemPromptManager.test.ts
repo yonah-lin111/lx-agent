@@ -328,5 +328,21 @@ describe("SystemPromptManager", () => {
         expect(assembly.rendered).toContain('<context_window_guidance level="critical">')
       })
     })
+
+    describe("协作模式指令段注入 (Collaboration Modes)", () => {
+      it("处于 design 模式时注入 Front Design 指令并要求输出 <front_design>", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "design",
+        })
+
+        expect(assembly.rendered).toContain("# Collaboration Mode: Front Design Mode")
+        expect(assembly.rendered).toContain("render_svg")
+        expect(assembly.rendered).toContain("render_ascii")
+        expect(assembly.rendered).toContain("render_html")
+        expect(assembly.rendered).toContain("<front_design")
+        expect(assembly.rendered).toContain("</front_design>")
+      })
+    })
   })
 })
