@@ -82,6 +82,9 @@ export class SessionRunnerManager {
     if (!runner && tabId) {
       // 检查 tab 对应的 runner
       runner = this.runners.get(`tab:${tabId}`)
+      if (runner && sessionId) {
+        this.runners.set(key, runner)
+      }
     }
     if (!runner) {
       runner = new AgentSessionRunner({

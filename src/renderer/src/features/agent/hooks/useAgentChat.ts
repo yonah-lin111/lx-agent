@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentSendContext,
   AgentSendOptions,
+  AgentUndoDiffSummary,
   CollaborationMode,
   QuestionAnswer,
   SubagentData,
@@ -512,7 +513,7 @@ export const useAgentChat = (
           }
           if (block.kind === "toolResult" && block.diff) {
             const filePath =
-              block.diff.filePath ||
+              block.diff.fileName ||
               toolCalls.find((tc) => tc.toolName === block.toolName)?.summary ||
               "Modified file"
             diffs.push({
@@ -721,12 +722,17 @@ export const useAgentChat = (
 
   // 页面加载/刷新时，如果指定了 initialSessionId 且尚未恢复消息，自动执行 restoreChat 恢复历史
   const initialRestoredRef = useRef(false)
+  const restoreChatRef = useRef(restoreChat)
+  restoreChatRef.current = restoreChat
+
   useEffect(() => {
-    if (!initialRestoredRef.current && initialSessionId) {
+    if (!initialRestoredRef.current) {
       initialRestoredRef.current = true
-      restoreChat(initialSessionId)
+      if (initialSessionId) {
+        restoreChatRef.current(initialSessionId)
+      }
     }
-  }, [initialSessionId, restoreChat])
+  }, [initialSessionId])
 
   // 发送消息：main 进程驱动 Agent 运行，消息由事件流回推渲染。
   // 流式输出期间发送 → main 侧入队（deferred queue）或即时插话（steer）；输入框立即清空。
