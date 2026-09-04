@@ -1974,18 +1974,7 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-status-context-pill {
-  border-radius: 0px !important;
-  border: 2px solid #000000 !important;
-  background-color: #222232 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
-    2px 2px 0px 0px #000000 !important;
-  padding: 1px 8px !important;
-  font-family: var(--theme-font-family) !important;
-  height: 24px !important;
-}
+
 
 /* ========================================================
  * 22. 执行流程列表与子代理全景轨迹 (AgentExecutionFlowList & AgentSubagentPanel)

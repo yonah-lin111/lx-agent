@@ -55,7 +55,7 @@ export const AgentContextUsagePill = ({
     <LxTooltip placement="top" content={tooltipContent}>
       <span
         aria-label={t("agent.contextCapacity")}
-        className={`agent-status-context-pill flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/70 transition-colors hover:bg-white/5 ${className}`.trim()}
+        className={`flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs text-white/60 ${className}`.trim()}
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotColor(percent)}`} />
         <span className="tabular-nums">{percent}%</span>
