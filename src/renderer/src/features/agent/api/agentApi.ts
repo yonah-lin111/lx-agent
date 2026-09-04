@@ -25,6 +25,7 @@ import type {
   PromptAssembly,
   PromptTemplateItem,
   QuestionResponse,
+  SkillItem,
   SuggestedQuestionContextMessage,
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
@@ -101,6 +102,12 @@ export const agentApi = {
     window?.api?.agent?.listPromptTemplates
       ? window.api.agent.listPromptTemplates(cwd)
       : Promise.resolve([]),
+  listSkills: (cwd?: string): Promise<SkillItem[]> =>
+    window?.api?.agent?.listSkills ? window.api.agent.listSkills(cwd) : Promise.resolve([]),
+  getSkillContent: (name: string, cwd?: string): Promise<string | null> =>
+    window?.api?.agent?.getSkillContent
+      ? window.api.agent.getSkillContent(name, cwd)
+      : Promise.resolve(null),
   exportSession: (options: ExportSessionOptions): Promise<ExportSessionResult> =>
     window.api.agent.exportSession(options),
   copySession: (options?: CopySessionOptions): Promise<CopySessionResult> =>

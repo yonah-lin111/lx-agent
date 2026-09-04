@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -24,6 +24,7 @@ import { mcpManager } from "@/agent/mcp/mcpManager"
 import { permissionManager } from "@/agent/permissions/permissionManager"
 import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
+import { skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
 import { compileTailwindCss } from "@/services/tailwindCompilerService"
 
@@ -323,6 +324,33 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
     const validCwd =
       typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
     return promptTemplateLoader.list(validCwd)
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.listSkills, (_, cwd: unknown) => {
+    const validCwd =
+      typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
+    return skillLoader.load(validCwd).map((skill) => ({
+      name: skill.name,
+      description: skill.description,
+      shortDescription: skill.shortDescription,
+      displayName: skill.displayName,
+      filePath: skill.filePath,
+      baseDir: skill.baseDir,
+      disableModelInvocation: skill.disableModelInvocation,
+    }))
+  })
+
+  ipcMain.handle(AGENT_CHANNELS.getSkillContent, (_, name: unknown, cwd: unknown) => {
+    if (typeof name !== "string" || !name.trim()) return null
+    const validCwd =
+      typeof cwd === "string" && cwd.trim() ? cwd.trim() : agentRunner.getCurrentCwd()
+    const skill = skillLoader.get(name.trim(), validCwd)
+    if (!skill) return null
+    try {
+      return stripFrontmatter(readFileSync(skill.filePath, "utf8")).trim()
+    } catch {
+      return null
+    }
   })
 
   ipcMain.handle(AGENT_CHANNELS.exportSession, (_, options: unknown) => {

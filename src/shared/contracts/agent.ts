@@ -649,6 +649,17 @@ export interface PromptTemplateItem {
   filePath: string
 }
 
+// Skill 条目（由 skillLoader 扫描自 ~/.lx/skills、<cwd>/.lx/skills 与 <cwd>/.agents/skills）。
+export interface SkillItem {
+  name: string
+  description: string
+  shortDescription?: string
+  displayName?: string
+  filePath: string
+  baseDir: string
+  disableModelInvocation: boolean
+}
+
 // Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
 export type AgentPersonality = "pragmatic" | "friendly"
 
@@ -852,6 +863,10 @@ export interface AgentApi {
     installLspServers: () => Promise<LspInstallResult>
     // 加载可用 Prompt 模板列表。
     listPromptTemplates: (cwd?: string) => Promise<PromptTemplateItem[]>
+    // 加载可用 Skill 列表。
+    listSkills: (cwd?: string) => Promise<SkillItem[]>
+    // 获取指定 Skill 的 Markdown 正文内容。
+    getSkillContent: (name: string, cwd?: string) => Promise<string | null>
     // 导出会话（HTML / Markdown / JSONL）。
     exportSession: (options: ExportSessionOptions) => Promise<ExportSessionResult>
     // 复制会话内容（Markdown 全文或最后一条 Assistant 回复）。

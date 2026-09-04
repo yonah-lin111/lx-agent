@@ -1,4 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
+import { cleanUserPrompt } from "./components/AgentMessageList/AgentMessageItem/utils"
 import { getModelDisplayName } from "./hooks/modelsStore"
 import type { ChatBlock, ChatMessage, ExecutionStep, ExecutionStepStatus } from "./types"
 
@@ -241,12 +242,17 @@ export const buildExecutionSteps = (
       )
       const userText = textBlocks.map((b) => b.text).join("\n")
 
+      const cleanText = cleanUserPrompt(userText, {
+        isSteer: message.isSteer,
+        command: message.command,
+      })
+
       steps.push({
         id: `step-${stepIndex}-user`,
         turnIndex: currentTurn,
         stepIndex,
         kind: "user",
-        title: formatPreview(userText || "(empty prompt)", 90),
+        title: formatPreview(cleanText || "(empty prompt)", 90),
         status: "running",
         timestamp: message.timestamp,
         startedAt: message.timestamp,

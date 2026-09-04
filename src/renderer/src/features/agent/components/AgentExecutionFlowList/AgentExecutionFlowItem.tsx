@@ -10,11 +10,17 @@ import {
   Zap,
 } from "lucide-react"
 import type React from "react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { ProposedPlanCard, ReviewFindingsCard } from "@/features/agent/components/blocks"
+import { agentApi } from "@/features/agent/api/agentApi"
+import {
+  cleanUserPrompt,
+  extractSkillBlock,
+} from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type {
   ExecutionStep,
   ExecutionSubagentContent,
@@ -77,6 +83,30 @@ export const AgentExecutionFlowItem = ({
 
   const effectiveExpanded = isExpanded
 
+  // 解析用户步骤中的 Skill 名称与 markdown 说明（用于 hover 时的 LxInfoTooltip）
+  const skillName = useMemo(() => {
+    if (step.kind === "user" && step.userContent?.command?.kind === "skill") {
+      return step.userContent.command.name.replace(/^[\/\$]/, "")
+    }
+    return null
+  }, [step.kind, step.userContent?.command])
+
+  const skillContentFromBlock = useMemo(() => {
+    if (!skillName || !step.userContent?.text) return null
+    return extractSkillBlock(step.userContent.text)
+  }, [skillName, step.userContent?.text])
+
+  const [fetchedSkillContent, setFetchedSkillContent] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!skillName || skillContentFromBlock) return
+    void agentApi.getSkillContent(skillName).then((content) => {
+      if (content) setFetchedSkillContent(content)
+    })
+  }, [skillName, skillContentFromBlock])
+
+  const activeSkillMarkdown = skillContentFromBlock || fetchedSkillContent || ""
+
   const handleToggleExpand = useCallback((): void => {
     onToggleExpand()
   }, [onToggleExpand])
@@ -92,7 +122,12 @@ export const AgentExecutionFlowItem = ({
 
   const copyPayload = useMemo(() => {
     if (step.systemContent) return step.systemContent.rendered
-    if (step.userContent) return step.userContent.text
+    if (step.userContent) {
+      return cleanUserPrompt(step.userContent.text, {
+        isSteer: step.userContent.isSteer,
+        command: step.userContent.command,
+      })
+    }
     if (step.thinkingContent) return step.thinkingContent.text
     if (step.toolContent) {
       const toolName = step.toolContent.toolName
@@ -202,13 +237,35 @@ export const AgentExecutionFlowItem = ({
             </span>
           </LxTag>
 
-          {/* 用户步骤中的 Trigger Command 标签 */}
-          {step.kind === "user" && step.userContent?.command && (
-            <LxTag size="small" color="amber" className="shrink-0 leading-none">
-              <span className="inline-flex items-center gap-1 font-mono text-amber-300 leading-none">
-                <Zap className="h-3 w-3" />/{step.userContent.command.name}
-              </span>
-            </LxTag>
+          {/* 用户步骤中的指令标签（Steer / Skill / 普通命令互斥，仅渲染一个） */}
+          {step.kind === "user" && (step.userContent?.isSteer || step.userContent?.command) && (
+            step.userContent?.isSteer || step.userContent?.command?.name === "steer" ? (
+              <LxTag size="small" color="amber" className="shrink-0 leading-none">
+                <span className="font-mono text-amber-300 leading-none">/steer</span>
+              </LxTag>
+            ) : step.userContent?.command?.kind === "skill" && skillName ? (
+              <LxInfoTooltip
+                markdown={
+                  activeSkillMarkdown ||
+                  step.userContent.command.description ||
+                  `### ${skillName}`
+                }
+                showIcon={false}
+                placement="top"
+              >
+                <LxTag size="small" color="amber" className="shrink-0 leading-none cursor-help">
+                  <span className="font-mono text-amber-300 leading-none">
+                    ${skillName}
+                  </span>
+                </LxTag>
+              </LxInfoTooltip>
+            ) : step.userContent?.command ? (
+              <LxTag size="small" color="amber" className="shrink-0 leading-none">
+                <span className="inline-flex items-center gap-1 font-mono text-amber-300 leading-none">
+                  <Zap className="h-3 w-3" />/{step.userContent.command.name}
+                </span>
+              </LxTag>
+            ) : null
           )}
 
           {/* 步骤标题与副标题 */}

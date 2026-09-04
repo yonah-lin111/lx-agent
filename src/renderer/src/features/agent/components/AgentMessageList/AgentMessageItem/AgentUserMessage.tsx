@@ -6,7 +6,9 @@ import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList/
 import type { ChatMessage } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
-import { extractUserText, getUserBubbleClass, resolveCommandTag } from "./utils"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
+import { extractSkillBlock, extractUserText, getUserBubbleClass, resolveCommandTag } from "./utils"
 
 // 用户消息组件 Props 接口。
 export interface AgentUserMessageProps {
@@ -45,6 +47,28 @@ export const AgentUserMessage = ({
 
   const userText = useMemo(() => extractUserText(message), [message])
   const commandTag = useMemo(() => resolveCommandTag(message), [message])
+
+  // 提取 Skill 的 Markdown 内容（用于 hover 时的 LxInfoTooltip）
+  const skillContentFromBlock = useMemo(() => {
+    if (message.command?.kind !== "skill") return null
+    const rawText = message.blocks
+      .filter((block) => block.kind === "text")
+      .map((block) => block.text)
+      .join("\n")
+    return extractSkillBlock(rawText)
+  }, [message.command, message.blocks])
+
+  const [fetchedSkillContent, setFetchedSkillContent] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (message.command?.kind !== "skill" || skillContentFromBlock) return
+    const skillName = message.command.name.replace(/^[\/\$]/, "")
+    void agentApi.getSkillContent(skillName).then((content) => {
+      if (content) setFetchedSkillContent(content)
+    })
+  }, [message.command, skillContentFromBlock])
+
+  const activeSkillMarkdown = skillContentFromBlock || fetchedSkillContent || ""
 
   const [editText, setEditText] = useState(
     message.blocks.find((block) => block.kind === "text")?.text ?? "",
@@ -234,22 +258,24 @@ export const AgentUserMessage = ({
         ) : (
           <>
             {message.files && <AgentMessageFiles files={message.files} />}
-            <div
-              data-user-bubble="true"
-              className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
-              onCopy={handleBubbleCopy}
-            >
+            {userText ? (
               <div
-                ref={userContentRef}
-                className={
-                  isClamped
-                    ? "line-clamp-3 overflow-hidden"
-                    : "custom-scrollbar max-h-[50vh] overflow-y-auto"
-                }
+                data-user-bubble="true"
+                className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
+                onCopy={handleBubbleCopy}
               >
-                {userText}
+                <div
+                  ref={userContentRef}
+                  className={
+                    isClamped
+                      ? "line-clamp-3 overflow-hidden"
+                      : "custom-scrollbar max-h-[50vh] overflow-y-auto"
+                  }
+                >
+                  {userText}
+                </div>
               </div>
-            </div>
+            ) : null}
           </>
         )}
         {isEditing ? (
@@ -257,22 +283,38 @@ export const AgentUserMessage = ({
         ) : (
           <div className="mt-1 flex w-full items-center justify-between gap-2 transition-opacity">
             {commandTag ? (
-              <span className="agent-message-command-tag flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
-                <span className="agent-message-command-label">{commandTag.label}</span>
-                {commandTag.sourceTag && (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      className="agent-message-command-separator text-white/20"
-                    >
-                      ·
-                    </span>
-                    <span className="agent-message-command-source text-[10px] font-sans tracking-wide text-white/35">
-                      {commandTag.sourceTag}
-                    </span>
-                  </>
-                )}
-              </span>
+              message.command?.kind === "skill" ? (
+                <LxInfoTooltip
+                  markdown={
+                    activeSkillMarkdown ||
+                    message.command.description ||
+                    `### ${commandTag.label}`
+                  }
+                  showIcon={false}
+                  placement="top"
+                >
+                  <span className="agent-message-command-tag flex cursor-help items-center gap-1 text-[10px] leading-none text-white/60 hover:text-white/90 select-text font-mono whitespace-nowrap pl-0.5 transition-colors">
+                    <span className="agent-message-command-label">{commandTag.label}</span>
+                  </span>
+                </LxInfoTooltip>
+              ) : (
+                <span className="agent-message-command-tag flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
+                  <span className="agent-message-command-label">{commandTag.label}</span>
+                  {commandTag.sourceTag && (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="agent-message-command-separator text-white/20"
+                      >
+                        ·
+                      </span>
+                      <span className="agent-message-command-source text-[10px] font-sans tracking-wide text-white/35">
+                        {commandTag.sourceTag}
+                      </span>
+                    </>
+                  )}
+                </span>
+              )
             ) : (
               <div />
             )}

@@ -4,13 +4,27 @@ import matter from "gray-matter"
 import ignore from "ignore"
 import { getAppDataRoot } from "@/paths"
 
+export type SkillToolDependency = {
+  type: string
+  value: string
+  description?: string
+}
+
+export type SkillDependencies = {
+  tools?: SkillToolDependency[]
+}
+
 // 已加载的 skill（正文按需读取，不在加载时驻留）。
 export type LoadedSkill = {
   name: string
   description: string
+  shortDescription?: string
+  displayName?: string
   filePath: string
   baseDir: string
   disableModelInvocation: boolean
+  dependencies?: SkillDependencies
+  defaultPrompt?: string
 }
 
 // 名称长度上限（对齐 pi / Agent Skills spec）。
@@ -87,6 +101,62 @@ const validateDescription = (description: string | undefined): string[] => {
   return errors
 }
 
+const COMPANION_CONFIG_NAMES = [
+  join("agents", "skill.yaml"),
+  join("agents", "skill.yml"),
+  "skill.yaml",
+  "skill.yml",
+]
+
+const parseCompanionConfig = (
+  baseDir: string,
+): {
+  displayName?: string
+  shortDescription?: string
+  defaultPrompt?: string
+  dependencies?: SkillDependencies
+  disableModelInvocation?: boolean
+} => {
+  for (const relName of COMPANION_CONFIG_NAMES) {
+    const configPath = join(baseDir, relName)
+    if (!existsSync(configPath)) continue
+    try {
+      const raw = readFileSync(configPath, "utf8")
+      const parsed = (matter(`---\n${raw}\n---`).data ?? {}) as Record<string, unknown>
+      const iface = (parsed.interface ?? {}) as Record<string, unknown>
+      const deps = ((parsed.dependencies ?? iface.dependencies) ?? {}) as Record<string, unknown>
+      const policy = (parsed.policy ?? {}) as Record<string, unknown>
+
+      const tools = Array.isArray(deps.tools)
+        ? (deps.tools
+            .filter((t): t is Record<string, unknown> => typeof t === "object" && t !== null)
+            .map((t) => ({
+              type: typeof t.type === "string" ? t.type.trim() : "",
+              value: typeof t.value === "string" ? t.value.trim() : "",
+              description: typeof t.description === "string" ? t.description.trim() : undefined,
+            }))
+            .filter((t) => t.type && t.value) as SkillToolDependency[])
+        : undefined
+
+      return {
+        displayName: typeof iface.display_name === "string" ? iface.display_name.trim() : undefined,
+        shortDescription:
+          typeof iface.short_description === "string" ? iface.short_description.trim() : undefined,
+        defaultPrompt:
+          typeof iface.default_prompt === "string" ? iface.default_prompt.trim() : undefined,
+        dependencies: tools && tools.length > 0 ? { tools } : undefined,
+        disableModelInvocation:
+          typeof policy.allow_implicit_invocation === "boolean"
+            ? !policy.allow_implicit_invocation
+            : undefined,
+      }
+    } catch {
+      // 容错忽略非标准 yaml
+    }
+  }
+  return {}
+}
+
 // 解析单个 SKILL.md → LoadedSkill；description 缺失/为空不加载（记诊断）。
 const loadSkillFromFile = (filePath: string, diagnostics: string[]): LoadedSkill | null => {
   try {
@@ -104,12 +174,62 @@ const loadSkillFromFile = (filePath: string, diagnostics: string[]): LoadedSkill
     }
     if (!description || description.trim() === "") return null
 
+    const baseDir = dirname(filePath)
+    const companion = parseCompanionConfig(baseDir)
+
+    // short-description 提取：frontmatter metadata.short-description 优先，次取 companion
+    const metadata = (frontmatter.metadata ?? {}) as Record<string, unknown>
+    const shortDescRaw =
+      metadata["short-description"] ??
+      metadata.short_description ??
+      frontmatter["short-description"] ??
+      frontmatter.short_description ??
+      companion.shortDescription
+    const shortDescription =
+      typeof shortDescRaw === "string" && shortDescRaw.trim() ? shortDescRaw.trim() : undefined
+
+    const displayName =
+      typeof frontmatter["display-name"] === "string" && frontmatter["display-name"].trim()
+        ? frontmatter["display-name"].trim()
+        : companion.displayName
+
+    const defaultPrompt =
+      typeof frontmatter["default-prompt"] === "string" && frontmatter["default-prompt"].trim()
+        ? frontmatter["default-prompt"].trim()
+        : companion.defaultPrompt
+
+    let dependencies = companion.dependencies
+    if (frontmatter.dependencies && typeof frontmatter.dependencies === "object") {
+      const deps = frontmatter.dependencies as Record<string, unknown>
+      if (Array.isArray(deps.tools)) {
+        const tools = deps.tools
+          .filter((t): t is Record<string, unknown> => typeof t === "object" && t !== null)
+          .map((t) => ({
+            type: typeof t.type === "string" ? t.type.trim() : "",
+            value: typeof t.value === "string" ? t.value.trim() : "",
+            description: typeof t.description === "string" ? t.description.trim() : undefined,
+          }))
+          .filter((t) => t.type && t.value)
+        if (tools.length > 0) {
+          dependencies = { tools }
+        }
+      }
+    }
+
+    const disableModelInvocation =
+      frontmatter["disable-model-invocation"] === true ||
+      companion.disableModelInvocation === true
+
     return {
       name,
       description,
+      shortDescription,
+      displayName,
       filePath,
-      baseDir: dirname(filePath),
-      disableModelInvocation: frontmatter["disable-model-invocation"] === true,
+      baseDir,
+      disableModelInvocation,
+      dependencies,
+      defaultPrompt,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -197,7 +317,7 @@ const isSameFile = (a: string, b: string): boolean => {
   }
 }
 
-// 合并双来源：user（~/.lx/skills）优先，project（<cwd>/.lx/skills）同名冲突被覆盖（记诊断）。
+// 合并三来源：user（~/.lx/skills）优先，其次 project（<cwd>/.lx/skills），最后 standard（<cwd>/.agents/skills），同名冲突前者优先覆盖（记诊断）。
 const loadSkills = (cwd: string): LoadedSkill[] => {
   const diagnostics: string[] = []
   const skillMap = new Map<string, LoadedSkill>()
@@ -219,6 +339,7 @@ const loadSkills = (cwd: string): LoadedSkill[] => {
 
   addFromDir(join(getAppDataRoot(), "skills"))
   addFromDir(join(resolve(cwd), ".lx", "skills"))
+  addFromDir(join(resolve(cwd), ".agents", "skills"))
   for (const message of diagnostics) console.warn(message)
   return [...skillMap.values()]
 }
@@ -229,16 +350,22 @@ const loadSkills = (cwd: string): LoadedSkill[] => {
 class SkillLoader {
   private cache = new Map<string, LoadedSkill[]>()
 
-  load(cwd: string): LoadedSkill[] {
-    const cached = this.cache.get(cwd)
+  load(cwd?: string): LoadedSkill[] {
+    const resolvedCwd = cwd || process.cwd()
+    const cached = this.cache.get(resolvedCwd)
     if (cached) return cached
-    const skills = loadSkills(cwd)
-    this.cache.set(cwd, skills)
+    const skills = loadSkills(resolvedCwd)
+    this.cache.set(resolvedCwd, skills)
     return skills
   }
 
-  get(name: string, cwd: string): LoadedSkill | undefined {
+  get(name: string, cwd?: string): LoadedSkill | undefined {
     return this.load(cwd).find((skill) => skill.name === name)
+  }
+
+  // 清空缓存（文件变动或测试用）。
+  clearCache(): void {
+    this.cache.clear()
   }
 
   // user 级 skills 目录（文档/诊断用）。
@@ -286,9 +413,27 @@ export const formatSkillsForPrompt = (skills: LoadedSkill[]): string => {
     lines.push(
       `    <description>${escapeXml(skill.description.slice(0, MAX_DESCRIPTION_LENGTH))}</description>`,
     )
+    if (skill.shortDescription) {
+      lines.push(`    <short_description>${escapeXml(skill.shortDescription)}</short_description>`)
+    }
     lines.push(`    <location>${escapeXml(skill.filePath)}</location>`)
     lines.push("  </skill>")
   }
   lines.push("</available_skills>")
   return lines.join("\n")
+}
+
+// 从用户输入文本中提取显式提及的 Skill 名称（支持 $name 及 [$name](path)）。
+export const extractSkillMentions = (text: string): string[] => {
+  const matches = new Set<string>()
+  const linkRegex = /\[\$([a-zA-Z0-9_-]+)\]\([^)]+\)/g
+  let match: RegExpExecArray | null
+  while ((match = linkRegex.exec(text)) !== null) {
+    matches.add(match[1])
+  }
+  const tokenRegex = /(?:^|\s)\$([a-zA-Z0-9_-]+)(?=\s|[.,;:!?，。！？]|$)/g
+  while ((match = tokenRegex.exec(text)) !== null) {
+    matches.add(match[1])
+  }
+  return [...matches]
 }

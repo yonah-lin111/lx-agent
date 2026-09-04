@@ -172,4 +172,96 @@ describe("skillLoader", () => {
     expect(block).toContain("x".repeat(1024))
     expect(block).not.toContain("x".repeat(1025))
   })
+
+  it("支持 metadata.short-description 解析并在 formatSkillsForPrompt 输出", async () => {
+    const { skillLoader, formatSkillsForPrompt } = await importLoader()
+    writeUserSkill("skill-with-meta", {
+      name: "skill-with-meta",
+      description: "完整的长描述说明",
+      metadata: { "short-description": "精简简述" },
+    })
+
+    const skill = skillLoader.get("skill-with-meta", projectCwd)
+    expect(skill?.shortDescription).toBe("精简简述")
+
+    const prompt = formatSkillsForPrompt([skill!])
+    expect(prompt).toContain("<short_description>精简简述</short_description>")
+  })
+
+  it("支持 agents/skill.yaml 伴随配置（displayName, defaultPrompt, dependencies, policy）", async () => {
+    const { skillLoader } = await importLoader()
+    const dir = join(rootDir, "skills", "advanced-tool")
+    mkdirSync(join(dir, "agents"), { recursive: true })
+    writeFileSync(
+      join(dir, "SKILL.md"),
+      "---\nname: advanced-tool\ndescription: 主说明\n---\n\nbody\n",
+    )
+    writeFileSync(
+      join(dir, "agents", "skill.yaml"),
+      `
+interface:
+  display_name: 高级工具
+  short_description: 工具简短说明
+  default_prompt: 请帮我调用高级工具
+dependencies:
+  tools:
+    - type: mcp
+      value: github
+      description: GitHub 集成
+policy:
+  allow_implicit_invocation: false
+`,
+    )
+
+    const skill = skillLoader.get("advanced-tool", projectCwd)
+    expect(skill).toBeDefined()
+    expect(skill?.displayName).toBe("高级工具")
+    expect(skill?.shortDescription).toBe("工具简短说明")
+    expect(skill?.defaultPrompt).toBe("请帮我调用高级工具")
+    expect(skill?.disableModelInvocation).toBe(true)
+    expect(skill?.dependencies?.tools).toEqual([
+      { type: "mcp", value: "github", description: "GitHub 集成" },
+    ])
+  })
+
+  it("支持 .agents/skills 标准工作区目录并遵循优先级：user > .lx/skills > .agents/skills", async () => {
+    const { skillLoader } = await importLoader()
+    // 在 .agents/skills 创建 skill-a 与 dup
+    const agentsDir = join(projectCwd, ".agents", "skills")
+    mkdirSync(join(agentsDir, "skill-a"), { recursive: true })
+    writeFileSync(
+      join(agentsDir, "skill-a", "SKILL.md"),
+      "---\nname: skill-a\ndescription: agents 目录技能\n---\n\nbody\n",
+    )
+
+    mkdirSync(join(agentsDir, "dup-skill"), { recursive: true })
+    writeFileSync(
+      join(agentsDir, "dup-skill", "SKILL.md"),
+      "---\nname: dup-skill\ndescription: agents 版本\n---\n\nbody\n",
+    )
+
+    // 在 .lx/skills 覆盖 dup-skill
+    const lxDir = join(projectCwd, ".lx", "skills", "dup-skill")
+    mkdirSync(lxDir, { recursive: true })
+    writeFileSync(
+      join(lxDir, "SKILL.md"),
+      "---\nname: dup-skill\ndescription: lx 版本\n---\n\nbody\n",
+    )
+
+    const skills = skillLoader.load(projectCwd)
+    const skillA = skills.find((s) => s.name === "skill-a")
+    const dupSkill = skills.find((s) => s.name === "dup-skill")
+
+    expect(skillA).toBeDefined()
+    expect(skillA?.description).toBe("agents 目录技能")
+    expect(dupSkill).toBeDefined()
+    expect(dupSkill?.description).toBe("lx 版本")
+  })
+
+  it("extractSkillMentions 提取独立 $name 与 [$name](path) 格式提及", async () => {
+    const { extractSkillMentions } = await importLoader()
+    const text = "请使用 $git-commit 以及 [$code-review](skill://review) 检查代码，最后 $deploy。"
+    const mentions = extractSkillMentions(text)
+    expect(mentions).toEqual(expect.arrayContaining(["git-commit", "code-review", "deploy"]))
+  })
 })

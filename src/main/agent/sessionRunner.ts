@@ -48,7 +48,12 @@ import type { PersonalityName } from "./prompts/personalities"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
-import { type LoadedSkill, skillLoader, stripFrontmatter } from "./skills/skillLoader"
+import {
+  type LoadedSkill,
+  extractSkillMentions,
+  skillLoader,
+  stripFrontmatter,
+} from "./skills/skillLoader"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { SubagentPool } from "./subagent/subagentPool"
@@ -413,18 +418,25 @@ export class AgentSessionRunner {
     return [...available].sort((a, b) => a.name.localeCompare(b.name)).slice(0, MAX_INJECTED_SKILLS)
   }
 
-  private _expandSkillCommand(text: string): string {
-    if (!text.startsWith("/skill:")) return text
-    const spaceIndex = text.indexOf(" ")
-    const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
-    const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim()
-    const cwd = this.cwd
-    if (!cwd) return text
-    const skill = skillLoader.get(skillName, cwd)
-    if (!skill) return text
+  private _buildSkillPromptBlock(skill: LoadedSkill): string {
     const body = stripFrontmatter(readFileSync(skill.filePath, "utf8")).trim()
-    const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`
-    return args ? `${skillBlock}\n\n${args}` : skillBlock
+    let mcpNote = ""
+    if (skill.dependencies?.tools) {
+      const mcpTools = skill.dependencies.tools.filter((t) => t.type.toLowerCase() === "mcp")
+      if (mcpTools.length > 0) {
+        const connectedServers = new Set(
+          mcpManager
+            .getStatus()
+            .filter((s) => s.status === "connected")
+            .map((s) => s.name),
+        )
+        const missing = mcpTools.filter((t) => !connectedServers.has(t.value))
+        if (missing.length > 0) {
+          mcpNote = `\n\n[Warning: This skill requires MCP server(s): ${missing.map((m) => m.value).join(", ")}, which are currently disconnected.]`
+        }
+      }
+    }
+    return `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}${mcpNote}\n</skill>`
   }
 
   private _expandAndDetectCommand(
@@ -435,18 +447,47 @@ export class AgentSessionRunner {
     command?: UserMessageCommand
   } {
     const cwd = overrideCwd ?? this.getEffectiveCwd()
-    const skillExpanded = this._expandSkillCommand(text)
-    if (skillExpanded !== text) {
-      const match = text.match(/^\/skill:([^\s]+)/)
-      return {
-        expanded: skillExpanded,
-        command: {
-          name: match ? match[1] : "skill",
-          kind: "skill",
-        },
+
+    // 1. 兼容 /skill:<name> 命令语法
+    if (text.startsWith("/skill:")) {
+      const spaceIndex = text.indexOf(" ")
+      const skillName = spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
+      const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim()
+      const skill = cwd ? skillLoader.get(skillName, cwd) : undefined
+      if (skill) {
+        const skillBlock = this._buildSkillPromptBlock(skill)
+        return {
+          expanded: args ? `${skillBlock}\n\n${args}` : skillBlock,
+          command: {
+            name: skill.name,
+            kind: "skill",
+          },
+        }
       }
     }
 
+    // 2. 显式 $skill-name 提及语法（零轮往返直接注入当前轮提示词）
+    if (cwd) {
+      const mentionedNames = extractSkillMentions(text)
+      if (mentionedNames.length > 0) {
+        const matchedSkills = mentionedNames
+          .map((name) => skillLoader.get(name, cwd))
+          .filter((s): s is LoadedSkill => s !== undefined)
+
+        if (matchedSkills.length > 0) {
+          const blocks = matchedSkills.map((s) => this._buildSkillPromptBlock(s)).join("\n\n")
+          return {
+            expanded: `${blocks}\n\n${text}`,
+            command: {
+              name: matchedSkills[0].name,
+              kind: "skill",
+            },
+          }
+        }
+      }
+    }
+
+    // 3. Prompt 模板指令
     const templateMatch = promptTemplateLoader.match(text, cwd)
     if (templateMatch) {
       return {
@@ -524,10 +565,22 @@ export class AgentSessionRunner {
       this.personality = options.personality
     }
 
+    let processedText = text
+    if (
+      options?.delivery === "steer" ||
+      processedText.startsWith("/steer ") ||
+      processedText === "/steer"
+    ) {
+      if (processedText.startsWith("/steer")) {
+        processedText = processedText.slice(6).trim()
+      }
+      processedText = processedText.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
+    }
+
     if (options?.delivery === "steer" && this.agent?.state.isStreaming) {
       const isNewSession = !this.currentSessionId
       if (!isNewSession && this.currentSessionId) {
-        const { expanded, command } = this._expandAndDetectCommand(text, context?.cwd)
+        const { expanded, command } = this._expandAndDetectCommand(processedText, context?.cwd)
         const steerMessage: UserMessage = {
           role: "user",
           content: expanded,
@@ -548,13 +601,13 @@ export class AgentSessionRunner {
     }
 
     if (this.isBusy()) {
-      return this.enqueueMessage(text)
+      return this.enqueueMessage(processedText)
     }
     const ready = this.ensureReady()
     if ("error" in ready) {
       return { ok: false, error: ready.error }
     }
-    const result = await this.runOne(text, context?.files, context?.cwd)
+    const result = await this.runOne(processedText, context?.files, context?.cwd)
     void this.kickDrain()
     return result
   }

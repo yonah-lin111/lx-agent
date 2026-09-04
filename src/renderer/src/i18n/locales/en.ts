@@ -723,6 +723,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     editSessionTitle: "Edit Session Title",
     selectProjectPlaceholder: "Select project",
     slashCommands: "Slash Commands",
+    skillMention: "Skill Mention",
     fileMention: "Project File Mention",
     modelSelect: "Model Select",
     commandClearDesc: "Clear current chat",

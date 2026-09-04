@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { QuestionRequest } from "@shared/contracts/agent"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
@@ -1817,5 +1817,75 @@ describe("AgentExecutionFlowList", () => {
     // 验证附件展示
     expect(screen.getByText("Attached Files:")).not.toBeNull()
     expect(screen.getByText("config.yaml")).not.toBeNull()
+  })
+
+  it("用户步骤中调用 Skill 时，标签渲染为 $skillName 并过滤正文中的 <skill> 提示词块", async () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u-skill",
+        role: "user",
+        blocks: [
+          {
+            kind: "text",
+            text: '<skill name="grill-me">Skill Instruction Here</skill>\n$grill-me 请审查这段代码',
+          },
+        ],
+        command: {
+          kind: "skill",
+          name: "grill-me",
+        },
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 头部标签渲染为 $grill-me，不再显示 /grill-me
+    const skillTag = screen.getByText("$grill-me")
+    expect(skillTag).not.toBeNull()
+    expect(screen.queryByText("/grill-me")).toBeNull()
+
+    // 展开的正文内容不包含 <skill> 标签和前缀
+    expect(screen.queryByText(/Skill Instruction Here/)).toBeNull()
+    expect(screen.getByText("请审查这段代码")).not.toBeNull()
+
+    // 悬停 $grill-me 标签应弹出 LxInfoTooltip 并展示 Markdown 详情
+    fireEvent.mouseEnter(skillTag)
+    await waitFor(() => {
+      expect(screen.getByText("Skill Instruction Here")).not.toBeNull()
+    })
+  })
+
+  it("用户步骤为 Steer 消息时，头部仅渲染一个 /steer 标签，正文清洗 /steer 前缀与方括号占位符，且消息内部不展示 /steer 徽标", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u-steer",
+        role: "user",
+        blocks: [
+          {
+            kind: "text",
+            text: "/steer [不要使用mcp]",
+          },
+        ],
+        command: {
+          name: "steer",
+          kind: "builtin",
+        },
+        isSteer: true,
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 头部仅渲染唯一一个 /steer 标签（与 $skill 对齐，不再重复渲染两个）
+    expect(screen.getAllByText("/steer").length).toBe(1)
+    // 消息正文内部不展示 /steer 徽标
+    const userContent = container.querySelector(".agent-execution-flow-user-content")
+    expect(userContent).not.toBeNull()
+    expect(userContent?.textContent?.includes("/steer")).toBe(false)
+    // 方括号占位符被自动剥离，仅保留核心文本
+    expect(screen.getByText("不要使用mcp")).not.toBeNull()
+    expect(screen.queryByText("[不要使用mcp]")).toBeNull()
   })
 })

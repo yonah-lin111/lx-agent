@@ -12,6 +12,20 @@ vi.mock("@/features/project/api/projectApi", () => ({
   },
 }))
 
+vi.mock("@/features/agent/api/agentApi", () => ({
+  agentApi: {
+    listPromptTemplates: vi.fn().mockResolvedValue([]),
+    listSkills: vi.fn().mockResolvedValue([
+      {
+        name: "demo-skill",
+        description: "Demo skill description",
+        shortDescription: "Short desc",
+        displayName: "Demo Skill",
+      },
+    ]),
+  },
+}))
+
 vi.mock("@/features/agent/api/promptHistoryApi", () => ({
   promptHistoryApi: {
     get: vi.fn().mockResolvedValue([]),
@@ -140,5 +154,56 @@ describe("AgentInput 文件提及面板唤起", () => {
 
     expect(projectApi.searchDirectoryFiles).toHaveBeenCalledWith("/desktop", "")
     expect(projectApi.searchFiles).not.toHaveBeenCalled()
+  })
+
+  it("输入 @ 时应该在提及面板中展示 Skill 项并带有 Skill 标签", async () => {
+    vi.mocked(projectApi.searchFiles).mockResolvedValue([])
+
+    let updateText: (val: string) => void = () => {}
+    const Harness = () => {
+      const [text, setText] = useState("")
+      updateText = setText
+      return (
+        <AgentInput
+          inputText={text}
+          isStreaming={false}
+          isCompacting={false}
+          queuedCount={0}
+          queuedMessages={[]}
+          onInputChange={setText}
+          onSend={vi.fn()}
+          onStop={vi.fn()}
+          onClear={vi.fn()}
+          onUndo={vi.fn()}
+          onCompact={vi.fn()}
+          selectedModel="m"
+          onModelChange={vi.fn()}
+          modelOptions={[]}
+          hasModelOptions={false}
+          worktreeOptions={null}
+          onWorktreeSelect={vi.fn()}
+          selectedFiles={[]}
+          onFilesChange={vi.fn()}
+          supportsImages={false}
+          projectId="test-proj"
+        />
+      )
+    }
+
+    render(<Harness />)
+    await act(async () => {})
+    const content = document.querySelector(".cm-content") as HTMLElement
+    expect(content).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.focus(content)
+      updateText("@")
+    })
+
+    // 验证提及面板已渲染包含 demo-skill 及 Skill 标签
+    const skillName = document.querySelector('[data-index="0"]')
+    expect(skillName).not.toBeNull()
+    expect(skillName?.textContent).toContain("$demo-skill")
+    expect(skillName?.textContent).toContain("Skill")
   })
 })

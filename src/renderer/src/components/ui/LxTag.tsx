@@ -1,5 +1,5 @@
 import { X } from "lucide-react"
-import type React from "react"
+import React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
@@ -22,7 +22,7 @@ export type LxTagColor =
   | "orange"
 
 // Tag 组件属性。
-export interface LxTagProps {
+export interface LxTagProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode
   size?: LxTagSize
   prefix?: React.ReactNode
@@ -120,22 +120,26 @@ const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }
 /**
  * 渲染可配置颜色、尺寸和交互的通用标签。
  */
-export const LxTag = ({
-  children,
-  size = "default",
-  prefix,
-  suffix,
-  highlighted = false,
-  onClick,
-  onClose,
-  confirmClose = true,
-  closeTooltipContent,
-  color = "default",
-  bgClass,
-  highlightBgClass,
-  hoverClass,
-  className = "",
-}: LxTagProps): React.JSX.Element => {
+export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTag(
+  {
+    children,
+    size = "default",
+    prefix,
+    suffix,
+    highlighted = false,
+    onClick,
+    onClose,
+    confirmClose = true,
+    closeTooltipContent,
+    color = "default",
+    bgClass,
+    highlightBgClass,
+    hoverClass,
+    className = "",
+    ...restProps
+  },
+  ref,
+): React.JSX.Element {
   const { t } = useTranslation()
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
@@ -147,6 +151,7 @@ export const LxTag = ({
 
   return (
     <span
+      ref={ref}
       aria-label={isClickable && typeof children === "string" ? children : undefined}
       data-color={color}
       data-highlighted={highlighted ? "true" : undefined}
@@ -157,6 +162,7 @@ export const LxTag = ({
       } ${isInteractive ? "cursor-pointer" : "cursor-default"} ${className}`}
       role={isClickable ? "button" : undefined}
       onClick={onClick}
+      {...restProps}
     >
       {prefix && (
         <span className="flex shrink-0 items-center justify-center text-current/60">{prefix}</span>
@@ -211,4 +217,4 @@ export const LxTag = ({
       )}
     </span>
   )
-}
+})

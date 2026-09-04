@@ -4,6 +4,8 @@ import { join } from "node:path"
 import type { ImageContent, TextContent } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { skillLoader } from "@/agent/skills/skillLoader"
+
 let appDataRoot = ""
 
 vi.mock("@/paths", () => ({
@@ -16,6 +18,7 @@ let rootDir = ""
 
 beforeEach(() => {
   vi.resetModules()
+  skillLoader.clearCache()
   rootDir = mkdtempSync(join(tmpdir(), "lx-skilltool-"))
   appDataRoot = rootDir
   cwd = join(rootDir, "project")
@@ -53,7 +56,7 @@ describe("read_skill 工具", () => {
     const { createReadSkillTool } = await importTool()
     const tool = createReadSkillTool(cwd)
     const result = await tool.execute("tc1", { name: "nope" })
-    expect(resultText(result)).toContain("未找到 skill")
+    expect(resultText(result)).toContain('Skill "nope" not found')
     expect(resultText(result)).toContain("my-skill")
   })
 
@@ -66,6 +69,26 @@ describe("read_skill 工具", () => {
     const { createReadSkillTool } = await importTool()
     const tool = createReadSkillTool(cwd)
     const result = await tool.execute("tc1", { name: "my-skill" })
-    expect(resultText(result)).toContain("已截断")
+    expect(resultText(result)).toContain("skill body truncated")
+  })
+
+  it("依赖的 MCP 服务未连接时追加警告", async () => {
+    writeFileSync(
+      join(rootDir, "skills", "my-skill", "SKILL.md"),
+      `---\nname: my-skill\ndescription: 测试\n---\n\n技能正文\n`,
+    )
+    writeFileSync(
+      join(rootDir, "skills", "my-skill", "skill.yaml"),
+      `interface:\n  dependencies:\n    tools:\n      - type: mcp\n        value: github\n`,
+    )
+    const { createReadSkillTool } = await importTool()
+    const mockMcpManager = {
+      getStatus: () => [
+        { name: "other-mcp", status: "connected" as const },
+      ],
+    }
+    const tool = createReadSkillTool(cwd, { mcpManager: mockMcpManager as any })
+    const result = await tool.execute("tc1", { name: "my-skill" })
+    expect(resultText(result)).toContain("requires MCP server(s): github")
   })
 })

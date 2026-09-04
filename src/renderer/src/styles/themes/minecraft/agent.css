@@ -33,12 +33,22 @@
 [data-theme="minecraft"] .bg-user-bubble,
 [data-theme="minecraft"] .bg-\[\#33517a\],
 [data-theme="minecraft"] .bg-\[\#163f35\],
-[data-theme="minecraft"] .bg-\[\#1e2a5e\],
-[data-theme="minecraft"] .bg-\[\#35254d\] {
+[data-theme="minecraft"] .bg-\[\#1e2a5e\] {
   border: 2px solid #000000 !important;
   background-color: #24385a !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 技能调用消息气泡：紫水晶/附魔暗紫槽 */
+[data-theme="minecraft"] .bg-skill-bubble,
+[data-theme="minecraft"] .bg-\[\#35254d\] {
+  border: 2px solid #000000 !important;
+  background-color: #38234f !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.22),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
     2px 2px 0px 0px #000000 !important;
 }

@@ -101,8 +101,31 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 
 ## 5. Skill 指令包体系 (`src/main/agent/skills/`)
 
-Skill 作为领域级指令包，遵循标准 Markdown 组织格式：
-- **目录位置**：用户级 `~/.lx/skills/<name>/SKILL.md` 与项目级 `<cwd>/.lx/skills/<name>/SKILL.md`（项目级同名覆盖）。
-- **两阶段加载**：
-  1. 系统提示词初始化时，仅将 Skill 的 `name` 与 `description` 注入 `<available_skills>` 块（轻量占用上下文）。
-  2. 当模型判断需要使用该技能时，主动调用 `read_skill(name)` 工具读取并执行正文指令。
+Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩展配置与双轨调用能力：
+
+### 5.1 目录发现三层优先级
+加载器扫描三层目录并按照优先级去重覆盖（高优先级同名覆盖）：
+1. **用户全局级**：`~/.lx/skills/<name>/SKILL.md`（或直接 `.md` 文件，最高优先级）
+2. **项目私有级**：`<cwd>/.lx/skills/<name>/SKILL.md`
+3. **标准通用级**：`<cwd>/.agents/skills/<name>/SKILL.md`（对齐 Codex / Agents 标准目录）
+
+### 5.2 双轨调用机制 (Dual-Track Paradigm)
+- **显式提及 / 零轮注入 (Zero-Round Injection)**：
+  - 用户在输入框中通过 `$` 快捷唤出面板插入 `$skill-name`（或兼容历史 `/skill:name`）。
+  - 会话调度器（`SessionRunner`）预解析显式 Skill 提及，在首轮交互前直接将对应 Skill 的指令正文及基准路径注入 Prompt（0-round 免工具调用往返），并激活关联命令记录。
+- **自主按需读取 (Autonomous Loading)**：
+  - 未被显式调用的可用 Skill 会轻量注入 `<available_skills>` 块（包含 `name`、`short_description` 及说明）。
+  - 当模型判断任务契合描述时，自主调用 `read_skill({ name })` 工具拉取正文并根据基准路径解析相对文件。
+
+### 5.3 伴生配置与元数据扩展
+除 `SKILL.md` frontmatter 的 `metadata.short-description` 之外，支持在 Skill 目录下放置伴生配置文件（`agents/skill.yaml` 或 `skill.yaml`）：
+- **`interface`**：声明 `display_name`、`short_description`、`default_prompt`。
+- **`dependencies.tools`**：声明所依赖的 MCP 工具服务（例如 `type: mcp, value: github`）。调用时若所依赖 MCP 未连接，将自动追加环境警告。
+- **`policy`**：通过 `allow_implicit_invocation: false`（或 frontmatter `disable-model-invocation: true`）隐藏可用声明，仅允许用户显式 `$skill-name` 触发。
+
+### 5.4 前端交互与多语言
+- **双入口触发与补全**：
+  - **`@` 综合提及面板**：同时聚合 Skills 与项目文件，匹配的 Skill 项置顶展示并标注专属紫色 `Skill` 标签，选中后回填 `$skill-name `；
+  - **`$` 专属技能面板**：纯 Skill 快速检索与补全入口；
+  - 均无缝支持光标跟随定位、键盘上下方向键导航与快捷回车补全。
+- 全量文案统一接入国际化字典（`agent.skillMention`），无硬编码与原生 title 属性。
