@@ -194,6 +194,15 @@ describe("模板块 id", () => {
     expect(cycleMarkdownTemplateStatus(`&&& in_progress {id:${id}}`)).toBe(`&&& done {id:${id}}`)
     expect(cycleMarkdownTemplateStatus(`&&& done {id:${id}}`)).toBe(`&&& {id:${id}}`)
     expect(cycleMarkdownTemplateStatus(`&&& done`)).toBe("&&&")
+    expect(cycleMarkdownTemplateStatus(`&&& addTemplate --end {id:${id}}`)).toBe(
+      `&&& addTemplate --end in_progress {id:${id}}`,
+    )
+    expect(cycleMarkdownTemplateStatus(`&&& addTemplate --end in_progress {id:${id}}`)).toBe(
+      `&&& addTemplate --end done {id:${id}}`,
+    )
+    expect(cycleMarkdownTemplateStatus(`&&& addTemplate --end done {id:${id}}`)).toBe(
+      `&&& addTemplate --end {id:${id}}`,
+    )
   })
 
   it("扫描带 id 模板块的状态", () => {
@@ -253,6 +262,12 @@ describe("模板块工作区绑定 {wt:}", () => {
     expect(setMarkdownTemplateWorktree(`&&& done {id:${id}} {wt:feature-x}`, null)).toBe(
       `&&& done {id:${id}}`,
     )
+    expect(
+      setMarkdownTemplateWorktree(`&&& addTemplate --end done {id:${id}}`, "feature-x"),
+    ).toBe(`&&& addTemplate --end done {id:${id}} {wt:feature-x}`)
+    expect(
+      setMarkdownTemplateWorktree(`&&& addTemplate --end done {id:${id}} {wt:feature-x}`, null),
+    ).toBe(`&&& addTemplate --end done {id:${id}}`)
     expect(setMarkdownTemplateWorktree("普通文本", "feature-x")).toBe("普通文本")
   })
 
@@ -287,5 +302,19 @@ describe("模板块工作区绑定 {wt:}", () => {
       { from: firstWt, to: firstWt + "{wt:feature-x}".length },
       { from: secondWt, to: secondWt + "{wt:other/branch}".length },
     ])
+  })
+
+  it("识别新语法 --start 与 --end 模板块及状态", () => {
+    const doc = [
+      "&&& addTemplate --start 「title: 测试」",
+      "- 描述: 任务内容",
+      "&&& addTemplate --end in_progress {id:0123456789abcdef0123456789abcdef}",
+    ].join("\n")
+
+    expect(isInsideMarkdownTemplateBlock(doc)).toBe(false)
+    expect(getMarkdownTemplateStatuses(doc)).toEqual(["in_progress"])
+    expect(getMarkdownTemplateStatus("&&& addTemplate --end done")).toBe("done")
+    expect(getMarkdownTemplateStatus("&&& addTemplate --end in_progress")).toBe("in_progress")
+    expect(getMarkdownTemplateStatus("&&& addTemplate --end")).toBe("todo")
   })
 })

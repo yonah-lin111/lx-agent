@@ -384,8 +384,21 @@
 }
 
 [data-theme="minecraft"] .cm-md-template-command-styleTemplate {
-  background-color: #381c30 !important;
-  color: #ff77c2 !important;
+  background-color: #381b28 !important;
+  color: #ff77aa !important;
+}
+
+[data-theme="minecraft"] .cm-md-template-flag {
+  background-color: #201a36 !important;
+  color: #a5b4fc !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-weight: bold;
 }
 
 [data-theme="minecraft"] .cm-md-template-title {
@@ -541,7 +554,7 @@
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
     1px 1px 0px 0px #000000 !important;
   padding: 1px 5px !important;
-  font-size: 11px !important;
+  font-weight: bold;
 }
 
 /* 8.2 编辑区 logTemplate 日志块（海晶石暗青 3D 像素实体卡片） */
@@ -611,7 +624,7 @@
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
     1px 1px 0px 0px #000000 !important;
   padding: 1px 5px !important;
-  font-size: 11px !important;
+  font-weight: bold;
 }
 
 /* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */

@@ -216,6 +216,13 @@ export const editorTheme = EditorView.theme(
       color: "#f472b6 !important",
       backgroundColor: "rgba(244, 114, 182, 0.15) !important",
     },
+    ".cm-md-template-flag, .cm-md-template-flag *": {
+      color: "#a5b4fc !important",
+      backgroundColor: "rgba(165, 180, 252, 0.14) !important",
+      padding: "1px 5px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
     ".cm-md-template-title, .cm-md-template-title *": {
       color: "#fde68a !important",
       backgroundColor: "rgba(253, 230, 138, 0.18) !important",
@@ -364,8 +371,7 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgba(56, 189, 248, 0.1) !important",
       padding: "1px 5px !important",
       borderRadius: "3px !important",
-      fontWeight: "600 !important",
-      fontSize: "12px",
+      fontWeight: "700 !important",
     },
     ".cm-md-supple-marker, .cm-md-supple-marker *": {
       color: "#38bdf8 !important",
@@ -414,8 +420,7 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgba(45, 212, 191, 0.1) !important",
       padding: "1px 5px !important",
       borderRadius: "3px !important",
-      fontWeight: "600 !important",
-      fontSize: "12px",
+      fontWeight: "700 !important",
     },
     ".cm-md-log-marker, .cm-md-log-marker *": {
       color: "#2dd4bf !important",
@@ -514,7 +519,7 @@ export const editorTheme = EditorView.theme(
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",
@@ -1184,10 +1189,10 @@ const buildMarkdownMarkerDecorations = (
     }
 
     const templateStartMatch = line.match(
-      /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+「title:[^」\n]*」)?\s*$/,
+      /^(\s*)&&&\s+(?!done\b|in_progress\b)([A-Za-z]\w*)(?:\s+(--start))?(?:\s+「title:[^」\n]*」)?\s*$/,
     )
     const templateEndMatch = line.match(
-      /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
+      /^\s*&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
     )
     if (templateStartMatch && !isInsideTemplateBlock) {
       const currentTemplateIndex = templateBlockIndex++
@@ -1198,7 +1203,7 @@ const buildMarkdownMarkerDecorations = (
         const subLine = lines[j]
         if (
           subLine.match(
-            /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
+            /^\s*&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
           )
         ) {
           templateEndIndex = j
@@ -1224,6 +1229,16 @@ const buildMarkdownMarkerDecorations = (
           line.length,
           `cm-md-template-command cm-md-template-command-${commandName}`,
         )
+      }
+      if (templateStartMatch[3]) {
+        const flagIndex = line.indexOf(templateStartMatch[3], commandIndex + commandName.length)
+        if (flagIndex !== -1) {
+          addMarkerAlways(
+            flagIndex,
+            flagIndex + templateStartMatch[3].length,
+            "cm-md-template-flag",
+          )
+        }
       }
       const titleMatch = line.match(/「title:[^」\n]*」/)
       if (titleMatch?.index !== undefined) {
@@ -1278,6 +1293,26 @@ const buildMarkdownMarkerDecorations = (
     if (templateEndMatch && isInsideTemplateBlock) {
       const markerStart = line.indexOf("&&&")
       addMarkerAlways(markerStart, markerStart + 3, "cm-md-template-marker")
+      const endCommandMatch = line.match(/^(\s*)&&&\s+([A-Za-z]\w*)/)
+      if (endCommandMatch) {
+        const endCmdName = endCommandMatch[2]
+        const endCmdIndex = line.indexOf(endCmdName, markerStart + 3)
+        if (endCmdIndex !== -1) {
+          addMarkerAlways(
+            endCmdIndex,
+            endCmdIndex + endCmdName.length,
+            `cm-md-template-command cm-md-template-command-${endCmdName}`,
+          )
+        }
+      }
+      const endFlagMatch = line.match(/--end/)
+      if (endFlagMatch?.index !== undefined) {
+        addMarkerAlways(
+          endFlagMatch.index,
+          endFlagMatch.index + endFlagMatch[0].length,
+          "cm-md-template-flag",
+        )
+      }
       const statusMatch = line.match(
         /\s+(done|in_progress)(?=(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$)/,
       )

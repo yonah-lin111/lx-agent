@@ -711,10 +711,13 @@ export const useMarkdownPanels = ({
       return
     }
 
-    // 直接命令（scope=normal）插入时在结束行 &&& 后追加唯一 id；光标位置不受影响。
+    // 直接命令（scope=normal）插入时在结束行 &&& 标记后追加唯一 id；光标位置不受影响。
     const content =
       command.scope === "normal"
-        ? command.content.replace(/&&&$/, `&&& {id:${createMarkdownTemplateId()}}`)
+        ? command.content.replace(
+            /(?:&&&(?:\s+[A-Za-z]\w*)?(?:\s+--end)?)$/m,
+            (match) => `${match} {id:${createMarkdownTemplateId()}}`,
+          )
         : command.content
 
     view.dispatch({

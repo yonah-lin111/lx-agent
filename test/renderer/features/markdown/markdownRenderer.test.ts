@@ -211,4 +211,18 @@ describe("markdownRenderer", () => {
     expect(html).not.toContain(encodeURIComponent("+++ suppleTemplate --start"))
     expect(html).not.toContain(encodeURIComponent("+++ logTemplate --start"))
   })
+
+  it("渲染模板块支持新语法 --start 与 --end 边界标记", () => {
+    const input = [
+      "&&& addTemplate --start 「title: 修复缺陷」",
+      "- 位置: src/b.ts",
+      "- 描述: 修复问题",
+      "&&& addTemplate --end done",
+    ].join("\n")
+
+    const html = markdownRenderer.render(input)
+    expect(html).toContain("markdown-template-block")
+    expect(html).toContain('<span class="markdown-template-title">修复缺陷</span>')
+    expect(html).toContain('data-template-status="done"')
+  })
 })

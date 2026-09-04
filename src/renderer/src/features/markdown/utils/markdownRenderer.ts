@@ -19,6 +19,7 @@ import yaml from "highlight.js/lib/languages/yaml"
 import type { Options, Token } from "markdown-it"
 import MarkdownIt from "markdown-it"
 import {
+  getMarkdownTemplateStatus,
   MARKDOWN_LOG_END_RE,
   MARKDOWN_LOG_START_RE,
   MARKDOWN_SUPPLE_END_RE,
@@ -231,24 +232,27 @@ const markdownTemplateBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+「title:\s*([^」\n]*)」)?\s*$/.exec(startText)
+  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+--start)?(?:\s+「title:\s*([^」\n]*)」)?\s*$/.exec(startText)
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
-  let closeMatch: RegExpExecArray | null = null
+  let closeLineText: string | null = null
   while (closeLine < endLine) {
     const lineText = state.src.slice(
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    closeMatch =
-      /^&&&(?:\s+(done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.exec(
+    if (
+      /^&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/.test(
         lineText,
       )
-    if (closeMatch) break
+    ) {
+      closeLineText = lineText
+      break
+    }
     closeLine += 1
   }
-  if (closeLine >= endLine) return false
+  if (closeLine >= endLine || closeLineText === null) return false
   if (silent) return true
 
   const token = state.push("markdown_template", "", 0)
@@ -257,7 +261,7 @@ const markdownTemplateBlock = (
   token.meta = {
     command: startMatch[1],
     title: startMatch[2]?.trim() ?? "",
-    status: (closeMatch?.[1] ?? "todo") as MarkdownTemplateStatus,
+    status: getMarkdownTemplateStatus(closeLineText) ?? "todo",
     content: state.getLines(startLine + 1, closeLine, state.blkIndent, true),
   }
   token.attrSet("data-end-line", String(closeLine))

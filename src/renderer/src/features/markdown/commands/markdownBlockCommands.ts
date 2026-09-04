@@ -132,7 +132,7 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
   in_progress: " in_progress",
 }
 
-// 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate/log/logTemplate 为状态/子块保留词，{id:/{wt: 为结束行元数据。
+// 模板块开始行：&&& command [--start] [「title: 标题」]；done/in_progress/supple/suppleTemplate/log/logTemplate 为状态/子块保留词，{id:/{wt: 为结束行元数据。
 const MARKDOWN_TEMPLATE_START_RE =
   /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b|log\b|logTemplate\b|\{id:|\{wt:)/
 
@@ -142,17 +142,59 @@ const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
 // 模板块 git 工作区绑定分支：源码格式 {wt:分支名}，分支名不含空白、} 或 {。
 const MARKDOWN_TEMPLATE_WT_RE = /\{wt:([^}\s{]+)\}/
 
-// 模板块结束行：&&& [状态标记] [{id:...}] [{wt:...}]。
+// 模板块结束行：&&& [command --end] [状态标记] [{id:...}] [{wt:...}] 或旧格式 &&& [状态标记] [{id:...}] [{wt:...}]。
+// 注意：如果带有 command，必须同时带有 --end 标记（例如 &&& addTemplate --end），避免将开始行（如 &&& addTemplate）误判为结束行！
 const MARKDOWN_TEMPLATE_END_RE =
-  /^\s*&&&(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
+  /^\s*&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
 
-// 模板块结束行解析：捕获缩进、&&&、状态标记、id 与 wt。
-const MARKDOWN_TEMPLATE_END_PARSE_RE =
-  /^(\s*)(&&&)(?:\s+(done|in_progress))?(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/
+interface ParsedMarkdownTemplateEnd {
+  indent: string
+  marker: string
+  command?: string
+  endFlag?: string
+  status?: MarkdownTemplateStatus
+  id?: string
+  wt?: string
+}
 
-// 模板块状态标记后缀（供 exec 捕获），状态后可能紧跟 id/wt。
-const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
-  /\s+(done|in_progress)(?=\s+\{id:[0-9a-f]{32}\}(?:\s+\{wt:[^}\s{]+\})?\s*$|(?:\s+\{wt:[^}\s{]+\})?\s*$)/
+const parseMarkdownTemplateEndLine = (lineText: string): ParsedMarkdownTemplateEnd | null => {
+  if (!MARKDOWN_TEMPLATE_END_RE.test(lineText)) return null
+
+  const match = lineText.match(
+    /^(\s*)(&&&)(?:\s+(?!\{id:|\{wt:)(.+?))?(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/,
+  )
+  if (!match) return null
+
+  const indent = match[1]
+  const marker = match[2]
+  const middle = match[3]?.trim() ?? ""
+  const id = match[4]
+  const wt = match[5]
+
+  let command: string | undefined
+  let endFlag: string | undefined
+  let status: MarkdownTemplateStatus | undefined
+
+  if (middle) {
+    const tokens = middle.split(/\s+/)
+    for (const token of tokens) {
+      if (token === "done" || token === "in_progress") {
+        status = token
+      } else if (token === "--end") {
+        endFlag = token
+      } else if (!command && /^[A-Za-z]\w*$/.test(token)) {
+        command = token
+      } else {
+        return null
+      }
+    }
+  }
+
+  // 如果有 command，必须有 --end
+  if (command && !endFlag) return null
+
+  return { indent, marker, command, endFlag, status, id, wt }
+}
 
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
@@ -392,27 +434,29 @@ export const setMarkdownTemplateTitle = (startText: string, title: string): stri
  * 解析模板块结束行的源码状态；非结束行返回 null。
  */
 export const getMarkdownTemplateStatus = (lineText: string): MarkdownTemplateStatus | null => {
-  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
-  if (!match) return null
+  const parsed = parseMarkdownTemplateEndLine(lineText)
+  if (!parsed) return null
 
-  return (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
+  return parsed.status ?? "todo"
 }
 
 /**
  * 循环切换模板块结束行状态（未完成 -> 进行中 -> 已完成 -> 未完成）；非结束行返回 null。
- * 保留 id 与 wt（工作区绑定）标记不变。
+ * 保留 command、--end、id 与 wt（工作区绑定）标记不变。
  */
 export const cycleMarkdownTemplateStatus = (lineText: string): string | null => {
-  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
-  if (!match) return null
+  const parsed = parseMarkdownTemplateEndLine(lineText)
+  if (!parsed) return null
 
-  const current = (match[3] as MarkdownTemplateStatus | undefined) ?? "todo"
+  const commandPart = parsed.command ? ` ${parsed.command}` : ""
+  const endFlagPart = parsed.endFlag ? ` ${parsed.endFlag}` : ""
+  const current = parsed.status ?? "todo"
   const next: MarkdownTemplateStatus =
     current === "todo" ? "in_progress" : current === "in_progress" ? "done" : "todo"
-  const id = match[4] ?? ""
-  const wt = match[5] ?? ""
+  const idPart = parsed.id ? ` {id:${parsed.id}}` : ""
+  const wtPart = parsed.wt ? ` {wt:${parsed.wt}}` : ""
 
-  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}${id ? ` {id:${id}}` : ""}${wt ? ` {wt:${wt}}` : ""}`
+  return `${parsed.indent}${parsed.marker}${commandPart}${endFlagPart}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[next] ?? ""}${idPart}${wtPart}`
 }
 
 /**
@@ -425,15 +469,19 @@ export const getMarkdownTemplateWorktree = (lineText: string): string | null => 
 
 /**
  * 更新模板块结束行的工作区绑定：branch 为 null 时移除绑定，否则写入 {wt:branch}。
- * 保留缩进、&&&、状态标记与 id；非结束行返回原文本。
+ * 保留缩进、&&&、command、--end、状态标记与 id；非结束行返回原文本。
  */
 export const setMarkdownTemplateWorktree = (lineText: string, branch: string | null): string => {
-  const match = MARKDOWN_TEMPLATE_END_PARSE_RE.exec(lineText)
-  if (!match) return lineText
+  const parsed = parseMarkdownTemplateEndLine(lineText)
+  if (!parsed) return lineText
 
-  const id = match[4] ?? ""
+  const commandPart = parsed.command ? ` ${parsed.command}` : ""
+  const endFlagPart = parsed.endFlag ? ` ${parsed.endFlag}` : ""
+  const statusPart = parsed.status ? MARKDOWN_TEMPLATE_STATUS_SUFFIX[parsed.status] ?? "" : ""
+  const idPart = parsed.id ? ` {id:${parsed.id}}` : ""
   const wt = branch?.trim() ?? ""
-  return `${match[1]}${match[2]}${MARKDOWN_TEMPLATE_STATUS_SUFFIX[match[3] as MarkdownTemplateStatus] ?? ""}${id ? ` {id:${id}}` : ""}${wt ? ` {wt:${wt}}` : ""}`
+  const wtPart = wt ? ` {wt:${wt}}` : ""
+  return `${parsed.indent}${parsed.marker}${commandPart}${endFlagPart}${statusPart}${idPart}${wtPart}`
 }
 
 /**
@@ -496,9 +544,7 @@ export const getMarkdownTemplateStatuses = (content: string): MarkdownTemplateSt
 
   for (const line of content.split("\n")) {
     if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
-      const status = line.match(MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE)?.[1] as
-        | MarkdownTemplateStatus
-        | undefined
+      const status = getMarkdownTemplateStatus(line)
       if (isOpen) statuses.push(status ?? "todo")
       isOpen = false
     } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
