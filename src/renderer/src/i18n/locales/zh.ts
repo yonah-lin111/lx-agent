@@ -874,6 +874,7 @@ export const zh: TranslationDictionary = {
     shortcutUndo: "撤销",
     shortcutRedo: "重做",
     shortcutInlineCode: "行内代码",
+    shortcutCopyTemplateBlock: "复制模版块内容",
     shortcutInsertTable: "插入表格",
     shortcutFormat: "格式化 Markdown",
     shortcutSplitView: "双栏预览",

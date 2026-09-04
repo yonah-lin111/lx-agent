@@ -6,6 +6,7 @@ import {
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockCopyText,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateStatus,
@@ -49,9 +50,13 @@ describe("Markdown 块命令", () => {
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&&\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& done\n")).toBe(false)
     expect(isInsideMarkdownTemplateBlock("&&& addTemplate\n内容\n&&& in_progress\n")).toBe(false)
-    expect(isInsideMarkdownTemplateBlock("&&& addTemplate --start\n内容\n&&& addTemplate --end\n")).toBe(false)
+    expect(
+      isInsideMarkdownTemplateBlock("&&& addTemplate --start\n内容\n&&& addTemplate --end\n"),
+    ).toBe(false)
     expect(isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n")).toBe(true)
-    expect(isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n+++ logTemplate --end\n")).toBe(false)
+    expect(
+      isInsideMarkdownLogBlock("+++ logTemplate --start\n- log 1\n+++ logTemplate --end\n"),
+    ).toBe(false)
   })
 
   it("解析模板块结束行的源码状态", () => {
@@ -142,7 +147,13 @@ describe("Markdown 块命令", () => {
     expect(getMarkdownTemplateBlockStartLine(doc, bodyPos)).toBe(2)
     expect(getMarkdownTemplateBlockStartLine(doc, 0)).toBeNull()
 
-    const docWithFlags = ["前文", "&&& addTemplate --start 「title: 标题」", "- 正文", "&&& addTemplate --end", "后文"].join("\n")
+    const docWithFlags = [
+      "前文",
+      "&&& addTemplate --start 「title: 标题」",
+      "- 正文",
+      "&&& addTemplate --end",
+      "后文",
+    ].join("\n")
     const bodyPos2 = docWithFlags.indexOf("- 正文")
     expect(getMarkdownTemplateBlockStartLine(docWithFlags, bodyPos2)).toBe(2)
     expect(getMarkdownTemplateBlockContent(docWithFlags, bodyPos2)).toBe("- 正文\n")
@@ -269,9 +280,9 @@ describe("模板块工作区绑定 {wt:}", () => {
     expect(setMarkdownTemplateWorktree(`&&& done {id:${id}} {wt:feature-x}`, null)).toBe(
       `&&& done {id:${id}}`,
     )
-    expect(
-      setMarkdownTemplateWorktree(`&&& addTemplate --end done {id:${id}}`, "feature-x"),
-    ).toBe(`&&& addTemplate --end done {id:${id}} {wt:feature-x}`)
+    expect(setMarkdownTemplateWorktree(`&&& addTemplate --end done {id:${id}}`, "feature-x")).toBe(
+      `&&& addTemplate --end done {id:${id}} {wt:feature-x}`,
+    )
     expect(
       setMarkdownTemplateWorktree(`&&& addTemplate --end done {id:${id}} {wt:feature-x}`, null),
     ).toBe(`&&& addTemplate --end done {id:${id}}`)
@@ -323,5 +334,127 @@ describe("模板块工作区绑定 {wt:}", () => {
     expect(getMarkdownTemplateStatus("&&& addTemplate --end done")).toBe("done")
     expect(getMarkdownTemplateStatus("&&& addTemplate --end in_progress")).toBe("in_progress")
     expect(getMarkdownTemplateStatus("&&& addTemplate --end")).toBe("todo")
+  })
+
+  describe("getMarkdownTemplateBlockCopyText", () => {
+    it("光标在普通 &&& 模版块中，仅复制该模版块正文", () => {
+      const doc = [
+        "普通文本 1",
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "- 位置: src/app.ts",
+        "&&& addTemplate --end",
+        "普通文本 2",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 位置: src/app.ts")
+    })
+
+    it("&&& 模版块中包含 logTemplate 时，复制 &&& 块与 log 内容，并移除 +++ log 起止标记", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ logTemplate --start",
+        "- 日志: 排查信息",
+        "+++ logTemplate --end",
+        "- 结果: 成功",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      // 光标在 &&& 区域（非 log 内部）
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe(
+        ["- 需求: 任务 1", "- 日志: 排查信息", "- 结果: 成功"].join("\n"),
+      )
+    })
+
+    it("&&& 模版块中包含 suppleTemplate 时，复制 &&& 块剔除 suppleTemplate 及其内容", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ suppleTemplate --start",
+        "- 补充: 额外项",
+        "+++ suppleTemplate --end",
+        "- 结果: 成功",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 结果: 成功")
+    })
+
+    it("光标在 suppleTemplate 中，只复制该 suppleTemplate 内容", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ suppleTemplate --start",
+        "- 补充: 额外项 1",
+        "- 补充: 额外项 2",
+        "+++ suppleTemplate --end",
+        "- 结果: 成功",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 补充: 额外项 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 补充: 额外项 1\n- 补充: 额外项 2")
+    })
+
+    it("logTemplate 不能单独复制：在 &&& 内部时跟随父 &&& 块复制", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ logTemplate --start",
+        "- 日志: 错误日志",
+        "+++ logTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 日志: 错误日志")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 日志: 错误日志")
+    })
+
+    it("logTemplate 在 suppleTemplate 中时，跟随父 suppleTemplate 块复制", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "+++ suppleTemplate --start",
+        "- 补充: 需求 A",
+        "+++ logTemplate --start",
+        "- 日志: 嵌套在 supple 中的日志",
+        "+++ logTemplate --end",
+        "- 补充: 需求 B",
+        "+++ suppleTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      // 光标在 log 内部
+      const posLog = doc.indexOf("- 日志: 嵌套在 supple 中的日志")
+      expect(getMarkdownTemplateBlockCopyText(doc, posLog)).toBe(
+        ["- 补充: 需求 A", "- 日志: 嵌套在 supple 中的日志", "- 补充: 需求 B"].join("\n"),
+      )
+
+      // 光标在 supple 区域（非 log）
+      const posSupple = doc.indexOf("- 补充: 需求 A")
+      expect(getMarkdownTemplateBlockCopyText(doc, posSupple)).toBe(
+        ["- 补充: 需求 A", "- 日志: 嵌套在 supple 中的日志", "- 补充: 需求 B"].join("\n"),
+      )
+
+      // 光标在 &&& 区域：剔除整个 suppleTemplate 及其嵌套的 log
+      const posTemplate = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, posTemplate)).toBe("- 需求: 任务 1")
+    })
+
+    it("光标在模版块外时返回 null", () => {
+      const doc = "普通正文内容"
+      expect(getMarkdownTemplateBlockCopyText(doc, 2)).toBeNull()
+    })
+
+    it("顶层孤独的 logTemplate（无父模版块）不能单独复制，返回 null", () => {
+      const doc = ["+++ logTemplate --start", "- 独立日志", "+++ logTemplate --end"].join("\n")
+
+      const pos = doc.indexOf("- 独立日志")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBeNull()
+    })
   })
 })

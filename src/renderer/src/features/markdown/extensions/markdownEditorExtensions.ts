@@ -41,9 +41,10 @@ import {
 } from "@/features/markdown/extensions/markdownFileMentions"
 import type { MarkdownTableAlignment, MarkdownTableSize } from "@/features/markdown/types"
 import {
+  extractParentTemplateCopyContent,
   stripEmptyTemplateItems,
-  stripMarkdownSubblocks,
   stripMarkdownSubblockFences,
+  stripMarkdownSubblocks,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 
@@ -720,15 +721,17 @@ class CodeBlockActionWidget extends WidgetType {
         }),
       )
     }
-    actionNodes.push(
-      createElement(MarkdownActionCopyButton, {
-        text: this.codeText,
-        label: this.copyTitle,
-        isTemplate,
-        isSupple: this.isSupple,
-        isLog: this.isLog,
-      }),
-    )
+    if (!this.isLog) {
+      actionNodes.push(
+        createElement(MarkdownActionCopyButton, {
+          text: this.codeText,
+          label: this.copyTitle,
+          isTemplate,
+          isSupple: this.isSupple,
+          isLog: this.isLog,
+        }),
+      )
+    }
     if (this.showFoldBtn) {
       actionNodes.push(
         createElement(MarkdownActionFoldButton, {
@@ -1259,7 +1262,7 @@ const buildMarkdownMarkerDecorations = (
           stripEmptyTemplateItems(
             stripMarkdownTemplateComments(
               stripMarkdownSlashCommands(
-                stripMarkdownSubblocks(currentTemplateTextLines.join("\n")),
+                extractParentTemplateCopyContent(currentTemplateTextLines.join("\n")),
               ),
             ),
           ),
@@ -1378,11 +1381,7 @@ const buildMarkdownMarkerDecorations = (
             )
             const flagStart = line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
             if (flagStart !== -1) {
-              addMarkerAlways(
-                flagStart,
-                flagStart + commandMatch[2].length,
-                "cm-md-supple-flag",
-              )
+              addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-supple-flag")
             }
           }
         }
@@ -1392,7 +1391,9 @@ const buildMarkdownMarkerDecorations = (
           to: offset + line.length,
           widget: new CodeBlockActionWidget(
             stripEmptyTemplateItems(
-              stripMarkdownTemplateComments(currentSuppleTextLines.join("\n")),
+              stripMarkdownTemplateComments(
+                extractParentTemplateCopyContent(currentSuppleTextLines.join("\n")),
+              ),
             ),
             currentSuppleFolded,
             () => onToggleSuppleFold(currentSuppleIndex),
@@ -1430,13 +1431,12 @@ const buildMarkdownMarkerDecorations = (
               commandStart + endCommandMatch[1].length,
               "cm-md-supple-command",
             )
-            const flagStart = line.indexOf(endCommandMatch[2], commandStart + endCommandMatch[1].length)
+            const flagStart = line.indexOf(
+              endCommandMatch[2],
+              commandStart + endCommandMatch[1].length,
+            )
             if (flagStart !== -1) {
-              addMarkerAlways(
-                flagStart,
-                flagStart + endCommandMatch[2].length,
-                "cm-md-supple-flag",
-              )
+              addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-supple-flag")
             }
           }
         }
@@ -1485,7 +1485,11 @@ const buildMarkdownMarkerDecorations = (
         if (commandMatch && commandMatch.index !== undefined) {
           const commandStart = line.indexOf(commandMatch[1], markerStart + 3)
           if (commandStart !== -1) {
-            addMarkerAlways(commandStart, commandStart + commandMatch[1].length, "cm-md-log-command")
+            addMarkerAlways(
+              commandStart,
+              commandStart + commandMatch[1].length,
+              "cm-md-log-command",
+            )
             const flagStart = line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
             if (flagStart !== -1) {
               addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-log-flag")
@@ -1530,8 +1534,15 @@ const buildMarkdownMarkerDecorations = (
         if (endCommandMatch && endCommandMatch.index !== undefined) {
           const commandStart = line.indexOf(endCommandMatch[1], markerStart + 3)
           if (commandStart !== -1) {
-            addMarkerAlways(commandStart, commandStart + endCommandMatch[1].length, "cm-md-log-command")
-            const flagStart = line.indexOf(endCommandMatch[2], commandStart + endCommandMatch[1].length)
+            addMarkerAlways(
+              commandStart,
+              commandStart + endCommandMatch[1].length,
+              "cm-md-log-command",
+            )
+            const flagStart = line.indexOf(
+              endCommandMatch[2],
+              commandStart + endCommandMatch[1].length,
+            )
             if (flagStart !== -1) {
               addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-log-flag")
             }

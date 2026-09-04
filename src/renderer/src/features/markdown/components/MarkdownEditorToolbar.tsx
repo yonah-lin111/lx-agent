@@ -235,6 +235,7 @@ const markdownShortcuts: { keys: string; descKey: TranslationKey }[] = [
   { keys: "Cmd / Ctrl + Z", descKey: "markdown.shortcutUndo" },
   { keys: "Cmd / Ctrl + Shift + Z", descKey: "markdown.shortcutRedo" },
   { keys: "Cmd / Ctrl + Alt + C", descKey: "markdown.shortcutInlineCode" },
+  { keys: "Cmd / Ctrl + Shift + C", descKey: "markdown.shortcutCopyTemplateBlock" },
   { keys: "Cmd / Ctrl + Shift + Alt + T", descKey: "markdown.shortcutInsertTable" },
   { keys: "Cmd / Ctrl + Shift + F", descKey: "markdown.shortcutFormat" },
   { keys: "Cmd / Ctrl + Shift + E", descKey: "markdown.shortcutSplitView" },

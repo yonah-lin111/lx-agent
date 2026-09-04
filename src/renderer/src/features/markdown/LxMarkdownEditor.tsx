@@ -43,6 +43,7 @@ import { GitWorktreeCommandMenu, resolveGitWorktreeTarget, useGitWorktrees } fro
 import {
   cycleMarkdownTemplateStatus,
   getMarkdownTemplateBlockContent,
+  getMarkdownTemplateBlockCopyText,
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
@@ -173,6 +174,9 @@ export const LxMarkdownEditor = ({
   const pagesRef = useRef(pages)
   const activePageIndexRef = useRef(0)
   const onPagesChangeRef = useRef(onPagesChange)
+  const { success: showToastSuccess } = useLxToast()
+  const showToastSuccessRef = useRef(showToastSuccess)
+  showToastSuccessRef.current = showToastSuccess
 
   const [content, setContent] = useState(() => {
     if (pageMode && pages?.length) {
@@ -1475,6 +1479,34 @@ export const LxMarkdownEditor = ({
             key: "Mod-Shift-S",
             mac: "Cmd-Shift-S",
             run: () => (wrapSelection("~~", "~~", "strikethrough"), true),
+          },
+          {
+            key: "Mod-Shift-c",
+            mac: "Cmd-Shift-c",
+            run: (view) => {
+              const docText = view.state.doc.toString()
+              const cursor = view.state.selection.main.head
+              const copyText = getMarkdownTemplateBlockCopyText(docText, cursor)
+              if (copyText === null) return false
+              void navigator.clipboard.writeText(copyText).then(() => {
+                showToastSuccessRef.current(t("markdown.copiedCode"))
+              })
+              return true
+            },
+          },
+          {
+            key: "Mod-Shift-C",
+            mac: "Cmd-Shift-C",
+            run: (view) => {
+              const docText = view.state.doc.toString()
+              const cursor = view.state.selection.main.head
+              const copyText = getMarkdownTemplateBlockCopyText(docText, cursor)
+              if (copyText === null) return false
+              void navigator.clipboard.writeText(copyText).then(() => {
+                showToastSuccessRef.current(t("markdown.copiedCode"))
+              })
+              return true
+            },
           },
           { key: "Mod-Shift-u", mac: "Cmd-Shift-u", run: () => (prefixLines("- ", "Item"), true) },
           { key: "Mod-Shift-U", mac: "Cmd-Shift-U", run: () => (prefixLines("- ", "Item"), true) },

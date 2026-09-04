@@ -215,6 +215,37 @@ export const stripMarkdownSubblocks = (content: string): string => {
 }
 
 /**
+ * 提取父级模版块用于复制的内容：
+ * - 排除所有 supple 补充块及其内部内容；
+ * - 保留直接位于该块内部的 log 补充块内容，但剔除 +++ log 起止标记行。
+ */
+export const extractParentTemplateCopyContent = (content: string): string => {
+  const lines = content.split("\n")
+  const keptLines: string[] = []
+  let insideSupple = false
+
+  for (const line of lines) {
+    if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+      insideSupple = true
+      continue
+    }
+    if (insideSupple) {
+      if (MARKDOWN_SUPPLE_END_RE.test(line)) {
+        insideSupple = false
+      }
+      continue
+    }
+    // 如果是 log 块起止标记行，剔除该行；log 内部文本行保留
+    if (MARKDOWN_LOG_START_RE.test(line) || MARKDOWN_LOG_END_RE.test(line)) {
+      continue
+    }
+    keptLines.push(line)
+  }
+
+  return keptLines.join("\n")
+}
+
+/**
  * 移除文本中所有子块（如 supple / log）的 +++ 标记行，但完整保留内部子块正文。
  */
 export const stripMarkdownSubblockFences = (content: string): string => {
@@ -257,7 +288,9 @@ const markdownTemplateBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+--start)?(?:\s+「title:\s*([^」\n]*)」)?\s*$/.exec(startText)
+  const startMatch = /^&&&\s+([A-Za-z]\w*)(?:\s+--start)?(?:\s+「title:\s*([^」\n]*)」)?\s*$/.exec(
+    startText,
+  )
   if (!startMatch || !markdownTemplateCommands.has(startMatch[1])) return false
 
   let closeLine = startLine + 1
@@ -637,9 +670,7 @@ markdownRenderer.renderer.rules.markdown_template = (tokens, index) => {
   const encodedContent = encodeURIComponent(
     stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
-        stripMarkdownSlashCommands(
-          stripMarkdownSubblocks(meta.content),
-        ),
+        stripMarkdownSlashCommands(extractParentTemplateCopyContent(meta.content)),
       ),
     ),
   )

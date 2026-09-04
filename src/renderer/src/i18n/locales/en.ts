@@ -890,6 +890,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     shortcutUndo: "Undo",
     shortcutRedo: "Redo",
     shortcutInlineCode: "Inline code",
+    shortcutCopyTemplateBlock: "Copy template block",
     shortcutInsertTable: "Insert table",
     shortcutFormat: "Format Markdown",
     shortcutSplitView: "Split view",
