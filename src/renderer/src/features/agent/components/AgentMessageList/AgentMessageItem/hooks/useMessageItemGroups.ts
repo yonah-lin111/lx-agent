@@ -254,6 +254,11 @@ export const useMessageItemGroups = (
         groups.push({ kind: "reviewFindings", block: item.block, isStreaming: item.isStreaming })
         continue
       }
+      if (item.block.kind === "frontDesign") {
+        currentExecution = null
+        groups.push({ kind: "frontDesign", block: item.block, isStreaming: item.isStreaming })
+        continue
+      }
       if (item.block.kind === "thinking") {
         if (!currentExecution) {
           currentExecution = { kind: "execution", blocks: [] }

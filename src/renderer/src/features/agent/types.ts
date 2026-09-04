@@ -76,6 +76,14 @@ export interface ReviewFindingsData {
   isStreaming?: boolean
 }
 
+// 前端设计数据结构。
+export interface FrontDesignData {
+  title?: string
+  html: string
+  raw: string
+  isStreaming?: boolean
+}
+
 // 消息内容块渲染视图。
 export type ChatBlock =
   | { kind: "text"; text: string; durationMs?: number }
@@ -88,6 +96,11 @@ export type ChatBlock =
   | {
       kind: "reviewFindings"
       findings: ReviewFindingsData
+      durationMs?: number
+    }
+  | {
+      kind: "frontDesign"
+      design: FrontDesignData
       durationMs?: number
     }
   | {

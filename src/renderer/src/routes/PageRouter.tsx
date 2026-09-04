@@ -4,6 +4,7 @@ import { HomePage } from "@/pages/home"
 import { ProjectPage } from "@/pages/project"
 import { SettingsPage } from "@/pages/settings"
 import { UiPreviewPage } from "@/pages/ui"
+import { FrontDesignPage } from "@/pages/front-design"
 
 /**
  * 声明业务页面路由。
@@ -14,6 +15,7 @@ export const PageRouter = (): React.JSX.Element => (
     <Route path={PAGE_ROUTES.project} element={<ProjectPage />} />
     <Route path={PAGE_ROUTES.settings} element={<SettingsPage />} />
     <Route path={PAGE_ROUTES.ui} element={<UiPreviewPage />} />
+    <Route path={PAGE_ROUTES.design} element={<FrontDesignPage />} />
     <Route path="*" element={<Navigate replace to={PAGE_ROUTES.home} />} />
   </Routes>
 )

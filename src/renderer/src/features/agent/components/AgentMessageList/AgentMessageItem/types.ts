@@ -39,6 +39,12 @@ export type DisplayGroup =
       block: Extract<ChatBlock, { kind: "reviewFindings" }>
       isStreaming: boolean
     }
+  // 前端设计稿独立组（不参与执行折叠，渲染专用设计卡片与热更新预览入口）。
+  | {
+      kind: "frontDesign"
+      block: Extract<ChatBlock, { kind: "frontDesign" }>
+      isStreaming: boolean
+    }
   | ExecutionGroup
   // 编写操作调用独立组（不参与执行折叠，直接平铺展示）。
   | { kind: "writing"; block: ToolCallBlock; isStreaming: boolean }

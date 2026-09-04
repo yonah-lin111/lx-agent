@@ -375,6 +375,8 @@ export const useAgentChat = (
             successToast(t("agent.collaborationModeSwitchedToPlan"))
           } else if (event.mode === "review") {
             successToast(t("agent.collaborationModeSwitchedToReview"))
+          } else if (event.mode === "design") {
+            successToast(t("agent.collaborationModeSwitchedToDesign"))
           } else {
             successToast(t("agent.collaborationModeSwitchedToBuild"))
           }
@@ -865,12 +867,13 @@ export const useAgentChat = (
     )
   }, [])
 
-  // 主动切换协作模式（build -> plan -> review 循环切换）。
+  // 主动切换协作模式（build -> plan -> review -> design 循环切换）。
   const toggleCollaborationMode = useCallback(() => {
     let nextMode: CollaborationMode = "build"
     if (collaborationMode === "build") nextMode = "plan"
     else if (collaborationMode === "plan") nextMode = "review"
-    else if (collaborationMode === "review") nextMode = "build"
+    else if (collaborationMode === "review") nextMode = "design"
+    else if (collaborationMode === "design") nextMode = "build"
 
     void agentApi
       .setCollaborationMode(nextMode, currentSessionIdRef.current ?? undefined, tabId)

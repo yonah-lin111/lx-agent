@@ -1,5 +1,5 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
-import { Compass, ShieldAlert, Zap } from "lucide-react"
+import { Compass, Palette, ShieldAlert, Zap } from "lucide-react"
 import type React from "react"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
@@ -9,7 +9,7 @@ interface CollaborationModeButtonProps {
 }
 
 /**
- * Agent 状态栏协作模式指示（Build / Plan / Review Mode 展示）
+ * Agent 状态栏协作模式指示（Build / Plan / Review / Design Mode 展示）
  */
 export const CollaborationModeButton = ({
   mode = "build",
@@ -17,19 +17,24 @@ export const CollaborationModeButton = ({
   const { t } = useTranslation()
   const isPlan = mode === "plan"
   const isReview = mode === "review"
-  const displayName = isPlan ? "Plan" : isReview ? "Review" : "Build"
+  const isDesign = mode === "design"
+  const displayName = isPlan ? "Plan" : isReview ? "Review" : isDesign ? "Design" : "Build"
 
   const title = isPlan
     ? t("agent.collaborationModePlan")
     : isReview
       ? t("agent.collaborationModeReview")
-      : t("agent.collaborationModeBuild")
+      : isDesign
+        ? t("agent.collaborationModeDesign")
+        : t("agent.collaborationModeBuild")
 
   const desc = isPlan
     ? t("agent.collaborationModePlanDesc")
     : isReview
       ? t("agent.collaborationModeReviewDesc")
-      : t("agent.collaborationModeBuildDesc")
+      : isDesign
+        ? t("agent.collaborationModeDesignDesc")
+        : t("agent.collaborationModeBuildDesc")
 
   return (
     <LxTooltip
@@ -52,13 +57,17 @@ export const CollaborationModeButton = ({
             ? "text-sky-400 font-medium"
             : isReview
               ? "text-violet-400 font-medium"
-              : "text-white/60"
+              : isDesign
+                ? "text-pink-400 font-medium"
+                : "text-white/60"
         }`}
       >
         {isPlan ? (
           <Compass className="h-3.5 w-3.5 shrink-0" />
         ) : isReview ? (
           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+        ) : isDesign ? (
+          <Palette className="h-3.5 w-3.5 shrink-0" />
         ) : (
           <Zap className="h-3.5 w-3.5 shrink-0" />
         )}

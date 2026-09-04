@@ -19,7 +19,7 @@
     - 在 design 模式下调用 `render_svg`、`render_ascii`、`render_html` 时 `PermissionManager.checkAction()` 坚决返回 `deny`。
     - 生成的系统提示词中包含 `<front_design>` 英文规范与工具禁用说明。
 
-- [ ] **Task 2: AgentPage 快捷键流转与 AgentStatusBar 状态栏联动**
+- [x] **Task 2: AgentPage 快捷键流转与 AgentStatusBar 状态栏联动**
   - **目标**：支持 `Shift + Tab` 循环流转（build -> plan -> review -> design -> build），在 `AgentStatusBar` 中提供 `CollaborationModeButton` 的 Design 态视觉高亮与气泡提示。
   - **涉及文件**：
     - `src/renderer/src/features/agent/AgentPage.tsx`
@@ -31,18 +31,18 @@
     - 按 `Shift + Tab` 快捷键能在 4 种模式间稳定循环切换并伴有 Toast 提示。
     - `CollaborationModeButton` 在 Design 模式下正确渲染图标与文案。
 
-- [ ] **Task 3: 流式协议解析器、FrontDesignCard 与全局热更新存储**
+- [x] **Task 3: 流式协议解析器、FrontDesignCard 与全局热更新存储**
   - **目标**：支持 `<front_design>` 标签的流式提取、生成 `ChatBlock` 并将最新设计代码推入响应式单例 `frontDesignStore`。
   - **涉及文件**：
     - `src/renderer/src/features/agent/types.ts`
     - `src/renderer/src/features/agent/utils.ts`
-    - `src/renderer/src/features/agent/stores/frontDesignStore.ts` (新建)
+    - `src/renderer/src/features/agent/hooks/frontDesignStore.ts` (新建)
     - `src/renderer/src/features/agent/components/blocks/FrontDesignCard.tsx` (新建)
     - `src/renderer/src/features/agent/components/AgentMessageList/AgentMessageItem/AgentAssistantMessage.tsx`
   - **验证指标**：
     - Agent 输出 `<front_design>` 时聊天流展示优雅卡片，同时实时更新 `frontDesignStore`。
 
-- [ ] **Task 4: LeftSideBar 导航扩展与 FrontDesignPage 独立容器页面**
+- [x] **Task 4: LeftSideBar 导航扩展与 FrontDesignPage 独立容器页面**
   - **目标**：在底部导航添加 Design Tab，新增 `/design` 路由与 `FrontDesignPage`，内部复用 Tailwind JIT 与沙箱 Iframe 渲染容器，监听 `frontDesignStore` 实现热更新，并在左侧栏提供空占位组件。
   - **涉及文件**：
     - `src/renderer/src/lib/pageRoutes.ts`

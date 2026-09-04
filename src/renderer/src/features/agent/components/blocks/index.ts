@@ -24,4 +24,8 @@ export {
   ReviewFindingsCard,
   type ReviewFindingsCardProps,
 } from "./ReviewFindingsCard"
+export {
+  FrontDesignCard,
+  type FrontDesignCardProps,
+} from "./FrontDesignCard"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"
