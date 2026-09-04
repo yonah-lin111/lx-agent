@@ -901,7 +901,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     promptSentToTerminal: "Prompt dispatched to terminal {{target}}",
     promptSendFailedEmpty: "Template block is empty, skipped sending",
     templateSuppleContent: [
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --start",
       "## Supplement",
       "",
       "- Reference: ",
@@ -911,10 +911,10 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "- Notes: ",
       "  - ",
       "- Expectations: ",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --end",
     ].join("\n"),
     templateLogContent: [
-      "+++ logTemplate",
+      "+++ logTemplate --start",
       "## Execution Log",
       "",
       "- Time: ",
@@ -922,7 +922,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "- Records: ",
       "  - ",
       "- Conclusion: ",
-      "+++ logTemplate",
+      "+++ logTemplate --end",
     ].join("\n"),
     templateAddContent: [
       "&&& addTemplate 「title: 」",

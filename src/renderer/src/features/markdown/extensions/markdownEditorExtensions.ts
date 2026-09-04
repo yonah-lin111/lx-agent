@@ -1315,7 +1315,7 @@ const buildMarkdownMarkerDecorations = (
 
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
-        const commandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)/)
+        const commandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)\s+--start/)
         if (commandMatch && commandMatch.index !== undefined) {
           const commandStart = line.indexOf(commandMatch[1], markerStart + 3)
           if (commandStart !== -1) {
@@ -1361,7 +1361,7 @@ const buildMarkdownMarkerDecorations = (
       if (isInsideSuppleBlock && MARKDOWN_SUPPLE_END_RE.test(line)) {
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
-        const endCommandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)/)
+        const endCommandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)\s+--end/)
         if (endCommandMatch && endCommandMatch.index !== undefined) {
           const commandStart = line.indexOf(endCommandMatch[1], markerStart + 3)
           if (commandStart !== -1) {
@@ -1413,7 +1413,7 @@ const buildMarkdownMarkerDecorations = (
 
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-        const commandMatch = line.match(/\+\+\+\s+(logTemplate|log)/)
+        const commandMatch = line.match(/\+\+\+\s+(logTemplate|log)\s+--start/)
         if (commandMatch && commandMatch.index !== undefined) {
           const commandStart = line.indexOf(commandMatch[1], markerStart + 3)
           if (commandStart !== -1) {
@@ -1454,7 +1454,7 @@ const buildMarkdownMarkerDecorations = (
       if (isInsideLogBlock && MARKDOWN_LOG_END_RE.test(line)) {
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
-        const endCommandMatch = line.match(/\+\+\+\s+(logTemplate|log)/)
+        const endCommandMatch = line.match(/\+\+\+\s+(logTemplate|log)\s+--end/)
         if (endCommandMatch && endCommandMatch.index !== undefined) {
           const commandStart = line.indexOf(endCommandMatch[1], markerStart + 3)
           if (commandStart !== -1) {

@@ -886,7 +886,7 @@ export const zh: TranslationDictionary = {
     promptSentToTerminal: "Prompt 已发送至终端 {{target}}",
     promptSendFailedEmpty: "当前模板块内容为空，取消发送",
     templateSuppleContent: [
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --start",
       "## 补充需求",
       "",
       "- 参考: ",
@@ -896,10 +896,10 @@ export const zh: TranslationDictionary = {
       "- 注意: ",
       "  - ",
       "- 预期: ",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --end",
     ].join("\n"),
     templateLogContent: [
-      "+++ logTemplate",
+      "+++ logTemplate --start",
       "## 运行日志",
       "",
       "- 时间: ",
@@ -907,7 +907,7 @@ export const zh: TranslationDictionary = {
       "- 记录: ",
       "  - ",
       "- 结论: ",
-      "+++ logTemplate",
+      "+++ logTemplate --end",
     ].join("\n"),
     templateAddContent: [
       "&&& addTemplate 「title: 」",

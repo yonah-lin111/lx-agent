@@ -157,17 +157,17 @@ const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
 
-// supple 补充块开始行：+++ suppleTemplate 或 +++ supple。
-export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)(?:\s+.*)?$/
+// supple 补充块开始行：+++ suppleTemplate --start 或 +++ supple --start。
+export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--start\s*$/
 
-// log 补充块开始行：+++ logTemplate 或 +++ log。
-export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)(?:\s+.*)?$/
+// log 补充块开始行：+++ logTemplate --start 或 +++ log --start。
+export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start\s*$/
 
-// supple 补充块结束行：+++ suppleTemplate 或 +++ supple。
-export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s*$/
+// supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end。
+export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end\s*$/
 
-// log 补充块结束行：+++ logTemplate 或 +++ log。
-export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s*$/
+// log 补充块结束行：+++ logTemplate --end 或 +++ log --end。
+export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--end\s*$/
 
 /**
  * 判断指定文本末尾是否处于未闭合的 log 日志块内。
@@ -259,23 +259,23 @@ export const isMarkdownTemplateEndLine = (line: string): boolean =>
   MARKDOWN_TEMPLATE_END_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate 或 +++ supple）。
+ * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate --start 或 +++ supple --start）。
  */
 export const isMarkdownSuppleStartLine = (line: string): boolean =>
   MARKDOWN_SUPPLE_START_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块结束标记（+++ suppleTemplate 或 +++ supple）。
+ * 判断一行是否为 supple 补充块结束标记（+++ suppleTemplate --end 或 +++ supple --end）。
  */
 export const isMarkdownSuppleEndLine = (line: string): boolean => MARKDOWN_SUPPLE_END_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块开始标记（+++ logTemplate 或 +++ log）。
+ * 判断一行是否为 log 补充块开始标记（+++ logTemplate --start 或 +++ log --start）。
  */
 export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_START_RE.test(line)
 
 /**
- * 判断一行是否为 log 补充块结束标记（+++ logTemplate 或 +++ log）。
+ * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
  */
 export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)
 

@@ -152,26 +152,26 @@ describe("markdownRenderer", () => {
     const input = [
       "- 参考: ",
       "- 位置: src/a.ts",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --start",
       "- 参考: ",
       "- 位置: ",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --end",
       "- 描述: 任务描述",
     ].join("\n")
 
     const cleaned = stripEmptyTemplateItems(input, true)
     expect(cleaned).toBe(
-      ["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++ suppleTemplate", "- 描述: 任务描述"].join("\n"),
+      ["- 位置: src/a.ts", "+++ suppleTemplate --start", "- 参考: ", "- 位置: ", "+++ suppleTemplate --end", "- 描述: 任务描述"].join("\n"),
     )
   })
 
   it("stripMarkdownSuppleBlocks 移除全部 +++ 补充块及其内容", () => {
     const input = [
       "- 位置: src/a.ts",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --start",
       "- 补充内容 1",
       "- 补充内容 2",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --end",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -183,10 +183,10 @@ describe("markdownRenderer", () => {
   it("stripMarkdownLogBlocks 移除全部 +++ log 块及其内容", () => {
     const input = [
       "- 位置: src/a.ts",
-      "+++ logTemplate",
+      "+++ logTemplate --start",
       "- 运行日志 1",
       "- 运行日志 2",
-      "+++ logTemplate",
+      "+++ logTemplate --end",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -198,12 +198,12 @@ describe("markdownRenderer", () => {
   it("渲染模板块时复制数据剔除内部 +++ 补充块与日志块内容", () => {
     const content = [
       "- 位置: src/a.ts",
-      "+++ suppleTemplate",
+      "+++ suppleTemplate --start",
       "- 补充项: 内部信息",
-      "+++ suppleTemplate",
-      "+++ logTemplate",
+      "+++ suppleTemplate --end",
+      "+++ logTemplate --start",
       "- 日志项: 排查记录",
-      "+++ logTemplate",
+      "+++ logTemplate --end",
       "- 描述: 任务描述",
     ].join("\n")
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)
