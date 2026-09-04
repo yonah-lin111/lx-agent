@@ -1,5 +1,10 @@
 import type { LucideIcon } from "lucide-react"
 import { Code, Heading, List, ListOrdered, ListTodo, Quote, Table2 } from "lucide-react"
+import { stripMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
+import {
+  stripEmptyTemplateItems,
+  stripMarkdownTemplateComments,
+} from "@/features/markdown/utils/markdownRenderer"
 
 // 模板块源码状态：未完成 / 进行中 / 已完成。
 export type MarkdownTemplateStatus = "todo" | "in_progress" | "done"
@@ -428,7 +433,10 @@ export const getMarkdownTemplateBlockCopyText = (text: string, position: number)
   }
 
   // 辅助函数：处理父级（无论是 template 还是 supple）复制内容
-  // 规则：移除子 supple 块，保留子 log 块内容（移除 +++ 标记行）
+  // 规则：
+  // 1. 移除子 supple 块；
+  // 2. 保留子 log 块内容（移除 +++ 标记行）；
+  // 3. 移除未填写的空 item、注释行及斜杠命令（与右上角复制按钮逻辑保持一致）。
   const formatBlockContent = (bodyLines: string[]): string => {
     const kept: string[] = []
     let inChildSupple = false
@@ -451,7 +459,9 @@ export const getMarkdownTemplateBlockCopyText = (text: string, position: number)
       kept.push(l)
     }
 
-    return kept.join("\n")
+    return stripEmptyTemplateItems(
+      stripMarkdownTemplateComments(stripMarkdownSlashCommands(kept.join("\n"))),
+    )
   }
 
   // 检查光标落入哪个最内层的块

@@ -450,6 +450,21 @@ describe("模板块工作区绑定 {wt:}", () => {
       expect(getMarkdownTemplateBlockCopyText(doc, 2)).toBeNull()
     })
 
+    it("复制时排查未填写的空 item 与注释行（同右上角复制逻辑）", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "- 需求: 任务 1",
+        "- 参考: ",
+        "- 目标: ",
+        "// 这是注释行",
+        "- 描述: 详细说明",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 需求: 任务 1")
+      expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBe("- 需求: 任务 1\n- 描述: 详细说明")
+    })
+
     it("顶层孤独的 logTemplate（无父模版块）不能单独复制，返回 null", () => {
       const doc = ["+++ logTemplate --start", "- 独立日志", "+++ logTemplate --end"].join("\n")
 
