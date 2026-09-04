@@ -439,9 +439,10 @@ export const SkillSettings = (): React.JSX.Element => {
           ) : (
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
               {/* 详情头部 */}
-              <div className="settings-skill-detail-header flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
+              <div className="settings-skill-detail-header flex shrink-0 flex-col gap-2 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
+                {/* 顶部标题行与启用状态 */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--color-theme-text,#ffffff)]">
                       {selectedSkill.displayName || selectedSkill.name}
                     </h3>
@@ -470,47 +471,51 @@ export const SkillSettings = (): React.JSX.Element => {
                     ) : null}
                   </div>
 
-                  <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] leading-relaxed">
-                    {selectedSkill.description}
-                  </p>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-                      {t("settings.skillsFilePath")}:
+                  <label className="flex items-center gap-2 shrink-0 cursor-pointer">
+                    <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                      {disabledSkills.includes(selectedSkill.name)
+                        ? t("common.disabled")
+                        : t("common.enabled")}
                     </span>
-                    <span className="font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
-                      {selectedSkill.filePath}
-                    </span>
-                    <LxTooltip
-                      content={copiedPath ? t("common.copied") : t("common.copy")}
-                      placement="top"
-                    >
-                      <LxIconButton
-                        size="small"
-                        aria-label={t("common.copy")}
-                        onClick={() => handleCopyPath(selectedSkill.filePath)}
-                      >
-                        {copiedPath ? (
-                          <Check className="h-3 w-3 text-emerald-400" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </LxIconButton>
-                    </LxTooltip>
-                  </div>
+                    <LxCheckbox
+                      checked={!disabledSkills.includes(selectedSkill.name)}
+                      onChange={(checked) => void handleToggleDisabled(selectedSkill.name, checked)}
+                    />
+                  </label>
                 </div>
 
-                <label className="flex items-center gap-2 shrink-0 cursor-pointer">
-                  <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-                    {disabledSkills.includes(selectedSkill.name)
-                      ? t("common.disabled")
-                      : t("common.enabled")}
+                {/* 描述内容：占满卡片宽度并限制最大高度可滚动 */}
+                {selectedSkill.description ? (
+                  <div className="custom-scrollbar max-h-24 overflow-y-auto pr-1 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] leading-relaxed">
+                    {selectedSkill.description}
+                  </div>
+                ) : null}
+
+                {/* 路径与复制 */}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] shrink-0">
+                    {t("settings.skillsFilePath")}:
                   </span>
-                  <LxCheckbox
-                    checked={!disabledSkills.includes(selectedSkill.name)}
-                    onChange={(checked) => void handleToggleDisabled(selectedSkill.name, checked)}
-                  />
-                </label>
+                  <span className="font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
+                    {selectedSkill.filePath}
+                  </span>
+                  <LxTooltip
+                    content={copiedPath ? t("common.copied") : t("common.copy")}
+                    placement="top"
+                  >
+                    <LxIconButton
+                      size="small"
+                      aria-label={t("common.copy")}
+                      onClick={() => handleCopyPath(selectedSkill.filePath)}
+                    >
+                      {copiedPath ? (
+                        <Check className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </LxIconButton>
+                  </LxTooltip>
+                </div>
               </div>
 
               {/* 参考内容预览区 */}
