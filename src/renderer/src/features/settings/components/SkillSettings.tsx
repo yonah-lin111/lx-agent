@@ -21,8 +21,10 @@ import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useRecentItemsStore } from "@/features/project/recentItemsStore"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import {
   notifySettingsChanged,
@@ -46,27 +48,44 @@ export const SkillSettings = (): React.JSX.Element => {
   const [loadingContent, setLoadingContent] = useState(false)
   const [copiedPath, setCopiedPath] = useState(false)
 
-  // 1. 初始化拉取项目列表
+  // 1. 初始化拉取项目列表并解析默认选中的当前项目
   useEffect(() => {
-    projectApi
-      .listProjects()
-      .then((list) => {
+    void Promise.all([projectApi.listProjects(), projectApi.list().catch(() => [])]).then(
+      ([list, items]) => {
         const fsProjects = list.filter((p) => Boolean(p.path && p.path.trim()))
         setProjects(fsProjects)
 
-        const currentBinding = sessionListStore.getCurrentSessionBinding()
-        if (currentBinding?.projectId) {
-          const found = fsProjects.find((p) => p.id === currentBinding.projectId)
-          if (found) {
-            setSelectedProjectId(found.id)
-            return
+        // 优先级 1：当前活跃 Tab 绑定的项目（草稿或会话）
+        const activeTab = agentTabStore.getActiveTab()
+        let candidateId = activeTab?.draftBinding?.projectId
+        if (!candidateId && activeTab?.sessionId) {
+          const session = sessionListStore.getSessions().find((s) => s.id === activeTab.sessionId)
+          candidateId = session?.projectId
+        }
+        if (!candidateId) {
+          candidateId = sessionListStore.getCurrentSessionBinding()?.projectId
+        }
+
+        // 优先级 2：最近访问的项目条目所属项目
+        if (!candidateId) {
+          const recentIds = useRecentItemsStore.getState().ids
+          for (const id of recentIds) {
+            const item = items.find((it) => it.id === id)
+            if (item?.projectId) {
+              candidateId = item.projectId
+              break
+            }
           }
         }
-        if (fsProjects.length > 0) {
-          setSelectedProjectId(fsProjects[0].id)
+
+        // 命中有效项目则选中，否则默认全部项目 ("")
+        if (candidateId && fsProjects.some((p) => p.id === candidateId)) {
+          setSelectedProjectId(candidateId)
+        } else {
+          setSelectedProjectId("")
         }
-      })
-      .catch(() => {})
+      },
+    )
   }, [])
 
   const currentProject = useMemo(
@@ -403,10 +422,6 @@ export const SkillSettings = (): React.JSX.Element => {
                         </LxTag>
                       ) : null}
                     </div>
-
-                    <p className="line-clamp-2 text-[11px] leading-tight text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]">
-                      {skill.shortDescription || skill.description}
-                    </p>
                   </div>
                 )
               })
