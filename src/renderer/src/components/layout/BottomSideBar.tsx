@@ -81,6 +81,10 @@ export const BottomSideBar = ({
   }
 
   const handleResizeMove = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (event.buttons !== 1) {
+      handleResizeEnd(event)
+      return
+    }
     const start = resizeStartRef.current
     if (!start) return
     const next = start.startHeight + (start.startY - event.clientY) / (window.innerHeight / 100)
@@ -90,7 +94,9 @@ export const BottomSideBar = ({
   const handleResizeEnd = (event: React.PointerEvent<HTMLDivElement>): void => {
     resizeStartRef.current = null
     setIsResizing(false)
-    event.currentTarget.releasePointerCapture(event.pointerId)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
   }
 
   // 拖拽期间禁用文本选中，避免误选内容。
