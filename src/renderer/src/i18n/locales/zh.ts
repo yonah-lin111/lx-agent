@@ -708,6 +708,7 @@ export const zh: TranslationDictionary = {
     editSessionTitle: "编辑会话标题",
     selectProjectPlaceholder: "请选择项目",
     slashCommands: "Slash 命令",
+    skillMention: "Skill 技能清单",
     fileMention: "项目文件提及",
     modelSelect: "模型选择",
     commandClearDesc: "清空当前对话",

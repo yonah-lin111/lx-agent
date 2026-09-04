@@ -11,7 +11,7 @@ import { EditorState, Prec } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 import { GFM } from "@lezer/markdown"
-import type { PromptTemplateItem } from "@shared/contracts/agent"
+import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import React, {
   useCallback,
@@ -49,6 +49,8 @@ import {
   AgentInputFilePanel,
   type AgentInputModel,
   AgentInputModelPanel,
+  type AgentMentionItem,
+  AgentSkillMentionPanel,
   AgentUndoConfirmPanel,
   getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
@@ -183,7 +185,7 @@ const getArgumentSelectionRange = (
   if (startBracket !== -1) {
     const endBracket = insertText.indexOf("]", startBracket)
     if (endBracket !== -1 && endBracket > startBracket + 1) {
-      return { anchor: startBracket + 1, head: endBracket }
+      return { anchor: startBracket, head: endBracket + 1 }
     }
   }
   return { anchor: commandNameLength + 1, head: insertText.length }
@@ -195,6 +197,18 @@ const getMentionQuery = (
 ): { start: number; query: string } | null => {
   const beforeCursor = value.slice(0, cursor)
   const start = beforeCursor.lastIndexOf("@")
+  if (start < 0 || (start > 0 && !/\s/.test(beforeCursor[start - 1] ?? ""))) return null
+  const query = value.slice(start + 1, cursor)
+  if (/[\s\n]/.test(query)) return null
+  return { start, query }
+}
+
+const getSkillMentionQuery = (
+  value: string,
+  cursor: number,
+): { start: number; query: string } | null => {
+  const beforeCursor = value.slice(0, cursor)
+  const start = beforeCursor.lastIndexOf("$")
   if (start < 0 || (start > 0 && !/\s/.test(beforeCursor[start - 1] ?? ""))) return null
   const query = value.slice(start + 1, cursor)
   if (/[\s\n]/.test(query)) return null
@@ -609,7 +623,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     isOnlyOneTurnLeftRef.current = isOnlyOneTurnLeft
 
     const [activeMode, setActiveMode] = useState<
-      "command" | "file" | "model" | "worktree" | "undo_confirm" | null
+      "command" | "file" | "model" | "worktree" | "undo_confirm" | "skill" | null
     >(null)
     const [undoConfirmIndex, setUndoConfirmIndex] = useState(0)
     const undoConfirmIndexRef = useRef(undoConfirmIndex)
@@ -618,7 +632,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const [fileIndex, setFileIndex] = useState(0)
     const [modelIndex, setModelIndex] = useState(0)
     const [worktreeIndex, setWorktreeIndex] = useState(0)
+    const [skillIndex, setSkillIndex] = useState(0)
+    const skillIndexRef = useRef(skillIndex)
+    skillIndexRef.current = skillIndex
     const [files, setFiles] = useState<ProjectFileEntry[]>([])
+    const [skills, setSkills] = useState<SkillItem[]>([])
     const [pastePanel, setPastePanel] = useState<{
       from: number
       insertion: string
@@ -819,10 +837,78 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const matchedWorktreesRef = useRef(matchedWorktrees)
     matchedWorktreesRef.current = matchedWorktrees
 
+    useEffect(() => {
+      let active = true
+      void agentApi
+        .listSkills(currentPath)
+        .then((data) => {
+          if (active) setSkills(data)
+        })
+        .catch(() => {
+          if (active) setSkills([])
+        })
+      return () => {
+        active = false
+      }
+    }, [currentPath])
+
+    const matchedSkills = useMemo(() => {
+      if (activeMode !== "skill") return []
+      const view = editorViewRef.current
+      const cursor = view?.state.selection.main.head ?? value.length
+      const mention = getSkillMentionQuery(value, cursor)
+      if (!mention) return []
+      const q = mention.query.toLowerCase()
+      if (!q) return skills
+      return skills.filter(
+        (s) =>
+          isFuzzyMatch(q, s.name.toLowerCase()) ||
+          (s.displayName && isFuzzyMatch(q, s.displayName.toLowerCase())) ||
+          (s.shortDescription && isFuzzyMatch(q, s.shortDescription.toLowerCase())) ||
+          isFuzzyMatch(q, s.description.toLowerCase()),
+      )
+    }, [activeMode, value, skills])
+    const matchedSkillsRef = useRef(matchedSkills)
+    matchedSkillsRef.current = matchedSkills
+
+    const matchedMentionSkills = useMemo(() => {
+      if (activeMode !== "file") return []
+      const view = editorViewRef.current
+      const cursor = view?.state.selection.main.head ?? value.length
+      const mention = getMentionQuery(value, cursor)
+      if (!mention) return []
+      const q = mention.query.toLowerCase()
+      if (!q) return skills
+      return skills.filter(
+        (s) =>
+          isFuzzyMatch(q, s.name.toLowerCase()) ||
+          (s.displayName && isFuzzyMatch(q, s.displayName.toLowerCase())) ||
+          (s.shortDescription && isFuzzyMatch(q, s.shortDescription.toLowerCase())) ||
+          isFuzzyMatch(q, s.description.toLowerCase()),
+      )
+    }, [activeMode, value, skills])
+
+    const mentionItems = useMemo<AgentMentionItem[]>(() => {
+      if (activeMode !== "file") return []
+      const skillItems: AgentMentionItem[] = matchedMentionSkills.map((skill) => ({
+        kind: "skill",
+        skill,
+      }))
+      const fileItems: AgentMentionItem[] = files.map((file) => ({
+        kind: "file",
+        file,
+      }))
+      return [...skillItems, ...fileItems]
+    }, [activeMode, matchedMentionSkills, files])
+
+    const mentionItemsRef = useRef(mentionItems)
+    mentionItemsRef.current = mentionItems
+
     const isCommandMode = activeMode === "command" && matchedCommands.length > 0
-    const isFileMode = activeMode === "file" && files.length > 0
+    const isFileMode = activeMode === "file" && mentionItems.length > 0
     const isModelMode = activeMode === "model" && matchedModels.length > 0
     const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
+    const isSkillMode = activeMode === "skill" && matchedSkills.length > 0
     const isUndoConfirmMode = activeMode === "undo_confirm"
 
     // 计算底部面板相对于输入框容器的位置
@@ -834,7 +920,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       }
       const kind: "command" | "file" | null = isFileMode
         ? "file"
-        : isCommandMode || isModelMode || isWorktreeMode || isUndoConfirmMode
+        : isCommandMode || isModelMode || isWorktreeMode || isUndoConfirmMode || isSkillMode
           ? "command"
           : null
       if (!kind) {
@@ -842,7 +928,15 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         return
       }
       setPanelPosition(getAgentPanelPosition(kind, anchor.getBoundingClientRect()))
-    }, [isCommandMode, isFileMode, isModelMode, isWorktreeMode, isUndoConfirmMode, getPanelAnchor])
+    }, [
+      isCommandMode,
+      isFileMode,
+      isModelMode,
+      isWorktreeMode,
+      isSkillMode,
+      isUndoConfirmMode,
+      getPanelAnchor,
+    ])
 
     useEffect(() => {
       updatePanelPosition()
@@ -909,9 +1003,19 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           return
         }
 
-        // 2. @ 文件提及
+        // 2. $ Skill 提及
+        const skillMention = getSkillMentionQuery(docText, cursor)
+        if (skillMention) {
+          setActiveMode("skill")
+          setSkillIndex(0)
+          setFiles([])
+          setBlockCommands([])
+          return
+        }
+
+        // 3. @ 文件与 Skill 综合提及
         const mention = getMentionQuery(docText, cursor)
-        if (mention && (projectId || currentPath)) {
+        if (mention && (projectId || currentPath || skills.length > 0)) {
           setActiveMode("file")
           setFileIndex(0)
           setBlockCommands([])
@@ -1164,6 +1268,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         if (text.startsWith("/steer ") || text === "/steer") {
           delivery = "steer"
           text = text.slice(6).trim()
+          // 提取 [] 或 【】 内部文字，去掉占位括号
+          text = text.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
           if (!text) return
         }
 
@@ -1299,6 +1405,38 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       setActiveMode(null)
     }, [])
 
+    const selectSkill = useCallback((skill: SkillItem): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getSkillMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `$${skill.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    }, [])
+
+    const selectSkillFromMention = useCallback((skill: SkillItem): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `$${skill.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    }, [])
+
     const selectBlockCommand = useCallback((cmd: MarkdownBlockCommand): void => {
       const view = editorViewRef.current
       if (!view) return
@@ -1398,8 +1536,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     setWorktreeIndex((i) => (i + 1) % matchedWorktreesRef.current.length)
                     return true
                   }
-                  if (activeModeRef.current === "file" && filesRef.current.length > 0) {
-                    setFileIndex((i) => (i + 1) % filesRef.current.length)
+                  if (activeModeRef.current === "file" && mentionItemsRef.current.length > 0) {
+                    setFileIndex((i) => (i + 1) % mentionItemsRef.current.length)
+                    return true
+                  }
+                  if (activeModeRef.current === "skill" && matchedSkillsRef.current.length > 0) {
+                    setSkillIndex((i) => (i + 1) % matchedSkillsRef.current.length)
                     return true
                   }
                   if (blockCommandsRef.current.length > 0) {
@@ -1466,8 +1608,19 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     )
                     return true
                   }
-                  if (activeModeRef.current === "file" && filesRef.current.length > 0) {
-                    setFileIndex((i) => (i - 1 + filesRef.current.length) % filesRef.current.length)
+                  if (activeModeRef.current === "file" && mentionItemsRef.current.length > 0) {
+                    setFileIndex(
+                      (i) =>
+                        (i - 1 + mentionItemsRef.current.length) %
+                        mentionItemsRef.current.length,
+                    )
+                    return true
+                  }
+                  if (activeModeRef.current === "skill" && matchedSkillsRef.current.length > 0) {
+                    setSkillIndex(
+                      (i) =>
+                        (i - 1 + matchedSkillsRef.current.length) % matchedSkillsRef.current.length,
+                    )
                     return true
                   }
                   if (blockCommandsRef.current.length > 0) {
@@ -1592,9 +1745,23 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                     }
                   }
                   if (activeModeRef.current === "file") {
-                    const f = filesRef.current[fileIndexRef.current] ?? filesRef.current[0]
-                    if (f) {
-                      selectFile(f)
+                    const item =
+                      mentionItemsRef.current[fileIndexRef.current] ?? mentionItemsRef.current[0]
+                    if (item) {
+                      if (item.kind === "skill") {
+                        selectSkillFromMention(item.skill)
+                      } else {
+                        selectFile(item.file)
+                      }
+                      return true
+                    }
+                  }
+                  if (activeModeRef.current === "skill") {
+                    const skill =
+                      matchedSkillsRef.current[skillIndexRef.current] ??
+                      matchedSkillsRef.current[0]
+                    if (skill) {
+                      selectSkill(skill)
                       return true
                     }
                   }
@@ -1633,11 +1800,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
               {
                 key: "Backspace",
                 run: (view) => {
-                  if (activeModeRef.current === "file") return false
+                  if (activeModeRef.current === "file" || activeModeRef.current === "skill")
+                    return false
                   const cursor = view.state.selection.main
                   if (cursor.from !== cursor.to) return false
                   const text = view.state.doc.sliceString(0, cursor.from)
-                  const tokenMatch = /(^|\s)(@[^\s]+) $/.exec(text)
+                  const tokenMatch = /(^|\s)([@$][^\s]+) $/.exec(text)
                   if (tokenMatch) {
                     const start = cursor.from - tokenMatch[0].length + tokenMatch[1].length
                     view.dispatch({
@@ -1805,9 +1973,15 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         <AgentInputFilePanel
           isOpen={isFileMode}
           position={panelPosition}
-          files={files}
+          items={mentionItems}
           activeIndex={fileIndex}
           worktreeName={worktreeName}
+        />
+        <AgentSkillMentionPanel
+          isOpen={isSkillMode}
+          position={panelPosition}
+          skills={matchedSkills}
+          activeIndex={skillIndex}
         />
         <MarkdownBlockCommandMenu
           commands={blockCommands}

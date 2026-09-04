@@ -1,3 +1,4 @@
+import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
 import { FileText, Folder } from "lucide-react"
 import type React from "react"
@@ -35,13 +36,6 @@ interface AgentInputCommandPanelProps {
   isOpen: boolean
   position: CSSProperties | null
   commands: AgentInputCommand[]
-  activeIndex: number
-}
-
-interface AgentInputFilePanelProps {
-  isOpen: boolean
-  position: CSSProperties | null
-  files: ProjectFileEntry[]
   activeIndex: number
 }
 
@@ -432,29 +426,39 @@ export const AgentInputCommandPanel = ({
   )
 }
 
-interface AgentInputFilePanelProps {
+export type AgentMentionItem =
+  | {
+      kind: "skill"
+      skill: SkillItem
+    }
+  | {
+      kind: "file"
+      file: ProjectFileEntry
+    }
+
+export interface AgentInputFilePanelProps {
   isOpen: boolean
   position: CSSProperties | null
-  files: ProjectFileEntry[]
+  items: AgentMentionItem[]
   activeIndex: number
   worktreeName?: string
 }
 
 /**
- * 渲染 Agent 输入框的项目文件提及面板。
+ * 渲染 Agent 输入框的项目文件与技能提及面板。
  */
 export const AgentInputFilePanel = ({
   isOpen,
   position,
-  files,
+  items,
   activeIndex,
   worktreeName,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && files.length > 0
+  const hasData = position !== null && items.length > 0
   const animated = usePanelAnimation(
     isOpen && hasData,
-    hasData ? { position, files, activeIndex, worktreeName } : null,
+    hasData ? { position, items, activeIndex, worktreeName } : null,
   )
   const panelRef = useActiveItemScrollIntoView(
     isOpen,
@@ -465,7 +469,7 @@ export const AgentInputFilePanel = ({
 
   const {
     position: displayPosition,
-    files: displayFiles,
+    items: displayItems,
     activeIndex: displayIndex,
     worktreeName: displayWorktreeName,
   } = animated.displayData
@@ -480,18 +484,65 @@ export const AgentInputFilePanel = ({
       role="listbox"
       style={displayPosition}
     >
-      {displayFiles.map((file, index) => {
+      {displayItems.map((item, index) => {
+        const isActive = index === displayIndex
+
+        if (item.kind === "skill") {
+          const { skill } = item
+          const description = skill.shortDescription || skill.description
+
+          return (
+            <div
+              key={`skill-${skill.name}`}
+              role="option"
+              data-index={index}
+              aria-selected={isActive}
+              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75"
+              }`}
+            >
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[12px] font-bold text-[#c084fc]">
+                $
+              </span>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                  <span className="font-mono font-medium">${skill.name}</span>
+                  {skill.displayName && (
+                    <span className="text-[12px] font-normal text-white/35">
+                      ({skill.displayName})
+                    </span>
+                  )}
+                </span>
+                {description && (
+                  <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                    {description}
+                  </span>
+                )}
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <LxTag
+                  bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
+                  className="pointer-events-none shrink-0"
+                  size="small"
+                >
+                  Skill
+                </LxTag>
+              </div>
+            </div>
+          )
+        }
+
+        const { file } = item
         const normalizedPath = file.path.replace(/\/$/, "")
         const slashIndex = normalizedPath.lastIndexOf("/")
         const name = normalizedPath.slice(slashIndex + 1)
         const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
         const Icon = file.isDirectory ? Folder : FileText
-        const isActive = index === displayIndex
         const directoryTag = getMentionDirectoryTag(file.path)
 
         return (
           <div
-            key={file.path}
+            key={`file-${file.path}`}
             role="option"
             data-index={index}
             aria-selected={isActive}
@@ -530,6 +581,99 @@ export const AgentInputFilePanel = ({
                 <span className="block truncate text-[12px] text-white/40">{directory}</span>
               )}
             </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export interface AgentSkillMentionPanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  skills: SkillItem[]
+  activeIndex: number
+}
+
+/**
+ * 渲染 Agent 输入框的 Skill 提及面板（$ 触发）。
+ */
+export const AgentSkillMentionPanel = ({
+  isOpen,
+  position,
+  skills,
+  activeIndex,
+}: AgentSkillMentionPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const hasData = position !== null && skills.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, skills, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const {
+    position: displayPosition,
+    skills: displaySkills,
+    activeIndex: displayIndex,
+  } = animated.displayData
+
+  return (
+    <div
+      ref={panelRef}
+      aria-label={t("agent.skillMention")}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
+      role="listbox"
+      style={displayPosition}
+    >
+      {displaySkills.map((skill, index) => {
+        const isActive = index === displayIndex
+        const description = skill.shortDescription || skill.description
+
+        return (
+          <div
+            key={skill.name}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75"
+            }`}
+          >
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[13px] font-bold text-[#c084fc]">
+              $
+            </span>
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="font-mono font-medium">${skill.name}</span>
+                {skill.displayName && (
+                  <span className="text-[12px] font-normal text-white/35">
+                    ({skill.displayName})
+                  </span>
+                )}
+              </span>
+              {description && (
+                <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                  {description}
+                </span>
+              )}
+            </span>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              <LxTag
+                bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                Skill
+              </LxTag>
+            </div>
           </div>
         )
       })}

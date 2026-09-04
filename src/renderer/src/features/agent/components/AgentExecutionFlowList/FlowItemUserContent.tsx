@@ -1,7 +1,9 @@
 import type React from "react"
+import { useMemo } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
+import { cleanUserPrompt } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ExecutionUserContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -16,18 +18,20 @@ export const FlowItemUserContent = ({
 }: FlowItemUserContentProps): React.JSX.Element => {
   const { t } = useTranslation()
 
+  const cleanText = useMemo(
+    () =>
+      cleanUserPrompt(content.text, {
+        isSteer: content.isSteer,
+        command: content.command,
+      }),
+    [content.text, content.isSteer, content.command],
+  )
+
   return (
     <div className="agent-execution-flow-user-content flex flex-col gap-2">
-      {content.isSteer && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-mono text-sky-300">
-            {t("agent.steerMessage")}
-          </span>
-        </div>
-      )}
-      {content.text ? (
+      {cleanText ? (
         <LxMarkdownPreview
-          html={markdownRenderer.render(content.text)}
+          html={markdownRenderer.render(cleanText)}
           previewMode="preview"
           previewRef={previewRef}
           className="px-0"

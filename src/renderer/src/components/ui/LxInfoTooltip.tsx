@@ -30,6 +30,14 @@ export interface LxInfoTooltipProps {
    * 气泡内容最大高度（默认 "max-h-[min(70vh,460px)]"）
    */
   maxHeight?: string | number
+  /**
+   * 是否显示默认 Info 图标（默认 true；设为 false 时渲染 children 作为触发元素）
+   */
+  showIcon?: boolean
+  /**
+   * 自定义触发子元素
+   */
+  children?: React.ReactNode
 }
 
 /**
@@ -43,6 +51,8 @@ export const LxInfoTooltip = ({
   iconSize = 14,
   contentClassName = "",
   maxHeight,
+  showIcon = true,
+  children,
 }: LxInfoTooltipProps): React.JSX.Element => {
   const html = useMemo(() => markdownRenderer.render(markdown), [markdown])
 
@@ -76,13 +86,23 @@ export const LxInfoTooltip = ({
       closeOnScroll={false}
       closeOnOutsideClick={true}
     >
-      <span
-        tabIndex={0}
-        aria-label="Info"
-        className={`inline-flex shrink-0 cursor-help items-center justify-center text-white/40 transition-colors hover:text-white/80 focus:outline-none focus-visible:text-white/90 ${className}`}
-      >
-        <Info style={{ width: iconSize, height: iconSize }} />
-      </span>
+      {showIcon ? (
+        <span
+          tabIndex={0}
+          aria-label="Info"
+          className={`inline-flex shrink-0 cursor-help items-center justify-center text-white/40 transition-colors hover:text-white/80 focus:outline-none focus-visible:text-white/90 ${className}`}
+        >
+          <Info style={{ width: iconSize, height: iconSize }} />
+        </span>
+      ) : (
+        <span
+          tabIndex={0}
+          className={`inline-flex shrink-0 items-center justify-center cursor-help ${className}`.trim()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
+        </span>
+      )}
     </LxTooltip>
   )
 }

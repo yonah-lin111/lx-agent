@@ -719,4 +719,62 @@ describe("AgentMessageItem", () => {
     expect(modelBadge).not.toBeNull()
     expect(modelBadge?.textContent).toBe("gpt-4o")
   })
+
+  it("Skill 消息气泡剥离 <skill> 注入内容，且底部 Tag 仅显示 $skillName，无小圆点和 Skill 字样", () => {
+    const message: ChatMessage = {
+      id: "user-skill-1",
+      role: "user",
+      blocks: [
+        {
+          kind: "text",
+          text: '<skill name="grill-me" location="/path/to/SKILL.md">\nReferences are relative to /path.\n\n# Grill Me\nInstructions\n</skill>\n\n$grill-me 帮我审查代码',
+        },
+      ],
+      isStreaming: false,
+      command: {
+        name: "grill-me",
+        kind: "skill",
+      },
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    // 气泡中不显示 XML 注入块
+    expect(screen.queryByText(/<skill/)).toBeNull()
+    expect(screen.queryByText(/References are relative to/)).toBeNull()
+    // 仅显示用户实际文本
+    expect(screen.getByText("帮我审查代码")).not.toBeNull()
+
+    // 气泡应用 bg-skill-bubble 主题样式类
+    const bubble = document.querySelector('[data-user-bubble="true"]')
+    expect(bubble).not.toBeNull()
+    expect(bubble?.className).toContain("bg-skill-bubble")
+
+    // 底部标签仅显示 $grill-me，无小圆点和后面的 Skill
+    const tag = document.querySelector(".agent-message-command-tag")
+    expect(tag).not.toBeNull()
+    expect(tag?.textContent).toBe("$grill-me")
+    expect(tag?.textContent).not.toContain("·")
+    expect(tag?.textContent).not.toContain("Skill")
+  })
+
+  it("Steer 消息底部 Tag 仅显示 /steer，无小圆点和 Steer 字样", () => {
+    const message: ChatMessage = {
+      id: "user-steer-1",
+      role: "user",
+      blocks: [{ kind: "text", text: "/steer 注意这个边界条件" }],
+      isStreaming: false,
+      isSteer: true,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    expect(screen.getByText("注意这个边界条件")).not.toBeNull()
+
+    const tag = document.querySelector(".agent-message-command-tag")
+    expect(tag).not.toBeNull()
+    expect(tag?.textContent).toBe("/steer")
+    expect(tag?.textContent).not.toContain("·")
+    expect(tag?.textContent).not.toContain("Steer")
+  })
 })

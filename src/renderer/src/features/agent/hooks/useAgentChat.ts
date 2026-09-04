@@ -739,9 +739,12 @@ export const useAgentChat = (
   const sendMessage = useCallback(
     (contentToSend?: string, selection?: ModelSelection, options?: AgentSendOptions) => {
       let text = (contentToSend ?? inputText).trim()
-      // 即时插话（steer）：统一剥离 /steer 前缀，气泡与模型只看到内容、不出现命令。
-      if (options?.delivery === "steer" && text.startsWith("/steer")) {
-        text = text.slice(6).trim()
+      // 即时插话（steer）：统一剥离 /steer 前缀，气泡与模型只看到内容、不出现命令，并提取 [] 占位符内的文字。
+      if (options?.delivery === "steer" || text.startsWith("/steer ") || text === "/steer") {
+        if (text.startsWith("/steer")) {
+          text = text.slice(6).trim()
+        }
+        text = text.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
       }
       if (!text && selectedFiles.length > 0) {
         text = `[发送了 ${selectedFiles.length} 个附件]`
