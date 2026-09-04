@@ -531,6 +531,89 @@
   padding: 1px 6px !important;
 }
 
+[data-theme="minecraft"] .cm-md-supple-flag {
+  background-color: #081d29 !important;
+  color: #38bdf8 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-size: 11px !important;
+}
+
+/* 8.2 编辑区 logTemplate 日志块（海晶石暗青 3D 像素实体卡片） */
+[data-theme="minecraft"] .cm-md-log-start-line,
+[data-theme="minecraft"] .cm-md-log-middle-line,
+[data-theme="minecraft"] .cm-md-log-end-line {
+  background-color: #092623 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23092623'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%230d332f'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23061c1a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%230b2c29'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23103d38'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%230a2a26'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23124540'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%2307201d'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%230d322e'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%230f3a35'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23092623'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23144a44'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%2307201d'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23051715'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23113f39'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%230a2a26'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23124540'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23195750'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%231f6960'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23041210'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%231f6960'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23041210'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-start-line {
+  border: 2px solid #000000 !important;
+  border-bottom: 2px solid #0a2d29 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(45, 212, 191, 0.55),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px 0px #000000 !important;
+  color: #99f6e4 !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-middle-line {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(45, 212, 191, 0.4),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 0px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-end-line {
+  border: 2px solid #000000 !important;
+  border-top: none !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(45, 212, 191, 0.4),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-marker {
+  color: #2dd4bf !important;
+  font-weight: bold;
+  text-shadow: 2px 2px 0px #000000;
+}
+
+[data-theme="minecraft"] .cm-md-log-command {
+  background-color: #072e2a !important;
+  color: #5eead4 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-flag {
+  background-color: #05221f !important;
+  color: #2dd4bf !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-size: 11px !important;
+}
+
 /* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */
 [data-theme="minecraft"] .cm-editor .cm-md-file-mention,
 [data-theme="minecraft"] .cm-editor .cm-md-file-mention * {

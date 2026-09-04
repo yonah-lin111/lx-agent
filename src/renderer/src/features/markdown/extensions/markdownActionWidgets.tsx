@@ -37,20 +37,24 @@ export const MarkdownActionCopyButton = ({
   label,
   isTemplate = false,
   isSupple = false,
+  isLog = false,
 }: {
   text: string
   label?: string
   isTemplate?: boolean
   isSupple?: boolean
+  isLog?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const resetTimerRef = useRef<number | null>(null)
-  const defaultLabel = isSupple
-    ? t("markdown.copySupple")
-    : isTemplate
-      ? t("markdown.copyTemplate")
-      : t("markdown.copyCode")
+  const defaultLabel = isLog
+    ? t("markdown.copyLog")
+    : isSupple
+      ? t("markdown.copySupple")
+      : isTemplate
+        ? t("markdown.copyTemplate")
+        : t("markdown.copyCode")
   const copyLabel = label ?? defaultLabel
 
   useEffect(
@@ -95,16 +99,22 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
-// 清理按钮：点击后移除当前模板块/补充块中未填写的列表项。
+// 清理按钮：点击后移除当前模板块/补充块/日志块中未填写的列表项。
 export const MarkdownActionCleanButton = ({
   onClean,
   isSupple = false,
+  isLog = false,
 }: {
   onClean: () => void
   isSupple?: boolean
+  isLog?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const labelText = isSupple ? t("markdown.cleanSupple") : t("markdown.cleanTemplate")
+  const labelText = isLog
+    ? t("markdown.cleanLog")
+    : isSupple
+      ? t("markdown.cleanSupple")
+      : t("markdown.cleanTemplate")
 
   return (
     <LxTooltip content={labelText} placement="bottom">
@@ -124,19 +134,27 @@ export const MarkdownActionCleanButton = ({
   )
 }
 
-// 删除按钮：点击后弹出二次确认，确认后删除当前模板块/补充块。
+// 删除按钮：点击后弹出二次确认，确认后删除当前模板块/补充块/日志块。
 export const MarkdownActionDeleteButton = ({
   onDelete,
   isSupple = false,
+  isLog = false,
 }: {
   onDelete: () => void
   isSupple?: boolean
+  isLog?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const confirmText = isSupple
-    ? t("markdown.confirmDeleteSupple")
-    : t("markdown.confirmDeleteTemplate")
-  const labelText = isSupple ? t("markdown.deleteSupple") : t("markdown.deleteTemplate")
+  const confirmText = isLog
+    ? t("markdown.confirmDeleteLog")
+    : isSupple
+      ? t("markdown.confirmDeleteSupple")
+      : t("markdown.confirmDeleteTemplate")
+  const labelText = isLog
+    ? t("markdown.deleteLog")
+    : isSupple
+      ? t("markdown.deleteSupple")
+      : t("markdown.deleteTemplate")
 
   return (
     <LxTooltip content={confirmText} placement="bottom" onConfirm={onDelete}>
@@ -155,13 +173,14 @@ export const MarkdownActionDeleteButton = ({
   )
 }
 
-// 折叠按钮：切换代码块/模板块/补充块内容的折叠状态。
+// 折叠按钮：切换代码块/模板块/补充块/日志块内容的折叠状态。
 export const MarkdownActionFoldButton = ({
   isFolded,
   label,
   unfoldLabel,
   isTemplate = false,
   isSupple = false,
+  isLog = false,
   onToggle,
 }: {
   isFolded: boolean
@@ -169,19 +188,24 @@ export const MarkdownActionFoldButton = ({
   unfoldLabel?: string
   isTemplate?: boolean
   isSupple?: boolean
+  isLog?: boolean
   onToggle: () => void
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const defaultFold = isSupple
-    ? t("markdown.foldSupple")
-    : isTemplate
-      ? t("markdown.foldTemplate")
-      : t("markdown.foldCode")
-  const defaultUnfold = isSupple
-    ? t("markdown.unfoldSupple")
-    : isTemplate
-      ? t("markdown.unfoldTemplate")
-      : t("markdown.unfoldCode")
+  const defaultFold = isLog
+    ? t("markdown.foldLog")
+    : isSupple
+      ? t("markdown.foldSupple")
+      : isTemplate
+        ? t("markdown.foldTemplate")
+        : t("markdown.foldCode")
+  const defaultUnfold = isLog
+    ? t("markdown.unfoldLog")
+    : isSupple
+      ? t("markdown.unfoldSupple")
+      : isTemplate
+        ? t("markdown.unfoldTemplate")
+        : t("markdown.unfoldCode")
   const foldText = label ?? defaultFold
   const unfoldText = unfoldLabel ?? defaultUnfold
 

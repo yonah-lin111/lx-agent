@@ -11,6 +11,7 @@ export type MarkdownTemplateCommandId =
   | "commonTemplate"
   | "styleTemplate"
   | "suppleTemplate"
+  | "logTemplate"
 
 // Markdown 斜杠命令标识。
 export type MarkdownSlashCommandId =
@@ -118,6 +119,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const commonContent = dict.markdown.templateCommonContent
   const styleContent = dict.markdown.templateStyleContent
   const suppleContent = dict.markdown.templateSuppleContent
+  const logContent = dict.markdown.templateLogContent
 
   const templates: MarkdownSlashCommand[] = [
     {
@@ -184,6 +186,18 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: getTemplateCursorOffset(suppleContent),
   }
 
+  // 运行日志命令：仅在模板块内可用，直接替换当前行插入嵌套日志块。
+  const logTemplate: MarkdownSlashCommand = {
+    id: "logTemplate",
+    label: "/logTemplate",
+    description: dict.markdown.templateLogDesc,
+    scope: "template",
+    kind: "direct",
+    source: "builtin",
+    content: logContent,
+    cursorOffset: getTemplateCursorOffset(logContent),
+  }
+
   const sendPrompt: MarkdownSlashCommand = {
     id: "sendPrompt",
     label: "/sendPrompt",
@@ -217,7 +231,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: "/gitWorktree ".length,
   }
 
-  return [...templates, suppleTemplate, sendPrompt, summaryTitle, gitWorktree]
+  return [...templates, suppleTemplate, logTemplate, sendPrompt, summaryTitle, gitWorktree]
 }
 
 /**

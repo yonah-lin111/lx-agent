@@ -132,9 +132,9 @@ export const MARKDOWN_TEMPLATE_STATUS_SUFFIX: Record<
   in_progress: " in_progress",
 }
 
-// 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate 为状态/子块保留词，{id:/{wt: 为结束行元数据。
+// 模板块开始行：&&& command [「title: 标题」]；done/in_progress/supple/suppleTemplate/log/logTemplate 为状态/子块保留词，{id:/{wt: 为结束行元数据。
 const MARKDOWN_TEMPLATE_START_RE =
-  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b|\{id:|\{wt:)/
+  /^\s*&&&\s+(?!done\b|in_progress\b|supple\b|suppleTemplate\b|log\b|logTemplate\b|\{id:|\{wt:)/
 
 // 模板块 id：uuid 去连字符后的 32 位小写十六进制，源码格式 {id:xxxxxxxx...}。
 const MARKDOWN_TEMPLATE_ID_RE = /\{id:([0-9a-f]{32})\}/
@@ -157,11 +157,36 @@ const MARKDOWN_TEMPLATE_STATUS_CAPTURE_RE =
 // 模板块注释行：// 开头（允许前置缩进）。
 export const MARKDOWN_TEMPLATE_COMMENT_RE = /^\s*\/\//
 
-// supple 补充块开始行：+++ suppleTemplate 或 +++ supple（向下兼容）。
-export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)/
+// supple 补充块开始行：+++ suppleTemplate --start 或 +++ supple --start。
+export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--start\s*$/
 
-// supple 补充块结束行：+++ 独占一行。
-export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s*$/
+// log 补充块开始行：+++ logTemplate --start 或 +++ log --start。
+export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start\s*$/
+
+// supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end。
+export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end\s*$/
+
+// log 补充块结束行：+++ logTemplate --end 或 +++ log --end。
+export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--end\s*$/
+
+/**
+ * 判断指定文本末尾是否处于未闭合的 log 日志块内。
+ */
+export const isInsideMarkdownLogBlock = (text: string): boolean => {
+  let isOpen = false
+
+  for (const line of text.split("\n")) {
+    if (isOpen) {
+      if (MARKDOWN_LOG_END_RE.test(line)) {
+        isOpen = false
+      }
+    } else if (MARKDOWN_LOG_START_RE.test(line)) {
+      isOpen = true
+    }
+  }
+
+  return isOpen
+}
 
 /**
  * 判断指定文本末尾是否处于未闭合的 supple 补充块内。
@@ -170,8 +195,10 @@ export const isInsideMarkdownSuppleBlock = (text: string): boolean => {
   let isOpen = false
 
   for (const line of text.split("\n")) {
-    if (MARKDOWN_SUPPLE_END_RE.test(line)) {
-      isOpen = false
+    if (isOpen) {
+      if (MARKDOWN_SUPPLE_END_RE.test(line)) {
+        isOpen = false
+      }
     } else if (MARKDOWN_SUPPLE_START_RE.test(line)) {
       isOpen = true
     }
@@ -232,15 +259,25 @@ export const isMarkdownTemplateEndLine = (line: string): boolean =>
   MARKDOWN_TEMPLATE_END_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate 或 +++ supple）。
+ * 判断一行是否为 supple 补充块开始标记（+++ suppleTemplate --start 或 +++ supple --start）。
  */
 export const isMarkdownSuppleStartLine = (line: string): boolean =>
   MARKDOWN_SUPPLE_START_RE.test(line)
 
 /**
- * 判断一行是否为 supple 补充块结束标记（+++ 独占一行）。
+ * 判断一行是否为 supple 补充块结束标记（+++ suppleTemplate --end 或 +++ supple --end）。
  */
 export const isMarkdownSuppleEndLine = (line: string): boolean => MARKDOWN_SUPPLE_END_RE.test(line)
+
+/**
+ * 判断一行是否为 log 补充块开始标记（+++ logTemplate --start 或 +++ log --start）。
+ */
+export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_START_RE.test(line)
+
+/**
+ * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
+ */
+export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)
 
 /**
  * 提取文本中 position 所在模板块的正文（不含 &&& 标记行）；不在模板块内返回 null。

@@ -96,7 +96,7 @@ import type {
 import {
   markdownRenderer,
   stripEmptyTemplateItems,
-  stripMarkdownSuppleBlocks,
+  stripMarkdownSubblockFences,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
 import { dispatchTemplatePrompt } from "@/features/markdown/utils/markdownSendPromptDispatcher"
@@ -979,7 +979,7 @@ export const LxMarkdownEditor = ({
     const autoEnter = parsed?.flag === "-enter"
     const cleanedPrompt = stripEmptyTemplateItems(
       stripMarkdownTemplateComments(
-        stripMarkdownSlashCommands(stripMarkdownSuppleBlocks(blockContent)),
+        stripMarkdownSlashCommands(stripMarkdownSubblockFences(blockContent)),
       ),
     ).trim()
 
