@@ -531,6 +531,19 @@
   padding: 1px 6px !important;
 }
 
+[data-theme="minecraft"] .cm-md-supple-flag {
+  background-color: #081d29 !important;
+  color: #38bdf8 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-size: 11px !important;
+}
+
 /* 8.2 编辑区 logTemplate 日志块（海晶石暗青 3D 像素实体卡片） */
 [data-theme="minecraft"] .cm-md-log-start-line,
 [data-theme="minecraft"] .cm-md-log-middle-line,
@@ -586,6 +599,19 @@
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
     1px 1px 0px 0px #000000 !important;
   padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-md-log-flag {
+  background-color: #05221f !important;
+  color: #2dd4bf !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-size: 11px !important;
 }
 
 /* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */
