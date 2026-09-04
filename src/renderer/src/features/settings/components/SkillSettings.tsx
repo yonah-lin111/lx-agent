@@ -17,7 +17,6 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -45,8 +44,6 @@ export const SkillSettings = (): React.JSX.Element => {
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null)
   const [contentCache, setContentCache] = useState<Record<string, string>>({})
   const [loadingContent, setLoadingContent] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<SkillItem | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const [copiedPath, setCopiedPath] = useState(false)
 
   // 1. 初始化拉取项目列表
@@ -175,24 +172,21 @@ export const SkillSettings = (): React.JSX.Element => {
   }
 
   // 6. 物理删除（移入废纸篓）
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
+  const handleConfirmDelete = async (target: SkillItem) => {
     try {
-      const res = await settingsApi.deleteSkill(deleteTarget.filePath)
+      const res = await settingsApi.deleteSkill(target.filePath)
       if (res.success) {
-        toast.success(t("settings.skillsDeleteSuccess", { name: deleteTarget.name }))
-        setDeleteTarget(null)
-        if (selectedSkillName === deleteTarget.name) {
+        toast.success(t("settings.skillsDeleteSuccess", { name: target.name }))
+        if (selectedSkillName === target.name) {
           setSelectedSkillName(null)
         }
         setContentCache((prev) => {
           const next = { ...prev }
-          delete next[deleteTarget.name]
+          delete next[target.name]
           return next
         })
         // 同步清除已删除项的 disabled 状态
-        const nextDisabled = disabledSkills.filter((name) => name !== deleteTarget.name)
+        const nextDisabled = disabledSkills.filter((name) => name !== target.name)
         if (nextDisabled.length !== disabledSkills.length) {
           setDisabledSkills(nextDisabled)
           void settingsApi.saveSkillSettings({ disabled: nextDisabled })
@@ -205,8 +199,6 @@ export const SkillSettings = (): React.JSX.Element => {
     } catch (err) {
       console.error("[SkillSettings] Delete failed:", err)
       toast.error(t("settings.skillsDeleteFailed"))
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -357,15 +349,21 @@ export const SkillSettings = (): React.JSX.Element => {
                         </LxTooltip>
 
                         {skill.isGlobal ? (
-                          <LxIconButton
-                            size="small"
-                            aria-label={t("common.delete")}
-                            title={{ content: t("common.delete"), placement: "top" }}
-                            onClick={() => setDeleteTarget(skill)}
-                            className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
+                          <LxTooltip
+                            title={t("settings.skillsConfirmDeleteTitle")}
+                            content={t("settings.skillsConfirmDeleteContent", { name: skill.name })}
+                            placement="top"
+                            onConfirm={() => void handleConfirmDelete(skill)}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </LxIconButton>
+                            <LxIconButton
+                              size="small"
+                              aria-label={t("common.delete")}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </LxIconButton>
+                          </LxTooltip>
                         ) : (
                           <LxTooltip
                             content={t("settings.skillsCannotDeleteProject")}
@@ -532,41 +530,6 @@ export const SkillSettings = (): React.JSX.Element => {
           )}
         </div>
       </div>
-
-      {/* 删除确认 Modal */}
-      <LxModal
-        isOpen={deleteTarget !== null}
-        onClose={() => !deleting && setDeleteTarget(null)}
-        title={t("settings.skillsConfirmDeleteTitle")}
-        width="420px"
-      >
-        <div className="flex flex-col gap-3.5 p-1 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
-          <p>
-            {deleteTarget
-              ? t("settings.skillsConfirmDeleteContent", { name: deleteTarget.name })
-              : ""}
-          </p>
-          <div className="mt-2 flex items-center justify-end gap-2 border-t border-[var(--color-theme-border,rgba(255,255,255,0.1))] pt-3">
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={() => setDeleteTarget(null)}
-              className="rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.1))] px-3 py-1.5 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={handleConfirmDelete}
-              className="flex items-center gap-1 rounded-[6px] border border-rose-500/30 bg-rose-500/15 px-3.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {deleting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-              {t("common.delete")}
-            </button>
-          </div>
-        </div>
-      </LxModal>
     </div>
   )
 }
