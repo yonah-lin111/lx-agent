@@ -155,14 +155,13 @@ describe("markdownRenderer", () => {
       "+++ suppleTemplate",
       "- 参考: ",
       "- 位置: ",
-      "+++",
-      "- 要求: ",
-      "  - ",
+      "+++ suppleTemplate",
+      "- 描述: 任务描述",
     ].join("\n")
 
     const cleaned = stripEmptyTemplateItems(input, true)
     expect(cleaned).toBe(
-      ["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++"].join("\n"),
+      ["- 位置: src/a.ts", "+++ suppleTemplate", "- 参考: ", "- 位置: ", "+++ suppleTemplate", "- 描述: 任务描述"].join("\n"),
     )
   })
 
@@ -172,7 +171,7 @@ describe("markdownRenderer", () => {
       "+++ suppleTemplate",
       "- 补充内容 1",
       "- 补充内容 2",
-      "+++",
+      "+++ suppleTemplate",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -187,7 +186,7 @@ describe("markdownRenderer", () => {
       "+++ logTemplate",
       "- 运行日志 1",
       "- 运行日志 2",
-      "+++",
+      "+++ logTemplate",
       "- 要求: 具体要求",
     ].join("\n")
 
@@ -201,10 +200,10 @@ describe("markdownRenderer", () => {
       "- 位置: src/a.ts",
       "+++ suppleTemplate",
       "- 补充项: 内部信息",
-      "+++",
+      "+++ suppleTemplate",
       "+++ logTemplate",
       "- 日志项: 排查记录",
-      "+++",
+      "+++ logTemplate",
       "- 描述: 任务描述",
     ].join("\n")
     const html = markdownRenderer.render(`&&& addTemplate\n${content}\n&&&`)

@@ -197,14 +197,14 @@ export const stripMarkdownSuppleBlocks = (content: string): string => {
   let insideSupple = false
 
   for (const line of lines) {
-    if (MARKDOWN_SUPPLE_START_RE.test(line)) {
-      insideSupple = true
-      continue
-    }
     if (insideSupple) {
       if (MARKDOWN_SUPPLE_END_RE.test(line)) {
         insideSupple = false
       }
+      continue
+    }
+    if (MARKDOWN_SUPPLE_START_RE.test(line)) {
+      insideSupple = true
       continue
     }
     keptLines.push(line)
@@ -222,14 +222,14 @@ export const stripMarkdownLogBlocks = (content: string): string => {
   let insideLog = false
 
   for (const line of lines) {
-    if (MARKDOWN_LOG_START_RE.test(line)) {
-      insideLog = true
-      continue
-    }
     if (insideLog) {
       if (MARKDOWN_LOG_END_RE.test(line)) {
         insideLog = false
       }
+      continue
+    }
+    if (MARKDOWN_LOG_START_RE.test(line)) {
+      insideLog = true
       continue
     }
     keptLines.push(line)
@@ -309,7 +309,7 @@ const markdownSuppleBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^\+\+\+\s+(?:suppleTemplate|supple)\s*$/.exec(startText)
+  const startMatch = MARKDOWN_SUPPLE_START_RE.exec(startText)
   if (!startMatch) return false
 
   let closeLine = startLine + 1
@@ -318,7 +318,7 @@ const markdownSuppleBlock = (
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    if (/^\+\+\+\s*$/.test(lineText)) break
+    if (MARKDOWN_SUPPLE_END_RE.test(lineText)) break
     closeLine += 1
   }
   if (closeLine >= endLine) return false
@@ -350,7 +350,7 @@ const markdownLogBlock = (
     state.bMarks[startLine] + state.tShift[startLine],
     state.eMarks[startLine],
   )
-  const startMatch = /^\+\+\+\s+(?:logTemplate|log)\s*$/.exec(startText)
+  const startMatch = MARKDOWN_LOG_START_RE.exec(startText)
   if (!startMatch) return false
 
   let closeLine = startLine + 1
@@ -359,7 +359,7 @@ const markdownLogBlock = (
       state.bMarks[closeLine] + state.tShift[closeLine],
       state.eMarks[closeLine],
     )
-    if (/^\+\+\+\s*$/.test(lineText)) break
+    if (MARKDOWN_LOG_END_RE.test(lineText)) break
     closeLine += 1
   }
   if (closeLine >= endLine) return false

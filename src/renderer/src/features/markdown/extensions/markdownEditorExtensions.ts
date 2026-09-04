@@ -1361,6 +1361,17 @@ const buildMarkdownMarkerDecorations = (
       if (isInsideSuppleBlock && MARKDOWN_SUPPLE_END_RE.test(line)) {
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
+        const endCommandMatch = line.match(/\+\+\+\s+(suppleTemplate|supple)/)
+        if (endCommandMatch && endCommandMatch.index !== undefined) {
+          const commandStart = line.indexOf(endCommandMatch[1], markerStart + 3)
+          if (commandStart !== -1) {
+            addMarkerAlways(
+              commandStart,
+              commandStart + endCommandMatch[1].length,
+              "cm-md-supple-command",
+            )
+          }
+        }
         allDecos.push({
           type: "line",
           from: offset,
@@ -1443,6 +1454,13 @@ const buildMarkdownMarkerDecorations = (
       if (isInsideLogBlock && MARKDOWN_LOG_END_RE.test(line)) {
         const markerStart = line.indexOf("+++")
         addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
+        const endCommandMatch = line.match(/\+\+\+\s+(logTemplate|log)/)
+        if (endCommandMatch && endCommandMatch.index !== undefined) {
+          const commandStart = line.indexOf(endCommandMatch[1], markerStart + 3)
+          if (commandStart !== -1) {
+            addMarkerAlways(commandStart, commandStart + endCommandMatch[1].length, "cm-md-log-command")
+          }
+        }
         allDecos.push({
           type: "line",
           from: offset,

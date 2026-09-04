@@ -911,7 +911,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "- Notes: ",
       "  - ",
       "- Expectations: ",
-      "+++",
+      "+++ suppleTemplate",
     ].join("\n"),
     templateLogContent: [
       "+++ logTemplate",
@@ -922,7 +922,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "- Records: ",
       "  - ",
       "- Conclusion: ",
-      "+++",
+      "+++ logTemplate",
     ].join("\n"),
     templateAddContent: [
       "&&& addTemplate 「title: 」",

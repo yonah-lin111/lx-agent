@@ -896,7 +896,7 @@ export const zh: TranslationDictionary = {
       "- 注意: ",
       "  - ",
       "- 预期: ",
-      "+++",
+      "+++ suppleTemplate",
     ].join("\n"),
     templateLogContent: [
       "+++ logTemplate",
@@ -907,7 +907,7 @@ export const zh: TranslationDictionary = {
       "- 记录: ",
       "  - ",
       "- 结论: ",
-      "+++",
+      "+++ logTemplate",
     ].join("\n"),
     templateAddContent: [
       "&&& addTemplate 「title: 」",

@@ -506,6 +506,35 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
+/* 10.2 预览区 log 日志块：海晶石暗青 3D 像素立体卡片 */
+[data-theme="minecraft"] .markdown-preview .markdown-log-block {
+  margin: 1em 0 !important;
+  border: 2px solid #000000 !important;
+  background-color: #092623 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23092623'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%230d332f'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23061c1a'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%230b2c29'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23103d38'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%230a2a26'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23124540'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%2307201d'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%230d322e'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%230f3a35'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%23092623'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23144a44'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%2307201d'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23051715'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23113f39'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%230a2a26'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23124540'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23195750'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%231f6960'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%23041210'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%231f6960'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%23041210'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(45, 212, 191, 0.4),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.85),
+    4px 4px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-log-block-header {
+  border-bottom: 2px solid #000000 !important;
+  background-color: #072e2a !important;
+  border-radius: 0px !important;
+  padding: 4px 10px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25) !important;
+}
+
+[data-theme="minecraft"] .markdown-preview .markdown-log-label {
+  color: #99f6e4 !important;
+  font-weight: bold;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 /* 11. 文件引用标签与 Mention 胶囊：3D 像素立体胶囊 */
 [data-theme="minecraft"] .markdown-preview .markdown-reference {
   border: 2px solid #000000 !important;
