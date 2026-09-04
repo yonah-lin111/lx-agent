@@ -13,7 +13,6 @@ export * from "./components/PermissionSettings"
 export * from "./components/SkillSettings"
 export * from "./constants"
 
-export * from "./hooks/settingsDirtyStore"
 export * from "./hooks/useCliSettings"
 export * from "./hooks/usePermissionSettings"
 

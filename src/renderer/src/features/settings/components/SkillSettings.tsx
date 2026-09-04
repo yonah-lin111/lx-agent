@@ -17,17 +17,20 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
-import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useRecentItemsStore } from "@/features/project/recentItemsStore"
+import { settingsApi } from "@/features/settings/api/settingsApi"
+import {
+  notifySettingsChanged,
+  subscribeSettingsChanged,
+} from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
-import { settingsApi } from "../api/settingsApi"
-import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
-import { notifySettingsChanged, subscribeSettingsChanged } from "../settingsChangeNotifier"
 
 export const SkillSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -40,35 +43,49 @@ export const SkillSettings = (): React.JSX.Element => {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [disabledSkills, setDisabledSkills] = useState<string[]>([])
-  const [initialDisabled, setInitialDisabled] = useState<string[] | null>(null)
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null)
   const [contentCache, setContentCache] = useState<Record<string, string>>({})
   const [loadingContent, setLoadingContent] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<SkillItem | null>(null)
-  const [deleting, setDeleting] = useState(false)
   const [copiedPath, setCopiedPath] = useState(false)
 
-  // 1. 初始化拉取项目列表
+  // 1. 初始化拉取项目列表并解析默认选中的当前项目
   useEffect(() => {
-    projectApi
-      .listProjects()
-      .then((list) => {
+    void Promise.all([projectApi.listProjects(), projectApi.list().catch(() => [])]).then(
+      ([list, items]) => {
         const fsProjects = list.filter((p) => Boolean(p.path && p.path.trim()))
         setProjects(fsProjects)
 
-        const currentBinding = sessionListStore.getCurrentSessionBinding()
-        if (currentBinding?.projectId) {
-          const found = fsProjects.find((p) => p.id === currentBinding.projectId)
-          if (found) {
-            setSelectedProjectId(found.id)
-            return
+        // 优先级 1：当前活跃 Tab 绑定的项目（草稿或会话）
+        const activeTab = agentTabStore.getActiveTab()
+        let candidateId = activeTab?.draftBinding?.projectId
+        if (!candidateId && activeTab?.sessionId) {
+          const session = sessionListStore.getSessions().find((s) => s.id === activeTab.sessionId)
+          candidateId = session?.projectId
+        }
+        if (!candidateId) {
+          candidateId = sessionListStore.getCurrentSessionBinding()?.projectId
+        }
+
+        // 优先级 2：最近访问的项目条目所属项目
+        if (!candidateId) {
+          const recentIds = useRecentItemsStore.getState().ids
+          for (const id of recentIds) {
+            const item = items.find((it) => it.id === id)
+            if (item?.projectId) {
+              candidateId = item.projectId
+              break
+            }
           }
         }
-        if (fsProjects.length > 0) {
-          setSelectedProjectId(fsProjects[0].id)
+
+        // 命中有效项目则选中，否则默认全部项目 ("")
+        if (candidateId && fsProjects.some((p) => p.id === candidateId)) {
+          setSelectedProjectId(candidateId)
+        } else {
+          setSelectedProjectId("")
         }
-      })
-      .catch(() => {})
+      },
+    )
   }, [])
 
   const currentProject = useMemo(
@@ -92,11 +109,6 @@ export const SkillSettings = (): React.JSX.Element => {
 
         setSkills(skillList)
         setDisabledSkills(config.disabled)
-        setInitialDisabled([...config.disabled])
-
-        if (force) {
-          setContentCache({})
-        }
 
         // 默认选中首个 Skill
         if (skillList.length > 0) {
@@ -134,41 +146,6 @@ export const SkillSettings = (): React.JSX.Element => {
     })
   }, [loadData])
 
-  // 3. 脏检查与 DirtyStore 注册
-  const isDirty = useMemo(() => {
-    if (!initialDisabled) return false
-    const currentSorted = [...disabledSkills].sort()
-    const initialSorted = [...initialDisabled].sort()
-    if (currentSorted.length !== initialSorted.length) return true
-    return currentSorted.some((val, idx) => val !== initialSorted[idx])
-  }, [disabledSkills, initialDisabled])
-
-  useEffect(() => {
-    settingsDirtyStore.setSectionDirty("skills", isDirty)
-  }, [isDirty])
-
-  useEffect(() => {
-    const unregisterSave = settingsDirtyStore.registerSaveHandler("skills", async () => {
-      const saved = await settingsApi.saveSkillSettings({ disabled: disabledSkills })
-      setDisabledSkills(saved.disabled)
-      setInitialDisabled([...saved.disabled])
-      settingsDirtyStore.setSectionDirty("skills", false)
-      notifySettingsChanged("skills")
-    })
-
-    const unregisterReset = settingsDirtyStore.registerResetHandler("skills", () => {
-      if (initialDisabled) {
-        setDisabledSkills([...initialDisabled])
-      }
-      settingsDirtyStore.setSectionDirty("skills", false)
-    })
-
-    return () => {
-      unregisterSave()
-      unregisterReset()
-    }
-  }, [disabledSkills, initialDisabled])
-
   // 4. 获取当前选中的 Skill 对象及正文
   const selectedSkill = useMemo(
     () => skills.find((s) => s.name === selectedSkillName) ?? null,
@@ -195,41 +172,44 @@ export const SkillSettings = (): React.JSX.Element => {
       })
   }, [selectedSkill, effectiveCwd, contentCache])
 
-  // 5. 启用/禁用切换：仅暂存于内存草稿，由右上角保存统一持久化
-  const handleToggleDisabled = (skillName: string, enabled: boolean) => {
-    setDisabledSkills((prev) => {
-      if (enabled) {
-        return prev.filter((name) => name !== skillName)
-      }
-      if (!prev.includes(skillName)) {
-        return [...prev, skillName]
-      }
-      return prev
-    })
+  // 5. 启用/禁用切换：即时持久化并广播变更
+  const handleToggleDisabled = async (skillName: string, enabled: boolean) => {
+    const nextDisabled = enabled
+      ? disabledSkills.filter((name) => name !== skillName)
+      : disabledSkills.includes(skillName)
+        ? disabledSkills
+        : [...disabledSkills, skillName]
+    setDisabledSkills(nextDisabled)
+    try {
+      const saved = await settingsApi.saveSkillSettings({ disabled: nextDisabled })
+      setDisabledSkills(saved.disabled)
+      notifySettingsChanged("skills")
+    } catch {
+      setDisabledSkills(disabledSkills)
+      toast.error(t("settings.saveFailed"))
+    }
   }
 
   // 6. 物理删除（移入废纸篓）
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
+  const handleConfirmDelete = async (target: SkillItem) => {
     try {
-      const res = await settingsApi.deleteSkill(deleteTarget.filePath)
+      const res = await settingsApi.deleteSkill(target.filePath)
       if (res.success) {
-        toast.success(t("settings.skillsDeleteSuccess", { name: deleteTarget.name }))
-        setDeleteTarget(null)
-        if (selectedSkillName === deleteTarget.name) {
+        toast.success(t("settings.skillsDeleteSuccess", { name: target.name }))
+        if (selectedSkillName === target.name) {
           setSelectedSkillName(null)
         }
         setContentCache((prev) => {
           const next = { ...prev }
-          delete next[deleteTarget.name]
+          delete next[target.name]
           return next
         })
         // 同步清除已删除项的 disabled 状态
-        setDisabledSkills((prev) => prev.filter((name) => name !== deleteTarget.name))
-        setInitialDisabled((prev) =>
-          prev ? prev.filter((name) => name !== deleteTarget.name) : [],
-        )
+        const nextDisabled = disabledSkills.filter((name) => name !== target.name)
+        if (nextDisabled.length !== disabledSkills.length) {
+          setDisabledSkills(nextDisabled)
+          void settingsApi.saveSkillSettings({ disabled: nextDisabled })
+        }
         notifySettingsChanged("skills")
         await loadData()
       } else {
@@ -238,8 +218,6 @@ export const SkillSettings = (): React.JSX.Element => {
     } catch (err) {
       console.error("[SkillSettings] Delete failed:", err)
       toast.error(t("settings.skillsDeleteFailed"))
-    } finally {
-      setDeleting(false)
     }
   }
 
@@ -390,15 +368,21 @@ export const SkillSettings = (): React.JSX.Element => {
                         </LxTooltip>
 
                         {skill.isGlobal ? (
-                          <LxIconButton
-                            size="small"
-                            aria-label={t("common.delete")}
-                            title={{ content: t("common.delete"), placement: "top" }}
-                            onClick={() => setDeleteTarget(skill)}
-                            className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
+                          <LxTooltip
+                            title={t("settings.skillsConfirmDeleteTitle")}
+                            content={t("settings.skillsConfirmDeleteContent", { name: skill.name })}
+                            placement="top"
+                            onConfirm={() => void handleConfirmDelete(skill)}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </LxIconButton>
+                            <LxIconButton
+                              size="small"
+                              aria-label={t("common.delete")}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))] hover:text-rose-400"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </LxIconButton>
+                          </LxTooltip>
                         ) : (
                           <LxTooltip
                             content={t("settings.skillsCannotDeleteProject")}
@@ -438,10 +422,6 @@ export const SkillSettings = (): React.JSX.Element => {
                         </LxTag>
                       ) : null}
                     </div>
-
-                    <p className="line-clamp-2 text-[11px] leading-tight text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]">
-                      {skill.shortDescription || skill.description}
-                    </p>
                   </div>
                 )
               })
@@ -459,9 +439,10 @@ export const SkillSettings = (): React.JSX.Element => {
           ) : (
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
               {/* 详情头部 */}
-              <div className="settings-skill-detail-header flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
+              <div className="settings-skill-detail-header flex shrink-0 flex-col gap-2 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] p-4">
+                {/* 顶部标题行与启用状态 */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--color-theme-text,#ffffff)]">
                       {selectedSkill.displayName || selectedSkill.name}
                     </h3>
@@ -490,47 +471,51 @@ export const SkillSettings = (): React.JSX.Element => {
                     ) : null}
                   </div>
 
-                  <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] leading-relaxed">
-                    {selectedSkill.description}
-                  </p>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-                      {t("settings.skillsFilePath")}:
+                  <label className="flex items-center gap-2 shrink-0 cursor-pointer">
+                    <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                      {disabledSkills.includes(selectedSkill.name)
+                        ? t("common.disabled")
+                        : t("common.enabled")}
                     </span>
-                    <span className="font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
-                      {selectedSkill.filePath}
-                    </span>
-                    <LxTooltip
-                      content={copiedPath ? t("common.copied") : t("common.copy")}
-                      placement="top"
-                    >
-                      <LxIconButton
-                        size="small"
-                        aria-label={t("common.copy")}
-                        onClick={() => handleCopyPath(selectedSkill.filePath)}
-                      >
-                        {copiedPath ? (
-                          <Check className="h-3 w-3 text-emerald-400" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </LxIconButton>
-                    </LxTooltip>
-                  </div>
+                    <LxCheckbox
+                      checked={!disabledSkills.includes(selectedSkill.name)}
+                      onChange={(checked) => void handleToggleDisabled(selectedSkill.name, checked)}
+                    />
+                  </label>
                 </div>
 
-                <label className="flex items-center gap-2 shrink-0 cursor-pointer">
-                  <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-                    {disabledSkills.includes(selectedSkill.name)
-                      ? t("common.disabled")
-                      : t("common.enabled")}
+                {/* 描述内容：占满卡片宽度并限制最大高度可滚动 */}
+                {selectedSkill.description ? (
+                  <div className="custom-scrollbar max-h-24 overflow-y-auto pr-1 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] leading-relaxed">
+                    {selectedSkill.description}
+                  </div>
+                ) : null}
+
+                {/* 路径与复制 */}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] shrink-0">
+                    {t("settings.skillsFilePath")}:
                   </span>
-                  <LxCheckbox
-                    checked={!disabledSkills.includes(selectedSkill.name)}
-                    onChange={(checked) => void handleToggleDisabled(selectedSkill.name, checked)}
-                  />
-                </label>
+                  <span className="font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
+                    {selectedSkill.filePath}
+                  </span>
+                  <LxTooltip
+                    content={copiedPath ? t("common.copied") : t("common.copy")}
+                    placement="top"
+                  >
+                    <LxIconButton
+                      size="small"
+                      aria-label={t("common.copy")}
+                      onClick={() => handleCopyPath(selectedSkill.filePath)}
+                    >
+                      {copiedPath ? (
+                        <Check className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </LxIconButton>
+                  </LxTooltip>
+                </div>
               </div>
 
               {/* 参考内容预览区 */}
@@ -565,41 +550,6 @@ export const SkillSettings = (): React.JSX.Element => {
           )}
         </div>
       </div>
-
-      {/* 删除确认 Modal */}
-      <LxModal
-        isOpen={deleteTarget !== null}
-        onClose={() => !deleting && setDeleteTarget(null)}
-        title={t("settings.skillsConfirmDeleteTitle")}
-        width="420px"
-      >
-        <div className="flex flex-col gap-3.5 p-1 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
-          <p>
-            {deleteTarget
-              ? t("settings.skillsConfirmDeleteContent", { name: deleteTarget.name })
-              : ""}
-          </p>
-          <div className="mt-2 flex items-center justify-end gap-2 border-t border-[var(--color-theme-border,rgba(255,255,255,0.1))] pt-3">
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={() => setDeleteTarget(null)}
-              className="rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.1))] px-3 py-1.5 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={handleConfirmDelete}
-              className="flex items-center gap-1 rounded-[6px] border border-rose-500/30 bg-rose-500/15 px-3.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {deleting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-              {t("common.delete")}
-            </button>
-          </div>
-        </div>
-      </LxModal>
     </div>
   )
 }

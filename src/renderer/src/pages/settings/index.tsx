@@ -1,9 +1,8 @@
-import { AlertCircle, RotateCcw, Save } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { AlertCircle } from "lucide-react"
+import { useCallback, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   CliSettings,
   CustomCommandSettings,
@@ -17,7 +16,6 @@ import {
   SETTINGS_SECTIONS,
   SkillSettings,
   settingsApi,
-  settingsDirtyStore,
   usePermissionSettings,
   useSettingsData,
   useSettingsMutations,
@@ -43,142 +41,115 @@ export const SettingsPage = (): React.JSX.Element => {
   const [searchParams] = useSearchParams()
   const activeSection = searchParams.get("section") ?? SETTINGS_SECTIONS[0].id
   const { settings, setSettings, isLoading, error, setError } = useSettingsData()
-  const { isSaving, saveSettings } = useSettingsMutations()
+  const { saveSettings } = useSettingsMutations()
   const { permissionSettings, setPermissionSettings, permissionError } = usePermissionSettings()
-  const [lastSavedSettings, setLastSavedSettings] = useState<string | null>(null)
-  const [resetKey, setResetKey] = useState(0)
   const addProviderRef = useRef<(() => void) | null>(null)
   const toast = useLxToast()
   const { t } = useTranslation()
 
-  useEffect(() => {
-    if (settings && permissionSettings && lastSavedSettings === null) {
-      setLastSavedSettings(JSON.stringify({ models: settings, permissions: permissionSettings }))
-    }
-  }, [settings, permissionSettings, lastSavedSettings])
-
-  const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({})
+  // 记录磁盘已持久化快照，防止初始化加载时产生空写
+  const lastSavedSettingsRef = useRef<string | null>(null)
+  const lastSavedPermissionsRef = useRef<string | null>(null)
 
   useEffect(() => {
-    setDirtyMap(settingsDirtyStore.getDirtyState())
-    return settingsDirtyStore.subscribe(() => {
-      setDirtyMap({ ...settingsDirtyStore.getDirtyState() })
-    })
-  }, [])
-
-  const isModelsOrPermsDirty = useMemo(() => {
-    if (!settings || !permissionSettings || lastSavedSettings === null) return false
-    return (
-      JSON.stringify({ models: settings, permissions: permissionSettings }) !== lastSavedSettings
-    )
-  }, [settings, permissionSettings, lastSavedSettings])
+    if (settings && lastSavedSettingsRef.current === null) {
+      lastSavedSettingsRef.current = JSON.stringify(settings)
+    }
+  }, [settings])
 
   useEffect(() => {
-    settingsDirtyStore.setSectionDirty("models", isModelsOrPermsDirty)
-    settingsDirtyStore.setSectionDirty("providers", isModelsOrPermsDirty)
-    settingsDirtyStore.setSectionDirty("permissions", isModelsOrPermsDirty)
-  }, [isModelsOrPermsDirty])
+    if (permissionSettings && lastSavedPermissionsRef.current === null) {
+      lastSavedPermissionsRef.current = JSON.stringify(permissionSettings)
+    }
+  }, [permissionSettings])
 
-  const handleReset = (): void => {
-    // 1. 恢复 models / permissions 数据到 lastSavedSettings 快照
-    if (lastSavedSettings) {
-      try {
-        const parsed = JSON.parse(lastSavedSettings) as {
-          models: typeof settings
-          permissions: typeof permissionSettings
-        }
-        if (parsed.models) setSettings(JSON.parse(JSON.stringify(parsed.models)))
-        if (parsed.permissions)
-          setPermissionSettings(JSON.parse(JSON.stringify(parsed.permissions)))
-      } catch {
-        // ignore
-      }
-    }
-    // 2. 触发各分区注册的 reset 回调（例如 custom-commands 清空 draft）
-    settingsDirtyStore.resetAllSections()
-    settingsDirtyStore.setSectionDirty("custom-commands", false)
-    settingsDirtyStore.setSectionDirty("cli", false)
-    settingsDirtyStore.setSectionDirty("lsp", false)
-    settingsDirtyStore.setSectionDirty("mcp", false)
-    settingsDirtyStore.setSectionDirty("skills", false)
-    setResetKey((k) => k + 1)
-    setError("")
-    toast.success(t("settings.resetSuccess"))
-  }
+  // settings (models / providers) 防抖自动持久化
+  const settingsTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const currentSettingsRef = useRef(settings)
+  currentSettingsRef.current = settings
 
-  const isCurrentSectionDirty = useMemo(() => {
-    if (activeSection === "custom-commands") {
-      return Boolean(dirtyMap["custom-commands"])
+  const flushSettingsSave = useCallback(async () => {
+    if (settingsTimerRef.current) {
+      clearTimeout(settingsTimerRef.current)
+      settingsTimerRef.current = null
     }
-    if (activeSection === "cli") {
-      return Boolean(dirtyMap["cli"])
-    }
-    if (activeSection === "lsp") {
-      return Boolean(dirtyMap["lsp"])
-    }
-    if (activeSection === "mcp") {
-      return Boolean(dirtyMap["mcp"])
-    }
-    if (activeSection === "skills") {
-      return Boolean(dirtyMap["skills"])
-    }
-    return isModelsOrPermsDirty
-  }, [activeSection, dirtyMap, isModelsOrPermsDirty])
+    const current = currentSettingsRef.current
+    if (!current || lastSavedSettingsRef.current === null) return
+    const json = JSON.stringify(current)
+    if (json === lastSavedSettingsRef.current) return
 
-  const hasAnyDirty = useMemo(() => {
-    return isModelsOrPermsDirty || Object.values(dirtyMap).some(Boolean)
-  }, [isModelsOrPermsDirty, dirtyMap])
-
-  const isSaved = !isCurrentSectionDirty
-
-  const save = async (): Promise<void> => {
-    setError("")
     try {
-      if (activeSection === "custom-commands") {
-        await settingsDirtyStore.saveSection("custom-commands")
-        toast.success(t("settings.saveSuccess"))
-        return
-      }
-
-      if (activeSection === "cli") {
-        await settingsDirtyStore.saveSection("cli")
-        toast.success(t("settings.saveSuccess"))
-        return
-      }
-
-      if (activeSection === "lsp") {
-        await settingsDirtyStore.saveSection("lsp")
-        toast.success(t("settings.saveSuccess"))
-        return
-      }
-
-      if (activeSection === "mcp") {
-        await settingsDirtyStore.saveSection("mcp")
-        toast.success(t("settings.saveSuccess"))
-        return
-      }
-
-      if (activeSection === "skills") {
-        await settingsDirtyStore.saveSection("skills")
-        toast.success(t("settings.saveSuccess"))
-        return
-      }
-
-      if (!settings || !permissionSettings) return
-      const saved = await saveSettings(settings)
-      const savedPermission = await settingsApi.savePermissionSettings(permissionSettings)
-      setSettings(saved)
-      setPermissionSettings(savedPermission)
-      setLastSavedSettings(JSON.stringify({ models: saved, permissions: savedPermission }))
+      const saved = await saveSettings(current)
+      lastSavedSettingsRef.current = JSON.stringify(saved)
       notifySettingsChanged("models")
-      notifySettingsChanged("permissions")
-      toast.success(t("settings.saveSuccess"))
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : t("settings.saveFailed")
       setError(errorMessage)
-      toast.error(errorMessage)
     }
-  }
+  }, [saveSettings, setError, t])
+
+  useEffect(() => {
+    if (!settings || lastSavedSettingsRef.current === null) return
+    const json = JSON.stringify(settings)
+    if (json === lastSavedSettingsRef.current) return
+
+    if (settingsTimerRef.current) clearTimeout(settingsTimerRef.current)
+    settingsTimerRef.current = setTimeout(() => {
+      void flushSettingsSave()
+    }, 800)
+
+    return () => {
+      if (settingsTimerRef.current) clearTimeout(settingsTimerRef.current)
+    }
+  }, [settings, flushSettingsSave])
+
+  // permissionSettings 防抖自动持久化
+  const permissionsTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const currentPermissionsRef = useRef(permissionSettings)
+  currentPermissionsRef.current = permissionSettings
+
+  const flushPermissionsSave = useCallback(async () => {
+    if (permissionsTimerRef.current) {
+      clearTimeout(permissionsTimerRef.current)
+      permissionsTimerRef.current = null
+    }
+    const current = currentPermissionsRef.current
+    if (!current || lastSavedPermissionsRef.current === null) return
+    const json = JSON.stringify(current)
+    if (json === lastSavedPermissionsRef.current) return
+
+    try {
+      const saved = await settingsApi.savePermissionSettings(current)
+      lastSavedPermissionsRef.current = JSON.stringify(saved)
+      notifySettingsChanged("permissions")
+    } catch (saveError) {
+      const errorMessage = saveError instanceof Error ? saveError.message : t("settings.saveFailed")
+      setError(errorMessage)
+    }
+  }, [setError, t])
+
+  useEffect(() => {
+    if (!permissionSettings || lastSavedPermissionsRef.current === null) return
+    const json = JSON.stringify(permissionSettings)
+    if (json === lastSavedPermissionsRef.current) return
+
+    if (permissionsTimerRef.current) clearTimeout(permissionsTimerRef.current)
+    permissionsTimerRef.current = setTimeout(() => {
+      void flushPermissionsSave()
+    }, 800)
+
+    return () => {
+      if (permissionsTimerRef.current) clearTimeout(permissionsTimerRef.current)
+    }
+  }, [permissionSettings, flushPermissionsSave])
+
+  // 切换 Tab 或卸载时立即持久化未写入的更改
+  useEffect(() => {
+    return () => {
+      void flushSettingsSave()
+      void flushPermissionsSave()
+    }
+  }, [activeSection, flushSettingsSave, flushPermissionsSave])
 
   const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
   const currentDescription = descKey ? t(descKey) : ""
@@ -196,40 +167,6 @@ export const SettingsPage = (): React.JSX.Element => {
               onClick={() => addProviderRef.current?.()}
             />
           ) : null}
-          <LxIconButton
-            aria-label={t("settings.resetSettings")}
-            title={{
-              title: t("settings.confirmResetTitle"),
-              content: t("settings.confirmResetContent"),
-              placement: "bottom",
-              onConfirm: handleReset,
-            }}
-            disabled={!hasAnyDirty}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </LxIconButton>
-          <LxIconButton
-            preset="save"
-            aria-label={t("settings.saveSettings")}
-            title={{
-              title: t("settings.confirmSaveTitle"),
-              content: t("settings.confirmSaveContent"),
-              placement: "bottom",
-              onConfirm: () => void save(),
-            }}
-            disabled={isSaving || isSaved}
-          >
-            <Save className="h-4 w-4" />
-          </LxIconButton>
-          <LxTooltip content={isSaved ? t("common.saved") : t("common.unsaved")} placement="bottom">
-            <span
-              aria-label={isSaved ? t("common.saved") : t("common.unsaved")}
-              className={`ml-1.5 h-2 w-2 shrink-0 rounded-full ${
-                isSaved ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-              role="status"
-            />
-          </LxTooltip>
         </div>
       </div>
 
@@ -243,7 +180,7 @@ export const SettingsPage = (): React.JSX.Element => {
           <span>{error || t("settings.loadSettingsFailed")}</span>
         </div>
       ) : (
-        <div key={resetKey} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {error ? <p className="px-3 pt-2 text-xs text-rose-300">{error}</p> : null}
           {permissionError ? (
             <p className="px-3 pt-2 text-xs text-rose-300">{permissionError}</p>

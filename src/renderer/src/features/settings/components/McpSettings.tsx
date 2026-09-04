@@ -24,10 +24,9 @@ import { LxModal } from "@/components/ui/LxModal"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { settingsApi } from "@/features/settings/api/settingsApi"
+import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
-import { settingsApi } from "../api/settingsApi"
-import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
-import { notifySettingsChanged } from "../settingsChangeNotifier"
 
 interface EnvRow {
   key: string
@@ -42,7 +41,6 @@ export const McpSettings = (): React.JSX.Element => {
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mcpSettings, setMcpSettings] = useState<McpSettingsType>({ servers: {} })
-  const [initialSettings, setInitialSettings] = useState<McpSettingsType | null>(null)
   const [statuses, setStatuses] = useState<McpServerStatusItem[]>([])
   const [expandedToolsMap, setExpandedToolsMap] = useState<Record<string, boolean>>({})
 
@@ -58,6 +56,22 @@ export const McpSettings = (): React.JSX.Element => {
   const [formTimeout, setFormTimeout] = useState("30000")
   const [formError, setFormError] = useState("")
 
+  const persistMcpSettings = useCallback(
+    async (next: McpSettingsType) => {
+      try {
+        const saved = await settingsApi.saveMcpSettings(next)
+        setMcpSettings(saved)
+        notifySettingsChanged("mcp")
+        const statusRes = await window.api.agent.getMcpStatus()
+        setStatuses(statusRes)
+      } catch (err) {
+        console.error("[McpSettings] Failed to save settings:", err)
+        toast.error(t("settings.saveFailed"))
+      }
+    },
+    [t, toast],
+  )
+
   // 加载 MCP 配置与连接状态
   const loadData = useCallback(
     async (isManualRefresh = false) => {
@@ -71,7 +85,6 @@ export const McpSettings = (): React.JSX.Element => {
         ])
 
         setMcpSettings(settingsRes)
-        setInitialSettings(JSON.parse(JSON.stringify(settingsRes)))
         setStatuses(statusRes)
       } catch (err) {
         console.error("[McpSettings] Failed to load MCP data:", err)
@@ -87,41 +100,6 @@ export const McpSettings = (): React.JSX.Element => {
   useEffect(() => {
     void loadData(false)
   }, [loadData])
-
-  // 脏状态检查与注册
-  const isDirty = useMemo(() => {
-    if (!initialSettings) return false
-    return JSON.stringify(mcpSettings) !== JSON.stringify(initialSettings)
-  }, [mcpSettings, initialSettings])
-
-  useEffect(() => {
-    settingsDirtyStore.setSectionDirty("mcp", isDirty)
-  }, [isDirty])
-
-  useEffect(() => {
-    const unregisterSave = settingsDirtyStore.registerSaveHandler("mcp", async () => {
-      const saved = await settingsApi.saveMcpSettings(mcpSettings)
-      setMcpSettings(saved)
-      setInitialSettings(JSON.parse(JSON.stringify(saved)))
-      settingsDirtyStore.setSectionDirty("mcp", false)
-      notifySettingsChanged("mcp")
-      // 刷新连接状态
-      const statusRes = await window.api.agent.getMcpStatus()
-      setStatuses(statusRes)
-    })
-
-    const unregisterReset = settingsDirtyStore.registerResetHandler("mcp", () => {
-      if (initialSettings) {
-        setMcpSettings(JSON.parse(JSON.stringify(initialSettings)))
-      }
-      settingsDirtyStore.setSectionDirty("mcp", false)
-    })
-
-    return () => {
-      unregisterSave()
-      unregisterReset()
-    }
-  }, [mcpSettings, initialSettings])
 
   // 开启添加弹窗
   const handleOpenAdd = () => {
@@ -201,43 +179,43 @@ export const McpSettings = (): React.JSX.Element => {
       timeout,
     }
 
-    setMcpSettings((prev) => {
-      const nextServers = { ...prev.servers }
-      if (editingKey && editingKey !== trimmedName) {
-        delete nextServers[editingKey]
-      }
-      nextServers[trimmedName] = newConfig
-      return { servers: nextServers }
-    })
-
+    const nextServers = { ...mcpSettings.servers }
+    if (editingKey && editingKey !== trimmedName) {
+      delete nextServers[editingKey]
+    }
+    nextServers[trimmedName] = newConfig
+    const nextSettings: McpSettingsType = { servers: nextServers }
+    setMcpSettings(nextSettings)
     setModalOpen(false)
+    void persistMcpSettings(nextSettings)
+    toast.success(t("settings.saveSuccess"))
   }
 
   // 删除 Server
   const handleDeleteServer = (key: string) => {
-    setMcpSettings((prev) => {
-      const nextServers = { ...prev.servers }
-      delete nextServers[key]
-      return { servers: nextServers }
-    })
+    const nextServers = { ...mcpSettings.servers }
+    delete nextServers[key]
+    const nextSettings: McpSettingsType = { servers: nextServers }
+    setMcpSettings(nextSettings)
+    void persistMcpSettings(nextSettings)
     toast.success(t("settings.mcpDeleteSuccess", { name: key }))
   }
 
   // 切换禁用开关
   const handleToggleDisabled = (key: string, checked: boolean) => {
-    setMcpSettings((prev) => {
-      const target = prev.servers[key]
-      if (!target) return prev
-      return {
-        servers: {
-          ...prev.servers,
-          [key]: {
-            ...target,
-            disabled: !checked,
-          },
+    const target = mcpSettings.servers[key]
+    if (!target) return
+    const nextSettings: McpSettingsType = {
+      servers: {
+        ...mcpSettings.servers,
+        [key]: {
+          ...target,
+          disabled: !checked,
         },
-      }
-    })
+      },
+    }
+    setMcpSettings(nextSettings)
+    void persistMcpSettings(nextSettings)
   }
 
   // 重连全部
