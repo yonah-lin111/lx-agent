@@ -24,10 +24,12 @@ import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
+import { settingsApi } from "@/features/settings/api/settingsApi"
+import {
+  notifySettingsChanged,
+  subscribeSettingsChanged,
+} from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
-import { settingsApi } from "../api/settingsApi"
-import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
-import { notifySettingsChanged, subscribeSettingsChanged } from "../settingsChangeNotifier"
 
 export const SkillSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -40,7 +42,6 @@ export const SkillSettings = (): React.JSX.Element => {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [disabledSkills, setDisabledSkills] = useState<string[]>([])
-  const [initialDisabled, setInitialDisabled] = useState<string[] | null>(null)
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null)
   const [contentCache, setContentCache] = useState<Record<string, string>>({})
   const [loadingContent, setLoadingContent] = useState(false)
@@ -92,11 +93,6 @@ export const SkillSettings = (): React.JSX.Element => {
 
         setSkills(skillList)
         setDisabledSkills(config.disabled)
-        setInitialDisabled([...config.disabled])
-
-        if (force) {
-          setContentCache({})
-        }
 
         // 默认选中首个 Skill
         if (skillList.length > 0) {
@@ -134,41 +130,6 @@ export const SkillSettings = (): React.JSX.Element => {
     })
   }, [loadData])
 
-  // 3. 脏检查与 DirtyStore 注册
-  const isDirty = useMemo(() => {
-    if (!initialDisabled) return false
-    const currentSorted = [...disabledSkills].sort()
-    const initialSorted = [...initialDisabled].sort()
-    if (currentSorted.length !== initialSorted.length) return true
-    return currentSorted.some((val, idx) => val !== initialSorted[idx])
-  }, [disabledSkills, initialDisabled])
-
-  useEffect(() => {
-    settingsDirtyStore.setSectionDirty("skills", isDirty)
-  }, [isDirty])
-
-  useEffect(() => {
-    const unregisterSave = settingsDirtyStore.registerSaveHandler("skills", async () => {
-      const saved = await settingsApi.saveSkillSettings({ disabled: disabledSkills })
-      setDisabledSkills(saved.disabled)
-      setInitialDisabled([...saved.disabled])
-      settingsDirtyStore.setSectionDirty("skills", false)
-      notifySettingsChanged("skills")
-    })
-
-    const unregisterReset = settingsDirtyStore.registerResetHandler("skills", () => {
-      if (initialDisabled) {
-        setDisabledSkills([...initialDisabled])
-      }
-      settingsDirtyStore.setSectionDirty("skills", false)
-    })
-
-    return () => {
-      unregisterSave()
-      unregisterReset()
-    }
-  }, [disabledSkills, initialDisabled])
-
   // 4. 获取当前选中的 Skill 对象及正文
   const selectedSkill = useMemo(
     () => skills.find((s) => s.name === selectedSkillName) ?? null,
@@ -195,17 +156,22 @@ export const SkillSettings = (): React.JSX.Element => {
       })
   }, [selectedSkill, effectiveCwd, contentCache])
 
-  // 5. 启用/禁用切换：仅暂存于内存草稿，由右上角保存统一持久化
-  const handleToggleDisabled = (skillName: string, enabled: boolean) => {
-    setDisabledSkills((prev) => {
-      if (enabled) {
-        return prev.filter((name) => name !== skillName)
-      }
-      if (!prev.includes(skillName)) {
-        return [...prev, skillName]
-      }
-      return prev
-    })
+  // 5. 启用/禁用切换：即时持久化并广播变更
+  const handleToggleDisabled = async (skillName: string, enabled: boolean) => {
+    const nextDisabled = enabled
+      ? disabledSkills.filter((name) => name !== skillName)
+      : disabledSkills.includes(skillName)
+        ? disabledSkills
+        : [...disabledSkills, skillName]
+    setDisabledSkills(nextDisabled)
+    try {
+      const saved = await settingsApi.saveSkillSettings({ disabled: nextDisabled })
+      setDisabledSkills(saved.disabled)
+      notifySettingsChanged("skills")
+    } catch {
+      setDisabledSkills(disabledSkills)
+      toast.error(t("settings.saveFailed"))
+    }
   }
 
   // 6. 物理删除（移入废纸篓）
@@ -226,10 +192,11 @@ export const SkillSettings = (): React.JSX.Element => {
           return next
         })
         // 同步清除已删除项的 disabled 状态
-        setDisabledSkills((prev) => prev.filter((name) => name !== deleteTarget.name))
-        setInitialDisabled((prev) =>
-          prev ? prev.filter((name) => name !== deleteTarget.name) : [],
-        )
+        const nextDisabled = disabledSkills.filter((name) => name !== deleteTarget.name)
+        if (nextDisabled.length !== disabledSkills.length) {
+          setDisabledSkills(nextDisabled)
+          void settingsApi.saveSkillSettings({ disabled: nextDisabled })
+        }
         notifySettingsChanged("skills")
         await loadData()
       } else {

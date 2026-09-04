@@ -72,7 +72,6 @@ export const SettingsLeftSideBar = ({
               <Icon className="h-4 w-4 shrink-0" />
               <span className="truncate">{label}</span>
             </button>
-
           )
         })}
       </nav>

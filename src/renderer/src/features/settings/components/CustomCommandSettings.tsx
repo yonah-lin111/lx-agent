@@ -4,7 +4,7 @@ import type {
   CustomCommandType,
 } from "@shared/contracts/customCommand"
 import type { Project } from "@shared/project"
-import { Folder, Globe, Plus, Trash2 } from "lucide-react"
+import { Folder, Globe, Plus, Save, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
@@ -15,10 +15,9 @@ import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
+import { customCommandApi } from "@/features/settings/api/customCommandApi"
+import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
-import { customCommandApi } from "../api/customCommandApi"
-import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
-import { notifySettingsChanged } from "../settingsChangeNotifier"
 
 interface CustomCommandFormState {
   name: string
@@ -39,16 +38,6 @@ const DEFAULT_FORM: CustomCommandFormState = {
 const draftStore: Record<string, CustomCommandFormState> = {}
 const modifiedStore: Record<string, CustomCommandFormState> = {}
 
-// 模块级清空所有缓存函数注册到全局 settingsDirtyStore，确保无论在哪个 Tab 点击重置都能彻底清空
-settingsDirtyStore.registerClearCacheHandler(() => {
-  for (const key of Object.keys(draftStore)) {
-    delete draftStore[key]
-  }
-  for (const key of Object.keys(modifiedStore)) {
-    delete modifiedStore[key]
-  }
-})
-
 export const CustomCommandSettings = (): React.JSX.Element => {
   const { t } = useTranslation()
   const toast = useLxToast()
@@ -63,7 +52,6 @@ export const CustomCommandSettings = (): React.JSX.Element => {
   const [isEditingDraft, setIsEditingDraft] = useState(false)
   const [formData, setFormData] = useState<CustomCommandFormState>(DEFAULT_FORM)
   const [isLoading, setIsLoading] = useState(false)
-  const [resetRevision, setResetRevision] = useState(0)
 
   // 1. 初始化拉取项目列表（仅包含有效 filesystem path 的项目）
   useEffect(() => {
@@ -139,12 +127,12 @@ export const CustomCommandSettings = (): React.JSX.Element => {
 
   useEffect(() => {
     void loadCommands()
-  }, [loadCommands, resetRevision])
+  }, [loadCommands])
 
   // 3. 检查当前 context 下是否存在 draft
   useEffect(() => {
     setHasDraft(Boolean(draftStore[draftKey]))
-  }, [draftKey, resetRevision])
+  }, [draftKey])
 
   // 4. 当选择的命令变更时同步到表单
   useEffect(() => {
@@ -190,15 +178,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       setSelectedCommandName(null)
       setFormData(DEFAULT_FORM)
     }
-  }, [
-    commands,
-    selectedCommandName,
-    isEditingDraft,
-    hasDraft,
-    draftKey,
-    getCommandKey,
-    resetRevision,
-  ])
+  }, [commands, selectedCommandName, isEditingDraft, hasDraft, draftKey, getCommandKey])
 
   // 5. 脏数据判定 (Dirty State)
   const isDirty = useMemo(() => {
@@ -222,49 +202,21 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     )
   }, [isEditingDraft, selectedCommandName, commands, formData, activeTab])
 
-  // 全局是否有任何未保存的改动（包含其他分类下的 Draft 或已修改项）
-  const hasAnyCustomCommandDirty = useMemo(() => {
-    const hasAnyDraft = Object.values(draftStore).some((d) =>
-      Boolean(d.name.trim() || d.description.trim() || d.content.trimEnd()),
-    )
-    const hasAnyModified = Object.keys(modifiedStore).length > 0
-    return isDirty || hasDraft || hasAnyDraft || hasAnyModified
-  }, [isDirty, hasDraft])
+  const [isSaving, setIsSaving] = useState(false)
 
-  useEffect(() => {
-    settingsDirtyStore.setSectionDirty("custom-commands", hasAnyCustomCommandDirty)
-  }, [hasAnyCustomCommandDirty])
-
-  // 6. 保存与重置逻辑引用绑定
+  // 6. 保存逻辑引用绑定
   const handleSaveRef = useRef<() => Promise<void>>(async () => {})
-  const handleResetRef = useRef<() => void>(() => {})
 
-  handleResetRef.current = (): void => {
-    // 彻底清空所有内存草稿与已修改记录
-    for (const key of Object.keys(draftStore)) {
-      delete draftStore[key]
+  const handleSave = async (): Promise<void> => {
+    setIsSaving(true)
+    try {
+      await handleSaveRef.current()
+      toast.success(t("settings.customCommandSaveSuccess"))
+    } catch {
+      // toast already shown in handleSaveRef
+    } finally {
+      setIsSaving(false)
     }
-    for (const key of Object.keys(modifiedStore)) {
-      delete modifiedStore[key]
-    }
-    setHasDraft(false)
-    setIsEditingDraft(false)
-    setResetRevision((prev) => prev + 1)
-    if (commands.length > 0) {
-      const first = commands[0]
-      setSelectedCommandName(first.name)
-      setFormData({
-        name: first.name,
-        description: first.description,
-        content: first.content,
-        argumentHint: first.argumentHint || "",
-        mdScope: first.mdScope || "global",
-      })
-    } else {
-      setSelectedCommandName(null)
-      setFormData(DEFAULT_FORM)
-    }
-    settingsDirtyStore.setSectionDirty("custom-commands", false)
   }
 
   handleSaveRef.current = async (): Promise<void> => {
@@ -307,19 +259,6 @@ export const CustomCommandSettings = (): React.JSX.Element => {
     notifySettingsChanged("customCommands")
     await loadCommands(result.item.name)
   }
-
-  useEffect(() => {
-    const unregisterSave = settingsDirtyStore.registerSaveHandler("custom-commands", () =>
-      handleSaveRef.current(),
-    )
-    const unregisterReset = settingsDirtyStore.registerResetHandler("custom-commands", () =>
-      handleResetRef.current(),
-    )
-    return () => {
-      unregisterSave()
-      unregisterReset()
-    }
-  }, [])
 
   // 切换分类或作用域
   const handleTabChange = (val: string): void => {
@@ -631,7 +570,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
           </div>
         </div>
 
-        {/* 右侧表单编辑区（已移除组件内部保存按钮，统一由全局 Header 保存） */}
+        {/* 右侧表单编辑区 */}
         <div className="settings-item-card flex min-h-0 flex-1 flex-col rounded-[6px] border border-white/8 bg-white/[0.02] p-3 overflow-y-auto custom-scrollbar">
           {!selectedCommandName && !isEditingDraft && commands.length === 0 && !hasDraft ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-white/40">
@@ -660,6 +599,17 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     <span aria-label="Unsaved" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                   )}
                 </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isSaving || (!isDirty && !isEditingDraft)}
+                    className="inline-flex items-center gap-1.5 rounded-[6px] bg-white/10 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => void handleSave()}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    <span>{t("common.save")}</span>
+                  </button>
+                </div>
               </div>
 
               {/* 字段输入区 */}

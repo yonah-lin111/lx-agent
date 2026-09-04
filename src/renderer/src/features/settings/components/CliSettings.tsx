@@ -13,7 +13,7 @@ import {
   XCircle,
 } from "lucide-react"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
@@ -21,10 +21,9 @@ import { LxInput } from "@/components/ui/LxInput"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { settingsApi } from "@/features/settings/api/settingsApi"
+import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
-import { settingsApi } from "../api/settingsApi"
-import { settingsDirtyStore } from "../hooks/settingsDirtyStore"
-import { notifySettingsChanged } from "../settingsChangeNotifier"
 import { CliIcon } from "./CliIcon"
 
 export const CliSettings = (): React.JSX.Element => {
@@ -35,12 +34,52 @@ export const CliSettings = (): React.JSX.Element => {
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [cliSettings, setCliSettings] = useState<CliSettingsType>({ enabled: [], customPaths: {} })
-  const [initialSettings, setInitialSettings] = useState<CliSettingsType | null>(null)
   const [versions, setVersions] = useState<CliVersionInfo[]>([])
   const [operatingMap, setOperatingMap] = useState<
     Record<string, "install" | "update" | undefined>
   >({})
   const [showCustomPathMap, setShowCustomPathMap] = useState<Record<string, boolean>>({})
+
+  const cliSettingsRef = useRef(cliSettings)
+  cliSettingsRef.current = cliSettings
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const persistCliSettings = useCallback(
+    async (next: CliSettingsType) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+      try {
+        const saved = await settingsApi.saveCliSettings(next)
+        setCliSettings(saved)
+        notifySettingsChanged("cli")
+      } catch (err) {
+        console.error("[CliSettings] Failed to save settings:", err)
+        toast.error(t("settings.saveFailed"))
+      }
+    },
+    [t, toast],
+  )
+
+  const scheduleDebouncedSave = useCallback(
+    (next: CliSettingsType) => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = setTimeout(() => {
+        void persistCliSettings(next)
+      }, 800)
+    },
+    [persistCliSettings],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        void settingsApi.saveCliSettings(cliSettingsRef.current)
+      }
+    }
+  }, [])
 
   // 加载配置与版本列表
   const loadData = useCallback(
@@ -55,7 +94,6 @@ export const CliSettings = (): React.JSX.Element => {
         ])
 
         setCliSettings(settingsRes)
-        setInitialSettings(JSON.parse(JSON.stringify(settingsRes)))
         setVersions(versionsRes)
       } catch (err) {
         console.error("[CliSettings] Failed to load CLI data:", err)
@@ -72,63 +110,33 @@ export const CliSettings = (): React.JSX.Element => {
     void loadData(false)
   }, [loadData])
 
-  // 脏状态比对与注册
-  const isDirty = useMemo(() => {
-    if (!initialSettings) return false
-    return JSON.stringify(cliSettings) !== JSON.stringify(initialSettings)
-  }, [cliSettings, initialSettings])
-
-  useEffect(() => {
-    settingsDirtyStore.setSectionDirty("cli", isDirty)
-  }, [isDirty])
-
-  useEffect(() => {
-    const unregisterSave = settingsDirtyStore.registerSaveHandler("cli", async () => {
-      const saved = await settingsApi.saveCliSettings(cliSettings)
-      setCliSettings(saved)
-      setInitialSettings(JSON.parse(JSON.stringify(saved)))
-      settingsDirtyStore.setSectionDirty("cli", false)
-      notifySettingsChanged("cli")
-    })
-
-    const unregisterReset = settingsDirtyStore.registerResetHandler("cli", () => {
-      if (initialSettings) {
-        setCliSettings(JSON.parse(JSON.stringify(initialSettings)))
-      }
-      settingsDirtyStore.setSectionDirty("cli", false)
-    })
-
-    return () => {
-      unregisterSave()
-      unregisterReset()
-    }
-  }, [cliSettings, initialSettings])
-
   // 切换启用开关
   const handleToggleEnabled = (cliId: CliId, checked: boolean) => {
-    setCliSettings((prev) => {
-      const current = new Set(prev.enabled)
-      if (checked) {
-        current.add(cliId)
-      } else {
-        current.delete(cliId)
-      }
-      return {
-        ...prev,
-        enabled: Array.from(current),
-      }
-    })
+    const current = new Set(cliSettings.enabled)
+    if (checked) {
+      current.add(cliId)
+    } else {
+      current.delete(cliId)
+    }
+    const next: CliSettingsType = {
+      ...cliSettings,
+      enabled: Array.from(current),
+    }
+    setCliSettings(next)
+    void persistCliSettings(next)
   }
 
   // 修改自定义路径
   const handleCustomPathChange = (cliId: CliId, path: string) => {
-    setCliSettings((prev) => ({
-      ...prev,
+    const next: CliSettingsType = {
+      ...cliSettings,
       customPaths: {
-        ...prev.customPaths,
+        ...cliSettings.customPaths,
         [cliId]: path.trim(),
       },
-    }))
+    }
+    setCliSettings(next)
+    scheduleDebouncedSave(next)
   }
 
   // 执行安装或升级
@@ -441,8 +449,18 @@ export const CliSettings = (): React.JSX.Element => {
                         placeholder={t("settings.cliCustomPathPlaceholder")}
                         value={currentCustomPath}
                         onChange={(e) => handleCustomPathChange(tool.id, e.target.value)}
+                        onBlur={() => void persistCliSettings(cliSettingsRef.current)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void persistCliSettings(cliSettingsRef.current)
+                        }}
                         clear
-                        onClear={() => handleCustomPathChange(tool.id, "")}
+                        onClear={() => {
+                          handleCustomPathChange(tool.id, "")
+                          void persistCliSettings({
+                            ...cliSettingsRef.current,
+                            customPaths: { ...cliSettingsRef.current.customPaths, [tool.id]: "" },
+                          })
+                        }}
                       />
                     </div>
                   </div>
