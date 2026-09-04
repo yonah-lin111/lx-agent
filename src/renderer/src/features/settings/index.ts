@@ -10,6 +10,7 @@ export * from "./components/McpSettings"
 export * from "./components/ModelProviderSettings"
 export * from "./components/ModelSettings"
 export * from "./components/PermissionSettings"
+export * from "./components/SkillSettings"
 export * from "./constants"
 
 export * from "./hooks/settingsDirtyStore"

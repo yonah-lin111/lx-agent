@@ -83,6 +83,10 @@ const api: ProjectApi &
     getMcpSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getMcpSettings),
     saveMcpSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveMcpSettings, settings),
     reconnectMcp: () => ipcRenderer.invoke(SETTINGS_CHANNELS.reconnectMcp),
+    getSkillSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getSkillSettings),
+    saveSkillSettings: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveSkillSettings, settings),
+    deleteSkill: (filePath) => ipcRenderer.invoke(SETTINGS_CHANNELS.deleteSkill, filePath),
   },
 
   agent: agentApi,

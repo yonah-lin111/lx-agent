@@ -41,6 +41,7 @@ import {
 } from "@/features/markdown/components/MarkdownPasteCommandMenu"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
+import { settingsApi, subscribeSettingsChanged } from "@/features/settings"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { getClipboardFilesAsync } from "@/lib/clipboard"
 import {
@@ -839,16 +840,22 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
 
     useEffect(() => {
       let active = true
-      void agentApi
-        .listSkills(currentPath)
-        .then((data) => {
-          if (active) setSkills(data)
-        })
-        .catch(() => {
-          if (active) setSkills([])
-        })
+      const fetchSkills = () => {
+        void Promise.all([agentApi.listSkills(currentPath), settingsApi.getSkillSettings()])
+          .then(([data, config]) => {
+            if (!active) return
+            const disabledSet = new Set(config.disabled)
+            setSkills(data.filter((s) => !disabledSet.has(s.name)))
+          })
+          .catch(() => {
+            if (active) setSkills([])
+          })
+      }
+      fetchSkills()
+      const unsubscribe = subscribeSettingsChanged("skills", fetchSkills)
       return () => {
         active = false
+        unsubscribe()
       }
     }, [currentPath])
 
@@ -1611,8 +1618,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   if (activeModeRef.current === "file" && mentionItemsRef.current.length > 0) {
                     setFileIndex(
                       (i) =>
-                        (i - 1 + mentionItemsRef.current.length) %
-                        mentionItemsRef.current.length,
+                        (i - 1 + mentionItemsRef.current.length) % mentionItemsRef.current.length,
                     )
                     return true
                   }
@@ -1758,8 +1764,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
                   }
                   if (activeModeRef.current === "skill") {
                     const skill =
-                      matchedSkillsRef.current[skillIndexRef.current] ??
-                      matchedSkillsRef.current[0]
+                      matchedSkillsRef.current[skillIndexRef.current] ?? matchedSkillsRef.current[0]
                     if (skill) {
                       selectSkill(skill)
                       return true

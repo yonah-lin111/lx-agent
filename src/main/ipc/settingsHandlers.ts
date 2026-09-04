@@ -7,22 +7,25 @@ import { invalidateModelCache } from "@/agent/stream/modelFactory"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
 import { fetchProviderModels } from "@/services/modelFetchService"
 import {
+  deleteSkill,
   getCliSettings,
   getLspSettings,
   getMcpSettings,
   getModelProviderSettings,
   getPermissionSettings,
+  getSkillSettings,
   getUiSettings,
   saveCliSettings,
   saveLspSettings,
   saveMcpSettings,
   saveModelProviderSettings,
   savePermissionSettings,
+  saveSkillSettings,
   saveUiSettings,
 } from "@/services/settingsService"
 
 /**
- * 注册模型 Provider 设置、Agent 权限设置、CLI 设置、LSP 设置与 MCP 设置的 IPC 处理器。
+ * 注册模型 Provider 设置、Agent 权限设置、CLI 设置、LSP 设置、MCP 设置与 Skill 设置的 IPC 处理器。
  */
 export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.getModelProviders, () => getModelProviderSettings())
@@ -59,4 +62,7 @@ export const registerSettingsHandlers = (): void => {
     return saved
   })
   ipcMain.handle(SETTINGS_CHANNELS.reconnectMcp, () => mcpManager.reloadAndReconnect())
+  ipcMain.handle(SETTINGS_CHANNELS.getSkillSettings, () => getSkillSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveSkillSettings, (_, input) => saveSkillSettings(input))
+  ipcMain.handle(SETTINGS_CHANNELS.deleteSkill, (_, filePath: string) => deleteSkill(filePath))
 }

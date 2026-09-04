@@ -8,6 +8,7 @@ export type SettingsDomain =
   | "cli"
   | "lsp"
   | "mcp"
+  | "skills"
 
 type SettingsChangeListener = () => void
 
@@ -19,6 +20,7 @@ const listeners: Record<SettingsDomain, Set<SettingsChangeListener>> = {
   cli: new Set(),
   lsp: new Set(),
   mcp: new Set(),
+  skills: new Set(),
 }
 
 // 广播指定域配置变更。

@@ -658,6 +658,7 @@ export interface SkillItem {
   filePath: string
   baseDir: string
   disableModelInvocation: boolean
+  isGlobal?: boolean
 }
 
 // Agent 人格类型（对齐 Codex Personalities: pragmatic 实用主义 / friendly 友好协作）。
