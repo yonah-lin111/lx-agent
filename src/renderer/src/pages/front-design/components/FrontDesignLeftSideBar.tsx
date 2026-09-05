@@ -74,16 +74,9 @@ export const FrontDesignLeftSideBar = ({
     }
   }, [activeSessionId, designs, activeDesignId])
 
-  // 当用户主动在左侧栏切换 session 下拉筛选框时：
-  // 如果所选 session 对应的会话在某个 AgentTab 中打开，顺带同步切换该 Tab
+  // 当用户在左侧栏手动切换 Session 下拉筛选框时，仅更新当前筛选范围，不强跳顶部 Tab
   const handleSessionFilterChange = (nextSessionId: string): void => {
     setSelectedSessionFilter(nextSessionId)
-    if (nextSessionId !== ALL_SESSIONS_VALUE) {
-      const matchedTab = agentTabStore.findTabBySessionId(nextSessionId)
-      if (matchedTab && matchedTab.id !== agentTabStore.getActiveTabId()) {
-        agentTabStore.switchTab(matchedTab.id)
-      }
-    }
   }
 
   // 生成会话下拉选项（以 Agent Tab 维度优先展示）

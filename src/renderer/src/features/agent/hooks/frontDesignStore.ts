@@ -166,26 +166,23 @@ export const frontDesignStore = {
     let nextActiveId = internalState.activeDesignId
 
     // 智能激活与切换联动：
-    // 如果显式指定 autoActivate 或者正在流式生成
+    // 仅在显式指定 autoActivate 或者正在流式生成时判断
     if (data.autoActivate || data.isStreaming) {
-      // 检查当前激活的 Tab 对应的 Session 是否已有选中的设计
       const activeTab = agentTabStore.getActiveTab()
       const currentActiveDesign = internalState.designs.find((d) => d.id === internalState.activeDesignId)
       
-      // 如果当前没有激活的设计，或者当前激活的设计不属于任何会话，
-      // 或者当前激活的设计所属会话就是新设计生成的会话，
-      // 或者当前激活 Tab 没有任何设计卡片（需要跟随切到新生成的卡片和对应 Tab），
-      // 则切换激活项为最新生成的卡片
       const isCurrentSessionSame = fallbackSessionId && currentActiveDesign?.sessionId === fallbackSessionId
       const currentTabHasDesigns = activeTab?.sessionId
         ? internalState.designs.some((d) => d.sessionId === activeTab.sessionId)
         : false
 
+      // 仅当当前没有激活设计、或新设计就在当前激活设计的会话中，
+      // 或当前活跃的 Tab 根本没有任何设计卡片时，才自动激活新设计
       if (!currentActiveDesign || isCurrentSessionSame || !currentTabHasDesigns) {
         nextActiveId = matchedId
 
-        // 如果该设计属于某个具体的 Session，且有已打开的 Tab 关联该 Session，联动切换该 Tab
-        if (fallbackSessionId) {
+        // 仅在真实流式生成（Agent 正在输出）且当前活跃的 Tab 没有设计卡片时，才自动切换 Tab 到产生设计的会话 Tab
+        if (data.isStreaming && !currentTabHasDesigns && fallbackSessionId) {
           const targetTab = agentTabStore.findTabBySessionId(fallbackSessionId)
           if (targetTab && targetTab.id !== agentTabStore.getActiveTabId()) {
             agentTabStore.switchTab(targetTab.id)
