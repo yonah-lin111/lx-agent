@@ -46,7 +46,7 @@ export const FrontDesignCard = ({
   }, [design.html, isCodeExpanded, hasMoreLines, lines])
 
   const handleOpenDesign = (): void => {
-    const targetId = design.id || `design-${Date.now()}`
+    const targetId = design.id || `design-default`
     frontDesignStore.registerDesign({
       id: targetId,
       title: design.title || "Frontend Prototype",

@@ -113,6 +113,7 @@ export const frontDesignStore = {
     isStreaming?: boolean
     sessionId?: string | null
     autoActivate?: boolean
+    updatedAt?: number
   }): void => {
     const fallbackSessionId =
       data.sessionId ??
@@ -131,7 +132,8 @@ export const frontDesignStore = {
     )
 
     let nextDesigns: FrontDesignItem[]
-    const now = Date.now()
+    // 优先使用设计卡片产生的原始时间，缺失时才使用当前时间
+    const designTimestamp = data.updatedAt || Date.now()
 
     if (existingIndex >= 0) {
       const existing = internalState.designs[existingIndex]
@@ -140,7 +142,8 @@ export const frontDesignStore = {
         id: existing.id, // 沿用原有稳定 ID，避免产生重复 item
         title: targetTitle,
         html: data.html,
-        updatedAt: now,
+        // 保持历史生成的真实时间戳不变
+        updatedAt: existing.updatedAt || designTimestamp,
         isStreaming: data.isStreaming ?? false,
         sessionId: fallbackSessionId ?? existing.sessionId ?? null,
       }
@@ -151,7 +154,7 @@ export const frontDesignStore = {
         id: data.id,
         title: targetTitle,
         html: data.html,
-        updatedAt: now,
+        updatedAt: designTimestamp,
         isStreaming: data.isStreaming ?? false,
         sessionId: fallbackSessionId,
       }
