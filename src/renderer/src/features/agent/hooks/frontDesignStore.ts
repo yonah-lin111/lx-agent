@@ -26,67 +26,27 @@ export type FrontDesignState = FrontDesignStoreState
 const STORAGE_KEY = "lx-agent-front-design-state-v2"
 const LEGACY_STORAGE_KEY = "lx-agent-front-design-state"
 
+// 彻底清除旧版浏览器缓存，避免残留重复和历史数据污染
+try {
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
+} catch {
+  // ignore
+}
+
 interface InternalState {
   designs: FrontDesignItem[]
   activeDesignId: string | null
 }
 
-const getInitialInternalState = (): InternalState => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as InternalState
-      if (Array.isArray(parsed.designs)) {
-        return {
-          designs: parsed.designs,
-          activeDesignId: parsed.activeDesignId ?? (parsed.designs[0]?.id ?? null),
-        }
-      }
-    }
-    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
-    if (legacyRaw) {
-      const legacyParsed = JSON.parse(legacyRaw)
-      if (typeof legacyParsed.html === "string" && legacyParsed.html) {
-        const item: FrontDesignItem = {
-          id: "legacy-design-1",
-          title: legacyParsed.title || "Frontend Prototype",
-          html: legacyParsed.html,
-          updatedAt: legacyParsed.updatedAt || Date.now(),
-          isStreaming: false,
-          sessionId: legacyParsed.sessionId ?? null,
-        }
-        return {
-          designs: [item],
-          activeDesignId: item.id,
-        }
-      }
-    }
-  } catch {
-    // 忽略解析失败
-  }
-  return {
-    designs: [],
-    activeDesignId: null,
-  }
+let internalState: InternalState = {
+  designs: [],
+  activeDesignId: null,
 }
-
-let internalState: InternalState = getInitialInternalState()
 const listeners = new Set<() => void>()
 
 const notify = (): void => {
   listeners.forEach((listener) => listener())
-}
-
-const persist = (): void => {
-  try {
-    const toSave: InternalState = {
-      designs: internalState.designs.map((d) => ({ ...d, isStreaming: false })),
-      activeDesignId: internalState.activeDesignId,
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
-  } catch {
-    // 忽略写入失败
-  }
 }
 
 const computePublicState = (): FrontDesignStoreState => {
@@ -143,7 +103,6 @@ export const frontDesignStore = {
         ...internalState,
         activeDesignId: id,
       })
-      persist()
     }
   },
 
@@ -155,21 +114,31 @@ export const frontDesignStore = {
     sessionId?: string | null
     autoActivate?: boolean
   }): void => {
-    const existingIndex = internalState.designs.findIndex((d) => d.id === data.id)
-    let nextDesigns: FrontDesignItem[]
-    const now = Date.now()
-
     const fallbackSessionId =
       data.sessionId ??
       agentTabStore.getActiveTab()?.sessionId ??
       sessionListStore.getCurrentSessionId() ??
       null
 
+    // 精确多维去重查找：
+    // 1. 同一个 id；
+    // 2. 或同一个 sessionId 下存在同名 title 的设计项；
+    const targetTitle = data.title?.trim() || "Frontend Prototype"
+    const existingIndex = internalState.designs.findIndex(
+      (d) =>
+        d.id === data.id ||
+        (fallbackSessionId && d.sessionId === fallbackSessionId && d.title?.trim() === targetTitle),
+    )
+
+    let nextDesigns: FrontDesignItem[]
+    const now = Date.now()
+
     if (existingIndex >= 0) {
       const existing = internalState.designs[existingIndex]
       const updated: FrontDesignItem = {
         ...existing,
-        title: data.title ?? existing.title,
+        id: existing.id, // 沿用原有稳定 ID，避免产生重复 item
+        title: targetTitle,
         html: data.html,
         updatedAt: now,
         isStreaming: data.isStreaming ?? false,
@@ -180,7 +149,7 @@ export const frontDesignStore = {
     } else {
       const newItem: FrontDesignItem = {
         id: data.id,
-        title: data.title ?? "Frontend Prototype",
+        title: targetTitle,
         html: data.html,
         updatedAt: now,
         isStreaming: data.isStreaming ?? false,
@@ -190,21 +159,16 @@ export const frontDesignStore = {
       nextDesigns = [newItem, ...internalState.designs]
     }
 
+    const matchedId = existingIndex >= 0 ? internalState.designs[existingIndex].id : data.id
     let nextActiveId = internalState.activeDesignId
-    if (data.autoActivate) {
-      nextActiveId = data.id
-    } else if (data.isStreaming) {
-      nextActiveId = data.id
+    if (data.autoActivate || data.isStreaming) {
+      nextActiveId = matchedId
     }
 
     updateState({
       designs: nextDesigns,
       activeDesignId: nextActiveId,
     })
-
-    if (!data.isStreaming) {
-      persist()
-    }
   },
 
   // 兼容老方法 setDesign
@@ -233,7 +197,6 @@ export const frontDesignStore = {
       designs: nextDesigns,
       activeDesignId: nextActiveId,
     })
-    persist()
   },
 
   clear: (): void => {
@@ -241,12 +204,6 @@ export const frontDesignStore = {
       designs: [],
       activeDesignId: null,
     })
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem(LEGACY_STORAGE_KEY)
-    } catch {
-      // 忽略
-    }
   },
 }
 
