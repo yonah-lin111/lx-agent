@@ -167,6 +167,7 @@ export const parseTextWithProposedPlan = (
   text: string,
   durationMs?: number,
   baseId?: string,
+  sessionId?: string | null,
 ): ChatBlock[] => {
   if (!text) return []
 
@@ -316,6 +317,7 @@ export const parseTextWithProposedPlan = (
         title,
         html: htmlContent,
         isStreaming: true,
+        sessionId,
       })
     } else {
       const closeIndexInRemaining = closeMatch.index
@@ -338,10 +340,11 @@ export const parseTextWithProposedPlan = (
         title,
         html: htmlContent,
         isStreaming: false,
+        sessionId,
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId, sessionId))
       }
     }
 
@@ -356,6 +359,7 @@ export const toChatMessage = (
   message: AgentMessage,
   isStreaming: boolean,
   id: string,
+  sessionId?: string | null,
 ): ChatMessage => {
   if (message.role === "user") {
     const text = Array.isArray(message.content)
@@ -452,7 +456,7 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return parseTextWithProposedPlan(block.text, block.durationMs, id)
+      return parseTextWithProposedPlan(block.text, block.durationMs, id, sessionId)
     }
     if (block.type === "thinking") {
       return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]

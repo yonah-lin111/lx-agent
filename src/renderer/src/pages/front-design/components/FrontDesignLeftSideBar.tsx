@@ -40,6 +40,23 @@ export const FrontDesignLeftSideBar = ({
     return activeSessionId || ALL_SESSIONS_VALUE
   })
 
+  // 当外部活动 Session 发生变化（如 AgentPage 切换 Session、恢复历史等），且该 Session 下有设计稿时，自动联动
+  useEffect(() => {
+    if (activeSessionId) {
+      const hasDesignsInActiveSession = designs.some((d) => d.sessionId === activeSessionId)
+      if (hasDesignsInActiveSession) {
+        setSelectedSessionFilter(activeSessionId)
+        const sessionDesigns = designs.filter((d) => d.sessionId === activeSessionId)
+        if (sessionDesigns.length > 0) {
+          const isCurrentActiveInSession = sessionDesigns.some((d) => d.id === activeDesignId)
+          if (!isCurrentActiveInSession) {
+            frontDesignStore.setActiveDesignId(sessionDesigns[0].id)
+          }
+        }
+      }
+    }
+  }, [activeSessionId, designs, activeDesignId])
+
   // 生成会话下拉选项
   const sessionOptions = useMemo<LxSelectOption<string>[]>(() => {
     const options: LxSelectOption<string>[] = [
