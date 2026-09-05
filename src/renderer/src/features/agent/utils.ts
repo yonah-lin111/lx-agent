@@ -60,8 +60,17 @@ const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
 const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
 
-const FRONT_DESIGN_OPEN_REGEX = /<front_design(?:\s+title=["']([^"']*)["'])?\s*>/i
+const FRONT_DESIGN_OPEN_REGEX = /<front_design(?:\s+[^>]*)?>/i
 const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
+
+const extractFrontDesignAttributes = (tagStr: string): { title?: string; id?: string } => {
+  const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
+  const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  return {
+    title: titleMatch ? titleMatch[1].trim() : undefined,
+    id: idMatch ? idMatch[1].trim() : undefined,
+  }
+}
 
 // 提取计划内容中的首个标题（支持 # 或 ##）。
 export const extractPlanTitle = (content: string): string | undefined => {
@@ -154,7 +163,11 @@ export const parseReviewFindingsContent = (
 }
 
 // 解析文本块，若包含 <proposed_plan>、<review_findings> 或 <front_design> 标签则拆分为独立结构化块与文本块。
-export const parseTextWithProposedPlan = (text: string, durationMs?: number): ChatBlock[] => {
+export const parseTextWithProposedPlan = (
+  text: string,
+  durationMs?: number,
+  baseId?: string,
+): ChatBlock[] => {
   if (!text) return []
 
   const reviewOpenMatch = REVIEW_FINDINGS_OPEN_REGEX.exec(text)
@@ -211,7 +224,7 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after))
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
       }
     }
 
@@ -261,7 +274,7 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after))
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
       }
     }
 
@@ -271,7 +284,9 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
   if (earliest === "design" && designOpenMatch) {
     const openIndex = designOpenMatch.index
     const openTagLength = designOpenMatch[0].length
-    const title = designOpenMatch[1]?.trim() || "Frontend Prototype"
+    const { title: parsedTitle, id: parsedId } = extractFrontDesignAttributes(designOpenMatch[0])
+    const title = parsedTitle || "Frontend Prototype"
+    const designId = parsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
@@ -288,6 +303,7 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
       result.push({
         kind: "frontDesign",
         design: {
+          id: designId,
           title,
           html: htmlContent,
           raw: text.slice(openIndex),
@@ -295,7 +311,8 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
         },
         durationMs,
       })
-      frontDesignStore.setDesign({
+      frontDesignStore.registerDesign({
+        id: designId,
         title,
         html: htmlContent,
         isStreaming: true,
@@ -308,6 +325,7 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
       result.push({
         kind: "frontDesign",
         design: {
+          id: designId,
           title,
           html: htmlContent,
           raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
@@ -315,14 +333,15 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
         },
         durationMs,
       })
-      frontDesignStore.setDesign({
+      frontDesignStore.registerDesign({
+        id: designId,
         title,
         html: htmlContent,
         isStreaming: false,
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after))
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
       }
     }
 
@@ -433,7 +452,7 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return parseTextWithProposedPlan(block.text, block.durationMs)
+      return parseTextWithProposedPlan(block.text, block.durationMs, id)
     }
     if (block.type === "thinking") {
       return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]

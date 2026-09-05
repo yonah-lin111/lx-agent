@@ -227,7 +227,8 @@ export const AgentExecutionFlowList = forwardRef<
           step.kind === "user" ||
           step.kind === "error" ||
           step.kind === "proposedPlan" ||
-          step.kind === "reviewFindings"
+          step.kind === "reviewFindings" ||
+          step.kind === "frontDesign"
         ) {
           return true
         }
@@ -295,7 +296,8 @@ export const AgentExecutionFlowList = forwardRef<
         step.kind === "error" ||
         step.kind === "subagent" ||
         step.kind === "proposedPlan" ||
-        step.kind === "reviewFindings"
+        step.kind === "reviewFindings" ||
+        step.kind === "frontDesign"
       ) {
         return false
       }
@@ -696,6 +698,7 @@ export const AgentExecutionFlowList = forwardRef<
         modelSwitch: 0,
         proposedPlan: 0,
         reviewFindings: 0,
+        frontDesign: 0,
         error: 0,
       }
       for (const step of steps) {

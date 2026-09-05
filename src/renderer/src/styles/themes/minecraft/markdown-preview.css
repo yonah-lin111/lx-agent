@@ -248,6 +248,10 @@
   margin: 1.2em 0 !important;
 }
 
+[data-theme="minecraft"] .markdown-preview.lx-code-block-wrapper .markdown-code-block {
+  margin: 0 !important;
+}
+
 [data-theme="minecraft"] .markdown-preview .markdown-code-block-header {
   border-bottom: 2px solid #000000 !important;
   background-color: #242436 !important;

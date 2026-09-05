@@ -103,6 +103,12 @@ const FILTER_TAB_COLORS: Record<
       "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-violet-500/10 hover:text-violet-300",
     dot: "bg-violet-400",
   },
+  frontDesign: {
+    active: "bg-pink-500/20 text-pink-300 font-semibold ring-1 ring-pink-500/30",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-pink-500/10 hover:text-pink-300",
+    dot: "bg-pink-400",
+  },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
     inactive:
@@ -229,6 +235,12 @@ export const AgentExecutionFlowHeader = ({
             {filterCounts.user > 0 && renderTab("user", t("agent.filterUser"), filterCounts.user)}
             {filterCounts.assistant > 0 &&
               renderTab("assistant", t("agent.filterAssistant"), filterCounts.assistant)}
+            {filterCounts.proposedPlan > 0 &&
+              renderTab("proposedPlan", t("agent.proposedPlanBadge"), filterCounts.proposedPlan)}
+            {filterCounts.reviewFindings > 0 &&
+              renderTab("reviewFindings", t("agent.review.badge"), filterCounts.reviewFindings)}
+            {filterCounts.frontDesign > 0 &&
+              renderTab("frontDesign", t("frontDesign.designCardBadge"), filterCounts.frontDesign)}
             {filterCounts.undo > 0 && renderTab("undo", t("agent.kindUndo"), filterCounts.undo)}
             {filterCounts.error > 0 &&
               renderTab("error", t("agent.filterError"), filterCounts.error)}

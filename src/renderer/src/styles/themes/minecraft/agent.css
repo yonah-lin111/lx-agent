@@ -1974,8 +1974,6 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-
-
 /* ========================================================
  * 22. 执行流程列表与子代理全景轨迹 (AgentExecutionFlowList & AgentSubagentPanel)
  * ======================================================== */
@@ -2181,6 +2179,18 @@
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
+/* FrontDesign: 樱花粉石 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-pink-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-palette) {
+  background-color: #2b1723 !important;
+  color: #f472b6 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-pink-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-palette) svg {
+  color: #f472b6 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
 /* 步骤与折叠组展开详情区基础凹槽结构 */
 [data-theme="minecraft"] .agent-execution-flow-step-body,
 [data-theme="minecraft"] .agent-execution-flow-group-body {
@@ -2218,6 +2228,17 @@
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(85, 255, 85, 0.15) !important;
+}
+
+/* 3. Pink / FrontDesign: 柔和暗樱花粉石方块 */
+[data-theme="minecraft"] .agent-execution-flow-step-body--pink,
+[data-theme="minecraft"] .agent-execution-flow-step-body--frontDesign {
+  background-color: #1a1218 !important;
+  border-top: 2px solid #000000 !important;
+  color: #fce7f3 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(244, 114, 182, 0.15) !important;
 }
 
 /* 展开内文本颜色定制，避免使用纯白，继承 Minecraft 字体与质感 */
@@ -2528,11 +2549,9 @@
 
 [data-theme="minecraft"] .proposed-plan-accept-btn[data-accepted="true"],
 [data-theme="minecraft"] .proposed-plan-accept-btn:disabled {
-  background-color: #121814 !important;
-  color: #485a4e !important;
-  border: 2px solid #000000 !important;
   opacity: 0.4 !important;
   box-shadow: none !important;
+  cursor: not-allowed !important;
 }
 
 [data-theme="minecraft"] .proposed-plan-expand-toggle {
@@ -2666,11 +2685,9 @@
 
 [data-theme="minecraft"] .review-findings-apply-btn[data-accepted="true"],
 [data-theme="minecraft"] .review-findings-apply-btn:disabled {
-  background-color: #14101a !important;
-  color: #3b3145 !important;
-  border: 2px solid #000000 !important;
   opacity: 0.4 !important;
   box-shadow: none !important;
+  cursor: not-allowed !important;
 }
 
 [data-theme="minecraft"] .review-findings-fill-btn {
@@ -2691,6 +2708,12 @@
   background-color: #251e32 !important;
 }
 
+[data-theme="minecraft"] .review-findings-fill-btn:disabled {
+  opacity: 0.4 !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
 [data-theme="minecraft"] .review-findings-expand-toggle {
   font-family: var(--theme-font-family) !important;
   color: #bfa5ff !important;
@@ -2698,5 +2721,100 @@
 }
 
 [data-theme="minecraft"] .agent-execution-flow-review-content {
+  width: 100% !important;
+}
+
+/* ========================================================
+ * 17. Front Design Mode 前端设计卡片 (FrontDesignCard) 柔和樱花粉石
+ * ======================================================== */
+[data-theme="minecraft"] .front-design-card {
+  border: 2px solid #000000 !important;
+  background-color: #1a1218 !important; /* 柔和暗樱花黑曜调 */
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-header {
+  border-bottom: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-footer {
+  border-top: 2px solid #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-icon-wrapper {
+  border: 2px solid #000000 !important;
+  background-color: #271622 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-icon-wrapper svg {
+  color: #f472b6 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="minecraft"] .front-design-badge {
+  border: 1px solid #000000 !important;
+  background-color: #38192a !important;
+  color: #fbcfe8 !important;
+  font-family: var(--theme-font-family) !important;
+  font-weight: 700;
+  border-radius: 0px !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .front-design-title {
+  font-family: var(--theme-font-family) !important;
+  color: #fce7f3 !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .front-design-summary {
+  border: 1px solid #000000 !important;
+  background-color: #120c10 !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="minecraft"] .front-design-open-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #831843 !important; /* 柔和暗深樱桃粉色 */
+  color: #ffffff !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-open-btn:hover:not(:disabled) {
+  background-color: #9d174d !important;
+}
+
+[data-theme="minecraft"] .front-design-code-container {
+  border: 1px solid #000000 !important;
+  background-color: #0e0a0d !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="minecraft"] .front-design-expand-toggle {
+  font-family: var(--theme-font-family) !important;
+  color: #f472b6 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-design-content {
   width: 100% !important;
 }

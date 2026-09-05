@@ -1371,6 +1371,16 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     lastUpdated: "Updated at {{time}}",
     openDesignPage: "Open Design Board",
     designCardBadge: "Front Design Prototype",
+    historyList: "Design History",
+    noDesigns: "No design history",
+    deleteDesign: "Delete design",
+    switchDesign: "Switch design",
+    clearHistory: "Clear history",
+    activeBadge: "Active",
+    generating: "Generating design prototype...",
+    summaryDesc: "UI prototype code ready, supports sandboxed hot-reload, responsive viewports, and code export.",
+    prototypeBadge: "Front Design Prototype",
+    lines: "lines",
   },
 }
 

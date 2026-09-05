@@ -15,7 +15,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { ProposedPlanCard, ReviewFindingsCard } from "@/features/agent/components/blocks"
+import { FrontDesignCard, ProposedPlanCard, ReviewFindingsCard } from "@/features/agent/components/blocks"
 import { agentApi } from "@/features/agent/api/agentApi"
 import {
   cleanUserPrompt,
@@ -157,6 +157,7 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.planContent) return step.planContent.content
     if (step.reviewFindingsContent) return step.reviewFindingsContent.raw
+    if (step.frontDesignContent) return step.frontDesignContent.raw || step.frontDesignContent.html
     if (step.assistantContent) return step.assistantContent.text
     if (step.errorContent) {
       return step.errorContent.message || step.title
@@ -179,6 +180,9 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.kind === "modelSwitch") {
       return "agent-execution-flow-step-body--modelSwitch agent-execution-flow-step-body--cyan border-cyan-500/15 bg-cyan-500/[0.05]"
+    }
+    if (step.kind === "frontDesign") {
+      return "agent-execution-flow-step-body--frontDesign agent-execution-flow-step-body--pink border-pink-500/15 bg-pink-500/[0.05]"
     }
     const toolName = step.toolContent?.toolName
     if (toolName === "render_svg") {
@@ -512,11 +516,22 @@ export const AgentExecutionFlowItem = ({
             </div>
           )}
 
+          {/* 前端设计原型详情 */}
+          {step.frontDesignContent && (
+            <div className="agent-execution-flow-design-content w-full">
+              <FrontDesignCard
+                design={step.frontDesignContent}
+                isStreaming={step.status === "running"}
+              />
+            </div>
+          )}
+
           {/* 助手回复详情 */}
           {step.assistantContent &&
             !step.compactionContent &&
             !step.planContent &&
-            !step.reviewFindingsContent && (
+            !step.reviewFindingsContent &&
+            !step.frontDesignContent && (
               <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
             )}
 

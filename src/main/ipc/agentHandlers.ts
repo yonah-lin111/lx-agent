@@ -291,7 +291,13 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(
     AGENT_CHANNELS.setCollaborationMode,
     (_, mode: unknown, sessionId?: unknown, tabId?: unknown) => {
-      if (mode !== "default" && mode !== "build" && mode !== "plan" && mode !== "review") {
+      if (
+        mode !== "default" &&
+        mode !== "build" &&
+        mode !== "plan" &&
+        mode !== "review" &&
+        mode !== "design"
+      ) {
         return { ok: false, error: "协作模式参数无效。" }
       }
       const sId = typeof sessionId === "string" ? sessionId : undefined

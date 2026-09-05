@@ -78,6 +78,7 @@ export interface ReviewFindingsData {
 
 // 前端设计数据结构。
 export interface FrontDesignData {
+  id: string
   title?: string
   html: string
   raw: string
@@ -205,6 +206,7 @@ export type ExecutionStepKind =
   | "error"
   | "proposedPlan"
   | "reviewFindings"
+  | "frontDesign"
 
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
@@ -268,6 +270,8 @@ export interface ExecutionStep {
   planContent?: ProposedPlanData
   // 审查结果内容。
   reviewFindingsContent?: ReviewFindingsData
+  // 前端设计原型内容。
+  frontDesignContent?: FrontDesignData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
   // 异常/中断说明内容。
