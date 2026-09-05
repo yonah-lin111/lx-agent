@@ -164,8 +164,34 @@ export const frontDesignStore = {
 
     const matchedId = existingIndex >= 0 ? internalState.designs[existingIndex].id : data.id
     let nextActiveId = internalState.activeDesignId
+
+    // 智能激活与切换联动：
+    // 如果显式指定 autoActivate 或者正在流式生成
     if (data.autoActivate || data.isStreaming) {
-      nextActiveId = matchedId
+      // 检查当前激活的 Tab 对应的 Session 是否已有选中的设计
+      const activeTab = agentTabStore.getActiveTab()
+      const currentActiveDesign = internalState.designs.find((d) => d.id === internalState.activeDesignId)
+      
+      // 如果当前没有激活的设计，或者当前激活的设计不属于任何会话，
+      // 或者当前激活的设计所属会话就是新设计生成的会话，
+      // 或者当前激活 Tab 没有任何设计卡片（需要跟随切到新生成的卡片和对应 Tab），
+      // 则切换激活项为最新生成的卡片
+      const isCurrentSessionSame = fallbackSessionId && currentActiveDesign?.sessionId === fallbackSessionId
+      const currentTabHasDesigns = activeTab?.sessionId
+        ? internalState.designs.some((d) => d.sessionId === activeTab.sessionId)
+        : false
+
+      if (!currentActiveDesign || isCurrentSessionSame || !currentTabHasDesigns) {
+        nextActiveId = matchedId
+
+        // 如果该设计属于某个具体的 Session，且有已打开的 Tab 关联该 Session，联动切换该 Tab
+        if (fallbackSessionId) {
+          const targetTab = agentTabStore.findTabBySessionId(fallbackSessionId)
+          if (targetTab && targetTab.id !== agentTabStore.getActiveTabId()) {
+            agentTabStore.switchTab(targetTab.id)
+          }
+        }
+      }
     }
 
     updateState({

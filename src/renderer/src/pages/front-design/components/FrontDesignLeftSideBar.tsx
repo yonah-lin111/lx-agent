@@ -46,27 +46,45 @@ export const FrontDesignLeftSideBar = ({
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
   const activeSessionId = activeTab?.sessionId ?? null
 
-  // 选中的过滤会话 ID，默认跟随当前激活的 session，若无 session 则显示全部
+  // 选中的过滤会话 ID，默认跟随当前激活的 session（若有且有设计），否则保留全局或第一个有效设计会话
   const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>(() => {
-    return activeSessionId || ALL_SESSIONS_VALUE
+    if (activeSessionId && designs.some((d) => d.sessionId === activeSessionId)) {
+      return activeSessionId
+    }
+    return ALL_SESSIONS_VALUE
   })
 
-  // 当外部活动 Session 发生变化（如 AgentPage 切换 Session、恢复历史等），且该 Session 下有设计稿时，自动联动
+  // 当外部活动 Session 发生变化（如 AgentTabBar 切换 Tab、AgentPage 切换 Session、恢复历史等）
+  // 规则：
+  // 1. 若切换到的 Tab/Session 下有设计稿，则自动跟随切换筛选器与激活设计；
+  // 2. 若切换到的 Tab/Session 下没有设计稿，则左侧栏和设计页面保持当前展示不变，不强制切换回空列表。
   useEffect(() => {
-    if (activeSessionId) {
-      const hasDesignsInActiveSession = designs.some((d) => d.sessionId === activeSessionId)
-      if (hasDesignsInActiveSession) {
-        setSelectedSessionFilter(activeSessionId)
-        const sessionDesigns = designs.filter((d) => d.sessionId === activeSessionId)
-        if (sessionDesigns.length > 0) {
-          const isCurrentActiveInSession = sessionDesigns.some((d) => d.id === activeDesignId)
-          if (!isCurrentActiveInSession) {
-            frontDesignStore.setActiveDesignId(sessionDesigns[0].id)
-          }
+    if (!activeSessionId) return
+
+    const hasDesignsInActiveSession = designs.some((d) => d.sessionId === activeSessionId)
+    if (hasDesignsInActiveSession) {
+      setSelectedSessionFilter(activeSessionId)
+      const sessionDesigns = designs.filter((d) => d.sessionId === activeSessionId)
+      if (sessionDesigns.length > 0) {
+        const isCurrentActiveInSession = sessionDesigns.some((d) => d.id === activeDesignId)
+        if (!isCurrentActiveInSession) {
+          frontDesignStore.setActiveDesignId(sessionDesigns[0].id)
         }
       }
     }
   }, [activeSessionId, designs, activeDesignId])
+
+  // 当用户主动在左侧栏切换 session 下拉筛选框时：
+  // 如果所选 session 对应的会话在某个 AgentTab 中打开，顺带同步切换该 Tab
+  const handleSessionFilterChange = (nextSessionId: string): void => {
+    setSelectedSessionFilter(nextSessionId)
+    if (nextSessionId !== ALL_SESSIONS_VALUE) {
+      const matchedTab = agentTabStore.findTabBySessionId(nextSessionId)
+      if (matchedTab && matchedTab.id !== agentTabStore.getActiveTabId()) {
+        agentTabStore.switchTab(matchedTab.id)
+      }
+    }
+  }
 
   // 生成会话下拉选项
   const sessionOptions = useMemo<LxSelectOption<string>[]>(() => {
@@ -212,7 +230,7 @@ export const FrontDesignLeftSideBar = ({
       <div className="px-1">
         <LxSelect
           value={selectedSessionFilter}
-          onChange={setSelectedSessionFilter}
+          onChange={handleSessionFilterChange}
           options={sessionOptions}
           size="small"
           className="w-full"
