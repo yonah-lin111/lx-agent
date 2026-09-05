@@ -2842,12 +2842,14 @@
 [data-theme="minecraft"] .front-design-sidebar-item[data-active="true"] {
   background-color: #2d1627 !important; /* 暗樱花/紫晶矿石黑曜底 */
   color: #fce7f3 !important;
-  border: 2px solid #000000 !important;
+  border-top: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  border-bottom: 2px solid #000000 !important;
   border-left: 4px solid #f472b6 !important;
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
-    inset -1px -1px 0px 0px rgba(244, 114, 182, 0.3),
-    0px 0px 8px rgba(244, 114, 182, 0.25) !important;
+    inset -1px -1px 0px 0px rgba(244, 114, 182, 0.2),
+    0px 0px 0px 0px transparent !important;
 }
 
 [data-theme="minecraft"] .front-design-sidebar-item .front-design-sidebar-icon {
