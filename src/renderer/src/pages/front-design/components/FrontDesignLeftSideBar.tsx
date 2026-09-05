@@ -15,6 +15,17 @@ export interface FrontDesignLeftSideBarProps {
 
 const ALL_SESSIONS_VALUE = "__all_sessions__"
 
+const formatDateTime = (timestamp?: number): string => {
+  if (!timestamp) return ""
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
 /**
  * 渲染前端设计页面专属左侧栏内容：展示设计历史列表并支持自由切换。
  */
@@ -97,9 +108,9 @@ export const FrontDesignLeftSideBar = ({
     return options
   }, [tabs, sessions, designs, t])
 
-  // 过滤后的前端设计列表（会话过滤 + 搜索过滤）
+  // 过滤与排序后的前端设计列表（会话过滤 + 搜索过滤 + 从旧到新升序排序）
   const filteredDesigns = useMemo(() => {
-    let result = designs
+    let result = [...designs]
 
     // 1. Session 过滤
     if (selectedSessionFilter !== ALL_SESSIONS_VALUE) {
@@ -114,6 +125,9 @@ export const FrontDesignLeftSideBar = ({
         return title.includes(keyword)
       })
     }
+
+    // 3. 按更新/创建时间从旧到新升序排序
+    result.sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))
 
     return result
   }, [designs, selectedSessionFilter, searchKeyword, t])
@@ -252,9 +266,16 @@ export const FrontDesignLeftSideBar = ({
                       <Palette className="h-3 w-3" />
                     )}
                   </div>
-                  <span className="truncate text-xs font-medium">
-                    {d.title || t("frontDesign.title")}
-                  </span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-xs font-medium leading-tight">
+                      {d.title || t("frontDesign.title")}
+                    </span>
+                    {d.updatedAt ? (
+                      <span className="text-[10px] text-white/40 leading-tight mt-0.5 truncate font-mono">
+                        {formatDateTime(d.updatedAt)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
