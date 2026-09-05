@@ -25,18 +25,18 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
     breadcrumbCategory: "PROJECT",
   },
   {
-    icon: Component,
-    labelKey: "nav.ui",
-    label: "UI Preview",
-    path: PAGE_ROUTES.ui,
-    breadcrumbCategory: "UI",
-  },
-  {
     icon: Palette,
     labelKey: "nav.design",
     label: "Front Design",
     path: PAGE_ROUTES.design,
     breadcrumbCategory: "DESIGN",
+  },
+  {
+    icon: Component,
+    labelKey: "nav.ui",
+    label: "UI Preview",
+    path: PAGE_ROUTES.ui,
+    breadcrumbCategory: "UI",
   },
   {
     icon: Settings,
