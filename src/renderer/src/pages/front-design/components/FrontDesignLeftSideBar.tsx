@@ -239,39 +239,32 @@ export const FrontDesignLeftSideBar = ({
                 key={d.id}
                 role="button"
                 tabIndex={0}
-                data-active={isActive ? "true" : undefined}
+                data-item-level="prompt"
+                aria-current={isActive ? "page" : undefined}
                 onClick={() => frontDesignStore.setActiveDesignId(d.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     frontDesignStore.setActiveDesignId(d.id)
                   }
                 }}
-                className={`front-design-sidebar-item group flex items-center justify-between gap-2 rounded-[6px] px-2 py-1.5 text-xs transition-colors cursor-pointer border ${
-                  isActive
-                    ? "bg-pink-500/15 border-pink-500/30 border-l-4 !border-l-pink-500 text-white font-medium shadow-sm"
-                    : "border-transparent text-white/70 hover:bg-white/5 hover:text-white"
+                className={`group flex items-center justify-between gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+                  isActive ? "bg-white/5 text-white" : "text-white/70"
                 }`}
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  <div
-                    className={`front-design-sidebar-icon flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${
-                      isActive
-                        ? "bg-pink-500/20 text-pink-400"
-                        : "bg-white/5 text-white/40 group-hover:text-white/70"
-                    }`}
-                  >
-                    {d.isStreaming ? (
-                      <Loader2 className="h-3 w-3 animate-spin text-pink-400" />
-                    ) : (
-                      <Palette className="h-3 w-3" />
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-xs font-medium leading-tight">
+                <div className="flex min-w-0 items-center gap-2 flex-1">
+                  {d.isStreaming ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-white/80" />
+                  ) : (
+                    <Palette
+                      className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`}
+                    />
+                  )}
+                  <div className="flex min-w-0 flex-col flex-1">
+                    <span className="truncate text-xs font-medium select-none leading-tight">
                       {d.title || t("frontDesign.title")}
                     </span>
                     {d.updatedAt ? (
-                      <span className="text-[10px] text-white/40 leading-tight mt-0.5 truncate font-mono">
+                      <span className="text-[10px] text-white/40 select-none leading-tight mt-0.5 truncate font-mono">
                         {formatDateTime(d.updatedAt)}
                       </span>
                     ) : null}

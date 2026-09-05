@@ -229,11 +229,11 @@
   ):not(.agent-question-submit-btn):not(.agent-tool-diff-toggle):not(.proposed-plan-accept-btn):not(
     .review-findings-apply-btn
   ):not(.review-findings-fill-btn),
-[data-theme="minecraft"] button:not(:disabled)[data-active="true"]:not(.agent-tool-diff-toggle):not(.front-design-sidebar-item),
-[data-theme="minecraft"] div[data-active="true"]:not(.agent-tool-diff-toggle):not(.front-design-sidebar-item),
-[data-theme="minecraft"] [aria-current="page"]:not(.front-design-sidebar-item),
-[data-theme="minecraft"] [aria-current="true"]:not(.front-design-sidebar-item),
-[data-theme="minecraft"] [aria-current]:not(.front-design-sidebar-item) {
+[data-theme="minecraft"] button:not(:disabled)[data-active="true"]:not(.agent-tool-diff-toggle),
+[data-theme="minecraft"] div[data-active="true"]:not(.agent-tool-diff-toggle),
+[data-theme="minecraft"] [aria-current="page"],
+[data-theme="minecraft"] [aria-current="true"],
+[data-theme="minecraft"] [aria-current] {
   background-color: #14141c !important;
   color: #ffffff !important;
   border: 2px solid #000000 !important;
