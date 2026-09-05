@@ -1440,6 +1440,16 @@ const buildMarkdownMarkerDecorations = (
             }
           }
         }
+        // id 为系统分配标识：着色展示并设为原子范围，光标导航跳过、源码受事务过滤器保护。
+        const idMatch = line.match(/\{id:[0-9a-f]{32}\}/)
+        if (idMatch?.index !== undefined) {
+          addMarkerAlways(idMatch.index, idMatch.index + idMatch[0].length, "cm-md-template-id", true)
+        }
+        // wt 为工作区绑定：着色展示并设为原子范围，光标导航跳过、源码受事务过滤器保护。
+        const wtMatch = line.match(/\{wt:[^}\s{]+\}/)
+        if (wtMatch?.index !== undefined) {
+          addMarkerAlways(wtMatch.index, wtMatch.index + wtMatch[0].length, "cm-md-template-wt", true)
+        }
         allDecos.push({
           type: "line",
           from: offset,

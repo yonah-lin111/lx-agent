@@ -42,13 +42,16 @@ import { useLxToast } from "@/components/ui/LxToast"
 import { GitWorktreeCommandMenu, resolveGitWorktreeTarget, useGitWorktrees } from "@/features/git"
 import {
   cycleMarkdownTemplateStatus,
+  getMarkdownSuppleBlockEndLine,
   getMarkdownTemplateBlockContent,
   getMarkdownTemplateBlockCopyText,
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateWtRanges,
+  isInsideMarkdownSuppleBlock,
   isInsideMarkdownTemplateBlock,
+  setMarkdownSuppleWorktree,
   setMarkdownTemplateTitle,
   setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
@@ -886,15 +889,19 @@ export const LxMarkdownEditor = ({
 
   /**
    * 触发 git 工作区切换：解析 /gitWorktree <分支名> 命令行。
-   * 模板块内为局部切换（写/移除当前块结束行 {wt:}）；块外为全局切换（回调 onWorktreePathChange 持久化）。
+   * supple 块内为补充块局部切换（写/移除当前 supple 块结束行 {wt:}）；
+   * 模板块内为模板块局部切换（写/移除当前 &&& 块结束行 {wt:}）；
+   * 块外为全局切换（回调 onWorktreePathChange 持久化）。
    * 成功后清除命令行并提示；目标工作区不存在时保留命令行并提示错误。
    */
   const runGitWorktreeSwitch = (view: EditorView): void => {
     const docText = view.state.doc.toString()
     const cursor = view.state.selection.main.head
     const line = view.state.doc.lineAt(cursor)
+    const isInsideSupple = isInsideMarkdownSuppleBlock(view.state.doc.sliceString(0, line.from))
     const isInsideTemplate = isInsideMarkdownTemplateBlock(view.state.doc.sliceString(0, line.from))
-    const branch = getMarkdownSelectCommandValue(line.text, isInsideTemplate)
+    const isInsideAnyBlock = isInsideSupple || isInsideTemplate
+    const branch = getMarkdownSelectCommandValue(line.text, isInsideAnyBlock)
     // keymap 闭包为首次渲染捕获，这里必须从 ref 读取最新工作区数据。
     const currentProjectPath = projectPathRef.current
     if (branch === null || !currentProjectPath) return
@@ -918,6 +925,29 @@ export const LxMarkdownEditor = ({
         changes: { from: commandLine.from, to: commandLine.to, insert: "" },
         selection: { anchor: commandLine.from },
       })
+    }
+
+    if (isInsideSupple) {
+      // supple 补充块局部切换：写/移除当前 supple 块结束行的 {wt:分支名}。
+      const endLineNumber = getMarkdownSuppleBlockEndLine(docText, cursor)
+      if (endLineNumber === null) {
+        error("未找到闭合的补充块结束行")
+        return
+      }
+      const endDocLine = view.state.doc.line(endLineNumber)
+      const nextEndText = setMarkdownSuppleWorktree(
+        endDocLine.text,
+        target.isDefault ? null : branch,
+      )
+      if (nextEndText !== endDocLine.text) {
+        view.dispatch({
+          changes: { from: endDocLine.from, to: endDocLine.to, insert: nextEndText },
+        })
+      }
+      clearCommandLine()
+      success(target.isDefault ? "已恢复为继承外部工作区" : `补充块已绑定工作区 ${branch}`)
+      view.focus()
+      return
     }
 
     if (isInsideTemplate) {
@@ -1162,14 +1192,18 @@ export const LxMarkdownEditor = ({
 
                 const cursor = view.state.selection.main.head
                 const line = view.state.doc.lineAt(cursor)
+                const isInsideSupple = isInsideMarkdownSuppleBlock(
+                  view.state.doc.sliceString(0, line.from),
+                )
                 const isInsideTemplate = isInsideMarkdownTemplateBlock(
                   view.state.doc.sliceString(0, line.from),
                 )
+                const isInsideAnyBlock = isInsideSupple || isInsideTemplate
 
                 // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成；/gitWorktree 命令行触发工作区切换；/sendPrompt 触发 Prompt 派发。
                 const armedCommand = getMarkdownArmedSlashCommand(
                   line.text,
-                  isInsideTemplate,
+                  isInsideAnyBlock,
                   formattedCustomSlashCommands,
                 )
                 if (armedCommand) {

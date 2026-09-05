@@ -19,6 +19,8 @@ import {
   createMarkdownTemplateId,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  getMarkdownSuppleBlockEndLine,
+  getMarkdownSuppleWorktree,
   getMarkdownTemplateBlockContent,
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateWorktree,
@@ -720,14 +722,20 @@ export const useMarkdownPanels = ({
       return
     }
 
-    // 直接命令（scope=normal）插入时在结束行 &&& 标记后追加唯一 id；光标位置不受影响。
-    const content =
-      command.scope === "normal"
-        ? command.content.replace(
-            /(?:&&&(?:\s+[A-Za-z]\w*)?(?:\s+--end)?)$/m,
-            (match) => `${match} {id:${createMarkdownTemplateId()}}`,
-          )
-        : command.content
+    // 直接命令（scope=normal）插入时在结束行 &&& 标记后追加唯一 id；
+    // suppleTemplate 插入时在结束行 +++ 标记后追加唯一 id；光标位置不受影响。
+    let content = command.content
+    if (command.scope === "normal") {
+      content = content.replace(
+        /(?:&&&(?:\s+[A-Za-z]\w*)?(?:\s+--end)?)$/m,
+        (match) => `${match} {id:${createMarkdownTemplateId()}}`,
+      )
+    } else if (command.id === "suppleTemplate") {
+      content = content.replace(
+        /(?:\+\+\+\s+(?:suppleTemplate|supple)\s+--end)$/m,
+        (match) => `${match} {id:${createMarkdownTemplateId()}}`,
+      )
+    }
 
     view.dispatch({
       changes: { from: panel.line.from, to: panel.line.to, insert: content },
@@ -752,8 +760,10 @@ export const useMarkdownPanels = ({
   }
 
   /**
-   * 解析光标处的 git 工作区上下文目录：模板块内优先取块结束行 {wt:} 的局部绑定，
-   * 否则取全局 worktreePath ?? projectPath；无 git 上下文（virtual 项目）返回 null。
+   * 解析光标处的 git 工作区上下文目录：
+   * 1. 处于 supple 补充块内且单独绑定时，优先使用 supple 块结束行 {wt:} 的工作区；
+   * 2. supple 未绑定但处于 &&& 模板块内时，继承 &&& 模板块结束行 {wt:} 的工作区；
+   * 3. 否则取全局 worktreePath ?? projectPath；无 git 上下文（virtual 项目）返回 null。
    */
   const resolveContextDirectory = (
     view: EditorView,
@@ -763,7 +773,19 @@ export const useMarkdownPanels = ({
     const cursor = view.state.selection.main.head
     const docText = view.state.doc.toString()
 
-    // 模板块局部绑定：当前块结束行带 {wt:分支名} 时，解析为该工作区路径。
+    // 1. 检查是否在 supple 补充块内并存在单独绑定的工作区
+    const suppleEndLine = getMarkdownSuppleBlockEndLine(docText, cursor)
+    if (suppleEndLine !== null) {
+      const suppleBranch = getMarkdownSuppleWorktree(view.state.doc.line(suppleEndLine).text)
+      if (suppleBranch) {
+        const entry = worktrees?.find((item) => item.branch === suppleBranch)
+        if (entry) {
+          return { directory: entry.path, worktreeName: getGitWorktreeDisplayName(entry) }
+        }
+      }
+    }
+
+    // 2. 模板块局部绑定（或 supple 块继承外层 &&& 块）：当前模板块结束行带 {wt:分支名} 时，解析为该工作区路径。
     const endLine = getMarkdownTemplateBlockEndLine(docText, cursor)
     if (endLine !== null) {
       const branch = getMarkdownTemplateWorktree(view.state.doc.line(endLine).text)
@@ -775,7 +797,7 @@ export const useMarkdownPanels = ({
       }
     }
 
-    // 全局绑定：worktreePath ?? projectPath。
+    // 3. 全局绑定：worktreePath ?? projectPath。
     const directory = worktreePathRef.current ?? projectPath
     if (!directory) return null
 

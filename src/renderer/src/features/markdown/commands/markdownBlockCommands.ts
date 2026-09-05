@@ -210,8 +210,46 @@ export const MARKDOWN_SUPPLE_START_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\
 // log 补充块开始行：+++ logTemplate --start 或 +++ log --start。
 export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start\s*$/
 
-// supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end。
-export const MARKDOWN_SUPPLE_END_RE = /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end\s*$/
+// supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end，可选携带 {id:...} 与 {wt:...}。
+export const MARKDOWN_SUPPLE_END_RE =
+  /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
+
+export interface ParsedMarkdownSuppleEnd {
+  indent: string
+  command: "suppleTemplate" | "supple"
+  id?: string
+  wt?: string
+}
+
+export const parseMarkdownSuppleEndLine = (lineText: string): ParsedMarkdownSuppleEnd | null => {
+  const match = lineText.match(
+    /^(\s*)\+\+\+\s+(suppleTemplate|supple)\s+--end(?:\s+\{id:([0-9a-f]{32})\})?(?:\s+\{wt:([^}\s{]+)\})?\s*$/,
+  )
+  if (!match) return null
+
+  return {
+    indent: match[1],
+    command: match[2] as "suppleTemplate" | "supple",
+    id: match[3],
+    wt: match[4],
+  }
+}
+
+// 读取 supple 补充块结束行的工作区绑定分支；非结束行或无绑定返回 null。
+export const getMarkdownSuppleWorktree = (lineText: string): string | null => {
+  return parseMarkdownSuppleEndLine(lineText)?.wt ?? null
+}
+
+// 更新 supple 补充块结束行的工作区绑定：branch 为 null 时移除绑定，否则写入 {wt:branch}。
+export const setMarkdownSuppleWorktree = (lineText: string, branch: string | null): string => {
+  const parsed = parseMarkdownSuppleEndLine(lineText)
+  if (!parsed) return lineText
+
+  const idPart = parsed.id ? ` {id:${parsed.id}}` : ""
+  const wt = branch?.trim() ?? ""
+  const wtPart = wt ? ` {wt:${wt}}` : ""
+  return `${parsed.indent}+++ ${parsed.command} --end${idPart}${wtPart}`
+}
 
 // log 补充块结束行：+++ logTemplate --end 或 +++ log --end。
 export const MARKDOWN_LOG_END_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--end\s*$/
@@ -574,6 +612,36 @@ export const getMarkdownTemplateBlockStartLine = (
 }
 
 /**
+ * 返回 position 所在 supple 补充块结束行的行号（1-based）；不在 supple 块内或块未闭合返回 null。
+ * 光标位于开始行、正文或结束行自身均返回所属块的结束行。
+ */
+export const getMarkdownSuppleBlockEndLine = (text: string, position: number): number | null => {
+  const lines = text.split("\n")
+  const boundedPosition = Math.min(Math.max(position, 0), text.length)
+  let offset = 0
+  let startOffset: number | null = null
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const lineStart = offset
+    const lineContentEnd = lineStart + lines[index].length
+    const lineEnd = lineContentEnd + 1
+
+    if (isMarkdownSuppleStartLine(lines[index])) {
+      startOffset = lineStart
+    } else if (isMarkdownSuppleEndLine(lines[index])) {
+      if (startOffset !== null && boundedPosition >= startOffset && boundedPosition <= lineEnd) {
+        return index + 1
+      }
+      startOffset = null
+    }
+
+    offset = lineEnd
+  }
+
+  return null
+}
+
+/**
  * 返回 position 所在模板块结束行的行号（1-based）；不在模板块内或块未闭合返回 null。
  * 光标位于开始行、正文或结束行自身均返回所属块的结束行。
  */
@@ -675,14 +743,14 @@ export const setMarkdownTemplateWorktree = (lineText: string, branch: string | n
 export const createMarkdownTemplateId = (): string => crypto.randomUUID().replaceAll("-", "")
 
 /**
- * 扫描文本中全部模板块结束行上的 id 源码范围，供编辑器只读保护使用。
+ * 扫描文本中全部模板块及补充块结束行上的 id 源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: number }[] => {
   const ranges: { from: number; to: number }[] = []
   let offset = 0
 
   for (const line of text.split("\n")) {
-    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line) || MARKDOWN_SUPPLE_END_RE.test(line)) {
       const idMatch = line.match(MARKDOWN_TEMPLATE_ID_RE)
       if (idMatch?.index !== undefined) {
         ranges.push({
@@ -698,14 +766,14 @@ export const getMarkdownTemplateIdRanges = (text: string): { from: number; to: n
 }
 
 /**
- * 扫描文本中全部模板块结束行上的 wt（工作区绑定）源码范围，供编辑器只读保护使用。
+ * 扫描文本中全部模板块及补充块结束行上的 wt（工作区绑定）源码范围，供编辑器只读保护使用。
  */
 export const getMarkdownTemplateWtRanges = (text: string): { from: number; to: number }[] => {
   const ranges: { from: number; to: number }[] = []
   let offset = 0
 
   for (const line of text.split("\n")) {
-    if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
+    if (MARKDOWN_TEMPLATE_END_RE.test(line) || MARKDOWN_SUPPLE_END_RE.test(line)) {
       const wtMatch = line.match(MARKDOWN_TEMPLATE_WT_RE)
       if (wtMatch?.index !== undefined) {
         ranges.push({

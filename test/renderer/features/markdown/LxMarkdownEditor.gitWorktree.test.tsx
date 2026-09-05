@@ -266,4 +266,100 @@ describe("LxMarkdownEditor /gitWorktree 回车切换", () => {
 
     await waitFor(() => expect(onSearchReferencedFiles).toHaveBeenCalledWith(["/refs/second"], ""))
   })
+
+  it("suppleTemplate 内部 /gitWorktree 回车切换只写入当前 supple 结束行", async () => {
+    const onWorktreePathChange = vi.fn().mockResolvedValue(true)
+    render(
+      <LxMarkdownEditor
+        initialContent=""
+        projectPath="/repo"
+        onWorktreePathChange={onWorktreePathChange}
+      />,
+    )
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+
+    const doc = [
+      "&&& addTemplate 「title: 测试」 {wt:parent-branch}",
+      "+++ suppleTemplate --start",
+      "- 位置: ",
+      "/gitWorktree git-worktree-switch",
+      "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}",
+      "&&& done {wt:parent-branch}",
+    ].join("\n")
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: doc.length },
+    })
+    view.dispatch({
+      selection: {
+        anchor: doc.indexOf("/gitWorktree") + "/gitWorktree git-worktree-switch".length,
+      },
+    })
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    await new Promise((r) => setTimeout(r, 120))
+
+    const result = view.state.doc.toString()
+    expect(result).toContain(
+      "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:git-worktree-switch}",
+    )
+    // 外部 &&& 结束行保持原样
+    expect(result).toContain("&&& done {wt:parent-branch}")
+    expect(result).not.toContain("/gitWorktree")
+    expect(onWorktreePathChange).not.toHaveBeenCalled()
+  })
+
+  it("suppleTemplate 内部切换为默认工作区时移除 supple 结束行的 {wt:}", async () => {
+    const onWorktreePathChange = vi.fn().mockResolvedValue(true)
+    render(
+      <LxMarkdownEditor
+        initialContent=""
+        projectPath="/repo"
+        onWorktreePathChange={onWorktreePathChange}
+      />,
+    )
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+
+    const doc = [
+      "&&& addTemplate 「title: 测试」 {wt:parent-branch}",
+      "+++ suppleTemplate --start",
+      "- 位置: ",
+      "/gitWorktree dev",
+      "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:git-worktree-switch}",
+      "&&& done {wt:parent-branch}",
+    ].join("\n")
+    const view = EditorView.findFromDOM(getCm()!)!
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: doc },
+      selection: { anchor: doc.length },
+    })
+    view.dispatch({
+      selection: {
+        anchor: doc.indexOf("/gitWorktree") + "/gitWorktree dev".length,
+      },
+    })
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    await new Promise((r) => setTimeout(r, 120))
+
+    const result = view.state.doc.toString()
+    expect(result).toContain("+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}")
+    expect(result).not.toContain("{wt:git-worktree-switch}")
+    expect(result).toContain("&&& done {wt:parent-branch}")
+  })
 })

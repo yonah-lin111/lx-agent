@@ -5,6 +5,8 @@ import {
   cycleMarkdownTemplateStatus,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  getMarkdownSuppleBlockEndLine,
+  getMarkdownSuppleWorktree,
   getMarkdownTemplateBlockContent,
   getMarkdownTemplateBlockCopyText,
   getMarkdownTemplateBlockStartLine,
@@ -16,6 +18,9 @@ import {
   isInsideMarkdownCodeFence,
   isInsideMarkdownLogBlock,
   isInsideMarkdownTemplateBlock,
+  isMarkdownSuppleEndLine,
+  parseMarkdownSuppleEndLine,
+  setMarkdownSuppleWorktree,
   setMarkdownTemplateWorktree,
   toggleMarkdownTemplateCommentLines,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -470,6 +475,73 @@ describe("模板块工作区绑定 {wt:}", () => {
 
       const pos = doc.indexOf("- 独立日志")
       expect(getMarkdownTemplateBlockCopyText(doc, pos)).toBeNull()
+    })
+  })
+
+  describe("suppleTemplate 结束行解析与工作区绑定", () => {
+    it("正确解析 suppleTemplate 结束行的 id 与 wt", () => {
+      const line = "  +++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:feat-x}"
+      const parsed = parseMarkdownSuppleEndLine(line)
+      expect(parsed).toEqual({
+        indent: "  ",
+        command: "suppleTemplate",
+        id: "1234567890abcdef1234567890abcdef",
+        wt: "feat-x",
+      })
+      expect(getMarkdownSuppleWorktree(line)).toBe("feat-x")
+      expect(isMarkdownSuppleEndLine(line)).toBe(true)
+    })
+
+    it("更新或移除 supple 补充块工作区绑定", () => {
+      const line = "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}"
+      const withWt = setMarkdownSuppleWorktree(line, "new-branch")
+      expect(withWt).toBe("+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:new-branch}")
+
+      const withoutWt = setMarkdownSuppleWorktree(withWt, null)
+      expect(withoutWt).toBe("+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}")
+    })
+
+    it("正确获取 supple 补充块的结束行", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "+++ suppleTemplate --start",
+        "- 补充内容",
+        "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const posInsideSupple = doc.indexOf("- 补充内容")
+      expect(getMarkdownSuppleBlockEndLine(doc, posInsideSupple)).toBe(4)
+
+      const posOutsideSupple = doc.indexOf("&&& addTemplate --start")
+      expect(getMarkdownSuppleBlockEndLine(doc, posOutsideSupple)).toBeNull()
+    })
+
+    it("未闭合的 supple 补充块返回 null", () => {
+      const doc = [
+        "&&& addTemplate --start",
+        "+++ suppleTemplate --start",
+        "- 补充内容未闭合",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const pos = doc.indexOf("- 补充内容未闭合")
+      expect(getMarkdownSuppleBlockEndLine(doc, pos)).toBeNull()
+    })
+
+    it("getMarkdownTemplateIdRanges 与 getMarkdownTemplateWtRanges 包含 supple 结束行", () => {
+      const doc = [
+        "+++ suppleTemplate --start",
+        "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:feat-supple}",
+      ].join("\n")
+
+      const idRanges = getMarkdownTemplateIdRanges(doc)
+      const wtRanges = getMarkdownTemplateWtRanges(doc)
+
+      expect(idRanges).toHaveLength(1)
+      expect(doc.slice(idRanges[0].from, idRanges[0].to)).toBe("{id:1234567890abcdef1234567890abcdef}")
+      expect(wtRanges).toHaveLength(1)
+      expect(doc.slice(wtRanges[0].from, wtRanges[0].to)).toBe("{wt:feat-supple}")
     })
   })
 })
