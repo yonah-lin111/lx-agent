@@ -3,17 +3,13 @@ import type React from "react"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
-import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { useTranslation } from "@/i18n"
 
 export interface FrontDesignLeftSideBarProps {
   isCollapsed?: boolean
 }
-
-const ALL_SESSIONS_VALUE = "__all_sessions__"
 
 const formatDateTime = (timestamp?: number): string => {
   if (!timestamp) return ""
@@ -27,7 +23,7 @@ const formatDateTime = (timestamp?: number): string => {
 }
 
 /**
- * 渲染前端设计页面专属左侧栏内容：展示设计历史列表并支持自由切换。
+ * 渲染前端设计页面专属左侧栏内容：默认展示当前活跃会话的设计历史列表并支持自由切换。
  */
 export const FrontDesignLeftSideBar = ({
   isCollapsed = false,
@@ -37,7 +33,6 @@ export const FrontDesignLeftSideBar = ({
 
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
-  const sessions = useSyncExternalStore(sessionListStore.subscribe, sessionListStore.getSessions)
 
   // 搜索关键字
   const [searchKeyword, setSearchKeyword] = useState<string>("")
@@ -46,89 +41,12 @@ export const FrontDesignLeftSideBar = ({
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
   const activeSessionId = activeTab?.sessionId ?? null
 
-  // 选中的过滤会话 ID，默认跟随当前激活的 session（若有且有设计），否则保留全局或第一个有效设计会话
-  const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>(() => {
-    if (activeSessionId && designs.some((d) => d.sessionId === activeSessionId)) {
-      return activeSessionId
-    }
-    return ALL_SESSIONS_VALUE
-  })
-
-  // 当外部活动 Session 发生变化（如 AgentTabBar 切换 Tab、AgentPage 切换 Session、恢复历史等）
-  // 规则：
-  // 1. 若切换到的 Tab/Session 下有设计稿，则自动跟随切换筛选器与激活设计；
-  // 2. 若切换到的 Tab/Session 下没有设计稿，则左侧栏和设计页面保持当前展示不变，不强制切换回空列表。
-  useEffect(() => {
-    if (!activeSessionId) return
-
-    const hasDesignsInActiveSession = designs.some((d) => d.sessionId === activeSessionId)
-    if (hasDesignsInActiveSession) {
-      setSelectedSessionFilter(activeSessionId)
-      const sessionDesigns = designs.filter((d) => d.sessionId === activeSessionId)
-      if (sessionDesigns.length > 0) {
-        const isCurrentActiveInSession = sessionDesigns.some((d) => d.id === activeDesignId)
-        if (!isCurrentActiveInSession) {
-          frontDesignStore.setActiveDesignId(sessionDesigns[0].id)
-        }
-      }
-    }
-  }, [activeSessionId, designs, activeDesignId])
-
-  // 当用户在左侧栏手动切换 Session 下拉筛选框时，仅更新当前筛选范围，不强跳顶部 Tab
-  const handleSessionFilterChange = (nextSessionId: string): void => {
-    setSelectedSessionFilter(nextSessionId)
-  }
-
-  // 生成会话下拉选项（以 Agent Tab 维度优先展示）
-  const sessionOptions = useMemo<LxSelectOption<string>[]>(() => {
-    const options: LxSelectOption<string>[] = [
-      { value: ALL_SESSIONS_VALUE, label: t("frontDesign.allAgentTabs") },
-    ]
-
-    // 收集所有已打开的 Tab 以及有前端设计历史的 Session
-    const sessionMap = new Map<string, string>()
-
-    // 1. 来自打开的 Tab（显示为对应 Tab 名称）
-    tabs.forEach((tab, index) => {
-      if (tab.sessionId) {
-        const session = sessions.find((s) => s.id === tab.sessionId)
-        const name =
-          tab.title?.trim() ||
-          session?.title?.trim() ||
-          t("agent.tabNumber", { number: index + 1 })
-        sessionMap.set(tab.sessionId, name)
-      }
-    })
-
-    // 2. 来自设计历史中记录的 sessionId
-    designs.forEach((d) => {
-      if (d.sessionId && !sessionMap.has(d.sessionId)) {
-        const session = sessions.find((s) => s.id === d.sessionId)
-        const name = session?.title?.trim() || t("frontDesign.standaloneSession")
-        sessionMap.set(d.sessionId, name)
-      }
-    })
-
-    sessionMap.forEach((label, sessionId) => {
-      options.push({
-        value: sessionId,
-        label,
-      })
-    })
-
-    return options
-  }, [tabs, sessions, designs, t])
-
-  // 过滤与排序后的前端设计列表（会话过滤 + 搜索过滤 + 从旧到新升序排序）
+  // 过滤与排序后的前端设计列表（严格绑定当前激活会话 + 搜索过滤 + 从旧到新升序排序）
   const filteredDesigns = useMemo(() => {
-    let result = [...designs]
+    // 严格按当前活跃会话过滤
+    let result = designs.filter((d) => (activeSessionId ? d.sessionId === activeSessionId : !d.sessionId))
 
-    // 1. Session 过滤
-    if (selectedSessionFilter !== ALL_SESSIONS_VALUE) {
-      result = result.filter((d) => d.sessionId === selectedSessionFilter)
-    }
-
-    // 2. 搜索关键词过滤
+    // 搜索关键词过滤
     const keyword = searchKeyword.trim().toLowerCase()
     if (keyword) {
       result = result.filter((d) => {
@@ -137,28 +55,31 @@ export const FrontDesignLeftSideBar = ({
       })
     }
 
-    // 3. 按更新/创建时间从旧到新升序排序
+    // 按更新/创建时间从旧到新升序排序
     result.sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))
 
     return result
-  }, [designs, selectedSessionFilter, searchKeyword, t])
+  }, [designs, activeSessionId, searchKeyword, t])
 
-  // 当切换 Session 筛选且当前 activeDesignId 不在当前会话的列表中时，自动切换激活项为该会话的第一项
+  // 当活跃会话变化或列表更新时，若当前激活项不属于当前会话的过滤列表：
+  // 1. 若当前会话有设计，自动激活该会话第一项；
+  // 2. 若当前会话无设计，将 activeDesignId 置空，使右侧画布同步清空。
   useEffect(() => {
-    if (filteredDesigns.length > 0) {
-      const isCurrentActiveInFiltered = filteredDesigns.some((d) => d.id === activeDesignId)
-      if (!isCurrentActiveInFiltered) {
-        frontDesignStore.setActiveDesignId(filteredDesigns[0].id)
+    const isCurrentActiveInFiltered = filteredDesigns.some((d) => d.id === activeDesignId)
+    if (!isCurrentActiveInFiltered) {
+      const nextId = filteredDesigns[0]?.id ?? null
+      if (nextId !== activeDesignId) {
+        frontDesignStore.setActiveDesignId(nextId || "")
       }
     }
-  }, [selectedSessionFilter, filteredDesigns, activeDesignId])
+  }, [filteredDesigns, activeDesignId])
 
   if (isCollapsed) {
     return (
       <div className="flex h-full min-w-0 flex-col gap-3 items-center">
         <div className="flex h-7 shrink-0 items-center justify-end px-1" />
         <nav className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2">
-          {designs.map((d) => {
+          {filteredDesigns.map((d) => {
             const isActive = d.id === activeDesignId
             return (
               <LxIconButton
@@ -193,7 +114,7 @@ export const FrontDesignLeftSideBar = ({
             {filteredDesigns.length}
           </span>
         </div>
-        {designs.length > 0 && (
+        {filteredDesigns.length > 0 && (
           <LxIconButton
             size="small"
             onClick={() => frontDesignStore.clear()}
@@ -216,18 +137,6 @@ export const FrontDesignLeftSideBar = ({
           size="sm"
           onChange={(e) => setSearchKeyword(e.target.value)}
           clear
-        />
-      </div>
-
-      {/* Session 选择器 */}
-      <div className="px-1">
-        <LxSelect
-          value={selectedSessionFilter}
-          onChange={handleSessionFilterChange}
-          options={sessionOptions}
-          size="small"
-          className="w-full"
-          aria-label={t("frontDesign.sessionFilter")}
         />
       </div>
 
