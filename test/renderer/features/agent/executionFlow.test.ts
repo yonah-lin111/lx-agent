@@ -860,5 +860,43 @@ describe("executionFlow", () => {
       expect(reviewStep.reviewFindingsContent?.findings).toHaveLength(1)
       expect(reviewStep.reviewFindingsContent?.findings[0].severity).toBe("critical")
     })
+
+    it("正确解析 frontDesign 步骤与结构化元数据", () => {
+      const messages: ChatMessage[] = [
+        {
+          id: "msg-1",
+          role: "user",
+          blocks: [{ kind: "text", text: "设计一个仪表板" }],
+          isStreaming: false,
+          timestamp: 1000,
+        },
+        {
+          id: "msg-2",
+          role: "assistant",
+          blocks: [
+            {
+              kind: "frontDesign",
+              design: {
+                id: "design-dash-1",
+                title: "Dashboard V1",
+                html: "<div class=\"p-4\">Dashboard</div>",
+                raw: "<front_design title=\"Dashboard V1\"><div class=\"p-4\">Dashboard</div></front_design>",
+                isStreaming: false,
+              },
+            },
+          ],
+          isStreaming: false,
+          timestamp: 1010,
+        },
+      ]
+
+      const steps = buildExecutionSteps(messages)
+      expect(steps).toHaveLength(2)
+      const designStep = steps[1]
+      expect(designStep.kind).toBe("frontDesign")
+      expect(designStep.title).toBe("Design: Dashboard V1")
+      expect(designStep.frontDesignContent?.title).toBe("Dashboard V1")
+      expect(designStep.frontDesignContent?.html).toBe("<div class=\"p-4\">Dashboard</div>")
+    })
   })
 })

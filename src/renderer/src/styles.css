@@ -527,6 +527,10 @@ select {
   margin: 0.8em 0;
 }
 
+.markdown-preview.lx-code-block-wrapper .markdown-code-block {
+  margin: 0;
+}
+
 .markdown-preview .markdown-code-block-header {
   position: sticky;
   top: 0;

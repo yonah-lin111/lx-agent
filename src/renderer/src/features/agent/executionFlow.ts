@@ -570,6 +570,56 @@ export const buildExecutionSteps = (
         continue
       }
 
+      // 前端设计原型
+      if (block.kind === "frontDesign") {
+        if (!block.design.html.trim() && !block.design.title?.trim()) continue
+        stepIndex++
+        const textDuration = block.durationMs ?? message.durationMs
+        const isRunning =
+          message.isStreaming &&
+          blockIdx === message.blocks.length - 1 &&
+          Boolean(block.design.isStreaming)
+        const start = currentBlockStartedAt ?? message.timestamp
+        const completed =
+          start !== undefined && textDuration !== undefined ? start + textDuration : undefined
+        if (completed !== undefined) {
+          currentBlockStartedAt = completed
+        }
+        steps.push({
+          id: `step-${stepIndex}-front-design`,
+          turnIndex: turn,
+          stepIndex,
+          kind: "frontDesign",
+          title: block.design.title ? `Design: ${block.design.title}` : "Frontend Design Prototype",
+          subtitle: block.design.isStreaming
+            ? "Generating prototype..."
+            : `${block.design.html.split("\n").length} lines · Tailwind CSS`,
+          status: isRunning ? "running" : "done",
+          timestamp: start ?? message.timestamp,
+          startedAt: start,
+          completedAt: completed,
+          durationMs: textDuration,
+          model: message.model,
+          tokens: message.usage
+            ? {
+                input: message.usage.input,
+                output: message.usage.output,
+                cacheRead: message.usage.cacheRead,
+                total: message.usage.totalTokens,
+              }
+            : undefined,
+          frontDesignContent: block.design,
+          assistantContent: {
+            text: block.design.raw,
+            model: message.model,
+            provider: message.provider,
+            stopReason: message.stopReason,
+            usage: message.usage,
+          },
+        })
+        continue
+      }
+
       // 文本回复
       if (block.kind === "text") {
         if (!block.text.trim()) continue

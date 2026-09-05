@@ -203,6 +203,8 @@ export const getKindMeta = (
       return { icon: ClipboardCheck, labelKey: "agent.proposedPlanBadge", tagColor: "emerald" }
     case "reviewFindings":
       return { icon: ShieldAlert, labelKey: "agent.review.badge", tagColor: "purple" }
+    case "frontDesign":
+      return { icon: Palette, labelKey: "frontDesign.designCardBadge", tagColor: "pink" }
     case "error": {
       const isAborted = step.errorContent?.isAborted ?? step.errorContent?.stopReason === "aborted"
       if (isAborted) {

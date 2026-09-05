@@ -17,6 +17,7 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
+  FrontDesignCard,
   ProposedPlanCard,
   ReviewFindingsCard,
   type ExecutionItemMeta,
@@ -210,6 +211,16 @@ export const AgentAssistantMessage = ({
                   onFillInput={onEchoToInput}
                   readOnly={readOnly}
                   hasSubsequentUserMessage={hasSubsequentUserMessage}
+                />
+              )
+            }
+
+            if (group.kind === "frontDesign") {
+              return (
+                <FrontDesignCard
+                  key={groupIndex}
+                  design={group.block.design}
+                  isStreaming={group.isStreaming}
                 />
               )
             }

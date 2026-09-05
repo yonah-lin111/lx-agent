@@ -17,6 +17,7 @@ vi.mock("@/agent/agentRunner", () => ({
     deleteSession: vi.fn(),
     deleteMessageTurn: vi.fn(),
     getPromptAssembly: vi.fn(),
+    setCollaborationMode: vi.fn(),
   },
 }))
 vi.mock("@/agent/suggestedQuestionsGenerator", () => ({
@@ -180,5 +181,31 @@ describe("agent IPC handlers", () => {
     expect(() => restoreHandler(undefined, [{ role: "invalid" }])).toThrow(
       "INVALID_AGENT_RESTORE_MESSAGES",
     )
+  })
+
+  it("setCollaborationMode handler 校验模式（允许 build/plan/review/design/default）并转发到 agentRunner", async () => {
+    vi.resetModules()
+    const { registerAgentHandlers } = await import("@/ipc/agentHandlers")
+    const { agentRunner } = await import("@/agent/agentRunner")
+
+    registerAgentHandlers(() => undefined)
+
+    const handler = handle.mock.calls.find(
+      ([channel]) => channel === AGENT_CHANNELS.setCollaborationMode,
+    )?.[1]
+    expect(handler).toBeTypeOf("function")
+
+    // 非法模式被拦截
+    const invalidResult = await handler(undefined, "unknown_mode")
+    expect(invalidResult).toEqual({ ok: false, error: "协作模式参数无效。" })
+    expect(agentRunner.setCollaborationMode).not.toHaveBeenCalled()
+
+    // 合法模式（design）被放行并转发
+    await handler(undefined, "design", "sess-1", "tab-1")
+    expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("design", "sess-1", "tab-1")
+
+    // default 归一化为 build
+    await handler(undefined, "default")
+    expect(agentRunner.setCollaborationMode).toHaveBeenCalledWith("build", undefined, undefined)
   })
 })

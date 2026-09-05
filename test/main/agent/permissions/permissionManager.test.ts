@@ -553,4 +553,40 @@ describe("permissionManager 永久决策写回（G5）", () => {
       })
     })
   })
+
+  describe("前端设计模式 (Design Mode 门禁)", () => {
+    it("Design 模式下硬拦截 3 个内嵌渲染工具 (render_svg/render_ascii/render_html)", async () => {
+      applySettings({
+        defaultMode: "default",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+
+      expect(
+        permissionManager.evaluate("render_svg", { svg: "<svg />" }, { collaborationMode: "design" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("render_ascii", { ascii: "+---+" }, { collaborationMode: "design" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("render_html", { html: "<div></div>" }, { collaborationMode: "design" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("read", { path: "src/test.ts" }, { collaborationMode: "design" }),
+      ).toBe("allow")
+
+      const result = await permissionManager.gate(
+        gateContext("render_html", { html: "<div></div>" }),
+        "s1",
+        undefined,
+        { collaborationMode: "design" },
+      )
+      expect(result).toEqual({
+        block: true,
+        reason:
+          "Action denied: Current collaboration mode is Front Design Mode. Inline rendering tools (render_svg, render_ascii, render_html) are disabled in Design Mode. Please output frontend code using <front_design> tags.",
+      })
+    })
+  })
 })

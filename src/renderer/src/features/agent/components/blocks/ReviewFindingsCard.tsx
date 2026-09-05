@@ -67,9 +67,7 @@ const FindingItemCard = ({
       data-severity={item.severity}
       data-selected={isSelected ? "true" : undefined}
       className={`review-finding-item rounded-lg border transition-all ${
-        isSelected
-          ? "border-violet-500/30 bg-violet-500/[0.04]"
-          : "border-white/5 bg-white/[0.02]"
+        isSelected ? "border-violet-500/30 bg-violet-500/[0.04]" : "border-white/5 bg-white/[0.02]"
       } p-2.5`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -102,10 +100,10 @@ const FindingItemCard = ({
             <button
               type="button"
               onClick={() => onOpenFile(item.location.filePath, item.location.lineStart)}
-              className="review-finding-file-link flex items-center gap-1 text-[11px] font-mono text-cyan-400/80 hover:text-cyan-300 transition-colors w-fit focus:outline-none"
+              className="review-finding-file-link flex items-start gap-1 max-w-full text-left text-[11px] font-mono text-cyan-400/80 hover:text-cyan-300 transition-colors w-fit focus:outline-none"
             >
-              <ExternalLink className="h-3 w-3" />
-              <span>
+              <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
+              <span className="break-all">
                 {item.location.filePath}:{item.location.lineStart}
                 {item.location.lineEnd ? `-${item.location.lineEnd}` : ""}
               </span>
@@ -279,66 +277,59 @@ export const ReviewFindingsCard = ({
 
   return (
     <div className="review-findings-card my-2.5 w-full min-w-0 rounded-xl border border-violet-500/25 bg-violet-500/[0.03] p-3.5 shadow-sm transition-all duration-200">
-      {/* 头部：徽标、统计与复制 */}
+      {/* 头部第一行：图标、审查徽章与最右侧复制报告按钮 */}
       <div className="review-findings-header flex items-center justify-between gap-2 border-b border-violet-500/15 pb-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <div className="review-findings-icon-wrapper flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/15 text-violet-400">
             <ShieldAlert className="h-3.5 w-3.5" />
           </div>
-          <div className="flex min-w-0 items-center gap-1.5 flex-wrap">
-            <span className="review-findings-badge shrink-0 rounded border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
-              {t("agent.review.badge")}
-            </span>
-            <span className="review-findings-title truncate text-[13px] font-semibold text-white/95">
-              {findings.length > 0
-                ? `${findings.length} ${t("agent.review.findingsCount")}`
-                : t("agent.review.noFindings")}
-            </span>
-
-            {/* 严重级别分布 Chip */}
-            {counts.critical > 0 && (
-              <span className="review-severity-badge-critical rounded bg-red-500/20 border border-red-500/30 px-1.5 py-0.2 text-[10px] font-medium text-red-300">
-                {counts.critical} Critical
-              </span>
-            )}
-            {counts.high > 0 && (
-              <span className="review-severity-badge-high rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.2 text-[10px] font-medium text-amber-300">
-                {counts.high} High
-              </span>
-            )}
-            {counts.medium > 0 && (
-              <span className="review-severity-badge-medium rounded bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-medium text-blue-300">
-                {counts.medium} Medium
-              </span>
-            )}
-          </div>
+          <span className="review-findings-badge shrink-0 rounded border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
+            {t("agent.review.badge")}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {isStreaming && (
-            <div className="flex items-center gap-1.5 text-[11px] text-violet-400/80 italic mr-1">
-              <span className="h-1.5 w-1.5 animate-ping rounded-full bg-violet-400" />
-              <span>{t("agent.review.auditing")}</span>
-            </div>
+        <LxIconButton
+          size="small"
+          aria-label={t("agent.review.copyReport")}
+          title={{
+            content: copied ? t("common.copied") : t("agent.review.copyReport"),
+            placement: "top",
+          }}
+          onClick={handleCopy}
+          className="review-findings-copy-btn shrink-0"
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-violet-400" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
           )}
+        </LxIconButton>
+      </div>
 
-          <LxIconButton
-            size="small"
-            aria-label={t("agent.review.copyReport")}
-            title={{
-              content: copied ? t("common.copied") : t("agent.review.copyReport"),
-              placement: "top",
-            }}
-            onClick={handleCopy}
-            className="review-findings-copy-btn"
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-violet-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </LxIconButton>
-        </div>
+      {/* 单独一行的 title 与严重级别分布 Chip */}
+      <div className="review-findings-title-row mt-2.5 flex items-center gap-2 flex-wrap">
+        <span className="review-findings-title truncate text-[13px] font-semibold text-white/95">
+          {findings.length > 0
+            ? `${findings.length} ${t("agent.review.findingsCount")}`
+            : t("agent.review.noFindings")}
+        </span>
+
+        {/* 严重级别分布 Chip */}
+        {counts.critical > 0 && (
+          <span className="review-severity-badge-critical rounded bg-red-500/20 border border-red-500/30 px-1.5 py-0.2 text-[10px] font-medium text-red-300">
+            {counts.critical} Critical
+          </span>
+        )}
+        {counts.high > 0 && (
+          <span className="review-severity-badge-high rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.2 text-[10px] font-medium text-amber-300">
+            {counts.high} High
+          </span>
+        )}
+        {counts.medium > 0 && (
+          <span className="review-severity-badge-medium rounded bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-medium text-blue-300">
+            {counts.medium} Medium
+          </span>
+        )}
       </div>
 
       {/* 概要说明：使用 LxMarkdownPreview 渲染 */}
@@ -395,7 +386,7 @@ export const ReviewFindingsCard = ({
       )}
 
       {/* 底部操作栏：左侧展开/收起剩余项，右侧一键回填与一键修复 */}
-      <div className="review-findings-footer mt-3 flex items-center justify-between gap-2 border-t border-violet-500/15 pt-2.5">
+      <div className="review-findings-footer mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-violet-500/15 pt-2.5">
         {/* 左侧：省略号展开/折叠 */}
         <div>
           {hasMoreFindings && (
@@ -420,15 +411,15 @@ export const ReviewFindingsCard = ({
 
         {/* 右侧：操作按钮 */}
         {findings.length > 0 && !readOnly && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-0 max-w-full">
             {onFillInput && (
               <button
                 type="button"
                 disabled={selectedFindings.length === 0}
                 onClick={handleFillInput}
-                className="review-findings-fill-btn flex h-7 items-center gap-1 rounded-lg border border-white/10 px-2.5 text-[11.5px] text-white/70 hover:bg-white/5 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="review-findings-fill-btn flex min-h-7 h-auto items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-[11.5px] text-white/80 transition-all max-w-full disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:bg-white/5 hover:enabled:text-white"
               >
-                <span>{t("agent.review.fillInput")}</span>
+                <span className="break-words">{t("agent.review.fillInput")}</span>
               </button>
             )}
 
@@ -438,23 +429,23 @@ export const ReviewFindingsCard = ({
                 disabled={isStreaming || isExecutionDisabled || selectedFindings.length === 0}
                 data-accepted={isExecutionDisabled ? "true" : undefined}
                 onClick={handleApplyFixes}
-                className={`review-findings-apply-btn flex h-7 items-center gap-1.5 rounded-lg px-3 text-[12px] font-medium transition-all ${
+                className={`review-findings-apply-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-violet-600 px-3 py-1 text-[12px] font-medium text-white transition-all max-w-full ${
                   isExecutionDisabled
-                    ? "bg-white/5 text-white/30 cursor-not-allowed pointer-events-none opacity-40 border border-white/5 shadow-none"
+                    ? "cursor-not-allowed pointer-events-none opacity-40 shadow-none"
                     : isStreaming || selectedFindings.length === 0
-                      ? "bg-white/5 text-white/40 cursor-not-allowed border border-white/10"
-                      : "bg-violet-600 text-white hover:bg-violet-500 active:scale-[0.98] shadow-sm cursor-pointer"
+                      ? "cursor-not-allowed opacity-40 shadow-none"
+                      : "hover:bg-violet-500 active:scale-[0.98] shadow-sm cursor-pointer"
                 }`}
               >
                 {isExecutionDisabled ? (
                   <>
-                    <Check className="h-3.5 w-3.5 text-white/30" />
-                    <span>{t("agent.review.fixesApplied")}</span>
+                    <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-white/30" />
+                    <span className="break-words">{t("agent.review.fixesApplied")}</span>
                   </>
                 ) : (
                   <>
-                    <Wrench className="h-3 w-3" />
-                    <span>{t("agent.review.applyFixes")}</span>
+                    <Wrench className="h-3 w-3 shrink-0 mt-0.5" />
+                    <span className="break-words">{t("agent.review.applyFixes")}</span>
                   </>
                 )}
               </button>

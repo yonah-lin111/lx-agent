@@ -90,28 +90,43 @@ export const ProposedPlanCard = ({
 
   return (
     <div className="proposed-plan-card my-2.5 w-full min-w-0 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3.5 shadow-sm transition-all duration-200">
-      {/* 头部：展示淡绿实施方案图标、徽标与标题 */}
+      {/* 头部第一行：图标、实施方案徽标与最右侧复制按钮 */}
       <div className="proposed-plan-header flex items-center justify-between gap-2 border-b border-emerald-500/15 pb-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <div className="proposed-plan-icon-wrapper flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-400">
             <ClipboardCheck className="h-3.5 w-3.5" />
           </div>
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="proposed-plan-badge shrink-0 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
-              {t("agent.proposedPlanBadge")}
-            </span>
-            <span className="proposed-plan-title truncate text-[13px] font-semibold text-white/95">
-              {title}
-            </span>
-          </div>
+          <span className="proposed-plan-badge shrink-0 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+            {t("agent.proposedPlanBadge")}
+          </span>
         </div>
 
-        {isStreaming && (
-          <div className="flex items-center gap-1.5 text-[11px] text-emerald-400/80 italic">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-400" />
-            <span>{t("agent.planGenerating")}</span>
-          </div>
-        )}
+        <LxIconButton
+          size="small"
+          aria-label={t("agent.copyPlan")}
+          title={{
+            content: copied ? t("common.copied") : t("agent.copyPlan"),
+            placement: "top",
+          }}
+          onClick={handleCopy}
+          className="proposed-plan-copy-btn shrink-0"
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+        </LxIconButton>
+      </div>
+
+      {/* 单独一行的 title 与统计指标 Chip */}
+      <div className="proposed-plan-title-row mt-2.5 flex items-center gap-2 flex-wrap">
+        <span className="proposed-plan-title truncate text-[13px] font-semibold text-white/95">
+          {title}
+        </span>
+        <span className="rounded bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-medium text-emerald-300">
+          {rawLineCount} {t("frontDesign.lines")}
+        </span>
       </div>
 
       {/* 计划 Markdown 正文：无滚动条，默认 30 行截断，支持省略号展开/折叠 */}
@@ -141,8 +156,8 @@ export const ProposedPlanCard = ({
         </div>
       </div>
 
-      {/* 底部操作栏：左侧参数省略号展开/收起，右侧单图标复制与采纳执行操作 */}
-      <div className="proposed-plan-footer mt-2.5 flex items-center justify-between gap-2 border-t border-emerald-500/15 pt-2.5">
+      {/* 底部操作栏：左侧参数省略号展开/收起，右侧采纳执行操作 */}
+      <div className="proposed-plan-footer mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-emerald-500/15 pt-2.5">
         {/* 左侧：折叠/展开按钮 */}
         <div>
           {(isOverflowing || isExpanded) && (
@@ -163,53 +178,36 @@ export const ProposedPlanCard = ({
           )}
         </div>
 
-        {/* 右侧：单图标复制方案（参考 AgentMessageItem）与采纳执行按钮 */}
-        <div className="flex shrink-0 items-center gap-2">
-          <LxIconButton
-            size="small"
-            aria-label={t("agent.copyPlan")}
-            title={{
-              content: copied ? t("common.copied") : t("agent.copyPlan"),
-              placement: "top",
-            }}
-            onClick={handleCopy}
-            className="proposed-plan-copy-btn"
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </LxIconButton>
-
-          {!readOnly && onAccept && (
+        {/* 右侧：采纳执行按钮 */}
+        {!readOnly && onAccept && (
+          <div className="flex shrink-0 items-center justify-end gap-2 min-w-0 max-w-full">
             <button
               type="button"
               disabled={isStreaming || isExecutionDisabled}
               data-accepted={isExecutionDisabled ? "true" : undefined}
               onClick={handleAccept}
-              className={`proposed-plan-accept-btn flex h-7 items-center gap-1.5 rounded-lg px-3 text-[12px] font-medium transition-all ${
+              className={`proposed-plan-accept-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-emerald-600 px-3 py-1 text-[12px] font-medium text-white transition-all max-w-full ${
                 isExecutionDisabled
-                  ? "bg-white/5 text-white/30 cursor-not-allowed pointer-events-none opacity-40 border border-white/5 shadow-none"
+                  ? "cursor-not-allowed pointer-events-none opacity-40 shadow-none"
                   : isStreaming
-                    ? "bg-white/5 text-white/40 cursor-not-allowed border border-white/10"
-                    : "bg-emerald-600 text-white hover:bg-emerald-500 active:scale-[0.98] shadow-sm cursor-pointer"
+                    ? "cursor-not-allowed opacity-40 shadow-none"
+                    : "hover:bg-emerald-500 active:scale-[0.98] shadow-sm cursor-pointer"
               }`}
             >
               {isExecutionDisabled ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-white/30" />
-                  <span>{t("agent.planAccepted")}</span>
+                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-white/30" />
+                  <span className="break-words">{t("agent.planAccepted")}</span>
                 </>
               ) : (
                 <>
-                  <Play className="h-3 w-3 fill-current" />
-                  <span>{t("agent.acceptAndExecute")}</span>
+                  <Play className="h-3 w-3 shrink-0 mt-0.5 fill-current" />
+                  <span className="break-words">{t("agent.acceptAndExecute")}</span>
                 </>
               )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

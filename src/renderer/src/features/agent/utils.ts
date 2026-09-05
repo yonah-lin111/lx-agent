@@ -1,4 +1,5 @@
 import type { AgentMessage, QuestionAnswer, SubagentData } from "@shared/contracts/agent"
+import { frontDesignStore } from "./hooks/frontDesignStore"
 import type {
   ChatBlock,
   ChatMessage,
@@ -58,6 +59,18 @@ const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 
 const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
 const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
+
+const FRONT_DESIGN_OPEN_REGEX = /<front_design(?:\s+[^>]*)?>/i
+const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
+
+const extractFrontDesignAttributes = (tagStr: string): { title?: string; id?: string } => {
+  const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
+  const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  return {
+    title: titleMatch ? titleMatch[1].trim() : undefined,
+    id: idMatch ? idMatch[1].trim() : undefined,
+  }
+}
 
 // 提取计划内容中的首个标题（支持 # 或 ##）。
 export const extractPlanTitle = (content: string): string | undefined => {
@@ -149,13 +162,32 @@ export const parseReviewFindingsContent = (
   }
 }
 
-// 解析文本块，若包含 <proposed_plan> 或 <review_findings> 标签则拆分为独立结构化块与文本块。
-export const parseTextWithProposedPlan = (text: string, durationMs?: number): ChatBlock[] => {
+// 解析文本块，若包含 <proposed_plan>、<review_findings> 或 <front_design> 标签则拆分为独立结构化块与文本块。
+export const parseTextWithProposedPlan = (
+  text: string,
+  durationMs?: number,
+  baseId?: string,
+): ChatBlock[] => {
   if (!text) return []
 
-  // 1. 检测 <review_findings>
   const reviewOpenMatch = REVIEW_FINDINGS_OPEN_REGEX.exec(text)
-  if (reviewOpenMatch) {
+  const planOpenMatch = PROPOSED_PLAN_OPEN_REGEX.exec(text)
+  const designOpenMatch = FRONT_DESIGN_OPEN_REGEX.exec(text)
+
+  type Candidate = { type: "review" | "plan" | "design"; index: number }
+  const candidates: Candidate[] = []
+  if (reviewOpenMatch) candidates.push({ type: "review", index: reviewOpenMatch.index })
+  if (planOpenMatch) candidates.push({ type: "plan", index: planOpenMatch.index })
+  if (designOpenMatch) candidates.push({ type: "design", index: designOpenMatch.index })
+
+  if (candidates.length === 0) {
+    return [{ kind: "text", text, durationMs }]
+  }
+
+  candidates.sort((a, b) => a.index - b.index)
+  const earliest = candidates[0].type
+
+  if (earliest === "review" && reviewOpenMatch) {
     const openIndex = reviewOpenMatch.index
     const openTagLength = reviewOpenMatch[0].length
 
@@ -192,68 +224,131 @@ export const parseTextWithProposedPlan = (text: string, durationMs?: number): Ch
       })
 
       if (after.length > 0) {
-        result.push(...parseTextWithProposedPlan(after))
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
       }
     }
 
     return result
   }
 
-  // 2. 检测 <proposed_plan>
-  const openMatch = PROPOSED_PLAN_OPEN_REGEX.exec(text)
-  if (!openMatch) {
-    return [{ kind: "text", text, durationMs }]
-  }
+  if (earliest === "plan" && planOpenMatch) {
+    const openIndex = planOpenMatch.index
+    const openTagLength = planOpenMatch[0].length
 
-  const openIndex = openMatch.index
-  const openTagLength = openMatch[0].length
-
-  const result: ChatBlock[] = []
-  const before = text.slice(0, openIndex).trim()
-  if (before.length > 0) {
-    result.push({ kind: "text", text: before })
-  }
-
-  const contentStartIndex = openIndex + openTagLength
-  const remainingText = text.slice(contentStartIndex)
-  const closeMatch = PROPOSED_PLAN_CLOSE_REGEX.exec(remainingText)
-
-  if (!closeMatch) {
-    // 方案正在流式输出，标签尚未闭合
-    const planContent = remainingText.trim()
-    result.push({
-      kind: "proposedPlan",
-      plan: {
-        title: extractPlanTitle(planContent),
-        content: planContent,
-        raw: text.slice(openIndex),
-        isStreaming: true,
-      },
-      durationMs,
-    })
-  } else {
-    // 方案已完整闭合
-    const closeIndexInRemaining = closeMatch.index
-    const planContent = remainingText.slice(0, closeIndexInRemaining).trim()
-    const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
-
-    result.push({
-      kind: "proposedPlan",
-      plan: {
-        title: extractPlanTitle(planContent),
-        content: planContent,
-        raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
-        isStreaming: false,
-      },
-      durationMs,
-    })
-
-    if (after.length > 0) {
-      result.push(...parseTextWithProposedPlan(after))
+    const result: ChatBlock[] = []
+    const before = text.slice(0, openIndex).trim()
+    if (before.length > 0) {
+      result.push({ kind: "text", text: before })
     }
+
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = PROPOSED_PLAN_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch) {
+      const planContent = remainingText.trim()
+      result.push({
+        kind: "proposedPlan",
+        plan: {
+          title: extractPlanTitle(planContent),
+          content: planContent,
+          raw: text.slice(openIndex),
+          isStreaming: true,
+        },
+        durationMs,
+      })
+    } else {
+      const closeIndexInRemaining = closeMatch.index
+      const planContent = remainingText.slice(0, closeIndexInRemaining).trim()
+      const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
+
+      result.push({
+        kind: "proposedPlan",
+        plan: {
+          title: extractPlanTitle(planContent),
+          content: planContent,
+          raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
+          isStreaming: false,
+        },
+        durationMs,
+      })
+
+      if (after.length > 0) {
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
+      }
+    }
+
+    return result
   }
 
-  return result
+  if (earliest === "design" && designOpenMatch) {
+    const openIndex = designOpenMatch.index
+    const openTagLength = designOpenMatch[0].length
+    const { title: parsedTitle, id: parsedId } = extractFrontDesignAttributes(designOpenMatch[0])
+    const title = parsedTitle || "Frontend Prototype"
+    const designId = parsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
+
+    const result: ChatBlock[] = []
+    const before = text.slice(0, openIndex).trim()
+    if (before.length > 0) {
+      result.push({ kind: "text", text: before })
+    }
+
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = FRONT_DESIGN_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch) {
+      const htmlContent = remainingText.trim()
+      result.push({
+        kind: "frontDesign",
+        design: {
+          id: designId,
+          title,
+          html: htmlContent,
+          raw: text.slice(openIndex),
+          isStreaming: true,
+        },
+        durationMs,
+      })
+      frontDesignStore.registerDesign({
+        id: designId,
+        title,
+        html: htmlContent,
+        isStreaming: true,
+      })
+    } else {
+      const closeIndexInRemaining = closeMatch.index
+      const htmlContent = remainingText.slice(0, closeIndexInRemaining).trim()
+      const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
+
+      result.push({
+        kind: "frontDesign",
+        design: {
+          id: designId,
+          title,
+          html: htmlContent,
+          raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
+          isStreaming: false,
+        },
+        durationMs,
+      })
+      frontDesignStore.registerDesign({
+        id: designId,
+        title,
+        html: htmlContent,
+        isStreaming: false,
+      })
+
+      if (after.length > 0) {
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId))
+      }
+    }
+
+    return result
+  }
+
+  return [{ kind: "text", text, durationMs }]
 }
 
 // 将 shared AgentMessage 转换为展示条目。
@@ -357,7 +452,7 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return parseTextWithProposedPlan(block.text, block.durationMs)
+      return parseTextWithProposedPlan(block.text, block.durationMs, id)
     }
     if (block.type === "thinking") {
       return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]

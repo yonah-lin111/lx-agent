@@ -14,6 +14,7 @@ import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { UiLeftSideBar } from "@/pages/ui/components/UiLeftSideBar"
+import { FrontDesignLeftSideBar } from "@/pages/front-design"
 import { PageRouter } from "@/routes/PageRouter"
 
 /**
@@ -56,6 +57,7 @@ export const App = () => {
   const renderLeftSideBarContent = (): React.JSX.Element => {
     if (pathname === PAGE_ROUTES.home) return <HomeLeftSideBar />
     if (pathname === PAGE_ROUTES.ui) return <UiLeftSideBar />
+    if (pathname === PAGE_ROUTES.design) return <FrontDesignLeftSideBar />
     if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />
     return <ProjectLeftSideBar />
   }
