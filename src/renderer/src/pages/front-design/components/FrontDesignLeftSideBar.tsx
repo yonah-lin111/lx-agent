@@ -46,7 +46,7 @@ export const FrontDesignLeftSideBar = ({
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
   const activeSessionId = activeTab?.sessionId ?? null
 
-  // 选中的过滤会话 ID，默认跟随当前激活的 session（若有且有设计），否则保留全局或第一个有效设计会话
+  // 选中的过滤会话 ID，默认跟随当前激活的 session（若有且有设计），否则保留全局
   const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>(() => {
     if (activeSessionId && designs.some((d) => d.sessionId === activeSessionId)) {
       return activeSessionId
@@ -54,12 +54,16 @@ export const FrontDesignLeftSideBar = ({
     return ALL_SESSIONS_VALUE
   })
 
-  // 当外部活动 Session 发生变化（如 AgentTabBar 切换 Tab、AgentPage 切换 Session、恢复历史等）
+  // 当外部活动 Session 发生变化（如用户在 AgentTabBar 主动切换 Tab）
   // 规则：
-  // 1. 若切换到的 Tab/Session 下有设计稿，则自动跟随切换筛选器与激活设计；
-  // 2. 若切换到的 Tab/Session 下没有设计稿，则左侧栏和设计页面保持当前展示不变，不强制切换回空列表。
+  // 1. 若当前筛选器不是 ALL_SESSIONS_VALUE（即用户处于特定 Tab 过滤模式下）：
+  //    - 若切换到的 Tab/Session 下有设计稿，则自动跟随切换筛选器与激活设计；
+  //    - 若切换到的 Tab/Session 下没有设计稿，则保持当前展示不变，不强制回退空列表。
+  // 2. 若当前筛选器正是 ALL_SESSIONS_VALUE（用户在看全部）：
+  //    - 不变动筛选器，保持全局视野。
   useEffect(() => {
     if (!activeSessionId) return
+    if (selectedSessionFilter === ALL_SESSIONS_VALUE) return
 
     const hasDesignsInActiveSession = designs.some((d) => d.sessionId === activeSessionId)
     if (hasDesignsInActiveSession) {
@@ -72,7 +76,7 @@ export const FrontDesignLeftSideBar = ({
         }
       }
     }
-  }, [activeSessionId, designs, activeDesignId])
+  }, [activeSessionId, designs, activeDesignId, selectedSessionFilter])
 
   // 当用户在左侧栏手动切换 Session 下拉筛选框时，仅更新当前筛选范围，不强跳顶部 Tab
   const handleSessionFilterChange = (nextSessionId: string): void => {
