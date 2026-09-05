@@ -504,6 +504,7 @@ export const LxMarkdownEditor = ({
       id: `custom:${cmd.name}`,
       label: `/${cmd.name}`,
       description: cmd.description,
+      argumentHint: cmd.argumentHint,
       content: cmd.content,
       cursorOffset: cmd.content.length,
       scope: (cmd.scope === "template" ? "template" : "both") as "template" | "both",
@@ -1166,7 +1167,11 @@ export const LxMarkdownEditor = ({
                 )
 
                 // 二次回车命令：模板块内 /summaryTitle 命令行触发标题生成；/gitWorktree 命令行触发工作区切换；/sendPrompt 触发 Prompt 派发。
-                const armedCommand = getMarkdownArmedSlashCommand(line.text, isInsideTemplate)
+                const armedCommand = getMarkdownArmedSlashCommand(
+                  line.text,
+                  isInsideTemplate,
+                  formattedCustomSlashCommands,
+                )
                 if (armedCommand) {
                   if (armedCommand.id === "sendPrompt") {
                     runSendPromptDispatch(view)

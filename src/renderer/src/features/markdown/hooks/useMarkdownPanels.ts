@@ -37,6 +37,7 @@ import {
   getMarkdownSendPromptOptions,
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
+  getTemplatePlaceholderSelectionRange,
   isMarkdownConfirmCommandArmed,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
@@ -700,11 +701,19 @@ export const useMarkdownPanels = ({
       return
     }
 
-    // 自定义模板命令：直接将 content 插入光标行。
+    // 自定义模板命令：直接将 content 插入光标行，若包含占位符则默认选中首个占位符。
     if (command.kind === "customTemplate") {
+      const placeholderRange = getTemplatePlaceholderSelectionRange(command.content)
+      const selection = placeholderRange
+        ? {
+            anchor: panel.line.from + placeholderRange.start,
+            head: panel.line.from + placeholderRange.end,
+          }
+        : { anchor: panel.line.from + command.cursorOffset }
+
       view.dispatch({
         changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
-        selection: { anchor: panel.line.from + command.cursorOffset },
+        selection,
       })
       view.focus()
       closeSlashCommandPanel()

@@ -376,6 +376,32 @@ scope: global
       })
     })
 
+    it("loads argument-hint for agentMD commands and provides it in listMarkdownCommands", () => {
+      const userAgentMDDir = join(holder.appDataRoot, "command", "agentMD")
+      mkdirSync(userAgentMDDir, { recursive: true })
+      writeFileSync(
+        join(userAgentMDDir, "hintTemplate.md"),
+        `---
+description: template with argument-hint
+argument-hint: [target] [action]
+scope: global
+---
+## Target: [target]
+Action: [action]
+`,
+      )
+
+      const mdCommands = loader.loadMarkdownCommands(projectDir)
+      const target = mdCommands.find((c) => c.name === "hintTemplate")
+      expect(target).toBeDefined()
+      expect(target?.argumentHint).toBe("[target] [action]")
+
+      const ipcList = loader.listMarkdownCommands(projectDir)
+      const ipcTarget = ipcList.find((c) => c.name === "hintTemplate")
+      expect(ipcTarget).toBeDefined()
+      expect(ipcTarget?.argumentHint).toBe("[target] [action]")
+    })
+
     it("preserves leading spaces/indentation on the first line while trimming trailing whitespace", () => {
       const userAgentMDDir = join(holder.appDataRoot, "command", "agentMD")
       mkdirSync(userAgentMDDir, { recursive: true })

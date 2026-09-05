@@ -5,6 +5,7 @@ export type MarkdownCommandScope = "global" | "template"
 export interface MarkdownTemplateCommandItem {
   name: string
   description: string
+  argumentHint?: string
   content: string
   scope: MarkdownCommandScope
   source: "project" | "user"

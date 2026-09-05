@@ -19,6 +19,7 @@ export interface LoadedPromptTemplate {
 export interface LoadedMarkdownTemplateCommand {
   name: string
   description: string
+  argumentHint?: string
   content: string
   scope: MarkdownCommandScope
   source: "project" | "user"
@@ -305,9 +306,18 @@ export function loadMarkdownCommandFromFile(
 
     const scope: MarkdownCommandScope = frontmatter.scope === "template" ? "template" : "global"
 
+    let argumentHint: string | undefined
+    const rawHint = frontmatter["argument-hint"] ?? frontmatter.argumentHint
+    if (typeof rawHint === "string" && rawHint.trim()) {
+      argumentHint = rawHint.trim()
+    } else if (Array.isArray(rawHint)) {
+      argumentHint = rawHint.map((h) => String(h).trim()).join(" ")
+    }
+
     return {
       name,
       description,
+      argumentHint,
       content: body.replace(/^\r?\n+/, "").trimEnd(),
       scope,
       source,
@@ -480,6 +490,7 @@ export class PromptTemplateLoader {
     return this.loadMarkdownCommands(cwd).map((cmd) => ({
       name: cmd.name,
       description: cmd.description,
+      argumentHint: cmd.argumentHint,
       content: cmd.content,
       scope: cmd.scope,
       source: cmd.source,

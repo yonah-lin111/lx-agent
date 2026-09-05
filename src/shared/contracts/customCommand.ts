@@ -15,6 +15,7 @@ export interface AgentInputCommandData {
 export interface AgentMDCommandData {
   name: string
   description: string
+  argumentHint?: string
   scope: "global" | "template"
   content: string
 }
@@ -27,7 +28,7 @@ export interface CustomCommandDetailItem {
   filePath: string
   description: string
   content: string
-  argumentHint?: string // 仅 agentInput
+  argumentHint?: string
   mdScope?: "global" | "template" // 仅 agentMD
 }
 
@@ -39,7 +40,7 @@ export interface SaveCustomCommandInput {
   name: string
   description: string
   content: string
-  argumentHint?: string // 仅 agentInput
+  argumentHint?: string
   mdScope?: "global" | "template" // 仅 agentMD
 }
 

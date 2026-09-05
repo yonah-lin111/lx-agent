@@ -156,6 +156,11 @@ export const MarkdownSlashCommandMenu = ({
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="shrink-0 text-[13px] leading-none text-white">{command.label}</span>
+          {command.argumentHint && (
+            <span className="shrink-0 font-mono text-[11px] leading-none text-white/40">
+              {command.argumentHint}
+            </span>
+          )}
           <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
             {command.description}
           </span>

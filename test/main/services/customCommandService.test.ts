@@ -80,4 +80,26 @@ describe("CustomCommandService", () => {
     expect(list[0].content).toBe("   # Header 1\nSome paragraph")
     expect(list[0].mdScope).toBe("template")
   })
+
+  it("saves and lists argumentHint for agentMD commands", () => {
+    const saved = service.save({
+      type: "agentMD",
+      scope: "user",
+      name: "customMdWithHint",
+      description: "custom md command with argument hint",
+      content: "## Target [module]\nDescription: [desc]",
+      argumentHint: "[module] [desc]",
+      mdScope: "global",
+    })
+
+    expect(saved.argumentHint).toBe("[module] [desc]")
+    const diskFile = readFileSync(saved.filePath, "utf8")
+    expect(diskFile).toContain('argument-hint: "[module] [desc]"')
+
+    const list = service.list({ type: "agentMD", scope: "user" })
+    const found = list.find((c) => c.name === "customMdWithHint")
+    expect(found).toBeDefined()
+    expect(found?.argumentHint).toBe("[module] [desc]")
+    expect(found?.mdScope).toBe("global")
+  })
 })

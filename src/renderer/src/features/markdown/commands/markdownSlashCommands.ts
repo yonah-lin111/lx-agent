@@ -83,6 +83,7 @@ export interface MarkdownSlashCommand {
   kind: MarkdownSlashCommandKind
   source?: MarkdownSlashCommandSource
   customScope?: "global" | "template"
+  argumentHint?: string
 }
 
 // 斜杠命令行范围。
@@ -95,7 +96,7 @@ export interface MarkdownSlashCommandLine {
 /**
  * 计算模板插入内容在首个输入占位处的光标偏移量。
  */
-const getTemplateCursorOffset = (content: string): number => {
+export const getTemplateCursorOffset = (content: string): number => {
   const lines = content.split("\n")
   let offset = 0
   for (const line of lines) {
@@ -105,6 +106,23 @@ const getTemplateCursorOffset = (content: string): number => {
     offset += line.length + 1
   }
   return content.length
+}
+
+/**
+ * 获取模板内容中首个占位符 [xxx] 内部文本的选中范围（不包含中括号字符本身）。
+ * 若存在多个占位符默认返回第一个内部文本；若内部为空或无方括号占位符则返回 null。
+ */
+export const getTemplatePlaceholderSelectionRange = (
+  content: string,
+): { start: number; end: number } | null => {
+  const match = /\[([^\]\r\n]+)\]/.exec(content)
+  if (!match || match.index === undefined) {
+    return null
+  }
+  return {
+    start: match.index + 1,
+    end: match.index + 1 + match[1].length,
+  }
 }
 
 /**

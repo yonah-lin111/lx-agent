@@ -197,7 +197,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       formData.name.trim() !== orig.name ||
       formData.description.trim() !== (orig.description || "") ||
       formData.content.trimEnd() !== (orig.content || "").trimEnd() ||
-      (activeTab === "agentInput" && formData.argumentHint.trim() !== (orig.argumentHint || "")) ||
+      formData.argumentHint.trim() !== (orig.argumentHint || "") ||
       (activeTab === "agentMD" && (formData.mdScope || "global") !== (orig.mdScope || "global"))
     )
   }, [isEditingDraft, selectedCommandName, commands, formData, activeTab])
@@ -238,7 +238,7 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       name: trimmedName,
       description: formData.description.trim(),
       content: formData.content.trimEnd(),
-      argumentHint: activeTab === "agentInput" ? formData.argumentHint.trim() : undefined,
+      argumentHint: formData.argumentHint.trim() ? formData.argumentHint.trim() : undefined,
       mdScope: activeTab === "agentMD" ? formData.mdScope : undefined,
     })
 
@@ -660,30 +660,51 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     />
                   </label>
                 ) : (
-                  <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">
-                    <span className="flex items-center gap-1">
-                      {t("settings.customCommandMDScope")}
-                      <LxInfoTooltip
-                        markdown={`**global**: ${t("settings.customCommandMDGlobalScopeDesc")}\n\n**template**: ${t("settings.customCommandMDTemplateScopeDesc")}`}
+                  <>
+                    <label className="grid gap-1 text-xs text-white/60">
+                      <span className="flex items-center gap-1">
+                        {t("settings.customCommandMDScope")}
+                        <LxInfoTooltip
+                          markdown={`**global**: ${t("settings.customCommandMDGlobalScopeDesc")}\n\n**template**: ${t("settings.customCommandMDTemplateScopeDesc")}`}
+                        />
+                      </span>
+                      <LxSelect
+                        value={formData.mdScope}
+                        options={[
+                          { value: "global", label: t("settings.customCommandScopeGlobal") },
+                          {
+                            value: "template",
+                            label: t("settings.customCommandScopeTemplateOnly"),
+                          },
+                        ]}
+                        onChange={(val) =>
+                          handleFormChange((prev) => ({
+                            ...prev,
+                            mdScope: val as "global" | "template",
+                          }))
+                        }
                       />
-                    </span>
-                    <LxSelect
-                      value={formData.mdScope}
-                      options={[
-                        { value: "global", label: t("settings.customCommandScopeGlobal") },
-                        {
-                          value: "template",
-                          label: t("settings.customCommandScopeTemplateOnly"),
-                        },
-                      ]}
-                      onChange={(val) =>
-                        handleFormChange((prev) => ({
-                          ...prev,
-                          mdScope: val as "global" | "template",
-                        }))
-                      }
-                    />
-                  </label>
+                    </label>
+
+                    <label className="grid gap-1 text-xs text-white/60">
+                      <span className="flex items-center gap-1">
+                        {t("settings.customCommandArgumentHint")}
+                        <LxInfoTooltip
+                          markdown={`\`argument-hint\`: ${t("settings.customCommandArgumentHintHelp")}`}
+                        />
+                      </span>
+                      <LxInput
+                        placeholder="e.g. [feature] [branch]"
+                        value={formData.argumentHint}
+                        onChange={(e) =>
+                          handleFormChange((prev) => ({
+                            ...prev,
+                            argumentHint: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </>
                 )}
 
                 <label className="grid gap-1 text-xs text-white/60 @[500px]:col-span-2">

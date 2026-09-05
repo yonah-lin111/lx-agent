@@ -6,6 +6,7 @@ import {
   getMarkdownSendPromptOptions,
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
+  getTemplatePlaceholderSelectionRange,
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
@@ -160,6 +161,38 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownSlashCommands("/block", true, true, customCommands).map((c) => c.id)).toEqual(
       ["custom:block-only"],
     )
+  })
+
+  it("getTemplatePlaceholderSelectionRange: 解析并默认选中第一个 [xxx] 内部文本（不含中括号）", () => {
+    expect(getTemplatePlaceholderSelectionRange("Hello world")).toBeNull()
+    expect(getTemplatePlaceholderSelectionRange("## Target [feature]\nDetails: [details]")).toEqual({
+      start: 11,
+      end: 18,
+    })
+    expect(getTemplatePlaceholderSelectionRange("[only]")).toEqual({
+      start: 1,
+      end: 5,
+    })
+  })
+
+  it("getMarkdownSlashCommands 支持带有 argumentHint 的自定义 Markdown 模板命令", () => {
+    const customCommands = [
+      {
+        id: "custom:my-feature",
+        label: "/my-feature",
+        description: "自定义特性模板",
+        argumentHint: "[feature-name]",
+        content: "## Feature: [feature-name]\n\nDescription",
+        cursorOffset: 35,
+        scope: "both" as const,
+        kind: "customTemplate" as const,
+        source: "project" as const,
+      },
+    ]
+
+    const matches = getMarkdownSlashCommands("/my", false, true, customCommands)
+    expect(matches).toHaveLength(1)
+    expect(matches[0].argumentHint).toBe("[feature-name]")
   })
 
   it("stripMarkdownSlashCommands: 移除内容中的斜杠命令文本并保留空行换行", () => {

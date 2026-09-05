@@ -93,6 +93,7 @@ export class CustomCommandService {
                   filePath: fullPath,
                   description: loaded.description,
                   content: loaded.content,
+                  argumentHint: loaded.argumentHint,
                   mdScope: loaded.scope,
                 })
               }
@@ -140,11 +141,11 @@ export class CustomCommandService {
     const lines: string[] = ["---"]
     lines.push(`description: ${JSON.stringify(description.trim())}`)
 
-    if (type === "agentInput") {
-      if (argumentHint && argumentHint.trim()) {
-        lines.push(`argument-hint: ${JSON.stringify(argumentHint.trim())}`)
-      }
-    } else {
+    if (argumentHint && argumentHint.trim()) {
+      lines.push(`argument-hint: ${JSON.stringify(argumentHint.trim())}`)
+    }
+
+    if (type === "agentMD") {
       lines.push(`scope: ${mdScope === "template" ? "template" : "global"}`)
     }
     lines.push("---")
