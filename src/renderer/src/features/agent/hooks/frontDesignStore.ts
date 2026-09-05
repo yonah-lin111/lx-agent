@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react"
+import { agentTabStore } from "./agentTabStore"
+import { sessionListStore } from "./sessionListStore"
 
 export interface FrontDesignItem {
   id: string
@@ -157,6 +159,12 @@ export const frontDesignStore = {
     let nextDesigns: FrontDesignItem[]
     const now = Date.now()
 
+    const fallbackSessionId =
+      data.sessionId ??
+      agentTabStore.getActiveTab()?.sessionId ??
+      sessionListStore.getCurrentSessionId() ??
+      null
+
     if (existingIndex >= 0) {
       const existing = internalState.designs[existingIndex]
       const updated: FrontDesignItem = {
@@ -165,7 +173,7 @@ export const frontDesignStore = {
         html: data.html,
         updatedAt: now,
         isStreaming: data.isStreaming ?? false,
-        sessionId: data.sessionId ?? existing.sessionId,
+        sessionId: fallbackSessionId ?? existing.sessionId ?? null,
       }
       nextDesigns = [...internalState.designs]
       nextDesigns[existingIndex] = updated
@@ -176,7 +184,7 @@ export const frontDesignStore = {
         html: data.html,
         updatedAt: now,
         isStreaming: data.isStreaming ?? false,
-        sessionId: data.sessionId ?? null,
+        sessionId: fallbackSessionId,
       }
       // 最新生成的排在前面
       nextDesigns = [newItem, ...internalState.designs]

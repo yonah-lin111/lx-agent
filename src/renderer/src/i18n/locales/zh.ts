@@ -1346,6 +1346,8 @@ export const zh: TranslationDictionary = {
     filterBySession: "按会话筛选",
     currentSession: "当前会话",
     standaloneSession: "独立会话",
+    searchDesigns: "搜索设计...",
+    noMatchingDesigns: "未找到匹配的设计",
     noDesignsInSession: "当前会话暂无设计历史",
     prototypeBadge: "Front Design Prototype",
     lines: "行",

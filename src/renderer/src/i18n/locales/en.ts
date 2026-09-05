@@ -1385,6 +1385,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     filterBySession: "Filter by session",
     currentSession: "Current Session",
     standaloneSession: "Standalone Session",
+    searchDesigns: "Search designs...",
+    noMatchingDesigns: "No matching designs",
     noDesignsInSession: "No designs in this session",
     prototypeBadge: "Front Design Prototype",
     lines: "lines",

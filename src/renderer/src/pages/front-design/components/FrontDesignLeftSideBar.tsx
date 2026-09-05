@@ -1,7 +1,8 @@
-import { Loader2, Palette, Trash2 } from "lucide-react"
+import { Loader2, Palette, Search, Trash2 } from "lucide-react"
 import type React from "react"
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
@@ -26,6 +27,9 @@ export const FrontDesignLeftSideBar = ({
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
   const sessions = useSyncExternalStore(sessionListStore.subscribe, sessionListStore.getSessions)
+
+  // 搜索关键字
+  const [searchKeyword, setSearchKeyword] = useState<string>("")
 
   // 获取当前激活 Tab 绑定的会话 ID
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
@@ -76,13 +80,36 @@ export const FrontDesignLeftSideBar = ({
     return options
   }, [tabs, sessions, designs, t])
 
-  // 过滤后的前端设计列表
+  // 过滤后的前端设计列表（会话过滤 + 搜索过滤）
   const filteredDesigns = useMemo(() => {
-    if (selectedSessionFilter === ALL_SESSIONS_VALUE) {
-      return designs
+    let result = designs
+
+    // 1. Session 过滤
+    if (selectedSessionFilter !== ALL_SESSIONS_VALUE) {
+      result = result.filter((d) => d.sessionId === selectedSessionFilter)
     }
-    return designs.filter((d) => d.sessionId === selectedSessionFilter)
-  }, [designs, selectedSessionFilter])
+
+    // 2. 搜索关键词过滤
+    const keyword = searchKeyword.trim().toLowerCase()
+    if (keyword) {
+      result = result.filter((d) => {
+        const title = (d.title || t("frontDesign.title")).toLowerCase()
+        return title.includes(keyword)
+      })
+    }
+
+    return result
+  }, [designs, selectedSessionFilter, searchKeyword, t])
+
+  // 当切换 Session 筛选且当前 activeDesignId 不在当前会话的列表中时，自动切换激活项为该会话的第一项
+  useEffect(() => {
+    if (filteredDesigns.length > 0) {
+      const isCurrentActiveInFiltered = filteredDesigns.some((d) => d.id === activeDesignId)
+      if (!isCurrentActiveInFiltered) {
+        frontDesignStore.setActiveDesignId(filteredDesigns[0].id)
+      }
+    }
+  }, [selectedSessionFilter, filteredDesigns, activeDesignId])
 
   if (isCollapsed) {
     return (
@@ -136,6 +163,20 @@ export const FrontDesignLeftSideBar = ({
         )}
       </div>
 
+      {/* 顶部搜索框 */}
+      <div className="px-1">
+        <LxInput
+          type="text"
+          value={searchKeyword}
+          placeholder={t("frontDesign.searchDesigns")}
+          aria-label={t("frontDesign.searchDesigns")}
+          prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+          size="sm"
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          clear
+        />
+      </div>
+
       {/* Session 选择器 */}
       <div className="px-1">
         <LxSelect
@@ -154,7 +195,9 @@ export const FrontDesignLeftSideBar = ({
           <div className="flex flex-col items-center justify-center p-6 text-center text-xs text-white/35">
             {designs.length === 0
               ? t("frontDesign.noDesigns")
-              : t("frontDesign.noDesignsInSession")}
+              : searchKeyword.trim()
+                ? t("frontDesign.noMatchingDesigns")
+                : t("frontDesign.noDesignsInSession")}
           </div>
         ) : (
           filteredDesigns.map((d) => {
@@ -174,7 +217,7 @@ export const FrontDesignLeftSideBar = ({
                 }}
                 className={`front-design-sidebar-item group flex items-center justify-between gap-2 rounded-[6px] px-2 py-1.5 text-xs transition-colors cursor-pointer border ${
                   isActive
-                    ? "bg-pink-500/15 border-pink-500/30 text-white font-medium shadow-sm"
+                    ? "bg-pink-500/15 border-pink-500/30 border-l-4 !border-l-pink-500 text-white font-medium shadow-sm"
                     : "border-transparent text-white/70 hover:bg-white/5 hover:text-white"
                 }`}
               >
