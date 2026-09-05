@@ -1,5 +1,4 @@
 import type { AgentMessage, QuestionAnswer, SubagentData } from "@shared/contracts/agent"
-import { frontDesignStore } from "./hooks/frontDesignStore"
 import type {
   ChatBlock,
   ChatMessage,
@@ -313,14 +312,6 @@ export const parseTextWithProposedPlan = (
         },
         durationMs,
       })
-      frontDesignStore.registerDesign({
-        id: designId,
-        title,
-        html: htmlContent,
-        isStreaming: true,
-        sessionId,
-        updatedAt: timestamp,
-      })
     } else {
       const closeIndexInRemaining = closeMatch.index
       const htmlContent = remainingText.slice(0, closeIndexInRemaining).trim()
@@ -336,14 +327,6 @@ export const parseTextWithProposedPlan = (
           isStreaming: false,
         },
         durationMs,
-      })
-      frontDesignStore.registerDesign({
-        id: designId,
-        title,
-        html: htmlContent,
-        isStreaming: false,
-        sessionId,
-        updatedAt: timestamp,
       })
 
       if (after.length > 0) {

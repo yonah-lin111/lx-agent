@@ -24,6 +24,7 @@ import {
   toChatMessage,
 } from "../utils"
 import { agentTabStore } from "./agentTabStore"
+import { frontDesignStore } from "./frontDesignStore"
 import { sessionListStore } from "./sessionListStore"
 
 // 展示条目 id 自增。
@@ -222,6 +223,20 @@ export const useAgentChat = (
           updated.isStreaming = true
           streamingRef.current = updated
           setMessages((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+
+          // 在流式输出过程中，如果包含前端设计卡片，实时同步到 frontDesignStore
+          updated.blocks.forEach((block) => {
+            if (block.kind === "frontDesign") {
+              frontDesignStore.registerDesign({
+                id: block.design.id,
+                title: block.design.title,
+                html: block.design.html,
+                isStreaming: true,
+                sessionId: currentSessionIdRef.current,
+                updatedAt: updated.timestamp,
+              })
+            }
+          })
           break
         }
 
@@ -234,6 +249,20 @@ export const useAgentChat = (
           const final = toChatMessage(event.message, false, streaming.id, currentSessionIdRef.current)
           streamingRef.current = null
           setMessages((prev) => prev.map((item) => (item.id === final.id ? final : item)))
+
+          // 流式生成完毕，固化并注册设计卡片（isStreaming: false）
+          final.blocks.forEach((block) => {
+            if (block.kind === "frontDesign") {
+              frontDesignStore.registerDesign({
+                id: block.design.id,
+                title: block.design.title,
+                html: block.design.html,
+                isStreaming: false,
+                sessionId: currentSessionIdRef.current,
+                updatedAt: final.timestamp,
+              })
+            }
+          })
           break
         }
 

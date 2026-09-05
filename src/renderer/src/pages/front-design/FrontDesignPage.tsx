@@ -114,9 +114,15 @@ export const FrontDesignPage = (): React.JSX.Element => {
   }, [viewport])
 
   return (
-    <div className="front-design-page flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#181818] rounded-[6px] border border-white/5">
+    <div
+      className="front-design-page flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5"
+      style={{ backgroundColor: "var(--color-theme-surface)" }}
+    >
       {/* 顶部工具栏 */}
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-white/5 bg-[#1f1f1f] px-4">
+      <header
+        className="flex h-11 shrink-0 items-center justify-between border-b border-white/5 px-4"
+        style={{ backgroundColor: "var(--color-theme-surface-hover)" }}
+      >
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] bg-pink-500/10 text-pink-400">
             <Palette className="h-3.5 w-3.5" />
@@ -137,7 +143,10 @@ export const FrontDesignPage = (): React.JSX.Element => {
         {/* 视口切换与操作按扭 */}
         <div className="flex items-center gap-1.5">
           {/* 视口预设 */}
-          <div className="flex items-center rounded-[5px] bg-[#141414] p-0.5 border border-white/5">
+          <div
+            className="flex items-center rounded-[5px] p-0.5 border border-white/5"
+            style={{ backgroundColor: "var(--color-theme-bg)" }}
+          >
             <LxIconButton
               size="small"
               highlighted={viewport === "desktop"}
@@ -197,7 +206,10 @@ export const FrontDesignPage = (): React.JSX.Element => {
       </header>
 
       {/* 主画布预览区 */}
-      <main className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4 bg-[#121212]">
+      <main
+        className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+        style={{ backgroundColor: "var(--color-theme-bg)" }}
+      >
         {!html ? (
           <div className="flex max-w-sm flex-col items-center justify-center gap-3 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20">
@@ -210,7 +222,8 @@ export const FrontDesignPage = (): React.JSX.Element => {
           </div>
         ) : (
           <div
-            className={`flex h-full w-full ${viewportWidthClass} flex-col overflow-hidden rounded-[8px] border border-white/10 bg-[#0d0d0d] shadow-2xl transition-[max-width] duration-300 ease-in-out`}
+            className={`flex h-full w-full ${viewportWidthClass} flex-col overflow-hidden rounded-[8px] border border-white/10 shadow-2xl transition-[max-width] duration-300 ease-in-out`}
+            style={{ backgroundColor: "var(--color-theme-surface)" }}
           >
             <iframe
               key={refreshKey}
