@@ -1,12 +1,18 @@
 import { Loader2, Palette, Trash2 } from "lucide-react"
 import type React from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { useTranslation } from "@/i18n"
 
 export interface FrontDesignLeftSideBarProps {
   isCollapsed?: boolean
 }
+
+const ALL_SESSIONS_VALUE = "__all_sessions__"
 
 /**
  * 渲染前端设计页面专属左侧栏内容：展示设计历史列表并支持自由切换。
@@ -16,6 +22,67 @@ export const FrontDesignLeftSideBar = ({
 }: FrontDesignLeftSideBarProps): React.JSX.Element => {
   const { t } = useTranslation()
   const { designs, activeDesignId } = useFrontDesign()
+
+  const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
+  const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
+  const sessions = useSyncExternalStore(sessionListStore.subscribe, sessionListStore.getSessions)
+
+  // 获取当前激活 Tab 绑定的会话 ID
+  const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
+  const activeSessionId = activeTab?.sessionId ?? null
+
+  // 选中的过滤会话 ID，默认跟随当前激活的 session，若无 session 则显示全部
+  const [selectedSessionFilter, setSelectedSessionFilter] = useState<string>(() => {
+    return activeSessionId || ALL_SESSIONS_VALUE
+  })
+
+  // 生成会话下拉选项
+  const sessionOptions = useMemo<LxSelectOption<string>[]>(() => {
+    const options: LxSelectOption<string>[] = [
+      { value: ALL_SESSIONS_VALUE, label: t("frontDesign.allSessions") },
+    ]
+
+    // 收集所有已打开的 Tab 以及有前端设计历史的 Session
+    const sessionMap = new Map<string, string>()
+
+    // 1. 来自打开的 Tab
+    tabs.forEach((tab, index) => {
+      if (tab.sessionId) {
+        const session = sessions.find((s) => s.id === tab.sessionId)
+        const name =
+          tab.title?.trim() ||
+          session?.title?.trim() ||
+          t("agent.tabNumber", { number: index + 1 })
+        sessionMap.set(tab.sessionId, name)
+      }
+    })
+
+    // 2. 来自设计历史中记录的 sessionId
+    designs.forEach((d) => {
+      if (d.sessionId && !sessionMap.has(d.sessionId)) {
+        const session = sessions.find((s) => s.id === d.sessionId)
+        const name = session?.title?.trim() || t("frontDesign.standaloneSession")
+        sessionMap.set(d.sessionId, name)
+      }
+    })
+
+    sessionMap.forEach((label, sessionId) => {
+      options.push({
+        value: sessionId,
+        label,
+      })
+    })
+
+    return options
+  }, [tabs, sessions, designs, t])
+
+  // 过滤后的前端设计列表
+  const filteredDesigns = useMemo(() => {
+    if (selectedSessionFilter === ALL_SESSIONS_VALUE) {
+      return designs
+    }
+    return designs.filter((d) => d.sessionId === selectedSessionFilter)
+  }, [designs, selectedSessionFilter])
 
   if (isCollapsed) {
     return (
@@ -47,12 +114,14 @@ export const FrontDesignLeftSideBar = ({
 
   return (
     <div className="flex h-full min-w-0 flex-col gap-2">
-      {/* 头部导航与标题 */}
-      <div className="flex h-8 shrink-0 items-center justify-between px-3 border-b border-white/5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-white/80">{t("frontDesign.historyList")}</span>
-          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50">
-            {designs.length}
+      {/* 头部导航与标题：左侧留出折叠按钮安全间隙 (pl-7)，右侧居右对齐操作区 */}
+      <div className="flex h-7 shrink-0 items-center justify-between pl-7 pr-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-semibold text-white/80 truncate">
+            {t("frontDesign.historyList")}
+          </span>
+          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0">
+            {filteredDesigns.length}
           </span>
         </div>
         {designs.length > 0 && (
@@ -67,24 +136,43 @@ export const FrontDesignLeftSideBar = ({
         )}
       </div>
 
+      {/* Session 选择器 */}
+      <div className="px-1">
+        <LxSelect
+          value={selectedSessionFilter}
+          onChange={setSelectedSessionFilter}
+          options={sessionOptions}
+          size="small"
+          className="w-full"
+          aria-label={t("frontDesign.sessionFilter")}
+        />
+      </div>
+
       {/* 列表内容 */}
-      <div className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-2">
-        {designs.length === 0 ? (
+      <div className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-1 pb-2">
+        {filteredDesigns.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center text-xs text-white/35">
-            {t("frontDesign.noDesigns")}
+            {designs.length === 0
+              ? t("frontDesign.noDesigns")
+              : t("frontDesign.noDesignsInSession")}
           </div>
         ) : (
-          designs.map((d) => {
+          filteredDesigns.map((d) => {
             const isActive = d.id === activeDesignId
-            const formattedTime = d.updatedAt
-              ? new Date(d.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : ""
 
             return (
               <div
                 key={d.id}
+                role="button"
+                tabIndex={0}
+                data-active={isActive ? "true" : undefined}
                 onClick={() => frontDesignStore.setActiveDesignId(d.id)}
-                className={`group flex items-center justify-between gap-2 rounded-[6px] px-2.5 py-2 text-xs transition-colors cursor-pointer border ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    frontDesignStore.setActiveDesignId(d.id)
+                  }
+                }}
+                className={`front-design-sidebar-item group flex items-center justify-between gap-2 rounded-[6px] px-2 py-1.5 text-xs transition-colors cursor-pointer border ${
                   isActive
                     ? "bg-pink-500/15 border-pink-500/30 text-white font-medium shadow-sm"
                     : "border-transparent text-white/70 hover:bg-white/5 hover:text-white"
@@ -92,7 +180,7 @@ export const FrontDesignLeftSideBar = ({
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${
+                    className={`front-design-sidebar-icon flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] ${
                       isActive
                         ? "bg-pink-500/20 text-pink-400"
                         : "bg-white/5 text-white/40 group-hover:text-white/70"
@@ -104,12 +192,9 @@ export const FrontDesignLeftSideBar = ({
                       <Palette className="h-3 w-3" />
                     )}
                   </div>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-xs">{d.title || t("frontDesign.title")}</span>
-                    {formattedTime && (
-                      <span className="text-[10px] text-white/40">{formattedTime}</span>
-                    )}
-                  </div>
+                  <span className="truncate text-xs font-medium">
+                    {d.title || t("frontDesign.title")}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">

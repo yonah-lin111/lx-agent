@@ -14,7 +14,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sanitizeHtmlDocument } from "@/features/agent/components/visuals/sanitizeVisual"
-import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
+import { useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
 import { useTranslation } from "@/i18n"
 
 type ViewportMode = "desktop" | "tablet" | "mobile"
@@ -35,7 +35,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
   const [copied, setCopied] = useState<boolean>(false)
   const [refreshKey, setRefreshKey] = useState<number>(0)
 
-  const { html, title, updatedAt, isStreaming, designs, activeDesignId } = designState
+  const { html, title, isStreaming } = designState
 
   // 编译 Tailwind CSS
   useEffect(() => {
@@ -102,11 +102,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
     setRefreshKey((k) => k + 1)
   }, [])
 
-  const formattedTime = useMemo(() => {
-    if (!updatedAt) return ""
-    return new Date(updatedAt).toLocaleTimeString()
-  }, [updatedAt])
-
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
       case "mobile":
@@ -130,31 +125,10 @@ export const FrontDesignPage = (): React.JSX.Element => {
             <span className="font-semibold text-xs text-white/90 truncate">
               {title || t("frontDesign.title")}
             </span>
-            {designs.length > 1 && (
-              <div className="flex items-center gap-1 rounded-[4px] bg-[#141414] px-1.5 py-0.5 border border-white/10 text-[11px]">
-                <select
-                  value={activeDesignId ?? ""}
-                  onChange={(e) => frontDesignStore.setActiveDesignId(e.target.value)}
-                  className="bg-transparent text-white/90 text-[11px] focus:outline-none cursor-pointer"
-                  aria-label={t("frontDesign.switchDesign")}
-                >
-                  {designs.map((d, index) => (
-                    <option key={d.id} value={d.id} className="bg-[#1f1f1f] text-white">
-                      {d.title || `Design ${index + 1}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             {isStreaming && (
               <span className="flex items-center gap-1 text-[11px] text-pink-400">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <span>Streaming...</span>
-              </span>
-            )}
-            {!isStreaming && formattedTime && (
-              <span className="text-[11px] text-white/40">
-                {t("frontDesign.lastUpdated", { time: formattedTime })}
               </span>
             )}
           </div>

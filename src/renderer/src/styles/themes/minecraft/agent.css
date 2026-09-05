@@ -2818,3 +2818,49 @@
 [data-theme="minecraft"] .agent-execution-flow-design-content {
   width: 100% !important;
 }
+
+/* ========================================================
+ * 前端设计左侧栏（FrontDesignLeftSideBar）列表项与布局
+ * ======================================================== */
+[data-theme="minecraft"] .front-design-sidebar-item {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  color: #d4d4e4 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    1px 1px 0px 0px #000000 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .front-design-sidebar-item:hover:not([data-active="true"]) {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+}
+
+[data-theme="minecraft"] .front-design-sidebar-item[data-active="true"] {
+  background-color: #2d1627 !important; /* 暗樱花/紫晶矿石黑曜底 */
+  color: #fce7f3 !important;
+  border: 2px solid #000000 !important;
+  border-left: 4px solid #f472b6 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.85),
+    inset -1px -1px 0px 0px rgba(244, 114, 182, 0.3),
+    0px 0px 8px rgba(244, 114, 182, 0.25) !important;
+}
+
+[data-theme="minecraft"] .front-design-sidebar-item .front-design-sidebar-icon {
+  border: 1px solid #000000 !important;
+  background-color: #14141c !important;
+  border-radius: 0px !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="minecraft"] .front-design-sidebar-item[data-active="true"] .front-design-sidebar-icon {
+  border: 1px solid #000000 !important;
+  background-color: #4a1532 !important;
+  color: #f472b6 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(244, 114, 182, 0.4) !important;
+}
+
