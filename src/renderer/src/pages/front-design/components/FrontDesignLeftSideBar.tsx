@@ -86,16 +86,16 @@ export const FrontDesignLeftSideBar = ({
     }
   }
 
-  // 生成会话下拉选项
+  // 生成会话下拉选项（以 Agent Tab 维度优先展示）
   const sessionOptions = useMemo<LxSelectOption<string>[]>(() => {
     const options: LxSelectOption<string>[] = [
-      { value: ALL_SESSIONS_VALUE, label: t("frontDesign.allSessions") },
+      { value: ALL_SESSIONS_VALUE, label: t("frontDesign.allAgentTabs") },
     ]
 
     // 收集所有已打开的 Tab 以及有前端设计历史的 Session
     const sessionMap = new Map<string, string>()
 
-    // 1. 来自打开的 Tab
+    // 1. 来自打开的 Tab（显示为对应 Tab 名称）
     tabs.forEach((tab, index) => {
       if (tab.sessionId) {
         const session = sessions.find((s) => s.id === tab.sessionId)

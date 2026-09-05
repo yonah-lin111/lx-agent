@@ -1380,6 +1380,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     activeBadge: "Active",
     generating: "Generating design prototype...",
     summaryDesc: "UI prototype code ready, supports sandboxed hot-reload, responsive viewports, and code export.",
+    allAgentTabs: "All Agent Tabs",
     allSessions: "All Sessions",
     sessionFilter: "Session Filter",
     filterBySession: "Filter by session",

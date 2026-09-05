@@ -1341,6 +1341,7 @@ export const zh: TranslationDictionary = {
     activeBadge: "当前",
     generating: "设计稿生成中...",
     summaryDesc: "UI 原型代码已就绪，支持独立沙箱热更新渲染、多视口预览与一键复制代码。",
+    allAgentTabs: "全部 Agent 标签页",
     allSessions: "全部会话",
     sessionFilter: "会话筛选",
     filterBySession: "按会话筛选",
