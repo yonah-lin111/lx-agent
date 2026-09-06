@@ -79,6 +79,7 @@ export const buildExecutionSteps = (
       const isCompactingNow = Boolean(message.isCompacting)
       steps.push({
         id: `step-${stepIndex}-compaction`,
+        messageId: message.id,
         turnIndex: 0,
         stepIndex,
         kind: "compaction",
@@ -173,6 +174,7 @@ export const buildExecutionSteps = (
 
       steps.push({
         id: `step-${stepIndex}-undo`,
+        messageId: message.id,
         turnIndex: 0,
         stepIndex,
         kind: "undo",
@@ -207,6 +209,7 @@ export const buildExecutionSteps = (
       const modelDisplayName = getModelDisplayName(message.model, message.provider) || rawModel
       steps.push({
         id: `step-${stepIndex}-model-switch`,
+        messageId: message.id,
         turnIndex: 0,
         stepIndex,
         kind: "modelSwitch",
@@ -249,6 +252,7 @@ export const buildExecutionSteps = (
 
       steps.push({
         id: `step-${stepIndex}-user`,
+        messageId: message.id,
         turnIndex: currentTurn,
         stepIndex,
         kind: "user",
@@ -303,6 +307,7 @@ export const buildExecutionSteps = (
         }
         steps.push({
           id: `step-${stepIndex}-thinking`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "thinking",
@@ -406,6 +411,7 @@ export const buildExecutionSteps = (
           const subagentName = subagentData?.name || block.toolName
           steps.push({
             id: `step-${stepIndex}-subagent-${block.toolCallId}`,
+            messageId: message.id,
             turnIndex: turn,
             stepIndex,
             kind: "subagent",
@@ -445,6 +451,7 @@ export const buildExecutionSteps = (
         } else {
           steps.push({
             id: `step-${stepIndex}-tool-${block.toolCallId}`,
+            messageId: message.id,
             turnIndex: turn,
             stepIndex,
             kind: "tool",
@@ -491,6 +498,7 @@ export const buildExecutionSteps = (
         }
         steps.push({
           id: `step-${stepIndex}-proposed-plan`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "proposedPlan",
@@ -539,6 +547,7 @@ export const buildExecutionSteps = (
         }
         steps.push({
           id: `step-${stepIndex}-review-findings`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "reviewFindings",
@@ -589,6 +598,7 @@ export const buildExecutionSteps = (
         }
         steps.push({
           id: `step-${stepIndex}-front-design`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "frontDesign",
@@ -639,6 +649,7 @@ export const buildExecutionSteps = (
         }
         steps.push({
           id: `step-${stepIndex}-assistant`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "assistant",
@@ -682,6 +693,7 @@ export const buildExecutionSteps = (
             : message.timestamp
         steps.push({
           id: `step-${stepIndex}-orphan-result-${block.toolCallId}`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "tool",
@@ -716,6 +728,7 @@ export const buildExecutionSteps = (
       if (isAborted && !errorMessage) {
         steps.push({
           id: `step-${stepIndex}-aborted`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "error",
@@ -734,6 +747,7 @@ export const buildExecutionSteps = (
         const errorText = errorMessage || "Agent execution failed"
         steps.push({
           id: `step-${stepIndex}-error`,
+          messageId: message.id,
           turnIndex: turn,
           stepIndex,
           kind: "error",

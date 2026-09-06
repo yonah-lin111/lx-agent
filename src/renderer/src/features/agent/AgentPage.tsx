@@ -682,6 +682,7 @@ export const AgentPage = ({
             onAcceptPlan={acceptAndExecutePlan}
             onApplyReviewFixes={acceptAndExecuteReviewFixes}
             onFillInput={echoToInput}
+            onDeleteMessage={deleteTurn}
           />
         ) : (
           <>

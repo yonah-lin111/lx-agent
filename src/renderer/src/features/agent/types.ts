@@ -215,6 +215,8 @@ export type ExecutionStepStatus = "running" | "done" | "error"
 export interface ExecutionStep {
   // 步骤全局唯一 ID。
   id: string
+  // 所属原始消息 ID（用于支持定位并删除整轮 QA 对等操作）。
+  messageId?: string
   // 所属轮次（从 0 开始；0 为系统级/初始化，1 及以上为用户交互轮次）。
   turnIndex: number
   // 步骤在当前会话的全局序号（从 1 开始）。

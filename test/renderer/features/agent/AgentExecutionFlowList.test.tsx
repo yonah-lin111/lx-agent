@@ -1892,4 +1892,106 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("不要使用mcp")).not.toBeNull()
     expect(screen.queryByText("[不要使用mcp]")).toBeNull()
   })
+
+  it("在执行流程列表中，assistant 步骤支持删除整轮 QA 并在确认后触发 onDeleteMessage 回调", async () => {
+    const onDeleteMessage = vi.fn()
+    const messages: ChatMessage[] = [
+      {
+        id: "u-1",
+        role: "user",
+        blocks: [{ kind: "text", text: "请列出当前项目目录" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "a-1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "这是目录列表..." }],
+        isStreaming: false,
+        timestamp: 2000,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+
+    // 验证 assistant 步骤上存在删除按钮
+    const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
+    expect(deleteBtn).not.toBeNull()
+    // 点击删除按钮唤起确认气泡
+    fireEvent.click(deleteBtn)
+
+    // 获取确认气泡中的确认按钮（jsdom 下无真实布局 coords 为 null 样式为 visibility: hidden）
+    const confirmBtn = document.querySelector(
+      'button[aria-label="Confirm"], button[aria-label="确认"]',
+    ) as HTMLButtonElement
+    expect(confirmBtn).not.toBeNull()
+    fireEvent.click(confirmBtn)
+
+    // 验证 onDeleteMessage 被正确调用并传入 a-1 的 messageId
+    expect(onDeleteMessage).toHaveBeenCalledTimes(1)
+    expect(onDeleteMessage).toHaveBeenCalledWith("a-1")
+  })
+
+  it("当处于只读模式或未提供 onDeleteMessage 时，assistant 步骤不展示删除按钮", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u-1",
+        role: "user",
+        blocks: [{ kind: "text", text: "用户提问" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "a-1",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "助手回答" }],
+        isStreaming: false,
+        timestamp: 2000,
+      },
+    ]
+
+    const { rerender } = render(
+      <AgentExecutionFlowList messages={messages} onDeleteMessage={vi.fn()} readOnly={true} />,
+    )
+    expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
+
+    rerender(<AgentExecutionFlowList messages={messages} />)
+    expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
+  })
+
+  it("在执行流程列表中，终态 error 步骤同样支持删除整轮 QA", () => {
+    const onDeleteMessage = vi.fn()
+    const messages: ChatMessage[] = [
+      {
+        id: "u-1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试出错提问" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "a-error",
+        role: "assistant",
+        error: "Network connection refused",
+        stopReason: "error",
+        blocks: [],
+        isStreaming: false,
+        timestamp: 2000,
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
+
+    const deleteBtn = screen.getByRole("button", { name: /删除轮次|Delete turn/i })
+    expect(deleteBtn).not.toBeNull()
+    fireEvent.click(deleteBtn)
+
+    const confirmBtn = document.querySelector(
+      'button[aria-label="Confirm"], button[aria-label="确认"]',
+    ) as HTMLButtonElement
+    expect(confirmBtn).not.toBeNull()
+    fireEvent.click(confirmBtn)
+
+    expect(onDeleteMessage).toHaveBeenCalledWith("a-error")
+  })
 })

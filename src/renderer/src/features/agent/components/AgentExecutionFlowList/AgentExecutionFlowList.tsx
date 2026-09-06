@@ -1,5 +1,5 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { ChevronUp, Loader2, RefreshCw, Undo2, Workflow } from "lucide-react"
+import { ChevronUp, Loader2, RefreshCw, Trash2, Undo2, Workflow } from "lucide-react"
 import {
   Fragment,
   forwardRef,
@@ -61,6 +61,10 @@ export interface AgentExecutionFlowListProps {
   onApplyReviewFixes?: (selectedFindings: ReviewFindingItem[]) => void
   // 审查项回填到输入框
   onFillInput?: (text: string) => void
+  // 删除指定 AI 消息所在的一轮对话
+  onDeleteMessage?: (messageId: string) => void
+  // 是否只读模式
+  readOnly?: boolean
 }
 
 // 输入区导航按钮状态。
@@ -104,6 +108,8 @@ export const AgentExecutionFlowList = forwardRef<
       onAcceptPlan,
       onApplyReviewFixes,
       onFillInput,
+      onDeleteMessage,
+      readOnly = false,
     },
     ref,
   ) => {
@@ -645,6 +651,32 @@ export const AgentExecutionFlowList = forwardRef<
       return map
     }, [steps, isStreaming, maxTurn])
 
+    // 轮次对应的可删除 AI / 错误消息 ID 映射
+    const turnMessageIdMap = useMemo(() => {
+      const map = new Map<number, string>()
+      for (const step of steps) {
+        if (
+          step.turnIndex > 0 &&
+          step.messageId &&
+          (step.kind === "assistant" || step.kind === "error")
+        ) {
+          map.set(step.turnIndex, step.messageId)
+        }
+      }
+      return map
+    }, [steps])
+
+    // 正在运行中的轮次集合
+    const runningTurnSet = useMemo(() => {
+      const set = new Set<number>()
+      for (const step of steps) {
+        if (step.status === "running") {
+          set.add(step.turnIndex)
+        }
+      }
+      return set
+    }, [steps])
+
     // 统计指标汇总
     const stats = useMemo<ExecutionFlowStats>(() => {
       let inputTokens = 0
@@ -784,6 +816,29 @@ export const AgentExecutionFlowList = forwardRef<
                   const turnStats =
                     elementTurnIndex > 0 ? turnStatsMap.get(elementTurnIndex) : undefined
 
+                  const turnMessageId =
+                    elementTurnIndex > 0 ? turnMessageIdMap.get(elementTurnIndex) : undefined
+                  const isTurnRunning =
+                    runningTurnSet.has(elementTurnIndex) ||
+                    (isStreaming && elementTurnIndex === maxTurn)
+                  const canDeleteTurn =
+                    !readOnly && Boolean(onDeleteMessage) && Boolean(turnMessageId) && !isTurnRunning
+
+                  const hasTurnSummaryPills =
+                    turnStats &&
+                    turnStats.isCompleted &&
+                    (Boolean(turnStats.model) ||
+                      turnStats.toolCallsCount > 0 ||
+                      turnStats.inputTokens > 0 ||
+                      turnStats.outputTokens > 0 ||
+                      turnStats.durationMs > 0)
+
+                  const showTurnBottomBar =
+                    isTurnEnd &&
+                    elementTurnIndex > 0 &&
+                    (activeFilter === "all" || activeFilter === "assistant") &&
+                    (canDeleteTurn || hasTurnSummaryPills)
+
                   const isGroupStreamingActive =
                     isStreaming &&
                     element.kind === "group" &&
@@ -875,63 +930,80 @@ export const AgentExecutionFlowList = forwardRef<
                         />
                       )}
 
-                      {/* 当该 turn 结束且已完成所有步骤时，在下一行左侧展示该 turn 的综合执行数据统计 */}
-                      {isTurnEnd &&
-                        elementTurnIndex > 0 &&
-                        turnStats &&
-                        turnStats.isCompleted &&
-                        (turnStats.outputTokens > 0 || turnStats.toolCallsCount > 0) &&
-                        (activeFilter === "all" || activeFilter === "assistant") && (
-                          <div
-                            data-testid={`turn-summary-${elementTurnIndex}`}
-                            className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
-                          >
-                            {turnStats.model && (
-                              <LxTooltip placement="top" content={turnStats.model}>
-                                <span className="agent-turn-summary-pill agent-turn-summary-pill-model font-medium text-white/70">
-                                  {getModelDisplayName(turnStats.model, undefined, settings)}
-                                </span>
-                              </LxTooltip>
-                            )}
-                            {turnStats.toolCallsCount > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-cyan-300/90">
-                                {t("agent.turnToolsCount", { count: turnStats.toolCallsCount })}
+                      {/* 当该 turn 结束时，在下一行左侧展示该 turn 的综合执行数据统计及删除按钮 */}
+                      {showTurnBottomBar && (
+                        <div
+                          data-testid={`turn-summary-${elementTurnIndex}`}
+                          className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
+                        >
+                          {/* 删除整轮问答按钮：始终显示，位于模型名称左侧并同行 */}
+                          {canDeleteTurn && turnMessageId && (
+                            <LxTooltip
+                              hover={{
+                                content: t("agent.deleteTurn"),
+                                placement: "top",
+                              }}
+                              click={{
+                                content: t("agent.deleteTurnConfirm"),
+                                placement: "top",
+                                onConfirm: () => onDeleteMessage?.(turnMessageId),
+                              }}
+                            >
+                              <LxIconButton
+                                size="small"
+                                aria-label={t("agent.deleteTurn")}
+                                className="h-5 w-5 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-red-400"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </LxIconButton>
+                            </LxTooltip>
+                          )}
+                          {turnStats?.model && (
+                            <LxTooltip placement="top" content={turnStats.model}>
+                              <span className="agent-turn-summary-pill agent-turn-summary-pill-model font-medium text-white/70">
+                                {getModelDisplayName(turnStats.model, undefined, settings)}
                               </span>
-                            )}
-                            {turnStats.inputTokens > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-input">
-                                {t("agent.turnInputTokens", {
-                                  count: formatTokenCount(turnStats.inputTokens),
-                                })}
-                              </span>
-                            )}
-                            {turnStats.outputTokens > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-output">
-                                {t("agent.turnOutputTokens", {
-                                  count: formatTokenCount(turnStats.outputTokens),
-                                })}
-                              </span>
-                            )}
-                            {turnStats.cacheReadTokens > 0 && turnStats.inputTokens > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-cache text-sky-300/90">
-                                {t("agent.turnCacheHit", {
-                                  percent: Math.round(
-                                    (turnStats.cacheReadTokens /
-                                      (turnStats.inputTokens + turnStats.cacheReadTokens)) *
-                                      100,
-                                  ),
-                                })}
-                              </span>
-                            )}
-                            {turnStats.durationMs > 0 && (
-                              <span className="agent-turn-summary-pill agent-turn-summary-pill-duration text-emerald-400/90">
-                                {t("agent.turnDuration", {
-                                  duration: formatDurationMs(turnStats.durationMs),
-                                })}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                            </LxTooltip>
+                          )}
+                          {turnStats && turnStats.toolCallsCount > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-cyan-300/90">
+                              {t("agent.turnToolsCount", { count: turnStats.toolCallsCount })}
+                            </span>
+                          )}
+                          {turnStats && turnStats.inputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-input">
+                              {t("agent.turnInputTokens", {
+                                count: formatTokenCount(turnStats.inputTokens),
+                              })}
+                            </span>
+                          )}
+                          {turnStats && turnStats.outputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-output">
+                              {t("agent.turnOutputTokens", {
+                                count: formatTokenCount(turnStats.outputTokens),
+                              })}
+                            </span>
+                          )}
+                          {turnStats && turnStats.cacheReadTokens > 0 && turnStats.inputTokens > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-cache text-sky-300/90">
+                              {t("agent.turnCacheHit", {
+                                percent: Math.round(
+                                  (turnStats.cacheReadTokens /
+                                    (turnStats.inputTokens + turnStats.cacheReadTokens)) *
+                                    100,
+                                ),
+                              })}
+                            </span>
+                          )}
+                          {turnStats && turnStats.durationMs > 0 && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-duration text-emerald-400/90">
+                              {t("agent.turnDuration", {
+                                duration: formatDurationMs(turnStats.durationMs),
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* 最后一轮被截断/中止时展示"继续生成"操作按钮 */}
                       {isTurnEnd && elementTurnIndex === maxTurn && canContinue && onContinue && (
