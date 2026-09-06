@@ -3,13 +3,11 @@ import type {
   JobSnapshot,
   PermissionRequest,
   SandboxPolicy,
-  TodoList,
 } from "@shared/contracts/agent"
 import { GitStatusBar } from "@/features/git"
 import { CollaborationModeButton } from "./CollaborationModeButton"
 import { JobStatusButton } from "./JobStatusButton"
 import { PermissionStatusButton } from "./PermissionStatusButton"
-import { TodoStatusButton } from "./TodoStatusButton"
 
 // Agent 状态栏属性。
 export interface AgentStatusBarProps {
@@ -25,8 +23,6 @@ export interface AgentStatusBarProps {
   onBranchChange?: (branch: string) => void
   // 切换工作区回调。
   onWorktreeChange?: (worktreePath: string) => void
-  // 当前会话任务清单（有未完成任务时状态栏右侧展示 todo 计数 icon）。
-  todos?: TodoList
   // 后台长任务列表。
   jobs?: JobSnapshot[]
   // 打开后台长任务监控面板。
@@ -47,7 +43,7 @@ export interface AgentStatusBarProps {
 }
 
 /**
- * 渲染 Agent 当前会话的路径、分支与任务清单状态，最右侧为 todo 计数与后台任务监控。
+ * 渲染 Agent 当前会话的路径、分支与状态，最右侧为协作模式、后台任务与权限决策。
  *
  * 无 git 上下文（projectPath 缺省）时隐藏 git 部分，但保留等高位占位，
  * 避免输入框位置跳动（高度 = GitStatusBar 的 border-t 1px + py-1 8px + text-xs 行高 16px）。
@@ -59,7 +55,6 @@ export const AgentStatusBar = ({
   onProjectChange,
   onBranchChange,
   onWorktreeChange,
-  todos,
   jobs,
   onOpenJobs,
   sandboxPolicy,
@@ -83,7 +78,6 @@ export const AgentStatusBar = ({
       </div>
       <CollaborationModeButton mode={collaborationMode} />
       <JobStatusButton jobs={jobs ?? []} onOpenJobs={onOpenJobs} />
-      <TodoStatusButton todos={todos} />
       <PermissionStatusButton
         request={pendingRequest}
         sandboxPolicy={sandboxPolicy}

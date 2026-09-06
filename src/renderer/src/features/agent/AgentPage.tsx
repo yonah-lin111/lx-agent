@@ -61,7 +61,6 @@ export const AgentPage = ({
 }: AgentPageProps): React.JSX.Element => {
   const {
     messages,
-    todos,
     collaborationMode,
     toggleCollaborationMode,
     queuedCount,
@@ -716,7 +715,6 @@ export const AgentPage = ({
           </>
         )}
       </div>
-      {/* 任务清单由 AgentStatusBar 右侧 todo 指示展示（有未完成任务时显示，hover 查看列表）。 */}
       <AgentInput
         inputText={inputText}
         isStreaming={isStreaming}
@@ -760,7 +758,6 @@ export const AgentPage = ({
         allowProjectChange={!currentSessionId}
         onProjectChange={handleProjectSelect}
         onWorktreeChange={handleWorktreeSelect}
-        todos={todos}
         jobs={jobs}
         onOpenJobs={() => useBottomSideBarStore.getState().openJobsMonitor()}
         sandboxPolicy={currentSandboxPolicy}

@@ -753,8 +753,6 @@ export const zh: TranslationDictionary = {
     contextUsed: "已用 {{used}} / {{total}} tokens",
     contextWarningTip: "上下文占用偏高（建议减少大文件读取）",
     contextCriticalTip: "上下文接近极限（建议使用 /compact 压缩）",
-    todoList: "任务清单",
-    todoCount: "任务清单 · {{done}}/{{total}}",
     backgroundJobsCount: "后台长任务 · {{running}} 运行中 / {{total}} 总计",
     backgroundJobsTotal: "{{count}} 个记录",
     moreJobsClickToView: "...等共 {{count}} 个任务 (点击查看)",

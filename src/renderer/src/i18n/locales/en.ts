@@ -769,8 +769,6 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     contextUsed: "Used {{used}} / {{total}} tokens",
     contextWarningTip: "Context usage is high (consider surgical lookups)",
     contextCriticalTip: "Context is near limit (recommend using /compact)",
-    todoList: "Todo List",
-    todoCount: "Todo List · {{done}}/{{total}}",
     backgroundJobsCount: "Background Jobs · {{running}} running / {{total}} total",
     backgroundJobsTotal: "{{count}} records",
     moreJobsClickToView: "...and {{count}} more jobs (click to view)",
