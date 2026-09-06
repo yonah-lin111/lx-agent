@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import { createRef } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { AgentVoiceInputButton } from "@/features/agent/components/AgentInput/AgentVoiceInputButton"
+import {
+  AgentVoiceInputButton,
+  type AgentVoiceInputButtonRef,
+} from "@/features/agent/components/AgentInput/AgentVoiceInputButton"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 
 const mockErrorToast = vi.fn()
@@ -83,6 +87,31 @@ describe("AgentVoiceInputButton", () => {
       value: originalMediaDevices,
       configurable: true,
       writable: true,
+    })
+  })
+
+  it("通过 ref 暴露 toggleRecording 方法以供快捷键调用", async () => {
+    vi.mocked(settingsApi.getVoiceSettings).mockResolvedValue({
+      apiKey: "",
+      model: "whisper-large-v3-turbo",
+      language: "auto",
+    })
+
+    const onTranscribed = vi.fn()
+    const ref = createRef<AgentVoiceInputButtonRef>()
+    render(<AgentVoiceInputButton ref={ref} onTranscribed={onTranscribed} />)
+
+    expect(ref.current).not.toBeNull()
+    expect(ref.current?.isRecording).toBe(false)
+
+    await act(async () => {
+      ref.current?.toggleRecording()
+    })
+
+    await waitFor(() => {
+      expect(mockErrorToast).toHaveBeenCalledWith(
+        "Groq API Key is not configured. Please set it in Settings",
+      )
     })
   })
 })

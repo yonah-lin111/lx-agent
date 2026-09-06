@@ -15,7 +15,7 @@ import {
   type AgentMarkdownInputProps,
   type AgentMarkdownInputRef,
 } from "./AgentMarkdownInput"
-import { AgentVoiceInputButton } from "./AgentVoiceInputButton"
+import { AgentVoiceInputButton, type AgentVoiceInputButtonRef } from "./AgentVoiceInputButton"
 
 export interface AgentInputProps {
   inputText: string
@@ -57,6 +57,8 @@ export interface AgentInputProps {
   // 滚动定位控制
   onScrollBottom?: () => void
   canScrollBottom?: boolean
+  // 语音输入按钮引用（供外部快捷键调用 toggleRecording）
+  voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
 }
 
 /**
@@ -93,6 +95,7 @@ export const AgentInput = ({
   supportsImages,
   onScrollBottom,
   canScrollBottom = false,
+  voiceButtonRef,
 }: AgentInputProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
   const markdownInputRef = useRef<AgentMarkdownInputRef>(null)
@@ -371,8 +374,8 @@ export const AgentInput = ({
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-1.5">
-            <AgentVoiceInputButton onTranscribed={handleVoiceTranscribed} />
             {addButton}
+            <AgentVoiceInputButton ref={voiceButtonRef} onTranscribed={handleVoiceTranscribed} />
             <AgentModelSelect
               value={selectedModel}
               onChange={onModelChange}

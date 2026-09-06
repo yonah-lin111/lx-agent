@@ -1,9 +1,15 @@
 import { Loader2, Mic, Square } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import type React from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import { useTranslation } from "@/i18n"
+
+export interface AgentVoiceInputButtonRef {
+  toggleRecording: () => void
+  isRecording: boolean
+}
 
 export interface AgentVoiceInputButtonProps {
   onTranscribed: (text: string) => void
@@ -13,10 +19,10 @@ export interface AgentVoiceInputButtonProps {
 /**
  * 语音录入与转写按钮组件，支持录音控制、录音脉冲状态展示和 Groq Whisper 转录。
  */
-export const AgentVoiceInputButton = ({
-  onTranscribed,
-  disabled = false,
-}: AgentVoiceInputButtonProps): React.JSX.Element => {
+export const AgentVoiceInputButton = forwardRef<
+  AgentVoiceInputButtonRef,
+  AgentVoiceInputButtonProps
+>(({ onTranscribed, disabled = false }, ref): React.JSX.Element => {
   const { t } = useTranslation()
   const { error: errorToast, info: infoToast } = useLxAgentToast()
 
@@ -133,14 +139,36 @@ export const AgentVoiceInputButton = ({
     }
   }
 
-  const handleClick = (): void => {
+  const handleClick = useCallback((): void => {
     if (disabled || isTranscribing) return
     if (isRecording) {
       stopRecording()
     } else {
       void startRecording()
     }
-  }
+  }, [disabled, isTranscribing, isRecording, stopRecording, startRecording])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      toggleRecording: handleClick,
+      isRecording,
+    }),
+    [handleClick, isRecording],
+  )
+
+  const voiceTooltipContent = (
+    <div className="flex flex-col gap-1 text-xs">
+      <div className="flex flex-col gap-0.5">
+        <span className="font-semibold text-white/90">
+          {isRecording ? t("agent.voiceStopRecording") : t("agent.voiceInput")}
+        </span>
+      </div>
+      <div className="border-t border-white/10 pt-1 text-[11px] text-white/45">
+        {t("agent.voiceShortcutHint")}
+      </div>
+    </div>
+  )
 
   if (isTranscribing) {
     return (
@@ -161,7 +189,7 @@ export const AgentVoiceInputButton = ({
       <LxIconButton
         shape="circle"
         aria-label={t("agent.voiceStopRecording")}
-        title={{ content: t("agent.voiceStopRecording"), placement: "top" }}
+        title={{ content: voiceTooltipContent, placement: "top" }}
         className="agent-input-voice-btn relative !bg-rose-500/20 !text-rose-400 border border-rose-500/30 animate-pulse"
         onClick={handleClick}
       >
@@ -174,7 +202,7 @@ export const AgentVoiceInputButton = ({
     <LxIconButton
       shape="circle"
       aria-label={t("agent.voiceInput")}
-      title={{ content: t("agent.voiceInput"), placement: "top" }}
+      title={{ content: voiceTooltipContent, placement: "top" }}
       className="agent-input-voice-btn"
       disabled={disabled}
       onClick={handleClick}
@@ -182,4 +210,4 @@ export const AgentVoiceInputButton = ({
       <Mic className="h-3.5 w-3.5" />
     </LxIconButton>
   )
-}
+})

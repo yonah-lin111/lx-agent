@@ -538,6 +538,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     voiceInput: "Voice Input",
     voiceStopRecording: "Stop Recording",
     voiceTranscribing: "Transcribing audio...",
+    voiceShortcutHint: "Press Cmd / Ctrl + Shift + V to start/stop recording",
     voiceApiKeyMissing: "Groq API Key is not configured. Please set it in Settings",
     voiceDeviceUnsupported: "Microphone recording is not supported on this device",
     voiceRecordFailed: "Failed to start recording",

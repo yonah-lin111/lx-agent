@@ -18,6 +18,7 @@ import {
   type AgentExecutionFlowListRef,
 } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
+import type { AgentVoiceInputButtonRef } from "./components/AgentInput/AgentVoiceInputButton"
 import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
 import { AgentSubagentPanel } from "./components/panels"
 import { AgentStatusBar } from "./components/status-bar"
@@ -411,6 +412,42 @@ export const AgentPage = ({
     }
   }, [tabId, toggleCollaborationMode])
 
+  // Cmd / Ctrl + Shift + V 快捷键：在当前 AgentPage 聚焦时快速切换语音录入/转录
+  useEffect(() => {
+    const handleVoiceKeyDown = (e: KeyboardEvent): void => {
+      const isModKey = e.metaKey || e.ctrlKey
+      // 必须是 Cmd/Ctrl + Shift + V，且不带 Alt 等其他修饰键
+      if (e.key.toLowerCase() !== "v" || !isModKey || !e.shiftKey || e.altKey) {
+        return
+      }
+
+      // 检查当前 Tab 是否激活
+      if (tabId && agentTabStore.getActiveTabId() !== tabId) {
+        return
+      }
+
+      // 严格检查事件目标或当前活动元素是否在当前 AgentPage 容器内，避免与其他模块（如 Markdown 编辑器）冲突
+      const target = e.target as Node | null
+      const isTargetInPage = target ? pageContainerRef.current?.contains(target) : false
+      const isActiveElementInPage = document.activeElement
+        ? pageContainerRef.current?.contains(document.activeElement)
+        : false
+
+      if (!isTargetInPage && !isActiveElementInPage) {
+        return
+      }
+
+      e.preventDefault()
+      e.stopPropagation()
+      voiceButtonRef.current?.toggleRecording()
+    }
+
+    window.addEventListener("keydown", handleVoiceKeyDown, true)
+    return () => {
+      window.removeEventListener("keydown", handleVoiceKeyDown, true)
+    }
+  }, [tabId])
+
   // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
   const escStopRef = useRef(0)
 
@@ -550,6 +587,8 @@ export const AgentPage = ({
 
   // 建议问题输入框聚焦引用（回显后定位光标）。
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null)
+  // 语音输入按钮引用（供快捷键触发录音开关）
+  const voiceButtonRef = useRef<AgentVoiceInputButtonRef>(null)
 
   // 生成建议问题所需的完整会话上下文（跳过工具结果，仅用户与助手文本）。
   const suggestedQuestionContext = useMemo<SuggestedQuestionContextMessage[]>(() => {
@@ -702,6 +741,7 @@ export const AgentPage = ({
         currentPath={statusBarPath}
         worktreeName={activeWorktreeName}
         inputTextareaRef={inputTextareaRef}
+        voiceButtonRef={voiceButtonRef}
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
         selectedFiles={selectedFiles}
