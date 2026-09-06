@@ -1,0 +1,255 @@
+import {
+  MARKDOWN_LOG_END_RE,
+  MARKDOWN_LOG_START_RE,
+  MARKDOWN_SUPPLE_END_RE,
+  MARKDOWN_SUPPLE_START_RE,
+  MARKDOWN_TEMPLATE_COMMENT_RE,
+} from "@/features/markdown/commands/markdownBlockCommands"
+import type { MarkerBlockScanContext } from "@/features/markdown/extensions/markerTemplateHandlers"
+import { CodeBlockActionWidget } from "@/features/markdown/extensions/markerWidgets"
+import {
+  extractParentTemplateCopyContent,
+  stripEmptyTemplateItems,
+  stripMarkdownTemplateComments,
+} from "@/features/markdown/utils/markdownRenderer"
+
+// 处理补充说明块（+++ supple ... +++）的标记与折叠交互。
+export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
+  if (MARKDOWN_SUPPLE_START_RE.test(ctx.line)) {
+    const currentSuppleIndex = ctx.suppleBlockIndex++
+    ctx.currentSuppleFolded = ctx.suppleFoldedIndices.has(currentSuppleIndex)
+    const currentSuppleTextLines: string[] = []
+    let suppleEndIndex = -1
+    for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
+      const subLine = ctx.lines[j]
+      if (MARKDOWN_SUPPLE_END_RE.test(subLine)) {
+        suppleEndIndex = j
+        break
+      }
+      currentSuppleTextLines.push(subLine)
+    }
+
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
+    const commandMatch = ctx.line.match(/\+\+\+\s+(suppleTemplate|supple)\s+(--start)/)
+    if (commandMatch && commandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + commandMatch[1].length,
+          "cm-md-supple-command",
+        )
+        const flagStart = ctx.line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
+        if (flagStart !== -1) {
+          ctx.addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-supple-flag")
+        }
+      }
+    }
+    ctx.allDecos.push({
+      type: "widget",
+      from: ctx.offset + ctx.line.length,
+      to: ctx.offset + ctx.line.length,
+      widget: new CodeBlockActionWidget(
+        stripEmptyTemplateItems(
+          stripMarkdownTemplateComments(
+            extractParentTemplateCopyContent(currentSuppleTextLines.join("\n")),
+          ),
+        ),
+        ctx.currentSuppleFolded,
+        () => ctx.onToggleSuppleFold(currentSuppleIndex),
+        ctx.showFolding,
+        "cm-supple-block-action-wrap",
+        undefined,
+        undefined,
+        undefined,
+        null,
+        null,
+        () => ctx.onDeleteSuppleBlock(ctx.i, suppleEndIndex),
+        () => ctx.onCleanSuppleBlock(ctx.i, suppleEndIndex),
+        true,
+      ),
+    })
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: "cm-md-supple-start-line",
+    })
+    ctx.isInsideSuppleBlock = true
+    return true
+  }
+
+  if (ctx.isInsideSuppleBlock && MARKDOWN_SUPPLE_END_RE.test(ctx.line)) {
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-supple-marker")
+    const endCommandMatch = ctx.line.match(/\+\+\+\s+(suppleTemplate|supple)\s+(--end)/)
+    if (endCommandMatch && endCommandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(endCommandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + endCommandMatch[1].length,
+          "cm-md-supple-command",
+        )
+        const flagStart = ctx.line.indexOf(
+          endCommandMatch[2],
+          commandStart + endCommandMatch[1].length,
+        )
+        if (flagStart !== -1) {
+          ctx.addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-supple-flag")
+        }
+      }
+    }
+    const idMatch = ctx.line.match(/\{id:[0-9a-f]{32}\}/)
+    if (idMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        idMatch.index,
+        idMatch.index + idMatch[0].length,
+        "cm-md-template-id",
+        true,
+      )
+    }
+    const wtMatch = ctx.line.match(/\{wt:[^}\s{]+\}/)
+    if (wtMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        wtMatch.index,
+        wtMatch.index + wtMatch[0].length,
+        "cm-md-template-wt",
+        true,
+      )
+    }
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentSuppleFolded ? "cm-md-supple-hidden-line" : "cm-md-supple-end-line",
+    })
+    ctx.isInsideSuppleBlock = false
+    ctx.currentSuppleFolded = false
+    return true
+  }
+
+  if (ctx.isInsideSuppleBlock) {
+    const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(ctx.line)
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentSuppleFolded
+        ? "cm-md-supple-hidden-line"
+        : isCommentLine
+          ? "cm-md-template-comment-line"
+          : "cm-md-supple-middle-line",
+    })
+  }
+
+  return false
+}
+
+// 处理日志块（+++ log ... +++）的标记与折叠交互。
+export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
+  if (MARKDOWN_LOG_START_RE.test(ctx.line)) {
+    const currentLogIndex = ctx.logBlockIndex++
+    ctx.currentLogFolded = ctx.logFoldedIndices.has(currentLogIndex)
+    const currentLogTextLines: string[] = []
+    let logEndIndex = -1
+    for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
+      const subLine = ctx.lines[j]
+      if (MARKDOWN_LOG_END_RE.test(subLine)) {
+        logEndIndex = j
+        break
+      }
+      currentLogTextLines.push(subLine)
+    }
+
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
+    const commandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--start)/)
+    if (commandMatch && commandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + commandMatch[1].length,
+          "cm-md-log-command",
+        )
+        const flagStart = ctx.line.indexOf(commandMatch[2], commandStart + commandMatch[1].length)
+        if (flagStart !== -1) {
+          ctx.addMarkerAlways(flagStart, flagStart + commandMatch[2].length, "cm-md-log-flag")
+        }
+      }
+    }
+    ctx.allDecos.push({
+      type: "widget",
+      from: ctx.offset + ctx.line.length,
+      to: ctx.offset + ctx.line.length,
+      widget: new CodeBlockActionWidget(
+        stripEmptyTemplateItems(stripMarkdownTemplateComments(currentLogTextLines.join("\n"))),
+        ctx.currentLogFolded,
+        () => ctx.onToggleLogFold(currentLogIndex),
+        ctx.showFolding,
+        "cm-supple-block-action-wrap",
+        undefined,
+        undefined,
+        undefined,
+        null,
+        null,
+        () => ctx.onDeleteLogBlock(ctx.i, logEndIndex),
+        () => ctx.onCleanLogBlock(ctx.i, logEndIndex),
+        false,
+        true,
+      ),
+    })
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: "cm-md-log-start-line",
+    })
+    ctx.isInsideLogBlock = true
+    return true
+  }
+
+  if (ctx.isInsideLogBlock && MARKDOWN_LOG_END_RE.test(ctx.line)) {
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-log-marker")
+    const endCommandMatch = ctx.line.match(/\+\+\+\s+(logTemplate|log)\s+(--end)/)
+    if (endCommandMatch && endCommandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(endCommandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + endCommandMatch[1].length,
+          "cm-md-log-command",
+        )
+        const flagStart = ctx.line.indexOf(
+          endCommandMatch[2],
+          commandStart + endCommandMatch[1].length,
+        )
+        if (flagStart !== -1) {
+          ctx.addMarkerAlways(flagStart, flagStart + endCommandMatch[2].length, "cm-md-log-flag")
+        }
+      }
+    }
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentLogFolded ? "cm-md-log-hidden-line" : "cm-md-log-end-line",
+    })
+    ctx.isInsideLogBlock = false
+    ctx.currentLogFolded = false
+    return true
+  }
+
+  if (ctx.isInsideLogBlock) {
+    const isCommentLine = MARKDOWN_TEMPLATE_COMMENT_RE.test(ctx.line)
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentLogFolded
+        ? "cm-md-log-hidden-line"
+        : isCommentLine
+          ? "cm-md-template-comment-line"
+          : "cm-md-log-middle-line",
+    })
+  }
+
+  return false
+}
