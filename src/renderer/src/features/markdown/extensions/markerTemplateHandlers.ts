@@ -163,6 +163,7 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
     /^\s*&&&(?:\s+(?:[A-Za-z]\w*)\s+--end|\s+--end)?(?:\s+(?:done|in_progress))?(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/,
   )
   if (templateStartMatch && !ctx.isInsideTemplateBlock) {
+    const startLine = ctx.i
     const currentTemplateIndex = ctx.templateBlockIndex++
     ctx.currentTemplateFolded = ctx.templateFoldedIndices.has(currentTemplateIndex)
     const currentTemplateTextLines: string[] = []
@@ -242,9 +243,9 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
           status: templateEndStatus,
           onToggle: ctx.onCycleTemplateStatus,
         },
-        ctx.i,
-        () => ctx.onDeleteTemplateBlock(ctx.i, templateEndIndex),
-        () => ctx.onCleanTemplateBlock(ctx.i, templateEndIndex),
+        startLine,
+        () => ctx.onDeleteTemplateBlock(startLine, templateEndIndex),
+        () => ctx.onCleanTemplateBlock(startLine, templateEndIndex),
       ),
     })
     ctx.allDecos.push({

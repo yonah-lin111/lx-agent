@@ -15,7 +15,9 @@ import {
 
 // 处理补充说明块（+++ supple ... +++）的标记与折叠交互。
 export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
-  if (MARKDOWN_SUPPLE_START_RE.test(ctx.line)) {
+  const suppleStartMatch = MARKDOWN_SUPPLE_START_RE.exec(ctx.line)
+  if (suppleStartMatch && !ctx.isInsideSuppleBlock) {
+    const startLine = ctx.i
     const currentSuppleIndex = ctx.suppleBlockIndex++
     ctx.currentSuppleFolded = ctx.suppleFoldedIndices.has(currentSuppleIndex)
     const currentSuppleTextLines: string[] = []
@@ -65,8 +67,8 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
         undefined,
         null,
         null,
-        () => ctx.onDeleteSuppleBlock(ctx.i, suppleEndIndex),
-        () => ctx.onCleanSuppleBlock(ctx.i, suppleEndIndex),
+        () => ctx.onDeleteSuppleBlock(startLine, suppleEndIndex),
+        () => ctx.onCleanSuppleBlock(startLine, suppleEndIndex),
         true,
       ),
     })
@@ -147,6 +149,7 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
 // 处理日志块（+++ log ... +++）的标记与折叠交互。
 export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
   if (MARKDOWN_LOG_START_RE.test(ctx.line)) {
+    const startLine = ctx.i
     const currentLogIndex = ctx.logBlockIndex++
     ctx.currentLogFolded = ctx.logFoldedIndices.has(currentLogIndex)
     const currentLogTextLines: string[] = []
@@ -192,8 +195,8 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
         undefined,
         null,
         null,
-        () => ctx.onDeleteLogBlock(ctx.i, logEndIndex),
-        () => ctx.onCleanLogBlock(ctx.i, logEndIndex),
+        () => ctx.onDeleteLogBlock(startLine, logEndIndex),
+        () => ctx.onCleanLogBlock(startLine, logEndIndex),
         false,
         true,
       ),

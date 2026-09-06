@@ -16,6 +16,7 @@ import {
   synchronizeEditorToPreview,
   synchronizePreviewToEditor,
 } from "@/features/markdown/extensions/markdownEditorExtensions"
+import type { CodeBlockActionWidget } from "@/features/markdown/extensions/markerWidgets"
 
 describe("Markdown 编辑器扩展重构功能验证", () => {
   describe("表格与文本格式化纯函数 (tableUtils)", () => {
@@ -207,6 +208,147 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
       plugin!.cycleTemplateStatus(view, 0)
       expect(view.state.doc.line(1).text).toContain("done")
+    })
+
+    it("ActionWidget 的 onCleanTemplate 回调正确清除模板块中未填写的项并保留已填项", () => {
+      const doc = [
+        "&&& addTemplate --start 「title: 功能开发」",
+        "# 添加需求",
+        "",
+        "- 参考: ",
+        "- 位置: @src/test.ts",
+        "- 描述: ",
+        "- 要求: ",
+        "  - 核心要求",
+        "  - ",
+        "- 注意: ",
+        "  - ",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      let templateWidget: CodeBlockActionWidget | null = null
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.actionClassName === "cm-template-block-action-wrap") {
+          templateWidget = cursor.value.spec.widget
+          break
+        }
+        cursor.next()
+      }
+
+      expect(templateWidget).not.toBeNull()
+      expect(templateWidget!.onCleanTemplate).toBeDefined()
+      templateWidget!.onCleanTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        [
+          "&&& addTemplate --start 「title: 功能开发」",
+          "# 添加需求",
+          "",
+          "- 位置: @src/test.ts",
+          "- 要求: ",
+          "  - 核心要求",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("ActionWidget 的 onCleanTemplate 回调正确清除补充块 (suppleBlock) 中未填写的项", () => {
+      const doc = [
+        "+++ suppleTemplate --start",
+        "## 补充需求",
+        "",
+        "- 参考: ",
+        "- 位置: @src/supple.ts",
+        "- 预期: ",
+        "+++ suppleTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      let suppleWidget: CodeBlockActionWidget | null = null
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isSupple) {
+          suppleWidget = cursor.value.spec.widget
+          break
+        }
+        cursor.next()
+      }
+
+      expect(suppleWidget).not.toBeNull()
+      expect(suppleWidget!.onCleanTemplate).toBeDefined()
+      suppleWidget!.onCleanTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        [
+          "+++ suppleTemplate --start",
+          "## 补充需求",
+          "",
+          "- 位置: @src/supple.ts",
+          "+++ suppleTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("ActionWidget 的 onCleanTemplate 回调正确清除日志块 (logBlock) 中未填写的项", () => {
+      const doc = [
+        "+++ logTemplate --start",
+        "## 运行日志",
+        "",
+        "- 时间: 2026-09-06",
+        "- 阶段: ",
+        "- 结论: ",
+        "+++ logTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      let logWidget: CodeBlockActionWidget | null = null
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isLog) {
+          logWidget = cursor.value.spec.widget
+          break
+        }
+        cursor.next()
+      }
+
+      expect(logWidget).not.toBeNull()
+      expect(logWidget!.onCleanTemplate).toBeDefined()
+      logWidget!.onCleanTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        [
+          "+++ logTemplate --start",
+          "## 运行日志",
+          "",
+          "- 时间: 2026-09-06",
+          "+++ logTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("支持未闭合模板块 cleanTemplateBlock 覆盖延伸至末行的内容", () => {
+      const doc = [
+        "&&& addTemplate --start 「title: 未闭合」",
+        "# 需求标题",
+        "- 参考: ",
+        "- 描述: ",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      plugin!.cleanTemplateBlock(view, 0, -1)
+      expect(view.state.doc.toString()).toBe(
+        ["&&& addTemplate --start 「title: 未闭合」", "# 需求标题"].join("\n"),
+      )
     })
   })
 })

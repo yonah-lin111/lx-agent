@@ -171,7 +171,7 @@ export const markdownMarkerHighlight = (
 
       cleanTemplateBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const safeEndLine = endLine < startLine ? doc.lines : endLine
         if (safeEndLine <= startLine + 1) return
 
         const innerLines: string[] = []
@@ -208,7 +208,7 @@ export const markdownMarkerHighlight = (
 
       cleanSuppleBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const safeEndLine = endLine < startLine ? doc.lines : endLine
         if (safeEndLine <= startLine + 1) return
 
         const innerLines: string[] = []
@@ -245,7 +245,7 @@ export const markdownMarkerHighlight = (
 
       cleanLogBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
+        const safeEndLine = endLine < startLine ? doc.lines : endLine
         if (safeEndLine <= startLine + 1) return
 
         const innerLines: string[] = []
