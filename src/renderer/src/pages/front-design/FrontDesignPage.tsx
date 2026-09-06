@@ -222,7 +222,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               key={refreshKey}
               ref={iframeRef}
               srcDoc={sanitizedHtmlDoc}
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts"
               title="Front Design Preview"
               className="h-full w-full border-none bg-transparent"
             />

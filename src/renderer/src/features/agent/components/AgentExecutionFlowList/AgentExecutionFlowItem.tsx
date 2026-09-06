@@ -198,6 +198,9 @@ export const AgentExecutionFlowItem = ({
     if (toolName === "render_html") {
       return "agent-execution-flow-step-body--render_html border-amber-500/20 bg-amber-500/[0.03]"
     }
+    if (toolName === "todowrite") {
+      return "agent-execution-flow-step-body--todowrite border-orange-500/20 bg-orange-500/[0.03]"
+    }
     return `agent-execution-flow-step-body--${step.kind} border-white/5 bg-black/25`
   }, [step.kind, step.toolContent?.toolName])
 

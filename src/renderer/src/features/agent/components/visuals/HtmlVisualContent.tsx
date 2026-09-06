@@ -62,11 +62,67 @@ export const HtmlVisualContent = ({
       }
     `
     const styleTag = `<style id="lx-tailwind-generated">${compiledCss}\n${resetOverrides}</style>`
+    const reporterScript = `<script id="lx-height-reporter">
+(function() {
+  function report() {
+    try {
+      var body = document.body;
+      var docEl = document.documentElement;
+      var maxBottom = 0;
+      if (body && body.children) {
+        for (var i = 0; i < body.children.length; i++) {
+          var el = body.children[i];
+          if (el.tagName === 'STYLE' || el.tagName === 'SCRIPT') continue;
+          var rect = el.getBoundingClientRect();
+          if (rect) {
+            maxBottom = Math.max(maxBottom, el.offsetTop + rect.height);
+          }
+        }
+      }
+      var height = Math.max(
+        maxBottom > 0 ? maxBottom + 32 : 0,
+        body ? body.scrollHeight : 0,
+        docEl ? docEl.scrollHeight : 0,
+        100
+      );
+      window.parent.postMessage({ type: 'lx-html-visual-resize', height: height }, '*');
+    } catch (e) {}
+  }
+  window.addEventListener('load', report);
+  window.addEventListener('resize', report);
+  if (typeof ResizeObserver !== 'undefined' && document.body) {
+    new ResizeObserver(report).observe(document.body);
+  }
+  report();
+  setTimeout(report, 50);
+  setTimeout(report, 200);
+})();
+</script>`
+
     if (baseDoc.includes("</head>")) {
-      return baseDoc.replace("</head>", `${styleTag}</head>`)
+      return baseDoc.replace("</head>", `${styleTag}\n${reporterScript}</head>`)
     }
-    return `${styleTag}${baseDoc}`
+    return `${styleTag}\n${reporterScript}${baseDoc}`
   }, [html, compiledCss])
+
+  // 通过 postMessage 接收沙箱 iframe 内部高度通告，无需 allow-same-origin 即可跨域自适应高度
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent): void => {
+      if (event.source !== iframeRef.current?.contentWindow) return
+      if (
+        event.data &&
+        typeof event.data === "object" &&
+        event.data.type === "lx-html-visual-resize" &&
+        typeof event.data.height === "number"
+      ) {
+        setIframeHeight(event.data.height)
+      }
+    }
+    window.addEventListener("message", handleMessage)
+    return () => {
+      window.removeEventListener("message", handleMessage)
+    }
+  }, [])
 
   const updateHeight = useCallback(() => {
     const iframe = iframeRef.current
@@ -142,7 +198,7 @@ export const HtmlVisualContent = ({
       <iframe
         ref={iframeRef}
         srcDoc={sanitizedHtmlDoc}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts"
         scrolling="no"
         title="HTML Preview"
         onLoad={updateHeight}

@@ -4,6 +4,7 @@ import { FlowToolBash } from "./tools/FlowToolBash"
 import { FlowToolFileOps } from "./tools/FlowToolFileOps"
 import { FlowToolGeneric } from "./tools/FlowToolGeneric"
 import { FlowToolSearch } from "./tools/FlowToolSearch"
+import { FlowToolTodo } from "./tools/FlowToolTodo"
 import { FlowToolVisual } from "./tools/FlowToolVisual"
 
 export interface FlowItemToolContentProps {
@@ -27,6 +28,10 @@ export const FlowItemToolContent = ({ content }: FlowItemToolContentProps): Reac
 
   if (toolName === "grep" || toolName === "glob" || toolName === "lsp") {
     return <FlowToolSearch content={content} />
+  }
+
+  if (toolName === "todowrite") {
+    return <FlowToolTodo content={content} />
   }
 
   return <FlowToolGeneric content={content} />
