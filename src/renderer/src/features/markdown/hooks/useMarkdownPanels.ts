@@ -7,8 +7,6 @@ import { useEffect, useRef, useState } from "react"
 import {
   buildGitWorktreeOptions,
   type GitWorktreeOption,
-  getGitWorktreeDirName,
-  getGitWorktreeDisplayName,
 } from "@/features/git"
 import type {
   MarkdownBlockCommand,
@@ -19,11 +17,7 @@ import {
   createMarkdownTemplateId,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
-  getMarkdownSuppleBlockEndLine,
-  getMarkdownSuppleWorktree,
   getMarkdownTemplateBlockContent,
-  getMarkdownTemplateBlockEndLine,
-  getMarkdownTemplateWorktree,
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -48,10 +42,13 @@ import {
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
-import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
 import { launchNewCliTerminal } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
+import { getMarkdownPanelPosition, type MarkdownPanelKind } from "../utils/markdownPanelPosition"
+import { resolveContextDirectory, syncFileMentionPanelHelper } from "./useMarkdownMentionSearch"
+
+export type { MarkdownPanelKind }
 
 /**
  * Prompt 发送目标面板状态。
@@ -106,46 +103,6 @@ export interface GitWorktreePanelState {
   options: GitWorktreeOption[]
   line: MarkdownSlashCommandLine
   position: CSSProperties
-}
-
-type MarkdownPanelKind = "block" | "file" | "slash"
-
-/**
- * 将样式配置中的尺寸换算为像素，供面板边界定位使用。
- */
-const getCssDimensionInPixels = (variableName: string): number => {
-  const cssValue = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim()
-  const value = Number.parseFloat(cssValue)
-  if (!Number.isFinite(value)) return 0
-
-  if (cssValue.endsWith("rem")) {
-    return value * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
-  }
-  if (cssValue.endsWith("vh")) return (value / 100) * window.innerHeight
-  if (cssValue.endsWith("vw")) return (value / 100) * window.innerWidth
-
-  return value
-}
-
-/**
- * 根据 CSS 中的面板尺寸计算可视区域内的位置。
- */
-const getMarkdownPanelPosition = (
-  kind: MarkdownPanelKind,
-  coords: { bottom: number; left: number; top: number },
-  horizontalPosition = coords.left,
-): CSSProperties => {
-  const panelWidth = getCssDimensionInPixels(`--markdown-command-menu-${kind}-width`)
-  const maxHeight = getCssDimensionInPixels(`--markdown-command-menu-${kind}-max-height`)
-  const offset = 6
-  const left = Math.min(
-    Math.max(horizontalPosition, 8),
-    Math.max(window.innerWidth - panelWidth - 8, 8),
-  )
-
-  return window.innerHeight - coords.bottom < maxHeight
-    ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-    : { left, top: coords.bottom + offset, bottom: "auto" }
 }
 
 /**
@@ -479,7 +436,12 @@ export const useMarkdownPanels = ({
     const coords = view.coordsAtPos(cursor)
     if (!commandLine || !coords) return
 
-    const context = resolveContextDirectory(view)
+    const context = resolveContextDirectory(view, {
+      projectPathRef,
+      worktreePathRef: { current: worktreePath },
+      worktreesRef,
+      projectBranchRef,
+    })
     const options = buildGitWorktreeOptions({
       worktrees,
       projectPath,
@@ -760,140 +722,26 @@ export const useMarkdownPanels = ({
   }
 
   /**
-   * 解析光标处的 git 工作区上下文目录：
-   * 1. 处于 supple 补充块内且单独绑定时，优先使用 supple 块结束行 {wt:} 的工作区；
-   * 2. supple 未绑定但处于 &&& 模板块内时，继承 &&& 模板块结束行 {wt:} 的工作区；
-   * 3. 否则取全局 worktreePath ?? projectPath；无 git 上下文（virtual 项目）返回 null。
-   */
-  const resolveContextDirectory = (
-    view: EditorView,
-  ): { directory: string; worktreeName: string } | null => {
-    const projectPath = projectPathRef.current
-    const worktrees = worktreesRef.current
-    const cursor = view.state.selection.main.head
-    const docText = view.state.doc.toString()
-
-    // 1. 检查是否在 supple 补充块内并存在单独绑定的工作区
-    const suppleEndLine = getMarkdownSuppleBlockEndLine(docText, cursor)
-    if (suppleEndLine !== null) {
-      const suppleBranch = getMarkdownSuppleWorktree(view.state.doc.line(suppleEndLine).text)
-      if (suppleBranch) {
-        const entry = worktrees?.find((item) => item.branch === suppleBranch)
-        if (entry) {
-          return { directory: entry.path, worktreeName: getGitWorktreeDisplayName(entry) }
-        }
-      }
-    }
-
-    // 2. 模板块局部绑定（或 supple 块继承外层 &&& 块）：当前模板块结束行带 {wt:分支名} 时，解析为该工作区路径。
-    const endLine = getMarkdownTemplateBlockEndLine(docText, cursor)
-    if (endLine !== null) {
-      const branch = getMarkdownTemplateWorktree(view.state.doc.line(endLine).text)
-      if (branch) {
-        const entry = worktrees?.find((item) => item.branch === branch)
-        if (entry) {
-          return { directory: entry.path, worktreeName: getGitWorktreeDisplayName(entry) }
-        }
-      }
-    }
-
-    // 3. 全局绑定：worktreePath ?? projectPath。
-    const directory = worktreePathRef.current ?? projectPath
-    if (!directory) return null
-
-    const entry = worktrees?.find((item) => item.path === directory)
-    const worktreeName =
-      entry?.branch ?? projectBranchRef.current ?? getGitWorktreeDirName(directory)
-    return { directory, worktreeName }
-  }
-
-  /**
    * 根据光标前的 @ 查询同步项目文件提及面板。
    */
   const syncFileMentionPanel = (view: EditorView): void => {
-    const searchFiles = onSearchFilesRef.current
-    const searchReferencedFiles = onSearchReferencedFilesRef.current
-    const searchDirectoryFiles = onSearchDirectoryFilesRef.current
-    const activeProjectId = projectIdRef.current
-    const cursor = view.state.selection.main.head
-    const docText = view.state.doc.toString()
-    const prefix = view.state.doc.sliceString(0, cursor)
-    const match = new RegExp(
-      String.raw`(^|\s)@((?:${MARKDOWN_FILE_MENTION_PATH_PATTERN})?)$`,
-      "u",
-    ).exec(prefix)
-    const templateBlockContent = getMarkdownTemplateBlockContent(docText, cursor)
-    const searchProjectPaths = [
-      ...new Set([
-        ...referencedProjectPathsRef.current,
-        ...getMarkdownReferenceProjectPaths(templateBlockContent ?? docText),
-      ]),
-    ]
-    const context = resolveContextDirectory(view)
-    const canSearchCurrentProject = Boolean(
-      context && (searchDirectoryFiles || (searchFiles && activeProjectId)),
-    )
-    const canSearchReferencedProjects = Boolean(
-      searchReferencedFiles && searchProjectPaths.length > 0,
-    )
-
-    if (!match || (!canSearchCurrentProject && !canSearchReferencedProjects)) {
-      closeFileMentionPanel()
-      return
-    }
-
-    const coords = view.coordsAtPos(cursor)
-    if (!coords) {
-      closeFileMentionPanel()
-      return
-    }
-
-    const requestId = fileSearchRequestRef.current + 1
-    fileSearchRequestRef.current = requestId
-    const query = match[2] ?? ""
-    const start = cursor - query.length - 1
-
-    const currentProjectSearch = canSearchCurrentProject
-      ? (context!.directory === projectPathRef.current && searchFiles && activeProjectId
-          ? searchFiles(activeProjectId, query)
-          : searchDirectoryFiles!(context!.directory, query)
-        ).then((files) =>
-          files.map((file) => ({
-            ...file,
-            mentionPath: file.path,
-            source: "current" as const,
-            worktreeName: context!.worktreeName,
-          })),
-        )
-      : Promise.resolve([])
-    const referencedProjectSearch = canSearchReferencedProjects
-      ? searchReferencedFiles!(searchProjectPaths, query).then((files) =>
-          files.map((file) => ({
-            ...file,
-            mentionPath: `${file.projectPath.replace(/[\\/]+$/, "")}/${file.path}`,
-            source: "reference" as const,
-          })),
-        )
-      : Promise.resolve([])
-
-    void Promise.all([currentProjectSearch, referencedProjectSearch])
-      .then(([currentProjectFiles, referencedProjectFiles]) => {
-        if (fileSearchRequestRef.current !== requestId) return
-        const files = [...currentProjectFiles, ...referencedProjectFiles]
-        if (files.length === 0) {
-          fileMentionPanelRef.current = null
-          setFileMentionPanel(null)
-          return
-        }
-
-        const position = getMarkdownPanelPosition("file", coords)
-        const panel = { files, position, start }
-        fileMentionPanelRef.current = panel
-        activeFileMentionIndexRef.current = 0
-        setFileMentionPanel(panel)
-        setActiveFileMentionIndex(0)
-      })
-      .catch(() => closeFileMentionPanel())
+    syncFileMentionPanelHelper(view, {
+      onSearchFilesRef,
+      onSearchReferencedFilesRef,
+      onSearchDirectoryFilesRef,
+      projectIdRef,
+      projectPathRef,
+      worktreePathRef: { current: worktreePath },
+      worktreesRef,
+      projectBranchRef,
+      referencedProjectPathsRef,
+      fileSearchRequestRef,
+      fileMentionPanelRef,
+      activeFileMentionIndexRef,
+      setFileMentionPanel,
+      setActiveFileMentionIndex,
+      closeFileMentionPanel,
+    })
   }
 
   /**
