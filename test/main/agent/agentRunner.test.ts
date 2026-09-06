@@ -46,34 +46,38 @@ vi.mock("@/paths", async (importOriginal) => {
 })
 
 // 模型解析回退到固定 Provider。
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-    streamIdleTimeoutMs: 60000,
-  }),
-  // 权限配置：允许 task 委托与 write（子代理/快照回滚测试不经弹窗）；其余工具走默认门控。
-  getPermissionSettings: () => ({
-    defaultMode: "default",
-    allow: ["Task()", "Write()"],
-    deny: [],
-    ask: [],
-  }),
-  // 压缩配置（按用例切换阈值/预算）。
-  getCompactionSettings: () => holder.compaction,
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+      streamIdleTimeoutMs: 60000,
+    }),
+    // 权限配置：允许 task 委托与 write（子代理/快照回滚测试不经弹窗）；其余工具走默认门控。
+    getPermissionSettings: () => ({
+      defaultMode: "default",
+      allow: ["Task()", "Write()"],
+      deny: [],
+      ask: [],
+    }),
+    // 压缩配置（按用例切换阈值/预算）。
+    getCompactionSettings: () => holder.compaction,
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },
@@ -426,7 +430,7 @@ describe("agentRunner 持久化", () => {
 
     agentRunner.deleteMessageTurn(second.sessionId, firstTurnTimestamp)
 
-    expect(readRoles(second.sessionId)).toEqual(["user", "assistant"])
+    expect(readRoles(second.sessionId)).toEqual(["user", "assistant", "undoSummary"])
     expect(
       holder.db!.prepare("SELECT * FROM agent_call WHERE session_id = ?").all(second.sessionId),
     ).toHaveLength(0)

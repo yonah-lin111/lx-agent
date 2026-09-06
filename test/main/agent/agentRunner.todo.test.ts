@@ -30,31 +30,35 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  getPermissionSettings: () => ({ defaultMode: "default", allow: [], deny: [], ask: [] }),
-  getCompactionSettings: () => ({
-    enabled: false,
-    contextWindow: 0,
-    keepRecentTokens: 0,
-    reserveTokens: 0,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    getPermissionSettings: () => ({ defaultMode: "default", allow: [], deny: [], ask: [] }),
+    getCompactionSettings: () => ({
+      enabled: false,
+      contextWindow: 0,
+      keepRecentTokens: 0,
+      reserveTokens: 0,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },

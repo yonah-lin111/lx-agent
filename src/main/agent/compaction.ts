@@ -119,6 +119,8 @@ const messageCharCount = (message: AgentMessage): number => {
     case "todoState":
       // 任务清单消息仅存在于 transformContext 输出（不进 state.messages），不参与上下文估计。
       return 0
+    case "undoSummary":
+      return 0
   }
 }
 

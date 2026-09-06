@@ -14,6 +14,7 @@ import type {
   AgentSwitchProjectResult,
   AgentSwitchWorktreeResult,
   AgentUndoCompactionResult,
+  AgentUndoSummaryPayload,
   CollaborationMode,
   CopySessionOptions,
   CopySessionResult,
@@ -271,11 +272,7 @@ export class SessionRunnerManager {
     // 提取被删除轮次的结构化数据用于生成持久化 undoSummary entry
     const turnEntries = allEntries.filter((e) => turnEntryIds.includes(e.external_id))
     let userPrompt = ""
-    let userFiles: UndoSummaryMessage["undoPayload"] extends infer P
-      ? P extends { files?: infer F }
-        ? F
-        : never
-      : never = undefined
+    let userFiles: AgentUndoSummaryPayload["files"] = undefined
     let assistantSnippet = ""
     let assistantModel: string | undefined
     let turnDurationMs: number | undefined
@@ -287,13 +284,16 @@ export class SessionRunnerManager {
         try {
           const msg = JSON.parse(entry.payload) as AgentMessage
           if (msg.role === "user") {
-            const textContent = msg.content
-              .filter(
-                (c): c is Extract<(typeof msg.content)[number], { type: "text" }> =>
-                  c.type === "text",
-              )
-              .map((c) => c.text)
-              .join("\n")
+            const textContent =
+              typeof msg.content === "string"
+                ? msg.content
+                : msg.content
+                    .filter(
+                      (c): c is Extract<(typeof msg.content)[number], { type: "text" }> =>
+                        c.type === "text",
+                    )
+                    .map((c) => c.text)
+                    .join("\n")
             userPrompt = textContent
             if (msg.files) userFiles = msg.files
           } else if (msg.role === "assistant") {
@@ -411,8 +411,9 @@ export class SessionRunnerManager {
     if (shouldDeleteSession) {
       this.deleteSession(sessionId)
     } else if (runner && runner.currentSessionId === sessionId) {
-      runner.getTurnStore().restoreMessages(sessionId)
-      runner.getTurnStore().loadTodo(runner.getTurnStore().readLastTodoEntry(sessionId))
+      const { messages, todos } = runner.getTurnStore().readSessionEntries(sessionId)
+      runner.restoreMessages(messages)
+      runner.getTurnStore().loadTodo(todos)
       runner.emitEvent({ type: "todo_updated", todos: runner.getTurnStore().getTodo() })
     }
   }
