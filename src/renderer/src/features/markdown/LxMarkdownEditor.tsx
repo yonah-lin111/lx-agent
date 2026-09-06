@@ -1,4 +1,4 @@
-import { redo, undo } from "@codemirror/commands"
+import { history, redo, redoDepth, undo, undoDepth } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
 import {
   bracketMatching,
@@ -9,7 +9,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState } from "@codemirror/state"
+import { Compartment, EditorState } from "@codemirror/state"
 import { EditorView, highlightActiveLineGutter, keymap, lineNumbers } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
 import type { MarkdownTemplateCommandItem } from "@shared/contracts/markdown"
@@ -99,6 +99,13 @@ export const LxMarkdownEditor = ({
 
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
   const [activeLine, setActiveLine] = useState(1)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  const historyCompartmentRef = useRef<Compartment | null>(null)
+  if (!historyCompartmentRef.current) {
+    historyCompartmentRef.current = new Compartment()
+  }
+  const historyCompartment = historyCompartmentRef.current
   const previewModeRef = useRef(previewMode)
   useEffect(() => {
     previewModeRef.current = previewMode
@@ -170,6 +177,7 @@ export const LxMarkdownEditor = ({
     onChange,
     onPagesChange,
     editorViewRef,
+    historyCompartment,
     scrollToBottom: () => actions.scrollToBottom(),
     warning,
   })
@@ -268,6 +276,7 @@ export const LxMarkdownEditor = ({
       doc: page.content,
       selection: { anchor: page.content.length },
       extensions: [
+        historyCompartment.of(history()),
         markdown({
           codeLanguages: languages,
           extensions: [GFM, { remove: ["SetextHeading"] }],
@@ -304,6 +313,10 @@ export const LxMarkdownEditor = ({
             const nextContent = update.state.doc.toString()
             pageRef.current.handleDocContentChange(nextContent)
           }
+          const nextCanUndo = undoDepth(update.state) > 0
+          const nextCanRedo = redoDepth(update.state) > 0
+          setCanUndo((prev) => (prev !== nextCanUndo ? nextCanUndo : prev))
+          setCanRedo((prev) => (prev !== nextCanRedo ? nextCanRedo : prev))
         }),
       ],
     })
@@ -352,12 +365,24 @@ export const LxMarkdownEditor = ({
     {
       icon: Undo2,
       label: t("common.undo"),
-      onClick: () => editorViewRef.current && undo(editorViewRef.current),
+      disabled: !canUndo,
+      onClick: () => {
+        const view = editorViewRef.current
+        if (!view) return
+        undo(view)
+        view.focus()
+      },
     },
     {
       icon: Redo2,
       label: t("common.redo"),
-      onClick: () => editorViewRef.current && redo(editorViewRef.current),
+      disabled: !canRedo,
+      onClick: () => {
+        const view = editorViewRef.current
+        if (!view) return
+        redo(view)
+        view.focus()
+      },
     },
     {
       icon: SquareSplitHorizontal,

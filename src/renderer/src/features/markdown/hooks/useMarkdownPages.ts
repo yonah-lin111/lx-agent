@@ -1,4 +1,5 @@
-import { Transaction } from "@codemirror/state"
+import { history } from "@codemirror/commands"
+import { type Compartment, Transaction } from "@codemirror/state"
 import type { EditorView } from "@codemirror/view"
 import { useEffect, useRef, useState } from "react"
 import type { MarkdownPage } from "@/features/markdown/types"
@@ -11,6 +12,7 @@ export interface UseMarkdownPagesOptions {
   onChange?: (content: string) => void
   onPagesChange?: (pages: MarkdownPage[]) => void
   editorViewRef: React.RefObject<EditorView | null>
+  historyCompartment?: Compartment
   scrollToBottom: () => void
   warning: (msg: string) => void
 }
@@ -40,6 +42,7 @@ export const useMarkdownPages = ({
   onChange,
   onPagesChange,
   editorViewRef,
+  historyCompartment,
   scrollToBottom,
   warning,
 }: UseMarkdownPagesOptions): UseMarkdownPagesResult => {
@@ -91,6 +94,10 @@ export const useMarkdownPages = ({
   pageModeRef.current = pageMode
 
   const activePage = pageMode ? pages?.[activePageIndex] : undefined
+  const prevPageIdRef = useRef<string | undefined>(activePage?.id)
+  const prevPropContentRef = useRef<string | undefined>(activePage?.content)
+  const scrollToBottomRef = useRef(scrollToBottom)
+  scrollToBottomRef.current = scrollToBottom
 
   useEffect(() => {
     if (!pageMode || !pages?.length) return
@@ -104,17 +111,48 @@ export const useMarkdownPages = ({
     if (!pageMode || !activePage || !editorViewRef.current) return
     const view = editorViewRef.current
     const nextContent = activePage.content
-    if (view.state.doc.toString() !== nextContent) {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: nextContent },
-        selection: { anchor: nextContent.length },
-        scrollIntoView: true,
-        // 页面切换不进入撤销历史。
-        annotations: [Transaction.addToHistory.of(false)],
-      })
-      scrollToBottom()
+    const isPageSwitch = prevPageIdRef.current !== activePage.id
+    prevPageIdRef.current = activePage.id
+
+    if (isPageSwitch) {
+      prevPropContentRef.current = nextContent
+      if (historyCompartment) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+          selection: { anchor: nextContent.length },
+          scrollIntoView: true,
+          // 页面切换不进入撤销历史，并隔离/重置撤销栈。
+          annotations: [Transaction.addToHistory.of(false)],
+          effects: historyCompartment.reconfigure([]),
+        })
+        view.dispatch({
+          effects: historyCompartment.reconfigure(history()),
+        })
+      } else {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+          selection: { anchor: nextContent.length },
+          scrollIntoView: true,
+          // 页面切换不进入撤销历史。
+          annotations: [Transaction.addToHistory.of(false)],
+        })
+      }
+      scrollToBottomRef.current()
+    } else {
+      const propChanged = prevPropContentRef.current !== nextContent
+      prevPropContentRef.current = nextContent
+      // 仅在外部传入的 page.content 发生实际改变且与编辑器当前内容不一致时同步
+      if (propChanged && view.state.doc.toString() !== nextContent) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: nextContent },
+          selection: { anchor: nextContent.length },
+          scrollIntoView: true,
+          annotations: [Transaction.addToHistory.of(false)],
+        })
+        scrollToBottomRef.current()
+      }
     }
-  }, [activePage, pageMode, scrollToBottom, editorViewRef])
+  }, [activePage, pageMode, editorViewRef, historyCompartment])
 
   const switchPage = (index: number): void => {
     if (!pages || index < 0 || index >= pages.length || index === activePageIndex) return

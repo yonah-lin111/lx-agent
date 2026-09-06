@@ -3,6 +3,7 @@ import {
   historyKeymap,
   indentLess,
   indentMore,
+  redo,
   standardKeymap,
 } from "@codemirror/commands"
 import type { Extension } from "@codemirror/state"
@@ -211,6 +212,8 @@ export const createMarkdownFormattingKeymap = ({
     },
     { key: "Mod-Shift-f", mac: "Cmd-Shift-f", run: () => (actions.formatDocument(), true) },
     { key: "Mod-Shift-F", mac: "Cmd-Shift-F", run: () => (actions.formatDocument(), true) },
+    { key: "Mod-Shift-z", run: redo, preventDefault: true },
+    { key: "Mod-Shift-Z", run: redo, preventDefault: true },
     ...historyKeymap,
     ...standardKeymap,
   ])
