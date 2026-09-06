@@ -5,7 +5,6 @@ import {
   SKILL_TOOL_NAME,
   SUBAGENT_TOOL_NAME,
   TODO_TOOL_NAME,
-  VISUAL_TOOL_NAMES,
   WEB_SEARCH_TOOL_NAME,
 } from "./constants"
 import type { CommandTag, QaUsage } from "./types"
@@ -24,9 +23,6 @@ export const isTodoToolCall = (toolName: string): boolean => toolName === TODO_T
 
 // 判断是否为模型提问（question 工具）调用。
 export const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
-
-// 判断是否为解释性可视化工具（render_svg / render_ascii / render_html）调用。
-export const isVisualToolCall = (toolName: string): boolean => VISUAL_TOOL_NAMES.has(toolName)
 
 // 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，排除内置下划线工具）。
 export const isMcpToolCall = (toolName: string): boolean =>

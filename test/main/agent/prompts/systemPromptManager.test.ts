@@ -337,9 +337,6 @@ describe("SystemPromptManager", () => {
         })
 
         expect(assembly.rendered).toContain("# Collaboration Mode: Front Design Mode")
-        expect(assembly.rendered).toContain("render_svg")
-        expect(assembly.rendered).toContain("render_ascii")
-        expect(assembly.rendered).toContain("render_html")
         expect(assembly.rendered).toContain("<front_design")
         expect(assembly.rendered).toContain("</front_design>")
       })

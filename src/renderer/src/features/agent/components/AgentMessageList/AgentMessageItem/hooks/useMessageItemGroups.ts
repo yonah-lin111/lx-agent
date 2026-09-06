@@ -10,7 +10,6 @@ import {
   isSkillToolCall,
   isSubagentToolCall,
   isTodoToolCall,
-  isVisualToolCall,
   isWebSearchToolCall,
   isWriteToolCall,
 } from "../utils"
@@ -289,11 +288,6 @@ export const useMessageItemGroups = (
       if (isQuestionToolCall(toolName)) {
         currentExecution = null
         groups.push({ kind: "question", block: item.block, isStreaming: item.isStreaming })
-        continue
-      }
-      if (isVisualToolCall(toolName)) {
-        currentExecution = null
-        groups.push({ kind: "visual", block: item.block, isStreaming: item.isStreaming })
         continue
       }
 

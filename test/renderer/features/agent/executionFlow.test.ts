@@ -547,8 +547,8 @@ describe("executionFlow", () => {
             {
               kind: "toolCall",
               toolCallId: "c-svg",
-              toolName: "render_svg",
-              args: { svg: "<svg></svg>" },
+              toolName: "read",
+              args: { path: "test.txt" },
               status: "running",
             },
           ],
@@ -572,8 +572,8 @@ describe("executionFlow", () => {
             {
               kind: "toolResult",
               toolCallId: "c-svg",
-              toolName: "render_svg",
-              text: "rendered svg successfully",
+              toolName: "read",
+              text: "file read successfully",
               isError: false,
               durationMs: 120,
             },

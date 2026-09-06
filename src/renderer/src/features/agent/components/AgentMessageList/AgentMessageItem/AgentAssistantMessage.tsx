@@ -15,7 +15,6 @@ import {
   AgentThinkingBlock,
   AgentTodoCallBlock,
   AgentToolCallBlock,
-  AgentVisualBlock,
   AgentWebSearchBlock,
   type ExecutionItemMeta,
   FrontDesignCard,
@@ -253,10 +252,6 @@ export const AgentAssistantMessage = ({
 
             if (group.kind === "question") {
               return <AgentQuestionBlock key={groupIndex} toolCall={group.block} />
-            }
-
-            if (group.kind === "visual") {
-              return <AgentVisualBlock key={groupIndex} toolCall={group.block} />
             }
 
             const executionItems = group.blocks.flatMap<ExecutionItemMeta>(

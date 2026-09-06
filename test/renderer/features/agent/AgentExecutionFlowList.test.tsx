@@ -103,65 +103,6 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("found 12 files")).not.toBeNull()
   })
 
-  it("render_svg, render_ascii, render_html 独立展示不折叠进 Group，且展开内容中置顶 Rendered Preview 并移除 Tag 和时间", () => {
-    const messages: ChatMessage[] = [
-      {
-        id: "u1",
-        role: "user",
-        blocks: [{ kind: "text", text: "绘制系统架构图" }],
-        isStreaming: false,
-      },
-      {
-        id: "a1",
-        role: "assistant",
-        blocks: [
-          {
-            kind: "toolCall",
-            toolCallId: "call-svg-1",
-            toolName: "render_svg",
-            args: { svg: "<svg><circle cx='50' cy='50' r='40'/></svg>" },
-            status: "done",
-          },
-        ],
-        isStreaming: false,
-      },
-      {
-        id: "t1",
-        role: "toolResult",
-        blocks: [
-          {
-            kind: "toolResult",
-            toolCallId: "call-svg-1",
-            toolName: "render_svg",
-            text: "SVG Rendered Successfully",
-            isError: false,
-          },
-        ],
-        isStreaming: false,
-      },
-    ]
-
-    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={false} />)
-
-    // 不会被折叠进 Execute Group，而是独立展示为 Step
-    expect(screen.queryByText("Execute Group")).toBeNull()
-    expect(screen.getByText("render_svg")).not.toBeNull()
-
-    // 最后一个 step 在完成态默认展开
-    const visualPanel = container.querySelector(".agent-execution-flow-tool-visual")
-    expect(visualPanel).not.toBeNull()
-
-    // 展开内容中不包含 SVG Diagram tag 或 custom style tag，也不包含时间
-    expect(visualPanel?.querySelector(".lx-tag")).toBeNull()
-
-    // Rendered Preview 置于首位
-    const previewHeader = screen.getByText("Rendered Preview")
-    expect(previewHeader).not.toBeNull()
-    expect(screen.getByText("Input Arguments")).not.toBeNull()
-    expect(screen.getByText("Execution Result")).not.toBeNull()
-    expect(screen.getByText("SVG Rendered Successfully")).not.toBeNull()
-  })
-
   it("支持筛选功能", () => {
     const messages: ChatMessage[] = [
       {
@@ -1371,15 +1312,15 @@ describe("AgentExecutionFlowList", () => {
           {
             kind: "toolCall",
             toolCallId: "c1",
-            toolName: "render_svg",
-            args: { svg: "<svg></svg>" },
+            toolName: "custom_tool_1",
+            args: { query: "test1" },
             status: "done",
           },
           {
             kind: "toolCall",
             toolCallId: "c2",
-            toolName: "render_html",
-            args: { html: "<div></div>" },
+            toolName: "custom_tool_2",
+            args: { query: "test2" },
             status: "done",
           },
         ],
@@ -1392,14 +1333,14 @@ describe("AgentExecutionFlowList", () => {
           {
             kind: "toolResult",
             toolCallId: "c1",
-            toolName: "render_svg",
+            toolName: "custom_tool_1",
             text: "ok",
             isError: false,
           },
           {
             kind: "toolResult",
             toolCallId: "c2",
-            toolName: "render_html",
+            toolName: "custom_tool_2",
             text: "ok",
             isError: false,
           },

@@ -14,10 +14,6 @@ export {
 export { AgentTabBar } from "./AgentTabBar"
 export * from "./blocks"
 export * from "./panels"
-export {
-  QuestionVisualContent,
-  type QuestionVisualContentProps,
-} from "./QuestionVisualContent"
 export { SuggestedQuestions } from "./SuggestedQuestions"
 export * from "./status-bar"
 export * from "./visuals"

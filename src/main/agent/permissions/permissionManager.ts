@@ -21,8 +21,6 @@ const PLAN_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and modifying filesystem state are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
 const REVIEW_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
-const DESIGN_MODE_RENDER_TOOL_REASON =
-  "Action denied: Current collaboration mode is Front Design Mode. Inline rendering tools (render_svg, render_ascii, render_html) are disabled in Design Mode. Please output frontend code using <front_design> tags."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
 
@@ -244,13 +242,6 @@ class PermissionManager {
       }
     }
 
-    // 1.1 协作模式 (Design Mode)：禁用 3 个内嵌 render 工具
-    if (collaborationMode === "design") {
-      if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
-        return "deny"
-      }
-    }
-
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
     if (sandboxPolicy === "read-only") {
       if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
@@ -393,13 +384,6 @@ class PermissionManager {
       }
     }
 
-    // Design Mode 门控硬拦截：禁用 3 个内嵌 render 工具
-    if (collaborationMode === "design") {
-      if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
-        return { block: true, reason: DESIGN_MODE_RENDER_TOOL_REASON }
-      }
-    }
-
     const decision = this.evaluate(toolName, args, {
       collaborationMode,
       sessionId: sessionId ?? undefined,
@@ -424,12 +408,6 @@ class PermissionManager {
           toolName === "todowrite")
       ) {
         return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
-      }
-      if (
-        collaborationMode === "design" &&
-        (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html")
-      ) {
-        return { block: true, reason: DESIGN_MODE_RENDER_TOOL_REASON }
       }
       if (
         sandboxPolicy === "read-only" &&

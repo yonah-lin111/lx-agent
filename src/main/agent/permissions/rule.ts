@@ -20,9 +20,6 @@ export const EXEMPT_TOOLS = new Set([
   "time",
   "read_skill",
   "question",
-  "render_svg",
-  "render_ascii",
-  "render_html",
   "lsp",
 ])
 

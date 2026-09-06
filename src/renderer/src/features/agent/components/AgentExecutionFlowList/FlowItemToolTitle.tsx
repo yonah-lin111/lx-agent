@@ -1,15 +1,4 @@
-import {
-  Bot,
-  Code2,
-  FileCode,
-  Folder,
-  Globe,
-  ListTodo,
-  Palette,
-  Search,
-  Sparkles,
-  Terminal,
-} from "lucide-react"
+import { Bot, FileCode, Folder, Globe, ListTodo, Search, Sparkles } from "lucide-react"
 import type React from "react"
 import type { ExecutionToolContent } from "@/features/agent/types"
 
@@ -261,39 +250,6 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     )
   }
 
-  if (toolName === "render_svg") {
-    return (
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <Palette className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-sky-300">
-          render_svg
-        </span>
-      </div>
-    )
-  }
-
-  if (toolName === "render_ascii") {
-    return (
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <Terminal className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-emerald-300">
-          render_ascii
-        </span>
-      </div>
-    )
-  }
-
-  if (toolName === "render_html") {
-    return (
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">
-        <Code2 className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-        <span className="shrink-0 font-mono text-[12px] font-medium leading-none text-amber-300">
-          render_html
-        </span>
-      </div>
-    )
-  }
-
   if (
     ![
       "web_search",
@@ -302,9 +258,6 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
       "job_output",
       "job_list",
       "job_kill",
-      "render_svg",
-      "render_ascii",
-      "render_html",
       "switch_mode",
     ].includes(toolName) &&
     toolName.includes("_")

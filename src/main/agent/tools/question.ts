@@ -8,20 +8,9 @@ const questionOptionSchema = z.object({
   description: z.string().max(200).optional().describe("Short explanation for this option"),
 })
 
-// Single question schema with 3 visual graphic rendering capabilities.
+// Single question schema.
 const questionPromptSchema = z.object({
   question: z.string().min(1).max(500).describe("Short plain-text question or prompt for the user"),
-  content: z
-    .string()
-    .min(1)
-    .max(50000)
-    .optional()
-    .describe(
-      "Optional visual diagram, prototype, or structured preview to help the user understand the context. Supports 3 rendering modes:\n" +
-        "1. SVG Vector Diagram: <svg>...</svg> for system architecture, sequence flows, topology maps, and charts;\n" +
-        "2. ASCII / Box-drawing Art: Text-based tree layouts or flowcharts using standard box characters (┌ ─ │ └);\n" +
-        "3. HTML Prototype & Table: Full HTML markup styled with Tailwind CSS classes (forms, buttons, inputs, cards, flex/grid layouts, tables) for concise UI prototypes, design drafts, and metrics.",
-    ),
   header: z
     .string()
     .max(12)
@@ -67,7 +56,7 @@ const formatAnswers = (answers: QuestionAnswer[]): string => {
 }
 
 /**
- * Create question tool: ask the user interactive questions with rich visual graphics (SVG, ASCII, HTML prototypes).
+ * Create question tool: ask the user interactive questions.
  */
 export const createQuestionTool = (
   deps: QuestionToolDeps,
@@ -76,10 +65,6 @@ export const createQuestionTool = (
   label: "Ask Question",
   description:
     "Ask the user questions to clarify ambiguous requirements, confirm architectural decisions, or select from options.\n" +
-    "Supports 3 rich visual rendering capabilities in the 'content' field:\n" +
-    "- SVG Diagrams: Embed <svg> tags for architecture topologies, sequence diagrams, and data flows.\n" +
-    "- ASCII Art: Monospace box-drawing flowcharts (┌ ─ │ └) for lightweight terminal-style workflow sketches.\n" +
-    "- HTML Prototypes & Tables: Rich HTML styled with Tailwind CSS utility classes for clean UI prototypes and comparison matrices.\n" +
     "Provide 'options' for multiple choice (single or multi-select), or omit 'options' for free-form text answers.",
   inputSchema: questionInputSchema,
   executionMode: "sequential",

@@ -21,7 +21,6 @@ import { ToolRegistry } from "./tools/registry"
 import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
-import { createRenderAsciiTool, createRenderHtmlTool, createRenderSvgTool } from "./tools/visuals"
 import { createWebFetchTool } from "./tools/webfetch"
 import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
@@ -165,9 +164,6 @@ export const ALL_TOOL_NAMES = new Set([
   "task",
   "question",
   "memory",
-  "render_svg",
-  "render_ascii",
-  "render_html",
   "lsp",
   "job_output",
   "job_list",
@@ -215,9 +211,6 @@ export const createRegistry = (
   registry.register(createBashTool(cwd, effectiveSessionDeps))
   registry.register(createTimeTool())
   registry.register(createTodoTool())
-  registry.register(createRenderSvgTool())
-  registry.register(createRenderAsciiTool())
-  registry.register(createRenderHtmlTool())
   registry.register(createWebSearchTool())
   registry.register(createWebFetchTool(undefined, effectiveSessionDeps))
   registry.register(createJobOutputTool(effectiveSessionDeps))

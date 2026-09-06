@@ -131,15 +131,6 @@ export const getToolCategoryMeta = (
   if (toolName === "edit" || toolName === "write" || toolName === "apply_patch") {
     return { icon: Code2, label: "Coding", tagColor: "amber", textColor: "text-amber-300" }
   }
-  if (toolName === "render_svg") {
-    return { icon: Palette, label: "SVG", tagColor: "amber", textColor: "text-amber-300" }
-  }
-  if (toolName === "render_ascii") {
-    return { icon: Terminal, label: "ASCII", tagColor: "amber", textColor: "text-amber-300" }
-  }
-  if (toolName === "render_html") {
-    return { icon: Code2, label: "HTML", tagColor: "amber", textColor: "text-amber-300" }
-  }
   if (toolName === "task") {
     return { icon: Bot, label: "Subagent", tagColor: "blue", textColor: "text-blue-300" }
   }

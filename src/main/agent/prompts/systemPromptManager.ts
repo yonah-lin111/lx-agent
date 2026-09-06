@@ -712,7 +712,6 @@ export function createDefaultSystemPromptManager(
           "",
           "## Mode rules (strict)",
           "- You are in **Front Design Mode**.",
-          "- Embedded rendering tools (`render_svg`, `render_ascii`, `render_html`) are strictly **DISABLED** in this mode. Do NOT attempt to call them.",
           "- All frontend prototypes, UI layouts, and page mockups MUST be delivered directly via the `<front_design>` protocol tag.",
           "- The client IDE automatically captures your `<front_design>` payload and hot-reloads it in real time in the dedicated Front Design view.",
           "",

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { QuestionVisualContent } from "@/features/agent/components/QuestionVisualContent"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { formatJsonString } from "./types"
@@ -24,19 +23,6 @@ const getQuestions = (content: ExecutionToolContent): QuestionPrompt[] => {
   return []
 }
 
-// 展示用参数：剥离 question 的 content 附加内容（Mermaid/MD 源码不展示）。
-const toDisplayArgs = (args: Record<string, unknown>): Record<string, unknown> => {
-  if (!Array.isArray(args.questions)) return args
-  return {
-    ...args,
-    questions: args.questions.map((question) => {
-      if (typeof question !== "object" || question === null) return question
-      const { content: _omitted, ...rest } = question as Record<string, unknown>
-      return rest
-    }),
-  }
-}
-
 // 工具入参与执行结果。
 const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.Element | null => {
   const { t } = useTranslation()
@@ -52,7 +38,7 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
             <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
           </div>
           <div className="custom-scrollbar max-h-96 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-sky-200/90">
-            {formatJsonString(toDisplayArgs(content.args))}
+            {formatJsonString(content.args)}
           </div>
         </div>
       )}
@@ -127,7 +113,6 @@ export const FlowItemQuestionContent = ({
               <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
                 {question.question}
               </div>
-              {question.content && <QuestionVisualContent content={question.content} />}
               {answers.length > 0 && (
                 <div className="mt-0.5 flex min-w-0 flex-col gap-0.5 pl-3">
                   {answers.map((answer) => (
@@ -246,8 +231,6 @@ export const FlowItemQuestionContent = ({
             <div className="min-w-0 break-words text-[12px] leading-relaxed text-white/85">
               {question.question}
             </div>
-
-            {question.content && <QuestionVisualContent content={question.content} />}
 
             {question.options ? (
               <>

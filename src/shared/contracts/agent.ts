@@ -454,8 +454,6 @@ export interface QuestionOption {
 export interface QuestionPrompt {
   // 简短纯文本提问（提交列表只读展示与答案回灌）。
   question: string
-  // 附加图形化/排版内容（支持 SVG 矢量绘制与基础 HTML 结构），仅交互表单与详情展示。
-  content?: string
   // 短标签 chip（≤12 字符），UI 展示用。
   header?: string
   // 选择题候选（2..4 个）；缺省为自由文本输入。

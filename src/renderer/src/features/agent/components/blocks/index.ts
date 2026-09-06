@@ -14,7 +14,6 @@ export { AgentThinkingBlock } from "./AgentThinkingBlock"
 export { AgentTodoCallBlock, type AgentTodoCallBlockProps } from "./AgentTodoCallBlock"
 export { AgentToolCallBlock } from "./AgentToolCallBlock"
 export { AgentUndoSummary, type AgentUndoSummaryProps } from "./AgentUndoSummary"
-export { AgentVisualBlock, type AgentVisualBlockProps } from "./AgentVisualBlock"
 export { AgentWebSearchBlock } from "./AgentWebSearchBlock"
 export {
   FrontDesignCard,
