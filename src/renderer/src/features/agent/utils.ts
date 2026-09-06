@@ -312,6 +312,7 @@ export const parseTextWithProposedPlan = (
           html: htmlContent,
           raw: text.slice(openIndex),
           isStreaming: true,
+          sessionId: sessionId ?? null,
         },
         durationMs,
       })
@@ -331,6 +332,7 @@ export const parseTextWithProposedPlan = (
             contentStartIndex + closeIndexInRemaining + closeMatch[0].length,
           ),
           isStreaming: false,
+          sessionId: sessionId ?? null,
         },
         durationMs,
       })

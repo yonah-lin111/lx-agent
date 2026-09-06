@@ -227,7 +227,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             style={{ backgroundColor: "var(--color-theme-surface)" }}
           >
             <iframe
-              key={refreshKey}
+              key={`${designState.activeDesignId || "empty"}-${refreshKey}`}
               ref={iframeRef}
               srcDoc={sanitizedHtmlDoc}
               sandbox="allow-scripts"

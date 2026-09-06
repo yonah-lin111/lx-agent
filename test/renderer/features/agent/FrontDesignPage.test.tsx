@@ -88,4 +88,30 @@ describe("FrontDesignPage 视图模式与边距展示", () => {
     expect(previewContainer?.className).toContain("rounded-none")
     expect(previewContainer?.className).toContain("max-w-full")
   })
+
+  it("点击/激活新设计时无条件激活目标设计并立即更新看板，无需来回切换路由", () => {
+    frontDesignStore.registerDesign({
+      id: "design-1",
+      title: "Design 1",
+      html: "<div>Design 1 Content</div>",
+      sessionId: "session-1",
+    })
+
+    const { container, rerender } = render(<FrontDesignPage />)
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-1")
+
+    // 跨会话或显式激活设计 2
+    frontDesignStore.registerDesign({
+      id: "design-2",
+      title: "Design 2",
+      html: "<div>Design 2 Content</div>",
+      sessionId: "session-2",
+      autoActivate: true,
+    })
+
+    rerender(<FrontDesignPage />)
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-2")
+    const iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+  })
 })

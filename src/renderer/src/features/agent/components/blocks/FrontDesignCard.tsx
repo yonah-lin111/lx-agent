@@ -3,6 +3,7 @@ import type React from "react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LxCodeBlock } from "@/components/ui/LxCodeBlock"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import type { FrontDesignData } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -52,8 +53,15 @@ export const FrontDesignCard = ({
       title: design.title || "Frontend Prototype",
       html: design.html,
       isStreaming: isGenerating,
+      sessionId: design.sessionId,
       autoActivate: true,
     })
+    if (design.sessionId) {
+      const targetTab = agentTabStore.findTabBySessionId(design.sessionId)
+      if (targetTab && targetTab.id !== agentTabStore.getActiveTabId()) {
+        agentTabStore.switchTab(targetTab.id)
+      }
+    }
     frontDesignStore.setActiveDesignId(targetId)
     navigate(PAGE_ROUTES.design)
   }

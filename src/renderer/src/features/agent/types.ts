@@ -83,6 +83,7 @@ export interface FrontDesignData {
   html: string
   raw: string
   isStreaming?: boolean
+  sessionId?: string | null
 }
 
 // 消息内容块渲染视图。

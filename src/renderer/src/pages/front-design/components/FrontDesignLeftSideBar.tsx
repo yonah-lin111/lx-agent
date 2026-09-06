@@ -41,11 +41,17 @@ export const FrontDesignLeftSideBar = ({
   const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
   const activeSessionId = activeTab?.sessionId ?? null
 
-  // 过滤与排序后的前端设计列表（严格绑定当前激活会话 + 搜索过滤 + 从旧到新升序排序）
+  // 获取当前活跃设计项的所属会话（优先展示当前活跃 Tab 会话；若当前激活设计属于特定会话且当前 Tab 无会话绑定，对齐该会话）
+  const activeDesign = useMemo(
+    () => designs.find((d) => d.id === activeDesignId) ?? null,
+    [designs, activeDesignId],
+  )
+  const effectiveSessionId = activeSessionId ?? activeDesign?.sessionId ?? null
+
+  // 过滤与排序后的前端设计列表（优先匹配有效会话 + 搜索过滤 + 从旧到新升序排序）
   const filteredDesigns = useMemo(() => {
-    // 严格按当前活跃会话过滤
     let result = designs.filter((d) =>
-      activeSessionId ? d.sessionId === activeSessionId : !d.sessionId,
+      effectiveSessionId ? d.sessionId === effectiveSessionId : !d.sessionId,
     )
 
     // 搜索关键词过滤
@@ -61,7 +67,7 @@ export const FrontDesignLeftSideBar = ({
     result.sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))
 
     return result
-  }, [designs, activeSessionId, searchKeyword, t])
+  }, [designs, effectiveSessionId, searchKeyword, t])
 
   // 当活跃会话变化或列表更新时，若当前激活项不属于当前会话的过滤列表：
   // 1. 若当前会话有设计，自动激活该会话第一项；
@@ -71,7 +77,7 @@ export const FrontDesignLeftSideBar = ({
     if (!isCurrentActiveInFiltered) {
       const nextId = filteredDesigns[0]?.id ?? null
       if (nextId !== activeDesignId) {
-        frontDesignStore.setActiveDesignId(nextId || "")
+        frontDesignStore.setActiveDesignId(nextId)
       }
     }
   }, [filteredDesigns, activeDesignId])
