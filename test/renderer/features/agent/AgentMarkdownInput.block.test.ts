@@ -34,6 +34,13 @@ describe("AgentMarkdownInput 块命令触发", () => {
     expect(getMarkdownBlockCommands(trigger!.kind).length).toBeGreaterThan(0)
   })
 
+  it("getMarkdownBlockCommands 针对不同语言返回本地化 label", () => {
+    const zhCmds = getMarkdownBlockCommands("heading", "zh")
+    const enCmds = getMarkdownBlockCommands("heading", "en")
+    expect(zhCmds[0].label).toBe("1 级标题")
+    expect(enCmds[0].label).toBe("Heading 1")
+  })
+
   it("ViewPlugin update 期间 coordsAtPos 抛布局错误（根因回归）", () => {
     let crashed: string | null = null
     const plugin = ViewPlugin.fromClass(

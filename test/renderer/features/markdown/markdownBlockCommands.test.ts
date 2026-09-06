@@ -115,6 +115,30 @@ describe("Markdown 块命令", () => {
     })
   })
 
+  it("根据语言环境（zh/en）返回对应的块命令国际化文本", () => {
+    // 默认或指定 zh
+    expect(getMarkdownBlockCommands("unorderedList", "zh").map((cmd) => cmd.label)).toEqual([
+      "无序列表",
+      "任务列表",
+    ])
+    expect(getMarkdownBlockCommands("heading", "zh")[0].label).toBe("1 级标题")
+    expect(getMarkdownBlockCommands("orderedList", "zh")[0].label).toBe("有序列表")
+    expect(getMarkdownBlockCommands("quote", "zh")[0].label).toBe("引用")
+    expect(getMarkdownBlockCommands("codeBlock", "zh")[0].label).toBe("代码块")
+    expect(getMarkdownBlockCommands("table", "zh")[0].label).toBe("表格")
+
+    // en
+    expect(getMarkdownBlockCommands("unorderedList", "en").map((cmd) => cmd.label)).toEqual([
+      "Bullet List",
+      "Task List",
+    ])
+    expect(getMarkdownBlockCommands("heading", "en")[0].label).toBe("Heading 1")
+    expect(getMarkdownBlockCommands("orderedList", "en")[0].label).toBe("Numbered List")
+    expect(getMarkdownBlockCommands("quote", "en")[0].label).toBe("Quote")
+    expect(getMarkdownBlockCommands("codeBlock", "en")[0].label).toBe("Code Block")
+    expect(getMarkdownBlockCommands("table", "en")[0].label).toBe("Table")
+  })
+
   it("提取光标所在模板块的正文", () => {
     const doc = [
       "前文",

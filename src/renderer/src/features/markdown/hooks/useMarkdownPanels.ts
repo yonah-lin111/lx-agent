@@ -1066,7 +1066,7 @@ export const useMarkdownPanels = ({
 
     const commands =
       trigger && !isClosingCodeFence && !isContinuousList
-        ? getMarkdownBlockCommands(trigger.kind)
+        ? getMarkdownBlockCommands(trigger.kind, localeRef.current)
         : []
 
     if (!trigger || !coords || commands.length === 0) {
