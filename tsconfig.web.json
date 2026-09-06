@@ -10,6 +10,7 @@
   ],
   "compilerOptions": {
     "composite": true,
+    "noEmit": true,
     "moduleResolution": "bundler",
     "paths": { "@/*": ["./src/renderer/src/*"], "@shared/*": ["./src/shared/*"] },
     "jsx": "react-jsx"
