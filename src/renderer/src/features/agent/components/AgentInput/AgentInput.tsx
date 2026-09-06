@@ -107,6 +107,10 @@ export const AgentInput = ({
   // 发送即时插话后的顶部瞬时提示条（参考排队消息提示；数秒后自动消失）。
   const [steerNoticeVisible, setSteerNoticeVisible] = useState(false)
   const steerNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 语音输入状态（录音中 / 转写中），用于动态展示占位符与脉冲提示
+  const [voiceRecordingState, setVoiceRecordingState] = useState<
+    "idle" | "recording" | "transcribing"
+  >("idle")
   const showSteerNotice = useCallback((): void => {
     setSteerNoticeVisible(true)
     if (steerNoticeTimerRef.current !== null) {
@@ -237,14 +241,28 @@ export const AgentInput = ({
     const trimmed = transcribedText.trim()
     if (!trimmed) return
     const current = markdownInputRef.current?.getValue() ?? inputText
-    const next = current
+    const baseText = current
       ? current.endsWith(" ") || current.endsWith("\n")
-        ? `${current}${trimmed}`
-        : `${current} ${trimmed}`
-      : trimmed
-    onInputChange(next)
-    markdownInputRef.current?.setValue(next)
-    markdownInputRef.current?.focus()
+        ? current
+        : `${current} `
+      : ""
+
+    // 动态打字动画效果：平滑输出识别字句至输入框
+    let charIndex = 0
+    const stepInterval = Math.max(10, Math.min(30, Math.floor(300 / trimmed.length)))
+
+    const timer = setInterval(() => {
+      charIndex++
+      const partial = trimmed.slice(0, charIndex)
+      const nextVal = `${baseText}${partial}`
+      onInputChange(nextVal)
+      markdownInputRef.current?.setValue(nextVal)
+
+      if (charIndex >= trimmed.length) {
+        clearInterval(timer)
+        markdownInputRef.current?.focus()
+      }
+    }, stepInterval)
   }
 
   const addButton = (
@@ -345,13 +363,25 @@ export const AgentInput = ({
       <AgentInputFiles files={selectedFiles} onRemove={handleRemoveFile} />
       <div
         ref={containerRef}
-        className="agent-input-container relative flex flex-col justify-between rounded-[6px] border border-white/10 bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow] duration-150 focus-within:border-white/20 focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
+        className={`agent-input-container relative flex flex-col justify-between rounded-[6px] border bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow] duration-150 focus-within:border-white/20 focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] ${
+          voiceRecordingState === "recording"
+            ? "border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.15)]"
+            : voiceRecordingState === "transcribing"
+              ? "border-blue-500/40"
+              : "border-white/10"
+        }`}
         onPointerDown={handleContainerPointerDown}
       >
         <AgentMarkdownInput
           ref={markdownInputRef}
           value={inputText}
-          placeholder={t("agent.inputPlaceholder")}
+          placeholder={
+            voiceRecordingState === "recording"
+              ? t("agent.voiceListeningPlaceholder")
+              : voiceRecordingState === "transcribing"
+                ? t("agent.voiceTranscribingPlaceholder")
+                : t("agent.inputPlaceholder")
+          }
           onChange={onInputChange}
           onSend={handleSend}
           isExpanded={isExpanded}
@@ -374,8 +404,12 @@ export const AgentInput = ({
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-1.5">
+            <AgentVoiceInputButton
+              ref={voiceButtonRef}
+              onTranscribed={handleVoiceTranscribed}
+              onRecordingStateChange={setVoiceRecordingState}
+            />
             {addButton}
-            <AgentVoiceInputButton ref={voiceButtonRef} onTranscribed={handleVoiceTranscribed} />
             <AgentModelSelect
               value={selectedModel}
               onChange={onModelChange}

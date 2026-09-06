@@ -101,4 +101,30 @@ describe("transcribeAudioWithGroq", () => {
       }),
     ).rejects.toThrow("Groq Whisper transcription failed (401): Invalid API Key")
   })
+
+  it("当配置为繁体中文时，设置 language 为 zh 并附加繁体中文提示词 prompt", async () => {
+    mockGetVoiceSettings.mockReturnValue({
+      apiKey: "gsk_valid_key",
+      model: "whisper-large-v3-turbo",
+      language: "zh-TW",
+    })
+
+    let capturedBody: FormData | null = null
+    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
+      capturedBody = init.body as FormData
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ text: "繁體中文輸出", duration: 1.2, language: "zh" }),
+      })
+    })
+
+    const result = await transcribeAudioWithGroq({
+      buffer: new Uint8Array([1, 2, 3]),
+    })
+
+    expect(result.text).toBe("繁體中文輸出")
+    expect(capturedBody).not.toBeNull()
+    expect(capturedBody?.get("language")).toBe("zh")
+    expect(capturedBody?.get("prompt")).toContain("繁體中文")
+  })
 })

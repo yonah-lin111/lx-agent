@@ -221,14 +221,14 @@ export interface VoiceSettings {
   apiKey?: string
   // Whisper 语音模型（默认 whisper-large-v3-turbo）
   model: string
-  // 语言代码（auto 表示自动检测，zh 表示中文，en 表示英文等）
+  // 语言代码（auto 表示自动检测，zh 表示简体中文，zh-TW 表示繁体中文，en 表示英文等）
   language?: string
 }
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   apiKey: "",
   model: "whisper-large-v3-turbo",
-  language: "auto",
+  language: "zh",
 }
 
 // 语音转文字请求参数。

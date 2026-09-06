@@ -22,7 +22,8 @@ const VOICE_MODEL_OPTIONS: LxSelectOption<string>[] = [
 
 const VOICE_LANGUAGE_OPTIONS: LxSelectOption<string>[] = [
   { value: "auto", label: "Auto Detect (自动识别)" },
-  { value: "zh", label: "Chinese (中文)" },
+  { value: "zh", label: "Simplified Chinese (简体中文)" },
+  { value: "zh-TW", label: "Traditional Chinese (繁體中文)" },
   { value: "en", label: "English (英语)" },
   { value: "ja", label: "Japanese (日语)" },
   { value: "ko", label: "Korean (韩语)" },

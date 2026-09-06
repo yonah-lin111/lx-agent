@@ -530,6 +530,8 @@ export const zh: TranslationDictionary = {
     voiceInput: "语音输入",
     voiceStopRecording: "停止录音",
     voiceTranscribing: "正在转录语音...",
+    voiceListeningPlaceholder: "正在聆听中，请说话...",
+    voiceTranscribingPlaceholder: "正在识别转录中...",
     voiceShortcutHint: "使用 Cmd / Ctrl + Shift + V 可快速开始/停止录音",
     voiceApiKeyMissing: "未配置 Groq API Key，请先在设置中配置",
     voiceDeviceUnsupported: "当前设备不支持麦克风录音",

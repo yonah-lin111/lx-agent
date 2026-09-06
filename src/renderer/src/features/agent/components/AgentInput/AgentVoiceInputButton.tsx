@@ -13,6 +13,7 @@ export interface AgentVoiceInputButtonRef {
 
 export interface AgentVoiceInputButtonProps {
   onTranscribed: (text: string) => void
+  onRecordingStateChange?: (state: "idle" | "recording" | "transcribing") => void
   disabled?: boolean
 }
 
@@ -22,7 +23,7 @@ export interface AgentVoiceInputButtonProps {
 export const AgentVoiceInputButton = forwardRef<
   AgentVoiceInputButtonRef,
   AgentVoiceInputButtonProps
->(({ onTranscribed, disabled = false }, ref): React.JSX.Element => {
+>(({ onTranscribed, onRecordingStateChange, disabled = false }, ref): React.JSX.Element => {
   const { t } = useTranslation()
   const { error: errorToast, info: infoToast } = useLxAgentToast()
 
@@ -31,6 +32,16 @@ export const AgentVoiceInputButton = forwardRef<
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
+
+  useEffect(() => {
+    if (isTranscribing) {
+      onRecordingStateChange?.("transcribing")
+    } else if (isRecording) {
+      onRecordingStateChange?.("recording")
+    } else {
+      onRecordingStateChange?.("idle")
+    }
+  }, [isRecording, isTranscribing, onRecordingStateChange])
 
   const stopTracks = useCallback(() => {
     if (streamRef.current) {

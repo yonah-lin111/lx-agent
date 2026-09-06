@@ -30,7 +30,21 @@ export const transcribeAudioWithGroq = async (
   formData.append("model", model)
 
   if (voiceSettings.language && voiceSettings.language !== "auto") {
-    formData.append("language", voiceSettings.language)
+    if (voiceSettings.language === "zh-TW" || voiceSettings.language === "zh-Hant") {
+      formData.append("language", "zh")
+      formData.append(
+        "prompt",
+        "以下是繁體中文語音轉錄內容，請保持繁體中文標點與詞彙，使用正體中文/繁體中文輸出。",
+      )
+    } else if (voiceSettings.language === "zh" || voiceSettings.language === "zh-CN") {
+      formData.append("language", "zh")
+      formData.append(
+        "prompt",
+        "以下是简体中文语音转录内容，请保持简体中文标点与词汇，使用简体中文输出。",
+      )
+    } else {
+      formData.append("language", voiceSettings.language)
+    }
   }
 
   formData.append("response_format", "verbose_json")
