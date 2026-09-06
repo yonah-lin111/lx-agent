@@ -1,0 +1,479 @@
+import type { EditorView } from "@codemirror/view"
+import type { SkillItem } from "@shared/contracts/agent"
+import type { ProjectFileEntry } from "@shared/project"
+import type { MutableRefObject, RefObject } from "react"
+import { useCallback } from "react"
+import type { useLxAgentToast } from "@/components/ui/LxToast"
+import { agentApi } from "@/features/agent/api/agentApi"
+import type { GitWorktreeOption } from "@/features/git"
+import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  createMarkdownBlockInsertion,
+  getMarkdownBlockTrigger,
+} from "@/features/markdown/commands/markdownBlockCommands"
+import type { TranslationKey } from "@/i18n"
+import type { AgentInputCommand, AgentInputModel } from "../AgentInputCommandPanels"
+import {
+  getArgumentSelectionRange,
+  getMentionQuery,
+  getSkillMentionQuery,
+} from "../agentInputUtils"
+
+export interface AgentInputActionsOptions {
+  editorViewRef: RefObject<EditorView | null>
+  valueRef: MutableRefObject<string>
+  onChangeRef: MutableRefObject<(value: string) => void>
+  onSendRef: MutableRefObject<(options?: { delivery?: "queue" | "steer" }) => void>
+  isOnlyOneTurnLeftRef: MutableRefObject<(() => boolean) | undefined>
+  setActiveMode: (mode: any) => void
+  setUndoConfirmIndex: (index: number) => void
+  updatePanelPosition: () => void
+  reset: () => void
+  record: (text: string) => void
+  onClear?: () => void
+  onUndo?: () => void
+  onCompact?: () => void
+  toast: ReturnType<typeof useLxAgentToast>
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string
+  setBlockCommands?: (cmds: MarkdownBlockCommand[]) => void
+  setBlockCommandPosition?: (pos: React.CSSProperties | undefined) => void
+  onModelChange?: (value: string) => void
+  onWorktreeSelect?: (path: string) => void
+}
+
+export const useAgentInputActions = ({
+  editorViewRef,
+  valueRef,
+  onChangeRef,
+  onSendRef,
+  isOnlyOneTurnLeftRef,
+  setActiveMode,
+  setUndoConfirmIndex,
+  updatePanelPosition,
+  setBlockCommands,
+  setBlockCommandPosition,
+  reset,
+  record,
+  onClear,
+  onUndo,
+  onCompact,
+  onModelChange,
+  onWorktreeSelect,
+  toast,
+  t,
+}: AgentInputActionsOptions) => {
+  const { success: successToast, error: errorToast, warning: warningToast } = toast
+
+  const handleSendAction = useCallback(
+    (forceDelivery?: "queue" | "steer"): void => {
+      reset()
+      let text = valueRef.current.trim()
+      if (!text) return
+
+      // 拦截 /export 相关命令
+      if (
+        text === "/export" ||
+        text.startsWith("/export ") ||
+        text.startsWith("/export:") ||
+        text.startsWith("/export-")
+      ) {
+        const rawArg = text
+          .replace(/^\/export[:\s-]*/i, "")
+          .replace(/^\[|\]$/g, "")
+          .trim()
+          .toLowerCase()
+        let format: "html" | "markdown" | "jsonl" = "html"
+        if (
+          rawArg === "md" ||
+          rawArg === "markdown" ||
+          rawArg.startsWith("md") ||
+          rawArg.startsWith("markdown")
+        ) {
+          format = "markdown"
+        } else if (
+          rawArg === "json" ||
+          rawArg === "jsonl" ||
+          rawArg.startsWith("json") ||
+          rawArg.startsWith("jsonl")
+        ) {
+          format = "jsonl"
+        } else if (rawArg === "html" || rawArg.startsWith("html") || rawArg === "") {
+          format = "html"
+        }
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        void agentApi
+          .exportSession({ format, openAfterExport: true })
+          .then((res) => {
+            if (res.ok && !res.canceled && res.filePath) {
+              successToast(
+                t("agent.exportSuccess", {
+                  format: format.toUpperCase(),
+                  path: res.filePath,
+                }),
+              )
+            } else if (!res.ok) {
+              errorToast(res.error || t("agent.exportFailed"))
+            }
+          })
+          .catch((err) => {
+            errorToast(err instanceof Error ? err.message : t("agent.exportFailed"))
+          })
+        return
+      }
+
+      // 拦截 /compact 相关命令
+      if (
+        text === "/compact" ||
+        text.startsWith("/compact ") ||
+        text.startsWith("/compact:") ||
+        text.startsWith("/compact-")
+      ) {
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        onCompact?.()
+        return
+      }
+
+      // 拦截 /clear 相关命令
+      if (
+        text === "/clear" ||
+        text.startsWith("/clear ") ||
+        text.startsWith("/clear:") ||
+        text.startsWith("/clear-")
+      ) {
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        onClear?.()
+        return
+      }
+
+      // 拦截 /undo 相关命令
+      if (
+        text === "/undo" ||
+        text.startsWith("/undo ") ||
+        text.startsWith("/undo:") ||
+        text.startsWith("/undo-")
+      ) {
+        if (isOnlyOneTurnLeftRef.current?.()) {
+          setActiveMode("undo_confirm")
+          setUndoConfirmIndex(0)
+          updatePanelPosition()
+          return
+        }
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        onUndo?.()
+        return
+      }
+
+      // 拦截 /copy 相关命令
+      if (
+        text === "/copy" ||
+        text.startsWith("/copy ") ||
+        text.startsWith("/copy:") ||
+        text.startsWith("/copy-")
+      ) {
+        const rawArg = text
+          .replace(/^\/copy[:\s-]*/i, "")
+          .replace(/^\[|\]$/g, "")
+          .trim()
+          .toLowerCase()
+        const target =
+          rawArg === "all" || rawArg === "full" || rawArg === "md" || rawArg === "markdown"
+            ? "markdown"
+            : "last_assistant"
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        void agentApi
+          .copySession({ target })
+          .then((res) => {
+            if (res.ok && res.text) {
+              void navigator.clipboard.writeText(res.text).then(() => {
+                successToast(
+                  target === "markdown"
+                    ? t("agent.copyMarkdownSuccess")
+                    : t("agent.copyReplySuccess"),
+                )
+              })
+            } else if (!res.ok) {
+              errorToast(res.error || t("agent.copyFailed"))
+            } else {
+              warningToast(t("agent.noContentToCopy"))
+            }
+          })
+          .catch((err) => {
+            errorToast(err instanceof Error ? err.message : t("agent.copyFailed"))
+          })
+        return
+      }
+
+      let delivery = forceDelivery
+      if (text.startsWith("/steer ") || text === "/steer") {
+        delivery = "steer"
+        text = text.slice(6).trim()
+        text = text.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
+        if (!text) return
+      }
+
+      if (delivery === "steer") {
+        onSendRef.current({ delivery })
+      } else {
+        record(text || valueRef.current)
+        onSendRef.current()
+      }
+    },
+    [
+      reset,
+      valueRef,
+      onChangeRef,
+      editorViewRef,
+      onCompact,
+      onClear,
+      isOnlyOneTurnLeftRef,
+      setActiveMode,
+      setUndoConfirmIndex,
+      updatePanelPosition,
+      onUndo,
+      onSendRef,
+      record,
+      successToast,
+      errorToast,
+      warningToast,
+      t,
+    ],
+  )
+
+  const executeCommand = useCallback(
+    (command: AgentInputCommand): void => {
+      setActiveMode(null)
+      const view = editorViewRef.current
+      if (command.kind === "prompt") {
+        const rawName = command.name.startsWith("/") ? command.name : `/${command.name}`
+        const hint = command.argumentHint ? ` ${command.argumentHint}` : " "
+        const insertText = `${rawName}${hint}`
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = command.argumentHint
+            ? getArgumentSelectionRange(insertText, rawName.length)
+            : { anchor: insertText.length }
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
+      } else if (command.id === "clear") {
+        onChangeRef.current("")
+        onClear?.()
+      } else if (command.id === "undo") {
+        if (isOnlyOneTurnLeftRef.current?.()) {
+          setActiveMode("undo_confirm")
+          setUndoConfirmIndex(0)
+          updatePanelPosition()
+          return
+        }
+        onUndo?.()
+      } else if (command.id === "steer") {
+        const insertText = "/steer [prompt]"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 6)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
+      } else if (command.id === "model") {
+        onChangeRef.current("/model ")
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: "/model " },
+          selection: { anchor: 7 },
+        })
+      } else if (command.id === "gitWorktree") {
+        onChangeRef.current("/gitWorktree ")
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: "/gitWorktree " },
+          selection: { anchor: 13 },
+        })
+      } else if (command.id === "compact") {
+        onChangeRef.current("")
+        onCompact?.()
+      } else if (command.id === "export") {
+        const insertText = "/export [html | md | json]"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 7)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
+      } else if (command.id === "copy") {
+        const insertText = "/copy [all]"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 5)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
+      }
+      view?.focus()
+    },
+    [
+      setActiveMode,
+      editorViewRef,
+      onChangeRef,
+      onClear,
+      isOnlyOneTurnLeftRef,
+      setUndoConfirmIndex,
+      updatePanelPosition,
+      onUndo,
+      onCompact,
+    ],
+  )
+
+  const selectModel = useCallback(
+    (model: AgentInputModel): void => {
+      onModelChange?.(model.id)
+      onChangeRef.current("")
+      setActiveMode(null)
+      editorViewRef.current?.dispatch({
+        changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: "" },
+      })
+      editorViewRef.current?.focus()
+    },
+    [onModelChange, onChangeRef, setActiveMode, editorViewRef],
+  )
+
+  const selectWorktree = useCallback(
+    (option: GitWorktreeOption): void => {
+      onWorktreeSelect?.(option.path)
+      onChangeRef.current("")
+      setActiveMode(null)
+      editorViewRef.current?.dispatch({
+        changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: "" },
+      })
+      editorViewRef.current?.focus()
+    },
+    [onWorktreeSelect, onChangeRef, setActiveMode, editorViewRef],
+  )
+
+  const selectFile = useCallback(
+    (file: ProjectFileEntry): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `@${file.path} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
+  const selectSkill = useCallback(
+    (skill: SkillItem): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getSkillMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `$${skill.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
+  const selectSkillFromMention = useCallback(
+    (skill: SkillItem): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `$${skill.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
+  const selectBlockCommand = useCallback(
+    (cmd: MarkdownBlockCommand): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const cursor = view.state.selection.main.head
+      const line = view.state.doc.lineAt(cursor)
+      const trigger = getMarkdownBlockTrigger(line.text, line.from, cursor)
+      if (!trigger) return
+
+      const insertion = createMarkdownBlockInsertion(cmd.id)
+      view.dispatch({
+        changes: { from: trigger.from, to: trigger.to, insert: insertion.text },
+        selection: {
+          anchor: trigger.from + insertion.selectionStart,
+          head: trigger.from + insertion.selectionEnd,
+        },
+      })
+      view.focus()
+      setBlockCommands?.([])
+      setBlockCommandPosition?.(undefined)
+    },
+    [editorViewRef, setBlockCommands, setBlockCommandPosition],
+  )
+
+  return {
+    handleSendAction,
+    executeCommand,
+    selectModel,
+    selectWorktree,
+    selectFile,
+    selectSkill,
+    selectSkillFromMention,
+    selectBlockCommand,
+  }
+}
