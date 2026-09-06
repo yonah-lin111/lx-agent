@@ -68,7 +68,9 @@ describe("ReviewFindingsCard", () => {
   it("点击省略号展开剩余卡片内容", () => {
     const { container } = render(<ReviewFindingsCard findingsData={mockFindingsData} />)
 
-    const moreButton = container.querySelector(".review-findings-expand-toggle") as HTMLButtonElement
+    const moreButton = container.querySelector(
+      ".review-findings-expand-toggle",
+    ) as HTMLButtonElement
     expect(moreButton).toBeTruthy()
     fireEvent.click(moreButton)
 

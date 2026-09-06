@@ -44,7 +44,9 @@ export const FrontDesignLeftSideBar = ({
   // 过滤与排序后的前端设计列表（严格绑定当前激活会话 + 搜索过滤 + 从旧到新升序排序）
   const filteredDesigns = useMemo(() => {
     // 严格按当前活跃会话过滤
-    let result = designs.filter((d) => (activeSessionId ? d.sessionId === activeSessionId : !d.sessionId))
+    let result = designs.filter((d) =>
+      activeSessionId ? d.sessionId === activeSessionId : !d.sessionId,
+    )
 
     // 搜索关键词过滤
     const keyword = searchKeyword.trim().toLowerCase()

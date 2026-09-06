@@ -10,11 +10,11 @@ import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxToastProvider } from "@/components/ui/LxToast"
 import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
+import { FrontDesignLeftSideBar } from "@/pages/front-design"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { UiLeftSideBar } from "@/pages/ui/components/UiLeftSideBar"
-import { FrontDesignLeftSideBar } from "@/pages/front-design"
 import { PageRouter } from "@/routes/PageRouter"
 
 /**

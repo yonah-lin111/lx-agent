@@ -1,13 +1,4 @@
-import {
-  Check,
-  Copy,
-  Laptop,
-  Loader2,
-  Palette,
-  RefreshCw,
-  Smartphone,
-  Tablet,
-} from "lucide-react"
+import { Check, Copy, Laptop, Loader2, Palette, RefreshCw, Smartphone, Tablet } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -185,7 +176,9 @@ export const FrontDesignPage = (): React.JSX.Element => {
             aria-label={t("frontDesign.refreshPreview")}
             title={{ content: t("frontDesign.refreshPreview"), placement: "bottom" }}
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isCompiling ? "animate-spin text-pink-400" : ""}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isCompiling ? "animate-spin text-pink-400" : ""}`}
+            />
           </LxIconButton>
 
           {/* 复制代码 */}

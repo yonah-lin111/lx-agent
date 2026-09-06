@@ -15,12 +15,16 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
-import { FrontDesignCard, ProposedPlanCard, ReviewFindingsCard } from "@/features/agent/components/blocks"
 import { agentApi } from "@/features/agent/api/agentApi"
 import {
   cleanUserPrompt,
   extractSkillBlock,
 } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
+import {
+  FrontDesignCard,
+  ProposedPlanCard,
+  ReviewFindingsCard,
+} from "@/features/agent/components/blocks"
 import type {
   ExecutionStep,
   ExecutionSubagentContent,
@@ -248,25 +252,22 @@ export const AgentExecutionFlowItem = ({
           </LxTag>
 
           {/* 用户步骤中的指令标签（Steer / Skill / 普通命令互斥，仅渲染一个） */}
-          {step.kind === "user" && (step.userContent?.isSteer || step.userContent?.command) && (
-            step.userContent?.isSteer || step.userContent?.command?.name === "steer" ? (
+          {step.kind === "user" &&
+            (step.userContent?.isSteer || step.userContent?.command) &&
+            (step.userContent?.isSteer || step.userContent?.command?.name === "steer" ? (
               <LxTag size="small" color="amber" className="shrink-0 leading-none">
                 <span className="font-mono text-amber-300 leading-none">/steer</span>
               </LxTag>
             ) : step.userContent?.command?.kind === "skill" && skillName ? (
               <LxInfoTooltip
                 markdown={
-                  activeSkillMarkdown ||
-                  step.userContent.command.description ||
-                  `### ${skillName}`
+                  activeSkillMarkdown || step.userContent.command.description || `### ${skillName}`
                 }
                 showIcon={false}
                 placement="top"
               >
                 <LxTag size="small" color="amber" className="shrink-0 leading-none cursor-help">
-                  <span className="font-mono text-amber-300 leading-none">
-                    ${skillName}
-                  </span>
+                  <span className="font-mono text-amber-300 leading-none">${skillName}</span>
                 </LxTag>
               </LxInfoTooltip>
             ) : step.userContent?.command ? (
@@ -275,8 +276,7 @@ export const AgentExecutionFlowItem = ({
                   <Zap className="h-3 w-3" />/{step.userContent.command.name}
                 </span>
               </LxTag>
-            ) : null
-          )}
+            ) : null)}
 
           {/* 步骤标题与副标题 */}
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden leading-none">

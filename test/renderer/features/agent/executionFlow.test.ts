@@ -879,8 +879,8 @@ describe("executionFlow", () => {
               design: {
                 id: "design-dash-1",
                 title: "Dashboard V1",
-                html: "<div class=\"p-4\">Dashboard</div>",
-                raw: "<front_design title=\"Dashboard V1\"><div class=\"p-4\">Dashboard</div></front_design>",
+                html: '<div class="p-4">Dashboard</div>',
+                raw: '<front_design title="Dashboard V1"><div class="p-4">Dashboard</div></front_design>',
                 isStreaming: false,
               },
             },
@@ -896,7 +896,7 @@ describe("executionFlow", () => {
       expect(designStep.kind).toBe("frontDesign")
       expect(designStep.title).toBe("Design: Dashboard V1")
       expect(designStep.frontDesignContent?.title).toBe("Dashboard V1")
-      expect(designStep.frontDesignContent?.html).toBe("<div class=\"p-4\">Dashboard</div>")
+      expect(designStep.frontDesignContent?.html).toBe('<div class="p-4">Dashboard</div>')
     })
   })
 })

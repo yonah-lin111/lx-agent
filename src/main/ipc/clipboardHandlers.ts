@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { getScreenshotsDir } from "@/paths"
 import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
 import { ipcMain } from "electron"
+import { getScreenshotsDir } from "@/paths"
 
 const mimeToExt: Record<string, string> = {
   "image/png": ".png",
@@ -20,7 +20,11 @@ const mimeToExt: Record<string, string> = {
 export const registerClipboardHandlers = (): void => {
   ipcMain.handle(
     CLIPBOARD_CHANNELS.saveImage,
-    async (_event, buffer: ArrayBuffer | Uint8Array, mimeType = "image/png"): Promise<string | null> => {
+    async (
+      _event,
+      buffer: ArrayBuffer | Uint8Array,
+      mimeType = "image/png",
+    ): Promise<string | null> => {
       try {
         if (!buffer || buffer.byteLength === 0) return null
         const screenshotsDir = getScreenshotsDir()

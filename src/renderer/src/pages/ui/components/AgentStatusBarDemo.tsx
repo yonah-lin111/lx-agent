@@ -2,7 +2,12 @@ import type { PermissionRequest, TodoList } from "@shared/contracts/agent"
 import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
-import { AgentContextUsagePill, AgentStatusBar, PermissionStatusButton, TodoStatusButton } from "@/features/agent"
+import {
+  AgentContextUsagePill,
+  AgentStatusBar,
+  PermissionStatusButton,
+  TodoStatusButton,
+} from "@/features/agent"
 import { useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 

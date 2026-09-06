@@ -17,6 +17,10 @@ export { AgentUndoSummary, type AgentUndoSummaryProps } from "./AgentUndoSummary
 export { AgentVisualBlock, type AgentVisualBlockProps } from "./AgentVisualBlock"
 export { AgentWebSearchBlock } from "./AgentWebSearchBlock"
 export {
+  FrontDesignCard,
+  type FrontDesignCardProps,
+} from "./FrontDesignCard"
+export {
   ProposedPlanCard,
   type ProposedPlanCardProps,
 } from "./ProposedPlanCard"
@@ -24,8 +28,4 @@ export {
   ReviewFindingsCard,
   type ReviewFindingsCardProps,
 } from "./ReviewFindingsCard"
-export {
-  FrontDesignCard,
-  type FrontDesignCardProps,
-} from "./FrontDesignCard"
 export { isTodoDone, TodoStatusIcon } from "./TodoStatusIcon"

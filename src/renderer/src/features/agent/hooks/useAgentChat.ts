@@ -193,7 +193,12 @@ export const useAgentChat = (
         case "message_start": {
           const message = event.message
           const streaming = message.role === "assistant" && message.stopReason === "pending"
-          const item = toChatMessage(message, streaming, `m${++messageSequence}`, currentSessionIdRef.current)
+          const item = toChatMessage(
+            message,
+            streaming,
+            `m${++messageSequence}`,
+            currentSessionIdRef.current,
+          )
           // 队列 drain 自动发送的消息：标记后供列表跳过"用户发送→滚动到底"（drain 前 queue_changed 已置位）。
           if (drainIncomingRef.current) {
             drainIncomingRef.current = false
@@ -219,7 +224,12 @@ export const useAgentChat = (
         case "message_update": {
           const streaming = streamingRef.current
           if (!streaming) return
-          const updated = toChatMessage(event.message, true, streaming.id, currentSessionIdRef.current)
+          const updated = toChatMessage(
+            event.message,
+            true,
+            streaming.id,
+            currentSessionIdRef.current,
+          )
           updated.isStreaming = true
           streamingRef.current = updated
           setMessages((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
@@ -246,7 +256,12 @@ export const useAgentChat = (
           // 仅助手消息的 message_end 与流式条目关联；用户/工具结果消息的 end（如 steer 即时插话）
           // 不会携带流式状态，直接忽略，避免用其内容覆盖正在流式的助手条目。
           if (event.message.role !== "assistant") return
-          const final = toChatMessage(event.message, false, streaming.id, currentSessionIdRef.current)
+          const final = toChatMessage(
+            event.message,
+            false,
+            streaming.id,
+            currentSessionIdRef.current,
+          )
           streamingRef.current = null
           setMessages((prev) => prev.map((item) => (item.id === final.id ? final : item)))
 
@@ -334,7 +349,12 @@ export const useAgentChat = (
           break
 
         case "model_switch": {
-          const item = toChatMessage(event.message, false, `m${++messageSequence}`, currentSessionIdRef.current)
+          const item = toChatMessage(
+            event.message,
+            false,
+            `m${++messageSequence}`,
+            currentSessionIdRef.current,
+          )
           setMessages((prev) => [...prev, item])
           break
         }
@@ -346,7 +366,12 @@ export const useAgentChat = (
           setIsCompacting(stillCompacting)
           if (!stillCompacting) setIsCompactingManual(false)
           const summary = {
-            ...toChatMessage(event.message, false, `m${++messageSequence}`, currentSessionIdRef.current),
+            ...toChatMessage(
+              event.message,
+              false,
+              `m${++messageSequence}`,
+              currentSessionIdRef.current,
+            ),
             compactionId: event.compactionId,
           }
           setMessages((prev) => {
@@ -934,7 +959,13 @@ export const useAgentChat = (
 
   // 采纳并执行代码审查修复（切换至 build 模式并自动发送结构化修复任务指令）。
   const acceptAndExecuteReviewFixes = useCallback(
-    async (selectedFindings: { title: string; location: { filePath: string; lineStart: number }; suggestion?: string }[]) => {
+    async (
+      selectedFindings: {
+        title: string
+        location: { filePath: string; lineStart: number }
+        suggestion?: string
+      }[],
+    ) => {
       try {
         await agentApi.setCollaborationMode(
           "build",

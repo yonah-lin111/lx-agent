@@ -102,7 +102,6 @@ export const MarkdownSendPromptCommandMenu = ({
           >
             <CliIcon id={option.targetType || option.id} className="h-3.5 w-3.5 flex-none" />
             <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-
               <span className="flex min-w-0 items-center gap-2">
                 <span className="shrink-0 text-[13px] leading-none text-white">{option.label}</span>
                 {option.description && (

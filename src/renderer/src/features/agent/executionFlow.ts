@@ -543,7 +543,9 @@ export const buildExecutionSteps = (
           stepIndex,
           kind: "reviewFindings",
           title: `Code Review (${block.findings.findings.length} findings)`,
-          subtitle: block.findings.isStreaming ? "Auditing codebase..." : formatPreview(block.findings.summary, 60),
+          subtitle: block.findings.isStreaming
+            ? "Auditing codebase..."
+            : formatPreview(block.findings.summary, 60),
           status: isRunning ? "running" : "done",
           timestamp: start ?? message.timestamp,
           startedAt: start,

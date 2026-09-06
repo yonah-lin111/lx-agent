@@ -495,7 +495,9 @@ describe("模板块工作区绑定 {wt:}", () => {
     it("更新或移除 supple 补充块工作区绑定", () => {
       const line = "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}"
       const withWt = setMarkdownSuppleWorktree(line, "new-branch")
-      expect(withWt).toBe("+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:new-branch}")
+      expect(withWt).toBe(
+        "+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef} {wt:new-branch}",
+      )
 
       const withoutWt = setMarkdownSuppleWorktree(withWt, null)
       expect(withoutWt).toBe("+++ suppleTemplate --end {id:1234567890abcdef1234567890abcdef}")
@@ -539,7 +541,9 @@ describe("模板块工作区绑定 {wt:}", () => {
       const wtRanges = getMarkdownTemplateWtRanges(doc)
 
       expect(idRanges).toHaveLength(1)
-      expect(doc.slice(idRanges[0].from, idRanges[0].to)).toBe("{id:1234567890abcdef1234567890abcdef}")
+      expect(doc.slice(idRanges[0].from, idRanges[0].to)).toBe(
+        "{id:1234567890abcdef1234567890abcdef}",
+      )
       expect(wtRanges).toHaveLength(1)
       expect(doc.slice(wtRanges[0].from, wtRanges[0].to)).toBe("{wt:feat-supple}")
     })

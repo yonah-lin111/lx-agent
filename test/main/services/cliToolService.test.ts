@@ -4,21 +4,12 @@ import { CLI_DEFINITIONS, getCliVersions, probeSingleCli } from "@/services/cliT
 describe("cliToolService", () => {
   it("CLI_DEFINITIONS 包含 6 种 AI CLI 工具定义", () => {
     const ids = Object.keys(CLI_DEFINITIONS)
-    expect(ids).toEqual([
-      "claude",
-      "codex",
-      "gemini",
-      "opencode",
-      "agy",
-      "grok",
-    ])
+    expect(ids).toEqual(["claude", "codex", "gemini", "opencode", "agy", "grok"])
   })
 
   it("getCliVersions 返回所有支持工具的状态与元数据", async () => {
     const versions = await getCliVersions({ force: true })
     expect(versions).toHaveLength(6)
-
-
 
     for (const v of versions) {
       expect(v).toHaveProperty("id")
@@ -44,9 +35,7 @@ describe("cliToolService", () => {
       "",
     )
 
-
     expect(result.installed).toBe(false)
     expect(result.version).toBeNull()
   })
 })
-

@@ -169,9 +169,12 @@ export const frontDesignStore = {
     // 仅在显式指定 autoActivate 或者正在流式生成时判断
     if (data.autoActivate || data.isStreaming) {
       const activeTab = agentTabStore.getActiveTab()
-      const currentActiveDesign = internalState.designs.find((d) => d.id === internalState.activeDesignId)
-      
-      const isCurrentSessionSame = fallbackSessionId && currentActiveDesign?.sessionId === fallbackSessionId
+      const currentActiveDesign = internalState.designs.find(
+        (d) => d.id === internalState.activeDesignId,
+      )
+
+      const isCurrentSessionSame =
+        fallbackSessionId && currentActiveDesign?.sessionId === fallbackSessionId
       const currentTabHasDesigns = activeTab?.sessionId
         ? internalState.designs.some((d) => d.sessionId === activeTab.sessionId)
         : false

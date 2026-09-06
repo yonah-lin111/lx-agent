@@ -97,7 +97,6 @@ export const CLI_DEFINITIONS: Record<CliId, CliDefinition> = {
   },
 }
 
-
 // 模块级版本缓存（5 分钟 TTL）
 const CACHE_TTL_MS = 5 * 60 * 1000
 let versionCache: { data: CliVersionInfo[]; timestamp: number } | null = null
@@ -193,9 +192,12 @@ export const fetchNpmLatestVersion = async (npmPackage?: string): Promise<string
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 4000)
-    const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}/latest`, {
-      signal: controller.signal,
-    })
+    const response = await fetch(
+      `https://registry.npmjs.org/${encodeURIComponent(npmPackage)}/latest`,
+      {
+        signal: controller.signal,
+      },
+    )
     clearTimeout(timeout)
     if (!response.ok) return null
     const json = (await response.json()) as { version?: string }
@@ -271,7 +273,6 @@ export const probeSingleCli = async (
     homepage: def.homepage,
   }
 }
-
 
 /**
  * 获取所有支持的 CLI 工具版本信息（支持缓存与并发查询）。

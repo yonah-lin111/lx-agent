@@ -124,7 +124,7 @@ const parseCompanionConfig = (
       const raw = readFileSync(configPath, "utf8")
       const parsed = (matter(`---\n${raw}\n---`).data ?? {}) as Record<string, unknown>
       const iface = (parsed.interface ?? {}) as Record<string, unknown>
-      const deps = ((parsed.dependencies ?? iface.dependencies) ?? {}) as Record<string, unknown>
+      const deps = (parsed.dependencies ?? iface.dependencies ?? {}) as Record<string, unknown>
       const policy = (parsed.policy ?? {}) as Record<string, unknown>
 
       const tools = Array.isArray(deps.tools)
@@ -217,8 +217,7 @@ const loadSkillFromFile = (filePath: string, diagnostics: string[]): LoadedSkill
     }
 
     const disableModelInvocation =
-      frontmatter["disable-model-invocation"] === true ||
-      companion.disableModelInvocation === true
+      frontmatter["disable-model-invocation"] === true || companion.disableModelInvocation === true
 
     return {
       name,

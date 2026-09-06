@@ -521,10 +521,18 @@ describe("permissionManager 永久决策写回（G5）", () => {
       })
 
       expect(
-        permissionManager.evaluate("write", { path: "src/test.ts" }, { collaborationMode: "review" }),
+        permissionManager.evaluate(
+          "write",
+          { path: "src/test.ts" },
+          { collaborationMode: "review" },
+        ),
       ).toBe("deny")
       expect(
-        permissionManager.evaluate("edit", { path: "src/test.ts" }, { collaborationMode: "review" }),
+        permissionManager.evaluate(
+          "edit",
+          { path: "src/test.ts" },
+          { collaborationMode: "review" },
+        ),
       ).toBe("deny")
       expect(
         permissionManager.evaluate(
@@ -537,7 +545,11 @@ describe("permissionManager 永久决策写回（G5）", () => {
         permissionManager.evaluate("todowrite", { todos: [] }, { collaborationMode: "review" }),
       ).toBe("deny")
       expect(
-        permissionManager.evaluate("read", { path: "src/test.ts" }, { collaborationMode: "review" }),
+        permissionManager.evaluate(
+          "read",
+          { path: "src/test.ts" },
+          { collaborationMode: "review" },
+        ),
       ).toBe("allow")
 
       const result = await permissionManager.gate(
@@ -564,16 +576,32 @@ describe("permissionManager 永久决策写回（G5）", () => {
       })
 
       expect(
-        permissionManager.evaluate("render_svg", { svg: "<svg />" }, { collaborationMode: "design" }),
+        permissionManager.evaluate(
+          "render_svg",
+          { svg: "<svg />" },
+          { collaborationMode: "design" },
+        ),
       ).toBe("deny")
       expect(
-        permissionManager.evaluate("render_ascii", { ascii: "+---+" }, { collaborationMode: "design" }),
+        permissionManager.evaluate(
+          "render_ascii",
+          { ascii: "+---+" },
+          { collaborationMode: "design" },
+        ),
       ).toBe("deny")
       expect(
-        permissionManager.evaluate("render_html", { html: "<div></div>" }, { collaborationMode: "design" }),
+        permissionManager.evaluate(
+          "render_html",
+          { html: "<div></div>" },
+          { collaborationMode: "design" },
+        ),
       ).toBe("deny")
       expect(
-        permissionManager.evaluate("read", { path: "src/test.ts" }, { collaborationMode: "design" }),
+        permissionManager.evaluate(
+          "read",
+          { path: "src/test.ts" },
+          { collaborationMode: "design" },
+        ),
       ).toBe("allow")
 
       const result = await permissionManager.gate(

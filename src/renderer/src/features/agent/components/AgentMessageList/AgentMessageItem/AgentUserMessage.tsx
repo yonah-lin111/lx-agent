@@ -2,12 +2,12 @@ import { Check, ChevronDown, ChevronUp, Copy, GitBranch, Pencil, X } from "lucid
 import type React from "react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList/AgentMessageFiles"
 import type { ChatMessage } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { sanitizeSelectionTrailingNewlines } from "@/lib/clipboard"
-import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
-import { agentApi } from "@/features/agent/api/agentApi"
 import { extractSkillBlock, extractUserText, getUserBubbleClass, resolveCommandTag } from "./utils"
 
 // 用户消息组件 Props 接口。
@@ -286,9 +286,7 @@ export const AgentUserMessage = ({
               message.command?.kind === "skill" ? (
                 <LxInfoTooltip
                   markdown={
-                    activeSkillMarkdown ||
-                    message.command.description ||
-                    `### ${commandTag.label}`
+                    activeSkillMarkdown || message.command.description || `### ${commandTag.label}`
                   }
                   showIcon={false}
                   placement="top"

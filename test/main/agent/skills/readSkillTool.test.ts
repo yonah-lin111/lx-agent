@@ -83,9 +83,7 @@ describe("read_skill 工具", () => {
     )
     const { createReadSkillTool } = await importTool()
     const mockMcpManager = {
-      getStatus: () => [
-        { name: "other-mcp", status: "connected" as const },
-      ],
+      getStatus: () => [{ name: "other-mcp", status: "connected" as const }],
     }
     const tool = createReadSkillTool(cwd, { mcpManager: mockMcpManager as any })
     const result = await tool.execute("tc1", { name: "my-skill" })

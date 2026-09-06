@@ -31,9 +31,6 @@ export type MarkdownSendPromptTargetId =
   | "agy"
   | "grok"
 
-
-
-
 // Markdown /sendPrompt 标志位标识。
 export type MarkdownSendPromptFlagId = "-enter"
 
@@ -384,9 +381,6 @@ export const isDefaultCliTitle = (
   return defaultKeywords.includes(t)
 }
 
-
-
-
 /**
  * 解析终端实例的有效标题与是否默认状态。
  */
@@ -463,7 +457,6 @@ export const getMarkdownSendPromptOptions = (
     const rawPanes = tab.panes ? Object.values(tab.panes) : []
     const panes = rawPanes.filter((p): p is NonNullable<typeof p> => Boolean(p))
     const hasMultiplePanes = panes.length > 1
-
 
     if (panes.length > 0) {
       for (const pane of panes) {
@@ -664,11 +657,8 @@ export const parseMarkdownSendPromptCommandLine = (
                   : normalizedTarget
   ) as MarkdownSendPromptTargetId
 
-
-
   return { target, instance, flag }
 }
-
 
 // 默认内置命令（中文兜底与单测兼容）。
 export const builtinMarkdownSlashCommands: MarkdownSlashCommand[] =

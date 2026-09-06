@@ -246,11 +246,7 @@ class PermissionManager {
 
     // 1.1 协作模式 (Design Mode)：禁用 3 个内嵌 render 工具
     if (collaborationMode === "design") {
-      if (
-        toolName === "render_svg" ||
-        toolName === "render_ascii" ||
-        toolName === "render_html"
-      ) {
+      if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
         return "deny"
       }
     }
@@ -399,11 +395,7 @@ class PermissionManager {
 
     // Design Mode 门控硬拦截：禁用 3 个内嵌 render 工具
     if (collaborationMode === "design") {
-      if (
-        toolName === "render_svg" ||
-        toolName === "render_ascii" ||
-        toolName === "render_html"
-      ) {
+      if (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html") {
         return { block: true, reason: DESIGN_MODE_RENDER_TOOL_REASON }
       }
     }
@@ -435,9 +427,7 @@ class PermissionManager {
       }
       if (
         collaborationMode === "design" &&
-        (toolName === "render_svg" ||
-          toolName === "render_ascii" ||
-          toolName === "render_html")
+        (toolName === "render_svg" || toolName === "render_ascii" || toolName === "render_html")
       ) {
         return { block: true, reason: DESIGN_MODE_RENDER_TOOL_REASON }
       }

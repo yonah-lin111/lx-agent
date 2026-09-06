@@ -268,7 +268,10 @@ export const parseTextWithProposedPlan = (
         plan: {
           title: extractPlanTitle(planContent),
           content: planContent,
-          raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
+          raw: text.slice(
+            openIndex,
+            contentStartIndex + closeIndexInRemaining + closeMatch[0].length,
+          ),
           isStreaming: false,
         },
         durationMs,
@@ -323,7 +326,10 @@ export const parseTextWithProposedPlan = (
           id: designId,
           title,
           html: htmlContent,
-          raw: text.slice(openIndex, contentStartIndex + closeIndexInRemaining + closeMatch[0].length),
+          raw: text.slice(
+            openIndex,
+            contentStartIndex + closeIndexInRemaining + closeMatch[0].length,
+          ),
           isStreaming: false,
         },
         durationMs,
@@ -442,7 +448,13 @@ export const toChatMessage = (
 
   const blocks: ChatBlock[] = message.content.flatMap((block) => {
     if (block.type === "text") {
-      return parseTextWithProposedPlan(block.text, block.durationMs, id, sessionId, message.timestamp)
+      return parseTextWithProposedPlan(
+        block.text,
+        block.durationMs,
+        id,
+        sessionId,
+        message.timestamp,
+      )
     }
     if (block.type === "thinking") {
       return [{ kind: "thinking", text: block.thinking, durationMs: block.durationMs }]

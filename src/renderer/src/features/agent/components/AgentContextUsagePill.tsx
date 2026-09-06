@@ -32,7 +32,10 @@ export const AgentContextUsagePill = ({
     contextUsage.contextWindow > 0
 
   const percent = hasValidUsage
-    ? Math.min(100, Math.max(0, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100)))
+    ? Math.min(
+        100,
+        Math.max(0, Math.round((contextUsage.tokens / contextUsage.contextWindow) * 100)),
+      )
     : 0
 
   const baseText = hasValidUsage

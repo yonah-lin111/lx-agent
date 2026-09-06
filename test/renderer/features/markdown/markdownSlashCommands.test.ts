@@ -165,10 +165,12 @@ describe("Markdown 斜杠命令武装判定", () => {
 
   it("getTemplatePlaceholderSelectionRange: 解析并默认选中第一个 [xxx] 内部文本（不含中括号）", () => {
     expect(getTemplatePlaceholderSelectionRange("Hello world")).toBeNull()
-    expect(getTemplatePlaceholderSelectionRange("## Target [feature]\nDetails: [details]")).toEqual({
-      start: 11,
-      end: 18,
-    })
+    expect(getTemplatePlaceholderSelectionRange("## Target [feature]\nDetails: [details]")).toEqual(
+      {
+        start: 11,
+        end: 18,
+      },
+    )
     expect(getTemplatePlaceholderSelectionRange("[only]")).toEqual({
       start: 1,
       end: 5,
@@ -407,8 +409,6 @@ describe("Markdown 斜杠命令武装判定", () => {
     })
   })
 
-
-
   it("getMarkdownSendPromptOptions 严格遵从 enabledCliIds 过滤静态项与运行中项", () => {
     const tabs = [
       {
@@ -435,4 +435,3 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(optionsAgentOnly[0].id).toBe("lx")
   })
 })
-

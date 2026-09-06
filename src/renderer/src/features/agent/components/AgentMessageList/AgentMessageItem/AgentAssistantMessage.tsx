@@ -17,10 +17,10 @@ import {
   AgentToolCallBlock,
   AgentVisualBlock,
   AgentWebSearchBlock,
+  type ExecutionItemMeta,
   FrontDesignCard,
   ProposedPlanCard,
   ReviewFindingsCard,
-  type ExecutionItemMeta,
 } from "@/features/agent/components/blocks"
 import { SuggestedQuestions } from "@/features/agent/components/SuggestedQuestions"
 import { TOOL_GROUP_SEPARATORS } from "@/features/agent/constants"
