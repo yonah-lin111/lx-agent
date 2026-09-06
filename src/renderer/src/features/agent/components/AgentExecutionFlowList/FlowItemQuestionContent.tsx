@@ -1,5 +1,5 @@
 import type { QuestionAnswer, QuestionPrompt, QuestionRequest } from "@shared/contracts/agent"
-import { FileText, Terminal } from "lucide-react"
+import { ChevronDown, ChevronRight, FileText, Terminal } from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
@@ -7,6 +7,7 @@ import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { agentApi } from "@/features/agent/api/agentApi"
 import type { ExecutionToolContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
+import { FlowItemExpandableText } from "./FlowItemExpandableText"
 import { formatJsonString } from "./types"
 
 export interface FlowItemQuestionContentProps {
@@ -23,49 +24,68 @@ const getQuestions = (content: ExecutionToolContent): QuestionPrompt[] => {
   return []
 }
 
-// 工具入参与执行结果。
+// 工具入参与执行结果折叠区。
 const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.Element | null => {
   const { t } = useTranslation()
+  const [showDebug, setShowDebug] = useState(false)
   const hasArgs = Object.keys(content.args ?? {}).length > 0
   if (!hasArgs && content.result === undefined) return null
 
   return (
-    <>
-      {/* 输入参数 */}
-      {hasArgs && (
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center gap-1 text-[11px] text-white/45">
-            <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
-          </div>
-          <div className="custom-scrollbar max-h-96 overflow-y-auto rounded bg-black/40 p-2 font-mono text-[11px] break-all whitespace-pre-wrap text-sky-200/90">
-            {formatJsonString(content.args)}
-          </div>
-        </div>
-      )}
+    <div className="border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] pt-1 font-mono text-[11px]">
+      <button
+        type="button"
+        onClick={() => setShowDebug((prev) => !prev)}
+        className="flex items-center gap-1 text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-[var(--color-theme-text,rgba(255,255,255,0.8))] transition-colors"
+      >
+        {showDebug ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <span>{t("agent.todoRawDebug")}</span>
+      </button>
 
-      {/* 执行结果 */}
-      {content.result !== undefined && (
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center justify-between text-[11px] text-white/45">
-            <span className="flex items-center gap-1">
-              <FileText className="h-3 w-3" /> {t("agent.toolResult")}
-            </span>
-            {content.isError && (
-              <span className="text-[10px] font-medium text-rose-400">ERROR</span>
-            )}
-          </div>
-          <div
-            className={`custom-scrollbar max-h-96 overflow-y-auto rounded p-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap ${
-              content.isError
-                ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
-                : "bg-black/40 text-white/80"
-            }`}
-          >
-            {content.result || <span className="text-white/30">-</span>}
-          </div>
+      {showDebug && (
+        <div className="mt-2 flex flex-col gap-2">
+          {/* 输入参数 */}
+          {hasArgs && (
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center justify-between text-white/45">
+                <span className="flex items-center gap-1">
+                  <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
+                </span>
+                {content.toolCallId && (
+                  <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+                )}
+              </div>
+              <div className="rounded bg-black/40 p-2 text-sky-200/90">
+                <FlowItemExpandableText content={formatJsonString(content.args)} maxLines={3} />
+              </div>
+            </div>
+          )}
+
+          {/* 执行结果 */}
+          {content.result !== undefined && (
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center justify-between text-white/45">
+                <span className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" /> {t("agent.toolResult")}
+                </span>
+                {content.isError && (
+                  <span className="text-[10px] font-medium text-rose-400">ERROR</span>
+                )}
+              </div>
+              <div
+                className={`rounded p-2 ${
+                  content.isError
+                    ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
+                    : "bg-black/40 text-white/80"
+                }`}
+              >
+                <FlowItemExpandableText content={content.result} fallbackText="-" maxLines={3} />
+              </div>
+            </div>
+          )}
         </div>
       )}
-    </>
+    </div>
   )
 }
 
