@@ -15,6 +15,7 @@ import {
   getPermissionSettings,
   getSkillSettings,
   getUiSettings,
+  getVoiceSettings,
   saveCliSettings,
   saveLspSettings,
   saveMcpSettings,
@@ -22,7 +23,9 @@ import {
   savePermissionSettings,
   saveSkillSettings,
   saveUiSettings,
+  saveVoiceSettings,
 } from "@/services/settingsService"
+import { transcribeAudioWithGroq } from "@/services/voiceService"
 
 /**
  * 注册模型 Provider 设置、Agent 权限设置、CLI 设置、LSP 设置、MCP 设置与 Skill 设置的 IPC 处理器。
@@ -65,4 +68,7 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.getSkillSettings, () => getSkillSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveSkillSettings, (_, input) => saveSkillSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.deleteSkill, (_, filePath: string) => deleteSkill(filePath))
+  ipcMain.handle(SETTINGS_CHANNELS.getVoiceSettings, () => getVoiceSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveVoiceSettings, (_, input) => saveVoiceSettings(input))
+  ipcMain.handle(SETTINGS_CHANNELS.transcribeAudio, (_, input) => transcribeAudioWithGroq(input))
 }

@@ -11,6 +11,7 @@ export * from "./components/ModelProviderSettings"
 export * from "./components/ModelSettings"
 export * from "./components/PermissionSettings"
 export * from "./components/SkillSettings"
+export * from "./components/VoiceSettings"
 export * from "./constants"
 
 export * from "./hooks/useCliSettings"

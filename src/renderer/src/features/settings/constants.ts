@@ -3,6 +3,7 @@ import {
   Code,
   Code2,
   type LucideIcon,
+  Mic,
   Plug,
   Server,
   Settings as SettingsIcon,
@@ -23,6 +24,7 @@ export interface SettingsSection {
     | "settings.lsp"
     | "settings.mcp"
     | "settings.skills"
+    | "settings.voice"
   icon: LucideIcon
 }
 
@@ -35,6 +37,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "skills", labelKey: "settings.skills", icon: Sparkles },
   { id: "models", labelKey: "settings.models", icon: Bot },
   { id: "providers", labelKey: "settings.providers", icon: Server },
+  { id: "voice", labelKey: "settings.voice", icon: Mic },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
   { id: "custom-commands", labelKey: "settings.customCommands", icon: Code },
 ] as const

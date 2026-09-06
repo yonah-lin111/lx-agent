@@ -18,6 +18,7 @@ import type {
   ProviderTransportType,
   SkillSettings,
   UiSettings,
+  VoiceSettings,
 } from "@shared/settings"
 import {
   ALL_CLI_IDS,
@@ -28,6 +29,7 @@ import {
   DEFAULT_MCP_SETTINGS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DEFAULT_UI_SETTINGS,
+  DEFAULT_VOICE_SETTINGS,
 } from "@shared/settings"
 import { shell } from "electron"
 
@@ -787,4 +789,51 @@ export const deleteSkill = async (
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) }
   }
+}
+
+/**
+ * 规范化 Voice 设置。
+ */
+export const normalizeVoiceSettings = (raw: unknown): VoiceSettings => {
+  if (!isRecord(raw)) return DEFAULT_VOICE_SETTINGS
+  return {
+    apiKey: typeof raw.apiKey === "string" ? raw.apiKey.trim() : "",
+    model:
+      typeof raw.model === "string" && raw.model.trim()
+        ? raw.model.trim()
+        : DEFAULT_VOICE_SETTINGS.model,
+    language:
+      typeof raw.language === "string" && raw.language.trim()
+        ? raw.language.trim()
+        : DEFAULT_VOICE_SETTINGS.language,
+  }
+}
+
+/**
+ * 读取 Voice 设置。
+ */
+export const getVoiceSettings = (): VoiceSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  return normalizeVoiceSettings(rawConfig.voice)
+}
+
+/**
+ * 保存 Voice 设置。
+ */
+export const saveVoiceSettings = (input: VoiceSettings): VoiceSettings => {
+  const settings = normalizeVoiceSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    voice: settings,
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
 }

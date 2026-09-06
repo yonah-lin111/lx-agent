@@ -19,6 +19,7 @@ import {
   usePermissionSettings,
   useSettingsData,
   useSettingsMutations,
+  VoiceSettingsComponent,
 } from "@/features/settings"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
@@ -30,6 +31,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   skills: "settings.skillsDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
+  voice: "settings.voiceDesc",
   permissions: "settings.permissionsDesc",
   "custom-commands": "settings.customCommandsDesc",
 }
@@ -205,6 +207,7 @@ export const SettingsPage = (): React.JSX.Element => {
               onDeleteProvider={() => toast.success(t("settings.deleteProviderSuccess"))}
             />
           ) : null}
+          {activeSection === "voice" ? <VoiceSettingsComponent /> : null}
           {activeSection === "permissions" && permissionSettings ? (
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}
