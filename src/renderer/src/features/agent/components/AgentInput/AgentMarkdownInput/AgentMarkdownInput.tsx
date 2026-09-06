@@ -66,7 +66,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     const containerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
     const { warning: warningToast, success: successToast, error: errorToast } = useLxAgentToast()
-    const { t } = useTranslation()
+    const { t, locale } = useTranslation()
 
     const getPanelAnchor = useCallback((): HTMLElement | null => {
       return panelAnchorRef?.current ?? containerRef.current
@@ -101,6 +101,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       worktreeOptions,
       getPanelAnchor,
       t,
+      locale,
     })
 
     // 粘贴面板与引用管理

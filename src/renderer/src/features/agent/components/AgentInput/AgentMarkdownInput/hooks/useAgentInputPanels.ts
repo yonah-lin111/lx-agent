@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view"
 import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
+import type { Locale } from "@shared/settings"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -37,6 +38,7 @@ interface UseAgentInputPanelsProps {
   worktreeOptions?: GitWorktreeOption[] | null
   getPanelAnchor: () => HTMLElement | null
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
+  locale?: Locale
 }
 
 export const useAgentInputPanels = ({
@@ -49,6 +51,7 @@ export const useAgentInputPanels = ({
   worktreeOptions,
   getPanelAnchor,
   t,
+  locale = "zh",
 }: UseAgentInputPanelsProps) => {
   const [panelPosition, setPanelPosition] = useState<React.CSSProperties | null>(null)
   const [activeMode, setActiveMode] = useState<AgentInputActiveMode>(null)
@@ -386,7 +389,7 @@ export const useAgentInputPanels = ({
 
       const matchedBlockCmds =
         trigger && !isClosingCodeFence && !isContinuousList
-          ? getMarkdownBlockCommands(trigger.kind)
+          ? getMarkdownBlockCommands(trigger.kind, locale)
           : []
 
       if (matchedBlockCmds.length > 0 && trigger) {
