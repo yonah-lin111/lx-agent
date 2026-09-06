@@ -104,6 +104,8 @@ export const FrontDesignPage = (): React.JSX.Element => {
     }
   }, [viewport])
 
+  const isDesktop = viewport === "desktop"
+
   return (
     <div
       className="front-design-page flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5"
@@ -200,7 +202,9 @@ export const FrontDesignPage = (): React.JSX.Element => {
 
       {/* 主画布预览区 */}
       <main
-        className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4"
+        className={`flex min-h-0 flex-1 items-center justify-center overflow-auto ${
+          isDesktop && html ? "p-0" : "p-4"
+        }`}
         style={{ backgroundColor: "var(--color-theme-bg)" }}
       >
         {!html ? (
@@ -215,7 +219,11 @@ export const FrontDesignPage = (): React.JSX.Element => {
           </div>
         ) : (
           <div
-            className={`flex h-full w-full ${viewportWidthClass} flex-col overflow-hidden rounded-[8px] border border-white/10 shadow-2xl transition-[max-width] duration-300 ease-in-out`}
+            className={`flex h-full w-full ${viewportWidthClass} flex-col overflow-hidden ${
+              isDesktop
+                ? "rounded-none border-none shadow-none"
+                : "rounded-[8px] border border-white/10 shadow-2xl"
+            } transition-[max-width] duration-300 ease-in-out`}
             style={{ backgroundColor: "var(--color-theme-surface)" }}
           >
             <iframe

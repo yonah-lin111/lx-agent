@@ -232,4 +232,67 @@ describe("Render Tools Removal & Question UI System Regression (Renderer)", () =
       expect(cleaned).not.toContain("onclick")
     })
   })
+
+  describe("5. React Hook 调用顺序与空问题边界稳定性", () => {
+    it("FlowItemQuestionContent 在从无问题（空数组）更新到有问题时不发生 Hook 顺序改变崩溃", () => {
+      const emptyContent: ExecutionToolContent = {
+        toolName: "question",
+        args: {},
+      }
+
+      const { rerender } = render(<FlowItemQuestionContent content={emptyContent} />)
+      expect(screen.queryByText("是否有新任务？")).toBeNull()
+
+      const filledContent: ExecutionToolContent = {
+        toolName: "question",
+        question: {
+          requestId: "req-order-1",
+          toolCallId: "tc-order-1",
+          sessionId: "sess-1",
+          questions: [{ question: "是否有新任务？", options: [{ label: "是" }] }],
+        },
+        args: {},
+      }
+
+      // 重新渲染，如果在有无问题间改变了 Hook 调用顺序，React 此时会直接抛错
+      expect(() => {
+        rerender(<FlowItemQuestionContent content={filledContent} />)
+      }).not.toThrow()
+
+      expect(screen.getByText("是否有新任务？")).not.toBeNull()
+    })
+
+    it("AgentQuestionBlock 在从无问题更新到有问题时不发生 Hook 顺序改变崩溃", () => {
+      const emptyToolCall: ToolCallBlock = {
+        kind: "toolCall",
+        toolCallId: "tc-empty-1",
+        toolName: "question",
+        status: "running",
+        args: {},
+      }
+
+      const { rerender } = render(<AgentQuestionBlock toolCall={emptyToolCall} />)
+      expect(screen.queryByText("是否立即部署？")).toBeNull()
+
+      const filledToolCall: ToolCallBlock = {
+        kind: "toolCall",
+        toolCallId: "tc-empty-1",
+        toolName: "question",
+        status: "running",
+        question: {
+          requestId: "req-order-2",
+          toolCallId: "tc-empty-1",
+          sessionId: "sess-1",
+          questions: [{ question: "是否立即部署？", options: [{ label: "是" }] }],
+        },
+        args: {},
+      }
+
+      expect(() => {
+        rerender(<AgentQuestionBlock toolCall={filledToolCall} />)
+      }).not.toThrow()
+
+      expect(screen.getByText("是否立即部署？")).not.toBeNull()
+    })
+  })
 })

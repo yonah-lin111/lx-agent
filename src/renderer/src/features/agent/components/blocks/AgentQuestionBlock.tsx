@@ -43,7 +43,6 @@ export const AgentQuestionBlock = ({
   const { t } = useTranslation()
   const pending: QuestionRequest | undefined = toolCall.question
   const questions = getQuestions(toolCall)
-  if (questions.length === 0) return null
 
   // 每题作答态：选择题 = 已选 label 数组；自由文本/自定义输入 = customTexts。
   const [activeIndex, setActiveIndex] = useState(0)
@@ -79,6 +78,8 @@ export const AgentQuestionBlock = ({
 
     return () => observer.disconnect()
   }, [isExpanded, toolCall.answers, questions])
+
+  if (questions.length === 0) return null
 
   // 无挂起请求：已作答（done）或请求尚未到达（running 瞬间）——展示只读问题清单。
   if (!pending) {
@@ -194,14 +195,14 @@ export const AgentQuestionBlock = ({
 
   const isComplete = questions.every((question, index) =>
     question.options
-      ? selections[index]!.length > 0 || customTexts[index]!.trim().length > 0
-      : customTexts[index]!.trim().length > 0,
+      ? (selections[index]?.length ?? 0) > 0 || (customTexts[index]?.trim().length ?? 0) > 0
+      : (customTexts[index]?.trim().length ?? 0) > 0,
   )
 
   const handleSubmit = (): void => {
     const answers: QuestionAnswer[] = questions.map((question, index) => {
-      const custom = customTexts[index]!.trim()
-      const selected = selections[index]!
+      const custom = (customTexts[index] ?? "").trim()
+      const selected = selections[index] ?? []
       let answer: string[]
       if (question.options) {
         answer = question.multiSelect
@@ -236,7 +237,8 @@ export const AgentQuestionBlock = ({
               {questions.map((question, index) => {
                 const isActive = index === activeIndex
                 const answered =
-                  selections[index]!.length > 0 || customTexts[index]!.trim().length > 0
+                  (selections[index]?.length ?? 0) > 0 ||
+                  (customTexts[index]?.trim().length ?? 0) > 0
                 return (
                   <button
                     key={index}

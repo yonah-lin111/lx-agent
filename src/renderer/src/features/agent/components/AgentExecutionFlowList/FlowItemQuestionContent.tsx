@@ -81,7 +81,6 @@ export const FlowItemQuestionContent = ({
   const { t } = useTranslation()
   const pending: QuestionRequest | undefined = content.question
   const questions = getQuestions(content)
-  if (questions.length === 0) return null
 
   // 每题作答态：选择题 = 已选 label 数组；自由文本/自定义输入 = customTexts。
   const [selections, setSelections] = useState<string[][]>(() => questions.map(() => []))
@@ -93,6 +92,8 @@ export const FlowItemQuestionContent = ({
     setCustomTexts(questions.map(() => ""))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending?.requestId, questions.length])
+
+  if (questions.length === 0) return null
 
   // 无挂起请求：只读回显问答记录。
   if (!pending) {
@@ -173,13 +174,14 @@ export const FlowItemQuestionContent = ({
   }
 
   const isComplete = questions.every(
-    (_, index) => selections[index]!.length > 0 || customTexts[index]!.trim().length > 0,
+    (_, index) =>
+      (selections[index]?.length ?? 0) > 0 || (customTexts[index]?.trim().length ?? 0) > 0,
   )
 
   const handleSubmit = (): void => {
     const answers: QuestionAnswer[] = questions.map((question, index) => {
-      const custom = customTexts[index]!.trim()
-      const selected = selections[index]!
+      const custom = (customTexts[index] ?? "").trim()
+      const selected = selections[index] ?? []
       let answer: string[]
       if (question.options) {
         answer = question.multiSelect
