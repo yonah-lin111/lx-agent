@@ -2,14 +2,12 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
 import {
   bracketMatching,
-  HighlightStyle,
   indentOnInput,
   syntaxHighlighting,
 } from "@codemirror/language"
 import { languages } from "@codemirror/language-data"
-import { EditorState, Prec } from "@codemirror/state"
+import { EditorState } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
-import { tags } from "@lezer/highlight"
 import { GFM } from "@lezer/markdown"
 import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
@@ -28,7 +26,6 @@ import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
-  createMarkdownBlockInsertion,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
   isInsideMarkdownCodeFence,
@@ -42,10 +39,9 @@ import {
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { projectApi } from "@/features/project/api/projectApi"
 import { settingsApi, subscribeSettingsChanged } from "@/features/settings"
-import { type TranslationKey, useTranslation } from "@/i18n"
+import { useTranslation } from "@/i18n"
 import { getClipboardFilesAsync } from "@/lib/clipboard"
 import {
-  type AgentInputCommand,
   AgentInputCommandPanel,
   AgentInputFilePanel,
   type AgentInputModel,
@@ -58,8 +54,6 @@ import {
 import type { AgentInputFile } from "./AgentInputFiles"
 import { agentEditorTheme, agentHighlightStyle } from "./agentEditorTheme"
 import {
-  BUILTIN_COMMAND_KEYS,
-  getArgumentSelectionRange,
   getMatchedCommands,
   getMentionQuery,
   getSkillMentionQuery,
@@ -368,10 +362,14 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
     useEffect(() => {
       let active = true
       const fetchSkills = () => {
-        void Promise.all([agentApi.listSkills(currentPath), settingsApi.getSkillSettings()])
+        const getSettings =
+          typeof window !== "undefined" && typeof (window as any).api?.settings?.getSkillSettings === "function"
+            ? settingsApi.getSkillSettings()
+            : Promise.resolve({ disabled: [] as string[] })
+        void Promise.all([agentApi.listSkills(currentPath), getSettings])
           .then(([data, config]) => {
             if (!active) return
-            const disabledSet = new Set(config.disabled)
+            const disabledSet = new Set(config?.disabled || [])
             setSkills(data.filter((s) => !disabledSet.has(s.name)))
           })
           .catch(() => {
