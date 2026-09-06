@@ -90,6 +90,7 @@ export const zh: TranslationDictionary = {
     general: "通用设置",
     models: "模型配置",
     providers: "模型 Provider",
+    voice: "语音设置",
     permissions: "权限",
     generalDesc: "配置界面语言和通用偏好设置",
     generalDoc: `### 通用偏好设置
@@ -118,6 +119,21 @@ export const zh: TranslationDictionary = {
 - **标准与兼容协议**：支持 OpenAI Compatible、OpenAI、Anthropic、Google 等主流接口协议。
 - **模型自动获取**：填入 Base URL 与 API Key 后，可一键自动拉取服务商支持的全部模型列表。
 - **自定义模型**：支持手动新增、编辑或删除特定模型 ID 与显示名称。`,
+    voiceDesc: "配置 Groq 平台语音转文字（STT）模型与 API 参数",
+    voiceDoc: `### 语音输入与转文字设置
+
+基于 Groq 平台的超高速 Whisper 模型进行语音转文字识别。
+
+#### 💡 核心配置项
+- **Groq API Key**：在 Groq 控制台获取的 API 密钥，用于音频接口鉴权。
+- **语音模型**：推荐使用 \`whisper-large-v3-turbo\`，兼具高精度与极致转换速度。
+- **识别语言**：默认自动检测，也可指定中文、英文等以提升识别准度与速度。`,
+    voiceApiKey: "Groq API Key",
+    voiceApiKeyDesc: "用于访问 Groq Whisper 语音转文字接口的凭证密钥",
+    voiceModel: "语音识别模型",
+    voiceModelDesc: "选择用于语音转写的 Whisper 模型版本",
+    voiceLanguage: "音频语言",
+    voiceLanguageDesc: "语音说话的主要语言，选择自动检测或固定语言以优化识别准确率",
     permissionsDesc: "配置 Agent 工具执行权限与确认模式",
     customCommands: "自定义命令",
     customCommandsDesc: "管理对话输入框与 Markdown 编辑器的自定义 / 快捷命令",
@@ -511,6 +527,14 @@ export const zh: TranslationDictionary = {
     customCommandMDTemplateScopeDesc: "仅在 &&& 模板块内部可用（如补充需求等子模板）",
   },
   agent: {
+    voiceInput: "语音输入",
+    voiceStopRecording: "停止录音",
+    voiceTranscribing: "正在转录语音...",
+    voiceApiKeyMissing: "未配置 Groq API Key，请先在设置中配置",
+    voiceDeviceUnsupported: "当前设备不支持麦克风录音",
+    voiceRecordFailed: "启动录音失败",
+    voiceTranscriptionFailed: "语音转录失败",
+    voiceNoSpeechDetected: "未识别到有效语音内容",
     inputPlaceholder: "发送消息或输入 / 使用命令...",
     stopGenerating: "停止生成",
     send: "发送",
@@ -555,7 +579,8 @@ export const zh: TranslationDictionary = {
     collaborationModeReview: "Review 模式",
     collaborationModeReviewDesc: "严格只读代码审查，聚焦缺陷、安全漏洞、性能瓶颈与代码品味。",
     collaborationModeDesign: "Design 模式",
-    collaborationModeDesignDesc: "前端设计专属模式，禁用内嵌 render 工具，输出代码热更新至设计看板。",
+    collaborationModeDesignDesc:
+      "前端设计专属模式，禁用内嵌 render 工具，输出代码热更新至设计看板。",
     collaborationModeSwitchedToBuild: "已切换至 Build 模式",
     collaborationModeSwitchedToPlan: "已切换至 Plan 模式（只读）",
     collaborationModeSwitchedToReview: "已切换至 Review 模式（只读审查）",
@@ -1323,7 +1348,8 @@ export const zh: TranslationDictionary = {
   frontDesign: {
     title: "前端原型看板",
     emptyTitle: "等待 Agent 输出前端设计稿",
-    emptyDesc: "在 Agent 对话中切换至 Design 模式，Agent 生成的 UI 代码将在此处自动热更新实时预览。",
+    emptyDesc:
+      "在 Agent 对话中切换至 Design 模式，Agent 生成的 UI 代码将在此处自动热更新实时预览。",
     viewportDesktop: "桌面端 (100%)",
     viewportTablet: "平板端 (768px)",
     viewportMobile: "移动端 (375px)",

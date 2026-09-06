@@ -15,6 +15,7 @@ import {
   type AgentMarkdownInputProps,
   type AgentMarkdownInputRef,
 } from "./AgentMarkdownInput"
+import { AgentVoiceInputButton } from "./AgentVoiceInputButton"
 
 export interface AgentInputProps {
   inputText: string
@@ -229,6 +230,20 @@ export const AgentInput = ({
     onSend(options)
   }
 
+  const handleVoiceTranscribed = (transcribedText: string): void => {
+    const trimmed = transcribedText.trim()
+    if (!trimmed) return
+    const current = markdownInputRef.current?.getValue() ?? inputText
+    const next = current
+      ? current.endsWith(" ") || current.endsWith("\n")
+        ? `${current}${trimmed}`
+        : `${current} ${trimmed}`
+      : trimmed
+    onInputChange(next)
+    markdownInputRef.current?.setValue(next)
+    markdownInputRef.current?.focus()
+  }
+
   const addButton = (
     <>
       <input
@@ -356,6 +371,7 @@ export const AgentInput = ({
         />
         <div className="flex w-full items-center justify-between pt-1.5">
           <div className="flex min-w-0 items-center gap-1.5">
+            <AgentVoiceInputButton onTranscribed={handleVoiceTranscribed} />
             {addButton}
             <AgentModelSelect
               value={selectedModel}

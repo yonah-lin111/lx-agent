@@ -87,6 +87,10 @@ const api: ProjectApi &
     saveSkillSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveSkillSettings, settings),
     deleteSkill: (filePath) => ipcRenderer.invoke(SETTINGS_CHANNELS.deleteSkill, filePath),
+    getVoiceSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getVoiceSettings),
+    saveVoiceSettings: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveVoiceSettings, settings),
+    transcribeAudio: (input) => ipcRenderer.invoke(SETTINGS_CHANNELS.transcribeAudio, input),
   },
 
   agent: agentApi,

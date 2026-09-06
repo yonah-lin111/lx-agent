@@ -215,6 +215,39 @@ export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
   disabled: [],
 }
 
+// 语音输入/转文字配置（~/.lx/config.json 的 voice 节点）。
+export interface VoiceSettings {
+  // Groq API Key
+  apiKey?: string
+  // Whisper 语音模型（默认 whisper-large-v3-turbo）
+  model: string
+  // 语言代码（auto 表示自动检测，zh 表示中文，en 表示英文等）
+  language?: string
+}
+
+export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+  apiKey: "",
+  model: "whisper-large-v3-turbo",
+  language: "auto",
+}
+
+// 语音转文字请求参数。
+export interface TranscribeAudioInput {
+  // 音频原始二进制数据（Uint8Array 或 ArrayBuffer）
+  buffer: Uint8Array | ArrayBuffer
+  // 音频文件格式或 MIME 类型（如 audio/webm、audio/wav、audio/mp4 等）
+  mimeType?: string
+  // 可选的文件名（如 audio.webm）
+  fileName?: string
+}
+
+// 语音转文字结果。
+export interface TranscribeAudioResult {
+  text: string
+  duration?: number
+  language?: string
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -242,5 +275,8 @@ export interface SettingsApi {
     getSkillSettings: () => Promise<SkillSettings>
     saveSkillSettings: (settings: SkillSettings) => Promise<SkillSettings>
     deleteSkill: (filePath: string) => Promise<{ success: boolean; error?: string }>
+    getVoiceSettings: () => Promise<VoiceSettings>
+    saveVoiceSettings: (settings: VoiceSettings) => Promise<VoiceSettings>
+    transcribeAudio: (input: TranscribeAudioInput) => Promise<TranscribeAudioResult>
   }
 }

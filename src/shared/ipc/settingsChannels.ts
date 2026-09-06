@@ -21,4 +21,7 @@ export const SETTINGS_CHANNELS = {
   getSkillSettings: "settings:skills:get",
   saveSkillSettings: "settings:skills:save",
   deleteSkill: "settings:skills:delete",
+  getVoiceSettings: "settings:voice:get",
+  saveVoiceSettings: "settings:voice:save",
+  transcribeAudio: "settings:voice:transcribe",
 } as const

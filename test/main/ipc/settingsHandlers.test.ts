@@ -17,6 +17,14 @@ vi.mock("@/services/settingsService", () => ({
   saveLspSettings: vi.fn(),
   getMcpSettings: vi.fn(() => ({ servers: {} })),
   saveMcpSettings: vi.fn(),
+  getSkillSettings: vi.fn(() => ({ disabled: [] })),
+  saveSkillSettings: vi.fn(),
+  deleteSkill: vi.fn(),
+  getVoiceSettings: vi.fn(() => ({ model: "whisper-large-v3-turbo" })),
+  saveVoiceSettings: vi.fn(),
+}))
+vi.mock("@/services/voiceService", () => ({
+  transcribeAudioWithGroq: vi.fn(),
 }))
 vi.mock("@/services/modelFetchService", () => ({
   fetchProviderModels: vi.fn(),

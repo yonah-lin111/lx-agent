@@ -11,7 +11,10 @@ import type {
   McpSettings,
   ModelProviderSettings,
   SkillSettings,
+  TranscribeAudioInput,
+  TranscribeAudioResult,
   UiSettings,
+  VoiceSettings,
 } from "@shared/settings"
 
 // 设置 feature 的 preload API 访问入口。
@@ -52,4 +55,9 @@ export const settingsApi = {
     window.api.settings.saveSkillSettings(settings),
   deleteSkill: (filePath: string): Promise<{ success: boolean; error?: string }> =>
     window.api.settings.deleteSkill(filePath),
+  getVoiceSettings: (): Promise<VoiceSettings> => window.api.settings.getVoiceSettings(),
+  saveVoiceSettings: (settings: VoiceSettings): Promise<VoiceSettings> =>
+    window.api.settings.saveVoiceSettings(settings),
+  transcribeAudio: (input: TranscribeAudioInput): Promise<TranscribeAudioResult> =>
+    window.api.settings.transcribeAudio(input),
 }
