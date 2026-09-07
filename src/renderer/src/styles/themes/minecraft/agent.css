@@ -2022,7 +2022,10 @@
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #2a2638 !important;
-  box-shadow: none !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.16),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
   margin-bottom: 4px !important;
 }
 
@@ -2415,11 +2418,92 @@
   border-radius: 0px !important;
 }
 
-[data-theme="minecraft"] .agent-execution-flow-turn-divider span {
+/* 执行流各类型分割线 - Minecraft 3D 浮雕矿石梁与立体铭牌 */
+[data-theme="minecraft"] .agent-execution-flow-turn-divider div,
+[data-theme="minecraft"] .agent-execution-flow-model-switch-divider div,
+[data-theme="minecraft"] .agent-execution-flow-undo-divider div,
+[data-theme="minecraft"] .agent-execution-flow-compaction-divider div,
+[data-theme="minecraft"] .agent-execution-flow-system-divider div {
+  height: 3px !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.5),
+    0 1px 0 0 #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-turn-divider span,
+[data-theme="minecraft"] .agent-execution-flow-model-switch-divider span,
+[data-theme="minecraft"] .agent-execution-flow-undo-divider span,
+[data-theme="minecraft"] .agent-execution-flow-compaction-divider span,
+[data-theme="minecraft"] .agent-execution-flow-system-divider span {
   font-family: var(--theme-font-family) !important;
-  color: #c084fc !important;
   font-weight: 700;
+  padding: 2px 8px !important;
+  border-radius: 0px !important;
+  background-color: #14141e !important;
+  border-style: solid !important;
+  border-width: 1px 2px 2px 1px !important;
+  border-right-color: #000000 !important;
+  border-bottom-color: #000000 !important;
+  box-shadow:
+    inset 1px 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset -1px -1px 0 0 rgba(0, 0, 0, 0.7),
+    1px 1px 0 0 #000000 !important;
   text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-turn-divider span {
+  color: #d8b4fe !important;
+  border-top-color: rgba(192, 132, 252, 0.45) !important;
+  border-left-color: rgba(192, 132, 252, 0.45) !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-turn-divider div {
+  background-color: rgba(168, 85, 247, 0.28) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-model-switch-divider span {
+  color: #67e8f9 !important;
+  border-top-color: rgba(85, 255, 255, 0.45) !important;
+  border-left-color: rgba(85, 255, 255, 0.45) !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-model-switch-divider div {
+  background-color: rgba(6, 182, 212, 0.28) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-undo-divider span {
+  color: #f87171 !important;
+  border-top-color: rgba(248, 113, 113, 0.45) !important;
+  border-left-color: rgba(248, 113, 113, 0.45) !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-undo-divider div {
+  background-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-compaction-divider span {
+  color: #a5b4fc !important;
+  border-top-color: rgba(165, 180, 252, 0.45) !important;
+  border-left-color: rgba(165, 180, 252, 0.45) !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-compaction-divider div {
+  background-color: rgba(129, 140, 248, 0.28) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-system-divider span {
+  color: #a1a1aa !important;
+  border-top-color: rgba(161, 161, 170, 0.45) !important;
+  border-left-color: rgba(161, 161, 170, 0.45) !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-system-divider div {
+  background-color: rgba(113, 113, 122, 0.35) !important;
+}
+
+[data-theme="minecraft"] .agent-execution-flow-turn-divider span svg,
+[data-theme="minecraft"] .agent-execution-flow-model-switch-divider span svg,
+[data-theme="minecraft"] .agent-execution-flow-undo-divider span svg,
+[data-theme="minecraft"] .agent-execution-flow-compaction-divider span svg,
+[data-theme="minecraft"] .agent-execution-flow-system-divider span svg {
+  filter: drop-shadow(1px 1px 0px #000000);
 }
 
 /* ========================================================

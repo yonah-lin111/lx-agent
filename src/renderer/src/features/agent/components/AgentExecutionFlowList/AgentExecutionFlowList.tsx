@@ -2,7 +2,11 @@ import type { PromptAssembly } from "@shared/contracts/agent"
 import {
   ArrowDownToLine,
   ChevronUp,
+  Compass,
+  Cpu,
+  Layers,
   Loader2,
+  Minimize2,
   RefreshCw,
   Trash2,
   Undo2,
@@ -867,54 +871,58 @@ export const AgentExecutionFlowList = forwardRef<
                       {/* 轮次分隔线（仅非 compaction / 非 modelSwitch / 非 undo 的用户交互轮次展示） */}
                       {isNewTurn && elementTurnIndex > 0 && (
                         <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                          <div className="h-[1px] flex-1 bg-purple-500/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-purple-300/65 uppercase flex items-center gap-1.5">
+                            <Layers className="h-3 w-3" />
                             {t("agent.turnLabel", { turn: elementTurnIndex })}
                           </span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <div className="h-[1px] flex-1 bg-purple-500/10" />
                         </div>
                       )}
                       {/* 撤销独立分割线 */}
                       {element.kind === "single" && element.step.kind === "undo" && (
                         <div className="agent-execution-flow-undo-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-rose-500/20" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-rose-300/80 uppercase flex items-center gap-1.5">
+                          <div className="h-[1px] flex-1 bg-rose-500/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-rose-300/65 uppercase flex items-center gap-1.5">
                             <Undo2 className="h-3 w-3" />
                             {t("agent.undoSummary")}
                           </span>
-                          <div className="h-[1px] flex-1 bg-rose-500/20" />
+                          <div className="h-[1px] flex-1 bg-rose-500/10" />
                         </div>
                       )}
                       {/* 上下文压缩分割线说明 */}
                       {element.kind === "single" && element.step.kind === "compaction" && (
                         <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/60 uppercase">
+                          <div className="h-[1px] flex-1 bg-indigo-500/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/65 uppercase flex items-center gap-1.5">
+                            <Minimize2 className="h-3 w-3" />
                             {t("settings.contextCompaction")}
                           </span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <div className="h-[1px] flex-1 bg-indigo-500/10" />
                         </div>
                       )}
                       {/* 模型切换/初始模型分割线说明 */}
                       {element.kind === "single" && element.step.kind === "modelSwitch" && (
                         <div className="agent-execution-flow-model-switch-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-cyan-300/70 uppercase">
+                          <div className="h-[1px] flex-1 bg-cyan-500/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-cyan-300/65 uppercase flex items-center gap-1.5">
+                            <Cpu className="h-3 w-3" />
                             {element.step.modelSwitchContent?.isInitial
                               ? t("agent.initialModel") || "INITIAL MODEL"
                               : t("agent.modelSwitched") || "MODEL SWITCHED"}
                           </span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <div className="h-[1px] flex-1 bg-cyan-500/10" />
                         </div>
                       )}
                       {/* System 分割线 */}
                       {isSystemStart && (
                         <div className="agent-execution-flow-system-divider my-1.5 flex items-center gap-2">
-                          <div className="h-[1px] flex-1 bg-white/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+                          <div className="h-[1px] flex-1 bg-slate-500/10" />
+                          <span className="font-mono text-[10px] font-semibold tracking-wider text-slate-400/65 uppercase flex items-center gap-1.5">
+                            <Compass className="h-3 w-3" />
                             {t("agent.systemPrompt")}
                           </span>
-                          <div className="h-[1px] flex-1 bg-white/10" />
+                          <div className="h-[1px] flex-1 bg-slate-500/10" />
                         </div>
                       )}
 

@@ -2,6 +2,7 @@
 import type { QuestionRequest } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
 import type { ChatBlock, ChatMessage } from "@/features/agent/types"
 
@@ -358,7 +359,7 @@ describe("AgentExecutionFlowList", () => {
       screen.getByText((content, element) => {
         return (
           typeof element?.className === "string" &&
-          element.className.includes("text-indigo-300/60") &&
+          element.className.includes("text-indigo-300/65") &&
           content.includes("Context Compaction")
         )
       }),
@@ -1993,5 +1994,103 @@ describe("AgentExecutionFlowList", () => {
     fireEvent.click(confirmBtn)
 
     expect(onDeleteMessage).toHaveBeenCalledWith("a-error")
+  })
+
+  it("正确渲染 turn、modelSwitch、undo、compaction 分割线的图标、文字与样式", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "m-switch",
+        role: "modelSwitch",
+        model: "gpt-4o",
+        provider: "openai",
+        family: "gpt",
+        isInitial: false,
+        isStreaming: false,
+        blocks: [],
+      },
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "测试轮次" }],
+        isStreaming: false,
+      },
+      {
+        id: "m-undo",
+        role: "undoSummary",
+        blocks: [],
+        isStreaming: false,
+      },
+      {
+        id: "m-compact",
+        role: "compactionSummary",
+        blocks: [],
+        isStreaming: false,
+        isCompacting: true,
+        compactionId: "cid-2",
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    // 1. Turn 分割线及 Layers 图标与色彩
+    const turnDivider = container.querySelector(".agent-execution-flow-turn-divider")
+    expect(turnDivider).not.toBeNull()
+    expect(turnDivider?.querySelector("svg.lucide-layers")).not.toBeNull()
+    expect(turnDivider?.textContent).toMatch(/Turn 1|第 1 轮/)
+    expect(turnDivider?.querySelector("span")?.className).toContain("text-purple-300/65")
+    expect(turnDivider?.querySelector("div")?.className).toContain("bg-purple-500/10")
+
+    // 2. Model Switch 分割线及 Cpu 图标与色彩
+    const modelSwitchDivider = container.querySelector(".agent-execution-flow-model-switch-divider")
+    expect(modelSwitchDivider).not.toBeNull()
+    expect(modelSwitchDivider?.querySelector("svg.lucide-cpu")).not.toBeNull()
+    expect(modelSwitchDivider?.textContent).toMatch(/Model Switched|MODEL SWITCHED|模型切换/)
+    expect(modelSwitchDivider?.querySelector("span")?.className).toContain("text-cyan-300/65")
+    expect(modelSwitchDivider?.querySelector("div")?.className).toContain("bg-cyan-500/10")
+
+    // 3. Undo 分割线及 Undo2 图标与色彩
+    const undoDivider = container.querySelector(".agent-execution-flow-undo-divider")
+    expect(undoDivider).not.toBeNull()
+    expect(undoDivider?.querySelector("svg.lucide-undo-2")).not.toBeNull()
+    expect(undoDivider?.textContent).toMatch(/Undo\/Revert Summary|撤销\/删除摘要/)
+    expect(undoDivider?.querySelector("span")?.className).toContain("text-rose-300/65")
+    expect(undoDivider?.querySelector("div")?.className).toContain("bg-rose-500/10")
+
+    // 4. Compaction 分割线及 Minimize2 图标与色彩
+    const compactionDivider = container.querySelector(".agent-execution-flow-compaction-divider")
+    expect(compactionDivider).not.toBeNull()
+    expect(compactionDivider?.querySelector("svg.lucide-minimize-2")).not.toBeNull()
+    expect(compactionDivider?.textContent).toMatch(/Context Compaction|上下文压缩/)
+    expect(compactionDivider?.querySelector("span")?.className).toContain("text-indigo-300/65")
+    expect(compactionDivider?.querySelector("div")?.className).toContain("bg-indigo-500/10")
+  })
+
+  it("正确渲染 system prompt 分割线的图标、文字与样式", async () => {
+    vi.spyOn(agentApi, "getPromptAssembly").mockResolvedValueOnce({
+      sections: [{ name: "System", text: "You are an assistant." }],
+      contexts: [],
+      variables: {},
+      rendered: "You are an assistant.",
+    })
+
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "你好" }],
+        isStreaming: false,
+      },
+    ]
+
+    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+
+    await waitFor(() => {
+      const systemDivider = container.querySelector(".agent-execution-flow-system-divider")
+      expect(systemDivider).not.toBeNull()
+      expect(systemDivider?.querySelector("svg.lucide-compass")).not.toBeNull()
+      expect(systemDivider?.textContent).toMatch(/System Prompt|系统提示词/)
+      expect(systemDivider?.querySelector("span")?.className).toContain("text-slate-400/65")
+      expect(systemDivider?.querySelector("div")?.className).toContain("bg-slate-500/10")
+    })
   })
 })
