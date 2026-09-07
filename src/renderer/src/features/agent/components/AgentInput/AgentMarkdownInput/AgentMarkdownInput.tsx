@@ -42,7 +42,6 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onChange,
       onSend,
       disabled = false,
-      isExpanded = false,
       isStreaming = false,
       onStop,
       placeholder: placeholderText = "给 LX Agent 发送消息...",
@@ -362,12 +361,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
         {/* CodeMirror 编辑器容器 */}
         <div
           ref={containerRef}
-          style={
-            isExpanded ? ({ "--agent-input-height": "244px" } as React.CSSProperties) : undefined
-          }
-          className={`agent-markdown-input-editor ${
-            isExpanded ? "h-[244px]" : "min-h-[44px]"
-          } max-h-[244px] w-full overflow-hidden ${
+          className={`agent-markdown-input-editor min-h-[44px] max-h-[244px] w-full overflow-hidden ${
             disabled ? "pointer-events-none opacity-50" : ""
           }`}
         />

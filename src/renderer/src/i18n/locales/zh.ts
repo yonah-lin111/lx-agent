@@ -639,8 +639,6 @@ export const zh: TranslationDictionary = {
     compactionBlockedWhileGenerating: "当前正在生成回复，请等待回复完成后手动压缩。",
     contextCompactedSuccess: "已压缩上下文，早期历史已摘要化。",
     exportSuccess: "导出 ({{format}}): {{path}}",
-    adaptiveHeight: "自适应高度",
-    expandInput: "扩大输入框",
     queuedMessagesCount: "已排队 {{count}} 条消息，当前回复结束后自动发送",
     steerSentNotice: "已发送即时插话，将在当前步骤完成后生效",
     unsupportedImageInput: "当前所选模型不支持图片多模态输入，请切换模型。",

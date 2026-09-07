@@ -1,4 +1,4 @@
-import { Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
+import { Loader2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -92,7 +92,6 @@ export const AgentInput = ({
   supportsImages,
   voiceButtonRef,
 }: AgentInputProps): React.JSX.Element => {
-  const [isExpanded, setIsExpanded] = useState(false)
   const markdownInputRef = useRef<AgentMarkdownInputRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -379,7 +378,6 @@ export const AgentInput = ({
           }
           onChange={onInputChange}
           onSend={handleSend}
-          isExpanded={isExpanded}
           isStreaming={isStreaming}
           onStop={onStop}
           panelAnchorRef={containerRef}
@@ -414,26 +412,7 @@ export const AgentInput = ({
             <AgentContextUsagePill contextUsage={contextUsage} />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <LxIconButton
-              shape="circle"
-              showHoverBg={false}
-              aria-label={isExpanded ? t("agent.adaptiveHeight") : t("agent.expandInput")}
-              title={{
-                content: isExpanded ? t("agent.adaptiveHeight") : t("agent.expandInput"),
-                placement: "top",
-              }}
-              className="agent-input-expand-btn"
-              onClick={() => setIsExpanded((prev) => !prev)}
-            >
-              {isExpanded ? (
-                <Minimize2 className="h-3.5 w-3.5" />
-              ) : (
-                <Maximize2 className="h-3.5 w-3.5" />
-              )}
-            </LxIconButton>
-            {actionButton}
-          </div>
+          <div className="flex items-center gap-1.5">{actionButton}</div>
         </div>
       </div>
     </div>

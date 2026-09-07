@@ -36,8 +36,8 @@ export const agentHighlightStyle = HighlightStyle.define([
 
 export const agentEditorTheme = EditorView.theme({
   "&": {
-    height: "var(--agent-input-height, auto)",
-    minHeight: "var(--agent-input-height, 44px)",
+    height: "auto",
+    minHeight: "44px",
     maxHeight: "244px",
     backgroundColor: "transparent",
     color: "rgba(255, 255, 255, 0.9)",
@@ -48,7 +48,7 @@ export const agentEditorTheme = EditorView.theme({
     outline: "none",
   },
   ".cm-content": {
-    minHeight: "var(--agent-input-height, 44px)",
+    minHeight: "44px",
     maxHeight: "244px",
     padding: "6px 4px 6px 4px",
     caretColor: "#ffffff",

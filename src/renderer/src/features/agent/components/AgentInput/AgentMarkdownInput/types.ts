@@ -14,7 +14,6 @@ export interface AgentMarkdownInputProps {
   onChange: (value: string) => void
   onSend: (options?: { delivery?: "queue" | "steer" }) => void
   disabled?: boolean
-  isExpanded?: boolean
   isStreaming?: boolean
   onStop?: () => void
   placeholder?: string

@@ -650,8 +650,6 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "Currently generating a response. Please wait until finished to compact manually.",
     contextCompactedSuccess: "Context compacted successfully, earlier history summarized.",
     exportSuccess: "Export ({{format}}): {{path}}",
-    adaptiveHeight: "Adaptive Height",
-    expandInput: "Expand Input",
     queuedMessagesCount:
       "Queued {{count}} messages, will send automatically after current response finishes",
     steerSentNotice: "Interruption sent, will take effect after current step",
