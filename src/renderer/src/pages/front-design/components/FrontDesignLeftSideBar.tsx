@@ -1,29 +1,32 @@
-import { Loader2, Palette, Search, Trash2 } from "lucide-react"
+import { ChevronDown, Loader2, Palette, Search, Trash2 } from "lucide-react"
 import type React from "react"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
+import { type AgentTab, agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import {
+  type FrontDesignItem,
+  frontDesignStore,
+  useFrontDesign,
+} from "@/features/agent/hooks/frontDesignStore"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { useTranslation } from "@/i18n"
 
 export interface FrontDesignLeftSideBarProps {
   isCollapsed?: boolean
 }
 
-const formatDateTime = (timestamp?: number): string => {
-  if (!timestamp) return ""
-  const date = new Date(timestamp)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
-  return `${year}-${month}-${day} ${hours}:${minutes}`
+interface TabWithDesigns {
+  tab: AgentTab
+  tabLabel: string
+  isStreaming: boolean
+  designs: FrontDesignItem[]
 }
 
 /**
- * 渲染前端设计页面专属左侧栏内容：默认展示当前活跃会话的设计历史列表并支持自由切换。
+ * 渲染前端设计页面专属左侧栏内容：
+ * 同步展示 AgentTabBar 的各 Tab 及其下属的所有 FrontDesignCard 原型，
+ * 层级结构与交互参考 ProjectNavigationList。
  */
 export const FrontDesignLeftSideBar = ({
   isCollapsed = false,
@@ -33,67 +36,169 @@ export const FrontDesignLeftSideBar = ({
 
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
+  const streamingMap = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getStreamingMap)
+  const sessions = useSyncExternalStore(sessionListStore.subscribe, sessionListStore.getSessions)
 
-  // 搜索关键字
+  // 搜索关键字与折叠状态
   const [searchKeyword, setSearchKeyword] = useState<string>("")
+  const [collapsedTabs, setCollapsedTabs] = useState<Record<string, boolean>>({})
 
-  // 获取当前激活 Tab 绑定的会话 ID
-  const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId), [tabs, activeTabId])
-  const activeSessionId = activeTab?.sessionId ?? null
-
-  // 获取当前活跃设计项的所属会话（优先展示当前活跃 Tab 会话；若当前激活设计属于特定会话且当前 Tab 无会话绑定，对齐该会话）
-  const activeDesign = useMemo(
-    () => designs.find((d) => d.id === activeDesignId) ?? null,
-    [designs, activeDesignId],
-  )
-  const effectiveSessionId = activeSessionId ?? activeDesign?.sessionId ?? null
-
-  // 过滤与排序后的前端设计列表（优先匹配有效会话 + 搜索过滤 + 从旧到新升序排序）
-  const filteredDesigns = useMemo(() => {
-    let result = designs.filter((d) =>
-      effectiveSessionId ? d.sessionId === effectiveSessionId : !d.sessionId,
-    )
-
-    // 搜索关键词过滤
-    const keyword = searchKeyword.trim().toLowerCase()
-    if (keyword) {
-      result = result.filter((d) => {
-        const title = (d.title || t("frontDesign.title")).toLowerCase()
-        return title.includes(keyword)
-      })
-    }
-
-    // 按更新/创建时间从旧到新升序排序
-    result.sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))
-
-    return result
-  }, [designs, effectiveSessionId, searchKeyword, t])
-
-  // 当活跃会话变化或列表更新时，若当前激活项不属于当前会话的过滤列表：
-  // 1. 若当前会话有设计，自动激活该会话第一项；
-  // 2. 若当前会话无设计，将 activeDesignId 置空，使右侧画布同步清空。
-  useEffect(() => {
-    const isCurrentActiveInFiltered = filteredDesigns.some((d) => d.id === activeDesignId)
-    if (!isCurrentActiveInFiltered) {
-      const nextId = filteredDesigns[0]?.id ?? null
-      if (nextId !== activeDesignId) {
-        frontDesignStore.setActiveDesignId(nextId)
+  // 计算 Tab 标题
+  const getTabLabel = useCallback(
+    (tab: AgentTab, index: number): string => {
+      if (tab.title?.trim()) return tab.title.trim()
+      if (tab.sessionId) {
+        const session = sessions.find((s) => s.id === tab.sessionId)
+        if (session?.title?.trim()) return session.title.trim()
       }
-    }
-  }, [filteredDesigns, activeDesignId])
+      return t("agent.tabNumber", { number: index + 1 })
+    },
+    [sessions, t],
+  )
 
+  // 聚合各 Tab 与对应会话下的前端设计列表
+  const tabsWithDesigns = useMemo<TabWithDesigns[]>(() => {
+    const keyword = searchKeyword.trim().toLowerCase()
+
+    return tabs.map((tab, index) => {
+      const tabLabel = getTabLabel(tab, index)
+      const isStreaming = Boolean(streamingMap[tab.id])
+
+      // 匹配属于该 Tab 会话的设计项（草稿 Tab 匹配无 sessionId 的设计项）
+      let tabDesigns = designs.filter((d) => {
+        if (tab.sessionId) {
+          return d.sessionId === tab.sessionId
+        }
+        return !d.sessionId && tab.id === activeTabId
+      })
+
+      // 按生成时间升序排序
+      tabDesigns.sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0))
+
+      // 搜索关键词过滤
+      if (keyword) {
+        const isTabNameMatched = tabLabel.toLowerCase().includes(keyword)
+        if (!isTabNameMatched) {
+          tabDesigns = tabDesigns.filter((d) => {
+            const title = (d.title || t("frontDesign.title")).toLowerCase()
+            return title.includes(keyword)
+          })
+        }
+      }
+
+      return {
+        tab,
+        tabLabel,
+        isStreaming,
+        designs: tabDesigns,
+      }
+    })
+  }, [tabs, designs, activeTabId, streamingMap, getTabLabel, searchKeyword, t])
+
+  // 搜索时仅展示匹配到设计的 Tab 或 Tab 名称命中的 Tab
+  const visibleTabsWithDesigns = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase()
+    if (!keyword) return tabsWithDesigns
+
+    return tabsWithDesigns.filter((item) => {
+      const isTabNameMatched = item.tabLabel.toLowerCase().includes(keyword)
+      return isTabNameMatched || item.designs.length > 0
+    })
+  }, [tabsWithDesigns, searchKeyword])
+
+  // 所有可见设计项总数
+  const totalVisibleDesigns = useMemo(() => {
+    return visibleTabsWithDesigns.reduce((acc, item) => acc + item.designs.length, 0)
+  }, [visibleTabsWithDesigns])
+
+  // 扁平化可见设计列表（供折叠视图使用）
+  const allVisibleDesigns = useMemo(() => {
+    return visibleTabsWithDesigns.flatMap((item) => item.designs)
+  }, [visibleTabsWithDesigns])
+
+  // 当活跃会话变化或列表更新时，若当前激活项不属于有效列表，自动激活当前 Tab 或首个可用项
+  useEffect(() => {
+    if (!activeDesignId) {
+      if (designs.length > 0) {
+        const activeTab = tabs.find((t) => t.id === activeTabId)
+        const currentTabDesigns = designs.filter((d) =>
+          activeTab?.sessionId ? d.sessionId === activeTab.sessionId : !d.sessionId,
+        )
+        const fallbackId = currentTabDesigns[0]?.id ?? designs[0]?.id ?? null
+        if (fallbackId) {
+          frontDesignStore.setActiveDesignId(fallbackId)
+        }
+      }
+      return
+    }
+
+    const exists = designs.some((d) => d.id === activeDesignId)
+    if (!exists) {
+      const activeTab = tabs.find((t) => t.id === activeTabId)
+      const currentTabDesigns = designs.filter((d) =>
+        activeTab?.sessionId ? d.sessionId === activeTab.sessionId : !d.sessionId,
+      )
+      const nextId = currentTabDesigns[0]?.id ?? designs[0]?.id ?? null
+      frontDesignStore.setActiveDesignId(nextId)
+    }
+  }, [designs, activeDesignId, activeTabId, tabs])
+
+  // 切换折叠状态
+  const handleToggleTab = useCallback((tabId: string) => {
+    setCollapsedTabs((prev) => ({
+      ...prev,
+      [tabId]: !prev[tabId],
+    }))
+  }, [])
+
+  // 点击 Tab 节点：切换 AgentTabBar 激活 Tab，展开该 Tab，并在有设计且未选中时激活首项
+  const handleTabClick = useCallback(
+    (item: TabWithDesigns) => {
+      agentTabStore.switchTab(item.tab.id)
+      setCollapsedTabs((prev) => ({ ...prev, [item.tab.id]: false }))
+
+      if (item.designs.length > 0) {
+        const isCurrentInTab = item.designs.some((d) => d.id === activeDesignId)
+        if (!isCurrentInTab) {
+          frontDesignStore.setActiveDesignId(item.designs[0].id)
+        }
+      }
+    },
+    [activeDesignId],
+  )
+
+  // 点击设计项节点：激活该设计项，并自动将 AgentTabBar 切换到所属 Tab
+  const handleDesignClick = useCallback(
+    (design: FrontDesignItem, tabId: string) => {
+      frontDesignStore.setActiveDesignId(design.id)
+      if (tabId !== activeTabId) {
+        agentTabStore.switchTab(tabId)
+      }
+    },
+    [activeTabId],
+  )
+
+  // 侧边栏折叠模式（仅展示图标）
   if (isCollapsed) {
     return (
       <div className="flex h-full min-w-0 flex-col gap-3 items-center">
         <div className="flex h-7 shrink-0 items-center justify-end px-1" />
         <nav className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2">
-          {filteredDesigns.map((d) => {
+          {allVisibleDesigns.map((d) => {
             const isActive = d.id === activeDesignId
             return (
               <LxIconButton
                 key={d.id}
                 highlighted={isActive}
-                onClick={() => frontDesignStore.setActiveDesignId(d.id)}
+                onClick={() => {
+                  frontDesignStore.setActiveDesignId(d.id)
+                  if (d.sessionId) {
+                    const targetTab = agentTabStore.findTabBySessionId(d.sessionId)
+                    if (targetTab && targetTab.id !== activeTabId) {
+                      agentTabStore.switchTab(targetTab.id)
+                    }
+                  }
+                }}
                 aria-label={d.title || t("frontDesign.title")}
                 title={{ content: d.title || t("frontDesign.title"), placement: "right" }}
               >
@@ -118,11 +223,11 @@ export const FrontDesignLeftSideBar = ({
           <span className="text-xs font-semibold text-white/80 truncate">
             {t("frontDesign.historyList")}
           </span>
-          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0">
-            {filteredDesigns.length}
+          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
+            {totalVisibleDesigns}
           </span>
         </div>
-        {filteredDesigns.length > 0 && (
+        {designs.length > 0 && (
           <LxIconButton
             size="small"
             onClick={() => frontDesignStore.clear()}
@@ -148,9 +253,9 @@ export const FrontDesignLeftSideBar = ({
         />
       </div>
 
-      {/* 列表内容 */}
-      <div className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-1 pb-2">
-        {filteredDesigns.length === 0 ? (
+      {/* 树形列表内容 */}
+      <div className="custom-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]">
+        {visibleTabsWithDesigns.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center text-xs text-white/35">
             {designs.length === 0
               ? t("frontDesign.noDesigns")
@@ -159,59 +264,142 @@ export const FrontDesignLeftSideBar = ({
                 : t("frontDesign.noDesignsInSession")}
           </div>
         ) : (
-          filteredDesigns.map((d) => {
-            const isActive = d.id === activeDesignId
+          visibleTabsWithDesigns.map((item) => {
+            const isTabActive = item.tab.id === activeTabId
+            const isTabCollapsed = searchKeyword ? false : Boolean(collapsedTabs[item.tab.id])
 
             return (
-              <div
-                key={d.id}
-                role="button"
-                tabIndex={0}
-                data-item-level="prompt"
-                aria-current={isActive ? "page" : undefined}
-                onClick={() => frontDesignStore.setActiveDesignId(d.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    frontDesignStore.setActiveDesignId(d.id)
-                  }
-                }}
-                className={`group flex items-center justify-between gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
-                  isActive ? "bg-white/5 text-white" : "text-white/70"
-                }`}
-              >
-                <div className="flex min-w-0 items-center gap-2 flex-1">
-                  {d.isStreaming ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-white/80" />
-                  ) : (
-                    <Palette
-                      className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`}
-                    />
-                  )}
-                  <div className="flex min-w-0 flex-col flex-1">
-                    <span className="truncate text-xs font-medium select-none leading-tight">
-                      {d.title || t("frontDesign.title")}
-                    </span>
-                    {d.updatedAt ? (
-                      <span className="text-[10px] text-white/40 select-none leading-tight mt-0.5 truncate font-mono">
-                        {formatDateTime(d.updatedAt)}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
-                  <LxIconButton
-                    size="small"
+              <div key={item.tab.id} className="space-y-0.5">
+                {/* 父级：Tab 节点（参考 ProjectNavigationList 的 Project 节点视觉与排版） */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-item-level="tab"
+                  aria-expanded={!isTabCollapsed}
+                  aria-current={isTabActive ? "true" : undefined}
+                  onClick={() => handleTabClick(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      handleTabClick(item)
+                    }
+                  }}
+                  className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+                    isTabActive
+                      ? "bg-white/10 text-white font-medium shadow-sm"
+                      : "text-white/70 hover:bg-white/5"
+                  }`}
+                >
+                  {/* 折叠/展开切换箭头 */}
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation()
-                      frontDesignStore.removeDesign(d.id)
+                      handleToggleTab(item.tab.id)
                     }}
-                    aria-label={t("frontDesign.deleteDesign")}
-                    title={{ content: t("frontDesign.deleteDesign"), placement: "top" }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation()
+                        handleToggleTab(item.tab.id)
+                      }
+                    }}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center text-white/40 hover:text-white transition-transform cursor-pointer"
                   >
-                    <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
-                  </LxIconButton>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                        isTabCollapsed ? "-rotate-90 text-white/30" : "text-white/60"
+                      }`}
+                    />
+                  </span>
+
+                  {/* 运行状态指示灯 */}
+                  <span
+                    aria-label={
+                      item.isStreaming ? t("agent.statusRunning") : t("agent.statusReady")
+                    }
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      item.isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                    }`}
+                    role="status"
+                  />
+
+                  {/* Tab 标题 */}
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white/80">
+                    {item.tabLabel}
+                  </span>
+
+                  {/* 下属设计原型数量角标 */}
+                  <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
+                    {item.designs.length}
+                  </span>
                 </div>
+
+                {/* 子级：设计原型列表（参考 ProjectNavigationList 的 Prompt 节点视觉与排版） */}
+                {!isTabCollapsed && (
+                  <div className="space-y-0.5">
+                    {item.designs.length === 0 ? (
+                      <div
+                        style={{ marginLeft: "10px" }}
+                        className="flex h-7 items-center px-2 text-[11px] text-white/30 italic select-none"
+                      >
+                        <span>{t("frontDesign.noDesignsInSession")}</span>
+                      </div>
+                    ) : (
+                      item.designs.map((d) => {
+                        const isDesignActive = d.id === activeDesignId
+
+                        return (
+                          <div
+                            key={d.id}
+                            role="button"
+                            tabIndex={0}
+                            data-item-level="prompt"
+                            aria-current={isDesignActive ? "page" : undefined}
+                            style={{ marginLeft: "10px" }}
+                            onClick={() => handleDesignClick(d, item.tab.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                handleDesignClick(d, item.tab.id)
+                              }
+                            }}
+                            className={`group flex h-7 items-center justify-between gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+                              isDesignActive ? "bg-white/5 text-white font-medium" : "text-white/70"
+                            }`}
+                          >
+                            <div className="flex min-w-0 items-center gap-1.5 flex-1">
+                              {d.isStreaming ? (
+                                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-400" />
+                              ) : (
+                                <Palette
+                                  className={`h-3.5 w-3.5 shrink-0 ${
+                                    isDesignActive ? "text-pink-400" : "text-white/45"
+                                  }`}
+                                />
+                              )}
+                              <span className="min-w-0 flex-1 truncate text-xs select-none">
+                                {d.title || t("frontDesign.title")}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
+                              <LxIconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  frontDesignStore.removeDesign(d.id)
+                                }}
+                                aria-label={t("frontDesign.deleteDesign")}
+                                title={{ content: t("frontDesign.deleteDesign"), placement: "top" }}
+                              >
+                                <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
+                              </LxIconButton>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
               </div>
             )
           })

@@ -769,6 +769,24 @@ export const useAgentChat = (
           setMessages(mergeSubagentSnapshots(chatMessages))
           setTodos(restored.todos ?? [])
           setInputText("")
+
+          // 全量水合历史会话中的前端设计原型到 frontDesignStore
+          for (const msg of chatMessages) {
+            for (const block of msg.blocks) {
+              if (block.kind === "frontDesign") {
+                frontDesignStore.registerDesign({
+                  id: block.design.id,
+                  title: block.design.title,
+                  html: block.design.html,
+                  isStreaming: false,
+                  sessionId,
+                  updatedAt: msg.timestamp,
+                  mode: block.design.mode,
+                  designDir: block.design.designDir,
+                })
+              }
+            }
+          }
         })
         .catch(() => {
           // 会话已不存在等错误：保持当前展示，不做额外处理。
