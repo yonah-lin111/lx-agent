@@ -460,17 +460,21 @@ export const FrontDesignPage = (): React.JSX.Element => {
       <main
         className={`flex min-h-0 flex-1 items-center justify-center overflow-auto ${
           isFullBleed ? "p-0" : "p-4"
-        }`}
+        } ${showEmptyDesign ? "front-design-empty-canvas" : ""}`}
         style={{ backgroundColor: "var(--color-theme-bg)" }}
       >
         {showEmptyDesign ? (
-          <div className="flex max-w-sm flex-col items-center justify-center gap-3 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20">
+          <div className="front-design-empty-container flex max-w-sm flex-col items-center justify-center gap-3 text-center">
+            <div className="front-design-empty-icon flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20">
               <Palette className="h-6 w-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold text-white/80">{t("frontDesign.emptyTitle")}</h2>
-              <p className="text-xs text-white/45 leading-relaxed">{t("frontDesign.emptyDesc")}</p>
+              <h2 className="front-design-empty-title text-sm font-semibold text-white/80">
+                {t("frontDesign.emptyTitle")}
+              </h2>
+              <p className="front-design-empty-desc text-xs text-white/45 leading-relaxed">
+                {t("frontDesign.emptyDesc")}
+              </p>
             </div>
           </div>
         ) : (

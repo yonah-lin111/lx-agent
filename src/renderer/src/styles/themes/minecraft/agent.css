@@ -2836,3 +2836,31 @@
 [data-theme="minecraft"] .agent-execution-flow-design-content {
   width: 100% !important;
 }
+
+[data-theme="minecraft"] .front-design-empty-icon {
+  border: 2px solid #000000 !important;
+  background-color: #271622 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-empty-icon svg {
+  color: #f472b6 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
+[data-theme="minecraft"] .front-design-empty-title {
+  font-family: var(--theme-font-family) !important;
+  color: #55ffff !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .front-design-empty-desc {
+  font-family: var(--theme-font-family) !important;
+  color: #a6a6bc !important;
+  text-shadow: 1px 1px 0px #000000;
+}

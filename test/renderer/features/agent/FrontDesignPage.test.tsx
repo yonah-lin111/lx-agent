@@ -32,11 +32,16 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     localStorage.clear()
   })
 
-  it("无 HTML 时渲染空状态且 main 区域保留 p-4", () => {
+  it("无 HTML 时渲染空状态且 main 区域保留 p-4 与 front-design-empty-canvas", () => {
     const { container } = render(<FrontDesignPage />)
     const main = container.querySelector("main")
     expect(main).not.toBeNull()
     expect(main?.className).toContain("p-4")
+    expect(main?.className).toContain("front-design-empty-canvas")
+    expect(container.querySelector(".front-design-empty-container")).not.toBeNull()
+    expect(container.querySelector(".front-design-empty-icon")).not.toBeNull()
+    expect(container.querySelector(".front-design-empty-title")).not.toBeNull()
+    expect(container.querySelector(".front-design-empty-desc")).not.toBeNull()
     expect(container.querySelector("iframe")).toBeNull()
     // 不应存在任何搜索框或地址输入框
     expect(screen.queryByRole("textbox")).toBeNull()
@@ -237,6 +242,7 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     expect(frontDesignStore.getState().activeDesignId).toBeNull()
     expect(container.querySelector("iframe")).toBeNull()
+    expect(container.querySelector("main")?.className).toContain("front-design-empty-canvas")
     expect(screen.getByText(/等待 Agent 输出前端设计稿|Waiting for Design Output/i)).not.toBeNull()
   })
 })
