@@ -1,5 +1,5 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import { ChevronUp } from "lucide-react"
+import { ArrowDownToLine, ChevronUp } from "lucide-react"
 import type React from "react"
 import {
   forwardRef,
@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentEmptyHero } from "@/features/agent/components/AgentEmptyHero"
 import { AgentSuggestedPromptCards } from "@/features/agent/components/AgentSuggestedPromptCards"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
@@ -21,6 +22,7 @@ import type {
   ProposedPlanData,
   ReviewFindingItem,
 } from "@/features/agent/types"
+import { useTranslation } from "@/i18n"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
 import { AgentMessageItem } from "./AgentMessageItem"
 import { AgentMessageListSkeleton } from "./AgentMessageListSkeleton"
@@ -115,6 +117,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
     },
     ref,
   ): React.JSX.Element => {
+    const { t } = useTranslation()
     const scrollRef = useRef<HTMLDivElement>(null)
     const stickToBottomRef = useRef(true)
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
@@ -537,6 +540,25 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                 )
               })}
             </div>
+
+            {/* 回到底部悬浮按钮 */}
+            {showScrollToBottom && !isSubagentPanelOpen && (
+              <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
+                <LxIconButton
+                  shape="circle"
+                  size="medium"
+                  aria-label={t("agent.scrollToBottom")}
+                  title={{
+                    content: t("agent.scrollToBottom"),
+                    placement: "top",
+                  }}
+                  className="pointer-events-auto border border-[var(--color-theme-border-subtle,rgba(255,255,255,0.12))] bg-[var(--color-theme-surface-elevated,#212121)] text-[var(--color-theme-text-secondary,rgba(255,255,255,0.6))] shadow-lg backdrop-blur hover:border-[var(--color-theme-border-hover,rgba(255,255,255,0.25))] hover:bg-[var(--color-theme-surface-hover,#2a2a2a)] hover:text-[var(--color-theme-text-primary,#fff)]"
+                  onClick={scrollToBottom}
+                >
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                </LxIconButton>
+              </div>
+            )}
           </div>
         )}
 

@@ -1,5 +1,13 @@
 import type { PromptAssembly } from "@shared/contracts/agent"
-import { ChevronUp, Loader2, RefreshCw, Trash2, Undo2, Workflow } from "lucide-react"
+import {
+  ArrowDownToLine,
+  ChevronUp,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Undo2,
+  Workflow,
+} from "lucide-react"
 import {
   Fragment,
   forwardRef,
@@ -133,6 +141,7 @@ export const AgentExecutionFlowList = forwardRef<
     const [groupExpansionOverrides, setGroupExpansionOverrides] = useState<Record<string, boolean>>(
       {},
     )
+    const [canScrollBottom, setCanScrollBottom] = useState(false)
     const pendingQuestionStepIdsRef = useRef(new Set<string>())
 
     // 当前选中的 Subagent 详情展示对象（对应 AgentSubagentPanel 的 toolCall 参数）
@@ -472,7 +481,9 @@ export const AgentExecutionFlowList = forwardRef<
     }, [isNearBottom, steps.length])
 
     const updateNavState = useCallback((): void => {
-      onNavigationStateChange?.(computeNavState())
+      const state = computeNavState()
+      setCanScrollBottom(state.canScrollBottom)
+      onNavigationStateChange?.(state)
     }, [computeNavState, onNavigationStateChange])
 
     // 滚动时更新跟随状态：向上滚动离开底部暂停跟随，向下滚回底部自动恢复。
@@ -502,6 +513,7 @@ export const AgentExecutionFlowList = forwardRef<
       hasInitialScrolledRef.current = false
       followBottomRef.current = true
       prevScrollTopRef.current = null
+      setCanScrollBottom(false)
       updateNavState()
     }, [messages.length, updateNavState])
 
@@ -822,7 +834,10 @@ export const AgentExecutionFlowList = forwardRef<
                     runningTurnSet.has(elementTurnIndex) ||
                     (isStreaming && elementTurnIndex === maxTurn)
                   const canDeleteTurn =
-                    !readOnly && Boolean(onDeleteMessage) && Boolean(turnMessageId) && !isTurnRunning
+                    !readOnly &&
+                    Boolean(onDeleteMessage) &&
+                    Boolean(turnMessageId) &&
+                    !isTurnRunning
 
                   const hasTurnSummaryPills =
                     turnStats &&
@@ -984,17 +999,19 @@ export const AgentExecutionFlowList = forwardRef<
                               })}
                             </span>
                           )}
-                          {turnStats && turnStats.cacheReadTokens > 0 && turnStats.inputTokens > 0 && (
-                            <span className="agent-turn-summary-pill agent-turn-summary-pill-cache text-sky-300/90">
-                              {t("agent.turnCacheHit", {
-                                percent: Math.round(
-                                  (turnStats.cacheReadTokens /
-                                    (turnStats.inputTokens + turnStats.cacheReadTokens)) *
-                                    100,
-                                ),
-                              })}
-                            </span>
-                          )}
+                          {turnStats &&
+                            turnStats.cacheReadTokens > 0 &&
+                            turnStats.inputTokens > 0 && (
+                              <span className="agent-turn-summary-pill agent-turn-summary-pill-cache text-sky-300/90">
+                                {t("agent.turnCacheHit", {
+                                  percent: Math.round(
+                                    (turnStats.cacheReadTokens /
+                                      (turnStats.inputTokens + turnStats.cacheReadTokens)) *
+                                      100,
+                                  ),
+                                })}
+                              </span>
+                            )}
                           {turnStats && turnStats.durationMs > 0 && (
                             <span className="agent-turn-summary-pill agent-turn-summary-pill-duration text-emerald-400/90">
                               {t("agent.turnDuration", {
@@ -1060,6 +1077,25 @@ export const AgentExecutionFlowList = forwardRef<
             <div className="max-w-[240px] text-[12px] text-white/35">
               {t("agent.noExecutionFlowDesc")}
             </div>
+          </div>
+        )}
+
+        {/* 回到底部悬浮按钮 */}
+        {canScrollBottom && !activeSubagentToolCall && (
+          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
+            <LxIconButton
+              shape="circle"
+              size="medium"
+              aria-label={t("agent.scrollToBottom")}
+              title={{
+                content: t("agent.scrollToBottom"),
+                placement: "top",
+              }}
+              className="pointer-events-auto border border-[var(--color-theme-border-subtle,rgba(255,255,255,0.12))] bg-[var(--color-theme-surface-elevated,#212121)] text-[var(--color-theme-text-secondary,rgba(255,255,255,0.6))] shadow-lg backdrop-blur hover:border-[var(--color-theme-border-hover,rgba(255,255,255,0.25))] hover:bg-[var(--color-theme-surface-hover,#2a2a2a)] hover:text-[var(--color-theme-text-primary,#fff)]"
+              onClick={scrollToBottom}
+            >
+              <ArrowDownToLine className="h-3.5 w-3.5" />
+            </LxIconButton>
           </div>
         )}
 

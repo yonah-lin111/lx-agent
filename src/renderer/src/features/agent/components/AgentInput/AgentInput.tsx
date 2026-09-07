@@ -1,4 +1,4 @@
-import { ArrowDownToLine, Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
+import { Loader2, Maximize2, Minimize2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -54,9 +54,6 @@ export interface AgentInputProps {
   selectedFiles: AgentInputFile[]
   onFilesChange: (files: AgentInputFile[]) => void
   supportsImages: boolean
-  // 滚动定位控制
-  onScrollBottom?: () => void
-  canScrollBottom?: boolean
   // 语音输入按钮引用（供外部快捷键调用 toggleRecording）
   voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
 }
@@ -93,8 +90,6 @@ export const AgentInput = ({
   selectedFiles,
   onFilesChange,
   supportsImages,
-  onScrollBottom,
-  canScrollBottom = false,
   voiceButtonRef,
 }: AgentInputProps): React.JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -420,22 +415,6 @@ export const AgentInput = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-0.5 mr-0.5">
-              <LxIconButton
-                shape="circle"
-                showHoverBg={false}
-                disabled={!canScrollBottom}
-                aria-label={t("agent.scrollToBottom")}
-                title={{
-                  content: t("agent.scrollToBottom"),
-                  placement: "top",
-                }}
-                className="agent-input-nav-btn text-white/50 hover:text-white disabled:!text-white/20"
-                onClick={onScrollBottom}
-              >
-                <ArrowDownToLine className="h-3.5 w-3.5" />
-              </LxIconButton>
-            </div>
             <LxIconButton
               shape="circle"
               showHoverBg={false}

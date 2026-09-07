@@ -13,13 +13,10 @@ import { settingsApi } from "@/features/settings/api/settingsApi"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "./api/agentApi"
-import {
-  AgentExecutionFlowList,
-  type AgentExecutionFlowListRef,
-} from "./components/AgentExecutionFlowList"
+import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
 import type { AgentVoiceInputButtonRef } from "./components/AgentInput/AgentVoiceInputButton"
-import { AgentMessageList, type AgentMessageListRef } from "./components/AgentMessageList"
+import { AgentMessageList } from "./components/AgentMessageList"
 import { AgentSubagentPanel } from "./components/panels"
 import { AgentStatusBar } from "./components/status-bar"
 import { agentTabStore } from "./hooks/agentTabStore"
@@ -363,18 +360,8 @@ export const AgentPage = ({
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
     setActiveSubagentId(toolCall.toolCallId)
   }, [])
-  // 子代理面板消息列表滚动容器（面板打开时，滚动按钮接管面板滚动）。
+  // 子代理面板消息列表滚动容器。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
-  const messageListRef = useRef<AgentMessageListRef>(null)
-  // 执行流程列表命令式句柄（flow 视图下输入区回到底部按钮的目标）。
-  const flowListRef = useRef<AgentExecutionFlowListRef>(null)
-  const [navState, setNavState] = useState({
-    canScrollBottom: false,
-  })
-  // 切换视图时重置导航状态，等待当前视图挂载后重新上报。
-  useEffect(() => {
-    setNavState({ canScrollBottom: false })
-  }, [viewMode])
   const pageContainerRef = useRef<HTMLDivElement>(null)
 
   // Shift + Tab 快捷键：在整个 AgentPage 范围内切换协作模式（Build / Plan / Review / Design 循环切换）
@@ -670,13 +657,11 @@ export const AgentPage = ({
         {viewMode === "flow" ? (
           /* 执行流程视图：消息列表的另一种显示形式，展示当前 Agent 的全部执行日志与步骤。 */
           <AgentExecutionFlowList
-            ref={flowListRef}
             messages={messages}
             isStreaming={isStreaming}
             sessionId={currentSessionId ?? undefined}
             cwd={statusBarPath}
             onSelectPrompt={(prompt) => sendMessage(prompt)}
-            onNavigationStateChange={setNavState}
             canContinue={canContinue}
             onContinue={continueChat}
             onAcceptPlan={acceptAndExecutePlan}
@@ -687,7 +672,6 @@ export const AgentPage = ({
         ) : (
           <>
             <AgentMessageList
-              ref={messageListRef}
               messages={messages}
               isStreaming={isStreaming}
               isRestoring={isRestoring}
@@ -705,7 +689,6 @@ export const AgentPage = ({
               onContinue={continueChat}
               onAcceptPlan={acceptAndExecutePlan}
               onApplyReviewFixes={acceptAndExecuteReviewFixes}
-              onNavigationStateChange={setNavState}
             />
             {/* 子代理面板：点击 AgentSubagentBlock 顶部 label 展开，只读展示内部运行记录。 */}
             <AgentSubagentPanel
@@ -746,12 +729,6 @@ export const AgentPage = ({
         selectedFiles={selectedFiles}
         onFilesChange={setSelectedFiles}
         supportsImages={supportsImages}
-        onScrollBottom={() =>
-          viewMode === "flow"
-            ? flowListRef.current?.scrollToBottom()
-            : messageListRef.current?.scrollToBottom()
-        }
-        canScrollBottom={navState.canScrollBottom}
       />
       <AgentStatusBar
         projectPath={statusBarPath}
