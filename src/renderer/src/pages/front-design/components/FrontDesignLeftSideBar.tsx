@@ -116,32 +116,15 @@ export const FrontDesignLeftSideBar = ({
     return visibleTabsWithDesigns.flatMap((item) => item.designs)
   }, [visibleTabsWithDesigns])
 
-  // 当活跃会话变化或列表更新时，若当前激活项不属于有效列表，自动激活当前 Tab 或首个可用项
+  // 当已有激活项从列表中被删除时，重置激活项
   useEffect(() => {
-    if (!activeDesignId) {
-      if (designs.length > 0) {
-        const activeTab = tabs.find((t) => t.id === activeTabId)
-        const currentTabDesigns = designs.filter((d) =>
-          activeTab?.sessionId ? d.sessionId === activeTab.sessionId : !d.sessionId,
-        )
-        const fallbackId = currentTabDesigns[0]?.id ?? designs[0]?.id ?? null
-        if (fallbackId) {
-          frontDesignStore.setActiveDesignId(fallbackId)
-        }
-      }
-      return
-    }
+    if (!activeDesignId) return
 
     const exists = designs.some((d) => d.id === activeDesignId)
     if (!exists) {
-      const activeTab = tabs.find((t) => t.id === activeTabId)
-      const currentTabDesigns = designs.filter((d) =>
-        activeTab?.sessionId ? d.sessionId === activeTab.sessionId : !d.sessionId,
-      )
-      const nextId = currentTabDesigns[0]?.id ?? designs[0]?.id ?? null
-      frontDesignStore.setActiveDesignId(nextId)
+      frontDesignStore.setActiveDesignId(designs[0]?.id ?? null)
     }
-  }, [designs, activeDesignId, activeTabId, tabs])
+  }, [designs, activeDesignId])
 
   // 切换折叠状态
   const handleToggleTab = useCallback((tabId: string) => {
@@ -151,20 +134,12 @@ export const FrontDesignLeftSideBar = ({
     }))
   }, [])
 
-  // 点击 Tab 节点：切换 AgentTabBar 激活 Tab，展开该 Tab，并在有设计且未选中时激活首项
+  // 点击 Tab 节点：仅负责折叠与展开，绝不打开/激活设计
   const handleTabClick = useCallback(
-    (item: TabWithDesigns) => {
-      agentTabStore.switchTab(item.tab.id)
-      setCollapsedTabs((prev) => ({ ...prev, [item.tab.id]: false }))
-
-      if (item.designs.length > 0) {
-        const isCurrentInTab = item.designs.some((d) => d.id === activeDesignId)
-        if (!isCurrentInTab) {
-          frontDesignStore.setActiveDesignId(item.designs[0].id)
-        }
-      }
+    (tabId: string) => {
+      handleToggleTab(tabId)
     },
-    [activeDesignId],
+    [handleToggleTab],
   )
 
   // 点击设计项节点：激活该设计项，并自动将 AgentTabBar 切换到所属 Tab
@@ -277,10 +252,10 @@ export const FrontDesignLeftSideBar = ({
                   data-item-level="tab"
                   aria-expanded={!isTabCollapsed}
                   aria-current={isTabActive ? "true" : undefined}
-                  onClick={() => handleTabClick(item)}
+                  onClick={() => handleTabClick(item.tab.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      handleTabClick(item)
+                      handleTabClick(item.tab.id)
                     }
                   }}
                   className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${

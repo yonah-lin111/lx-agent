@@ -1382,6 +1382,7 @@ export const zh: TranslationDictionary = {
     deleteDesign: "删除此设计",
     switchDesign: "切换设计",
     clearHistory: "清空历史",
+    clearCanvas: "清空画布",
     activeBadge: "当前",
     generating: "设计稿生成中...",
     summaryDesc: "UI 原型代码已就绪，支持独立沙箱热更新渲染、多视口预览与一键复制代码。",

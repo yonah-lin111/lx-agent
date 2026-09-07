@@ -76,7 +76,7 @@ describe("FrontDesignLeftSideBar 侧边栏多 Tab 原型树", () => {
     expect(Array.from(countBadges).some((el) => el.textContent === "1")).toBe(true)
   })
 
-  it("点击 Tab 节点切换激活 Tab，点击折叠箭头仅切换展开收起", () => {
+  it("点击 Tab 节点仅切换展开与收起，不切换激活 Tab 也不会打开设计", () => {
     const tab1Id = agentTabStore.getActiveTabId()
     agentTabStore.setTabTitle(tab1Id, "Tab 1")
     agentTabStore.setTabSessionId(tab1Id, "session-1")
@@ -103,20 +103,22 @@ describe("FrontDesignLeftSideBar 侧边栏多 Tab 原型树", () => {
 
     render(<FrontDesignLeftSideBar />)
 
-    // 点击 Tab 1 整行：应切换激活 Tab 到 Tab 1
-    const tab1Row = screen.getByText("Tab 1").closest("[data-item-level='tab']")!
-    fireEvent.click(tab1Row)
-    expect(agentTabStore.getActiveTabId()).toBe(tab1Id)
-
-    // 此时 Tab 1 的设计项应可见
+    // Tab 1 默认展开，设计项可见
     expect(screen.getByText("Tab 1 Item")).not.toBeNull()
 
-    // 点击 Tab 1 的折叠箭头（阻止了整行点击的冒泡）
-    const chevronBtn = tab1Row.querySelector("[role='button']")!
-    fireEvent.click(chevronBtn)
+    // 点击 Tab 1 整行：仅收起 Tab 1，不切换 agentTabStore，不激活 Tab 1 设计
+    const tab1Row = screen.getByText("Tab 1").closest("[data-item-level='tab']")!
+    fireEvent.click(tab1Row)
+
+    // agentTabStore 依然保持在 Tab 2
+    expect(agentTabStore.getActiveTabId()).toBe(tab2Id)
 
     // 折叠后 Tab 1 Item 不再可见
     expect(screen.queryByText("Tab 1 Item")).toBeNull()
+
+    // 再次点击 Tab 1 整行：重新展开
+    fireEvent.click(tab1Row)
+    expect(screen.getByText("Tab 1 Item")).not.toBeNull()
   })
 
   it("点击设计项节点激活设计并联动切换所属 Tab", () => {
@@ -232,5 +234,50 @@ describe("FrontDesignLeftSideBar 侧边栏多 Tab 原型树", () => {
     // 点击图标按钮激活该设计项
     fireEvent.click(iconBtn)
     expect(frontDesignStore.getState().activeDesignId).toBe("design-icon-test")
+  })
+
+  it("在设计卡片流式生成内容时支持切换至其他 item，且后续流式不会抢占焦点", () => {
+    const tabId = agentTabStore.getActiveTabId()
+    agentTabStore.setTabSessionId(tabId, "session-stream")
+
+    // 先注册一个已有历史设计
+    frontDesignStore.registerDesign({
+      id: "design-history",
+      title: "History Design",
+      html: "<div>Old version</div>",
+      sessionId: "session-stream",
+    })
+
+    // 开始流式生成新设计（第一块）
+    frontDesignStore.registerDesign({
+      id: "design-generating",
+      title: "Generating Design",
+      html: "<div>Gen part 1",
+      isStreaming: true,
+      sessionId: "session-stream",
+    })
+
+    render(<FrontDesignLeftSideBar />)
+
+    // 用户在流式生成中手动切换到历史设计
+    const historyItem = screen.getByText("History Design")
+    fireEvent.click(historyItem)
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-history")
+
+    // 后续流式块持续到达（数据静默更新）
+    frontDesignStore.registerDesign({
+      id: "design-generating",
+      title: "Generating Design",
+      html: "<div>Gen part 1 and part 2</div>",
+      isStreaming: true,
+      sessionId: "session-stream",
+    })
+
+    // 焦点绝不应被抢占，依然保持在用户选中的历史设计
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-history")
+
+    // 生成的设计数据已在后台更新
+    const genItem = frontDesignStore.getAllDesigns().find((d) => d.id === "design-generating")
+    expect(genItem?.html).toBe("<div>Gen part 1 and part 2</div>")
   })
 })

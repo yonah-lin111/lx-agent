@@ -203,4 +203,24 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     const iframe = container.querySelector("iframe")
     expect(iframe?.getAttribute("srcdoc")).toContain("color:red")
   })
+
+  it("点击清空画布按钮重置 activeDesignId 为 null 并展现空状态占位", () => {
+    frontDesignStore.registerDesign({
+      id: "design-to-clear",
+      title: "Active Design",
+      html: "<div class='p-2'>Will be cleared</div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+    expect(container.querySelector("iframe")).not.toBeNull()
+
+    const clearCanvasBtn = screen.getByRole("button", { name: /清空画布|clear canvas/i })
+    expect(clearCanvasBtn).not.toBeNull()
+
+    fireEvent.click(clearCanvasBtn)
+
+    expect(frontDesignStore.getState().activeDesignId).toBeNull()
+    expect(container.querySelector("iframe")).toBeNull()
+    expect(screen.getByText(/等待 Agent 输出前端设计稿|Waiting for Design Output/i)).not.toBeNull()
+  })
 })

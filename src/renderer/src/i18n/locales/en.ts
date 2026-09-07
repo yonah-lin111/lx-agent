@@ -1420,6 +1420,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     deleteDesign: "Delete design",
     switchDesign: "Switch design",
     clearHistory: "Clear history",
+    clearCanvas: "Clear canvas",
     activeBadge: "Active",
     generating: "Generating design prototype...",
     summaryDesc:

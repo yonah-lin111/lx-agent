@@ -1,6 +1,7 @@
 import {
   Check,
   Copy,
+  Eraser,
   FolderOpen,
   Laptop,
   Palette,
@@ -15,7 +16,7 @@ import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sanitizeHtmlDocument } from "@/features/agent/components/visuals/sanitizeVisual"
-import { useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
+import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
 import { useTranslation } from "@/i18n"
 
 type ViewportMode = "desktop" | "tablet" | "mobile"
@@ -267,8 +268,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
     lastRenderedHtmlRef.current = sanitizedHtmlDoc
   }, [sanitizedHtmlDoc, isStreaming])
 
-
-
   const handleCopy = useCallback(async () => {
     if (!html) return
     try {
@@ -284,8 +283,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
   const handleRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1)
   }, [])
-
-
 
   const handleOpenDesignDirectory = useCallback(async () => {
     if (!sessionId || !activeDesignId) return
@@ -431,7 +428,16 @@ export const FrontDesignPage = (): React.JSX.Element => {
 
           <div className="h-3.5 w-[1px] bg-white/10 mx-0.5" />
 
-
+          {/* 清空画布 */}
+          <LxIconButton
+            size="small"
+            disabled={!activeDesignId && !html}
+            onClick={() => frontDesignStore.setActiveDesignId(null)}
+            aria-label={t("frontDesign.clearCanvas")}
+            title={{ content: t("frontDesign.clearCanvas"), placement: "bottom" }}
+          >
+            <Eraser className="h-3.5 w-3.5" />
+          </LxIconButton>
 
           {/* 复制代码 */}
           <LxIconButton
@@ -480,7 +486,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             <iframe
               key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
               ref={iframeRef}
-              srcDoc={isTestEnvironment ? sanitizedHtmlDoc : (initialIframeDoc || sanitizedHtmlDoc)}
+              srcDoc={isTestEnvironment ? sanitizedHtmlDoc : initialIframeDoc || sanitizedHtmlDoc}
               sandbox="allow-same-origin"
               title="Front Design Preview"
               className={`h-full w-full border-none ${
