@@ -15,6 +15,7 @@ import {
   agentSessionService,
   createExternalId,
 } from "@/services/agentSessionService"
+import { saveFrontDesignToDisk } from "@/services/frontDesignService"
 import { gitSnapshotService, type SnapshotFileChange } from "@/services/gitSnapshotService"
 import { isContextOverflowFailure } from "./compaction"
 import { detectModelFamily, getModelAdaptiveInstructions } from "./prompts/modelAdapters"
@@ -586,6 +587,36 @@ export class TurnStore {
         })
       }
     })
+
+    // 检查消息中是否包含前端设计 <front_design> 块，若是则异步拆分落盘到 ~/.lx/session/{sessionId}/design/{designId}/
+    for (const message of messages) {
+      if (message.role === "assistant" && Array.isArray(message.content)) {
+        for (const block of message.content) {
+          if (block.type === "text" && typeof block.text === "string") {
+            const frontDesignRegex = /<front_design(?:\s+[^>]*)?>([\s\S]*?)<\/front_design>/gi
+            let match: RegExpExecArray | null = null
+            while ((match = frontDesignRegex.exec(block.text)) !== null) {
+              const fullTag = match[0]
+              const html = match[1]?.trim() || ""
+              const idMatch = /id=["']([^"']*)["']/i.exec(fullTag)
+              const modeMatch = /mode=["']([^"']*)["']/i.exec(fullTag)
+              const designId = idMatch?.[1]?.trim() || `design-${match.index}`
+              const styleMode = modeMatch?.[1]?.trim() === "css" ? "css" : "tailwindcss"
+
+              const currentSessionId = this.deps.getCurrentSessionId()
+              if (currentSessionId && html) {
+                void saveFrontDesignToDisk({
+                  sessionId: currentSessionId,
+                  designId,
+                  html,
+                  mode: styleMode,
+                })
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   // 按 seq 读取会话，重建消息列表、消息 → seq 对齐、最近的能力快照与任务清单。

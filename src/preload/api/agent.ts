@@ -82,6 +82,14 @@ export const agentApi: AgentApi["agent"] = {
   getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) =>
     ipcRenderer.invoke(AGENT_CHANNELS.getPromptAssembly, sessionId, cwd, tabId),
   compileTailwind: (html: string) => ipcRenderer.invoke(AGENT_CHANNELS.compileTailwind, html),
+  saveFrontDesign: (options: {
+    sessionId: string
+    designId: string
+    html: string
+    mode?: "tailwindcss" | "css"
+  }) => ipcRenderer.invoke(AGENT_CHANNELS.saveFrontDesign, options),
+  openDesignDir: (sessionId: string, designId: string) =>
+    ipcRenderer.invoke(AGENT_CHANNELS.openDesignDir, sessionId, designId),
   onEvent: (handler: (event: AgentEvent) => void) => {
     const listener = (_: unknown, event: AgentEvent): void => handler(event)
     ipcRenderer.on(AGENT_CHANNELS.event, listener)

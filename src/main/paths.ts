@@ -33,6 +33,12 @@ export const getScreenshotsDir = (): string => join(getAppDataRoot(), "screensho
 export const getDatabasePath = (): string => join(getDatabaseDir(), "lx.db")
 
 /**
+ * 获取指定会话的前端设计目录。
+ */
+export const getSessionDesignDir = (sessionId: string, designId: string): string =>
+  join(getAppDataRoot(), "session", sessionId, "design", designId)
+
+/**
  * 检测并创建 SQLite 数据库存储目录。
  */
 export const ensureDatabaseDir = (databaseDir = getDatabaseDir()): void => {

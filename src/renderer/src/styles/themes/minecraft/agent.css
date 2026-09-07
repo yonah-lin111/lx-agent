@@ -2802,6 +2802,24 @@
   background-color: #9d174d !important;
 }
 
+[data-theme="minecraft"] .front-design-dir-btn {
+  font-family: var(--theme-font-family) !important;
+  border: 2px solid #000000 !important;
+  background-color: #1b1624 !important;
+  color: #f472b6 !important;
+  border-radius: 0px !important;
+  font-weight: 700;
+  text-shadow: 1px 1px 0px #000000;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .front-design-dir-btn:hover:not(:disabled) {
+  background-color: #251e32 !important;
+}
+
 [data-theme="minecraft"] .front-design-code-container {
   border: 1px solid #000000 !important;
   background-color: #0e0a0d !important;

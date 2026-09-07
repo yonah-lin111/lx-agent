@@ -62,12 +62,19 @@ const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
 const FRONT_DESIGN_OPEN_REGEX = /<front_design(?:\s+[^>]*)?>/i
 const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
 
-const extractFrontDesignAttributes = (tagStr: string): { title?: string; id?: string } => {
+const extractFrontDesignAttributes = (
+  tagStr: string,
+): { title?: string; id?: string; mode?: "tailwindcss" | "css" } => {
   const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
   const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
+  const rawMode = modeMatch ? modeMatch[1].trim().toLowerCase() : undefined
+  const mode = rawMode === "css" ? "css" : "tailwindcss"
+
   return {
     title: titleMatch ? titleMatch[1].trim() : undefined,
     id: idMatch ? idMatch[1].trim() : undefined,
+    mode,
   }
 }
 
@@ -288,9 +295,14 @@ export const parseTextWithProposedPlan = (
   if (earliest === "design" && designOpenMatch) {
     const openIndex = designOpenMatch.index
     const openTagLength = designOpenMatch[0].length
-    const { title: parsedTitle, id: parsedId } = extractFrontDesignAttributes(designOpenMatch[0])
+    const {
+      title: parsedTitle,
+      id: parsedId,
+      mode: parsedMode,
+    } = extractFrontDesignAttributes(designOpenMatch[0])
     const title = parsedTitle || "Frontend Prototype"
     const designId = parsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
+    const mode = parsedMode ?? "tailwindcss"
 
     const result: ChatBlock[] = []
     const before = text.slice(0, openIndex).trim()
@@ -313,6 +325,7 @@ export const parseTextWithProposedPlan = (
           raw: text.slice(openIndex),
           isStreaming: true,
           sessionId: sessionId ?? null,
+          mode,
         },
         durationMs,
       })
@@ -333,6 +346,7 @@ export const parseTextWithProposedPlan = (
           ),
           isStreaming: false,
           sessionId: sessionId ?? null,
+          mode,
         },
         durationMs,
       })

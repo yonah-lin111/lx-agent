@@ -912,6 +912,22 @@ export interface AgentApi {
     getPromptAssembly: (sessionId?: string, cwd?: string, tabId?: string) => Promise<PromptAssembly>
     // 编译 HTML 中使用的 Tailwind CSS 样式
     compileTailwind: (html: string) => Promise<string>
+    // 保存并拆分前端设计文件到 ~/.lx/session/{sessionId}/design/{designId}/
+    saveFrontDesign: (options: {
+      sessionId: string
+      designId: string
+      html: string
+      mode?: "tailwindcss" | "css"
+    }) => Promise<{
+      ok: boolean
+      dir: string
+      htmlPath: string
+      cssPath: string
+      jsPath: string
+      error?: string
+    }>
+    // 打开指定前端设计本地目录
+    openDesignDir: (sessionId: string, designId: string) => Promise<boolean>
     onEvent: (handler: (event: AgentEvent) => void) => () => void
   }
 }

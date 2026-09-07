@@ -48,5 +48,9 @@ export const AGENT_CHANNELS = {
   getPromptAssembly: "agent:getPromptAssembly",
   // 编译 HTML 中包含的 Tailwind CSS 实用类。
   compileTailwind: "agent:compileTailwind",
+  // 前端设计拆分并落盘到本地目录。
+  saveFrontDesign: "agent:saveFrontDesign",
+  // 打开指定设计目录。
+  openDesignDir: "agent:openDesignDir",
   event: "agent:event",
 } as const

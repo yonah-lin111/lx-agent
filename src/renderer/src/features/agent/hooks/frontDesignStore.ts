@@ -9,6 +9,8 @@ export interface FrontDesignItem {
   updatedAt: number
   isStreaming?: boolean
   sessionId?: string | null
+  mode?: "tailwindcss" | "css"
+  designDir?: string
 }
 
 export interface FrontDesignStoreState {
@@ -19,6 +21,8 @@ export interface FrontDesignStoreState {
   updatedAt: number
   isStreaming: boolean
   sessionId: string | null
+  mode?: "tailwindcss" | "css"
+  designDir?: string
 }
 
 export type FrontDesignState = FrontDesignStoreState
@@ -62,6 +66,8 @@ const computePublicState = (): FrontDesignStoreState => {
     updatedAt: active?.updatedAt ?? 0,
     isStreaming: active?.isStreaming ?? false,
     sessionId: active?.sessionId ?? null,
+    mode: active?.mode ?? "tailwindcss",
+    designDir: active?.designDir,
   }
 }
 
@@ -121,6 +127,8 @@ export const frontDesignStore = {
     sessionId?: string | null
     autoActivate?: boolean
     updatedAt?: number
+    mode?: "tailwindcss" | "css"
+    designDir?: string
   }): void => {
     const fallbackSessionId =
       data.sessionId ??
@@ -153,6 +161,8 @@ export const frontDesignStore = {
         updatedAt: existing.updatedAt || designTimestamp,
         isStreaming: data.isStreaming ?? false,
         sessionId: fallbackSessionId ?? existing.sessionId ?? null,
+        mode: data.mode ?? existing.mode ?? "tailwindcss",
+        designDir: data.designDir ?? existing.designDir,
       }
       nextDesigns = [...internalState.designs]
       nextDesigns[existingIndex] = updated
@@ -164,6 +174,8 @@ export const frontDesignStore = {
         updatedAt: designTimestamp,
         isStreaming: data.isStreaming ?? false,
         sessionId: fallbackSessionId,
+        mode: data.mode ?? "tailwindcss",
+        designDir: data.designDir,
       }
       // 最新生成的排在前面
       nextDesigns = [newItem, ...internalState.designs]

@@ -11,11 +11,7 @@ vi.mock("@/components/ui/LxTooltip", () => {
       return (
         <div data-testid="lx-tooltip-wrapper">
           {children}
-          {click?.content && (
-            <div data-testid="tooltip-click-content">
-              {click.content}
-            </div>
-          )}
+          {click?.content && <div data-testid="tooltip-click-content">{click.content}</div>}
         </div>
       )
     },
@@ -174,5 +170,37 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     iframe = container.querySelector("iframe")
     expect(iframe?.className).toContain("bg-[#0b0f19]")
     expect(iframe?.getAttribute("srcdoc")).toContain("color-scheme: dark")
+  })
+
+  it("支持纯 CSS 模式与打开本地工程目录按钮交互", () => {
+    const openDesignDirSpy = vi.fn().mockResolvedValue(true)
+    ;(window as any).api = {
+      agent: {
+        openDesignDir: openDesignDirSpy,
+      },
+    }
+
+    frontDesignStore.registerDesign({
+      id: "design-css-test",
+      title: "Pure CSS Design",
+      html: "<style>.box{color:red;}</style><div>Pure CSS</div>",
+      mode: "css",
+      sessionId: "session-123",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+
+    // 应展示原生 CSS 模式徽标
+    expect(screen.getByText(/原生 CSS|Pure CSS/i)).not.toBeNull()
+
+    // 应该出现打开工程目录按钮
+    const openDirBtn = screen.getByRole("button", { name: /打开工程目录|Open Design Directory/i })
+    expect(openDirBtn).not.toBeNull()
+
+    fireEvent.click(openDirBtn)
+    expect(openDesignDirSpy).toHaveBeenCalledWith("session-123", "design-css-test")
+
+    const iframe = container.querySelector("iframe")
+    expect(iframe?.getAttribute("srcdoc")).toContain("color:red")
   })
 })

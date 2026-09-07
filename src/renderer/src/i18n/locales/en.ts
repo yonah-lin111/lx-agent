@@ -774,7 +774,10 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     todoListProgress: "Progress · {{completed}}/{{total}} completed",
     todoEmpty: "No todo items",
     todoRawDebug: "Raw Arguments & Result",
+    todoStatusPending: "Pending",
     todoStatusInProgress: "In Progress",
+    todoStatusCompleted: "Completed",
+    todoStatusCancelled: "Cancelled",
     backgroundJobsCount: "Background Jobs · {{running}} running / {{total}} total",
     backgroundJobsTotal: "{{count}} records",
     moreJobsClickToView: "...and {{count}} more jobs (click to view)",
@@ -1437,6 +1440,9 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     themeSystem: "System",
     themeLight: "Light",
     themeDark: "Dark",
+    openDesignDir: "Open Design Directory",
+    pureCssMode: "Pure CSS",
+    tailwindMode: "Tailwind CSS",
   },
 }
 

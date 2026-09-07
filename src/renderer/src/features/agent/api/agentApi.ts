@@ -40,6 +40,26 @@ export const agentApi = {
     window?.api?.agent?.compileTailwind
       ? window.api.agent.compileTailwind(html)
       : Promise.resolve(""),
+  saveFrontDesign: (options: {
+    sessionId: string
+    designId: string
+    html: string
+    mode?: "tailwindcss" | "css"
+  }) =>
+    window?.api?.agent?.saveFrontDesign
+      ? window.api.agent.saveFrontDesign(options)
+      : Promise.resolve({
+          ok: false,
+          dir: "",
+          htmlPath: "",
+          cssPath: "",
+          jsPath: "",
+          error: "Not implemented in current environment",
+        }),
+  openDesignDir: (sessionId: string, designId: string): Promise<boolean> =>
+    window?.api?.agent?.openDesignDir
+      ? window.api.agent.openDesignDir(sessionId, designId)
+      : Promise.resolve(false),
   send: (
     text: string,
     selection?: ModelSelection,

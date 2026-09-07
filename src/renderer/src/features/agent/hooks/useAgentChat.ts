@@ -244,6 +244,8 @@ export const useAgentChat = (
                 isStreaming: true,
                 sessionId: currentSessionIdRef.current,
                 updatedAt: updated.timestamp,
+                mode: block.design.mode,
+                designDir: block.design.designDir,
               })
             }
           })
@@ -275,6 +277,8 @@ export const useAgentChat = (
                 isStreaming: false,
                 sessionId: currentSessionIdRef.current,
                 updatedAt: final.timestamp,
+                mode: block.design.mode,
+                designDir: block.design.designDir,
               })
             }
           })

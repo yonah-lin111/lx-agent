@@ -1401,5 +1401,8 @@ export const zh: TranslationDictionary = {
     themeSystem: "跟随系统",
     themeLight: "浅色模式",
     themeDark: "暗色模式",
+    openDesignDir: "打开工程目录",
+    pureCssMode: "原生 CSS",
+    tailwindMode: "Tailwind CSS",
   },
 }

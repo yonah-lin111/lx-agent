@@ -4,7 +4,12 @@ import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { AgentMessageFiles } from "@/features/agent/components/AgentMessageList"
-import type { AgentDiff, AgentDiffLine, AgentUndoSummaryPayload } from "@/features/agent/types"
+import type {
+  AgentDiff,
+  AgentDiffLine,
+  AgentUndoSummaryPayload,
+  ChatMessage,
+} from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
 

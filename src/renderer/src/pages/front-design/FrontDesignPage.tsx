@@ -1,11 +1,12 @@
+import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import {
   Check,
   Code2,
   Copy,
+  FolderOpen,
   Laptop,
   Palette,
   RefreshCw,
-  RotateCw,
   Smartphone,
   Tablet,
 } from "lucide-react"
@@ -43,8 +44,10 @@ const getInitialDesignTheme = (): FrontDesignPageTheme => {
  * 判断当前是否处于测试/jsdom环境（单测降级为 iframe）
  */
 const isTestEnvironment =
-  typeof process !== "undefined" &&
-  (process.env.NODE_ENV === "test" || process.env.VITEST === "true")
+  typeof (globalThis as { process?: { env?: Record<string, string> } }).process !== "undefined" &&
+  ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.NODE_ENV ===
+    "test" ||
+    (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.VITEST === "true")
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
@@ -58,8 +61,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const webviewRef = useRef<HTMLElement | null>(null)
 
-  const [compiledCss, setCompiledCss] = useState<string>("")
-  const [isCompiling, setIsCompiling] = useState<boolean>(false)
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [pageTheme, setPageTheme] = useState<FrontDesignPageTheme>(getInitialDesignTheme)
   const [copied, setCopied] = useState<boolean>(false)
@@ -98,34 +99,18 @@ export const FrontDesignPage = (): React.JSX.Element => {
     }
   }, [])
 
-  const { html, activeDesignId } = designState
+  const { html, activeDesignId, mode, sessionId, isStreaming } = designState
 
-  // 编译 Tailwind CSS
+  // 确保当 activeDesign 存在且尚未落盘时，自动补齐落盘，以便 lx-design:// 协议正确加载
   useEffect(() => {
-    if (!html || typeof html !== "string") {
-      setCompiledCss("")
-      return
-    }
-
-    let isCancelled = false
-    setIsCompiling(true)
-    void agentApi
-      .compileTailwind(html)
-      .then((css) => {
-        if (!isCancelled) {
-          setCompiledCss(css)
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsCompiling(false)
-        }
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [html, refreshKey])
+    if (!sessionId || !activeDesignId || !html || isStreaming) return
+    void agentApi.saveFrontDesign({
+      sessionId,
+      designId: activeDesignId,
+      html,
+      mode: mode ?? "tailwindcss",
+    })
+  }, [sessionId, activeDesignId, html, mode, refreshKey, isStreaming])
 
   // 构建注入 Tailwind 样式和主题类后的完整 HTML 沙箱文档
   const sanitizedHtmlDoc = useMemo(() => {
@@ -147,13 +132,16 @@ export const FrontDesignPage = (): React.JSX.Element => {
         box-sizing: border-box !important;
       }
     `
-    const styleTag = `<style id="lx-tailwind-generated">${compiledCss}\n${resetOverrides}</style>`
+    const styleTag = `<style id="lx-front-design-theme-override">${resetOverrides}</style>`
     let docWithTheme = baseDoc
 
     // 根据模式为 <html> 标签注入或移除 dark 类名
     if (effectiveMode === "dark") {
       if (docWithTheme.includes("<html")) {
-        docWithTheme = docWithTheme.replace(/<html([^>]*)class=["']([^"']*)["']/i, '<html$1class="$2 dark"')
+        docWithTheme = docWithTheme.replace(
+          /<html([^>]*)class=["']([^"']*)["']/i,
+          '<html$1class="$2 dark"',
+        )
         if (!docWithTheme.includes('class="') && !docWithTheme.includes("class='")) {
           docWithTheme = docWithTheme.replace(/<html/i, '<html class="dark"')
         }
@@ -166,13 +154,18 @@ export const FrontDesignPage = (): React.JSX.Element => {
       return docWithTheme.replace("</head>", `${styleTag}</head>`)
     }
     return `${styleTag}${docWithTheme}`
-  }, [html, compiledCss, effectiveMode])
+  }, [html, effectiveMode])
 
-  // 将 HTML 转为 data: URL 供 webview 稳定加载
-  const designDataUrl = useMemo(() => {
+  // 构建供 webview 加载的协议 URL 或 fallback data: URL
+  const designWebviewUrl = useMemo(() => {
     if (!sanitizedHtmlDoc) return ""
+    // 如果有落盘目录与会话标识，使用特权自定义协议 lx-design://，支持外部网络图片、字体且无 URL 长度限制
+    if (sessionId && activeDesignId) {
+      return `${FRONT_DESIGN_PROTOCOL}://design/${encodeURIComponent(sessionId)}/${encodeURIComponent(activeDesignId)}/index.html?t=${refreshKey}`
+    }
+    // 兜底 data: URL（例如无 session 的纯临时设计）
     return `data:text/html;charset=utf-8,${encodeURIComponent(sanitizedHtmlDoc)}`
-  }, [sanitizedHtmlDoc])
+  }, [sessionId, activeDesignId, sanitizedHtmlDoc, refreshKey])
 
   const handleCopy = useCallback(async () => {
     if (!html) return
@@ -196,6 +189,11 @@ export const FrontDesignPage = (): React.JSX.Element => {
       wv.openDevTools()
     }
   }, [])
+
+  const handleOpenDesignDirectory = useCallback(async () => {
+    if (!sessionId || !activeDesignId) return
+    await agentApi.openDesignDir(sessionId, activeDesignId)
+  }, [sessionId, activeDesignId])
 
   const viewportWidthClass = useMemo(() => {
     switch (viewport) {
@@ -228,24 +226,38 @@ export const FrontDesignPage = (): React.JSX.Element => {
         className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-white/5 px-3"
         style={{ backgroundColor: "var(--color-theme-surface-hover)" }}
       >
-        {/* 左侧：刷新操作 */}
-        <div className="flex items-center gap-1.5">
+        {/* 左侧：刷新操作与设计模式徽标 */}
+        <div className="flex items-center gap-2">
           <LxIconButton
             size="small"
             onClick={handleRefresh}
             aria-label={t("frontDesign.refreshPreview")}
             title={{ content: t("frontDesign.refreshPreview"), placement: "bottom" }}
           >
-            {isCompiling ? (
-              <RotateCw className="h-3.5 w-3.5 animate-spin text-pink-400" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
+            <RefreshCw className="h-3.5 w-3.5" />
           </LxIconButton>
+
+          {html && (
+            <span className="rounded bg-pink-500/10 border border-pink-500/20 px-1.5 py-0.5 text-[10px] font-medium text-pink-300">
+              {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
+            </span>
+          )}
         </div>
 
         {/* 右侧：主题切换、视口切换、开发者工具与复制代码 */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* 打开工程目录 */}
+          {sessionId && activeDesignId && (
+            <LxIconButton
+              size="small"
+              onClick={handleOpenDesignDirectory}
+              aria-label={t("frontDesign.openDesignDir")}
+              title={{ content: t("frontDesign.openDesignDir"), placement: "bottom" }}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+            </LxIconButton>
+          )}
+
           {/* 设计页面主题切换（复刻 HeaderSideBar Palette 图标风格） */}
           <LxTooltip
             hover={{
@@ -388,12 +400,25 @@ export const FrontDesignPage = (): React.JSX.Element => {
                   effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
                 }`}
               />
+            ) : isStreaming ? (
+              /* 流式生成阶段直接通过 srcDoc 渲染实时传输的 HTML，呈现瞬时打字机热更新效果 */
+              <iframe
+                key="streaming-preview"
+                ref={iframeRef}
+                srcDoc={sanitizedHtmlDoc}
+                sandbox="allow-scripts allow-same-origin"
+                title="Front Design Streaming Preview"
+                className={`h-full w-full border-none ${
+                  effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
+                }`}
+              />
             ) : (
+              /* 流式结束后使用完整独立的 webview 与特权协议 lx-design:// 加载落盘工程及外链资源 */
               <webview
                 key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
                 ref={webviewRef as any}
-                src={designDataUrl}
-                allowpopups={true}
+                src={designWebviewUrl}
+                {...({ allowpopups: "true" } as any)}
                 className={`h-full w-full border-none ${
                   effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
                 }`}

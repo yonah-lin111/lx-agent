@@ -10,6 +10,13 @@ import type { TerminalApi } from "@shared/contracts/terminal"
 import type { ProjectApi } from "@shared/project"
 import type { SettingsApi } from "@shared/settings"
 
+declare module "react" {
+  interface WebViewHTMLAttributes<T> extends HTMLAttributes<T> {
+    allowpopups?: boolean | "true" | "false" | undefined
+    disablewebsecurity?: boolean | "true" | "false" | undefined
+  }
+}
+
 declare global {
   interface Window {
     api: ProjectApi &
@@ -26,14 +33,14 @@ declare global {
   namespace JSX {
     interface IntrinsicElements {
       webview: React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
+        React.WebViewHTMLAttributes<HTMLElement> & {
           src?: string
           preload?: string
           httpreferrer?: string
           useragent?: string
-          disablewebsecurity?: boolean
+          disablewebsecurity?: boolean | "true" | "false"
           partition?: string
-          allowpopups?: boolean
+          allowpopups?: boolean | "true" | "false"
           webpreferences?: string
           nodeintegration?: boolean
         },

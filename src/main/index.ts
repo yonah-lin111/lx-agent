@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { is, optimizer } from "@electron-toolkit/utils"
+import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, nativeImage, protocol } from "electron"
 import { lspManager } from "@/agent/lsp/lspManager"
@@ -15,6 +16,7 @@ import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
+import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
@@ -23,6 +25,10 @@ protocol.registerSchemesAsPrivileged([
   {
     scheme: LOCAL_IMAGE_PROTOCOL,
     privileges: { secure: true, standard: true },
+  },
+  {
+    scheme: FRONT_DESIGN_PROTOCOL,
+    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true },
   },
 ])
 
@@ -64,6 +70,7 @@ const applyAppDockIcon = (): void => {
 app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
+  registerFrontDesignProtocol()
   registerProjectHandlers()
   registerClipboardHandlers()
   registerSettingsHandlers()

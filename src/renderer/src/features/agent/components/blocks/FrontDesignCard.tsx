@@ -1,8 +1,9 @@
-import { ExternalLink, Palette } from "lucide-react"
+import { ExternalLink, FolderOpen, Palette } from "lucide-react"
 import type React from "react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LxCodeBlock } from "@/components/ui/LxCodeBlock"
+import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import type { FrontDesignData } from "@/features/agent/types"
@@ -16,7 +17,7 @@ export interface FrontDesignCardProps {
 
 /**
  * FrontDesignCard - 渲染消息流中捕获的 <front_design> 前端设计卡片。
- * 视觉风格与结构对齐 ReviewFindingsCard，支持我的世界暗色主题化与独立画布热更新。
+ * 视觉风格与结构对齐 ReviewFindingsCard，支持展示代码与统计指标，并可一键打开本地工程目录或跳转看板。
  */
 export const FrontDesignCard = ({
   design,
@@ -27,6 +28,7 @@ export const FrontDesignCard = ({
 
   const isGenerating = isStreaming || Boolean(design.isStreaming)
   const title = design.title || t("frontDesign.title")
+  const mode = design.mode ?? "tailwindcss"
   const lines = useMemo(() => design.html.split("\n"), [design.html])
   const lineCount = lines.length
   const byteSize = useMemo(() => new Blob([design.html]).size, [design.html])
@@ -55,6 +57,8 @@ export const FrontDesignCard = ({
       isStreaming: isGenerating,
       sessionId: design.sessionId,
       autoActivate: true,
+      mode: design.mode,
+      designDir: design.designDir,
     })
     if (design.sessionId) {
       const targetTab = agentTabStore.findTabBySessionId(design.sessionId)
@@ -64,6 +68,11 @@ export const FrontDesignCard = ({
     }
     frontDesignStore.setActiveDesignId(targetId)
     navigate(PAGE_ROUTES.design)
+  }
+
+  const handleOpenDirectory = async (): Promise<void> => {
+    if (!design.sessionId || !design.id) return
+    await agentApi.openDesignDir(design.sessionId, design.id)
   }
 
   return (
@@ -94,7 +103,7 @@ export const FrontDesignCard = ({
           {sizeFormatted}
         </span>
         <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-medium text-pink-300">
-          Tailwind CSS
+          {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
         </span>
       </div>
 
@@ -134,16 +143,29 @@ export const FrontDesignCard = ({
         </div>
       )}
 
-      {/* 底部操作栏：右侧进入设计看板按钮 */}
+      {/* 底部操作栏：对齐 ReviewFindingsCard 底部布局，右侧紧凑编排操作按钮 */}
       <div className="front-design-footer mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-pink-500/15 pt-2.5">
-        <button
-          type="button"
-          onClick={handleOpenDesign}
-          className="front-design-open-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-pink-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-pink-500 active:scale-[0.98] shadow-sm transition-all cursor-pointer max-w-full"
-        >
-          <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
-          <span className="break-words">{t("frontDesign.openDesignPage")}</span>
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-0 max-w-full">
+          {design.sessionId && (
+            <button
+              type="button"
+              onClick={handleOpenDirectory}
+              className="front-design-dir-btn flex min-h-7 h-auto items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-[11.5px] text-white/80 transition-all max-w-full hover:bg-white/5 hover:text-white cursor-pointer"
+            >
+              <FolderOpen className="h-3 w-3 shrink-0" />
+              <span className="break-words">{t("frontDesign.openDesignDir")}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleOpenDesign}
+            className="front-design-open-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-pink-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-pink-500 active:scale-[0.98] shadow-sm transition-all max-w-full cursor-pointer"
+          >
+            <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
+            <span className="break-words">{t("frontDesign.openDesignPage")}</span>
+          </button>
+        </div>
       </div>
     </div>
   )

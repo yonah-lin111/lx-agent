@@ -10,7 +10,6 @@ import type {
   QuestionRequest,
   StopReason,
   SubagentData,
-  UndoSummaryMessage,
   Usage,
   UserMessageCommand,
 } from "@shared/contracts/agent"
@@ -84,6 +83,8 @@ export interface FrontDesignData {
   raw: string
   isStreaming?: boolean
   sessionId?: string | null
+  mode?: "tailwindcss" | "css"
+  designDir?: string
 }
 
 // 消息内容块渲染视图。

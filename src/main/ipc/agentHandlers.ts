@@ -26,6 +26,8 @@ import { promptTemplateLoader } from "@/agent/prompts/promptTemplateLoader"
 import { questionManager } from "@/agent/question/questionManager"
 import { skillLoader, stripFrontmatter } from "@/agent/skills/skillLoader"
 import { generateSuggestedQuestions } from "@/agent/suggestedQuestionsGenerator"
+import { getSessionDesignDir } from "@/paths"
+import { saveFrontDesignToDisk } from "@/services/frontDesignService"
 import { compileTailwindCss } from "@/services/tailwindCompilerService"
 
 // 会话标题长度上限（对齐 createTitle 的 40 字符截断）。
@@ -546,5 +548,37 @@ export const registerAgentHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(AGENT_CHANNELS.compileTailwind, async (_, html: unknown) => {
     if (typeof html !== "string") return ""
     return compileTailwindCss(html)
+  })
+
+  ipcMain.handle(
+    AGENT_CHANNELS.saveFrontDesign,
+    async (
+      _,
+      options: {
+        sessionId: string
+        designId: string
+        html: string
+        mode?: "tailwindcss" | "css"
+      },
+    ) => {
+      if (
+        !options ||
+        typeof options.sessionId !== "string" ||
+        typeof options.designId !== "string"
+      ) {
+        return { ok: false, error: "Invalid parameters for saveFrontDesign" }
+      }
+      return saveFrontDesignToDisk(options)
+    },
+  )
+
+  ipcMain.handle(AGENT_CHANNELS.openDesignDir, async (_, sessionId: unknown, designId: unknown) => {
+    if (typeof sessionId !== "string" || typeof designId !== "string") return false
+    const dir = getSessionDesignDir(sessionId, designId)
+    if (existsSync(dir)) {
+      await shell.openPath(dir)
+      return true
+    }
+    return false
   })
 }
