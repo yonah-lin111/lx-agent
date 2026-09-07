@@ -98,7 +98,6 @@ export const LxMarkdownEditor = ({
   const { worktrees, projectBranch, reload: reloadWorktrees } = useGitWorktrees(projectPath)
 
   const [previewMode, setPreviewMode] = useState<MarkdownPreviewMode>("edit")
-  const [activeLine, setActiveLine] = useState(1)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const historyCompartmentRef = useRef<Compartment | null>(null)
@@ -323,32 +322,9 @@ export const LxMarkdownEditor = ({
     const view = new EditorView({ state, parent: container })
     editorViewRef.current = view
 
-    let ticking = false
-    const handleScroll = (): void => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (editorViewRef.current) {
-            const { scrollTop } = editorViewRef.current.scrollDOM
-            try {
-              const block = editorViewRef.current.lineBlockAtHeight(scrollTop + 20)
-              const lineNum = editorViewRef.current.state.doc.lineAt(block.from).number
-              setActiveLine(lineNum)
-            } catch {
-              // Ignore layout/metrics errors during transitions
-            }
-          }
-          ticking = false
-        })
-        ticking = true
-      }
-    }
-
-    view.scrollDOM.addEventListener("scroll", handleScroll, { passive: true })
-    handleScroll()
     actions.scrollToBottom()
 
     return () => {
-      view.scrollDOM.removeEventListener("scroll", handleScroll)
       editorViewRef.current = null
       view.destroy()
     }
@@ -415,9 +391,6 @@ export const LxMarkdownEditor = ({
         onCreatePage={page.createPage}
         onDeletePage={page.deletePage}
         onPageReorder={page.reorderPage}
-        content={page.content}
-        activeLine={activeLine}
-        onScrollToLine={actions.scrollToLine}
       />
       <div className="markdown-editor-workspace min-h-0 flex flex-1 overflow-hidden text-sm">
         <div
