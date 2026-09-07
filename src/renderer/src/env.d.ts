@@ -22,6 +22,25 @@ declare global {
       PromptHistoryApi &
       TerminalApi
   }
+
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          src?: string
+          preload?: string
+          httpreferrer?: string
+          useragent?: string
+          disablewebsecurity?: boolean
+          partition?: string
+          allowpopups?: boolean
+          webpreferences?: string
+          nodeintegration?: boolean
+        },
+        HTMLElement
+      >
+    }
+  }
 }
 
 export {}

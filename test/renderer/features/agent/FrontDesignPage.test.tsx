@@ -4,16 +4,36 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { FrontDesignPage } from "@/pages/front-design/FrontDesignPage"
 
-describe("FrontDesignPage 视图模式与边距展示", () => {
+// mock LxTooltip，使其在测试环境中直接展开 click.content
+vi.mock("@/components/ui/LxTooltip", () => {
+  return {
+    LxTooltip: ({ children, click }: any) => {
+      return (
+        <div data-testid="lx-tooltip-wrapper">
+          {children}
+          {click?.content && (
+            <div data-testid="tooltip-click-content">
+              {click.content}
+            </div>
+          )}
+        </div>
+      )
+    },
+  }
+})
+
+describe("FrontDesignPage 前端设计预览看板", () => {
   beforeEach(() => {
     cleanup()
     frontDesignStore.clear()
+    localStorage.clear()
     vi.restoreAllMocks()
   })
 
   afterEach(() => {
     cleanup()
     frontDesignStore.clear()
+    localStorage.clear()
   })
 
   it("无 HTML 时渲染空状态且 main 区域保留 p-4", () => {
@@ -22,6 +42,8 @@ describe("FrontDesignPage 视图模式与边距展示", () => {
     expect(main).not.toBeNull()
     expect(main?.className).toContain("p-4")
     expect(container.querySelector("iframe")).toBeNull()
+    // 不应存在任何搜索框或地址输入框
+    expect(screen.queryByRole("textbox")).toBeNull()
   })
 
   it("Desktop 模式下有 HTML 内容时 main 区域为 p-0 且预览容器无边框与圆角贴边", () => {
@@ -89,7 +111,7 @@ describe("FrontDesignPage 视图模式与边距展示", () => {
     expect(previewContainer?.className).toContain("max-w-full")
   })
 
-  it("点击/激活新设计时无条件激活目标设计并立即更新看板，无需来回切换路由", () => {
+  it("激活新设计时立即更新设计看板内容", () => {
     frontDesignStore.registerDesign({
       id: "design-1",
       title: "Design 1",
@@ -100,7 +122,11 @@ describe("FrontDesignPage 视图模式与边距展示", () => {
     const { container, rerender } = render(<FrontDesignPage />)
     expect(frontDesignStore.getState().activeDesignId).toBe("design-1")
 
-    // 跨会话或显式激活设计 2
+    let iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+    expect(iframe?.getAttribute("srcdoc")).toContain("Design 1 Content")
+
+    // 激活设计 2
     frontDesignStore.registerDesign({
       id: "design-2",
       title: "Design 2",
@@ -111,7 +137,42 @@ describe("FrontDesignPage 视图模式与边距展示", () => {
 
     rerender(<FrontDesignPage />)
     expect(frontDesignStore.getState().activeDesignId).toBe("design-2")
-    const iframe = container.querySelector("iframe")
-    expect(iframe).not.toBeNull()
+    iframe = container.querySelector("iframe")
+    expect(iframe?.getAttribute("srcdoc")).toContain("Design 2 Content")
+  })
+
+  it("支持页面主题切换（浅色/暗色/跟随系统），并持久化与调整预览容器样式", () => {
+    frontDesignStore.registerDesign({
+      id: "design-theme-test",
+      title: "Theme Test",
+      html: "<div>Theme Content</div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+
+    // 选项应包含跟随系统、浅色模式、暗色模式
+    const lightOption = screen.getByRole("button", { name: /浅色模式|Light/i })
+    const darkOption = screen.getByRole("button", { name: /暗色模式|Dark/i })
+    const systemOption = screen.getByRole("button", { name: /跟随系统|System/i })
+
+    expect(lightOption).not.toBeNull()
+    expect(darkOption).not.toBeNull()
+    expect(systemOption).not.toBeNull()
+
+    // 选择浅色模式
+    fireEvent.click(lightOption)
+    expect(localStorage.getItem("lx_front_design_theme")).toBe("light")
+
+    let iframe = container.querySelector("iframe")
+    expect(iframe?.className).toContain("bg-white")
+    expect(iframe?.getAttribute("srcdoc")).toContain("color-scheme: light")
+
+    // 切换为暗色模式
+    fireEvent.click(darkOption)
+    expect(localStorage.getItem("lx_front_design_theme")).toBe("dark")
+
+    iframe = container.querySelector("iframe")
+    expect(iframe?.className).toContain("bg-[#0b0f19]")
+    expect(iframe?.getAttribute("srcdoc")).toContain("color-scheme: dark")
   })
 })

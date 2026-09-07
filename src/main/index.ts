@@ -36,7 +36,10 @@ const createWindow = (): void => {
     minWidth: 1240,
     minHeight: 780,
     backgroundColor: "#000000",
-    webPreferences: { preload: join(__dirname, "../preload/index.cjs") },
+    webPreferences: {
+      preload: join(__dirname, "../preload/index.cjs"),
+      webviewTag: true,
+    },
   })
 
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {

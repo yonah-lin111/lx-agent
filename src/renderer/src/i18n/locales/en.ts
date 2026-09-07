@@ -1432,6 +1432,11 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     noDesignsInSession: "No designs in this session",
     prototypeBadge: "Front Design Prototype",
     lines: "lines",
+    openDevTools: "Open DevTools",
+    theme: "Page Theme",
+    themeSystem: "System",
+    themeLight: "Light",
+    themeDark: "Dark",
   },
 }
 

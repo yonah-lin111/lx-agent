@@ -1396,5 +1396,10 @@ export const zh: TranslationDictionary = {
     noDesignsInSession: "当前会话暂无设计历史",
     prototypeBadge: "Front Design Prototype",
     lines: "行",
+    openDevTools: "打开开发者工具",
+    theme: "页面主题",
+    themeSystem: "跟随系统",
+    themeLight: "浅色模式",
+    themeDark: "暗色模式",
   },
 }
