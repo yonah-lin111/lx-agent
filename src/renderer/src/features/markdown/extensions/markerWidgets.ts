@@ -46,6 +46,8 @@ export class CodeBlockActionWidget extends WidgetType {
     readonly onCleanTemplate: (() => void) | null = null,
     readonly isSupple = false,
     readonly isLog = false,
+    readonly blockEndLine: number | null = null,
+    readonly blockId: string | null = null,
   ) {
     super()
   }
@@ -59,6 +61,8 @@ export class CodeBlockActionWidget extends WidgetType {
       this.templateStatus?.line === other.templateStatus?.line &&
       this.templateStatus?.status === other.templateStatus?.status &&
       this.templateStartLine === other.templateStartLine &&
+      this.blockEndLine === other.blockEndLine &&
+      this.blockId === other.blockId &&
       this.isSupple === other.isSupple &&
       this.isLog === other.isLog
     )

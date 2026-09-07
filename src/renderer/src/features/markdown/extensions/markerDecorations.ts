@@ -1,9 +1,6 @@
 import { RangeSetBuilder } from "@codemirror/state"
 import { Decoration, type EditorView } from "@codemirror/view"
-import {
-  MARKDOWN_TEMPLATE_COMMENT_RE,
-  type MarkdownTemplateStatus,
-} from "@/features/markdown/commands/markdownBlockCommands"
+import { MARKDOWN_TEMPLATE_COMMENT_RE } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   getMarkdownReferenceProjectPaths,
   getMarkdownReferenceType,

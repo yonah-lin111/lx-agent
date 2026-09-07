@@ -168,6 +168,7 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
     ctx.currentTemplateFolded = ctx.templateFoldedIndices.has(currentTemplateIndex)
     const currentTemplateTextLines: string[] = []
     let templateEndIndex = -1
+    let templateBlockId: string | null = null
     for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
       const subLine = ctx.lines[j]
       if (
@@ -176,6 +177,8 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
         )
       ) {
         templateEndIndex = j
+        const idMatch = subLine.match(/\{id:([0-9a-f]{32})\}/)
+        if (idMatch) templateBlockId = idMatch[1]
         break
       }
       currentTemplateTextLines.push(subLine)
@@ -246,6 +249,10 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
         startLine,
         () => ctx.onDeleteTemplateBlock(startLine, templateEndIndex),
         () => ctx.onCleanTemplateBlock(startLine, templateEndIndex),
+        false,
+        false,
+        templateEndIndex,
+        templateBlockId,
       ),
     })
     ctx.allDecos.push({

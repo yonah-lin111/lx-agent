@@ -156,9 +156,10 @@ export const markdownMarkerHighlight = (
 
       deleteTemplateBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
         // 未闭合模板块（无结束行）视为延伸到文档末尾。
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
-        const startDocLine = doc.line(startLine + 1)
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
         const endDocLine = doc.line(safeEndLine + 1)
 
         view.dispatch({
@@ -194,8 +195,9 @@ export const markdownMarkerHighlight = (
 
       deleteSuppleBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
-        const startDocLine = doc.line(startLine + 1)
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
         const endDocLine = doc.line(safeEndLine + 1)
 
         view.dispatch({
@@ -231,8 +233,9 @@ export const markdownMarkerHighlight = (
 
       deleteLogBlock(view: EditorView, startLine: number, endLine: number) {
         const doc = view.state.doc
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : endLine
-        const startDocLine = doc.line(startLine + 1)
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
         const endDocLine = doc.line(safeEndLine + 1)
 
         view.dispatch({

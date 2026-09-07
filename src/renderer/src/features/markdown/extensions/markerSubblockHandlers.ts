@@ -22,10 +22,13 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
     ctx.currentSuppleFolded = ctx.suppleFoldedIndices.has(currentSuppleIndex)
     const currentSuppleTextLines: string[] = []
     let suppleEndIndex = -1
+    let suppleBlockId: string | null = null
     for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
       const subLine = ctx.lines[j]
       if (MARKDOWN_SUPPLE_END_RE.test(subLine)) {
         suppleEndIndex = j
+        const idMatch = subLine.match(/\{id:([0-9a-f]{32})\}/)
+        if (idMatch) suppleBlockId = idMatch[1]
         break
       }
       currentSuppleTextLines.push(subLine)
@@ -66,10 +69,13 @@ export const handleSuppleBlockLine = (ctx: MarkerBlockScanContext): boolean => {
         undefined,
         undefined,
         null,
-        null,
+        startLine,
         () => ctx.onDeleteSuppleBlock(startLine, suppleEndIndex),
         () => ctx.onCleanSuppleBlock(startLine, suppleEndIndex),
         true,
+        false,
+        suppleEndIndex,
+        suppleBlockId,
       ),
     })
     ctx.allDecos.push({
@@ -154,10 +160,13 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
     ctx.currentLogFolded = ctx.logFoldedIndices.has(currentLogIndex)
     const currentLogTextLines: string[] = []
     let logEndIndex = -1
+    let logBlockId: string | null = null
     for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
       const subLine = ctx.lines[j]
       if (MARKDOWN_LOG_END_RE.test(subLine)) {
         logEndIndex = j
+        const idMatch = subLine.match(/\{id:([0-9a-f]{32})\}/)
+        if (idMatch) logBlockId = idMatch[1]
         break
       }
       currentLogTextLines.push(subLine)
@@ -194,11 +203,13 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
         undefined,
         undefined,
         null,
-        null,
+        startLine,
         () => ctx.onDeleteLogBlock(startLine, logEndIndex),
         () => ctx.onCleanLogBlock(startLine, logEndIndex),
         false,
         true,
+        logEndIndex,
+        logBlockId,
       ),
     })
     ctx.allDecos.push({

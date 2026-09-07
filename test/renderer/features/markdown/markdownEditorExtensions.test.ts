@@ -132,7 +132,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
 
     it("精准识别并构建代码块的装饰与 ActionWidget", () => {
       const doc = "```typescript\nconst x = 1\n```"
-      const { view, plugin } = createTestView(doc)
+      const { plugin } = createTestView(doc)
       expect(plugin).toBeDefined()
 
       const decorations: { from: number; to: number }[] = []
@@ -293,6 +293,123 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
           "+++ suppleTemplate --end",
         ].join("\n"),
       )
+    })
+
+    it("删除第一个 supple 后，剩余 supple 块的 DOM / Widget 闭包范围必须更新为当前正确行号", () => {
+      const doc = [
+        "&&& addTemplate --start 「title: 测试」",
+        "# 主模板",
+        "+++ suppleTemplate --start",
+        "## 补充 1",
+        "+++ suppleTemplate --end",
+        "+++ suppleTemplate --start",
+        "## 补充 2",
+        "+++ suppleTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+
+      // 先通过 deleteSuppleBlock 删除第一个 supple 块（第 2 到 4 行）
+      plugin!.deleteSuppleBlock(view, 2, 4)
+
+      // 文档变更后，调用 update
+      // 检查此时 plugin 里的 decorations 是否重新构建，以及剩余 supple 的删除回调是否对应新的行号
+      const widgets: CodeBlockActionWidget[] = []
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isSupple) {
+          widgets.push(cursor.value.spec.widget)
+        }
+        cursor.next()
+      }
+
+      expect(widgets.length).toBe(1)
+      // 现在删除剩余的 supple
+      widgets[0]!.onDeleteTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        ["&&& addTemplate --start 「title: 测试」", "# 主模板", "&&& addTemplate --end"].join("\n"),
+      )
+    })
+
+    it("验证模板块中有多个 suppleTemplate 时的删除行为", () => {
+      const doc = [
+        "&&& addTemplate --start 「title: 测试」",
+        "# 主模板",
+        "+++ suppleTemplate --start",
+        "## 补充 1",
+        "+++ suppleTemplate --end",
+        "+++ suppleTemplate --start",
+        "## 补充 2",
+        "+++ suppleTemplate --end",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      const getSuppleWidgets = () => {
+        const suppleWidgets: CodeBlockActionWidget[] = []
+        const cursor = plugin!.decorations.iter()
+        while (cursor.value) {
+          if (cursor.value.spec?.widget?.isSupple) {
+            suppleWidgets.push(cursor.value.spec.widget)
+          }
+          cursor.next()
+        }
+        return suppleWidgets
+      }
+
+      // 验证直接删除第二个（最后一个）supple
+      let widgets = getSuppleWidgets()
+      expect(widgets.length).toBe(2)
+      widgets[1]!.onDeleteTemplate!()
+      expect(view.state.doc.toString()).toBe(
+        [
+          "&&& addTemplate --start 「title: 测试」",
+          "# 主模板",
+          "+++ suppleTemplate --start",
+          "## 补充 1",
+          "+++ suppleTemplate --end",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+
+      // 重新获取 widgets 并删除剩余的第一个 supple
+      widgets = getSuppleWidgets()
+      expect(widgets.length).toBe(1)
+      widgets[0]!.onDeleteTemplate!()
+      expect(view.state.doc.toString()).toBe(
+        ["&&& addTemplate --start 「title: 测试」", "# 主模板", "&&& addTemplate --end"].join("\n"),
+      )
+    })
+
+    it("两个内容相同的 supple 块，其 ActionWidget.eq 必须返回 false，避免 CodeMirror 复用 DOM 导致闭包行号错乱", () => {
+      const doc = [
+        "&&& addTemplate --start 「title: 测试」",
+        "# 主模板",
+        "+++ suppleTemplate --start",
+        "## 补充需求",
+        "+++ suppleTemplate --end {id:0123456789abcdef0123456789abcdef}",
+        "+++ suppleTemplate --start",
+        "## 补充需求",
+        "+++ suppleTemplate --end {id:fedcba9876543210fedcba9876543210}",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const { plugin } = createTestView(doc)
+      const suppleWidgets: CodeBlockActionWidget[] = []
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isSupple) {
+          suppleWidgets.push(cursor.value.spec.widget)
+        }
+        cursor.next()
+      }
+
+      expect(suppleWidgets.length).toBe(2)
+      expect(suppleWidgets[0]!.eq(suppleWidgets[1]!)).toBe(false)
     })
 
     it("ActionWidget 的 onCleanTemplate 回调正确清除日志块 (logBlock) 中未填写的项", () => {
