@@ -1,7 +1,5 @@
-import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import {
   Check,
-  Code2,
   Copy,
   FolderOpen,
   Laptop,
@@ -59,7 +57,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
   const designState = useFrontDesign()
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const webviewRef = useRef<HTMLElement | null>(null)
 
   const [viewport, setViewport] = useState<ViewportMode>("desktop")
   const [pageTheme, setPageTheme] = useState<FrontDesignPageTheme>(getInitialDesignTheme)
@@ -101,6 +98,32 @@ export const FrontDesignPage = (): React.JSX.Element => {
 
   const { html, activeDesignId, mode, sessionId, isStreaming } = designState
 
+  // 异步编译 Tailwind CSS 并动态注入到 iframe 中，完全避免跨域外部脚本与 CSP 违规
+  const [compiledTailwindCss, setCompiledTailwindCss] = useState<string>("")
+  const latestHtmlRef = useRef<string>("")
+  latestHtmlRef.current = html
+
+  useEffect(() => {
+    if (!html || mode === "css") {
+      setCompiledTailwindCss("")
+      return
+    }
+
+    let isMounted = true
+    const timer = setTimeout(() => {
+      void agentApi.compileTailwind(html).then((css) => {
+        if (isMounted && latestHtmlRef.current === html) {
+          setCompiledTailwindCss(css)
+        }
+      })
+    }, 150) // 150ms 防抖，兼顾流式打字与 CPU 编译开销
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [html, mode])
+
   // 确保当 activeDesign 存在且尚未落盘时，自动补齐落盘，以便 lx-design:// 协议正确加载
   useEffect(() => {
     if (!sessionId || !activeDesignId || !html || isStreaming) return
@@ -133,6 +156,9 @@ export const FrontDesignPage = (): React.JSX.Element => {
       }
     `
     const styleTag = `<style id="lx-front-design-theme-override">${resetOverrides}</style>`
+    const twStyleTag = compiledTailwindCss
+      ? `<style id="lx-front-design-tailwind-compiled">${compiledTailwindCss}</style>`
+      : ""
     let docWithTheme = baseDoc
 
     // 根据模式为 <html> 标签注入或移除 dark 类名
@@ -150,22 +176,98 @@ export const FrontDesignPage = (): React.JSX.Element => {
       docWithTheme = docWithTheme.replace(/\bdark\b/g, "")
     }
 
+    const injectedHead = `${styleTag}\n${twStyleTag}`
     if (docWithTheme.includes("</head>")) {
-      return docWithTheme.replace("</head>", `${styleTag}</head>`)
+      return docWithTheme.replace("</head>", `${injectedHead}</head>`)
     }
-    return `${styleTag}${docWithTheme}`
-  }, [html, effectiveMode])
+    return `${injectedHead}${docWithTheme}`
+  }, [html, effectiveMode, compiledTailwindCss])
 
-  // 构建供 webview 加载的协议 URL 或 fallback data: URL
-  const designWebviewUrl = useMemo(() => {
-    if (!sanitizedHtmlDoc) return ""
-    // 如果有落盘目录与会话标识，使用特权自定义协议 lx-design://，支持外部网络图片、字体且无 URL 长度限制
-    if (sessionId && activeDesignId) {
-      return `${FRONT_DESIGN_PROTOCOL}://design/${encodeURIComponent(sessionId)}/${encodeURIComponent(activeDesignId)}/index.html?t=${refreshKey}`
+  // 流式更新优化：保持 iframe 稳定，通过 contentDocument 进行无闪烁热更新
+  const lastRenderedHtmlRef = useRef<string>("")
+  const isUpdatingIframeRef = useRef<boolean>(false)
+  const [initialIframeDoc, setInitialIframeDoc] = useState<string>("")
+
+  // 当 activeDesignId 切换或主题模式切换时，重置初始骨架文档
+  useEffect(() => {
+    lastRenderedHtmlRef.current = ""
+    setInitialIframeDoc(sanitizedHtmlDoc)
+  }, [activeDesignId, effectiveMode, refreshKey])
+
+  // 将实时编译的 Tailwind CSS 注入到当前 iframe 中
+  useEffect(() => {
+    if (!compiledTailwindCss) return
+    const iframe = iframeRef.current
+    if (!iframe) return
+    try {
+      const doc = iframe.contentDocument
+      if (doc && doc.head) {
+        let twStyle = doc.getElementById("lx-front-design-tailwind-compiled")
+        if (!twStyle) {
+          twStyle = doc.createElement("style")
+          twStyle.id = "lx-front-design-tailwind-compiled"
+          doc.head.appendChild(twStyle)
+        }
+        twStyle.textContent = compiledTailwindCss
+      }
+    } catch {
+      // ignore
     }
-    // 兜底 data: URL（例如无 session 的纯临时设计）
-    return `data:text/html;charset=utf-8,${encodeURIComponent(sanitizedHtmlDoc)}`
-  }, [sessionId, activeDesignId, sanitizedHtmlDoc, refreshKey])
+  }, [compiledTailwindCss])
+
+  useEffect(() => {
+    if (!sanitizedHtmlDoc) return
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    // 在实际运行环境中，通过 contentDocument 增量更新避免白屏
+    if (!isTestEnvironment) {
+      try {
+        const doc = iframe.contentDocument
+        if (doc && doc.body) {
+          // 如果 iframe 已经初始化，且处于流式渲染，使用 rAF 进行无白屏平滑更新
+          if (lastRenderedHtmlRef.current) {
+            if (!isUpdatingIframeRef.current) {
+              isUpdatingIframeRef.current = true
+              requestAnimationFrame(() => {
+                isUpdatingIframeRef.current = false
+                try {
+                  const currentDoc = iframe.contentDocument
+                  if (!currentDoc) return
+                  const parser = new DOMParser()
+                  const parsed = parser.parseFromString(sanitizedHtmlDoc, "text/html")
+
+                  // 平滑同步 body 结构，不重建 window，彻底消除白屏
+                  currentDoc.body.innerHTML = parsed.body?.innerHTML || ""
+
+                  // 同步 dark 模式类名
+                  if (parsed.documentElement) {
+                    currentDoc.documentElement.className = parsed.documentElement.className
+                  }
+
+                  // 确保主题与重置样式生效
+                  const existingStyle = currentDoc.getElementById("lx-front-design-theme-override")
+                  const newStyle = parsed.getElementById("lx-front-design-theme-override")
+                  if (newStyle && existingStyle) {
+                    existingStyle.textContent = newStyle.textContent
+                  }
+                } catch {
+                  // 出错退回
+                }
+              })
+            }
+            return
+          }
+        }
+      } catch {
+        // 忽略跨域等异常
+      }
+    }
+
+    lastRenderedHtmlRef.current = sanitizedHtmlDoc
+  }, [sanitizedHtmlDoc, isStreaming])
+
+
 
   const handleCopy = useCallback(async () => {
     if (!html) return
@@ -183,12 +285,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
     setRefreshKey((k) => k + 1)
   }, [])
 
-  const handleOpenDevTools = useCallback(() => {
-    const wv = webviewRef.current as any
-    if (wv && typeof wv.openDevTools === "function") {
-      wv.openDevTools()
-    }
-  }, [])
+
 
   const handleOpenDesignDirectory = useCallback(async () => {
     if (!sessionId || !activeDesignId) return
@@ -334,17 +431,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
 
           <div className="h-3.5 w-[1px] bg-white/10 mx-0.5" />
 
-          {/* 打开 DevTools（仅 webview 支持） */}
-          {!isTestEnvironment && (
-            <LxIconButton
-              size="small"
-              onClick={handleOpenDevTools}
-              aria-label={t("frontDesign.openDevTools")}
-              title={{ content: t("frontDesign.openDevTools"), placement: "bottom" }}
-            >
-              <Code2 className="h-3.5 w-3.5" />
-            </LxIconButton>
-          )}
+
 
           {/* 复制代码 */}
           <LxIconButton
@@ -389,41 +476,17 @@ export const FrontDesignPage = (): React.JSX.Element => {
             } transition-[max-width] duration-300 ease-in-out`}
             style={{ backgroundColor: "var(--color-theme-surface)" }}
           >
-            {isTestEnvironment ? (
-              <iframe
-                key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
-                ref={iframeRef}
-                srcDoc={sanitizedHtmlDoc}
-                sandbox="allow-scripts allow-same-origin"
-                title="Front Design Preview"
-                className={`h-full w-full border-none ${
-                  effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
-                }`}
-              />
-            ) : isStreaming ? (
-              /* 流式生成阶段直接通过 srcDoc 渲染实时传输的 HTML，呈现瞬时打字机热更新效果 */
-              <iframe
-                key="streaming-preview"
-                ref={iframeRef}
-                srcDoc={sanitizedHtmlDoc}
-                sandbox="allow-scripts allow-same-origin"
-                title="Front Design Streaming Preview"
-                className={`h-full w-full border-none ${
-                  effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
-                }`}
-              />
-            ) : (
-              /* 流式结束后使用完整独立的 webview 与特权协议 lx-design:// 加载落盘工程及外链资源 */
-              <webview
-                key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
-                ref={webviewRef as any}
-                src={designWebviewUrl}
-                {...({ allowpopups: "true" } as any)}
-                className={`h-full w-full border-none ${
-                  effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
-                }`}
-              />
-            )}
+            {/* 统一使用高性能沙箱 iframe，保持单一上下文，流式与落盘零白屏切换。移除 allow-scripts 消除安全逃逸告警 */}
+            <iframe
+              key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
+              ref={iframeRef}
+              srcDoc={isTestEnvironment ? sanitizedHtmlDoc : (initialIframeDoc || sanitizedHtmlDoc)}
+              sandbox="allow-same-origin"
+              title="Front Design Preview"
+              className={`h-full w-full border-none ${
+                effectiveMode === "dark" ? "bg-[#0b0f19]" : "bg-white"
+              }`}
+            />
           </div>
         )}
       </main>
