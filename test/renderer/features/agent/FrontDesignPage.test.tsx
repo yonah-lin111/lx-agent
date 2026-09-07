@@ -190,8 +190,10 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     const { container } = render(<FrontDesignPage />)
 
-    // 应展示原生 CSS 模式徽标
-    expect(screen.getByText(/原生 CSS|Pure CSS/i)).not.toBeNull()
+    // 应展示原生 CSS 模式徽标且带有 front-design-badge 语义类
+    const badge = screen.getByText(/原生 CSS|Pure CSS/i)
+    expect(badge).not.toBeNull()
+    expect(badge.className).toContain("front-design-badge")
 
     // 应该出现打开工程目录按钮
     const openDirBtn = screen.getByRole("button", { name: /打开工程目录|Open Design Directory/i })
@@ -202,6 +204,20 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     const iframe = container.querySelector("iframe")
     expect(iframe?.getAttribute("srcdoc")).toContain("color:red")
+  })
+
+  it("Tailwind 模式下顶部左侧模式徽标带有 front-design-badge 类以适配主题", () => {
+    frontDesignStore.registerDesign({
+      id: "design-tw-badge",
+      title: "Tailwind Badge Test",
+      html: "<div class='text-blue-500'>Tailwind Mode</div>",
+      mode: "tailwindcss",
+    })
+
+    render(<FrontDesignPage />)
+    const twBadge = screen.getByText(/Tailwind CSS/i)
+    expect(twBadge).not.toBeNull()
+    expect(twBadge.className).toContain("front-design-badge")
   })
 
   it("点击清空画布按钮重置 activeDesignId 为 null 并展现空状态占位", () => {

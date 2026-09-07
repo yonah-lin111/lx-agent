@@ -332,7 +332,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
           </LxIconButton>
 
           {html && (
-            <span className="rounded bg-pink-500/10 border border-pink-500/20 px-1.5 py-0.5 text-[10px] font-medium text-pink-300">
+            <span className="front-design-badge shrink-0 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-medium text-pink-300">
               {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
             </span>
           )}
