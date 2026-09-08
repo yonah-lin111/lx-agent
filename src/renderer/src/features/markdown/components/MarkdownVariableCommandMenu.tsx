@@ -4,7 +4,6 @@ import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
 import {
-  formatVariablePreview,
   getVariableTag,
   type MarkdownVariableEntry,
 } from "@/features/markdown/commands/markdownVariableCommands"
@@ -124,15 +123,14 @@ export const MarkdownVariableCommandMenu = ({
     >
       {displayVariables.map((variable, index) => {
         const isActive = index === displayActiveIndex
-        const tag = getVariableTag(variable.name)
-        const preview = formatVariablePreview(variable.value) || t("markdown.variableNoPreview")
+        const preview = variable.value.replaceAll("\n", " ").trim()
 
         return (
           <div
             key={variable.name}
             data-index={index}
             aria-selected={isActive}
-            className={`group relative flex min-h-12 w-full cursor-pointer flex-col justify-center rounded-[4px] px-2 py-1.5 text-left transition-colors ${
+            className={`group relative flex min-h-11 w-full cursor-pointer flex-col justify-center rounded-[4px] px-2 py-1 text-left transition-colors ${
               isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
@@ -141,27 +139,32 @@ export const MarkdownVariableCommandMenu = ({
               onSelect?.(variable)
             }}
           >
-            <div className="flex min-h-8 items-center gap-2">
+            <div className="flex w-full items-center gap-2">
               <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[3px] bg-amber-400/10 text-amber-300">
                 <Braces className="h-3 w-3" />
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center justify-between gap-1.5">
-                  <span className="truncate font-mono text-[13px] font-medium text-white">
-                    {triggerChar}
-                    {variable.name}
-                  </span>
-                  <LxTag
-                    bgClass="border-amber-400/20 bg-amber-400/10 text-amber-300"
-                    className="pointer-events-none shrink-0 font-mono text-[10px]"
-                    size="small"
-                  >
-                    {tag}
-                  </LxTag>
-                </div>
-                <div className="mt-0.5 truncate font-mono text-[11px] text-white/45">{preview}</div>
-              </div>
+              <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                <span className="shrink-0 font-mono text-[13px] font-medium text-white">
+                  {triggerChar}
+                  {variable.name}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-white/45">
+                  {preview || t("markdown.variableNoPreview")}
+                </span>
+              </span>
+              <LxTag
+                bgClass="border-amber-400/20 bg-amber-400/10 text-amber-300"
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                {getVariableTag(variable.name)}
+              </LxTag>
             </div>
+            {isActive && variable.value.includes("\n") && (
+              <div className="mt-1 line-clamp-3 rounded border border-white/5 bg-black/20 p-1.5 font-mono text-[11px] text-white/60">
+                {variable.value}
+              </div>
+            )}
           </div>
         )
       })}

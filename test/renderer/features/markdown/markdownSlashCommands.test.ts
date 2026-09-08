@@ -25,10 +25,12 @@ describe("Markdown 斜杠命令", () => {
   })
 
   it("模板块外匹配模板命令与全局工作区命令", () => {
+    expect(getMarkdownSlashCommands("/var", false).map((c) => c.id)).toEqual(["varTemplate"])
     expect(getMarkdownSlashCommands("/add", false).map((c) => c.id)).toEqual(["addTemplate"])
     expect(getMarkdownSlashCommands("/sum", false)).toEqual([])
     expect(getMarkdownSlashCommands("/git", false).map((c) => c.id)).toEqual(["gitWorktree"])
     expect(getMarkdownSlashCommands("/", false).map((c) => c.id)).toEqual([
+      "varTemplate",
       "addTemplate",
       "bugTemplate",
       "refactorTemplate",

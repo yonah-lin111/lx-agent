@@ -238,7 +238,7 @@ describe("markdownSendPromptDispatcher", () => {
               "pane-right": { id: "pane-right", title: "OpenCode", createdAt: Date.now() },
             },
             rootNode: {
-              type: "branch",
+              type: "split",
               id: "branch-1",
               direction: "horizontal",
               ratio: 0.5,

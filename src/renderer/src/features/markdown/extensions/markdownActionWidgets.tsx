@@ -1,4 +1,5 @@
 import {
+  ArrowUpToLine,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -99,22 +100,53 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
+// 合并按钮：将当前变量模板块合并至文档顶部。
+export const MarkdownActionMergeButton = ({
+  onMerge,
+}: {
+  onMerge: () => void
+}): React.JSX.Element => {
+  const { t } = useTranslation()
+  const labelText = t("markdown.mergeVarTemplate")
+
+  return (
+    <LxTooltip content={labelText} placement="bottom">
+      <button
+        aria-label={labelText}
+        type="button"
+        style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          onMerge()
+        }}
+      >
+        <ArrowUpToLine className="h-3 w-3" />
+      </button>
+    </LxTooltip>
+  )
+}
+
 // 清理按钮：点击后移除当前模板块/补充块/日志块中未填写的列表项。
 export const MarkdownActionCleanButton = ({
   onClean,
   isSupple = false,
   isLog = false,
+  isVarTemplate = false,
 }: {
   onClean: () => void
   isSupple?: boolean
   isLog?: boolean
+  isVarTemplate?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const labelText = isLog
-    ? t("markdown.cleanLog")
-    : isSupple
-      ? t("markdown.cleanSupple")
-      : t("markdown.cleanTemplate")
+  const labelText = isVarTemplate
+    ? t("markdown.cleanVarTemplate")
+    : isLog
+      ? t("markdown.cleanLog")
+      : isSupple
+        ? t("markdown.cleanSupple")
+        : t("markdown.cleanTemplate")
 
   return (
     <LxTooltip content={labelText} placement="bottom">
@@ -139,22 +171,28 @@ export const MarkdownActionDeleteButton = ({
   onDelete,
   isSupple = false,
   isLog = false,
+  isVarTemplate = false,
 }: {
   onDelete: () => void
   isSupple?: boolean
   isLog?: boolean
+  isVarTemplate?: boolean
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const confirmText = isLog
-    ? t("markdown.confirmDeleteLog")
-    : isSupple
-      ? t("markdown.confirmDeleteSupple")
-      : t("markdown.confirmDeleteTemplate")
-  const labelText = isLog
-    ? t("markdown.deleteLog")
-    : isSupple
-      ? t("markdown.deleteSupple")
-      : t("markdown.deleteTemplate")
+  const confirmText = isVarTemplate
+    ? t("markdown.confirmDeleteVarTemplate")
+    : isLog
+      ? t("markdown.confirmDeleteLog")
+      : isSupple
+        ? t("markdown.confirmDeleteSupple")
+        : t("markdown.confirmDeleteTemplate")
+  const labelText = isVarTemplate
+    ? t("markdown.deleteVarTemplate")
+    : isLog
+      ? t("markdown.deleteLog")
+      : isSupple
+        ? t("markdown.deleteSupple")
+        : t("markdown.deleteTemplate")
 
   return (
     <LxTooltip content={confirmText} placement="bottom" onConfirm={onDelete}>
@@ -181,6 +219,7 @@ export const MarkdownActionFoldButton = ({
   isTemplate = false,
   isSupple = false,
   isLog = false,
+  isVarTemplate = false,
   onToggle,
 }: {
   isFolded: boolean
@@ -189,23 +228,28 @@ export const MarkdownActionFoldButton = ({
   isTemplate?: boolean
   isSupple?: boolean
   isLog?: boolean
+  isVarTemplate?: boolean
   onToggle: () => void
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const defaultFold = isLog
-    ? t("markdown.foldLog")
-    : isSupple
-      ? t("markdown.foldSupple")
-      : isTemplate
-        ? t("markdown.foldTemplate")
-        : t("markdown.foldCode")
-  const defaultUnfold = isLog
-    ? t("markdown.unfoldLog")
-    : isSupple
-      ? t("markdown.unfoldSupple")
-      : isTemplate
-        ? t("markdown.unfoldTemplate")
-        : t("markdown.unfoldCode")
+  const defaultFold = isVarTemplate
+    ? t("markdown.foldVarTemplate")
+    : isLog
+      ? t("markdown.foldLog")
+      : isSupple
+        ? t("markdown.foldSupple")
+        : isTemplate
+          ? t("markdown.foldTemplate")
+          : t("markdown.foldCode")
+  const defaultUnfold = isVarTemplate
+    ? t("markdown.unfoldVarTemplate")
+    : isLog
+      ? t("markdown.unfoldLog")
+      : isSupple
+        ? t("markdown.unfoldSupple")
+        : isTemplate
+          ? t("markdown.unfoldTemplate")
+          : t("markdown.unfoldCode")
   const foldText = label ?? defaultFold
   const unfoldText = unfoldLabel ?? defaultUnfold
 

@@ -17,6 +17,7 @@ import {
 import {
   handleCodeFenceLine,
   handleTemplateBlockLine,
+  handleVarTemplateBlockLine,
   type MarkerBlockScanContext,
   templateStatusLineClass,
 } from "@/features/markdown/extensions/markerTemplateHandlers"
@@ -44,6 +45,11 @@ export const buildMarkdownMarkerDecorations = (
   onToggleLogFold: (index: number) => void = () => {},
   onDeleteLogBlock: (startLine: number, endLine: number) => void = () => {},
   onCleanLogBlock: (startLine: number, endLine: number) => void = () => {},
+  varFoldedIndices = new Set<number>(),
+  onToggleVarFold: (index: number) => void = () => {},
+  onDeleteVarBlock: (startLine: number, endLine: number) => void = () => {},
+  onCleanVarBlock: (startLine: number, endLine: number) => void = () => {},
+  onMergeVarBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: MarkerDecoItem[] = []
@@ -97,6 +103,16 @@ export const buildMarkdownMarkerDecorations = (
     onToggleLogFold,
     onDeleteLogBlock,
     onCleanLogBlock,
+
+    isInsideVarBlock: false,
+    isInsideVarTripleQuotes: false,
+    currentVarFolded: false,
+    varBlockIndex: 0,
+    varFoldedIndices,
+    onToggleVarFold,
+    onDeleteVarBlock,
+    onCleanVarBlock,
+    onMergeVarBlock,
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -122,6 +138,11 @@ export const buildMarkdownMarkerDecorations = (
     }
 
     if (handleCodeFenceLine(ctx)) {
+      offset += line.length + 1
+      continue
+    }
+
+    if (handleVarTemplateBlockLine(ctx)) {
       offset += line.length + 1
       continue
     }

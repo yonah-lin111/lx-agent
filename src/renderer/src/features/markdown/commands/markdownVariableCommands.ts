@@ -13,13 +13,55 @@ export interface MarkdownVariableTrigger {
   triggerChar: "$" | "¥"
 }
 
+// 冒号命令触发信息。
+export interface MarkdownColonTrigger {
+  indent: string
+  key: string
+  from: number
+  to: number
+}
+
+// 变量模板块（$$$ varTemplate --start 「title:...」 ... $$$ varTemplate --end）。
+export const MARKDOWN_VAR_TEMPLATE_START_RE =
+  /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*$/
+export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?\s*$/
+
 // 变量触发正则：以边界或行首开头的 $ 或 ¥ 符号，后接合法标识符字符。
 const MARKDOWN_VARIABLE_TRIGGER_RE = /(^|[\s.,;:!?，。；：！？、…()[\]{}])([$¥])([A-Za-z0-9_.-]*)$/u
 
 /**
- * 判断光标位置是否处于文档顶部的 YAML Frontmatter 区域内。
+ * 判断光标位置是否处于文档中的 $$$ 变量模板块区域内。
+ */
+export const isInsideMarkdownVariableBlock = (docText: string, cursor: number): boolean => {
+  const lines = docText.split("\n")
+  let currentOffset = 0
+  let inBlock = false
+
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine
+    const lineEnd = currentOffset + rawLine.length
+    if (!inBlock) {
+      if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
+        inBlock = true
+      }
+    } else {
+      if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
+        if (cursor <= lineEnd) return true
+        inBlock = false
+      } else if (cursor >= currentOffset && cursor <= lineEnd + 1) {
+        return true
+      }
+    }
+    currentOffset = lineEnd + 1
+  }
+  return false
+}
+
+/**
+ * 兼容旧方法：判断光标位置是否处于顶部 frontmatter 或 $$$ 变量块内。
  */
 export const isInsideMarkdownFrontmatter = (docText: string, cursor: number): boolean => {
+  if (isInsideMarkdownVariableBlock(docText, cursor)) return true
   if (!docText.startsWith("---")) return false
   const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(docText)
   if (!match) return false
@@ -28,13 +70,17 @@ export const isInsideMarkdownFrontmatter = (docText: string, cursor: number): bo
 
 /**
  * 解析光标前文本末尾的 $ 或 ¥ 变量触发片段；
- * 位于代码围栏或 Frontmatter 内时不触发。
+ * 位于代码围栏或变量模板块内时不触发。
  */
 export const getMarkdownVariableTrigger = (
   prefix: string,
   docText = prefix,
 ): MarkdownVariableTrigger | null => {
-  if (isInsideMarkdownCodeFence(prefix) || isInsideMarkdownFrontmatter(docText, prefix.length)) {
+  if (
+    isInsideMarkdownCodeFence(prefix) ||
+    isInsideMarkdownVariableBlock(docText, prefix.length) ||
+    isInsideMarkdownFrontmatter(docText, prefix.length)
+  ) {
     return null
   }
 
@@ -49,25 +95,46 @@ export const getMarkdownVariableTrigger = (
 }
 
 /**
- * 解析 Markdown 文本顶部的 frontmatter (--- \n ... \n ---)。
- * 支持：
- * 1. vars: 根块下的平级变量直接以 $name 导出；
- * 2. 其他自定义分组（如 temp:、env:）按点号命名空间（如 $temp.status）导出；
- * 3. 支持深层嵌套字典路径（如 $a.b.c）与多行 YAML 块 (| 或 >)；
- * 4. 容忍编辑过程中的未闭合行与注释。
+ * 检查当前光标所在行末尾是否刚输入了冒号（: 或 ：），用于在 $$$ 模板块内唤起单行/多行菜单。
  */
-export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[] => {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(docText)
-  if (!match) return []
+export const getMarkdownColonTrigger = (
+  lineText: string,
+  cursorInLine: number,
+  lineFrom: number,
+): MarkdownColonTrigger | null => {
+  const prefix = lineText.slice(0, cursorInLine)
+  const match = /^(\s*)([A-Za-z0-9_.-]+)\s*([:：])$/.exec(prefix)
+  if (!match) return null
 
-  const rawYaml = match[1]
-  const entries: MarkdownVariableEntry[] = []
+  return {
+    indent: match[1],
+    key: match[2],
+    from: lineFrom,
+    to: lineFrom + cursorInLine,
+  }
+}
+
+/**
+ * 从多段 YAML 文本中解析变量条目。
+ * 支持：
+ * - 单行双引号/单引号：key: "val"
+ * - 多行三引号：
+ *     key:
+ *       """
+ *       line 1
+ *       """
+ * - 标准多行块：key: | 或 key: >
+ * - 多层级点号缩进栈展开与 vars: 平级映射
+ */
+export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry[] => {
   const lines = rawYaml.split(/\r?\n/)
+  const entries: MarkdownVariableEntry[] = []
   const stack: Array<{ key: string; indent: number }> = []
 
   let currentKey: string | null = null
   let currentValueLines: string[] = []
   let isMultiLine = false
+  let isTripleQuotes = false
   let multiLineIndent = -1
 
   const flushCurrent = (): void => {
@@ -79,6 +146,7 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
       currentKey = null
       currentValueLines = []
       isMultiLine = false
+      isTripleQuotes = false
       multiLineIndent = -1
     }
   }
@@ -96,9 +164,20 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
     return parts.join(".")
   }
 
-  for (const line of lines) {
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx]
     const indentMatch = line.match(/^(\s*)/)
     const indent = indentMatch ? indentMatch[1].length : 0
+
+    if (isTripleQuotes) {
+      if (line.trim() === '"""') {
+        flushCurrent()
+        continue
+      }
+      const stripped = indent > multiLineIndent ? line.slice(multiLineIndent) : line.trimStart()
+      currentValueLines.push(stripped)
+      continue
+    }
 
     if (isMultiLine) {
       if (line.trim() === "") {
@@ -129,41 +208,226 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
 
     flushCurrent()
 
+    const fullKey = getFullKey(key)
+
     if (rawVal === "" || rawVal.startsWith("#")) {
+      let nextLineIdx = idx + 1
+      while (nextLineIdx < lines.length && lines[nextLineIdx].trim() === "") nextLineIdx++
+      if (nextLineIdx < lines.length && lines[nextLineIdx].trim().startsWith('"""')) {
+        const nextIndent = (lines[nextLineIdx].match(/^(\s*)/) || ["", ""])[1].length
+        isMultiLine = true
+        isTripleQuotes = true
+        multiLineIndent = nextIndent
+        currentKey = fullKey
+        currentValueLines = []
+        idx = nextLineIdx
+        continue
+      }
+
       stack.push({ key, indent })
       continue
     }
 
-    const fullKey = getFullKey(key)
+    if (rawVal.startsWith('"""')) {
+      isMultiLine = true
+      isTripleQuotes = true
+      multiLineIndent = indent
+      currentKey = fullKey
+      currentValueLines = []
+      const rest = rawVal.slice(3).trim()
+      if (rest.endsWith('"""') && rest.length >= 3) {
+        entries.push({ name: fullKey, value: rest.slice(0, -3).trim() })
+        isMultiLine = false
+        isTripleQuotes = false
+        currentKey = null
+      } else if (rest.length > 0) {
+        currentValueLines.push(rest)
+      }
+      continue
+    }
 
     if (rawVal === "|" || rawVal === ">" || rawVal === "|-" || rawVal === ">-") {
       isMultiLine = true
       multiLineIndent = indent
       currentKey = fullKey
       currentValueLines = []
-    } else {
-      if (rawVal.startsWith('"')) {
-        const endQuote = rawVal.indexOf('"', 1)
-        if (endQuote !== -1) {
-          rawVal = rawVal.slice(1, endQuote)
-        }
-      } else if (rawVal.startsWith("'")) {
-        const endQuote = rawVal.indexOf("'", 1)
-        if (endQuote !== -1) {
-          rawVal = rawVal.slice(1, endQuote)
-        }
-      } else {
-        const commentIdx = rawVal.indexOf("#")
-        if (commentIdx !== -1) {
-          rawVal = rawVal.slice(0, commentIdx).trim()
-        }
-      }
-      entries.push({ name: fullKey, value: rawVal })
+      continue
     }
+
+    if (rawVal.startsWith('"')) {
+      const endQuote = rawVal.indexOf('"', 1)
+      if (endQuote !== -1) {
+        rawVal = rawVal.slice(1, endQuote)
+      }
+    } else if (rawVal.startsWith("'")) {
+      const endQuote = rawVal.indexOf("'", 1)
+      if (endQuote !== -1) {
+        rawVal = rawVal.slice(1, endQuote)
+      }
+    } else {
+      const commentIdx = rawVal.indexOf("#")
+      if (commentIdx !== -1) {
+        rawVal = rawVal.slice(0, commentIdx).trim()
+      }
+    }
+    entries.push({ name: fullKey, value: rawVal })
   }
 
   flushCurrent()
   return entries
+}
+
+/**
+ * 解析 Markdown 文本中的全部变量。
+ * 优先从 $$$ varTemplate 模板块中解析；未找到时向下兼容顶部的 --- 声明。
+ */
+export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[] => {
+  const lines = docText.split(/\r?\n/)
+  const varBlocks: string[] = []
+  let inBlock = false
+  let currentBlockLines: string[] = []
+
+  for (const line of lines) {
+    if (!inBlock) {
+      if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
+        inBlock = true
+        currentBlockLines = []
+      }
+    } else {
+      if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
+        inBlock = false
+        varBlocks.push(currentBlockLines.join("\n"))
+        currentBlockLines = []
+      } else {
+        currentBlockLines.push(line)
+      }
+    }
+  }
+
+  if (varBlocks.length > 0) {
+    const allEntries: MarkdownVariableEntry[] = []
+    for (const block of varBlocks) {
+      allEntries.push(...parseYamlVariableContent(block))
+    }
+    return allEntries
+  }
+
+  // 兜底兼容旧版 --- Frontmatter
+  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(docText)
+  if (match) {
+    return parseYamlVariableContent(match[1])
+  }
+
+  return []
+}
+
+/**
+ * 获取变量在补全命令面板右侧显示的标签前缀（如 temp.status -> temp，api_host -> var）。
+ */
+export const getVariableTag = (name: string): string => {
+  if (name.includes(".")) {
+    return name.split(".")[0]
+  }
+  return "var"
+}
+
+/**
+ * 清理 $$$ 模板块内部未修改的条目（橡皮擦功能）：
+ * 移除值为空（""、空 """）或仍保留默认占位符 "var" 的条目。
+ */
+export const cleanVarBlockItems = (blockContent: string): string => {
+  const lines = blockContent.split(/\r?\n/)
+  const preservedLines: string[] = []
+  let idx = 0
+
+  while (idx < lines.length) {
+    const line = lines[idx]
+
+    // 1. 明确的单行占位符 / 空值：key: "var" | key: 'var' | key: "" | key: ''
+    const singleMatch = line.match(/^(\s*)([A-Za-z0-9_.-]+)\s*:\s*(?:"var"|'var'|""|'')\s*$/)
+    if (singleMatch) {
+      idx++
+      continue
+    }
+
+    // 2. 键后无行内值的形式：key:
+    const emptyValueMatch = line.match(/^(\s*)([A-Za-z0-9_.-]+)\s*:\s*$/)
+    if (emptyValueMatch) {
+      const indent = emptyValueMatch[1].length
+
+      // 检查后续是否紧跟三引号多行块
+      if (idx + 1 < lines.length && lines[idx + 1].trim() === '"""') {
+        let j = idx + 2
+        const subLines: string[] = []
+        while (j < lines.length && lines[j].trim() !== '"""') {
+          subLines.push(lines[j].trim())
+          j++
+        }
+        if (j < lines.length && lines[j].trim() === '"""') {
+          const isUnfilled =
+            subLines.length === 0 ||
+            (subLines.length === 1 && (subLines[0] === "var" || subLines[0] === ""))
+          if (isUnfilled) {
+            idx = j + 1
+            continue
+          }
+          preservedLines.push(line)
+          for (let k = idx + 1; k <= j; k++) {
+            preservedLines.push(lines[k])
+          }
+          idx = j + 1
+          continue
+        }
+      }
+
+      // 检查后续是否有缩进子行（父命名空间）
+      let hasIndentedChild = false
+      for (let k = idx + 1; k < lines.length; k++) {
+        if (!lines[k].trim()) continue
+        const nextIndent = (lines[k].match(/^(\s*)/) || ["", ""])[1].length
+        if (nextIndent > indent) {
+          hasIndentedChild = true
+        }
+        break
+      }
+
+      if (!hasIndentedChild) {
+        idx++
+        continue
+      }
+    }
+
+    preservedLines.push(line)
+    idx++
+  }
+
+  // 第二轮检查：剔除由于子项被清理而变空的父级命名空间（如 temp: 后面已经没有任何缩进项了）
+  const result: string[] = []
+  for (let i = 0; i < preservedLines.length; i++) {
+    const current = preservedLines[i]
+    const headerMatch = current.match(/^(\s*)([A-Za-z0-9_.-]+)\s*:\s*$/)
+    if (headerMatch) {
+      if (i + 1 < preservedLines.length && preservedLines[i + 1].trim() === '"""') {
+        result.push(current)
+        continue
+      }
+
+      let hasChild = false
+      for (let j = i + 1; j < preservedLines.length; j++) {
+        const next = preservedLines[j]
+        if (!next.trim()) continue
+        const nextIndent = (next.match(/^(\s*)/) || ["", ""])[1].length
+        if (nextIndent > headerMatch[1].length) {
+          hasChild = true
+        }
+        break
+      }
+      if (!hasChild) continue
+    }
+    result.push(current)
+  }
+
+  return result.join("\n")
 }
 
 /**
@@ -208,26 +472,19 @@ export const filterMarkdownVariables = (
 }
 
 /**
- * 剥离文本顶部的 Frontmatter 声明，仅返回正文。
+ * 剥离文本中的变量定义块（$$$ ... $$$ 及旧版 --- Frontmatter），仅返回正文。
  */
-export const stripMarkdownFrontmatter = (content: string): string =>
-  content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").replace(/^\r?\n+/, "")
-
-/**
- * 获取变量条目的命名空间标签（有前缀取点号前第一段如 temp，无前缀取 var）。
- */
-export const getVariableTag = (name: string): string => {
-  const dotIndex = name.indexOf(".")
-  return dotIndex !== -1 ? name.slice(0, dotIndex) : "var"
+export const stripMarkdownVariableBlocks = (content: string): string => {
+  let stripped = content
+  // 移除全部 $$$ varTemplate 块
+  stripped = stripped.replace(
+    /^\s*\$\$\$\s*(?:varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?)?\s*[\s\S]*?^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?\s*$/gm,
+    "",
+  )
+  // 移除旧版 --- Frontmatter
+  stripped = stripped.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "")
+  return stripped.replace(/^\r?\n+/, "")
 }
 
-/**
- * 格式化变量的预览文本：
- * 多行值采用 """ 内容 """ 包裹并转为单行，单行值直接展示。
- */
-export const formatVariablePreview = (value: string): string => {
-  const isMultiLine = value.includes("\n")
-  const flattened = value.replace(/\r?\n/g, " ").trim()
-  if (!flattened) return ""
-  return isMultiLine ? `"""${flattened}"""` : flattened
-}
+// 保持旧接口名称兼容
+export const stripMarkdownFrontmatter = stripMarkdownVariableBlocks

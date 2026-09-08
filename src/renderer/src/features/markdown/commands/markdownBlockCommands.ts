@@ -241,6 +241,13 @@ export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start
 export const MARKDOWN_SUPPLE_END_RE =
   /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
 
+// 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
+export const MARKDOWN_VAR_TEMPLATE_START_RE =
+  /^\s*\$\$\$\s+varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?\s*$/
+
+// 变量模板块结束行：$$$ [varTemplate --end | --end]。
+export const MARKDOWN_VAR_TEMPLATE_END_RE = /^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/
+
 export interface ParsedMarkdownSuppleEnd {
   indent: string
   command: "suppleTemplate" | "supple"
@@ -329,6 +336,23 @@ export const isInsideMarkdownTemplateBlock = (text: string): boolean => {
     if (MARKDOWN_TEMPLATE_END_RE.test(line)) {
       isOpen = false
     } else if (MARKDOWN_TEMPLATE_START_RE.test(line)) {
+      isOpen = true
+    }
+  }
+
+  return isOpen
+}
+
+/**
+ * 判断指定文本末尾是否处于未闭合的变量模板块（$$$ varTemplate）内。
+ */
+export const isInsideMarkdownVarTemplateBlock = (text: string): boolean => {
+  let isOpen = false
+
+  for (const line of text.split("\n")) {
+    if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
+      isOpen = false
+    } else if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
       isOpen = true
     }
   }

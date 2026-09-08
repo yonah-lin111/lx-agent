@@ -8,6 +8,7 @@ import {
   MarkdownActionCopyButton,
   MarkdownActionDeleteButton,
   MarkdownActionFoldButton,
+  MarkdownActionMergeButton,
   TemplateStatusButton,
 } from "@/features/markdown/extensions/markdownActionWidgets"
 
@@ -48,6 +49,8 @@ export class CodeBlockActionWidget extends WidgetType {
     readonly isLog = false,
     readonly blockEndLine: number | null = null,
     readonly blockId: string | null = null,
+    readonly isVarTemplate = false,
+    readonly onMergeTemplate: (() => void) | null = null,
   ) {
     super()
   }
@@ -64,7 +67,8 @@ export class CodeBlockActionWidget extends WidgetType {
       this.blockEndLine === other.blockEndLine &&
       this.blockId === other.blockId &&
       this.isSupple === other.isSupple &&
-      this.isLog === other.isLog
+      this.isLog === other.isLog &&
+      this.isVarTemplate === other.isVarTemplate
     )
   }
 
@@ -86,55 +90,91 @@ export class CodeBlockActionWidget extends WidgetType {
 
     const isTemplate = Boolean(this.templateStatus)
     const actionNodes: ReactNode[] = []
-    if (this.templateStatus) {
-      actionNodes.push(
-        createElement(TemplateStatusButton, {
-          status: this.templateStatus.status,
-          onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
-        }),
-      )
-    }
-    if ((this.templateStatus || this.isSupple || this.isLog) && this.onCleanTemplate) {
-      actionNodes.push(
-        createElement(MarkdownActionCleanButton, {
-          onClean: this.onCleanTemplate,
-          isSupple: this.isSupple,
-          isLog: this.isLog,
-        }),
-      )
-    }
-    if ((this.templateStatus || this.isSupple || this.isLog) && this.onDeleteTemplate) {
-      actionNodes.push(
-        createElement(MarkdownActionDeleteButton, {
-          onDelete: this.onDeleteTemplate,
-          isSupple: this.isSupple,
-          isLog: this.isLog,
-        }),
-      )
-    }
-    if (!this.isLog) {
-      actionNodes.push(
-        createElement(MarkdownActionCopyButton, {
-          text: this.codeText,
-          label: this.copyTitle,
-          isTemplate,
-          isSupple: this.isSupple,
-          isLog: this.isLog,
-        }),
-      )
-    }
-    if (this.showFoldBtn) {
-      actionNodes.push(
-        createElement(MarkdownActionFoldButton, {
-          isFolded: this.isFolded,
-          label: this.foldTitle,
-          unfoldLabel: this.unfoldTitle,
-          isTemplate,
-          isSupple: this.isSupple,
-          isLog: this.isLog,
-          onToggle: this.onToggleFold,
-        }),
-      )
+
+    if (this.isVarTemplate) {
+      if (this.onMergeTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionMergeButton, {
+            onMerge: this.onMergeTemplate,
+          }),
+        )
+      }
+      if (this.onCleanTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionCleanButton, {
+            onClean: this.onCleanTemplate,
+            isVarTemplate: true,
+          }),
+        )
+      }
+      if (this.onDeleteTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionDeleteButton, {
+            onDelete: this.onDeleteTemplate,
+            isVarTemplate: true,
+          }),
+        )
+      }
+      if (this.showFoldBtn) {
+        actionNodes.push(
+          createElement(MarkdownActionFoldButton, {
+            isFolded: this.isFolded,
+            isVarTemplate: true,
+            onToggle: this.onToggleFold,
+          }),
+        )
+      }
+    } else {
+      if (this.templateStatus) {
+        actionNodes.push(
+          createElement(TemplateStatusButton, {
+            status: this.templateStatus.status,
+            onToggle: () => this.templateStatus?.onToggle(this.templateStatus.line),
+          }),
+        )
+      }
+      if ((this.templateStatus || this.isSupple || this.isLog) && this.onCleanTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionCleanButton, {
+            onClean: this.onCleanTemplate,
+            isSupple: this.isSupple,
+            isLog: this.isLog,
+          }),
+        )
+      }
+      if ((this.templateStatus || this.isSupple || this.isLog) && this.onDeleteTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionDeleteButton, {
+            onDelete: this.onDeleteTemplate,
+            isSupple: this.isSupple,
+            isLog: this.isLog,
+          }),
+        )
+      }
+      if (!this.isLog) {
+        actionNodes.push(
+          createElement(MarkdownActionCopyButton, {
+            text: this.codeText,
+            label: this.copyTitle,
+            isTemplate,
+            isSupple: this.isSupple,
+            isLog: this.isLog,
+          }),
+        )
+      }
+      if (this.showFoldBtn) {
+        actionNodes.push(
+          createElement(MarkdownActionFoldButton, {
+            isFolded: this.isFolded,
+            label: this.foldTitle,
+            unfoldLabel: this.unfoldTitle,
+            isTemplate,
+            isSupple: this.isSupple,
+            isLog: this.isLog,
+            onToggle: this.onToggleFold,
+          }),
+        )
+      }
     }
 
     this.reactRoot = createRoot(wrap)

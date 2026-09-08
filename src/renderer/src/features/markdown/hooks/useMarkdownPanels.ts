@@ -50,6 +50,10 @@ import {
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import {
+  type MarkdownColonPanelState,
+  useMarkdownColonPanel,
+} from "@/features/markdown/hooks/useMarkdownColonPanel"
+import {
   type MarkdownVariablePanelState,
   useMarkdownVariablePanel,
 } from "@/features/markdown/hooks/useMarkdownVariablePanel"
@@ -58,7 +62,7 @@ import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPane
 import { launchNewCliTerminal } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
 
-export type { MarkdownVariablePanelState }
+export type { MarkdownColonPanelState, MarkdownVariablePanelState }
 
 /**
  * Prompt 发送目标面板状态。
@@ -206,6 +210,7 @@ export const useMarkdownPanels = ({
   const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
   const [activeTemplateFileIndex, setActiveTemplateFileIndex] = useState(0)
   const variablePanelState = useMarkdownVariablePanel({ editorViewRef })
+  const colonPanelState = useMarkdownColonPanel(editorViewRef)
 
   onSearchFilesRef.current = onSearchFiles
   onSearchReferencedFilesRef.current = onSearchReferencedFiles
@@ -1195,5 +1200,13 @@ export const useMarkdownPanels = ({
     syncVariablePanel: variablePanelState.syncVariablePanel,
     selectVariable: variablePanelState.selectVariable,
     handleVariableKey: variablePanelState.handleVariableKey,
+    colonPanel: colonPanelState.colonPanelState,
+    colonPanelRef: colonPanelState.colonPanelRef,
+    activeColonOptionIndex: colonPanelState.activeColonOptionIndex,
+    activeColonOptionIndexRef: colonPanelState.activeColonOptionIndexRef,
+    syncColonPanel: colonPanelState.syncColonPanel,
+    closeColonPanel: colonPanelState.closeColonPanel,
+    handleColonKey: colonPanelState.handleColonKey,
+    selectColonOption: colonPanelState.selectColonOption,
   }
 }

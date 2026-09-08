@@ -8,6 +8,7 @@ import {
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
 import { getMarkdownArmedSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
+import { isInsideMarkdownVariableBlock } from "@/features/markdown/commands/markdownVariableCommands"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import { createMarkdownFormattingKeymap } from "@/features/markdown/extensions/markdownFormattingKeymap"
 import type { UseMarkdownEditorActionsResult } from "@/features/markdown/hooks/useMarkdownEditorActions"
@@ -60,6 +61,50 @@ export const markdownTemplateProtectionFilter: Extension = EditorState.transacti
 )
 
 /**
+ * 变量模板块全角冒号自动转半角过滤器：
+ * 在 $$$ 变量模板块内部输入全角「：」时，实时转换为 YAML 标准半角「:」，确保语法合法且顺畅唤醒选择面板。
+ */
+export const markdownVarTemplateColonFilter: Extension = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged) return tr
+  let hasFullWidthColon = false
+  tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+    if (inserted.toString().includes("：")) {
+      hasFullWidthColon = true
+    }
+  })
+  if (!hasFullWidthColon) return tr
+
+  const docText = tr.startState.doc.toString()
+  let modified = false
+  const newChanges: Array<{ from: number; to: number; insert: string }> = []
+
+  tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+    const text = inserted.toString()
+    if (text.includes("：") && isInsideMarkdownVariableBlock(docText, fromA)) {
+      modified = true
+      newChanges.push({
+        from: fromA,
+        to: toA,
+        insert: text.replace(/：/g, ":"),
+      })
+    } else {
+      newChanges.push({
+        from: fromA,
+        to: toA,
+        insert: text,
+      })
+    }
+  })
+
+  if (!modified) return tr
+  return {
+    changes: newChanges,
+    selection: tr.selection,
+    scrollIntoView: tr.scrollIntoView,
+  }
+})
+
+/**
  * 构建 Markdown 编辑器快捷键绑定及 DOM 事件监听器。
  */
 export const createMarkdownEditorKeymaps = ({
@@ -80,12 +125,14 @@ export const createMarkdownEditorKeymaps = ({
 
   return [
     markdownTemplateProtectionFilter,
+    markdownVarTemplateColonFilter,
     Prec.highest(
       keymap.of([
         {
           key: "ArrowDown",
           run: () =>
             paste.handlePasteReferenceKey(1) ||
+            panels.handleColonKey("ArrowDown") ||
             panels.handleVariableKey(1) ||
             panels.handleFileMentionKey("ArrowDown") ||
             panels.handleGitWorktreeKey(1) ||
@@ -99,6 +146,7 @@ export const createMarkdownEditorKeymaps = ({
           key: "ArrowUp",
           run: () =>
             paste.handlePasteReferenceKey(-1) ||
+            panels.handleColonKey("ArrowUp") ||
             panels.handleVariableKey(-1) ||
             panels.handleFileMentionKey("ArrowUp") ||
             panels.handleGitWorktreeKey(-1) ||
@@ -188,6 +236,11 @@ export const createMarkdownEditorKeymaps = ({
                   variablePanel.variables[0],
               )
               return true
+            }
+
+            const colonPanel = panels.colonPanelRef.current
+            if (colonPanel?.active) {
+              return panels.selectColonOption()
             }
 
             const cursor = view.state.selection.main.head
@@ -344,6 +397,10 @@ export const createMarkdownEditorKeymaps = ({
             }
             if (panels.variablePanelRef.current) {
               panels.closeVariablePanel()
+              return true
+            }
+            if (panels.colonPanelRef.current?.active) {
+              panels.closeColonPanel()
               return true
             }
             return false

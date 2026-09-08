@@ -1,6 +1,7 @@
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
+import { MarkdownColonCommandMenu } from "@/features/markdown/components/MarkdownColonCommandMenu"
 import {
   buildPasteReferenceOptions,
   MarkdownPasteCommandMenu,
@@ -91,6 +92,13 @@ export const MarkdownCommandPanels = ({
         variables={panels.variablePanel?.variables}
         visible={Boolean(panels.variablePanel)}
         onSelect={panels.selectVariable}
+      />
+      <MarkdownColonCommandMenu
+        activeIndex={panels.activeColonOptionIndex}
+        keyName={panels.colonPanel?.key ?? ""}
+        position={panels.colonPanel?.position}
+        visible={Boolean(panels.colonPanel?.active)}
+        onSelect={(type) => panels.selectColonOption(type)}
       />
     </>
   )

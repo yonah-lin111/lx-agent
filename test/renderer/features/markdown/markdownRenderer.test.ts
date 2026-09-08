@@ -252,4 +252,24 @@ vars:
     expect(html).toContain("正文标题")
     expect(html).toContain("正文内容")
   })
+
+  it("拦截 $$$ varTemplate 变量模板块，不在预览区渲染，同时保留正文内容", () => {
+    const markdown = `$$$ varTemplate --start 「title: 变量」
+api_host: "https://api.github.com"
+temp:
+  """
+  var
+  """
+$$$ varTemplate --end
+
+# 正文标题
+正文内容`
+
+    const html = markdownRenderer.render(markdown)
+    expect(html).not.toContain("varTemplate")
+    expect(html).not.toContain("api_host")
+    expect(html).not.toContain("https://api.github.com")
+    expect(html).toContain("正文标题")
+    expect(html).toContain("正文内容")
+  })
 })

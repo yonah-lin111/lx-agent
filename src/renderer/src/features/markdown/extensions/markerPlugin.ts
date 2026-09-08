@@ -3,6 +3,11 @@ import {
   cycleMarkdownTemplateStatus,
   MARKDOWN_LOG_START_RE,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  cleanVarBlockItems,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+  MARKDOWN_VAR_TEMPLATE_START_RE,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import { buildMarkdownMarkerDecorations } from "@/features/markdown/extensions/markerDecorations"
 import { markdownBlockFoldToggleEffect } from "@/features/markdown/extensions/markerWidgets"
 import { stripEmptyTemplateItems } from "@/features/markdown/utils/markdownRenderer"
@@ -21,6 +26,7 @@ export const markdownMarkerHighlight = (
       templateFoldedIndices = new Set<number>()
       suppleFoldedIndices = new Set<number>()
       logFoldedIndices = new Set<number>()
+      varFoldedIndices = new Set<number>()
       initialLogScanned = false
       wasComposing = false
       referencedNamesKey = ""
@@ -46,6 +52,11 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleLogFold(view, index),
           (startLine, endLine) => this.deleteLogBlock(view, startLine, endLine),
           (startLine, endLine) => this.cleanLogBlock(view, startLine, endLine),
+          this.varFoldedIndices,
+          (index) => this.toggleVarFold(view, index),
+          (startLine, endLine) => this.deleteVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.cleanVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.mergeVarBlock(view, startLine, endLine),
         )
       }
 
@@ -107,6 +118,11 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleLogFold(update.view, index),
           (startLine, endLine) => this.deleteLogBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.cleanLogBlock(update.view, startLine, endLine),
+          this.varFoldedIndices,
+          (index) => this.toggleVarFold(update.view, index),
+          (startLine, endLine) => this.deleteVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.cleanVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.mergeVarBlock(update.view, startLine, endLine),
         )
       }
 
@@ -267,6 +283,117 @@ export const markdownMarkerHighlight = (
             insert: cleaned,
           },
         })
+      }
+
+      toggleVarFold(view: EditorView, index: number) {
+        if (this.varFoldedIndices.has(index)) {
+          this.varFoldedIndices.delete(index)
+        } else {
+          this.varFoldedIndices.add(index)
+        }
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
+      }
+
+      deleteVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
+
+      cleanVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines : endLine
+        if (safeEndLine <= startLine + 1) return
+
+        const innerLines: string[] = []
+        for (let l = startLine + 1; l < safeEndLine; l++) {
+          innerLines.push(doc.line(l + 1).text)
+        }
+
+        const cleaned = cleanVarBlockItems(innerLines.join("\n"))
+        const firstInnerLine = doc.line(startLine + 2)
+        const lastInnerLine = doc.line(safeEndLine)
+
+        view.dispatch({
+          changes: {
+            from: firstInnerLine.from,
+            to: lastInnerLine.to,
+            insert: cleaned,
+          },
+        })
+      }
+
+      mergeVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+
+        // 检查当前块是否已经在顶部（前面只有空行）
+        let isAlreadyTop = true
+        for (let l = 0; l < safeStartLine; l++) {
+          if (doc.line(l + 1).text.trim() !== "") {
+            isAlreadyTop = false
+            break
+          }
+        }
+        if (isAlreadyTop) return
+
+        // 寻找顶部已存在的 $$$ 变量块
+        let topStartLine = -1
+        let topEndLine = -1
+        for (let l = 0; l < safeStartLine; l++) {
+          const lineText = doc.line(l + 1).text
+          if (topStartLine === -1) {
+            if (MARKDOWN_VAR_TEMPLATE_START_RE.test(lineText)) {
+              topStartLine = l
+            } else if (lineText.trim() !== "") {
+              break
+            }
+          } else {
+            if (MARKDOWN_VAR_TEMPLATE_END_RE.test(lineText)) {
+              topEndLine = l
+              break
+            }
+          }
+        }
+
+        const currentStartDocLine = doc.line(safeStartLine + 1)
+        const currentEndDocLine = doc.line(safeEndLine + 1)
+        const currentDeleteFrom = currentStartDocLine.from
+        const currentDeleteTo = Math.min(currentEndDocLine.to + 1, doc.length)
+
+        if (topStartLine !== -1 && topEndLine !== -1) {
+          const innerLines: string[] = []
+          for (let l = safeStartLine + 1; l < safeEndLine; l++) {
+            innerLines.push(doc.line(l + 1).text)
+          }
+          const contentToAppend = innerLines.join("\n") + "\n"
+          const topInsertPos = doc.line(topEndLine + 1).from
+
+          view.dispatch({
+            changes: [
+              { from: topInsertPos, to: topInsertPos, insert: contentToAppend },
+              { from: currentDeleteFrom, to: currentDeleteTo, insert: "" },
+            ],
+          })
+        } else {
+          const blockText = doc.sliceString(currentStartDocLine.from, currentEndDocLine.to)
+          view.dispatch({
+            changes: [
+              { from: 0, to: 0, insert: blockText + "\n\n" },
+              { from: currentDeleteFrom, to: currentDeleteTo, insert: "" },
+            ],
+          })
+        }
       }
     },
     { decorations: (plugin) => plugin.decorations },

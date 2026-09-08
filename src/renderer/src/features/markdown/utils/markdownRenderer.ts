@@ -25,6 +25,8 @@ import {
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+  MARKDOWN_VAR_TEMPLATE_START_RE,
   type MarkdownTemplateStatus,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import {
@@ -307,6 +309,37 @@ const markdownFrontmatterBlock = (
 }
 
 markdownRenderer.block.ruler.before("table", "markdown_frontmatter", markdownFrontmatterBlock, {
+  alt: ["paragraph", "reference", "blockquote", "list"],
+})
+
+const markdownVarTemplateBlock = (
+  state: MarkdownBlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean => {
+  const startText = state.src
+    .slice(state.bMarks[startLine] + state.tShift[startLine], state.eMarks[startLine])
+    .trim()
+  if (!MARKDOWN_VAR_TEMPLATE_START_RE.test(startText)) return false
+
+  let closeLine = startLine + 1
+  while (closeLine < endLine) {
+    const lineText = state.src
+      .slice(state.bMarks[closeLine] + state.tShift[closeLine], state.eMarks[closeLine])
+      .trim()
+    if (MARKDOWN_VAR_TEMPLATE_END_RE.test(lineText)) break
+    closeLine += 1
+  }
+
+  if (closeLine >= endLine) return false
+  if (silent) return true
+
+  state.line = closeLine + 1
+  return true
+}
+
+markdownRenderer.block.ruler.before("table", "markdown_var_template", markdownVarTemplateBlock, {
   alt: ["paragraph", "reference", "blockquote", "list"],
 })
 

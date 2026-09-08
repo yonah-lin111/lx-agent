@@ -1,13 +1,22 @@
-import { describe, expect, it } from "vitest"
+// @vitest-environment jsdom
+import { EditorState } from "@codemirror/state"
+import { EditorView } from "@codemirror/view"
+import { act, renderHook } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
 import {
+  cleanVarBlockItems,
   filterMarkdownVariables,
-  formatVariablePreview,
+  getMarkdownColonTrigger,
   getMarkdownVariableTrigger,
   getVariableTag,
   isInsideMarkdownFrontmatter,
   parseMarkdownVariables,
   stripMarkdownFrontmatter,
+  stripMarkdownVariableBlocks,
 } from "@/features/markdown/commands/markdownVariableCommands"
+import { markdownVarTemplateColonFilter } from "@/features/markdown/extensions/markdownEditorKeymap"
+import { markdownMarkerHighlight } from "@/features/markdown/extensions/markerPlugin"
+import { useMarkdownColonPanel } from "@/features/markdown/hooks/useMarkdownColonPanel"
 
 describe("Markdown 页面变量命令", () => {
   describe("parseMarkdownVariables", () => {
@@ -104,6 +113,33 @@ flat_key: 顶层平级
         { name: "temp.title", value: "我的文档" },
         { name: "temp.nested.deep_key", value: "deep_val" },
         { name: "flat_key", value: "顶层平级" },
+      ])
+    })
+
+    it("支持从 $$$ varTemplate 模板块中解析变量（单行与三引号多行）", () => {
+      const doc = `$$$ varTemplate --start 「title: 页面变量」
+api_host: "https://api.github.com/v1"
+reviewer:
+  """
+  请作为资深架构师评审代码：
+  1. 架构规范
+  2. 性能评估
+  """
+temp:
+  status: "active"
+$$$ varTemplate --end
+
+# 正文
+正文内容
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        { name: "api_host", value: "https://api.github.com/v1" },
+        {
+          name: "reviewer",
+          value: "请作为资深架构师评审代码：\n1. 架构规范\n2. 性能评估",
+        },
+        { name: "temp.status", value: "active" },
       ])
     })
   })
@@ -216,36 +252,229 @@ vars:
       const doc = "# 标题\n正文内容"
       expect(stripMarkdownFrontmatter(doc)).toBe(doc)
     })
+
+    it("剥离 $$$ varTemplate 变量块并保留干净正文", () => {
+      const doc = `$$$ varTemplate --start 「title: 变量」
+api_host: "https://api.github.com"
+temp:
+  """
+  var
+  """
+$$$ varTemplate --end
+
+# 标题
+正文内容`
+      expect(stripMarkdownVariableBlocks(doc)).toBe("# 标题\n正文内容")
+    })
   })
 
   describe("getVariableTag", () => {
-    it("带命名空间前缀的点号变量提取第一段作为 tag", () => {
+    it("提取前缀或者默认为 var", () => {
       expect(getVariableTag("temp.status")).toBe("temp")
-      expect(getVariableTag("temp.nested.deep")).toBe("temp")
-      expect(getVariableTag("env.prod.url")).toBe("env")
-    })
-
-    it("无前缀或默认 vars 下的平级变量返回 var", () => {
-      expect(getVariableTag("reviewer_instruction")).toBe("var")
+      expect(getVariableTag("user.profile.name")).toBe("user")
       expect(getVariableTag("api_host")).toBe("var")
+      expect(getVariableTag("vars.custom")).toBe("vars")
     })
   })
 
-  describe("formatVariablePreview", () => {
-    it("多行文本展开为单行并使用三重双引号包裹", () => {
-      const multi = `请作为资深架构师评审以下代码：\n1. 确保符合项目规范\n2. 检查性能`
-      expect(formatVariablePreview(multi)).toBe(
-        `"""请作为资深架构师评审以下代码： 1. 确保符合项目规范 2. 检查性能"""`,
+  describe("cleanVarBlockItems", () => {
+    it("清理未填项（空字符串、空三引号、未修改的 var 占位符）", () => {
+      const block = `$$$ varTemplate --start 「title: 变量」
+api_host: "https://api.github.com"
+unfilled: ""
+untouched: "var"
+multiline_empty:
+  """
+  """
+multiline_var:
+  """
+  var
+  """
+multiline_valid:
+  """
+  自定义内容
+  """
+$$$ varTemplate --end`
+
+      const cleaned = cleanVarBlockItems(block)
+      expect(cleaned).toContain('api_host: "https://api.github.com"')
+      expect(cleaned).not.toContain('unfilled: ""')
+      expect(cleaned).not.toContain('untouched: "var"')
+      expect(cleaned).not.toContain("multiline_empty:")
+      expect(cleaned).not.toContain("multiline_var:")
+      expect(cleaned).toContain("multiline_valid:")
+      expect(cleaned).toContain("自定义内容")
+    })
+  })
+
+  describe("getMarkdownColonTrigger", () => {
+    it("识别行末英文冒号并返回键与缩进", () => {
+      const line = "  custom_key:"
+      const trigger = getMarkdownColonTrigger(line, line.length, 10)
+      expect(trigger).toEqual({
+        indent: "  ",
+        key: "custom_key",
+        from: 10,
+        to: 10 + line.length,
+      })
+    })
+
+    it("识别行末中文全角冒号", () => {
+      const line = "temp_key："
+      const trigger = getMarkdownColonTrigger(line, line.length, 0)
+      expect(trigger).toEqual({
+        indent: "",
+        key: "temp_key",
+        from: 0,
+        to: line.length,
+      })
+    })
+
+    it("非冒号行返回 null", () => {
+      expect(getMarkdownColonTrigger("hello world", 11, 0)).toBeNull()
+      expect(getMarkdownColonTrigger("key: value", 10, 0)).toBeNull()
+    })
+  })
+
+  describe("markdownVarTemplateColonFilter", () => {
+    it("在 $$$ 变量块内部输入全角中文冒号「：」自动转换为英文冒号「:」", () => {
+      const initialDoc = "$$$\n\n$$$\n"
+      const state = EditorState.create({
+        doc: initialDoc,
+        extensions: [markdownVarTemplateColonFilter],
+      })
+      // 光标在第二行（索引 4，位于 $$$ 块内）
+      const tr = state.update({
+        changes: { from: 4, to: 4, insert: "key：" },
+      })
+      expect(tr.state.doc.toString()).toBe("$$$\nkey:\n$$$\n")
+    })
+
+    it("在 $$$ 变量块外部输入中文冒号「：」保持原样不转换", () => {
+      const initialDoc = "# 标题\n\n正文"
+      const state = EditorState.create({
+        doc: initialDoc,
+        extensions: [markdownVarTemplateColonFilter],
+      })
+      const tr = state.update({
+        changes: { from: 5, to: 5, insert: "注意：" },
+      })
+      expect(tr.state.doc.toString()).toBe("# 标题\n注意：\n正文")
+    })
+  })
+
+  describe("useMarkdownColonPanel 选项与快捷展开", () => {
+    it("支持 4 个选项（单行、多行、嵌套单行、嵌套多行）并在嵌套选项中选中子级 key", () => {
+      const doc = "$$$ varTemplate\nuser:\n$$$ --end"
+      const editorView = new EditorView({
+        state: EditorState.create({
+          doc,
+          selection: { anchor: 21 }, // 光标在 user: 之后
+        }),
+      })
+      editorView.coordsAtPos = vi.fn().mockReturnValue({ left: 10, right: 20, top: 10, bottom: 20 })
+      const editorRef = { current: editorView }
+      const { result } = renderHook(() => useMarkdownColonPanel(editorRef))
+
+      act(() => {
+        result.current.syncColonPanel(editorView)
+      })
+      expect(result.current.colonPanelState.active).toBe(true)
+      expect(result.current.colonPanelState.key).toBe("user")
+
+      // 循环向下切换选项：0 -> 1 -> 2 -> 3 -> 0
+      act(() => {
+        result.current.handleColonKey("ArrowDown")
+      })
+      expect(result.current.activeColonOptionIndex).toBe(1) // multi
+
+      act(() => {
+        result.current.handleColonKey("ArrowDown")
+      })
+      expect(result.current.activeColonOptionIndex).toBe(2) // nestedSingle
+
+      // 选择 nestedSingle
+      act(() => {
+        result.current.selectColonOption("nestedSingle")
+      })
+      expect(editorView.state.doc.toString()).toContain('user:\n  key: "var"')
+      // 确认光标选中了子级 key
+      const sel = editorView.state.selection.main
+      const selectedText = editorView.state.sliceDoc(sel.from, sel.to)
+      expect(selectedText).toBe("key")
+
+      // 重新测试 nestedMulti
+      const docMulti = "$$$ varTemplate\nconfig:\n$$$ --end"
+      const editorViewMulti = new EditorView({
+        state: EditorState.create({
+          doc: docMulti,
+          selection: { anchor: 23 },
+        }),
+      })
+      editorViewMulti.coordsAtPos = vi
+        .fn()
+        .mockReturnValue({ left: 10, right: 20, top: 10, bottom: 20 })
+      const editorRefMulti = { current: editorViewMulti }
+      const { result: resultMulti } = renderHook(() => useMarkdownColonPanel(editorRefMulti))
+
+      act(() => {
+        resultMulti.current.syncColonPanel(editorViewMulti)
+      })
+      act(() => {
+        resultMulti.current.selectColonOption("nestedMulti")
+      })
+      expect(editorViewMulti.state.doc.toString()).toContain(
+        'config:\n  key:\n    """\n    var\n    """',
       )
+      const selMulti = editorViewMulti.state.selection.main
+      expect(editorViewMulti.state.sliceDoc(selMulti.from, selMulti.to)).toBe("key")
     })
+  })
 
-    it("单行文本原样去除首尾空白输出", () => {
-      expect(formatVariablePreview("  https://api.github.com  ")).toBe("https://api.github.com")
-    })
+  describe("变量模板块语法高亮与非法行识别", () => {
+    it("正确对变量块内部的合法键值对进行标记，并对非法非键值对行添加警告标记", () => {
+      const doc = [
+        "$$$ varTemplate",
+        'api_host: "https://api.github.com"',
+        "reviewer:",
+        '  """',
+        "  var",
+        '  """',
+        "# 这是一个注释",
+        "invalid line without colon",
+        "$$$ --end",
+      ].join("\n")
 
-    it("空文本返回空字符串", () => {
-      expect(formatVariablePreview("")).toBe("")
-      expect(formatVariablePreview("   \n  ")).toBe("")
+      const extension = markdownMarkerHighlight(true)
+      const state = EditorState.create({
+        doc,
+        extensions: [extension],
+      })
+      const view = new EditorView({ state })
+      const plugin = view.plugin(extension[0]!)
+      expect(plugin).toBeDefined()
+
+      const classNames: string[] = []
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        const cls =
+          (cursor.value.spec as { class?: string })?.class ||
+          (cursor.value.spec as { attributes?: { class?: string } })?.attributes?.class
+        if (cls) {
+          classNames.push(cls)
+        }
+        cursor.next()
+      }
+
+      // 包含合法键值对标记
+      expect(classNames).toContain("cm-md-var-key")
+      expect(classNames).toContain("cm-md-var-colon")
+      expect(classNames).toContain("cm-md-var-string")
+      expect(classNames).toContain("cm-md-var-triple-quote")
+      expect(classNames).toContain("cm-md-var-comment")
+      // 包含非法行警告标记
+      expect(classNames).toContain("cm-md-var-invalid-text")
+      expect(classNames.some((c) => c.includes("cm-md-var-invalid-line"))).toBe(true)
     })
   })
 })

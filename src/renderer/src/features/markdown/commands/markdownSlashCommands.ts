@@ -12,6 +12,7 @@ export type MarkdownTemplateCommandId =
   | "styleTemplate"
   | "suppleTemplate"
   | "logTemplate"
+  | "varTemplate"
 
 // Markdown 斜杠命令标识。
 export type MarkdownSlashCommandId =
@@ -135,8 +136,19 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const styleContent = dict.markdown.templateStyleContent
   const suppleContent = dict.markdown.templateSuppleContent
   const logContent = dict.markdown.templateLogContent
+  const varContent = dict.markdown.templateVarContent
 
   const templates: MarkdownSlashCommand[] = [
+    {
+      id: "varTemplate",
+      label: "/varTemplate",
+      description: dict.markdown.templateVarDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: varContent,
+      cursorOffset: getTemplateCursorOffset(varContent),
+    },
     {
       id: "addTemplate",
       label: "/addTemplate",
