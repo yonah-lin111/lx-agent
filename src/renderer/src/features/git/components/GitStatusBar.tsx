@@ -317,13 +317,11 @@ export const GitStatusBar = ({
 
   // 渲染分支部分
   const renderBranchItem = (): React.JSX.Element | null => {
-    const shouldShow = interactive || (Boolean(projectPath) && Boolean(mainBranch))
-    if (!shouldShow) return null
+    if (!projectPath || !mainBranch) return null
 
-    const displayBranch = mainBranch ?? "none"
+    const displayBranch = mainBranch
 
     if (!interactive) {
-      if (!mainBranch) return null
       return (
         <LxTooltip content={t("git.currentBranch", { branch: displayBranch })} placement="top">
           <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
@@ -414,19 +412,24 @@ export const GitStatusBar = ({
 
   // 渲染工作区部分
   const renderWorktreeItem = (): React.JSX.Element | null => {
+    const hasMultipleWorktrees = (worktrees?.length ?? 0) > 1
+    const hasActiveWorktree = Boolean(worktreeName)
     const shouldShow =
-      interactive || alwaysShowWorktree || (Boolean(projectPath) && Boolean(worktreeName))
+      alwaysShowWorktree ||
+      (Boolean(projectPath) &&
+        (interactive ? hasActiveWorktree || hasMultipleWorktrees : hasActiveWorktree))
     if (!shouldShow) return null
 
-    const displayWorktree = worktreeName ?? "none"
+    const displayWorktree =
+      worktreeName ?? (hasMultipleWorktrees ? t("git.defaultWorktree") : "none")
 
     if (!interactive) {
-      if (!worktreeName) return null
+      if (!worktreeName && !alwaysShowWorktree) return null
       return (
-        <LxTooltip content={t("git.worktree", { name: worktreeName })} placement="top">
+        <LxTooltip content={t("git.worktree", { name: displayWorktree })} placement="top">
           <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
             <GitFork className="h-3.5 w-3.5 text-amber-400" />
-            {worktreeName}
+            {displayWorktree}
           </span>
         </LxTooltip>
       )

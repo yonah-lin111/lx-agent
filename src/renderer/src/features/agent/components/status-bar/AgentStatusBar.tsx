@@ -70,7 +70,6 @@ export const AgentStatusBar = ({
           projectId={projectId}
           interactive={true}
           allowProjectChange={allowProjectChange}
-          alwaysShowWorktree={true}
           onProjectChange={onProjectChange}
           onBranchChange={onBranchChange}
           onWorktreeChange={onWorktreeChange}

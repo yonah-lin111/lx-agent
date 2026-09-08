@@ -16,11 +16,13 @@ vi.stubGlobal(
 )
 vi.stubGlobal("requestAnimationFrame", (() => 0) as typeof requestAnimationFrame)
 
+const mockGitStatusBar = vi.fn()
 // Mock GitStatusBar 避免依赖 gitApi 与 Electron IPC。
 vi.mock("@/features/git", () => ({
-  GitStatusBar: ({ projectPath }: { projectPath?: string }) => (
-    <div data-testid="mock-git-status-bar">{projectPath ?? "no-path"}</div>
-  ),
+  GitStatusBar: (props: Record<string, unknown>) => {
+    mockGitStatusBar(props)
+    return <div data-testid="mock-git-status-bar">{(props.projectPath as string) ?? "no-path"}</div>
+  },
 }))
 
 describe("AgentStatusBar", () => {
@@ -92,5 +94,22 @@ describe("AgentStatusBar", () => {
     expect(container.querySelector("[aria-label*='任务清单']")).toBeNull()
     expect(screen.queryByText(/todo/i)).toBeNull()
     expect(screen.queryByText(/任务清单/i)).toBeNull()
+  })
+
+  it("渲染 GitStatusBar 时不传递 alwaysShowWorktree={true}", () => {
+    mockGitStatusBar.mockClear()
+    render(
+      <AgentStatusBar
+        projectPath="/test/project"
+        projectId="p1"
+        pendingRequest={null}
+        onPermissionRespond={vi.fn()}
+      />,
+    )
+
+    expect(mockGitStatusBar).toHaveBeenCalledTimes(1)
+    const passedProps = mockGitStatusBar.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(passedProps.alwaysShowWorktree).toBeUndefined()
+    expect(passedProps.interactive).toBe(true)
   })
 })
