@@ -20,47 +20,51 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      openai: {
-        id: "openai",
-        type: "openai",
-        name: "OpenAI",
-        options: { apiKey: "mock-key" },
-        models: { "gpt-4o": { id: "gpt-4o", name: "GPT-4o" } },
-      },
-      anthropic: {
-        id: "anthropic",
-        type: "anthropic",
-        name: "Anthropic",
-        options: { apiKey: "mock-key" },
-        models: {
-          "claude-3-5-sonnet-20241022": {
-            id: "claude-3-5-sonnet-20241022",
-            name: "Claude 3.5 Sonnet",
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        openai: {
+          id: "openai",
+          type: "openai",
+          name: "OpenAI",
+          options: { apiKey: "mock-key" },
+          models: { "gpt-4o": { id: "gpt-4o", name: "GPT-4o" } },
+        },
+        anthropic: {
+          id: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          options: { apiKey: "mock-key" },
+          models: {
+            "claude-3-5-sonnet-20241022": {
+              id: "claude-3-5-sonnet-20241022",
+              name: "Claude 3.5 Sonnet",
+            },
           },
         },
       },
-    },
-    enabledProviders: ["openai", "anthropic"],
-  }),
-  getCompactionSettings: () => ({
-    enabled: true,
-    contextWindow: 128000,
-    keepRecentTokens: 20000,
-    reserveTokens: 16384,
-  }),
-  getPermissionSettings: () => ({
-    defaultMode: "bypass",
-    allow: [],
-    deny: [],
-    ask: [],
-  }),
-  savePermissionSettings: vi.fn(),
-  getEffectivePersonality: () => "engineer",
-  getEffectiveCustomInstructions: () => "",
-}))
+      enabledProviders: ["openai", "anthropic"],
+    }),
+    getCompactionSettings: () => ({
+      enabled: true,
+      contextWindow: 128000,
+      keepRecentTokens: 20000,
+      reserveTokens: 16384,
+    }),
+    getPermissionSettings: () => ({
+      defaultMode: "bypass",
+      allow: [],
+      deny: [],
+      ask: [],
+    }),
+    savePermissionSettings: vi.fn(),
+    getEffectivePersonality: () => "engineer",
+    getEffectiveCustomInstructions: () => "",
+  }
+})
 
 vi.mock("@/services/agentSessionService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/agentSessionService")>()
@@ -222,5 +226,84 @@ describe("Model Switch and Initial Model Entries", () => {
     const secondModel = JSON.parse(modelEntries[1].payload)
     expect(secondModel.model).toBe("claude-3-5-sonnet-20241022")
     expect(secondModel.isInitial).toBe(false)
+  })
+
+  it("在 switchModel 之前调用 getContextUsage 不会阻塞后续 switchModel 落库与事件推送", async () => {
+    const { agentRunner, agentSessionService } = await importModules()
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((ev) => events.push(ev as AgentEvent))
+
+    // 建立初始会话（使用 openai:gpt-4o）
+    const res = await agentRunner.send(
+      "Hello",
+      { provider: "openai", model: "gpt-4o" },
+      { cwd: tmpWorkspace },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const sessionId = res.sessionId!
+
+    // 模拟前端在用户选择模型时触发 refreshContextUsage(selectedSelection)
+    const usage = agentRunner.getContextUsage(
+      { provider: "anthropic", model: "claude-3-5-sonnet-20241022" },
+      sessionId,
+    )
+    expect(usage).toBeDefined()
+
+    // 紧接着调用 switchModel 切换到该模型
+    const switchRes = agentRunner.switchModel(
+      { provider: "anthropic", model: "claude-3-5-sonnet-20241022" },
+      sessionId,
+    )
+    expect(switchRes.ok).toBe(true)
+    if (!switchRes.ok) return
+    expect(switchRes.message).toBeDefined()
+
+    // 验证事件流接收到了切换事件
+    const switchEvents = events.filter(
+      (e): e is Extract<AgentEvent, { type: "model_switch" }> =>
+        e.type === "model_switch" && !e.message.isInitial,
+    )
+    expect(switchEvents).toHaveLength(1)
+    expect(switchEvents[0].message.model).toBe("claude-3-5-sonnet-20241022")
+
+    // 验证 DB 落库成功
+    const entries = agentSessionService.listEntries(sessionId)
+    const modelEntries = entries.filter((e) => e.type === "model_change")
+    expect(modelEntries).toHaveLength(2)
+  })
+
+  it("restoreSession 时正确从历史 modelSwitch 消息水合 requestedModel", async () => {
+    const { agentRunner } = await importModules()
+
+    // 发送消息建立会话并切换模型
+    const res = await agentRunner.send(
+      "Message 1",
+      { provider: "openai", model: "gpt-4o" },
+      { cwd: tmpWorkspace },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    const sessionId = res.sessionId!
+
+    agentRunner.switchModel(
+      { provider: "anthropic", model: "claude-3-5-sonnet-20241022" },
+      sessionId,
+    )
+
+    // 恢复会话
+    const restored = await agentRunner.restoreSession(sessionId)
+    expect(restored.messages).toBeDefined()
+
+    // 再次切换到同一个模型 anthropic:claude-3-5-sonnet-20241022，应当被判定为未改变
+    const runner = agentRunner.getOrCreateRunner(sessionId)
+    const duplicateSwitch = runner.switchModel({
+      provider: "anthropic",
+      model: "claude-3-5-sonnet-20241022",
+    })
+    expect(duplicateSwitch.ok).toBe(true)
+    if (duplicateSwitch.ok) {
+      expect(duplicateSwitch.message).toBeUndefined()
+    }
   })
 })

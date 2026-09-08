@@ -410,13 +410,24 @@ export const useAgentChat = (
           break
 
         case "model_switch": {
-          const item = toChatMessage(
-            event.message,
-            false,
-            `m${++messageSequence}`,
-            currentSessionIdRef.current,
-          )
-          setMessages((prev) => [...prev, item])
+          const msg = event.message
+          setMessages((prev) => {
+            const alreadyExists = prev.some(
+              (m) =>
+                m.role === "modelSwitch" &&
+                m.timestamp === msg.timestamp &&
+                m.model === msg.model &&
+                m.provider === msg.provider,
+            )
+            if (alreadyExists) return prev
+            const item = toChatMessage(
+              msg,
+              false,
+              `m${++messageSequence}`,
+              currentSessionIdRef.current,
+            )
+            return [...prev, item]
+          })
           break
         }
 
@@ -1141,6 +1152,31 @@ export const useAgentChat = (
     [tabId],
   )
 
+  // 切换会话模型：向 main 进程发起 switchModel，并在成功后立即更新本地 messages 保证实时展示
+  const switchModel = useCallback(
+    async (selection: ModelSelection) => {
+      const sessionId = currentSessionIdRef.current
+      if (!sessionId) return { ok: true as const }
+      const result = await agentApi.switchModel(selection, sessionId, tabId)
+      if (result.ok && result.message) {
+        const msg = result.message
+        setMessages((prev) => {
+          const alreadyExists = prev.some(
+            (m) =>
+              m.role === "modelSwitch" &&
+              m.timestamp === msg.timestamp &&
+              m.model === msg.model &&
+              m.provider === msg.provider,
+          )
+          if (alreadyExists) return prev
+          return [...prev, toChatMessage(msg, false, `m${++messageSequence}`, sessionId)]
+        })
+      }
+      return result
+    },
+    [tabId],
+  )
+
   // 检查当前是否仅剩最后一轮用户对话（用于 /undo 二次确认判定）。
   const isOnlyOneTurnLeft = useCallback((): boolean => {
     const list = messagesRef.current
@@ -1176,6 +1212,7 @@ export const useAgentChat = (
     restoreChat,
     editMessage,
     refreshContextUsage,
+    switchModel,
     acceptAndExecutePlan,
     acceptAndExecuteReviewFixes,
     currentSessionId,

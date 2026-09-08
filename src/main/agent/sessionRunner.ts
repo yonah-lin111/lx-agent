@@ -883,6 +883,17 @@ export class AgentSessionRunner {
     this.activeSkills = this.resolveInjectedSkills(sessionCwd)
     this.turnStore.loadTodo(todos)
 
+    const lastModelSwitch = [...messages]
+      .reverse()
+      .find((m): m is ModelSwitchMessage => m.role === "modelSwitch")
+    if (lastModelSwitch) {
+      this.requestedModel = {
+        provider: lastModelSwitch.provider,
+        model: lastModelSwitch.model,
+        ...(lastModelSwitch.variant ? { variant: lastModelSwitch.variant } : {}),
+      }
+    }
+
     const ready = this.ensureReady()
     if ("error" in ready) {
       throw new Error(ready.error)
@@ -949,9 +960,7 @@ export class AgentSessionRunner {
 
     // 若仅切换 variant 而 provider 与 model 均未变，不插入 model_change 历史与 modelSwitch 消息
     const isModelUnchanged =
-      prevModel &&
-      prevModel.provider === selection.provider &&
-      prevModel.model === selection.model
+      prevModel && prevModel.provider === selection.provider && prevModel.model === selection.model
     if (isModelUnchanged) {
       return { ok: true }
     }
@@ -1018,9 +1027,6 @@ export class AgentSessionRunner {
   }
 
   public getContextUsage(selection?: ModelSelection): AgentContextUsage {
-    if (selection) {
-      this.requestedModel = selection
-    }
     return this.compactor.getUsage(selection)
   }
 

@@ -241,6 +241,10 @@ export const AgentExecutionFlowHeader = ({
               renderTab("reviewFindings", t("agent.review.badge"), filterCounts.reviewFindings)}
             {filterCounts.frontDesign > 0 &&
               renderTab("frontDesign", t("frontDesign.designCardBadge"), filterCounts.frontDesign)}
+            {filterCounts.modelSwitch > 0 &&
+              renderTab("modelSwitch", t("agent.modelSwitched"), filterCounts.modelSwitch)}
+            {filterCounts.compaction > 0 &&
+              renderTab("compaction", t("settings.contextCompaction"), filterCounts.compaction)}
             {filterCounts.undo > 0 && renderTab("undo", t("agent.kindUndo"), filterCounts.undo)}
             {filterCounts.error > 0 &&
               renderTab("error", t("agent.filterError"), filterCounts.error)}

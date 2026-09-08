@@ -83,6 +83,7 @@ export const AgentPage = ({
     restoreChat,
     editMessage,
     refreshContextUsage,
+    switchModel,
     acceptAndExecutePlan,
     acceptAndExecuteReviewFixes,
     currentSessionId,
@@ -272,7 +273,7 @@ export const AgentPage = ({
     return undefined
   }, [effectiveProjectPath, worktrees])
 
-  // 切换模型：同步更新本地选择；若处于已有会话中，立即落库 model_change entry
+  // 切换模型：同步更新本地选择；若处于已有会话中，立即落库 model_change entry 并实时更新视图
   const handleModelSelectChange = useCallback(
     (value: string) => {
       handleModelChange(value)
@@ -282,18 +283,16 @@ export const AgentPage = ({
         const defaultVar =
           modelConfig?.variant ??
           (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
-        void agentApi
-          .switchModel(
-            { provider, model, ...(defaultVar ? { variant: defaultVar } : {}) },
-            currentSessionId,
-            tabId,
-          )
-          .catch((err) => {
-            console.error("Failed to switch model in session:", err)
-          })
+        void switchModel({
+          provider,
+          model,
+          ...(defaultVar ? { variant: defaultVar } : {}),
+        }).catch((err) => {
+          console.error("Failed to switch model in session:", err)
+        })
       }
     },
-    [handleModelChange, currentSessionId, tabId, settings],
+    [handleModelChange, currentSessionId, settings, switchModel],
   )
 
   const handleVariantSelectChange = useCallback(
@@ -301,17 +300,15 @@ export const AgentPage = ({
       handleVariantChange(variant)
       const [provider, model] = selectedModel.split("::")
       if (provider && model && currentSessionId) {
-        void agentApi
-          .switchModel({ provider, model, variant }, currentSessionId, tabId)
-          .catch((err) => {
-            console.error("Failed to switch variant in session:", err)
-          })
+        void switchModel({ provider, model, variant }).catch((err) => {
+          console.error("Failed to switch variant in session:", err)
+        })
       }
       if (showToast) {
         success(t("agent.thinkingVariantSwitched", { variant }))
       }
     },
-    [handleVariantChange, selectedModel, currentSessionId, tabId, success, t],
+    [handleVariantChange, selectedModel, currentSessionId, success, t, switchModel],
   )
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
