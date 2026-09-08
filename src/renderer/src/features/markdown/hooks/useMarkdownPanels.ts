@@ -710,9 +710,16 @@ export const useMarkdownPanels = ({
       )
     }
 
+    const selection = command.selectionRange
+      ? {
+          anchor: panel.line.from + command.selectionRange.start,
+          head: panel.line.from + command.selectionRange.end,
+        }
+      : { anchor: panel.line.from + command.cursorOffset }
+
     view.dispatch({
       changes: { from: panel.line.from, to: panel.line.to, insert: content },
-      selection: { anchor: panel.line.from + command.cursorOffset },
+      selection,
     })
     view.focus()
     closeSlashCommandPanel()

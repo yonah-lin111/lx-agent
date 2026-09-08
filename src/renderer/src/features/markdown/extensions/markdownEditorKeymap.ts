@@ -1,3 +1,4 @@
+import { indentLess, indentMore } from "@codemirror/commands"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import {
@@ -7,8 +8,8 @@ import {
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import {
-  type MarkdownSlashCommand,
   getMarkdownArmedSlashCommand,
+  type MarkdownSlashCommand,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   handleMarkdownVarBlockTab,
@@ -155,12 +156,27 @@ export const createMarkdownEditorKeymaps = ({
               )
               return true
             }
+            const cursor = view.state.selection.main.head
+            const line = view.state.doc.lineAt(cursor)
+            if (line.text.trim() === "") {
+              if (indentMore(view)) return true
+              view.dispatch(view.state.replaceSelection("  "))
+              return true
+            }
+
             return handleMarkdownVarBlockTab(view, 1)
           },
         },
         {
           key: "Shift-Tab",
-          run: (view) => handleMarkdownVarBlockTab(view, -1),
+          run: (view) => {
+            const cursor = view.state.selection.main.head
+            const line = view.state.doc.lineAt(cursor)
+            if (line.text.trim() === "") {
+              return indentLess(view)
+            }
+            return handleMarkdownVarBlockTab(view, -1)
+          },
         },
         {
           key: "ArrowDown",

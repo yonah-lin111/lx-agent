@@ -77,6 +77,7 @@ export interface MarkdownSlashCommand {
   description: string
   content: string
   cursorOffset: number
+  selectionRange?: { start: number; end: number }
   scope: MarkdownSlashCommandScope
   kind: MarkdownSlashCommandKind
   source?: MarkdownSlashCommandSource
@@ -130,6 +131,21 @@ export const getTemplatePlaceholderSelectionRange = (
 }
 
 /**
+ * 计算变量模板初始插入时的选中范围，默认高亮选中首行 key: "var" 中的 key 标识。
+ */
+export const getVarTemplateInitialSelectionRange = (
+  content: string,
+): { start: number; end: number } | undefined => {
+  const match = /^([ \t]*)([A-Za-z0-9_.-]+)\s*:/m.exec(content)
+  if (!match || match.index === undefined) return undefined
+  const start = match.index + match[1].length
+  return {
+    start,
+    end: start + match[2].length,
+  }
+}
+
+/**
  * 根据语言环境构造内置 Markdown 模板命令。
  */
 export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): MarkdownSlashCommand[] => {
@@ -143,6 +159,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const suppleContent = dict.markdown.templateSuppleContent
   const logContent = dict.markdown.templateLogContent
   const varContent = dict.markdown.templateVarContent
+  const varSelection = getVarTemplateInitialSelectionRange(varContent)
 
   const templates: MarkdownSlashCommand[] = [
     {
@@ -153,7 +170,8 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
       kind: "direct",
       source: "builtin",
       content: varContent,
-      cursorOffset: getTemplateCursorOffset(varContent),
+      cursorOffset: varSelection ? varSelection.end : getTemplateCursorOffset(varContent),
+      selectionRange: varSelection,
     },
     {
       id: "addTemplate",

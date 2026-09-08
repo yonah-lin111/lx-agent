@@ -688,11 +688,36 @@ $$$ varTemplate --end`
     })
   })
 
-  describe("斜杠命令 /varTemplate 默认空 title", () => {
-    it("默认生成的模板 title 为空", () => {
+  describe("斜杠命令 /varTemplate 默认 key: 'var' 并默认选中 key", () => {
+    it("默认生成的模板 title 为空，内容为 key: 'var'，并且 selectionRange 默认高亮选中 key", () => {
       const commands = getMarkdownSlashCommands("/varTemplate", false, true, [], "zh")
       expect(commands).toHaveLength(1)
-      expect(commands[0].content).toContain("$$$ varTemplate --start 「title: 」")
+      const cmd = commands[0]
+      expect(cmd.content).toBe(
+        ["$$$ varTemplate --start 「title: 」", 'key: "var"', "$$$ varTemplate --end"].join("\n"),
+      )
+      expect(cmd.selectionRange).toBeDefined()
+      expect(cmd.content.slice(cmd.selectionRange!.start, cmd.selectionRange!.end)).toBe("key")
+    })
+  })
+
+  describe("在新一行中使用 Tab 需要缩进", () => {
+    it("在变量块内的纯空行或空白行按下 Tab 时 handleMarkdownVarBlockTab 返回 false", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        'key1: "value1"',
+        "",
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({
+        doc,
+        // 光标在第 3 行空行上
+        selection: { anchor: doc.indexOf("\n\n") + 1 },
+      })
+      const view = new EditorView({ state })
+      expect(handleMarkdownVarBlockTab(view, 1)).toBe(false)
+      expect(handleMarkdownVarBlockTab(view, -1)).toBe(false)
     })
   })
 })

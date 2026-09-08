@@ -514,6 +514,10 @@ export const handleMarkdownVarBlockTab = (view: EditorView, direction: 1 | -1 = 
   }
 
   const curLine = doc.lineAt(cursor)
+  if (curLine.text.trim() === "") {
+    return false
+  }
+
   let startLineNum = -1
   for (let l = curLine.number; l >= 1; l--) {
     const text = doc.line(l).text

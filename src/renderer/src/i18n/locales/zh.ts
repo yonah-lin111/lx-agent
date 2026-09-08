@@ -1023,7 +1023,7 @@ export const zh: TranslationDictionary = {
     ].join("\n"),
     templateVarContent: [
       "$$$ varTemplate --start 「title: 」",
-      'var_name: "var"',
+      'key: "var"',
       "$$$ varTemplate --end",
     ].join("\n"),
     templateAddContent: [
