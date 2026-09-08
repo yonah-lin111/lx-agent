@@ -11,7 +11,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
@@ -26,6 +26,7 @@ import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useRecentItemsStore } from "@/features/project/recentItemsStore"
 import { settingsApi } from "@/features/settings/api/settingsApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import {
   notifySettingsChanged,
   subscribeSettingsChanged,
@@ -48,6 +49,33 @@ export const SkillSettings = (): React.JSX.Element => {
   const [loadingContent, setLoadingContent] = useState(false)
   const [copiedPath, setCopiedPath] = useState(false)
 
+  const baselineDisabledRef = useRef<string | null>(null)
+
+  const isDirty = useMemo(() => {
+    if (baselineDisabledRef.current === null) return false
+    return JSON.stringify(disabledSkills) !== baselineDisabledRef.current
+  }, [disabledSkills])
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    const saved = await settingsApi.saveSkillSettings({ disabled: disabledSkills })
+    setDisabledSkills(saved.disabled)
+    baselineDisabledRef.current = JSON.stringify(saved.disabled)
+    notifySettingsChanged("skills")
+  }, [disabledSkills])
+
+  const handleReset = useCallback((): void => {
+    if (baselineDisabledRef.current !== null) {
+      setDisabledSkills(JSON.parse(baselineDisabledRef.current))
+    }
+  }, [])
+
+  useRegisterSettingsSection({
+    section: "skills",
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
+
   // 1. 初始化拉取项目列表并解析默认选中的当前项目
   useEffect(() => {
     void Promise.all([projectApi.listProjects(), projectApi.list().catch(() => [])]).then(
@@ -57,7 +85,7 @@ export const SkillSettings = (): React.JSX.Element => {
 
         // 优先级 1：当前活跃 Tab 绑定的项目（草稿或会话）
         const activeTab = agentTabStore.getActiveTab()
-        let candidateId = activeTab?.draftBinding?.projectId
+        let candidateId: string | null | undefined = activeTab?.draftBinding?.projectId
         if (!candidateId && activeTab?.sessionId) {
           const session = sessionListStore.getSessions().find((s) => s.id === activeTab.sessionId)
           candidateId = session?.projectId
@@ -109,6 +137,9 @@ export const SkillSettings = (): React.JSX.Element => {
 
         setSkills(skillList)
         setDisabledSkills(config.disabled)
+        if (baselineDisabledRef.current === null || force) {
+          baselineDisabledRef.current = JSON.stringify(config.disabled)
+        }
 
         // 默认选中首个 Skill
         if (skillList.length > 0) {
@@ -172,22 +203,14 @@ export const SkillSettings = (): React.JSX.Element => {
       })
   }, [selectedSkill, effectiveCwd, contentCache])
 
-  // 5. 启用/禁用切换：即时持久化并广播变更
-  const handleToggleDisabled = async (skillName: string, enabled: boolean) => {
+  // 5. 启用/禁用切换：更新本地草稿
+  const handleToggleDisabled = (skillName: string, enabled: boolean) => {
     const nextDisabled = enabled
       ? disabledSkills.filter((name) => name !== skillName)
       : disabledSkills.includes(skillName)
         ? disabledSkills
         : [...disabledSkills, skillName]
     setDisabledSkills(nextDisabled)
-    try {
-      const saved = await settingsApi.saveSkillSettings({ disabled: nextDisabled })
-      setDisabledSkills(saved.disabled)
-      notifySettingsChanged("skills")
-    } catch {
-      setDisabledSkills(disabledSkills)
-      toast.error(t("settings.saveFailed"))
-    }
   }
 
   // 6. 物理删除（移入废纸篓）

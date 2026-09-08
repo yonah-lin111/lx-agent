@@ -15,7 +15,7 @@ import {
   Wrench,
   X,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
@@ -25,6 +25,7 @@ import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { settingsApi } from "@/features/settings/api/settingsApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
@@ -56,21 +57,40 @@ export const McpSettings = (): React.JSX.Element => {
   const [formTimeout, setFormTimeout] = useState("30000")
   const [formError, setFormError] = useState("")
 
-  const persistMcpSettings = useCallback(
-    async (next: McpSettingsType) => {
-      try {
-        const saved = await settingsApi.saveMcpSettings(next)
-        setMcpSettings(saved)
-        notifySettingsChanged("mcp")
-        const statusRes = await window.api.agent.getMcpStatus()
-        setStatuses(statusRes)
-      } catch (err) {
-        console.error("[McpSettings] Failed to save settings:", err)
-        toast.error(t("settings.saveFailed"))
-      }
-    },
-    [t, toast],
-  )
+  const baselineMcpRef = useRef<string | null>(null)
+
+  const isDirty = useMemo(() => {
+    if (baselineMcpRef.current === null) return false
+    return JSON.stringify(mcpSettings) !== baselineMcpRef.current
+  }, [mcpSettings])
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    try {
+      const saved = await settingsApi.saveMcpSettings(mcpSettings)
+      setMcpSettings(saved)
+      baselineMcpRef.current = JSON.stringify(saved)
+      notifySettingsChanged("mcp")
+      const statusRes = await window.api.agent.getMcpStatus()
+      setStatuses(statusRes)
+    } catch (err) {
+      console.error("[McpSettings] Failed to save settings:", err)
+      toast.error(t("settings.saveFailed"))
+      throw err
+    }
+  }, [mcpSettings, t, toast])
+
+  const handleReset = useCallback((): void => {
+    if (baselineMcpRef.current !== null) {
+      setMcpSettings(JSON.parse(baselineMcpRef.current))
+    }
+  }, [])
+
+  useRegisterSettingsSection({
+    section: "mcp",
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
 
   // 加载 MCP 配置与连接状态
   const loadData = useCallback(
@@ -86,6 +106,9 @@ export const McpSettings = (): React.JSX.Element => {
 
         setMcpSettings(settingsRes)
         setStatuses(statusRes)
+        if (baselineMcpRef.current === null || isManualRefresh) {
+          baselineMcpRef.current = JSON.stringify(settingsRes)
+        }
       } catch (err) {
         console.error("[McpSettings] Failed to load MCP data:", err)
         toast.error(t("settings.loadSettingsFailed"))
@@ -187,8 +210,6 @@ export const McpSettings = (): React.JSX.Element => {
     const nextSettings: McpSettingsType = { servers: nextServers }
     setMcpSettings(nextSettings)
     setModalOpen(false)
-    void persistMcpSettings(nextSettings)
-    toast.success(t("settings.saveSuccess"))
   }
 
   // 删除 Server
@@ -197,8 +218,6 @@ export const McpSettings = (): React.JSX.Element => {
     delete nextServers[key]
     const nextSettings: McpSettingsType = { servers: nextServers }
     setMcpSettings(nextSettings)
-    void persistMcpSettings(nextSettings)
-    toast.success(t("settings.mcpDeleteSuccess", { name: key }))
   }
 
   // 切换禁用开关
@@ -215,7 +234,6 @@ export const McpSettings = (): React.JSX.Element => {
       },
     }
     setMcpSettings(nextSettings)
-    void persistMcpSettings(nextSettings)
   }
 
   // 重连全部

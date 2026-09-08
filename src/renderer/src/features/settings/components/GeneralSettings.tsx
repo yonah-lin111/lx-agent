@@ -1,21 +1,27 @@
 import type { Locale, UiSettings } from "@shared/settings"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxRadio, LxRadioGroup } from "@/components/ui/LxRadio"
 import { settingsApi } from "@/features/settings/api/settingsApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
 export const GeneralSettings = (): React.JSX.Element => {
   const { locale, setLocale, t } = useTranslation()
   const [screenshotCleanupEnabled, setScreenshotCleanupEnabled] = useState(true)
+  const baselineCleanupRef = useRef<boolean | null>(null)
 
   useEffect(() => {
     let isCurrent = true
     void settingsApi.getUiSettings().then((ui) => {
       if (isCurrent && ui) {
-        setScreenshotCleanupEnabled(ui.screenshotCleanupEnabled ?? true)
+        const enabled = ui.screenshotCleanupEnabled ?? true
+        setScreenshotCleanupEnabled(enabled)
+        if (baselineCleanupRef.current === null) {
+          baselineCleanupRef.current = enabled
+        }
       }
     })
     return () => {
@@ -23,19 +29,37 @@ export const GeneralSettings = (): React.JSX.Element => {
     }
   }, [])
 
-  const handleToggleCleanup = async (checked: boolean): Promise<void> => {
-    setScreenshotCleanupEnabled(checked)
-    try {
-      const current = await settingsApi.getUiSettings()
-      const updated: UiSettings = {
-        ...current,
-        screenshotCleanupEnabled: checked,
-      }
-      await settingsApi.saveUiSettings(updated)
-      notifySettingsChanged("ui")
-    } catch (err) {
-      console.error("Failed to save screenshot cleanup setting", err)
+  const isDirty = useMemo(() => {
+    if (baselineCleanupRef.current === null) return false
+    return screenshotCleanupEnabled !== baselineCleanupRef.current
+  }, [screenshotCleanupEnabled])
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    const current = await settingsApi.getUiSettings()
+    const updated: UiSettings = {
+      ...current,
+      screenshotCleanupEnabled,
     }
+    await settingsApi.saveUiSettings(updated)
+    baselineCleanupRef.current = screenshotCleanupEnabled
+    notifySettingsChanged("ui")
+  }, [screenshotCleanupEnabled])
+
+  const handleReset = useCallback((): void => {
+    if (baselineCleanupRef.current !== null) {
+      setScreenshotCleanupEnabled(baselineCleanupRef.current)
+    }
+  }, [])
+
+  useRegisterSettingsSection({
+    section: "general",
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
+
+  const handleToggleCleanup = (checked: boolean): void => {
+    setScreenshotCleanupEnabled(checked)
   }
 
   return (

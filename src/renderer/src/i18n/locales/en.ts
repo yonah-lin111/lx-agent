@@ -355,9 +355,18 @@ Connect external data sources, local development tools, and custom scripts to yo
     saveSettings: "Save Settings",
 
     resetSettings: "Reset Settings",
-    confirmResetTitle: "Confirm reset all unsaved changes?",
+    savedStatus: "All settings saved",
+    unsavedStatus: "Unsaved changes",
+    savingStatus: "Saving...",
+    saveFailedStatus: "Failed to save",
+    unsavedChangesTitle: "Unsaved Changes",
+    unsavedChangesContent:
+      "You have unsaved changes in this section. If you leave, these changes will be lost. Are you sure you want to leave?",
+    discardAndLeave: "Discard & Leave",
+    stayOnPage: "Stay on Page",
+    confirmResetTitle: "Discard Changes & Reset?",
     confirmResetContent:
-      "All unsaved changes and new drafts will be discarded and restored to the last saved state",
+      "All unsaved changes in this section will be discarded and restored to the last saved state.",
     resetSuccess: "Restored to previous state",
     confirmSaveTitle: "Confirm save settings?",
     confirmSaveContent: "Changes will take effect immediately without reloading",

@@ -4,7 +4,7 @@ import type {
   CustomCommandType,
 } from "@shared/contracts/customCommand"
 import type { Project } from "@shared/project"
-import { Folder, Globe, Plus, Save, Trash2 } from "lucide-react"
+import { Folder, Globe, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
@@ -16,6 +16,7 @@ import { LxTooltip } from "@/components/ui/LxTooltip"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import { projectApi } from "@/features/project/api/projectApi"
 import { customCommandApi } from "@/features/settings/api/customCommandApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
@@ -218,6 +219,40 @@ export const CustomCommandSettings = (): React.JSX.Element => {
       setIsSaving(false)
     }
   }
+
+  const handleReset = useCallback((): void => {
+    if (isEditingDraft) {
+      delete draftStore[draftKey]
+      setHasDraft(false)
+      setIsEditingDraft(false)
+      if (commands.length > 0) {
+        setSelectedCommandName(commands[0].name)
+      } else {
+        setSelectedCommandName(null)
+        setFormData(DEFAULT_FORM)
+      }
+    } else if (selectedCommandName) {
+      delete modifiedStore[getCommandKey(selectedCommandName)]
+      const orig = commands.find((c) => c.name === selectedCommandName)
+      if (orig) {
+        setFormData({
+          name: orig.name,
+          description: orig.description,
+          content: orig.content,
+          argumentHint: orig.argumentHint || "",
+          mdScope: orig.mdScope || "global",
+        })
+      }
+    }
+  }, [isEditingDraft, draftKey, commands, selectedCommandName, getCommandKey])
+
+  useRegisterSettingsSection({
+    section: "custom-commands",
+    isDirty,
+    isSaving,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
 
   handleSaveRef.current = async (): Promise<void> => {
     const trimmedName = formData.name.trim()
@@ -599,17 +634,6 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     <span aria-label="Unsaved" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                   )}
                 </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isSaving || (!isDirty && !isEditingDraft)}
-                    className="inline-flex items-center gap-1.5 rounded-[6px] bg-white/10 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
-                    onClick={() => void handleSave()}
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    <span>{t("common.save")}</span>
-                  </button>
-                </div>
               </div>
 
               {/* 字段输入区 */}

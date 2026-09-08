@@ -1,5 +1,5 @@
 import { AlertCircle } from "lucide-react"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -14,10 +14,13 @@ import {
   notifySettingsChanged,
   PermissionSettings,
   SETTINGS_SECTIONS,
+  SettingsActionBar,
   SkillSettings,
   settingsApi,
   usePermissionSettings,
+  useRegisterSettingsSection,
   useSettingsData,
+  useSettingsDraftStore,
   useSettingsMutations,
   VoiceSettingsComponent,
 } from "@/features/settings"
@@ -49,109 +52,96 @@ export const SettingsPage = (): React.JSX.Element => {
   const toast = useLxToast()
   const { t } = useTranslation()
 
-  // 记录磁盘已持久化快照，防止初始化加载时产生空写
-  const lastSavedSettingsRef = useRef<string | null>(null)
-  const lastSavedPermissionsRef = useRef<string | null>(null)
-
+  // 同步当前激活分区到草稿协调 Store
+  const setActiveSection = useSettingsDraftStore((state) => state.setActiveSection)
   useEffect(() => {
-    if (settings && lastSavedSettingsRef.current === null) {
-      lastSavedSettingsRef.current = JSON.stringify(settings)
+    setActiveSection(activeSection)
+  }, [activeSection, setActiveSection])
+
+  // models / providers 基线快照与草稿管理
+  const baselineSettingsRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (settings && baselineSettingsRef.current === null) {
+      baselineSettingsRef.current = JSON.stringify(settings)
     }
   }, [settings])
 
-  useEffect(() => {
-    if (permissionSettings && lastSavedPermissionsRef.current === null) {
-      lastSavedPermissionsRef.current = JSON.stringify(permissionSettings)
-    }
-  }, [permissionSettings])
+  const isModelsOrProvidersDirty = useMemo(() => {
+    if (!settings || baselineSettingsRef.current === null) return false
+    return JSON.stringify(settings) !== baselineSettingsRef.current
+  }, [settings])
 
-  // settings (models / providers) 防抖自动持久化
-  const settingsTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const currentSettingsRef = useRef(settings)
-  currentSettingsRef.current = settings
-
-  const flushSettingsSave = useCallback(async () => {
-    if (settingsTimerRef.current) {
-      clearTimeout(settingsTimerRef.current)
-      settingsTimerRef.current = null
-    }
-    const current = currentSettingsRef.current
-    if (!current || lastSavedSettingsRef.current === null) return
-    const json = JSON.stringify(current)
-    if (json === lastSavedSettingsRef.current) return
-
+  const saveModelsOrProviders = useCallback(async (): Promise<void> => {
+    if (!settings) return
     try {
-      const saved = await saveSettings(current)
-      lastSavedSettingsRef.current = JSON.stringify(saved)
+      const saved = await saveSettings(settings)
+      baselineSettingsRef.current = JSON.stringify(saved)
       notifySettingsChanged("models")
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : t("settings.saveFailed")
       setError(errorMessage)
+      throw saveError
     }
-  }, [saveSettings, setError, t])
+  }, [settings, saveSettings, activeSection, setError, t])
 
+  const resetModelsOrProviders = useCallback((): void => {
+    if (baselineSettingsRef.current !== null) {
+      setSettings(JSON.parse(baselineSettingsRef.current))
+    }
+  }, [setSettings])
+
+  useRegisterSettingsSection({
+    section: "models",
+    isDirty: activeSection === "models" && isModelsOrProvidersDirty,
+    onSave: saveModelsOrProviders,
+    onReset: resetModelsOrProviders,
+  })
+
+  useRegisterSettingsSection({
+    section: "providers",
+    isDirty: activeSection === "providers" && isModelsOrProvidersDirty,
+    onSave: saveModelsOrProviders,
+    onReset: resetModelsOrProviders,
+  })
+
+  // permissions 基线快照与草稿管理
+  const baselinePermissionsRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!settings || lastSavedSettingsRef.current === null) return
-    const json = JSON.stringify(settings)
-    if (json === lastSavedSettingsRef.current) return
-
-    if (settingsTimerRef.current) clearTimeout(settingsTimerRef.current)
-    settingsTimerRef.current = setTimeout(() => {
-      void flushSettingsSave()
-    }, 800)
-
-    return () => {
-      if (settingsTimerRef.current) clearTimeout(settingsTimerRef.current)
+    if (permissionSettings && baselinePermissionsRef.current === null) {
+      baselinePermissionsRef.current = JSON.stringify(permissionSettings)
     }
-  }, [settings, flushSettingsSave])
+  }, [permissionSettings])
 
-  // permissionSettings 防抖自动持久化
-  const permissionsTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const currentPermissionsRef = useRef(permissionSettings)
-  currentPermissionsRef.current = permissionSettings
+  const isPermissionsDirty = useMemo(() => {
+    if (!permissionSettings || baselinePermissionsRef.current === null) return false
+    return JSON.stringify(permissionSettings) !== baselinePermissionsRef.current
+  }, [permissionSettings])
 
-  const flushPermissionsSave = useCallback(async () => {
-    if (permissionsTimerRef.current) {
-      clearTimeout(permissionsTimerRef.current)
-      permissionsTimerRef.current = null
-    }
-    const current = currentPermissionsRef.current
-    if (!current || lastSavedPermissionsRef.current === null) return
-    const json = JSON.stringify(current)
-    if (json === lastSavedPermissionsRef.current) return
-
+  const savePermissions = useCallback(async (): Promise<void> => {
+    if (!permissionSettings) return
     try {
-      const saved = await settingsApi.savePermissionSettings(current)
-      lastSavedPermissionsRef.current = JSON.stringify(saved)
+      const saved = await settingsApi.savePermissionSettings(permissionSettings)
+      baselinePermissionsRef.current = JSON.stringify(saved)
       notifySettingsChanged("permissions")
     } catch (saveError) {
       const errorMessage = saveError instanceof Error ? saveError.message : t("settings.saveFailed")
       setError(errorMessage)
+      throw saveError
     }
-  }, [setError, t])
+  }, [permissionSettings, setError, t])
 
-  useEffect(() => {
-    if (!permissionSettings || lastSavedPermissionsRef.current === null) return
-    const json = JSON.stringify(permissionSettings)
-    if (json === lastSavedPermissionsRef.current) return
-
-    if (permissionsTimerRef.current) clearTimeout(permissionsTimerRef.current)
-    permissionsTimerRef.current = setTimeout(() => {
-      void flushPermissionsSave()
-    }, 800)
-
-    return () => {
-      if (permissionsTimerRef.current) clearTimeout(permissionsTimerRef.current)
+  const resetPermissions = useCallback((): void => {
+    if (baselinePermissionsRef.current !== null) {
+      setPermissionSettings(JSON.parse(baselinePermissionsRef.current))
     }
-  }, [permissionSettings, flushPermissionsSave])
+  }, [setPermissionSettings])
 
-  // 切换 Tab 或卸载时立即持久化未写入的更改
-  useEffect(() => {
-    return () => {
-      void flushSettingsSave()
-      void flushPermissionsSave()
-    }
-  }, [activeSection, flushSettingsSave, flushPermissionsSave])
+  useRegisterSettingsSection({
+    section: "permissions",
+    isDirty: activeSection === "permissions" && isPermissionsDirty,
+    onSave: savePermissions,
+    onReset: resetPermissions,
+  })
 
   const descKey = SECTION_DESCRIPTION_KEYS[activeSection]
   const currentDescription = descKey ? t(descKey) : ""
@@ -160,7 +150,7 @@ export const SettingsPage = (): React.JSX.Element => {
     <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 p-3">
         <p className="text-xs text-white/45">{currentDescription}</p>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {activeSection === "providers" ? (
             <LxIconButton
               preset="add"
@@ -169,6 +159,7 @@ export const SettingsPage = (): React.JSX.Element => {
               onClick={() => addProviderRef.current?.()}
             />
           ) : null}
+          <SettingsActionBar />
         </div>
       </div>
 

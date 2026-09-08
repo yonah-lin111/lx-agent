@@ -23,6 +23,7 @@ import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { settingsApi } from "@/features/settings/api/settingsApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
@@ -38,48 +39,34 @@ export const LspSettings = (): React.JSX.Element => {
   const [installingMap, setInstallingMap] = useState<Record<string, boolean>>({})
   const [showCustomConfigMap, setShowCustomConfigMap] = useState<Record<string, boolean>>({})
 
-  const lspSettingsRef = useRef(lspSettings)
-  lspSettingsRef.current = lspSettings
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const baselineLspRef = useRef<string | null>(null)
 
-  const persistLspSettings = useCallback(
-    async (next: LspSettingsType) => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        debounceTimerRef.current = null
-      }
-      try {
-        const saved = await settingsApi.saveLspSettings(next)
-        setLspSettings(saved)
-        notifySettingsChanged("lsp")
-        const statusRes = await settingsApi.getLspStatus()
-        setStatuses(statusRes)
-      } catch (err) {
-        console.error("[LspSettings] Failed to save settings:", err)
-        toast.error(t("settings.saveFailed"))
-      }
-    },
-    [t, toast],
-  )
+  const isDirty = useMemo(() => {
+    if (baselineLspRef.current === null) return false
+    return JSON.stringify(lspSettings) !== baselineLspRef.current
+  }, [lspSettings])
 
-  const scheduleDebouncedSave = useCallback(
-    (next: LspSettingsType) => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-      debounceTimerRef.current = setTimeout(() => {
-        void persistLspSettings(next)
-      }, 800)
-    },
-    [persistLspSettings],
-  )
+  const handleSave = useCallback(async (): Promise<void> => {
+    const saved = await settingsApi.saveLspSettings(lspSettings)
+    setLspSettings(saved)
+    baselineLspRef.current = JSON.stringify(saved)
+    notifySettingsChanged("lsp")
+    const statusRes = await settingsApi.getLspStatus()
+    setStatuses(statusRes)
+  }, [lspSettings])
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-        void settingsApi.saveLspSettings(lspSettingsRef.current)
-      }
+  const handleReset = useCallback((): void => {
+    if (baselineLspRef.current !== null) {
+      setLspSettings(JSON.parse(baselineLspRef.current))
     }
   }, [])
+
+  useRegisterSettingsSection({
+    section: "lsp",
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
 
   // 加载 LSP 配置与检测状态
   const loadData = useCallback(
@@ -95,6 +82,9 @@ export const LspSettings = (): React.JSX.Element => {
 
         setLspSettings(settingsRes)
         setStatuses(statusRes)
+        if (baselineLspRef.current === null || isManualRefresh) {
+          baselineLspRef.current = JSON.stringify(settingsRes)
+        }
       } catch (err) {
         console.error("[LspSettings] Failed to load LSP data:", err)
         toast.error(t("settings.loadSettingsFailed"))
@@ -112,7 +102,7 @@ export const LspSettings = (): React.JSX.Element => {
 
   // 切换语言 LSP 启用状态
   const handleToggleEnabled = (langId: LspLanguageId, checked: boolean) => {
-    const next: LspSettingsType = {
+    setLspSettings({
       ...lspSettings,
       languages: {
         ...lspSettings.languages,
@@ -121,14 +111,12 @@ export const LspSettings = (): React.JSX.Element => {
           enabled: checked,
         },
       },
-    }
-    setLspSettings(next)
-    void persistLspSettings(next)
+    })
   }
 
   // 修改自定义路径
   const handleCustomPathChange = (langId: LspLanguageId, customPath: string) => {
-    const next: LspSettingsType = {
+    setLspSettings({
       ...lspSettings,
       languages: {
         ...lspSettings.languages,
@@ -138,9 +126,7 @@ export const LspSettings = (): React.JSX.Element => {
           customPath: customPath.trim(),
         },
       },
-    }
-    setLspSettings(next)
-    scheduleDebouncedSave(next)
+    })
   }
 
   // 修改自定义参数
@@ -149,7 +135,7 @@ export const LspSettings = (): React.JSX.Element => {
       .split(" ")
       .map((s) => s.trim())
       .filter(Boolean)
-    const next: LspSettingsType = {
+    setLspSettings({
       ...lspSettings,
       languages: {
         ...lspSettings.languages,
@@ -159,9 +145,7 @@ export const LspSettings = (): React.JSX.Element => {
           args,
         },
       },
-    }
-    setLspSettings(next)
-    scheduleDebouncedSave(next)
+    })
   }
 
   // 手动执行安装
@@ -394,25 +378,8 @@ export const LspSettings = (): React.JSX.Element => {
                         })}
                         value={currentCustomPath}
                         onChange={(e) => handleCustomPathChange(item.id, e.target.value)}
-                        onBlur={() => void persistLspSettings(lspSettingsRef.current)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") void persistLspSettings(lspSettingsRef.current)
-                        }}
                         clear
-                        onClear={() => {
-                          handleCustomPathChange(item.id, "")
-                          void persistLspSettings({
-                            ...lspSettingsRef.current,
-                            languages: {
-                              ...lspSettingsRef.current.languages,
-                              [item.id]: {
-                                ...lspSettingsRef.current.languages[item.id],
-                                enabled: lspSettingsRef.current.languages[item.id]?.enabled ?? true,
-                                customPath: "",
-                              },
-                            },
-                          })
-                        }}
+                        onClear={() => handleCustomPathChange(item.id, "")}
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -424,25 +391,8 @@ export const LspSettings = (): React.JSX.Element => {
                         placeholder="--stdio"
                         value={currentArgs}
                         onChange={(e) => handleArgsChange(item.id, e.target.value)}
-                        onBlur={() => void persistLspSettings(lspSettingsRef.current)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") void persistLspSettings(lspSettingsRef.current)
-                        }}
                         clear
-                        onClear={() => {
-                          handleArgsChange(item.id, "")
-                          void persistLspSettings({
-                            ...lspSettingsRef.current,
-                            languages: {
-                              ...lspSettingsRef.current.languages,
-                              [item.id]: {
-                                ...lspSettingsRef.current.languages[item.id],
-                                enabled: lspSettingsRef.current.languages[item.id]?.enabled ?? true,
-                                args: [],
-                              },
-                            },
-                          })
-                        }}
+                        onClear={() => handleArgsChange(item.id, "")}
                       />
                     </div>
                   </div>

@@ -1,10 +1,11 @@
 import type { VoiceSettings } from "@shared/settings"
 import { DEFAULT_VOICE_SETTINGS } from "@shared/settings"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { settingsApi } from "@/features/settings/api/settingsApi"
+import { useRegisterSettingsSection } from "@/features/settings/hooks/settingsDraftStore"
 import { notifySettingsChanged } from "@/features/settings/settingsChangeNotifier"
 import { useTranslation } from "@/i18n"
 
@@ -36,12 +37,16 @@ export const VoiceSettingsComponent = (): React.JSX.Element => {
   const { t } = useTranslation()
   const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_VOICE_SETTINGS)
   const [isLoading, setIsLoading] = useState(true)
+  const baselineVoiceRef = useRef<string | null>(null)
 
   useEffect(() => {
     let isCurrent = true
     void settingsApi.getVoiceSettings().then((loaded) => {
       if (isCurrent && loaded) {
         setSettings(loaded)
+        if (baselineVoiceRef.current === null) {
+          baselineVoiceRef.current = JSON.stringify(loaded)
+        }
         setIsLoading(false)
       }
     })
@@ -50,14 +55,32 @@ export const VoiceSettingsComponent = (): React.JSX.Element => {
     }
   }, [])
 
-  const handleUpdate = async (nextSettings: VoiceSettings): Promise<void> => {
-    setSettings(nextSettings)
-    try {
-      await settingsApi.saveVoiceSettings(nextSettings)
-      notifySettingsChanged("voice")
-    } catch (err) {
-      console.error("Failed to save voice settings", err)
+  const isDirty = useMemo(() => {
+    if (baselineVoiceRef.current === null) return false
+    return JSON.stringify(settings) !== baselineVoiceRef.current
+  }, [settings])
+
+  const handleSave = useCallback(async (): Promise<void> => {
+    const saved = await settingsApi.saveVoiceSettings(settings)
+    baselineVoiceRef.current = JSON.stringify(saved)
+    notifySettingsChanged("voice")
+  }, [settings])
+
+  const handleReset = useCallback((): void => {
+    if (baselineVoiceRef.current !== null) {
+      setSettings(JSON.parse(baselineVoiceRef.current))
     }
+  }, [])
+
+  useRegisterSettingsSection({
+    section: "voice",
+    isDirty,
+    onSave: handleSave,
+    onReset: handleReset,
+  })
+
+  const handleUpdate = (nextSettings: VoiceSettings): void => {
+    setSettings(nextSettings)
   }
 
   if (isLoading) {
