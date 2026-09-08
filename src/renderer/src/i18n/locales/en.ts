@@ -416,6 +416,16 @@ Connect external data sources, local development tools, and custom scripts to yo
     modelName: "Model Name",
     contextWindow: "Context Window",
     maxOutputTokens: "Max Output Tokens",
+    thinkingVariants: "Thinking Variants",
+    thinkingVariantsDesc: "Configure reasoning/thinking effort variants for this model (e.g., high/medium/low).",
+    addVariant: "Add Variant",
+    variantKey: "Variant ID",
+    variantConfigJson: "Config (JSON)",
+    defaultVariant: "Default Variant",
+    presetVariantOpenAI: "OpenAI tiers (low / medium / high)",
+    presetVariantAnthropic: "Anthropic thinking budget (budgetTokens)",
+    presetVariantReasoningEffort: "Generic reasoning effort (reasoning_effort)",
+    invalidVariantJson: "Invalid JSON configuration",
 
     // Permissions & Sandbox section
     sandboxPolicy: "Sandbox Policy",

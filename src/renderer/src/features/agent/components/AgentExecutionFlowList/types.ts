@@ -39,6 +39,7 @@ export interface ExecutionFlowStats {
 export interface TurnStats {
   turn: number
   model?: string
+  variant?: string
   toolCallsCount: number
   inputTokens: number
   outputTokens: number

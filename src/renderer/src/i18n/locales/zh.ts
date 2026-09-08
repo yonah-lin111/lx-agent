@@ -414,6 +414,16 @@ export const zh: TranslationDictionary = {
     modelName: "Model 名称",
     contextWindow: "上下文窗口",
     maxOutputTokens: "最大输出 Tokens",
+    thinkingVariants: "思考等级 (Variants)",
+    thinkingVariantsDesc: "配置该模型的思考/推理等级参数（如 high/medium/low），在输入栏和流式执行中生效。",
+    addVariant: "添加思考等级",
+    variantKey: "等级标识 (ID)",
+    variantConfigJson: "参数配置 (JSON)",
+    defaultVariant: "默认等级",
+    presetVariantOpenAI: "OpenAI 档位 (low / medium / high)",
+    presetVariantAnthropic: "Anthropic 思考预算 (budgetTokens)",
+    presetVariantReasoningEffort: "通用推理等级 (reasoning_effort)",
+    invalidVariantJson: "参数 JSON 格式不合法",
 
     // Permissions & Sandbox section
     sandboxPolicy: "执行沙箱策略 (Sandbox Policy)",

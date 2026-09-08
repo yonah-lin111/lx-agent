@@ -430,6 +430,7 @@ export class TurnStore {
           role: "modelSwitch",
           provider: input.modelSelection.provider,
           model: input.modelSelection.model,
+          variant: input.modelSelection.variant,
           family,
           instructions,
           timestamp: Date.now(),

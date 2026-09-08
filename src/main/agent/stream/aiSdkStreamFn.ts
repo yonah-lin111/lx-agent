@@ -39,6 +39,7 @@ const createEmptyAssistant = (model: Model): AssistantMessage => ({
   content: [],
   provider: model.provider,
   model: model.id,
+  variant: model.variant,
   usage: EMPTY_USAGE,
   stopReason: "pending",
   timestamp: Date.now(),
@@ -157,6 +158,57 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
 
       try {
         const languageModel = resolveLanguageModel(model)
+
+        // 解析 variant 参数并构建 providerOptions / extraBody
+        const providerSettings = getModelProviderSettings()
+        const providerConfig = providerSettings.providers[model.provider]
+        const modelConfig = providerConfig?.models[model.id]
+        const effectiveVariantKey = options?.variant ?? model.variant ?? modelConfig?.variant
+        const variantConfig =
+          effectiveVariantKey && modelConfig?.variants
+            ? modelConfig.variants[effectiveVariantKey]
+            : undefined
+
+        const providerOptions: Record<string, any> = {}
+        if (variantConfig) {
+          if (providerConfig?.type === "anthropic") {
+            providerOptions["anthropic"] = {
+              ...(typeof variantConfig.thinkingBudget === "number"
+                ? {
+                    thinking: {
+                      type: "enabled",
+                      budgetTokens: variantConfig.thinkingBudget,
+                    },
+                  }
+                : {}),
+              ...variantConfig,
+            }
+          } else if (providerConfig?.type === "openai") {
+            providerOptions["openai"] = {
+              ...(typeof variantConfig.reasoningEffort === "string"
+                ? { reasoningEffort: variantConfig.reasoningEffort }
+                : {}),
+              ...variantConfig,
+            }
+          } else if (providerConfig?.type === "google") {
+            providerOptions["google"] = {
+              ...(typeof variantConfig.thinkingBudget === "number"
+                ? {
+                    thinkingConfig: {
+                      thinkingBudget: variantConfig.thinkingBudget,
+                    },
+                  }
+                : {}),
+              ...variantConfig,
+            }
+          } else {
+            // openai-compatible
+            providerOptions["openai-compatible"] = {
+              ...variantConfig,
+            }
+          }
+        }
+
         const result = streamText({
           model: languageModel,
           system: context.systemPrompt || undefined,
@@ -164,6 +216,7 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
           tools: toAiTools(context.tools),
           stopWhen: stepCountIs(1),
           abortSignal: combinedSignal,
+          ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
         })
 
         stream.push({ type: "start", partial })

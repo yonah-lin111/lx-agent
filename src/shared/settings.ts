@@ -15,12 +15,18 @@ export type ModelProviderModel = {
     input: string[]
     output: string[]
   }
+  // 思考等级预设配置（如 { low: { reasoningEffort: "low" }, high: { reasoningEffort: "high" } }）
+  variants?: Record<string, Record<string, unknown>>
+  // 默认思考等级 ID（如 "high"）
+  variant?: string
 }
 
 // 模型选择配置。
 export type ModelSelection = {
   provider: string
   model: string
+  // 选中的思考等级（对应 model.variants 的 key）
+  variant?: string
 }
 
 // 模型 Provider 配置。

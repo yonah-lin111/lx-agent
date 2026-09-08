@@ -104,12 +104,36 @@ const readRawConfig = (configPath: string): RawConfig => {
 const normalizeModel = (
   id: string,
   model: Partial<ModelProviderModel> | undefined,
-): ModelProviderModel => ({
-  id,
-  name: model?.name?.trim() || id,
-  limit: model?.limit,
-  modalities: model?.modalities,
-})
+): ModelProviderModel => {
+  const variants = normalizeVariants(model?.variants)
+  const variant = typeof model?.variant === "string" && model.variant.trim() ? model.variant.trim() : undefined
+  return {
+    id,
+    name: model?.name?.trim() || id,
+    limit: model?.limit,
+    modalities: model?.modalities,
+    ...(variants ? { variants } : {}),
+    ...(variant ? { variant } : {}),
+  }
+}
+
+/**
+ * 规范化模型的思考等级（variants）。
+ */
+const normalizeVariants = (
+  value: unknown,
+): Record<string, Record<string, unknown>> | undefined => {
+  if (!isRecord(value)) return undefined
+  const result: Record<string, Record<string, unknown>> = {}
+  for (const [key, val] of Object.entries(value)) {
+    const trimmedKey = key.trim()
+    if (!trimmedKey) continue
+    if (isRecord(val)) {
+      result[trimmedKey] = val
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
 
 /**
  * 规范化模型限制。
@@ -155,7 +179,11 @@ const normalizeSelection = (
     value?.model && models[value.model]
       ? value.model
       : (fallback?.model ?? Object.keys(models)[0] ?? "")
-  return { provider, model }
+  const variant =
+    typeof value?.variant === "string" && value.variant.trim()
+      ? value.variant.trim()
+      : (fallback?.variant ?? models[model]?.variant)
+  return { provider, model, ...(variant ? { variant } : {}) }
 }
 
 /**
@@ -229,6 +257,11 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
           modelIds.add(modelId)
           const limit = normalizeLimit(model.limit)
           const modalities = normalizeModalities(model.modalities)
+          const variants = normalizeVariants(model.variants)
+          const variant =
+            typeof model.variant === "string" && model.variant.trim()
+              ? model.variant.trim()
+              : undefined
           return [
             modelId,
             {
@@ -236,6 +269,8 @@ const normalizeSettings = (settings: ModelProviderSettings): ModelProviderSettin
               name: typeof model.name === "string" ? model.name.trim() || modelId : modelId,
               ...(limit ? { limit } : {}),
               ...(modalities ? { modalities } : {}),
+              ...(variants ? { variants } : {}),
+              ...(variant ? { variant } : {}),
             },
           ]
         }),

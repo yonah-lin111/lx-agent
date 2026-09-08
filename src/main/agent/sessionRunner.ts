@@ -260,7 +260,8 @@ export class AgentSessionRunner {
       this.cwd !== cwd ||
       capabilitiesSignature !== this.builtSignature ||
       this.agent.state.model.provider !== modelResult.model.provider ||
-      this.agent.state.model.id !== modelResult.model.id
+      this.agent.state.model.id !== modelResult.model.id ||
+      this.agent.state.model.variant !== modelResult.model.variant
     ) {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
@@ -934,6 +935,7 @@ export class AgentSessionRunner {
       role: "modelSwitch",
       provider: selection.provider,
       model: selection.model,
+      variant: selection.variant,
       family,
       instructions,
       timestamp: Date.now(),

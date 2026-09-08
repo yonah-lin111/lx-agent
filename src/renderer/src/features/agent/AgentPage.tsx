@@ -92,10 +92,13 @@ export const AgentPage = ({
 
   const {
     selectedModel,
+    selectedVariant,
+    availableVariants,
     selectedSelection,
     hasModelOptions,
     selectOptions,
     handleModelChange,
+    handleVariantChange,
     suggestedQuestionsEnabled,
     settings,
   } = useAgentModelSelect()
@@ -273,12 +276,37 @@ export const AgentPage = ({
       handleModelChange(value)
       const [provider, model] = value.split("::")
       if (provider && model && currentSessionId) {
-        void agentApi.switchModel({ provider, model }, currentSessionId, tabId).catch((err) => {
-          console.error("Failed to switch model in session:", err)
-        })
+        const modelConfig = settings?.providers[provider]?.models[model]
+        const defaultVar =
+          modelConfig?.variant ??
+          (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+        void agentApi
+          .switchModel(
+            { provider, model, ...(defaultVar ? { variant: defaultVar } : {}) },
+            currentSessionId,
+            tabId,
+          )
+          .catch((err) => {
+            console.error("Failed to switch model in session:", err)
+          })
       }
     },
-    [handleModelChange, currentSessionId, tabId],
+    [handleModelChange, currentSessionId, tabId, settings],
+  )
+
+  const handleVariantSelectChange = useCallback(
+    (variant: string) => {
+      handleVariantChange(variant)
+      const [provider, model] = selectedModel.split("::")
+      if (provider && model && currentSessionId) {
+        void agentApi
+          .switchModel({ provider, model, variant }, currentSessionId, tabId)
+          .catch((err) => {
+            console.error("Failed to switch variant in session:", err)
+          })
+      }
+    },
+    [handleVariantChange, selectedModel, currentSessionId, tabId],
   )
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
@@ -714,7 +742,10 @@ export const AgentPage = ({
         isOnlyOneTurnLeft={isOnlyOneTurnLeft}
         onCompact={compactChat}
         selectedModel={selectedModel}
+        selectedVariant={selectedVariant}
+        availableVariants={availableVariants}
         onModelChange={handleModelSelectChange}
+        onVariantChange={handleVariantSelectChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
         contextUsage={contextUsage}

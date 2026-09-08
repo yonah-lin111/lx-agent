@@ -422,38 +422,46 @@ export const AgentAssistantMessage = ({
       )}
       {!isStreamingNow && !isLoading && (hasActionableContent || assistantError) && (
         <div className="mt-1 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <LxIconButton
-              size="small"
-              aria-label={t("agent.copyMessage")}
-              title={{
-                content: copied ? t("common.copied") : t("agent.copyMessage"),
-                placement: "top",
-              }}
-              onClick={copyMessageContent}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </LxIconButton>
-            {!readOnly && onDelete && (
-              <LxTooltip
-                hover={{
-                  content: t("agent.deleteMessage"),
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <LxIconButton
+                size="small"
+                aria-label={t("agent.copyMessage")}
+                title={{
+                  content: copied ? t("common.copied") : t("agent.copyMessage"),
                   placement: "top",
                 }}
-                click={{
-                  content: t("agent.deleteQaConfirm"),
-                  placement: "top",
-                  onConfirm: () => onDelete(message.id),
-                }}
+                onClick={copyMessageContent}
               >
-                <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </LxIconButton>
-              </LxTooltip>
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </LxIconButton>
+              {!readOnly && onDelete && (
+                <LxTooltip
+                  hover={{
+                    content: t("agent.deleteMessage"),
+                    placement: "top",
+                  }}
+                  click={{
+                    content: t("agent.deleteQaConfirm"),
+                    placement: "top",
+                    onConfirm: () => onDelete(message.id),
+                  }}
+                >
+                  <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </LxIconButton>
+                </LxTooltip>
+              )}
+            </div>
+            {message.variant && (
+              <span className="flex items-center gap-1 rounded bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-sky-300/90 border border-white/6 select-text">
+                <span className="opacity-60">variant:</span>
+                <span>{message.variant}</span>
+              </span>
             )}
           </div>
           {qaUsage && (
