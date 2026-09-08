@@ -1,10 +1,42 @@
-import { describe, expect, it } from "vitest"
-import { getModelProviderSettings, saveModelProviderSettings } from "@/services/settingsService"
-import { resolveModelSelection } from "@/agent/stream/modelFactory"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ModelProviderSettings } from "@shared/settings"
 
+const holder = vi.hoisted(() => ({
+  configPath: "",
+}))
+
+vi.mock("@/paths", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/paths")>()
+  return {
+    ...actual,
+    getConfigPath: () => holder.configPath,
+  }
+})
+
 describe("Model Settings Thinking Variants", () => {
-  it("规范化并保存/读取 variants 配置", () => {
+  let tmpDir: string
+
+  beforeEach(async () => {
+    tmpDir = mkdtempSync(join(tmpdir(), "variants-test-"))
+    holder.configPath = join(tmpDir, "config.json")
+    writeFileSync(holder.configPath, JSON.stringify({}))
+  })
+
+  afterEach(() => {
+    if (existsSync(tmpDir)) {
+      rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it("规范化并保存/读取 variants 配置", async () => {
+    const { getModelProviderSettings, saveModelProviderSettings } = await import(
+      "@/services/settingsService"
+    )
+    const { resolveModelSelection } = await import("@/agent/stream/modelFactory")
+
     const input: ModelProviderSettings = {
       enabledProviders: ["test-provider"],
       providers: {
