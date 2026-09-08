@@ -157,14 +157,21 @@ export const AgentAssistantMessage = ({
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {!readOnly && message.model && (
-        <LxTooltip
-          placement="top"
-          content={message.provider ? `${message.provider} / ${message.model}` : message.model}
-        >
-          <span className="agent-message-model flex w-fit select-text items-center text-[11px] leading-none text-white/40">
-            {modelDisplayName}
-          </span>
-        </LxTooltip>
+        <div className="flex w-fit items-center gap-1.5 leading-none">
+          <LxTooltip
+            placement="top"
+            content={message.provider ? `${message.provider} / ${message.model}` : message.model}
+          >
+            <span className="agent-message-model flex select-text items-center text-[11px] text-white/40">
+              {modelDisplayName}
+            </span>
+          </LxTooltip>
+          {message.variant && (
+            <span className="agent-message-variant select-text font-mono text-[11px] text-sky-400/90">
+              {message.variant}
+            </span>
+          )}
+        </div>
       )}
       <div
         data-assistant-bubble="true"
@@ -457,12 +464,6 @@ export const AgentAssistantMessage = ({
                 </LxTooltip>
               )}
             </div>
-            {message.variant && (
-              <span className="flex items-center gap-1 rounded bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-sky-300/90 border border-white/6 select-text">
-                <span className="opacity-60">variant:</span>
-                <span>{message.variant}</span>
-              </span>
-            )}
           </div>
           {qaUsage && (
             <LxTooltip

@@ -931,9 +931,28 @@ export class AgentSessionRunner {
   public switchModel(
     selection: ModelSelection,
   ): { ok: true; message?: ModelSwitchMessage } | { ok: false; error: string } {
+    const prevModel = this.requestedModel
     this.requestedModel = selection
+
+    if (this.agent) {
+      this.agent.state.model = {
+        provider: selection.provider,
+        id: selection.model,
+        ...(selection.variant ? { variant: selection.variant } : {}),
+      }
+    }
+
     const sessionId = this.currentSessionId
     if (!sessionId) {
+      return { ok: true }
+    }
+
+    // 若仅切换 variant 而 provider 与 model 均未变，不插入 model_change 历史与 modelSwitch 消息
+    const isModelUnchanged =
+      prevModel &&
+      prevModel.provider === selection.provider &&
+      prevModel.model === selection.model
+    if (isModelUnchanged) {
       return { ok: true }
     }
 
@@ -967,11 +986,6 @@ export class AgentSessionRunner {
 
     if (this.agent) {
       this.agent.state.messages.push(message)
-      this.agent.state.model = {
-        provider: selection.provider,
-        id: selection.model,
-        ...(selection.variant ? { variant: selection.variant } : {}),
-      }
     }
 
     this.emitEvent({ type: "model_switch", message })

@@ -798,6 +798,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     selectProjectPlaceholder: "Select project",
     slashCommands: "Slash Commands",
     skillMention: "Skill Mention",
+    thinkingVariantSwitched: "Thinking variant switched to: {{variant}}",
     fileMention: "Project File Mention",
     modelSelect: "Model Select",
     commandClearDesc: "Clear current chat",

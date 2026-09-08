@@ -49,7 +49,7 @@ describe("Thinking Variants Display & Components", () => {
     expect(screen.getByText("high")).not.toBeNull()
   })
 
-  it("AgentMessageItem 应该在 turn 底部显示思考等级", () => {
+  it("AgentMessageItem 应该在顶部模型名称右侧显示思考等级", () => {
     const message: ChatMessage = {
       id: "msg-1",
       role: "assistant",
@@ -66,8 +66,10 @@ describe("Thinking Variants Display & Components", () => {
       />,
     )
 
-    expect(screen.getByText("variant:")).not.toBeNull()
-    expect(screen.getByText("xhigh")).not.toBeNull()
+    const variantEl = document.querySelector(".agent-message-variant")
+    expect(variantEl).not.toBeNull()
+    expect(variantEl?.textContent).toBe("xhigh")
+    expect(variantEl?.className).toContain("text-sky-400/90")
   })
 
   it("AgentExecutionFlowList 应该在 turn 底部统计栏显示思考等级", () => {
