@@ -426,7 +426,8 @@ Connect external data sources, local development tools, and custom scripts to yo
     contextWindow: "Context Window",
     maxOutputTokens: "Max Output Tokens",
     thinkingVariants: "Thinking Variants",
-    thinkingVariantsDesc: "Configure reasoning/thinking effort variants for this model (e.g., high/medium/low).",
+    thinkingVariantsDesc:
+      "Configure reasoning/thinking effort variants for this model (e.g., high/medium/low).",
     addVariant: "Add Variant",
     variantKey: "Variant ID",
     variantConfigJson: "Config (JSON)",
@@ -1469,6 +1470,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     inspectModeDesc:
       "Click any element in the preview to reference it precisely in chat for targeted adjustments",
     inspectHint: "Click elements to add references (multiple allowed), press ESC to exit",
+    inspectShortcutHint: "Press Shift + Alt to toggle inspector mode",
     elementSelectedToast: "Added element reference: {{name}}",
     updateTargetNotFound: "Target element node not found for update: {{target}}",
     elementTargetBadge: "Target",

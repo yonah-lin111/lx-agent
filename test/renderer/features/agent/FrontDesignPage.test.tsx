@@ -13,11 +13,12 @@ vi.mock("react-router-dom", () => ({
 // mock LxTooltip，使其在测试环境中直接展开 click.content
 vi.mock("@/components/ui/LxTooltip", () => {
   return {
-    LxTooltip: ({ children, click }: any) => {
+    LxTooltip: ({ children, click, content }: any) => {
       return (
         <div data-testid="lx-tooltip-wrapper">
           {children}
           {click?.content && <div data-testid="tooltip-click-content">{click.content}</div>}
+          {content && <div data-testid="tooltip-hover-content">{content}</div>}
         </div>
       )
     },
@@ -320,15 +321,7 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(versionTrigger.textContent).toContain("v2")
   })
 
-  it("点击在对话中迭代按钮，自动校准模式并在活动 Tab 注入 @design token 并跳转", async () => {
-    const activeTabId = agentTabStore.getActiveTabId()
-    agentTabStore.setTabSessionId(activeTabId, "session-test")
-
-    let injectedPrompt = ""
-    const unregister = agentTabStore.registerInputSetter(activeTabId, (updater) => {
-      injectedPrompt = typeof updater === "function" ? updater(injectedPrompt) : updater
-    })
-
+  it("头部不再展示在对话中迭代按钮（Iterate in Chat 按钮及对应逻辑已彻底移除）", () => {
     frontDesignStore.registerDesign({
       id: "design-target",
       title: "Settings Page",
@@ -338,20 +331,11 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     render(<FrontDesignPage />)
 
-    const iterateBtn = screen.getByRole("button", { name: /在对话中迭代|Iterate in Chat/i })
-    expect(iterateBtn).not.toBeNull()
-
-    fireEvent.click(iterateBtn)
-    await Promise.resolve()
-    await Promise.resolve()
-
-    // 验证 Tab prompt 中注入了 @design 标记
-    expect(injectedPrompt).toContain("@design:design-target (Settings Page) ")
-    expect(mockNavigate).toHaveBeenCalledWith("/")
-    unregister()
+    // 确认按钮已彻底从 DOM 中移除
+    expect(screen.queryByRole("button", { name: /在对话中迭代|Iterate in Chat/i })).toBeNull()
   })
 
-  it("点选微调 Inspector 按钮在有 HTML 时可用，支持切换高亮横幅并在按 ESC 时退出", () => {
+  it("点选微调 Inspector 按钮在有 HTML 时可用，且不再展示顶部中间提示横幅，按 ESC 退出", () => {
     frontDesignStore.registerDesign({
       id: "design-inspect",
       title: "Inspectable Design",
@@ -362,17 +346,154 @@ describe("FrontDesignPage 前端设计预览看板", () => {
 
     const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
     expect(inspectBtn).not.toBeNull()
-
-    // 默认未激活，不存在提示横幅
-    expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
+    // 验证 Tooltip 包含 Shift + Alt 快捷键提示
+    expect(screen.getByText(/Shift \+ Alt/i)).not.toBeNull()
 
     // 点击激活
     fireEvent.click(inspectBtn)
-    expect(screen.getByText(/连续点选|Click elements/i)).not.toBeNull()
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 按照需求：顶部中间提示已彻底移除，不应再渲染
+    expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
 
     // 按下 ESC 键退出微调模式
     fireEvent.keyDown(window, { key: "Escape" })
-    expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+  })
+
+  it("支持快捷键 Shift + Alt 切换元素选中模式（再次按下可关闭），并兼容 ESC 键与按钮退出", () => {
+    frontDesignStore.registerDesign({
+      id: "design-shift-alt-test",
+      title: "Shift Alt Design",
+      html: "<div id='root'><span>Shift Alt Test</span></div>",
+    })
+
+    render(<FrontDesignPage />)
+
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 1. 按下 Shift + Alt 打开点选模式
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 2. 再次按下 Shift + Alt 成功关闭点选模式
+    fireEvent.keyDown(window, { key: "Alt", shiftKey: true, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 3. 再次按下 Shift + Alt 重新打开
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 4. 通过 ESC 键退出
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 5. 再次通过 Shift + Alt 打开
+    fireEvent.keyDown(window, { key: "Alt", shiftKey: true, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBe("true")
+
+    // 6. 通过点击工具栏按钮退出
+    fireEvent.click(inspectBtn)
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+  })
+
+  it("单独按下 Shift、单独按下 Alt 或触发三键组合时均不打开点选模式", () => {
+    frontDesignStore.registerDesign({
+      id: "design-partial-keys",
+      title: "Partial Keys Design",
+      html: "<div>Content</div>",
+    })
+
+    render(<FrontDesignPage />)
+
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 单独按 Shift
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: false })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 单独按 Alt
+    fireEvent.keyDown(window, { key: "Alt", shiftKey: false, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 触发了其他按键（如 Shift + Alt + F）
+    fireEvent.keyDown(window, { key: "f", shiftKey: true, altKey: true })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+  })
+
+  it("当输入焦点处于 input、textarea 或可编辑元素时忽略 Shift + Alt 快捷键（防误触保护）", () => {
+    frontDesignStore.registerDesign({
+      id: "design-shift-alt-input",
+      title: "Shift Alt Input Design",
+      html: "<div>Content</div>",
+    })
+
+    render(<FrontDesignPage />)
+
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+
+    // 构造一个处于聚焦状态的输入控件
+    const input = document.createElement("input")
+    document.body.appendChild(input)
+    input.focus()
+
+    fireEvent.keyDown(input, { key: "Shift", shiftKey: true, altKey: true })
+
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+    document.body.removeChild(input)
+  })
+
+  it("流式输出过程中（isStreaming 为 true）禁用 Shift + Alt 快捷键与 Inspector 按钮", () => {
+    frontDesignStore.registerDesign({
+      id: "design-streaming-lock",
+      title: "Streaming Lock Design",
+      html: "<div>Streaming Content</div>",
+      isStreaming: true,
+    })
+
+    render(<FrontDesignPage />)
+
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    // 工具栏按钮应置灰禁用
+    expect(inspectBtn.hasAttribute("disabled")).toBe(true)
+
+    // Shift + Alt 同样被忽略
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true, altKey: true })
+
+    expect(inspectBtn.getAttribute("data-highlighted")).toBeNull()
+  })
+
+  it("流式更新 HTML 时保持稳定 iframe srcDoc，避免触发全文档重新加载白屏闪烁", () => {
+    // 初始流式 chunk 1
+    frontDesignStore.registerDesign({
+      id: "design-smooth-stream",
+      title: "Smooth Stream",
+      html: "<div>Chunk 1</div>",
+      isStreaming: true,
+    })
+
+    const { container, rerender } = render(<FrontDesignPage />)
+    const iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+    const initialSrcDoc = iframe?.getAttribute("srcdoc")
+    expect(initialSrcDoc).toContain("Chunk 1")
+
+    // 模拟流式更新 chunk 2
+    frontDesignStore.registerDesign({
+      id: "design-smooth-stream",
+      title: "Smooth Stream",
+      html: "<div>Chunk 1 and Chunk 2</div>",
+      isStreaming: true,
+    })
+
+    rerender(<FrontDesignPage />)
+
+    // 核心断言：同一设计的流式更新期间，iframe 的 srcdoc 属性保持原样不被反复重置
+    // 从而杜绝了浏览器刷新 iframe 导致的白屏与高频闪烁
+    expect(iframe?.getAttribute("srcdoc")).toBe(initialSrcDoc)
   })
 
   it("点选模式下点击元素自动注入定向锚点 @design:id#target 到活动 Tab 且不发生路由跳转，支持连续点选", async () => {

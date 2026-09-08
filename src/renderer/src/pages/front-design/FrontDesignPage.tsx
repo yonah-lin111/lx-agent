@@ -10,12 +10,10 @@ import {
   Palette,
   RefreshCw,
   Smartphone,
-  Sparkles,
   Tablet,
 } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -25,7 +23,6 @@ import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore, useFrontDesign } from "@/features/agent/hooks/frontDesignStore"
 import { generateElementSelector } from "@/features/agent/utils/designSynthesizer"
 import { useTranslation } from "@/i18n"
-import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 type ViewportMode = "desktop" | "tablet" | "mobile"
 export type FrontDesignPageTheme = "system" | "light" | "dark"
@@ -46,15 +43,6 @@ const getInitialDesignTheme = (): FrontDesignPageTheme => {
   }
   return "system"
 }
-
-/**
- * 判断当前是否处于测试/jsdom环境（单测降级为 iframe）
- */
-const isTestEnvironment =
-  typeof (globalThis as { process?: { env?: Record<string, string> } }).process !== "undefined" &&
-  ((globalThis as { process?: { env?: Record<string, string> } }).process?.env?.NODE_ENV ===
-    "test" ||
-    (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.VITEST === "true")
 
 /**
  * FrontDesignPage - Agent 前端设计看板。
@@ -105,7 +93,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
     }
   }, [])
 
-  const navigate = useNavigate()
   const { html, activeDesignId, mode, sessionId, isStreaming } = designState
 
   const availableVersions = useMemo(() => {
@@ -113,38 +100,43 @@ export const FrontDesignPage = (): React.JSX.Element => {
     return frontDesignStore.getDesignVersions(activeDesignId)
   }, [activeDesignId, designState.designs, designState.updatedAt])
 
-  const handleIterateInChat = useCallback(async () => {
-    if (!activeDesignId) return
-    const targetTitle = designState.title || t("frontDesign.title")
-    let targetTabId = agentTabStore.getActiveTabId()
-
-    if (sessionId) {
-      const targetTab = agentTabStore.findTabBySessionId(sessionId)
-      if (targetTab) {
-        targetTabId = targetTab.id
-        if (targetTab.id !== agentTabStore.getActiveTabId()) {
-          agentTabStore.switchTab(targetTab.id)
-        }
-      }
-    }
-
-    await agentApi
-      .setCollaborationMode("design", sessionId ?? undefined, targetTabId)
-      .catch(() => {})
-
-    const mentionToken = `@design:${activeDesignId} (${targetTitle}) `
-    agentTabStore.insertPromptToActiveTab(mentionToken)
-    navigate(PAGE_ROUTES.home)
-  }, [activeDesignId, designState.title, sessionId, navigate, t])
-
   const [isInspectorActive, setIsInspectorActive] = useState<boolean>(false)
 
-  // 当画布清空或无激活设计时自动退出微调模式
+  // 当画布清空、无激活设计或 Agent 正在流式生成时自动退出微调模式
   useEffect(() => {
-    if (!html || !activeDesignId) {
+    if (!html || !activeDesignId || isStreaming) {
       setIsInspectorActive(false)
     }
-  }, [html, activeDesignId])
+  }, [html, activeDesignId, isStreaming])
+
+  // Shift + Alt 快捷键切换元素点选模式（Toggle，同时支持按 ESC 键或点击工具栏按钮退出）
+  const handleShortcutKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const isShiftOrAlt = e.key === "Shift" || e.key === "Alt"
+      if (!isShiftOrAlt || !e.shiftKey || !e.altKey) return
+      // 流式输出中或无激活设计时静默忽略
+      if (isStreaming || !html || !activeDesignId) return
+
+      // 防误触保护：若当前输入焦点位于 input、textarea 或可编辑元素内，则忽略
+      const target =
+        (e.target as HTMLElement | null) || (document.activeElement as HTMLElement | null)
+      if (target) {
+        const tagName = target.tagName?.toLowerCase()
+        if (tagName === "input" || tagName === "textarea" || target.isContentEditable) {
+          return
+        }
+      }
+
+      setIsInspectorActive((prev) => !prev)
+    },
+    [isStreaming, html, activeDesignId],
+  )
+
+  // 全局主窗口监听 Shift + Alt
+  useEffect(() => {
+    window.addEventListener("keydown", handleShortcutKeyDown)
+    return () => window.removeEventListener("keydown", handleShortcutKeyDown)
+  }, [handleShortcutKeyDown])
 
   // 全局 ESC 键监听退出点选模式
   useEffect(() => {
@@ -445,89 +437,138 @@ export const FrontDesignPage = (): React.JSX.Element => {
     return `${injectedHead}${docWithTheme}`
   }, [html, effectiveMode, compiledTailwindCss])
 
-  // 统一使用稳定 iframe 渲染；切换 activeDesignId、主题模式或手动刷新时重载文档，流式期间使用 rAF 平滑更新
-  const lastRenderedHtmlRef = useRef<string>("")
-  const isUpdatingIframeRef = useRef<boolean>(false)
-  const currentActiveDesignIdRef = useRef<string | null>(activeDesignId)
+  // 保持单次挂载时稳定的初始 srcDoc，仅在设计项切换、主题模式切换或手动刷新时更新
+  // 流式期间不更新 srcDoc，彻底消除浏览器重新导航 iframe 导致的白屏闪烁
+  const currentKey = `${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`
+  const prevKeyRef = useRef<string>(currentKey)
+  const [cachedSrcDoc, setCachedSrcDoc] = useState<string>(sanitizedHtmlDoc)
 
-  // 当 activeDesignId 切换、主题模式切换或刷新时，重置记录，让新文档完全加载
-  useEffect(() => {
-    currentActiveDesignIdRef.current = activeDesignId
-    lastRenderedHtmlRef.current = ""
-  }, [activeDesignId, effectiveMode, refreshKey])
+  if (prevKeyRef.current !== currentKey) {
+    prevKeyRef.current = currentKey
+    setCachedSrcDoc(sanitizedHtmlDoc)
+  } else if (!cachedSrcDoc && sanitizedHtmlDoc) {
+    setCachedSrcDoc(sanitizedHtmlDoc)
+  }
 
-  // 将实时编译的 Tailwind CSS 注入到当前 iframe 中
-  useEffect(() => {
-    if (!compiledTailwindCss) return
+  // 跨作用域将 Shift + Alt 监听挂载到 iframe 内部文档
+  const attachIframeKeydown = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe) return
     try {
       const doc = iframe.contentDocument
-      if (doc && doc.head) {
-        let twStyle = doc.getElementById("lx-front-design-tailwind-compiled")
-        if (!twStyle) {
-          twStyle = doc.createElement("style")
-          twStyle.id = "lx-front-design-tailwind-compiled"
-          doc.head.appendChild(twStyle)
-        }
-        twStyle.textContent = compiledTailwindCss
+      if (doc) {
+        doc.removeEventListener("keydown", handleShortcutKeyDown, true)
+        doc.addEventListener("keydown", handleShortcutKeyDown, true)
       }
     } catch {
-      // ignore
+      // 跨域防御
     }
-  }, [compiledTailwindCss])
+  }, [handleShortcutKeyDown])
 
-  useEffect(() => {
-    if (!sanitizedHtmlDoc) return
+  // 高性能平滑局部增量更新 iframe DOM
+  const updateIframeContent = useCallback((docContent: string) => {
     const iframe = iframeRef.current
     if (!iframe) return
+    try {
+      const doc = iframe.contentDocument
+      if (!doc || !doc.body) return
 
-    // 在实际运行环境中，仅在同一设计项的流式更新过程中进行增量 patch，切换版本时直接重载
-    if (!isTestEnvironment) {
-      try {
-        const doc = iframe.contentDocument
-        if (doc && doc.body) {
-          // 仅在当前 designId 相同且处于流式状态下使用 rAF 进行无白屏平滑更新
-          if (isStreaming && lastRenderedHtmlRef.current) {
-            if (!isUpdatingIframeRef.current) {
-              isUpdatingIframeRef.current = true
-              requestAnimationFrame(() => {
-                isUpdatingIframeRef.current = false
-                try {
-                  const currentDoc = iframe.contentDocument
-                  if (!currentDoc) return
-                  const parser = new DOMParser()
-                  const parsed = parser.parseFromString(sanitizedHtmlDoc, "text/html")
+      const parser = new DOMParser()
+      const parsed = parser.parseFromString(docContent, "text/html")
 
-                  // 平滑同步 body 结构，不重建 window，彻底消除白屏
-                  currentDoc.body.innerHTML = parsed.body?.innerHTML || ""
+      // 1. 同步 html 根节点 class 与暗色模式
+      if (parsed.documentElement && doc.documentElement) {
+        if (doc.documentElement.className !== parsed.documentElement.className) {
+          doc.documentElement.className = parsed.documentElement.className
+        }
+      }
 
-                  // 同步 dark 模式类名
-                  if (parsed.documentElement) {
-                    currentDoc.documentElement.className = parsed.documentElement.className
-                  }
-
-                  // 确保主题与重置样式生效
-                  const existingStyle = currentDoc.getElementById("lx-front-design-theme-override")
-                  const newStyle = parsed.getElementById("lx-front-design-theme-override")
-                  if (newStyle && existingStyle) {
-                    existingStyle.textContent = newStyle.textContent
-                  }
-                } catch {
-                  // 出错退回
-                }
-              })
-            }
-            return
+      // 2. 同步 head 关键样式覆盖
+      const syncStyle = (id: string) => {
+        const newStyle = parsed.getElementById(id)
+        let currentStyle = doc.getElementById(id)
+        if (newStyle) {
+          if (!currentStyle) {
+            currentStyle = doc.createElement("style")
+            currentStyle.id = id
+            doc.head?.appendChild(currentStyle)
+          }
+          if (currentStyle.textContent !== newStyle.textContent) {
+            currentStyle.textContent = newStyle.textContent
           }
         }
-      } catch {
-        // 忽略跨域等异常
       }
+
+      syncStyle("lx-front-design-theme-override")
+      syncStyle("lx-front-design-tailwind-compiled")
+
+      // 3. 同步文档 head 自定义 style 节点
+      const customStyles = parsed.querySelectorAll("style:not([id^='lx-front-design-'])")
+      if (customStyles.length > 0) {
+        const customContainerId = "lx-front-design-custom-styles"
+        let container = doc.getElementById(customContainerId)
+        if (!container) {
+          container = doc.createElement("style")
+          container.id = customContainerId
+          doc.head?.appendChild(container)
+        }
+        const combinedCss = Array.from(customStyles)
+          .map((s) => s.textContent || "")
+          .join("\n")
+        if (container.textContent !== combinedCss) {
+          container.textContent = combinedCss
+        }
+      }
+
+      // 4. 平滑替换 body 结构（保留可能存在的 inspector overlay）
+      const overlay = doc.getElementById("lx-design-inspector-overlay")
+      const newBodyHtml = parsed.body?.innerHTML || ""
+      if (doc.body.innerHTML !== newBodyHtml) {
+        doc.body.innerHTML = newBodyHtml
+        if (overlay) {
+          doc.body.appendChild(overlay)
+        }
+      }
+    } catch {
+      // 忽略异常
+    }
+  }, [])
+
+  const rafIdRef = useRef<number | null>(null)
+  const sanitizedHtmlDocRef = useRef<string>(sanitizedHtmlDoc)
+  sanitizedHtmlDocRef.current = sanitizedHtmlDoc
+
+  // 使用 requestAnimationFrame 对流式输出进行平滑合帧更新，彻底杜绝白屏与高频重绘闪烁
+  useEffect(() => {
+    if (!sanitizedHtmlDoc) return
+
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
     }
 
-    lastRenderedHtmlRef.current = sanitizedHtmlDoc
-  }, [sanitizedHtmlDoc, isStreaming])
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null
+      updateIframeContent(sanitizedHtmlDoc)
+    })
+
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+    }
+  }, [sanitizedHtmlDoc, updateIframeContent])
+
+  const handleIframeLoad = useCallback(() => {
+    attachIframeKeydown()
+    if (sanitizedHtmlDocRef.current) {
+      updateIframeContent(sanitizedHtmlDocRef.current)
+    }
+  }, [attachIframeKeydown, updateIframeContent])
+
+  useEffect(() => {
+    attachIframeKeydown()
+  }, [attachIframeKeydown, refreshKey, activeDesignId])
 
   const handleCopy = useCallback(async () => {
     if (!html) return
@@ -570,6 +611,24 @@ export const FrontDesignPage = (): React.JSX.Element => {
     { id: "light", label: t("frontDesign.themeLight") },
     { id: "dark", label: t("frontDesign.themeDark") },
   ]
+
+  const inspectorTooltipContent = useMemo(() => {
+    if (isStreaming) {
+      return t("frontDesign.generating")
+    }
+    return (
+      <div className="flex flex-col gap-1 text-xs">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-semibold text-white/90">
+            {isInspectorActive ? t("frontDesign.inspectModeActive") : t("frontDesign.inspectMode")}
+          </span>
+        </div>
+        <div className="border-t border-white/10 pt-1 text-[11px] text-white/45">
+          {t("frontDesign.inspectShortcutHint")}
+        </div>
+      </div>
+    )
+  }, [isStreaming, isInspectorActive, t])
 
   return (
     <div
@@ -698,30 +757,17 @@ export const FrontDesignPage = (): React.JSX.Element => {
           {activeDesignId && html && (
             <LxIconButton
               size="small"
+              disabled={isStreaming}
               highlighted={isInspectorActive}
               onClick={() => setIsInspectorActive((prev) => !prev)}
               aria-label={t("frontDesign.inspectMode")}
               title={{
-                content: isInspectorActive
-                  ? t("frontDesign.inspectModeActive")
-                  : t("frontDesign.inspectMode"),
+                content: inspectorTooltipContent,
                 placement: "bottom",
               }}
             >
               <MousePointerClick className="h-3.5 w-3.5" />
             </LxIconButton>
-          )}
-
-          {/* 在对话中迭代 */}
-          {activeDesignId && (
-            <button
-              type="button"
-              onClick={handleIterateInChat}
-              className="flex items-center gap-1.5 rounded-[6px] border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-xs font-medium text-pink-300 hover:bg-pink-500/20 transition-colors cursor-pointer"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{t("frontDesign.iterateInChat")}</span>
-            </button>
           )}
 
           <div
@@ -819,12 +865,6 @@ export const FrontDesignPage = (): React.JSX.Element => {
         } ${showEmptyDesign ? "front-design-empty-canvas" : ""}`}
         style={{ backgroundColor: "var(--color-theme-bg)" }}
       >
-        {isInspectorActive && (
-          <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full border border-pink-500/40 bg-zinc-900/95 px-3 py-1 text-xs font-medium text-pink-300 shadow-xl backdrop-blur select-none">
-            <MousePointerClick className="h-3.5 w-3.5 text-pink-400 animate-pulse" />
-            <span>{t("frontDesign.inspectHint")}</span>
-          </div>
-        )}
         {showEmptyDesign ? (
           <div className="front-design-empty-container flex max-w-sm flex-col items-center justify-center gap-3 text-center">
             <div className="front-design-empty-icon flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20">
@@ -850,9 +890,10 @@ export const FrontDesignPage = (): React.JSX.Element => {
           >
             {/* 统一使用高性能沙箱 iframe，保持单一上下文，流式与落盘零白屏切换。配置 allow-scripts 确保原型脚本正常执行 */}
             <iframe
-              key={`${activeDesignId || "empty"}-${effectiveMode}-${refreshKey}`}
+              key={currentKey}
               ref={iframeRef}
-              srcDoc={sanitizedHtmlDoc}
+              srcDoc={cachedSrcDoc}
+              onLoad={handleIframeLoad}
               sandbox="allow-scripts allow-same-origin"
               title={t("frontDesign.title") || "Front Design Preview"}
               className={`h-full w-full border-none ${

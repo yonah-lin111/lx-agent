@@ -23,7 +23,7 @@ export type LxIconButtonShape = "square" | "circle"
 
 // 图标按钮内置 Tooltip 配置。
 export interface LxIconButtonTooltip {
-  content: string
+  content: React.ReactNode
   placement?: LxTooltipPlacement
   title?: string
   onConfirm?: () => void

@@ -423,7 +423,8 @@ export const zh: TranslationDictionary = {
     contextWindow: "上下文窗口",
     maxOutputTokens: "最大输出 Tokens",
     thinkingVariants: "思考等级 (Variants)",
-    thinkingVariantsDesc: "配置该模型的思考/推理等级参数（如 high/medium/low），在输入栏和流式执行中生效。",
+    thinkingVariantsDesc:
+      "配置该模型的思考/推理等级参数（如 high/medium/low），在输入栏和流式执行中生效。",
     addVariant: "添加思考等级",
     variantKey: "等级标识 (ID)",
     variantConfigJson: "参数配置 (JSON)",
@@ -1428,6 +1429,7 @@ export const zh: TranslationDictionary = {
     inspectModeActive: "点选微调已激活 (ESC 退出)",
     inspectModeDesc: "点击页面内任意元素，将其精准引用到对话输入框中进行局部微调",
     inspectHint: "可连续点选多个元素追加引用，按 ESC 退出点选",
+    inspectShortcutHint: "使用 Shift + Alt 可快速开启/关闭点选模式",
     elementSelectedToast: "已添加节点引用：{{name}}",
     updateTargetNotFound: "局部更新目标节点未找到：{{target}}",
     elementTargetBadge: "目标",
