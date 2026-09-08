@@ -777,4 +777,30 @@ describe("AgentMessageItem", () => {
     expect(tag?.textContent).not.toContain("·")
     expect(tag?.textContent).not.toContain("Steer")
   })
+
+  it("用户消息中注入的 <referenced_design> 块被 cleanUserPrompt 自动剥离", () => {
+    const rawUserText = `请修改这个表单：
+@design:design-123 (Login Form) 
+<referenced_design id="design-123" title="Login Form" mode="tailwindcss">
+<form class="p-4">
+  <input type="text" />
+</form>
+</referenced_design>`
+
+    const message: ChatMessage = {
+      id: "user-design-ref",
+      role: "user",
+      blocks: [{ kind: "text", text: rawUserText }],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={message} />)
+
+    // 气泡中不显示 <referenced_design> 标签和内部源码
+    expect(screen.queryByText(/<referenced_design/)).toBeNull()
+    expect(screen.queryByText(/<input type="text" \/>/)).toBeNull()
+    // 应该保留用户的提示文本和 @design 标记
+    expect(screen.getByText(/请修改这个表单/)).not.toBeNull()
+    expect(screen.getByText(/@design:design-123 \(Login Form\)/)).not.toBeNull()
+  })
 })

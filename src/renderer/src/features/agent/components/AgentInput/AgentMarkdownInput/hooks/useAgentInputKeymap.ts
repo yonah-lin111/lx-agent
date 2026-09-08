@@ -1,5 +1,4 @@
-import { Prec } from "@codemirror/state"
-import { type Extension } from "@codemirror/state"
+import { type Extension, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import type React from "react"
 import { useMemo, useRef } from "react"
@@ -61,6 +60,7 @@ interface UseAgentInputKeymapProps {
   selectFile: (file: any) => void
   selectSkill: (skill: any) => void
   selectSkillFromMention: (skill: any) => void
+  selectDesign?: (design: any) => void
   selectBlockCommand: (cmd: MarkdownBlockCommand) => void
   onChangeRef: React.RefObject<(value: string) => void>
   onUndo?: () => void
@@ -113,6 +113,7 @@ export const useAgentInputKeymap = ({
   selectFile,
   selectSkill,
   selectSkillFromMention,
+  selectDesign,
   selectBlockCommand,
   onChangeRef,
   onUndo,
@@ -140,6 +141,8 @@ export const useAgentInputKeymap = ({
   selectSkillRef.current = selectSkill
   const selectSkillFromMentionRef = useRef(selectSkillFromMention)
   selectSkillFromMentionRef.current = selectSkillFromMention
+  const selectDesignRef = useRef(selectDesign)
+  selectDesignRef.current = selectDesign
   const selectBlockCommandRef = useRef(selectBlockCommand)
   selectBlockCommandRef.current = selectBlockCommand
   const onUndoRef = useRef(onUndo)
@@ -382,6 +385,8 @@ export const useAgentInputKeymap = ({
                 if (item) {
                   if (item.kind === "skill") {
                     selectSkillFromMentionRef.current(item.skill)
+                  } else if (item.kind === "design") {
+                    selectDesignRef.current?.(item.design)
                   } else {
                     selectFileRef.current(item.file)
                   }

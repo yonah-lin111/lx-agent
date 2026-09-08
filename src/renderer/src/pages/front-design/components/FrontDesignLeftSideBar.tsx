@@ -16,11 +16,18 @@ export interface FrontDesignLeftSideBarProps {
   isCollapsed?: boolean
 }
 
+interface DesignFamilyGroup {
+  root: FrontDesignItem
+  versions: FrontDesignItem[]
+  isCurrentActive: boolean
+}
+
 interface TabWithDesigns {
   tab: AgentTab
   tabLabel: string
   isStreaming: boolean
   designs: FrontDesignItem[]
+  designGroups: DesignFamilyGroup[]
 }
 
 /**
@@ -67,7 +74,7 @@ export const FrontDesignLeftSideBar = ({
       // 匹配属于该 Tab 会话的设计项（草稿 Tab 匹配无 sessionId 的设计项）
       let tabDesigns = designs.filter((d) => {
         if (tab.sessionId) {
-          return d.sessionId === tab.sessionId
+          return d.sessionId === tab.sessionId || (!d.sessionId && tab.id === activeTabId)
         }
         return !d.sessionId && tab.id === activeTabId
       })
@@ -86,14 +93,34 @@ export const FrontDesignLeftSideBar = ({
         }
       }
 
+      // 聚合设计族：将同一版本树下的所有版本折叠在根设计下
+      const roots = tabDesigns.filter((d) => {
+        if (!d.parentId) return true
+        return !tabDesigns.some((parent) => parent.id === d.parentId)
+      })
+
+      const designGroups: DesignFamilyGroup[] = (roots.length > 0 ? roots : tabDesigns).map(
+        (root) => {
+          const allVersions = frontDesignStore.getDesignVersions(root.id)
+          const versions = allVersions.length > 0 ? allVersions : [root]
+          const isCurrentActive = versions.some((v) => v.id === activeDesignId)
+          return {
+            root,
+            versions,
+            isCurrentActive,
+          }
+        },
+      )
+
       return {
         tab,
         tabLabel,
         isStreaming,
         designs: tabDesigns,
+        designGroups,
       }
     })
-  }, [tabs, designs, activeTabId, streamingMap, getTabLabel, searchKeyword, t])
+  }, [tabs, designs, activeTabId, activeDesignId, streamingMap, getTabLabel, searchKeyword, t])
 
   // 搜索时仅展示匹配到设计的 Tab 或 Tab 名称命中的 Tab
   const visibleTabsWithDesigns = useMemo(() => {
@@ -309,7 +336,7 @@ export const FrontDesignLeftSideBar = ({
                   </span>
                 </div>
 
-                {/* 子级：设计原型列表（参考 ProjectNavigationList 的 Prompt 节点视觉与排版） */}
+                {/* 子级：设计原型列表（按设计族与版本聚合） */}
                 {!isTabCollapsed && (
                   <div className="space-y-0.5">
                     {item.designs.length === 0 ? (
@@ -320,39 +347,54 @@ export const FrontDesignLeftSideBar = ({
                         <span>{t("frontDesign.noDesignsInSession")}</span>
                       </div>
                     ) : (
-                      item.designs.map((d) => {
-                        const isDesignActive = d.id === activeDesignId
+                      item.designGroups.map((group) => {
+                        const { root, versions, isCurrentActive } = group
+                        const latestVersion = versions[versions.length - 1] ?? root
+
+                        // 当前族中激活的具体设计节点或最新版本
+                        const activeItemInGroup =
+                          versions.find((v) => v.id === activeDesignId) ?? null
+                        const currentVersionItem = activeItemInGroup ?? latestVersion
 
                         return (
                           <div
-                            key={d.id}
+                            key={root.id}
                             role="button"
                             tabIndex={0}
                             data-item-level="prompt"
-                            aria-current={isDesignActive ? "page" : undefined}
+                            aria-current={isCurrentActive ? "page" : undefined}
                             style={{ marginLeft: "10px" }}
-                            onClick={() => handleDesignClick(d, item.tab.id)}
+                            onClick={() => {
+                              handleDesignClick(currentVersionItem, item.tab.id)
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
-                                handleDesignClick(d, item.tab.id)
+                                handleDesignClick(currentVersionItem, item.tab.id)
                               }
                             }}
-                            className={`group flex h-7 items-center justify-between gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
-                              isDesignActive ? "bg-white/5 text-white font-medium" : "text-white/70"
+                            className={`group flex h-7 items-center justify-between gap-1.5 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+                              isCurrentActive
+                                ? "bg-white/10 text-white font-medium"
+                                : "text-white/70"
                             }`}
                           >
                             <div className="flex min-w-0 items-center gap-1.5 flex-1">
-                              {d.isStreaming ? (
+                              {currentVersionItem.isStreaming ? (
                                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-400" />
                               ) : (
                                 <Palette
                                   className={`h-3.5 w-3.5 shrink-0 ${
-                                    isDesignActive ? "text-pink-400" : "text-white/45"
+                                    isCurrentActive ? "text-pink-400" : "text-white/45"
                                   }`}
                                 />
                               )}
                               <span className="min-w-0 flex-1 truncate text-xs select-none">
-                                {d.title || t("frontDesign.title")}
+                                {root.title || t("frontDesign.title")}
+                              </span>
+
+                              {/* 当前显示的版本号 */}
+                              <span className="shrink-0 rounded bg-pink-500/20 px-1 py-0.2 font-mono text-[9px] font-semibold leading-none text-pink-300">
+                                v{currentVersionItem.version ?? 1}
                               </span>
                             </div>
 
@@ -361,10 +403,14 @@ export const FrontDesignLeftSideBar = ({
                                 size="small"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  frontDesignStore.removeDesign(d.id)
+                                  // 删除该族的所有版本
+                                  versions.forEach((v) => frontDesignStore.removeDesign(v.id))
                                 }}
                                 aria-label={t("frontDesign.deleteDesign")}
-                                title={{ content: t("frontDesign.deleteDesign"), placement: "top" }}
+                                title={{
+                                  content: t("frontDesign.deleteDesign"),
+                                  placement: "top",
+                                }}
                               >
                                 <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
                               </LxIconButton>

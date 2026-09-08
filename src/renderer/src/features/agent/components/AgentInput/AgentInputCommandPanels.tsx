@@ -1,10 +1,11 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { FileText, Folder } from "lucide-react"
+import { FileText, Folder, Palette } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LxTag } from "@/components/ui/LxTag"
+import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 import { getMentionDirectoryTag } from "@/features/project/utils"
 import { useTranslation } from "@/i18n"
 
@@ -435,6 +436,10 @@ export type AgentMentionItem =
       kind: "file"
       file: ProjectFileEntry
     }
+  | {
+      kind: "design"
+      design: FrontDesignItem
+    }
 
 export interface AgentInputFilePanelProps {
   isOpen: boolean
@@ -526,6 +531,52 @@ export const AgentInputFilePanel = ({
                   size="small"
                 >
                   Skill
+                </LxTag>
+              </div>
+            </div>
+          )
+        }
+
+        if (item.kind === "design") {
+          const { design } = item
+          const title = design.title || t("frontDesign.title")
+          const lines = design.html ? design.html.split("\n").length : 0
+          const modeLabel = design.mode === "css" ? "CSS" : "Tailwind"
+          const versionLabel = design.version ? `v${design.version}` : undefined
+
+          return (
+            <div
+              key={`design-${design.id}`}
+              role="option"
+              data-index={index}
+              aria-selected={isActive}
+              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75"
+              }`}
+            >
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 font-mono text-[12px] font-bold text-pink-400">
+                <Palette className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                  <span className="font-medium text-white truncate max-w-[220px]">{title}</span>
+                  {versionLabel && (
+                    <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-[9px] font-medium text-pink-300">
+                      {versionLabel}
+                    </span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] leading-none text-white/45">
+                  {lines} {t("frontDesign.lines")} · {modeLabel}
+                </span>
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <LxTag
+                  bgClass="bg-pink-500/20 text-pink-300"
+                  className="pointer-events-none shrink-0"
+                  size="small"
+                >
+                  Design
                 </LxTag>
               </div>
             </div>

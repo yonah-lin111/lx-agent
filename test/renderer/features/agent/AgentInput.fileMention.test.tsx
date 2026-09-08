@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { AgentInput } from "@/features/agent/components/AgentInput"
+import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { projectApi } from "@/features/project/api/projectApi"
 
 vi.mock("@/features/project/api/projectApi", () => ({
@@ -205,5 +206,62 @@ describe("AgentInput 文件提及面板唤起", () => {
     expect(skillName).not.toBeNull()
     expect(skillName?.textContent).toContain("$demo-skill")
     expect(skillName?.textContent).toContain("Skill")
+  })
+
+  it("输入 @ 时应该在提及面板中展示 Design 项并带有 Design 标签", async () => {
+    vi.mocked(projectApi.searchFiles).mockResolvedValue([])
+
+    frontDesignStore.registerDesign({
+      id: "mention-design-1",
+      title: "Hero Landing Card",
+      html: "<div>Hero HTML</div>",
+      sessionId: "test-mention-session",
+    })
+
+    let updateText: (val: string) => void = () => {}
+    const Harness = () => {
+      const [text, setText] = useState("")
+      updateText = setText
+      return (
+        <AgentInput
+          inputText={text}
+          isStreaming={false}
+          isCompacting={false}
+          queuedCount={0}
+          queuedMessages={[]}
+          onInputChange={setText}
+          onSend={vi.fn()}
+          onStop={vi.fn()}
+          onClear={vi.fn()}
+          onUndo={vi.fn()}
+          onCompact={vi.fn()}
+          selectedModel="m"
+          onModelChange={vi.fn()}
+          modelOptions={[]}
+          hasModelOptions={false}
+          worktreeOptions={null}
+          onWorktreeSelect={vi.fn()}
+          selectedFiles={[]}
+          onFilesChange={vi.fn()}
+          supportsImages={false}
+          sessionId="test-mention-session"
+        />
+      )
+    }
+
+    render(<Harness />)
+    await act(async () => {})
+    const content = document.querySelector(".cm-content") as HTMLElement
+    expect(content).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.focus(content)
+      updateText("@")
+    })
+
+    // 验证提及面板中包含设计项与 Design 标签
+    const designItem = document.body.textContent
+    expect(designItem).toContain("Hero Landing Card")
+    expect(designItem).toContain("Design")
   })
 })

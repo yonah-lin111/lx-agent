@@ -55,12 +55,14 @@ export const extractSkillBlock = (rawText: string): string | null => {
   return null
 }
 
-// 清洗用户输入纯文本（剥离 <skill ...> 注入块与命令前缀）。
+// 清洗用户输入纯文本（剥离 <skill ...> 与 <referenced_design ...> 注入块与命令前缀）。
 export const cleanUserPrompt = (
   rawText: string,
   options?: { isSteer?: boolean; command?: { kind?: string; name: string } },
 ): string => {
-  let cleaned = rawText.replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
+  let cleaned = rawText
+    .replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
+    .replace(/<referenced_design\b[\s\S]*?(?:<\/referenced_design>|$)\s*/gi, "")
 
   if (options?.isSteer || options?.command?.name === "steer") {
     cleaned = cleaned.replace(/^\s*\/steer(?:\s+|$)/, "").trim()

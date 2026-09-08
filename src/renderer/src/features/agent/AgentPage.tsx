@@ -169,9 +169,11 @@ export const AgentPage = ({
     return chatSessions.find((s) => s.id === currentSessionId)
   }, [chatSessions, currentSessionId])
 
-  const activeTab = useSyncExternalStore(agentTabStore.subscribe, () =>
-    tabId ? agentTabStore.getTabs().find((t) => t.id === tabId) : undefined,
-  )
+  const getTabSnapshot = useCallback(() => {
+    return tabId ? agentTabStore.findTabById(tabId) : undefined
+  }, [tabId])
+
+  const activeTab = useSyncExternalStore(agentTabStore.subscribe, getTabSnapshot)
 
   const currentSessionBinding = useMemo<SessionBinding | undefined>(() => {
     if (boundSession) {
@@ -376,14 +378,16 @@ export const AgentPage = ({
         return
       }
 
-      // 严格检查事件目标或当前活动元素是否在当前 AgentPage 容器内
+      // 如果当前聚焦在全局模态弹窗或非相关输入中，不拦截
+      // 允许在 AgentPage 内部任意区域（包括消息列表、输入框等）触发 Shift + Tab 切换模式
       const target = e.target as Node | null
       const isTargetInPage = target ? pageContainerRef.current?.contains(target) : false
       const isActiveElementInPage = document.activeElement
         ? pageContainerRef.current?.contains(document.activeElement)
         : false
+      const isBodyFocused = document.activeElement === document.body || !document.activeElement
 
-      if (!isTargetInPage && !isActiveElementInPage) {
+      if (!isTargetInPage && !isActiveElementInPage && !isBodyFocused) {
         return
       }
 

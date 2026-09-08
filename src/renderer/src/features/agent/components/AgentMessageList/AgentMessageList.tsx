@@ -145,13 +145,16 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       prevScrollTop: number
     } | null>(null)
 
-    // 会话切换（消息列表重置或恢复）时，重置滑动窗口与初次吸底标记。
+    // 会话切换（消息列表重置或恢复）时，重置滑动窗口与初次吸底标记；新增消息时确保窗口能够包含末尾消息。
     const prevMessagesLengthRef = useRef(messages.length)
     useEffect(() => {
       // 仅在消息列表被清空或大幅变动（如切换会话）时重置。
       if (messages.length === 0 || Math.abs(messages.length - prevMessagesLengthRef.current) > 5) {
         setWindowStartIndex(Math.max(0, messageGroups.length - WINDOW_INITIAL_SIZE))
         hasInitialScrolledRef.current = false
+      } else if (messageGroups.length > 0 && windowStartIndex > messageGroups.length - 1) {
+        // 防止窗口越界导致无法看见最新消息
+        setWindowStartIndex(Math.max(0, messageGroups.length - WINDOW_INITIAL_SIZE))
       }
       prevMessagesLengthRef.current = messages.length
     }, [messages.length, messageGroups.length])
