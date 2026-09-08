@@ -212,3 +212,22 @@ export const filterMarkdownVariables = (
  */
 export const stripMarkdownFrontmatter = (content: string): string =>
   content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").replace(/^\r?\n+/, "")
+
+/**
+ * 获取变量条目的命名空间标签（有前缀取点号前第一段如 temp，无前缀取 var）。
+ */
+export const getVariableTag = (name: string): string => {
+  const dotIndex = name.indexOf(".")
+  return dotIndex !== -1 ? name.slice(0, dotIndex) : "var"
+}
+
+/**
+ * 格式化变量的预览文本：
+ * 多行值采用 """ 内容 """ 包裹并转为单行，单行值直接展示。
+ */
+export const formatVariablePreview = (value: string): string => {
+  const isMultiLine = value.includes("\n")
+  const flattened = value.replace(/\r?\n/g, " ").trim()
+  if (!flattened) return ""
+  return isMultiLine ? `"""${flattened}"""` : flattened
+}

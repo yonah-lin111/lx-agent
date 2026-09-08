@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   filterMarkdownVariables,
+  formatVariablePreview,
   getMarkdownVariableTrigger,
+  getVariableTag,
   isInsideMarkdownFrontmatter,
   parseMarkdownVariables,
   stripMarkdownFrontmatter,
@@ -213,6 +215,37 @@ vars:
     it("无 frontmatter 时原样返回", () => {
       const doc = "# 标题\n正文内容"
       expect(stripMarkdownFrontmatter(doc)).toBe(doc)
+    })
+  })
+
+  describe("getVariableTag", () => {
+    it("带命名空间前缀的点号变量提取第一段作为 tag", () => {
+      expect(getVariableTag("temp.status")).toBe("temp")
+      expect(getVariableTag("temp.nested.deep")).toBe("temp")
+      expect(getVariableTag("env.prod.url")).toBe("env")
+    })
+
+    it("无前缀或默认 vars 下的平级变量返回 var", () => {
+      expect(getVariableTag("reviewer_instruction")).toBe("var")
+      expect(getVariableTag("api_host")).toBe("var")
+    })
+  })
+
+  describe("formatVariablePreview", () => {
+    it("多行文本展开为单行并使用三重双引号包裹", () => {
+      const multi = `请作为资深架构师评审以下代码：\n1. 确保符合项目规范\n2. 检查性能`
+      expect(formatVariablePreview(multi)).toBe(
+        `"""请作为资深架构师评审以下代码： 1. 确保符合项目规范 2. 检查性能"""`,
+      )
+    })
+
+    it("单行文本原样去除首尾空白输出", () => {
+      expect(formatVariablePreview("  https://api.github.com  ")).toBe("https://api.github.com")
+    })
+
+    it("空文本返回空字符串", () => {
+      expect(formatVariablePreview("")).toBe("")
+      expect(formatVariablePreview("   \n  ")).toBe("")
     })
   })
 })

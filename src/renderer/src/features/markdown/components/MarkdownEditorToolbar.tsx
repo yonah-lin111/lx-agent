@@ -13,10 +13,13 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   filterMarkdownVariables,
+  formatVariablePreview,
+  getVariableTag,
   type MarkdownVariableEntry,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import type {
@@ -522,48 +525,60 @@ export const MarkdownEditorToolbar = ({
         onChange={(event) => setVariableQuery(event.target.value)}
       />
       <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1">
-        {filteredVariables.map((variable) => (
-          <div
-            key={variable.name}
-            className="flex items-center justify-between gap-2 rounded-[4px] bg-white/5 p-1.5 text-xs transition-colors hover:bg-white/8"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-mono text-xs font-medium text-white">
-                ${variable.name}
+        {filteredVariables.map((variable) => {
+          const tag = getVariableTag(variable.name)
+          const preview = formatVariablePreview(variable.value) || t("markdown.variableNoPreview")
+
+          return (
+            <div
+              key={variable.name}
+              className="flex items-center justify-between gap-2 rounded-[4px] bg-white/5 p-1.5 text-xs transition-colors hover:bg-white/8"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center justify-between gap-1.5">
+                  <span className="truncate font-mono text-xs font-medium text-white">
+                    ${variable.name}
+                  </span>
+                  <LxTag
+                    bgClass="border-amber-400/20 bg-amber-400/10 text-amber-300"
+                    className="pointer-events-none shrink-0 font-mono text-[10px]"
+                    size="small"
+                  >
+                    {tag}
+                  </LxTag>
+                </div>
+                <div className="mt-0.5 truncate font-mono text-[11px] text-white/45">{preview}</div>
               </div>
-              <div className="mt-0.5 truncate font-mono text-[11px] text-white/45">
-                {variable.value.replaceAll("\n", " ").trim() || t("markdown.variableNoPreview")}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                aria-label={t("common.copy")}
-                className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
-                onClick={() => {
-                  void navigator.clipboard.writeText(variable.value)
-                  setCopiedVarName(variable.name)
-                  setTimeout(() => setCopiedVarName(null), 1500)
-                }}
-              >
-                {copiedVarName === variable.name ? (
-                  <Check className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </button>
-              {onInsertVariable && (
+              <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
-                  className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white/70 hover:bg-white/20 hover:text-white"
-                  onClick={() => onInsertVariable(variable)}
+                  aria-label={t("common.copy")}
+                  className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(variable.value)
+                    setCopiedVarName(variable.name)
+                    setTimeout(() => setCopiedVarName(null), 1500)
+                  }}
                 >
-                  {t("common.insert")}
+                  {copiedVarName === variable.name ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                 </button>
-              )}
+                {onInsertVariable && (
+                  <button
+                    type="button"
+                    className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white/70 hover:bg-white/20 hover:text-white"
+                    onClick={() => onInsertVariable(variable)}
+                  >
+                    {t("common.insert")}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {filteredVariables.length === 0 && (
           <div className="py-3 text-center text-xs text-white/45">
             {variables.length === 0 ? t("markdown.variablesEmpty") : t("common.none")}
