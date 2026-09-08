@@ -882,6 +882,10 @@ export const ModelProviderSettings = ({
                                 options={[
                                   { value: "openai", label: t("settings.presetVariantOpenAI") },
                                   {
+                                    value: "openrouter",
+                                    label: t("settings.presetVariantOpenRouter"),
+                                  },
+                                  {
                                     value: "anthropic",
                                     label: t("settings.presetVariantAnthropic"),
                                   },
@@ -902,6 +906,11 @@ export const ModelProviderSettings = ({
                                       currentVariants["low"] = { reasoningEffort: "low" }
                                       currentVariants["medium"] = { reasoningEffort: "medium" }
                                       currentVariants["high"] = { reasoningEffort: "high" }
+                                      newKey = "high"
+                                    } else if (val === "openrouter") {
+                                      currentVariants["low"] = { reasoning: { effort: "low" } }
+                                      currentVariants["medium"] = { reasoning: { effort: "medium" } }
+                                      currentVariants["high"] = { reasoning: { effort: "high" } }
                                       newKey = "high"
                                     } else if (val === "anthropic") {
                                       currentVariants["low"] = { thinkingBudget: 4096 }

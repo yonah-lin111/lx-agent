@@ -423,6 +423,7 @@ Connect external data sources, local development tools, and custom scripts to yo
     variantConfigJson: "Config (JSON)",
     defaultVariant: "Default Variant",
     presetVariantOpenAI: "OpenAI tiers (low / medium / high)",
+    presetVariantOpenRouter: "OpenRouter / 9Router (reasoning.effort)",
     presetVariantAnthropic: "Anthropic thinking budget (budgetTokens)",
     presetVariantReasoningEffort: "Generic reasoning effort (reasoning_effort)",
     invalidVariantJson: "Invalid JSON configuration",
