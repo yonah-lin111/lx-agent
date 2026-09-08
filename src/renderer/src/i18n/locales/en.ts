@@ -1125,6 +1125,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     noBranch: "No available branch",
     noWorktree: "No standalone worktree",
     defaultWorktree: "Default worktree",
+    selectWorktree: "Select Git worktree",
+    current: "Current",
   },
   project: {
     temporaryPrompt: "Scratchpad Prompt",

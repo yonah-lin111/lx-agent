@@ -1105,6 +1105,8 @@ export const zh: TranslationDictionary = {
     noBranch: "无可用分支",
     noWorktree: "无独立工作区",
     defaultWorktree: "默认工作区",
+    selectWorktree: "git 工作区选择",
+    current: "当前",
   },
   project: {
     temporaryPrompt: "临时提示词",

@@ -2,6 +2,7 @@ import { GitBranch } from "lucide-react"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import type { GitWorktreeOption } from "@/features/git"
+import { useTranslation } from "@/i18n"
 
 // git 工作区选择面板属性。
 interface GitWorktreeCommandMenuProps {
@@ -21,6 +22,7 @@ export const GitWorktreeCommandMenu = ({
   position,
   visible = false,
 }: GitWorktreeCommandMenuProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
 
@@ -64,7 +66,7 @@ export const GitWorktreeCommandMenu = ({
 
   return (
     <div
-      aria-label="git 工作区选择"
+      aria-label={t("git.selectWorktree")}
       className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
@@ -94,10 +96,12 @@ export const GitWorktreeCommandMenu = ({
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="shrink-0 text-[13px] leading-none text-white">{option.name}</span>
               <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-none text-white/45">
-                {option.isDefault ? "默认工作区" : option.path}
+                {option.isDefault ? t("git.defaultWorktree") : option.path}
               </span>
               {isCurrent && (
-                <span className="shrink-0 text-[11px] leading-none text-emerald-400">当前</span>
+                <span className="shrink-0 text-[11px] leading-none text-emerald-400">
+                  {t("git.current")}
+                </span>
               )}
             </span>
           </div>
