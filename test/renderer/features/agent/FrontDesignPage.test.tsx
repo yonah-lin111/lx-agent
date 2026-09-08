@@ -1,8 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
 import { FrontDesignPage } from "@/pages/front-design/FrontDesignPage"
+
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}))
 
 // mock LxTooltip，使其在测试环境中直接展开 click.content
 vi.mock("@/components/ui/LxTooltip", () => {
@@ -93,7 +99,7 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     const iframe = container.querySelector("iframe")
     const previewContainer = iframe?.parentElement
     expect(previewContainer?.className).toContain("max-w-[768px]")
-    expect(previewContainer?.className).toContain("rounded-[8px]")
+    expect(previewContainer?.className).toContain("rounded-[6px]")
     expect(previewContainer?.className).toContain("border-white/10")
 
     // 点击手机视口按钮
@@ -244,5 +250,256 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(container.querySelector("iframe")).toBeNull()
     expect(container.querySelector("main")?.className).toContain("front-design-empty-canvas")
     expect(screen.getByText(/等待 Agent 输出前端设计稿|Waiting for Design Output/i)).not.toBeNull()
+  })
+
+  it("存在多版本链时，顶部显示版本下拉菜单并支持切换版本", () => {
+    // 注册 v1
+    frontDesignStore.registerDesign({
+      id: "design-v1",
+      title: "Hero Banner",
+      html: "<div>V1 Content</div>",
+    })
+    // 注册 v2 (基于 v1)
+    frontDesignStore.registerDesign({
+      id: "design-v2",
+      title: "Hero Banner v2",
+      html: "<div>V2 Content</div>",
+      parentId: "design-v1",
+    })
+    frontDesignStore.setActiveDesignId("design-v2")
+
+    const { container } = render(<FrontDesignPage />)
+
+    // 当前激活的应该是 design-v2 (v2)
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-v2")
+    const versionTrigger = screen.getByRole("button", { name: /选择版本|select version/i })
+    expect(versionTrigger.textContent).toContain("v2")
+
+    // 在 mock 的 LxTooltip 下，版本菜单项直接挂载
+    const v1Option = screen.getByRole("button", { name: /版本 1|v1/i })
+    expect(v1Option).not.toBeNull()
+
+    // 点击切换到 v1
+    fireEvent.click(v1Option)
+    expect(frontDesignStore.getState().activeDesignId).toBe("design-v1")
+    const iframe = container.querySelector("iframe")
+    expect(iframe?.getAttribute("srcdoc")).toContain("V1 Content")
+  })
+
+  it("当 Agent 产生二次修改版本时，FrontDesignPage 自动响应并激活新版本（v2）展示最新代码", () => {
+    // 初始设计 v1
+    frontDesignStore.registerDesign({
+      id: "agent-d1",
+      title: "App Landing",
+      html: "<div>V1 Base</div>",
+      autoActivate: true,
+    })
+
+    const { container, rerender } = render(<FrontDesignPage />)
+    expect(frontDesignStore.getState().activeDesignId).toBe("agent-d1")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("V1 Base")
+
+    // 模拟二次修改：Agent 输出带有 autoActivate 的 v2
+    frontDesignStore.registerDesign({
+      id: "agent-d2",
+      parentId: "agent-d1",
+      title: "App Landing",
+      html: "<div>V2 Modified</div>",
+      autoActivate: true,
+    })
+
+    rerender(<FrontDesignPage />)
+
+    // 画布与状态必须自动切换为 v2
+    expect(frontDesignStore.getState().activeDesignId).toBe("agent-d2")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("V2 Modified")
+    expect(frontDesignStore.getState().version).toBe(2)
+
+    // 顶部下拉应指示当前版本为 v2，且支持切回 v1
+    const versionTrigger = screen.getByRole("button", { name: /选择版本|select version/i })
+    expect(versionTrigger.textContent).toContain("v2")
+  })
+
+  it("点击在对话中迭代按钮，自动校准模式并在活动 Tab 注入 @design token 并跳转", async () => {
+    const activeTabId = agentTabStore.getActiveTabId()
+    agentTabStore.setTabSessionId(activeTabId, "session-test")
+
+    let injectedPrompt = ""
+    const unregister = agentTabStore.registerInputSetter(activeTabId, (updater) => {
+      injectedPrompt = typeof updater === "function" ? updater(injectedPrompt) : updater
+    })
+
+    frontDesignStore.registerDesign({
+      id: "design-target",
+      title: "Settings Page",
+      html: "<div>Settings Form</div>",
+      sessionId: "session-test",
+    })
+
+    render(<FrontDesignPage />)
+
+    const iterateBtn = screen.getByRole("button", { name: /在对话中迭代|Iterate in Chat/i })
+    expect(iterateBtn).not.toBeNull()
+
+    fireEvent.click(iterateBtn)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // 验证 Tab prompt 中注入了 @design 标记
+    expect(injectedPrompt).toContain("@design:design-target (Settings Page) ")
+    expect(mockNavigate).toHaveBeenCalledWith("/")
+    unregister()
+  })
+
+  it("点选微调 Inspector 按钮在有 HTML 时可用，支持切换高亮横幅并在按 ESC 时退出", () => {
+    frontDesignStore.registerDesign({
+      id: "design-inspect",
+      title: "Inspectable Design",
+      html: "<div id='root'><button id='btn-test'>Click Me</button></div>",
+    })
+
+    render(<FrontDesignPage />)
+
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    expect(inspectBtn).not.toBeNull()
+
+    // 默认未激活，不存在提示横幅
+    expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
+
+    // 点击激活
+    fireEvent.click(inspectBtn)
+    expect(screen.getByText(/连续点选|Click elements/i)).not.toBeNull()
+
+    // 按下 ESC 键退出微调模式
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(screen.queryByText(/连续点选|Click elements/i)).toBeNull()
+  })
+
+  it("点选模式下点击元素自动注入定向锚点 @design:id#target 到活动 Tab 且不发生路由跳转，支持连续点选", async () => {
+    mockNavigate.mockClear()
+    const activeTabId = agentTabStore.getActiveTabId()
+    let injectedPrompt = ""
+    const unregister = agentTabStore.registerInputSetter(activeTabId, (updater) => {
+      injectedPrompt = typeof updater === "function" ? updater(injectedPrompt) : updater
+    })
+
+    frontDesignStore.registerDesign({
+      id: "d-inspect-click",
+      title: "Pricing Page",
+      html: "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button><span class='title'>Plan A</span></section></div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+
+    // 激活 Inspector
+    const inspectBtn = screen.getByRole("button", { name: /点选微调|Visual Inspector/i })
+    fireEvent.click(inspectBtn)
+
+    const iframe = container.querySelector("iframe")
+    expect(iframe).not.toBeNull()
+
+    // 在 iframe 文档中构造测试目标元素
+    const doc = iframe?.contentDocument
+    expect(doc).not.toBeNull()
+    if (doc) {
+      doc.body.innerHTML =
+        "<div id='root'><section data-section='pricing'><button id='buy-now'>Buy</button><span id='plan-title' class='title'>Plan A</span></section></div>"
+      const targetBtn = doc.getElementById("buy-now")!
+      const targetSpan = doc.getElementById("plan-title")!
+
+      // 触发点击目标元素 1
+      fireEvent.click(targetBtn)
+      await Promise.resolve()
+      await Promise.resolve()
+
+      // 校验生成了带 #buy-now 的定向锚点 Token，且绝不跳转到首页
+      expect(injectedPrompt).toContain("@design:d-inspect-click#buy-now (button#buy-now) ")
+      expect(mockNavigate).not.toHaveBeenCalled()
+
+      // 触发点击目标元素 2（连续点选追加）
+      fireEvent.click(targetSpan)
+      await Promise.resolve()
+      await Promise.resolve()
+
+      // 校验两个 Token 均已注入，Inspector 状态未退出且仍无跳转
+      expect(injectedPrompt).toContain("@design:d-inspect-click#plan-title (span#plan-title) ")
+      expect(mockNavigate).not.toHaveBeenCalled()
+
+      // 触发点击目标元素 3（无 ID 的匿名元素，应动态挂载 data-design-id 并同步回 store）
+      const targetP = doc.createElement("p")
+      targetP.textContent = "Anonymous paragraph"
+      doc.body.appendChild(targetP)
+
+      fireEvent.click(targetP)
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(injectedPrompt).toContain("@design:d-inspect-click#[data-design-id=")
+      expect(frontDesignStore.getState().html).toContain("data-design-id=")
+      expect(mockNavigate).not.toHaveBeenCalled()
+    }
+
+    unregister()
+  })
+
+  it("多轮修改后（v1, v2, v3），顶部版本下拉菜单完整显示所有版本选项，并支持自由往返切换且实时更新画布 HTML", () => {
+    // 1. 注册 v1
+    frontDesignStore.registerDesign({
+      id: "app-page",
+      title: "App Page",
+      html: "<div id='content'>Version 1 Content</div>",
+      autoActivate: true,
+    })
+
+    // 2. 二次修改：生成 v2
+    frontDesignStore.registerDesign({
+      id: "app-page-v2",
+      parentId: "app-page",
+      title: "App Page",
+      html: "<div id='content'>Version 2 Content</div>",
+      autoActivate: true,
+    })
+
+    // 3. 三次修改：生成 v3
+    frontDesignStore.registerDesign({
+      id: "app-page-v3",
+      parentId: "app-page-v2",
+      title: "App Page",
+      html: "<div id='content'>Version 3 Content</div>",
+      autoActivate: true,
+    })
+
+    const { container } = render(<FrontDesignPage />)
+
+    // 默认激活最新版本 v3
+    expect(frontDesignStore.getState().activeDesignId).toBe("app-page-v3")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("Version 3 Content")
+
+    // 验证顶部版本按钮显示 v3
+    const versionTrigger = screen.getByRole("button", { name: /选择版本|select version/i })
+    expect(versionTrigger.textContent).toContain("v3")
+
+    // 验证下拉菜单中同时包含 v1, v2, v3 选项
+    const v1Option = screen.getByRole("button", { name: /版本 1|v1/i })
+    const v2Option = screen.getByRole("button", { name: /版本 2|v2/i })
+    const v3Option = screen.getByRole("button", { name: /版本 3|v3/i })
+    expect(v1Option).not.toBeNull()
+    expect(v2Option).not.toBeNull()
+    expect(v3Option).not.toBeNull()
+
+    // 切换到 v1
+    fireEvent.click(v1Option)
+    expect(frontDesignStore.getState().activeDesignId).toBe("app-page")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("Version 1 Content")
+
+    // 切换到 v2
+    fireEvent.click(v2Option)
+    expect(frontDesignStore.getState().activeDesignId).toBe("app-page-v2")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("Version 2 Content")
+
+    // 切回 v3
+    fireEvent.click(v3Option)
+    expect(frontDesignStore.getState().activeDesignId).toBe("app-page-v3")
+    expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("Version 3 Content")
   })
 })

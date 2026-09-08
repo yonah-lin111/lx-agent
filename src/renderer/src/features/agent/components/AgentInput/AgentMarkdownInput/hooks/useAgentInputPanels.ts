@@ -5,6 +5,9 @@ import type { Locale } from "@shared/settings"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
+import { type FrontDesignItem, frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import {
@@ -230,8 +233,38 @@ export const useAgentInputPanels = ({
     )
   }, [activeMode, value, skills, editorViewRef])
 
+  const matchedMentionDesigns = useMemo<FrontDesignItem[]>(() => {
+    if (activeMode !== "file") return []
+    const view = editorViewRef.current
+    const cursor = view?.state.selection.main.head ?? value.length
+    const mention = getMentionQuery(value, cursor)
+    if (!mention) return []
+    const q = mention.query.toLowerCase()
+
+    const currentSessionId =
+      agentTabStore.getActiveTab()?.sessionId ?? sessionListStore.getCurrentSessionId()
+
+    const allDesigns = frontDesignStore.getAllDesigns()
+    const sessionDesigns = allDesigns.filter((d) => {
+      if (currentSessionId) {
+        return d.sessionId === currentSessionId
+      }
+      return true
+    })
+
+    if (!q) return sessionDesigns
+
+    return sessionDesigns.filter(
+      (d) => isFuzzyMatch(q, d.title.toLowerCase()) || isFuzzyMatch(q, d.id.toLowerCase()),
+    )
+  }, [activeMode, value, editorViewRef])
+
   const mentionItems = useMemo<AgentMentionItem[]>(() => {
     if (activeMode !== "file") return []
+    const designItems: AgentMentionItem[] = matchedMentionDesigns.map((design) => ({
+      kind: "design",
+      design,
+    }))
     const skillItems: AgentMentionItem[] = matchedMentionSkills.map((skill) => ({
       kind: "skill",
       skill,
@@ -240,8 +273,8 @@ export const useAgentInputPanels = ({
       kind: "file",
       file,
     }))
-    return [...skillItems, ...fileItems]
-  }, [activeMode, matchedMentionSkills, files])
+    return [...designItems, ...skillItems, ...fileItems]
+  }, [activeMode, matchedMentionDesigns, matchedMentionSkills, files])
   const mentionItemsRef = useRef(mentionItems)
   mentionItemsRef.current = mentionItems
 
@@ -355,9 +388,15 @@ export const useAgentInputPanels = ({
         return
       }
 
-      // 3. @ 文件与 Skill 综合提及
+      // 3. @ 文件、Skill 与设计原型综合提及
       const mention = getMentionQuery(docText, cursor)
-      if (mention && (projectId || currentPath || skillsRef.current.length > 0)) {
+      if (
+        mention &&
+        (projectId ||
+          currentPath ||
+          skillsRef.current.length > 0 ||
+          frontDesignStore.getAllDesigns().length > 0)
+      ) {
         setActiveMode("file")
         setFileIndex(0)
         setBlockCommands([])

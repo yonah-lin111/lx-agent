@@ -14,6 +14,7 @@ import { useLxAgentToast } from "@/components/ui/LxToast"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import type { AgentInputFile } from "../components/AgentInput"
+import { extractDesignMentions } from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import type { ChatBlock, ChatMessage, ProposedPlanData } from "../types"
 import {
   extractQuestionAnswers,
@@ -23,6 +24,7 @@ import {
   toAgentMessages,
   toChatMessage,
 } from "../utils"
+import { extractDesignTargetContext, synthesizeDesignUpdate } from "../utils/designSynthesizer"
 import { agentTabStore } from "./agentTabStore"
 import { frontDesignStore } from "./frontDesignStore"
 import { sessionListStore } from "./sessionListStore"
@@ -77,7 +79,7 @@ export const useAgentChat = (
   initialSessionId?: string | null,
   onSessionBound?: (sessionId: string) => void,
 ) => {
-  const { success: successToast, error: errorToast } = useLxAgentToast()
+  const { success: successToast, error: errorToast, warning: warningToast } = useLxAgentToast()
   const { t } = useTranslation()
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(initialSessionId ?? null)
   const currentSessionIdRef = useRef<string | null>(currentSessionId)
@@ -99,12 +101,12 @@ export const useAgentChat = (
     }
   }, [tabId, isStreaming])
 
+  const userTurns = useMemo(() => messages.filter((m) => m.role === "user").length, [messages])
   useEffect(() => {
     if (tabId) {
-      const userTurns = messages.filter((m) => m.role === "user").length
       agentTabStore.setTabTurnCount(tabId, userTurns)
     }
-  }, [tabId, messages])
+  }, [tabId, userTurns])
 
   // 排队消息计数（流式输出期间发送的消息；订阅 queue_changed 维护权威值）。
   const [queuedCount, setQueuedCount] = useState(0)
@@ -237,11 +239,17 @@ export const useAgentChat = (
           // 在流式输出过程中，如果包含前端设计卡片，实时同步到 frontDesignStore
           updated.blocks.forEach((block) => {
             if (block.kind === "frontDesign") {
+              // 局部定向更新流式期间不覆盖基准完整设计，等待 message_end 完成 DOM 拼接
+              if (block.design.isUpdate) {
+                return
+              }
               frontDesignStore.registerDesign({
                 id: block.design.id,
+                parentId: block.design.parentId,
                 title: block.design.title,
                 html: block.design.html,
                 isStreaming: true,
+                autoActivate: true,
                 sessionId: currentSessionIdRef.current,
                 updatedAt: updated.timestamp,
                 mode: block.design.mode,
@@ -270,11 +278,60 @@ export const useAgentChat = (
           // 流式生成完毕，固化并注册设计卡片（isStreaming: false）
           final.blocks.forEach((block) => {
             if (block.kind === "frontDesign") {
+              if (block.design.isUpdate) {
+                const parentId = block.design.parentId
+                const targetSelector = block.design.target
+                const parentDesign = parentId
+                  ? frontDesignStore.getDesign(parentId)
+                  : frontDesignStore.getActiveDesign()
+
+                if (!parentDesign || !targetSelector) {
+                  warningToast(
+                    t("frontDesign.updateTargetNotFound", {
+                      target: targetSelector || "unknown",
+                    }),
+                  )
+                  return
+                }
+
+                const synthResult = synthesizeDesignUpdate(
+                  parentDesign.html,
+                  targetSelector,
+                  block.design.html,
+                )
+
+                if (!synthResult.ok || !synthResult.synthesizedHtml) {
+                  warningToast(
+                    t("frontDesign.updateTargetNotFound", {
+                      target: targetSelector,
+                    }),
+                  )
+                  return
+                }
+
+                frontDesignStore.registerDesign({
+                  id: block.design.id,
+                  parentId: parentDesign.id,
+                  title:
+                    block.design.title || `${parentDesign.title || "Frontend Prototype"} (Update)`,
+                  html: synthResult.synthesizedHtml,
+                  isStreaming: false,
+                  autoActivate: true,
+                  sessionId: currentSessionIdRef.current,
+                  updatedAt: final.timestamp,
+                  mode: block.design.mode || parentDesign.mode,
+                  designDir: block.design.designDir,
+                })
+                return
+              }
+
               frontDesignStore.registerDesign({
                 id: block.design.id,
+                parentId: block.design.parentId,
                 title: block.design.title,
                 html: block.design.html,
                 isStreaming: false,
+                autoActivate: true,
                 sessionId: currentSessionIdRef.current,
                 updatedAt: final.timestamp,
                 mode: block.design.mode,
@@ -474,7 +531,7 @@ export const useAgentChat = (
           break
       }
     },
-    [updateToolStatus, tabId, onSessionBound, successToast, t],
+    [updateToolStatus, tabId, onSessionBound, successToast, warningToast, t],
   )
 
   // 挂载时订阅事件流；卸载时退订。
@@ -774,11 +831,39 @@ export const useAgentChat = (
           for (const msg of chatMessages) {
             for (const block of msg.blocks) {
               if (block.kind === "frontDesign") {
+                if (block.design.isUpdate) {
+                  const parentDesign = block.design.parentId
+                    ? frontDesignStore.getDesign(block.design.parentId)
+                    : null
+                  if (parentDesign && block.design.target) {
+                    const synth = synthesizeDesignUpdate(
+                      parentDesign.html,
+                      block.design.target,
+                      block.design.html,
+                    )
+                    if (synth.ok && synth.synthesizedHtml) {
+                      frontDesignStore.registerDesign({
+                        id: block.design.id,
+                        parentId: parentDesign.id,
+                        title: block.design.title,
+                        html: synth.synthesizedHtml,
+                        isStreaming: false,
+                        sessionId,
+                        updatedAt: msg.timestamp,
+                        mode: block.design.mode,
+                        designDir: block.design.designDir,
+                      })
+                      continue
+                    }
+                  }
+                }
                 frontDesignStore.registerDesign({
                   id: block.design.id,
+                  parentId: block.design.parentId,
                   title: block.design.title,
                   html: block.design.html,
                   isStreaming: false,
+                  autoActivate: true,
                   sessionId,
                   updatedAt: msg.timestamp,
                   mode: block.design.mode,
@@ -828,6 +913,37 @@ export const useAgentChat = (
         text = `[发送了 ${selectedFiles.length} 个附件]`
       }
       if (!text) return
+
+      // 提取 @design:{id}#selector 引用，并将基准设计 HTML 或定向切片作为 <referenced_design> 注入到上下文中
+      const designMentions = extractDesignMentions(text)
+      if (designMentions.length > 0) {
+        const referencedBlocks: string[] = []
+        for (const mention of designMentions) {
+          const design = frontDesignStore.getDesign(mention.id)
+          if (design && design.html) {
+            if (mention.target) {
+              const targetContext = extractDesignTargetContext(design.html, mention.target)
+              if (targetContext.ok && targetContext.targetElementHtml) {
+                referencedBlocks.push(
+                  `<referenced_design id="${design.id}" target="${mention.target}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n<global_styling_context>\n  ${targetContext.globalContext}\n</global_styling_context>\n<target_element selector="${mention.target}">\n${targetContext.targetElementHtml}\n</target_element>\n</referenced_design>`,
+                )
+              } else {
+                // 目标节点未找到时降级全量注入
+                referencedBlocks.push(
+                  `<referenced_design id="${design.id}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n${design.html}\n</referenced_design>`,
+                )
+              }
+            } else {
+              referencedBlocks.push(
+                `<referenced_design id="${design.id}" title="${design.title || "Frontend Prototype"}" mode="${design.mode ?? "tailwindcss"}">\n${design.html}\n</referenced_design>`,
+              )
+            }
+          }
+        }
+        if (referencedBlocks.length > 0) {
+          text = `${referencedBlocks.join("\n\n")}\n\n${text}`
+        }
+      }
       // 上下文压缩中：禁止发送，避免与压缩/续跑竞态。
       if (isCompacting) {
         errorToast(

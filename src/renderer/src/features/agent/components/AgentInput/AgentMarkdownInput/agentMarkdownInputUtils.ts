@@ -126,3 +126,25 @@ export const getSkillMentionQuery = (
   if (/[\s\n]/.test(query)) return null
   return { start, query }
 }
+
+export interface DesignMention {
+  id: string
+  target?: string
+  title?: string
+  fullMatch: string
+}
+
+export const extractDesignMentions = (text: string): DesignMention[] => {
+  const regex = /@design:([a-zA-Z0-9_-]+)(?:#([^\s()]+))?(?:\s*\((.*?)\))?/g
+  const matches: DesignMention[] = []
+  let match: RegExpExecArray | null = null
+  while ((match = regex.exec(text)) !== null) {
+    matches.push({
+      id: match[1],
+      target: match[2]?.trim() || undefined,
+      title: match[3]?.trim(),
+      fullMatch: match[0],
+    })
+  }
+  return matches
+}

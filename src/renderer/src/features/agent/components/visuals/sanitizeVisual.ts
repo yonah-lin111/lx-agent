@@ -246,25 +246,32 @@ export const sanitizeStyle = (styleValue: string): string => {
   return styleValue
 }
 
+export interface SanitizeOptions {
+  allowScripts?: boolean
+}
+
 /**
  * 深度递归净化 DOM 节点树。
  */
-export const sanitizeNode = (node: Node): void => {
+export const sanitizeNode = (node: Node, options?: SanitizeOptions): void => {
+  const allowScripts = options?.allowScripts ?? false
   const children = Array.from(node.childNodes)
   for (const child of children) {
     if (child.nodeType === Node.ELEMENT_NODE) {
       const element = child as HTMLElement
       const tagName = element.tagName.toLowerCase()
 
-      // 危险节点直接整树移除。
+      // 危险节点直接整树移除（开启 allowScripts 时允许 script 标签）。
       if (DANGEROUS_TAGS.has(tagName)) {
-        element.remove()
-        continue
+        if (!allowScripts || tagName !== "script") {
+          element.remove()
+          continue
+        }
       }
 
       // 未知节点保留子文本并展开（unwrap）。
-      if (!ALLOWED_TAGS.has(tagName)) {
-        sanitizeNode(element)
+      if (!ALLOWED_TAGS.has(tagName) && (!allowScripts || tagName !== "script")) {
+        sanitizeNode(element, options)
         while (element.firstChild) {
           element.parentNode?.insertBefore(element.firstChild, element)
         }
@@ -287,20 +294,21 @@ export const sanitizeNode = (node: Node): void => {
         const attrName = attr.name.toLowerCase()
         const attrValue = attr.value.trim()
 
-        // 移除所有 on* 事件处理器与未在白名单中的属性。
+        // 移除未在白名单中的属性；若允许脚本则放行 on* 事件处理器。
         if (
-          attrName.startsWith("on") ||
+          (attrName.startsWith("on") && !allowScripts) ||
           (!ALLOWED_ATTRS.has(attrName) &&
             !attrName.startsWith("aria-") &&
-            !attrName.startsWith("data-"))
+            !attrName.startsWith("data-") &&
+            (!allowScripts || !attrName.startsWith("on")))
         ) {
           element.removeAttribute(attr.name)
           continue
         }
 
-        // 严格限制 href、xlink:href 与 src 剔除 javascript: 伪协议。
+        // 严格限制 href、xlink:href 与 src 剔除 javascript: 伪协议（纯无脚本模式严格剔除）。
         if (attrName === "href" || attrName === "xlink:href" || attrName === "src") {
-          if (/^\s*javascript:/i.test(attrValue)) {
+          if (!allowScripts && /^\s*javascript:/i.test(attrValue)) {
             element.removeAttribute(attr.name)
             continue
           }
@@ -318,7 +326,7 @@ export const sanitizeNode = (node: Node): void => {
       }
 
       // 递归净化合法子节点。
-      sanitizeNode(element)
+      sanitizeNode(element, options)
     }
   }
 }
@@ -341,15 +349,15 @@ export const sanitizeGraphicContent = (rawContent: string): string => {
 /**
  * 净化完整 HTML 文档并注入基准样式，输出完整独立的沙箱 HTML 源码。
  */
-export const sanitizeHtmlDocument = (rawContent: string): string => {
+export const sanitizeHtmlDocument = (rawContent: string, options?: SanitizeOptions): string => {
   if (!rawContent || typeof rawContent !== "string") return ""
   try {
     const parser = new DOMParser()
     const doc = parser.parseFromString(rawContent, "text/html")
 
     // 净化 head 与 body
-    if (doc.head) sanitizeNode(doc.head)
-    if (doc.body) sanitizeNode(doc.body)
+    if (doc.head) sanitizeNode(doc.head, options)
+    if (doc.body) sanitizeNode(doc.body, options)
 
     return `<!DOCTYPE html><html><head>${doc.head?.innerHTML || ""}</head><body>${doc.body?.innerHTML || ""}</body></html>`
   } catch {

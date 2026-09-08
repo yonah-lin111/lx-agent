@@ -180,6 +180,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       selectFile: actions.selectFile,
       selectSkill: actions.selectSkill,
       selectSkillFromMention: actions.selectSkillFromMention,
+      selectDesign: actions.selectDesign,
       selectBlockCommand: actions.selectBlockCommand,
       onChangeRef,
       onUndo,
@@ -263,7 +264,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           }),
           EditorView.domEventHandlers({
             keydown: (event) => {
-              if (event.key === "Tab" && !event.shiftKey) {
+              if (event.key === "Tab") {
                 event.preventDefault()
                 return true
               }

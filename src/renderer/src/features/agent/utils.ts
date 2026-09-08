@@ -59,22 +59,46 @@ const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 const REVIEW_FINDINGS_OPEN_REGEX = /<review_findings>/i
 const REVIEW_FINDINGS_CLOSE_REGEX = /<\/review_findings>/i
 
-const FRONT_DESIGN_OPEN_REGEX = /<front_design(?:\s+[^>]*)?>/i
+const FRONT_DESIGN_OPEN_REGEX = /<front_design(?=[\s>])(?:\s+[^>]*)?>/i
 const FRONT_DESIGN_CLOSE_REGEX = /<\/front_design>/i
+
+const FRONT_DESIGN_UPDATE_OPEN_REGEX = /<front_design_update(?=[\s>])(?:\s+[^>]*)?>/i
+const FRONT_DESIGN_UPDATE_CLOSE_REGEX = /<\/front_design_update>/i
 
 const extractFrontDesignAttributes = (
   tagStr: string,
-): { title?: string; id?: string; mode?: "tailwindcss" | "css" } => {
+): {
+  title?: string
+  id?: string
+  parentId?: string
+  mode?: "tailwindcss" | "css"
+  target?: string
+} => {
   const titleMatch = /title=["']([^"']*)["']/i.exec(tagStr)
   const idMatch = /id=["']([^"']*)["']/i.exec(tagStr)
+  const parentIdMatch = /(?:parent_id|parentId)=["']([^"']*)["']/i.exec(tagStr)
   const modeMatch = /mode=["']([^"']*)["']/i.exec(tagStr)
+  let target: string | undefined
+  const bracketTargetMatch = /target=["']?(\[[^\]]+\])["']?/i.exec(tagStr)
+  if (bracketTargetMatch) {
+    target = bracketTargetMatch[1].replace(
+      /\[\s*([a-zA-Z0-9_-]+)\s*=\s*["']?([^"'\]\s]+)["']?\s*\]/g,
+      "[$1=$2]",
+    )
+  } else {
+    const targetMatch = /target=["']([^"']*)["']/i.exec(tagStr)
+    target = targetMatch ? targetMatch[1].trim() : undefined
+  }
+
   const rawMode = modeMatch ? modeMatch[1].trim().toLowerCase() : undefined
   const mode = rawMode === "css" ? "css" : "tailwindcss"
 
   return {
     title: titleMatch ? titleMatch[1].trim() : undefined,
     id: idMatch ? idMatch[1].trim() : undefined,
+    parentId: parentIdMatch ? parentIdMatch[1].trim() : undefined,
     mode,
+    target,
   }
 }
 
@@ -181,12 +205,19 @@ export const parseTextWithProposedPlan = (
   const reviewOpenMatch = REVIEW_FINDINGS_OPEN_REGEX.exec(text)
   const planOpenMatch = PROPOSED_PLAN_OPEN_REGEX.exec(text)
   const designOpenMatch = FRONT_DESIGN_OPEN_REGEX.exec(text)
+  const designUpdateOpenMatch = FRONT_DESIGN_UPDATE_OPEN_REGEX.exec(text)
 
-  type Candidate = { type: "review" | "plan" | "design"; index: number }
+  type Candidate = {
+    type: "review" | "plan" | "design" | "designUpdate"
+    index: number
+  }
   const candidates: Candidate[] = []
   if (reviewOpenMatch) candidates.push({ type: "review", index: reviewOpenMatch.index })
   if (planOpenMatch) candidates.push({ type: "plan", index: planOpenMatch.index })
   if (designOpenMatch) candidates.push({ type: "design", index: designOpenMatch.index })
+  if (designUpdateOpenMatch) {
+    candidates.push({ type: "designUpdate", index: designUpdateOpenMatch.index })
+  }
 
   if (candidates.length === 0) {
     return [{ kind: "text", text, durationMs }]
@@ -298,10 +329,13 @@ export const parseTextWithProposedPlan = (
     const {
       title: parsedTitle,
       id: parsedId,
+      parentId: parsedParentId,
       mode: parsedMode,
     } = extractFrontDesignAttributes(designOpenMatch[0])
     const title = parsedTitle || "Frontend Prototype"
-    const designId = parsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
+    const validParsedId = parsedId && parsedId !== parsedParentId ? parsedId : undefined
+    const stableDesignId =
+      validParsedId || (baseId ? `${baseId}-design-${openIndex}` : `design-${openIndex}`)
     const mode = parsedMode ?? "tailwindcss"
 
     const result: ChatBlock[] = []
@@ -319,7 +353,82 @@ export const parseTextWithProposedPlan = (
       result.push({
         kind: "frontDesign",
         design: {
+          id: stableDesignId,
+          parentId: parsedParentId ?? null,
+          title,
+          html: htmlContent,
+          raw: text.slice(openIndex),
+          isStreaming: true,
+          sessionId: sessionId ?? null,
+          mode,
+        },
+        durationMs,
+      })
+    } else {
+      const closeIndexInRemaining = closeMatch.index
+      const htmlContent = remainingText.slice(0, closeIndexInRemaining).trim()
+      const after = remainingText.slice(closeIndexInRemaining + closeMatch[0].length).trim()
+
+      result.push({
+        kind: "frontDesign",
+        design: {
+          id: stableDesignId,
+          parentId: parsedParentId ?? null,
+          title,
+          html: htmlContent,
+          raw: text.slice(
+            openIndex,
+            contentStartIndex + closeIndexInRemaining + closeMatch[0].length,
+          ),
+          isStreaming: false,
+          sessionId: sessionId ?? null,
+          mode,
+        },
+        durationMs,
+      })
+
+      if (after.length > 0) {
+        result.push(...parseTextWithProposedPlan(after, durationMs, baseId, sessionId, timestamp))
+      }
+    }
+
+    return result
+  }
+
+  if (earliest === "designUpdate" && designUpdateOpenMatch) {
+    const openIndex = designUpdateOpenMatch.index
+    const openTagLength = designUpdateOpenMatch[0].length
+    const {
+      title: parsedTitle,
+      id: parsedId,
+      parentId: parsedParentId,
+      mode: parsedMode,
+      target: parsedTarget,
+    } = extractFrontDesignAttributes(designUpdateOpenMatch[0])
+    const title = parsedTitle || "Frontend Component Update"
+    const designId =
+      parsedId || (baseId ? `${baseId}-design-update-${openIndex}` : `design-update-${openIndex}`)
+    const mode = parsedMode ?? "tailwindcss"
+
+    const result: ChatBlock[] = []
+    const before = text.slice(0, openIndex).trim()
+    if (before.length > 0) {
+      result.push({ kind: "text", text: before })
+    }
+
+    const contentStartIndex = openIndex + openTagLength
+    const remainingText = text.slice(contentStartIndex)
+    const closeMatch = FRONT_DESIGN_UPDATE_CLOSE_REGEX.exec(remainingText)
+
+    if (!closeMatch) {
+      const htmlContent = remainingText.trim()
+      result.push({
+        kind: "frontDesign",
+        design: {
           id: designId,
+          parentId: parsedParentId ?? null,
+          target: parsedTarget ?? null,
+          isUpdate: true,
           title,
           html: htmlContent,
           raw: text.slice(openIndex),
@@ -338,6 +447,9 @@ export const parseTextWithProposedPlan = (
         kind: "frontDesign",
         design: {
           id: designId,
+          parentId: parsedParentId ?? null,
+          target: parsedTarget ?? null,
+          isUpdate: true,
           title,
           html: htmlContent,
           raw: text.slice(
@@ -572,6 +684,9 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
       > => {
         if (block.kind === "text") return [{ type: "text", text: block.text }]
         if (block.kind === "thinking") return [{ type: "thinking", thinking: block.text }]
+        if (block.kind === "proposedPlan") return [{ type: "text", text: block.plan.raw }]
+        if (block.kind === "reviewFindings") return [{ type: "text", text: block.findings.raw }]
+        if (block.kind === "frontDesign") return [{ type: "text", text: block.design.raw }]
         if (block.kind === "toolCall") {
           return [
             {

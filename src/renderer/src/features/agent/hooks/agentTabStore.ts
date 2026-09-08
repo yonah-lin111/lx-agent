@@ -73,6 +73,20 @@ export const agentTabStore = {
   },
 
   /**
+   * 查找指定 ID 的 Tab。
+   */
+  findTabById: (tabId: string): AgentTab | undefined => {
+    return tabs.find((t) => t.id === tabId)
+  },
+
+  /**
+   * 获取指定 ID 的 Tab（别名）。
+   */
+  getTab: (tabId: string): AgentTab | undefined => {
+    return tabs.find((t) => t.id === tabId)
+  },
+
+  /**
    * 创建新 Tab。
    * 若 initialSessionId 已被其他 Tab 打开，则直接切换到该 Tab 并返回其 ID；
    * 若 Tab 数量已达上限（8个），返回 null。
@@ -147,6 +161,8 @@ export const agentTabStore = {
    * 更新指定 Tab 绑定的 sessionId。
    */
   setTabSessionId: (tabId: string, sessionId: string | null): void => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (tab && tab.sessionId === sessionId) return
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, sessionId } : t))
     notify()
   },
@@ -155,6 +171,8 @@ export const agentTabStore = {
    * 更新指定 Tab 的标题。
    */
   setTabTitle: (tabId: string, title: string): void => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (tab && tab.title === title) return
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, title } : t))
     notify()
   },
@@ -163,6 +181,8 @@ export const agentTabStore = {
    * 更新指定 Tab 的对话轮数。
    */
   setTabTurnCount: (tabId: string, turnCount: number): void => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (tab && tab.turnCount === turnCount) return
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, turnCount } : t))
     notify()
   },
@@ -171,6 +191,14 @@ export const agentTabStore = {
    * 更新指定 Tab 的草稿绑定信息。
    */
   setTabDraftBinding: (tabId: string, draftBinding: AgentTabDraftBinding | undefined): void => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (
+      tab &&
+      tab.draftBinding?.projectId === draftBinding?.projectId &&
+      tab.draftBinding?.cwd === draftBinding?.cwd
+    ) {
+      return
+    }
     tabs = tabs.map((t) => (t.id === tabId ? { ...t, draftBinding } : t))
     notify()
   },

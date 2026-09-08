@@ -78,7 +78,11 @@ export interface ReviewFindingsData {
 // 前端设计数据结构。
 export interface FrontDesignData {
   id: string
+  parentId?: string | null
+  version?: number
   title?: string
+  target?: string | null
+  isUpdate?: boolean
   html: string
   raw: string
   isStreaming?: boolean

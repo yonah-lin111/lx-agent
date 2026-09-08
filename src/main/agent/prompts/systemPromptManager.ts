@@ -762,6 +762,22 @@ export function createDefaultSystemPromptManager(
           "2. The opening `<front_design ...>` and closing `</front_design>` tags MUST be on their own separate lines.",
           "3. Output complete, valid HTML. For Tailwind mode, use modern utility classes; for CSS mode, include clear `<style>` blocks.",
           "4. Keep interactive mockups self-contained. The client environment compiles Tailwind JIT or standard CSS and runs safely inside a sandboxed Iframe.",
+          "",
+          "## DESIGN ITERATION & SECONDARY MODIFICATION (<referenced_design>)",
+          '- When the user requests adjustments to an existing design, the prompt will include one or more `<referenced_design id="..." title="..." mode="...">` blocks containing the baseline HTML code.',
+          "- You MUST inspect the referenced code, preserve its overall structure and unaffected styling, and surgically apply the user's requested modifications.",
+          '- When outputting `<front_design>`, you MUST specify `parent_id="{referenced_id}"` pointing to the referenced design\'s ID, for example:',
+          '  `<front_design id="new-design-id" parent_id="referenced-design-id" title="Updated Title" mode="tailwindcss">`',
+          "- Always generate complete, executable HTML for the revised version (do NOT output partial diffs or snippets within <front_design>).",
+          "",
+          "## LOCAL COMPONENT & ELEMENT UPDATES (<front_design_update>)",
+          '- When the user targets a specific component or element (e.g. `@design:id#target` or the `<referenced_design target="...">` specifies a target selector):',
+          "- The prompt supplies `<global_styling_context>` (theme, body classes) and `<target_element selector='...'>` (the target element's outerHTML).",
+          '- You MUST output `<front_design_update parent_id="{parent_id}" target="{target_selector}" title="Updated Element Title">`.',
+          "- Inside `<front_design_update>`, ONLY output the replacement HTML fragment for that target element and its inner children.",
+          "- DO NOT output `<!DOCTYPE html>`, `<html>`, or `<body>`. Only output the updated DOM subtree for the targeted node.",
+          "- STRICT REQUIREMENT: NEVER output `<front_design>` when a target selector is provided. Emitting `<front_design>` instead of `<front_design_update>` for localized modifications is an INVALID response.",
+          "- The client IDE automatically synthesizes your fragment into the baseline DOM tree at the specified target selector.",
         ].join("\n")
       }
 

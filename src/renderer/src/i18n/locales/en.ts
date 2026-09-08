@@ -1458,6 +1458,20 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     openDesignDir: "Open Design Directory",
     pureCssMode: "Pure CSS",
     tailwindMode: "Tailwind CSS",
+    iterateAction: "Iterate",
+    iterateInChat: "Iterate in Chat",
+    versionBadge: "v{{version}}",
+    basedOnPrefix: "Based on",
+    selectVersion: "Select Version",
+    versionsCount: "{{count}} versions",
+    inspectMode: "Visual Inspector",
+    inspectModeActive: "Inspector Active (ESC to exit)",
+    inspectModeDesc:
+      "Click any element in the preview to reference it precisely in chat for targeted adjustments",
+    inspectHint: "Click elements to add references (multiple allowed), press ESC to exit",
+    elementSelectedToast: "Added element reference: {{name}}",
+    updateTargetNotFound: "Target element node not found for update: {{target}}",
+    elementTargetBadge: "Target",
   },
 }
 

@@ -46,8 +46,10 @@ export const AgentTabBar = (): React.JSX.Element => {
     const el = tabScrollRef.current
     if (!el) return
     const { scrollLeft, scrollWidth, clientWidth } = el
-    setCanScrollLeft(scrollLeft > 1)
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+    const nextLeft = scrollLeft > 1
+    const nextRight = scrollLeft < scrollWidth - clientWidth - 1
+    setCanScrollLeft((prev) => (prev !== nextLeft ? nextLeft : prev))
+    setCanScrollRight((prev) => (prev !== nextRight ? nextRight : prev))
   }, [])
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export const AgentTabBar = (): React.JSX.Element => {
       el.removeEventListener("wheel", onWheel)
       observer?.disconnect()
     }
-  }, [tabs, updateScrollState])
+  }, [tabs.length, updateScrollState])
 
   const handleTabScroll = useCallback((direction: "left" | "right"): void => {
     const el = tabScrollRef.current
@@ -92,7 +94,7 @@ export const AgentTabBar = (): React.JSX.Element => {
   }, [warning, t])
 
   const handleCloseTab = useCallback(
-    (event: React.MouseEvent, tabId: string) => {
+    (event: React.SyntheticEvent, tabId: string) => {
       event.stopPropagation()
       if (tabs.length <= 1) {
         warning(t("agent.cannotCloseLastTab"))
@@ -217,8 +219,8 @@ export const AgentTabBar = (): React.JSX.Element => {
                         ? "border-amber-500/50 bg-amber-500/20 text-amber-200 font-medium shadow-sm"
                         : "border-amber-500/25 bg-amber-500/10 text-amber-300/80 hover:bg-amber-500/15"
                       : isActive
-                        ? "border-white/10 bg-[var(--color-theme-surface-active,rgba(255,255,255,0.12))] text-[var(--color-theme-text-primary,#fff)] font-medium shadow-sm"
-                        : "border-transparent text-[var(--color-theme-text-secondary,#888)] hover:border-white/10 hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
+                        ? "border-white/10 bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.12))] text-[var(--color-theme-text,#fff)] font-medium shadow-sm"
+                        : "border-transparent text-[var(--color-theme-text-muted,#888)] hover:border-white/10 hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
                   }`}
                 >
                   <span
@@ -264,7 +266,7 @@ export const AgentTabBar = (): React.JSX.Element => {
                         onClick={(e) => handleCloseTab(e, tab.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
-                            handleCloseTab(e as any, tab.id)
+                            handleCloseTab(e, tab.id)
                           }
                         }}
                         aria-label={t("agent.closeTab")}
