@@ -103,6 +103,12 @@ export const getTemplateCursorOffset = (content: string): number => {
     }
     offset += line.length + 1
   }
+  // 如果没有列表项占位符，且包含空标题「title: 」，则将光标精准定位在标题冒号之后
+  const titleEmptyMatch = /「title:\s*」/.exec(content)
+  if (titleEmptyMatch && titleEmptyMatch.index !== undefined) {
+    return titleEmptyMatch.index + "「title: ".length
+  }
+
   return content.length
 }
 

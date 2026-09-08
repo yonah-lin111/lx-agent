@@ -1,4 +1,5 @@
 import {
+  ArrowUp,
   ArrowUpToLine,
   Check,
   CheckCircle2,
@@ -100,17 +101,76 @@ export const MarkdownActionCopyButton = ({
   )
 }
 
-// 合并按钮：将当前变量模板块合并至文档顶部。
+// 置顶/合并按钮：提供合并到顶部与调整到顶部的选项气泡。
 export const MarkdownActionMergeButton = ({
   onMerge,
+  onMoveToTop,
 }: {
   onMerge: () => void
+  onMoveToTop?: () => void
 }): React.JSX.Element => {
   const { t } = useTranslation()
-  const labelText = t("markdown.mergeVarTemplate")
+  const labelText = onMoveToTop ? t("markdown.varBlockTopOptions") : t("markdown.mergeVarTemplate")
+
+  if (!onMoveToTop) {
+    return (
+      <LxTooltip content={labelText} placement="bottom">
+        <button
+          aria-label={labelText}
+          type="button"
+          style={{ ...ACTION_BUTTON_STYLE, color: "rgba(255, 255, 255, 0.5)" }}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            onMerge()
+          }}
+        >
+          <ArrowUpToLine className="h-3 w-3" />
+        </button>
+      </LxTooltip>
+    )
+  }
 
   return (
-    <LxTooltip content={labelText} placement="bottom">
+    <LxTooltip
+      hover={{
+        content: labelText,
+      }}
+      click={{
+        multiline: true,
+        closeOnContentClick: true,
+        contentClassName: "p-1",
+        content: (
+          <div className="flex flex-col gap-0.5 min-w-[110px] text-xs">
+            <button
+              type="button"
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors cursor-pointer"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onMerge()
+              }}
+            >
+              <ArrowUpToLine className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+              <span>{t("markdown.mergeVarTemplate")}</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors cursor-pointer"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onMoveToTop()
+              }}
+            >
+              <ArrowUp className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+              <span>{t("markdown.moveVarTemplateToTop")}</span>
+            </button>
+          </div>
+        ),
+      }}
+      placement="bottom"
+    >
       <button
         aria-label={labelText}
         type="button"
@@ -118,7 +178,6 @@ export const MarkdownActionMergeButton = ({
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          onMerge()
         }}
       >
         <ArrowUpToLine className="h-3 w-3" />

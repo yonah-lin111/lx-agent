@@ -6,9 +6,14 @@ import {
   isInsideMarkdownSuppleBlock,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
-import type { MarkdownSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
-import { getMarkdownArmedSlashCommand } from "@/features/markdown/commands/markdownSlashCommands"
-import { isInsideMarkdownVariableBlock } from "@/features/markdown/commands/markdownVariableCommands"
+import {
+  type MarkdownSlashCommand,
+  getMarkdownArmedSlashCommand,
+} from "@/features/markdown/commands/markdownSlashCommands"
+import {
+  handleMarkdownVarBlockTab,
+  isInsideMarkdownVariableBlock,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import { createMarkdownFormattingKeymap } from "@/features/markdown/extensions/markdownFormattingKeymap"
 import type { UseMarkdownEditorActionsResult } from "@/features/markdown/hooks/useMarkdownEditorActions"
@@ -128,6 +133,35 @@ export const createMarkdownEditorKeymaps = ({
     markdownVarTemplateColonFilter,
     Prec.highest(
       keymap.of([
+        {
+          key: "Tab",
+          run: (view) => {
+            const colonPanel = panels.colonPanelRef.current
+            if (colonPanel?.active) {
+              return panels.selectColonOption()
+            }
+            const fileMention = panels.fileMentionPanelRef.current
+            if (fileMention) {
+              panels.selectFileMention(
+                fileMention.files[panels.activeFileMentionIndexRef.current] ?? fileMention.files[0],
+              )
+              return true
+            }
+            const variablePanel = panels.variablePanelRef.current
+            if (variablePanel) {
+              panels.selectVariable(
+                variablePanel.variables[panels.activeVariableIndexRef.current] ??
+                  variablePanel.variables[0],
+              )
+              return true
+            }
+            return handleMarkdownVarBlockTab(view, 1)
+          },
+        },
+        {
+          key: "Shift-Tab",
+          run: (view) => handleMarkdownVarBlockTab(view, -1),
+        },
         {
           key: "ArrowDown",
           run: () =>

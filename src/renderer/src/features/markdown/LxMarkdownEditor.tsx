@@ -85,6 +85,10 @@ export const LxMarkdownEditor = ({
   const { t, locale } = useTranslation()
   const showToastSuccessRef = useRef(success)
   showToastSuccessRef.current = success
+  const showToastWarningRef = useRef(warning)
+  showToastWarningRef.current = warning
+  const tRef = useRef(t)
+  tRef.current = t
 
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
@@ -287,7 +291,15 @@ export const LxMarkdownEditor = ({
         editorTheme,
         lineFlashField,
         markdownReferenceHover,
-        markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
+        markdownMarkerHighlight(
+          showFolding,
+          () => referencedRootsRef.current,
+          {
+            success: (msg) => showToastSuccessRef.current(msg),
+            warning: (msg) => showToastWarningRef.current(msg),
+          },
+          (k) => tRef.current(k as Parameters<typeof t>[0]),
+        ),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]

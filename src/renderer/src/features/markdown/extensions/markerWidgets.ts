@@ -51,6 +51,7 @@ export class CodeBlockActionWidget extends WidgetType {
     readonly blockId: string | null = null,
     readonly isVarTemplate = false,
     readonly onMergeTemplate: (() => void) | null = null,
+    readonly onMoveToTopTemplate: (() => void) | null = null,
   ) {
     super()
   }
@@ -68,7 +69,8 @@ export class CodeBlockActionWidget extends WidgetType {
       this.blockId === other.blockId &&
       this.isSupple === other.isSupple &&
       this.isLog === other.isLog &&
-      this.isVarTemplate === other.isVarTemplate
+      this.isVarTemplate === other.isVarTemplate &&
+      this.onMoveToTopTemplate === other.onMoveToTopTemplate
     )
   }
 
@@ -96,6 +98,7 @@ export class CodeBlockActionWidget extends WidgetType {
         actionNodes.push(
           createElement(MarkdownActionMergeButton, {
             onMerge: this.onMergeTemplate,
+            onMoveToTop: this.onMoveToTopTemplate ?? undefined,
           }),
         )
       }

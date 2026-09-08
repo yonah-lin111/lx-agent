@@ -3,13 +3,17 @@ import { EditorState } from "@codemirror/state"
 import { EditorView } from "@codemirror/view"
 import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
+import { getMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   cleanVarBlockItems,
   filterMarkdownVariables,
   getMarkdownColonTrigger,
   getMarkdownVariableTrigger,
   getVariableTag,
+  handleMarkdownVarBlockTab,
   isInsideMarkdownFrontmatter,
+  mergeMarkdownVarBlock,
+  moveMarkdownVarBlockToTop,
   parseMarkdownVariables,
   stripMarkdownFrontmatter,
   stripMarkdownVariableBlocks,
@@ -17,6 +21,20 @@ import {
 import { markdownVarTemplateColonFilter } from "@/features/markdown/extensions/markdownEditorKeymap"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markerPlugin"
 import { useMarkdownColonPanel } from "@/features/markdown/hooks/useMarkdownColonPanel"
+
+const mockRect = {
+  left: 10,
+  top: 5,
+  right: 20,
+  bottom: 25,
+  width: 10,
+  height: 20,
+  x: 10,
+  y: 5,
+  toJSON: () => ({}),
+} as DOMRect
+Range.prototype.getClientRects = () => [mockRect] as unknown as DOMRectList
+Range.prototype.getBoundingClientRect = () => mockRect
 
 describe("Markdown 页面变量命令", () => {
   describe("parseMarkdownVariables", () => {
@@ -475,6 +493,206 @@ $$$ varTemplate --end`
       // 包含非法行警告标记
       expect(classNames).toContain("cm-md-var-invalid-text")
       expect(classNames.some((c) => c.includes("cm-md-var-invalid-line"))).toBe(true)
+    })
+  })
+
+  describe("handleMarkdownVarBlockTab", () => {
+    it("在 key 位置按下 Tab 跳转并选中右侧的单行或多行 value 内容", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        'key1: "value1"',
+        "key2:",
+        '  """',
+        "  multi_value",
+        '  """',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({
+        doc,
+        // 光标在 key1 的 'e' 上 (第 2 行)
+        selection: { anchor: doc.indexOf("key1") + 1 },
+      })
+      const view = new EditorView({ state })
+
+      // Tab 前进 -> 选中 value1
+      const handled = handleMarkdownVarBlockTab(view, 1)
+      expect(handled).toBe(true)
+      const sel = view.state.selection.main
+      expect(view.state.sliceDoc(sel.from, sel.to)).toBe("value1")
+
+      // 在 value1 时再次 Tab -> 跳转到下一个 key (key2)
+      const handledNext = handleMarkdownVarBlockTab(view, 1)
+      expect(handledNext).toBe(true)
+      const selNext = view.state.selection.main
+      expect(view.state.sliceDoc(selNext.from, selNext.to)).toBe("key2")
+
+      // 在 key2 时再次 Tab -> 跳转到 key2 的多行内容
+      const handledMulti = handleMarkdownVarBlockTab(view, 1)
+      expect(handledMulti).toBe(true)
+      const selMulti = view.state.selection.main
+      expect(view.state.sliceDoc(selMulti.from, selMulti.to)).toBe("multi_value")
+
+      // 在最后一个多行内容时再次 Tab -> 循环回第一个 key (key1)
+      const handledLoop = handleMarkdownVarBlockTab(view, 1)
+      expect(handledLoop).toBe(true)
+      const selLoop = view.state.selection.main
+      expect(view.state.sliceDoc(selLoop.from, selLoop.to)).toBe("key1")
+    })
+
+    it("支持 Shift+Tab 反向循环遍历", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        'key1: "value1"',
+        'key2: "value2"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({
+        doc,
+        selection: { anchor: doc.indexOf("key1") },
+      })
+      const view = new EditorView({ state })
+
+      // Shift+Tab 反向 -> 循环到最后一个 value (value2)
+      const handled = handleMarkdownVarBlockTab(view, -1)
+      expect(handled).toBe(true)
+      const sel = view.state.selection.main
+      expect(view.state.sliceDoc(sel.from, sel.to)).toBe("value2")
+
+      // 再次 Shift+Tab -> 倒退到 key2
+      const handledPrev = handleMarkdownVarBlockTab(view, -1)
+      expect(handledPrev).toBe(true)
+      const selPrev = view.state.selection.main
+      expect(view.state.sliceDoc(selPrev.from, selPrev.to)).toBe("key2")
+    })
+  })
+
+  describe("mergeMarkdownVarBlock", () => {
+    it("若当前块是文档中的第一个变量模板块，返回 isAlreadyTop: true", () => {
+      const doc = EditorState.create({
+        doc: ["$$$ varTemplate --start 「title: 」", 'a: "1"', "$$$ varTemplate --end"].join("\n"),
+      }).doc
+
+      const res = mergeMarkdownVarBlock(doc, 0, 2)
+      expect(res.isAlreadyTop).toBe(true)
+      expect(res.success).toBe(false)
+    })
+
+    it("若当前块在第一个变量模板块下方，合并键值对到第一个块并删除当前块", () => {
+      const initialText = [
+        "$$$ varTemplate --start 「title: 」",
+        'a: "1"',
+        "$$$ varTemplate --end",
+        "",
+        "# 正文标题",
+        "",
+        "$$$ varTemplate --start 「title: 」",
+        'b: "2"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({ doc: initialText })
+      const res = mergeMarkdownVarBlock(state.doc, 6, 8)
+      expect(res.success).toBe(true)
+      expect(res.changes).toBeDefined()
+
+      const updated = state.update({ changes: res.changes! }).state.doc.toString()
+      expect(updated).toContain('a: "1"\nb: "2"\n$$$ varTemplate --end')
+      expect(updated).not.toContain('$$$ varTemplate --start 「title: 」\nb: "2"')
+    })
+  })
+
+  describe("moveMarkdownVarBlockToTop", () => {
+    it("若当前块已属于顶部变量模板块组，返回 isAlreadyTop: true", () => {
+      const doc = EditorState.create({
+        doc: [
+          "$$$ varTemplate --start 「title: 1」",
+          'a: "1"',
+          "$$$ varTemplate --end",
+          "",
+          "$$$ varTemplate --start 「title: 2」",
+          'b: "2"',
+          "$$$ varTemplate --end",
+          "",
+          "# 正文",
+        ].join("\n"),
+      }).doc
+
+      // 检查第 2 块（line 4 到 6）
+      const res = moveMarkdownVarBlockToTop(doc, 4, 6)
+      expect(res.isAlreadyTop).toBe(true)
+      expect(res.success).toBe(false)
+    })
+
+    it("若顶部已有变量块组，将下方变量块移动至顶部变量块组下方（间隔一行）", () => {
+      const initialText = [
+        "$$$ varTemplate --start 「title: 1」",
+        'a: "1"',
+        "$$$ varTemplate --end",
+        "",
+        "# 正文",
+        "",
+        "$$$ varTemplate --start 「title: 2」",
+        'b: "2"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({ doc: initialText })
+      const res = moveMarkdownVarBlockToTop(state.doc, 6, 8)
+      expect(res.success).toBe(true)
+      expect(res.changes).toBeDefined()
+
+      const updated = state.update({ changes: res.changes! }).state.doc.toString()
+      expect(updated).toBe(
+        [
+          "$$$ varTemplate --start 「title: 1」",
+          'a: "1"',
+          "$$$ varTemplate --end",
+          "",
+          "$$$ varTemplate --start 「title: 2」",
+          'b: "2"',
+          "$$$ varTemplate --end",
+          "",
+          "# 正文",
+        ].join("\n"),
+      )
+    })
+
+    it("若顶部没有任何变量块，将下方变量块移动至文档最顶部（位置 0）", () => {
+      const initialText = [
+        "# 正文",
+        "正文内容",
+        "",
+        "$$$ varTemplate --start 「title: 」",
+        'b: "2"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const state = EditorState.create({ doc: initialText })
+      const res = moveMarkdownVarBlockToTop(state.doc, 3, 5)
+      expect(res.success).toBe(true)
+      expect(res.changes).toBeDefined()
+
+      const updated = state.update({ changes: res.changes! }).state.doc.toString()
+      expect(updated).toBe(
+        [
+          "$$$ varTemplate --start 「title: 」",
+          'b: "2"',
+          "$$$ varTemplate --end",
+          "",
+          "# 正文",
+          "正文内容",
+        ].join("\n"),
+      )
+    })
+  })
+
+  describe("斜杠命令 /varTemplate 默认空 title", () => {
+    it("默认生成的模板 title 为空", () => {
+      const commands = getMarkdownSlashCommands("/varTemplate", false, true, [], "zh")
+      expect(commands).toHaveLength(1)
+      expect(commands[0].content).toContain("$$$ varTemplate --start 「title: 」")
     })
   })
 })

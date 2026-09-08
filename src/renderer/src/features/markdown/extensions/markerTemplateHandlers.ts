@@ -65,6 +65,7 @@ export interface MarkerBlockScanContext {
   onDeleteVarBlock: (startLine: number, endLine: number) => void
   onCleanVarBlock: (startLine: number, endLine: number) => void
   onMergeVarBlock: (startLine: number, endLine: number) => void
+  onMoveVarBlockToTop?: (startLine: number, endLine: number) => void
 }
 
 // 模板块状态对应的 CSS 类后缀。
@@ -428,6 +429,7 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
         null,
         true,
         () => ctx.onMergeVarBlock(startLine, varEndIndex),
+        ctx.onMoveVarBlockToTop ? () => ctx.onMoveVarBlockToTop!(startLine, varEndIndex) : null,
       ),
     })
 

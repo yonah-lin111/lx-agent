@@ -7,10 +7,18 @@ import {
   cleanVarBlockItems,
   MARKDOWN_VAR_TEMPLATE_END_RE,
   MARKDOWN_VAR_TEMPLATE_START_RE,
+  mergeMarkdownVarBlock,
+  moveMarkdownVarBlockToTop,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import { buildMarkdownMarkerDecorations } from "@/features/markdown/extensions/markerDecorations"
 import { markdownBlockFoldToggleEffect } from "@/features/markdown/extensions/markerWidgets"
 import { stripEmptyTemplateItems } from "@/features/markdown/utils/markdownRenderer"
+
+// 标记插件弹窗提示接口。
+export interface MarkdownMarkerToast {
+  success?: (message: string) => void
+  warning?: (message: string) => void
+}
 
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
@@ -18,6 +26,8 @@ import { stripEmptyTemplateItems } from "@/features/markdown/utils/markdownRende
 export const markdownMarkerHighlight = (
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
+  toast?: MarkdownMarkerToast,
+  t?: (key: string) => string,
 ) => {
   const markerPlugin = ViewPlugin.fromClass(
     class {
@@ -57,6 +67,7 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.deleteVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.cleanVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.moveVarBlockToTop(view, startLine, endLine),
         )
       }
 
@@ -123,6 +134,7 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.deleteVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.cleanVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.moveVarBlockToTop(update.view, startLine, endLine),
         )
       }
 
@@ -333,66 +345,26 @@ export const markdownMarkerHighlight = (
       }
 
       mergeVarBlock(view: EditorView, startLine: number, endLine: number) {
-        const doc = view.state.doc
-        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
-        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
-
-        // 检查当前块是否已经在顶部（前面只有空行）
-        let isAlreadyTop = true
-        for (let l = 0; l < safeStartLine; l++) {
-          if (doc.line(l + 1).text.trim() !== "") {
-            isAlreadyTop = false
-            break
-          }
+        const result = mergeMarkdownVarBlock(view.state.doc, startLine, endLine)
+        if (result.isAlreadyTop) {
+          toast?.warning?.(t?.("markdown.varBlockAlreadyAtTop") ?? "当前变量模板块已在最顶部")
+          return
         }
-        if (isAlreadyTop) return
-
-        // 寻找顶部已存在的 $$$ 变量块
-        let topStartLine = -1
-        let topEndLine = -1
-        for (let l = 0; l < safeStartLine; l++) {
-          const lineText = doc.line(l + 1).text
-          if (topStartLine === -1) {
-            if (MARKDOWN_VAR_TEMPLATE_START_RE.test(lineText)) {
-              topStartLine = l
-            } else if (lineText.trim() !== "") {
-              break
-            }
-          } else {
-            if (MARKDOWN_VAR_TEMPLATE_END_RE.test(lineText)) {
-              topEndLine = l
-              break
-            }
-          }
+        if (result.success && result.changes) {
+          view.dispatch({ changes: result.changes })
+          toast?.success?.(t?.("markdown.varBlockMerged") ?? "已合并到顶部变量模板块")
         }
+      }
 
-        const currentStartDocLine = doc.line(safeStartLine + 1)
-        const currentEndDocLine = doc.line(safeEndLine + 1)
-        const currentDeleteFrom = currentStartDocLine.from
-        const currentDeleteTo = Math.min(currentEndDocLine.to + 1, doc.length)
-
-        if (topStartLine !== -1 && topEndLine !== -1) {
-          const innerLines: string[] = []
-          for (let l = safeStartLine + 1; l < safeEndLine; l++) {
-            innerLines.push(doc.line(l + 1).text)
-          }
-          const contentToAppend = innerLines.join("\n") + "\n"
-          const topInsertPos = doc.line(topEndLine + 1).from
-
-          view.dispatch({
-            changes: [
-              { from: topInsertPos, to: topInsertPos, insert: contentToAppend },
-              { from: currentDeleteFrom, to: currentDeleteTo, insert: "" },
-            ],
-          })
-        } else {
-          const blockText = doc.sliceString(currentStartDocLine.from, currentEndDocLine.to)
-          view.dispatch({
-            changes: [
-              { from: 0, to: 0, insert: blockText + "\n\n" },
-              { from: currentDeleteFrom, to: currentDeleteTo, insert: "" },
-            ],
-          })
+      moveVarBlockToTop(view: EditorView, startLine: number, endLine: number) {
+        const result = moveMarkdownVarBlockToTop(view.state.doc, startLine, endLine)
+        if (result.isAlreadyTop) {
+          toast?.warning?.(t?.("markdown.varBlockAlreadyAtTop") ?? "当前变量模板块已在最顶部")
+          return
+        }
+        if (result.success && result.changes) {
+          view.dispatch({ changes: result.changes })
+          toast?.success?.(t?.("markdown.varBlockMovedToTop") ?? "已将变量模板块调整到顶部")
         }
       }
     },
