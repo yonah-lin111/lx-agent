@@ -1117,10 +1117,11 @@
 }
 
 /* ========================================================
- * 全局消息提示（LxToast & LxBreadcrumbToast & LxAgentInputToast 3D 凸起）
+ * 全局消息提示（LxToast & LxBreadcrumbToast & LxAgentTopToast 3D 凸起）
  * ======================================================== */
 [data-theme="minecraft"] .lx-toast-item,
 [data-theme="minecraft"] .lx-breadcrumb-toast,
+[data-theme="minecraft"] .lx-agent-top-toast,
 [data-theme="minecraft"] .lx-agent-input-toast {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1134,6 +1135,7 @@
 
 [data-theme="minecraft"] .lx-toast-item[data-toast-type="success"],
 [data-theme="minecraft"] .lx-breadcrumb-toast[data-toast-type="success"],
+[data-theme="minecraft"] .lx-agent-top-toast[data-toast-type="success"],
 [data-theme="minecraft"] .lx-agent-input-toast[data-toast-type="success"] {
   color: #55ff55 !important;
   border-left: 4px solid #55ff55 !important;
@@ -1145,6 +1147,7 @@
 
 [data-theme="minecraft"] .lx-toast-item[data-toast-type="error"],
 [data-theme="minecraft"] .lx-breadcrumb-toast[data-toast-type="error"],
+[data-theme="minecraft"] .lx-agent-top-toast[data-toast-type="error"],
 [data-theme="minecraft"] .lx-agent-input-toast[data-toast-type="error"] {
   color: #ff5555 !important;
   border-left: 4px solid #ff5555 !important;
@@ -1156,6 +1159,7 @@
 
 [data-theme="minecraft"] .lx-toast-item[data-toast-type="warning"],
 [data-theme="minecraft"] .lx-breadcrumb-toast[data-toast-type="warning"],
+[data-theme="minecraft"] .lx-agent-top-toast[data-toast-type="warning"],
 [data-theme="minecraft"] .lx-agent-input-toast[data-toast-type="warning"] {
   color: #ffaa00 !important;
   border-left: 4px solid #ffaa00 !important;
@@ -1167,6 +1171,7 @@
 
 [data-theme="minecraft"] .lx-toast-item[data-toast-type="info"],
 [data-theme="minecraft"] .lx-breadcrumb-toast[data-toast-type="info"],
+[data-theme="minecraft"] .lx-agent-top-toast[data-toast-type="info"],
 [data-theme="minecraft"] .lx-agent-input-toast[data-toast-type="info"] {
   color: #55ffff !important;
   border-left: 4px solid #55ffff !important;

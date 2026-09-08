@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 // 消息提示类型。
 export type LxToastType = "success" | "error" | "info" | "warning"
 
-// 消息展示方位。breadcrumb 表示在页面顶部栏面包屑处内联展示，agent-input 表示在 AgentInput 顶部内联展示。
+// 消息展示方位。breadcrumb 表示在页面顶部栏面包屑处内联展示，agent-top 表示在 AgentPage 顶部栏下方绝对定位展示。
 export type LxToastPosition =
   | "top-left"
   | "top-center"
@@ -12,9 +12,10 @@ export type LxToastPosition =
   | "bottom-left"
   | "bottom-right"
   | "breadcrumb"
+  | "agent-top"
   | "agent-input"
 
-// 各方位对应的容器定位样式。breadcrumb 与 agent-input 由对应区域内联渲染，无需固定定位。
+// 各方位对应的容器定位样式。breadcrumb 与 agent-top 由对应区域内联/绝对定位渲染，无需固定定位。
 const POSITION_CLASS: Record<LxToastPosition, string> = {
   "top-left": "top-4 left-4 items-start",
   "top-center": "top-4 left-1/2 -translate-x-1/2 items-center",
@@ -22,6 +23,7 @@ const POSITION_CLASS: Record<LxToastPosition, string> = {
   "bottom-left": "bottom-4 left-4 items-start",
   "bottom-right": "bottom-4 right-4 items-end",
   breadcrumb: "",
+  "agent-top": "",
   "agent-input": "",
 }
 
@@ -81,7 +83,7 @@ export const getLxToastColorClass = (type: LxToastType): string => {
  * 返回方位对应的滑入/滑出方向。
  */
 const getSlideStyle = (position: LxToastPosition): React.CSSProperties => {
-  if (position === "top-center") {
+  if (position === "agent-top" || position === "top-center") {
     return { "--toast-slide-x": "0px", "--toast-slide-y": "-8px" } as React.CSSProperties
   }
   if (position === "agent-input") {
@@ -177,12 +179,17 @@ export const LxToastProvider = ({
     [show],
   )
 
-  // 按方位分组，便于按方位渲染独立容器。breadcrumb 与 agent-input 由对应组件内联渲染，跳过固定层。
+  // 按方位分组，便于按方位渲染独立容器。breadcrumb 与 agent-top 由对应组件内联/绝对定位渲染，跳过固定层。
   const groupedToasts = useMemo(() => {
     const groups = new Map<LxToastPosition, LxToastItem[]>()
     for (const toast of toasts) {
       const toastPosition = toast.position ?? position
-      if (toastPosition === "breadcrumb" || toastPosition === "agent-input") continue
+      if (
+        toastPosition === "breadcrumb" ||
+        toastPosition === "agent-top" ||
+        toastPosition === "agent-input"
+      )
+        continue
       const group = groups.get(toastPosition)
       if (group) {
         group.push(toast)
@@ -285,31 +292,39 @@ export const LxBreadcrumbToast = (): React.JSX.Element | null => {
 }
 
 /**
- * 获取在 Agent 输入框顶部内联展示的消息列表。
+ * 获取在 Agent 页面顶部栏下方内联/绝对定位展示的消息列表。
  */
-export const useLxAgentInputToast = (): LxToastItem[] => {
+export const useLxAgentTopToast = (): LxToastItem[] => {
   const { toasts, defaultPosition } = useLxToast()
-  return toasts.filter((toast) => (toast.position ?? defaultPosition) === "agent-input")
+  return toasts.filter((toast) => {
+    const pos = toast.position ?? defaultPosition
+    return pos === "agent-top" || pos === "agent-input"
+  })
 }
 
 /**
- * 渲染 Agent 输入框顶部的消息提示：绝对定位在 AgentInput 顶部上方，单条展示，带进出场动画。
+ * 兼容旧命名别名。
  */
-export const LxAgentInputToast = (): React.JSX.Element | null => {
-  const agentToasts = useLxAgentInputToast()
+export const useLxAgentInputToast = useLxAgentTopToast
+
+/**
+ * 渲染 Agent 页面顶部栏下方的消息提示：绝对定位在 AgentPage 顶部中央，单条展示，带进出场动画。
+ */
+export const LxAgentTopToast = (): React.JSX.Element | null => {
+  const agentToasts = useLxAgentTopToast()
   if (agentToasts.length === 0) return null
 
   const latestToast = agentToasts[agentToasts.length - 1]
 
   return (
-    <div className="pointer-events-none absolute bottom-full left-2 z-20 mb-1.5 flex max-w-[calc(100%-1rem)] items-center">
+    <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-30 flex max-w-[calc(100%-1rem)] items-center">
       <span
         key={latestToast.id}
         data-toast-type={latestToast.type}
-        className={`lx-agent-input-toast inline-flex select-none items-center gap-1.5 truncate rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
+        className={`lx-agent-top-toast lx-agent-input-toast inline-flex select-none items-center gap-1.5 truncate rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
           latestToast.type,
         )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
-        style={getSlideStyle("agent-input")}
+        style={getSlideStyle("agent-top")}
       >
         {latestToast.message}
       </span>
@@ -318,11 +333,16 @@ export const LxAgentInputToast = (): React.JSX.Element | null => {
 }
 
 /**
- * 获取 Agent 专属消息提示接口（默认展示在 AgentInput 顶部）。
+ * 兼容旧组件名别名导出。
+ */
+export const LxAgentInputToast = LxAgentTopToast
+
+/**
+ * 获取 Agent 专属消息提示接口（默认展示在 AgentPage 顶部栏下方）。
  */
 export const useLxAgentToast = (): LxToastContextType => {
   const context = useLxToast()
-  const agentPosition: LxToastPosition = "agent-input"
+  const agentPosition: LxToastPosition = "agent-top"
 
   return useMemo(
     () => ({

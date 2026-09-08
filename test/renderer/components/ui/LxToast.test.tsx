@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   LxAgentInputToast,
+  LxAgentTopToast,
   LxBreadcrumbToast,
   LxToastProvider,
   useLxAgentToast,
@@ -17,7 +18,7 @@ const TestToastComponent = (): React.JSX.Element => {
   return (
     <div>
       <LxBreadcrumbToast />
-      <LxAgentInputToast />
+      <LxAgentTopToast />
       <button type="button" onClick={() => toast.success("全局提示", 3000, "top-center")}>
         触发全局
       </button>
@@ -47,7 +48,7 @@ describe("LxToast", () => {
     vi.useRealTimers()
   })
 
-  it("LxAgentInputToast 能够正确渲染 agent-input 方位的消息并带对应类型样式", () => {
+  it("LxAgentTopToast 能够正确渲染 agent-top 方位的消息并带对应类型样式", () => {
     render(
       <LxToastProvider>
         <TestToastComponent />
@@ -59,7 +60,7 @@ describe("LxToast", () => {
     fireEvent.click(screen.getByText("触发Agent成功"))
     const toastEl = screen.getByText("Agent成功提示")
     expect(toastEl).not.toBeNull()
-    const containerEl = toastEl.closest(".lx-agent-input-toast")
+    const containerEl = toastEl.closest(".lx-agent-top-toast")
     expect(containerEl).not.toBeNull()
     expect(containerEl?.getAttribute("data-toast-type")).toBe("success")
     expect(containerEl?.className).toContain("text-emerald-400")
@@ -76,7 +77,7 @@ describe("LxToast", () => {
     expect(screen.queryByText("Agent成功提示")).toBeNull()
   })
 
-  it("useLxAgentToast 能够正确分发 error 与 warning 类型的 agent-input 提示", () => {
+  it("useLxAgentToast 能够正确分发 error 与 warning 类型的 agent-top 提示", () => {
     render(
       <LxToastProvider>
         <TestToastComponent />
@@ -85,18 +86,16 @@ describe("LxToast", () => {
 
     fireEvent.click(screen.getByText("触发Agent失败"))
     let toastEl = screen.getByText("Agent失败提示")
-    expect(toastEl.closest(".lx-agent-input-toast")?.getAttribute("data-toast-type")).toBe("error")
-    expect(toastEl.closest(".lx-agent-input-toast")?.className).toContain("text-rose-400")
+    expect(toastEl.closest(".lx-agent-top-toast")?.getAttribute("data-toast-type")).toBe("error")
+    expect(toastEl.closest(".lx-agent-top-toast")?.className).toContain("text-rose-400")
 
     fireEvent.click(screen.getByText("触发Agent警告"))
     toastEl = screen.getByText("Agent警告提示")
-    expect(toastEl.closest(".lx-agent-input-toast")?.getAttribute("data-toast-type")).toBe(
-      "warning",
-    )
-    expect(toastEl.closest(".lx-agent-input-toast")?.className).toContain("text-amber-400")
+    expect(toastEl.closest(".lx-agent-top-toast")?.getAttribute("data-toast-type")).toBe("warning")
+    expect(toastEl.closest(".lx-agent-top-toast")?.className).toContain("text-amber-400")
   })
 
-  it("LxBreadcrumbToast 与 LxAgentInputToast 各自独立展示互不干扰", () => {
+  it("LxBreadcrumbToast 与 LxAgentTopToast 各自独立展示互不干扰", () => {
     render(
       <LxToastProvider>
         <TestToastComponent />
@@ -110,10 +109,10 @@ describe("LxToast", () => {
     const agentToast = screen.getByText("Agent成功提示")
 
     expect(breadcrumbToast.closest(".lx-breadcrumb-toast")).not.toBeNull()
-    expect(agentToast.closest(".lx-agent-input-toast")).not.toBeNull()
+    expect(agentToast.closest(".lx-agent-top-toast")).not.toBeNull()
   })
 
-  it("LxAgentInputToast 外层容器具有绝对定位与点击穿透属性", () => {
+  it("LxAgentTopToast 外层容器具有绝对定位、顶部对齐与点击穿透属性", () => {
     render(
       <LxToastProvider>
         <TestToastComponent />
@@ -124,7 +123,11 @@ describe("LxToast", () => {
     const toastEl = screen.getByText("Agent成功提示")
     const wrapperEl = toastEl.parentElement
     expect(wrapperEl?.className).toContain("absolute")
-    expect(wrapperEl?.className).toContain("bottom-full")
+    expect(wrapperEl?.className).toContain("top-2")
     expect(wrapperEl?.className).toContain("pointer-events-none")
+  })
+
+  it("兼容旧别名 LxAgentInputToast 正常导出且渲染一致", () => {
+    expect(LxAgentInputToast).toBe(LxAgentTopToast)
   })
 })

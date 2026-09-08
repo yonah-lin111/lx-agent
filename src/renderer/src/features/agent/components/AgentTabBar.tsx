@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Cpu, Folder, MessageSquare, Plus, X } from "luci
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { useLxToast } from "@/components/ui/LxToast"
+import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
@@ -21,7 +21,7 @@ import { sessionListStore } from "../hooks/sessionListStore"
  */
 export const AgentTabBar = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { warning } = useLxToast()
+  const { warning } = useLxAgentToast()
 
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)

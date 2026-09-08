@@ -2,8 +2,7 @@ import { Loader2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-
-import { LxAgentInputToast, useLxAgentToast } from "@/components/ui/LxToast"
+import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
 import { useTranslation } from "@/i18n"
@@ -325,7 +324,6 @@ export const AgentInput = ({
 
   return (
     <div className="relative bg-transparent p-0.5 pt-1 pb-0">
-      <LxAgentInputToast />
       {/* 排队消息提示：流式输出期间发送的消息等待当前回复结束后自动发送；hover 展示排队问题列表。 */}
       {queuedCount > 0 && (
         <LxTooltip

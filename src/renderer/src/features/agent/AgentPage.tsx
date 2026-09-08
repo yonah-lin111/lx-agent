@@ -7,7 +7,7 @@ import type {
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
-import { useLxAgentToast } from "@/components/ui/LxToast"
+import { LxAgentTopToast, useLxAgentToast } from "@/components/ui/LxToast"
 import { buildGitWorktreeOptions, getGitWorktreeDirName, useGitWorktrees } from "@/features/git"
 import { settingsApi } from "@/features/settings/api/settingsApi"
 import { subscribeSettingsChanged } from "@/features/settings/settingsChangeNotifier"
@@ -731,6 +731,7 @@ export const AgentPage = ({
         pendingRequest ? "permission-pending" : ""
       }`}
     >
+      <LxAgentTopToast />
       {/* 视图容器：问答消息列表与执行流程视图互斥显示；子代理面板从容器顶部向下展开、恰好覆盖消息列表。 */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {viewMode === "flow" ? (

@@ -4,7 +4,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { useLxToast } from "@/components/ui/LxToast"
+import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentPage, AgentTabBar, agentViewStore, ChatHistoryPanel } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -28,7 +28,7 @@ export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { t } = useTranslation()
-  const { warning } = useLxToast()
+  const { warning } = useLxAgentToast()
 
   const tabs = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getTabs)
   const activeTabId = useSyncExternalStore(agentTabStore.subscribe, agentTabStore.getActiveTabId)
