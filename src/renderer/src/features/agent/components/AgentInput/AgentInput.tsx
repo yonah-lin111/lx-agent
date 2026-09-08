@@ -36,7 +36,10 @@ export interface AgentInputProps {
   isOnlyOneTurnLeft?: () => boolean
   onCompact: () => void
   selectedModel: string
+  selectedVariant?: string
+  availableVariants?: string[]
   onModelChange: (value: string) => void
+  onVariantChange?: (variant: string) => void
   modelOptions: AgentModelSelectProps["options"]
   hasModelOptions: boolean
   // 当前会话上下文容量（估计 token / 压缩窗口；null = 尚无会话数据）。
@@ -76,7 +79,10 @@ export const AgentInput = ({
   isOnlyOneTurnLeft,
   onCompact,
   selectedModel,
+  selectedVariant,
+  availableVariants,
   onModelChange,
+  onVariantChange,
   modelOptions,
   hasModelOptions,
   contextUsage,
@@ -408,6 +414,9 @@ export const AgentInput = ({
               onChange={onModelChange}
               options={modelOptions}
               disabled={!hasModelOptions}
+              variant={selectedVariant}
+              variants={availableVariants}
+              onVariantChange={onVariantChange}
             />
             <AgentContextUsagePill contextUsage={contextUsage} />
           </div>

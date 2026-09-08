@@ -777,4 +777,27 @@ describe("AgentMessageItem", () => {
     expect(tag?.textContent).not.toContain("·")
     expect(tag?.textContent).not.toContain("Steer")
   })
+
+  it("助手消息顶部模型名称右侧应渲染无边框的高亮思考等级", () => {
+    const assistantMsg: ChatMessage = {
+      id: "assistant-variant-1",
+      role: "assistant",
+      model: "claude-3-5-sonnet",
+      provider: "anthropic",
+      variant: "high",
+      blocks: [{ kind: "text", text: "已完成思考分析。" }],
+      isStreaming: false,
+    }
+
+    render(<AgentMessageItem message={assistantMsg} />)
+
+    const modelEl = document.querySelector(".agent-message-model")
+    expect(modelEl).not.toBeNull()
+
+    const variantEl = document.querySelector(".agent-message-variant")
+    expect(variantEl).not.toBeNull()
+    expect(variantEl?.textContent).toBe("high")
+    expect(variantEl?.className).toContain("text-sky-400/90")
+    expect(variantEl?.className).not.toContain("border")
+  })
 })

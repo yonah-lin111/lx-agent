@@ -92,10 +92,13 @@ export const AgentPage = ({
 
   const {
     selectedModel,
+    selectedVariant,
+    availableVariants,
     selectedSelection,
     hasModelOptions,
     selectOptions,
     handleModelChange,
+    handleVariantChange,
     suggestedQuestionsEnabled,
     settings,
   } = useAgentModelSelect()
@@ -273,12 +276,40 @@ export const AgentPage = ({
       handleModelChange(value)
       const [provider, model] = value.split("::")
       if (provider && model && currentSessionId) {
-        void agentApi.switchModel({ provider, model }, currentSessionId, tabId).catch((err) => {
-          console.error("Failed to switch model in session:", err)
-        })
+        const modelConfig = settings?.providers[provider]?.models[model]
+        const defaultVar =
+          modelConfig?.variant ??
+          (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+        void agentApi
+          .switchModel(
+            { provider, model, ...(defaultVar ? { variant: defaultVar } : {}) },
+            currentSessionId,
+            tabId,
+          )
+          .catch((err) => {
+            console.error("Failed to switch model in session:", err)
+          })
       }
     },
-    [handleModelChange, currentSessionId, tabId],
+    [handleModelChange, currentSessionId, tabId, settings],
+  )
+
+  const handleVariantSelectChange = useCallback(
+    (variant: string, showToast = false) => {
+      handleVariantChange(variant)
+      const [provider, model] = selectedModel.split("::")
+      if (provider && model && currentSessionId) {
+        void agentApi
+          .switchModel({ provider, model, variant }, currentSessionId, tabId)
+          .catch((err) => {
+            console.error("Failed to switch variant in session:", err)
+          })
+      }
+      if (showToast) {
+        success(t("agent.thinkingVariantSwitched", { variant }))
+      }
+    },
+    [handleVariantChange, selectedModel, currentSessionId, tabId, success, t],
   )
 
   // 停止生成：排队消息被丢弃，toast 提示条数（main 侧 abort 时清空队列）。
@@ -433,6 +464,53 @@ export const AgentPage = ({
       window.removeEventListener("keydown", handleVoiceKeyDown, true)
     }
   }, [tabId])
+
+  // Cmd / Ctrl + T 快捷键：在当前 AgentPage 聚焦或输入框中快速循环切换思考等级
+  useEffect(() => {
+    const handleVariantKeyDown = (e: KeyboardEvent): void => {
+      const isModKey = e.metaKey || e.ctrlKey
+      // 必须是 Cmd/Ctrl + T，且不带 Shift / Alt 等其他修饰键
+      if (e.key.toLowerCase() !== "t" || !isModKey || e.shiftKey || e.altKey) {
+        return
+      }
+
+      // 检查当前 Tab 是否激活
+      if (tabId && agentTabStore.getActiveTabId() !== tabId) {
+        return
+      }
+
+      // 严格检查事件目标或当前活动元素是否在当前 AgentPage 容器内
+      const target = e.target as Node | null
+      const isTargetInPage = target ? pageContainerRef.current?.contains(target) : false
+      const isActiveElementInPage = document.activeElement
+        ? pageContainerRef.current?.contains(document.activeElement)
+        : false
+
+      if (!isTargetInPage && !isActiveElementInPage) {
+        return
+      }
+
+      if (!availableVariants || availableVariants.length === 0) {
+        return
+      }
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      // 循环切换下一个思考等级
+      const currentIndex = selectedVariant ? availableVariants.indexOf(selectedVariant) : -1
+      const nextIndex = (currentIndex + 1) % availableVariants.length
+      const nextVariant = availableVariants[nextIndex]
+      if (nextVariant) {
+        handleVariantSelectChange(nextVariant, true)
+      }
+    }
+
+    window.addEventListener("keydown", handleVariantKeyDown, true)
+    return () => {
+      window.removeEventListener("keydown", handleVariantKeyDown, true)
+    }
+  }, [tabId, availableVariants, selectedVariant, handleVariantSelectChange])
 
   // 全局 Esc 停止生成的连按计时（间隔 ≤1s 视为双击；单按仅 toast 提示）。
   const escStopRef = useRef(0)
@@ -714,7 +792,10 @@ export const AgentPage = ({
         isOnlyOneTurnLeft={isOnlyOneTurnLeft}
         onCompact={compactChat}
         selectedModel={selectedModel}
+        selectedVariant={selectedVariant}
+        availableVariants={availableVariants}
         onModelChange={handleModelSelectChange}
+        onVariantChange={handleVariantSelectChange}
         modelOptions={selectOptions}
         hasModelOptions={hasModelOptions}
         contextUsage={contextUsage}

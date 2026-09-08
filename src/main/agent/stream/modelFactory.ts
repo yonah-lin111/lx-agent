@@ -68,7 +68,15 @@ export const resolveModelSelection = (
   if (!provider.models[selection.model]) {
     return { error: `所选模型 ${selection.model} 不存在。请在设置中重新选择模型。` }
   }
-  return { model: { provider: selection.provider, id: selection.model } }
+  const configuredModel = provider.models[selection.model]
+  const variant = selection.variant ?? configuredModel.variant
+  return {
+    model: {
+      provider: selection.provider,
+      id: selection.model,
+      ...(variant ? { variant } : {}),
+    },
+  }
 }
 
 // 按 settings provider 类型装配 AI SDK 模型。

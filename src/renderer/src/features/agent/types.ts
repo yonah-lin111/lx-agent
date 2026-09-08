@@ -178,6 +178,8 @@ export interface ChatMessage {
   // 助手消息的模型信息（气泡外模型名展示；user/toolResult 无此字段）。
   model?: string
   provider?: string
+  // 思考等级
+  variant?: string
   // 模型切换/初始模型相关属性
   family?: string
   instructions?: string
@@ -292,6 +294,7 @@ export interface ExecutionStepParallel {
 export interface ExecutionModelSwitchContent {
   provider?: string
   model?: string
+  variant?: string
   family?: string
   instructions?: string
   isInitial?: boolean
@@ -375,6 +378,7 @@ export interface ExecutionAssistantContent {
   text: string
   model?: string
   provider?: string
+  variant?: string
   stopReason?: StopReason
   usage?: Usage
 }

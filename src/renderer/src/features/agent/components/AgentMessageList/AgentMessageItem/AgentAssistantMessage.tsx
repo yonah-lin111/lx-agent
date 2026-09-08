@@ -157,14 +157,21 @@ export const AgentAssistantMessage = ({
   return (
     <div className="group flex min-w-0 w-full flex-col gap-1 px-0">
       {!readOnly && message.model && (
-        <LxTooltip
-          placement="top"
-          content={message.provider ? `${message.provider} / ${message.model}` : message.model}
-        >
-          <span className="agent-message-model flex w-fit select-text items-center text-[11px] leading-none text-white/40">
-            {modelDisplayName}
-          </span>
-        </LxTooltip>
+        <div className="flex w-fit items-center gap-1.5 leading-none">
+          <LxTooltip
+            placement="top"
+            content={message.provider ? `${message.provider} / ${message.model}` : message.model}
+          >
+            <span className="agent-message-model flex select-text items-center text-[11px] text-white/40">
+              {modelDisplayName}
+            </span>
+          </LxTooltip>
+          {message.variant && (
+            <span className="agent-message-variant select-text font-mono text-[11px] text-sky-400/90">
+              {message.variant}
+            </span>
+          )}
+        </div>
       )}
       <div
         data-assistant-bubble="true"
@@ -422,39 +429,41 @@ export const AgentAssistantMessage = ({
       )}
       {!isStreamingNow && !isLoading && (hasActionableContent || assistantError) && (
         <div className="mt-1 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <LxIconButton
-              size="small"
-              aria-label={t("agent.copyMessage")}
-              title={{
-                content: copied ? t("common.copied") : t("agent.copyMessage"),
-                placement: "top",
-              }}
-              onClick={copyMessageContent}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </LxIconButton>
-            {!readOnly && onDelete && (
-              <LxTooltip
-                hover={{
-                  content: t("agent.deleteMessage"),
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <LxIconButton
+                size="small"
+                aria-label={t("agent.copyMessage")}
+                title={{
+                  content: copied ? t("common.copied") : t("agent.copyMessage"),
                   placement: "top",
                 }}
-                click={{
-                  content: t("agent.deleteQaConfirm"),
-                  placement: "top",
-                  onConfirm: () => onDelete(message.id),
-                }}
+                onClick={copyMessageContent}
               >
-                <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </LxIconButton>
-              </LxTooltip>
-            )}
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </LxIconButton>
+              {!readOnly && onDelete && (
+                <LxTooltip
+                  hover={{
+                    content: t("agent.deleteMessage"),
+                    placement: "top",
+                  }}
+                  click={{
+                    content: t("agent.deleteQaConfirm"),
+                    placement: "top",
+                    onConfirm: () => onDelete(message.id),
+                  }}
+                >
+                  <LxIconButton size="small" aria-label={t("agent.deleteMessage")}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </LxIconButton>
+                </LxTooltip>
+              )}
+            </div>
           </div>
           {qaUsage && (
             <LxTooltip

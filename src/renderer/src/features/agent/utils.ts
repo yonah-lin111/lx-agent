@@ -498,6 +498,7 @@ export const toChatMessage = (
     stopReason: message.stopReason,
     model: message.model,
     provider: message.provider,
+    variant: message.variant,
     usage: message.usage,
     durationMs: message.durationMs,
   }

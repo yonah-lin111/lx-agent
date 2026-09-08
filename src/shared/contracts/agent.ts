@@ -100,6 +100,8 @@ export interface AssistantMessage {
   content: (TextContent | ThinkingContent | ToolCall)[]
   provider: string
   model: string
+  // 思考等级（对应 model.variants 的 key，如 "high"）
+  variant?: string
   usage: Usage
   stopReason: StopReason
   errorMessage?: string
@@ -115,6 +117,8 @@ export interface ModelSwitchMessage {
   role: "modelSwitch"
   provider: string
   model: string
+  // 思考等级
+  variant?: string
   family: string
   instructions?: string
   timestamp: number

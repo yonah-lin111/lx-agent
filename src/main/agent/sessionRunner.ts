@@ -260,7 +260,8 @@ export class AgentSessionRunner {
       this.cwd !== cwd ||
       capabilitiesSignature !== this.builtSignature ||
       this.agent.state.model.provider !== modelResult.model.provider ||
-      this.agent.state.model.id !== modelResult.model.id
+      this.agent.state.model.id !== modelResult.model.id ||
+      this.agent.state.model.variant !== modelResult.model.variant
     ) {
       this.turnStore.setMcpToolNames(
         new Map(mcpManager.getTools().map((handle) => [handle.fullName, handle.server])),
@@ -382,6 +383,7 @@ export class AgentSessionRunner {
     } else {
       const currentSandboxPolicy = permissionManager.getSandboxPolicy()
       const contextUsage = this.compactor.getUsage()
+      this.agent.state.model = modelResult.model
       this.agent.state.systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
@@ -566,6 +568,13 @@ export class AgentSessionRunner {
   ): Promise<AgentSendResult> {
     if (selection !== undefined) {
       this.requestedModel = selection
+      if (this.agent) {
+        this.agent.state.model = {
+          provider: selection.provider,
+          id: selection.model,
+          ...(selection.variant ? { variant: selection.variant } : {}),
+        }
+      }
     }
     await mcpManager.ensureConnected()
     if (context !== undefined) {
@@ -922,9 +931,28 @@ export class AgentSessionRunner {
   public switchModel(
     selection: ModelSelection,
   ): { ok: true; message?: ModelSwitchMessage } | { ok: false; error: string } {
+    const prevModel = this.requestedModel
     this.requestedModel = selection
+
+    if (this.agent) {
+      this.agent.state.model = {
+        provider: selection.provider,
+        id: selection.model,
+        ...(selection.variant ? { variant: selection.variant } : {}),
+      }
+    }
+
     const sessionId = this.currentSessionId
     if (!sessionId) {
+      return { ok: true }
+    }
+
+    // 若仅切换 variant 而 provider 与 model 均未变，不插入 model_change 历史与 modelSwitch 消息
+    const isModelUnchanged =
+      prevModel &&
+      prevModel.provider === selection.provider &&
+      prevModel.model === selection.model
+    if (isModelUnchanged) {
       return { ok: true }
     }
 
@@ -934,6 +962,7 @@ export class AgentSessionRunner {
       role: "modelSwitch",
       provider: selection.provider,
       model: selection.model,
+      variant: selection.variant,
       family,
       instructions,
       timestamp: Date.now(),

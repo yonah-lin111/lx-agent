@@ -609,6 +609,10 @@ export const AgentExecutionFlowList = forwardRef<
           current.model = step.model
         }
 
+        if (step.assistantContent?.variant && !current.variant) {
+          current.variant = step.assistantContent.variant
+        }
+
         if (step.status === "running") {
           current.isCompleted = false
         }
@@ -987,6 +991,11 @@ export const AgentExecutionFlowList = forwardRef<
                                 {getModelDisplayName(turnStats.model, undefined, settings)}
                               </span>
                             </LxTooltip>
+                          )}
+                          {turnStats?.variant && (
+                            <span className="agent-turn-summary-pill agent-turn-summary-pill-variant font-mono text-sky-300/90">
+                              {turnStats.variant}
+                            </span>
                           )}
                           {turnStats && turnStats.toolCallsCount > 0 && (
                             <span className="agent-turn-summary-pill agent-turn-summary-pill-tools text-cyan-300/90">

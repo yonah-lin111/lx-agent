@@ -25,6 +25,7 @@ export type {
 export interface Model {
   provider: string
   id: string
+  variant?: string
 }
 
 // 流式请求选项（streamFn 契约的一部分）。
@@ -32,6 +33,7 @@ export interface SimpleStreamOptions {
   apiKey?: string
   signal?: AbortSignal
   reasoning?: ThinkingLevel
+  variant?: string
   sessionId?: string
   // 流式空闲超时毫秒数。
   idleTimeoutMs?: number
