@@ -202,9 +202,14 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
               ...variantConfig,
             }
           } else {
-            // openai-compatible
-            providerOptions["openai-compatible"] = {
-              ...variantConfig,
+            // openai-compatible:
+            // @ai-sdk/openai-compatible checks providerOptions[providerOptionsName] (which is provider.id or camelCase(provider.id))
+            // as well as 'openaiCompatible'. Pass to all candidates to ensure exact match.
+            providerOptions["openai-compatible"] = { ...variantConfig }
+            providerOptions["openaiCompatible"] = { ...variantConfig }
+            if (providerConfig?.id) {
+              providerOptions[providerConfig.id] = { ...variantConfig }
+              providerOptions[`${providerConfig.id}.chat`] = { ...variantConfig }
             }
           }
         }

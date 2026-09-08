@@ -383,6 +383,7 @@ export class AgentSessionRunner {
     } else {
       const currentSandboxPolicy = permissionManager.getSandboxPolicy()
       const contextUsage = this.compactor.getUsage()
+      this.agent.state.model = modelResult.model
       this.agent.state.systemPrompt = buildSystemPromptSync({
         cwd,
         sessionId: this.currentSessionId ?? undefined,
@@ -567,6 +568,13 @@ export class AgentSessionRunner {
   ): Promise<AgentSendResult> {
     if (selection !== undefined) {
       this.requestedModel = selection
+      if (this.agent) {
+        this.agent.state.model = {
+          provider: selection.provider,
+          id: selection.model,
+          ...(selection.variant ? { variant: selection.variant } : {}),
+        }
+      }
     }
     await mcpManager.ensureConnected()
     if (context !== undefined) {
@@ -959,6 +967,11 @@ export class AgentSessionRunner {
 
     if (this.agent) {
       this.agent.state.messages.push(message)
+      this.agent.state.model = {
+        provider: selection.provider,
+        id: selection.model,
+        ...(selection.variant ? { variant: selection.variant } : {}),
+      }
     }
 
     this.emitEvent({ type: "model_switch", message })
