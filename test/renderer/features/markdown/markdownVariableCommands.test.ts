@@ -1,0 +1,184 @@
+import { describe, expect, it } from "vitest"
+import {
+  filterMarkdownVariables,
+  getMarkdownVariableTrigger,
+  isInsideMarkdownFrontmatter,
+  parseMarkdownVariables,
+  stripMarkdownFrontmatter,
+} from "@/features/markdown/commands/markdownVariableCommands"
+
+describe("Markdown 页面变量命令", () => {
+  describe("parseMarkdownVariables", () => {
+    it("解析标准 vars 字典中的变量", () => {
+      const doc = `---
+vars:
+  core: @src/core/index.ts
+  auth: @[refer-folder](/path/to/auth)
+  rule: "请严格校验 JWT token"
+  plain: '单引号内容'
+---
+
+# 正文
+测试内容
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        { name: "core", value: "@src/core/index.ts" },
+        { name: "auth", value: "@[refer-folder](/path/to/auth)" },
+        { name: "rule", value: "请严格校验 JWT token" },
+        { name: "plain", value: "单引号内容" },
+      ])
+    })
+
+    it("解析多行块变量 (| 和 >)", () => {
+      const doc = `---
+vars:
+  prompt: |
+    - 第一条规则
+    - 第二条规则
+---
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        {
+          name: "prompt",
+          value: "- 第一条规则\n- 第二条规则",
+        },
+      ])
+    })
+
+    it("解析扁平 key: value 声明的 frontmatter", () => {
+      const doc = `---
+core: @src/core/index.ts
+notice: 紧急通知
+---
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        { name: "core", value: "@src/core/index.ts" },
+        { name: "notice", value: "紧急通知" },
+      ])
+    })
+
+    it("无 frontmatter 或空 frontmatter 时返回空数组", () => {
+      expect(parseMarkdownVariables("# 纯标题")).toEqual([])
+      expect(parseMarkdownVariables("---\n---\n")).toEqual([])
+    })
+
+    it("容忍输入过程中的半残行与注释", () => {
+      const doc = `---
+vars:
+  # 注释行
+  valid: 正常变量
+  halfWritten
+  another: 另一个
+---
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        { name: "valid", value: "正常变量" },
+        { name: "another", value: "另一个" },
+      ])
+    })
+  })
+
+  describe("getMarkdownVariableTrigger", () => {
+    it("支持 $ 符号在行首或空白后触发", () => {
+      expect(getMarkdownVariableTrigger("$")).toMatchObject({
+        fragment: "",
+        start: 0,
+        triggerChar: "$",
+      })
+      expect(getMarkdownVariableTrigger("hello $co")).toMatchObject({
+        fragment: "co",
+        start: 6,
+        triggerChar: "$",
+      })
+      expect(getMarkdownVariableTrigger("\n$api_core")).toMatchObject({
+        fragment: "api_core",
+        start: 1,
+        triggerChar: "$",
+      })
+    })
+
+    it("支持 ¥ 符号在行首或空白后触发（中英文 Shift+4 兼容）", () => {
+      expect(getMarkdownVariableTrigger("¥")).toMatchObject({
+        fragment: "",
+        start: 0,
+        triggerChar: "¥",
+      })
+      expect(getMarkdownVariableTrigger("测试 ¥rule")).toMatchObject({
+        fragment: "rule",
+        start: 3,
+        triggerChar: "¥",
+      })
+    })
+
+    it("单词内部无边界时不误触发", () => {
+      expect(getMarkdownVariableTrigger("foo$bar")).toBeNull()
+      expect(getMarkdownVariableTrigger("100$")).toBeNull()
+    })
+
+    it("标点符号后允许正常触发", () => {
+      expect(getMarkdownVariableTrigger("提示：$core")).toMatchObject({
+        fragment: "core",
+        triggerChar: "$",
+      })
+      expect(getMarkdownVariableTrigger("($auth")).toMatchObject({
+        fragment: "auth",
+        triggerChar: "$",
+      })
+    })
+
+    it("处于代码围栏内时不触发", () => {
+      const text = "```bash\necho $HOME"
+      expect(getMarkdownVariableTrigger(text)).toBeNull()
+    })
+
+    it("处于文档顶部的 frontmatter 内时不触发", () => {
+      const doc = "---\nvars:\n  a: $test\n---\n"
+      const prefix = "---\nvars:\n  a: $test"
+      expect(isInsideMarkdownFrontmatter(doc, prefix.length)).toBe(true)
+      expect(getMarkdownVariableTrigger(prefix, doc)).toBeNull()
+    })
+  })
+
+  describe("filterMarkdownVariables", () => {
+    const vars = [
+      { name: "core", value: "@src/core/index.ts" },
+      { name: "auth_rule", value: "校验权限" },
+      { name: "api_service", value: "@src/services/api.ts" },
+    ]
+
+    it("空查询返回全部候选", () => {
+      expect(filterMarkdownVariables(vars, "")).toHaveLength(3)
+    })
+
+    it("按名称前缀与包含精确过滤排序", () => {
+      expect(filterMarkdownVariables(vars, "core")).toEqual([vars[0]])
+      expect(filterMarkdownVariables(vars, "api")).toEqual([vars[2]])
+    })
+
+    it("按预设内容包含匹配兜底", () => {
+      expect(filterMarkdownVariables(vars, "权限")).toEqual([vars[1]])
+    })
+  })
+
+  describe("stripMarkdownFrontmatter", () => {
+    it("剥离顶部 frontmatter 并保留干净正文", () => {
+      const doc = `---
+vars:
+  core: 123
+---
+
+# 标题
+正文内容`
+      expect(stripMarkdownFrontmatter(doc)).toBe("# 标题\n正文内容")
+    })
+
+    it("无 frontmatter 时原样返回", () => {
+      const doc = "# 标题\n正文内容"
+      expect(stripMarkdownFrontmatter(doc)).toBe(doc)
+    })
+  })
+})

@@ -8,6 +8,7 @@ import {
 import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/MarkdownSendPromptCommandMenu"
 import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
+import { MarkdownVariableCommandMenu } from "@/features/markdown/components/MarkdownVariableCommandMenu"
 import type { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import type { UseMarkdownPasteReferenceResult } from "@/features/markdown/hooks/useMarkdownPasteReference"
 
@@ -82,6 +83,14 @@ export const MarkdownCommandPanels = ({
         label="模板块文件快捷输入"
         position={panels.templateFilePanel?.position}
         visible={Boolean(panels.templateFilePanel)}
+      />
+      <MarkdownVariableCommandMenu
+        activeIndex={panels.activeVariableIndex}
+        position={panels.variablePanel?.position}
+        triggerChar={panels.variablePanel?.triggerChar}
+        variables={panels.variablePanel?.variables}
+        visible={Boolean(panels.variablePanel)}
+        onSelect={panels.selectVariable}
       />
     </>
   )

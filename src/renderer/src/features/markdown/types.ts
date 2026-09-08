@@ -1,6 +1,9 @@
 import type { ProjectFileEntry } from "@shared/project"
 import type React from "react"
 import type { MarkdownTemplateFileKind } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import type { MarkdownVariableEntry } from "@/features/markdown/commands/markdownVariableCommands"
+
+export type { MarkdownVariableEntry }
 
 // 表格网格尺寸。
 export interface MarkdownTableSize {

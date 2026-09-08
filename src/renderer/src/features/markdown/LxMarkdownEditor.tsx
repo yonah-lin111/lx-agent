@@ -17,6 +17,7 @@ import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { useGitWorktrees } from "@/features/git"
+import { parseMarkdownVariables } from "@/features/markdown/commands/markdownVariableCommands"
 import { MarkdownCommandPanels } from "@/features/markdown/components/MarkdownCommandPanels"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
@@ -181,6 +182,8 @@ export const LxMarkdownEditor = ({
     warning,
   })
 
+  const currentVariables = useMemo(() => parseMarkdownVariables(page.content), [page.content])
+
   const previewHtml = useMemo(
     () =>
       markdownRenderer.render(page.content, {
@@ -303,10 +306,12 @@ export const LxMarkdownEditor = ({
           if (update.docChanged) {
             panelsRef.current.syncFileMentionPanel(update.view)
             panelsRef.current.syncTemplateFilePanel(update.view)
+            panelsRef.current.syncVariablePanel(update.view)
           }
           if (update.selectionSet && !update.docChanged) {
             panelsRef.current.closeFileMentionPanel()
             panelsRef.current.closeTemplateFilePanel()
+            panelsRef.current.closeVariablePanel()
           }
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
@@ -386,6 +391,8 @@ export const LxMarkdownEditor = ({
         pages={pages}
         activePageIndex={page.activePageIndex}
         pageName={page.pageName}
+        variables={currentVariables}
+        onInsertVariable={(variable) => actions.insertText(variable.value)}
         onPageChange={page.switchPage}
         onPageNameChange={page.renamePage}
         onCreatePage={page.createPage}

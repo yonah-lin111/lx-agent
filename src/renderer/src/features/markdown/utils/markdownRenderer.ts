@@ -276,6 +276,40 @@ export const stripMarkdownTemplateComments = (content: string): string =>
     .filter((line) => !MARKDOWN_TEMPLATE_COMMENT_RE.test(line))
     .join("\n")
 
+/**
+ * 拦截文档顶部的 Frontmatter (--- \n ... \n ---)，避免预览区将其渲染为分割线与无意义正文。
+ */
+const markdownFrontmatterBlock = (
+  state: MarkdownBlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean => {
+  if (startLine !== 0) return false
+
+  const startText = state.src.slice(state.bMarks[0] + state.tShift[0], state.eMarks[0]).trim()
+  if (startText !== "---") return false
+
+  let closeLine = 1
+  while (closeLine < endLine) {
+    const lineText = state.src
+      .slice(state.bMarks[closeLine] + state.tShift[closeLine], state.eMarks[closeLine])
+      .trim()
+    if (lineText === "---") break
+    closeLine += 1
+  }
+
+  if (closeLine >= endLine) return false
+  if (silent) return true
+
+  state.line = closeLine + 1
+  return true
+}
+
+markdownRenderer.block.ruler.before("table", "markdown_frontmatter", markdownFrontmatterBlock, {
+  alt: ["paragraph", "reference", "blockquote", "list"],
+})
+
 const markdownTemplateBlock = (
   state: MarkdownBlockState,
   startLine: number,

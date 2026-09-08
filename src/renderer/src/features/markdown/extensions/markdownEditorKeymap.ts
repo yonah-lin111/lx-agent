@@ -86,6 +86,7 @@ export const createMarkdownEditorKeymaps = ({
           key: "ArrowDown",
           run: () =>
             paste.handlePasteReferenceKey(1) ||
+            panels.handleVariableKey(1) ||
             panels.handleFileMentionKey("ArrowDown") ||
             panels.handleGitWorktreeKey(1) ||
             panels.handleSendPromptKey(1) ||
@@ -98,6 +99,7 @@ export const createMarkdownEditorKeymaps = ({
           key: "ArrowUp",
           run: () =>
             paste.handlePasteReferenceKey(-1) ||
+            panels.handleVariableKey(-1) ||
             panels.handleFileMentionKey("ArrowUp") ||
             panels.handleGitWorktreeKey(-1) ||
             panels.handleSendPromptKey(-1) ||
@@ -175,6 +177,15 @@ export const createMarkdownEditorKeymaps = ({
               panels.selectTemplateFile(
                 templateFilePanel.files[panels.activeTemplateFileIndexRef.current] ??
                   templateFilePanel.files[0],
+              )
+              return true
+            }
+
+            const variablePanel = panels.variablePanelRef.current
+            if (variablePanel) {
+              panels.selectVariable(
+                variablePanel.variables[panels.activeVariableIndexRef.current] ??
+                  variablePanel.variables[0],
               )
               return true
             }
@@ -329,6 +340,10 @@ export const createMarkdownEditorKeymaps = ({
             }
             if (panels.templateFilePanelRef.current) {
               panels.closeTemplateFilePanel()
+              return true
+            }
+            if (panels.variablePanelRef.current) {
+              panels.closeVariablePanel()
               return true
             }
             return false
