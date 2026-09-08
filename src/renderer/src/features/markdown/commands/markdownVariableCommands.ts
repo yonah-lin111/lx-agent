@@ -50,7 +50,11 @@ export const getMarkdownVariableTrigger = (
 
 /**
  * 解析 Markdown 文本顶部的 frontmatter (--- \n ... \n ---)。
- * 优先读取 vars: 字典，兼顾扁平 key: value 声明，容忍编写过程中的非标格式。
+ * 支持：
+ * 1. vars: 根块下的平级变量直接以 $name 导出；
+ * 2. 其他自定义分组（如 temp:、env:）按点号命名空间（如 $temp.status）导出；
+ * 3. 支持深层嵌套字典路径（如 $a.b.c）与多行 YAML 块 (| 或 >)；
+ * 4. 容忍编辑过程中的未闭合行与注释。
  */
 export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[] => {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(docText)
@@ -59,9 +63,8 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
   const rawYaml = match[1]
   const entries: MarkdownVariableEntry[] = []
   const lines = rawYaml.split(/\r?\n/)
+  const stack: Array<{ key: string; indent: number }> = []
 
-  let inVarsSection = false
-  let varsIndent = -1
   let currentKey: string | null = null
   let currentValueLines: string[] = []
   let isMultiLine = false
@@ -80,17 +83,29 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
     }
   }
 
-  const hasVarsSection = /^\s*vars\s*:\s*$/m.test(rawYaml)
+  const getFullKey = (key: string): string => {
+    const parts: string[] = []
+    let startIdx = 0
+    if (stack.length > 0 && stack[0].key === "vars") {
+      startIdx = 1
+    }
+    for (let i = startIdx; i < stack.length; i++) {
+      parts.push(stack[i].key)
+    }
+    parts.push(key)
+    return parts.join(".")
+  }
 
   for (const line of lines) {
+    const indentMatch = line.match(/^(\s*)/)
+    const indent = indentMatch ? indentMatch[1].length : 0
+
     if (isMultiLine) {
-      const indentMatch = line.match(/^(\s*)/)
-      const lineIndent = indentMatch ? indentMatch[1].length : 0
       if (line.trim() === "") {
         currentValueLines.push("")
         continue
       }
-      if (lineIndent > multiLineIndent) {
+      if (indent > multiLineIndent) {
         currentValueLines.push(line.slice(multiLineIndent + 2))
         continue
       }
@@ -100,25 +115,8 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith("#")) continue
 
-    const indentMatch = line.match(/^(\s*)/)
-    const indent = indentMatch ? indentMatch[1].length : 0
-
-    if (hasVarsSection) {
-      if (/^vars\s*:\s*$/.test(trimmed)) {
-        flushCurrent()
-        inVarsSection = true
-        varsIndent = indent
-        continue
-      }
-      if (inVarsSection) {
-        if (indent <= varsIndent) {
-          flushCurrent()
-          inVarsSection = false
-          continue
-        }
-      } else {
-        continue
-      }
+    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+      stack.pop()
     }
 
     const colonIndex = line.indexOf(":")
@@ -131,19 +129,36 @@ export const parseMarkdownVariables = (docText: string): MarkdownVariableEntry[]
 
     flushCurrent()
 
+    if (rawVal === "" || rawVal.startsWith("#")) {
+      stack.push({ key, indent })
+      continue
+    }
+
+    const fullKey = getFullKey(key)
+
     if (rawVal === "|" || rawVal === ">" || rawVal === "|-" || rawVal === ">-") {
       isMultiLine = true
       multiLineIndent = indent
-      currentKey = key
+      currentKey = fullKey
       currentValueLines = []
     } else {
-      if (
-        (rawVal.startsWith('"') && rawVal.endsWith('"') && rawVal.length >= 2) ||
-        (rawVal.startsWith("'") && rawVal.endsWith("'") && rawVal.length >= 2)
-      ) {
-        rawVal = rawVal.slice(1, -1)
+      if (rawVal.startsWith('"')) {
+        const endQuote = rawVal.indexOf('"', 1)
+        if (endQuote !== -1) {
+          rawVal = rawVal.slice(1, endQuote)
+        }
+      } else if (rawVal.startsWith("'")) {
+        const endQuote = rawVal.indexOf("'", 1)
+        if (endQuote !== -1) {
+          rawVal = rawVal.slice(1, endQuote)
+        }
+      } else {
+        const commentIdx = rawVal.indexOf("#")
+        if (commentIdx !== -1) {
+          rawVal = rawVal.slice(0, commentIdx).trim()
+        }
       }
-      entries.push({ name: key, value: rawVal })
+      entries.push({ name: fullKey, value: rawVal })
     }
   }
 

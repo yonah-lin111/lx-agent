@@ -80,6 +80,30 @@ vars:
         { name: "another", value: "另一个" },
       ])
     })
+
+    it("支持解析自定义分组（如 temp:）并按点号路径输出变量", () => {
+      const doc = `---
+vars:
+  api_host: "https://api.github.com/v1"
+  project_root: "@/src/renderer/src"
+temp:
+  status: "111"
+  title: 我的文档
+  nested:
+    deep_key: deep_val
+flat_key: 顶层平级
+---
+`
+      const result = parseMarkdownVariables(doc)
+      expect(result).toEqual([
+        { name: "api_host", value: "https://api.github.com/v1" },
+        { name: "project_root", value: "@/src/renderer/src" },
+        { name: "temp.status", value: "111" },
+        { name: "temp.title", value: "我的文档" },
+        { name: "temp.nested.deep_key", value: "deep_val" },
+        { name: "flat_key", value: "顶层平级" },
+      ])
+    })
   })
 
   describe("getMarkdownVariableTrigger", () => {
@@ -123,6 +147,16 @@ vars:
       expect(getMarkdownVariableTrigger("提示：$core")).toMatchObject({
         fragment: "core",
         triggerChar: "$",
+      })
+      expect(getMarkdownVariableTrigger("输入 $temp.status")).toMatchObject({
+        fragment: "temp.status",
+        start: 3,
+        triggerChar: "$",
+      })
+      expect(getMarkdownVariableTrigger("输入 ¥temp.")).toMatchObject({
+        fragment: "temp.",
+        start: 3,
+        triggerChar: "¥",
       })
       expect(getMarkdownVariableTrigger("($auth")).toMatchObject({
         fragment: "auth",
