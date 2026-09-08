@@ -8,6 +8,7 @@ import {
 import { MARKDOWN_REFERENCE_PATTERN } from "@/features/markdown/extensions/editorHighlight"
 import {
   isPathUnderReferencedRoots,
+  MARKDOWN_DESIGN_MENTION_PATTERN,
   MARKDOWN_FILE_MENTION_PATTERN,
 } from "@/features/markdown/extensions/markdownFileMentions"
 import {
@@ -209,13 +210,34 @@ export const buildMarkdownMarkerDecorations = (
       continue
     }
 
+    const designRanges: { from: number; to: number }[] = []
+    for (const match of line.matchAll(MARKDOWN_DESIGN_MENTION_PATTERN)) {
+      if (match.index === undefined) continue
+      const start = match.index
+      const end = match.index + match[0].length
+      designRanges.push({ from: start, to: end })
+      addMarker(start, end, "cm-md-design-mention")
+    }
+
     addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")
     addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
-    addMatches(/(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g, "cm-md-emphasis-marker")
+    for (const match of line.matchAll(
+      /(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g,
+    )) {
+      if (match.index === undefined) continue
+      if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+        addMarker(match.index, match.index + match[0].length, "cm-md-emphasis-marker")
+      }
+    }
     addMatches(/(?<!\\)`/g, "cm-md-inline-code-marker")
     addMatches(/(?<![\\]【)(?<=\【)[^【】\r\n]+(?=\】)/g, "cm-md-bracket-content-marker")
     if (!taskMatch) {
-      addMatches(/(?<!\\)[\[\]\(\)]/g, "cm-md-link-marker")
+      for (const match of line.matchAll(/(?<!\\)[\[\]\(\)]/g)) {
+        if (match.index === undefined) continue
+        if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+          addMarker(match.index, match.index + match[0].length, "cm-md-link-marker")
+        }
+      }
     }
     for (const match of line.matchAll(MARKDOWN_REFERENCE_PATTERN)) {
       if (match.index === undefined) continue
