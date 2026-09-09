@@ -1630,6 +1630,27 @@
   background-color: #3e3e58 !important;
 }
 
+[data-theme="minecraft"] .agent-model-variant-badge {
+  font-family: var(--theme-font-family) !important;
+  border: 1px solid #000000 !important;
+  background-color: #1a1a28 !important;
+  color: #55ffff !important; /* 钻石天蓝 */
+  padding: 1px 4px !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(85, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.7),
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .agent-model-effort-header {
+  font-family: var(--theme-font-family) !important;
+  color: #a6a6bc !important;
+  border-bottom: 1px solid #000000 !important;
+  box-shadow: 0px 1px 0px 0px rgba(255, 255, 255, 0.08) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
 [data-theme="minecraft"] .agent-input-queued-notice,
 [data-theme="minecraft"] .agent-input-steer-notice {
   font-family: var(--theme-font-family) !important;

@@ -1,4 +1,4 @@
-import { Brain, Check, ChevronDown, ChevronRight } from "lucide-react"
+import { Check, ChevronDown, ChevronRight } from "lucide-react"
 import type React from "react"
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -239,9 +239,8 @@ export const AgentModelSelect = ({
           contentClassName="!p-1"
           content={
             <div className="flex w-max min-w-32 flex-col gap-0.5" role="menu">
-              <div className="flex select-none items-center gap-1 border-b border-white/10 px-2 py-1 text-[10px] font-medium text-white/40">
-                <Brain className="h-3 w-3 text-sky-400/80" />
-                <span>{t("settings.thinkingVariants")}</span>
+              <div className="agent-model-effort-header flex select-none items-center border-b border-white/10 px-2 py-1 text-[10px] font-medium text-white/40 uppercase tracking-wider">
+                <span>{t("agent.thinkingEffort")}</span>
               </div>
               {itemVariants.map((v) => {
                 const isVariantActive =
@@ -320,7 +319,7 @@ export const AgentModelSelect = ({
         <button
           ref={buttonRef}
           type="button"
-          className="flex h-6 w-full items-center justify-between gap-1.5 rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface,#212121)] px-2 text-xs text-[var(--color-theme-text,#ffffff)]/80 transition-colors duration-150 hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.2))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="lx-select-trigger flex h-6 w-full items-center justify-between gap-1.5 rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface,#212121)] px-2 text-xs text-[var(--color-theme-text,#ffffff)]/80 transition-colors duration-150 hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.2))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40"
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -330,8 +329,7 @@ export const AgentModelSelect = ({
             {selectedOption?.label ?? value}
           </span>
           {variant ? (
-            <span className="agent-model-variant-badge inline-flex shrink-0 items-center gap-1 rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] leading-none text-sky-300/90 shadow-xs">
-              <Brain className="h-2.5 w-2.5" />
+            <span className="agent-model-variant-badge inline-flex shrink-0 items-center rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] leading-none text-sky-300/90 shadow-xs">
               <span>{variant}</span>
             </span>
           ) : null}

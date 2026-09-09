@@ -49,6 +49,8 @@ describe("Thinking Variants Display & Components", () => {
     const badge = document.querySelector(".agent-model-variant-badge")
     expect(badge).not.toBeNull()
     expect(badge?.textContent).toContain("high")
+    // 验证 badge 中不包含思考 icon
+    expect(badge?.querySelector("svg")).toBeNull()
   })
 
   it("AgentModelSelect 直接点击配置了思考等级的模型时应选用默认等级", () => {
@@ -126,6 +128,9 @@ describe("Thinking Variants Display & Components", () => {
     const modelOption = screen.getByRole("option", { name: /claude 3\.7 sonnet/i })
     // 鼠标移入触发展开 LxTooltip 二级菜单
     fireEvent.mouseEnter(modelOption)
+
+    // 验证二级菜单标题文案为 Effort
+    expect(await screen.findByText("Effort")).not.toBeNull()
 
     // 等待二级菜单选项出现
     const highItem = await screen.findByText("high")
