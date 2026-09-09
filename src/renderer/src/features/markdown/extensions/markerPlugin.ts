@@ -5,8 +5,6 @@ import {
 } from "@/features/markdown/commands/markdownBlockCommands"
 import {
   cleanVarBlockItems,
-  MARKDOWN_VAR_TEMPLATE_END_RE,
-  MARKDOWN_VAR_TEMPLATE_START_RE,
   mergeMarkdownVarBlock,
   moveMarkdownVarBlockToTop,
 } from "@/features/markdown/commands/markdownVariableCommands"

@@ -986,6 +986,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     inProgressCountLabel: "In Progress {{count}}",
     completedCountLabel: "Completed {{count}}",
     templateVarDesc: "Insert variable definition template block",
+    templateSingleLineDesc: "New single-line variable",
+    templateMultiLineDesc: "New multi-line variable",
     templateAddDesc: "Insert requirement prompt template",
     templateBugDesc: "Insert bug fix prompt template",
     templateRefactorDesc: "Insert feature refactoring prompt template",

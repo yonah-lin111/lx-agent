@@ -48,6 +48,7 @@ import {
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import { isInsideMarkdownVariableBlock } from "@/features/markdown/commands/markdownVariableCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import {
   type MarkdownColonPanelState,
@@ -380,12 +381,13 @@ export const useMarkdownPanels = ({
     const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
       view.state.doc.sliceString(0, line.from),
     )
+    const isInsideVarBlock = isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
 
     // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt opencode:my-dev -n）
     const flagMatch = /^\/sendPrompt\s+([^\s]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
       commandLine?.value ?? "",
     )
-    if (flagMatch && isInsideTemplateBlock) {
+    if (flagMatch && isInsideTemplateBlock && !isInsideVarBlock) {
       closeSlashCommandPanel()
       closeSendPromptPanel()
       openSendPromptFlagPanel(view, flagMatch[1], flagMatch[2])
@@ -395,13 +397,14 @@ export const useMarkdownPanels = ({
     }
 
     // 已武装的确认命令行不弹面板，等待二次回车触发。
-    const isArmed = commandLine
-      ? isMarkdownConfirmCommandArmed(
-          commandLine.value,
-          isInsideTemplateBlock,
-          customSlashCommandsRef.current,
-        )
-      : false
+    const isArmed =
+      commandLine && !isInsideVarBlock
+        ? isMarkdownConfirmCommandArmed(
+            commandLine.value,
+            isInsideTemplateBlock,
+            customSlashCommandsRef.current,
+          )
+        : false
     const commands = commandLine
       ? getMarkdownSlashCommands(
           commandLine.value,
@@ -409,6 +412,7 @@ export const useMarkdownPanels = ({
           Boolean(projectPathRef.current) && worktreesRef.current !== null,
           customSlashCommandsRef.current,
           localeRef.current,
+          isInsideVarBlock,
         )
       : []
     const coords = view.coordsAtPos(cursor)
@@ -710,12 +714,32 @@ export const useMarkdownPanels = ({
       )
     }
 
-    const selection = command.selectionRange
+    let selection = command.selectionRange
       ? {
           anchor: panel.line.from + command.selectionRange.start,
           head: panel.line.from + command.selectionRange.end,
         }
       : { anchor: panel.line.from + command.cursorOffset }
+
+    if (command.scope === "varTemplate") {
+      const lineText = view.state.doc.sliceString(panel.line.from, panel.line.to)
+      const lineIndentMatch = lineText.match(/^([ \t]*)/)
+      const indent = lineIndentMatch ? lineIndentMatch[1] : ""
+      if (indent.length > 0) {
+        content = content
+          .split("\n")
+          .map((l) => `${indent}${l}`)
+          .join("\n")
+        if (command.selectionRange) {
+          selection = {
+            anchor: panel.line.from + indent.length + command.selectionRange.start,
+            head: panel.line.from + indent.length + command.selectionRange.end,
+          }
+        } else {
+          selection = { anchor: panel.line.from + indent.length + command.cursorOffset }
+        }
+      }
+    }
 
     view.dispatch({
       changes: { from: panel.line.from, to: panel.line.to, insert: content },

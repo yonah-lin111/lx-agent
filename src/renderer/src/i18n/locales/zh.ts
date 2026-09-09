@@ -969,6 +969,8 @@ export const zh: TranslationDictionary = {
     inProgressCountLabel: "进行中 {{count}}",
     completedCountLabel: "已完成 {{count}}",
     templateVarDesc: "插入变量定义模板块",
+    templateSingleLineDesc: "新建单行变量",
+    templateMultiLineDesc: "新建多行变量",
     templateAddDesc: "插入需求提示词模板",
     templateBugDesc: "插入 Bug 修复提示词模板",
     templateRefactorDesc: "插入功能重构提示词模板",
