@@ -11,7 +11,7 @@ export interface ActivityHeatmapProps {
 }
 
 const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
-  0: "bg-white/5 border border-white/5 hover:border-white/20",
+  0: "bg-white/[0.08] border border-white/[0.12] hover:border-white/30",
   1: "bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400",
   2: "bg-emerald-500/45 border border-emerald-500/50 hover:border-emerald-400",
   3: "bg-emerald-500/75 border border-emerald-400 hover:border-emerald-300",

@@ -104,11 +104,6 @@ export const zh: TranslationDictionary = {
       activities: "{{count}} 次交互",
       activitiesDetail: "{{count}} 次交互（{{turns}} 次对话，{{toolCalls}} 次工具执行）",
       noActivity: "无交互记录",
-      tierBedrock: "基岩",
-      tierDirt: "泥土",
-      tierGrass: "草方块",
-      tierEmerald: "绿宝石",
-      tierDiamond: "钻石",
     },
   },
   header: {

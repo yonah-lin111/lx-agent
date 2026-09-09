@@ -1370,66 +1370,67 @@
   text-shadow: 1px 1px 0px #000000;
 }
 
-/* 绿墙热力图像素风格单元格：我的世界矿石阶梯配色与 3D 像素立体硬边槽 */
+/* 绿墙热力图像素风格单元格：经典 Minecraft 绿色阶梯与立体像素槽 */
 [data-theme="minecraft"] .overview-heatmap-cell {
   border-radius: 0px !important;
   image-rendering: pixelated !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="0"] {
-  background-color: #1f2024 !important;
-  border: 1px solid #141518 !important;
+  background-color: #272738 !important;
+  border: 1px solid #14141e !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.06),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.12) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="0"]:hover {
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: #323248 !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="1"] {
-  background-color: #79553a !important;
-  border: 1px solid #4d3320 !important;
+  background-color: #1a4d23 !important;
+  border: 1px solid #0f3016 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.45) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="2"] {
-  background-color: #4d822b !important;
-  border: 1px solid #2d5216 !important;
+  background-color: #2c7a35 !important;
+  border: 1px solid #1c5223 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.45) !important;
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="3"] {
-  background-color: #10b981 !important;
-  border: 1px solid #065f46 !important;
+  background-color: #38ab44 !important;
+  border: 1px solid #24752d !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.35),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.4) !important;
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.45) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="3"]:hover {
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
-    0px 0px 6px rgba(16, 185, 129, 0.35) !important;
+    0px 0px 6px rgba(56, 171, 68, 0.4) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="4"] {
-  background-color: #22d3ee !important;
-  border: 1px solid #0e7490 !important;
+  background-color: #55ff55 !important;
+  border: 1px solid #2fa83a !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.5),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.35) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.4) !important;
 }
 
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="4"]:hover {
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
-    0px 0px 8px rgba(34, 211, 238, 0.5) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
+    0px 0px 8px rgba(85, 255, 85, 0.8) !important;
 }
 
 /* 主页侧边栏概览项像素风格 */

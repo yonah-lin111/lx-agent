@@ -102,11 +102,6 @@ export const en = {
       activities: "{{count}} activities",
       activitiesDetail: "{{count}} activities ({{turns}} turns, {{toolCalls}} tool calls)",
       noActivity: "No activity recorded",
-      tierBedrock: "Bedrock",
-      tierDirt: "Dirt",
-      tierGrass: "Grass Block",
-      tierEmerald: "Emerald",
-      tierDiamond: "Diamond",
     },
   },
   header: {
