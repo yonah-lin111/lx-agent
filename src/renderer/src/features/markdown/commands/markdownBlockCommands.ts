@@ -241,6 +241,13 @@ export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start
 export const MARKDOWN_SUPPLE_END_RE =
   /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
 
+// preset 预设块开始行：+++ presetTemplate --start [「title: 标题」] 或 +++ preset --start [「title: 标题」]。
+export const MARKDOWN_PRESET_START_RE =
+  /^\s*\+\+\+\s+(?:presetTemplate|preset)\s+--start(?:\s+「title:[^」\n]*」)?\s*$/
+
+// preset 预设块结束行：+++ presetTemplate --end 或 +++ preset --end。
+export const MARKDOWN_PRESET_END_RE = /^\s*\+\+\+\s+(?:presetTemplate|preset)\s+--end\s*$/
+
 // 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
   /^\s*\$\$\$\s+varTemplate(?:\s+--start)?(?:\s+「title:[^」\n]*」)?\s*$/
@@ -414,6 +421,36 @@ export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_ST
  * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
  */
 export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)
+
+/**
+ * 判断一行是否为 preset 预设块开始标记（+++ presetTemplate --start 或 +++ preset --start）。
+ */
+export const isMarkdownPresetStartLine = (line: string): boolean =>
+  MARKDOWN_PRESET_START_RE.test(line)
+
+/**
+ * 判断一行是否为 preset 预设块结束标记（+++ presetTemplate --end 或 +++ preset --end）。
+ */
+export const isMarkdownPresetEndLine = (line: string): boolean => MARKDOWN_PRESET_END_RE.test(line)
+
+/**
+ * 判断指定文本末尾是否处于未闭合的 preset 预设块内。
+ */
+export const isInsideMarkdownPresetBlock = (text: string): boolean => {
+  let isOpen = false
+
+  for (const line of text.split("\n")) {
+    if (isOpen) {
+      if (MARKDOWN_PRESET_END_RE.test(line)) {
+        isOpen = false
+      }
+    } else if (MARKDOWN_PRESET_START_RE.test(line)) {
+      isOpen = true
+    }
+  }
+
+  return isOpen
+}
 
 /**
  * 提取当前光标位置目标模版块用于复制的正文内容：

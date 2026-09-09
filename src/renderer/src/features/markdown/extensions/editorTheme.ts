@@ -412,6 +412,65 @@ export const editorTheme = EditorView.theme(
       paddingLeft: "8px",
       paddingBottom: "4px",
     },
+    ".cm-md-preset-hidden-line": {
+      display: "none !important",
+    },
+    ".cm-md-preset-command, .cm-md-preset-command *": {
+      color: "#c4b5fd !important",
+      backgroundColor: "rgba(196, 181, 253, 0.15) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-preset-flag, .cm-md-preset-flag *": {
+      color: "#a78bfa !important",
+      backgroundColor: "rgba(167, 139, 250, 0.1) !important",
+      padding: "1px 5px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-preset-marker, .cm-md-preset-marker *": {
+      color: "#a78bfa !important",
+      fontWeight: "700",
+    },
+    ".cm-md-preset-title, .cm-md-preset-title *": {
+      color: "#fde68a !important",
+      backgroundColor: "rgba(253, 230, 138, 0.18) !important",
+      textDecoration: "underline",
+      textDecorationColor: "rgba(253, 230, 138, 0.6)",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+    },
+    ".cm-md-preset-start-line": {
+      borderTop: "1.5px solid rgba(167, 139, 250, 0.45)",
+      borderLeft: "2px solid rgba(167, 139, 250, 0.45)",
+      borderRight: "2px solid rgba(167, 139, 250, 0.45)",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.25)",
+      borderTopLeftRadius: "4px",
+      borderTopRightRadius: "4px",
+      backgroundColor: "rgba(167, 139, 250, 0.05)",
+      paddingLeft: "8px",
+      paddingRight: "72px",
+      boxSizing: "border-box",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-preset-middle-line": {
+      borderLeft: "2px solid rgba(167, 139, 250, 0.45)",
+      borderRight: "2px solid rgba(167, 139, 250, 0.45)",
+      backgroundColor: "rgba(167, 139, 250, 0.05)",
+      paddingLeft: "8px",
+    },
+    ".cm-md-preset-end-line": {
+      borderBottom: "1.5px solid rgba(167, 139, 250, 0.45)",
+      borderLeft: "2px solid rgba(167, 139, 250, 0.45)",
+      borderRight: "2px solid rgba(167, 139, 250, 0.45)",
+      borderBottomLeftRadius: "4px",
+      borderBottomRightRadius: "4px",
+      backgroundColor: "rgba(167, 139, 250, 0.05)",
+      paddingLeft: "8px",
+      paddingBottom: "4px",
+    },
     ".cm-md-var-template-hidden-line": {
       display: "none !important",
     },
@@ -561,14 +620,14 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
-    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace, .cm-md-template-comment-line .cm-monospace, .cm-md-var-template-start-line .cm-monospace, .cm-md-var-template-middle-line .cm-monospace, .cm-md-var-template-end-line .cm-monospace":
+    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace, .cm-md-template-comment-line .cm-monospace, .cm-md-var-template-start-line .cm-monospace, .cm-md-var-template-middle-line .cm-monospace, .cm-md-var-template-end-line .cm-monospace, .cm-md-preset-start-line .cm-monospace, .cm-md-preset-middle-line .cm-monospace, .cm-md-preset-end-line .cm-monospace":
       {
         color: "inherit !important",
         backgroundColor: "transparent !important",
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node), .cm-md-var-template-start-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.cm-md-var-template-title):not(.markdown-file-mention-node), .cm-md-var-template-middle-line span:not(.cm-md-var-key):not(.cm-md-var-colon):not(.cm-md-var-value):not(.cm-md-var-string):not(.cm-md-var-triple-quote):not(.cm-md-var-comment):not(.cm-md-var-invalid-text):not(.markdown-file-mention-node), .cm-md-var-template-end-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node), .cm-md-var-template-start-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.cm-md-var-template-title):not(.markdown-file-mention-node), .cm-md-var-template-middle-line span:not(.cm-md-var-key):not(.cm-md-var-colon):not(.cm-md-var-value):not(.cm-md-var-string):not(.cm-md-var-triple-quote):not(.cm-md-var-comment):not(.cm-md-var-invalid-text):not(.markdown-file-mention-node), .cm-md-var-template-end-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.markdown-file-mention-node), .cm-md-preset-start-line span:not(.cm-md-preset-command):not(.cm-md-preset-flag):not(.cm-md-preset-title):not(.markdown-file-mention-node), .cm-md-preset-middle-line span:not(.cm-md-var-key):not(.cm-md-var-colon):not(.cm-md-var-value):not(.cm-md-var-string):not(.cm-md-var-triple-quote):not(.cm-md-var-comment):not(.cm-md-var-invalid-text):not(.markdown-file-mention-node), .cm-md-preset-end-line span:not(.cm-md-preset-command):not(.cm-md-preset-flag):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",

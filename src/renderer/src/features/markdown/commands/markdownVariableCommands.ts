@@ -4,6 +4,8 @@ import {
   getMarkdownTemplateBlockEndLine,
   getMarkdownTemplateBlockStartLine,
   isInsideMarkdownCodeFence,
+  MARKDOWN_PRESET_END_RE,
+  MARKDOWN_PRESET_START_RE,
 } from "@/features/markdown/commands/markdownBlockCommands"
 
 // 页面预设变量条目。
@@ -204,7 +206,14 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
     }
 
     const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith("#")) continue
+    if (
+      !trimmed ||
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("//") ||
+      trimmed.startsWith("+++") ||
+      trimmed.startsWith("---")
+    )
+      continue
 
     while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
       stack.pop()
@@ -216,7 +225,7 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
     const key = line.slice(0, colonIndex).trim()
     let rawVal = line.slice(colonIndex + 1).trim()
 
-    if (!key || /^[#\-]/.test(key)) continue
+    if (!key || /^[#\-]/.test(key) || key.startsWith("+++")) continue
 
     flushCurrent()
 
@@ -351,9 +360,26 @@ export const cleanVarBlockItems = (blockContent: string): string => {
   const lines = blockContent.split(/\r?\n/)
   const preservedLines: string[] = []
   let idx = 0
+  let inPresetSubblock = false
 
   while (idx < lines.length) {
     const line = lines[idx]
+
+    if (MARKDOWN_PRESET_START_RE.test(line)) {
+      inPresetSubblock = true
+      preservedLines.push(line)
+      idx++
+      continue
+    }
+
+    if (inPresetSubblock) {
+      if (MARKDOWN_PRESET_END_RE.test(line)) {
+        inPresetSubblock = false
+      }
+      preservedLines.push(line)
+      idx++
+      continue
+    }
 
     // 1. 明确的单行占位符 / 空值：key: "var" | key: 'var' | key: "" | key: ''
     const singleMatch = line.match(/^(\s*)([A-Za-z0-9_.-]+)\s*:\s*(?:"var"|'var'|""|'')\s*$/)

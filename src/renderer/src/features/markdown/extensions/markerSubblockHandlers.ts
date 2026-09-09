@@ -1,6 +1,8 @@
 import {
   MARKDOWN_LOG_END_RE,
   MARKDOWN_LOG_START_RE,
+  MARKDOWN_PRESET_END_RE,
+  MARKDOWN_PRESET_START_RE,
   MARKDOWN_SUPPLE_END_RE,
   MARKDOWN_SUPPLE_START_RE,
   MARKDOWN_TEMPLATE_COMMENT_RE,
@@ -263,6 +265,139 @@ export const handleLogBlockLine = (ctx: MarkerBlockScanContext): boolean => {
           ? "cm-md-template-comment-line"
           : "cm-md-log-middle-line",
     })
+  }
+
+  return false
+}
+
+// 处理预设模板块（+++ presetTemplate ... +++）的标记与折叠交互。
+export const handlePresetBlockLine = (ctx: MarkerBlockScanContext): boolean => {
+  const presetStartMatch = MARKDOWN_PRESET_START_RE.exec(ctx.line)
+  if (presetStartMatch && !ctx.isInsidePresetBlock) {
+    const startLine = ctx.i
+    const currentPresetIndex = ctx.presetBlockIndex++
+    ctx.currentPresetFolded = ctx.presetFoldedIndices.has(currentPresetIndex)
+    let presetEndIndex = -1
+    for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
+      const subLine = ctx.lines[j]
+      if (MARKDOWN_PRESET_END_RE.test(subLine)) {
+        presetEndIndex = j
+        break
+      }
+      if (/^\s*\$\$\$(?:\s+varTemplate\s+--end|\s+--end)?\s*$/.test(subLine)) {
+        break
+      }
+    }
+
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-preset-marker")
+    const commandMatch = ctx.line.match(/\+\+\+\s+(presetTemplate|preset)\b/)
+    if (commandMatch && commandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + commandMatch[1].length,
+          "cm-md-preset-command",
+        )
+      }
+    }
+    const flagMatch = ctx.line.match(/--start/)
+    if (flagMatch && flagMatch.index !== undefined) {
+      ctx.addMarkerAlways(
+        flagMatch.index,
+        flagMatch.index + flagMatch[0].length,
+        "cm-md-preset-flag",
+      )
+    }
+    const titleMatch = ctx.line.match(/「title:[^」\n]*」/)
+    if (titleMatch && titleMatch.index !== undefined) {
+      ctx.addMarkerAlways(
+        titleMatch.index,
+        titleMatch.index + titleMatch[0].length,
+        "cm-md-preset-title",
+      )
+    }
+
+    ctx.allDecos.push({
+      type: "widget",
+      from: ctx.offset + ctx.line.length,
+      to: ctx.offset + ctx.line.length,
+      widget: new CodeBlockActionWidget(
+        "",
+        ctx.currentPresetFolded,
+        () => ctx.onTogglePresetFold(currentPresetIndex),
+        ctx.showFolding,
+        "cm-preset-block-action-wrap",
+        undefined,
+        undefined,
+        undefined,
+        null,
+        startLine,
+        () => ctx.onDeletePresetBlock(startLine, presetEndIndex),
+        null,
+        false,
+        false,
+        presetEndIndex,
+        null,
+        false,
+        null,
+        null,
+        true,
+      ),
+    })
+
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: "cm-md-preset-start-line",
+    })
+    ctx.isInsidePresetBlock = true
+    return true
+  }
+
+  if (ctx.isInsidePresetBlock && MARKDOWN_PRESET_END_RE.test(ctx.line)) {
+    const markerStart = ctx.line.indexOf("+++")
+    ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-preset-marker")
+    const commandMatch = ctx.line.match(/\+\+\+\s+(presetTemplate|preset)\b/)
+    if (commandMatch && commandMatch.index !== undefined) {
+      const commandStart = ctx.line.indexOf(commandMatch[1], markerStart + 3)
+      if (commandStart !== -1) {
+        ctx.addMarkerAlways(
+          commandStart,
+          commandStart + commandMatch[1].length,
+          "cm-md-preset-command",
+        )
+      }
+    }
+    const flagMatch = ctx.line.match(/--end/)
+    if (flagMatch && flagMatch.index !== undefined) {
+      ctx.addMarkerAlways(
+        flagMatch.index,
+        flagMatch.index + flagMatch[0].length,
+        "cm-md-preset-flag",
+      )
+    }
+
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentPresetFolded ? "cm-md-preset-hidden-line" : "cm-md-preset-end-line",
+    })
+    ctx.isInsidePresetBlock = false
+    ctx.currentPresetFolded = false
+    return true
+  }
+
+  if (ctx.isInsidePresetBlock) {
+    if (ctx.currentPresetFolded) {
+      ctx.allDecos.push({
+        type: "line",
+        from: ctx.offset,
+        className: "cm-md-preset-hidden-line",
+      })
+      return true
+    }
   }
 
   return false

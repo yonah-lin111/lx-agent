@@ -260,7 +260,7 @@ export interface TemplatePresetOption {
 }
 
 export const MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: All Templates」",
   "preset:",
   "  common:",
   '    reference: "@docs/architecture.md"',
@@ -344,11 +344,11 @@ export const MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT = [
   '      """',
   "      - No hardcoded hex colors (#fff, #000) allowed in JSX/CSS",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: Add Requirement」",
   "preset:",
   "  add:",
   '    reference: "@docs/features/specs.md"',
@@ -366,11 +366,11 @@ export const MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT = [
   "      - Use LxTag and standard UI components",
   "      - Strictly follow feature-first directory layout",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: Fix Bug」",
   "preset:",
   "  bug:",
   '    reference: "@docs/issues/bug-report.md"',
@@ -397,11 +397,11 @@ export const MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT = [
   '      """',
   "      - Verify backward compatibility with existing data",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: Refactor Feature」",
   "preset:",
   "  refactor:",
   '    reference: "@docs/standards/code-writing-standards.md"',
@@ -418,11 +418,11 @@ export const MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT = [
   "      - Taste matters: 10 clean lines over 100 defensive layers",
   "      - Do not break existing public interfaces",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: Execute Task」",
   "preset:",
   "  common:",
   '    reference: "@docs/tasks/plan.md"',
@@ -442,11 +442,11 @@ export const MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT = [
   '      """',
   "      - Follow pragmatic programming principles",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT = [
-  "---",
+  "+++ presetTemplate --start 「title: Design Style」",
   "preset:",
   "  style:",
   '    reference: "@docs/standards/frontend-design-requirements.md"',
@@ -466,7 +466,7 @@ export const MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT = [
   '      """',
   "      - No hardcoded hex colors (#fff, #000) allowed in JSX/CSS",
   '      """',
-  "---",
+  "+++ presetTemplate --end",
 ].join("\n")
 
 export const MARKDOWN_TEMPLATE_PRESET_CONTENT = MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT
@@ -686,7 +686,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const templatePreset: MarkdownSlashCommand = {
     id: "templatePreset",
     label: "/templatePreset",
-    description: "Insert template preset configuration (wrap with ---)",
+    description: "Insert template preset configuration subblock (wrap with +++)",
     scope: "varTemplate",
     kind: "select",
     source: "builtin",

@@ -467,5 +467,46 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
         ["&&& addTemplate --start 「title: 未闭合」", "# 需求标题"].join("\n"),
       )
     })
+
+    it("$$$ 变量块内部的 +++ presetTemplate 具备独立 ActionWidget 并支持折叠与删除", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: Presets」",
+        "+++ presetTemplate --start 「title: All Templates」",
+        "preset:",
+        "  common:",
+        '    reference: "@docs/architecture.md"',
+        "+++ presetTemplate --end",
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      let presetWidget: CodeBlockActionWidget | null = null
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isPreset) {
+          presetWidget = cursor.value.spec.widget
+          break
+        }
+        cursor.next()
+      }
+
+      expect(presetWidget).not.toBeNull()
+      expect(presetWidget!.isPreset).toBe(true)
+      expect(presetWidget!.isFolded).toBe(false)
+
+      // 验证折叠交互
+      presetWidget!.onToggleFold()
+      expect(plugin!.presetFoldedIndices.has(0)).toBe(true)
+
+      // 验证删除交互
+      expect(presetWidget!.onDeleteTemplate).toBeDefined()
+      presetWidget!.onDeleteTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        ["$$$ varTemplate --start 「title: Presets」", "$$$ varTemplate --end"].join("\n"),
+      )
+    })
   })
 })

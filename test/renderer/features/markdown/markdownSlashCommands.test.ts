@@ -225,13 +225,13 @@ describe("Markdown 斜杠命令", () => {
     ])
 
     for (const option of MARKDOWN_TEMPLATE_PRESET_OPTIONS) {
-      // 预设内容顶部和底部必须严格使用 --- 包裹
-      expect(option.content.startsWith("---\n")).toBe(true)
-      expect(option.content.endsWith("\n---")).toBe(true)
+      // 预设内容顶部和底部必须严格使用 +++ presetTemplate 子块包裹并带有 title
+      expect(option.content).toMatch(/^\+\+\+ presetTemplate --start 「title: [^」\n]+」\n/)
+      expect(option.content.endsWith("\n+++ presetTemplate --end")).toBe(true)
 
       // 首行必须顶格（无任何行首缩进空格）
-      expect(option.content.startsWith("---")).toBe(true)
-      expect(option.content).not.toMatch(/^[ \t]+---/)
+      expect(option.content.startsWith("+++ presetTemplate")).toBe(true)
+      expect(option.content).not.toMatch(/^[ \t]+\+\+\+/)
 
       // 必须包含 preset 顶级节点
       expect(option.content).toContain("preset:")

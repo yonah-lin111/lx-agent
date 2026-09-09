@@ -109,8 +109,10 @@ describe("TemplatePresetCommandMenu", () => {
 
     const docText = editorView.state.doc.toString()
     // 验证严格顶格输出，替换掉整行包括行首空格
-    expect(docText).toContain("$$$\n---\npreset:\n  add:")
-    expect(docText).not.toContain("  ---")
+    expect(docText).toContain(
+      "$$$\n+++ presetTemplate --start 「title: Add Requirement」\npreset:\n  add:",
+    )
+    expect(docText).not.toContain("  +++ presetTemplate")
 
     // 4. 验证面板自动关闭
     expect(result.current.templatePresetPanel).toBeNull()

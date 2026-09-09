@@ -52,6 +52,7 @@ export class CodeBlockActionWidget extends WidgetType {
     readonly isVarTemplate = false,
     readonly onMergeTemplate: (() => void) | null = null,
     readonly onMoveToTopTemplate: (() => void) | null = null,
+    readonly isPreset = false,
   ) {
     super()
   }
@@ -70,6 +71,7 @@ export class CodeBlockActionWidget extends WidgetType {
       this.isSupple === other.isSupple &&
       this.isLog === other.isLog &&
       this.isVarTemplate === other.isVarTemplate &&
+      this.isPreset === other.isPreset &&
       this.onMoveToTopTemplate === other.onMoveToTopTemplate
     )
   }
@@ -93,7 +95,25 @@ export class CodeBlockActionWidget extends WidgetType {
     const isTemplate = Boolean(this.templateStatus)
     const actionNodes: ReactNode[] = []
 
-    if (this.isVarTemplate) {
+    if (this.isPreset) {
+      if (this.onDeleteTemplate) {
+        actionNodes.push(
+          createElement(MarkdownActionDeleteButton, {
+            onDelete: this.onDeleteTemplate,
+            isPreset: true,
+          }),
+        )
+      }
+      if (this.showFoldBtn) {
+        actionNodes.push(
+          createElement(MarkdownActionFoldButton, {
+            isFolded: this.isFolded,
+            isPreset: true,
+            onToggle: this.onToggleFold,
+          }),
+        )
+      }
+    } else if (this.isVarTemplate) {
       if (this.onMergeTemplate) {
         actionNodes.push(
           createElement(MarkdownActionMergeButton, {
@@ -189,6 +209,14 @@ export class CodeBlockActionWidget extends WidgetType {
     const root = this.reactRoot
     this.reactRoot = null
     // 推迟到微任务，避免在 React 渲染/提交期间同步 unmount 子 root 触发警告。
-    if (root) queueMicrotask(() => root.unmount())
+    if (root && typeof window !== "undefined") {
+      queueMicrotask(() => {
+        try {
+          root.unmount()
+        } catch {
+          // 忽略在测试环境环境清理/销毁阶段触发的异常
+        }
+      })
+    }
   }
 }

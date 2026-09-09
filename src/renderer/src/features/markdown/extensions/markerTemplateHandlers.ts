@@ -13,6 +13,7 @@ import {
   stripEmptyTemplateItems,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
+import { handlePresetBlockLine } from "./markerSubblockHandlers"
 
 // Markdown 块扫描解析上下文契约。
 export interface MarkerBlockScanContext {
@@ -66,6 +67,13 @@ export interface MarkerBlockScanContext {
   onCleanVarBlock: (startLine: number, endLine: number) => void
   onMergeVarBlock: (startLine: number, endLine: number) => void
   onMoveVarBlockToTop?: (startLine: number, endLine: number) => void
+
+  isInsidePresetBlock: boolean
+  currentPresetFolded: boolean
+  presetBlockIndex: number
+  presetFoldedIndices: Set<number>
+  onTogglePresetFold: (index: number) => void
+  onDeletePresetBlock: (startLine: number, endLine: number) => void
 }
 
 // 模板块状态对应的 CSS 类后缀。
@@ -473,6 +481,8 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
     ctx.isInsideVarBlock = false
     ctx.isInsideVarTripleQuotes = false
     ctx.currentVarFolded = false
+    ctx.isInsidePresetBlock = false
+    ctx.currentPresetFolded = false
     return true
   }
 
@@ -483,6 +493,10 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
         from: ctx.offset,
         className: "cm-md-var-template-hidden-line",
       })
+      return true
+    }
+
+    if (handlePresetBlockLine(ctx)) {
       return true
     }
 
@@ -595,6 +609,17 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
               }
             }
           }
+        } else if (ctx.isInsidePresetBlock && /^\s*[-*]\s+/.test(ctx.line)) {
+          const listMatch = ctx.line.match(/^(\s*)([-*])(\s+)(.*)$/)
+          if (listMatch) {
+            const markerStart = listMatch[1].length
+            ctx.addMarkerAlways(markerStart, markerStart + 1, "cm-md-var-key")
+            ctx.addMarkerAlways(
+              markerStart + 1 + listMatch[3].length,
+              ctx.line.length,
+              "cm-md-var-value",
+            )
+          }
         } else {
           isInvalid = true
           const firstNonSpace = ctx.line.search(/\S/)
@@ -605,12 +630,13 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
       }
     }
 
+    const middleLineClass = ctx.isInsidePresetBlock
+      ? "cm-md-preset-middle-line"
+      : "cm-md-var-template-middle-line"
     ctx.allDecos.push({
       type: "line",
       from: ctx.offset,
-      className: isInvalid
-        ? "cm-md-var-template-middle-line cm-md-var-invalid-line"
-        : "cm-md-var-template-middle-line",
+      className: isInvalid ? `${middleLineClass} cm-md-var-invalid-line` : middleLineClass,
     })
     return true
   }

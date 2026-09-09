@@ -52,6 +52,9 @@ export const buildMarkdownMarkerDecorations = (
   onCleanVarBlock: (startLine: number, endLine: number) => void = () => {},
   onMergeVarBlock: (startLine: number, endLine: number) => void = () => {},
   onMoveVarBlockToTop: (startLine: number, endLine: number) => void = () => {},
+  presetFoldedIndices = new Set<number>(),
+  onTogglePresetFold: (index: number) => void = () => {},
+  onDeletePresetBlock: (startLine: number, endLine: number) => void = () => {},
 ) => {
   const builder = new RangeSetBuilder<Decoration>()
   const allDecos: MarkerDecoItem[] = []
@@ -116,6 +119,13 @@ export const buildMarkdownMarkerDecorations = (
     onCleanVarBlock,
     onMergeVarBlock,
     onMoveVarBlockToTop,
+
+    isInsidePresetBlock: false,
+    currentPresetFolded: false,
+    presetBlockIndex: 0,
+    presetFoldedIndices,
+    onTogglePresetFold,
+    onDeletePresetBlock,
   }
 
   for (let i = 0; i < lines.length; i++) {
