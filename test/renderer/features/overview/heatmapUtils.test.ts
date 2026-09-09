@@ -2,16 +2,21 @@ import { describe, expect, it } from "vitest"
 import { buildHeatmapWeeks, formatNumber, getActivityLevel } from "@/features/overview/utils"
 
 describe("overview heatmapUtils", () => {
-  it("正确映射活动阶梯等级", () => {
-    expect(getActivityLevel(0)).toBe(0)
-    expect(getActivityLevel(1)).toBe(1)
-    expect(getActivityLevel(2)).toBe(1)
-    expect(getActivityLevel(3)).toBe(2)
-    expect(getActivityLevel(5)).toBe(2)
-    expect(getActivityLevel(6)).toBe(3)
-    expect(getActivityLevel(9)).toBe(3)
-    expect(getActivityLevel(10)).toBe(4)
-    expect(getActivityLevel(100)).toBe(4)
+  it("根据最大频次按比例正确映射活动阶梯等级", () => {
+    // maxCount = 100
+    expect(getActivityLevel(0, 100)).toBe(0)
+    expect(getActivityLevel(10, 100)).toBe(1) // 10% -> 1
+    expect(getActivityLevel(25, 100)).toBe(1) // 25% -> 1
+    expect(getActivityLevel(40, 100)).toBe(2) // 40% -> 2
+    expect(getActivityLevel(50, 100)).toBe(2) // 50% -> 2
+    expect(getActivityLevel(70, 100)).toBe(3) // 70% -> 3
+    expect(getActivityLevel(75, 100)).toBe(3) // 75% -> 3
+    expect(getActivityLevel(80, 100)).toBe(4) // 80% -> 4
+    expect(getActivityLevel(100, 100)).toBe(4) // 100% -> 4
+
+    // maxCount = 200
+    expect(getActivityLevel(100, 200)).toBe(2)
+    expect(getActivityLevel(160, 200)).toBe(4)
   })
 
   it("正确格式化数字千分位", () => {
@@ -23,34 +28,38 @@ describe("overview heatmapUtils", () => {
     const result = buildHeatmapWeeks([])
     expect(result.weeks).toEqual([])
     expect(result.monthLabels).toEqual([])
+    expect(result.maxCount).toBe(0)
   })
 
-  it("正确将平铺记录组织为 7 天每周的网格列", () => {
+  it("正确将平铺记录组织为 7 天每周的网格列并提取 maxCount", () => {
     const entries = [
-      { date: "2026-09-07", count: 5, turns: 3, toolCalls: 2 }, // 2026-09-07 是周一
+      { date: "2026-09-07", count: 20, turns: 10, toolCalls: 10 }, // 2026-09-07 是周一
       { date: "2026-09-08", count: 0, turns: 0, toolCalls: 0 },
-      { date: "2026-09-09", count: 12, turns: 8, toolCalls: 4 },
+      { date: "2026-09-09", count: 100, turns: 60, toolCalls: 40 },
     ]
 
     const result = buildHeatmapWeeks(entries)
 
+    expect(result.maxCount).toBe(100)
     expect(result.weeks.length).toBeGreaterThan(0)
     const firstWeek = result.weeks[0]
     expect(firstWeek.days).toHaveLength(7)
-    // 第一天是周一，应位于索引 0
+    // 20/100 = 0.20 <= 0.25 -> level 1
     expect(firstWeek.days[0]).toMatchObject({
       date: "2026-09-07",
-      count: 5,
-      level: 2,
+      count: 20,
+      level: 1,
     })
+    // 0 -> level 0
     expect(firstWeek.days[1]).toMatchObject({
       date: "2026-09-08",
       count: 0,
       level: 0,
     })
+    // 100/100 = 1.0 -> level 4
     expect(firstWeek.days[2]).toMatchObject({
       date: "2026-09-09",
-      count: 12,
+      count: 100,
       level: 4,
     })
     // 剩余天数补齐 null

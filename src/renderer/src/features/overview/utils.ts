@@ -1,13 +1,17 @@
 import type { ActivityDayEntry, HeatmapCell, HeatmapWeek } from "./types"
 
 /**
- * 根据交互次数计算热力图阶梯等级（0 - 4）。
+ * 根据交互次数与当前数据集最大频次按比例计算热力图阶梯等级（0 - 4）。
+ * 解决超过固定阈值后颜色全部饱和、缺乏区分度的问题。
  */
-export const getActivityLevel = (count: number): 0 | 1 | 2 | 3 | 4 => {
+export const getActivityLevel = (count: number, maxCount: number = 0): 0 | 1 | 2 | 3 | 4 => {
   if (count <= 0) return 0
-  if (count <= 2) return 1
-  if (count <= 5) return 2
-  if (count <= 9) return 3
+  if (maxCount <= 1) return 4
+
+  const ratio = count / maxCount
+  if (ratio <= 0.25) return 1
+  if (ratio <= 0.5) return 2
+  if (ratio <= 0.75) return 3
   return 4
 }
 
@@ -16,17 +20,20 @@ export const formatNumber = (num: number): string => num.toLocaleString("en-US")
 
 /**
  * 将平铺的近 365 天活动记录转换为按周组织的网格列结构（周一为起始行 0，周日为 6）。
+ * 自动计算全局非零最大频次，驱动各单元格按比例分阶。
  */
 export const buildHeatmapWeeks = (
   entries: ActivityDayEntry[],
 ): {
   weeks: HeatmapWeek[]
   monthLabels: Array<{ label: string; weekIndex: number }>
+  maxCount: number
 } => {
   if (entries.length === 0) {
-    return { weeks: [], monthLabels: [] }
+    return { weeks: [], monthLabels: [], maxCount: 0 }
   }
 
+  const maxCount = entries.reduce((max, entry) => Math.max(max, entry.count), 0)
   const weeks: HeatmapWeek[] = []
   const monthLabels: Array<{ label: string; weekIndex: number }> = []
 
@@ -75,7 +82,7 @@ export const buildHeatmapWeeks = (
       count: entry.count,
       turns: entry.turns,
       toolCalls: entry.toolCalls,
-      level: getActivityLevel(entry.count),
+      level: getActivityLevel(entry.count, maxCount),
     })
 
     if (currentWeekDays.length === 7) {
@@ -92,5 +99,5 @@ export const buildHeatmapWeeks = (
     weeks.push({ weekIndex: weeks.length, days: currentWeekDays })
   }
 
-  return { weeks, monthLabels }
+  return { weeks, monthLabels, maxCount }
 }

@@ -26,14 +26,15 @@ export const HomeLeftSideBar = ({
 
   if (isCollapsed) {
     return (
-      <div className="flex h-full min-w-0 flex-col items-center gap-3">
+      <div className="flex h-full w-full min-w-0 flex-col items-center gap-3">
         {/* 顶部留出折叠展开切换按钮高度 */}
-        <div className="flex h-7 shrink-0 items-center justify-end px-1" />
+        <div className="flex h-7 shrink-0 items-center justify-center px-1" />
         <nav
-          className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2 [scrollbar-gutter:stable]"
+          className="custom-scrollbar flex min-h-0 w-full flex-1 flex-col items-center space-y-1 overflow-y-auto pb-2"
           aria-label={t("home.overview")}
         >
           <LxIconButton
+            size="small"
             aria-current={isOverviewActive ? "page" : undefined}
             aria-label={t("home.overview")}
             title={{ content: t("home.overview"), placement: "right" }}
@@ -64,7 +65,7 @@ export const HomeLeftSideBar = ({
           tabIndex={0}
           data-item-level="prompt"
           aria-current={isOverviewActive ? "page" : undefined}
-          className={`group flex h-7 items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+          className={`home-sidebar-item group flex h-7 items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
             isOverviewActive
               ? "bg-white/10 text-white font-medium shadow-xs"
               : "text-white/70 hover:bg-white/5"

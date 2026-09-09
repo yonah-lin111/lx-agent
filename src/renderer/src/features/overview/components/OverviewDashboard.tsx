@@ -9,7 +9,7 @@ import { ActivityHeatmap } from "./ActivityHeatmap"
 import { MetricCard } from "./MetricCard"
 
 /**
- * 渲染主页概览完整数据看板。
+ * 渲染主页概览完整数据看板（支持窄屏自适应与主题兼容）。
  */
 export const OverviewDashboard = (): React.JSX.Element => {
   const { t } = useTranslation()
@@ -42,17 +42,19 @@ export const OverviewDashboard = (): React.JSX.Element => {
   }, [metrics?.sessions.lastActiveAt, t])
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto p-4 custom-scrollbar">
+    <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar">
       <LxLoadingOverlay isLoading={isLoading && !stats} text="Loading overview..." />
 
       {/* 顶部标题与项目切换器 */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-base font-bold text-white tracking-tight">{t("home.overview")}</h1>
-          <p className="text-xs text-white/50">{t("home.overviewSubtitle")}</p>
+      <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-base font-bold tracking-tight text-white">
+            {t("home.overview")}
+          </h1>
+          <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>
         </div>
 
-        <div className="w-48 shrink-0">
+        <div className="w-full sm:w-52 shrink-0">
           <LxSelect
             size="small"
             value={selectedProjectId}
@@ -67,9 +69,9 @@ export const OverviewDashboard = (): React.JSX.Element => {
           {error}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {/* 4 组核心数据指标卡片 */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {/* 1. Agent 交互总量 */}
             <MetricCard
               icon={Bot}
@@ -108,11 +110,11 @@ export const OverviewDashboard = (): React.JSX.Element => {
                 variant: "success",
               }}
               extra={
-                <div className="flex items-center justify-between text-[11px] text-white/50">
-                  <span>
+                <div className="flex min-w-0 items-center justify-between gap-1 text-[11px] text-white/50">
+                  <span className="truncate">
                     {t("home.metrics.todoCount", { count: metrics?.projectItems.todo ?? 0 })}
                   </span>
-                  <span>
+                  <span className="truncate">
                     {t("home.metrics.inProgressCount", {
                       count: metrics?.projectItems.inProgress ?? 0,
                     })}
