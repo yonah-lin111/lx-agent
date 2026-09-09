@@ -30,16 +30,24 @@ describe("/project 和 /session 命令测试", () => {
       const cmds = getMatchedCommands("/sess", [], mockT)
       expect(cmds.some((c) => c.id === "session")).toBe(true)
     })
+
+    it("输入 /resume 或 /res 也可以匹配 /session 命令", () => {
+      const cmds = getMatchedCommands("/res", [], mockT)
+      expect(cmds.some((c) => c.id === "session")).toBe(true)
+
+      const fullCmds = getMatchedCommands("/resume", [], mockT)
+      expect(fullCmds.some((c) => c.id === "session")).toBe(true)
+    })
   })
 
   describe("AgentInputProjectPanel 视图测试", () => {
-    it("正确渲染项目列表及 current tag", () => {
+    it("正确渲染项目列表及位于名称右侧的 current tag", () => {
       const projects = [
         { id: "p1", name: "Project One", path: "/path/one", isCurrent: true },
         { id: "p2", name: "Project Two", path: "/path/two", isCurrent: false },
       ]
 
-      render(
+      const { container } = render(
         <AgentInputProjectPanel
           isOpen={true}
           position={{ top: 0, left: 0 }}
@@ -48,14 +56,21 @@ describe("/project 和 /session 命令测试", () => {
         />,
       )
 
-      expect(screen.getByText("Project One")).toBeDefined()
+      const nameEl = screen.getByText("Project One")
+      const currentEl = screen.getByText("current")
+      expect(nameEl).toBeDefined()
       expect(screen.getByText("Project Two")).toBeDefined()
-      expect(screen.getByText("current")).toBeDefined()
+      expect(currentEl).toBeDefined()
+
+      // 验证 current 标签在项目名之后
+      expect(
+        nameEl.compareDocumentPosition(currentEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
   })
 
   describe("AgentInputSessionPanel 视图测试", () => {
-    it("正确渲染会话列表及 current tag", () => {
+    it("正确渲染会话列表及位于标题右侧的 current tag", () => {
       const sessions = [
         {
           id: "s1",
@@ -82,9 +97,16 @@ describe("/project 和 /session 命令测试", () => {
         />,
       )
 
-      expect(screen.getByText("Session 1")).toBeDefined()
+      const titleEl = screen.getByText("Session 1")
+      const currentEl = screen.getByText("current")
+      expect(titleEl).toBeDefined()
       expect(screen.getByText("Session 2")).toBeDefined()
-      expect(screen.getByText("current")).toBeDefined()
+      expect(currentEl).toBeDefined()
+
+      // 验证 current 标签在会话标题之后
+      expect(
+        titleEl.compareDocumentPosition(currentEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
   })
 

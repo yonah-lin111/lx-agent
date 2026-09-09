@@ -96,7 +96,12 @@ export const getMatchedCommands = (
 
   return allCommands.filter((command) => {
     const rawName = command.name.replace(/^\//, "").toLowerCase()
-    const aliases = command.id === "clear" ? ["clear", "new"] : [rawName]
+    const aliases =
+      command.id === "clear"
+        ? ["clear", "new"]
+        : command.id === "session"
+          ? ["session", "resume"]
+          : [rawName]
     return (
       aliases.some((alias) => isFuzzyMatch(query, alias)) ||
       isFuzzyMatch(query, command.description.toLowerCase())

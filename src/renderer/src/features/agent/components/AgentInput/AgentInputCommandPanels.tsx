@@ -318,15 +318,6 @@ export const AgentInputProjectPanel = ({
               isActive ? "bg-white/8 text-white" : "text-white/75"
             }`}
           >
-            {project.isCurrent && (
-              <LxTag
-                bgClass="bg-emerald-500/20 text-emerald-300"
-                className="pointer-events-none shrink-0"
-                size="small"
-              >
-                current
-              </LxTag>
-            )}
             <Folder
               className={`h-3.5 w-3.5 shrink-0 ${
                 project.isDesktop ? "text-violet-400" : "text-sky-400"
@@ -339,6 +330,15 @@ export const AgentInputProjectPanel = ({
             >
               {project.name}
             </span>
+            {project.isCurrent && (
+              <LxTag
+                bgClass="bg-emerald-500/20 text-emerald-300"
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                current
+              </LxTag>
+            )}
             <span className="ml-auto shrink-0 max-w-[50%] truncate text-[11px] text-white/35">
               {project.path}
             </span>
@@ -401,6 +401,9 @@ export const AgentInputSessionPanel = ({
               isActive ? "bg-white/8 text-white" : "text-white/75"
             }`}
           >
+            <span className="truncate font-medium text-white">
+              {session.title || t("agent.unnamedSession")}
+            </span>
             {session.isCurrent && (
               <LxTag
                 bgClass="bg-emerald-500/20 text-emerald-300"
@@ -410,9 +413,6 @@ export const AgentInputSessionPanel = ({
                 current
               </LxTag>
             )}
-            <span className="min-w-0 flex-1 truncate font-medium text-white">
-              {session.title || t("agent.unnamedSession")}
-            </span>
             {timeDisplay && (
               <span className="ml-auto shrink-0 text-[11px] text-white/35">
                 {timeDisplay}

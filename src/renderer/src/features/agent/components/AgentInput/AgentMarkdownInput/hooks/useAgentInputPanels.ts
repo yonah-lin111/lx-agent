@@ -283,8 +283,11 @@ export const useAgentInputPanels = ({
   matchedProjectsRef.current = matchedProjects
 
   const matchedSessions = useMemo<AgentInputSessionItem[]>(() => {
-    if (!value.startsWith("/session")) return []
-    const query = value.slice("/session".length).trim().toLowerCase()
+    const isSession = value.startsWith("/session")
+    const isResume = value.startsWith("/resume")
+    if (!isSession && !isResume) return []
+    const prefix = isResume ? "/resume" : "/session"
+    const query = value.slice(prefix.length).trim().toLowerCase()
 
     const filtered = allSessions.filter((s) => {
       if (projectId) {
@@ -548,7 +551,11 @@ export const useAgentInputPanels = ({
         return
       }
 
-      const isSessionInput = docText === "/session" || docText.startsWith("/session ")
+      const isSessionInput =
+        docText === "/session" ||
+        docText.startsWith("/session ") ||
+        docText === "/resume" ||
+        docText.startsWith("/resume ")
       if (isSessionInput) {
         setActiveMode("session")
         setSessionIndex(0)
