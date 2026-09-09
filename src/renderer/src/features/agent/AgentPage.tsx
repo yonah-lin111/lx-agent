@@ -275,12 +275,13 @@ export const AgentPage = ({
 
   // 切换模型：同步更新本地选择；若处于已有会话中，立即落库 model_change entry 并实时更新视图
   const handleModelSelectChange = useCallback(
-    (value: string) => {
-      handleModelChange(value)
+    (value: string, explicitVariant?: string) => {
+      handleModelChange(value, explicitVariant)
       const [provider, model] = value.split("::")
       if (provider && model && currentSessionId) {
         const modelConfig = settings?.providers[provider]?.models[model]
         const defaultVar =
+          explicitVariant ??
           modelConfig?.variant ??
           (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
         void switchModel({
