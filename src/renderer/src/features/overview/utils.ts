@@ -19,6 +19,22 @@ export const getActivityLevel = (count: number, maxCount: number = 0): 0 | 1 | 2
 export const formatNumber = (num: number): string => num.toLocaleString("en-US")
 
 /**
+ * 格式化执行耗时（毫秒转化为可读文本，支持 ms / s / m / h）。
+ */
+export const formatDurationMs = (ms: number): string => {
+  if (!ms || ms <= 0) return "0s"
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  const s = ms / 1000
+  if (s < 60) return `${s < 10 ? s.toFixed(1) : Math.round(s)}s`
+  const m = Math.floor(s / 60)
+  const remSec = Math.round(s % 60)
+  if (m < 60) return `${m}m ${remSec}s`
+  const h = Math.floor(m / 60)
+  const remMin = m % 60
+  return `${h}h ${remMin}m`
+}
+
+/**
  * 获取周内首个有效日期的月份索引（0-11）。
  */
 const getWeekMonth = (week: HeatmapWeek): number | null => {

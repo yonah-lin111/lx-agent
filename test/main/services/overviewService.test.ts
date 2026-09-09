@@ -25,7 +25,13 @@ describe("overviewService", () => {
     expect(stats.metrics.agentTurns.today).toBe(0)
     expect(stats.metrics.toolCalls.total).toBe(0)
     expect(stats.metrics.toolCalls.successRate).toBe(100)
-    expect(stats.metrics.projectItems.total).toBe(0)
+    expect(stats.metrics.activeDays.totalDays).toBe(0)
+    expect(stats.metrics.activeDays.longestStreak).toBe(0)
+    expect(stats.metrics.activeDays.currentStreak).toBe(0)
+    expect(stats.metrics.activeDays.activeRate).toBe(0)
+    expect(stats.metrics.toolDuration?.totalMs).toBe(0)
+    expect(stats.metrics.toolDuration?.avgMs).toBe(0)
+    expect(stats.metrics.projectItems?.total).toBe(0)
     expect(stats.metrics.sessions.total).toBe(0)
     expect(stats.activeProjectId).toBe("all")
     expect(stats.projects).toEqual([])
@@ -62,17 +68,17 @@ describe("overviewService", () => {
       )
       .run("e2", "s1", 2, "assistant", "{}", now)
 
-    // 插入工具调用（1 成功，1 失败）
+    // 插入工具调用（1 成功耗时 400ms，1 失败耗时 600ms）
     database
       .prepare(
-        "INSERT INTO agent_call (external_id, session_id, kind, name, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO agent_call (external_id, session_id, kind, name, status, duration_ms, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .run("c1", "s1", "builtin", "read_file", "success", now, now, now)
+      .run("c1", "s1", "builtin", "read_file", "success", 400, now, now, now)
     database
       .prepare(
-        "INSERT INTO agent_call (external_id, session_id, kind, name, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO agent_call (external_id, session_id, kind, name, status, duration_ms, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .run("c2", "s1", "builtin", "run_command", "error", now, now, now)
+      .run("c2", "s1", "builtin", "run_command", "error", 600, now, now, now)
 
     // 插入项目条目（1 todo, 1 completed）
     database
@@ -94,10 +100,16 @@ describe("overviewService", () => {
     expect(stats.metrics.toolCalls.total).toBe(2)
     expect(stats.metrics.toolCalls.successCount).toBe(1)
     expect(stats.metrics.toolCalls.successRate).toBe(50)
-    expect(stats.metrics.projectItems.total).toBe(2)
-    expect(stats.metrics.projectItems.todo).toBe(1)
-    expect(stats.metrics.projectItems.completed).toBe(1)
-    expect(stats.metrics.projectItems.completionRate).toBe(50)
+    expect(stats.metrics.activeDays.totalDays).toBe(1)
+    expect(stats.metrics.activeDays.longestStreak).toBe(1)
+    expect(stats.metrics.activeDays.currentStreak).toBe(1)
+    expect(stats.metrics.activeDays.activeRate).toBe(0)
+    expect(stats.metrics.toolDuration?.totalMs).toBe(1000)
+    expect(stats.metrics.toolDuration?.avgMs).toBe(500)
+    expect(stats.metrics.projectItems?.total).toBe(2)
+    expect(stats.metrics.projectItems?.todo).toBe(1)
+    expect(stats.metrics.projectItems?.completed).toBe(1)
+    expect(stats.metrics.projectItems?.completionRate).toBe(50)
     expect(stats.metrics.sessions.total).toBe(1)
 
     const todayEntry = stats.activityHeatmap.find((item) => item.date === today)

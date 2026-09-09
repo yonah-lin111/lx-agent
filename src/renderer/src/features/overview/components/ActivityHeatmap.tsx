@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import type { ActivityDayEntry, HeatmapCell, HeatmapMonth } from "../types"
@@ -18,6 +19,7 @@ const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
 }
 
 const WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""]
 
 interface HeatmapDayCellProps {
   day: HeatmapCell | null
@@ -56,6 +58,7 @@ HeatmapDayCell.displayName = "HeatmapDayCell"
 
 interface MonthBlockProps {
   month: HeatmapMonth
+  showWeekdayLabels?: boolean
   onHover: (day: HeatmapCell, rect: DOMRect) => void
   onLeave: () => void
 }
@@ -63,32 +66,50 @@ interface MonthBlockProps {
 /**
  * 单个月份独立周列网格（使用 contain:layout_paint 与 will-change:transform 进行 GPU 合成隔离，避免重排下钻）。
  */
-const MonthBlock = React.memo(({ month, onHover, onLeave }: MonthBlockProps): React.JSX.Element => {
-  return (
-    <div className="flex flex-col items-center gap-1.5 shrink-0 [contain:layout_paint] [will-change:transform]">
-      {/* 月份名称 */}
-      <div className="h-4 text-[11px] font-medium leading-none text-white/50 select-none">
-        {month.label}
-      </div>
-
-      {/* 该月份的所有周列 */}
-      <div className="flex gap-1">
-        {month.weeks.map((week) => (
-          <div key={week.weekIndex} className="flex flex-col gap-1 shrink-0">
-            {week.days.map((day, dayIndex) => (
-              <HeatmapDayCell
-                key={day ? day.date : `empty-${dayIndex}`}
-                day={day}
-                onHover={onHover}
-                onLeave={onLeave}
-              />
+const MonthBlock = React.memo(
+  ({ month, showWeekdayLabels = false, onHover, onLeave }: MonthBlockProps): React.JSX.Element => {
+    return (
+      <div
+        data-month-key={month.monthKey}
+        className="overview-month-block flex items-start gap-1.5 shrink-0 [contain:layout_paint] [will-change:transform]"
+      >
+        {/* 当处于当前行行首时，显示星期基准标签（严格对齐 Mon..Sun 7 天基线） */}
+        {showWeekdayLabels && (
+          <div className="flex flex-col gap-1 pr-1 text-[9px] text-white/35 select-none shrink-0 pt-[22px]">
+            {DAY_LABELS.map((label, idx) => (
+              <div key={idx} className="flex h-3 w-5 items-center leading-none sm:h-3.5 sm:w-6">
+                {label}
+              </div>
             ))}
           </div>
-        ))}
+        )}
+
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          {/* 月份名称 */}
+          <div className="h-4 text-[11px] font-medium leading-none text-white/50 select-none">
+            {month.label}
+          </div>
+
+          {/* 该月份的所有周列 */}
+          <div className="flex gap-1">
+            {month.weeks.map((week) => (
+              <div key={week.weekIndex} className="flex flex-col gap-1 shrink-0">
+                {week.days.map((day, dayIndex) => (
+                  <HeatmapDayCell
+                    key={day ? day.date : `empty-${dayIndex}`}
+                    day={day}
+                    onHover={onHover}
+                    onLeave={onLeave}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  )
-})
+    )
+  },
+)
 
 MonthBlock.displayName = "MonthBlock"
 
@@ -128,7 +149,60 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
     return () => window.removeEventListener("scroll", handleScroll, true)
   }, [activeTooltip])
 
-  const dayLabels = ["Mon", "", "Wed", "", "Fri", "", ""]
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [rowStartMonthKeys, setRowStartMonthKeys] = useState<Set<string>>(
+    () => new Set(months.length > 0 ? [months[0].monthKey] : []),
+  )
+
+  const updateRowStarts = useCallback(() => {
+    if (!containerRef.current) return
+    const blocks = containerRef.current.querySelectorAll<HTMLElement>(".overview-month-block")
+    if (blocks.length === 0) return
+
+    const newStarts = new Set<string>()
+    let prevTop = -1
+
+    blocks.forEach((block) => {
+      const key = block.dataset.monthKey
+      if (!key) return
+      const top = block.offsetTop
+      if (prevTop === -1 || top > prevTop + 15) {
+        newStarts.add(key)
+        prevTop = top
+      }
+    })
+
+    setRowStartMonthKeys((prev) => {
+      if (prev.size === newStarts.size && Array.from(prev).every((k) => newStarts.has(k))) {
+        return prev
+      }
+      return newStarts
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    updateRowStarts()
+  }, [updateRowStarts, months])
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    let rafId: number | null = null
+
+    const onResize = () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(updateRowStarts)
+    }
+
+    const observer = new ResizeObserver(onResize)
+    observer.observe(containerRef.current)
+    window.addEventListener("resize", onResize)
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      observer.disconnect()
+      window.removeEventListener("resize", onResize)
+    }
+  }, [updateRowStarts])
 
   // 计算当前悬浮单元格的提示文字
   const tooltipContent = useMemo(() => {
@@ -166,28 +240,20 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
         </div>
       </div>
 
-      {/* 绿墙热力图主体：按月流式自适应折行 */}
-      <div className="flex items-start gap-2 min-w-0 w-full">
-        {/* 左侧星期标签（与下方第一天基线对齐） */}
-        <div className="flex flex-col gap-1 pr-1 text-[9px] text-white/35 select-none shrink-0 pt-[22px]">
-          {dayLabels.map((label, idx) => (
-            <div key={idx} className="flex h-3 w-5 items-center leading-none sm:h-3.5 sm:w-6">
-              {label}
-            </div>
-          ))}
-        </div>
-
-        {/* 12 个月度自适应卡片容器：宽度够不折行，宽度不足逐月换行 */}
-        <div className="flex flex-wrap items-start gap-x-3 gap-y-3.5 min-w-0 flex-1">
-          {months.map((month) => (
-            <MonthBlock
-              key={month.monthKey}
-              month={month}
-              onHover={handleHover}
-              onLeave={handleLeave}
-            />
-          ))}
-        </div>
+      {/* 绿墙热力图主体：按月流式自适应折行，每行行首自适应展示星期基准标签 */}
+      <div
+        ref={containerRef}
+        className="relative flex flex-wrap items-start gap-x-3 gap-y-3.5 min-w-0 w-full"
+      >
+        {months.map((month) => (
+          <MonthBlock
+            key={month.monthKey}
+            month={month}
+            showWeekdayLabels={rowStartMonthKeys.has(month.monthKey)}
+            onHover={handleHover}
+            onLeave={handleLeave}
+          />
+        ))}
       </div>
 
       {/* 底部图例 */}
@@ -218,27 +284,30 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
         <span>{t("home.heatmap.more")}</span>
       </div>
 
-      {/* 全局单例 LxTooltip 控制器：统一使用项目标准组件，零常驻开销 */}
-      {activeTooltip && (
-        <LxTooltip
-          key={activeTooltip.day.date}
-          open={true}
-          trigger="click"
-          placement="top"
-          content={tooltipContent}
-        >
-          <div
-            style={{
-              position: "fixed",
-              left: `${activeTooltip.rect.left}px`,
-              top: `${activeTooltip.rect.top}px`,
-              width: `${activeTooltip.rect.width}px`,
-              height: `${activeTooltip.rect.height}px`,
-              pointerEvents: "none",
-            }}
-          />
-        </LxTooltip>
-      )}
+      {/* 全局单例 LxTooltip 控制器：挂载至 document.body，彻底切断祖先 contain/transform 局部包含块偏移 */}
+      {activeTooltip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <LxTooltip
+            key={activeTooltip.day.date}
+            open={true}
+            trigger="click"
+            placement="top"
+            content={tooltipContent}
+          >
+            <div
+              style={{
+                position: "fixed",
+                left: `${activeTooltip.rect.left}px`,
+                top: `${activeTooltip.rect.top}px`,
+                width: `${activeTooltip.rect.width}px`,
+                height: `${activeTooltip.rect.height}px`,
+                pointerEvents: "none",
+              }}
+            />
+          </LxTooltip>,
+          document.body,
+        )}
     </div>
   )
 }

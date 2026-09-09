@@ -112,7 +112,40 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       }
     })
 
-    // 3. 计算近 30 天与今日 Agent 对话轮次
+    // 3. 计算活跃天数与连续打卡统计（Streak）
+    let totalActiveDays = 0
+    let longestStreak = 0
+    let runningStreak = 0
+
+    for (let i = 0; i < activityHeatmap.length; i++) {
+      if (activityHeatmap[i].count > 0) {
+        totalActiveDays += 1
+        runningStreak += 1
+        if (runningStreak > longestStreak) {
+          longestStreak = runningStreak
+        }
+      } else {
+        runningStreak = 0
+      }
+    }
+
+    let currentStreak = 0
+    for (let i = activityHeatmap.length - 1; i >= 0; i--) {
+      if (activityHeatmap[i].count > 0) {
+        currentStreak += 1
+      } else {
+        if (i === activityHeatmap.length - 1) {
+          // 今天尚无交互，允许昨天作为有效连击点
+          continue
+        }
+        break
+      }
+    }
+
+    const activeRate =
+      activityHeatmap.length > 0 ? Math.round((totalActiveDays / activityHeatmap.length) * 100) : 0
+
+    // 4. 计算近 30 天与今日 Agent 对话轮次
     const thirtyDaysAgoKey = heatmapDays[Math.max(0, heatmapDays.length - 30)]
     let total30dTurns = 0
     let todayTurns = 0
@@ -125,12 +158,16 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       }
     }
 
-    // 4. 工具调用总数与成功率
+    // 4. 工具调用总数、成功率与执行耗时
     const toolCallStatsRow = (
       isFiltered
         ? database
             .prepare(
-              `SELECT count(*) as total, sum(CASE WHEN c.status = 'success' THEN 1 ELSE 0 END) as success_count
+              `SELECT
+                 count(*) as total,
+                 sum(CASE WHEN c.status = 'success' THEN 1 ELSE 0 END) as success_count,
+                 sum(COALESCE(c.duration_ms, 0)) as total_duration_ms,
+                 avg(CASE WHEN c.duration_ms IS NOT NULL AND c.duration_ms > 0 THEN c.duration_ms ELSE NULL END) as avg_duration_ms
                FROM agent_call c
                JOIN agent_session s ON c.session_id = s.external_id
                WHERE s.project_id = ?`,
@@ -138,15 +175,28 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
             .get(targetProjectId)
         : database
             .prepare(
-              `SELECT count(*) as total, sum(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count
+              `SELECT
+                 count(*) as total,
+                 sum(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+                 sum(COALESCE(duration_ms, 0)) as total_duration_ms,
+                 avg(CASE WHEN duration_ms IS NOT NULL AND duration_ms > 0 THEN duration_ms ELSE NULL END) as avg_duration_ms
                FROM agent_call`,
             )
             .get()
-    ) as { total: number; success_count: number | null } | undefined
+    ) as
+      | {
+          total: number
+          success_count: number | null
+          total_duration_ms: number | null
+          avg_duration_ms: number | null
+        }
+      | undefined
 
     const toolTotal = toolCallStatsRow?.total ?? 0
     const toolSuccessCount = toolCallStatsRow?.success_count ?? 0
     const toolSuccessRate = toolTotal > 0 ? Math.round((toolSuccessCount / toolTotal) * 100) : 100
+    const toolTotalDurationMs = toolCallStatsRow?.total_duration_ms ?? 0
+    const toolAvgDurationMs = Math.round(toolCallStatsRow?.avg_duration_ms ?? 0)
 
     // 5. 项目条目完成进度
     const itemRows = (
@@ -206,6 +256,16 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
         total: toolTotal,
         successCount: toolSuccessCount,
         successRate: toolSuccessRate,
+      },
+      activeDays: {
+        totalDays: totalActiveDays,
+        longestStreak,
+        currentStreak,
+        activeRate,
+      },
+      toolDuration: {
+        totalMs: toolTotalDurationMs,
+        avgMs: toolAvgDurationMs,
       },
       projectItems: {
         total: totalItems,

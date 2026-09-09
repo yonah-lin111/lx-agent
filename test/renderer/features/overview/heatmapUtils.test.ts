@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildHeatmapMonths,
   buildHeatmapWeeks,
+  formatDurationMs,
   formatNumber,
   getActivityLevel,
 } from "@/features/overview/utils"
@@ -27,6 +28,15 @@ describe("overview heatmapUtils", () => {
   it("正确格式化数字千分位", () => {
     expect(formatNumber(1234)).toBe("1,234")
     expect(formatNumber(0)).toBe("0")
+  })
+
+  it("正确将毫秒格式化为可读执行耗时", () => {
+    expect(formatDurationMs(0)).toBe("0s")
+    expect(formatDurationMs(450)).toBe("450ms")
+    expect(formatDurationMs(1200)).toBe("1.2s")
+    expect(formatDurationMs(25000)).toBe("25s")
+    expect(formatDurationMs(65000)).toBe("1m 5s")
+    expect(formatDurationMs(3665000)).toBe("1h 1m")
   })
 
   it("空列表安全返回空网格", () => {

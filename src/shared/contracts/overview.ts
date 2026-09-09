@@ -19,8 +19,20 @@ export interface OverviewMetrics {
     successCount: number
     successRate: number
   }
+  // 活跃天数与连续活跃统计（基于近 365 天生产力热力图）
+  activeDays: {
+    totalDays: number
+    longestStreak: number
+    currentStreak: number
+    activeRate: number
+  }
+  // 工具调用耗时：累计执行耗时与平均单次耗时（毫秒）
+  toolDuration?: {
+    totalMs: number
+    avgMs: number
+  }
   // 项目条目进度：全部或指定项目下的 Prompt 待办与完成统计
-  projectItems: {
+  projectItems?: {
     total: number
     todo: number
     inProgress: number

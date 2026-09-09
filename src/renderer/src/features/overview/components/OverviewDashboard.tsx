@@ -1,4 +1,4 @@
-import { Bot, CheckCircle2, Layers, Wrench } from "lucide-react"
+import { Bot, Flame, Layers, Wrench } from "lucide-react"
 import { useMemo } from "react"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
@@ -98,25 +98,29 @@ export const OverviewDashboard = (): React.JSX.Element => {
               }}
             />
 
-            {/* 3. Prompt 条目推进进度 */}
+            {/* 3. 活跃天数与连续打卡 */}
             <MetricCard
-              icon={CheckCircle2}
-              iconColor="text-emerald-400"
-              title={t("home.metrics.projectItems")}
-              subtitle={t("home.metrics.projectItemsDesc")}
-              mainValue={`${metrics?.projectItems.completed ?? 0}/${metrics?.projectItems.total ?? 0}`}
+              icon={Flame}
+              iconColor="text-orange-400"
+              title={t("home.metrics.activeDays")}
+              subtitle={t("home.metrics.activeDaysDesc")}
+              mainValue={`${metrics?.activeDays.totalDays ?? 0} ${t("home.metrics.daysUnit")}`}
               badge={{
-                label: `${metrics?.projectItems.completionRate ?? 0}% ${t("home.metrics.completedRate")}`,
-                variant: "success",
+                label: t("home.metrics.longestStreak", {
+                  count: metrics?.activeDays.longestStreak ?? 0,
+                }),
+                variant: "warning",
               }}
               extra={
                 <div className="flex min-w-0 items-center justify-between gap-1 text-[11px] text-white/50">
                   <span className="truncate">
-                    {t("home.metrics.todoCount", { count: metrics?.projectItems.todo ?? 0 })}
+                    {t("home.metrics.currentStreak", {
+                      count: metrics?.activeDays.currentStreak ?? 0,
+                    })}
                   </span>
                   <span className="truncate">
-                    {t("home.metrics.inProgressCount", {
-                      count: metrics?.projectItems.inProgress ?? 0,
+                    {t("home.metrics.activeRate", {
+                      rate: metrics?.activeDays.activeRate ?? 0,
                     })}
                   </span>
                 </div>
