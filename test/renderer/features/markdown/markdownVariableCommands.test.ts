@@ -3,7 +3,10 @@ import { EditorState } from "@codemirror/state"
 import { EditorView } from "@codemirror/view"
 import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { getMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
+import {
+  getMarkdownSlashCommands,
+  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
+} from "@/features/markdown/commands/markdownSlashCommands"
 import {
   applyMarkdownTemplatePreset,
   cleanVarBlockItems,
@@ -897,6 +900,67 @@ $$$ varTemplate --end`
     it("光标不在 &&& 模板块内时 applyMarkdownTemplatePreset 返回 null", () => {
       const doc = "# 普通正文\n一些文字\n"
       expect(applyMarkdownTemplatePreset(doc, 5)).toBeNull()
+    })
+
+    it("使用 MARKDOWN_TEMPLATE_PRESET_OPTIONS 中的 --- 包裹预设，可无缝填充各类模板", () => {
+      const allPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "all")!.content
+
+      const docWithAll = [
+        "$$$ varTemplate --start 「title: 」",
+        allPreset,
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "",
+        "- Reference: ",
+        "- Location: ",
+        "- Description: ",
+        "- Requirements: ",
+        "  - ",
+        "- Notes: ",
+        "  - ",
+        "&&& addTemplate --end",
+        "",
+        "&&& bugTemplate --start 「title: 」",
+        "# Fix Bug",
+        "",
+        "- Reference: ",
+        "- Location: ",
+        "- Description: ",
+        "- Reproduction: ",
+        "- Requirements: ",
+        "  - ",
+        "- Expectations: ",
+        "- Notes: ",
+        "  - ",
+        "&&& bugTemplate --end",
+      ].join("\n")
+
+      // 验证 addTemplate 填充
+      const addCursor = docWithAll.indexOf("&&& addTemplate") + 10
+      const addResult = applyMarkdownTemplatePreset(docWithAll, addCursor)
+      expect(addResult).not.toBeNull()
+      expect(addResult!.insert).toContain("- Reference: @docs/features/specs.md")
+      expect(addResult!.insert).toContain("- Location: @src/renderer/src/features")
+      expect(addResult!.insert).toContain("- Description: Feature development specification")
+      expect(addResult!.insert).toContain("- Requirements: \n  - [ ] Data structure definition")
+      expect(addResult!.insert).toContain("- Notes: \n  - Use LxTag and standard UI components")
+
+      // 验证 bugTemplate 填充
+      const bugCursor = docWithAll.indexOf("&&& bugTemplate") + 10
+      const bugResult = applyMarkdownTemplatePreset(docWithAll, bugCursor)
+      expect(bugResult).not.toBeNull()
+      expect(bugResult!.insert).toContain("- Reference: @docs/issues/bug-report.md")
+      expect(bugResult!.insert).toContain(
+        "- Reproduction: \n  - Step 1: Open the editor in normal mode",
+      )
+      expect(bugResult!.insert).toContain(
+        "- Expectations: \n  * Normal operation restored without error",
+      )
+      expect(bugResult!.insert).toContain(
+        "- Notes: \n  - Verify backward compatibility with existing data",
+      )
     })
   })
 })

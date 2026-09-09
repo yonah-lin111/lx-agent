@@ -879,6 +879,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     modalCloseAria: "Close modal",
   },
   markdown: {
+    selectTemplatePreset: "Select Template Preset",
     preview: "Preview",
     editor: "Editor",
     splitView: "Split View",

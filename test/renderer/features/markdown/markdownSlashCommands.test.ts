@@ -7,6 +7,7 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   getTemplatePlaceholderSelectionRange,
+  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
@@ -193,9 +194,9 @@ describe("Markdown 斜杠命令", () => {
     ).toBe("key")
 
     const presetCmd = allVarCommands.find((c) => c.id === "templatePreset")!
-    expect(presetCmd.content).toContain("preset:")
-    expect(presetCmd.content).toContain("reference:")
-    expect(presetCmd.content).toContain('"""')
+    expect(presetCmd.kind).toBe("select")
+    expect(presetCmd.content).toBe("/templatePreset")
+    expect(presetCmd.scope).toBe("varTemplate")
 
     // 变量块外禁止出现 singleLine、multiLine 与 templatePreset
     expect(getMarkdownSlashCommands("/single", false, true, [], "zh", false)).toEqual([])
@@ -211,6 +212,49 @@ describe("Markdown 斜杠命令", () => {
     expect(
       getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
     ).not.toContain("templatePreset")
+  })
+
+  it("/templatePreset 二级预设选项包含全类型配置，严格使用 --- 包裹且输出顶格", () => {
+    expect(MARKDOWN_TEMPLATE_PRESET_OPTIONS.map((o) => o.id)).toEqual([
+      "all",
+      "add",
+      "bug",
+      "refactor",
+      "common",
+      "style",
+    ])
+
+    for (const option of MARKDOWN_TEMPLATE_PRESET_OPTIONS) {
+      // 预设内容顶部和底部必须严格使用 --- 包裹
+      expect(option.content.startsWith("---\n")).toBe(true)
+      expect(option.content.endsWith("\n---")).toBe(true)
+
+      // 首行必须顶格（无任何行首缩进空格）
+      expect(option.content.startsWith("---")).toBe(true)
+      expect(option.content).not.toMatch(/^[ \t]+---/)
+
+      // 必须包含 preset 顶级节点
+      expect(option.content).toContain("preset:")
+
+      // 描述内容不为空且各有特色
+      expect(option.description.length).toBeGreaterThan(10)
+    }
+
+    // 校验不同类型的差异化 Markdown 结构
+    const addPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "add")!
+    expect(addPreset.content).toContain("- [ ] Data structure definition")
+
+    const bugPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "bug")!
+    expect(bugPreset.content).toContain("- Step 1:")
+    expect(bugPreset.content).toContain("* Normal operation restored")
+
+    const refactorPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "refactor")!
+    expect(refactorPreset.content).toContain("goal:")
+    expect(refactorPreset.content).toContain("Taste matters")
+
+    const stylePreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "style")!
+    expect(stylePreset.content).toContain("--color-theme-*")
+    expect(stylePreset.content).toContain("Tooltip")
   })
 })
 

@@ -862,6 +862,7 @@ export const zh: TranslationDictionary = {
     modalCloseAria: "关闭弹窗",
   },
   markdown: {
+    selectTemplatePreset: "选择模板预设",
     preview: "预览",
     editor: "编辑",
     splitView: "双栏分屏",

@@ -187,6 +187,7 @@ export const createMarkdownEditorKeymaps = ({
             panels.handleVariableKey(1) ||
             panels.handleFileMentionKey("ArrowDown") ||
             panels.handleGitWorktreeKey(1) ||
+            panels.handleTemplatePresetKey(1) ||
             panels.handleSendPromptKey(1) ||
             panels.handleSendPromptFlagKey(1) ||
             panels.handleSlashCommandKey(1) ||
@@ -201,6 +202,7 @@ export const createMarkdownEditorKeymaps = ({
             panels.handleVariableKey(-1) ||
             panels.handleFileMentionKey("ArrowUp") ||
             panels.handleGitWorktreeKey(-1) ||
+            panels.handleTemplatePresetKey(-1) ||
             panels.handleSendPromptKey(-1) ||
             panels.handleSendPromptFlagKey(-1) ||
             panels.handleSlashCommandKey(-1) ||
@@ -230,6 +232,15 @@ export const createMarkdownEditorKeymaps = ({
               panels.selectGitWorktree(
                 gitWorktree.options[panels.activeGitWorktreeIndexRef.current] ??
                   gitWorktree.options[0],
+              )
+              return true
+            }
+
+            const templatePreset = panels.templatePresetPanelRef.current
+            if (templatePreset) {
+              panels.selectTemplatePreset(
+                templatePreset.options[panels.activeTemplatePresetIndexRef.current] ??
+                  templatePreset.options[0],
               )
               return true
             }
@@ -318,6 +329,14 @@ export const createMarkdownEditorKeymaps = ({
                   selection: { anchor: line.from },
                 })
               }
+              return true
+            }
+
+            if (
+              line.text.trim() === "/templatePreset" &&
+              isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
+            ) {
+              panels.openTemplatePresetPanel(view)
               return true
             }
 
@@ -444,6 +463,10 @@ export const createMarkdownEditorKeymaps = ({
             }
             if (panels.gitWorktreePanelRef.current) {
               panels.closeGitWorktreePanel()
+              return true
+            }
+            if (panels.templatePresetPanelRef.current) {
+              panels.closeTemplatePresetPanel()
               return true
             }
             if (panels.sendPromptPanelRef.current) {

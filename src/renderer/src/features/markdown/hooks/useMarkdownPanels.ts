@@ -33,6 +33,7 @@ import type {
   MarkdownSendPromptOption,
   MarkdownSlashCommand,
   MarkdownSlashCommandLine,
+  TemplatePresetOption,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   getMarkdownSendPromptFlagOptions,
@@ -41,6 +42,7 @@ import {
   getMarkdownSlashCommands,
   getTemplatePlaceholderSelectionRange,
   isMarkdownConfirmCommandArmed,
+  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
   createMarkdownTemplateFileReference,
@@ -124,6 +126,15 @@ export interface GitWorktreePanelState {
 }
 
 /**
+ * 模板预设选择面板状态。
+ */
+export interface TemplatePresetPanelState {
+  options: TemplatePresetOption[]
+  line: MarkdownSlashCommandLine
+  position: CSSProperties
+}
+
+/**
  * 管理编辑器弹出面板（斜杠命令、块命令、文件提及、页面变量）的状态同步与交互。
  */
 export const useMarkdownPanels = ({
@@ -172,6 +183,8 @@ export const useMarkdownPanels = ({
   const activeSlashCommandIndexRef = useRef(0)
   const gitWorktreePanelRef = useRef<GitWorktreePanelState | null>(null)
   const activeGitWorktreeIndexRef = useRef(0)
+  const templatePresetPanelRef = useRef<TemplatePresetPanelState | null>(null)
+  const activeTemplatePresetIndexRef = useRef(0)
   const sendPromptPanelRef = useRef<MarkdownSendPromptPanelState | null>(null)
   const activeSendPromptIndexRef = useRef(0)
   const sendPromptFlagPanelRef = useRef<MarkdownSendPromptFlagPanelState | null>(null)
@@ -204,6 +217,10 @@ export const useMarkdownPanels = ({
   const [activeSlashCommandIndex, setActiveSlashCommandIndex] = useState(0)
   const [gitWorktreePanel, setGitWorktreePanel] = useState<GitWorktreePanelState | null>(null)
   const [activeGitWorktreeIndex, setActiveGitWorktreeIndex] = useState(0)
+  const [templatePresetPanel, setTemplatePresetPanel] = useState<TemplatePresetPanelState | null>(
+    null,
+  )
+  const [activeTemplatePresetIndex, setActiveTemplatePresetIndex] = useState(0)
   const [sendPromptPanel, setSendPromptPanel] = useState<MarkdownSendPromptPanelState | null>(null)
   const [activeSendPromptIndex, setActiveSendPromptIndex] = useState(0)
   const [sendPromptFlagPanel, setSendPromptFlagPanel] =
@@ -330,6 +347,16 @@ export const useMarkdownPanels = ({
   }
 
   /**
+   * 关闭模板预设选择面板。
+   */
+  const closeTemplatePresetPanel = (): void => {
+    templatePresetPanelRef.current = null
+    activeTemplatePresetIndexRef.current = 0
+    setTemplatePresetPanel(null)
+    setActiveTemplatePresetIndex(0)
+  }
+
+  /**
    * 关闭 Prompt 发送目标选择面板。
    */
   const closeSendPromptPanel = (): void => {
@@ -364,6 +391,14 @@ export const useMarkdownPanels = ({
         commandLine?.value !== gitWorktreePanel.line.value)
     ) {
       closeGitWorktreePanel()
+    }
+    const templatePresetPanel = templatePresetPanelRef.current
+    if (
+      templatePresetPanel &&
+      (commandLine?.from !== templatePresetPanel.line.from ||
+        commandLine?.value !== templatePresetPanel.line.value)
+    ) {
+      closeTemplatePresetPanel()
     }
     const sendPromptPanel = sendPromptPanelRef.current
     if (
@@ -506,6 +541,57 @@ export const useMarkdownPanels = ({
       (activeGitWorktreeIndexRef.current + offset + panel.options.length) % panel.options.length
     activeGitWorktreeIndexRef.current = nextIndex
     setActiveGitWorktreeIndex(nextIndex)
+    return true
+  }
+
+  /**
+   * 打开模板预设选择面板：以当前光标处命令行为锚，列出预设选项。
+   */
+  const openTemplatePresetPanel = (view: EditorView): void => {
+    const cursor = view.state.selection.main.head
+    const line = view.state.doc.lineAt(cursor)
+    const commandLine = getMarkdownSlashCommandLine(line.text, line.from, line.to)
+    const coords = view.coordsAtPos(cursor)
+    if (!coords) return
+
+    const panel: TemplatePresetPanelState = {
+      options: MARKDOWN_TEMPLATE_PRESET_OPTIONS,
+      line: commandLine ?? { from: line.from, to: line.to, value: line.text },
+      position: getMarkdownPanelPosition("file", coords),
+    }
+    templatePresetPanelRef.current = panel
+    activeTemplatePresetIndexRef.current = 0
+    setTemplatePresetPanel(panel)
+    setActiveTemplatePresetIndex(0)
+  }
+
+  /**
+   * 选中模板预设选项：将当前行替换为预设内容（严格顶格移除所有行首缩进）。
+   */
+  const selectTemplatePreset = (option: TemplatePresetOption): void => {
+    const view = editorViewRef.current
+    const panel = templatePresetPanelRef.current
+    if (!view || !panel) return
+
+    view.dispatch({
+      changes: { from: panel.line.from, to: panel.line.to, insert: option.content },
+      selection: { anchor: panel.line.from + option.content.length },
+    })
+    view.focus()
+    closeTemplatePresetPanel()
+  }
+
+  /**
+   * 更新模板预设选择面板的当前选项。
+   */
+  const handleTemplatePresetKey = (offset: number): boolean => {
+    const panel = templatePresetPanelRef.current
+    if (!panel) return false
+
+    const nextIndex =
+      (activeTemplatePresetIndexRef.current + offset + panel.options.length) % panel.options.length
+    activeTemplatePresetIndexRef.current = nextIndex
+    setActiveTemplatePresetIndex(nextIndex)
     return true
   }
 
@@ -686,7 +772,7 @@ export const useMarkdownPanels = ({
       return
     }
 
-    // 选择型命令（/gitWorktree、/sendPrompt）：回显命令文本后打开二级工作区/目标面板，选中后回显分支名/目标、回车触发。
+    // 选择型命令（/gitWorktree、/sendPrompt、/templatePreset）：回显命令文本后打开二级工作区/目标/预设面板，选中后回车触发。
     if (command.kind === "select") {
       view.dispatch({
         changes: { from: panel.line.from, to: panel.line.to, insert: command.content },
@@ -696,6 +782,8 @@ export const useMarkdownPanels = ({
       closeSlashCommandPanel()
       if (command.id === "sendPrompt") {
         openSendPromptPanel(view)
+      } else if (command.id === "templatePreset") {
+        openTemplatePresetPanel(view)
       } else {
         openGitWorktreePanel(view)
       }
@@ -1196,6 +1284,8 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndex,
     gitWorktreePanel,
     activeGitWorktreeIndex,
+    templatePresetPanel,
+    activeTemplatePresetIndex,
     sendPromptPanel,
     activeSendPromptIndex,
     sendPromptFlagPanel,
@@ -1208,6 +1298,8 @@ export const useMarkdownPanels = ({
     activeSlashCommandIndexRef,
     gitWorktreePanelRef,
     activeGitWorktreeIndexRef,
+    templatePresetPanelRef,
+    activeTemplatePresetIndexRef,
     sendPromptPanelRef,
     activeSendPromptIndexRef,
     sendPromptFlagPanelRef,
@@ -1217,6 +1309,7 @@ export const useMarkdownPanels = ({
     closeFileMentionPanel,
     closeSlashCommandPanel,
     closeGitWorktreePanel,
+    closeTemplatePresetPanel,
     closeSendPromptPanel,
     closeSendPromptFlagPanel,
     syncSlashCommandPanel,
@@ -1224,6 +1317,9 @@ export const useMarkdownPanels = ({
     handleSlashCommandKey,
     selectGitWorktree,
     handleGitWorktreeKey,
+    openTemplatePresetPanel,
+    selectTemplatePreset,
+    handleTemplatePresetKey,
     openSendPromptPanel,
     selectSendPrompt,
     handleSendPromptKey,

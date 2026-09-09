@@ -10,6 +10,7 @@ import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/Ma
 import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
 import { MarkdownVariableCommandMenu } from "@/features/markdown/components/MarkdownVariableCommandMenu"
+import { TemplatePresetCommandMenu } from "@/features/markdown/components/TemplatePresetCommandMenu"
 import type { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import type { UseMarkdownPasteReferenceResult } from "@/features/markdown/hooks/useMarkdownPasteReference"
 
@@ -58,6 +59,13 @@ export const MarkdownCommandPanels = ({
         options={panels.gitWorktreePanel?.options}
         position={panels.gitWorktreePanel?.position}
         visible={Boolean(panels.gitWorktreePanel)}
+      />
+      <TemplatePresetCommandMenu
+        activeIndex={panels.activeTemplatePresetIndex}
+        options={panels.templatePresetPanel?.options}
+        position={panels.templatePresetPanel?.position}
+        visible={Boolean(panels.templatePresetPanel)}
+        onSelect={panels.selectTemplatePreset}
       />
       <MarkdownSendPromptCommandMenu
         activeIndex={panels.activeSendPromptIndex}
