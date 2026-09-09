@@ -234,4 +234,42 @@ describe("markdownRenderer", () => {
     expect(html).toContain('<span class="markdown-template-title">修复缺陷</span>')
     expect(html).toContain('data-template-status="done"')
   })
+
+  it("拦截文档顶部的 Frontmatter 变量声明，不在预览区渲染分割线或裸 YAML 字符", () => {
+    const markdown = `---
+vars:
+  core: @src/core/index.ts
+  auth: @[refer-folder](/path/to/auth)
+---
+
+# 正文标题
+正文内容`
+
+    const html = markdownRenderer.render(markdown)
+    expect(html).not.toContain("<hr>")
+    expect(html).not.toContain("core:")
+    expect(html).not.toContain("vars:")
+    expect(html).toContain("正文标题")
+    expect(html).toContain("正文内容")
+  })
+
+  it("拦截 $$$ varTemplate 变量模板块，不在预览区渲染，同时保留正文内容", () => {
+    const markdown = `$$$ varTemplate --start 「title: 变量」
+api_host: "https://api.github.com"
+temp:
+  """
+  var
+  """
+$$$ varTemplate --end
+
+# 正文标题
+正文内容`
+
+    const html = markdownRenderer.render(markdown)
+    expect(html).not.toContain("varTemplate")
+    expect(html).not.toContain("api_host")
+    expect(html).not.toContain("https://api.github.com")
+    expect(html).toContain("正文标题")
+    expect(html).toContain("正文内容")
+  })
 })

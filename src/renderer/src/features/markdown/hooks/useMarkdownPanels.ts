@@ -48,10 +48,22 @@ import {
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
+import { isInsideMarkdownVariableBlock } from "@/features/markdown/commands/markdownVariableCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
+import {
+  type MarkdownColonPanelState,
+  useMarkdownColonPanel,
+} from "@/features/markdown/hooks/useMarkdownColonPanel"
+import {
+  type MarkdownVariablePanelState,
+  useMarkdownVariablePanel,
+} from "@/features/markdown/hooks/useMarkdownVariablePanel"
 import type { MarkdownFileMentionEntry } from "@/features/markdown/types"
+import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 import { launchNewCliTerminal } from "@/features/markdown/utils/markdownSendPromptDispatcher"
 import { useTerminalStore } from "@/features/terminal/terminalStore"
+
+export type { MarkdownColonPanelState, MarkdownVariablePanelState }
 
 /**
  * Prompt 发送目标面板状态。
@@ -108,48 +120,8 @@ export interface GitWorktreePanelState {
   position: CSSProperties
 }
 
-type MarkdownPanelKind = "block" | "file" | "slash"
-
 /**
- * 将样式配置中的尺寸换算为像素，供面板边界定位使用。
- */
-const getCssDimensionInPixels = (variableName: string): number => {
-  const cssValue = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim()
-  const value = Number.parseFloat(cssValue)
-  if (!Number.isFinite(value)) return 0
-
-  if (cssValue.endsWith("rem")) {
-    return value * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
-  }
-  if (cssValue.endsWith("vh")) return (value / 100) * window.innerHeight
-  if (cssValue.endsWith("vw")) return (value / 100) * window.innerWidth
-
-  return value
-}
-
-/**
- * 根据 CSS 中的面板尺寸计算可视区域内的位置。
- */
-const getMarkdownPanelPosition = (
-  kind: MarkdownPanelKind,
-  coords: { bottom: number; left: number; top: number },
-  horizontalPosition = coords.left,
-): CSSProperties => {
-  const panelWidth = getCssDimensionInPixels(`--markdown-command-menu-${kind}-width`)
-  const maxHeight = getCssDimensionInPixels(`--markdown-command-menu-${kind}-max-height`)
-  const offset = 6
-  const left = Math.min(
-    Math.max(horizontalPosition, 8),
-    Math.max(window.innerWidth - panelWidth - 8, 8),
-  )
-
-  return window.innerHeight - coords.bottom < maxHeight
-    ? { left, top: "auto", bottom: window.innerHeight - coords.top + offset }
-    : { left, top: coords.bottom + offset, bottom: "auto" }
-}
-
-/**
- * 管理编辑器弹出面板（斜杠命令、块命令、文件提及）的状态同步与交互。
+ * 管理编辑器弹出面板（斜杠命令、块命令、文件提及、页面变量）的状态同步与交互。
  */
 export const useMarkdownPanels = ({
   editorViewRef,
@@ -238,6 +210,8 @@ export const useMarkdownPanels = ({
   const [activeFileMentionIndex, setActiveFileMentionIndex] = useState(0)
   const [templateFilePanel, setTemplateFilePanel] = useState<FileMentionPanelState | null>(null)
   const [activeTemplateFileIndex, setActiveTemplateFileIndex] = useState(0)
+  const variablePanelState = useMarkdownVariablePanel({ editorViewRef })
+  const colonPanelState = useMarkdownColonPanel(editorViewRef)
 
   onSearchFilesRef.current = onSearchFiles
   onSearchReferencedFilesRef.current = onSearchReferencedFiles
@@ -407,12 +381,13 @@ export const useMarkdownPanels = ({
     const isInsideTemplateBlock = isInsideMarkdownTemplateBlock(
       view.state.doc.sliceString(0, line.from),
     )
+    const isInsideVarBlock = isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
 
     // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt opencode:my-dev -n）
     const flagMatch = /^\/sendPrompt\s+([^\s]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
       commandLine?.value ?? "",
     )
-    if (flagMatch && isInsideTemplateBlock) {
+    if (flagMatch && isInsideTemplateBlock && !isInsideVarBlock) {
       closeSlashCommandPanel()
       closeSendPromptPanel()
       openSendPromptFlagPanel(view, flagMatch[1], flagMatch[2])
@@ -422,13 +397,14 @@ export const useMarkdownPanels = ({
     }
 
     // 已武装的确认命令行不弹面板，等待二次回车触发。
-    const isArmed = commandLine
-      ? isMarkdownConfirmCommandArmed(
-          commandLine.value,
-          isInsideTemplateBlock,
-          customSlashCommandsRef.current,
-        )
-      : false
+    const isArmed =
+      commandLine && !isInsideVarBlock
+        ? isMarkdownConfirmCommandArmed(
+            commandLine.value,
+            isInsideTemplateBlock,
+            customSlashCommandsRef.current,
+          )
+        : false
     const commands = commandLine
       ? getMarkdownSlashCommands(
           commandLine.value,
@@ -436,6 +412,7 @@ export const useMarkdownPanels = ({
           Boolean(projectPathRef.current) && worktreesRef.current !== null,
           customSlashCommandsRef.current,
           localeRef.current,
+          isInsideVarBlock,
         )
       : []
     const coords = view.coordsAtPos(cursor)
@@ -737,9 +714,36 @@ export const useMarkdownPanels = ({
       )
     }
 
+    let selection = command.selectionRange
+      ? {
+          anchor: panel.line.from + command.selectionRange.start,
+          head: panel.line.from + command.selectionRange.end,
+        }
+      : { anchor: panel.line.from + command.cursorOffset }
+
+    if (command.scope === "varTemplate") {
+      const lineText = view.state.doc.sliceString(panel.line.from, panel.line.to)
+      const lineIndentMatch = lineText.match(/^([ \t]*)/)
+      const indent = lineIndentMatch ? lineIndentMatch[1] : ""
+      if (indent.length > 0) {
+        content = content
+          .split("\n")
+          .map((l) => `${indent}${l}`)
+          .join("\n")
+        if (command.selectionRange) {
+          selection = {
+            anchor: panel.line.from + indent.length + command.selectionRange.start,
+            head: panel.line.from + indent.length + command.selectionRange.end,
+          }
+        } else {
+          selection = { anchor: panel.line.from + indent.length + command.cursorOffset }
+        }
+      }
+    }
+
     view.dispatch({
       changes: { from: panel.line.from, to: panel.line.to, insert: content },
-      selection: { anchor: panel.line.from + command.cursorOffset },
+      selection,
     })
     view.focus()
     closeSlashCommandPanel()
@@ -1219,5 +1223,21 @@ export const useMarkdownPanels = ({
     selectBlockCommand,
     handleBlockCommandKey,
     setBlockCommandPanel,
+    variablePanel: variablePanelState.variablePanel,
+    activeVariableIndex: variablePanelState.activeVariableIndex,
+    variablePanelRef: variablePanelState.variablePanelRef,
+    activeVariableIndexRef: variablePanelState.activeVariableIndexRef,
+    closeVariablePanel: variablePanelState.closeVariablePanel,
+    syncVariablePanel: variablePanelState.syncVariablePanel,
+    selectVariable: variablePanelState.selectVariable,
+    handleVariableKey: variablePanelState.handleVariableKey,
+    colonPanel: colonPanelState.colonPanelState,
+    colonPanelRef: colonPanelState.colonPanelRef,
+    activeColonOptionIndex: colonPanelState.activeColonOptionIndex,
+    activeColonOptionIndexRef: colonPanelState.activeColonOptionIndexRef,
+    syncColonPanel: colonPanelState.syncColonPanel,
+    closeColonPanel: colonPanelState.closeColonPanel,
+    handleColonKey: colonPanelState.handleColonKey,
+    selectColonOption: colonPanelState.selectColonOption,
   }
 }

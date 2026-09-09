@@ -3,9 +3,20 @@ import {
   cycleMarkdownTemplateStatus,
   MARKDOWN_LOG_START_RE,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  cleanVarBlockItems,
+  mergeMarkdownVarBlock,
+  moveMarkdownVarBlockToTop,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import { buildMarkdownMarkerDecorations } from "@/features/markdown/extensions/markerDecorations"
 import { markdownBlockFoldToggleEffect } from "@/features/markdown/extensions/markerWidgets"
 import { stripEmptyTemplateItems } from "@/features/markdown/utils/markdownRenderer"
+
+// 标记插件弹窗提示接口。
+export interface MarkdownMarkerToast {
+  success?: (message: string) => void
+  warning?: (message: string) => void
+}
 
 /**
  * 为不同 Markdown 标记添加独立颜色，弥补语法标签共用造成的辨识度不足。
@@ -13,6 +24,8 @@ import { stripEmptyTemplateItems } from "@/features/markdown/utils/markdownRende
 export const markdownMarkerHighlight = (
   showFolding = false,
   getReferencedProjectNames?: () => Set<string>,
+  toast?: MarkdownMarkerToast,
+  t?: (key: string) => string,
 ) => {
   const markerPlugin = ViewPlugin.fromClass(
     class {
@@ -21,6 +34,7 @@ export const markdownMarkerHighlight = (
       templateFoldedIndices = new Set<number>()
       suppleFoldedIndices = new Set<number>()
       logFoldedIndices = new Set<number>()
+      varFoldedIndices = new Set<number>()
       initialLogScanned = false
       wasComposing = false
       referencedNamesKey = ""
@@ -46,6 +60,12 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleLogFold(view, index),
           (startLine, endLine) => this.deleteLogBlock(view, startLine, endLine),
           (startLine, endLine) => this.cleanLogBlock(view, startLine, endLine),
+          this.varFoldedIndices,
+          (index) => this.toggleVarFold(view, index),
+          (startLine, endLine) => this.deleteVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.cleanVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.mergeVarBlock(view, startLine, endLine),
+          (startLine, endLine) => this.moveVarBlockToTop(view, startLine, endLine),
         )
       }
 
@@ -107,6 +127,12 @@ export const markdownMarkerHighlight = (
           (index) => this.toggleLogFold(update.view, index),
           (startLine, endLine) => this.deleteLogBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.cleanLogBlock(update.view, startLine, endLine),
+          this.varFoldedIndices,
+          (index) => this.toggleVarFold(update.view, index),
+          (startLine, endLine) => this.deleteVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.cleanVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.mergeVarBlock(update.view, startLine, endLine),
+          (startLine, endLine) => this.moveVarBlockToTop(update.view, startLine, endLine),
         )
       }
 
@@ -267,6 +293,77 @@ export const markdownMarkerHighlight = (
             insert: cleaned,
           },
         })
+      }
+
+      toggleVarFold(view: EditorView, index: number) {
+        if (this.varFoldedIndices.has(index)) {
+          this.varFoldedIndices.delete(index)
+        } else {
+          this.varFoldedIndices.add(index)
+        }
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
+      }
+
+      deleteVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? doc.lines - 1 : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
+      }
+
+      cleanVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeEndLine = endLine < startLine ? doc.lines : endLine
+        if (safeEndLine <= startLine + 1) return
+
+        const innerLines: string[] = []
+        for (let l = startLine + 1; l < safeEndLine; l++) {
+          innerLines.push(doc.line(l + 1).text)
+        }
+
+        const cleaned = cleanVarBlockItems(innerLines.join("\n"))
+        const firstInnerLine = doc.line(startLine + 2)
+        const lastInnerLine = doc.line(safeEndLine)
+
+        view.dispatch({
+          changes: {
+            from: firstInnerLine.from,
+            to: lastInnerLine.to,
+            insert: cleaned,
+          },
+        })
+      }
+
+      mergeVarBlock(view: EditorView, startLine: number, endLine: number) {
+        const result = mergeMarkdownVarBlock(view.state.doc, startLine, endLine)
+        if (result.isAlreadyTop) {
+          toast?.warning?.(t?.("markdown.varBlockAlreadyAtTop") ?? "当前变量模板块已在最顶部")
+          return
+        }
+        if (result.success && result.changes) {
+          view.dispatch({ changes: result.changes })
+          toast?.success?.(t?.("markdown.varBlockMerged") ?? "已合并到顶部变量模板块")
+        }
+      }
+
+      moveVarBlockToTop(view: EditorView, startLine: number, endLine: number) {
+        const result = moveMarkdownVarBlockToTop(view.state.doc, startLine, endLine)
+        if (result.isAlreadyTop) {
+          toast?.warning?.(t?.("markdown.varBlockAlreadyAtTop") ?? "当前变量模板块已在最顶部")
+          return
+        }
+        if (result.success && result.changes) {
+          view.dispatch({ changes: result.changes })
+          toast?.success?.(t?.("markdown.varBlockMovedToTop") ?? "已将变量模板块调整到顶部")
+        }
       }
     },
     { decorations: (plugin) => plugin.decorations },

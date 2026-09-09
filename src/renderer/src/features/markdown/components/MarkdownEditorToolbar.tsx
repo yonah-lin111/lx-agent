@@ -1,9 +1,24 @@
-import { ChevronLeft, ChevronRight, Keyboard, Plus, Search, Table2, Trash2 } from "lucide-react"
+import {
+  Braces,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Keyboard,
+  Plus,
+  Search,
+  Table2,
+  Trash2,
+} from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { getMarkdownTemplateStatuses } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  filterMarkdownVariables,
+  type MarkdownVariableEntry,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import type {
   MarkdownPage,
   MarkdownTableSize,
@@ -21,6 +36,8 @@ interface MarkdownEditorToolbarProps {
   pages?: MarkdownPage[]
   activePageIndex?: number
   pageName?: string
+  variables?: MarkdownVariableEntry[]
+  onInsertVariable?: (variable: MarkdownVariableEntry) => void
   onPageChange?: (index: number) => void
   onPageNameChange?: (name: string) => void
   onCreatePage?: () => void
@@ -69,6 +86,8 @@ export const MarkdownEditorToolbar = ({
   pages = [],
   activePageIndex = 0,
   pageName = "",
+  variables = [],
+  onInsertVariable,
   onPageChange,
   onPageNameChange,
   onCreatePage,
@@ -77,6 +96,8 @@ export const MarkdownEditorToolbar = ({
 }: MarkdownEditorToolbarProps): React.JSX.Element => {
   const [tableSize, setTableSize] = useState<MarkdownTableSize | null>(null)
   const [shortcutQuery, setShortcutQuery] = useState("")
+  const [variableQuery, setVariableQuery] = useState("")
+  const [copiedVarName, setCopiedVarName] = useState<string | null>(null)
   const [isEditingPageName, setIsEditingPageName] = useState(false)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isPageListOpen, setIsPageListOpen] = useState(false)
@@ -475,6 +496,83 @@ export const MarkdownEditorToolbar = ({
     </div>
   )
 
+  const filteredVariables = useMemo(() => {
+    if (!variables) return []
+    const q = variableQuery.trim().toLowerCase()
+    if (!q) return variables
+    return filterMarkdownVariables(variables, q)
+  }, [variables, variableQuery])
+
+  const variableList = (
+    <div className="flex w-72 flex-col gap-2" aria-label={t("markdown.pageVariables")}>
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5 text-xs text-white/70">
+        <span className="font-medium">{t("markdown.pageVariables")}</span>
+        {variables.length > 0 && (
+          <span className="text-[11px] text-white/40">
+            {t("markdown.variablesCount", { count: variables.length })}
+          </span>
+        )}
+      </div>
+      <LxInput
+        aria-label={t("common.search")}
+        placeholder={t("common.search")}
+        prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
+        size="xs"
+        value={variableQuery}
+        onChange={(event) => setVariableQuery(event.target.value)}
+      />
+      <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1">
+        {filteredVariables.map((variable) => (
+          <div
+            key={variable.name}
+            className="flex items-center justify-between gap-2 rounded-[4px] bg-white/5 p-1.5 text-xs transition-colors hover:bg-white/8"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-mono text-xs font-medium text-white">
+                ${variable.name}
+              </div>
+              <div className="mt-0.5 truncate font-mono text-[11px] text-white/45">
+                {variable.value.replaceAll("\n", " ").trim() || t("markdown.variableNoPreview")}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                aria-label={t("common.copy")}
+                className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                onClick={() => {
+                  void navigator.clipboard.writeText(variable.value)
+                  setCopiedVarName(variable.name)
+                  setTimeout(() => setCopiedVarName(null), 1500)
+                }}
+              >
+                {copiedVarName === variable.name ? (
+                  <Check className="h-3 w-3 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </button>
+              {onInsertVariable && (
+                <button
+                  type="button"
+                  className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white/70 hover:bg-white/20 hover:text-white"
+                  onClick={() => onInsertVariable(variable)}
+                >
+                  {t("common.insert")}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {filteredVariables.length === 0 && (
+          <div className="py-3 text-center text-xs text-white/45">
+            {variables.length === 0 ? t("markdown.variablesEmpty") : t("common.none")}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   const firstRightActionIndex = actions.findIndex(({ alignRight }) => alignRight)
   const leftActions =
     firstRightActionIndex === -1 ? actions : actions.slice(0, firstRightActionIndex)
@@ -525,6 +623,21 @@ export const MarkdownEditorToolbar = ({
       >
         <LxIconButton aria-label={t("markdown.shortcutsHint")} size="small">
           <Keyboard className="h-3.5 w-3.5" />
+        </LxIconButton>
+      </LxTooltip>
+      <LxTooltip
+        hover={{
+          content: t("markdown.pageVariables"),
+          placement: "bottom",
+        }}
+        click={{
+          content: variableList,
+          placement: "bottom",
+          contentClassName: "!p-2",
+        }}
+      >
+        <LxIconButton aria-label={t("markdown.pageVariables")} size="small">
+          <Braces className="h-3.5 w-3.5" />
         </LxIconButton>
       </LxTooltip>
 

@@ -627,6 +627,121 @@
   font-weight: bold;
 }
 
+/* 8.3 编辑区 varTemplate 变量模板块（深板岩 / 凝灰岩 3D 像素实体卡片） */
+[data-theme="minecraft"] .cm-md-var-template-start-line,
+[data-theme="minecraft"] .cm-md-var-template-middle-line,
+[data-theme="minecraft"] .cm-md-var-template-end-line {
+  background-color: #16181f !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2316181f'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%231a1d26'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23121319'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%231d202b'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23222532'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%23181a23'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23212533'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%2314151c'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%231b1e28'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%231e212c'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%2316181f'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%23252a38'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%2313151b'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23111218'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%231f232f'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%23171a23'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23222634'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%232a2f3f'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%2332384a'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230e0f14'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%2332384a'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230e0f14'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-start-line {
+  border: 2px solid #000000 !important;
+  border-bottom: 2px solid #232733 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(148, 163, 184, 0.35),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px 0px #000000 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-middle-line {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(148, 163, 184, 0.25),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 0px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-end-line {
+  border: 2px solid #000000 !important;
+  border-top: none !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(148, 163, 184, 0.25),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-marker {
+  color: #94a3b8 !important;
+  font-weight: bold;
+  text-shadow: 2px 2px 0px #000000;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-command {
+  background-color: #1e222d !important;
+  color: #93c5fd !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-flag {
+  background-color: #1a1d26 !important;
+  color: #94a3b8 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] .cm-md-var-template-title {
+  color: #cbd5e1 !important;
+  font-weight: bold;
+  text-shadow: 2px 2px 0px #000000;
+}
+
+/* 8.1 变量模板块键值对语法高亮与非法行错误提示 */
+[data-theme="minecraft"] .cm-md-var-key {
+  color: #93c5fd !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] .cm-md-var-colon {
+  color: #94a3b8 !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] .cm-md-var-value {
+  color: #86efac !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-string {
+  color: #a7f3d0 !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-triple-quote {
+  color: #fde68a !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] .cm-md-var-comment {
+  color: #64748b !important;
+  font-style: italic;
+}
+
+[data-theme="minecraft"] .cm-md-var-invalid-line {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+[data-theme="minecraft"] .cm-md-var-invalid-text {
+  color: #f87171 !important;
+  text-decoration: underline wavy #f87171 !important;
+  text-underline-offset: 3px !important;
+}
+
 /* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */
 [data-theme="minecraft"] .cm-editor .cm-md-file-mention,
 [data-theme="minecraft"] .cm-editor .cm-md-file-mention * {

@@ -3,6 +3,8 @@ import { EditorView } from "@codemirror/view"
 import { cleanup, render, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { LxMarkdownEditor } from "@/features/markdown/LxMarkdownEditor"
+import * as i18nModule from "@/i18n"
+import { zh } from "@/i18n/locales/zh"
 
 vi.stubGlobal(
   "ResizeObserver",
@@ -21,6 +23,18 @@ const getCm = (): HTMLElement | null => document.querySelector(".cm-content")
 beforeEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.spyOn(i18nModule, "useTranslation").mockReturnValue({
+    locale: "zh",
+    setLocale: vi.fn(),
+    t: (key: any) => {
+      const parts = String(key).split(".")
+      let cur: any = zh
+      for (const p of parts) {
+        cur = cur?.[p]
+      }
+      return typeof cur === "string" ? cur : String(key)
+    },
+  })
   ;(window as unknown as { api: unknown }).api = {
     git: {
       getStatus: vi

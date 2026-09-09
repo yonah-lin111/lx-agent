@@ -12,6 +12,9 @@ export type MarkdownTemplateCommandId =
   | "styleTemplate"
   | "suppleTemplate"
   | "logTemplate"
+  | "varTemplate"
+  | "singleLine"
+  | "multiLine"
 
 // Markdown 斜杠命令标识。
 export type MarkdownSlashCommandId =
@@ -56,8 +59,8 @@ export interface MarkdownSendPromptFlagOption {
   tag: string
 }
 
-// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，both = 两者皆可。
-export type MarkdownSlashCommandScope = "normal" | "template" | "both"
+// Markdown 斜杠命令可用范围：normal = 模板块外（文档正文），template = 模板块内，varTemplate = 变量模板块内，both = 两者皆可。
+export type MarkdownSlashCommandScope = "normal" | "template" | "varTemplate" | "both"
 
 // Markdown 斜杠命令触发类型：
 // - direct = 面板选中即插入内容；
@@ -76,6 +79,7 @@ export interface MarkdownSlashCommand {
   description: string
   content: string
   cursorOffset: number
+  selectionRange?: { start: number; end: number }
   scope: MarkdownSlashCommandScope
   kind: MarkdownSlashCommandKind
   source?: MarkdownSlashCommandSource
@@ -102,6 +106,12 @@ export const getTemplateCursorOffset = (content: string): number => {
     }
     offset += line.length + 1
   }
+  // 如果没有列表项占位符，且包含空标题「title: 」，则将光标精准定位在标题冒号之后
+  const titleEmptyMatch = /「title:\s*」/.exec(content)
+  if (titleEmptyMatch && titleEmptyMatch.index !== undefined) {
+    return titleEmptyMatch.index + "「title: ".length
+  }
+
   return content.length
 }
 
@@ -123,6 +133,21 @@ export const getTemplatePlaceholderSelectionRange = (
 }
 
 /**
+ * 计算变量模板初始插入时的选中范围，默认高亮选中首行 key: "var" 中的 key 标识。
+ */
+export const getVarTemplateInitialSelectionRange = (
+  content: string,
+): { start: number; end: number } | undefined => {
+  const match = /^([ \t]*)([A-Za-z0-9_.-]+)\s*:/m.exec(content)
+  if (!match || match.index === undefined) return undefined
+  const start = match.index + match[1].length
+  return {
+    start,
+    end: start + match[2].length,
+  }
+}
+
+/**
  * 根据语言环境构造内置 Markdown 模板命令。
  */
 export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): MarkdownSlashCommand[] => {
@@ -135,8 +160,21 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const styleContent = dict.markdown.templateStyleContent
   const suppleContent = dict.markdown.templateSuppleContent
   const logContent = dict.markdown.templateLogContent
+  const varContent = dict.markdown.templateVarContent
+  const varSelection = getVarTemplateInitialSelectionRange(varContent)
 
   const templates: MarkdownSlashCommand[] = [
+    {
+      id: "varTemplate",
+      label: "/varTemplate",
+      description: dict.markdown.templateVarDesc,
+      scope: "normal",
+      kind: "direct",
+      source: "builtin",
+      content: varContent,
+      cursorOffset: varSelection ? varSelection.end : getTemplateCursorOffset(varContent),
+      selectionRange: varSelection,
+    },
     {
       id: "addTemplate",
       label: "/addTemplate",
@@ -246,7 +284,40 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     cursorOffset: "/gitWorktree ".length,
   }
 
-  return [...templates, suppleTemplate, logTemplate, sendPrompt, summaryTitle, gitWorktree]
+  const singleLine: MarkdownSlashCommand = {
+    id: "singleLine",
+    label: "/singleLine",
+    description: dict.markdown.templateSingleLineDesc,
+    scope: "varTemplate",
+    kind: "direct",
+    source: "builtin",
+    content: 'key: "value"',
+    cursorOffset: 3,
+    selectionRange: { start: 0, end: 3 },
+  }
+
+  const multiLine: MarkdownSlashCommand = {
+    id: "multiLine",
+    label: "/multiLine",
+    description: dict.markdown.templateMultiLineDesc,
+    scope: "varTemplate",
+    kind: "direct",
+    source: "builtin",
+    content: ["key:", '  """', "  var", '  """'].join("\n"),
+    cursorOffset: 3,
+    selectionRange: { start: 0, end: 3 },
+  }
+
+  return [
+    ...templates,
+    suppleTemplate,
+    logTemplate,
+    sendPrompt,
+    summaryTitle,
+    gitWorktree,
+    singleLine,
+    multiLine,
+  ]
 }
 
 /**
@@ -742,7 +813,7 @@ export const getMarkdownSlashCommandLine = (
 }
 
 /**
- * 获取与当前斜杠命令匹配的候选项；按光标所在上下文（模板块内/外）过滤命令可用范围。
+ * 获取与当前斜杠命令匹配的候选项；按光标所在上下文（模板块内/外、变量模板块内）过滤命令可用范围。
  * isGitWorktreeAvailable 为 false 时排除 git 工作区切换命令（如 virtual 项目无 git 上下文）。
  * customCommands 支持传入自定义 Markdown 模板命令（已按 Project 覆盖 User 排序）。
  */
@@ -752,17 +823,27 @@ export const getMarkdownSlashCommands = (
   isGitWorktreeAvailable = true,
   customCommands: MarkdownSlashCommand[] = [],
   locale: Locale = "zh",
+  isInsideVarBlock = false,
 ): MarkdownSlashCommand[] => {
   const match = /^\/([a-zA-Z0-9_-]*)$/i.exec(value)
   if (!match) return []
 
   const query = match[1].toLowerCase()
-  const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
   const builtinCommands = getBuiltinMarkdownSlashCommands(locale)
   const allCommands = [...builtinCommands, ...customCommands]
 
+  if (isInsideVarBlock) {
+    return allCommands.filter(
+      (command) =>
+        command.scope === "varTemplate" &&
+        (isFuzzyMatch(query, command.id) || isFuzzyMatch(query, command.label.replace(/^\//, ""))),
+    )
+  }
+
+  const expectedScope: MarkdownSlashCommandScope = isInsideTemplateBlock ? "template" : "normal"
   return allCommands.filter(
     (command) =>
+      command.scope !== "varTemplate" &&
       (command.scope === expectedScope || command.scope === "both") &&
       (isFuzzyMatch(query, command.id) || isFuzzyMatch(query, command.label.replace(/^\//, ""))) &&
       (command.id !== "gitWorktree" || isGitWorktreeAvailable),

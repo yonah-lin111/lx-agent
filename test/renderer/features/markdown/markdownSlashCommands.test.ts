@@ -25,10 +25,12 @@ describe("Markdown 斜杠命令", () => {
   })
 
   it("模板块外匹配模板命令与全局工作区命令", () => {
+    expect(getMarkdownSlashCommands("/var", false).map((c) => c.id)).toEqual(["varTemplate"])
     expect(getMarkdownSlashCommands("/add", false).map((c) => c.id)).toEqual(["addTemplate"])
     expect(getMarkdownSlashCommands("/sum", false)).toEqual([])
     expect(getMarkdownSlashCommands("/git", false).map((c) => c.id)).toEqual(["gitWorktree"])
     expect(getMarkdownSlashCommands("/", false).map((c) => c.id)).toEqual([
+      "varTemplate",
       "addTemplate",
       "bugTemplate",
       "refactorTemplate",
@@ -90,6 +92,74 @@ describe("Markdown 斜杠命令", () => {
     expect(enSend[0]?.description).toBe(
       "Send current template block prompt to Agent or Terminal CLI",
     )
+  })
+
+  it("在 $$$ 变量模板块内仅允许 singleLine 和 multiLine 两个斜杠命令，并排除其余命令", () => {
+    // 变量块内仅匹配 singleLine 和 multiLine
+    const allVarCommands = getMarkdownSlashCommands("/", false, true, [], "zh", true)
+    expect(allVarCommands.map((c) => c.id)).toEqual(["singleLine", "multiLine"])
+
+    // 关键字与模糊匹配
+    expect(
+      getMarkdownSlashCommands("/single", false, true, [], "zh", true).map((c) => c.id),
+    ).toEqual(["singleLine"])
+    expect(
+      getMarkdownSlashCommands("/multi", false, true, [], "zh", true).map((c) => c.id),
+    ).toEqual(["multiLine"])
+    expect(getMarkdownSlashCommands("/sl", false, true, [], "zh", true).map((c) => c.id)).toEqual([
+      "singleLine",
+    ])
+    expect(getMarkdownSlashCommands("/ml", false, true, [], "zh", true).map((c) => c.id)).toEqual([
+      "multiLine",
+    ])
+
+    // 其余所有命令（无论普通、模板还是全局）均不可用
+    expect(getMarkdownSlashCommands("/var", false, true, [], "zh", true)).toEqual([])
+    expect(getMarkdownSlashCommands("/add", false, true, [], "zh", true)).toEqual([])
+    expect(getMarkdownSlashCommands("/git", false, true, [], "zh", true)).toEqual([])
+    expect(getMarkdownSlashCommands("/send", false, true, [], "zh", true)).toEqual([])
+
+    // 默认高亮选中 key
+    const singleCmd = allVarCommands.find((c) => c.id === "singleLine")!
+    expect(singleCmd.content).toBe('key: "value"')
+    expect(singleCmd.selectionRange).toEqual({ start: 0, end: 3 })
+    expect(
+      singleCmd.content.slice(singleCmd.selectionRange!.start, singleCmd.selectionRange!.end),
+    ).toBe("key")
+
+    const multiCmd = allVarCommands.find((c) => c.id === "multiLine")!
+    expect(multiCmd.content).toBe(["key:", '  """', "  var", '  """'].join("\n"))
+    expect(multiCmd.selectionRange).toEqual({ start: 0, end: 3 })
+    expect(
+      multiCmd.content.slice(multiCmd.selectionRange!.start, multiCmd.selectionRange!.end),
+    ).toBe("key")
+
+    // 多语言描述
+    const enVarCommands = getMarkdownSlashCommands("/", false, true, [], "en", true)
+    const enSingle = enVarCommands.find((c) => c.id === "singleLine")!
+    const enMulti = enVarCommands.find((c) => c.id === "multiLine")!
+    expect(singleCmd.description).toBe("新建单行变量")
+    expect(multiCmd.description).toBe("新建多行变量")
+    expect(enSingle.description).toBe("New single-line variable")
+    expect(enMulti.description).toBe("New multi-line variable")
+
+    // 变量块外禁止出现 singleLine 与 multiLine
+    expect(getMarkdownSlashCommands("/single", false, true, [], "zh", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/multi", false, true, [], "zh", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/single", true, true, [], "zh", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/multi", true, true, [], "zh", false)).toEqual([])
+    expect(
+      getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
+    ).not.toContain("singleLine")
+    expect(
+      getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
+    ).not.toContain("multiLine")
+    expect(
+      getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
+    ).not.toContain("singleLine")
+    expect(
+      getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
+    ).not.toContain("multiLine")
   })
 })
 

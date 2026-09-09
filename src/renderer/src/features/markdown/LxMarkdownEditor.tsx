@@ -17,6 +17,7 @@ import { Eye, Redo2, SquareSplitHorizontal, Undo2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { useGitWorktrees } from "@/features/git"
+import { parseMarkdownVariables } from "@/features/markdown/commands/markdownVariableCommands"
 import { MarkdownCommandPanels } from "@/features/markdown/components/MarkdownCommandPanels"
 import { MarkdownEditorToolbar } from "@/features/markdown/components/MarkdownEditorToolbar"
 import { MarkdownStatusBar } from "@/features/markdown/components/MarkdownStatusBar"
@@ -84,6 +85,10 @@ export const LxMarkdownEditor = ({
   const { t, locale } = useTranslation()
   const showToastSuccessRef = useRef(success)
   showToastSuccessRef.current = success
+  const showToastWarningRef = useRef(warning)
+  showToastWarningRef.current = warning
+  const tRef = useRef(t)
+  tRef.current = t
 
   const isRightSidebarCollapsed = useSyncExternalStore(
     rightSidebarStore.subscribe,
@@ -180,6 +185,8 @@ export const LxMarkdownEditor = ({
     scrollToBottom: () => actions.scrollToBottom(),
     warning,
   })
+
+  const currentVariables = useMemo(() => parseMarkdownVariables(page.content), [page.content])
 
   const previewHtml = useMemo(
     () =>
@@ -284,7 +291,15 @@ export const LxMarkdownEditor = ({
         editorTheme,
         lineFlashField,
         markdownReferenceHover,
-        markdownMarkerHighlight(showFolding, () => referencedRootsRef.current),
+        markdownMarkerHighlight(
+          showFolding,
+          () => referencedRootsRef.current,
+          {
+            success: (msg) => showToastSuccessRef.current(msg),
+            warning: (msg) => showToastWarningRef.current(msg),
+          },
+          (k) => tRef.current(k as Parameters<typeof t>[0]),
+        ),
         ...(showLineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
         ...(showFolding
           ? [foldState, markdownHeadingFolding, markdownFoldGutter, keymap.of(foldKeymap)]
@@ -303,10 +318,14 @@ export const LxMarkdownEditor = ({
           if (update.docChanged) {
             panelsRef.current.syncFileMentionPanel(update.view)
             panelsRef.current.syncTemplateFilePanel(update.view)
+            panelsRef.current.syncVariablePanel(update.view)
+            panelsRef.current.syncColonPanel(update.view)
           }
           if (update.selectionSet && !update.docChanged) {
             panelsRef.current.closeFileMentionPanel()
             panelsRef.current.closeTemplateFilePanel()
+            panelsRef.current.closeVariablePanel()
+            panelsRef.current.closeColonPanel()
           }
           if (update.docChanged) {
             const nextContent = update.state.doc.toString()
@@ -386,6 +405,8 @@ export const LxMarkdownEditor = ({
         pages={pages}
         activePageIndex={page.activePageIndex}
         pageName={page.pageName}
+        variables={currentVariables}
+        onInsertVariable={(variable) => actions.insertText(variable.value)}
         onPageChange={page.switchPage}
         onPageNameChange={page.renamePage}
         onCreatePage={page.createPage}

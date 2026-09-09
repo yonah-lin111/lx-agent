@@ -5,6 +5,11 @@ import {
   isInsideMarkdownCodeFence,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  isInsideMarkdownVariableBlock,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+  MARKDOWN_VAR_TEMPLATE_START_RE,
+} from "@/features/markdown/commands/markdownVariableCommands"
 
 /**
  * 为 ATX 标题提供折叠范围，直到下一个同级或更高层级标题。
@@ -15,7 +20,8 @@ export const markdownHeadingFolding = foldService.of((state, lineStart) => {
   if (
     !headingMatch ||
     isInsideMarkdownCodeFence(state.doc.sliceString(0, headingLine.from)) ||
-    isInsideMarkdownTemplateBlock(state.doc.sliceString(0, headingLine.from))
+    isInsideMarkdownTemplateBlock(state.doc.sliceString(0, headingLine.from)) ||
+    isInsideMarkdownVariableBlock(state.doc.toString(), headingLine.from)
   ) {
     return null
   }
@@ -28,6 +34,7 @@ export const markdownHeadingFolding = foldService.of((state, lineStart) => {
       !nextHeadingMatch ||
       isInsideMarkdownCodeFence(state.doc.sliceString(0, nextLine.from)) ||
       isInsideMarkdownTemplateBlock(state.doc.sliceString(0, nextLine.from)) ||
+      isInsideMarkdownVariableBlock(state.doc.toString(), nextLine.from) ||
       nextHeadingMatch[1].length > headingLevel
     ) {
       continue
@@ -82,8 +89,22 @@ export const markdownFoldGutter = gutter({
             line.text,
           )
         const isInsideTemplate = isInsideMarkdownTemplateBlock(prefix)
+        const isVarTemplateLine =
+          MARKDOWN_VAR_TEMPLATE_START_RE.test(line.text) ||
+          MARKDOWN_VAR_TEMPLATE_END_RE.test(line.text)
+        const isInsideVarTemplate = isInsideMarkdownVariableBlock(
+          view.state.doc.toString(),
+          line.from,
+        )
 
-        if (!isFenceLine && !isInsideFence && !isTemplateLine && !isInsideTemplate) {
+        if (
+          !isFenceLine &&
+          !isInsideFence &&
+          !isTemplateLine &&
+          !isInsideTemplate &&
+          !isVarTemplateLine &&
+          !isInsideVarTemplate
+        ) {
           let isFolded = false
           foldedRanges(view.state).between(line.from, line.to, (fromPos) => {
             if (fromPos >= line.from && fromPos <= line.to) isFolded = true
@@ -114,8 +135,22 @@ export const markdownFoldGutter = gutter({
           docLine.text,
         )
       const isInsideTemplate = isInsideMarkdownTemplateBlock(prefix)
+      const isVarTemplateLine =
+        MARKDOWN_VAR_TEMPLATE_START_RE.test(docLine.text) ||
+        MARKDOWN_VAR_TEMPLATE_END_RE.test(docLine.text)
+      const isInsideVarTemplate = isInsideMarkdownVariableBlock(
+        view.state.doc.toString(),
+        docLine.from,
+      )
 
-      if (isFenceLine || isInsideFence || isTemplateLine || isInsideTemplate) {
+      if (
+        isFenceLine ||
+        isInsideFence ||
+        isTemplateLine ||
+        isInsideTemplate ||
+        isVarTemplateLine ||
+        isInsideVarTemplate
+      ) {
         return false
       }
 

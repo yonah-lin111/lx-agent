@@ -3,6 +3,7 @@ import {
   type MarkdownTemplateStatus,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import { stripMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
+import { MARKDOWN_VAR_TEMPLATE_END_RE } from "@/features/markdown/commands/markdownVariableCommands"
 import {
   CodeBlockActionWidget,
   type MarkerDecoItem,
@@ -54,6 +55,17 @@ export interface MarkerBlockScanContext {
   onToggleLogFold: (index: number) => void
   onDeleteLogBlock: (startLine: number, endLine: number) => void
   onCleanLogBlock: (startLine: number, endLine: number) => void
+
+  isInsideVarBlock: boolean
+  isInsideVarTripleQuotes?: boolean
+  currentVarFolded: boolean
+  varBlockIndex: number
+  varFoldedIndices: Set<number>
+  onToggleVarFold: (index: number) => void
+  onDeleteVarBlock: (startLine: number, endLine: number) => void
+  onCleanVarBlock: (startLine: number, endLine: number) => void
+  onMergeVarBlock: (startLine: number, endLine: number) => void
+  onMoveVarBlockToTop?: (startLine: number, endLine: number) => void
 }
 
 // 模板块状态对应的 CSS 类后缀。
@@ -326,6 +338,280 @@ export const handleTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean =>
     ctx.isInsideSuppleBlock = false
     ctx.currentTemplateFolded = false
     ctx.currentTemplateStatus = "todo"
+    return true
+  }
+
+  return false
+}
+
+// 处理变量模板块（$$$ varTemplate ... $$$ varTemplate --end）的起止标记与操作按钮。
+export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean => {
+  const varStartMatch = ctx.line.match(
+    /^(\s*)\$\$\$\s*(?:(varTemplate)(?:\s+(--start))?(?:\s+「title:[^」\n]*」)?)?\s*$/,
+  )
+  const varEndMatch = ctx.line.match(/^\s*\$\$\$(?:\s+(?:varTemplate)\s+--end|\s+--end)?\s*$/)
+
+  if (varStartMatch && !ctx.isInsideVarBlock) {
+    const startLine = ctx.i
+    const currentVarIndex = ctx.varBlockIndex++
+    ctx.currentVarFolded = ctx.varFoldedIndices.has(currentVarIndex)
+    let varEndIndex = -1
+
+    for (let j = ctx.i + 1; j < ctx.lines.length; j++) {
+      if (MARKDOWN_VAR_TEMPLATE_END_RE.test(ctx.lines[j])) {
+        varEndIndex = j
+        break
+      }
+    }
+
+    const markerStart = ctx.line.indexOf("$$$")
+    if (markerStart !== -1) {
+      ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-var-template-marker")
+    }
+
+    if (varStartMatch[2]) {
+      const commandIndex = ctx.line.indexOf(
+        varStartMatch[2],
+        (markerStart === -1 ? 0 : markerStart) + 3,
+      )
+      if (commandIndex !== -1) {
+        ctx.addMarkerAlways(
+          commandIndex,
+          commandIndex + varStartMatch[2].length,
+          "cm-md-var-template-command",
+        )
+      }
+    }
+
+    if (varStartMatch[3]) {
+      const flagIndex = ctx.line.indexOf(
+        varStartMatch[3],
+        (markerStart === -1 ? 0 : markerStart) + 3,
+      )
+      if (flagIndex !== -1) {
+        ctx.addMarkerAlways(
+          flagIndex,
+          flagIndex + varStartMatch[3].length,
+          "cm-md-var-template-flag",
+        )
+      }
+    }
+
+    const titleMatch = ctx.line.match(/「title:[^」\n]*」/)
+    if (titleMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        titleMatch.index,
+        titleMatch.index + titleMatch[0].length,
+        "cm-md-var-template-title",
+      )
+    }
+
+    ctx.allDecos.push({
+      type: "widget",
+      from: ctx.offset + ctx.line.length,
+      to: ctx.offset + ctx.line.length,
+      widget: new CodeBlockActionWidget(
+        "",
+        ctx.currentVarFolded,
+        () => ctx.onToggleVarFold(currentVarIndex),
+        ctx.showFolding,
+        "cm-var-template-block-action-wrap",
+        undefined,
+        undefined,
+        undefined,
+        null,
+        startLine,
+        () => ctx.onDeleteVarBlock(startLine, varEndIndex),
+        () => ctx.onCleanVarBlock(startLine, varEndIndex),
+        false,
+        false,
+        varEndIndex,
+        null,
+        true,
+        () => ctx.onMergeVarBlock(startLine, varEndIndex),
+        ctx.onMoveVarBlockToTop ? () => ctx.onMoveVarBlockToTop!(startLine, varEndIndex) : null,
+      ),
+    })
+
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: "cm-md-var-template-start-line",
+    })
+
+    ctx.isInsideVarBlock = true
+    ctx.isInsideVarTripleQuotes = false
+    return true
+  }
+
+  if (varEndMatch && ctx.isInsideVarBlock) {
+    const markerStart = ctx.line.indexOf("$$$")
+    if (markerStart !== -1) {
+      ctx.addMarkerAlways(markerStart, markerStart + 3, "cm-md-var-template-marker")
+    }
+    const endCommandMatch = ctx.line.match(/varTemplate/)
+    if (endCommandMatch?.index !== undefined) {
+      ctx.addMarkerAlways(
+        endCommandMatch.index,
+        endCommandMatch.index + 11,
+        "cm-md-var-template-command",
+      )
+    }
+    const endFlagMatch = ctx.line.match(/--end/)
+    if (endFlagMatch?.index !== undefined) {
+      ctx.addMarkerAlways(endFlagMatch.index, endFlagMatch.index + 5, "cm-md-var-template-flag")
+    }
+
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: ctx.currentVarFolded
+        ? "cm-md-var-template-hidden-line"
+        : "cm-md-var-template-end-line",
+    })
+
+    ctx.isInsideVarBlock = false
+    ctx.isInsideVarTripleQuotes = false
+    ctx.currentVarFolded = false
+    return true
+  }
+
+  if (ctx.isInsideVarBlock) {
+    if (ctx.currentVarFolded) {
+      ctx.allDecos.push({
+        type: "line",
+        from: ctx.offset,
+        className: "cm-md-var-template-hidden-line",
+      })
+      return true
+    }
+
+    let isInvalid = false
+
+    if (ctx.isInsideVarTripleQuotes) {
+      const tripleIndex = ctx.line.indexOf('"""')
+      if (tripleIndex !== -1) {
+        if (tripleIndex > 0) {
+          ctx.addMarkerAlways(0, tripleIndex, "cm-md-var-value")
+        }
+        ctx.addMarkerAlways(tripleIndex, tripleIndex + 3, "cm-md-var-triple-quote")
+        ctx.isInsideVarTripleQuotes = false
+        const rest = ctx.line.slice(tripleIndex + 3)
+        const commentMatch = rest.match(/^(\s*)(#|\/\/)/)
+        if (commentMatch) {
+          const commentStart = tripleIndex + 3 + rest.indexOf(commentMatch[2])
+          ctx.addMarkerAlways(commentStart, ctx.line.length, "cm-md-var-comment")
+        } else if (rest.trim()) {
+          ctx.addMarkerAlways(tripleIndex + 3, ctx.line.length, "cm-md-var-invalid-text")
+          isInvalid = true
+        }
+      } else {
+        if (ctx.line.trim().length > 0) {
+          ctx.addMarkerAlways(0, ctx.line.length, "cm-md-var-value")
+        }
+      }
+    } else {
+      const trimmed = ctx.line.trim()
+      if (trimmed === "") {
+        // 空白行属于合法分隔
+      } else {
+        const commentMatch = ctx.line.match(/^(\s*)(#|\/\/)(.*)$/)
+        const standaloneTripleMatch = ctx.line.match(/^(\s*)("""\s*)$/)
+        const kvMatch = ctx.line.match(/^(\s*)([A-Za-z0-9_.-]+)\s*(:)(.*)$/)
+
+        if (commentMatch) {
+          const commentStart = commentMatch[1].length
+          ctx.addMarkerAlways(commentStart, ctx.line.length, "cm-md-var-comment")
+        } else if (standaloneTripleMatch) {
+          const tripleStart = ctx.line.indexOf('"""')
+          ctx.addMarkerAlways(tripleStart, tripleStart + 3, "cm-md-var-triple-quote")
+          ctx.isInsideVarTripleQuotes = true
+        } else if (kvMatch) {
+          const indent = kvMatch[1]
+          const key = kvMatch[2]
+          const rest = kvMatch[4]
+          const keyStart = indent.length
+          const keyEnd = keyStart + key.length
+          ctx.addMarkerAlways(keyStart, keyEnd, "cm-md-var-key")
+
+          const colonStart = ctx.line.indexOf(":", keyEnd)
+          ctx.addMarkerAlways(colonStart, colonStart + 1, "cm-md-var-colon")
+
+          const trimmedRest = rest.trim()
+          if (trimmedRest === "") {
+            // 纯父级 key，无行内值
+          } else if (trimmedRest.startsWith("#") || trimmedRest.startsWith("//")) {
+            const commentStart = ctx.line.indexOf(trimmedRest[0], colonStart + 1)
+            ctx.addMarkerAlways(commentStart, ctx.line.length, "cm-md-var-comment")
+          } else if (
+            trimmedRest === "|" ||
+            trimmedRest === ">" ||
+            trimmedRest === "|-" ||
+            trimmedRest === ">-"
+          ) {
+            const valStart = ctx.line.indexOf(trimmedRest, colonStart + 1)
+            ctx.addMarkerAlways(valStart, valStart + trimmedRest.length, "cm-md-var-value")
+          } else if (trimmedRest.startsWith('"""')) {
+            if (trimmedRest.length >= 6 && trimmedRest.endsWith('"""')) {
+              const firstTriple = ctx.line.indexOf('"""', colonStart + 1)
+              const lastTriple = ctx.line.lastIndexOf('"""')
+              ctx.addMarkerAlways(firstTriple, firstTriple + 3, "cm-md-var-triple-quote")
+              if (lastTriple > firstTriple + 3) {
+                ctx.addMarkerAlways(firstTriple + 3, lastTriple, "cm-md-var-string")
+              }
+              ctx.addMarkerAlways(lastTriple, lastTriple + 3, "cm-md-var-triple-quote")
+            } else {
+              const tripleStart = ctx.line.indexOf('"""', colonStart + 1)
+              ctx.addMarkerAlways(tripleStart, tripleStart + 3, "cm-md-var-triple-quote")
+              ctx.isInsideVarTripleQuotes = true
+              if (tripleStart + 3 < ctx.line.length) {
+                ctx.addMarkerAlways(tripleStart + 3, ctx.line.length, "cm-md-var-value")
+              }
+            }
+          } else {
+            const stringMatch = rest.match(/^\s*(["'])([\s\S]*?)\1(\s*(?:#|\/\/).*)?$/)
+            if (stringMatch) {
+              const quoteChar = stringMatch[1]
+              const qStart = ctx.line.indexOf(quoteChar, colonStart + 1)
+              const qEnd = qStart + 1 + stringMatch[2].length + 1
+              ctx.addMarkerAlways(qStart, qEnd, "cm-md-var-string")
+              if (stringMatch[3]) {
+                const cmt = stringMatch[3].trim()
+                const cmtStart = ctx.line.indexOf(cmt[0], qEnd)
+                ctx.addMarkerAlways(cmtStart, ctx.line.length, "cm-md-var-comment")
+              }
+            } else {
+              const cmtIdx = rest.search(/\s+(#|\/\/)/)
+              if (cmtIdx !== -1) {
+                const valPart = rest.slice(0, cmtIdx).trimEnd()
+                const valStart = ctx.line.indexOf(valPart.trim(), colonStart + 1)
+                ctx.addMarkerAlways(valStart, valStart + valPart.trim().length, "cm-md-var-value")
+                const cmtPart = rest.slice(cmtIdx).trimStart()
+                const cmtStart = ctx.line.indexOf(cmtPart[0], valStart + valPart.trim().length)
+                ctx.addMarkerAlways(cmtStart, ctx.line.length, "cm-md-var-comment")
+              } else {
+                const valStart = ctx.line.indexOf(trimmedRest, colonStart + 1)
+                ctx.addMarkerAlways(valStart, valStart + trimmedRest.length, "cm-md-var-value")
+              }
+            }
+          }
+        } else {
+          isInvalid = true
+          const firstNonSpace = ctx.line.search(/\S/)
+          if (firstNonSpace !== -1) {
+            ctx.addMarkerAlways(firstNonSpace, ctx.line.length, "cm-md-var-invalid-text")
+          }
+        }
+      }
+    }
+
+    ctx.allDecos.push({
+      type: "line",
+      from: ctx.offset,
+      className: isInvalid
+        ? "cm-md-var-template-middle-line cm-md-var-invalid-line"
+        : "cm-md-var-template-middle-line",
+    })
     return true
   }
 

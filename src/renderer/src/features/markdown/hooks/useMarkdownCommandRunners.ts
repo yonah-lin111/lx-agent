@@ -19,6 +19,7 @@ import {
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
+import { stripMarkdownFrontmatter } from "@/features/markdown/commands/markdownVariableCommands"
 import {
   stripEmptyTemplateItems,
   stripMarkdownSubblockFences,
@@ -285,9 +286,11 @@ export const useMarkdownCommandRunners = ({
           : parsed.target
         : getMarkdownSelectCommandValue(line.text, isInsideTemplate) || "agent"
       const autoEnter = parsed?.flag === "-enter"
-      const cleanedPrompt = stripEmptyTemplateItems(
-        stripMarkdownTemplateComments(
-          stripMarkdownSlashCommands(stripMarkdownSubblockFences(blockContent)),
+      const cleanedPrompt = stripMarkdownFrontmatter(
+        stripEmptyTemplateItems(
+          stripMarkdownTemplateComments(
+            stripMarkdownSlashCommands(stripMarkdownSubblockFences(blockContent)),
+          ),
         ),
       ).trim()
 

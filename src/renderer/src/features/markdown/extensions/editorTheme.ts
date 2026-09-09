@@ -412,6 +412,94 @@ export const editorTheme = EditorView.theme(
       paddingLeft: "8px",
       paddingBottom: "4px",
     },
+    ".cm-md-var-template-hidden-line": {
+      display: "none !important",
+    },
+    ".cm-md-var-template-marker, .cm-md-var-template-marker *": {
+      color: "#94a3b8 !important",
+      fontWeight: "700",
+    },
+    ".cm-md-var-template-command, .cm-md-var-template-command *": {
+      color: "#cbd5e1 !important",
+      backgroundColor: "rgba(148, 163, 184, 0.14) !important",
+      padding: "1px 6px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-var-template-flag, .cm-md-var-template-flag *": {
+      color: "#94a3b8 !important",
+      backgroundColor: "rgba(148, 163, 184, 0.1) !important",
+      padding: "1px 5px !important",
+      borderRadius: "3px !important",
+      fontWeight: "700 !important",
+    },
+    ".cm-md-var-template-title, .cm-md-var-template-title *": {
+      color: "#e2e8f0 !important",
+      fontWeight: "600",
+    },
+    ".cm-md-var-template-start-line": {
+      borderTop: "1.5px solid rgba(148, 163, 184, 0.35)",
+      borderLeft: "2px solid rgba(148, 163, 184, 0.35)",
+      borderRight: "2px solid rgba(148, 163, 184, 0.35)",
+      borderBottom: "1px solid rgba(148, 163, 184, 0.2)",
+      borderTopLeftRadius: "6px",
+      borderTopRightRadius: "6px",
+      backgroundColor: "rgba(148, 163, 184, 0.04)",
+      boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 3px 8px rgba(0, 0, 0, 0.25)",
+      paddingLeft: "8px",
+      paddingRight: "112px",
+      boxSizing: "border-box",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-var-template-middle-line": {
+      borderLeft: "2px solid rgba(148, 163, 184, 0.35)",
+      borderRight: "2px solid rgba(148, 163, 184, 0.35)",
+      backgroundColor: "rgba(148, 163, 184, 0.04)",
+      boxShadow: "inset 1px 0 0 rgba(255, 255, 255, 0.04), inset -1px 0 0 rgba(0, 0, 0, 0.3)",
+      paddingLeft: "8px",
+    },
+    ".cm-md-var-template-end-line": {
+      borderBottom: "2px solid rgba(148, 163, 184, 0.35)",
+      borderLeft: "2px solid rgba(148, 163, 184, 0.35)",
+      borderRight: "2px solid rgba(148, 163, 184, 0.35)",
+      borderBottomLeftRadius: "6px",
+      borderBottomRightRadius: "6px",
+      backgroundColor: "rgba(148, 163, 184, 0.04)",
+      boxShadow: "inset 0 -1px 0 rgba(0, 0, 0, 0.4), 0 3px 8px rgba(0, 0, 0, 0.25)",
+      paddingLeft: "8px",
+      paddingBottom: "4px",
+    },
+    ".cm-md-var-key, .cm-md-var-key *": {
+      color: "#93c5fd !important",
+      fontWeight: "600",
+    },
+    ".cm-md-var-colon, .cm-md-var-colon *": {
+      color: "#94a3b8 !important",
+      fontWeight: "700",
+    },
+    ".cm-md-var-value, .cm-md-var-value *": {
+      color: "#cbd5e1 !important",
+    },
+    ".cm-md-var-string, .cm-md-var-string *": {
+      color: "#86efac !important",
+    },
+    ".cm-md-var-triple-quote, .cm-md-var-triple-quote *": {
+      color: "#fde68a !important",
+      fontWeight: "700",
+    },
+    ".cm-md-var-comment, .cm-md-var-comment *": {
+      color: "#64748b !important",
+      fontStyle: "italic",
+    },
+    ".cm-md-var-invalid-line": {
+      backgroundColor: "rgba(239, 68, 68, 0.08) !important",
+    },
+    ".cm-md-var-invalid-text, .cm-md-var-invalid-text *": {
+      color: "#fca5a5 !important",
+      textDecoration: "underline wavy rgba(239, 68, 68, 0.7) !important",
+      textUnderlineOffset: "3px",
+    },
     ".cm-md-inline-code-marker, .cm-md-inline-code-marker *": {
       color: "#fb7185 !important",
       fontWeight: "700",
@@ -473,14 +561,14 @@ export const editorTheme = EditorView.theme(
     ".cm-md-code-fence-hidden-line": {
       display: "none !important",
     },
-    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace, .cm-md-template-comment-line .cm-monospace":
+    ".cm-md-code-fence-start-line .cm-monospace, .cm-md-code-fence-middle-line .cm-monospace, .cm-md-code-fence-end-line .cm-monospace, .cm-md-template-start-line .cm-monospace, .cm-md-template-middle-line .cm-monospace, .cm-md-template-end-line .cm-monospace, .cm-md-template-comment-line .cm-monospace, .cm-md-var-template-start-line .cm-monospace, .cm-md-var-template-middle-line .cm-monospace, .cm-md-var-template-end-line .cm-monospace":
       {
         color: "inherit !important",
         backgroundColor: "transparent !important",
         padding: "0 !important",
         borderRadius: "0 !important",
       },
-    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node)":
+    ".cm-md-code-fence-start-line span:not(.cm-md-code-fence-language):not(.markdown-file-mention-node), .cm-md-code-fence-middle-line span:not(.markdown-file-mention-node), .cm-md-code-fence-end-line span:not(.markdown-file-mention-node), .cm-md-template-start-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-title):not(.markdown-file-mention-node), .cm-md-template-middle-line span:not(.markdown-file-mention-node), .cm-md-template-end-line span:not(.cm-md-template-command):not(.cm-md-template-flag):not(.cm-md-template-done):not(.cm-md-template-id):not(.cm-md-template-wt):not(.markdown-file-mention-node), .cm-md-template-comment-line span:not(.markdown-file-mention-node), .cm-md-var-template-start-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.cm-md-var-template-title):not(.markdown-file-mention-node), .cm-md-var-template-middle-line span:not(.cm-md-var-key):not(.cm-md-var-colon):not(.cm-md-var-value):not(.cm-md-var-string):not(.cm-md-var-triple-quote):not(.cm-md-var-comment):not(.cm-md-var-invalid-text):not(.markdown-file-mention-node), .cm-md-var-template-end-line span:not(.cm-md-var-template-command):not(.cm-md-var-template-flag):not(.markdown-file-mention-node)":
       {
         backgroundColor: "transparent !important",
         padding: "0 !important",

@@ -1,6 +1,7 @@
 import { GitWorktreeCommandMenu } from "@/features/git"
 import { FileMentionCommandMenu } from "@/features/markdown/components/FileMentionCommandMenu"
 import { MarkdownBlockCommandMenu } from "@/features/markdown/components/MarkdownBlockCommandMenu"
+import { MarkdownColonCommandMenu } from "@/features/markdown/components/MarkdownColonCommandMenu"
 import {
   buildPasteReferenceOptions,
   MarkdownPasteCommandMenu,
@@ -8,6 +9,7 @@ import {
 import { MarkdownSendPromptCommandMenu } from "@/features/markdown/components/MarkdownSendPromptCommandMenu"
 import { MarkdownSendPromptFlagCommandMenu } from "@/features/markdown/components/MarkdownSendPromptFlagCommandMenu"
 import { MarkdownSlashCommandMenu } from "@/features/markdown/components/MarkdownSlashCommandMenu"
+import { MarkdownVariableCommandMenu } from "@/features/markdown/components/MarkdownVariableCommandMenu"
 import type { useMarkdownPanels } from "@/features/markdown/hooks/useMarkdownPanels"
 import type { UseMarkdownPasteReferenceResult } from "@/features/markdown/hooks/useMarkdownPasteReference"
 
@@ -82,6 +84,21 @@ export const MarkdownCommandPanels = ({
         label="模板块文件快捷输入"
         position={panels.templateFilePanel?.position}
         visible={Boolean(panels.templateFilePanel)}
+      />
+      <MarkdownVariableCommandMenu
+        activeIndex={panels.activeVariableIndex}
+        position={panels.variablePanel?.position}
+        triggerChar={panels.variablePanel?.triggerChar}
+        variables={panels.variablePanel?.variables}
+        visible={Boolean(panels.variablePanel)}
+        onSelect={panels.selectVariable}
+      />
+      <MarkdownColonCommandMenu
+        activeIndex={panels.activeColonOptionIndex}
+        keyName={panels.colonPanel?.key ?? ""}
+        position={panels.colonPanel?.position}
+        visible={Boolean(panels.colonPanel?.active)}
+        onSelect={(type) => panels.selectColonOption(type)}
       />
     </>
   )
