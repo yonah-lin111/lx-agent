@@ -239,7 +239,7 @@ export const AgentModelSelect = ({
           contentClassName="!p-1"
           content={
             <div className="flex w-max min-w-32 flex-col gap-0.5" role="menu">
-              <div className="agent-model-effort-header flex select-none items-center border-b border-white/10 px-2 py-1 text-[10px] font-medium text-white/40 uppercase tracking-wider">
+              <div className="agent-model-effort-header flex select-none items-center justify-center border-b border-white/10 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-white/40">
                 <span>{t("agent.thinkingEffort")}</span>
               </div>
               {itemVariants.map((v) => {
