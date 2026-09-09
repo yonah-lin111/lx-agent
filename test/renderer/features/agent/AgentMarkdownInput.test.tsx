@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { EditorView } from "@codemirror/view"
 import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -88,11 +90,35 @@ describe("AgentMarkdownInput 工具函数单元测试", () => {
     expect(getSkillMentionQuery("abc$def", 7)).toBeNull()
   })
 
-  it("getArgumentSelectionRange 正确计算参数括号区间", () => {
+  it("getArgumentSelectionRange 正确计算参数括号内部区间（排除括号本身）", () => {
     const text = "/export [html | md | json]"
     const range = getArgumentSelectionRange(text, "/export".length)
-    expect(range.anchor).toBe(8)
-    expect(range.head).toBe(26)
+    expect(range.anchor).toBe(9)
+    expect(range.head).toBe(25)
+    expect(text.slice(range.anchor, range.head)).toBe("html | md | json")
+
+    const steerText = "/steer [prompt]"
+    const steerRange = getArgumentSelectionRange(steerText, "/steer".length)
+    expect(steerRange.anchor).toBe(8)
+    expect(steerRange.head).toBe(14)
+    expect(steerText.slice(steerRange.anchor, steerRange.head)).toBe("prompt")
+
+    const customText = "/custom [target]"
+    const customRange = getArgumentSelectionRange(customText, "/custom".length)
+    expect(customRange.anchor).toBe(9)
+    expect(customRange.head).toBe(15)
+    expect(customText.slice(customRange.anchor, customRange.head)).toBe("target")
+
+    const emptyBracketText = "/cmd []"
+    const emptyRange = getArgumentSelectionRange(emptyBracketText, "/cmd".length)
+    expect(emptyRange.anchor).toBe(6)
+    expect(emptyRange.head).toBe(6)
+
+    const noBracketText = "/cmd param"
+    const noBracketRange = getArgumentSelectionRange(noBracketText, "/cmd".length)
+    expect(noBracketRange.anchor).toBe(5)
+    expect(noBracketRange.head).toBe(10)
+    expect(noBracketText.slice(noBracketRange.anchor, noBracketRange.head)).toBe("param")
   })
 })
 
@@ -267,5 +293,83 @@ describe("AgentMarkdownInput 视图与交互测试", () => {
     const editor = document.querySelector(".cm-content") as HTMLElement
     fireEvent.keyDown(editor, { key: "Escape" })
     expect(currentVal).toBe("")
+  })
+
+  it("在命令面板选中 /steer 时，自动填入 '/steer [prompt]' 并选中内部的 'prompt'", async () => {
+    let updateVal: (val: string) => void = () => {}
+    let currentVal = ""
+    const Harness = () => {
+      const [val, setVal] = useState("")
+      updateVal = setVal
+      currentVal = val
+      return <AgentMarkdownInput value={val} onChange={setVal} onSend={vi.fn()} />
+    }
+
+    render(<Harness />)
+    await act(async () => {})
+    const editor = document.querySelector(".cm-content") as HTMLElement
+
+    // 输入 "/steer" 调起并筛选面板
+    await act(async () => {
+      fireEvent.focus(editor)
+      updateVal("/steer")
+    })
+    await act(async () => {})
+
+    // 回车确认选择 /steer
+    fireEvent.keyDown(editor, { key: "Enter" })
+    expect(currentVal).toBe("/steer [prompt]")
+
+    const cmView = EditorView.findFromDOM(editor)
+    expect(cmView).not.toBeNull()
+    const { from, to } = cmView!.state.selection.main
+    expect(from).toBe(8)
+    expect(to).toBe(14)
+    expect(cmView!.state.doc.sliceString(from, to)).toBe("prompt")
+  })
+
+  it("在命令面板选中带参数的自定义 prompt 命令时，自动填入并选中内部的占位符内容", async () => {
+    vi.mocked(agentApi.listPromptTemplates).mockResolvedValueOnce([
+      {
+        name: "review",
+        description: "Review code",
+        argumentHint: "[branch]",
+        source: "project",
+        filePath: "/test/review.md",
+      },
+    ])
+
+    let updateVal: (val: string) => void = () => {}
+    let currentVal = ""
+    const Harness = () => {
+      const [val, setVal] = useState("")
+      updateVal = setVal
+      currentVal = val
+      return (
+        <AgentMarkdownInput value={val} onChange={setVal} onSend={vi.fn()} projectPath="/test" />
+      )
+    }
+
+    render(<Harness />)
+    await act(async () => {})
+    const editor = document.querySelector(".cm-content") as HTMLElement
+
+    // 输入 "/rev" 筛选自定义模板命令
+    await act(async () => {
+      fireEvent.focus(editor)
+      updateVal("/review")
+    })
+    await act(async () => {})
+
+    // 回车确认选择 /review
+    fireEvent.keyDown(editor, { key: "Enter" })
+    expect(currentVal).toBe("/review [branch]")
+
+    const cmView = EditorView.findFromDOM(editor)
+    expect(cmView).not.toBeNull()
+    const { from, to } = cmView!.state.selection.main
+    expect(from).toBe(9)
+    expect(to).toBe(15)
+    expect(cmView!.state.doc.sliceString(from, to)).toBe("branch")
   })
 })

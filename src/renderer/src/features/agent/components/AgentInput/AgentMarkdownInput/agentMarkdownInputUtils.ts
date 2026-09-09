@@ -73,15 +73,15 @@ export const getMatchedCommands = (
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
 
-  const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS
-    .filter((cmd) => cmd.id !== "project" || allowProjectChange)
-    .map((cmd) => ({
-      id: cmd.id,
-      name: cmd.name,
-      description: t(cmd.descKey),
-      kind: cmd.kind,
-      argumentHint: cmd.argumentHint,
-    }))
+  const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS.filter(
+    (cmd) => cmd.id !== "project" || allowProjectChange,
+  ).map((cmd) => ({
+    id: cmd.id,
+    name: cmd.name,
+    description: t(cmd.descKey),
+    kind: cmd.kind,
+    argumentHint: cmd.argumentHint,
+  }))
 
   const templateCommands: AgentInputCommand[] = templates.map((t) => ({
     id: `prompt:${t.name}`,
@@ -116,11 +116,11 @@ export const getArgumentSelectionRange = (
   const startBracket = insertText.indexOf("[", commandNameLength)
   if (startBracket !== -1) {
     const endBracket = insertText.indexOf("]", startBracket)
-    if (endBracket !== -1 && endBracket > startBracket + 1) {
-      return { anchor: startBracket, head: endBracket + 1 }
+    if (endBracket !== -1 && endBracket >= startBracket + 1) {
+      return { anchor: startBracket + 1, head: endBracket }
     }
   }
-  return { anchor: commandNameLength + 1, head: insertText.length }
+  return { anchor: Math.min(commandNameLength + 1, insertText.length), head: insertText.length }
 }
 
 export const getMentionQuery = (

@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { EditorView } from "@codemirror/view"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -203,6 +205,13 @@ describe("AgentInput Steer 与 Esc 键盘交互", () => {
     fireEvent.keyDown(editor, { key: "Enter" })
 
     expect(currentText).toBe("/steer [prompt]")
+
+    const cmView = EditorView.findFromDOM(editor)
+    expect(cmView).not.toBeNull()
+    const { from, to } = cmView!.state.selection.main
+    expect(from).toBe(8)
+    expect(to).toBe(14)
+    expect(cmView!.state.doc.sliceString(from, to)).toBe("prompt")
   })
 
   it("steer 内容不写入历史提示词（普通发送正常记录）", async () => {
