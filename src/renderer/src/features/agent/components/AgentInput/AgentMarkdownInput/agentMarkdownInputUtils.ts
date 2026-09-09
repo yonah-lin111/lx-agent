@@ -208,3 +208,5 @@ export const getDesignMentionDeletionRange = (
   }
   return null
 }
+
+export { cleanUserPrompt } from "@/features/agent/utils"

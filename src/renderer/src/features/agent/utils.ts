@@ -53,6 +53,34 @@ export const parseQuestionAnswersFromText = (text: string): QuestionAnswer[] | u
   return answers.length > 0 ? answers : undefined
 }
 
+// 清洗用户输入纯文本（剥离 <skill ...> 与 <referenced_design ...> 注入块与命令前缀）。
+export const cleanUserPrompt = (
+  rawText: string,
+  options?: { isSteer?: boolean; command?: { kind?: string; name: string } },
+): string => {
+  let cleaned = rawText
+    .replace(/<skill\b[\s\S]*?<\/skill>\s*/gi, "")
+    .replace(/<referenced_design\b[\s\S]*?(?:<\/referenced_design>|$)\s*/gi, "")
+
+  if (options?.isSteer || options?.command?.name === "steer") {
+    cleaned = cleaned.replace(/^\s*\/steer(?:\s+|$)/, "").trim()
+    cleaned = cleaned.replace(/^[\[【]([\s\S]*?)[\]】]$/, "$1").trim()
+    return cleaned
+  }
+
+  if (options?.command?.kind === "skill") {
+    // 剥离开头的技能命令触发前缀（如 /skill:name 或 $name 或 /name）
+    const skillName = options.command.name.replace(/^[\/\$]/, "")
+    const pattern = new RegExp(
+      `^\\s*(?:/skill:${skillName}|\\$${skillName}|/${skillName})(?:\\s+|$)`,
+      "i",
+    )
+    cleaned = cleaned.replace(pattern, "")
+  }
+
+  return cleaned.trim()
+}
+
 const PROPOSED_PLAN_OPEN_REGEX = /<proposed_plan>/i
 const PROPOSED_PLAN_CLOSE_REGEX = /<\/proposed_plan>/i
 

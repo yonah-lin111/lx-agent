@@ -17,6 +17,7 @@ import type { AgentInputFile } from "../components/AgentInput"
 import { extractDesignMentions } from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import type { ChatBlock, ChatMessage, ProposedPlanData } from "../types"
 import {
+  cleanUserPrompt,
   extractQuestionAnswers,
   extractSubagentData,
   extractToolProgressText,
@@ -608,10 +609,16 @@ export const useAgentChat = (
       const userMessage = removedMessages[0]
       const assistantMessage = removedMessages.find((m) => m.role === "assistant")
 
-      const userPrompt = userMessage?.blocks
+      const rawUserPrompt = userMessage?.blocks
         .filter((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
         .map((b) => b.text)
         .join("\n")
+      const userPrompt = rawUserPrompt
+        ? cleanUserPrompt(rawUserPrompt, {
+            isSteer: userMessage?.isSteer,
+            command: userMessage?.command,
+          })
+        : undefined
 
       const assistantSnippet = assistantMessage?.blocks
         .filter((b): b is Extract<ChatBlock, { kind: "text" }> => b.kind === "text")
@@ -759,10 +766,14 @@ export const useAgentChat = (
     const lastUserIndex = list.findLastIndex((message) => message.role === "user")
     if (lastUserIndex < 0) return
     const userMessage = list[lastUserIndex]
-    const echoed = userMessage.blocks
+    const rawEchoed = userMessage.blocks
       .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
       .map((block) => block.text)
       .join("\n")
+    const echoed = cleanUserPrompt(rawEchoed, {
+      isSteer: userMessage.isSteer,
+      command: userMessage.command,
+    })
     setInputText(echoed)
 
     // 回显附件文件到输入框：直接使用复制路径回显
@@ -1004,7 +1015,7 @@ export const useAgentChat = (
           }
         } else if (contentToSend === undefined) {
           // 发送失败（如队列已满）：回显输入，便于修改后重发。
-          setInputText(text)
+          setInputText(cleanUserPrompt(text))
           setSelectedFiles(
             sendContext.files ? sendContext.files.map((f, i) => ({ id: `err-${i}`, ...f })) : [],
           )
