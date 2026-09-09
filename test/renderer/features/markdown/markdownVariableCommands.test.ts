@@ -1038,5 +1038,109 @@ $$$ varTemplate --end`
       const outsidePos = doc.indexOf("outside") + 15
       expect(isInsideMarkdownVarMultilineString(doc, outsidePos)).toBe(false)
     })
+
+    it("从斜杠菜单选中或输入 / 时，光标处的命令行（如 /、/ap、/apply）被清空为纯换行，保留换行符（参考 /sendPrompt）", () => {
+      const docWithSlash = [
+        "$$$ varTemplate --start 「title: 」",
+        "preset:",
+        "  add:",
+        '    reference: "@docs/specs.md"',
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "",
+        "/",
+        "- Reference: ",
+        "- Location: ",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const slashCursor = docWithSlash.indexOf("\n/\n") + 1
+      const slashResult = applyMarkdownTemplatePreset(docWithSlash, slashCursor)
+      expect(slashResult).not.toBeNull()
+      expect(slashResult!.insert).not.toContain("\n/\n")
+      expect(slashResult!.insert).toContain("- Reference: @docs/specs.md")
+      expect(slashResult!.insert).toBe(
+        [
+          "&&& addTemplate --start 「title: 」",
+          "# Add Requirement",
+          "",
+          "",
+          "- Reference: @docs/specs.md",
+          "- Location: ",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+
+      const docWithAp = [
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "- Reference: ",
+        "/ap",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const apCursor = docWithAp.indexOf("/ap")
+      const apResult = applyMarkdownTemplatePreset(docWithAp, apCursor)
+      expect(apResult).not.toBeNull()
+      expect(apResult!.insert).not.toContain("/ap")
+      expect(apResult!.insert).toBe(
+        [
+          "&&& addTemplate --start 「title: 」",
+          "# Add Requirement",
+          "- Reference: ",
+          "",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+
+      const docWithApply = [
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "- Reference: ",
+        "/apply",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const applyCursor = docWithApply.indexOf("/apply")
+      const applyResult = applyMarkdownTemplatePreset(docWithApply, applyCursor)
+      expect(applyResult).not.toBeNull()
+      expect(applyResult!.insert).not.toContain("/apply")
+      expect(applyResult!.insert).toBe(
+        [
+          "&&& addTemplate --start 「title: 」",
+          "# Add Requirement",
+          "- Reference: ",
+          "",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+    })
+
+    it("即使预设为空或未定义匹配项，应用预设时输入的命令行依然会被清空并保留换行", () => {
+      const docWithoutPreset = [
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "- Reference: ",
+        "/applyPreset",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const cursor = docWithoutPreset.indexOf("/applyPreset")
+      const result = applyMarkdownTemplatePreset(docWithoutPreset, cursor)
+      expect(result).not.toBeNull()
+      expect(result!.insert).not.toContain("/applyPreset")
+      expect(result!.insert).toContain("- Reference: ")
+      expect(result!.insert).toBe(
+        [
+          "&&& addTemplate --start 「title: 」",
+          "# Add Requirement",
+          "- Reference: ",
+          "",
+          "&&& addTemplate --end",
+        ].join("\n"),
+      )
+    })
   })
 })

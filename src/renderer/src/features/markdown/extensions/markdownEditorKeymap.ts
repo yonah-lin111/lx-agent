@@ -340,7 +340,7 @@ export const createMarkdownEditorKeymaps = ({
             )
             const isInsideAnyBlock = isInsideSupple || isInsideTemplate
 
-            if (line.text.trim() === "/applyPreset" && isInsideTemplate) {
+            if (/^\s*\/applyPreset\b/i.test(line.text) && isInsideTemplate) {
               const docText = view.state.doc.toString()
               const applied = applyMarkdownTemplatePreset(docText, line.from)
               if (applied) {

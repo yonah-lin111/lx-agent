@@ -1051,9 +1051,21 @@ export const applyMarkdownTemplatePreset = (
     return null
   }
 
-  const innerLines = lines
-    .slice(startLineIndex + 1, endLineIndex)
-    .filter((l) => !/^\s*\/applyPreset\b/i.test(l))
+  const cursorLineNum = docText.slice(0, cursor).split("\n").length
+  const cursorLineIndex = cursorLineNum - 1
+
+  const innerLines = lines.slice(startLineIndex + 1, endLineIndex).map((l, idx) => {
+    const originalLineIndex = startLineIndex + 1 + idx
+    if (originalLineIndex === cursorLineIndex) {
+      if (/^\s*\/[a-zA-Z0-9_-]*\s*$/i.test(l) || /^\s*\/applyPreset\b/i.test(l)) {
+        return ""
+      }
+    }
+    if (/^\s*\/applyPreset\b/i.test(l)) {
+      return ""
+    }
+    return l
+  })
 
   const newInnerLines: string[] = []
   let i = 0
@@ -1115,10 +1127,23 @@ export const applyMarkdownTemplatePreset = (
   const newBlockLines = [lines[startLineIndex], ...newInnerLines, lines[endLineIndex]]
   const insert = newBlockLines.join("\n")
 
+  let targetCursor = blockFrom
+  const targetLineIdxInNewBlock = Math.min(
+    Math.max(0, cursorLineIndex - startLineIndex),
+    newBlockLines.length - 1,
+  )
+  if (targetLineIdxInNewBlock === 0) {
+    targetCursor = blockFrom + newBlockLines[0].length + 1
+  } else {
+    for (let k = 0; k < targetLineIdxInNewBlock; k++) {
+      targetCursor += newBlockLines[k].length + 1
+    }
+  }
+
   return {
     from: blockFrom,
     to: blockTo,
     insert,
-    cursor: blockFrom + lines[startLineIndex].length + 1,
+    cursor: targetCursor,
   }
 }

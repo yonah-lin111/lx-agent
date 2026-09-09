@@ -380,3 +380,59 @@ describe("LxMarkdownEditor 剪贴板与弹层交互 (useMarkdownPasteReference)"
     expect(event.defaultPrevented).toBe(false)
   })
 })
+
+describe("LxMarkdownEditor /applyPreset 命令执行", () => {
+  it("在 &&& 模板块内输入 /applyPreset 并回车后，输入的命令行被完全移除", async () => {
+    const initialText = [
+      "$$$ varTemplate --start 「title: 」",
+      "preset:",
+      "  add:",
+      '    reference: "@docs/specs.md"',
+      "$$$ varTemplate --end",
+      "",
+      "&&& addTemplate --start 「title: 」",
+      "# Add Requirement",
+      "- Reference: ",
+      "/applyPreset",
+      "&&& addTemplate --end",
+    ].join("\n")
+
+    render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    const commandOffset = initialText.indexOf("/applyPreset") + "/applyPreset".length
+    view.dispatch({
+      selection: { anchor: commandOffset },
+    })
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    expect(view.state.doc.toString()).not.toContain("/applyPreset")
+    expect(view.state.doc.toString()).toContain("- Reference: @docs/specs.md")
+    expect(view.state.doc.toString()).toBe(
+      [
+        "$$$ varTemplate --start 「title: 」",
+        "preset:",
+        "  add:",
+        '    reference: "@docs/specs.md"',
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "- Reference: @docs/specs.md",
+        "",
+        "&&& addTemplate --end",
+      ].join("\n"),
+    )
+  })
+})
