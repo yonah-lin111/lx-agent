@@ -36,7 +36,7 @@ export const extractTailwindCandidates = (html: string): string[] => {
   // 2. 补充提取可能作为动态工具类的属性标记
   const tokens = html.match(/[^\s"'`<>]+/g) || []
   for (const token of tokens) {
-    const cleaned = token.replace(/^[([{<]+|[)\]}>,;]+$/g, "")
+    const cleaned = token.replace(/^["'`({<]+/, "").replace(/["'`)}>,;]+$/, "")
     if (cleaned && (cleaned.includes("-") || cleaned.includes(":") || cleaned.includes("["))) {
       candidates.add(cleaned)
     }

@@ -35,4 +35,20 @@ describe("tailwindCompilerService", () => {
     const css = await compileTailwindCss("")
     expect(css).toBe("")
   })
+
+  it("能正确提取 JS 脚本中动态追加的 Tailwind 任意值工具类并编译", async () => {
+    const html = `
+      <div class="accordion-content grid transition-[grid-template-rows] grid-rows-[0fr]"></div>
+      <script>
+        content.classList.add('grid-rows-[1fr]');
+      </script>
+    `
+    const candidates = extractTailwindCandidates(html)
+    expect(candidates).toContain("grid-rows-[1fr]")
+    expect(candidates).toContain("grid-rows-[0fr]")
+
+    const css = await compileTailwindCss(html)
+    expect(css).toContain("grid-template-rows: 1fr")
+    expect(css).toContain("grid-template-rows: 0fr")
+  })
 })

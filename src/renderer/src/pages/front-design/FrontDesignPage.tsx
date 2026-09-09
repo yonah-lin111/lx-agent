@@ -412,7 +412,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
     const twStyleTag = compiledTailwindCss
       ? `<style id="lx-front-design-tailwind-compiled">${compiledTailwindCss}</style>`
       : ""
-    const sandboxGuardScript = `<script id="lx-sandbox-guard">try{Object.defineProperty(window,'parent',{get:()=>null,configurable:false});Object.defineProperty(window,'top',{get:()=>null,configurable:false});}catch(e){}</script>`
+    const sandboxGuardScript = `<script id="lx-sandbox-guard">try{Object.defineProperty(window,'parent',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'top',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'frameElement',{get:()=>null,set:()=>{},configurable:false});Object.defineProperty(window,'opener',{get:()=>null,set:()=>{},configurable:false});if('electron' in window){try{delete window.electron;}catch(e){}}window.open=()=>null;}catch(e){}</script>`
     let docWithTheme = baseDoc
 
     // 根据模式为 <html> 标签注入或移除 dark 类名
@@ -465,74 +465,102 @@ export const FrontDesignPage = (): React.JSX.Element => {
     }
   }, [handleShortcutKeyDown])
 
-  // 高性能平滑局部增量更新 iframe DOM
-  const updateIframeContent = useCallback((docContent: string) => {
-    const iframe = iframeRef.current
-    if (!iframe) return
+  const isStreamingRef = useRef(isStreaming)
+  isStreamingRef.current = isStreaming
+
+  // 在沙箱内实例化并执行原型 script 标签，同时补齐派发 DOMContentLoaded
+  const executeIframeScripts = useCallback((doc: Document) => {
     try {
-      const doc = iframe.contentDocument
-      if (!doc || !doc.body) return
-
-      const parser = new DOMParser()
-      const parsed = parser.parseFromString(docContent, "text/html")
-
-      // 1. 同步 html 根节点 class 与暗色模式
-      if (parsed.documentElement && doc.documentElement) {
-        if (doc.documentElement.className !== parsed.documentElement.className) {
-          doc.documentElement.className = parsed.documentElement.className
-        }
+      const scripts = Array.from(doc.body.querySelectorAll("script"))
+      for (const oldScript of scripts) {
+        if (oldScript.id === "lx-sandbox-guard") continue
+        const newScript = doc.createElement("script")
+        Array.from(oldScript.attributes).forEach((attr) => {
+          newScript.setAttribute(attr.name, attr.value)
+        })
+        newScript.textContent = oldScript.textContent
+        oldScript.parentNode?.replaceChild(newScript, oldScript)
       }
-
-      // 2. 同步 head 关键样式覆盖
-      const syncStyle = (id: string) => {
-        const newStyle = parsed.getElementById(id)
-        let currentStyle = doc.getElementById(id)
-        if (newStyle) {
-          if (!currentStyle) {
-            currentStyle = doc.createElement("style")
-            currentStyle.id = id
-            doc.head?.appendChild(currentStyle)
-          }
-          if (currentStyle.textContent !== newStyle.textContent) {
-            currentStyle.textContent = newStyle.textContent
-          }
-        }
-      }
-
-      syncStyle("lx-front-design-theme-override")
-      syncStyle("lx-front-design-tailwind-compiled")
-
-      // 3. 同步文档 head 自定义 style 节点
-      const customStyles = parsed.querySelectorAll("style:not([id^='lx-front-design-'])")
-      if (customStyles.length > 0) {
-        const customContainerId = "lx-front-design-custom-styles"
-        let container = doc.getElementById(customContainerId)
-        if (!container) {
-          container = doc.createElement("style")
-          container.id = customContainerId
-          doc.head?.appendChild(container)
-        }
-        const combinedCss = Array.from(customStyles)
-          .map((s) => s.textContent || "")
-          .join("\n")
-        if (container.textContent !== combinedCss) {
-          container.textContent = combinedCss
-        }
-      }
-
-      // 4. 平滑替换 body 结构（保留可能存在的 inspector overlay）
-      const overlay = doc.getElementById("lx-design-inspector-overlay")
-      const newBodyHtml = parsed.body?.innerHTML || ""
-      if (doc.body.innerHTML !== newBodyHtml) {
-        doc.body.innerHTML = newBodyHtml
-        if (overlay) {
-          doc.body.appendChild(overlay)
-        }
-      }
+      doc.dispatchEvent(new Event("DOMContentLoaded"))
     } catch {
-      // 忽略异常
+      // 忽略沙箱脚本执行异常
     }
   }, [])
+
+  // 高性能平滑局部增量更新 iframe DOM
+  const updateIframeContent = useCallback(
+    (docContent: string) => {
+      const iframe = iframeRef.current
+      if (!iframe) return
+      try {
+        const doc = iframe.contentDocument
+        if (!doc || !doc.body) return
+
+        const parser = new DOMParser()
+        const parsed = parser.parseFromString(docContent, "text/html")
+
+        // 1. 同步 html 根节点 class 与暗色模式
+        if (parsed.documentElement && doc.documentElement) {
+          if (doc.documentElement.className !== parsed.documentElement.className) {
+            doc.documentElement.className = parsed.documentElement.className
+          }
+        }
+
+        // 2. 同步 head 关键样式覆盖
+        const syncStyle = (id: string) => {
+          const newStyle = parsed.getElementById(id)
+          let currentStyle = doc.getElementById(id)
+          if (newStyle) {
+            if (!currentStyle) {
+              currentStyle = doc.createElement("style")
+              currentStyle.id = id
+              doc.head?.appendChild(currentStyle)
+            }
+            if (currentStyle.textContent !== newStyle.textContent) {
+              currentStyle.textContent = newStyle.textContent
+            }
+          }
+        }
+
+        syncStyle("lx-front-design-theme-override")
+        syncStyle("lx-front-design-tailwind-compiled")
+
+        // 3. 同步文档 head 自定义 style 节点
+        const customStyles = parsed.querySelectorAll("style:not([id^='lx-front-design-'])")
+        if (customStyles.length > 0) {
+          const customContainerId = "lx-front-design-custom-styles"
+          let container = doc.getElementById(customContainerId)
+          if (!container) {
+            container = doc.createElement("style")
+            container.id = customContainerId
+            doc.head?.appendChild(container)
+          }
+          const combinedCss = Array.from(customStyles)
+            .map((s) => s.textContent || "")
+            .join("\n")
+          if (container.textContent !== combinedCss) {
+            container.textContent = combinedCss
+          }
+        }
+
+        // 4. 平滑替换 body 结构（保留可能存在的 inspector overlay）
+        const overlay = doc.getElementById("lx-design-inspector-overlay")
+        const newBodyHtml = parsed.body?.innerHTML || ""
+        if (doc.body.innerHTML !== newBodyHtml) {
+          doc.body.innerHTML = newBodyHtml
+          if (overlay) {
+            doc.body.appendChild(overlay)
+          }
+          if (!isStreamingRef.current) {
+            executeIframeScripts(doc)
+          }
+        }
+      } catch {
+        // 忽略异常
+      }
+    },
+    [executeIframeScripts],
+  )
 
   const rafIdRef = useRef<number | null>(null)
   const sanitizedHtmlDocRef = useRef<string>(sanitizedHtmlDoc)
@@ -559,12 +587,31 @@ export const FrontDesignPage = (): React.JSX.Element => {
     }
   }, [sanitizedHtmlDoc, updateIframeContent])
 
+  // 流式结束时，同步完整 srcDoc 并触发沙箱内的原型脚本执行
+  const prevStreamingRef = useRef(isStreaming)
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      if (sanitizedHtmlDocRef.current) {
+        setCachedSrcDoc(sanitizedHtmlDocRef.current)
+      }
+      const iframe = iframeRef.current
+      if (iframe?.contentDocument) {
+        executeIframeScripts(iframe.contentDocument)
+      }
+    }
+    prevStreamingRef.current = isStreaming
+  }, [isStreaming, executeIframeScripts])
+
   const handleIframeLoad = useCallback(() => {
     attachIframeKeydown()
+    const iframe = iframeRef.current
+    if (iframe?.contentDocument && !isStreamingRef.current) {
+      executeIframeScripts(iframe.contentDocument)
+    }
     if (sanitizedHtmlDocRef.current) {
       updateIframeContent(sanitizedHtmlDocRef.current)
     }
-  }, [attachIframeKeydown, updateIframeContent])
+  }, [attachIframeKeydown, executeIframeScripts, updateIframeContent])
 
   useEffect(() => {
     attachIframeKeydown()
