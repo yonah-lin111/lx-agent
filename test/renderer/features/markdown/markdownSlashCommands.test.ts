@@ -7,6 +7,8 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   getTemplatePlaceholderSelectionRange,
+  getTemplatePresetInitialSelectionRange,
+  MARKDOWN_TEMPLATE_PRESET_OPTIONS,
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
@@ -57,9 +59,11 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/log", false)).toEqual([])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
     expect(getMarkdownSlashCommands("/git", true).map((c) => c.id)).toEqual(["gitWorktree"])
+    expect(getMarkdownSlashCommands("/apply", true).map((c) => c.id)).toEqual(["applyPreset"])
     expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual([
       "suppleTemplate",
       "logTemplate",
+      "applyPreset",
       "sendPrompt",
       "summaryTitle",
       "gitWorktree",
@@ -71,17 +75,19 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual([
       "suppleTemplate",
       "logTemplate",
+      "applyPreset",
       "sendPrompt",
       "summaryTitle",
     ])
   })
-  it("支持多语言环境下的模板文案切换", () => {
+
+  it("模板命令统一使用英文正文与说明，非模板命令支持多语言环境切换", () => {
     const zhCommands = getMarkdownSlashCommands("/style", false, true, [], "zh")
-    expect(zhCommands[0]?.description).toBe("插入样式设计提示词模板")
-    expect(zhCommands[0]?.content).toContain("# 样式设计")
+    expect(zhCommands[0]?.description).toBe("Insert design style template block")
+    expect(zhCommands[0]?.content).toContain("# Design Style")
 
     const enCommands = getMarkdownSlashCommands("/style", false, true, [], "en")
-    expect(enCommands[0]?.description).toBe("Insert style design prompt template")
+    expect(enCommands[0]?.description).toBe("Insert design style template block")
     expect(enCommands[0]?.content).toContain("# Design Style")
     expect(enCommands[0]?.content).toContain("- Reference: ")
 
@@ -94,10 +100,57 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
-  it("在 $$$ 变量模板块内仅允许 singleLine 和 multiLine 两个斜杠命令，并排除其余命令", () => {
-    // 变量块内仅匹配 singleLine 和 multiLine
+  it("所有模板的 Notes 均在最下方，且 /bugTemplate 也包含 Notes", () => {
+    const templates = getMarkdownSlashCommands("/", false, true, [], "en")
+    const checkTemplates = [
+      "addTemplate",
+      "bugTemplate",
+      "refactorTemplate",
+      "commonTemplate",
+      "styleTemplate",
+    ]
+
+    for (const id of checkTemplates) {
+      const cmd = templates.find((c) => c.id === id)
+      expect(cmd).toBeDefined()
+      const content = cmd!.content
+      expect(content).toContain("- Notes: ")
+
+      const lines = content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+      const endMarkerIndex = lines.findIndex((l) => l.includes("--end"))
+      expect(endMarkerIndex).toBeGreaterThan(0)
+      // Notes 列表项必须位于结束标记之上
+      expect(lines[endMarkerIndex - 2]).toBe("- Notes:")
+      expect(lines[endMarkerIndex - 1]).toBe("-")
+    }
+
+    const bugCmd = templates.find((c) => c.id === "bugTemplate")!
+    expect(bugCmd.content).toContain("- Reproduction: ")
+    expect(bugCmd.content).toContain("- Expectations: ")
+    expect(bugCmd.content).toContain("- Notes: ")
+    // 验证 Expectations 在 Notes 之前
+    expect(bugCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      bugCmd.content.indexOf("- Notes: "),
+    )
+
+    const commonCmd = templates.find((c) => c.id === "commonTemplate")!
+    expect(commonCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      commonCmd.content.indexOf("- Notes: "),
+    )
+
+    const styleCmd = templates.find((c) => c.id === "styleTemplate")!
+    expect(styleCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      styleCmd.content.indexOf("- Notes: "),
+    )
+  })
+
+  it("在 $$$ 变量模板块内仅允许 singleLine、multiLine 与 templatePreset 斜杠命令，并排除其余命令", () => {
+    // 变量块内仅匹配 singleLine、multiLine、templatePreset
     const allVarCommands = getMarkdownSlashCommands("/", false, true, [], "zh", true)
-    expect(allVarCommands.map((c) => c.id)).toEqual(["singleLine", "multiLine"])
+    expect(allVarCommands.map((c) => c.id)).toEqual(["singleLine", "multiLine", "templatePreset"])
 
     // 关键字与模糊匹配
     expect(
@@ -106,11 +159,18 @@ describe("Markdown 斜杠命令", () => {
     expect(
       getMarkdownSlashCommands("/multi", false, true, [], "zh", true).map((c) => c.id),
     ).toEqual(["multiLine"])
+    expect(
+      getMarkdownSlashCommands("/preset", false, true, [], "zh", true).map((c) => c.id),
+    ).toEqual(["templatePreset"])
     expect(getMarkdownSlashCommands("/sl", false, true, [], "zh", true).map((c) => c.id)).toEqual([
       "singleLine",
     ])
     expect(getMarkdownSlashCommands("/ml", false, true, [], "zh", true).map((c) => c.id)).toEqual([
       "multiLine",
+      "templatePreset",
+    ])
+    expect(getMarkdownSlashCommands("/tp", false, true, [], "zh", true).map((c) => c.id)).toEqual([
+      "templatePreset",
     ])
 
     // 其余所有命令（无论普通、模板还是全局）均不可用
@@ -134,32 +194,94 @@ describe("Markdown 斜杠命令", () => {
       multiCmd.content.slice(multiCmd.selectionRange!.start, multiCmd.selectionRange!.end),
     ).toBe("key")
 
-    // 多语言描述
-    const enVarCommands = getMarkdownSlashCommands("/", false, true, [], "en", true)
-    const enSingle = enVarCommands.find((c) => c.id === "singleLine")!
-    const enMulti = enVarCommands.find((c) => c.id === "multiLine")!
-    expect(singleCmd.description).toBe("新建单行变量")
-    expect(multiCmd.description).toBe("新建多行变量")
-    expect(enSingle.description).toBe("New single-line variable")
-    expect(enMulti.description).toBe("New multi-line variable")
+    const presetCmd = allVarCommands.find((c) => c.id === "templatePreset")!
+    expect(presetCmd.kind).toBe("select")
+    expect(presetCmd.content).toBe("/templatePreset")
+    expect(presetCmd.scope).toBe("varTemplate")
 
-    // 变量块外禁止出现 singleLine 与 multiLine
+    // 变量块外禁止出现 singleLine、multiLine 与 templatePreset
     expect(getMarkdownSlashCommands("/single", false, true, [], "zh", false)).toEqual([])
     expect(getMarkdownSlashCommands("/multi", false, true, [], "zh", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/preset", false, true, [], "zh", false)).toEqual([])
     expect(getMarkdownSlashCommands("/single", true, true, [], "zh", false)).toEqual([])
-    expect(getMarkdownSlashCommands("/multi", true, true, [], "zh", false)).toEqual([])
+    expect(
+      getMarkdownSlashCommands("/preset", true, true, [], "zh", false).map((c) => c.id),
+    ).toEqual(["applyPreset"])
     expect(
       getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("singleLine")
-    expect(
-      getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("multiLine")
+    ).not.toContain("templatePreset")
     expect(
       getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("singleLine")
-    expect(
-      getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("multiLine")
+    ).not.toContain("templatePreset")
+  })
+
+  it("/templatePreset 二级预设选项包含全类型配置，严格使用 +++ presetTemplate 包裹且输出顶格", () => {
+    expect(MARKDOWN_TEMPLATE_PRESET_OPTIONS.map((o) => o.id)).toEqual([
+      "add",
+      "bug",
+      "refactor",
+      "common",
+      "style",
+    ])
+
+    for (const option of MARKDOWN_TEMPLATE_PRESET_OPTIONS) {
+      // 预设内容顶部和底部必须严格使用 +++ presetTemplate 子块包裹并带有 title
+      expect(option.content).toMatch(/^\+\+\+ presetTemplate --start 「title: [^」\n]+」\n/)
+      expect(option.content.endsWith("\n+++ presetTemplate --end")).toBe(true)
+
+      // 首行必须顶格（无任何行首缩进空格）
+      expect(option.content.startsWith("+++ presetTemplate")).toBe(true)
+      expect(option.content).not.toMatch(/^[ \t]+\+\+\+/)
+
+      // 必须包含 preset 顶级节点
+      expect(option.content).toContain("preset:")
+
+      // 描述内容不为空且各有特色
+      expect(option.description.length).toBeGreaterThan(10)
+    }
+
+    // 校验不同类型的差异化字段配置（空白模板）
+    const addPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "add")!
+    expect(addPreset.content).toContain("add:")
+    expect(addPreset.content).toContain('reference: ""')
+    expect(addPreset.content).toContain("requirements:")
+
+    const bugPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "bug")!
+    expect(bugPreset.content).toContain("bug:")
+    expect(bugPreset.content).toContain("reproduction:")
+    expect(bugPreset.content).toContain("expectations:")
+
+    const refactorPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "refactor")!
+    expect(refactorPreset.content).toContain("refactor:")
+    expect(refactorPreset.content).toContain('goal: ""')
+
+    const commonPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "common")!
+    expect(commonPreset.content).toContain("common:")
+
+    const stylePreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "style")!
+    expect(stylePreset.content).toContain("style:")
+  })
+
+  it("getTemplatePresetInitialSelectionRange 正确定位首个冒号后内容（不含引号）", () => {
+    // 空双引号：光标置于双引号之间
+    const content1 = 'preset:\n  add:\n    reference: ""\n    location: ""'
+    const range1 = getTemplatePresetInitialSelectionRange(content1)
+    expect(range1).not.toBeNull()
+    expect(content1.slice(range1!.start, range1!.end)).toBe("")
+    expect(content1.charAt(range1!.start - 1)).toBe('"')
+    expect(content1.charAt(range1!.end)).toBe('"')
+
+    // 有值双引号：选中双引号内部文本
+    const content2 = 'preset:\n  bug:\n    reference: "docs/spec.md"'
+    const range2 = getTemplatePresetInitialSelectionRange(content2)
+    expect(range2).not.toBeNull()
+    expect(content2.slice(range2!.start, range2!.end)).toBe("docs/spec.md")
+
+    // 无引号纯文本
+    const content3 = "preset:\n  common:\n    reference: docs/common.md"
+    const range3 = getTemplatePresetInitialSelectionRange(content3)
+    expect(range3).not.toBeNull()
+    expect(content3.slice(range3!.start, range3!.end)).toBe("docs/common.md")
   })
 })
 

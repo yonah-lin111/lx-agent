@@ -198,6 +198,36 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       expect(decoratedStrings).toContain("@[refer-image](preview.png)")
     })
 
+    it('变量模板块多行字符串 """ 内部完整解析并装饰 Markdown 常用语法', () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 变量模板」",
+        "requirements:",
+        '  """',
+        "  # 标题一",
+        "  - [ ] 待办项",
+        "  - 列表项",
+        "  **粗体内容** `code`",
+        '  """',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      const decoratedStrings: string[] = []
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        decoratedStrings.push(view.state.doc.sliceString(cursor.from, cursor.to))
+        cursor.next()
+      }
+
+      expect(decoratedStrings).toContain("#")
+      expect(decoratedStrings).toContain("[ ]")
+      expect(decoratedStrings).toContain("-")
+      expect(decoratedStrings).toContain("**")
+      expect(decoratedStrings).toContain("`")
+    })
+
     it("支持 cycleTemplateStatus 循环推进模板状态 (todo -> in_progress -> done)", () => {
       const doc = "&&& addTemplate --end"
       const { view, plugin } = createTestView(doc)
@@ -465,6 +495,48 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       plugin!.cleanTemplateBlock(view, 0, -1)
       expect(view.state.doc.toString()).toBe(
         ["&&& addTemplate --start 「title: 未闭合」", "# 需求标题"].join("\n"),
+      )
+    })
+
+    it("$$$ 变量块内部的 +++ presetTemplate 具备独立 ActionWidget 并支持折叠与删除", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: Presets」",
+        "+++ presetTemplate --start 「title: All Templates」",
+        "preset:",
+        "  common:",
+        '    reference: "@docs/architecture.md"',
+        "+++ presetTemplate --end",
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      let presetWidget: CodeBlockActionWidget | null = null
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        if (cursor.value.spec?.widget?.isPreset) {
+          presetWidget = cursor.value.spec.widget
+          break
+        }
+        cursor.next()
+      }
+
+      expect(presetWidget).not.toBeNull()
+      expect(presetWidget!.isPreset).toBe(true)
+      expect(presetWidget!.isFolded).toBe(false)
+      expect(presetWidget!.actionClassName).toBe("cm-preset-block-action-wrap")
+
+      // 验证折叠交互
+      presetWidget!.onToggleFold()
+      expect(plugin!.presetFoldedIndices.has(0)).toBe(true)
+
+      // 验证删除交互
+      expect(presetWidget!.onDeleteTemplate).toBeDefined()
+      presetWidget!.onDeleteTemplate!()
+
+      expect(view.state.doc.toString()).toBe(
+        ["$$$ varTemplate --start 「title: Presets」", "$$$ varTemplate --end"].join("\n"),
       )
     })
   })

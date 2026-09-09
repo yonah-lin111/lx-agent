@@ -881,6 +881,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     modalCloseAria: "Close modal",
   },
   markdown: {
+    selectTemplatePreset: "Select Template Preset",
     preview: "Preview",
     editor: "Editor",
     splitView: "Split View",
@@ -936,6 +937,10 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     unfoldVarTemplate: "Expand variable template",
     deleteVarTemplate: "Delete variable template",
     confirmDeleteVarTemplate: "Are you sure you want to delete this variable template block?",
+    foldPreset: "Collapse preset template",
+    unfoldPreset: "Expand preset template",
+    deletePreset: "Delete preset template",
+    confirmDeletePreset: "Are you sure you want to delete this preset template block?",
     markInProgress: "Mark as in progress",
     markCompleted: "Mark as completed",
     markTodo: "Mark as todo",

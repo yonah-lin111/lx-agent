@@ -2,8 +2,10 @@ import { indentLess, indentMore } from "@codemirror/commands"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import {
+  getMarkdownListContinuation,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateWtRanges,
+  isInsideMarkdownCodeFence,
   isInsideMarkdownSuppleBlock,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -12,8 +14,10 @@ import {
   type MarkdownSlashCommand,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
+  applyMarkdownTemplatePreset,
   handleMarkdownVarBlockTab,
   isInsideMarkdownVariableBlock,
+  isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import { createMarkdownFormattingKeymap } from "@/features/markdown/extensions/markdownFormattingKeymap"
@@ -86,7 +90,11 @@ export const markdownVarTemplateColonFilter: Extension = EditorState.transaction
 
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     const text = inserted.toString()
-    if (text.includes("：") && isInsideMarkdownVariableBlock(docText, fromA)) {
+    if (
+      text.includes("：") &&
+      isInsideMarkdownVariableBlock(docText, fromA) &&
+      !isInsideMarkdownVarMultilineString(docText, fromA)
+    ) {
       modified = true
       newChanges.push({
         from: fromA,
@@ -156,26 +164,44 @@ export const createMarkdownEditorKeymaps = ({
               )
               return true
             }
-            const cursor = view.state.selection.main.head
-            const line = view.state.doc.lineAt(cursor)
-            if (line.text.trim() === "") {
-              if (indentMore(view)) return true
-              view.dispatch(view.state.replaceSelection("  "))
-              return true
-            }
-
-            return handleMarkdownVarBlockTab(view, 1)
+            if (indentMore(view)) return true
+            view.dispatch(view.state.replaceSelection("  "))
+            return true
           },
         },
         {
           key: "Shift-Tab",
           run: (view) => {
             const cursor = view.state.selection.main.head
-            const line = view.state.doc.lineAt(cursor)
-            if (line.text.trim() === "") {
-              return indentLess(view)
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              if (handleMarkdownVarBlockTab(view, 1)) {
+                return true
+              }
             }
-            return handleMarkdownVarBlockTab(view, -1)
+            return false
+          },
+        },
+        {
+          key: "Mod-Tab",
+          run: (view) => {
+            const cursor = view.state.selection.main.head
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              return handleMarkdownVarBlockTab(view, -1)
+            }
+            return false
+          },
+        },
+        {
+          key: "Ctrl-Tab",
+          run: (view) => {
+            const cursor = view.state.selection.main.head
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              return handleMarkdownVarBlockTab(view, -1)
+            }
+            return false
           },
         },
         {
@@ -186,6 +212,7 @@ export const createMarkdownEditorKeymaps = ({
             panels.handleVariableKey(1) ||
             panels.handleFileMentionKey("ArrowDown") ||
             panels.handleGitWorktreeKey(1) ||
+            panels.handleTemplatePresetKey(1) ||
             panels.handleSendPromptKey(1) ||
             panels.handleSendPromptFlagKey(1) ||
             panels.handleSlashCommandKey(1) ||
@@ -200,6 +227,7 @@ export const createMarkdownEditorKeymaps = ({
             panels.handleVariableKey(-1) ||
             panels.handleFileMentionKey("ArrowUp") ||
             panels.handleGitWorktreeKey(-1) ||
+            panels.handleTemplatePresetKey(-1) ||
             panels.handleSendPromptKey(-1) ||
             panels.handleSendPromptFlagKey(-1) ||
             panels.handleSlashCommandKey(-1) ||
@@ -229,6 +257,15 @@ export const createMarkdownEditorKeymaps = ({
               panels.selectGitWorktree(
                 gitWorktree.options[panels.activeGitWorktreeIndexRef.current] ??
                   gitWorktree.options[0],
+              )
+              return true
+            }
+
+            const templatePreset = panels.templatePresetPanelRef.current
+            if (templatePreset) {
+              panels.selectTemplatePreset(
+                templatePreset.options[panels.activeTemplatePresetIndexRef.current] ??
+                  templatePreset.options[0],
               )
               return true
             }
@@ -303,6 +340,31 @@ export const createMarkdownEditorKeymaps = ({
             )
             const isInsideAnyBlock = isInsideSupple || isInsideTemplate
 
+            if (/^\s*\/applyPreset\b/i.test(line.text) && isInsideTemplate) {
+              const docText = view.state.doc.toString()
+              const applied = applyMarkdownTemplatePreset(docText, line.from)
+              if (applied) {
+                view.dispatch({
+                  changes: { from: applied.from, to: applied.to, insert: applied.insert },
+                  selection: { anchor: applied.cursor ?? line.from },
+                })
+              } else {
+                view.dispatch({
+                  changes: { from: line.from, to: line.to, insert: "" },
+                  selection: { anchor: line.from },
+                })
+              }
+              return true
+            }
+
+            if (
+              line.text.trim() === "/templatePreset" &&
+              isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
+            ) {
+              panels.openTemplatePresetPanel(view)
+              return true
+            }
+
             const armedCommand = getMarkdownArmedSlashCommand(
               line.text,
               isInsideAnyBlock,
@@ -333,13 +395,25 @@ export const createMarkdownEditorKeymaps = ({
               return true
             }
 
-            const emptyListMarkerRegex = /^(\s*)([-+*](\s+\[[ xX]\])?|\d+[.)]|>)\s*$/
-            if (emptyListMarkerRegex.test(line.text)) {
-              view.dispatch({
-                changes: { from: line.from, to: line.to, insert: "" },
-                selection: { anchor: line.from },
-              })
-              return true
+            if (!isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))) {
+              const listContinuation = getMarkdownListContinuation(line.text)
+              if (listContinuation) {
+                if (listContinuation.empty) {
+                  view.dispatch({
+                    changes: { from: line.from, to: line.to, insert: "" },
+                    selection: { anchor: line.from },
+                  })
+                  return true
+                }
+                if (cursor >= line.from + listContinuation.markerLength) {
+                  const insertText = `\n${listContinuation.prefix}`
+                  view.dispatch({
+                    changes: { from: cursor, to: cursor, insert: insertText },
+                    selection: { anchor: cursor + insertText.length },
+                  })
+                  return true
+                }
+              }
             }
 
             if (cursor > 0 && cursor < view.state.doc.length) {
@@ -426,6 +500,10 @@ export const createMarkdownEditorKeymaps = ({
             }
             if (panels.gitWorktreePanelRef.current) {
               panels.closeGitWorktreePanel()
+              return true
+            }
+            if (panels.templatePresetPanelRef.current) {
+              panels.closeTemplatePresetPanel()
               return true
             }
             if (panels.sendPromptPanelRef.current) {

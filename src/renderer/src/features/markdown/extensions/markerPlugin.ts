@@ -35,6 +35,7 @@ export const markdownMarkerHighlight = (
       suppleFoldedIndices = new Set<number>()
       logFoldedIndices = new Set<number>()
       varFoldedIndices = new Set<number>()
+      presetFoldedIndices = new Set<number>()
       initialLogScanned = false
       wasComposing = false
       referencedNamesKey = ""
@@ -66,6 +67,9 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.cleanVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(view, startLine, endLine),
           (startLine, endLine) => this.moveVarBlockToTop(view, startLine, endLine),
+          this.presetFoldedIndices,
+          (index) => this.togglePresetFold(view, index),
+          (startLine, endLine) => this.deletePresetBlock(view, startLine, endLine),
         )
       }
 
@@ -133,6 +137,9 @@ export const markdownMarkerHighlight = (
           (startLine, endLine) => this.cleanVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.mergeVarBlock(update.view, startLine, endLine),
           (startLine, endLine) => this.moveVarBlockToTop(update.view, startLine, endLine),
+          this.presetFoldedIndices,
+          (index) => this.togglePresetFold(update.view, index),
+          (startLine, endLine) => this.deletePresetBlock(update.view, startLine, endLine),
         )
       }
 
@@ -364,6 +371,30 @@ export const markdownMarkerHighlight = (
           view.dispatch({ changes: result.changes })
           toast?.success?.(t?.("markdown.varBlockMovedToTop") ?? "已将变量模板块调整到顶部")
         }
+      }
+
+      togglePresetFold(view: EditorView, index: number) {
+        if (this.presetFoldedIndices.has(index)) {
+          this.presetFoldedIndices.delete(index)
+        } else {
+          this.presetFoldedIndices.add(index)
+        }
+        view.dispatch({ effects: markdownBlockFoldToggleEffect.of() })
+      }
+
+      deletePresetBlock(view: EditorView, startLine: number, endLine: number) {
+        const doc = view.state.doc
+        const safeStartLine = Math.max(0, Math.min(startLine, doc.lines - 1))
+        const safeEndLine = endLine < startLine ? safeStartLine : Math.min(endLine, doc.lines - 1)
+        const startDocLine = doc.line(safeStartLine + 1)
+        const endDocLine = doc.line(safeEndLine + 1)
+
+        view.dispatch({
+          changes: {
+            from: startDocLine.from,
+            to: Math.min(endDocLine.to + 1, doc.length),
+          },
+        })
       }
     },
     { decorations: (plugin) => plugin.decorations },

@@ -13,6 +13,8 @@ export type MarkdownTemplateCommandId =
   | "suppleTemplate"
   | "logTemplate"
   | "varTemplate"
+  | "templatePreset"
+  | "applyPreset"
   | "singleLine"
   | "multiLine"
 
@@ -147,27 +149,322 @@ export const getVarTemplateInitialSelectionRange = (
   }
 }
 
+export const MARKDOWN_TEMPLATE_VAR_CONTENT = [
+  "$$$ varTemplate --start 「title: 」",
+  'key: "var"',
+  "$$$ varTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_ADD_CONTENT = [
+  "&&& addTemplate --start 「title: 」",
+  "# Add Requirement",
+  "",
+  "- Reference: ",
+  "- Location: ",
+  "- Description: ",
+  "- Requirements: ",
+  "  - ",
+  "- Notes: ",
+  "  - ",
+  "&&& addTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_BUG_CONTENT = [
+  "&&& bugTemplate --start 「title: 」",
+  "# Fix Bug",
+  "",
+  "- Reference: ",
+  "- Location: ",
+  "- Description: ",
+  "- Reproduction: ",
+  "- Requirements: ",
+  "  - ",
+  "- Expectations: ",
+  "- Notes: ",
+  "  - ",
+  "&&& bugTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_REFACTOR_CONTENT = [
+  "&&& refactorTemplate --start 「title: 」",
+  "# Refactor Feature",
+  "",
+  "- Reference: ",
+  "- Location: ",
+  "- Goal: ",
+  "- Requirements: ",
+  "  - ",
+  "- Notes: ",
+  "  - ",
+  "&&& refactorTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_COMMON_CONTENT = [
+  "&&& commonTemplate --start 「title: 」",
+  "# Execute Task",
+  "",
+  "- Reference: ",
+  "- Location: ",
+  "- Requirements: ",
+  "  - ",
+  "- Expectations: ",
+  "- Notes: ",
+  "  - ",
+  "&&& commonTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_STYLE_CONTENT = [
+  "&&& styleTemplate --start 「title: 」",
+  "# Design Style",
+  "",
+  "- Reference: ",
+  "- Location: ",
+  "- Requirements: ",
+  "  - ",
+  "- Expectations: ",
+  "- Notes: ",
+  "  - ",
+  "&&& styleTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_SUPPLE_CONTENT = [
+  "+++ suppleTemplate --start",
+  "## Supplementary Requirements",
+  "",
+  "- Reference: ",
+  "- Requirements: ",
+  "  - ",
+  "- Notes: ",
+  "  - ",
+  "+++ suppleTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_LOG_CONTENT = [
+  "+++ logTemplate --start",
+  "## Execution Log",
+  "",
+  "- Time: ",
+  "- Phase: ",
+  "- Records: ",
+  "  - ",
+  "- Conclusion: ",
+  "+++ logTemplate --end",
+].join("\n")
+
+export interface TemplatePresetOption {
+  id: string
+  name: string
+  label: string
+  description: string
+  content: string
+}
+
+/**
+ * 计算模板预设插入后的选中范围：定位首个属性键值冒号后的内容（不包含外层引号）。
+ * 若值为空串（如 reference: ""），返回引号内部位置（start === end）。
+ */
+export const getTemplatePresetInitialSelectionRange = (
+  content: string,
+): { start: number; end: number } | null => {
+  const match = /^[ \t]+[A-Za-z0-9_.-]+:[ \t]*(?:"([^"]*)"|'([^']*)'|([^\r\n]+))$/m.exec(content)
+  if (!match || match.index === undefined) return null
+
+  const lineText = match[0]
+  const lineStart = match.index
+  const doubleQuoteFirst = lineText.indexOf('"')
+  const doubleQuoteLast = lineText.lastIndexOf('"')
+
+  if (doubleQuoteFirst !== -1 && doubleQuoteLast > doubleQuoteFirst) {
+    return {
+      start: lineStart + doubleQuoteFirst + 1,
+      end: lineStart + doubleQuoteLast,
+    }
+  }
+
+  const singleQuoteFirst = lineText.indexOf("'")
+  const singleQuoteLast = lineText.lastIndexOf("'")
+  if (singleQuoteFirst !== -1 && singleQuoteLast > singleQuoteFirst) {
+    return {
+      start: lineStart + singleQuoteFirst + 1,
+      end: lineStart + singleQuoteLast,
+    }
+  }
+
+  const colonIndex = lineText.indexOf(":")
+  if (colonIndex !== -1) {
+    const afterColon = lineText.slice(colonIndex + 1)
+    const trimmedStart = afterColon.search(/\S/)
+    if (trimmedStart !== -1) {
+      const start = lineStart + colonIndex + 1 + trimmedStart
+      return {
+        start,
+        end: lineStart + lineText.length,
+      }
+    }
+  }
+
+  return null
+}
+
+export const MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT = [
+  "+++ presetTemplate --start 「title: Add Requirement」",
+  "preset:",
+  "  add:",
+  '    reference: ""',
+  '    location: ""',
+  '    description: ""',
+  "    requirements:",
+  '      """',
+  "      - ",
+  '      """',
+  "    notes:",
+  '      """',
+  "      - ",
+  '      """',
+  "+++ presetTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT = [
+  "+++ presetTemplate --start 「title: Fix Bug」",
+  "preset:",
+  "  bug:",
+  '    reference: ""',
+  '    location: ""',
+  '    description: ""',
+  "    reproduction:",
+  '      """',
+  "      - ",
+  '      """',
+  "    requirements:",
+  '      """',
+  "      - ",
+  '      """',
+  "    expectations:",
+  '      """',
+  "      - ",
+  '      """',
+  "    notes:",
+  '      """',
+  "      - ",
+  '      """',
+  "+++ presetTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT = [
+  "+++ presetTemplate --start 「title: Refactor Feature」",
+  "preset:",
+  "  refactor:",
+  '    reference: ""',
+  '    location: ""',
+  '    goal: ""',
+  "    requirements:",
+  '      """',
+  "      - ",
+  '      """',
+  "    notes:",
+  '      """',
+  "      - ",
+  '      """',
+  "+++ presetTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT = [
+  "+++ presetTemplate --start 「title: Execute Task」",
+  "preset:",
+  "  common:",
+  '    reference: ""',
+  '    location: ""',
+  "    requirements:",
+  '      """',
+  "      - ",
+  '      """',
+  "    expectations:",
+  '      """',
+  "      - ",
+  '      """',
+  "    notes:",
+  '      """',
+  "      - ",
+  '      """',
+  "+++ presetTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT = [
+  "+++ presetTemplate --start 「title: Design Style」",
+  "preset:",
+  "  style:",
+  '    reference: ""',
+  '    location: ""',
+  "    requirements:",
+  '      """',
+  "      - ",
+  '      """',
+  "    expectations:",
+  '      """',
+  "      - ",
+  '      """',
+  "    notes:",
+  '      """',
+  "      - ",
+  '      """',
+  "+++ presetTemplate --end",
+].join("\n")
+
+export const MARKDOWN_TEMPLATE_PRESET_CONTENT = MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT
+
+export const MARKDOWN_TEMPLATE_PRESET_OPTIONS: TemplatePresetOption[] = [
+  {
+    id: "add",
+    name: "Add Requirement",
+    label: "add",
+    description: "Blank preset for add requirement template",
+    content: MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT,
+  },
+  {
+    id: "bug",
+    name: "Fix Bug",
+    label: "bug",
+    description: "Blank preset for fix bug template",
+    content: MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT,
+  },
+  {
+    id: "refactor",
+    name: "Refactor Feature",
+    label: "refactor",
+    description: "Blank preset for refactor feature template",
+    content: MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT,
+  },
+  {
+    id: "common",
+    name: "Execute Task",
+    label: "common",
+    description: "Blank preset for execute task template",
+    content: MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT,
+  },
+  {
+    id: "style",
+    name: "Design Style",
+    label: "style",
+    description: "Blank preset for design style template",
+    content: MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT,
+  },
+]
+
 /**
  * 根据语言环境构造内置 Markdown 模板命令。
+ * /xxxTemplate 系列命令移除语言国际化，统一使用英文正文与说明。
  */
 export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): MarkdownSlashCommand[] => {
   const dict = locale === "en" ? en : zh
 
-  const addContent = dict.markdown.templateAddContent
-  const bugContent = dict.markdown.templateBugContent
-  const refactorContent = dict.markdown.templateRefactorContent
-  const commonContent = dict.markdown.templateCommonContent
-  const styleContent = dict.markdown.templateStyleContent
-  const suppleContent = dict.markdown.templateSuppleContent
-  const logContent = dict.markdown.templateLogContent
-  const varContent = dict.markdown.templateVarContent
+  const varContent = MARKDOWN_TEMPLATE_VAR_CONTENT
   const varSelection = getVarTemplateInitialSelectionRange(varContent)
 
   const templates: MarkdownSlashCommand[] = [
     {
       id: "varTemplate",
       label: "/varTemplate",
-      description: dict.markdown.templateVarDesc,
+      description: "Insert variable template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
@@ -178,52 +475,52 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     {
       id: "addTemplate",
       label: "/addTemplate",
-      description: dict.markdown.templateAddDesc,
+      description: "Insert add requirement template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
-      content: addContent,
-      cursorOffset: getTemplateCursorOffset(addContent),
+      content: MARKDOWN_TEMPLATE_ADD_CONTENT,
+      cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_ADD_CONTENT),
     },
     {
       id: "bugTemplate",
       label: "/bugTemplate",
-      description: dict.markdown.templateBugDesc,
+      description: "Insert fix bug template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
-      content: bugContent,
-      cursorOffset: getTemplateCursorOffset(bugContent),
+      content: MARKDOWN_TEMPLATE_BUG_CONTENT,
+      cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_BUG_CONTENT),
     },
     {
       id: "refactorTemplate",
       label: "/refactorTemplate",
-      description: dict.markdown.templateRefactorDesc,
+      description: "Insert refactor feature template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
-      content: refactorContent,
-      cursorOffset: getTemplateCursorOffset(refactorContent),
+      content: MARKDOWN_TEMPLATE_REFACTOR_CONTENT,
+      cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_REFACTOR_CONTENT),
     },
     {
       id: "commonTemplate",
       label: "/commonTemplate",
-      description: dict.markdown.templateCommonDesc,
+      description: "Insert execute task template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
-      content: commonContent,
-      cursorOffset: getTemplateCursorOffset(commonContent),
+      content: MARKDOWN_TEMPLATE_COMMON_CONTENT,
+      cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_COMMON_CONTENT),
     },
     {
       id: "styleTemplate",
       label: "/styleTemplate",
-      description: dict.markdown.templateStyleDesc,
+      description: "Insert design style template block",
       scope: "normal",
       kind: "direct",
       source: "builtin",
-      content: styleContent,
-      cursorOffset: getTemplateCursorOffset(styleContent),
+      content: MARKDOWN_TEMPLATE_STYLE_CONTENT,
+      cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_STYLE_CONTENT),
     },
   ]
 
@@ -231,24 +528,36 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const suppleTemplate: MarkdownSlashCommand = {
     id: "suppleTemplate",
     label: "/suppleTemplate",
-    description: dict.markdown.templateSuppleDesc,
+    description: "Insert supplementary requirements subblock",
     scope: "template",
     kind: "direct",
     source: "builtin",
-    content: suppleContent,
-    cursorOffset: getTemplateCursorOffset(suppleContent),
+    content: MARKDOWN_TEMPLATE_SUPPLE_CONTENT,
+    cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_SUPPLE_CONTENT),
   }
 
   // 运行日志命令：仅在模板块内可用，直接替换当前行插入嵌套日志块。
   const logTemplate: MarkdownSlashCommand = {
     id: "logTemplate",
     label: "/logTemplate",
-    description: dict.markdown.templateLogDesc,
+    description: "Insert execution log subblock",
     scope: "template",
     kind: "direct",
     source: "builtin",
-    content: logContent,
-    cursorOffset: getTemplateCursorOffset(logContent),
+    content: MARKDOWN_TEMPLATE_LOG_CONTENT,
+    cursorOffset: getTemplateCursorOffset(MARKDOWN_TEMPLATE_LOG_CONTENT),
+  }
+
+  // 模板预设复用命令：仅在 &&& 模板块内可用，自动将 $$$ 块预设填入当前模板。
+  const applyPreset: MarkdownSlashCommand = {
+    id: "applyPreset",
+    label: "/applyPreset",
+    description: "Apply $$$ preset variables to current template",
+    scope: "template",
+    kind: "direct",
+    source: "builtin",
+    content: "",
+    cursorOffset: 0,
   }
 
   const sendPrompt: MarkdownSlashCommand = {
@@ -287,7 +596,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const singleLine: MarkdownSlashCommand = {
     id: "singleLine",
     label: "/singleLine",
-    description: dict.markdown.templateSingleLineDesc,
+    description: "Insert single-line variable (key: value)",
     scope: "varTemplate",
     kind: "direct",
     source: "builtin",
@@ -299,7 +608,7 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
   const multiLine: MarkdownSlashCommand = {
     id: "multiLine",
     label: "/multiLine",
-    description: dict.markdown.templateMultiLineDesc,
+    description: "Insert multi-line variable with triple quotes",
     scope: "varTemplate",
     kind: "direct",
     source: "builtin",
@@ -308,15 +617,28 @@ export const getBuiltinMarkdownSlashCommands = (locale: Locale = "zh"): Markdown
     selectionRange: { start: 0, end: 3 },
   }
 
+  const templatePreset: MarkdownSlashCommand = {
+    id: "templatePreset",
+    label: "/templatePreset",
+    description: "Insert template preset configuration subblock (wrap with +++)",
+    scope: "varTemplate",
+    kind: "select",
+    source: "builtin",
+    content: "/templatePreset",
+    cursorOffset: "/templatePreset".length,
+  }
+
   return [
     ...templates,
     suppleTemplate,
     logTemplate,
+    applyPreset,
     sendPrompt,
     summaryTitle,
     gitWorktree,
     singleLine,
     multiLine,
+    templatePreset,
   ]
 }
 

@@ -131,6 +131,71 @@ export const getMarkdownBlockTrigger = (
   return null
 }
 
+export interface MarkdownListContinuation {
+  prefix: string
+  markerLength: number
+  empty: boolean
+}
+
+/**
+ * 解析当前行的 Markdown 列表项或引用块标记，计算回车时的续行前缀或空行退出状态。
+ */
+export const getMarkdownListContinuation = (lineText: string): MarkdownListContinuation | null => {
+  // 分隔线不作为列表处理
+  if (/^\s*(?:[-*_])(?:\s*[-*_]){2,}\s*$/.test(lineText)) {
+    return null
+  }
+
+  // 1. 待办/任务列表：- [ ] 或 - [x]
+  const taskMatch = /^(\s*)([-+*]\s+\[[ xX]\]\s*)(.*)$/.exec(lineText)
+  if (taskMatch) {
+    const isBlank = taskMatch[3].trim() === ""
+    return {
+      prefix: `${taskMatch[1]}- [ ] `,
+      markerLength: taskMatch[1].length + taskMatch[2].length,
+      empty: isBlank,
+    }
+  }
+
+  // 2. 无序列表：- 或 * 或 +
+  const unorderedMatch = /^(\s*)([-+*]\s+)(.*)$/.exec(lineText)
+  if (unorderedMatch) {
+    const isBlank = unorderedMatch[3].trim() === ""
+    const marker = unorderedMatch[2].trim()
+    return {
+      prefix: `${unorderedMatch[1]}${marker} `,
+      markerLength: unorderedMatch[1].length + unorderedMatch[2].length,
+      empty: isBlank,
+    }
+  }
+
+  // 3. 有序列表：1. 或 1)
+  const orderedMatch = /^(\s*)(\d+)([.)]\s+)(.*)$/.exec(lineText)
+  if (orderedMatch) {
+    const isBlank = orderedMatch[4].trim() === ""
+    const nextNum = Number.parseInt(orderedMatch[2], 10) + 1
+    const delimiter = orderedMatch[3].trim()
+    return {
+      prefix: `${orderedMatch[1]}${nextNum}${delimiter} `,
+      markerLength: orderedMatch[1].length + orderedMatch[2].length + orderedMatch[3].length,
+      empty: isBlank,
+    }
+  }
+
+  // 4. 引用块：>
+  const quoteMatch = /^(\s*)(>+\s*)(.*)$/.exec(lineText)
+  if (quoteMatch) {
+    const isBlank = quoteMatch[3].trim() === ""
+    return {
+      prefix: `${quoteMatch[1]}${quoteMatch[2].trim()} `,
+      markerLength: quoteMatch[1].length + quoteMatch[2].length,
+      empty: isBlank,
+    }
+  }
+
+  return null
+}
+
 /**
  * 判断指定文本末尾是否处于未闭合的 Markdown 代码围栏内。
  */
@@ -240,6 +305,13 @@ export const MARKDOWN_LOG_START_RE = /^\s*\+\+\+\s+(?:logTemplate|log)\s+--start
 // supple 补充块结束行：+++ suppleTemplate --end 或 +++ supple --end，可选携带 {id:...} 与 {wt:...}。
 export const MARKDOWN_SUPPLE_END_RE =
   /^\s*\+\+\+\s+(?:suppleTemplate|supple)\s+--end(?:\s+\{id:[0-9a-f]{32}\})?(?:\s+\{wt:[^}\s{]+\})?\s*$/
+
+// preset 预设块开始行：+++ presetTemplate --start [「title: 标题」] 或 +++ preset --start [「title: 标题」]。
+export const MARKDOWN_PRESET_START_RE =
+  /^\s*\+\+\+\s+(?:presetTemplate|preset)\s+--start(?:\s+「title:[^」\n]*」)?\s*$/
+
+// preset 预设块结束行：+++ presetTemplate --end 或 +++ preset --end。
+export const MARKDOWN_PRESET_END_RE = /^\s*\+\+\+\s+(?:presetTemplate|preset)\s+--end\s*$/
 
 // 变量模板块开始行：$$$ varTemplate [--start] [「title: 标题」]。
 export const MARKDOWN_VAR_TEMPLATE_START_RE =
@@ -414,6 +486,36 @@ export const isMarkdownLogStartLine = (line: string): boolean => MARKDOWN_LOG_ST
  * 判断一行是否为 log 补充块结束标记（+++ logTemplate --end 或 +++ log --end）。
  */
 export const isMarkdownLogEndLine = (line: string): boolean => MARKDOWN_LOG_END_RE.test(line)
+
+/**
+ * 判断一行是否为 preset 预设块开始标记（+++ presetTemplate --start 或 +++ preset --start）。
+ */
+export const isMarkdownPresetStartLine = (line: string): boolean =>
+  MARKDOWN_PRESET_START_RE.test(line)
+
+/**
+ * 判断一行是否为 preset 预设块结束标记（+++ presetTemplate --end 或 +++ preset --end）。
+ */
+export const isMarkdownPresetEndLine = (line: string): boolean => MARKDOWN_PRESET_END_RE.test(line)
+
+/**
+ * 判断指定文本末尾是否处于未闭合的 preset 预设块内。
+ */
+export const isInsideMarkdownPresetBlock = (text: string): boolean => {
+  let isOpen = false
+
+  for (const line of text.split("\n")) {
+    if (isOpen) {
+      if (MARKDOWN_PRESET_END_RE.test(line)) {
+        isOpen = false
+      }
+    } else if (MARKDOWN_PRESET_START_RE.test(line)) {
+      isOpen = true
+    }
+  }
+
+  return isOpen
+}
 
 /**
  * 提取当前光标位置目标模版块用于复制的正文内容：

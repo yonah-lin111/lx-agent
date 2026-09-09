@@ -1,6 +1,12 @@
 import type { Text } from "@codemirror/state"
 import type { EditorView } from "@codemirror/view"
-import { isInsideMarkdownCodeFence } from "@/features/markdown/commands/markdownBlockCommands"
+import {
+  getMarkdownTemplateBlockEndLine,
+  getMarkdownTemplateBlockStartLine,
+  isInsideMarkdownCodeFence,
+  MARKDOWN_PRESET_END_RE,
+  MARKDOWN_PRESET_START_RE,
+} from "@/features/markdown/commands/markdownBlockCommands"
 
 // 页面预设变量条目。
 export interface MarkdownVariableEntry {
@@ -60,6 +66,73 @@ export const isInsideMarkdownVariableBlock = (docText: string, cursor: number): 
 }
 
 /**
+ * 判断光标位置是否处于 $$$ 变量块中的 """ 多行字符串内部。
+ */
+export const isInsideMarkdownVarMultilineString = (docText: string, cursor: number): boolean => {
+  if (!isInsideMarkdownVariableBlock(docText, cursor)) {
+    return false
+  }
+
+  const lines = docText.split("\n")
+  let currentOffset = 0
+  let inVarBlock = false
+  let inTriple = false
+
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine
+    const lineEnd = currentOffset + rawLine.length
+
+    if (!inVarBlock) {
+      if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
+        inVarBlock = true
+      }
+    } else {
+      if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
+        inVarBlock = false
+        inTriple = false
+      } else {
+        if (inTriple) {
+          const closeIdx = line.indexOf('"""')
+          if (closeIdx !== -1) {
+            const closeEnd = currentOffset + closeIdx + 3
+            if (cursor <= closeEnd && cursor >= currentOffset) {
+              return true
+            }
+            inTriple = false
+          } else {
+            if (cursor >= currentOffset && cursor <= lineEnd + 1) {
+              return true
+            }
+          }
+        } else {
+          const openIdx = line.indexOf('"""')
+          if (openIdx !== -1) {
+            const closeIdx = line.indexOf('"""', openIdx + 3)
+            if (closeIdx !== -1) {
+              const openEnd = currentOffset + openIdx + 3
+              const closeStart = currentOffset + closeIdx
+              if (cursor >= openEnd && cursor <= closeStart) {
+                return true
+              }
+            } else {
+              const openEnd = currentOffset + openIdx + 3
+              if (cursor >= openEnd && cursor <= lineEnd + 1) {
+                return true
+              }
+              inTriple = true
+            }
+          }
+        }
+      }
+    }
+
+    currentOffset = lineEnd + 1
+  }
+
+  return false
+}
+
+/**
  * 兼容旧方法：判断光标位置是否处于顶部 frontmatter 或 $$$ 变量块内。
  */
 export const isInsideMarkdownFrontmatter = (docText: string, cursor: number): boolean => {
@@ -72,17 +145,23 @@ export const isInsideMarkdownFrontmatter = (docText: string, cursor: number): bo
 
 /**
  * 解析光标前文本末尾的 $ 或 ¥ 变量触发片段；
- * 位于代码围栏或变量模板块内时不触发。
+ * 位于代码围栏或旧版 frontmatter 内时不触发。$$$ 模板块内部允许输入 ¥ / $ 触发联想。
  */
 export const getMarkdownVariableTrigger = (
   prefix: string,
   docText = prefix,
 ): MarkdownVariableTrigger | null => {
-  if (
-    isInsideMarkdownCodeFence(prefix) ||
-    isInsideMarkdownVariableBlock(docText, prefix.length) ||
-    isInsideMarkdownFrontmatter(docText, prefix.length)
-  ) {
+  if (isInsideMarkdownCodeFence(prefix) || isInsideMarkdownFrontmatter(docText, prefix.length)) {
+    // 如果在旧版 frontmatter 内则不触发；但在 $$$ 变量块内部允许输入 ¥ / $ 触发联想
+    if (!isInsideMarkdownVariableBlock(docText, prefix.length)) {
+      return null
+    }
+  }
+
+  // 避免在 $$$ 开始行或结束行本身误触
+  const lastNewline = prefix.lastIndexOf("\n")
+  const currentLinePrefix = lastNewline === -1 ? prefix : prefix.slice(lastNewline + 1)
+  if (currentLinePrefix.trimStart().startsWith("$$$")) {
     return null
   }
 
@@ -194,7 +273,14 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
     }
 
     const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith("#")) continue
+    if (
+      !trimmed ||
+      trimmed.startsWith("#") ||
+      trimmed.startsWith("//") ||
+      trimmed.startsWith("+++") ||
+      trimmed.startsWith("---")
+    )
+      continue
 
     while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
       stack.pop()
@@ -206,7 +292,7 @@ export const parseYamlVariableContent = (rawYaml: string): MarkdownVariableEntry
     const key = line.slice(0, colonIndex).trim()
     let rawVal = line.slice(colonIndex + 1).trim()
 
-    if (!key || /^[#\-]/.test(key)) continue
+    if (!key || /^[#\-]/.test(key) || key.startsWith("+++")) continue
 
     flushCurrent()
 
@@ -341,9 +427,26 @@ export const cleanVarBlockItems = (blockContent: string): string => {
   const lines = blockContent.split(/\r?\n/)
   const preservedLines: string[] = []
   let idx = 0
+  let inPresetSubblock = false
 
   while (idx < lines.length) {
     const line = lines[idx]
+
+    if (MARKDOWN_PRESET_START_RE.test(line)) {
+      inPresetSubblock = true
+      preservedLines.push(line)
+      idx++
+      continue
+    }
+
+    if (inPresetSubblock) {
+      if (MARKDOWN_PRESET_END_RE.test(line)) {
+        inPresetSubblock = false
+      }
+      preservedLines.push(line)
+      idx++
+      continue
+    }
 
     // 1. 明确的单行占位符 / 空值：key: "var" | key: 'var' | key: "" | key: ''
     const singleMatch = line.match(/^(\s*)([A-Za-z0-9_.-]+)\s*:\s*(?:"var"|'var'|""|'')\s*$/)
@@ -865,5 +968,182 @@ export const moveMarkdownVarBlockToTop = (
       { from: insertPos, to: insertPos, insert: insertText },
       { from: delFrom, to: delTo, insert: "" },
     ],
+  }
+}
+
+export interface ApplyMarkdownTemplatePresetResult {
+  from: number
+  to: number
+  insert: string
+  cursor?: number
+}
+
+/**
+ * 在 &&& 模板块内复用 $$$ 变量模板块中预设的各字段内容。
+ * 按照模版类型（如 add, bug, refactor 等）匹配 preset 下的对应字段；
+ * 未在特定类型下找到时回退到 preset.common 或根 preset，并将单行/多行预设规范填充到当前模板字段中。
+ */
+export const applyMarkdownTemplatePreset = (
+  docText: string,
+  cursor: number,
+): ApplyMarkdownTemplatePresetResult | null => {
+  const startLineNum = getMarkdownTemplateBlockStartLine(docText, cursor)
+  const endLineNum = getMarkdownTemplateBlockEndLine(docText, cursor)
+  if (startLineNum === null || endLineNum === null || startLineNum >= endLineNum) {
+    return null
+  }
+
+  const lines = docText.split("\n")
+  const startLineIndex = startLineNum - 1
+  const endLineIndex = endLineNum - 1
+
+  let offset = 0
+  let blockFrom = 0
+  let blockTo = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    if (i === startLineIndex) {
+      blockFrom = offset
+    }
+    if (i === endLineIndex) {
+      blockTo = offset + lines[i].length
+      break
+    }
+    offset += lines[i].length + 1
+  }
+
+  const startLineText = lines[startLineIndex]
+  const startMatch = startLineText.match(/^\s*&&&\s+([A-Za-z]\w*)/)
+  const rawCommand = startMatch ? startMatch[1] : ""
+  const templateType = rawCommand.replace(/Template$/i, "").toLowerCase()
+
+  const allVariables = parseMarkdownVariables(docText)
+  const varMap = new Map<string, string>()
+  for (const v of allVariables) {
+    varMap.set(v.name.toLowerCase(), v.value)
+  }
+
+  const isBlankOrDefaultPresetValue = (val: string): boolean => {
+    const trimmed = val.trim()
+    if (!trimmed) return true
+    if (trimmed === '""' || trimmed === "''" || trimmed === "var") return true
+    if (trimmed === "-" || trimmed === "- var") return true
+    return false
+  }
+
+  const getPresetValue = (fieldName: string): string | null => {
+    const f = fieldName.toLowerCase()
+    const candidates = [
+      `preset.${templateType}.${f}`,
+      `preset.${rawCommand.toLowerCase()}.${f}`,
+      `${templateType}.${f}`,
+      `${rawCommand.toLowerCase()}.${f}`,
+      `preset.common.${f}`,
+      `preset.${f}`,
+      f,
+    ]
+    for (const c of candidates) {
+      const val = varMap.get(c)
+      if (val !== undefined && !isBlankOrDefaultPresetValue(val)) {
+        return val
+      }
+    }
+    return null
+  }
+
+  const cursorLineNum = docText.slice(0, cursor).split("\n").length
+  const cursorLineIndex = cursorLineNum - 1
+
+  const innerLines = lines.slice(startLineIndex + 1, endLineIndex).map((l, idx) => {
+    const originalLineIndex = startLineIndex + 1 + idx
+    if (originalLineIndex === cursorLineIndex) {
+      if (/^\s*\/[a-zA-Z0-9_-]*\s*$/i.test(l) || /^\s*\/applyPreset\b/i.test(l)) {
+        return ""
+      }
+    }
+    if (/^\s*\/applyPreset\b/i.test(l)) {
+      return ""
+    }
+    return l
+  })
+
+  const newInnerLines: string[] = []
+  let i = 0
+
+  while (i < innerLines.length) {
+    const line = innerLines[i]
+    const fieldMatch = line.match(/^(\s*-\s+)([A-Za-z0-9_]+)(\s*:\s*)(.*)$/)
+
+    if (!fieldMatch) {
+      newInnerLines.push(line)
+      i++
+      continue
+    }
+
+    const prefix = fieldMatch[1]
+    const fieldName = fieldMatch[2]
+    const colon = fieldMatch[3]
+    const presetVal = getPresetValue(fieldName)
+
+    if (presetVal === null) {
+      newInnerLines.push(line)
+      i++
+      continue
+    }
+
+    const isListOrMulti =
+      presetVal.includes("\n") ||
+      presetVal.trim().startsWith("- ") ||
+      presetVal.trim().startsWith("* ")
+
+    if (!isListOrMulti) {
+      newInnerLines.push(`${prefix}${fieldName}${colon}${presetVal.trim()}`)
+      i++
+      while (i < innerLines.length && /^\s*-\s*(?:var)?\s*$/.test(innerLines[i])) {
+        i++
+      }
+    } else {
+      newInnerLines.push(`${prefix}${fieldName}${colon}`)
+      i++
+      while (i < innerLines.length && /^\s*-\s*(?:var)?\s*$/.test(innerLines[i])) {
+        i++
+      }
+      const rawValLines = presetVal.split(/\r?\n/)
+      for (const vl of rawValLines) {
+        const trimmed = vl.trim()
+        if (!trimmed) {
+          newInnerLines.push("")
+        } else if (trimmed.startsWith("- ")) {
+          newInnerLines.push(`  ${trimmed}`)
+        } else if (trimmed.startsWith("* ")) {
+          newInnerLines.push(`  ${trimmed}`)
+        } else {
+          newInnerLines.push(`  - ${trimmed}`)
+        }
+      }
+    }
+  }
+
+  const newBlockLines = [lines[startLineIndex], ...newInnerLines, lines[endLineIndex]]
+  const insert = newBlockLines.join("\n")
+
+  let targetCursor = blockFrom
+  const targetLineIdxInNewBlock = Math.min(
+    Math.max(0, cursorLineIndex - startLineIndex),
+    newBlockLines.length - 1,
+  )
+  if (targetLineIdxInNewBlock === 0) {
+    targetCursor = blockFrom + newBlockLines[0].length + 1
+  } else {
+    for (let k = 0; k < targetLineIdxInNewBlock; k++) {
+      targetCursor += newBlockLines[k].length + 1
+    }
+  }
+
+  return {
+    from: blockFrom,
+    to: blockTo,
+    insert,
+    cursor: targetCursor,
   }
 }

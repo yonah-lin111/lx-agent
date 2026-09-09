@@ -269,6 +269,99 @@ describe("LxMarkdownEditor 文本格式化快捷键 (markdownFormattingKeymap)",
 
     expect(view.state.doc.toString()).toContain("&&& addTemplate --end done")
   })
+
+  it("在列表项后按 Enter 自动续行，空列表项按 Enter 退出列表", async () => {
+    const initialText = "- [ ] 待办任务一"
+    render(<LxMarkdownEditor initialContent={initialText} />)
+
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    const view = EditorView.findFromDOM(getCm()!)!
+
+    // 光标移动到第一行末尾
+    view.dispatch({ selection: { anchor: view.state.doc.length } })
+
+    // 触发 Enter
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    // 自动续行产生新的未勾选待办项
+    expect(view.state.doc.toString()).toBe("- [ ] 待办任务一\n- [ ] ")
+
+    // 再次在空列表项按 Enter
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    // 空列表项被清空
+    expect(view.state.doc.toString()).toBe("- [ ] 待办任务一\n")
+  })
+
+  it("在 $$$ 变量块中 Tab 正常缩进，Shift-Tab 切换下一个变量，Ctrl-Tab 切换上一个变量", async () => {
+    const initialText = '$$$\nuser: "admin"\npass: "123"\n$$$'
+    render(<LxMarkdownEditor initialContent={initialText} />)
+
+    await waitFor(() => expect(getCm()).not.toBeNull())
+    const view = EditorView.findFromDOM(getCm()!)!
+
+    // 光标移动到 user 的行首
+    const userLineFrom = view.state.doc.line(2).from
+    view.dispatch({ selection: { anchor: userLineFrom } })
+
+    // 按 Tab 应该正常缩进（插入 2 空格），而不是跳转选区
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    expect(view.state.doc.line(2).text).toBe('  user: "admin"')
+
+    // 按 Shift-Tab 切换到下一个目标（从 key 跳转到 value "admin"）
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    const selAfterShiftTab1 = view.state.selection.main
+    expect(view.state.sliceDoc(selAfterShiftTab1.from, selAfterShiftTab1.to)).toBe("admin")
+
+    // 再次按 Shift-Tab 切换到下一个 key "pass"
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    const selAfterShiftTab2 = view.state.selection.main
+    expect(view.state.sliceDoc(selAfterShiftTab2.from, selAfterShiftTab2.to)).toBe("pass")
+
+    // 按 Ctrl-Tab 切换回上一个目标（跳转回 "admin"）
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    const selAfterCtrlTab = view.state.selection.main
+    expect(view.state.sliceDoc(selAfterCtrlTab.from, selAfterCtrlTab.to)).toBe("admin")
+  })
 })
 
 describe("LxMarkdownEditor 剪贴板与弹层交互 (useMarkdownPasteReference)", () => {
@@ -285,5 +378,61 @@ describe("LxMarkdownEditor 剪贴板与弹层交互 (useMarkdownPasteReference)"
     getCm()!.dispatchEvent(event)
 
     expect(event.defaultPrevented).toBe(false)
+  })
+})
+
+describe("LxMarkdownEditor /applyPreset 命令执行", () => {
+  it("在 &&& 模板块内输入 /applyPreset 并回车后，输入的命令行被完全移除", async () => {
+    const initialText = [
+      "$$$ varTemplate --start 「title: 」",
+      "preset:",
+      "  add:",
+      '    reference: "@docs/specs.md"',
+      "$$$ varTemplate --end",
+      "",
+      "&&& addTemplate --start 「title: 」",
+      "# Add Requirement",
+      "- Reference: ",
+      "/applyPreset",
+      "&&& addTemplate --end",
+    ].join("\n")
+
+    render(<LxMarkdownEditor initialContent={initialText} projectPath="/repo" />)
+    await waitFor(() => expect(getCm()).not.toBeNull())
+
+    const view = EditorView.findFromDOM(getCm()!)!
+    const commandOffset = initialText.indexOf("/applyPreset") + "/applyPreset".length
+    view.dispatch({
+      selection: { anchor: commandOffset },
+    })
+
+    getCm()!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    await new Promise((r) => setTimeout(r, 100))
+
+    expect(view.state.doc.toString()).not.toContain("/applyPreset")
+    expect(view.state.doc.toString()).toContain("- Reference: @docs/specs.md")
+    expect(view.state.doc.toString()).toBe(
+      [
+        "$$$ varTemplate --start 「title: 」",
+        "preset:",
+        "  add:",
+        '    reference: "@docs/specs.md"',
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "- Reference: @docs/specs.md",
+        "",
+        "&&& addTemplate --end",
+      ].join("\n"),
+    )
   })
 })

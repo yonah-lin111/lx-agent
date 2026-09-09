@@ -4,6 +4,7 @@ import { type CSSProperties, useCallback, useRef, useState } from "react"
 import {
   getMarkdownColonTrigger,
   isInsideMarkdownVariableBlock,
+  isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import { getMarkdownPanelPosition } from "@/features/markdown/utils/markdownPanelPosition"
 
@@ -149,7 +150,10 @@ export const useMarkdownColonPanel = (
       const cursor = view.state.selection.main.head
       const docText = view.state.doc.toString()
 
-      if (!isInsideMarkdownVariableBlock(docText, cursor)) {
+      if (
+        !isInsideMarkdownVariableBlock(docText, cursor) ||
+        isInsideMarkdownVarMultilineString(docText, cursor)
+      ) {
         if (colonPanelRef.current?.active) closeColonPanel()
         return
       }

@@ -13,6 +13,7 @@ import {
   stripEmptyTemplateItems,
   stripMarkdownTemplateComments,
 } from "@/features/markdown/utils/markdownRenderer"
+import { handlePresetBlockLine } from "./markerSubblockHandlers"
 
 // Markdown 块扫描解析上下文契约。
 export interface MarkerBlockScanContext {
@@ -66,6 +67,19 @@ export interface MarkerBlockScanContext {
   onCleanVarBlock: (startLine: number, endLine: number) => void
   onMergeVarBlock: (startLine: number, endLine: number) => void
   onMoveVarBlockToTop?: (startLine: number, endLine: number) => void
+
+  isInsidePresetBlock: boolean
+  currentPresetFolded: boolean
+  presetBlockIndex: number
+  presetFoldedIndices: Set<number>
+  onTogglePresetFold: (index: number) => void
+  onDeletePresetBlock: (startLine: number, endLine: number) => void
+
+  scanMarkdownTokens?: (
+    line: string,
+    addMarker: (from: number, to: number, className: string, atomic?: boolean) => void,
+    addMatches: (pattern: RegExp, className: string) => void,
+  ) => void
 }
 
 // 模板块状态对应的 CSS 类后缀。
@@ -473,6 +487,8 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
     ctx.isInsideVarBlock = false
     ctx.isInsideVarTripleQuotes = false
     ctx.currentVarFolded = false
+    ctx.isInsidePresetBlock = false
+    ctx.currentPresetFolded = false
     return true
   }
 
@@ -486,13 +502,30 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
       return true
     }
 
+    if (handlePresetBlockLine(ctx)) {
+      return true
+    }
+
     let isInvalid = false
 
     if (ctx.isInsideVarTripleQuotes) {
       const tripleIndex = ctx.line.indexOf('"""')
       if (tripleIndex !== -1) {
         if (tripleIndex > 0) {
-          ctx.addMarkerAlways(0, tripleIndex, "cm-md-var-value")
+          if (ctx.scanMarkdownTokens) {
+            const textBefore = ctx.line.slice(0, tripleIndex)
+            ctx.scanMarkdownTokens(
+              textBefore,
+              (from, to, cls, atomic) => ctx.addMarkerAlways(from, to, cls, atomic),
+              (pat, cls) => {
+                for (const match of textBefore.matchAll(pat)) {
+                  if (match.index !== undefined) {
+                    ctx.addMarkerAlways(match.index, match.index + match[0].length, cls)
+                  }
+                }
+              },
+            )
+          }
         }
         ctx.addMarkerAlways(tripleIndex, tripleIndex + 3, "cm-md-var-triple-quote")
         ctx.isInsideVarTripleQuotes = false
@@ -507,7 +540,19 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
         }
       } else {
         if (ctx.line.trim().length > 0) {
-          ctx.addMarkerAlways(0, ctx.line.length, "cm-md-var-value")
+          if (ctx.scanMarkdownTokens) {
+            ctx.scanMarkdownTokens(
+              ctx.line,
+              (from, to, cls, atomic) => ctx.addMarkerAlways(from, to, cls, atomic),
+              (pat, cls) => {
+                for (const match of ctx.line.matchAll(pat)) {
+                  if (match.index !== undefined) {
+                    ctx.addMarkerAlways(match.index, match.index + match[0].length, cls)
+                  }
+                }
+              },
+            )
+          }
         }
       }
     } else {
@@ -565,7 +610,30 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
               ctx.addMarkerAlways(tripleStart, tripleStart + 3, "cm-md-var-triple-quote")
               ctx.isInsideVarTripleQuotes = true
               if (tripleStart + 3 < ctx.line.length) {
-                ctx.addMarkerAlways(tripleStart + 3, ctx.line.length, "cm-md-var-value")
+                const textAfter = ctx.line.slice(tripleStart + 3)
+                if (textAfter.trim() && ctx.scanMarkdownTokens) {
+                  ctx.scanMarkdownTokens(
+                    textAfter,
+                    (from, to, cls, atomic) =>
+                      ctx.addMarkerAlways(
+                        tripleStart + 3 + from,
+                        tripleStart + 3 + to,
+                        cls,
+                        atomic,
+                      ),
+                    (pat, cls) => {
+                      for (const match of textAfter.matchAll(pat)) {
+                        if (match.index !== undefined) {
+                          ctx.addMarkerAlways(
+                            tripleStart + 3 + match.index,
+                            tripleStart + 3 + match.index + match[0].length,
+                            cls,
+                          )
+                        }
+                      }
+                    },
+                  )
+                }
               }
             }
           } else {
@@ -595,6 +663,17 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
               }
             }
           }
+        } else if (ctx.isInsidePresetBlock && /^\s*[-*]\s+/.test(ctx.line)) {
+          const listMatch = ctx.line.match(/^(\s*)([-*])(\s+)(.*)$/)
+          if (listMatch) {
+            const markerStart = listMatch[1].length
+            ctx.addMarkerAlways(markerStart, markerStart + 1, "cm-md-var-key")
+            ctx.addMarkerAlways(
+              markerStart + 1 + listMatch[3].length,
+              ctx.line.length,
+              "cm-md-var-value",
+            )
+          }
         } else {
           isInvalid = true
           const firstNonSpace = ctx.line.search(/\S/)
@@ -605,12 +684,13 @@ export const handleVarTemplateBlockLine = (ctx: MarkerBlockScanContext): boolean
       }
     }
 
+    const middleLineClass = ctx.isInsidePresetBlock
+      ? "cm-md-preset-middle-line"
+      : "cm-md-var-template-middle-line"
     ctx.allDecos.push({
       type: "line",
       from: ctx.offset,
-      className: isInvalid
-        ? "cm-md-var-template-middle-line cm-md-var-invalid-line"
-        : "cm-md-var-template-middle-line",
+      className: isInvalid ? `${middleLineClass} cm-md-var-invalid-line` : middleLineClass,
     })
     return true
   }
