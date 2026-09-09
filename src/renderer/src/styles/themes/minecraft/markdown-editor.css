@@ -460,6 +460,8 @@
 /* 8. 编辑区操作栏按钮（复制/折叠/状态切换/删除）：重度 3D 像素按钮 */
 [data-theme="minecraft"] .cm-template-block-action-wrap button,
 [data-theme="minecraft"] .cm-supple-block-action-wrap button,
+[data-theme="minecraft"] .cm-preset-block-action-wrap button,
+[data-theme="minecraft"] .cm-var-template-block-action-wrap button,
 [data-theme="minecraft"] .cm-code-block-action-wrap button {
   border: 2px solid #000000 !important;
   background-color: #2e2e42 !important;
@@ -474,6 +476,8 @@
 
 [data-theme="minecraft"] .cm-template-block-action-wrap button:hover,
 [data-theme="minecraft"] .cm-supple-block-action-wrap button:hover,
+[data-theme="minecraft"] .cm-preset-block-action-wrap button:hover,
+[data-theme="minecraft"] .cm-var-template-block-action-wrap button:hover,
 [data-theme="minecraft"] .cm-code-block-action-wrap button:hover {
   background-color: #42425c !important;
   color: #ffffff !important;
@@ -481,6 +485,8 @@
 
 [data-theme="minecraft"] .cm-template-block-action-wrap button:active,
 [data-theme="minecraft"] .cm-supple-block-action-wrap button:active,
+[data-theme="minecraft"] .cm-preset-block-action-wrap button:active,
+[data-theme="minecraft"] .cm-var-template-block-action-wrap button:active,
 [data-theme="minecraft"] .cm-code-block-action-wrap button:active {
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
@@ -740,6 +746,89 @@
   color: #f87171 !important;
   text-decoration: underline wavy #f87171 !important;
   text-underline-offset: 3px !important;
+}
+
+/* 8.4 编辑区 presetTemplate 预设子块（紫水晶 / 哭泣黑曜石 3D 像素实体卡片） */
+[data-theme="minecraft"] .cm-md-preset-start-line,
+[data-theme="minecraft"] .cm-md-preset-middle-line,
+[data-theme="minecraft"] .cm-md-preset-end-line {
+  background-color: #1c1426 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231c1426'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23221830'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%23170f20'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%23271b38'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%232d1f40'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%231f152b'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%232e2042'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%23181022'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23241934'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23261a37'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%231c1426'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%2334234d'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%23181022'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23130c1c'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%232a1d3c'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%231f152b'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%232e2042'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%233e275c'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%234c2f70'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%230f0816'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%234c2f70'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%230f0816'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="minecraft"] .cm-md-preset-start-line {
+  border: 2px solid #000000 !important;
+  border-bottom: 2px solid #281836 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(192, 132, 252, 0.55),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px 0px #000000 !important;
+  color: #e9d5ff !important;
+}
+
+[data-theme="minecraft"] .cm-md-preset-middle-line {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(192, 132, 252, 0.4),
+    inset -2px 0px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 0px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-preset-end-line {
+  border: 2px solid #000000 !important;
+  border-top: none !important;
+  box-shadow:
+    inset 2px 0px 0px 0px rgba(192, 132, 252, 0.4),
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.95),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .cm-md-preset-marker {
+  color: #c084fc !important;
+  font-weight: bold;
+  text-shadow: 2px 2px 0px #000000;
+}
+
+[data-theme="minecraft"] .cm-md-preset-command {
+  background-color: #2c1a3e !important;
+  color: #e9d5ff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+}
+
+[data-theme="minecraft"] .cm-md-preset-flag {
+  background-color: #221432 !important;
+  color: #c084fc !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.8),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 5px !important;
+  font-weight: bold;
+}
+
+[data-theme="minecraft"] .cm-md-preset-title {
+  background-color: #381e4b !important;
+  color: #f5d0fe !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.75),
+    1px 1px 0px 0px #000000 !important;
+  padding: 1px 6px !important;
+  text-decoration: none !important;
 }
 
 /* 9. 编辑区文件引用与 Mention 标记：3D 像素立体胶囊 */

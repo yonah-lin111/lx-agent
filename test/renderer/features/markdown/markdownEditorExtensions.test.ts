@@ -495,6 +495,7 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       expect(presetWidget).not.toBeNull()
       expect(presetWidget!.isPreset).toBe(true)
       expect(presetWidget!.isFolded).toBe(false)
+      expect(presetWidget!.actionClassName).toBe("cm-preset-block-action-wrap")
 
       // 验证折叠交互
       presetWidget!.onToggleFold()
