@@ -19,4 +19,5 @@ export interface HeatmapCell {
 export interface HeatmapWeek {
   weekIndex: number
   days: (HeatmapCell | null)[]
+  monthLabel?: string
 }

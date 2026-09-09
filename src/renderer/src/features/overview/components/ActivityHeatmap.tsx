@@ -17,22 +17,92 @@ const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
   4: "bg-emerald-400 border border-emerald-300 hover:brightness-110 shadow-xs shadow-emerald-500/25",
 }
 
+interface HeatmapGridTierProps {
+  weeks: HeatmapWeek[]
+  t: (key: string, options?: Record<string, unknown>) => string
+}
+
 /**
- * 渲染生产力绿墙热力图（对齐 GitHub 52 周网格，按数据比例动态渐变，严禁原生 title，统一使用 LxTooltip）。
+ * 渲染单个热力图层级（包含独立左侧星期与顶部月份，单元格放大，严格对齐）。
+ */
+const HeatmapGridTier = ({ weeks, t }: HeatmapGridTierProps): React.JSX.Element => {
+  const dayLabels = ["Mon", "", "Wed", "", "Fri", "", ""]
+
+  return (
+    <div className="flex items-start gap-1.5 min-w-0">
+      {/* 星期标签列（与周内各天像素级严格对齐） */}
+      <div className="flex flex-col gap-1 pr-0.5 text-[9px] text-white/35 select-none shrink-0">
+        {/* 顶部月份占位行 */}
+        <div className="h-4" />
+        {dayLabels.map((label, idx) => (
+          <div key={idx} className="flex h-3 w-5 items-center leading-none sm:h-3.5 sm:w-6">
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* 周列网格（单元格放大至 14px，每列顶部自带月份标签） */}
+      <div className="flex gap-1 min-w-0">
+        {weeks.map((week) => (
+          <div key={week.weekIndex} className="flex flex-col gap-1 shrink-0">
+            {/* 月份标签：绑定在对应周列顶部，绝不偏移 */}
+            <div className="h-4 text-[10px] leading-none text-white/40 select-none overflow-visible whitespace-nowrap">
+              {week.monthLabel || ""}
+            </div>
+
+            {/* 7 天单元格 */}
+            {week.days.map((day, dayIndex) => {
+              if (!day) {
+                return (
+                  <div
+                    key={`empty-${dayIndex}`}
+                    className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 rounded-[2px] bg-transparent opacity-0 pointer-events-none"
+                  />
+                )
+              }
+
+              const tooltipText =
+                day.count > 0
+                  ? `${day.date}: ${t("home.heatmap.activitiesDetail", {
+                      count: day.count,
+                      turns: day.turns,
+                      toolCalls: day.toolCalls,
+                    })}`
+                  : `${day.date}: ${t("home.heatmap.noActivity")}`
+
+              return (
+                <LxTooltip key={day.date} content={tooltipText} placement="top">
+                  <div
+                    tabIndex={0}
+                    data-date={day.date}
+                    data-count={day.count}
+                    data-level={day.level}
+                    className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 cursor-pointer rounded-[2px] transition-all duration-100 ${LEVEL_CLASS_MAP[day.level]}`}
+                  />
+                </LxTooltip>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 渲染生产力绿墙热力图（单元格放大，支持多组自适应换行，彻底杜绝横向滚动条，统一使用 LxTooltip）。
  */
 export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const { weeks, monthLabels, maxCount } = useMemo(() => buildHeatmapWeeks(entries), [entries])
+  const { tiers, maxCount } = useMemo(() => buildHeatmapWeeks(entries), [entries])
 
   const totalYearActivities = useMemo(
     () => entries.reduce((acc, curr) => acc + curr.count, 0),
     [entries],
   )
 
-  const dayLabels = ["Mon", "", "Wed", "", "Fri", "", ""]
-
   return (
-    <div className="overview-heatmap-card flex min-w-0 flex-col gap-3 rounded-[6px] border border-white/5 bg-[#262626] p-4">
+    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-white/5 bg-[#262626] p-4">
       {/* 头部标题与统计 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
@@ -51,106 +121,39 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
         </div>
       </div>
 
-      {/* 热力图网格横向滚动容器 */}
-      <div className="custom-scrollbar w-full min-w-0 overflow-x-auto pb-1 [scrollbar-gutter:stable]">
-        <div className="inline-flex min-w-full flex-col gap-1 pr-2">
-          {/* 月份表头 */}
-          <div className="flex h-4 items-center pl-7 text-[10px] text-white/40">
-            {monthLabels.map((m, idx) => {
-              const nextWeekIndex = monthLabels[idx + 1]?.weekIndex ?? weeks.length
-              const spanWeeks = nextWeekIndex - m.weekIndex
-              if (spanWeeks < 2) return null
-              return (
-                <div
-                  key={`${m.label}-${m.weekIndex}`}
-                  style={{ width: `${spanWeeks * 14}px` }}
-                  className="shrink-0 truncate"
-                >
-                  {m.label}
-                </div>
-              )
-            })}
-          </div>
+      {/* 绿墙热力图主体：双组网格自适应折行，零横向滚动条 */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-5 w-full min-w-0">
+        {tiers.map((tierWeeks, tierIdx) => (
+          <HeatmapGridTier key={tierIdx} weeks={tierWeeks} t={t} />
+        ))}
+      </div>
 
-          {/* 核心网格：左侧星期 + 右侧 52 周列 */}
-          <div className="flex items-center gap-1.5">
-            {/* 星期标签列 */}
-            <div className="flex flex-col gap-1 pr-1 text-[9px] text-white/35 select-none">
-              {dayLabels.map((label, idx) => (
-                <div key={idx} className="flex h-2.5 w-6 items-center leading-none">
-                  {label}
-                </div>
-              ))}
-            </div>
-
-            {/* 周列 */}
-            <div className="flex gap-1">
-              {weeks.map((week) => (
-                <div key={week.weekIndex} className="flex flex-col gap-1">
-                  {week.days.map((day, dayIndex) => {
-                    if (!day) {
-                      return (
-                        <div
-                          key={`empty-${dayIndex}`}
-                          className="h-2.5 w-2.5 shrink-0 rounded-[2px] bg-transparent opacity-0"
-                        />
-                      )
-                    }
-
-                    const tooltipText =
-                      day.count > 0
-                        ? `${day.date}: ${t("home.heatmap.activitiesDetail", {
-                            count: day.count,
-                            turns: day.turns,
-                            toolCalls: day.toolCalls,
-                          })}`
-                        : `${day.date}: ${t("home.heatmap.noActivity")}`
-
-                    return (
-                      <LxTooltip key={day.date} content={tooltipText} placement="top">
-                        <div
-                          tabIndex={0}
-                          data-date={day.date}
-                          data-count={day.count}
-                          data-level={day.level}
-                          className={`overview-heatmap-cell h-2.5 w-2.5 shrink-0 cursor-pointer rounded-[2px] transition-all duration-100 ${LEVEL_CLASS_MAP[day.level]}`}
-                        />
-                      </LxTooltip>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 底部图例 */}
-          <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-white/40 select-none">
-            <span>{t("home.heatmap.less")}</span>
-            <div className="flex items-center gap-1 px-1">
-              <span
-                className={`overview-heatmap-cell h-2.5 w-2.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
-                data-level="0"
-              />
-              <span
-                className={`overview-heatmap-cell h-2.5 w-2.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
-                data-level="1"
-              />
-              <span
-                className={`overview-heatmap-cell h-2.5 w-2.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
-                data-level="2"
-              />
-              <span
-                className={`overview-heatmap-cell h-2.5 w-2.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
-                data-level="3"
-              />
-              <span
-                className={`overview-heatmap-cell h-2.5 w-2.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
-                data-level="4"
-              />
-            </div>
-            <span>{t("home.heatmap.more")}</span>
-          </div>
+      {/* 底部图例 */}
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-white/40 select-none">
+        <span>{t("home.heatmap.less")}</span>
+        <div className="flex items-center gap-1 px-1">
+          <span
+            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
+            data-level="0"
+          />
+          <span
+            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
+            data-level="1"
+          />
+          <span
+            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
+            data-level="2"
+          />
+          <span
+            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
+            data-level="3"
+          />
+          <span
+            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
+            data-level="4"
+          />
         </div>
+        <span>{t("home.heatmap.more")}</span>
       </div>
     </div>
   )

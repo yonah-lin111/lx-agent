@@ -64,5 +64,30 @@ describe("overview heatmapUtils", () => {
     })
     // 剩余天数补齐 null
     expect(firstWeek.days[3]).toBeNull()
+
+    // 验证 tiers
+    expect(result.tiers).toHaveLength(1)
+    expect(result.tiers[0][0].monthLabel).toBe("Sep")
+  })
+
+  it("当包含多周跨度记录时正确划分为对称双层（tiers）并标注月份", () => {
+    // 构造跨度 14 天（2 周）的记录
+    const entries = Array.from({ length: 14 }, (_, i) => {
+      const day = String(i + 1).padStart(2, "0")
+      return {
+        date: `2026-09-${day}`,
+        count: i * 5,
+        turns: i,
+        toolCalls: i,
+      }
+    })
+
+    const result = buildHeatmapWeeks(entries)
+    expect(result.weeks.length).toBeGreaterThanOrEqual(2)
+    expect(result.tiers).toHaveLength(2)
+    // 两个层级列数保持对称
+    expect(result.tiers[0].length).toBe(result.tiers[1].length)
+    expect(result.tiers[0][0].monthLabel).toBe("Sep")
+    expect(result.tiers[1][0].monthLabel).toBe("Sep")
   })
 })
