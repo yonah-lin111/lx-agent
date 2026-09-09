@@ -793,6 +793,8 @@ export const zh: TranslationDictionary = {
     slashCommands: "Slash 命令",
     skillMention: "Skill 技能清单",
     thinkingVariantSwitched: "思考等级已切换为：{{variant}}",
+    thinkingEffort: "Effort",
+    effort: "Effort",
     fileMention: "项目文件提及",
     modelSelect: "模型选择",
     commandClearDesc: "清空当前对话",

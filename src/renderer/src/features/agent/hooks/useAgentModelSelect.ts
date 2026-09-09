@@ -65,7 +65,8 @@ export const useAgentModelSelect = () => {
       const validVariant =
         saved.variant && modelConfig?.variants && modelConfig.variants[saved.variant]
           ? saved.variant
-          : modelConfig?.variant ?? (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+          : (modelConfig?.variant ??
+            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined))
       setSelectedVariant(validVariant)
     } else if (isValidSelection(settings.defaultModel, settings)) {
       const def = settings.defaultModel
@@ -74,7 +75,8 @@ export const useAgentModelSelect = () => {
       const validVariant =
         def.variant && modelConfig?.variants && modelConfig.variants[def.variant]
           ? def.variant
-          : modelConfig?.variant ?? (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+          : (modelConfig?.variant ??
+            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined))
       setSelectedVariant(validVariant)
     } else {
       setSelectedModel("")
@@ -109,6 +111,9 @@ export const useAgentModelSelect = () => {
         options: Object.values(provider.models).map((model) => ({
           value: `${provider.id}::${model.id}`,
           label: model.name || model.id,
+          variants: model.variants ? Object.keys(model.variants) : undefined,
+          defaultVariant:
+            model.variant ?? (model.variants ? Object.keys(model.variants)[0] : undefined),
         })),
       }))
     return groups.length > 0 ? groups : [{ value: "", label: t("agent.noAvailableModels") }]
@@ -140,15 +145,17 @@ export const useAgentModelSelect = () => {
   }, [selectedModel, selectedVariant])
 
   const handleModelChange = useCallback(
-    (value: string) => {
+    (value: string, explicitVariant?: string) => {
       setSelectedModel(value)
       const [provider, model] = value.split("::")
-      let variantToSet: string | undefined = undefined
+      let variantToSet: string | undefined = explicitVariant
       if (provider && model && settings) {
         const modelConfig = settings.providers[provider]?.models[model]
-        variantToSet =
-          modelConfig?.variant ??
-          (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+        if (variantToSet === undefined) {
+          variantToSet =
+            modelConfig?.variant ??
+            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+        }
         setSelectedVariant(variantToSet)
         try {
           localStorage.setItem(
@@ -173,10 +180,7 @@ export const useAgentModelSelect = () => {
       const [provider, model] = selectedModel.split("::")
       if (provider && model) {
         try {
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({ provider, model, variant }),
-          )
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ provider, model, variant }))
         } catch {
           // 忽略可能存在的 Storage 写入异常。
         }

@@ -810,6 +810,8 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     slashCommands: "Slash Commands",
     skillMention: "Skill Mention",
     thinkingVariantSwitched: "Thinking variant switched to: {{variant}}",
+    thinkingEffort: "Effort",
+    effort: "Effort",
     fileMention: "Project File Mention",
     modelSelect: "Model Select",
     commandClearDesc: "Clear current chat",

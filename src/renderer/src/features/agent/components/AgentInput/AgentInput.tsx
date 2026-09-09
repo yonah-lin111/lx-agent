@@ -37,7 +37,7 @@ export interface AgentInputProps {
   selectedModel: string
   selectedVariant?: string
   availableVariants?: string[]
-  onModelChange: (value: string) => void
+  onModelChange: (value: string, variant?: string) => void
   onVariantChange?: (variant: string) => void
   modelOptions: AgentModelSelectProps["options"]
   hasModelOptions: boolean
