@@ -42,7 +42,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
   }, [metrics?.sessions.lastActiveAt, t])
 
   return (
-    <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar">
+    <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [contain:paint] [transform:translateZ(0)]">
       <LxLoadingOverlay isLoading={isLoading && !stats} text="Loading overview..." />
 
       {/* 顶部标题与项目切换器 */}

@@ -14,7 +14,7 @@ const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
   1: "bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400",
   2: "bg-emerald-500/45 border border-emerald-500/50 hover:border-emerald-400",
   3: "bg-emerald-500/75 border border-emerald-400 hover:border-emerald-300",
-  4: "bg-emerald-400 border border-emerald-300 hover:brightness-110 shadow-xs shadow-emerald-500/25",
+  4: "bg-emerald-400 border border-emerald-300 hover:brightness-110 hover:shadow-xs hover:shadow-emerald-500/25",
 }
 
 const WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -43,7 +43,7 @@ const HeatmapDayCell = React.memo(
           data-date={day.date}
           data-count={day.count}
           data-level={day.level}
-          className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 cursor-pointer rounded-[2px] transition-colors duration-75 ${LEVEL_CLASS_MAP[day.level]}`}
+          className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 cursor-pointer rounded-[2px] hover:transition-colors hover:duration-75 ${LEVEL_CLASS_MAP[day.level]}`}
         />
       </LxTooltip>
     )
@@ -58,11 +58,11 @@ interface MonthBlockProps {
 }
 
 /**
- * 单个月份独立周列网格（使用 React.memo，宽度足够时单行平铺，不足时按月逐月自适应折行）。
+ * 单个月份独立周列网格（使用 React.memo + contain:layout_paint 隔离沙箱，防止宽度动画时下钻 365 节点导致布局颠簸）。
  */
 const MonthBlock = React.memo(({ month, t }: MonthBlockProps): React.JSX.Element => {
   return (
-    <div className="flex flex-col items-center gap-1.5 shrink-0">
+    <div className="flex flex-col items-center gap-1.5 shrink-0 [contain:layout_paint]">
       {/* 月份名称 */}
       <div className="h-4 text-[11px] font-medium leading-none text-white/50 select-none">
         {month.label}
@@ -117,7 +117,7 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
   const dayLabels = ["Mon", "", "Wed", "", "Fri", "", ""]
 
   return (
-    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-white/5 bg-[#262626] p-4">
+    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-white/5 bg-[#262626] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
       {/* 头部标题与统计 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">

@@ -28,7 +28,7 @@ export const MetricCard = ({
   extra,
 }: MetricCardProps): React.JSX.Element => {
   return (
-    <div className="overview-metric-card flex min-w-0 flex-col justify-between rounded-[6px] border border-white/5 bg-[#262626] p-3.5 transition-colors hover:border-white/10">
+    <div className="overview-metric-card flex min-w-0 flex-col justify-between rounded-[6px] border border-white/5 bg-[#262626] p-3.5 transition-colors hover:border-white/10 [contain:layout_paint]">
       <div>
         {/* 顶部行：左侧图标 + 右侧徽标 */}
         <div className="flex items-center justify-between gap-2">

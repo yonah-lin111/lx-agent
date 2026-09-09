@@ -1399,7 +1399,10 @@
 [data-theme="minecraft"] .overview-heatmap-cell[data-level="4"] {
   background-color: #55ff55 !important;
   border: 1px solid #2ea83d !important;
-  box-shadow: 0px 0px 3px rgba(85, 255, 85, 0.6) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="4"]:hover {
+  box-shadow: 0px 0px 4px rgba(85, 255, 85, 0.8) !important;
 }
 
 /* 主页侧边栏概览项像素风格 */
