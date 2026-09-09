@@ -198,6 +198,36 @@ describe("Markdown 编辑器扩展重构功能验证", () => {
       expect(decoratedStrings).toContain("@[refer-image](preview.png)")
     })
 
+    it('变量模板块多行字符串 """ 内部完整解析并装饰 Markdown 常用语法', () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 变量模板」",
+        "requirements:",
+        '  """',
+        "  # 标题一",
+        "  - [ ] 待办项",
+        "  - 列表项",
+        "  **粗体内容** `code`",
+        '  """',
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const { view, plugin } = createTestView(doc)
+      expect(plugin).toBeDefined()
+
+      const decoratedStrings: string[] = []
+      const cursor = plugin!.decorations.iter()
+      while (cursor.value) {
+        decoratedStrings.push(view.state.doc.sliceString(cursor.from, cursor.to))
+        cursor.next()
+      }
+
+      expect(decoratedStrings).toContain("#")
+      expect(decoratedStrings).toContain("[ ]")
+      expect(decoratedStrings).toContain("-")
+      expect(decoratedStrings).toContain("**")
+      expect(decoratedStrings).toContain("`")
+    })
+
     it("支持 cycleTemplateStatus 循环推进模板状态 (todo -> in_progress -> done)", () => {
       const doc = "&&& addTemplate --end"
       const { view, plugin } = createTestView(doc)

@@ -25,7 +25,6 @@ const getPresetIcon = (id: string): React.JSX.Element => {
       return <CheckSquare className="h-3.5 w-3.5 text-sky-400" />
     case "style":
       return <Palette className="h-3.5 w-3.5 text-purple-400" />
-    case "all":
     default:
       return <Layers className="h-3.5 w-3.5 text-indigo-400" />
   }

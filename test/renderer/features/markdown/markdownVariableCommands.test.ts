@@ -16,6 +16,7 @@ import {
   getVariableTag,
   handleMarkdownVarBlockTab,
   isInsideMarkdownFrontmatter,
+  isInsideMarkdownVarMultilineString,
   mergeMarkdownVarBlock,
   moveMarkdownVarBlockToTop,
   parseMarkdownVariables,
@@ -902,12 +903,60 @@ $$$ varTemplate --end`
       expect(applyMarkdownTemplatePreset(doc, 5)).toBeNull()
     })
 
-    it("使用 MARKDOWN_TEMPLATE_PRESET_OPTIONS 中的 --- 包裹预设，可无缝填充各类模板", () => {
-      const allPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "all")!.content
+    it("使用 MARKDOWN_TEMPLATE_PRESET_OPTIONS 中的空白预设时，空/默认脚手架不覆盖已有的目标模板字段", () => {
+      const addPresetContent = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "add")!.content
 
-      const docWithAll = [
+      const docWithBlankPreset = [
         "$$$ varTemplate --start 「title: 」",
-        allPreset,
+        addPresetContent,
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: Existing」",
+        "# Add Requirement",
+        "",
+        "- Reference: @existing/spec.md",
+        "- Location: @src/existing",
+        "- Description: Existing description",
+        "- Requirements: ",
+        "  - Existing task",
+        "- Notes: ",
+        "  - Existing note",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const addCursor = docWithBlankPreset.indexOf("&&& addTemplate") + 10
+      const addResult = applyMarkdownTemplatePreset(docWithBlankPreset, addCursor)
+      // 因为预设全部为 "" 和默认占位，现有 &&& 字段不应被覆盖
+      expect(addResult).not.toBeNull()
+      expect(addResult!.insert).toContain("- Reference: @existing/spec.md")
+      expect(addResult!.insert).toContain("- Location: @src/existing")
+      expect(addResult!.insert).toContain("- Description: Existing description")
+      expect(addResult!.insert).toContain("- Requirements: \n  - Existing task")
+      expect(addResult!.insert).toContain("- Notes: \n  - Existing note")
+    })
+
+    it("预设中包含具体自定义值时，能够正常赋给 &&& 模板块", () => {
+      const filledAddPreset = [
+        "+++ presetTemplate --start 「title: Add Requirement」",
+        "preset:",
+        "  add:",
+        '    reference: "@docs/features/specs.md"',
+        '    location: "@src/renderer/src/features"',
+        '    description: "Feature development specification"',
+        "    requirements:",
+        '      """',
+        "      - [ ] Data structure definition",
+        '      """',
+        "    notes:",
+        '      """',
+        "      - Use LxTag and standard UI components",
+        '      """',
+        "+++ presetTemplate --end",
+      ].join("\n")
+
+      const docWithFilled = [
+        "$$$ varTemplate --start 「title: 」",
+        filledAddPreset,
         "$$$ varTemplate --end",
         "",
         "&&& addTemplate --start 「title: 」",
@@ -921,46 +970,40 @@ $$$ varTemplate --end`
         "- Notes: ",
         "  - ",
         "&&& addTemplate --end",
-        "",
-        "&&& bugTemplate --start 「title: 」",
-        "# Fix Bug",
-        "",
-        "- Reference: ",
-        "- Location: ",
-        "- Description: ",
-        "- Reproduction: ",
-        "- Requirements: ",
-        "  - ",
-        "- Expectations: ",
-        "- Notes: ",
-        "  - ",
-        "&&& bugTemplate --end",
       ].join("\n")
 
-      // 验证 addTemplate 填充
-      const addCursor = docWithAll.indexOf("&&& addTemplate") + 10
-      const addResult = applyMarkdownTemplatePreset(docWithAll, addCursor)
+      const addCursor = docWithFilled.indexOf("&&& addTemplate") + 10
+      const addResult = applyMarkdownTemplatePreset(docWithFilled, addCursor)
       expect(addResult).not.toBeNull()
       expect(addResult!.insert).toContain("- Reference: @docs/features/specs.md")
       expect(addResult!.insert).toContain("- Location: @src/renderer/src/features")
       expect(addResult!.insert).toContain("- Description: Feature development specification")
       expect(addResult!.insert).toContain("- Requirements: \n  - [ ] Data structure definition")
       expect(addResult!.insert).toContain("- Notes: \n  - Use LxTag and standard UI components")
+    })
 
-      // 验证 bugTemplate 填充
-      const bugCursor = docWithAll.indexOf("&&& bugTemplate") + 10
-      const bugResult = applyMarkdownTemplatePreset(docWithAll, bugCursor)
-      expect(bugResult).not.toBeNull()
-      expect(bugResult!.insert).toContain("- Reference: @docs/issues/bug-report.md")
-      expect(bugResult!.insert).toContain(
-        "- Reproduction: \n  - Step 1: Open the editor in normal mode",
-      )
-      expect(bugResult!.insert).toContain(
-        "- Expectations: \n  * Normal operation restored without error",
-      )
-      expect(bugResult!.insert).toContain(
-        "- Notes: \n  - Verify backward compatibility with existing data",
-      )
+    it("isInsideMarkdownVarMultilineString 正确判断光标是否在 $$$ 块内的三引号中", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        "multiline:",
+        '  """',
+        "  line 1",
+        "  line 2",
+        '  """',
+        'single: "value"',
+        "$$$ varTemplate --end",
+        "",
+        'outside: """ not in var template """',
+      ].join("\n")
+
+      const line1Pos = doc.indexOf("line 1")
+      expect(isInsideMarkdownVarMultilineString(doc, line1Pos)).toBe(true)
+
+      const singlePos = doc.indexOf('"value"')
+      expect(isInsideMarkdownVarMultilineString(doc, singlePos)).toBe(false)
+
+      const outsidePos = doc.indexOf("outside") + 15
+      expect(isInsideMarkdownVarMultilineString(doc, outsidePos)).toBe(false)
     })
   })
 })

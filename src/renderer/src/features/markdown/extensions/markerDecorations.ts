@@ -25,6 +25,117 @@ import {
 import type { MarkerDecoItem } from "@/features/markdown/extensions/markerWidgets"
 
 /**
+ * 扫描单行内的 Markdown 标记（标题、任务、列表、引用、表格、分隔线、提及、加粗、斜体、行内代码、链接等）。
+ * 返回 true 表示该行属于纯分割线。
+ */
+export const scanMarkdownTokensInLine = (
+  line: string,
+  addMarker: (from: number, to: number, className: string, atomic?: boolean) => void,
+  addMatches: (pattern: RegExp, className: string) => void,
+  referencedRoots: Set<string> | string[],
+): boolean => {
+  const headingMatch = line.match(/^(\s*)(#{1,6})(?=\s)/)
+  if (headingMatch) {
+    addMarker(
+      headingMatch[1].length,
+      headingMatch[1].length + headingMatch[2].length,
+      "cm-md-heading-marker",
+    )
+  }
+
+  const taskMatch = line.match(/^(\s*)([-+*])\s+(\[[ xX]\])/)
+  if (taskMatch) {
+    addMarker(
+      taskMatch[1].length,
+      taskMatch[1].length + taskMatch[2].length,
+      "cm-md-unordered-list-marker",
+    )
+    const taskStart = taskMatch[1].length + taskMatch[2].length + 1
+    addMarker(taskStart, taskStart + taskMatch[3].length, "cm-md-task-marker")
+  } else {
+    const unorderedMatch = line.match(/^(\s*)([-+*])(?=\s)/)
+    const orderedMatch = line.match(/^(\s*)(\d+[.)])(?=\s)/)
+    if (unorderedMatch) {
+      addMarker(
+        unorderedMatch[1].length,
+        unorderedMatch[1].length + unorderedMatch[2].length,
+        "cm-md-unordered-list-marker",
+      )
+    } else if (orderedMatch) {
+      addMarker(
+        orderedMatch[1].length,
+        orderedMatch[1].length + orderedMatch[2].length,
+        "cm-md-ordered-list-marker",
+      )
+    }
+  }
+
+  const quoteMatch = line.match(/^(\s*)(>+)/)
+  if (quoteMatch) {
+    addMarker(
+      quoteMatch[1].length,
+      quoteMatch[1].length + quoteMatch[2].length,
+      "cm-md-quote-marker",
+    )
+  }
+
+  if (/^\s*\|.*\|\s*$/.test(line)) {
+    addMatches(/(?<!\\)\|/g, "cm-md-table-marker")
+  }
+
+  if (/^\s*(?:[-*_])(?:\s*[-*_]){2,}\s*$/.test(line)) {
+    addMatches(/[-*_]/g, "cm-md-separator-marker")
+    return true
+  }
+
+  const designRanges: { from: number; to: number }[] = []
+  for (const match of line.matchAll(MARKDOWN_DESIGN_MENTION_PATTERN)) {
+    if (match.index === undefined) continue
+    const start = match.index
+    const end = match.index + match[0].length
+    designRanges.push({ from: start, to: end })
+    addMarker(start, end, "cm-md-design-mention")
+  }
+
+  addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")
+  addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
+  for (const match of line.matchAll(/(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g)) {
+    if (match.index === undefined) continue
+    if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+      addMarker(match.index, match.index + match[0].length, "cm-md-emphasis-marker")
+    }
+  }
+  addMatches(/(?<!\\)`/g, "cm-md-inline-code-marker")
+  addMatches(/(?<![\\]【)(?<=\【)[^【】\r\n]+(?=\】)/g, "cm-md-bracket-content-marker")
+  if (!taskMatch) {
+    for (const match of line.matchAll(/(?<!\\)[\[\]\(\)]/g)) {
+      if (match.index === undefined) continue
+      if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+        addMarker(match.index, match.index + match[0].length, "cm-md-link-marker")
+      }
+    }
+  }
+  for (const match of line.matchAll(MARKDOWN_REFERENCE_PATTERN)) {
+    if (match.index === undefined) continue
+
+    const type = getMarkdownReferenceType(match[1] ?? "")
+    if (!type) continue
+
+    addMarker(match.index, match.index + match[0].length, `cm-md-reference-${type}`)
+  }
+  for (const match of line.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
+    if (match.index === undefined) continue
+
+    const fullMention = match[0]
+    const isReferenced = isPathUnderReferencedRoots(fullMention, referencedRoots)
+    const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
+    addMarker(match.index, match.index + fullMention.length, className)
+  }
+
+  return false
+}
+
+/**
  * 扫描文档行并生成 Markdown 标记装饰。
  */
 export const buildMarkdownMarkerDecorations = (
@@ -126,6 +237,10 @@ export const buildMarkdownMarkerDecorations = (
     presetFoldedIndices,
     onTogglePresetFold,
     onDeletePresetBlock,
+
+    scanMarkdownTokens: (subLine, addM, addMatch) => {
+      scanMarkdownTokensInLine(subLine, addM, addMatch, referencedRoots)
+    },
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -188,105 +303,10 @@ export const buildMarkdownMarkerDecorations = (
       })
     }
 
-    const headingMatch = line.match(/^(\s*)(#{1,6})(?=\s)/)
-    if (headingMatch) {
-      addMarker(
-        headingMatch[1].length,
-        headingMatch[1].length + headingMatch[2].length,
-        "cm-md-heading-marker",
-      )
-    }
-
-    const taskMatch = line.match(/^(\s*)([-+*])\s+(\[[ xX]\])/)
-    if (taskMatch) {
-      addMarker(
-        taskMatch[1].length,
-        taskMatch[1].length + taskMatch[2].length,
-        "cm-md-unordered-list-marker",
-      )
-      const taskStart = taskMatch[1].length + taskMatch[2].length + 1
-      addMarker(taskStart, taskStart + taskMatch[3].length, "cm-md-task-marker")
-    } else {
-      const unorderedMatch = line.match(/^(\s*)([-+*])(?=\s)/)
-      const orderedMatch = line.match(/^(\s*)(\d+[.)])(?=\s)/)
-      if (unorderedMatch) {
-        addMarker(
-          unorderedMatch[1].length,
-          unorderedMatch[1].length + unorderedMatch[2].length,
-          "cm-md-unordered-list-marker",
-        )
-      } else if (orderedMatch) {
-        addMarker(
-          orderedMatch[1].length,
-          orderedMatch[1].length + orderedMatch[2].length,
-          "cm-md-ordered-list-marker",
-        )
-      }
-    }
-
-    const quoteMatch = line.match(/^(\s*)(>+)/)
-    if (quoteMatch) {
-      addMarker(
-        quoteMatch[1].length,
-        quoteMatch[1].length + quoteMatch[2].length,
-        "cm-md-quote-marker",
-      )
-    }
-
-    if (/^\s*\|.*\|\s*$/.test(line)) {
-      addMatches(/(?<!\\)\|/g, "cm-md-table-marker")
-    }
-
-    if (/^\s*(?:[-*_])(?:\s*[-*_]){2,}\s*$/.test(line)) {
-      addMatches(/[-*_]/g, "cm-md-separator-marker")
+    const isSeparator = scanMarkdownTokensInLine(line, addMarker, addMatches, referencedRoots)
+    if (isSeparator) {
       offset += line.length + 1
       continue
-    }
-
-    const designRanges: { from: number; to: number }[] = []
-    for (const match of line.matchAll(MARKDOWN_DESIGN_MENTION_PATTERN)) {
-      if (match.index === undefined) continue
-      const start = match.index
-      const end = match.index + match[0].length
-      designRanges.push({ from: start, to: end })
-      addMarker(start, end, "cm-md-design-mention")
-    }
-
-    addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")
-    addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
-    for (const match of line.matchAll(
-      /(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g,
-    )) {
-      if (match.index === undefined) continue
-      if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
-        addMarker(match.index, match.index + match[0].length, "cm-md-emphasis-marker")
-      }
-    }
-    addMatches(/(?<!\\)`/g, "cm-md-inline-code-marker")
-    addMatches(/(?<![\\]【)(?<=\【)[^【】\r\n]+(?=\】)/g, "cm-md-bracket-content-marker")
-    if (!taskMatch) {
-      for (const match of line.matchAll(/(?<!\\)[\[\]\(\)]/g)) {
-        if (match.index === undefined) continue
-        if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
-          addMarker(match.index, match.index + match[0].length, "cm-md-link-marker")
-        }
-      }
-    }
-    for (const match of line.matchAll(MARKDOWN_REFERENCE_PATTERN)) {
-      if (match.index === undefined) continue
-
-      const type = getMarkdownReferenceType(match[1] ?? "")
-      if (!type) continue
-
-      addMarker(match.index, match.index + match[0].length, `cm-md-reference-${type}`)
-    }
-    for (const match of line.matchAll(MARKDOWN_FILE_MENTION_PATTERN)) {
-      if (match.index === undefined) continue
-
-      const fullMention = match[0]
-      const isReferenced = isPathUnderReferencedRoots(fullMention, referencedRoots)
-      const className = isReferenced ? "cm-md-referenced-file-mention" : "cm-md-file-mention"
-      addMarker(match.index, match.index + fullMention.length, className)
     }
 
     offset += line.length + 1

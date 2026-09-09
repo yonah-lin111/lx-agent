@@ -259,112 +259,67 @@ export interface TemplatePresetOption {
   content: string
 }
 
-export const MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT = [
-  "+++ presetTemplate --start 「title: All Templates」",
-  "preset:",
-  "  common:",
-  '    reference: "@docs/architecture.md"',
-  '    location: "@src/renderer/src"',
-  "    notes:",
-  '      """',
-  "      - Maintain clean architecture and minimal changes",
-  "      - Write unit tests for affected logic",
-  '      """',
-  "  add:",
-  '    reference: "@docs/features/specs.md"',
-  '    location: "@src/renderer/src/features"',
-  '    description: "Feature development specification"',
-  "    requirements:",
-  '      """',
-  "      - [ ] Data structure definition and contract alignment",
-  "      - [ ] Service hooks and business logic",
-  "      - [ ] View layer components with design token styling",
-  "      - [ ] Comprehensive unit test suite",
-  '      """',
-  "    notes:",
-  '      """',
-  "      - Use LxTag and standard UI components",
-  "      - Strictly follow feature-first directory layout",
-  '      """',
-  "  bug:",
-  '    reference: "@docs/issues/bug-report.md"',
-  '    location: "@src/renderer/src/features"',
-  '    description: "Fix runtime error and prevent edge-case regression"',
-  "    reproduction:",
-  '      """',
-  "      - Step 1: Open the editor in normal mode",
-  "      - Step 2: Trigger command execution",
-  "      - Step 3: Verify error trace in dev console",
-  '      """',
-  "    requirements:",
-  '      """',
-  "      - Pinpoint faulting logic in state lifecycle",
-  "      - Add null/boundary guards",
-  "      - Add regression test case",
-  '      """',
-  "    expectations:",
-  '      """',
-  "      * Normal operation restored without error",
-  "      * Clean console output with no unhandled rejections",
-  '      """',
-  "    notes:",
-  '      """',
-  "      - Verify backward compatibility with existing data",
-  '      """',
-  "  refactor:",
-  '    reference: "@docs/standards/code-writing-standards.md"',
-  '    location: "@src/renderer/src/features"',
-  '    goal: "Decouple monolithic logic and remove redundant abstractions"',
-  "    requirements:",
-  '      """',
-  "      - Extract domain logic into specialized helper functions",
-  "      - Eliminate duplicate DTO types and dead code",
-  "      - Keep external API contracts intact",
-  '      """',
-  "    notes:",
-  '      """',
-  "      - Taste matters: 10 clean lines over 100 defensive layers",
-  "      - Do not break existing public interfaces",
-  '      """',
-  "  style:",
-  '    reference: "@docs/standards/frontend-design-requirements.md"',
-  '    location: "@src/renderer/src/features"',
-  "    requirements:",
-  '      """',
-  "      - [ ] Replace hardcoded colors with `--color-theme-*` CSS variables",
-  "      - [ ] Adopt Tooltip component instead of native title attribute",
-  "      - [ ] Verify accessibility and keyboard navigation focus rings",
-  '      """',
-  "    expectations:",
-  '      """',
-  "      * Seamless theme adaptation (dark / light)",
-  "      * Pixel-accurate spacing and typography hierarchy",
-  '      """',
-  "    notes:",
-  '      """',
-  "      - No hardcoded hex colors (#fff, #000) allowed in JSX/CSS",
-  '      """',
-  "+++ presetTemplate --end",
-].join("\n")
+/**
+ * 计算模板预设插入后的选中范围：定位首个属性键值冒号后的内容（不包含外层引号）。
+ * 若值为空串（如 reference: ""），返回引号内部位置（start === end）。
+ */
+export const getTemplatePresetInitialSelectionRange = (
+  content: string,
+): { start: number; end: number } | null => {
+  const match = /^[ \t]+[A-Za-z0-9_.-]+:[ \t]*(?:"([^"]*)"|'([^']*)'|([^\r\n]+))$/m.exec(content)
+  if (!match || match.index === undefined) return null
+
+  const lineText = match[0]
+  const lineStart = match.index
+  const doubleQuoteFirst = lineText.indexOf('"')
+  const doubleQuoteLast = lineText.lastIndexOf('"')
+
+  if (doubleQuoteFirst !== -1 && doubleQuoteLast > doubleQuoteFirst) {
+    return {
+      start: lineStart + doubleQuoteFirst + 1,
+      end: lineStart + doubleQuoteLast,
+    }
+  }
+
+  const singleQuoteFirst = lineText.indexOf("'")
+  const singleQuoteLast = lineText.lastIndexOf("'")
+  if (singleQuoteFirst !== -1 && singleQuoteLast > singleQuoteFirst) {
+    return {
+      start: lineStart + singleQuoteFirst + 1,
+      end: lineStart + singleQuoteLast,
+    }
+  }
+
+  const colonIndex = lineText.indexOf(":")
+  if (colonIndex !== -1) {
+    const afterColon = lineText.slice(colonIndex + 1)
+    const trimmedStart = afterColon.search(/\S/)
+    if (trimmedStart !== -1) {
+      const start = lineStart + colonIndex + 1 + trimmedStart
+      return {
+        start,
+        end: lineStart + lineText.length,
+      }
+    }
+  }
+
+  return null
+}
 
 export const MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT = [
   "+++ presetTemplate --start 「title: Add Requirement」",
   "preset:",
   "  add:",
-  '    reference: "@docs/features/specs.md"',
-  '    location: "@src/renderer/src/features"',
-  '    description: "Feature development specification"',
+  '    reference: ""',
+  '    location: ""',
+  '    description: ""',
   "    requirements:",
   '      """',
-  "      - [ ] Data structure definition and contract alignment",
-  "      - [ ] Service hooks and business logic",
-  "      - [ ] View layer components with design token styling",
-  "      - [ ] Comprehensive unit test suite",
+  "      - ",
   '      """',
   "    notes:",
   '      """',
-  "      - Use LxTag and standard UI components",
-  "      - Strictly follow feature-first directory layout",
+  "      - ",
   '      """',
   "+++ presetTemplate --end",
 ].join("\n")
@@ -373,29 +328,24 @@ export const MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT = [
   "+++ presetTemplate --start 「title: Fix Bug」",
   "preset:",
   "  bug:",
-  '    reference: "@docs/issues/bug-report.md"',
-  '    location: "@src/renderer/src/features"',
-  '    description: "Fix runtime error and prevent edge-case regression"',
+  '    reference: ""',
+  '    location: ""',
+  '    description: ""',
   "    reproduction:",
   '      """',
-  "      - Step 1: Open the editor in normal mode",
-  "      - Step 2: Trigger command execution",
-  "      - Step 3: Verify error trace in dev console",
+  "      - ",
   '      """',
   "    requirements:",
   '      """',
-  "      - Pinpoint faulting logic in state lifecycle",
-  "      - Add null/boundary guards",
-  "      - Add regression test case",
+  "      - ",
   '      """',
   "    expectations:",
   '      """',
-  "      * Normal operation restored without error",
-  "      * Clean console output with no unhandled rejections",
+  "      - ",
   '      """',
   "    notes:",
   '      """',
-  "      - Verify backward compatibility with existing data",
+  "      - ",
   '      """',
   "+++ presetTemplate --end",
 ].join("\n")
@@ -404,19 +354,16 @@ export const MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT = [
   "+++ presetTemplate --start 「title: Refactor Feature」",
   "preset:",
   "  refactor:",
-  '    reference: "@docs/standards/code-writing-standards.md"',
-  '    location: "@src/renderer/src/features"',
-  '    goal: "Decouple monolithic logic and remove redundant abstractions"',
+  '    reference: ""',
+  '    location: ""',
+  '    goal: ""',
   "    requirements:",
   '      """',
-  "      - Extract domain logic into specialized helper functions",
-  "      - Eliminate duplicate DTO types and dead code",
-  "      - Keep external API contracts intact",
+  "      - ",
   '      """',
   "    notes:",
   '      """',
-  "      - Taste matters: 10 clean lines over 100 defensive layers",
-  "      - Do not break existing public interfaces",
+  "      - ",
   '      """',
   "+++ presetTemplate --end",
 ].join("\n")
@@ -425,22 +372,19 @@ export const MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT = [
   "+++ presetTemplate --start 「title: Execute Task」",
   "preset:",
   "  common:",
-  '    reference: "@docs/tasks/plan.md"',
-  '    location: "@src/renderer/src"',
+  '    reference: ""',
+  '    location: ""',
   "    requirements:",
   '      """',
-  "      - Milestone 1: Requirements analysis & schema definition",
-  "      - Milestone 2: Core feature implementation",
-  "      - Milestone 3: Verification & test suite execution",
+  "      - ",
   '      """',
   "    expectations:",
   '      """',
-  "      * All acceptance criteria fulfilled",
-  "      * Passes static checks and unit tests",
+  "      - ",
   '      """',
   "    notes:",
   '      """',
-  "      - Follow pragmatic programming principles",
+  "      - ",
   '      """',
   "+++ presetTemplate --end",
 ].join("\n")
@@ -449,69 +393,59 @@ export const MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT = [
   "+++ presetTemplate --start 「title: Design Style」",
   "preset:",
   "  style:",
-  '    reference: "@docs/standards/frontend-design-requirements.md"',
-  '    location: "@src/renderer/src/features"',
+  '    reference: ""',
+  '    location: ""',
   "    requirements:",
   '      """',
-  "      - [ ] Replace hardcoded colors with `--color-theme-*` CSS variables",
-  "      - [ ] Adopt Tooltip component instead of native title attribute",
-  "      - [ ] Verify accessibility and keyboard navigation focus rings",
+  "      - ",
   '      """',
   "    expectations:",
   '      """',
-  "      * Seamless theme adaptation (dark / light)",
-  "      * Pixel-accurate spacing and typography hierarchy",
+  "      - ",
   '      """',
   "    notes:",
   '      """',
-  "      - No hardcoded hex colors (#fff, #000) allowed in JSX/CSS",
+  "      - ",
   '      """',
   "+++ presetTemplate --end",
 ].join("\n")
 
-export const MARKDOWN_TEMPLATE_PRESET_CONTENT = MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT
+export const MARKDOWN_TEMPLATE_PRESET_CONTENT = MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT
 
 export const MARKDOWN_TEMPLATE_PRESET_OPTIONS: TemplatePresetOption[] = [
-  {
-    id: "all",
-    name: "All Templates",
-    label: "all",
-    description: "Complete preset bundle for all template types",
-    content: MARKDOWN_TEMPLATE_PRESET_ALL_CONTENT,
-  },
   {
     id: "add",
     name: "Add Requirement",
     label: "add",
-    description: "Feature template preset with task checklist",
+    description: "Blank preset for add requirement template",
     content: MARKDOWN_TEMPLATE_PRESET_ADD_CONTENT,
   },
   {
     id: "bug",
     name: "Fix Bug",
     label: "bug",
-    description: "Bug fix template preset with reproduction steps",
+    description: "Blank preset for fix bug template",
     content: MARKDOWN_TEMPLATE_PRESET_BUG_CONTENT,
   },
   {
     id: "refactor",
     name: "Refactor Feature",
     label: "refactor",
-    description: "Code refactoring preset with goals & constraints",
+    description: "Blank preset for refactor feature template",
     content: MARKDOWN_TEMPLATE_PRESET_REFACTOR_CONTENT,
   },
   {
     id: "common",
     name: "Execute Task",
     label: "common",
-    description: "General task preset with milestone breakdown",
+    description: "Blank preset for execute task template",
     content: MARKDOWN_TEMPLATE_PRESET_COMMON_CONTENT,
   },
   {
     id: "style",
     name: "Design Style",
     label: "style",
-    description: "UI styling preset with theme tokens & specs",
+    description: "Blank preset for design style template",
     content: MARKDOWN_TEMPLATE_PRESET_STYLE_CONTENT,
   },
 ]

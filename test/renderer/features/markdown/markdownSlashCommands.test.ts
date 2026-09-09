@@ -7,6 +7,7 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   getTemplatePlaceholderSelectionRange,
+  getTemplatePresetInitialSelectionRange,
   MARKDOWN_TEMPLATE_PRESET_OPTIONS,
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
@@ -214,9 +215,8 @@ describe("Markdown 斜杠命令", () => {
     ).not.toContain("templatePreset")
   })
 
-  it("/templatePreset 二级预设选项包含全类型配置，严格使用 --- 包裹且输出顶格", () => {
+  it("/templatePreset 二级预设选项包含全类型配置，严格使用 +++ presetTemplate 包裹且输出顶格", () => {
     expect(MARKDOWN_TEMPLATE_PRESET_OPTIONS.map((o) => o.id)).toEqual([
-      "all",
       "add",
       "bug",
       "refactor",
@@ -240,21 +240,48 @@ describe("Markdown 斜杠命令", () => {
       expect(option.description.length).toBeGreaterThan(10)
     }
 
-    // 校验不同类型的差异化 Markdown 结构
+    // 校验不同类型的差异化字段配置（空白模板）
     const addPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "add")!
-    expect(addPreset.content).toContain("- [ ] Data structure definition")
+    expect(addPreset.content).toContain("add:")
+    expect(addPreset.content).toContain('reference: ""')
+    expect(addPreset.content).toContain("requirements:")
 
     const bugPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "bug")!
-    expect(bugPreset.content).toContain("- Step 1:")
-    expect(bugPreset.content).toContain("* Normal operation restored")
+    expect(bugPreset.content).toContain("bug:")
+    expect(bugPreset.content).toContain("reproduction:")
+    expect(bugPreset.content).toContain("expectations:")
 
     const refactorPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "refactor")!
-    expect(refactorPreset.content).toContain("goal:")
-    expect(refactorPreset.content).toContain("Taste matters")
+    expect(refactorPreset.content).toContain("refactor:")
+    expect(refactorPreset.content).toContain('goal: ""')
+
+    const commonPreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "common")!
+    expect(commonPreset.content).toContain("common:")
 
     const stylePreset = MARKDOWN_TEMPLATE_PRESET_OPTIONS.find((o) => o.id === "style")!
-    expect(stylePreset.content).toContain("--color-theme-*")
-    expect(stylePreset.content).toContain("Tooltip")
+    expect(stylePreset.content).toContain("style:")
+  })
+
+  it("getTemplatePresetInitialSelectionRange 正确定位首个冒号后内容（不含引号）", () => {
+    // 空双引号：光标置于双引号之间
+    const content1 = 'preset:\n  add:\n    reference: ""\n    location: ""'
+    const range1 = getTemplatePresetInitialSelectionRange(content1)
+    expect(range1).not.toBeNull()
+    expect(content1.slice(range1!.start, range1!.end)).toBe("")
+    expect(content1.charAt(range1!.start - 1)).toBe('"')
+    expect(content1.charAt(range1!.end)).toBe('"')
+
+    // 有值双引号：选中双引号内部文本
+    const content2 = 'preset:\n  bug:\n    reference: "docs/spec.md"'
+    const range2 = getTemplatePresetInitialSelectionRange(content2)
+    expect(range2).not.toBeNull()
+    expect(content2.slice(range2!.start, range2!.end)).toBe("docs/spec.md")
+
+    // 无引号纯文本
+    const content3 = "preset:\n  common:\n    reference: docs/common.md"
+    const range3 = getTemplatePresetInitialSelectionRange(content3)
+    expect(range3).not.toBeNull()
+    expect(content3.slice(range3!.start, range3!.end)).toBe("docs/common.md")
   })
 })
 

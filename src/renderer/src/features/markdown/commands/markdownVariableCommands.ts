@@ -66,6 +66,73 @@ export const isInsideMarkdownVariableBlock = (docText: string, cursor: number): 
 }
 
 /**
+ * 判断光标位置是否处于 $$$ 变量块中的 """ 多行字符串内部。
+ */
+export const isInsideMarkdownVarMultilineString = (docText: string, cursor: number): boolean => {
+  if (!isInsideMarkdownVariableBlock(docText, cursor)) {
+    return false
+  }
+
+  const lines = docText.split("\n")
+  let currentOffset = 0
+  let inVarBlock = false
+  let inTriple = false
+
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine
+    const lineEnd = currentOffset + rawLine.length
+
+    if (!inVarBlock) {
+      if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
+        inVarBlock = true
+      }
+    } else {
+      if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
+        inVarBlock = false
+        inTriple = false
+      } else {
+        if (inTriple) {
+          const closeIdx = line.indexOf('"""')
+          if (closeIdx !== -1) {
+            const closeEnd = currentOffset + closeIdx + 3
+            if (cursor <= closeEnd && cursor >= currentOffset) {
+              return true
+            }
+            inTriple = false
+          } else {
+            if (cursor >= currentOffset && cursor <= lineEnd + 1) {
+              return true
+            }
+          }
+        } else {
+          const openIdx = line.indexOf('"""')
+          if (openIdx !== -1) {
+            const closeIdx = line.indexOf('"""', openIdx + 3)
+            if (closeIdx !== -1) {
+              const openEnd = currentOffset + openIdx + 3
+              const closeStart = currentOffset + closeIdx
+              if (cursor >= openEnd && cursor <= closeStart) {
+                return true
+              }
+            } else {
+              const openEnd = currentOffset + openIdx + 3
+              if (cursor >= openEnd && cursor <= lineEnd + 1) {
+                return true
+              }
+              inTriple = true
+            }
+          }
+        }
+      }
+    }
+
+    currentOffset = lineEnd + 1
+  }
+
+  return false
+}
+
+/**
  * 兼容旧方法：判断光标位置是否处于顶部 frontmatter 或 $$$ 变量块内。
  */
 export const isInsideMarkdownFrontmatter = (docText: string, cursor: number): boolean => {
@@ -956,6 +1023,14 @@ export const applyMarkdownTemplatePreset = (
     varMap.set(v.name.toLowerCase(), v.value)
   }
 
+  const isBlankOrDefaultPresetValue = (val: string): boolean => {
+    const trimmed = val.trim()
+    if (!trimmed) return true
+    if (trimmed === '""' || trimmed === "''" || trimmed === "var") return true
+    if (trimmed === "-" || trimmed === "- var") return true
+    return false
+  }
+
   const getPresetValue = (fieldName: string): string | null => {
     const f = fieldName.toLowerCase()
     const candidates = [
@@ -969,7 +1044,7 @@ export const applyMarkdownTemplatePreset = (
     ]
     for (const c of candidates) {
       const val = varMap.get(c)
-      if (val !== undefined && val !== "" && val !== "var" && val !== '""' && val !== "''") {
+      if (val !== undefined && !isBlankOrDefaultPresetValue(val)) {
         return val
       }
     }

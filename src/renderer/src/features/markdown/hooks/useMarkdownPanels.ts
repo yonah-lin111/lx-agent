@@ -41,6 +41,7 @@ import {
   getMarkdownSlashCommandLine,
   getMarkdownSlashCommands,
   getTemplatePlaceholderSelectionRange,
+  getTemplatePresetInitialSelectionRange,
   isMarkdownConfirmCommandArmed,
   MARKDOWN_TEMPLATE_PRESET_OPTIONS,
 } from "@/features/markdown/commands/markdownSlashCommands"
@@ -53,6 +54,7 @@ import {
 import {
   applyMarkdownTemplatePreset,
   isInsideMarkdownVariableBlock,
+  isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import {
@@ -420,6 +422,8 @@ export const useMarkdownPanels = ({
       view.state.doc.sliceString(0, line.from),
     )
     const isInsideVarBlock = isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor)
+    const isInsideVarMultiline =
+      isInsideVarBlock && isInsideMarkdownVarMultilineString(view.state.doc.toString(), cursor)
 
     // 检查是否处于 3 级标志位输入态（如 /sendPrompt opencode - 或 /sendPrompt opencode:my-dev -n）
     const flagMatch = /^\/sendPrompt\s+([^\s]+)\s+(-[a-zA-Z0-9_-]*)$/i.exec(
@@ -436,7 +440,7 @@ export const useMarkdownPanels = ({
 
     // 已武装的确认命令行不弹面板，等待二次回车触发。
     const isArmed =
-      commandLine && !isInsideVarBlock
+      commandLine && (!isInsideVarBlock || isInsideVarMultiline)
         ? isMarkdownConfirmCommandArmed(
             commandLine.value,
             isInsideTemplateBlock,
@@ -450,7 +454,7 @@ export const useMarkdownPanels = ({
           Boolean(projectPathRef.current) && worktreesRef.current !== null,
           customSlashCommandsRef.current,
           localeRef.current,
-          isInsideVarBlock,
+          isInsideVarBlock && !isInsideVarMultiline,
         )
       : []
     const coords = view.coordsAtPos(cursor)
@@ -573,9 +577,17 @@ export const useMarkdownPanels = ({
     const panel = templatePresetPanelRef.current
     if (!view || !panel) return
 
+    const initialSelection = getTemplatePresetInitialSelectionRange(option.content)
+    const selection = initialSelection
+      ? {
+          anchor: panel.line.from + initialSelection.start,
+          head: panel.line.from + initialSelection.end,
+        }
+      : { anchor: panel.line.from + option.content.length }
+
     view.dispatch({
       changes: { from: panel.line.from, to: panel.line.to, insert: option.content },
-      selection: { anchor: panel.line.from + option.content.length },
+      selection,
     })
     view.focus()
     closeTemplatePresetPanel()
