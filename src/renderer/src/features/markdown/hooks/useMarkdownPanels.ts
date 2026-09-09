@@ -48,7 +48,10 @@ import {
   getMarkdownTemplateFileCandidates,
   getMarkdownTemplateFileTrigger,
 } from "@/features/markdown/commands/markdownTemplateFileCommands"
-import { isInsideMarkdownVariableBlock } from "@/features/markdown/commands/markdownVariableCommands"
+import {
+  applyMarkdownTemplatePreset,
+  isInsideMarkdownVariableBlock,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import { MARKDOWN_FILE_MENTION_PATH_PATTERN } from "@/features/markdown/extensions/markdownFileMentions"
 import {
   type MarkdownColonPanelState,
@@ -652,6 +655,25 @@ export const useMarkdownPanels = ({
     const view = editorViewRef.current
     const panel = slashCommandPanelRef.current
     if (!view || !panel) return
+
+    if (command.id === "applyPreset") {
+      const docText = view.state.doc.toString()
+      const applied = applyMarkdownTemplatePreset(docText, panel.line.from)
+      if (applied) {
+        view.dispatch({
+          changes: { from: applied.from, to: applied.to, insert: applied.insert },
+          selection: { anchor: applied.cursor ?? panel.line.from },
+        })
+      } else {
+        view.dispatch({
+          changes: { from: panel.line.from, to: panel.line.to, insert: "" },
+          selection: { anchor: panel.line.from },
+        })
+      }
+      view.focus()
+      closeSlashCommandPanel()
+      return
+    }
 
     // 二次回车命令：回显命令内容到编辑器（确认型命令的 content 带尾随空格），等待二次 Enter 触发。
     if (command.kind === "confirm") {

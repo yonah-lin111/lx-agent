@@ -5,6 +5,7 @@ import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { getMarkdownSlashCommands } from "@/features/markdown/commands/markdownSlashCommands"
 import {
+  applyMarkdownTemplatePreset,
   cleanVarBlockItems,
   filterMarkdownVariables,
   getMarkdownColonTrigger,
@@ -718,6 +719,184 @@ $$$ varTemplate --end`
       const view = new EditorView({ state })
       expect(handleMarkdownVarBlockTab(view, 1)).toBe(false)
       expect(handleMarkdownVarBlockTab(view, -1)).toBe(false)
+    })
+  })
+
+  describe("$$$ 变量模板块内支持 ¥ 和 $ 触发变量提示", () => {
+    it("在 $$$ 内部能够正常通过 ¥ 和 $ 唤起变量面板", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        'key: "var"',
+        "ref: ¥core",
+        "$$$ varTemplate --end",
+      ].join("\n")
+
+      const prefix = ["$$$ varTemplate --start 「title: 」", 'key: "var"', "ref: ¥core"].join("\n")
+
+      const trigger = getMarkdownVariableTrigger(prefix, doc)
+      expect(trigger).not.toBeNull()
+      expect(trigger).toMatchObject({
+        fragment: "core",
+        triggerChar: "¥",
+      })
+
+      const dollarPrefix = ["$$$ varTemplate --start 「title: 」", 'key: "var"', "ref: $val"].join(
+        "\n",
+      )
+      const dollarTrigger = getMarkdownVariableTrigger(dollarPrefix, doc)
+      expect(dollarTrigger).not.toBeNull()
+      expect(dollarTrigger).toMatchObject({
+        fragment: "val",
+        triggerChar: "$",
+      })
+    })
+
+    it("在 $$$ 分隔符行自身不触发变量面板", () => {
+      const startLine = "$$$"
+      expect(getMarkdownVariableTrigger(startLine)).toBeNull()
+
+      const endLine = "$$$ varTemplate --end"
+      expect(getMarkdownVariableTrigger(endLine)).toBeNull()
+    })
+  })
+
+  describe("applyMarkdownTemplatePreset 模板预设复用", () => {
+    it("正确将 $$$ 中定义的 preset 批量应用到 addTemplate 模板块中", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 预设」",
+        "preset:",
+        "  add:",
+        '    reference: "src/renderer/Markdown.tsx"',
+        '    location: "src/renderer/features/markdown"',
+        '    description: "Support preset customization"',
+        "    requirements:",
+        '      """',
+        "      - Requirement 1",
+        "      - Requirement 2",
+        '      """',
+        "    notes:",
+        '      """',
+        "      - Note A",
+        '      """',
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "",
+        "/applyPreset",
+        "- Reference: ",
+        "- Location: ",
+        "- Description: ",
+        "- Requirements: ",
+        "  - ",
+        "- Notes: ",
+        "  - ",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const cursor = doc.indexOf("/applyPreset")
+      const result = applyMarkdownTemplatePreset(doc, cursor)
+      expect(result).not.toBeNull()
+      expect(result!.insert).toContain("- Reference: src/renderer/Markdown.tsx")
+      expect(result!.insert).toContain("- Location: src/renderer/features/markdown")
+      expect(result!.insert).toContain("- Description: Support preset customization")
+      expect(result!.insert).toContain("- Requirements: \n  - Requirement 1\n  - Requirement 2")
+      expect(result!.insert).toContain("- Notes: \n  - Note A")
+      expect(result!.insert).not.toContain("/applyPreset")
+      expect(result!.insert).not.toContain("  - var")
+    })
+
+    it("正确支持 bugTemplate 填充，包含 expectations 与 Notes", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        "preset:",
+        "  bug:",
+        '    reference: "src/bug.ts"',
+        '    location: "src/renderer"',
+        '    description: "Bug in parser"',
+        "    reproduction:",
+        '      """',
+        "      - Step 1",
+        "      - Step 2",
+        '      """',
+        "    requirements:",
+        '      """',
+        "      - Fix bug",
+        '      """',
+        '    expectations: "No crash"',
+        "    notes:",
+        '      """',
+        "      - Note bug",
+        '      """',
+        "$$$ varTemplate --end",
+        "",
+        "&&& bugTemplate --start 「title: 」",
+        "# Fix Bug",
+        "",
+        "- Reference: ",
+        "- Location: ",
+        "- Description: ",
+        "- Reproduction: ",
+        "  - ",
+        "- Requirements: ",
+        "  - ",
+        "- Expectations: ",
+        "- Notes: ",
+        "  - ",
+        "&&& bugTemplate --end",
+      ].join("\n")
+
+      const cursor = doc.indexOf("&&& bugTemplate") + 10
+      const result = applyMarkdownTemplatePreset(doc, cursor)
+      expect(result).not.toBeNull()
+      expect(result!.insert).toContain("- Reference: src/bug.ts")
+      expect(result!.insert).toContain("- Reproduction: \n  - Step 1\n  - Step 2")
+      expect(result!.insert).toContain("- Requirements: \n  - Fix bug")
+      expect(result!.insert).toContain("- Expectations: No crash")
+      expect(result!.insert).toContain("- Notes: \n  - Note bug")
+    })
+
+    it("当特定模板未定义某字段时，能自动回退到 preset.common 或根 preset", () => {
+      const doc = [
+        "$$$ varTemplate --start 「title: 」",
+        "preset:",
+        "  common:",
+        '    reference: "src/common.ts"',
+        "    requirements:",
+        '      """',
+        "      - Common req",
+        '      """',
+        "  add:",
+        '    description: "Specific add"',
+        "$$$ varTemplate --end",
+        "",
+        "&&& addTemplate --start 「title: 」",
+        "# Add Requirement",
+        "",
+        "- Reference: ",
+        "- Location: ",
+        "- Description: ",
+        "- Requirements: ",
+        "  - ",
+        "- Notes: ",
+        "  - ",
+        "&&& addTemplate --end",
+      ].join("\n")
+
+      const cursor = doc.indexOf("&&& addTemplate") + 10
+      const result = applyMarkdownTemplatePreset(doc, cursor)
+      expect(result).not.toBeNull()
+      expect(result!.insert).toContain("- Reference: src/common.ts")
+      expect(result!.insert).toContain("- Description: Specific add")
+      expect(result!.insert).toContain("- Requirements: \n  - Common req")
+      // 未配置的 Location 和 Notes 保持原本的结构
+      expect(result!.insert).toContain("- Location: ")
+      expect(result!.insert).toContain("- Notes: \n  - ")
+    })
+
+    it("光标不在 &&& 模板块内时 applyMarkdownTemplatePreset 返回 null", () => {
+      const doc = "# 普通正文\n一些文字\n"
+      expect(applyMarkdownTemplatePreset(doc, 5)).toBeNull()
     })
   })
 })

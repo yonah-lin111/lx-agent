@@ -12,6 +12,7 @@ import {
   type MarkdownSlashCommand,
 } from "@/features/markdown/commands/markdownSlashCommands"
 import {
+  applyMarkdownTemplatePreset,
   handleMarkdownVarBlockTab,
   isInsideMarkdownVariableBlock,
 } from "@/features/markdown/commands/markdownVariableCommands"
@@ -302,6 +303,23 @@ export const createMarkdownEditorKeymaps = ({
               view.state.doc.sliceString(0, line.from),
             )
             const isInsideAnyBlock = isInsideSupple || isInsideTemplate
+
+            if (line.text.trim() === "/applyPreset" && isInsideTemplate) {
+              const docText = view.state.doc.toString()
+              const applied = applyMarkdownTemplatePreset(docText, line.from)
+              if (applied) {
+                view.dispatch({
+                  changes: { from: applied.from, to: applied.to, insert: applied.insert },
+                  selection: { anchor: applied.cursor ?? line.from },
+                })
+              } else {
+                view.dispatch({
+                  changes: { from: line.from, to: line.to, insert: "" },
+                  selection: { anchor: line.from },
+                })
+              }
+              return true
+            }
 
             const armedCommand = getMarkdownArmedSlashCommand(
               line.text,

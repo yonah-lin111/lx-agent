@@ -57,9 +57,11 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/log", false)).toEqual([])
     expect(getMarkdownSlashCommands("/add", true)).toEqual([])
     expect(getMarkdownSlashCommands("/git", true).map((c) => c.id)).toEqual(["gitWorktree"])
+    expect(getMarkdownSlashCommands("/apply", true).map((c) => c.id)).toEqual(["applyPreset"])
     expect(getMarkdownSlashCommands("/", true).map((c) => c.id)).toEqual([
       "suppleTemplate",
       "logTemplate",
+      "applyPreset",
       "sendPrompt",
       "summaryTitle",
       "gitWorktree",
@@ -71,17 +73,19 @@ describe("Markdown 斜杠命令", () => {
     expect(getMarkdownSlashCommands("/", true, false).map((c) => c.id)).toEqual([
       "suppleTemplate",
       "logTemplate",
+      "applyPreset",
       "sendPrompt",
       "summaryTitle",
     ])
   })
-  it("支持多语言环境下的模板文案切换", () => {
+
+  it("模板命令统一使用英文正文与说明，非模板命令支持多语言环境切换", () => {
     const zhCommands = getMarkdownSlashCommands("/style", false, true, [], "zh")
-    expect(zhCommands[0]?.description).toBe("插入样式设计提示词模板")
-    expect(zhCommands[0]?.content).toContain("# 样式设计")
+    expect(zhCommands[0]?.description).toBe("Insert design style template block")
+    expect(zhCommands[0]?.content).toContain("# Design Style")
 
     const enCommands = getMarkdownSlashCommands("/style", false, true, [], "en")
-    expect(enCommands[0]?.description).toBe("Insert style design prompt template")
+    expect(enCommands[0]?.description).toBe("Insert design style template block")
     expect(enCommands[0]?.content).toContain("# Design Style")
     expect(enCommands[0]?.content).toContain("- Reference: ")
 
@@ -94,10 +98,57 @@ describe("Markdown 斜杠命令", () => {
     )
   })
 
-  it("在 $$$ 变量模板块内仅允许 singleLine 和 multiLine 两个斜杠命令，并排除其余命令", () => {
-    // 变量块内仅匹配 singleLine 和 multiLine
+  it("所有模板的 Notes 均在最下方，且 /bugTemplate 也包含 Notes", () => {
+    const templates = getMarkdownSlashCommands("/", false, true, [], "en")
+    const checkTemplates = [
+      "addTemplate",
+      "bugTemplate",
+      "refactorTemplate",
+      "commonTemplate",
+      "styleTemplate",
+    ]
+
+    for (const id of checkTemplates) {
+      const cmd = templates.find((c) => c.id === id)
+      expect(cmd).toBeDefined()
+      const content = cmd!.content
+      expect(content).toContain("- Notes: ")
+
+      const lines = content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+      const endMarkerIndex = lines.findIndex((l) => l.includes("--end"))
+      expect(endMarkerIndex).toBeGreaterThan(0)
+      // Notes 列表项必须位于结束标记之上
+      expect(lines[endMarkerIndex - 2]).toBe("- Notes:")
+      expect(lines[endMarkerIndex - 1]).toBe("-")
+    }
+
+    const bugCmd = templates.find((c) => c.id === "bugTemplate")!
+    expect(bugCmd.content).toContain("- Reproduction: ")
+    expect(bugCmd.content).toContain("- Expectations: ")
+    expect(bugCmd.content).toContain("- Notes: ")
+    // 验证 Expectations 在 Notes 之前
+    expect(bugCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      bugCmd.content.indexOf("- Notes: "),
+    )
+
+    const commonCmd = templates.find((c) => c.id === "commonTemplate")!
+    expect(commonCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      commonCmd.content.indexOf("- Notes: "),
+    )
+
+    const styleCmd = templates.find((c) => c.id === "styleTemplate")!
+    expect(styleCmd.content.indexOf("- Expectations: ")).toBeLessThan(
+      styleCmd.content.indexOf("- Notes: "),
+    )
+  })
+
+  it("在 $$$ 变量模板块内仅允许 singleLine、multiLine 与 templatePreset 斜杠命令，并排除其余命令", () => {
+    // 变量块内仅匹配 singleLine、multiLine、templatePreset
     const allVarCommands = getMarkdownSlashCommands("/", false, true, [], "zh", true)
-    expect(allVarCommands.map((c) => c.id)).toEqual(["singleLine", "multiLine"])
+    expect(allVarCommands.map((c) => c.id)).toEqual(["singleLine", "multiLine", "templatePreset"])
 
     // 关键字与模糊匹配
     expect(
@@ -106,11 +157,18 @@ describe("Markdown 斜杠命令", () => {
     expect(
       getMarkdownSlashCommands("/multi", false, true, [], "zh", true).map((c) => c.id),
     ).toEqual(["multiLine"])
+    expect(
+      getMarkdownSlashCommands("/preset", false, true, [], "zh", true).map((c) => c.id),
+    ).toEqual(["templatePreset"])
     expect(getMarkdownSlashCommands("/sl", false, true, [], "zh", true).map((c) => c.id)).toEqual([
       "singleLine",
     ])
     expect(getMarkdownSlashCommands("/ml", false, true, [], "zh", true).map((c) => c.id)).toEqual([
       "multiLine",
+      "templatePreset",
+    ])
+    expect(getMarkdownSlashCommands("/tp", false, true, [], "zh", true).map((c) => c.id)).toEqual([
+      "templatePreset",
     ])
 
     // 其余所有命令（无论普通、模板还是全局）均不可用
@@ -134,32 +192,25 @@ describe("Markdown 斜杠命令", () => {
       multiCmd.content.slice(multiCmd.selectionRange!.start, multiCmd.selectionRange!.end),
     ).toBe("key")
 
-    // 多语言描述
-    const enVarCommands = getMarkdownSlashCommands("/", false, true, [], "en", true)
-    const enSingle = enVarCommands.find((c) => c.id === "singleLine")!
-    const enMulti = enVarCommands.find((c) => c.id === "multiLine")!
-    expect(singleCmd.description).toBe("新建单行变量")
-    expect(multiCmd.description).toBe("新建多行变量")
-    expect(enSingle.description).toBe("New single-line variable")
-    expect(enMulti.description).toBe("New multi-line variable")
+    const presetCmd = allVarCommands.find((c) => c.id === "templatePreset")!
+    expect(presetCmd.content).toContain("preset:")
+    expect(presetCmd.content).toContain("reference:")
+    expect(presetCmd.content).toContain('"""')
 
-    // 变量块外禁止出现 singleLine 与 multiLine
+    // 变量块外禁止出现 singleLine、multiLine 与 templatePreset
     expect(getMarkdownSlashCommands("/single", false, true, [], "zh", false)).toEqual([])
     expect(getMarkdownSlashCommands("/multi", false, true, [], "zh", false)).toEqual([])
+    expect(getMarkdownSlashCommands("/preset", false, true, [], "zh", false)).toEqual([])
     expect(getMarkdownSlashCommands("/single", true, true, [], "zh", false)).toEqual([])
-    expect(getMarkdownSlashCommands("/multi", true, true, [], "zh", false)).toEqual([])
+    expect(
+      getMarkdownSlashCommands("/preset", true, true, [], "zh", false).map((c) => c.id),
+    ).toEqual(["applyPreset"])
     expect(
       getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("singleLine")
-    expect(
-      getMarkdownSlashCommands("/", false, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("multiLine")
+    ).not.toContain("templatePreset")
     expect(
       getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("singleLine")
-    expect(
-      getMarkdownSlashCommands("/", true, true, [], "zh", false).map((c) => c.id),
-    ).not.toContain("multiLine")
+    ).not.toContain("templatePreset")
   })
 })
 

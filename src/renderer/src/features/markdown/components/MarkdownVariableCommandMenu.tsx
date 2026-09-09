@@ -160,9 +160,9 @@ export const MarkdownVariableCommandMenu = ({
                 {getVariableTag(variable.name)}
               </LxTag>
             </div>
-            {isActive && variable.value.includes("\n") && (
-              <div className="mt-1 line-clamp-3 rounded border border-white/5 bg-black/20 p-1.5 font-mono text-[11px] text-white/60">
-                {variable.value}
+            {isActive && (
+              <div className="mt-1 max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded border border-white/5 bg-black/20 p-1.5 font-mono text-[11px] text-white/60">
+                {variable.value || t("markdown.variableNoPreview")}
               </div>
             )}
           </div>
