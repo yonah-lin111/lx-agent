@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { buildHeatmapWeeks, formatNumber, getActivityLevel } from "@/features/overview/utils"
+import {
+  buildHeatmapMonths,
+  buildHeatmapWeeks,
+  formatNumber,
+  getActivityLevel,
+} from "@/features/overview/utils"
 
 describe("overview heatmapUtils", () => {
   it("根据最大频次按比例正确映射活动阶梯等级", () => {
@@ -89,5 +94,39 @@ describe("overview heatmapUtils", () => {
     expect(result.tiers[0].length).toBe(result.tiers[1].length)
     expect(result.tiers[0][0].monthLabel).toBe("Sep")
     expect(result.tiers[1][0].monthLabel).toBe("Sep")
+  })
+
+  it("buildHeatmapMonths 正确将记录按月聚合为自适应独立月份块", () => {
+    // 构造跨 2 个月的记录：8月最后2天 + 9月前3天
+    const entries = [
+      { date: "2026-08-30", count: 10, turns: 5, toolCalls: 5 }, // 2026-08-30 是周日
+      { date: "2026-08-31", count: 20, turns: 10, toolCalls: 10 }, // 2026-08-31 是周一
+      { date: "2026-09-01", count: 30, turns: 15, toolCalls: 15 }, // 2026-09-01 是周二
+      { date: "2026-09-02", count: 50, turns: 25, toolCalls: 25 },
+    ]
+
+    const result = buildHeatmapMonths(entries)
+    expect(result.maxCount).toBe(50)
+    expect(result.months).toHaveLength(2)
+
+    // 8 月块
+    const aug = result.months[0]
+    expect(aug.monthKey).toBe("2026-08")
+    expect(aug.label).toBe("Aug")
+    expect(aug.weeks.length).toBeGreaterThanOrEqual(1)
+
+    // 9 月块
+    const sep = result.months[1]
+    expect(sep.monthKey).toBe("2026-09")
+    expect(sep.label).toBe("Sep")
+    expect(sep.weeks.length).toBeGreaterThanOrEqual(1)
+
+    // 9 月 1 日是周二，则首周的周一（索引 0）应为 null 占位符
+    const sepFirstWeek = sep.weeks[0]
+    expect(sepFirstWeek.days[0]).toBeNull()
+    expect(sepFirstWeek.days[1]).toMatchObject({
+      date: "2026-09-01",
+      count: 30,
+    })
   })
 })

@@ -21,3 +21,12 @@ export interface HeatmapWeek {
   days: (HeatmapCell | null)[]
   monthLabel?: string
 }
+
+// 热力图按月组织的独立区块数据结构（支持按月流式自适应换行）。
+export interface HeatmapMonth {
+  monthKey: string
+  label: string
+  year: number
+  month: number
+  weeks: HeatmapWeek[]
+}
