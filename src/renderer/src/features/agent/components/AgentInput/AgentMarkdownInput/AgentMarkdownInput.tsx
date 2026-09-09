@@ -17,6 +17,8 @@ import {
   AgentInputCommandPanel,
   AgentInputFilePanel,
   AgentInputModelPanel,
+  AgentInputProjectPanel,
+  AgentInputSessionPanel,
   AgentSkillMentionPanel,
   AgentUndoConfirmPanel,
 } from "../AgentInputCommandPanels"
@@ -53,6 +55,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       worktreeOptions,
       worktreeName,
       onWorktreeSelect,
+      onProjectSelect,
+      onSessionSelect,
+      allowProjectChange = true,
+      currentSessionId,
       onClear,
       onUndo,
       isOnlyOneTurnLeft,
@@ -96,6 +102,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       projectId,
       projectPath,
       currentPath,
+      currentSessionId,
+      allowProjectChange,
       modelOptions,
       worktreeOptions,
       getPanelAnchor,
@@ -124,6 +132,10 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       onCompact,
       onModelChange,
       onWorktreeSelect,
+      onProjectSelect,
+      onSessionSelect,
+      allowProjectChange,
+      currentSessionId,
       isOnlyOneTurnLeft,
       setActiveMode: panels.setActiveMode,
       setUndoConfirmIndex: panels.setUndoConfirmIndex,
@@ -160,6 +172,12 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       worktreeIndexRef: panels.worktreeIndexRef,
       setWorktreeIndex: panels.setWorktreeIndex,
       matchedWorktreesRef: panels.matchedWorktreesRef,
+      projectIndexRef: panels.projectIndexRef,
+      setProjectIndex: panels.setProjectIndex,
+      matchedProjectsRef: panels.matchedProjectsRef,
+      sessionIndexRef: panels.sessionIndexRef,
+      setSessionIndex: panels.setSessionIndex,
+      matchedSessionsRef: panels.matchedSessionsRef,
       fileIndexRef: panels.fileIndexRef,
       setFileIndex: panels.setFileIndex,
       mentionItemsRef: panels.mentionItemsRef,
@@ -177,6 +195,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       executeCommand: actions.executeCommand,
       selectModel: actions.selectModel,
       selectWorktree: actions.selectWorktree,
+      selectProject: actions.selectProject,
+      selectSession: actions.selectSession,
       selectFile: actions.selectFile,
       selectSkill: actions.selectSkill,
       selectSkillFromMention: actions.selectSkillFromMention,
@@ -332,6 +352,18 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           position={panels.panelPosition ?? undefined}
           options={panels.matchedWorktrees}
           activeIndex={panels.worktreeIndex}
+        />
+        <AgentInputProjectPanel
+          isOpen={panels.isProjectMode}
+          position={panels.panelPosition}
+          projects={panels.matchedProjects}
+          activeIndex={panels.projectIndex}
+        />
+        <AgentInputSessionPanel
+          isOpen={panels.isSessionMode}
+          position={panels.panelPosition}
+          sessions={panels.matchedSessions}
+          activeIndex={panels.sessionIndex}
         />
         <AgentInputFilePanel
           isOpen={panels.isFileMode}

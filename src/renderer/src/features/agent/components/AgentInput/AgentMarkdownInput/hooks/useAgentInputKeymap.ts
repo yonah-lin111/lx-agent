@@ -9,6 +9,8 @@ import type { TranslationKey } from "@/i18n"
 import type {
   AgentInputCommand,
   AgentInputModel,
+  AgentInputProjectItem,
+  AgentInputSessionItem,
   AgentMentionItem,
 } from "../../AgentInputCommandPanels"
 import { getDesignMentionDeletionRange } from "../agentMarkdownInputUtils"
@@ -37,6 +39,12 @@ interface UseAgentInputKeymapProps {
   worktreeIndexRef: React.RefObject<number>
   setWorktreeIndex: React.Dispatch<React.SetStateAction<number>>
   matchedWorktreesRef: React.RefObject<GitWorktreeOption[]>
+  projectIndexRef: React.RefObject<number>
+  setProjectIndex: React.Dispatch<React.SetStateAction<number>>
+  matchedProjectsRef: React.RefObject<AgentInputProjectItem[]>
+  sessionIndexRef: React.RefObject<number>
+  setSessionIndex: React.Dispatch<React.SetStateAction<number>>
+  matchedSessionsRef: React.RefObject<AgentInputSessionItem[]>
   fileIndexRef: React.RefObject<number>
   setFileIndex: React.Dispatch<React.SetStateAction<number>>
   mentionItemsRef: React.RefObject<AgentMentionItem[]>
@@ -58,6 +66,8 @@ interface UseAgentInputKeymapProps {
   executeCommand: (command: AgentInputCommand) => void
   selectModel: (model: AgentInputModel) => void
   selectWorktree: (option: GitWorktreeOption) => void
+  selectProject: (project: AgentInputProjectItem) => void
+  selectSession: (session: AgentInputSessionItem) => void
   selectFile: (file: any) => void
   selectSkill: (skill: any) => void
   selectSkillFromMention: (skill: any) => void
@@ -94,6 +104,12 @@ export const useAgentInputKeymap = ({
   worktreeIndexRef,
   setWorktreeIndex,
   matchedWorktreesRef,
+  projectIndexRef,
+  setProjectIndex,
+  matchedProjectsRef,
+  sessionIndexRef,
+  setSessionIndex,
+  matchedSessionsRef,
   fileIndexRef,
   setFileIndex,
   mentionItemsRef,
@@ -111,6 +127,8 @@ export const useAgentInputKeymap = ({
   executeCommand,
   selectModel,
   selectWorktree,
+  selectProject,
+  selectSession,
   selectFile,
   selectSkill,
   selectSkillFromMention,
@@ -136,6 +154,10 @@ export const useAgentInputKeymap = ({
   selectModelRef.current = selectModel
   const selectWorktreeRef = useRef(selectWorktree)
   selectWorktreeRef.current = selectWorktree
+  const selectProjectRef = useRef(selectProject)
+  selectProjectRef.current = selectProject
+  const selectSessionRef = useRef(selectSession)
+  selectSessionRef.current = selectSession
   const selectFileRef = useRef(selectFile)
   selectFileRef.current = selectFile
   const selectSkillRef = useRef(selectSkill)
@@ -179,6 +201,14 @@ export const useAgentInputKeymap = ({
               }
               if (activeModeRef.current === "worktree" && matchedWorktreesRef.current.length > 0) {
                 setWorktreeIndex((i) => (i + 1) % matchedWorktreesRef.current.length)
+                return true
+              }
+              if (activeModeRef.current === "project" && matchedProjectsRef.current.length > 0) {
+                setProjectIndex((i) => (i + 1) % matchedProjectsRef.current.length)
+                return true
+              }
+              if (activeModeRef.current === "session" && matchedSessionsRef.current.length > 0) {
+                setSessionIndex((i) => (i + 1) % matchedSessionsRef.current.length)
                 return true
               }
               if (activeModeRef.current === "file" && mentionItemsRef.current.length > 0) {
@@ -243,6 +273,20 @@ export const useAgentInputKeymap = ({
                   (i) =>
                     (i - 1 + matchedWorktreesRef.current.length) %
                     matchedWorktreesRef.current.length,
+                )
+                return true
+              }
+              if (activeModeRef.current === "project" && matchedProjectsRef.current.length > 0) {
+                setProjectIndex(
+                  (i) =>
+                    (i - 1 + matchedProjectsRef.current.length) % matchedProjectsRef.current.length,
+                )
+                return true
+              }
+              if (activeModeRef.current === "session" && matchedSessionsRef.current.length > 0) {
+                setSessionIndex(
+                  (i) =>
+                    (i - 1 + matchedSessionsRef.current.length) % matchedSessionsRef.current.length,
                 )
                 return true
               }
@@ -380,6 +424,24 @@ export const useAgentInputKeymap = ({
                   return true
                 }
               }
+              if (activeModeRef.current === "project") {
+                const project =
+                  matchedProjectsRef.current[projectIndexRef.current] ??
+                  matchedProjectsRef.current[0]
+                if (project) {
+                  selectProjectRef.current(project)
+                  return true
+                }
+              }
+              if (activeModeRef.current === "session") {
+                const session =
+                  matchedSessionsRef.current[sessionIndexRef.current] ??
+                  matchedSessionsRef.current[0]
+                if (session) {
+                  selectSessionRef.current(session)
+                  return true
+                }
+              }
               if (activeModeRef.current === "file") {
                 const item =
                   mentionItemsRef.current[fileIndexRef.current] ?? mentionItemsRef.current[0]
@@ -491,6 +553,12 @@ export const useAgentInputKeymap = ({
       worktreeIndexRef,
       setWorktreeIndex,
       matchedWorktreesRef,
+      projectIndexRef,
+      setProjectIndex,
+      matchedProjectsRef,
+      sessionIndexRef,
+      setSessionIndex,
+      matchedSessionsRef,
       fileIndexRef,
       setFileIndex,
       mentionItemsRef,

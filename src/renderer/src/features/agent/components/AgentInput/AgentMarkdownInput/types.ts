@@ -33,6 +33,10 @@ export interface AgentMarkdownInputProps {
   isOnlyOneTurnLeft?: () => boolean
   onCompact?: () => void
   onAddFiles?: (files: AgentInputFile[]) => void
+  allowProjectChange?: boolean
+  onProjectSelect?: (projectId: string, projectPath: string) => void
+  onSessionSelect?: (sessionId: string) => void
+  currentSessionId?: string | null
 }
 
 export type AgentInputActiveMode =
@@ -40,6 +44,8 @@ export type AgentInputActiveMode =
   | "file"
   | "model"
   | "worktree"
+  | "project"
+  | "session"
   | "undo_confirm"
   | "skill"
   | null

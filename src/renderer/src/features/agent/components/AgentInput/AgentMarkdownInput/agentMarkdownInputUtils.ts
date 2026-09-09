@@ -25,6 +25,18 @@ export const BUILTIN_COMMAND_KEYS: {
     descKey: "agent.commandGitWorktreeDesc",
     kind: "builtin",
   },
+  {
+    id: "project",
+    name: "/project",
+    descKey: "agent.commandProjectDesc",
+    kind: "builtin",
+  },
+  {
+    id: "session",
+    name: "/session",
+    descKey: "agent.commandSessionDesc",
+    kind: "builtin",
+  },
   { id: "compact", name: "/compact", descKey: "agent.commandCompactDesc", kind: "builtin" },
   {
     id: "export",
@@ -56,17 +68,20 @@ export const getMatchedCommands = (
   value: string,
   templates: PromptTemplateItem[] = [],
   t: (key: TranslationKey) => string,
+  allowProjectChange = true,
 ): AgentInputCommand[] => {
   if (!value.startsWith("/") || /\s/.test(value)) return []
   const query = value.slice(1).toLowerCase()
 
-  const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS.map((cmd) => ({
-    id: cmd.id,
-    name: cmd.name,
-    description: t(cmd.descKey),
-    kind: cmd.kind,
-    argumentHint: cmd.argumentHint,
-  }))
+  const builtinCommands: AgentInputCommand[] = BUILTIN_COMMAND_KEYS
+    .filter((cmd) => cmd.id !== "project" || allowProjectChange)
+    .map((cmd) => ({
+      id: cmd.id,
+      name: cmd.name,
+      description: t(cmd.descKey),
+      kind: cmd.kind,
+      argumentHint: cmd.argumentHint,
+    }))
 
   const templateCommands: AgentInputCommand[] = templates.map((t) => ({
     id: `prompt:${t.name}`,

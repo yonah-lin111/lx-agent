@@ -53,6 +53,14 @@ export interface AgentInputProps {
   worktreeOptions: GitWorktreeOption[] | null
   // 选中工作区后的切换回调（参数为目标工作区根目录绝对路径）。
   onWorktreeSelect: (path: string) => void
+  // 切换项目回调。
+  onProjectSelect?: (projectId: string, projectPath: string) => void
+  // 切换会话回调。
+  onSessionSelect?: (sessionId: string) => void
+  // 是否允许切换项目（非新 session 禁止切换项目）。默认 true。
+  allowProjectChange?: boolean
+  // 当前会话 ID。
+  currentSessionId?: string | null
   selectedFiles: AgentInputFile[]
   onFilesChange: (files: AgentInputFile[]) => void
   supportsImages: boolean
@@ -92,6 +100,10 @@ export const AgentInput = ({
   worktreeName,
   worktreeOptions,
   onWorktreeSelect,
+  onProjectSelect,
+  onSessionSelect,
+  allowProjectChange = true,
+  currentSessionId,
   selectedFiles,
   onFilesChange,
   supportsImages,
@@ -393,6 +405,10 @@ export const AgentInput = ({
           onModelChange={onModelChange}
           worktreeOptions={worktreeOptions}
           onWorktreeSelect={onWorktreeSelect}
+          onProjectSelect={onProjectSelect}
+          onSessionSelect={onSessionSelect}
+          allowProjectChange={allowProjectChange}
+          currentSessionId={currentSessionId}
           onClear={onClear}
           onUndo={onUndo}
           isOnlyOneTurnLeft={isOnlyOneTurnLeft}

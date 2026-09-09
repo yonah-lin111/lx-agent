@@ -1,6 +1,6 @@
 import type { EditorView } from "@codemirror/view"
-import type { PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
-import type { ProjectFileEntry } from "@shared/project"
+import type { AgentSessionSummary, PromptTemplateItem, SkillItem } from "@shared/contracts/agent"
+import type { Project, ProjectFileEntry } from "@shared/project"
 import type { Locale } from "@shared/settings"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -20,6 +20,8 @@ import { settingsApi, subscribeSettingsChanged } from "@/features/settings"
 import type { TranslationKey } from "@/i18n"
 import {
   type AgentInputModel,
+  type AgentInputProjectItem,
+  type AgentInputSessionItem,
   type AgentMentionItem,
   getAgentPanelPosition,
 } from "../../AgentInputCommandPanels"
@@ -37,6 +39,8 @@ interface UseAgentInputPanelsProps {
   projectId?: string
   projectPath?: string
   currentPath?: string
+  currentSessionId?: string | null
+  allowProjectChange?: boolean
   modelOptions?: AgentMarkdownInputProps["modelOptions"]
   worktreeOptions?: GitWorktreeOption[] | null
   getPanelAnchor: () => HTMLElement | null
@@ -50,6 +54,8 @@ export const useAgentInputPanels = ({
   projectId,
   projectPath,
   currentPath,
+  currentSessionId,
+  allowProjectChange = true,
   modelOptions = [],
   worktreeOptions,
   getPanelAnchor,
@@ -81,6 +87,14 @@ export const useAgentInputPanels = ({
   const worktreeIndexRef = useRef(worktreeIndex)
   worktreeIndexRef.current = worktreeIndex
 
+  const [projectIndex, setProjectIndex] = useState(0)
+  const projectIndexRef = useRef(projectIndex)
+  projectIndexRef.current = projectIndex
+
+  const [sessionIndex, setSessionIndex] = useState(0)
+  const sessionIndexRef = useRef(sessionIndex)
+  sessionIndexRef.current = sessionIndex
+
   const [skillIndex, setSkillIndex] = useState(0)
   const skillIndexRef = useRef(skillIndex)
   skillIndexRef.current = skillIndex
@@ -109,6 +123,71 @@ export const useAgentInputPanels = ({
   const promptTemplatesRef = useRef(promptTemplates)
   promptTemplatesRef.current = promptTemplates
 
+  const [projects, setProjects] = useState<Project[]>([])
+  const [defaultDesktopPath, setDefaultDesktopPath] = useState<string>("")
+
+  // 加载项目列表（对齐 GitStatusBar）
+  useEffect(() => {
+    let active = true
+    let fetchProjects: Promise<Project[]>
+    try {
+      fetchProjects =
+        typeof projectApi.listProjects === "function"
+          ? projectApi.listProjects().catch(() => [])
+          : Promise.resolve([])
+    } catch {
+      fetchProjects = Promise.resolve([])
+    }
+
+    let fetchDesktop: Promise<string>
+    try {
+      fetchDesktop =
+        typeof agentApi.getDefaultPath === "function"
+          ? agentApi.getDefaultPath().catch(() => "")
+          : Promise.resolve("")
+    } catch {
+      fetchDesktop = Promise.resolve("")
+    }
+
+    void Promise.all([fetchProjects, fetchDesktop])
+      .then(([list, desktop]) => {
+        if (!active) return
+        setDefaultDesktopPath(desktop)
+        const validProjects = list.filter((p) => Boolean(p.path))
+        const hasDesktop = Boolean(desktop) && validProjects.some((p) => p.path === desktop)
+        if (!hasDesktop && desktop) {
+          const desktopProject: Project = {
+            id: "",
+            name: t("git.desktopProject"),
+            type: "filesystem",
+            path: desktop,
+            referencedFolders: [],
+            createdAt: "",
+            updatedAt: "",
+          }
+          setProjects([desktopProject, ...validProjects])
+        } else {
+          setProjects(validProjects)
+        }
+      })
+      .catch(() => {
+        if (active) setProjects([])
+      })
+    return () => {
+      active = false
+    }
+  }, [t])
+
+  const [allSessions, setAllSessions] = useState<AgentSessionSummary[]>(() =>
+    sessionListStore.getSessions(),
+  )
+  useEffect(() => {
+    setAllSessions(sessionListStore.getSessions())
+    return sessionListStore.subscribe(() => {
+      setAllSessions(sessionListStore.getSessions())
+    })
+  }, [])
+
   // 加载提示词模板
   useEffect(() => {
     let active = true
@@ -126,8 +205,8 @@ export const useAgentInputPanels = ({
   }, [projectPath])
 
   const matchedCommands = useMemo(
-    () => getMatchedCommands(value, promptTemplates, t),
-    [value, promptTemplates, t],
+    () => getMatchedCommands(value, promptTemplates, t, allowProjectChange),
+    [value, promptTemplates, t, allowProjectChange],
   )
   const matchedCommandsRef = useRef(matchedCommands)
   matchedCommandsRef.current = matchedCommands
@@ -164,6 +243,83 @@ export const useAgentInputPanels = ({
   }, [value, worktreeOptions])
   const matchedWorktreesRef = useRef(matchedWorktrees)
   matchedWorktreesRef.current = matchedWorktrees
+
+  const matchedProjects = useMemo<AgentInputProjectItem[]>(() => {
+    if (!value.startsWith("/project")) return []
+    const query = value.slice("/project".length).trim().toLowerCase()
+    const isCurrentPathDesktop = Boolean(
+      defaultDesktopPath &&
+        (projectPath === defaultDesktopPath || (!projectId && !projectPath && defaultDesktopPath)),
+    )
+
+    return projects
+      .map((p) => {
+        const isDesktop =
+          Boolean(defaultDesktopPath && p.path === defaultDesktopPath) ||
+          p.name === "Desktop" ||
+          p.name === "桌面"
+        const isCurrent =
+          Boolean(projectPath) && Boolean(p.path)
+            ? p.path === projectPath
+            : Boolean(projectId) && Boolean(p.id)
+              ? p.id === projectId
+              : isCurrentPathDesktop && isDesktop
+        return {
+          id: p.id,
+          name: p.name,
+          path: p.path || "",
+          isDesktop,
+          isCurrent,
+        }
+      })
+      .filter(
+        (item) =>
+          !query ||
+          isFuzzyMatch(query, item.name.toLowerCase()) ||
+          (item.path && item.path.toLowerCase().includes(query)),
+      )
+  }, [value, projects, projectPath, projectId, defaultDesktopPath])
+  const matchedProjectsRef = useRef(matchedProjects)
+  matchedProjectsRef.current = matchedProjects
+
+  const matchedSessions = useMemo<AgentInputSessionItem[]>(() => {
+    if (!value.startsWith("/session")) return []
+    const query = value.slice("/session".length).trim().toLowerCase()
+
+    const filtered = allSessions.filter((s) => {
+      if (projectId) {
+        return s.projectId === projectId
+      }
+      const targetPath = projectPath || currentPath
+      if (targetPath) {
+        return s.projectId == null && s.cwd === targetPath
+      }
+      return true
+    })
+
+    filtered.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt).getTime()
+      const timeB = new Date(b.updatedAt || b.createdAt).getTime()
+      return timeB - timeA
+    })
+
+    return filtered
+      .map((s) => ({
+        id: s.id,
+        title: s.title,
+        cwd: s.cwd,
+        updatedAt: s.updatedAt || s.createdAt,
+        isCurrent: s.id === currentSessionId,
+      }))
+      .filter(
+        (item) =>
+          !query ||
+          isFuzzyMatch(query, item.title.toLowerCase()) ||
+          item.id.toLowerCase().includes(query),
+      )
+  }, [value, allSessions, projectId, projectPath, currentPath, currentSessionId])
+  const matchedSessionsRef = useRef(matchedSessions)
+  matchedSessionsRef.current = matchedSessions
 
   // 加载技能并订阅变动
   useEffect(() => {
@@ -282,6 +438,8 @@ export const useAgentInputPanels = ({
   const isFileMode = activeMode === "file" && mentionItems.length > 0
   const isModelMode = activeMode === "model" && matchedModels.length > 0
   const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
+  const isProjectMode = activeMode === "project" && matchedProjects.length > 0
+  const isSessionMode = activeMode === "session" && matchedSessions.length > 0
   const isSkillMode = activeMode === "skill" && matchedSkills.length > 0
   const isUndoConfirmMode = activeMode === "undo_confirm"
   const isBlockCommandOpen = blockCommands.length > 0 && !!blockCommandPosition
@@ -295,7 +453,13 @@ export const useAgentInputPanels = ({
     }
     const kind: "command" | "file" | null = isFileMode
       ? "file"
-      : isCommandMode || isModelMode || isWorktreeMode || isUndoConfirmMode || isSkillMode
+      : isCommandMode ||
+          isModelMode ||
+          isWorktreeMode ||
+          isProjectMode ||
+          isSessionMode ||
+          isUndoConfirmMode ||
+          isSkillMode
         ? "command"
         : null
     if (!kind) {
@@ -308,6 +472,8 @@ export const useAgentInputPanels = ({
     isFileMode,
     isModelMode,
     isWorktreeMode,
+    isProjectMode,
+    isSessionMode,
     isSkillMode,
     isUndoConfirmMode,
     getPanelAnchor,
@@ -369,7 +535,34 @@ export const useAgentInputPanels = ({
         return
       }
 
-      const commands = getMatchedCommands(docText, promptTemplatesRef.current, t)
+      const isProjectInput = docText === "/project" || docText.startsWith("/project ")
+      if (isProjectInput) {
+        if (!allowProjectChange) {
+          setActiveMode(null)
+          return
+        }
+        setActiveMode("project")
+        setProjectIndex(0)
+        setFiles([])
+        setBlockCommands([])
+        return
+      }
+
+      const isSessionInput = docText === "/session" || docText.startsWith("/session ")
+      if (isSessionInput) {
+        setActiveMode("session")
+        setSessionIndex(0)
+        setFiles([])
+        setBlockCommands([])
+        return
+      }
+
+      const commands = getMatchedCommands(
+        docText,
+        promptTemplatesRef.current,
+        t,
+        allowProjectChange,
+      )
       if (commands.length > 0) {
         setActiveMode("command")
         setCommandIndex(0)
@@ -465,7 +658,7 @@ export const useAgentInputPanels = ({
       setBlockCommands([])
       setBlockCommandPosition(undefined)
     },
-    [projectId, currentPath, getPanelAnchor, t],
+    [projectId, currentPath, getPanelAnchor, t, allowProjectChange],
   )
 
   const syncPanelsRef = useRef(syncPanels)
@@ -492,6 +685,12 @@ export const useAgentInputPanels = ({
     worktreeIndex,
     setWorktreeIndex,
     worktreeIndexRef,
+    projectIndex,
+    setProjectIndex,
+    projectIndexRef,
+    sessionIndex,
+    setSessionIndex,
+    sessionIndexRef,
     skillIndex,
     setSkillIndex,
     skillIndexRef,
@@ -511,6 +710,10 @@ export const useAgentInputPanels = ({
     matchedModelsRef,
     matchedWorktrees,
     matchedWorktreesRef,
+    matchedProjects,
+    matchedProjectsRef,
+    matchedSessions,
+    matchedSessionsRef,
     matchedSkills,
     matchedSkillsRef,
     mentionItems,
@@ -519,6 +722,8 @@ export const useAgentInputPanels = ({
     isFileMode,
     isModelMode,
     isWorktreeMode,
+    isProjectMode,
+    isSessionMode,
     isSkillMode,
     isUndoConfirmMode,
     isBlockCommandOpen,

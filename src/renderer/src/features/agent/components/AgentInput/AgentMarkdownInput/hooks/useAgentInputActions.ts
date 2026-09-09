@@ -4,6 +4,7 @@ import type { ProjectFileEntry } from "@shared/project"
 import type React from "react"
 import { useCallback, useRef } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
+import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
@@ -12,7 +13,12 @@ import {
   getMarkdownBlockTrigger,
 } from "@/features/markdown/commands/markdownBlockCommands"
 import type { TranslationKey } from "@/i18n"
-import type { AgentInputCommand, AgentInputModel } from "../../AgentInputCommandPanels"
+import type {
+  AgentInputCommand,
+  AgentInputModel,
+  AgentInputProjectItem,
+  AgentInputSessionItem,
+} from "../../AgentInputCommandPanels"
 import {
   getArgumentSelectionRange,
   getMentionQuery,
@@ -30,6 +36,10 @@ interface UseAgentInputActionsProps {
   onCompact?: () => void
   onModelChange?: (value: string) => void
   onWorktreeSelect?: (path: string) => void
+  onProjectSelect?: (projectId: string, projectPath: string) => void
+  onSessionSelect?: (sessionId: string) => void
+  allowProjectChange?: boolean
+  currentSessionId?: string | null
   isOnlyOneTurnLeft?: () => boolean
   setActiveMode: (mode: AgentInputActiveMode) => void
   setUndoConfirmIndex: React.Dispatch<React.SetStateAction<number>>
@@ -54,6 +64,10 @@ export const useAgentInputActions = ({
   onCompact,
   onModelChange,
   onWorktreeSelect,
+  onProjectSelect,
+  onSessionSelect,
+  allowProjectChange = true,
+  currentSessionId,
   isOnlyOneTurnLeft,
   setActiveMode,
   setUndoConfirmIndex,
@@ -149,6 +163,26 @@ export const useAgentInputActions = ({
         }
         onCompact?.()
         return
+      }
+
+      // 拦截 /project 相关命令（当不允许切换项目时）
+      if (
+        text === "/project" ||
+        text.startsWith("/project ") ||
+        text.startsWith("/project:") ||
+        text.startsWith("/project-")
+      ) {
+        if (!allowProjectChange) {
+          warningToast(t("agent.projectChangeOnlyInNewChat"))
+          onChangeRef.current("")
+          const view = editorViewRef.current
+          if (view) {
+            view.dispatch({
+              changes: { from: 0, to: view.state.doc.length, insert: "" },
+            })
+          }
+          return
+        }
       }
 
       // 拦截 /clear 相关命令
@@ -325,6 +359,18 @@ export const useAgentInputActions = ({
           changes: { from: 0, to: view.state.doc.length, insert: "/gitWorktree " },
           selection: { anchor: 13 },
         })
+      } else if (command.id === "project") {
+        onChangeRef.current("/project ")
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: "/project " },
+          selection: { anchor: 9 },
+        })
+      } else if (command.id === "session") {
+        onChangeRef.current("/session ")
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: "/session " },
+          selection: { anchor: 9 },
+        })
       } else if (command.id === "compact") {
         onChangeRef.current("")
         onCompact?.()
@@ -387,6 +433,42 @@ export const useAgentInputActions = ({
       editorViewRef.current?.focus()
     },
     [editorViewRef, onChangeRef, onWorktreeSelect, setActiveMode],
+  )
+
+  const selectProject = useCallback(
+    (project: AgentInputProjectItem): void => {
+      onProjectSelect?.(project.id, project.path)
+      onChangeRef.current("")
+      setActiveMode(null)
+      editorViewRef.current?.dispatch({
+        changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: "" },
+      })
+      editorViewRef.current?.focus()
+    },
+    [editorViewRef, onChangeRef, onProjectSelect, setActiveMode],
+  )
+
+  const selectSession = useCallback(
+    (session: AgentInputSessionItem): void => {
+      setActiveMode(null)
+      onChangeRef.current("")
+      editorViewRef.current?.dispatch({
+        changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: "" },
+      })
+      editorViewRef.current?.focus()
+
+      if (session.id === currentSessionId) {
+        return
+      }
+
+      const existingTab = agentTabStore.findTabBySessionId(session.id)
+      if (existingTab) {
+        agentTabStore.switchTab(existingTab.id)
+      } else {
+        onSessionSelect?.(session.id)
+      }
+    },
+    [currentSessionId, editorViewRef, onChangeRef, onSessionSelect, setActiveMode],
   )
 
   const selectFile = useCallback(
@@ -495,6 +577,8 @@ export const useAgentInputActions = ({
     executeCommand,
     selectModel,
     selectWorktree,
+    selectProject,
+    selectSession,
     selectFile,
     selectSkill,
     selectSkillFromMention,

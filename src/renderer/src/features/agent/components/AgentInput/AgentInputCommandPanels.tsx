@@ -24,12 +24,42 @@ export interface AgentInputModel {
   provider: string
 }
 
+export interface AgentInputProjectItem {
+  id: string
+  name: string
+  path: string
+  isDesktop?: boolean
+  isCurrent?: boolean
+}
+
+export interface AgentInputSessionItem {
+  id: string
+  title: string
+  cwd: string
+  updatedAt: string
+  isCurrent?: boolean
+}
+
 type AgentPanelKind = "command" | "file"
 
 interface AgentInputModelPanelProps {
   isOpen: boolean
   position: CSSProperties | null
   models: AgentInputModel[]
+  activeIndex: number
+}
+
+export interface AgentInputProjectPanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  projects: AgentInputProjectItem[]
+  activeIndex: number
+}
+
+export interface AgentInputSessionPanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  sessions: AgentInputSessionItem[]
   activeIndex: number
 }
 
@@ -219,6 +249,178 @@ export const AgentInputModelPanel = ({
           <span className="ml-auto shrink-0 text-white/35">{model.provider}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+const formatSessionTime = (dateStr?: string, justNowText = "Just now"): string => {
+  if (!dateStr) return ""
+  const time = new Date(dateStr).getTime()
+  if (Number.isNaN(time)) return ""
+  const diff = Date.now() - time
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return justNowText
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d`
+  return new Date(time).toLocaleDateString()
+}
+
+/**
+ * 渲染 Agent 输入框的项目选择面板（/project 触发）。
+ */
+export const AgentInputProjectPanel = ({
+  isOpen,
+  position,
+  projects,
+  activeIndex,
+}: AgentInputProjectPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const hasData = position !== null && projects.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, projects, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const {
+    position: displayPosition,
+    projects: displayProjects,
+    activeIndex: displayIndex,
+  } = animated.displayData
+
+  return (
+    <div
+      ref={panelRef}
+      aria-label={t("agent.projectSelect")}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
+      role="listbox"
+      style={displayPosition}
+    >
+      {displayProjects.map((project, index) => {
+        const isActive = index === displayIndex
+        return (
+          <div
+            key={project.id || project.path || "desktop"}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75"
+            }`}
+          >
+            {project.isCurrent && (
+              <LxTag
+                bgClass="bg-emerald-500/20 text-emerald-300"
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                current
+              </LxTag>
+            )}
+            <Folder
+              className={`h-3.5 w-3.5 shrink-0 ${
+                project.isDesktop ? "text-violet-400" : "text-sky-400"
+              }`}
+            />
+            <span
+              className={`truncate font-medium ${
+                project.isDesktop ? "text-violet-300" : "text-white"
+              }`}
+            >
+              {project.name}
+            </span>
+            <span className="ml-auto shrink-0 max-w-[50%] truncate text-[11px] text-white/35">
+              {project.path}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * 渲染 Agent 输入框的会话选择面板（/session 触发）。
+ */
+export const AgentInputSessionPanel = ({
+  isOpen,
+  position,
+  sessions,
+  activeIndex,
+}: AgentInputSessionPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const hasData = position !== null && sessions.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, sessions, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const {
+    position: displayPosition,
+    sessions: displaySessions,
+    activeIndex: displayIndex,
+  } = animated.displayData
+
+  return (
+    <div
+      ref={panelRef}
+      aria-label={t("agent.sessionSelect")}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
+      role="listbox"
+      style={displayPosition}
+    >
+      {displaySessions.map((session, index) => {
+        const isActive = index === displayIndex
+        const timeDisplay = formatSessionTime(session.updatedAt, t("agent.justNow"))
+
+        return (
+          <div
+            key={session.id}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75"
+            }`}
+          >
+            {session.isCurrent && (
+              <LxTag
+                bgClass="bg-emerald-500/20 text-emerald-300"
+                className="pointer-events-none shrink-0"
+                size="small"
+              >
+                current
+              </LxTag>
+            )}
+            <span className="min-w-0 flex-1 truncate font-medium text-white">
+              {session.title || t("agent.unnamedSession")}
+            </span>
+            {timeDisplay && (
+              <span className="ml-auto shrink-0 text-[11px] text-white/35">
+                {timeDisplay}
+              </span>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
