@@ -384,6 +384,20 @@ $$$ varTemplate --end`
       })
       expect(tr.state.doc.toString()).toBe("# 标题\n注意：\n正文")
     })
+
+    it("在 $$$ 变量块内部的三引号多行字符串内部输入全角中文冒号「：」保持原样不转换", () => {
+      const initialDoc = '$$$\nnotes:\n  """\n  \n  """\n$$$\n'
+      const state = EditorState.create({
+        doc: initialDoc,
+        extensions: [markdownVarTemplateColonFilter],
+      })
+      // 光标在三引号内部缩进后
+      const insertPos = initialDoc.indexOf("  \n") + 2
+      const tr = state.update({
+        changes: { from: insertPos, to: insertPos, insert: "注意：" },
+      })
+      expect(tr.state.doc.toString()).toBe('$$$\nnotes:\n  """\n  注意：\n  """\n$$$\n')
+    })
   })
 
   describe("useMarkdownColonPanel 选项与快捷展开", () => {
@@ -451,6 +465,25 @@ $$$ varTemplate --end`
       )
       const selMulti = editorViewMulti.state.selection.main
       expect(editorViewMulti.state.sliceDoc(selMulti.from, selMulti.to)).toBe("key")
+    })
+
+    it("在三引号内部输入冒号时 syncColonPanel 不会激活冒号面板", () => {
+      const doc = '$$$\nnotes:\n  """\n  - Step 1:\n  """\n$$$'
+      const colonPos = doc.indexOf("- Step 1:") + "- Step 1:".length
+      const editorView = new EditorView({
+        state: EditorState.create({
+          doc,
+          selection: { anchor: colonPos },
+        }),
+      })
+      editorView.coordsAtPos = vi.fn().mockReturnValue({ left: 10, right: 20, top: 10, bottom: 20 })
+      const editorRef = { current: editorView }
+      const { result } = renderHook(() => useMarkdownColonPanel(editorRef))
+
+      act(() => {
+        result.current.syncColonPanel(editorView)
+      })
+      expect(result.current.colonPanelState.active).toBe(false)
     })
   })
 

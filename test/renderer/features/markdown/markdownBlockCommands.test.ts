@@ -5,6 +5,7 @@ import {
   cycleMarkdownTemplateStatus,
   getMarkdownBlockCommands,
   getMarkdownBlockTrigger,
+  getMarkdownListContinuation,
   getMarkdownSuppleBlockEndLine,
   getMarkdownSuppleWorktree,
   getMarkdownTemplateBlockContent,
@@ -570,6 +571,78 @@ describe("模板块工作区绑定 {wt:}", () => {
       )
       expect(wtRanges).toHaveLength(1)
       expect(doc.slice(wtRanges[0].from, wtRanges[0].to)).toBe("{wt:feat-supple}")
+    })
+  })
+
+  describe("getMarkdownListContinuation 列表项与引用块回车续行", () => {
+    it("待办任务列表：续行生成未勾选的任务标记 - [ ] ，并保持缩进", () => {
+      const cont1 = getMarkdownListContinuation("  - [ ] 待办任务一")
+      expect(cont1).not.toBeNull()
+      expect(cont1!.prefix).toBe("  - [ ] ")
+      expect(cont1!.empty).toBe(false)
+      expect(cont1!.markerLength).toBe(8)
+
+      // 已勾选的任务续行生成新的未勾选任务
+      const cont2 = getMarkdownListContinuation("  - [x] 已完成任务")
+      expect(cont2).not.toBeNull()
+      expect(cont2!.prefix).toBe("  - [ ] ")
+      expect(cont2!.empty).toBe(false)
+
+      // 空任务列表项标记为 empty: true（用于退出列表）
+      const contEmpty = getMarkdownListContinuation("  - [ ] ")
+      expect(contEmpty).not.toBeNull()
+      expect(contEmpty!.empty).toBe(true)
+    })
+
+    it("无序列表：续行生成相同标记与缩进", () => {
+      const contDash = getMarkdownListContinuation("    - 列表项")
+      expect(contDash).not.toBeNull()
+      expect(contDash!.prefix).toBe("    - ")
+      expect(contDash!.empty).toBe(false)
+
+      const contAsterisk = getMarkdownListContinuation("* 星号列表")
+      expect(contAsterisk).not.toBeNull()
+      expect(contAsterisk!.prefix).toBe("* ")
+      expect(contAsterisk!.empty).toBe(false)
+
+      const contEmpty = getMarkdownListContinuation("  - ")
+      expect(contEmpty).not.toBeNull()
+      expect(contEmpty!.empty).toBe(true)
+    })
+
+    it("有序列表：序号递增 1 并保留原有分隔符", () => {
+      const cont1 = getMarkdownListContinuation("1. 第一项")
+      expect(cont1).not.toBeNull()
+      expect(cont1!.prefix).toBe("2. ")
+      expect(cont1!.empty).toBe(false)
+
+      const contParen = getMarkdownListContinuation("  9) 第九项")
+      expect(contParen).not.toBeNull()
+      expect(contParen!.prefix).toBe("  10) ")
+      expect(contParen!.empty).toBe(false)
+
+      const contEmpty = getMarkdownListContinuation("1. ")
+      expect(contEmpty).not.toBeNull()
+      expect(contEmpty!.empty).toBe(true)
+    })
+
+    it("引用块：续行保留引用层级", () => {
+      const contQuote = getMarkdownListContinuation("> 引用文字")
+      expect(contQuote).not.toBeNull()
+      expect(contQuote!.prefix).toBe("> ")
+      expect(contQuote!.empty).toBe(false)
+
+      const contEmpty = getMarkdownListContinuation("  > ")
+      expect(contEmpty).not.toBeNull()
+      expect(contEmpty!.empty).toBe(true)
+    })
+
+    it("分隔线与普通文本不作为列表续行", () => {
+      expect(getMarkdownListContinuation("---")).toBeNull()
+      expect(getMarkdownListContinuation(" - - - ")).toBeNull()
+      expect(getMarkdownListContinuation("***")).toBeNull()
+      expect(getMarkdownListContinuation("普通段落文字")).toBeNull()
+      expect(getMarkdownListContinuation('key: "value"')).toBeNull()
     })
   })
 })

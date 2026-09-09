@@ -2,8 +2,10 @@ import { indentLess, indentMore } from "@codemirror/commands"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import {
+  getMarkdownListContinuation,
   getMarkdownTemplateIdRanges,
   getMarkdownTemplateWtRanges,
+  isInsideMarkdownCodeFence,
   isInsideMarkdownSuppleBlock,
   isInsideMarkdownTemplateBlock,
 } from "@/features/markdown/commands/markdownBlockCommands"
@@ -15,6 +17,7 @@ import {
   applyMarkdownTemplatePreset,
   handleMarkdownVarBlockTab,
   isInsideMarkdownVariableBlock,
+  isInsideMarkdownVarMultilineString,
 } from "@/features/markdown/commands/markdownVariableCommands"
 import { getFileMentionDeletionRange } from "@/features/markdown/extensions/markdownFileMentions"
 import { createMarkdownFormattingKeymap } from "@/features/markdown/extensions/markdownFormattingKeymap"
@@ -87,7 +90,11 @@ export const markdownVarTemplateColonFilter: Extension = EditorState.transaction
 
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
     const text = inserted.toString()
-    if (text.includes("：") && isInsideMarkdownVariableBlock(docText, fromA)) {
+    if (
+      text.includes("：") &&
+      isInsideMarkdownVariableBlock(docText, fromA) &&
+      !isInsideMarkdownVarMultilineString(docText, fromA)
+    ) {
       modified = true
       newChanges.push({
         from: fromA,
@@ -157,26 +164,44 @@ export const createMarkdownEditorKeymaps = ({
               )
               return true
             }
-            const cursor = view.state.selection.main.head
-            const line = view.state.doc.lineAt(cursor)
-            if (line.text.trim() === "") {
-              if (indentMore(view)) return true
-              view.dispatch(view.state.replaceSelection("  "))
-              return true
-            }
-
-            return handleMarkdownVarBlockTab(view, 1)
+            if (indentMore(view)) return true
+            view.dispatch(view.state.replaceSelection("  "))
+            return true
           },
         },
         {
           key: "Shift-Tab",
           run: (view) => {
             const cursor = view.state.selection.main.head
-            const line = view.state.doc.lineAt(cursor)
-            if (line.text.trim() === "") {
-              return indentLess(view)
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              if (handleMarkdownVarBlockTab(view, 1)) {
+                return true
+              }
             }
-            return handleMarkdownVarBlockTab(view, -1)
+            return false
+          },
+        },
+        {
+          key: "Mod-Tab",
+          run: (view) => {
+            const cursor = view.state.selection.main.head
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              return handleMarkdownVarBlockTab(view, -1)
+            }
+            return false
+          },
+        },
+        {
+          key: "Ctrl-Tab",
+          run: (view) => {
+            const cursor = view.state.selection.main.head
+            const docText = view.state.doc.toString()
+            if (isInsideMarkdownVariableBlock(docText, cursor)) {
+              return handleMarkdownVarBlockTab(view, -1)
+            }
+            return false
           },
         },
         {
@@ -370,13 +395,25 @@ export const createMarkdownEditorKeymaps = ({
               return true
             }
 
-            const emptyListMarkerRegex = /^(\s*)([-+*](\s+\[[ xX]\])?|\d+[.)]|>)\s*$/
-            if (emptyListMarkerRegex.test(line.text)) {
-              view.dispatch({
-                changes: { from: line.from, to: line.to, insert: "" },
-                selection: { anchor: line.from },
-              })
-              return true
+            if (!isInsideMarkdownCodeFence(view.state.doc.sliceString(0, line.from))) {
+              const listContinuation = getMarkdownListContinuation(line.text)
+              if (listContinuation) {
+                if (listContinuation.empty) {
+                  view.dispatch({
+                    changes: { from: line.from, to: line.to, insert: "" },
+                    selection: { anchor: line.from },
+                  })
+                  return true
+                }
+                if (cursor >= line.from + listContinuation.markerLength) {
+                  const insertText = `\n${listContinuation.prefix}`
+                  view.dispatch({
+                    changes: { from: cursor, to: cursor, insert: insertText },
+                    selection: { anchor: cursor + insertText.length },
+                  })
+                  return true
+                }
+              }
             }
 
             if (cursor > 0 && cursor < view.state.doc.length) {
