@@ -3,6 +3,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { TerminalApi } from "@shared/contracts/terminal"
 import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
@@ -15,6 +16,7 @@ import { agentApi } from "./api/agent"
 import { customCommandApi } from "./api/customCommand"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
+import { overviewApi } from "./api/overview"
 import { promptHistoryApi } from "./api/promptHistory"
 import { terminalApi } from "./api/terminal"
 
@@ -26,7 +28,8 @@ const api: ProjectApi &
   CustomCommandApi &
   GitApi &
   PromptHistoryApi &
-  TerminalApi = {
+  TerminalApi &
+  OverviewApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
     ipcRenderer.invoke(CLIPBOARD_CHANNELS.saveImage, buffer, mimeType),
@@ -97,6 +100,7 @@ const api: ProjectApi &
   markdown: markdownApi,
   customCommand: customCommandApi,
   git: gitApi,
+  overview: overviewApi,
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
 }

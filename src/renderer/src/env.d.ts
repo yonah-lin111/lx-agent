@@ -5,6 +5,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { TerminalApi } from "@shared/contracts/terminal"
 import type { ProjectApi } from "@shared/project"
@@ -27,7 +28,8 @@ declare global {
       CustomCommandApi &
       GitApi &
       PromptHistoryApi &
-      TerminalApi
+      TerminalApi &
+      OverviewApi
   }
 
   namespace JSX {

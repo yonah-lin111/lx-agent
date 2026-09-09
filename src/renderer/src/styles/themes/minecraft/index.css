@@ -1327,3 +1327,134 @@
   font-family: var(--theme-font-family) !important;
   text-shadow: 1px 1px 0px #000000;
 }
+
+/* ========================================================
+ * 主页概览视图（Overview Dashboard & Productivity Heatmap）
+ * ======================================================== */
+[data-theme="minecraft"] .overview-metric-card,
+[data-theme="minecraft"] .overview-heatmap-card {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e1e2a'/%3E%3Crect x='0' y='0' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='0' width='8' height='8' fill='%231a1a24'/%3E%3Crect x='16' y='0' width='8' height='8' fill='%2321212e'/%3E%3Crect x='24' y='0' width='8' height='8' fill='%23262636'/%3E%3Crect x='0' y='8' width='8' height='8' fill='%2320202c'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23272737'/%3E%3Crect x='16' y='8' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='24' y='8' width='8' height='8' fill='%23222230'/%3E%3Crect x='0' y='16' width='8' height='8' fill='%23232332'/%3E%3Crect x='8' y='16' width='8' height='8' fill='%231f1f2b'/%3E%3Crect x='16' y='16' width='8' height='8' fill='%232a2a3b'/%3E%3Crect x='24' y='16' width='8' height='8' fill='%231b1b26'/%3E%3Crect x='0' y='24' width='8' height='8' fill='%23181822'/%3E%3Crect x='8' y='24' width='8' height='8' fill='%23252534'/%3E%3Crect x='16' y='24' width='8' height='8' fill='%2320202c'/%3E%3Crect x='24' y='24' width='8' height='8' fill='%23272737'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%232d2d3e'/%3E%3Crect x='10' y='14' width='2' height='2' fill='%23303042'/%3E%3Crect x='26' y='6' width='2' height='2' fill='%2315151e'/%3E%3Crect x='18' y='22' width='2' height='2' fill='%23303042'/%3E%3Crect x='4' y='26' width='2' height='2' fill='%2315151e'/%3E%3C/svg%3E") !important;
+  background-repeat: repeat !important;
+  image-rendering: pixelated !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .overview-metric-card:hover {
+  background-color: #242434 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .overview-metric-icon {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #14141c !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="minecraft"] .overview-badge {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  font-family: var(--theme-font-family) !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+/* 绿墙热力图像素风格单元格：经典 Minecraft 绿色阶梯与立体像素槽 */
+[data-theme="minecraft"] .overview-heatmap-cell {
+  border-radius: 0px !important;
+  image-rendering: pixelated !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="0"] {
+  background-color: #272738 !important;
+  border: 1px solid #14141e !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="0"]:hover {
+  background-color: #323248 !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="1"] {
+  background-color: #1a4d23 !important;
+  border: 1px solid #0f3016 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="2"] {
+  background-color: #2c7a35 !important;
+  border: 1px solid #1c5223 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.25),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="3"] {
+  background-color: #38ab44 !important;
+  border: 1px solid #24752d !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.35),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="3"]:hover {
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.4),
+    0px 0px 6px rgba(56, 171, 68, 0.4) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="4"] {
+  background-color: #55ff55 !important;
+  border: 1px solid #2fa83a !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.6),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="minecraft"] .overview-heatmap-cell[data-level="4"]:hover {
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
+    0px 0px 8px rgba(85, 255, 85, 0.8) !important;
+}
+
+/* 主页侧边栏概览项像素风格 */
+[data-theme="minecraft"] .home-sidebar-item {
+  border-radius: 0px !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .home-sidebar-item[aria-current="page"] {
+  background-color: #283852 !important;
+  border: 2px solid #000000 !important;
+  border-left: 3px solid #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(56, 189, 248, 0.25),
+    0px 0px 6px rgba(56, 189, 248, 0.2) !important;
+}
+
+[data-theme="minecraft"] .home-sidebar-item:hover:not([aria-current="page"]) {
+  background-color: #2b2b3b !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+}

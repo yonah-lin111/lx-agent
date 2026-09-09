@@ -12,6 +12,7 @@ import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
+import { registerOverviewHandlers } from "@/ipc/overviewHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
@@ -71,6 +72,7 @@ app.whenReady().then(() => {
   initDatabase()
   registerLocalImageProtocol()
   registerFrontDesignProtocol()
+  registerOverviewHandlers()
   registerProjectHandlers()
   registerClipboardHandlers()
   registerSettingsHandlers()
