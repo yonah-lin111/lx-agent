@@ -5,7 +5,6 @@ import {
   Compass,
   Cpu,
   Layers,
-  Loader2,
   Minimize2,
   RefreshCw,
   Trash2,
@@ -456,10 +455,6 @@ export const AgentExecutionFlowList = forwardRef<
       scrollCompensationRef.current = null
     }, [visibleElements])
 
-    // 运行中的虚拟占位步骤（只要处于流式输出中，且当前筛选允许显示助手/全部，就始终展示 loading 占位）
-    const showSkeletonLoading =
-      isStreaming && (activeFilter === "all" || activeFilter === "assistant")
-
     const scrollToBottom = useCallback((): void => {
       const el = scrollRef.current
       if (!el) return
@@ -562,7 +557,7 @@ export const AgentExecutionFlowList = forwardRef<
         el.scrollTop = el.scrollHeight
       }
       updateNavState()
-    }, [filteredSteps, showSkeletonLoading, updateNavState])
+    }, [filteredSteps, updateNavState])
 
     // 暴露命令式句柄（回到底部）。
     useImperativeHandle(
@@ -1055,28 +1050,6 @@ export const AgentExecutionFlowList = forwardRef<
                     </Fragment>
                   )
                 })}
-                {/* Agent 正在运行但尚未生成对应 step 块时的骨架加载条目 */}
-                {showSkeletonLoading && (
-                  <div
-                    data-testid="flow-skeleton-loading"
-                    className="agent-execution-flow-step flex h-8 items-center justify-between rounded-[6px] border border-white/5 bg-[#212121] px-2.5"
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <div className="h-3.5 w-16 animate-pulse rounded bg-white/10" />
-                      <div className="h-3.5 w-32 animate-pulse rounded bg-white/5 sm:w-48" />
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
-                      <LxIconButton
-                        size="small"
-                        aria-label="Running"
-                        title={{ content: "Running", placement: "left" }}
-                        className="text-sky-400"
-                      >
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
-                      </LxIconButton>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="flex min-h-full items-center justify-center text-[12px] text-white/35">

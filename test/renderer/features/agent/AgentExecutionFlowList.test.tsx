@@ -419,7 +419,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Generation was cancelled by user.")).not.toBeNull()
   })
 
-  it("当 isStreaming 为 true 且当前无 running 步骤时，在底部展示骨架屏 loading 条目且左侧不展示数字 index，右侧展示 loading 图标", () => {
+  it("当 isStreaming 为 true 且当前无 running 步骤时，底部不渲染任何骨架屏或占位条目", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -431,14 +431,10 @@ describe("AgentExecutionFlowList", () => {
 
     render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
 
-    // 应渲染骨架屏加载条目，左侧不包含数字 index，右侧包含 loading 效果
-    const skeleton = screen.getByTestId("flow-skeleton-loading")
-    expect(skeleton).not.toBeNull()
-    expect(skeleton.textContent).not.toContain("#1")
-    expect(skeleton.querySelector(".animate-spin")).not.toBeNull()
+    expect(screen.queryByTestId("flow-skeleton-loading")).toBeNull()
   })
 
-  it("当已有 running 状态的步骤且 isStreaming 为 true 时，仍始终在底部保留 loading 骨架条目", () => {
+  it("当已有 running 状态的步骤且 isStreaming 为 true 时，不渲染额外的底部骨架条目，仅由当前步骤呈现 running 态", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -462,10 +458,10 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
 
-    // 既有 running 步骤，底部也保留 loading 骨架
-    expect(screen.getByTestId("flow-skeleton-loading")).not.toBeNull()
+    expect(screen.queryByTestId("flow-skeleton-loading")).toBeNull()
+    expect(container.querySelectorAll(".animate-spin").length).toBeGreaterThanOrEqual(1)
   })
 
   it("在完成 turn 的底部展示该轮次的汇总指标统计（模型、工具数、token、缓存命中率、耗时等）", () => {
@@ -558,7 +554,7 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("grill-me")).not.toBeNull()
   })
 
-  it("loading 虚拟条目不会被计入顶部的总步骤统计中", () => {
+  it("流式生成过程中不渲染占位条目，顶部统计仅计算真实 step 数量", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -570,8 +566,7 @@ describe("AgentExecutionFlowList", () => {
 
     render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
 
-    // 存在 loading 骨架
-    expect(screen.getByTestId("flow-skeleton-loading")).not.toBeNull()
+    expect(screen.queryByTestId("flow-skeleton-loading")).toBeNull()
     // 顶部 All tab 统计仅计算真实 step 数量（user 步骤 1 个）
     expect(screen.getByText("All (1)")).not.toBeNull()
   })
@@ -1843,7 +1838,7 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    const { container } = render(<AgentExecutionFlowList messages={messages} />)
+    render(<AgentExecutionFlowList messages={messages} />)
 
     // 头部标签渲染为 $grill-me，不再显示 /grill-me
     const skillTag = screen.getByText("$grill-me")
