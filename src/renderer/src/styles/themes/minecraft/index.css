@@ -77,6 +77,15 @@
   background: transparent !important;
 }
 
+/* 弹窗遮罩层（LxModal）：透明遮罩，无马赛克图案与边框阴影 */
+[data-theme="minecraft"] .lx-modal-backdrop,
+[data-theme="minecraft"] div[role="dialog"].lx-modal-backdrop {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 /* ========================================================
  * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
  * ======================================================== */

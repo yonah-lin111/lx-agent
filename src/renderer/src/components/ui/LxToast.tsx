@@ -1,5 +1,5 @@
 import type React from "react"
-import { createContext, useCallback, useContext, useMemo, useState } from "react"
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react"
 
 // 消息提示类型。
 export type LxToastType = "success" | "error" | "info" | "warning"
@@ -39,6 +39,8 @@ export interface LxToastItem {
   position?: LxToastPosition
   // 退出动画状态。
   isExiting?: boolean
+  // 显示时长（毫秒），用于在 hover 离开后恢复计时。
+  duration?: number
 }
 
 // 消息提示上下文。
@@ -57,6 +59,10 @@ interface LxToastContextType {
   info: (message: string, duration?: number, position?: LxToastPosition) => void
   // 显示警告消息。
   warning: (message: string, duration?: number, position?: LxToastPosition) => void
+  // 鼠标悬停暂停关闭计时。
+  pauseToast: (id: string) => void
+  // 鼠标移出恢复关闭计时。
+  resumeToast: (id: string) => void
 }
 
 // 消息提示上下文实例。
@@ -108,11 +114,20 @@ export const LxToastProvider = ({
 }): React.JSX.Element => {
   // 当前展示的消息列表，新消息追加到末尾，同方位下向上堆叠。
   const [toasts, setToasts] = useState<LxToastItem[]>([])
+  // 管理每条消息的自动关闭定时器。
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   /**
    * 播放退出动画后移除指定消息。
    */
   const removeToast = useCallback((id: string): void => {
+    // 清除可能存在的定时器
+    const existingTimer = timersRef.current.get(id)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      timersRef.current.delete(id)
+    }
+
     setToasts((currentToasts) =>
       currentToasts.map((toast) => (toast.id === id ? { ...toast, isExiting: true } : toast)),
     )
@@ -121,6 +136,36 @@ export const LxToastProvider = ({
       setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id))
     }, 300)
   }, [])
+
+  /**
+   * 鼠标悬停时暂停关闭倒计时。
+   */
+  const pauseToast = useCallback((id: string): void => {
+    const timer = timersRef.current.get(id)
+    if (timer) {
+      clearTimeout(timer)
+      timersRef.current.delete(id)
+    }
+  }, [])
+
+  /**
+   * 鼠标离开后恢复关闭倒计时。
+   */
+  const resumeToast = useCallback(
+    (id: string): void => {
+      // 避免重复设置定时器
+      if (timersRef.current.has(id)) return
+      setToasts((currentToasts) => {
+        const toast = currentToasts.find((item) => item.id === id)
+        if (toast && !toast.isExiting) {
+          const timer = setTimeout(() => removeToast(id), toast.duration ?? 3000)
+          timersRef.current.set(id, timer)
+        }
+        return currentToasts
+      })
+    },
+    [removeToast],
+  )
 
   /**
    * 显示一条新消息，并追加到消息列表末尾。
@@ -136,9 +181,11 @@ export const LxToastProvider = ({
 
       setToasts((currentToasts) => [
         ...currentToasts,
-        { id, message, type, position: toastPosition },
+        { id, message, type, position: toastPosition, duration },
       ])
-      setTimeout(() => removeToast(id), duration)
+
+      const timer = setTimeout(() => removeToast(id), duration)
+      timersRef.current.set(id, timer)
     },
     [removeToast],
   )
@@ -202,7 +249,17 @@ export const LxToastProvider = ({
 
   return (
     <LxToastContext.Provider
-      value={{ toasts, show, success, error, info, warning, defaultPosition: position }}
+      value={{
+        toasts,
+        show,
+        success,
+        error,
+        info,
+        warning,
+        defaultPosition: position,
+        pauseToast,
+        resumeToast,
+      }}
     >
       {children}
       {[...groupedToasts.entries()].map(([toastPosition, positionToasts]) => (
@@ -222,10 +279,12 @@ export const LxToastProvider = ({
               <div className="min-h-0 overflow-hidden">
                 <span
                   data-toast-type={toast.type}
-                  className={`lx-toast-item mb-2 block max-w-[min(80vw,24rem)] truncate rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-none ${getLxToastColorClass(toast.type)} ${
+                  className={`lx-toast-item pointer-events-auto mb-2 block max-w-[min(80vw,24rem)] break-words whitespace-pre-wrap rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-text ${getLxToastColorClass(toast.type)} ${
                     toast.isExiting ? "animate-toast-out" : "animate-toast-in"
                   }`}
                   style={getSlideStyle(toastPosition)}
+                  onMouseEnter={() => pauseToast(toast.id)}
+                  onMouseLeave={() => resumeToast(toast.id)}
                 >
                   {toast.message}
                 </span>
@@ -256,6 +315,8 @@ export const useLxToast = (): LxToastContextType => {
     error: () => {},
     info: () => {},
     warning: () => {},
+    pauseToast: () => {},
+    resumeToast: () => {},
   }
 }
 
@@ -273,6 +334,7 @@ export const useLxBreadcrumbToast = (): LxToastItem[] => {
  */
 export const LxBreadcrumbToast = (): React.JSX.Element | null => {
   const breadcrumbToasts = useLxBreadcrumbToast()
+  const { pauseToast, resumeToast } = useLxToast()
   if (breadcrumbToasts.length === 0) return null
 
   const latestToast = breadcrumbToasts[breadcrumbToasts.length - 1]
@@ -281,10 +343,12 @@ export const LxBreadcrumbToast = (): React.JSX.Element | null => {
     <span
       key={latestToast.id}
       data-toast-type={latestToast.type}
-      className={`lx-breadcrumb-toast inline-flex select-none items-center gap-1.5 whitespace-nowrap rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
+      className={`lx-breadcrumb-toast pointer-events-auto inline-flex select-text items-center gap-1.5 whitespace-nowrap truncate rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
         latestToast.type,
       )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
       style={getSlideStyle("breadcrumb")}
+      onMouseEnter={() => pauseToast(latestToast.id)}
+      onMouseLeave={() => resumeToast(latestToast.id)}
     >
       {latestToast.message}
     </span>
@@ -312,19 +376,22 @@ export const useLxAgentInputToast = useLxAgentTopToast
  */
 export const LxAgentTopToast = (): React.JSX.Element | null => {
   const agentToasts = useLxAgentTopToast()
+  const { pauseToast, resumeToast } = useLxToast()
   if (agentToasts.length === 0) return null
 
   const latestToast = agentToasts[agentToasts.length - 1]
 
   return (
-    <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-30 flex max-w-[calc(100%-1rem)] items-center">
+    <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-30 flex w-[min(calc(100%-1.5rem),48rem)] max-w-[min(calc(100%-1.5rem),48rem)] items-center justify-center">
       <span
         key={latestToast.id}
         data-toast-type={latestToast.type}
-        className={`lx-agent-top-toast lx-agent-input-toast inline-flex select-none items-center gap-1.5 truncate rounded-[5px] border border-white/10 bg-[#2b2b2b] px-2.5 py-0.5 text-xs font-medium tracking-wide shadow-xs ${getLxToastColorClass(
+        className={`lx-agent-top-toast lx-agent-input-toast pointer-events-auto inline-flex max-w-full select-text items-center gap-1.5 break-words whitespace-pre-wrap rounded-[5px] border border-white/10 bg-[#2b2b2b] px-3 py-1 text-xs font-medium tracking-wide shadow-md ${getLxToastColorClass(
           latestToast.type,
         )} ${latestToast.isExiting ? "animate-toast-out" : "animate-toast-in"}`}
         style={getSlideStyle("agent-top")}
+        onMouseEnter={() => pauseToast(latestToast.id)}
+        onMouseLeave={() => resumeToast(latestToast.id)}
       >
         {latestToast.message}
       </span>
