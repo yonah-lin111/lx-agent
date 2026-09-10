@@ -48,11 +48,14 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
 
     // 1. 获取所有项目列表供切换器使用
     const projectRows = database
-      .prepare("SELECT external_id as id, name FROM project ORDER BY updated_at DESC, id DESC")
-      .all() as Array<{ id: string; name: string }>
+      .prepare(
+        "SELECT external_id as id, name, is_imported FROM project ORDER BY updated_at DESC, id DESC",
+      )
+      .all() as Array<{ id: string; name: string; is_imported?: number }>
     const projects: OverviewProjectOption[] = projectRows.map((row) => ({
       id: row.id,
       name: row.name,
+      isImported: row.is_imported !== undefined ? row.is_imported === 1 : true,
     }))
 
     // 2. 生成近 365 天日期序列并聚合活动记录

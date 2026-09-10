@@ -8,6 +8,10 @@ import { TooltipLayerContext } from "./LxTooltip"
 export interface LxSelectOption<T> {
   value: T
   label: string
+  // 是否未导入（用于与导入项目在视觉上进行弱化区分）
+  isImported?: boolean
+  // 自定义类名
+  className?: string
 }
 
 // 下拉分组选项。
@@ -175,28 +179,41 @@ export const LxSelect = <T extends string>({
 
   const renderOption = (option: LxSelectOption<T>, isGrouped = false): React.JSX.Element => {
     const isSelected = option.value === value
+    const isUnimported = option.isImported === false
+
     return (
       <button
         key={option.value}
         type="button"
         role="option"
         aria-selected={isSelected}
+        data-unimported={isUnimported ? "true" : undefined}
         className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-xs transition-colors ${
-          isSelected
-            ? "bg-white/10 text-white font-medium shadow-xs"
-            : "text-white/70 hover:bg-white/5 hover:text-white"
-        } ${isGrouped ? "pl-5" : ""}`}
+          isSelected ? "bg-white/10 font-medium shadow-xs" : "hover:bg-white/5"
+        } ${
+          isUnimported
+            ? "text-white/40 font-normal opacity-75"
+            : isSelected
+              ? "text-white"
+              : "text-white/70 hover:text-white"
+        } ${isGrouped ? "pl-5" : ""} ${option.className ?? ""}`}
         onMouseDown={(event) => {
           event.preventDefault()
           setIsOpen(false)
           onChange(option.value)
         }}
       >
-        <span className="min-w-0 flex-1 truncate">{option.label}</span>
+        <span
+          className={`min-w-0 flex-1 truncate ${isUnimported ? "text-white/40 font-normal" : ""}`}
+        >
+          {option.label}
+        </span>
         {isSelected ? <Check className="ml-2 h-3 w-3 shrink-0" /> : null}
       </button>
     )
   }
+
+  const isTriggerUnimported = selectedOption?.isImported === false
 
   return (
     <>
@@ -204,13 +221,20 @@ export const LxSelect = <T extends string>({
         <button
           ref={buttonRef}
           type="button"
-          className={`lx-select-trigger flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] text-left text-white/80 transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${SIZE_BUTTON_CLASSES[size]}`}
+          data-unimported={isTriggerUnimported ? "true" : undefined}
+          className={`lx-select-trigger flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] text-left transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${
+            isTriggerUnimported ? "text-white/40 font-normal opacity-85" : "text-white/80"
+          } ${SIZE_BUTTON_CLASSES[size]}`}
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           onClick={() => setIsOpen((current) => !current)}
         >
-          <span className="min-w-0 flex-1 truncate">
+          <span
+            className={`min-w-0 flex-1 truncate ${
+              isTriggerUnimported ? "text-white/40 font-normal" : ""
+            }`}
+          >
             {selectedOption?.label ?? placeholder ?? value}
           </span>
           <ChevronDown

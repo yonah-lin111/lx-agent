@@ -65,6 +65,7 @@ export interface OverviewMetrics {
 export interface OverviewProjectOption {
   id: string
   name: string
+  isImported?: boolean
 }
 
 // 概览统计数据返回载荷。

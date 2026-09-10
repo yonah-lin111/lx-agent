@@ -1,3 +1,4 @@
+import { Activity } from "lucide-react"
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
@@ -234,6 +235,9 @@ export const ActivityHeatmap = ({
       {/* 头部标题与统计及项目切换（位于卡片外部） */}
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#1b582e] bg-[#144222] text-emerald-400">
+            <Activity className="h-3.5 w-3.5" />
+          </div>
           <h3 className="truncate text-xs font-semibold text-white/90">
             {t("home.heatmap.title")}
           </h3>

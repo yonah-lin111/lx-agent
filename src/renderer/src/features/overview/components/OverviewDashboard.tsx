@@ -43,10 +43,12 @@ export const OverviewDashboard = (): React.JSX.Element => {
     const defaultOption: LxSelectOption<string> = {
       value: "all",
       label: t("home.allProjects"),
+      isImported: true,
     }
     const dynamicOptions: LxSelectOption<string>[] = (stats?.projects ?? []).map((p) => ({
       value: p.id,
       label: p.name,
+      isImported: p.isImported !== false,
     }))
     return [defaultOption, ...dynamicOptions]
   }, [stats?.projects, t])

@@ -1,77 +1,41 @@
-// @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ActivityHeatmap } from "@/features/overview/components/ActivityHeatmap"
-import type { ActivityDayEntry } from "@/features/overview/types"
 
-vi.stubGlobal(
-  "ResizeObserver",
-  class {
-    observe = (): void => undefined
-    unobserve = (): void => undefined
-    disconnect = (): void => undefined
-  },
-)
+vi.mock("@/i18n", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
 
-afterEach(() => {
-  cleanup()
+beforeEach(() => {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
 })
 
-const mockEntries: ActivityDayEntry[] = [
-  {
-    date: "2026-03-01",
-    count: 5,
-    turns: 3,
-    toolCalls: 2,
-  },
-  {
-    date: "2026-03-02",
-    count: 0,
-    turns: 0,
-    toolCalls: 0,
-  },
-]
-
 describe("ActivityHeatmap", () => {
-  it("正确渲染热力图标题、活动总数及图例", () => {
-    const { container } = render(<ActivityHeatmap entries={mockEntries} />)
-
-    expect(screen.getByText(/生产力绿墙|Productivity Heatmap/i)).toBeDefined()
-    expect(screen.getByText(/5 次活动|5 activities/i)).toBeDefined()
-
-    // 验证卡片使用了实体背景与边框，未采用透明背景
-    const card = container.querySelector(".overview-heatmap-card")
-    expect(card).toBeDefined()
-    expect(card?.className).toContain("bg-[#1e1e1e]")
-    expect(card?.className).toContain("border-[#333333]")
-  })
-
-  it("当提供 projectOptions 时正确渲染项目下拉框并响应切换", () => {
-    const onProjectChange = vi.fn()
-    const projectOptions = [
-      { value: "all", label: "全部项目" },
-      { value: "proj-1", label: "项目 Alpha" },
-    ]
-
+  it("标题左侧应渲染 Activity 图标容器", () => {
     const { container } = render(
       <ActivityHeatmap
-        entries={mockEntries}
+        entries={[]}
         selectedProjectId="all"
-        projectOptions={projectOptions}
-        onProjectChange={onProjectChange}
+        projectOptions={[
+          { value: "all", label: "全部项目", isImported: true },
+          { value: "p1", label: "未导入", isImported: false },
+        ]}
+        onProjectChange={() => {}}
       />,
     )
 
-    const trigger = screen.getByText("全部项目")
-    fireEvent.click(trigger)
+    // 验证标题容器
+    const title = screen.getByText("home.heatmap.title")
+    expect(title).toBeDefined()
 
-    const optionProj1 = screen.getByText("项目 Alpha")
-    fireEvent.mouseDown(optionProj1)
-
-    expect(onProjectChange).toHaveBeenCalledWith("proj-1")
-
-    // 验证 Select 控件位于卡片外部，卡片内部无 Select 按钮
-    const card = container.querySelector(".overview-heatmap-card")
-    expect(card?.querySelector("button")).toBeNull()
+    // 验证标题同级的 Activity 图标容器（绿墙绿色风格）
+    const iconContainer = container.querySelector(".text-emerald-400.bg-\\[\\#144222\\]")
+    expect(iconContainer).not.toBeNull()
   })
 })

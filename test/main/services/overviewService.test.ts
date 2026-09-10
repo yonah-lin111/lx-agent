@@ -42,12 +42,18 @@ describe("overviewService", () => {
     const now = new Date().toISOString()
     const today = now.slice(0, 10)
 
-    // 插入项目
+    // 插入项目（包含 is_imported 字段）
     database
       .prepare(
-        "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO project (external_id, name, type, path, is_imported, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
-      .run("p1", "Project 1", "virtual", null, now, now)
+      .run("p1", "Project 1", "virtual", null, 0, now, now)
+
+    database
+      .prepare(
+        "INSERT INTO project (external_id, name, type, path, is_imported, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+      .run("p2", "Project 2", "virtual", null, 1, now, now)
 
     // 插入会话
     database
@@ -111,6 +117,11 @@ describe("overviewService", () => {
     expect(stats.metrics.projectItems?.completed).toBe(1)
     expect(stats.metrics.projectItems?.completionRate).toBe(50)
     expect(stats.metrics.sessions.total).toBe(1)
+
+    expect(stats.projects).toEqual([
+      { id: "p2", name: "Project 2", isImported: true },
+      { id: "p1", name: "Project 1", isImported: false },
+    ])
 
     expect(stats.metrics.periodSummary).toEqual({
       range: "today",

@@ -430,7 +430,11 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             <div className="w-[180px]">
               <LxSelect
                 value={selectedProjectId}
-                options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                options={projects.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  isImported: p.isImported !== false,
+                }))}
                 placeholder={t("settings.customCommandSelectProject")}
                 onChange={(val) => {
                   setSelectedProjectId(val)
