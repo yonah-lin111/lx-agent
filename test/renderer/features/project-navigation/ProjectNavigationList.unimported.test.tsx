@@ -50,5 +50,30 @@ describe("ProjectNavigationList unimported items", () => {
 
     const tag = container.querySelector(".lx-tag")
     expect(tag).toBeNull()
+
+    // 验证未导入项目图标替换为 FolderGit
+    expect(projectRow?.querySelector(".lucide-folder-git")).not.toBeNull()
+    expect(projectRow?.querySelector(".lucide-boxes")).toBeNull()
+  })
+
+  it("已导入项目渲染 Boxes 图标", () => {
+    const importedProject: ProjectNavigationProject = {
+      id: "i1",
+      name: "Imported Proj",
+      isImported: true,
+      createdAt: "",
+      updatedAt: "",
+      projectFolders: [],
+      prompts: [],
+    }
+
+    const { container } = render(
+      <ProjectNavigationList {...defaultProps} projects={[importedProject]} />,
+    )
+
+    const projectRow = container.querySelector('[data-item-level="project"]')
+    expect(projectRow).not.toBeNull()
+    expect(projectRow?.querySelector(".lucide-boxes")).not.toBeNull()
+    expect(projectRow?.querySelector(".lucide-folder-git")).toBeNull()
   })
 })

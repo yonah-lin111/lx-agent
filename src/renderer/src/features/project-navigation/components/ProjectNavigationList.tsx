@@ -1,4 +1,13 @@
-import { Boxes, CheckCircle2, ChevronDown, Circle, File, FileText, Folder } from "lucide-react"
+import {
+  Boxes,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  File,
+  FileText,
+  Folder,
+  FolderGit,
+} from "lucide-react"
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -292,11 +301,11 @@ export const ProjectNavigationList = ({
                 }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
               >
-                <Boxes
-                  className={`h-3.5 w-3.5 shrink-0 ${
-                    project.isImported === false ? "text-white/40" : "text-sky-400/80"
-                  }`}
-                />
+                {project.isImported === false ? (
+                  <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                ) : (
+                  <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                )}
                 {renderItemName(
                   project,
                   `min-w-0 flex-1 truncate text-sm font-semibold uppercase transition-colors ${

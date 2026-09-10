@@ -1,5 +1,5 @@
 import type { Project } from "@shared/project"
-import { Check, Folder, GitBranch, GitFork, Search } from "lucide-react"
+import { Check, Folder, FolderGit, GitBranch, GitFork, Search } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxInput } from "@/components/ui/LxInput"
@@ -208,15 +208,15 @@ export const GitStatusBar = ({
               isUnimported ? "text-white/40 opacity-75" : ""
             }`}
           >
-            <Folder
-              className={`h-3.5 w-3.5 shrink-0 ${
-                isCurrentPathDesktop
-                  ? "text-violet-400"
-                  : isUnimported
-                    ? "text-white/40"
-                    : "text-sky-400"
-              }`}
-            />
+            {isUnimported ? (
+              <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+            ) : (
+              <Folder
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+                }`}
+              />
+            )}
             <span
               className={`truncate ${
                 isCurrentPathDesktop
@@ -280,15 +280,15 @@ export const GitStatusBar = ({
                     setIsProjectSelectOpen(false)
                   }}
                 >
-                  <Folder
-                    className={`h-3.5 w-3.5 shrink-0 ${
-                      isDesktop
-                        ? "text-violet-400"
-                        : p.isImported === false
-                          ? "text-white/40"
-                          : "text-sky-400"
-                    }`}
-                  />
+                  {p.isImported === false ? (
+                    <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                  ) : (
+                    <Folder
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        isDesktop ? "text-violet-400" : "text-sky-400"
+                      }`}
+                    />
+                  )}
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span
                       className={`truncate ${
@@ -346,15 +346,15 @@ export const GitStatusBar = ({
             isUnimported ? "text-white/40 opacity-75" : ""
           }`}
         >
-          <Folder
-            className={`h-3.5 w-3.5 shrink-0 ${
-              isCurrentPathDesktop
-                ? "text-violet-400"
-                : isUnimported
-                  ? "text-white/40"
-                  : "text-sky-400"
-            }`}
-          />
+          {isUnimported ? (
+            <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+          ) : (
+            <Folder
+              className={`h-3.5 w-3.5 shrink-0 ${
+                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+              }`}
+            />
+          )}
           <span
             className={`truncate ${
               isCurrentPathDesktop

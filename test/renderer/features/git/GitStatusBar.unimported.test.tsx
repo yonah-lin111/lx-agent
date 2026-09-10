@@ -60,6 +60,9 @@ describe("GitStatusBar unimported styling", () => {
     expect(item?.className).toContain("text-white/40")
     const dot = item?.querySelector(".rounded-full")
     expect(dot).toBeNull()
+
+    // 验证未导入项目渲染 FolderGit 图标
+    expect(item?.querySelector(".lucide-folder-git")).not.toBeNull()
   })
 
   it("当项目为已导入状态时不渲染 data-unimported", async () => {
@@ -82,5 +85,9 @@ describe("GitStatusBar unimported styling", () => {
 
     const item = container.querySelector('[data-unimported="true"]')
     expect(item).toBeNull()
+
+    // 验证已导入项目渲染默认 Folder 图标
+    expect(container.querySelector(".lucide-folder")).not.toBeNull()
+    expect(container.querySelector(".lucide-folder-git")).toBeNull()
   })
 })
