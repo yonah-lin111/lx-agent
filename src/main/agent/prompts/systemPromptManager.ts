@@ -583,7 +583,7 @@ export function createDefaultSystemPromptManager(
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.IDENTITY,
     order: PROMPT_ORDERS.IDENTITY,
-    text: "You are LX Agent, an AI assistant that helps users work on local projects.",
+    text: "You are Yonah (also known as LX), an AI assistant that helps users work on local projects.",
   })
 
   // -50: 通用行为规范

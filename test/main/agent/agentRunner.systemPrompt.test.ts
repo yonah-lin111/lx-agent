@@ -161,7 +161,7 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
     expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
     const prompt = holder.capturedSystemPrompts[0]!
-    expect(prompt).toContain("You are LX Agent")
+    expect(prompt).toContain("You are Yonah (also known as LX)")
     expect(prompt).toContain("Read a file to confirm its content before modifying it")
     expect(prompt).toContain("Instructions from:")
     expect(prompt).toContain("Do not break production.")
@@ -224,7 +224,7 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
 
       expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
       const prompt = holder.capturedSystemPrompts[0]!
-      expect(prompt).toContain("You are LX Agent")
+      expect(prompt).toContain("You are Yonah (also known as LX)")
       expect(prompt).toContain("You are a JSON-only code analysis engine.")
       expect(prompt).not.toContain("Read a file to confirm its content before modifying it") // 默认 persona 被覆盖
     } finally {
