@@ -8,6 +8,7 @@ export type SettingsDomain =
   | "cli"
   | "lsp"
   | "mcp"
+  | "openclaw"
   | "skills"
   | "voice"
 
@@ -21,6 +22,7 @@ const listeners: Record<SettingsDomain, Set<SettingsChangeListener>> = {
   cli: new Set(),
   lsp: new Set(),
   mcp: new Set(),
+  openclaw: new Set(),
   skills: new Set(),
   voice: new Set(),
 }

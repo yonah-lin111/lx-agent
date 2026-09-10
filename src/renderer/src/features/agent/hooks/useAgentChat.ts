@@ -10,11 +10,17 @@ import type {
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { useLxAgentToast } from "@/components/ui/LxToast"
+import { useOpenClawChatStore } from "@/features/openclaw/openclawChatStore"
 import { useTranslation } from "@/i18n"
 import { agentApi } from "../api/agentApi"
 import type { AgentInputFile } from "../components/AgentInput"
-import { extractDesignMentions } from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
+import {
+  extractClawMentions,
+  extractDesignMentions,
+  stripClawMention,
+} from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import type { ChatBlock, ChatMessage, ProposedPlanData } from "../types"
 import {
   cleanUserPrompt,
@@ -935,6 +941,27 @@ export const useAgentChat = (
         text = `[发送了 ${selectedFiles.length} 个附件]`
       }
       if (!text) return
+
+      // 拦截 @claw:<instanceId>/<agentId> 委派：整条转交 OpenClaw，本地 Agent 不参与、主对话不留痕。
+      const clawMentions = extractClawMentions(text)
+      if (clawMentions.length > 0) {
+        const [mention] = clawMentions
+        const task = stripClawMention(text, mention)
+        if (!task) {
+          errorToast(t("agent.clawTaskRequired"))
+          return
+        }
+        setInputText("")
+        setSelectedFiles([])
+        useBottomSideBarStore.getState().openOpenClaw(mention.instanceId, mention.agentId)
+        void useOpenClawChatStore
+          .getState()
+          .sendMessage(mention.instanceId, mention.agentId, task)
+          .catch((err: unknown) => {
+            errorToast(err instanceof Error ? err.message : t("openclaw.sendFailed"))
+          })
+        return
+      }
 
       // 提取 @design:{id}#selector 引用，并将基准设计 HTML 或定向切片作为 <referenced_design> 注入到上下文中
       const designMentions = extractDesignMentions(text)

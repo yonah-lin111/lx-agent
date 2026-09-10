@@ -12,6 +12,7 @@ import {
   getLspSettings,
   getMcpSettings,
   getModelProviderSettings,
+  getOpenClawSettings,
   getPermissionSettings,
   getSkillSettings,
   getUiSettings,
@@ -20,6 +21,7 @@ import {
   saveLspSettings,
   saveMcpSettings,
   saveModelProviderSettings,
+  saveOpenClawSettings,
   savePermissionSettings,
   saveSkillSettings,
   saveUiSettings,
@@ -71,4 +73,6 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.getVoiceSettings, () => getVoiceSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveVoiceSettings, (_, input) => saveVoiceSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.transcribeAudio, (_, input) => transcribeAudioWithGroq(input))
+  ipcMain.handle(SETTINGS_CHANNELS.getOpenClawSettings, () => getOpenClawSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveOpenClawSettings, (_, input) => saveOpenClawSettings(input))
 }

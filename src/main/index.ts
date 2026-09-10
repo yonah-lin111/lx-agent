@@ -12,6 +12,7 @@ import { registerClipboardHandlers } from "@/ipc/clipboardHandlers"
 import { registerCustomCommandHandlers } from "@/ipc/customCommandHandlers"
 import { registerGitHandlers } from "@/ipc/gitHandlers"
 import { registerMarkdownHandlers } from "@/ipc/markdownHandlers"
+import { registerOpenClawHandlers } from "@/ipc/openclawHandlers"
 import { registerOverviewHandlers } from "@/ipc/overviewHandlers"
 import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
@@ -19,6 +20,7 @@ import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
+import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
 import { startScreenshotCleanupScheduler } from "@/services/screenshotCleanupService"
 import { terminalService } from "@/services/terminalService"
 
@@ -82,6 +84,7 @@ app.whenReady().then(() => {
   registerPromptHistoryHandlers()
   registerTerminalHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   const stopScreenshotCleanup = startScreenshotCleanupScheduler()
 
@@ -91,6 +94,8 @@ app.whenReady().then(() => {
     stopScreenshotCleanup()
     terminalService.disposeAll()
     void mcpManager.disconnectAll()
+    // OpenClaw Gateway 连接回收。
+    openClawClientManager.disposeAll()
     // LSP server 进程回收（会话切换时已按会话清理；退出兜底全部 kill）。
     void lspManager.dispose()
   })

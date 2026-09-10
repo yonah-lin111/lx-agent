@@ -72,6 +72,7 @@ interface UseAgentInputKeymapProps {
   selectSkill: (skill: any) => void
   selectSkillFromMention: (skill: any) => void
   selectDesign?: (design: any) => void
+  selectClawAgent?: (claw: any) => void
   selectBlockCommand: (cmd: MarkdownBlockCommand) => void
   onChangeRef: React.RefObject<(value: string) => void>
   onUndo?: () => void
@@ -133,6 +134,7 @@ export const useAgentInputKeymap = ({
   selectSkill,
   selectSkillFromMention,
   selectDesign,
+  selectClawAgent,
   selectBlockCommand,
   onChangeRef,
   onUndo,
@@ -166,6 +168,8 @@ export const useAgentInputKeymap = ({
   selectSkillFromMentionRef.current = selectSkillFromMention
   const selectDesignRef = useRef(selectDesign)
   selectDesignRef.current = selectDesign
+  const selectClawAgentRef = useRef(selectClawAgent)
+  selectClawAgentRef.current = selectClawAgent
   const selectBlockCommandRef = useRef(selectBlockCommand)
   selectBlockCommandRef.current = selectBlockCommand
   const onUndoRef = useRef(onUndo)
@@ -450,6 +454,8 @@ export const useAgentInputKeymap = ({
                     selectSkillFromMentionRef.current(item.skill)
                   } else if (item.kind === "design") {
                     selectDesignRef.current?.(item.design)
+                  } else if (item.kind === "claw") {
+                    selectClawAgentRef.current?.(item.claw)
                   } else {
                     selectFileRef.current(item.file)
                   }

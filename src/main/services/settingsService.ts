@@ -15,6 +15,10 @@ import type {
   ModelProviderModel,
   ModelProviderSettings,
   ModelSelection,
+  OpenClawAgentItem,
+  OpenClawAuthMode,
+  OpenClawInstanceConfig,
+  OpenClawSettings,
   ProviderTransportType,
   SkillSettings,
   UiSettings,
@@ -27,6 +31,7 @@ import {
   DEFAULT_COMPACTION_SETTINGS,
   DEFAULT_LSP_SETTINGS,
   DEFAULT_MCP_SETTINGS,
+  DEFAULT_OPENCLAW_SETTINGS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DEFAULT_UI_SETTINGS,
   DEFAULT_VOICE_SETTINGS,
@@ -106,7 +111,8 @@ const normalizeModel = (
   model: Partial<ModelProviderModel> | undefined,
 ): ModelProviderModel => {
   const variants = normalizeVariants(model?.variants)
-  const variant = typeof model?.variant === "string" && model.variant.trim() ? model.variant.trim() : undefined
+  const variant =
+    typeof model?.variant === "string" && model.variant.trim() ? model.variant.trim() : undefined
   return {
     id,
     name: model?.name?.trim() || id,
@@ -120,9 +126,7 @@ const normalizeModel = (
 /**
  * 规范化模型的思考等级（variants）。
  */
-const normalizeVariants = (
-  value: unknown,
-): Record<string, Record<string, unknown>> | undefined => {
+const normalizeVariants = (value: unknown): Record<string, Record<string, unknown>> | undefined => {
   if (!isRecord(value)) return undefined
   const result: Record<string, Record<string, unknown>> = {}
   for (const [key, val] of Object.entries(value)) {
@@ -865,6 +869,110 @@ export const saveVoiceSettings = (input: VoiceSettings): VoiceSettings => {
   const nextConfig: RawConfig = {
     ...rawConfig,
     voice: settings,
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
+  return settings
+}
+
+/**
+ * 规范化单个 OpenClaw Agent 条目。
+ */
+const normalizeOpenClawAgentItem = (raw: unknown): OpenClawAgentItem | null => {
+  if (!isRecord(raw)) return null
+  const id = typeof raw.id === "string" ? raw.id.trim() : ""
+  if (!id) return null
+
+  const description = typeof raw.description === "string" ? raw.description.trim() : ""
+  const workspace = typeof raw.workspace === "string" ? raw.workspace.trim() : ""
+
+  return {
+    id,
+    name: typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : id,
+    ...(description ? { description } : {}),
+    ...(workspace ? { workspace } : {}),
+    ...(typeof raw.isDefault === "boolean" ? { isDefault: raw.isDefault } : {}),
+  }
+}
+
+/**
+ * 规范化单个 OpenClaw 实例配置；gatewayUrl 缺失视为非法实例。
+ */
+const normalizeOpenClawInstance = (raw: unknown): OpenClawInstanceConfig | null => {
+  if (!isRecord(raw)) return null
+  const gatewayUrl = typeof raw.gatewayUrl === "string" ? raw.gatewayUrl.trim() : ""
+  if (!gatewayUrl) return null
+
+  const token = typeof raw.token === "string" ? raw.token.trim() : ""
+  const authMode: OpenClawAuthMode = raw.authMode === "device" ? "device" : "token"
+  const agents = Array.isArray(raw.agents)
+    ? raw.agents
+        .map(normalizeOpenClawAgentItem)
+        .filter((agent): agent is OpenClawAgentItem => agent !== null)
+    : []
+
+  return {
+    name: typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : gatewayUrl,
+    gatewayUrl,
+    authMode,
+    ...(token ? { token } : {}),
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : true,
+    agents,
+  }
+}
+
+/**
+ * 规范化 OpenClaw 配置。
+ */
+export const normalizeOpenClawSettings = (raw: unknown): OpenClawSettings => {
+  if (!isRecord(raw)) return { ...DEFAULT_OPENCLAW_SETTINGS }
+
+  const instances: Record<string, OpenClawInstanceConfig> = {}
+  if (isRecord(raw.instances)) {
+    for (const [key, value] of Object.entries(raw.instances)) {
+      const id = key.trim()
+      if (!id) continue
+      const instance = normalizeOpenClawInstance(value)
+      if (instance) instances[id] = instance
+    }
+  }
+
+  const rawDefaultInstanceId =
+    typeof raw.defaultInstanceId === "string" ? raw.defaultInstanceId.trim() : ""
+  const rawDefaultAgentId = typeof raw.defaultAgentId === "string" ? raw.defaultAgentId.trim() : ""
+
+  return {
+    instances,
+    ...(rawDefaultInstanceId && instances[rawDefaultInstanceId]
+      ? { defaultInstanceId: rawDefaultInstanceId }
+      : {}),
+    ...(rawDefaultAgentId ? { defaultAgentId: rawDefaultAgentId } : {}),
+  }
+}
+
+/**
+ * 读取 OpenClaw 配置。
+ */
+export const getOpenClawSettings = (): OpenClawSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  return normalizeOpenClawSettings(rawConfig.openclaw)
+}
+
+/**
+ * 保存 OpenClaw 配置。
+ */
+export const saveOpenClawSettings = (input: OpenClawSettings): OpenClawSettings => {
+  const settings = normalizeOpenClawSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    openclaw: settings,
   }
   const temporaryPath = `${configPath}.tmp`
   writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")

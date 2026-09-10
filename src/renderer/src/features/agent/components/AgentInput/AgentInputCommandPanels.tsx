@@ -1,6 +1,6 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { FileText, Folder, Palette } from "lucide-react"
+import { Bot, FileText, Folder, Palette } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -414,9 +414,7 @@ export const AgentInputSessionPanel = ({
               </LxTag>
             )}
             {timeDisplay && (
-              <span className="ml-auto shrink-0 text-[11px] text-white/35">
-                {timeDisplay}
-              </span>
+              <span className="ml-auto shrink-0 text-[11px] text-white/35">{timeDisplay}</span>
             )}
           </div>
         )
@@ -642,6 +640,20 @@ export type AgentMentionItem =
       kind: "design"
       design: FrontDesignItem
     }
+  | {
+      kind: "claw"
+      claw: ClawMentionCandidate
+    }
+
+// OpenClaw 提及候选（渲染层展示用）。
+export interface ClawMentionCandidate {
+  instanceId: string
+  agentId: string
+  // Agent 显示名
+  name: string
+  // 实例显示名
+  instanceName: string
+}
 
 export interface AgentInputFilePanelProps {
   isOpen: boolean
@@ -779,6 +791,42 @@ export const AgentInputFilePanel = ({
                   size="small"
                 >
                   Design
+                </LxTag>
+              </div>
+            </div>
+          )
+        }
+
+        if (item.kind === "claw") {
+          const { claw } = item
+          return (
+            <div
+              key={`claw-${claw.instanceId}/${claw.agentId}`}
+              role="option"
+              data-index={index}
+              aria-selected={isActive}
+              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75"
+              }`}
+            >
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-[12px] font-bold text-sky-400">
+                <Bot className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                  <span className="font-medium text-white truncate max-w-[220px]">{claw.name}</span>
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-none text-white/45">
+                  {claw.instanceId}/{claw.agentId}
+                </span>
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <LxTag
+                  bgClass="bg-sky-500/20 text-sky-300"
+                  className="pointer-events-none shrink-0"
+                  size="small"
+                >
+                  {claw.instanceName}
                 </LxTag>
               </div>
             </div>

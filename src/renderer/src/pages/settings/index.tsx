@@ -12,6 +12,7 @@ import {
   ModelProviderSettings,
   ModelSettings,
   notifySettingsChanged,
+  OpenClawSettings,
   PermissionSettings,
   SETTINGS_SECTIONS,
   SettingsActionBar,
@@ -31,6 +32,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   cli: "settings.cliDesc",
   lsp: "settings.lspDesc",
   mcp: "settings.mcpDesc",
+  openclaw: "settings.openclawDesc",
   skills: "settings.skillsDesc",
   models: "settings.modelsDesc",
   providers: "settings.providersDesc",
@@ -182,6 +184,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "cli" ? <CliSettings /> : null}
           {activeSection === "lsp" ? <LspSettings /> : null}
           {activeSection === "mcp" ? <McpSettings /> : null}
+          {activeSection === "openclaw" ? <OpenClawSettings /> : null}
           {activeSection === "skills" ? <SkillSettings /> : null}
           {activeSection === "models" ? (
             <ModelSettings settings={settings} setSettings={setSettings} />

@@ -203,6 +203,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       selectSkill: actions.selectSkill,
       selectSkillFromMention: actions.selectSkillFromMention,
       selectDesign: actions.selectDesign,
+      selectClawAgent: actions.selectClawAgent,
       selectBlockCommand: actions.selectBlockCommand,
       onChangeRef,
       onUndo,

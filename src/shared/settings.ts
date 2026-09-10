@@ -254,6 +254,44 @@ export interface TranscribeAudioResult {
   language?: string
 }
 
+// OpenClaw 实例认证模式：loopback 本机直连用 token；远端 gateway 必须走设备配对。
+export type OpenClawAuthMode = "token" | "device"
+
+// 某个 OpenClaw 实例下注册的 Agent。
+export interface OpenClawAgentItem {
+  id: string
+  name: string
+  description?: string
+  workspace?: string
+  isDefault?: boolean
+}
+
+// 单个 OpenClaw Gateway 实例配置（key 即实例 id）。
+export interface OpenClawInstanceConfig {
+  name: string
+  // Gateway WebSocket 地址，例如 ws://127.0.0.1:18789 或 wss://gateway.example.com。
+  gatewayUrl: string
+  authMode: OpenClawAuthMode
+  token?: string
+  enabled: boolean
+  agents: OpenClawAgentItem[]
+}
+
+// OpenClaw 全局配置（~/.lx/config.json 的 openclaw 节点）。
+export interface OpenClawSettings {
+  instances: Record<string, OpenClawInstanceConfig>
+  defaultInstanceId?: string
+  defaultAgentId?: string
+}
+
+export const DEFAULT_OPENCLAW_SETTINGS: OpenClawSettings = {
+  instances: {},
+  defaultInstanceId: undefined,
+  defaultAgentId: undefined,
+}
+
+export const DEFAULT_OPENCLAW_GATEWAY_URL = "ws://127.0.0.1:18789"
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -284,5 +322,7 @@ export interface SettingsApi {
     getVoiceSettings: () => Promise<VoiceSettings>
     saveVoiceSettings: (settings: VoiceSettings) => Promise<VoiceSettings>
     transcribeAudio: (input: TranscribeAudioInput) => Promise<TranscribeAudioResult>
+    getOpenClawSettings: () => Promise<OpenClawSettings>
+    saveOpenClawSettings: (settings: OpenClawSettings) => Promise<OpenClawSettings>
   }
 }

@@ -3,6 +3,7 @@ import type { AgentApi } from "@shared/contracts/agent"
 import type { CustomCommandApi } from "@shared/contracts/customCommand"
 import type { GitApi } from "@shared/contracts/git"
 import type { MarkdownApi } from "@shared/contracts/markdown"
+import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { TerminalApi } from "@shared/contracts/terminal"
@@ -16,6 +17,7 @@ import { agentApi } from "./api/agent"
 import { customCommandApi } from "./api/customCommand"
 import { gitApi } from "./api/git"
 import { markdownApi } from "./api/markdown"
+import { openclawApi } from "./api/openclaw"
 import { overviewApi } from "./api/overview"
 import { promptHistoryApi } from "./api/promptHistory"
 import { terminalApi } from "./api/terminal"
@@ -29,7 +31,8 @@ const api: ProjectApi &
   GitApi &
   PromptHistoryApi &
   TerminalApi &
-  OverviewApi = {
+  OverviewApi &
+  OpenClawApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
     ipcRenderer.invoke(CLIPBOARD_CHANNELS.saveImage, buffer, mimeType),
@@ -96,6 +99,9 @@ const api: ProjectApi &
     saveVoiceSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.saveVoiceSettings, settings),
     transcribeAudio: (input) => ipcRenderer.invoke(SETTINGS_CHANNELS.transcribeAudio, input),
+    getOpenClawSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getOpenClawSettings),
+    saveOpenClawSettings: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveOpenClawSettings, settings),
   },
 
   agent: agentApi,
@@ -105,6 +111,7 @@ const api: ProjectApi &
   overview: overviewApi,
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
+  openclaw: openclawApi,
 }
 
 contextBridge.exposeInMainWorld("api", api)

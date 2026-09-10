@@ -23,6 +23,7 @@ import {
   type AgentInputProjectItem,
   type AgentInputSessionItem,
   type AgentMentionItem,
+  type ClawMentionCandidate,
   getAgentPanelPosition,
 } from "../../AgentInputCommandPanels"
 import {
@@ -375,6 +376,60 @@ export const useAgentInputPanels = ({
   const matchedSkillsRef = useRef(matchedSkills)
   matchedSkillsRef.current = matchedSkills
 
+  // 已启用的 OpenClaw Agent 候选（实例 × Agent 展开）。
+  const [clawCandidates, setClawCandidates] = useState<ClawMentionCandidate[]>([])
+
+  const loadClawCandidates = useCallback(async (): Promise<void> => {
+    try {
+      const settings = await settingsApi.getOpenClawSettings()
+      const candidates: ClawMentionCandidate[] = []
+      for (const [instanceId, instance] of Object.entries(settings.instances)) {
+        if (!instance.enabled) continue
+        for (const agent of instance.agents) {
+          candidates.push({
+            instanceId,
+            agentId: agent.id,
+            name: agent.name,
+            instanceName: instance.name,
+          })
+        }
+      }
+      setClawCandidates(candidates)
+    } catch {
+      setClawCandidates([])
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadClawCandidates()
+    return subscribeSettingsChanged("openclaw", () => {
+      void loadClawCandidates()
+    })
+  }, [loadClawCandidates])
+
+  const matchedMentionClawAgents = useMemo<ClawMentionCandidate[]>(() => {
+    if (activeMode !== "file" || clawCandidates.length === 0) return []
+    const view = editorViewRef.current
+    const cursor = view?.state.selection.main.head ?? value.length
+    const mention = getMentionQuery(value, cursor)
+    if (!mention) return []
+
+    // `@claw:instance/agent` 与 `@claw` 前缀都用于筛选 OpenClaw 候选。
+    let q = mention.query.toLowerCase()
+    if (q.startsWith("claw")) {
+      q = q.slice(4).replace(/^[:/]+/, "")
+    }
+    if (!q) return clawCandidates
+
+    return clawCandidates.filter(
+      (candidate) =>
+        isFuzzyMatch(q, candidate.name.toLowerCase()) ||
+        isFuzzyMatch(q, candidate.agentId.toLowerCase()) ||
+        isFuzzyMatch(q, candidate.instanceId.toLowerCase()) ||
+        isFuzzyMatch(q, `${candidate.instanceId}/${candidate.agentId}`.toLowerCase()),
+    )
+  }, [activeMode, value, clawCandidates, editorViewRef])
+
   const matchedMentionSkills = useMemo(() => {
     if (activeMode !== "file") return []
     const view = editorViewRef.current
@@ -432,8 +487,13 @@ export const useAgentInputPanels = ({
       kind: "file",
       file,
     }))
-    return [...designItems, ...skillItems, ...fileItems]
-  }, [activeMode, matchedMentionDesigns, matchedMentionSkills, files])
+    // OpenClaw 候选置于末尾：不改变既有 @ 提及的默认首选项行为。
+    const clawItems: AgentMentionItem[] = matchedMentionClawAgents.map((claw) => ({
+      kind: "claw",
+      claw,
+    }))
+    return [...designItems, ...skillItems, ...fileItems, ...clawItems]
+  }, [activeMode, matchedMentionDesigns, matchedMentionSkills, matchedMentionClawAgents, files])
   const mentionItemsRef = useRef(mentionItems)
   mentionItemsRef.current = mentionItems
 

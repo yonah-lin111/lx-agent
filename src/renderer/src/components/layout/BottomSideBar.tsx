@@ -1,5 +1,6 @@
 import {
   Activity,
+  Bot,
   ChevronDown,
   ChevronsLeftRight,
   ChevronsRightLeft,
@@ -12,6 +13,7 @@ import { useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentJobsMonitorView } from "@/features/agent"
 import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
+import { OpenClawChatView } from "@/features/openclaw"
 import { GhosttyTerminalView } from "@/features/terminal"
 import { useTranslation } from "@/i18n"
 import { useBottomSideBarStore } from "./bottomSideBarStore"
@@ -111,38 +113,63 @@ export const BottomSideBar = ({
 
   const { t } = useTranslation()
 
-  // 渲染右侧操作栏（包含控制台/长任务切换、覆盖右侧栏、折叠按钮）
-  const renderRightActions = (): React.JSX.Element => (
-    <div className="flex shrink-0 items-center gap-1">
-      {/* 视图切换按钮：位于覆盖 icon 左侧 */}
+  // 三视图切换按钮组；折叠态下切换同时展开底边栏。
+  const renderViewSwitcher = (expandOnSelect: boolean): React.JSX.Element => (
+    <div className="flex shrink-0 items-center gap-0.5">
       <LxIconButton
-        aria-label={
-          viewMode === "terminal" ? t("bottomBar.switchToJobs") : t("bottomBar.switchToTerminal")
-        }
-        title={{
-          content:
-            viewMode === "terminal"
-              ? `${t("bottomBar.switchToJobs")}${
-                  runningJobs.length > 0
-                    ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}`
-                    : ""
-                }`
-              : t("bottomBar.switchToTerminal"),
-          placement: "top",
+        aria-label={t("bottomBar.switchToTerminal")}
+        title={{ content: t("bottomBar.switchToTerminal"), placement: "top" }}
+        highlighted={viewMode === "terminal"}
+        onClick={() => {
+          setViewMode("terminal")
+          if (expandOnSelect) onExpandedChange(true)
         }}
-        onClick={() => setViewMode(viewMode === "terminal" ? "jobs" : "terminal")}
         size="small"
       >
-        {viewMode === "terminal" ? (
-          <Activity
-            className={`h-3.5 w-3.5 ${
-              runningJobs.length > 0 ? "text-sky-400 animate-pulse" : "text-white/60"
-            }`}
-          />
-        ) : (
-          <TerminalIcon className="h-3.5 w-3.5 text-sky-400" />
-        )}
+        <TerminalIcon className="h-3.5 w-3.5" />
       </LxIconButton>
+
+      <LxIconButton
+        aria-label={t("bottomBar.switchToJobs")}
+        title={{
+          content: `${t("bottomBar.switchToJobs")}${
+            runningJobs.length > 0
+              ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}`
+              : ""
+          }`,
+          placement: "top",
+        }}
+        highlighted={viewMode === "jobs"}
+        onClick={() => {
+          setViewMode("jobs")
+          if (expandOnSelect) onExpandedChange(true)
+        }}
+        size="small"
+      >
+        <Activity
+          className={`h-3.5 w-3.5 ${runningJobs.length > 0 ? "text-sky-400 animate-pulse" : ""}`}
+        />
+      </LxIconButton>
+
+      <LxIconButton
+        aria-label={t("bottomBar.switchToOpenClaw")}
+        title={{ content: t("bottomBar.switchToOpenClaw"), placement: "top" }}
+        highlighted={viewMode === "openclaw"}
+        onClick={() => {
+          setViewMode("openclaw")
+          if (expandOnSelect) onExpandedChange(true)
+        }}
+        size="small"
+      >
+        <Bot className="h-3.5 w-3.5" />
+      </LxIconButton>
+    </div>
+  )
+
+  // 渲染右侧操作栏（包含视图切换、覆盖右侧栏、折叠按钮）
+  const renderRightActions = (): React.JSX.Element => (
+    <div className="flex shrink-0 items-center gap-1">
+      {renderViewSwitcher(false)}
 
       <LxIconButton
         aria-label={
@@ -221,6 +248,14 @@ export const BottomSideBar = ({
             >
               <AgentJobsMonitorView isExpanded={isExpanded} rightActions={renderRightActions()} />
             </div>
+
+            <div
+              className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
+                viewMode === "openclaw" ? "flex" : "hidden"
+              }`}
+            >
+              <OpenClawChatView isExpanded={isExpanded} rightActions={renderRightActions()} />
+            </div>
           </div>
         )}
 
@@ -229,39 +264,7 @@ export const BottomSideBar = ({
           <div className="flex h-full w-full items-center justify-between">
             <div className="min-w-0 flex-1">{children}</div>
             <div className="flex shrink-0 items-center gap-1 pl-2">
-              <LxIconButton
-                aria-label={
-                  viewMode === "terminal"
-                    ? t("bottomBar.switchToJobs")
-                    : t("bottomBar.switchToTerminal")
-                }
-                title={{
-                  content:
-                    viewMode === "terminal"
-                      ? `${t("bottomBar.switchToJobs")}${
-                          runningJobs.length > 0
-                            ? ` ${t("bottomBar.runningCount", { count: runningJobs.length })}`
-                            : ""
-                        }`
-                      : t("bottomBar.switchToTerminal"),
-                  placement: "top",
-                }}
-                onClick={() => {
-                  setViewMode(viewMode === "terminal" ? "jobs" : "terminal")
-                  onExpandedChange(true)
-                }}
-                size="small"
-              >
-                {viewMode === "terminal" ? (
-                  <Activity
-                    className={`h-3.5 w-3.5 ${
-                      runningJobs.length > 0 ? "text-sky-400 animate-pulse" : "text-white/60"
-                    }`}
-                  />
-                ) : (
-                  <TerminalIcon className="h-3.5 w-3.5 text-sky-400" />
-                )}
-              </LxIconButton>
+              {renderViewSwitcher(true)}
 
               <LxIconButton
                 aria-label={

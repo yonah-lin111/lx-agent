@@ -10,6 +10,7 @@ import type {
   LspSettings,
   McpSettings,
   ModelProviderSettings,
+  OpenClawSettings,
   SkillSettings,
   TranscribeAudioInput,
   TranscribeAudioResult,
@@ -60,4 +61,7 @@ export const settingsApi = {
     window.api.settings.saveVoiceSettings(settings),
   transcribeAudio: (input: TranscribeAudioInput): Promise<TranscribeAudioResult> =>
     window.api.settings.transcribeAudio(input),
+  getOpenClawSettings: (): Promise<OpenClawSettings> => window.api.settings.getOpenClawSettings(),
+  saveOpenClawSettings: (settings: OpenClawSettings): Promise<OpenClawSettings> =>
+    window.api.settings.saveOpenClawSettings(settings),
 }
