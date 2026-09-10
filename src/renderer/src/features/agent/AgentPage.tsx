@@ -703,6 +703,33 @@ export const AgentPage = ({
     }
   }, [createNewChat, activeTab, tabId, currentProjectId, currentProjectPath, defaultPath])
 
+  // /cd 切换工作空间：若当前会话已有历史，自动在新对话中绑定新目录；若为空白新会话，则直接原地切换。
+  const handleCdSelect = useCallback(
+    (projectId: string, path: string): void => {
+      if (currentSessionId) {
+        handleNewChat()
+        const nextBinding = {
+          projectId,
+          cwd: path,
+        }
+        if (tabId) {
+          agentTabStore.setTabDraftBinding(tabId, nextBinding)
+        }
+        sessionListStore.setDraftBinding(nextBinding)
+        void agentApi.switchProject(projectId, path, undefined, tabId).then((result) => {
+          if (result.ok) {
+            success(t("agent.projectSwitched"))
+          } else {
+            error(result.error)
+          }
+        })
+      } else {
+        handleProjectSelect(projectId, path)
+      }
+    },
+    [currentSessionId, handleNewChat, tabId, handleProjectSelect, success, error, t],
+  )
+
   const handleRestoreChat = useCallback(
     (sessionId: string) => {
       restoreChat(sessionId)
@@ -807,6 +834,7 @@ export const AgentPage = ({
         worktreeOptions={worktreeOptions}
         onWorktreeSelect={handleWorktreeSelect}
         onProjectSelect={handleProjectSelect}
+        onCdSelect={handleCdSelect}
         onSessionSelect={handleRestoreChat}
         allowProjectChange={!currentSessionId}
         currentSessionId={currentSessionId}

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { basename } from "node:path"
+import { homedir } from "node:os"
+import { basename, join, resolve } from "node:path"
 import type {
   CreateProjectFolderInput,
   CreateProjectInput,
@@ -31,12 +32,15 @@ export type {
   UpdateProjectItemInput,
 } from "@shared/project"
 
+import { cleanWorkspacePath } from "@shared/project"
+
 // 项目数据库记录。
 type ProjectRow = {
   external_id: string
   name: string
   type: "filesystem" | "virtual"
   path: string | null
+  is_imported: number | null
   referenced_folders: string | null
   created_at: string
   updated_at: string
@@ -157,6 +161,8 @@ const toProject = (row: ProjectRow): Project => ({
   name: row.name,
   type: row.type,
   path: row.path ?? undefined,
+  isImported:
+    row.is_imported !== null && row.is_imported !== undefined ? Boolean(row.is_imported) : true,
   referencedFolders: getReferencedFolders(row.referenced_folders),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -209,19 +215,64 @@ export const createProjectService = (getConnection: () => Database.Database) => 
     const id = randomUUID()
     const name = requireName(input.name)
     const type = input.type ?? (input.path ? "filesystem" : "virtual")
+    const isImported = input.isImported !== undefined ? (input.isImported ? 1 : 0) : 1
     assertProjectDirectory(input.path)
 
     database
       .prepare(
-        "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO project (external_id, name, type, path, is_imported, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
-      .run(id, name, type, input.path?.trim() || null, now, now)
+      .run(id, name, type, input.path?.trim() || null, isImported, now, now)
 
     return {
       id,
       name,
       type,
       path: input.path?.trim() || undefined,
+      isImported: Boolean(isImported),
+      referencedFolders: [],
+      createdAt: now,
+      updatedAt: now,
+    }
+  },
+
+  findOrCreateByPath: (targetPath: string): Project => {
+    const database = getConnection()
+    const cleaned = cleanWorkspacePath(targetPath)
+    if (!cleaned) {
+      throw new Error("PATH_IS_REQUIRED")
+    }
+    const expanded =
+      cleaned === "~" || cleaned.startsWith("~/") || cleaned.startsWith("~\\")
+        ? join(homedir(), cleaned.slice(1))
+        : cleaned
+    const resolvedPath = resolve(expanded)
+    assertProjectDirectory(resolvedPath)
+
+    const existingRow = database
+      .prepare("SELECT * FROM project WHERE path = ? LIMIT 1")
+      .get(resolvedPath) as ProjectRow | undefined
+
+    if (existingRow) {
+      return toProject(existingRow)
+    }
+
+    const name = basename(resolvedPath) || "workspace"
+    const now = new Date().toISOString()
+    const id = randomUUID()
+
+    database
+      .prepare(
+        "INSERT INTO project (external_id, name, type, path, is_imported, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)",
+      )
+      .run(id, name, "filesystem", resolvedPath, now, now)
+
+    return {
+      id,
+      name,
+      type: "filesystem",
+      path: resolvedPath,
+      isImported: false,
       referencedFolders: [],
       createdAt: now,
       updatedAt: now,
@@ -230,7 +281,7 @@ export const createProjectService = (getConnection: () => Database.Database) => 
 
   updateProject: (id: string, input: UpdateProjectInput): void => {
     const updates: string[] = []
-    const values: Array<string | null> = []
+    const values: Array<string | number | null> = []
 
     if (input.name !== undefined) {
       updates.push("name = ?")
@@ -244,6 +295,10 @@ export const createProjectService = (getConnection: () => Database.Database) => 
       assertProjectDirectory(input.path)
       updates.push("path = ?")
       values.push(input.path.trim() || null)
+    }
+    if (input.isImported !== undefined) {
+      updates.push("is_imported = ?")
+      values.push(input.isImported ? 1 : 0)
     }
     if (input.referencedFolders !== undefined) {
       if (

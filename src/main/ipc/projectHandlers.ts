@@ -20,6 +20,12 @@ export const registerProjectHandlers = (): void => {
 
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+  ipcMain.handle(PROJECT_CHANNELS.findOrCreateByPath, (_, path) => {
+    if (typeof path !== "string") {
+      throw new Error("INVALID_PATH_INPUT")
+    }
+    return projectService.findOrCreateByPath(path)
+  })
   ipcMain.handle(PROJECT_CHANNELS.searchProjectFiles, (_, projectId, query) => {
     if (typeof projectId !== "string" || typeof query !== "string") {
       throw new Error("INVALID_PROJECT_FILE_SEARCH_INPUT")

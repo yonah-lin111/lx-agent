@@ -113,6 +113,19 @@
   color: #ffffff !important;
 }
 
+/* Level 1 (未导入项目): 沉暗基岩色 + 虚线/弱化边框 + 扁平内嵌质感 */
+[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"] {
+  background-color: #262636 !important;
+  color: #a8a8be !important;
+  border: 2px dashed #484860 !important;
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"]:hover {
+  background-color: #343448 !important;
+  color: #e2e2ee !important;
+}
+
 /* Level 2: 文件夹头节点（Folder 图标容器）—— 安山岩中灰槽 */
 [data-theme="minecraft"] [data-item-level="folder"],
 [data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80) {
@@ -1114,6 +1127,16 @@
   padding: 1px 8px !important;
   color: #d4d4e4 !important;
   font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .git-status-item[data-unimported="true"] {
+  border: 2px solid #333340 !important;
+  background-color: #171720 !important;
+  color: #707080 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
 }
 
 /* ========================================================

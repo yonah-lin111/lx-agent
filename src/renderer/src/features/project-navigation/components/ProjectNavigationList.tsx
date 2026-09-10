@@ -1,15 +1,30 @@
-import { Boxes, CheckCircle2, ChevronDown, Circle, File, FileText, Folder } from "lucide-react"
+import {
+  Boxes,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  File,
+  FileText,
+  Folder,
+  FolderGit,
+} from "lucide-react"
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
+  ProjectNavigationMenuTarget,
   ProjectNavigationMenuType,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
   PromptStatus,
 } from "@/features/project-navigation/types"
+import {
+  isCopyPathShortcut,
+  isDeleteShortcut,
+  isRenameShortcut,
+} from "@/features/project-navigation/utils"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type {
@@ -50,10 +65,19 @@ interface ProjectNavigationListProps {
   onOpenMenu: (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus },
+    item: {
+      id: string
+      name: string
+      status?: PromptStatus
+      isImported?: boolean
+      path?: string
+    },
     projectId?: string,
     depth?: number,
   ) => void
+  onEditProject?: (project: ProjectNavigationProject) => void
+  onDeleteItem?: (target: ProjectNavigationMenuTarget) => void
+  onCopyProjectPath?: (path: string) => void
 }
 
 /**
@@ -74,6 +98,9 @@ export const ProjectNavigationList = ({
   onProjectToggle,
   onProjectFolderToggle,
   onOpenMenu,
+  onEditProject,
+  onDeleteItem,
+  onCopyProjectPath,
 }: ProjectNavigationListProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -181,7 +208,11 @@ export const ProjectNavigationList = ({
   /**
    * 渲染可选择的条目节点。
    */
-  const renderPrompt = (prompt: ProjectNavigationPrompt, depth: number): React.JSX.Element => {
+  const renderPrompt = (
+    prompt: ProjectNavigationPrompt,
+    depth: number,
+    projectId?: string,
+  ): React.JSX.Element => {
     const isActive = activePromptId === prompt.id
     const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
 
@@ -200,9 +231,23 @@ export const ProjectNavigationList = ({
           onItemOpen(prompt.id)
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
+          if (editingItem) return
+          if (isRenameShortcut(event)) {
+            event.preventDefault()
+            onEditingItemChange({ id: prompt.id, name: prompt.name })
+            return
+          }
+          if (isDeleteShortcut(event)) {
+            event.preventDefault()
+            onDeleteItem?.({ type: "prompt", id: prompt.id, projectId })
+            return
+          }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            event.currentTarget.click()
+          }
         }}
-        onContextMenu={(event) => onOpenMenu(event, "prompt", prompt)}
+        onContextMenu={(event) => onOpenMenu(event, "prompt", prompt, projectId, depth)}
       >
         <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`} />
         {renderItemName(
@@ -239,7 +284,19 @@ export const ProjectNavigationList = ({
           aria-expanded={!isFolderCollapsed}
           onClick={() => onProjectFolderToggle(folder.id)}
           onKeyDown={(event) => {
+            if (editingItem) return
+            if (isRenameShortcut(event)) {
+              event.preventDefault()
+              onEditingItemChange({ id: folder.id, name: folder.name })
+              return
+            }
+            if (isDeleteShortcut(event)) {
+              event.preventDefault()
+              onDeleteItem?.({ type: "project_folder", id: folder.id, projectId, depth })
+              return
+            }
             if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
               event.currentTarget.click()
             }
           }}
@@ -262,7 +319,7 @@ export const ProjectNavigationList = ({
             {folder.projectFolders.map((childFolder) =>
               renderFolder(childFolder, depth + 1, projectId),
             )}
-            {folder.prompts.map((prompt) => renderPrompt(prompt, depth + 1))}
+            {folder.prompts.map((prompt) => renderPrompt(prompt, depth + 1, projectId))}
           </>
         )}
       </div>
@@ -281,18 +338,46 @@ export const ProjectNavigationList = ({
                 role="button"
                 tabIndex={0}
                 data-item-level="project"
-                className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+                data-unimported={project.isImported === false ? "true" : undefined}
+                className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 ${
+                  project.isImported === false ? "opacity-75" : ""
+                }`}
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
+                  if (editingItem) return
+                  if (isRenameShortcut(event)) {
+                    event.preventDefault()
+                    onEditProject?.(project)
+                    return
+                  }
+                  if (isDeleteShortcut(event)) {
+                    event.preventDefault()
+                    onDeleteItem?.({ type: "project", id: project.id })
+                    return
+                  }
+                  if (isCopyPathShortcut(event) && project.path) {
+                    event.preventDefault()
+                    onCopyProjectPath?.(project.path)
+                    return
+                  }
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    event.currentTarget.click()
+                  }
                 }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
               >
-                <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                {project.isImported === false ? (
+                  <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                ) : (
+                  <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                )}
                 {renderItemName(
                   project,
-                  "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors",
+                  `min-w-0 flex-1 truncate text-sm font-semibold uppercase transition-colors ${
+                    project.isImported === false ? "text-white/40 font-normal" : "text-white/55"
+                  }`,
                 )}
                 {isProjectCollapsed ? (
                   <>
@@ -310,7 +395,7 @@ export const ProjectNavigationList = ({
                 <div className="space-y-0.5">
                   {renderTemporaryPrompt(project.id)}
                   {project.projectFolders.map((folder) => renderFolder(folder, 1, project.id))}
-                  {project.prompts.map((prompt) => renderPrompt(prompt, 1))}
+                  {project.prompts.map((prompt) => renderPrompt(prompt, 1, project.id))}
                 </div>
               )}
             </div>

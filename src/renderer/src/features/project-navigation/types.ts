@@ -40,6 +40,7 @@ export interface ProjectNavigationProject {
   id: string
   name: string
   path?: string
+  isImported?: boolean
   createdAt: string
   updatedAt: string
   projectFolders: ProjectNavigationFolder[]

@@ -37,6 +37,7 @@ import {
 } from "@/features/project-navigation/components/ProjectNavigationMenu"
 import { useProjectNavigationActions } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type {
   ProjectNavigationFilterScope,
   ProjectNavigationProject,
@@ -59,6 +60,8 @@ type MenuState = {
   depth?: number
   title: string
   status?: PromptStatus
+  isImported?: boolean
+  path?: string
   x: number
   y: number
 }
@@ -216,7 +219,13 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const openMenu = (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus },
+    item: {
+      id: string
+      name: string
+      status?: PromptStatus
+      isImported?: boolean
+      path?: string
+    },
     projectId?: string,
     depth?: number,
   ): void => {
@@ -228,9 +237,44 @@ export const ProjectNavigation = (): React.JSX.Element => {
       depth,
       title: item.name,
       status: item.status,
+      isImported: item.isImported,
+      path: item.path,
       x: event.clientX,
       y: event.clientY,
     })
+  }
+
+  /**
+   * 切换项目导入状态（未导入 <-> 已导入）。
+   */
+  const handleToggleImportProject = async (): Promise<void> => {
+    if (!menu || menu.type !== "project") return
+    const targetStatus = menu.isImported === false
+    try {
+      await projectNavigationApi.updateProject(menu.id, { isImported: targetStatus })
+      await refreshProjects()
+      useProjectItemsVersionStore.getState().bump()
+      toast.success(targetStatus ? t("project.importedSuccess") : t("project.unimportedSuccess"))
+    } catch {
+      toast.error(targetStatus ? t("project.importFailed") : t("project.unimportFailed"))
+    }
+    setMenu(null)
+  }
+
+  /**
+   * 复制项目物理路径到剪贴板。
+   */
+  const handleCopyPath = async (rawPath?: string): Promise<void> => {
+    const targetPath = rawPath ?? (menu?.type === "project" ? menu.path : undefined)
+    if (!targetPath?.trim()) return
+    const path = targetPath.trim()
+    try {
+      await navigator.clipboard.writeText(path)
+      toast.success(t("project.copyProjectPathSuccess"))
+    } catch {
+      toast.error(t("project.copyProjectPathFailed"))
+    }
+    setMenu(null)
   }
 
   /**
@@ -243,11 +287,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 打开右键目标项目的编辑弹窗。
+   * 打开目标项目的编辑弹窗。
    */
-  const openEditProjectModal = (): void => {
-    if (!menu || menu.type !== "project") return
-    const project = projects.find((item) => item.id === menu.id)
+  const openEditProjectModal = (projectToEdit?: SidebarProject): void => {
+    const project =
+      projectToEdit ??
+      (menu && menu.type === "project" ? projects.find((item) => item.id === menu.id) : undefined)
     if (!project) return
 
     setProjectModal({ mode: "edit", project })
@@ -355,10 +400,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 删除右键菜单目标及其下属数据。
+   * 删除指定目标节点及其下属数据。
    */
-  const deleteMenuItem = async (): Promise<void> => {
-    if (!menu) return
+  const handleDeleteTarget = async (target: ProjectNavigationMenuTarget): Promise<void> => {
     const collectFolderPromptIds = (
       folders: ProjectNavigationProject["projectFolders"],
     ): string[] =>
@@ -380,19 +424,19 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }
 
     const deletedPromptIds =
-      menu.type === "project"
+      target.type === "project"
         ? (projects
-            .find((project) => project.id === menu.id)
+            .find((project) => project.id === target.id)
             ?.prompts.map((p) => p.id)
             .concat(
               collectFolderPromptIds(
-                projects.find((project) => project.id === menu.id)?.projectFolders ?? [],
+                projects.find((project) => project.id === target.id)?.projectFolders ?? [],
               ),
             ) ?? [])
-        : menu.type === "project_folder"
+        : target.type === "project_folder"
           ? (() => {
               const folder = projects
-                .map((p) => findFolderInTree(p.projectFolders, menu.id))
+                .map((p) => findFolderInTree(p.projectFolders, target.id))
                 .find(Boolean)
               return folder
                 ? [
@@ -401,12 +445,20 @@ export const ProjectNavigation = (): React.JSX.Element => {
                   ]
                 : []
             })()
-          : [menu.id]
+          : [target.id]
 
-    if (await deleteItem(menu)) {
+    if (await deleteItem(target)) {
       if (deletedPromptIds.includes(activePromptId)) navigate(PAGE_ROUTES.project)
       setMenu(null)
     }
+  }
+
+  /**
+   * 删除右键菜单目标及其下属数据。
+   */
+  const deleteMenuItem = async (): Promise<void> => {
+    if (!menu) return
+    await handleDeleteTarget(menu)
   }
 
   /**
@@ -848,6 +900,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
           onPromptStatusChange={(promptId, status) =>
             void handlePromptStatusToggle(promptId, status)
           }
+          onEditProject={openEditProjectModal}
+          onDeleteItem={(target) => void handleDeleteTarget(target)}
+          onCopyProjectPath={(path) => void handleCopyPath(path)}
         />
       </div>
       <ProjectNavigationMenu
@@ -858,6 +913,10 @@ export const ProjectNavigation = (): React.JSX.Element => {
         y={menu?.y ?? 0}
         depth={menu?.depth}
         status={menu?.status}
+        isImported={menu?.isImported}
+        path={menu?.path}
+        onToggleImportProject={handleToggleImportProject}
+        onCopyProjectPath={() => void handleCopyPath()}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
         onAddFolder={() => addMenuItem("project_folder")}

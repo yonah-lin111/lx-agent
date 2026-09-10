@@ -1,9 +1,19 @@
-import { Check, Edit3, FilePlus, FolderPlus, Trash2 } from "lucide-react"
+import {
+  Check,
+  Copy,
+  Edit3,
+  FilePlus,
+  FolderCheck,
+  FolderMinus,
+  FolderPlus,
+  Trash2,
+} from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
+import { getShortcutLabels } from "@/features/project-navigation/utils"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
@@ -16,7 +26,12 @@ type ProjectNavigationMenuProps = {
   y: number
   depth?: number
   status?: PromptStatus
+  isImported?: boolean
+  path?: string
   onEditProject?: () => void
+  onImportProject?: () => void
+  onToggleImportProject?: () => void
+  onCopyProjectPath?: () => void
   onRename: () => void
   onAddFolder?: () => void
   onAddPrompt?: () => void
@@ -33,6 +48,8 @@ type MenuDisplayState = {
   y: number
   depth?: number
   status?: PromptStatus
+  isImported?: boolean
+  path?: string
 }
 
 // 条目状态配置。
@@ -53,7 +70,12 @@ export const ProjectNavigationMenu = ({
   y,
   depth,
   status,
+  isImported,
+  path,
   onEditProject,
+  onImportProject,
+  onToggleImportProject,
+  onCopyProjectPath,
   onRename,
   onAddFolder,
   onAddPrompt,
@@ -62,6 +84,7 @@ export const ProjectNavigationMenu = ({
   onClose,
 }: ProjectNavigationMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
+  const shortcutLabels = getShortcutLabels()
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
   const [lastMenu, setLastMenu] = useState<MenuDisplayState>({
     type: "project",
@@ -69,11 +92,13 @@ export const ProjectNavigationMenu = ({
     x: 0,
     y: 0,
   })
-  const displayedMenu: MenuDisplayState = isOpen ? { type, title, x, y, depth, status } : lastMenu
+  const displayedMenu: MenuDisplayState = isOpen
+    ? { type, title, x, y, depth, status, isImported, path }
+    : lastMenu
 
   useEffect(() => {
-    if (isOpen) setLastMenu({ type, title, x, y, depth, status })
-  }, [isOpen, status, title, type, x, y, depth])
+    if (isOpen) setLastMenu({ type, title, x, y, depth, status, isImported, path })
+  }, [isOpen, status, title, type, x, y, depth, isImported, path])
 
   useEffect(() => {
     setIsConfirmingDelete(false)
@@ -103,12 +128,48 @@ export const ProjectNavigationMenu = ({
       y={displayedMenu.y}
       onClose={onClose}
     >
+      {displayedMenu.type === "project" && (onToggleImportProject || onImportProject) ? (
+        <LxMenuItem
+          leading={
+            displayedMenu.isImported === false ? (
+              <FolderCheck className="h-3.5 w-3.5 text-emerald-400/80" />
+            ) : (
+              <FolderMinus className="h-3.5 w-3.5 text-white/45" />
+            )
+          }
+          onClick={() => {
+            if (onToggleImportProject) {
+              onToggleImportProject()
+            } else {
+              onImportProject?.()
+            }
+          }}
+        >
+          {displayedMenu.isImported === false
+            ? t("project.importAction")
+            : t("project.unimportAction")}
+        </LxMenuItem>
+      ) : null}
+
       <LxMenuItem
         leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
+        trailing={shortcutLabels.rename}
         onClick={displayedMenu.type === "project" ? onEditProject : onRename}
       >
         {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
       </LxMenuItem>
+
+      {displayedMenu.type === "project" &&
+      Boolean(displayedMenu.path?.trim()) &&
+      onCopyProjectPath ? (
+        <LxMenuItem
+          leading={<Copy className="h-3.5 w-3.5 text-white/45" />}
+          trailing={shortcutLabels.copyPath}
+          onClick={onCopyProjectPath}
+        >
+          {t("project.copyProjectPath")}
+        </LxMenuItem>
+      ) : null}
 
       {canAddFolder ? (
         <LxMenuItem
@@ -159,6 +220,7 @@ export const ProjectNavigationMenu = ({
             className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
           />
         }
+        trailing={!isConfirmingDelete ? shortcutLabels.delete : null}
         onClick={handleDeleteClick}
       >
         {isConfirmingDelete

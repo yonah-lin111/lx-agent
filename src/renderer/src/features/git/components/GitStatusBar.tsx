@@ -1,5 +1,5 @@
 import type { Project } from "@shared/project"
-import { Check, Folder, GitBranch, GitFork, Search } from "lucide-react"
+import { Check, Folder, FolderGit, GitBranch, GitFork, Search } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxInput } from "@/components/ui/LxInput"
@@ -10,6 +10,7 @@ import { gitApi } from "@/features/git/api/gitApi"
 import { useGitWorktrees } from "@/features/git/hooks/useGitWorktrees"
 import { getGitWorktreeDirName } from "@/features/git/utils"
 import { projectApi } from "@/features/project/api/projectApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import { useTranslation } from "@/i18n"
 
 // 状态栏属性。
@@ -20,6 +21,8 @@ export interface GitStatusBarProps {
   className?: string
   // 当前绑定的项目 ID（交互模式下高亮选中的项目）。
   projectId?: string
+  // 是否为未导入项目（可选，缺省时自动从 projects 列表中匹配查找）。
+  isImported?: boolean
   // 是否启用交互模式（支持点击弹出菜单切换项目、分支与工作区）。默认 false。
   interactive?: boolean
   // 是否允许切换项目（例如非新 session 下禁止切换项目，仅展示）。默认 true。
@@ -45,6 +48,7 @@ export const GitStatusBar = ({
   projectPath,
   className = "flex min-w-0 items-center gap-2 border-t border-white/5 py-1 text-xs text-white/50",
   projectId,
+  isImported: isImportedProp,
   interactive = false,
   allowProjectChange = true,
   alwaysShowWorktree = false,
@@ -55,6 +59,7 @@ export const GitStatusBar = ({
   const { t } = useTranslation()
   const { success, error } = useLxToast()
   const { worktrees, projectBranch, reload } = useGitWorktrees(projectPath)
+  const projectItemsVersion = useProjectItemsVersionStore((s) => s.version)
   const [projects, setProjects] = useState<Project[]>([])
   const [branches, setBranches] = useState<string[]>([])
   const [defaultDesktopPath, setDefaultDesktopPath] = useState<string>("")
@@ -71,7 +76,6 @@ export const GitStatusBar = ({
 
   // 加载有路径的项目列表
   const loadProjects = useCallback((): void => {
-    if (!interactive) return
     void Promise.all([projectApi.listProjects(), agentApi.getDefaultPath()]).then(
       ([list, desktop]) => {
         setDefaultDesktopPath(desktop)
@@ -93,7 +97,7 @@ export const GitStatusBar = ({
         }
       },
     )
-  }, [interactive, t])
+  }, [t])
 
   // 加载本地分支列表
   const loadBranches = useCallback((): void => {
@@ -104,15 +108,20 @@ export const GitStatusBar = ({
   }, [interactive, projectPath])
 
   useEffect(() => {
-    if (interactive) {
-      loadProjects()
+    loadProjects()
+  }, [loadProjects, projectItemsVersion])
+
+  useEffect(() => {
+    if (interactive && projectPath) {
       loadBranches()
     }
-  }, [interactive, projectPath, loadProjects, loadBranches])
+  }, [interactive, projectPath, loadBranches])
 
   const currentProject = projects.find(
     (p) => (projectPath && p.path === projectPath) || (projectId && p.id === projectId),
   )
+  const isUnimported =
+    isImportedProp !== undefined ? isImportedProp === false : currentProject?.isImported === false
   const isCurrentPathDesktop = Boolean(
     defaultDesktopPath &&
       (projectPath === defaultDesktopPath || (!projectId && !projectPath && defaultDesktopPath)),
@@ -187,16 +196,35 @@ export const GitStatusBar = ({
   // 渲染项目部分
   const renderProjectItem = (): React.JSX.Element => {
     if (!interactive || !allowProjectChange) {
+      const tooltipContent = isUnimported
+        ? `${projectName} (${t("project.unimported")}) · ${projectPath}`
+        : projectPath
+
       return (
-        <LxTooltip content={projectPath} placement="top">
-          <span className="git-status-item flex min-w-0 items-center gap-1">
-            <Folder
-              className={`h-3.5 w-3.5 shrink-0 ${
-                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
-              }`}
-            />
+        <LxTooltip content={tooltipContent} placement="top">
+          <span
+            data-unimported={isUnimported ? "true" : undefined}
+            className={`git-status-item flex min-w-0 items-center gap-1.5 ${
+              isUnimported ? "text-white/40 opacity-75" : ""
+            }`}
+          >
+            {isUnimported ? (
+              <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+            ) : (
+              <Folder
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+                }`}
+              />
+            )}
             <span
-              className={`truncate ${isCurrentPathDesktop ? "text-violet-300 font-medium" : ""}`}
+              className={`truncate ${
+                isCurrentPathDesktop
+                  ? "text-violet-300 font-medium"
+                  : isUnimported
+                    ? "text-white/40 font-normal"
+                    : ""
+              }`}
             >
               {projectName}
             </span>
@@ -238,6 +266,7 @@ export const GitStatusBar = ({
                 <button
                   key={p.id || p.path || "desktop"}
                   type="button"
+                  data-unimported={p.isImported === false ? "true" : undefined}
                   className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors ${
                     isCurrent
                       ? "bg-white/8 text-white font-medium hover:bg-white/10"
@@ -251,15 +280,23 @@ export const GitStatusBar = ({
                     setIsProjectSelectOpen(false)
                   }}
                 >
-                  <Folder
-                    className={`h-3.5 w-3.5 shrink-0 ${
-                      isDesktop ? "text-violet-400" : "text-sky-400"
-                    }`}
-                  />
+                  {p.isImported === false ? (
+                    <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                  ) : (
+                    <Folder
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        isDesktop ? "text-violet-400" : "text-sky-400"
+                      }`}
+                    />
+                  )}
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span
                       className={`truncate ${
-                        isDesktop ? "text-violet-300 font-medium" : "text-white"
+                        isDesktop
+                          ? "text-violet-300 font-medium"
+                          : p.isImported === false
+                            ? "text-white/40 font-normal"
+                            : "text-white"
                       }`}
                     >
                       {p.name}
@@ -275,10 +312,14 @@ export const GitStatusBar = ({
       </div>
     )
 
+    const hoverTooltipContent = isUnimported
+      ? `${projectName} (${t("project.unimported")}) · ${projectPath}`
+      : projectPath
+
     return (
       <LxTooltip
         hover={{
-          content: projectPath,
+          content: hoverTooltipContent,
           placement: "top",
         }}
         click={{
@@ -300,14 +341,29 @@ export const GitStatusBar = ({
       >
         <button
           type="button"
-          className="git-status-item flex min-w-0 items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-white/10"
+          data-unimported={isUnimported ? "true" : undefined}
+          className={`git-status-item flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-white/10 ${
+            isUnimported ? "text-white/40 opacity-75" : ""
+          }`}
         >
-          <Folder
-            className={`h-3.5 w-3.5 shrink-0 ${
-              isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+          {isUnimported ? (
+            <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+          ) : (
+            <Folder
+              className={`h-3.5 w-3.5 shrink-0 ${
+                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+              }`}
+            />
+          )}
+          <span
+            className={`truncate ${
+              isCurrentPathDesktop
+                ? "text-violet-300 font-medium"
+                : isUnimported
+                  ? "text-white/40 font-normal"
+                  : ""
             }`}
-          />
-          <span className={`truncate ${isCurrentPathDesktop ? "text-violet-300 font-medium" : ""}`}>
+          >
             {projectName}
           </span>
         </button>

@@ -10,6 +10,7 @@ export type Project = {
   name: string
   type: "filesystem" | "virtual"
   path?: string
+  isImported?: boolean
   referencedFolders: ReferencedFolder[]
   createdAt: string
   updatedAt: string
@@ -45,11 +46,17 @@ export type ProjectItem = {
 }
 
 // 项目创建参数。
-export type CreateProjectInput = { name: string; type?: Project["type"]; path?: string }
+export type CreateProjectInput = {
+  name: string
+  type?: Project["type"]
+  path?: string
+  isImported?: boolean
+}
 
 // 项目更新参数。
 export type UpdateProjectInput = Partial<CreateProjectInput> & {
   referencedFolders?: ReferencedFolder[]
+  isImported?: boolean
 }
 
 // 项目文件提及候选项。
@@ -98,6 +105,7 @@ export interface ProjectApi {
       update: (id: string, input: UpdateProjectInput) => Promise<void>
       delete: (id: string) => Promise<void>
       selectDirectory: () => Promise<string | null>
+      findOrCreateByPath: (path: string) => Promise<Project>
       searchFiles: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
       searchReferencedFiles: (
         projectPaths: string[],
@@ -118,4 +126,63 @@ export interface ProjectApi {
       delete: (id: string) => Promise<void>
     }
   }
+}
+
+/**
+ * 清洗工作空间或 cd 命令输入的路径。
+ * 兼容处理常见用户输入边界：
+ * - 剥离外层定界符（如中括号 `[...]`、圆括号 `(...)`、尖括号 `<...>`）
+ * - 剥离单双引号及各类弯引号/中文引号（如 `"`、`'`、`“`、`”`、`‘`、`’`、`「`、`」`、`『`、`』`）
+ * - 去除内部首尾多余空格
+ * - 忽略字面占位符（如 `[path]`、`path`）
+ * - 反转义终端复制带来的空格转义符（`\ ` -> ` `）
+ */
+export const cleanWorkspacePath = (input: string): string => {
+  let s = input.trim()
+  if (!s) return ""
+
+  const placeholderRegex = /^(\[|<)?path(\]|>)?$/i
+  if (placeholderRegex.test(s)) {
+    return ""
+  }
+
+  const wrappers: Array<[string, string]> = [
+    ["[", "]"],
+    ["(", ")"],
+    ["<", ">"],
+    ['"', '"'],
+    ["'", "'"],
+    ["“", "”"],
+    ["“", '"'],
+    ['"', "”"],
+    ["‘", "’"],
+    ["‘", "'"],
+    ["'", "’"],
+    ["「", "」"],
+    ["『", "』"],
+    ["`", "`"],
+  ]
+
+  let changed = true
+  while (changed) {
+    changed = false
+    s = s.trim()
+    for (const [start, end] of wrappers) {
+      if (s.startsWith(start) && s.endsWith(end) && s.length >= start.length + end.length) {
+        s = s.slice(start.length, s.length - end.length).trim()
+        changed = true
+        break
+      }
+    }
+  }
+
+  if (placeholderRegex.test(s)) {
+    return ""
+  }
+
+  if (s.includes("\\ ")) {
+    s = s.replace(/\\ /g, " ")
+  }
+
+  return s.trim()
 }
