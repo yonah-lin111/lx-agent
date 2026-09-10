@@ -112,4 +112,67 @@ describe("ProjectNavigationList unimported items", () => {
       }),
     )
   })
+
+  it("当节点聚焦时支持按快捷键触发编辑、删除与复制路径", () => {
+    const onEditProject = vi.fn()
+    const onDeleteItem = vi.fn()
+    const onCopyProjectPath = vi.fn()
+    const onEditingItemChange = vi.fn()
+
+    const projectItem: ProjectNavigationProject = {
+      id: "p1",
+      name: "Test Proj",
+      path: "/Users/yonah/my-path",
+      isImported: true,
+      createdAt: "",
+      updatedAt: "",
+      projectFolders: [],
+      prompts: [
+        {
+          id: "prompt-1",
+          name: "Prompt 1",
+          status: "todo",
+          createdAt: "",
+          updatedAt: "",
+        },
+      ],
+    }
+
+    const { container } = render(
+      <ProjectNavigationList
+        {...defaultProps}
+        projects={[projectItem]}
+        collapsedProjects={{ p1: true }}
+        onEditProject={onEditProject}
+        onDeleteItem={onDeleteItem}
+        onCopyProjectPath={onCopyProjectPath}
+        onEditingItemChange={onEditingItemChange}
+      />,
+    )
+
+    const projectRow = container.querySelector('[data-item-level="project"]')
+    expect(projectRow).not.toBeNull()
+
+    // 1. 项目节点按 F2 触发编辑
+    fireEvent.keyDown(projectRow!, { key: "F2" })
+    expect(onEditProject).toHaveBeenCalledWith(projectItem)
+
+    // 2. 项目节点按 Alt+Shift+C 触发复制路径
+    fireEvent.keyDown(projectRow!, { key: "c", code: "KeyC", altKey: true, shiftKey: true })
+    expect(onCopyProjectPath).toHaveBeenCalledWith("/Users/yonah/my-path")
+
+    // 3. 项目节点按 Delete 触发删除
+    fireEvent.keyDown(projectRow!, { key: "Delete" })
+    expect(onDeleteItem).toHaveBeenCalledWith({ type: "project", id: "p1" })
+
+    // 4. Prompt 节点按 F2 触发重命名
+    const promptRow = container.querySelector('[data-item-level="prompt"]')
+    expect(promptRow).not.toBeNull()
+    fireEvent.keyDown(promptRow!, { key: "F2" })
+    expect(onEditingItemChange).toHaveBeenCalledWith({ id: "prompt-1", name: "Prompt 1" })
+
+    // 5. Prompt 节点按 Delete 触发删除
+    fireEvent.keyDown(promptRow!, { key: "Delete" })
+    expect(onDeleteItem).toHaveBeenCalledWith({ type: "prompt", id: "prompt-1", projectId: "p1" })
+  })
 })

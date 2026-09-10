@@ -14,11 +14,17 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
+  ProjectNavigationMenuTarget,
   ProjectNavigationMenuType,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
   PromptStatus,
 } from "@/features/project-navigation/types"
+import {
+  isCopyPathShortcut,
+  isDeleteShortcut,
+  isRenameShortcut,
+} from "@/features/project-navigation/utils"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type {
@@ -69,6 +75,9 @@ interface ProjectNavigationListProps {
     projectId?: string,
     depth?: number,
   ) => void
+  onEditProject?: (project: ProjectNavigationProject) => void
+  onDeleteItem?: (target: ProjectNavigationMenuTarget) => void
+  onCopyProjectPath?: (path: string) => void
 }
 
 /**
@@ -89,6 +98,9 @@ export const ProjectNavigationList = ({
   onProjectToggle,
   onProjectFolderToggle,
   onOpenMenu,
+  onEditProject,
+  onDeleteItem,
+  onCopyProjectPath,
 }: ProjectNavigationListProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -196,7 +208,11 @@ export const ProjectNavigationList = ({
   /**
    * 渲染可选择的条目节点。
    */
-  const renderPrompt = (prompt: ProjectNavigationPrompt, depth: number): React.JSX.Element => {
+  const renderPrompt = (
+    prompt: ProjectNavigationPrompt,
+    depth: number,
+    projectId?: string,
+  ): React.JSX.Element => {
     const isActive = activePromptId === prompt.id
     const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
 
@@ -215,9 +231,23 @@ export const ProjectNavigationList = ({
           onItemOpen(prompt.id)
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
+          if (editingItem) return
+          if (isRenameShortcut(event)) {
+            event.preventDefault()
+            onEditingItemChange({ id: prompt.id, name: prompt.name })
+            return
+          }
+          if (isDeleteShortcut(event)) {
+            event.preventDefault()
+            onDeleteItem?.({ type: "prompt", id: prompt.id, projectId })
+            return
+          }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            event.currentTarget.click()
+          }
         }}
-        onContextMenu={(event) => onOpenMenu(event, "prompt", prompt)}
+        onContextMenu={(event) => onOpenMenu(event, "prompt", prompt, projectId, depth)}
       >
         <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`} />
         {renderItemName(
@@ -254,7 +284,19 @@ export const ProjectNavigationList = ({
           aria-expanded={!isFolderCollapsed}
           onClick={() => onProjectFolderToggle(folder.id)}
           onKeyDown={(event) => {
+            if (editingItem) return
+            if (isRenameShortcut(event)) {
+              event.preventDefault()
+              onEditingItemChange({ id: folder.id, name: folder.name })
+              return
+            }
+            if (isDeleteShortcut(event)) {
+              event.preventDefault()
+              onDeleteItem?.({ type: "project_folder", id: folder.id, projectId, depth })
+              return
+            }
             if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
               event.currentTarget.click()
             }
           }}
@@ -277,7 +319,7 @@ export const ProjectNavigationList = ({
             {folder.projectFolders.map((childFolder) =>
               renderFolder(childFolder, depth + 1, projectId),
             )}
-            {folder.prompts.map((prompt) => renderPrompt(prompt, depth + 1))}
+            {folder.prompts.map((prompt) => renderPrompt(prompt, depth + 1, projectId))}
           </>
         )}
       </div>
@@ -303,7 +345,26 @@ export const ProjectNavigationList = ({
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
+                  if (editingItem) return
+                  if (isRenameShortcut(event)) {
+                    event.preventDefault()
+                    onEditProject?.(project)
+                    return
+                  }
+                  if (isDeleteShortcut(event)) {
+                    event.preventDefault()
+                    onDeleteItem?.({ type: "project", id: project.id })
+                    return
+                  }
+                  if (isCopyPathShortcut(event) && project.path) {
+                    event.preventDefault()
+                    onCopyProjectPath?.(project.path)
+                    return
+                  }
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    event.currentTarget.click()
+                  }
                 }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
               >
@@ -334,7 +395,7 @@ export const ProjectNavigationList = ({
                 <div className="space-y-0.5">
                   {renderTemporaryPrompt(project.id)}
                   {project.projectFolders.map((folder) => renderFolder(folder, 1, project.id))}
-                  {project.prompts.map((prompt) => renderPrompt(prompt, 1))}
+                  {project.prompts.map((prompt) => renderPrompt(prompt, 1, project.id))}
                 </div>
               )}
             </div>

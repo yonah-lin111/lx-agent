@@ -264,9 +264,10 @@ export const ProjectNavigation = (): React.JSX.Element => {
   /**
    * 复制项目物理路径到剪贴板。
    */
-  const handleCopyProjectPath = async (): Promise<void> => {
-    if (!menu || menu.type !== "project" || !menu.path?.trim()) return
-    const path = menu.path.trim()
+  const handleCopyPath = async (rawPath?: string): Promise<void> => {
+    const targetPath = rawPath ?? (menu?.type === "project" ? menu.path : undefined)
+    if (!targetPath?.trim()) return
+    const path = targetPath.trim()
     try {
       await navigator.clipboard.writeText(path)
       toast.success(t("project.copyProjectPathSuccess"))
@@ -286,11 +287,12 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 打开右键目标项目的编辑弹窗。
+   * 打开目标项目的编辑弹窗。
    */
-  const openEditProjectModal = (): void => {
-    if (!menu || menu.type !== "project") return
-    const project = projects.find((item) => item.id === menu.id)
+  const openEditProjectModal = (projectToEdit?: SidebarProject): void => {
+    const project =
+      projectToEdit ??
+      (menu && menu.type === "project" ? projects.find((item) => item.id === menu.id) : undefined)
     if (!project) return
 
     setProjectModal({ mode: "edit", project })
@@ -398,10 +400,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 删除右键菜单目标及其下属数据。
+   * 删除指定目标节点及其下属数据。
    */
-  const deleteMenuItem = async (): Promise<void> => {
-    if (!menu) return
+  const handleDeleteTarget = async (target: ProjectNavigationMenuTarget): Promise<void> => {
     const collectFolderPromptIds = (
       folders: ProjectNavigationProject["projectFolders"],
     ): string[] =>
@@ -423,19 +424,19 @@ export const ProjectNavigation = (): React.JSX.Element => {
     }
 
     const deletedPromptIds =
-      menu.type === "project"
+      target.type === "project"
         ? (projects
-            .find((project) => project.id === menu.id)
+            .find((project) => project.id === target.id)
             ?.prompts.map((p) => p.id)
             .concat(
               collectFolderPromptIds(
-                projects.find((project) => project.id === menu.id)?.projectFolders ?? [],
+                projects.find((project) => project.id === target.id)?.projectFolders ?? [],
               ),
             ) ?? [])
-        : menu.type === "project_folder"
+        : target.type === "project_folder"
           ? (() => {
               const folder = projects
-                .map((p) => findFolderInTree(p.projectFolders, menu.id))
+                .map((p) => findFolderInTree(p.projectFolders, target.id))
                 .find(Boolean)
               return folder
                 ? [
@@ -444,12 +445,20 @@ export const ProjectNavigation = (): React.JSX.Element => {
                   ]
                 : []
             })()
-          : [menu.id]
+          : [target.id]
 
-    if (await deleteItem(menu)) {
+    if (await deleteItem(target)) {
       if (deletedPromptIds.includes(activePromptId)) navigate(PAGE_ROUTES.project)
       setMenu(null)
     }
+  }
+
+  /**
+   * 删除右键菜单目标及其下属数据。
+   */
+  const deleteMenuItem = async (): Promise<void> => {
+    if (!menu) return
+    await handleDeleteTarget(menu)
   }
 
   /**
@@ -891,6 +900,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
           onPromptStatusChange={(promptId, status) =>
             void handlePromptStatusToggle(promptId, status)
           }
+          onEditProject={openEditProjectModal}
+          onDeleteItem={(target) => void handleDeleteTarget(target)}
+          onCopyProjectPath={(path) => void handleCopyPath(path)}
         />
       </div>
       <ProjectNavigationMenu
@@ -904,7 +916,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         isImported={menu?.isImported}
         path={menu?.path}
         onToggleImportProject={handleToggleImportProject}
-        onCopyProjectPath={handleCopyProjectPath}
+        onCopyProjectPath={() => void handleCopyPath()}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
         onAddFolder={() => addMenuItem("project_folder")}

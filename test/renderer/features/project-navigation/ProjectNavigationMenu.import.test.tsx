@@ -77,4 +77,22 @@ describe("ProjectNavigationMenu import/unimport actions", () => {
     const copyItem = screen.queryByText(/^(Copy Project Path|复制项目路径)$/)
     expect(copyItem).toBeNull()
   })
+
+  it("在右键菜单项中渲染对应的快捷键提示", () => {
+    render(
+      <ProjectNavigationMenu
+        {...defaultProps}
+        type="project"
+        path="/Users/yonah/my-project"
+        onCopyProjectPath={vi.fn()}
+      />,
+    )
+
+    // F2 快捷键
+    expect(screen.getByText("F2")).toBeDefined()
+    // 复制路径快捷键 (Shift + Alt + C)
+    expect(screen.getByText("Shift + Alt + C")).toBeDefined()
+    // 删除快捷键 (Cmd + Backspace 或 Del)
+    expect(screen.getByText(/^(Cmd \+ Backspace|Del)$/)).toBeDefined()
+  })
 })

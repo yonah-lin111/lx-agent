@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
+import { getShortcutLabels } from "@/features/project-navigation/utils"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
@@ -83,6 +84,7 @@ export const ProjectNavigationMenu = ({
   onClose,
 }: ProjectNavigationMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
+  const shortcutLabels = getShortcutLabels()
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false)
   const [lastMenu, setLastMenu] = useState<MenuDisplayState>({
     type: "project",
@@ -151,6 +153,7 @@ export const ProjectNavigationMenu = ({
 
       <LxMenuItem
         leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
+        trailing={shortcutLabels.rename}
         onClick={displayedMenu.type === "project" ? onEditProject : onRename}
       >
         {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
@@ -161,6 +164,7 @@ export const ProjectNavigationMenu = ({
       onCopyProjectPath ? (
         <LxMenuItem
           leading={<Copy className="h-3.5 w-3.5 text-white/45" />}
+          trailing={shortcutLabels.copyPath}
           onClick={onCopyProjectPath}
         >
           {t("project.copyProjectPath")}
@@ -216,6 +220,7 @@ export const ProjectNavigationMenu = ({
             className={`h-3.5 w-3.5 ${isConfirmingDelete ? "text-white" : "text-rose-400/80"}`}
           />
         }
+        trailing={!isConfirmingDelete ? shortcutLabels.delete : null}
         onClick={handleDeleteClick}
       >
         {isConfirmingDelete

@@ -1,12 +1,13 @@
-// 当前浏览器用户代理。
-const userAgent = navigator.userAgent
-
 /**
  * 判断当前运行环境是否为 macOS。
  */
-export const isMacOS = (): boolean => userAgent.includes("Macintosh")
+export const isMacOS = (): boolean =>
+  (typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh")) ||
+  (typeof process !== "undefined" && process.platform === "darwin")
 
 /**
  * 判断当前运行环境是否为 Windows。
  */
-export const isWindows = (): boolean => userAgent.includes("Windows")
+export const isWindows = (): boolean =>
+  (typeof navigator !== "undefined" && navigator.userAgent.includes("Windows")) ||
+  (typeof process !== "undefined" && process.platform === "win32")

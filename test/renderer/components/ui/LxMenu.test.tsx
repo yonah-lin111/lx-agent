@@ -62,4 +62,16 @@ describe("LxMenu adaptive width", () => {
     expect(itemText.className).toContain("whitespace-nowrap")
     expect(itemText.className).toContain("truncate")
   })
+
+  it("LxMenuItem 支持在右侧渲染 trailing 快捷键或状态标识", () => {
+    render(
+      <LxMenu isOpen={true} x={100} y={100} ariaLabel="Trailing Menu" onClose={vi.fn()}>
+        <LxMenuItem trailing="Shift + Alt + C">Copy Project Path</LxMenuItem>
+      </LxMenu>,
+    )
+
+    const trailingEl = screen.getByText("Shift + Alt + C")
+    expect(trailingEl).not.toBeNull()
+    expect(trailingEl.className).toContain("ml-auto")
+  })
 })
