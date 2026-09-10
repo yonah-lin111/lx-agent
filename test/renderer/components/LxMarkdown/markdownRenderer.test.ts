@@ -25,3 +25,38 @@ describe("markdownRenderer", () => {
     expect(html).not.toContain('class="markdown-code-block"')
   })
 })
+
+describe("markdownRenderer 图片渲染", () => {
+  it("外链 https/http 图片渲染为 img 并保留 src", () => {
+    expect(markdownRenderer.render("![动图](https://example.com/animated.gif)")).toContain(
+      '<img src="https://example.com/animated.gif" alt="动图">',
+    )
+    expect(markdownRenderer.render("![图](http://example.com/a.png)")).toContain(
+      '<img src="http://example.com/a.png" alt="图">',
+    )
+  })
+
+  it("data:image/gif 与 lx-image 协议渲染为 img", () => {
+    expect(markdownRenderer.render("![gif](data:image/gif;base64,R0lGOD)")).toContain(
+      '<img src="data:image/gif;base64,R0lGOD" alt="gif">',
+    )
+    expect(markdownRenderer.render("![local](lx-image://local/tmp/a.gif)")).toContain(
+      '<img src="lx-image://local/tmp/a.gif" alt="local">',
+    )
+  })
+
+  it("file/javascript/data:image/svg+xml 链接不渲染为 img", () => {
+    const blockedUrls = [
+      "file:///tmp/a.gif",
+      "javascript:alert(1)",
+      "data:image/svg+xml;base64,PHN2Zz4=",
+    ]
+
+    for (const url of blockedUrls) {
+      const html = markdownRenderer.render(`![x](${url})`)
+
+      expect(html).not.toContain("<img")
+      expect(html).toContain("![x]")
+    }
+  })
+})

@@ -2,6 +2,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
+import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 
 const previewHtml = `<section class="markdown-code-block"><header class="markdown-code-block-header"><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content"><pre><code>const answer = 42</code></pre></div></section>`
 
@@ -116,5 +117,31 @@ describe("LxMarkdownPreview", () => {
     expect(event.defaultPrevented).toBe(false)
     expect(dataTransfer.getData("text/plain")).toBe("")
     getSelection.mockRestore()
+  })
+
+  it("外链图片 HTML 注入预览 DOM 且 src 不被改写", async () => {
+    const previewRef = { current: null }
+    const { container } = render(
+      <LxMarkdownPreview
+        html='<p><img src="https://example.com/animated.gif" alt="外链动图"></p>'
+        previewMode="split"
+        previewRef={previewRef}
+      />,
+    )
+
+    const image = await screen.findByAltText("外链动图")
+
+    expect(image.getAttribute("src")).toBe("https://example.com/animated.gif")
+    expect(container.querySelector(".markdown-preview-content img")).toBe(image)
+  })
+
+  it("Markdown 外链 GIF 经渲染链路注入为 img", async () => {
+    const previewRef = { current: null }
+    const html = markdownRenderer.render("![动图](https://example.com/animated.gif)")
+    render(<LxMarkdownPreview html={html} previewMode="split" previewRef={previewRef} />)
+
+    const image = await screen.findByAltText("动图")
+
+    expect(image.getAttribute("src")).toBe("https://example.com/animated.gif")
   })
 })
