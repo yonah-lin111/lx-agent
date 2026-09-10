@@ -31,15 +31,7 @@ vi.mock("@/features/terminal", () => ({
   ),
 }))
 
-// OpenClaw 面板依赖 preload 的 window.api.openclaw，此处仅验证布局容器，故整体替换。
-vi.mock("@/features/openclaw", () => ({
-  OpenClawChatView: ({ rightActions }: { rightActions?: React.ReactNode }) => (
-    <div data-testid="mock-openclaw-chat">
-      OpenClaw Chat
-      {rightActions}
-    </div>
-  ),
-}))
+// 底边栏仅保留终端与长任务监控双视图，切换按钮与图标使用英文文案。
 
 describe("BottomSideBar", () => {
   afterEach(() => {
@@ -91,7 +83,7 @@ describe("BottomSideBar", () => {
     expect(screen.getByLabelText("Expand")).not.toBeNull()
   })
 
-  it("折叠态点击 OpenClaw 切换按钮会切换视图并展开底边栏", () => {
+  it("折叠态点击长任务监控切换按钮会切换视图并展开底边栏", () => {
     useBottomSideBarStore.setState({ viewMode: "terminal" })
     const onExpandedChange = vi.fn()
 
@@ -106,13 +98,13 @@ describe("BottomSideBar", () => {
       </BottomSideBar>,
     )
 
-    fireEvent.click(screen.getByLabelText("Switch to OpenClaw Chat"))
+    fireEvent.click(screen.getByLabelText("Switch to Background Jobs"))
 
-    expect(useBottomSideBarStore.getState().viewMode).toBe("openclaw")
+    expect(useBottomSideBarStore.getState().viewMode).toBe("jobs")
     expect(onExpandedChange).toHaveBeenCalledWith(true)
   })
 
-  it("展开态挂载 OpenClaw 聊天面板（DOM 保活）", () => {
+  it("展开态下不渲染已移除的 OpenClaw 视图切换按钮", () => {
     useBottomSideBarStore.setState({ viewMode: "terminal" })
 
     render(
@@ -124,8 +116,6 @@ describe("BottomSideBar", () => {
       />,
     )
 
-    // 三视图常驻 DOM：即使当前是终端视图，OpenClaw 面板也已挂载。
-    expect(screen.getByTestId("mock-openclaw-chat")).not.toBeNull()
-    expect(screen.getAllByLabelText("Switch to OpenClaw Chat").length).toBeGreaterThan(0)
+    expect(screen.queryByLabelText("Switch to OpenClaw Chat")).toBeNull()
   })
 })
