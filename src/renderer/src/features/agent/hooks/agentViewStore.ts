@@ -34,12 +34,9 @@ export const agentViewStore = {
 
   getViewMode: (): AgentViewMode => currentViewMode,
 
-  // 尝试切换视图模式：若正在生成中则拒绝切换并返回 false；成功切换并持久化返回 true。
-  setViewMode: (mode: AgentViewMode): boolean => {
-    if (isGenerating) {
-      return false
-    }
-    if (currentViewMode === mode) return true
+  // 切换视图模式并持久化
+  setViewMode: (mode: AgentViewMode): void => {
+    if (currentViewMode === mode) return
     currentViewMode = mode
     try {
       localStorage.setItem(STORAGE_KEY, mode)
@@ -47,13 +44,12 @@ export const agentViewStore = {
       // 忽略存储失败
     }
     notify()
-    return true
   },
 
   // 切换 QA / Flow 模式
-  toggleViewMode: (): boolean => {
+  toggleViewMode: (): void => {
     const nextMode: AgentViewMode = currentViewMode === "flow" ? "qa" : "flow"
-    return agentViewStore.setViewMode(nextMode)
+    agentViewStore.setViewMode(nextMode)
   },
 
   // 同步生成状态

@@ -380,13 +380,9 @@ export const AgentPage = ({
   }, [isStreaming])
 
   const toggleExecutionFlow = useCallback((): void => {
-    const ok = agentViewStore.toggleViewMode()
-    if (!ok) {
-      warning(t("agent.viewSwitchBlocked"))
-    } else {
-      setActiveSubagentId(null)
-    }
-  }, [warning, t])
+    agentViewStore.toggleViewMode()
+    setActiveSubagentId(null)
+  }, [])
 
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
     setActiveSubagentId(toolCall.toolCallId)

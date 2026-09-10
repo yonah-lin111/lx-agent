@@ -48,11 +48,8 @@ export const RightSideBar = (): React.JSX.Element => {
   const viewMode = useSyncExternalStore(agentViewStore.subscribe, agentViewStore.getViewMode)
 
   const handleToggleViewMode = useCallback((): void => {
-    const ok = agentViewStore.toggleViewMode()
-    if (!ok) {
-      warning(t("agent.viewSwitchBlocked"))
-    }
-  }, [warning, t])
+    agentViewStore.toggleViewMode()
+  }, [])
 
   // Agent 运行中禁止切换/新建会话（会中止正在进行的 run），toast 提示。
   const blockIfGenerating = useCallback((): boolean => {
