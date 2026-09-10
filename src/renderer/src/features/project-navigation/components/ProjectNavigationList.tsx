@@ -2,7 +2,6 @@ import { Boxes, CheckCircle2, ChevronDown, Circle, File, FileText, Folder } from
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTooltip } from "@/components/ui/LxTooltip"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
@@ -303,16 +302,6 @@ export const ProjectNavigationList = ({
                   `min-w-0 flex-1 truncate text-sm font-semibold uppercase transition-colors ${
                     project.isImported === false ? "text-white/40 font-normal" : "text-white/55"
                   }`,
-                )}
-                {project.isImported === false && (
-                  <LxTooltip content={t("project.unimported")} placement="top">
-                    <span
-                      aria-label={t("project.unimported")}
-                      className="flex shrink-0 items-center px-1"
-                    >
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />
-                    </span>
-                  </LxTooltip>
                 )}
                 {isProjectCollapsed ? (
                   <>

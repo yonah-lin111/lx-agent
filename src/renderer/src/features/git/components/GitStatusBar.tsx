@@ -205,7 +205,7 @@ export const GitStatusBar = ({
           <span
             data-unimported={isUnimported ? "true" : undefined}
             className={`git-status-item flex min-w-0 items-center gap-1.5 ${
-              isUnimported ? "opacity-75" : ""
+              isUnimported ? "text-white/40 opacity-75" : ""
             }`}
           >
             <Folder
@@ -213,7 +213,7 @@ export const GitStatusBar = ({
                 isCurrentPathDesktop
                   ? "text-violet-400"
                   : isUnimported
-                    ? "text-amber-400/80"
+                    ? "text-white/40"
                     : "text-sky-400"
               }`}
             />
@@ -222,13 +222,12 @@ export const GitStatusBar = ({
                 isCurrentPathDesktop
                   ? "text-violet-300 font-medium"
                   : isUnimported
-                    ? "text-amber-200/90 font-normal"
+                    ? "text-white/40 font-normal"
                     : ""
               }`}
             >
               {projectName}
             </span>
-            {isUnimported && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />}
           </span>
         </LxTooltip>
       )
@@ -286,27 +285,22 @@ export const GitStatusBar = ({
                       isDesktop
                         ? "text-violet-400"
                         : p.isImported === false
-                          ? "text-amber-400/80"
+                          ? "text-white/40"
                           : "text-sky-400"
                     }`}
                   />
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`truncate ${
-                          isDesktop
-                            ? "text-violet-300 font-medium"
-                            : p.isImported === false
-                              ? "text-amber-200/90"
-                              : "text-white"
-                        }`}
-                      >
-                        {p.name}
-                      </span>
-                      {p.isImported === false && (
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />
-                      )}
-                    </div>
+                    <span
+                      className={`truncate ${
+                        isDesktop
+                          ? "text-violet-300 font-medium"
+                          : p.isImported === false
+                            ? "text-white/40 font-normal"
+                            : "text-white"
+                      }`}
+                    >
+                      {p.name}
+                    </span>
                     <span className="truncate text-[10px] text-white/40">{p.path}</span>
                   </div>
                   {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
@@ -349,9 +343,7 @@ export const GitStatusBar = ({
           type="button"
           data-unimported={isUnimported ? "true" : undefined}
           className={`git-status-item flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-white/10 ${
-            isUnimported
-              ? "border border-dashed border-amber-400/30 bg-amber-400/5 text-amber-200/80 hover:bg-amber-400/10"
-              : ""
+            isUnimported ? "text-white/40 opacity-75" : ""
           }`}
         >
           <Folder
@@ -359,7 +351,7 @@ export const GitStatusBar = ({
               isCurrentPathDesktop
                 ? "text-violet-400"
                 : isUnimported
-                  ? "text-amber-400/80"
+                  ? "text-white/40"
                   : "text-sky-400"
             }`}
           />
@@ -368,13 +360,12 @@ export const GitStatusBar = ({
               isCurrentPathDesktop
                 ? "text-violet-300 font-medium"
                 : isUnimported
-                  ? "text-amber-200/90 font-normal"
+                  ? "text-white/40 font-normal"
                   : ""
             }`}
           >
             {projectName}
           </span>
-          {isUnimported && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />}
         </button>
       </LxTooltip>
     )

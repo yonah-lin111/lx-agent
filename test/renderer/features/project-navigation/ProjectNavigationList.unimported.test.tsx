@@ -23,7 +23,7 @@ describe("ProjectNavigationList unimported items", () => {
     onOpenMenu: vi.fn(),
   }
 
-  it("未导入项目渲染小圆点且不渲染 LxTag", () => {
+  it("未导入项目以灰色半透明展示，且不渲染小圆点与 LxTag", () => {
     const unimportedProject: ProjectNavigationProject = {
       id: "u1",
       name: "Unimported Proj",
@@ -42,9 +42,11 @@ describe("ProjectNavigationList unimported items", () => {
       '[data-item-level="project"][data-unimported="true"]',
     )
     expect(projectRow).not.toBeNull()
+    expect(projectRow?.className).toContain("opacity-75")
 
+    // 验证小圆点与 LxTag 均不存在
     const dot = projectRow?.querySelector(".rounded-full")
-    expect(dot).not.toBeNull()
+    expect(dot).toBeNull()
 
     const tag = container.querySelector(".lx-tag")
     expect(tag).toBeNull()

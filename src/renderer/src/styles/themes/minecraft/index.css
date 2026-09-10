@@ -1130,11 +1130,11 @@
 }
 
 [data-theme="minecraft"] .git-status-item[data-unimported="true"] {
-  border: 2px dashed #b8860b !important;
-  background-color: #1a1710 !important;
-  color: #e0b040 !important;
+  border: 2px solid #333340 !important;
+  background-color: #171720 !important;
+  color: #707080 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 200, 50, 0.15),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
     2px 2px 0px 0px #000000 !important;
 }

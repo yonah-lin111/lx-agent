@@ -37,7 +37,7 @@ describe("GitStatusBar unimported styling", () => {
     vi.clearAllMocks()
   })
 
-  it("当项目为未导入状态时渲染 data-unimported 属性与状态圆点", async () => {
+  it("当项目为未导入状态时渲染 data-unimported 属性与灰色文本，且不渲染状态圆点", async () => {
     vi.mocked(projectApi.listProjects).mockResolvedValue([
       {
         id: "p1",
@@ -57,8 +57,9 @@ describe("GitStatusBar unimported styling", () => {
 
     const item = container.querySelector('[data-unimported="true"]')
     expect(item).not.toBeNull()
+    expect(item?.className).toContain("text-white/40")
     const dot = item?.querySelector(".rounded-full")
-    expect(dot).not.toBeNull()
+    expect(dot).toBeNull()
   })
 
   it("当项目为已导入状态时不渲染 data-unimported", async () => {
