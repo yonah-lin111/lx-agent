@@ -53,7 +53,7 @@ describe("OverviewDashboard", () => {
     vi.restoreAllMocks()
   })
 
-  it("正确渲染主标题、卡片外部标题与各自独立的 Select 筛选行", async () => {
+  it("正确渲染主标题、各卡片外部标题与 3 组独立的 Select 筛选行", async () => {
     render(<OverviewDashboard />)
 
     // 等待数据加载完成
@@ -67,24 +67,28 @@ describe("OverviewDashboard", () => {
     // 2. 统计说明区域外部标题
     expect(screen.getByText(/今日数据统计说明|Today's Statistics Summary/i)).toBeDefined()
 
-    // 3. 绿墙区域外部标题与活动计数
-    expect(screen.getByText(/生产力热力图|Productivity Heatmap/i)).toBeDefined()
-    expect(screen.getByText(/6 次交互|6 activities/i)).toBeDefined()
+    // 3. 核心数据指标外部标题
+    expect(screen.getByText(/核心数据指标|Core Metrics/i)).toBeDefined()
 
-    // 4. 两个独立的下拉选项框（时间筛选与项目筛选）
+    // 4. 绿墙区域外部标题与活动计数
+    expect(screen.getByText(/生产力绿墙|Productivity Heatmap/i)).toBeDefined()
+    expect(screen.getByText(/6 次活动|6 activities/i)).toBeDefined()
+
+    // 5. 3 组独立的下拉选项框（时间筛选、指标项目筛选、绿墙项目筛选）
     const buttons = screen.getAllByRole("button")
-    expect(buttons.length).toBeGreaterThanOrEqual(2)
+    expect(buttons.length).toBeGreaterThanOrEqual(3)
   })
 
-  it("切换项目筛选时向 API 发送独立的 heatmapProjectId", async () => {
+  it("切换绿墙上方卡片的项目筛选时向 API 发送独立的 metricsProjectId", async () => {
     render(<OverviewDashboard />)
 
     await waitFor(() => {
-      expect(screen.getByText(/全部项目|All Projects/i)).toBeDefined()
+      expect(screen.getAllByText(/全部项目|All Projects/i).length).toBeGreaterThanOrEqual(2)
     })
 
-    const projectTrigger = screen.getByText(/全部项目|All Projects/i)
-    fireEvent.click(projectTrigger)
+    // 第一个项目选择器是核心指标卡片的
+    const metricsProjectTrigger = screen.getAllByText(/全部项目|All Projects/i)[0]
+    fireEvent.click(metricsProjectTrigger)
 
     const alphaOption = screen.getByText("Alpha Project")
     fireEvent.mouseDown(alphaOption)
@@ -92,8 +96,30 @@ describe("OverviewDashboard", () => {
     await waitFor(() => {
       expect(window.api.overview.getStats).toHaveBeenCalledWith(
         expect.objectContaining({
-          heatmapProjectId: "proj-1",
-          timeRange: "today",
+          metricsProjectId: "proj-1",
+        }),
+      )
+    })
+  })
+
+  it("切换绿墙项目筛选时向 API 发送独立的 heatmapProjectId", async () => {
+    render(<OverviewDashboard />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/全部项目|All Projects/i).length).toBeGreaterThanOrEqual(2)
+    })
+
+    // 第二个项目选择器是绿墙的
+    const heatmapProjectTrigger = screen.getAllByText(/全部项目|All Projects/i)[1]
+    fireEvent.click(heatmapProjectTrigger)
+
+    const betaOption = screen.getByText("Beta Project")
+    fireEvent.mouseDown(betaOption)
+
+    await waitFor(() => {
+      expect(window.api.overview.getStats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          heatmapProjectId: "proj-2",
         }),
       )
     })

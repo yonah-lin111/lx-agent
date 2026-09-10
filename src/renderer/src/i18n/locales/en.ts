@@ -67,6 +67,7 @@ export const en = {
     allProjects: "All Projects Summary",
     activeProject: "Linked Project",
     selectProject: "Switch Project",
+    metricsSectionTitle: "Core Metrics",
     timeRange: {
       today: "Today",
       "7d": "Last 7 Days",

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import type { ActivityDayEntry, HeatmapCell, HeatmapMonth } from "../types"
@@ -8,6 +9,9 @@ import { buildHeatmapMonths } from "../utils"
 // 活动热力图属性。
 export interface ActivityHeatmapProps {
   entries: ActivityDayEntry[]
+  selectedProjectId?: string
+  projectOptions?: LxSelectOption<string>[]
+  onProjectChange?: (projectId: string) => void
 }
 
 const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
@@ -119,9 +123,19 @@ MonthBlock.displayName = "MonthBlock"
  * 2. 统一使用项目标准 LxTooltip 组件，以单例控制器挂载，彻底清除 9,400+ 个 Hook 造成的渲染颠簸；
  * 3. 严格对齐 Mon..Sun 7 天垂直基线，单元格放大至 14px。
  */
-export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.Element => {
+export const ActivityHeatmap = ({
+  entries,
+  selectedProjectId,
+  projectOptions,
+  onProjectChange,
+}: ActivityHeatmapProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const { months } = useMemo(() => buildHeatmapMonths(entries), [entries])
+  const { months, maxCount } = useMemo(() => buildHeatmapMonths(entries), [entries])
+
+  const totalYearActivities = useMemo(
+    () => entries.reduce((acc, curr) => acc + curr.count, 0),
+    [entries],
+  )
 
   const [activeTooltip, setActiveTooltip] = useState<{
     day: HeatmapCell
@@ -216,49 +230,80 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
   }, [activeTooltip, t])
 
   return (
-    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
-      {/* 绿墙热力图主体：按月流式自适应折行，每行行首自适应展示星期基准标签 */}
-      <div
-        ref={containerRef}
-        className="relative flex flex-wrap items-start gap-x-3 gap-y-3.5 min-w-0 w-full"
-      >
-        {months.map((month) => (
-          <MonthBlock
-            key={month.monthKey}
-            month={month}
-            showWeekdayLabels={rowStartMonthKeys.has(month.monthKey)}
-            onHover={handleHover}
-            onLeave={handleLeave}
-          />
-        ))}
+    <div className="flex min-w-0 flex-col gap-2">
+      {/* 头部标题与统计及项目切换（位于卡片外部） */}
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h3 className="truncate text-xs font-semibold text-white/90">
+            {t("home.heatmap.title")}
+          </h3>
+          <div className="font-mono text-xs text-white/60">
+            <span className="font-semibold text-emerald-400">
+              {t("home.heatmap.activities", { count: totalYearActivities })}
+            </span>
+            {maxCount > 0 && (
+              <span className="ml-1.5 text-[10px] text-white/35">(Max: {maxCount}/day)</span>
+            )}
+          </div>
+        </div>
+
+        {projectOptions && onProjectChange && (
+          <div className="w-40 sm:w-48 shrink-0">
+            <LxSelect
+              size="small"
+              value={selectedProjectId ?? "all"}
+              options={projectOptions}
+              onChange={onProjectChange}
+            />
+          </div>
+        )}
       </div>
 
-      {/* 底部图例 */}
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-white/40 select-none">
-        <span>{t("home.heatmap.less")}</span>
-        <div className="flex items-center gap-1 px-1">
-          <span
-            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
-            data-level="0"
-          />
-          <span
-            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
-            data-level="1"
-          />
-          <span
-            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
-            data-level="2"
-          />
-          <span
-            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
-            data-level="3"
-          />
-          <span
-            className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
-            data-level="4"
-          />
+      {/* 绿墙热力图卡片主体 */}
+      <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
+        {/* 绿墙热力图主体：按月流式自适应折行，每行行首自适应展示星期基准标签 */}
+        <div
+          ref={containerRef}
+          className="relative flex flex-wrap items-start gap-x-3 gap-y-3.5 min-w-0 w-full"
+        >
+          {months.map((month) => (
+            <MonthBlock
+              key={month.monthKey}
+              month={month}
+              showWeekdayLabels={rowStartMonthKeys.has(month.monthKey)}
+              onHover={handleHover}
+              onLeave={handleLeave}
+            />
+          ))}
         </div>
-        <span>{t("home.heatmap.more")}</span>
+
+        {/* 底部图例 */}
+        <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-white/40 select-none">
+          <span>{t("home.heatmap.less")}</span>
+          <div className="flex items-center gap-1 px-1">
+            <span
+              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[0]}`}
+              data-level="0"
+            />
+            <span
+              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[1]}`}
+              data-level="1"
+            />
+            <span
+              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[2]}`}
+              data-level="2"
+            />
+            <span
+              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[3]}`}
+              data-level="3"
+            />
+            <span
+              className={`overview-heatmap-cell h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-[2px] ${LEVEL_CLASS_MAP[4]}`}
+              data-level="4"
+            />
+          </div>
+          <span>{t("home.heatmap.more")}</span>
+        </div>
       </div>
 
       {/* 全局单例 LxTooltip 控制器：挂载至 document.body，彻底切断祖先 contain/transform 局部包含块偏移 */}

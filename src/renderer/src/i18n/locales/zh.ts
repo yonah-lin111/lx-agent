@@ -69,6 +69,7 @@ export const zh: TranslationDictionary = {
     allProjects: "全部项目汇总",
     activeProject: "关联项目",
     selectProject: "切换项目",
+    metricsSectionTitle: "核心数据指标",
     timeRange: {
       today: "今日",
       "7d": "近 7 天",

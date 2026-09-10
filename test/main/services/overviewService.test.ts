@@ -220,10 +220,12 @@ describe("overviewService", () => {
     })
   })
 
-  it("支持独立筛选 heatmapProjectId 而不影响全局 metrics", () => {
+  it("支持 metricsProjectId 与 heatmapProjectId 独立筛选互不干扰", () => {
     const service = createOverviewService(() => database)
     const now = new Date().toISOString()
+    const today = now.slice(0, 10)
 
+    // 创建项目 p1 和 p2
     database
       .prepare(
         "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -235,6 +237,7 @@ describe("overviewService", () => {
       )
       .run("p2", "Project 2", "virtual", null, now, now)
 
+    // p1 关联会话与 1 条消息
     database
       .prepare(
         "INSERT INTO agent_session (external_id, project_id, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -242,32 +245,36 @@ describe("overviewService", () => {
       .run("s1", "p1", "Session 1", "/tmp", now, now)
     database
       .prepare(
-        "INSERT INTO agent_session (external_id, project_id, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .run("s2", "p2", "Session 2", "/tmp", now, now)
-
-    database
-      .prepare(
         "INSERT INTO agent_session_entry (external_id, session_id, seq, type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
       )
       .run("e1", "s1", 1, "user", "{}", now)
+
+    // p2 关联会话与 5 条消息
     database
       .prepare(
-        "INSERT INTO agent_session_entry (external_id, session_id, seq, type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO agent_session (external_id, project_id, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run("e2", "s2", 1, "user", "{}", now)
+      .run("s2", "p2", "Session 2", "/tmp", now, now)
+    for (let i = 1; i <= 5; i++) {
+      database
+        .prepare(
+          "INSERT INTO agent_session_entry (external_id, session_id, seq, type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .run(`e2_${i}`, "s2", i, "user", "{}", now)
+    }
 
-    // 仅筛选 p1 的绿墙
-    const stats = service.getStats({ heatmapProjectId: "p1" })
+    // 上方卡片选 p1，绿墙选 p2
+    const stats = service.getStats({
+      metricsProjectId: "p1",
+      heatmapProjectId: "p2",
+    })
 
-    expect(stats.heatmapProjectId).toBe("p1")
-    // 全局指标包含 p1 + p2 的全部 2 轮对话与 2 个会话
-    expect(stats.metrics.agentTurns.today).toBe(2)
-    expect(stats.metrics.sessions.total).toBe(2)
-    // 绿墙热力图今天仅统计 p1 的 1 条记录
-    const today = now.slice(0, 10)
-    const todayEntry = stats.activityHeatmap.find((e) => e.date === today)
-    expect(todayEntry?.count).toBe(1)
-    expect(todayEntry?.turns).toBe(1)
+    // 上方指标应准确反映 p1（1 条轮次）
+    expect(stats.metrics.agentTurns.today).toBe(1)
+    expect(stats.metrics.agentTurns.total30d).toBe(1)
+
+    // 绿墙热力图应准确反映 p2（5 条轮次）
+    const todayHeatmap = stats.activityHeatmap.find((item) => item.date === today)
+    expect(todayHeatmap?.turns).toBe(5)
   })
 })

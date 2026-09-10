@@ -72,6 +72,7 @@ export interface OverviewStats {
   metrics: OverviewMetrics
   activityHeatmap: ActivityDayEntry[]
   activeProjectId?: string
+  metricsProjectId?: string
   heatmapProjectId?: string
   timeRange?: OverviewTimeRange
   projects: OverviewProjectOption[]
@@ -80,8 +81,8 @@ export interface OverviewStats {
 // 获取概览数据输入参数。
 export interface GetOverviewStatsInput {
   projectId?: string
-  heatmapProjectId?: string
   metricsProjectId?: string
+  heatmapProjectId?: string
   timeRange?: OverviewTimeRange
 }
 

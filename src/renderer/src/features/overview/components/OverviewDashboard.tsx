@@ -1,4 +1,4 @@
-import { Bot, CalendarClock, Flame, Layers, Wrench } from "lucide-react"
+import { BarChart3, Bot, Flame, Layers, Wrench } from "lucide-react"
 import { useMemo } from "react"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
@@ -16,8 +16,10 @@ import { OverviewSummaryCard } from "./OverviewSummaryCard"
 export const OverviewDashboard = (): React.JSX.Element => {
   const { t } = useTranslation()
   const {
-    heatmapProjectId,
-    setHeatmapProjectId,
+    selectedMetricsProjectId,
+    setSelectedMetricsProjectId,
+    selectedHeatmapProjectId,
+    setSelectedHeatmapProjectId,
     selectedTimeRange,
     setSelectedTimeRange,
     stats,
@@ -36,7 +38,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
     [t],
   )
 
-  // 构造项目切换下拉项（独立用于绿墙热力图）
+  // 构造项目切换下拉项
   const projectOptions: LxSelectOption<string>[] = useMemo(() => {
     const defaultOption: LxSelectOption<string> = {
       value: "all",
@@ -52,22 +54,6 @@ export const OverviewDashboard = (): React.JSX.Element => {
   const metrics = stats?.metrics
   const heatmap = stats?.activityHeatmap ?? []
 
-  const totalYearActivities = useMemo(
-    () => heatmap.reduce((acc, curr) => acc + curr.count, 0),
-    [heatmap],
-  )
-
-  const maxHeatmapCount = useMemo(
-    () => heatmap.reduce((max, entry) => Math.max(max, entry.count), 0),
-    [heatmap],
-  )
-
-  const isToday = selectedTimeRange === "today"
-  const rangeLabel = t(`home.timeRange.${selectedTimeRange}`)
-  const summaryTitle = isToday
-    ? t("home.summary.todayTitle")
-    : t("home.summary.rangeTitle", { range: rangeLabel })
-
   const formattedLastActive = useMemo(() => {
     if (!metrics?.sessions.lastActiveAt) return t("home.metrics.never")
     try {
@@ -82,7 +68,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
     <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable] [contain:paint] [transform:translateZ(0)]">
       <LxLoadingOverlay isLoading={isLoading && !stats} text="Loading overview..." />
 
-      {/* 顶部主标题 */}
+      {/* 顶部标题 */}
       <div className="mb-4 min-w-0">
         <h1 className="truncate text-base font-bold tracking-tight text-white">
           {t("home.overview")}
@@ -95,32 +81,39 @@ export const OverviewDashboard = (): React.JSX.Element => {
           {error}
         </div>
       ) : (
-        <div className="flex min-w-0 flex-col gap-6">
-          {/* === 区域 1：统计说明与核心指标 === */}
-          <section className="flex min-w-0 flex-col gap-3">
-            {/* 卡片外层行：最左侧 Title，同行最右侧独立时间范围筛选器 */}
+        <div className="flex min-w-0 flex-col gap-5">
+          {/* 1. 今日/周期数据统计说明简报（外层自带独立的 TimeRange Select） */}
+          <OverviewSummaryCard
+            periodSummary={metrics?.periodSummary}
+            timeRange={selectedTimeRange}
+            onTimeRangeChange={setSelectedTimeRange}
+            timeRangeOptions={timeRangeOptions}
+          />
+
+          {/* 2. 4 组核心数据指标区域（绿墙上方，拥有独立 Project Select） */}
+          <div className="flex min-w-0 flex-col gap-2">
+            {/* 头部标题与右上角独立的项目切换器 */}
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#203754] bg-[#152336] text-sky-400">
-                  <CalendarClock className="h-3.5 w-3.5" />
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#2d224e] bg-[#1d1633] text-purple-400">
+                  <BarChart3 className="h-3.5 w-3.5" />
                 </div>
-                <h2 className="truncate text-xs font-semibold text-white/90">{summaryTitle}</h2>
+                <h2 className="truncate text-xs font-semibold text-white/90">
+                  {t("home.metricsSectionTitle")}
+                </h2>
               </div>
 
-              <div className="w-28 sm:w-32 shrink-0">
+              <div className="w-40 sm:w-48 shrink-0">
                 <LxSelect
                   size="small"
-                  value={selectedTimeRange}
-                  options={timeRangeOptions}
-                  onChange={(val) => setSelectedTimeRange(val as OverviewTimeRange)}
+                  value={selectedMetricsProjectId}
+                  options={projectOptions}
+                  onChange={setSelectedMetricsProjectId}
                 />
               </div>
             </div>
 
-            {/* 今日/周期数据统计说明简报 */}
-            <OverviewSummaryCard periodSummary={metrics?.periodSummary} />
-
-            {/* 4 组核心数据指标卡片 */}
+            {/* 4 组核心数据指标卡片网格 */}
             <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {/* 1. Agent 交互总量 */}
               <MetricCard
@@ -191,39 +184,15 @@ export const OverviewDashboard = (): React.JSX.Element => {
                 }
               />
             </div>
-          </section>
+          </div>
 
-          {/* === 区域 2：生产力绿墙热力图 === */}
-          <section className="flex min-w-0 flex-col gap-3">
-            {/* 绿墙卡片外层行：最左侧 Title（含活动计数），同行最右侧独立项目筛选器 */}
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-2.5">
-                <h2 className="truncate text-xs font-semibold text-white/90">
-                  {t("home.heatmap.title")}
-                </h2>
-                <span className="font-mono text-xs font-semibold text-emerald-400">
-                  {t("home.heatmap.activities", { count: totalYearActivities })}
-                </span>
-                {maxHeatmapCount > 0 && (
-                  <span className="hidden sm:inline font-mono text-[10px] text-white/35">
-                    (Max: {maxHeatmapCount}/day)
-                  </span>
-                )}
-              </div>
-
-              <div className="w-40 sm:w-48 shrink-0">
-                <LxSelect
-                  size="small"
-                  value={heatmapProjectId}
-                  options={projectOptions}
-                  onChange={setHeatmapProjectId}
-                />
-              </div>
-            </div>
-
-            {/* 生产力绿墙热力图卡片 */}
-            <ActivityHeatmap entries={heatmap} />
-          </section>
+          {/* 3. 生产力绿墙热力图（拥有独立 Project Select） */}
+          <ActivityHeatmap
+            entries={heatmap}
+            selectedProjectId={selectedHeatmapProjectId}
+            projectOptions={projectOptions}
+            onProjectChange={setSelectedHeatmapProjectId}
+          />
         </div>
       )}
     </div>
