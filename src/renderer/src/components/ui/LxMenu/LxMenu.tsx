@@ -1,5 +1,5 @@
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 // 菜单定位坐标。
@@ -16,7 +16,9 @@ interface LxMenuProps {
   ariaLabel: string
   children: React.ReactNode
   onClose: () => void
-  width?: number
+  width?: number | "auto"
+  minWidth?: number
+  maxWidth?: number
 }
 
 // 菜单项属性。
@@ -42,7 +44,9 @@ export const LxMenu = ({
   ariaLabel,
   children,
   onClose,
-  width = 156,
+  width = "auto",
+  minWidth = 140,
+  maxWidth = 280,
 }: LxMenuProps): React.JSX.Element | null => {
   const [isAnimatingOut, setIsAnimatingOut] = useState<boolean>(false)
   const [shouldRender, setShouldRender] = useState<boolean>(false)
@@ -67,18 +71,31 @@ export const LxMenu = ({
     }
   }, [isOpen, shouldRender])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return
 
     const updatePosition = (): void => {
+      const menuWidth =
+        menuRef.current?.offsetWidth || (typeof width === "number" ? width : minWidth)
       const menuHeight = menuRef.current?.offsetHeight ?? 0
-      const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - width - VIEWPORT_PADDING)
+      const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - menuWidth - VIEWPORT_PADDING)
       const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - menuHeight - VIEWPORT_PADDING)
       setPosition({
         left: Math.min(Math.max(x, VIEWPORT_PADDING), maxLeft),
         top: Math.min(Math.max(y, VIEWPORT_PADDING), maxTop),
       })
     }
+
+    updatePosition()
+    window.addEventListener("resize", updatePosition)
+    return () => {
+      window.removeEventListener("resize", updatePosition)
+    }
+  }, [isOpen, shouldRender, width, minWidth, maxWidth, x, y])
+
+  useEffect(() => {
+    if (!isOpen) return
+
     const handlePointerDown = (event: MouseEvent): void => {
       if (!menuRef.current?.contains(event.target as Node)) onClose()
     }
@@ -86,16 +103,13 @@ export const LxMenu = ({
       if (event.key === "Escape") onClose()
     }
 
-    updatePosition()
-    window.addEventListener("resize", updatePosition)
     document.addEventListener("mousedown", handlePointerDown)
     document.addEventListener("keydown", handleKeyDown)
     return () => {
-      window.removeEventListener("resize", updatePosition)
       document.removeEventListener("mousedown", handlePointerDown)
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [isOpen, onClose, shouldRender, width, x, y])
+  }, [isOpen, onClose])
 
   if (!shouldRender) return null
 
@@ -104,11 +118,20 @@ export const LxMenu = ({
       ref={menuRef}
       aria-hidden={!isOpen}
       aria-label={ariaLabel}
-      className={`fixed z-[9999] rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`fixed z-[9999] box-border rounded-[6px] border border-white/10 bg-[#303030] p-1 shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       } ${isOpen ? "" : "pointer-events-none"}`}
       role="menu"
-      style={{ ...position, width }}
+      style={{
+        ...position,
+        ...(typeof width === "number"
+          ? { width }
+          : {
+              width: "max-content",
+              minWidth,
+              maxWidth,
+            }),
+      }}
     >
       {children}
     </div>,
@@ -144,7 +167,7 @@ export const LxMenuItem = ({
     {leading ? (
       <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{leading}</span>
     ) : null}
-    <span className="min-w-0 flex-1">{children}</span>
+    <span className="min-w-0 flex-1 truncate whitespace-nowrap">{children}</span>
     {trailing ? (
       <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{trailing}</span>
     ) : null}
