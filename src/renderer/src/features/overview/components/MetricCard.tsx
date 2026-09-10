@@ -28,23 +28,23 @@ export const MetricCard = ({
   extra,
 }: MetricCardProps): React.JSX.Element => {
   return (
-    <div className="overview-metric-card flex min-w-0 flex-col justify-between rounded-[6px] border border-white/5 bg-[#262626] p-3.5 transition-colors hover:border-white/10 [contain:layout_paint]">
+    <div className="overview-metric-card flex min-w-0 flex-col justify-between rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-3.5 transition-colors hover:border-[#444444] [contain:layout_paint]">
       <div>
         {/* 顶部行：左侧图标 + 右侧徽标 */}
         <div className="flex items-center justify-between gap-2">
-          <div className="overview-metric-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] bg-white/5">
+          <div className="overview-metric-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[#333333] bg-[#282828]">
             <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
           </div>
           {badge && (
             <span
               className={`overview-badge shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium leading-none ${
                 badge.variant === "success"
-                  ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                  ? "border border-[#1b582e] bg-[#143320] text-[#4ade80]"
                   : badge.variant === "info"
-                    ? "border border-sky-500/20 bg-sky-500/10 text-sky-400"
+                    ? "border border-[#1d4ed8] bg-[#152845] text-[#60a5fa]"
                     : badge.variant === "warning"
-                      ? "border border-amber-500/20 bg-amber-500/10 text-amber-400"
-                      : "border border-white/10 bg-white/5 text-white/60"
+                      ? "border border-[#b45309] bg-[#382310] text-[#fbbf24]"
+                      : "border border-[#444444] bg-[#2a2a2a] text-[#d4d4d4]"
               }`}
             >
               {badge.label}
@@ -65,7 +65,9 @@ export const MetricCard = ({
         </div>
       </div>
 
-      {extra && <div className="mt-2.5 min-w-0 border-t border-white/5 pt-2 text-xs">{extra}</div>}
+      {extra && (
+        <div className="mt-2.5 min-w-0 border-t border-[#333333] pt-2 text-xs">{extra}</div>
+      )}
     </div>
   )
 }

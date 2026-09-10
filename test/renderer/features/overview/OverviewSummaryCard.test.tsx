@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { OverviewSummaryCard } from "@/features/overview/components/OverviewSummaryCard"
+
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe = (): void => undefined
+    unobserve = (): void => undefined
+    disconnect = (): void => undefined
+  },
+)
 
 afterEach(() => {
   cleanup()
@@ -52,5 +61,20 @@ describe("OverviewSummaryCard", () => {
     expect(screen.getAllByText(/近 7 天|Last 7 Days/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("50")).toBeDefined()
     expect(screen.getByText("100")).toBeDefined()
+  })
+
+  it("点击时间跨度 Select 触发 onTimeRangeChange", () => {
+    const onTimeRangeChange = vi.fn()
+    render(<OverviewSummaryCard timeRange="today" onTimeRangeChange={onTimeRangeChange} />)
+
+    // 打开下拉框
+    const trigger = screen.getByRole("button")
+    fireEvent.click(trigger)
+
+    // 点击 7 天选项
+    const option7d = screen.getByText(/近 7 天|Last 7 Days/)
+    fireEvent.mouseDown(option7d)
+
+    expect(onTimeRangeChange).toHaveBeenCalledWith("7d")
   })
 })

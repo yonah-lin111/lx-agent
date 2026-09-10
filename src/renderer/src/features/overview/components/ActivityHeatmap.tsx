@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import type { ActivityDayEntry, HeatmapCell, HeatmapMonth } from "../types"
@@ -8,14 +9,17 @@ import { buildHeatmapMonths } from "../utils"
 // 活动热力图属性。
 export interface ActivityHeatmapProps {
   entries: ActivityDayEntry[]
+  selectedProjectId?: string
+  projectOptions?: LxSelectOption<string>[]
+  onProjectChange?: (projectId: string) => void
 }
 
 const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
-  0: "bg-white/[0.08] border border-white/[0.12] hover:border-white/30",
-  1: "bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400",
-  2: "bg-emerald-500/45 border border-emerald-500/50 hover:border-emerald-400",
-  3: "bg-emerald-500/75 border border-emerald-400 hover:border-emerald-300",
-  4: "bg-emerald-400 border border-emerald-300 hover:brightness-110 hover:shadow-xs hover:shadow-emerald-500/25",
+  0: "bg-[#282828] border border-[#383838] hover:border-[#555555]",
+  1: "bg-[#144222] border border-[#1b582e] hover:border-[#22c55e]",
+  2: "bg-[#1b6b33] border border-[#238c43] hover:border-[#4ade80]",
+  3: "bg-[#229948] border border-[#2bc45c] hover:border-[#86efac]",
+  4: "bg-[#22c55e] border border-[#4ade80] hover:brightness-110 hover:shadow-xs hover:shadow-emerald-500/25",
 }
 
 const WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -34,7 +38,7 @@ const HeatmapDayCell = React.memo(
   ({ day, onHover, onLeave }: HeatmapDayCellProps): React.JSX.Element => {
     if (!day) {
       return (
-        <div className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 rounded-[2px] bg-transparent opacity-0 pointer-events-none" />
+        <div className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 rounded-[2px] opacity-0 pointer-events-none" />
       )
     }
 
@@ -119,7 +123,12 @@ MonthBlock.displayName = "MonthBlock"
  * 2. 统一使用项目标准 LxTooltip 组件，以单例控制器挂载，彻底清除 9,400+ 个 Hook 造成的渲染颠簸；
  * 3. 严格对齐 Mon..Sun 7 天垂直基线，单元格放大至 14px。
  */
-export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.Element => {
+export const ActivityHeatmap = ({
+  entries,
+  selectedProjectId,
+  projectOptions,
+  onProjectChange,
+}: ActivityHeatmapProps): React.JSX.Element => {
   const { t } = useTranslation()
   const { months, maxCount } = useMemo(() => buildHeatmapMonths(entries), [entries])
 
@@ -132,22 +141,6 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
     day: HeatmapCell
     rect: DOMRect
   } | null>(null)
-
-  const handleHover = useCallback((day: HeatmapCell, rect: DOMRect): void => {
-    setActiveTooltip({ day, rect })
-  }, [])
-
-  const handleLeave = useCallback((): void => {
-    setActiveTooltip(null)
-  }, [])
-
-  // 页面滚动时立即收起悬浮气泡，避免视觉漂移
-  useEffect(() => {
-    if (!activeTooltip) return
-    const handleScroll = (): void => setActiveTooltip(null)
-    window.addEventListener("scroll", handleScroll, true)
-    return () => window.removeEventListener("scroll", handleScroll, true)
-  }, [activeTooltip])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [rowStartMonthKeys, setRowStartMonthKeys] = useState<Set<string>>(
@@ -204,6 +197,22 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
     }
   }, [updateRowStarts])
 
+  const handleHover = useCallback((day: HeatmapCell, rect: DOMRect): void => {
+    setActiveTooltip({ day, rect })
+  }, [])
+
+  const handleLeave = useCallback((): void => {
+    setActiveTooltip(null)
+  }, [])
+
+  // 页面滚动时立即收起悬浮气泡，避免视觉漂移
+  useEffect(() => {
+    if (!activeTooltip) return
+    const handleScroll = (): void => setActiveTooltip(null)
+    window.addEventListener("scroll", handleScroll, true)
+    return () => window.removeEventListener("scroll", handleScroll, true)
+  }, [activeTooltip])
+
   // 计算当前悬浮单元格的提示文字
   const tooltipContent = useMemo(() => {
     if (!activeTooltip) return null
@@ -221,21 +230,34 @@ export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.El
   }, [activeTooltip, t])
 
   return (
-    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-white/5 bg-[#262626] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
-      {/* 头部标题与统计 */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
+      {/* 头部标题与统计及项目切换 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-white/90">
             {t("home.heatmap.title")}
           </h3>
           <p className="truncate text-xs text-white/45">{t("home.heatmap.subtitle")}</p>
         </div>
-        <div className="shrink-0 font-mono text-xs text-white/60">
-          <span className="font-semibold text-emerald-400">
-            {t("home.heatmap.activities", { count: totalYearActivities })}
-          </span>
-          {maxCount > 0 && (
-            <span className="ml-2 text-[10px] text-white/35">(Max: {maxCount}/day)</span>
+
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="font-mono text-xs text-white/60">
+            <span className="font-semibold text-emerald-400">
+              {t("home.heatmap.activities", { count: totalYearActivities })}
+            </span>
+            {maxCount > 0 && (
+              <span className="ml-2 text-[10px] text-white/35">(Max: {maxCount}/day)</span>
+            )}
+          </div>
+          {projectOptions && onProjectChange && (
+            <div className="w-40 sm:w-48 shrink-0">
+              <LxSelect
+                size="small"
+                value={selectedProjectId ?? "all"}
+                options={projectOptions}
+                onChange={onProjectChange}
+              />
+            </div>
           )}
         </div>
       </div>

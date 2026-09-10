@@ -1,7 +1,7 @@
 import { Bot, Flame, Layers, Wrench } from "lucide-react"
 import { useMemo } from "react"
 import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
-import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
+import type { LxSelectOption } from "@/components/ui/LxSelect"
 import { useTranslation } from "@/i18n"
 import { useOverviewData } from "../hooks/useOverviewData"
 import type { OverviewTimeRange } from "../types"
@@ -66,40 +66,16 @@ export const OverviewDashboard = (): React.JSX.Element => {
     <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable] [contain:paint] [transform:translateZ(0)]">
       <LxLoadingOverlay isLoading={isLoading && !stats} text="Loading overview..." />
 
-      {/* 顶部标题与项目/时间切换器 */}
-      <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-bold tracking-tight text-white">
-            {t("home.overview")}
-          </h1>
-          <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>
-        </div>
-
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
-          {/* 时间跨度筛选 */}
-          <div className="w-28 sm:w-32">
-            <LxSelect
-              size="small"
-              value={selectedTimeRange}
-              options={timeRangeOptions}
-              onChange={(val) => setSelectedTimeRange(val as OverviewTimeRange)}
-            />
-          </div>
-
-          {/* 项目切换器 */}
-          <div className="w-full sm:w-48">
-            <LxSelect
-              size="small"
-              value={selectedProjectId}
-              options={projectOptions}
-              onChange={setSelectedProjectId}
-            />
-          </div>
-        </div>
+      {/* 顶部标题 */}
+      <div className="mb-4 min-w-0">
+        <h1 className="truncate text-base font-bold tracking-tight text-white">
+          {t("home.overview")}
+        </h1>
+        <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>
       </div>
 
       {error ? (
-        <div className="rounded-[6px] border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">
+        <div className="rounded-[6px] border border-[#552222] bg-[#2a1212] p-3 text-xs text-red-400">
           {error}
         </div>
       ) : (
@@ -108,6 +84,8 @@ export const OverviewDashboard = (): React.JSX.Element => {
           <OverviewSummaryCard
             periodSummary={metrics?.periodSummary}
             timeRange={selectedTimeRange}
+            onTimeRangeChange={setSelectedTimeRange}
+            timeRangeOptions={timeRangeOptions}
           />
 
           {/* 4 组核心数据指标卡片 */}
@@ -183,7 +161,12 @@ export const OverviewDashboard = (): React.JSX.Element => {
           </div>
 
           {/* 生产力绿墙热力图 */}
-          <ActivityHeatmap entries={heatmap} />
+          <ActivityHeatmap
+            entries={heatmap}
+            selectedProjectId={selectedProjectId}
+            projectOptions={projectOptions}
+            onProjectChange={setSelectedProjectId}
+          />
         </div>
       )}
     </div>

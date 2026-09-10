@@ -64,14 +64,6 @@ export const en = {
   home: {
     overview: "Overview",
     overviewSubtitle: "Agent pair programming activity and core project asset summary",
-    sessions: "Global Sessions",
-    skills: "Skills & Tools",
-    sessionsSubtitle: "Inspect and trace agent execution history across projects",
-    skillsSubtitle: "Manage loaded MCP tools and agent skills",
-    sessionsEmptyTitle: "No Global Sessions Yet",
-    sessionsEmptyDesc: "Start interacting with the Agent in any project to see session records here.",
-    skillsEmptyTitle: "No Active Skills or Tools",
-    skillsEmptyDesc: "Configured MCP services and built-in tools will appear here.",
     allProjects: "All Projects Summary",
     activeProject: "Linked Project",
     selectProject: "Switch Project",
@@ -89,7 +81,8 @@ export const en = {
       successRate: "Success Rate",
       avgDuration: "Avg Duration",
       sessions: "Sessions",
-      summaryText: "Recorded {{turns}} agent turns and {{toolCalls}} tool calls in the selected period, with a {{successRate}}% success rate and {{avgDuration}}ms average execution time.",
+      summaryText:
+        "Recorded {{turns}} agent turns and {{toolCalls}} tool calls in the selected period, with a {{successRate}}% success rate and {{avgDuration}}ms average execution time.",
     },
     metrics: {
       agentTurns: "Agent Turns",

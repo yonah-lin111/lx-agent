@@ -66,14 +66,6 @@ export const zh: TranslationDictionary = {
   home: {
     overview: "概览",
     overviewSubtitle: "查看 Agent 结对生产力热度与项目核心资产概况",
-    sessions: "全局会话",
-    skills: "技能与工具",
-    sessionsSubtitle: "查看与回溯跨项目的 Agent 执行会话流水",
-    skillsSubtitle: "管理当前加载的 MCP 工具与扩展技能",
-    sessionsEmptyTitle: "暂无全局会话记录",
-    sessionsEmptyDesc: "在项目中与 Agent 开始对话后，会话记录将在此集中展示",
-    skillsEmptyTitle: "暂无激活技能或工具",
-    skillsEmptyDesc: "配置 MCP 服务或内置工具后，可用工具列表将在此汇总呈现",
     allProjects: "全部项目汇总",
     activeProject: "关联项目",
     selectProject: "切换项目",
@@ -91,7 +83,8 @@ export const zh: TranslationDictionary = {
       successRate: "调用成功率",
       avgDuration: "平均耗时",
       sessions: "涉及会话",
-      summaryText: "选定时间范围内共记录 {{turns}} 轮 Agent 对话交互，触发 {{toolCalls}} 次工具调用，成功率为 {{successRate}}%，平均单次耗时 {{avgDuration}}ms。",
+      summaryText:
+        "选定时间范围内共记录 {{turns}} 轮 Agent 对话交互，触发 {{toolCalls}} 次工具调用，成功率为 {{successRate}}%，平均单次耗时 {{avgDuration}}ms。",
     },
     metrics: {
       agentTurns: "Agent 交互轮次",

@@ -24,16 +24,6 @@ describe("HomeLeftSideBar", () => {
 
     fireEvent.click(overviewItem)
     expect(mockNavigate).toHaveBeenCalledWith("/")
-
-    const sessionsItem = screen.getByRole("button", { name: /sessions|全局会话/i })
-    expect(sessionsItem).toBeDefined()
-    fireEvent.click(sessionsItem)
-    expect(mockNavigate).toHaveBeenCalledWith("/?view=sessions")
-
-    const skillsItem = screen.getByRole("button", { name: /skills|技能与工具/i })
-    expect(skillsItem).toBeDefined()
-    fireEvent.click(skillsItem)
-    expect(mockNavigate).toHaveBeenCalledWith("/?view=skills")
   })
 
   it("折叠模式下退化为图标按钮并保留可访问名称", () => {
@@ -45,10 +35,5 @@ describe("HomeLeftSideBar", () => {
 
     fireEvent.click(iconButton)
     expect(mockNavigate).toHaveBeenCalledWith("/")
-
-    const sessionsButton = screen.getByRole("button", { name: /sessions|全局会话/i })
-    expect(sessionsButton).toBeDefined()
-    fireEvent.click(sessionsButton)
-    expect(mockNavigate).toHaveBeenCalledWith("/?view=sessions")
   })
 })

@@ -1374,15 +1374,6 @@
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
 }
 
-[data-theme="minecraft"] .home-placeholder-empty {
-  border-radius: 0px !important;
-  border: 2px dashed #48485c !important;
-  background-color: #1a1a24 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
-}
-
 [data-theme="minecraft"] .overview-badge {
   border-radius: 0px !important;
   border: 1px solid #000000 !important;
