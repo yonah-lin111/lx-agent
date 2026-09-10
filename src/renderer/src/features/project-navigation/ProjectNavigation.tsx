@@ -237,17 +237,18 @@ export const ProjectNavigation = (): React.JSX.Element => {
   }
 
   /**
-   * 将未导入项目升级导入为正式项目。
+   * 切换项目导入状态（未导入 <-> 已导入）。
    */
-  const handleImportAsProject = async (): Promise<void> => {
+  const handleToggleImportProject = async (): Promise<void> => {
     if (!menu || menu.type !== "project") return
+    const targetStatus = menu.isImported === false
     try {
-      await projectNavigationApi.updateProject(menu.id, { isImported: true })
+      await projectNavigationApi.updateProject(menu.id, { isImported: targetStatus })
       await refreshProjects()
       useProjectItemsVersionStore.getState().bump()
-      toast.success(t("project.importedSuccess"))
+      toast.success(targetStatus ? t("project.importedSuccess") : t("project.unimportedSuccess"))
     } catch {
-      toast.error(t("project.importFailed"))
+      toast.error(targetStatus ? t("project.importFailed") : t("project.unimportFailed"))
     }
     setMenu(null)
   }
@@ -878,7 +879,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
         depth={menu?.depth}
         status={menu?.status}
         isImported={menu?.isImported}
-        onImportProject={handleImportAsProject}
+        onToggleImportProject={handleToggleImportProject}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
         onAddFolder={() => addMenuItem("project_folder")}

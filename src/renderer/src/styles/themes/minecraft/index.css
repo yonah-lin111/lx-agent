@@ -1129,6 +1129,16 @@
   font-family: var(--theme-font-family) !important;
 }
 
+[data-theme="minecraft"] .git-status-item[data-unimported="true"] {
+  border: 2px dashed #b8860b !important;
+  background-color: #1a1710 !important;
+  color: #e0b040 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 200, 50, 0.15),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.75),
+    2px 2px 0px 0px #000000 !important;
+}
+
 /* ========================================================
  * 全局消息提示（LxToast & LxBreadcrumbToast & LxAgentTopToast 3D 凸起）
  * ======================================================== */

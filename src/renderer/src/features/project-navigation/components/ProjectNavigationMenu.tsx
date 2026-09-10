@@ -1,4 +1,4 @@
-import { Check, Edit3, FilePlus, FolderCheck, FolderPlus, Trash2 } from "lucide-react"
+import { Check, Edit3, FilePlus, FolderCheck, FolderMinus, FolderPlus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
@@ -19,6 +19,7 @@ type ProjectNavigationMenuProps = {
   isImported?: boolean
   onEditProject?: () => void
   onImportProject?: () => void
+  onToggleImportProject?: () => void
   onRename: () => void
   onAddFolder?: () => void
   onAddPrompt?: () => void
@@ -59,6 +60,7 @@ export const ProjectNavigationMenu = ({
   isImported,
   onEditProject,
   onImportProject,
+  onToggleImportProject,
   onRename,
   onAddFolder,
   onAddPrompt,
@@ -110,12 +112,26 @@ export const ProjectNavigationMenu = ({
       y={displayedMenu.y}
       onClose={onClose}
     >
-      {displayedMenu.type === "project" && displayedMenu.isImported === false && onImportProject ? (
+      {displayedMenu.type === "project" && (onToggleImportProject || onImportProject) ? (
         <LxMenuItem
-          leading={<FolderCheck className="h-3.5 w-3.5 text-emerald-400/80" />}
-          onClick={onImportProject}
+          leading={
+            displayedMenu.isImported === false ? (
+              <FolderCheck className="h-3.5 w-3.5 text-emerald-400/80" />
+            ) : (
+              <FolderMinus className="h-3.5 w-3.5 text-white/45" />
+            )
+          }
+          onClick={() => {
+            if (onToggleImportProject) {
+              onToggleImportProject()
+            } else {
+              onImportProject?.()
+            }
+          }}
         >
-          {t("project.importAsProject")}
+          {displayedMenu.isImported === false
+            ? t("project.importAction")
+            : t("project.unimportAction")}
         </LxMenuItem>
       ) : null}
 
