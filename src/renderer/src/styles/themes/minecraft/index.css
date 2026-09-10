@@ -751,8 +751,7 @@
  * ======================================================== */
 /* 1. 终端标签栏与各类 Tab 选项卡（经典直角矿石像素槽 3D 凸起与选中高亮） */
 [data-theme="minecraft"] .terminal-tab-item,
-[data-theme="minecraft"] [role="tab"],
-[data-theme="minecraft"] .custom-command-tab-group {
+[data-theme="minecraft"] [role="tab"] {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1a1a26 !important;
@@ -762,24 +761,36 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .custom-command-tab-group button {
-  border-radius: 0px !important;
-  border: 1px solid transparent !important;
+[data-theme="minecraft"] .custom-command-tab-group {
+  border: none !important;
+  background-color: transparent !important;
   box-shadow: none !important;
 }
 
-[data-theme="minecraft"] .custom-command-tab-group button[data-active="true"] {
-  background-color: #2a2a3c !important;
-  border: 1px solid #000000 !important;
+[data-theme="minecraft"] .custom-command-tab-group button {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #1e1e2a !important;
+  color: #a8a8be !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    0px 0px 4px rgba(85, 255, 85, 0.2) !important;
+    1px 1px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .custom-command-tab-group button[data-active="true"] {
+  background-color: #14141c !important;
+  border: 2px solid #000000 !important;
+  border-left: 3px solid #55ff55 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
+    0px 0px 6px rgba(85, 255, 85, 0.2) !important;
   color: #55ff55 !important;
 }
 
 [data-theme="minecraft"] .custom-command-tab-group button:hover:not([data-active="true"]) {
-  background-color: #222232 !important;
+  background-color: #2b2b3b !important;
   color: #ffffff !important;
 }
 

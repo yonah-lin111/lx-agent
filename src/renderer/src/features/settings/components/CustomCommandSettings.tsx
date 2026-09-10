@@ -393,11 +393,11 @@ ${t("settings.customCommandAgentMDHelpDesc")}
       {/* 顶部分类 Tab 与作用域切换栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
         <div className="flex items-center gap-2">
-          <div className="custom-command-tab-group flex items-center rounded-[6px] border border-white/10 bg-white/5 p-0.5">
+          <div className="custom-command-tab-group flex items-center gap-1">
             <button
               type="button"
               data-active={activeTab === "agentInput"}
-              className={`rounded-[4px] px-3 py-1 text-xs transition-colors ${
+              className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
                 activeTab === "agentInput"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -409,7 +409,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             <button
               type="button"
               data-active={activeTab === "agentMD"}
-              className={`rounded-[4px] px-3 py-1 text-xs transition-colors ${
+              className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
                 activeTab === "agentMD"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -445,11 +445,11 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             </div>
           )}
 
-          <div className="custom-command-tab-group flex items-center rounded-[6px] border border-white/10 bg-white/5 p-0.5">
+          <div className="custom-command-tab-group flex items-center gap-1">
             <button
               type="button"
               data-active={selectedScope === "user"}
-              className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-xs transition-colors ${
+              className={`flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-xs transition-colors ${
                 selectedScope === "user"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
@@ -462,7 +462,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
             <button
               type="button"
               data-active={selectedScope === "project"}
-              className={`flex items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-xs transition-colors ${
+              className={`flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-xs transition-colors ${
                 selectedScope === "project"
                   ? "bg-white/10 text-white font-medium shadow-xs"
                   : "text-white/60 hover:text-white"
