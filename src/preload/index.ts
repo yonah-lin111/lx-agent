@@ -41,6 +41,8 @@ const api: ProjectApi &
         ipcRenderer.invoke(PROJECT_CHANNELS.updateProject, id, input),
       delete: (id: string) => ipcRenderer.invoke(PROJECT_CHANNELS.deleteProject, id),
       selectDirectory: () => ipcRenderer.invoke(PROJECT_CHANNELS.selectProjectDirectory),
+      findOrCreateByPath: (path: string) =>
+        ipcRenderer.invoke(PROJECT_CHANNELS.findOrCreateByPath, path),
       searchFiles: (projectId: string, query: string) =>
         ipcRenderer.invoke(PROJECT_CHANNELS.searchProjectFiles, projectId, query),
       searchReferencedFiles: (projectPaths: string[], query: string) =>

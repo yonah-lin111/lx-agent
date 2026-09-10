@@ -35,6 +35,7 @@ export interface AgentMarkdownInputProps {
   onAddFiles?: (files: AgentInputFile[]) => void
   allowProjectChange?: boolean
   onProjectSelect?: (projectId: string, projectPath: string) => void
+  onCdSelect?: (projectId: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string) => void
   currentSessionId?: string | null
 }

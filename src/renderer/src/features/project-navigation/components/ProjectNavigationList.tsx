@@ -2,6 +2,7 @@ import { Boxes, CheckCircle2, ChevronDown, Circle, File, FileText, Folder } from
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
@@ -50,7 +51,7 @@ interface ProjectNavigationListProps {
   onOpenMenu: (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus },
+    item: { id: string; name: string; status?: PromptStatus; isImported?: boolean },
     projectId?: string,
     depth?: number,
   ) => void
@@ -281,7 +282,10 @@ export const ProjectNavigationList = ({
                 role="button"
                 tabIndex={0}
                 data-item-level="project"
-                className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+                data-unimported={project.isImported === false ? "true" : undefined}
+                className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 ${
+                  project.isImported === false ? "opacity-75" : ""
+                }`}
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
                 onKeyDown={(event) => {
@@ -289,10 +293,25 @@ export const ProjectNavigationList = ({
                 }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
               >
-                <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                <Boxes
+                  className={`h-3.5 w-3.5 shrink-0 ${
+                    project.isImported === false ? "text-white/40" : "text-sky-400/80"
+                  }`}
+                />
                 {renderItemName(
                   project,
-                  "min-w-0 flex-1 truncate text-sm font-semibold uppercase text-white/55 transition-colors",
+                  `min-w-0 flex-1 truncate text-sm font-semibold uppercase transition-colors ${
+                    project.isImported === false ? "text-white/40 font-normal" : "text-white/55"
+                  }`,
+                )}
+                {project.isImported === false && (
+                  <LxTag
+                    bgClass="bg-white/10 text-white/50 border border-white/10"
+                    size="small"
+                    className="pointer-events-none shrink-0"
+                  >
+                    {t("project.unimported")}
+                  </LxTag>
                 )}
                 {isProjectCollapsed ? (
                   <>

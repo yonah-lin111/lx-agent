@@ -24,6 +24,8 @@ export const projectNavigationApi = {
   deleteProject: (id: string): Promise<void> => window.api.project.projects.delete(id),
   selectProjectDirectory: (): Promise<string | null> =>
     window.api.project.projects.selectDirectory(),
+  findOrCreateByPath: (path: string): Promise<Project> =>
+    window.api.project.projects.findOrCreateByPath(path),
   createFolder: (input: CreateProjectFolderInput): Promise<ProjectFolder> =>
     window.api.project.folders.create(input),
   updateFolder: (id: string, input: UpdateProjectFolderInput): Promise<void> =>

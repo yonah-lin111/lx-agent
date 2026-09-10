@@ -55,6 +55,8 @@ export interface AgentInputProps {
   onWorktreeSelect: (path: string) => void
   // 切换项目回调。
   onProjectSelect?: (projectId: string, projectPath: string) => void
+  // /cd 切换目录回调。
+  onCdSelect?: (projectId: string, projectPath: string) => void
   // 切换会话回调。
   onSessionSelect?: (sessionId: string) => void
   // 是否允许切换项目（非新 session 禁止切换项目）。默认 true。
@@ -101,6 +103,7 @@ export const AgentInput = ({
   worktreeOptions,
   onWorktreeSelect,
   onProjectSelect,
+  onCdSelect,
   onSessionSelect,
   allowProjectChange = true,
   currentSessionId,
@@ -406,6 +409,7 @@ export const AgentInput = ({
           worktreeOptions={worktreeOptions}
           onWorktreeSelect={onWorktreeSelect}
           onProjectSelect={onProjectSelect}
+          onCdSelect={onCdSelect}
           onSessionSelect={onSessionSelect}
           allowProjectChange={allowProjectChange}
           currentSessionId={currentSessionId}

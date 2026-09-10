@@ -32,6 +32,13 @@ export const BUILTIN_COMMAND_KEYS: {
     kind: "builtin",
   },
   {
+    id: "cd",
+    name: "/cd",
+    descKey: "agent.commandCdDesc",
+    kind: "builtin",
+    argumentHint: "[path]",
+  },
+  {
     id: "session",
     name: "/session",
     descKey: "agent.commandSessionDesc",

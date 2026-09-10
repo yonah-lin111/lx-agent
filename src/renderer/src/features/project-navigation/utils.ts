@@ -40,6 +40,7 @@ export const createProjectNavigationTree = (
     id: project.id,
     name: project.name,
     path: project.path,
+    isImported: project.isImported !== false,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     projectFolders: folderRecords
@@ -103,8 +104,15 @@ export const sortProjectNavigationTree = (
     prompts: sortPrompts(folder.prompts, sortKey, direction),
   })
 
+  const importedOrder = (project: ProjectNavigationProject): number =>
+    project.isImported !== false ? 0 : 1
+
   return [...projects]
-    .sort((left, right) => compareBySortKey(left, right, sortKey, direction))
+    .sort((left, right) => {
+      const orderDiff = importedOrder(left) - importedOrder(right)
+      if (orderDiff !== 0) return orderDiff
+      return compareBySortKey(left, right, sortKey, direction)
+    })
     .map((project) => ({
       ...project,
       projectFolders: [...project.projectFolders]

@@ -10,6 +10,7 @@ export type Project = {
   name: string
   type: "filesystem" | "virtual"
   path?: string
+  isImported?: boolean
   referencedFolders: ReferencedFolder[]
   createdAt: string
   updatedAt: string
@@ -45,11 +46,17 @@ export type ProjectItem = {
 }
 
 // 项目创建参数。
-export type CreateProjectInput = { name: string; type?: Project["type"]; path?: string }
+export type CreateProjectInput = {
+  name: string
+  type?: Project["type"]
+  path?: string
+  isImported?: boolean
+}
 
 // 项目更新参数。
 export type UpdateProjectInput = Partial<CreateProjectInput> & {
   referencedFolders?: ReferencedFolder[]
+  isImported?: boolean
 }
 
 // 项目文件提及候选项。
@@ -98,6 +105,7 @@ export interface ProjectApi {
       update: (id: string, input: UpdateProjectInput) => Promise<void>
       delete: (id: string) => Promise<void>
       selectDirectory: () => Promise<string | null>
+      findOrCreateByPath: (path: string) => Promise<Project>
       searchFiles: (projectId: string, query: string) => Promise<ProjectFileEntry[]>
       searchReferencedFiles: (
         projectPaths: string[],

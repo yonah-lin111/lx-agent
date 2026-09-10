@@ -158,5 +158,19 @@ describe("project navigation utils", () => {
       const result = sortProjectNavigationTree(tree, "name", "asc")
       expect(result.map((current) => current.id)).toEqual(["project-2", "project-1"])
     })
+
+    it("未导入项目排在导入项目底部，组内按指定规则排序", () => {
+      const p1: Project = { ...project, id: "p1", name: "Delta", isImported: true }
+      const p2: Project = { ...project, id: "p2", name: "Alpha", isImported: true }
+      const u1: Project = { ...project, id: "u1", name: "Beta (Unimported)", isImported: false }
+      const u2: Project = { ...project, id: "u2", name: "Gamma (Unimported)", isImported: false }
+
+      const tree = createProjectNavigationTree([u2, p1, u1, p2], [], [])
+      expect(tree.find((p) => p.id === "u1")?.isImported).toBe(false)
+      expect(tree.find((p) => p.id === "p1")?.isImported).toBe(true)
+
+      const result = sortProjectNavigationTree(tree, "name", "asc")
+      expect(result.map((current) => current.id)).toEqual(["p2", "p1", "u1", "u2"])
+    })
   })
 })

@@ -139,4 +139,36 @@ describe("projectService", () => {
       service.createProject({ name: "Missing", path: "/path/that/does-not-exist" }),
     ).toThrow("PROJECT_PATH_NOT_FOUND")
   })
+
+  it("findOrCreateByPath 创建未导入项目并在已存在时复用且不降级", () => {
+    const service = createProjectService(() => database)
+    const project = service.findOrCreateByPath("/tmp")
+
+    expect(project).toBeDefined()
+    expect(project.isImported).toBe(false)
+    expect(project.name).toBe("tmp")
+
+    // 重复调用应复用已有项目
+    const reused = service.findOrCreateByPath("/tmp")
+    expect(reused.id).toBe(project.id)
+    expect(reused.isImported).toBe(false)
+
+    // 支持转为正式导入项目
+    service.updateProject(project.id, { isImported: true })
+    const updated = service.listProjects().find((p) => p.id === project.id)
+    expect(updated?.isImported).toBe(true)
+
+    // 已导入项目再次调用 findOrCreateByPath 不会被降级为未导入
+    const reusedAfterImport = service.findOrCreateByPath("/tmp")
+    expect(reusedAfterImport.id).toBe(project.id)
+    expect(reusedAfterImport.isImported).toBe(true)
+  })
+
+  it("findOrCreateByPath 拒绝不存在或非目录路径", () => {
+    const service = createProjectService(() => database)
+
+    expect(() => service.findOrCreateByPath("/path/that/does-not-exist")).toThrow(
+      "PROJECT_PATH_NOT_FOUND",
+    )
+  })
 })

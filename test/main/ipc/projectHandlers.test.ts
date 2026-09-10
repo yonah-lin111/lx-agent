@@ -21,6 +21,7 @@ vi.mock("@/services/projectService", () => ({
     createItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
+    findOrCreateByPath: vi.fn(),
   },
 }))
 
@@ -92,5 +93,22 @@ describe("project IPC handlers", () => {
       properties: ["openDirectory"],
       title: "选择项目文件夹",
     })
+  })
+
+  it("校验并转发 findOrCreateByPath 参数", async () => {
+    const { projectService } = await import("@/services/projectService")
+    const { registerProjectHandlers } = await import("@/ipc/projectHandlers")
+    const handler = vi.fn()
+    handle.mockImplementation((channel, h) => {
+      if (channel === PROJECT_CHANNELS.findOrCreateByPath) {
+        handler.mockImplementation(h)
+      }
+    })
+
+    registerProjectHandlers()
+
+    handler({}, "/tmp/test-dir")
+    expect(projectService.findOrCreateByPath).toHaveBeenCalledWith("/tmp/test-dir")
+    expect(() => handler({}, 123)).toThrow("INVALID_PATH_INPUT")
   })
 })

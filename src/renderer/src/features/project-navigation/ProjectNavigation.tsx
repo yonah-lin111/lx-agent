@@ -37,6 +37,7 @@ import {
 } from "@/features/project-navigation/components/ProjectNavigationMenu"
 import { useProjectNavigationActions } from "@/features/project-navigation/hooks/useProjectNavigationActions"
 import { useProjectNavigationData } from "@/features/project-navigation/hooks/useProjectNavigationData"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type {
   ProjectNavigationFilterScope,
   ProjectNavigationProject,
@@ -59,6 +60,7 @@ type MenuState = {
   depth?: number
   title: string
   status?: PromptStatus
+  isImported?: boolean
   x: number
   y: number
 }
@@ -216,7 +218,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const openMenu = (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus },
+    item: { id: string; name: string; status?: PromptStatus; isImported?: boolean },
     projectId?: string,
     depth?: number,
   ): void => {
@@ -228,9 +230,26 @@ export const ProjectNavigation = (): React.JSX.Element => {
       depth,
       title: item.name,
       status: item.status,
+      isImported: item.isImported,
       x: event.clientX,
       y: event.clientY,
     })
+  }
+
+  /**
+   * 将未导入项目升级导入为正式项目。
+   */
+  const handleImportAsProject = async (): Promise<void> => {
+    if (!menu || menu.type !== "project") return
+    try {
+      await projectNavigationApi.updateProject(menu.id, { isImported: true })
+      await refreshProjects()
+      useProjectItemsVersionStore.getState().bump()
+      toast.success(t("project.importedSuccess"))
+    } catch {
+      toast.error(t("project.importFailed"))
+    }
+    setMenu(null)
   }
 
   /**
@@ -858,6 +877,8 @@ export const ProjectNavigation = (): React.JSX.Element => {
         y={menu?.y ?? 0}
         depth={menu?.depth}
         status={menu?.status}
+        isImported={menu?.isImported}
+        onImportProject={handleImportAsProject}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
         onAddFolder={() => addMenuItem("project_folder")}

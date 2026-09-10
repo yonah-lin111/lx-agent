@@ -12,6 +12,8 @@ import {
   createMarkdownBlockInsertion,
   getMarkdownBlockTrigger,
 } from "@/features/markdown/commands/markdownBlockCommands"
+import { projectApi } from "@/features/project/api/projectApi"
+import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type { TranslationKey } from "@/i18n"
 import type {
   AgentInputCommand,
@@ -37,6 +39,7 @@ interface UseAgentInputActionsProps {
   onModelChange?: (value: string) => void
   onWorktreeSelect?: (path: string) => void
   onProjectSelect?: (projectId: string, projectPath: string) => void
+  onCdSelect?: (projectId: string, projectPath: string) => void
   onSessionSelect?: (sessionId: string) => void
   allowProjectChange?: boolean
   currentSessionId?: string | null
@@ -65,6 +68,7 @@ export const useAgentInputActions = ({
   onModelChange,
   onWorktreeSelect,
   onProjectSelect,
+  onCdSelect,
   onSessionSelect,
   allowProjectChange = true,
   currentSessionId,
@@ -183,6 +187,62 @@ export const useAgentInputActions = ({
           }
           return
         }
+      }
+
+      // 拦截 /cd 相关命令
+      if (
+        text === "/cd" ||
+        text.startsWith("/cd ") ||
+        text.startsWith("/cd:") ||
+        text.startsWith("/cd-")
+      ) {
+        let rawArg = text.replace(/^\/cd[:\s-]*/i, "").trim()
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+
+        const proceedWithTargetPath = (targetPath: string): void => {
+          void projectApi
+            .findOrCreateByPath(targetPath)
+            .then((project) => {
+              if (project?.path) {
+                onCdSelect?.(project.id, project.path)
+                useProjectItemsVersionStore.getState().bump()
+              }
+            })
+            .catch((err) => {
+              errorToast(
+                err instanceof Error && err.message === "PROJECT_PATH_NOT_FOUND"
+                  ? t("agent.pathNotFound")
+                  : err instanceof Error
+                    ? err.message
+                    : t("agent.cdFailed"),
+              )
+            })
+        }
+
+        if (!rawArg || rawArg === "[path]") {
+          void projectApi.selectDirectory().then((selected) => {
+            if (selected) {
+              proceedWithTargetPath(selected)
+            }
+          })
+          return
+        }
+
+        if (
+          (rawArg.startsWith('"') && rawArg.endsWith('"')) ||
+          (rawArg.startsWith("'") && rawArg.endsWith("'"))
+        ) {
+          rawArg = rawArg.slice(1, -1).trim()
+        }
+
+        proceedWithTargetPath(rawArg)
+        return
       }
 
       // 拦截 /clear 相关命令
@@ -305,6 +365,7 @@ export const useAgentInputActions = ({
       errorToast,
       warningToast,
       t,
+      onCdSelect,
     ],
   )
 
@@ -365,6 +426,16 @@ export const useAgentInputActions = ({
           changes: { from: 0, to: view.state.doc.length, insert: "/project " },
           selection: { anchor: 9 },
         })
+      } else if (command.id === "cd") {
+        const insertText = "/cd [path]"
+        onChangeRef.current(insertText)
+        if (view) {
+          const selection = getArgumentSelectionRange(insertText, 3)
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: insertText },
+            selection,
+          })
+        }
       } else if (command.id === "session") {
         onChangeRef.current("/session ")
         view?.dispatch({

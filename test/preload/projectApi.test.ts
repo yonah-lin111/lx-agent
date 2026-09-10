@@ -25,6 +25,7 @@ describe("preload project API", () => {
     await api.project.projects.selectDirectory()
     await api.project.projects.searchFiles("project-1", "readme")
     await api.project.projects.searchReferencedFiles(["/tmp/reference"], "readme")
+    await api.project.projects.findOrCreateByPath("/tmp/reference")
 
     expect(exposeInMainWorld).toHaveBeenCalledWith("api", expect.any(Object))
     expect(invoke).toHaveBeenNthCalledWith(1, PROJECT_CHANNELS.createProject, input)
@@ -41,5 +42,6 @@ describe("preload project API", () => {
       ["/tmp/reference"],
       "readme",
     )
+    expect(invoke).toHaveBeenNthCalledWith(5, PROJECT_CHANNELS.findOrCreateByPath, "/tmp/reference")
   })
 })

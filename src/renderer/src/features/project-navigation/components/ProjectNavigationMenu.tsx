@@ -1,4 +1,4 @@
-import { Check, Edit3, FilePlus, FolderPlus, Trash2 } from "lucide-react"
+import { Check, Edit3, FilePlus, FolderCheck, FolderPlus, Trash2 } from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
@@ -16,7 +16,9 @@ type ProjectNavigationMenuProps = {
   y: number
   depth?: number
   status?: PromptStatus
+  isImported?: boolean
   onEditProject?: () => void
+  onImportProject?: () => void
   onRename: () => void
   onAddFolder?: () => void
   onAddPrompt?: () => void
@@ -33,6 +35,7 @@ type MenuDisplayState = {
   y: number
   depth?: number
   status?: PromptStatus
+  isImported?: boolean
 }
 
 // 条目状态配置。
@@ -53,7 +56,9 @@ export const ProjectNavigationMenu = ({
   y,
   depth,
   status,
+  isImported,
   onEditProject,
+  onImportProject,
   onRename,
   onAddFolder,
   onAddPrompt,
@@ -69,11 +74,13 @@ export const ProjectNavigationMenu = ({
     x: 0,
     y: 0,
   })
-  const displayedMenu: MenuDisplayState = isOpen ? { type, title, x, y, depth, status } : lastMenu
+  const displayedMenu: MenuDisplayState = isOpen
+    ? { type, title, x, y, depth, status, isImported }
+    : lastMenu
 
   useEffect(() => {
-    if (isOpen) setLastMenu({ type, title, x, y, depth, status })
-  }, [isOpen, status, title, type, x, y, depth])
+    if (isOpen) setLastMenu({ type, title, x, y, depth, status, isImported })
+  }, [isOpen, status, title, type, x, y, depth, isImported])
 
   useEffect(() => {
     setIsConfirmingDelete(false)
@@ -103,6 +110,15 @@ export const ProjectNavigationMenu = ({
       y={displayedMenu.y}
       onClose={onClose}
     >
+      {displayedMenu.type === "project" && displayedMenu.isImported === false && onImportProject ? (
+        <LxMenuItem
+          leading={<FolderCheck className="h-3.5 w-3.5 text-emerald-400/80" />}
+          onClick={onImportProject}
+        >
+          {t("project.importAsProject")}
+        </LxMenuItem>
+      ) : null}
+
       <LxMenuItem
         leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
         onClick={displayedMenu.type === "project" ? onEditProject : onRename}
