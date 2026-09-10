@@ -50,7 +50,7 @@ describe("/cd 命令测试", () => {
       expect(cmds.some((c) => c.id === "cd")).toBe(true)
     })
 
-    it("executeCommand 正确填充 /cd [path]", () => {
+    it("executeCommand 正确填充 /cd ", () => {
       const onChange = vi.fn()
       const { result } = renderHook(() =>
         useAgentInputActions({
@@ -64,11 +64,46 @@ describe("/cd 命令测试", () => {
         name: "cd",
         description: "Change directory workspace",
       })
-      expect(onChange).toHaveBeenCalledWith("/cd [path]")
+      expect(onChange).toHaveBeenCalledWith("/cd ")
     })
   })
 
   describe("执行 /cd 命令拦截与处理", () => {
+    it("支持中括号、智能引号及多余空格包裹的复杂路径解析", async () => {
+      const onCdSelect = vi.fn()
+      const onChange = vi.fn()
+      vi.mocked(projectApi.findOrCreateByPath).mockResolvedValue({
+        id: "p-hsl",
+        name: "hsl- project",
+        path: "/Users/yonah/Desktop/hsl- project",
+        type: "folder",
+        referencedFolders: [],
+        createdAt: "",
+        updatedAt: "",
+        isImported: false,
+      })
+
+      const { result } = renderHook(() =>
+        useAgentInputActions({
+          ...defaultProps,
+          valueRef: { current: '/cd [“ /Users/yonah/Desktop/hsl- project "]' },
+          onChangeRef: { current: onChange },
+          onCdSelect,
+        }),
+      )
+
+      result.current.handleSendAction()
+
+      expect(onChange).toHaveBeenCalledWith("")
+      expect(projectApi.findOrCreateByPath).toHaveBeenCalledWith(
+        "/Users/yonah/Desktop/hsl- project",
+      )
+
+      await vi.waitFor(() => {
+        expect(onCdSelect).toHaveBeenCalledWith("p-hsl", "/Users/yonah/Desktop/hsl- project")
+      })
+    })
+
     it("带路径执行 /cd: 调用 findOrCreateByPath 并触发 onCdSelect", async () => {
       const onCdSelect = vi.fn()
       const onChange = vi.fn()
@@ -102,7 +137,7 @@ describe("/cd 命令测试", () => {
       })
     })
 
-    it("无参数执行 /cd: 打开目录选择器并在选择后调用 findOrCreateByPath", async () => {
+    it("无参数或字面占位符 [path] 执行 /cd: 打开目录选择器并在选择后调用 findOrCreateByPath", async () => {
       const onCdSelect = vi.fn()
       const onChange = vi.fn()
       vi.mocked(projectApi.selectDirectory).mockResolvedValue("/picked/directory")
@@ -120,7 +155,7 @@ describe("/cd 命令测试", () => {
       const { result } = renderHook(() =>
         useAgentInputActions({
           ...defaultProps,
-          valueRef: { current: "/cd" },
+          valueRef: { current: "/cd [path]" },
           onChangeRef: { current: onChange },
           onCdSelect,
         }),
@@ -137,11 +172,13 @@ describe("/cd 命令测试", () => {
       })
     })
 
-    it("路径不存在时调用 errorToast 提示路径不存在", async () => {
+    it("Electron IPC 抛出远程异常包含 PROJECT_PATH_NOT_FOUND 时友善提示", async () => {
       const onCdSelect = vi.fn()
       const errorToast = vi.fn()
       vi.mocked(projectApi.findOrCreateByPath).mockRejectedValue(
-        new Error("PROJECT_PATH_NOT_FOUND"),
+        new Error(
+          "Error invoking remote method 'project:projects:find-or-create-by-path': Error: PROJECT_PATH_NOT_FOUND",
+        ),
       )
 
       const { result } = renderHook(() =>

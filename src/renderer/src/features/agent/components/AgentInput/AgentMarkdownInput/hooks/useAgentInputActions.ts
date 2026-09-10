@@ -1,6 +1,6 @@
 import type { EditorView } from "@codemirror/view"
 import type { SkillItem } from "@shared/contracts/agent"
-import type { ProjectFileEntry } from "@shared/project"
+import { cleanWorkspacePath, type ProjectFileEntry } from "@shared/project"
 import type React from "react"
 import { useCallback, useRef } from "react"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -196,7 +196,8 @@ export const useAgentInputActions = ({
         text.startsWith("/cd:") ||
         text.startsWith("/cd-")
       ) {
-        let rawArg = text.replace(/^\/cd[:\s-]*/i, "").trim()
+        const rawArg = text.replace(/^\/cd[:\s-]*/i, "")
+        const targetPath = cleanWorkspacePath(rawArg)
         onChangeRef.current("")
         const view = editorViewRef.current
         if (view) {
@@ -205,9 +206,9 @@ export const useAgentInputActions = ({
           })
         }
 
-        const proceedWithTargetPath = (targetPath: string): void => {
+        const proceedWithTargetPath = (path: string): void => {
           void projectApi
-            .findOrCreateByPath(targetPath)
+            .findOrCreateByPath(path)
             .then((project) => {
               if (project?.path) {
                 onCdSelect?.(project.id, project.path)
@@ -215,17 +216,16 @@ export const useAgentInputActions = ({
               }
             })
             .catch((err) => {
-              errorToast(
-                err instanceof Error && err.message === "PROJECT_PATH_NOT_FOUND"
-                  ? t("agent.pathNotFound")
-                  : err instanceof Error
-                    ? err.message
-                    : t("agent.cdFailed"),
-              )
+              const msg = err instanceof Error ? err.message : String(err)
+              if (msg.includes("PROJECT_PATH_NOT_FOUND")) {
+                errorToast(t("agent.pathNotFound"))
+              } else {
+                errorToast(msg || t("agent.cdFailed"))
+              }
             })
         }
 
-        if (!rawArg || rawArg === "[path]") {
+        if (!targetPath) {
           void projectApi.selectDirectory().then((selected) => {
             if (selected) {
               proceedWithTargetPath(selected)
@@ -234,14 +234,7 @@ export const useAgentInputActions = ({
           return
         }
 
-        if (
-          (rawArg.startsWith('"') && rawArg.endsWith('"')) ||
-          (rawArg.startsWith("'") && rawArg.endsWith("'"))
-        ) {
-          rawArg = rawArg.slice(1, -1).trim()
-        }
-
-        proceedWithTargetPath(rawArg)
+        proceedWithTargetPath(targetPath)
         return
       }
 
@@ -427,15 +420,11 @@ export const useAgentInputActions = ({
           selection: { anchor: 9 },
         })
       } else if (command.id === "cd") {
-        const insertText = "/cd [path]"
-        onChangeRef.current(insertText)
-        if (view) {
-          const selection = getArgumentSelectionRange(insertText, 3)
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: insertText },
-            selection,
-          })
-        }
+        onChangeRef.current("/cd ")
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: "/cd " },
+          selection: { anchor: 4 },
+        })
       } else if (command.id === "session") {
         onChangeRef.current("/session ")
         view?.dispatch({

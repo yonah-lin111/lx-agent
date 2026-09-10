@@ -171,4 +171,13 @@ describe("projectService", () => {
       "PROJECT_PATH_NOT_FOUND",
     )
   })
+
+  it("findOrCreateByPath 支持自动清洗带中括号与智能引号的路径", () => {
+    const service = createProjectService(() => database)
+    const project = service.findOrCreateByPath('[“ /tmp "]')
+
+    expect(project).toBeDefined()
+    expect(project.name).toBe("tmp")
+    expect(project.path).toBe("/tmp")
+  })
 })

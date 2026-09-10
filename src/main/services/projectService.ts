@@ -32,6 +32,8 @@ export type {
   UpdateProjectItemInput,
 } from "@shared/project"
 
+import { cleanWorkspacePath } from "@shared/project"
+
 // 项目数据库记录。
 type ProjectRow = {
   external_id: string
@@ -236,14 +238,14 @@ export const createProjectService = (getConnection: () => Database.Database) => 
 
   findOrCreateByPath: (targetPath: string): Project => {
     const database = getConnection()
-    const trimmed = targetPath.trim()
-    if (!trimmed) {
+    const cleaned = cleanWorkspacePath(targetPath)
+    if (!cleaned) {
       throw new Error("PATH_IS_REQUIRED")
     }
     const expanded =
-      trimmed === "~" || trimmed.startsWith("~/") || trimmed.startsWith("~\\")
-        ? join(homedir(), trimmed.slice(1))
-        : trimmed
+      cleaned === "~" || cleaned.startsWith("~/") || cleaned.startsWith("~\\")
+        ? join(homedir(), cleaned.slice(1))
+        : cleaned
     const resolvedPath = resolve(expanded)
     assertProjectDirectory(resolvedPath)
 
