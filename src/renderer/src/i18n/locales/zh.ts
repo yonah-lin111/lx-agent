@@ -69,6 +69,24 @@ export const zh: TranslationDictionary = {
     allProjects: "全部项目汇总",
     activeProject: "关联项目",
     selectProject: "切换项目",
+    metricsSectionTitle: "核心数据指标",
+    timeRange: {
+      today: "今日",
+      "7d": "近 7 天",
+      "30d": "近 30 天",
+      all: "全部时间",
+    },
+    summary: {
+      todayTitle: "今日数据统计说明",
+      rangeTitle: "{{range}}数据统计说明",
+      turns: "对话交互",
+      toolCalls: "工具调用",
+      successRate: "调用成功率",
+      avgDuration: "平均耗时",
+      sessions: "涉及会话",
+      summaryText:
+        "选定时间范围内共记录 {{turns}} 轮 Agent 对话交互，触发 {{toolCalls}} 次工具调用，成功率为 {{successRate}}%，平均单次耗时 {{avgDuration}}ms。",
+    },
     metrics: {
       agentTurns: "Agent 交互轮次",
       agentTurnsDesc: "近 30 天对话交互",

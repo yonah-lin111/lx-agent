@@ -16,6 +16,29 @@ export const registerOverviewHandlers = (): void => {
         ? input.projectId
         : undefined
 
-    return overviewService.getStats({ projectId })
+    const metricsProjectId =
+      input && "metricsProjectId" in input && typeof input.metricsProjectId === "string"
+        ? input.metricsProjectId
+        : undefined
+
+    const heatmapProjectId =
+      input && "heatmapProjectId" in input && typeof input.heatmapProjectId === "string"
+        ? input.heatmapProjectId
+        : undefined
+
+    const timeRange =
+      input &&
+      "timeRange" in input &&
+      typeof input.timeRange === "string" &&
+      ["today", "7d", "30d", "all"].includes(input.timeRange)
+        ? (input.timeRange as "today" | "7d" | "30d" | "all")
+        : undefined
+
+    return overviewService.getStats({
+      projectId,
+      metricsProjectId,
+      heatmapProjectId,
+      timeRange,
+    })
   })
 }

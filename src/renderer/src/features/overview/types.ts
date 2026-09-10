@@ -2,8 +2,10 @@ export type {
   ActivityDayEntry,
   GetOverviewStatsInput,
   OverviewMetrics,
+  OverviewPeriodSummary,
   OverviewProjectOption,
   OverviewStats,
+  OverviewTimeRange,
 } from "@shared/contracts/overview"
 
 // 热力图单格单元数据。

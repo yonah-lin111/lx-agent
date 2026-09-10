@@ -1,5 +1,5 @@
 import { LayoutDashboard } from "lucide-react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
@@ -15,10 +15,7 @@ export const HomeLeftSideBar = ({
   isCollapsed = false,
 }: HomeLeftSideBarProps): React.JSX.Element => {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { t } = useTranslation()
-  const activeView = searchParams.get("view") ?? "overview"
-  const isOverviewActive = activeView === "overview"
 
   const handleSelectOverview = (): void => {
     navigate(PAGE_ROUTES.home)
@@ -35,10 +32,10 @@ export const HomeLeftSideBar = ({
         >
           <LxIconButton
             size="small"
-            aria-current={isOverviewActive ? "page" : undefined}
+            aria-current="page"
             aria-label={t("home.overview")}
             title={{ content: t("home.overview"), placement: "right" }}
-            highlighted={isOverviewActive}
+            highlighted={true}
             onClick={handleSelectOverview}
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
@@ -64,12 +61,8 @@ export const HomeLeftSideBar = ({
           role="button"
           tabIndex={0}
           data-item-level="prompt"
-          aria-current={isOverviewActive ? "page" : undefined}
-          className={`home-sidebar-item group flex h-7 items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
-            isOverviewActive
-              ? "bg-white/10 text-white font-medium shadow-xs"
-              : "text-white/70 hover:bg-white/5"
-          }`}
+          aria-current="page"
+          className="home-sidebar-item group flex h-7 items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer bg-[#2a2a2a] text-white font-medium shadow-xs"
           onClick={handleSelectOverview}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -77,11 +70,7 @@ export const HomeLeftSideBar = ({
             }
           }}
         >
-          <LayoutDashboard
-            className={`h-3.5 w-3.5 shrink-0 ${
-              isOverviewActive ? "text-sky-400" : "text-white/45"
-            }`}
-          />
+          <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-sky-400" />
           <span className="min-w-0 flex-1 truncate select-none text-xs">{t("home.overview")}</span>
         </div>
       </nav>

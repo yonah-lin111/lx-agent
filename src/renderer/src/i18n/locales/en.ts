@@ -67,6 +67,24 @@ export const en = {
     allProjects: "All Projects Summary",
     activeProject: "Linked Project",
     selectProject: "Switch Project",
+    metricsSectionTitle: "Core Metrics",
+    timeRange: {
+      today: "Today",
+      "7d": "Last 7 Days",
+      "30d": "Last 30 Days",
+      all: "All Time",
+    },
+    summary: {
+      todayTitle: "Today's Statistics Summary",
+      rangeTitle: "{{range}} Statistics Summary",
+      turns: "Agent Turns",
+      toolCalls: "Tool Calls",
+      successRate: "Success Rate",
+      avgDuration: "Avg Duration",
+      sessions: "Sessions",
+      summaryText:
+        "Recorded {{turns}} agent turns and {{toolCalls}} tool calls in the selected period, with a {{successRate}}% success rate and {{avgDuration}}ms average execution time.",
+    },
     metrics: {
       agentTurns: "Agent Turns",
       agentTurnsDesc: "Interactions in past 30 days",
