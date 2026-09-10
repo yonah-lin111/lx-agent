@@ -16,6 +16,14 @@ export const registerOverviewHandlers = (): void => {
         ? input.projectId
         : undefined
 
-    return overviewService.getStats({ projectId })
+    const timeRange =
+      input &&
+      "timeRange" in input &&
+      typeof input.timeRange === "string" &&
+      ["today", "7d", "30d", "all"].includes(input.timeRange)
+        ? (input.timeRange as "today" | "7d" | "30d" | "all")
+        : undefined
+
+    return overviewService.getStats({ projectId, timeRange })
   })
 }

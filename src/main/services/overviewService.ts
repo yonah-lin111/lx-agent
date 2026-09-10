@@ -2,8 +2,10 @@ import type {
   ActivityDayEntry,
   GetOverviewStatsInput,
   OverviewMetrics,
+  OverviewPeriodSummary,
   OverviewProjectOption,
   OverviewStats,
+  OverviewTimeRange,
 } from "@shared/contracts/overview"
 import type Database from "better-sqlite3"
 import { getDatabase } from "@/db"
@@ -38,6 +40,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     const database = getConnection()
     const targetProjectId = input?.projectId?.trim()
     const isFiltered = Boolean(targetProjectId && targetProjectId !== "all")
+    const timeRange: OverviewTimeRange = input?.timeRange ?? "today"
 
     // 1. 获取所有项目列表供切换器使用
     const projectRows = database
@@ -158,7 +161,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       }
     }
 
-    // 4. 工具调用总数、成功率与执行耗时
+    // 5. 工具调用总数、成功率与执行耗时（全部历史）
     const toolCallStatsRow = (
       isFiltered
         ? database
@@ -198,7 +201,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     const toolTotalDurationMs = toolCallStatsRow?.total_duration_ms ?? 0
     const toolAvgDurationMs = Math.round(toolCallStatsRow?.avg_duration_ms ?? 0)
 
-    // 5. 项目条目完成进度
+    // 6. 项目条目完成进度
     const itemRows = (
       isFiltered
         ? database
@@ -229,7 +232,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     const totalItems = todoItems + inProgressItems + completedItems
     const itemCompletionRate = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
 
-    // 6. 会话总览
+    // 7. 会话总览
     const sessionRow = (
       isFiltered
         ? database
@@ -247,7 +250,107 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
             .get()
     ) as { total: number; last_active: string | null } | undefined
 
+    // 8. 周期统计简报（支持今日、近 7 天、近 30 天与全部时间）
+    let rangeStartDate: string | null = null
+    if (timeRange === "today") {
+      rangeStartDate = todayKey
+    } else if (timeRange === "7d") {
+      rangeStartDate = heatmapDays[Math.max(0, heatmapDays.length - 7)]
+    } else if (timeRange === "30d") {
+      rangeStartDate = thirtyDaysAgoKey
+    }
+
+    let periodTurns = 0
+    if (rangeStartDate) {
+      for (const [day, count] of turnsByDay.entries()) {
+        if (day >= rangeStartDate) {
+          periodTurns += count
+        }
+      }
+    } else {
+      const allTurnsRow = isFiltered
+        ? (database
+            .prepare(
+              `SELECT count(*) as count
+               FROM agent_session_entry e
+               JOIN agent_session s ON e.session_id = s.external_id
+               WHERE s.project_id = ?`,
+            )
+            .get(targetProjectId) as { count: number } | undefined)
+        : (database.prepare("SELECT count(*) as count FROM agent_session_entry").get() as
+            | { count: number }
+            | undefined)
+      periodTurns = allTurnsRow?.count ?? 0
+    }
+
+    const periodToolCallRow = rangeStartDate
+      ? ((isFiltered
+          ? database
+              .prepare(
+                `SELECT
+                   count(*) as total,
+                   sum(CASE WHEN c.status = 'success' THEN 1 ELSE 0 END) as success_count,
+                   avg(CASE WHEN c.duration_ms IS NOT NULL AND c.duration_ms > 0 THEN c.duration_ms ELSE NULL END) as avg_duration_ms
+                 FROM agent_call c
+                 JOIN agent_session s ON c.session_id = s.external_id
+                 WHERE s.project_id = ? AND substr(c.created_at, 1, 10) >= ?`,
+              )
+              .get(targetProjectId, rangeStartDate)
+          : database
+              .prepare(
+                `SELECT
+                   count(*) as total,
+                   sum(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+                   avg(CASE WHEN duration_ms IS NOT NULL AND duration_ms > 0 THEN duration_ms ELSE NULL END) as avg_duration_ms
+                 FROM agent_call
+                 WHERE substr(created_at, 1, 10) >= ?`,
+              )
+              .get(rangeStartDate)) as
+          | { total: number; success_count: number | null; avg_duration_ms: number | null }
+          | undefined)
+      : toolCallStatsRow
+
+    const periodToolTotal = periodToolCallRow?.total ?? 0
+    const periodToolSuccess = periodToolCallRow?.success_count ?? 0
+    const periodToolSuccessRate =
+      periodToolTotal > 0 ? Math.round((periodToolSuccess / periodToolTotal) * 100) : 100
+    const periodToolAvgDurationMs = Math.round(periodToolCallRow?.avg_duration_ms ?? 0)
+
+    let periodSessionTotal = 0
+    if (rangeStartDate) {
+      const periodSessionRow = (
+        isFiltered
+          ? database
+              .prepare(
+                `SELECT count(*) as total
+                 FROM agent_session
+                 WHERE project_id = ? AND substr(created_at, 1, 10) >= ?`,
+              )
+              .get(targetProjectId, rangeStartDate)
+          : database
+              .prepare(
+                `SELECT count(*) as total
+                 FROM agent_session
+                 WHERE substr(created_at, 1, 10) >= ?`,
+              )
+              .get(rangeStartDate)
+      ) as { total: number } | undefined
+      periodSessionTotal = periodSessionRow?.total ?? 0
+    } else {
+      periodSessionTotal = sessionRow?.total ?? 0
+    }
+
+    const periodSummary: OverviewPeriodSummary = {
+      range: timeRange,
+      turns: periodTurns,
+      toolCalls: periodToolTotal,
+      toolSuccessRate: periodToolSuccessRate,
+      toolAvgDurationMs: periodToolAvgDurationMs,
+      sessionCount: periodSessionTotal,
+    }
+
     const metrics: OverviewMetrics = {
+      periodSummary,
       agentTurns: {
         total30d: total30dTurns,
         today: todayTurns,
@@ -284,6 +387,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       metrics,
       activityHeatmap,
       activeProjectId: isFiltered ? targetProjectId : "all",
+      timeRange,
       projects,
     }
   },

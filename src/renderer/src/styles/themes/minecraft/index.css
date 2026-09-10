@@ -1332,6 +1332,7 @@
  * 主页概览视图（Overview Dashboard & Productivity Heatmap）
  * ======================================================== */
 [data-theme="minecraft"] .overview-metric-card,
+[data-theme="minecraft"] .overview-summary-card,
 [data-theme="minecraft"] .overview-heatmap-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
@@ -1346,7 +1347,8 @@
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .overview-metric-card:hover {
+[data-theme="minecraft"] .overview-metric-card:hover,
+[data-theme="minecraft"] .overview-summary-card:hover {
   background-color: #242434 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
@@ -1361,6 +1363,24 @@
   box-shadow:
     inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
     inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="minecraft"] .overview-summary-item {
+  border-radius: 0px !important;
+  border: 1px solid #000000 !important;
+  background-color: #14141c !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="minecraft"] .home-placeholder-empty {
+  border-radius: 0px !important;
+  border: 2px dashed #48485c !important;
+  background-color: #1a1a24 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.05) !important;
 }
 
 [data-theme="minecraft"] .overview-badge {

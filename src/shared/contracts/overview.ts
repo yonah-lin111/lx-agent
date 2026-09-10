@@ -6,8 +6,23 @@ export interface ActivityDayEntry {
   toolCalls: number
 }
 
+// 概览时间跨度选项。
+export type OverviewTimeRange = "today" | "7d" | "30d" | "all"
+
+// 周期聚合统计简报（支持今日、近 7 天、近 30 天与全部时间）。
+export interface OverviewPeriodSummary {
+  range: OverviewTimeRange
+  turns: number
+  toolCalls: number
+  toolSuccessRate: number
+  toolAvgDurationMs: number
+  sessionCount: number
+}
+
 // 概览核心统计指标。
 export interface OverviewMetrics {
+  // 选定时间范围的聚合简报说明
+  periodSummary?: OverviewPeriodSummary
   // Agent 交互总量：近 30 天与今日
   agentTurns: {
     total30d: number
@@ -57,12 +72,14 @@ export interface OverviewStats {
   metrics: OverviewMetrics
   activityHeatmap: ActivityDayEntry[]
   activeProjectId?: string
+  timeRange?: OverviewTimeRange
   projects: OverviewProjectOption[]
 }
 
 // 获取概览数据输入参数。
 export interface GetOverviewStatsInput {
   projectId?: string
+  timeRange?: OverviewTimeRange
 }
 
 // 概览领域 preload API 契约。

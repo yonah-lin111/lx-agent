@@ -4,16 +4,37 @@ import { LxLoadingOverlay } from "@/components/ui/LxLoadingOverlay"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { useTranslation } from "@/i18n"
 import { useOverviewData } from "../hooks/useOverviewData"
+import type { OverviewTimeRange } from "../types"
 import { formatNumber } from "../utils"
 import { ActivityHeatmap } from "./ActivityHeatmap"
 import { MetricCard } from "./MetricCard"
+import { OverviewSummaryCard } from "./OverviewSummaryCard"
 
 /**
  * 渲染主页概览完整数据看板（支持窄屏自适应与主题兼容）。
  */
 export const OverviewDashboard = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const { selectedProjectId, setSelectedProjectId, stats, isLoading, error } = useOverviewData()
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    selectedTimeRange,
+    setSelectedTimeRange,
+    stats,
+    isLoading,
+    error,
+  } = useOverviewData()
+
+  // 构造时间跨度切换项
+  const timeRangeOptions: LxSelectOption<OverviewTimeRange>[] = useMemo(
+    () => [
+      { value: "today", label: t("home.timeRange.today") },
+      { value: "7d", label: t("home.timeRange.7d") },
+      { value: "30d", label: t("home.timeRange.30d") },
+      { value: "all", label: t("home.timeRange.all") },
+    ],
+    [t],
+  )
 
   // 构造项目切换下拉项
   const projectOptions: LxSelectOption<string>[] = useMemo(() => {
@@ -45,7 +66,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
     <div className="overview-container relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-4 custom-scrollbar [scrollbar-gutter:stable] [contain:paint] [transform:translateZ(0)]">
       <LxLoadingOverlay isLoading={isLoading && !stats} text="Loading overview..." />
 
-      {/* 顶部标题与项目切换器 */}
+      {/* 顶部标题与项目/时间切换器 */}
       <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-base font-bold tracking-tight text-white">
@@ -54,13 +75,26 @@ export const OverviewDashboard = (): React.JSX.Element => {
           <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>
         </div>
 
-        <div className="w-full sm:w-52 shrink-0">
-          <LxSelect
-            size="small"
-            value={selectedProjectId}
-            options={projectOptions}
-            onChange={setSelectedProjectId}
-          />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
+          {/* 时间跨度筛选 */}
+          <div className="w-28 sm:w-32">
+            <LxSelect
+              size="small"
+              value={selectedTimeRange}
+              options={timeRangeOptions}
+              onChange={(val) => setSelectedTimeRange(val as OverviewTimeRange)}
+            />
+          </div>
+
+          {/* 项目切换器 */}
+          <div className="w-full sm:w-48">
+            <LxSelect
+              size="small"
+              value={selectedProjectId}
+              options={projectOptions}
+              onChange={setSelectedProjectId}
+            />
+          </div>
         </div>
       </div>
 
@@ -70,6 +104,12 @@ export const OverviewDashboard = (): React.JSX.Element => {
         </div>
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
+          {/* 今日/周期数据统计说明简报 */}
+          <OverviewSummaryCard
+            periodSummary={metrics?.periodSummary}
+            timeRange={selectedTimeRange}
+          />
+
           {/* 4 组核心数据指标卡片 */}
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {/* 1. Agent 交互总量 */}

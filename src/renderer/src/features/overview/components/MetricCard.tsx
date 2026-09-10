@@ -10,7 +10,7 @@ export interface MetricCardProps {
   mainValue: string | number
   badge?: {
     label: string
-    variant?: "success" | "neutral" | "info"
+    variant?: "success" | "neutral" | "info" | "warning"
   }
   extra?: React.ReactNode
 }
@@ -42,7 +42,9 @@ export const MetricCard = ({
                   ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                   : badge.variant === "info"
                     ? "border border-sky-500/20 bg-sky-500/10 text-sky-400"
-                    : "border border-white/10 bg-white/5 text-white/60"
+                    : badge.variant === "warning"
+                      ? "border border-amber-500/20 bg-amber-500/10 text-amber-400"
+                      : "border border-white/10 bg-white/5 text-white/60"
               }`}
             >
               {badge.label}
