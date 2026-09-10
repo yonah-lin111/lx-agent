@@ -61,6 +61,7 @@ type MenuState = {
   title: string
   status?: PromptStatus
   isImported?: boolean
+  path?: string
   x: number
   y: number
 }
@@ -218,7 +219,13 @@ export const ProjectNavigation = (): React.JSX.Element => {
   const openMenu = (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus; isImported?: boolean },
+    item: {
+      id: string
+      name: string
+      status?: PromptStatus
+      isImported?: boolean
+      path?: string
+    },
     projectId?: string,
     depth?: number,
   ): void => {
@@ -231,6 +238,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
       title: item.name,
       status: item.status,
       isImported: item.isImported,
+      path: item.path,
       x: event.clientX,
       y: event.clientY,
     })
@@ -249,6 +257,21 @@ export const ProjectNavigation = (): React.JSX.Element => {
       toast.success(targetStatus ? t("project.importedSuccess") : t("project.unimportedSuccess"))
     } catch {
       toast.error(targetStatus ? t("project.importFailed") : t("project.unimportFailed"))
+    }
+    setMenu(null)
+  }
+
+  /**
+   * 复制项目物理路径到剪贴板。
+   */
+  const handleCopyProjectPath = async (): Promise<void> => {
+    if (!menu || menu.type !== "project" || !menu.path?.trim()) return
+    const path = menu.path.trim()
+    try {
+      await navigator.clipboard.writeText(path)
+      toast.success(t("project.copyProjectPathSuccess"))
+    } catch {
+      toast.error(t("project.copyProjectPathFailed"))
     }
     setMenu(null)
   }
@@ -879,7 +902,9 @@ export const ProjectNavigation = (): React.JSX.Element => {
         depth={menu?.depth}
         status={menu?.status}
         isImported={menu?.isImported}
+        path={menu?.path}
         onToggleImportProject={handleToggleImportProject}
+        onCopyProjectPath={handleCopyProjectPath}
         onEditProject={openEditProjectModal}
         onRename={renameMenuItem}
         onAddFolder={() => addMenuItem("project_folder")}

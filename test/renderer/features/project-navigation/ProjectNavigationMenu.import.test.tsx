@@ -50,4 +50,31 @@ describe("ProjectNavigationMenu import/unimport actions", () => {
     unimportItem.click()
     expect(onToggle).toHaveBeenCalledOnce()
   })
+
+  it("当项目包含物理路径时展示复制项目路径选项并可触发回调", () => {
+    const onCopy = vi.fn()
+    render(
+      <ProjectNavigationMenu
+        {...defaultProps}
+        type="project"
+        path="/Users/yonah/my-project"
+        onCopyProjectPath={onCopy}
+      />,
+    )
+
+    const copyItem = screen.getByText(/^(Copy Project Path|复制项目路径)$/)
+    expect(copyItem).toBeDefined()
+    copyItem.click()
+    expect(onCopy).toHaveBeenCalledOnce()
+  })
+
+  it("当项目无物理路径时不展示复制项目路径选项", () => {
+    const onCopy = vi.fn()
+    render(
+      <ProjectNavigationMenu {...defaultProps} type="project" path="" onCopyProjectPath={onCopy} />,
+    )
+
+    const copyItem = screen.queryByText(/^(Copy Project Path|复制项目路径)$/)
+    expect(copyItem).toBeNull()
+  })
 })

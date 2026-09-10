@@ -1,4 +1,13 @@
-import { Check, Edit3, FilePlus, FolderCheck, FolderMinus, FolderPlus, Trash2 } from "lucide-react"
+import {
+  Check,
+  Copy,
+  Edit3,
+  FilePlus,
+  FolderCheck,
+  FolderMinus,
+  FolderPlus,
+  Trash2,
+} from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
@@ -17,9 +26,11 @@ type ProjectNavigationMenuProps = {
   depth?: number
   status?: PromptStatus
   isImported?: boolean
+  path?: string
   onEditProject?: () => void
   onImportProject?: () => void
   onToggleImportProject?: () => void
+  onCopyProjectPath?: () => void
   onRename: () => void
   onAddFolder?: () => void
   onAddPrompt?: () => void
@@ -37,6 +48,7 @@ type MenuDisplayState = {
   depth?: number
   status?: PromptStatus
   isImported?: boolean
+  path?: string
 }
 
 // 条目状态配置。
@@ -58,9 +70,11 @@ export const ProjectNavigationMenu = ({
   depth,
   status,
   isImported,
+  path,
   onEditProject,
   onImportProject,
   onToggleImportProject,
+  onCopyProjectPath,
   onRename,
   onAddFolder,
   onAddPrompt,
@@ -77,12 +91,12 @@ export const ProjectNavigationMenu = ({
     y: 0,
   })
   const displayedMenu: MenuDisplayState = isOpen
-    ? { type, title, x, y, depth, status, isImported }
+    ? { type, title, x, y, depth, status, isImported, path }
     : lastMenu
 
   useEffect(() => {
-    if (isOpen) setLastMenu({ type, title, x, y, depth, status, isImported })
-  }, [isOpen, status, title, type, x, y, depth, isImported])
+    if (isOpen) setLastMenu({ type, title, x, y, depth, status, isImported, path })
+  }, [isOpen, status, title, type, x, y, depth, isImported, path])
 
   useEffect(() => {
     setIsConfirmingDelete(false)
@@ -141,6 +155,17 @@ export const ProjectNavigationMenu = ({
       >
         {displayedMenu.type === "project" ? t("project.editProject") : t("common.edit")}
       </LxMenuItem>
+
+      {displayedMenu.type === "project" &&
+      Boolean(displayedMenu.path?.trim()) &&
+      onCopyProjectPath ? (
+        <LxMenuItem
+          leading={<Copy className="h-3.5 w-3.5 text-white/45" />}
+          onClick={onCopyProjectPath}
+        >
+          {t("project.copyProjectPath")}
+        </LxMenuItem>
+      ) : null}
 
       {canAddFolder ? (
         <LxMenuItem

@@ -59,7 +59,13 @@ interface ProjectNavigationListProps {
   onOpenMenu: (
     event: React.MouseEvent,
     type: ProjectNavigationMenuType,
-    item: { id: string; name: string; status?: PromptStatus; isImported?: boolean },
+    item: {
+      id: string
+      name: string
+      status?: PromptStatus
+      isImported?: boolean
+      path?: string
+    },
     projectId?: string,
     depth?: number,
   ) => void

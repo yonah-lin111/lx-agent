@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ProjectNavigationList } from "@/features/project-navigation/components/ProjectNavigationList"
 import type { ProjectNavigationProject } from "@/features/project-navigation/types"
@@ -75,5 +75,41 @@ describe("ProjectNavigationList unimported items", () => {
     expect(projectRow).not.toBeNull()
     expect(projectRow?.querySelector(".lucide-boxes")).not.toBeNull()
     expect(projectRow?.querySelector(".lucide-folder-git")).toBeNull()
+  })
+
+  it("右键项目条目时调用 onOpenMenu 并传递包含物理路径的项目数据", () => {
+    const onOpenMenu = vi.fn()
+    const projectWithPath: ProjectNavigationProject = {
+      id: "p-path",
+      name: "Path Proj",
+      path: "/Users/yonah/projects/demo",
+      isImported: true,
+      createdAt: "",
+      updatedAt: "",
+      projectFolders: [],
+      prompts: [],
+    }
+
+    const { container } = render(
+      <ProjectNavigationList
+        {...defaultProps}
+        projects={[projectWithPath]}
+        onOpenMenu={onOpenMenu}
+      />,
+    )
+
+    const projectRow = container.querySelector('[data-item-level="project"]')
+    expect(projectRow).not.toBeNull()
+    fireEvent.contextMenu(projectRow!)
+
+    expect(onOpenMenu).toHaveBeenCalledOnce()
+    expect(onOpenMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      "project",
+      expect.objectContaining({
+        id: "p-path",
+        path: "/Users/yonah/projects/demo",
+      }),
+    )
   })
 })
