@@ -12,6 +12,7 @@ import { I18nProvider } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { FrontDesignLeftSideBar } from "@/pages/front-design"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
+import { OpenClawLeftSideBar } from "@/pages/openclaw/components/OpenClawLeftSideBar"
 import { ProjectLeftSideBar } from "@/pages/project/components/ProjectLeftSideBar"
 import { SettingsLeftSideBar } from "@/pages/settings/components/SettingsLeftSideBar"
 import { UiLeftSideBar } from "@/pages/ui/components/UiLeftSideBar"
@@ -59,6 +60,7 @@ export const App = () => {
     if (pathname === PAGE_ROUTES.ui) return <UiLeftSideBar />
     if (pathname === PAGE_ROUTES.design) return <FrontDesignLeftSideBar />
     if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />
+    if (pathname === PAGE_ROUTES.openclaw) return <OpenClawLeftSideBar />
     return <ProjectLeftSideBar />
   }
 

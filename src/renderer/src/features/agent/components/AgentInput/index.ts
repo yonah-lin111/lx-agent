@@ -5,6 +5,9 @@ export {
   AgentInputFilePanel,
   type AgentInputModel,
   AgentInputModelPanel,
+  type AgentMentionItem,
+  type ClawMentionCandidate,
+  getAgentPanelPosition,
 } from "./AgentInputCommandPanels"
 export { type AgentInputFile, AgentInputFiles } from "./AgentInputFiles"
 export {

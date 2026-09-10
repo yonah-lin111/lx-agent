@@ -10,17 +10,15 @@ import type {
 } from "@shared/contracts/agent"
 import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
 import { useLxAgentToast } from "@/components/ui/LxToast"
-import { useOpenClawChatStore } from "@/features/openclaw/openclawChatStore"
+import { extractClawMentions, stripClawMention } from "@/features/openclaw/clawMention"
+import { useOpenClawWorkspaceStore } from "@/features/openclaw/openclawWorkspaceStore"
 import { useTranslation } from "@/i18n"
+import { navigateTo } from "@/lib/navigate"
+import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { agentApi } from "../api/agentApi"
 import type { AgentInputFile } from "../components/AgentInput"
-import {
-  extractClawMentions,
-  extractDesignMentions,
-  stripClawMention,
-} from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
+import { extractDesignMentions } from "../components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import type { ChatBlock, ChatMessage, ProposedPlanData } from "../types"
 import {
   cleanUserPrompt,
@@ -942,7 +940,7 @@ export const useAgentChat = (
       }
       if (!text) return
 
-      // 拦截 @claw:<instanceId>/<agentId> 委派：整条转交 OpenClaw，本地 Agent 不参与、主对话不留痕。
+      // 拦截 @claw:<instanceId>/<agentId> 委派：跳转 OpenClaw 页面并定位目标，本地 Agent 不参与、主对话不留痕。
       const clawMentions = extractClawMentions(text)
       if (clawMentions.length > 0) {
         const [mention] = clawMentions
@@ -953,13 +951,13 @@ export const useAgentChat = (
         }
         setInputText("")
         setSelectedFiles([])
-        useBottomSideBarStore.getState().openOpenClaw(mention.instanceId, mention.agentId)
-        void useOpenClawChatStore
-          .getState()
-          .sendMessage(mention.instanceId, mention.agentId, task)
-          .catch((err: unknown) => {
-            errorToast(err instanceof Error ? err.message : t("openclaw.sendFailed"))
-          })
+        // 页面消费 pendingDispatch 后负责连接与发送，避免在本地 Agent 侧持有 OpenClaw 会话生命周期。
+        useOpenClawWorkspaceStore.getState().requestDispatch({
+          instanceId: mention.instanceId,
+          agentId: mention.agentId,
+          task,
+        })
+        navigateTo(PAGE_ROUTES.openclaw)
         return
       }
 

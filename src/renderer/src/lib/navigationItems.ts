@@ -1,11 +1,11 @@
 import type { LucideIcon } from "lucide-react"
-import { Boxes, Component, House, Palette, Settings } from "lucide-react"
+import { Bot, Boxes, Component, House, Palette, Settings } from "lucide-react"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 
 // 全局底部导航项。
 export const PRIMARY_NAVIGATION_ITEMS: Array<{
   icon: LucideIcon
-  labelKey: "nav.home" | "nav.project" | "nav.ui" | "nav.design" | "nav.settings"
+  labelKey: "nav.home" | "nav.project" | "nav.ui" | "nav.design" | "nav.openclaw" | "nav.settings"
   label: string
   path: string
   breadcrumbCategory: string
@@ -37,6 +37,13 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
     label: "UI Preview",
     path: PAGE_ROUTES.ui,
     breadcrumbCategory: "UI",
+  },
+  {
+    icon: Bot,
+    labelKey: "nav.openclaw",
+    label: "OpenClaw",
+    path: PAGE_ROUTES.openclaw,
+    breadcrumbCategory: "OPENCLAW",
   },
   {
     icon: Settings,
