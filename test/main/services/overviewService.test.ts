@@ -219,4 +219,55 @@ describe("overviewService", () => {
       sessionCount: 2,
     })
   })
+
+  it("支持独立筛选 heatmapProjectId 而不影响全局 metrics", () => {
+    const service = createOverviewService(() => database)
+    const now = new Date().toISOString()
+
+    database
+      .prepare(
+        "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("p1", "Project 1", "virtual", null, now, now)
+    database
+      .prepare(
+        "INSERT INTO project (external_id, name, type, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("p2", "Project 2", "virtual", null, now, now)
+
+    database
+      .prepare(
+        "INSERT INTO agent_session (external_id, project_id, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("s1", "p1", "Session 1", "/tmp", now, now)
+    database
+      .prepare(
+        "INSERT INTO agent_session (external_id, project_id, title, cwd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("s2", "p2", "Session 2", "/tmp", now, now)
+
+    database
+      .prepare(
+        "INSERT INTO agent_session_entry (external_id, session_id, seq, type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("e1", "s1", 1, "user", "{}", now)
+    database
+      .prepare(
+        "INSERT INTO agent_session_entry (external_id, session_id, seq, type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run("e2", "s2", 1, "user", "{}", now)
+
+    // 仅筛选 p1 的绿墙
+    const stats = service.getStats({ heatmapProjectId: "p1" })
+
+    expect(stats.heatmapProjectId).toBe("p1")
+    // 全局指标包含 p1 + p2 的全部 2 轮对话与 2 个会话
+    expect(stats.metrics.agentTurns.today).toBe(2)
+    expect(stats.metrics.sessions.total).toBe(2)
+    // 绿墙热力图今天仅统计 p1 的 1 条记录
+    const today = now.slice(0, 10)
+    const todayEntry = stats.activityHeatmap.find((e) => e.date === today)
+    expect(todayEntry?.count).toBe(1)
+    expect(todayEntry?.turns).toBe(1)
+  })
 })

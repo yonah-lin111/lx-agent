@@ -16,6 +16,16 @@ export const registerOverviewHandlers = (): void => {
         ? input.projectId
         : undefined
 
+    const heatmapProjectId =
+      input && "heatmapProjectId" in input && typeof input.heatmapProjectId === "string"
+        ? input.heatmapProjectId
+        : undefined
+
+    const metricsProjectId =
+      input && "metricsProjectId" in input && typeof input.metricsProjectId === "string"
+        ? input.metricsProjectId
+        : undefined
+
     const timeRange =
       input &&
       "timeRange" in input &&
@@ -24,6 +34,6 @@ export const registerOverviewHandlers = (): void => {
         ? (input.timeRange as "today" | "7d" | "30d" | "all")
         : undefined
 
-    return overviewService.getStats({ projectId, timeRange })
+    return overviewService.getStats({ projectId, heatmapProjectId, metricsProjectId, timeRange })
   })
 }

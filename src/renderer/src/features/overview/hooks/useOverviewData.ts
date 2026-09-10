@@ -6,18 +6,18 @@ import type { OverviewStats, OverviewTimeRange } from "../types"
  * 管理概览数据查询、当前关联项目筛选、时间范围与刷新状态。
  */
 export const useOverviewData = () => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
+  const [heatmapProjectId, setHeatmapProjectId] = useState<string>("all")
   const [selectedTimeRange, setSelectedTimeRange] = useState<OverviewTimeRange>("today")
   const [stats, setStats] = useState<OverviewStats | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadData = useCallback(async (projectId: string, timeRange: OverviewTimeRange) => {
+  const loadData = useCallback(async (hProjectId: string, timeRange: OverviewTimeRange) => {
     setIsLoading(true)
     setError(null)
     try {
       const data = await overviewApi.getStats({
-        projectId: projectId === "all" ? undefined : projectId,
+        heatmapProjectId: hProjectId === "all" ? undefined : hProjectId,
         timeRange,
       })
       setStats(data)
@@ -29,16 +29,18 @@ export const useOverviewData = () => {
   }, [])
 
   useEffect(() => {
-    void loadData(selectedProjectId, selectedTimeRange)
-  }, [selectedProjectId, selectedTimeRange, loadData])
+    void loadData(heatmapProjectId, selectedTimeRange)
+  }, [heatmapProjectId, selectedTimeRange, loadData])
 
   const refresh = useCallback(() => {
-    void loadData(selectedProjectId, selectedTimeRange)
-  }, [selectedProjectId, selectedTimeRange, loadData])
+    void loadData(heatmapProjectId, selectedTimeRange)
+  }, [heatmapProjectId, selectedTimeRange, loadData])
 
   return {
-    selectedProjectId,
-    setSelectedProjectId,
+    heatmapProjectId,
+    setHeatmapProjectId,
+    selectedProjectId: heatmapProjectId,
+    setSelectedProjectId: setHeatmapProjectId,
     selectedTimeRange,
     setSelectedTimeRange,
     stats,

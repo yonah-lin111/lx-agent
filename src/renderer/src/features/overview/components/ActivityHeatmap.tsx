@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 import type { ActivityDayEntry, HeatmapCell, HeatmapMonth } from "../types"
@@ -9,9 +8,6 @@ import { buildHeatmapMonths } from "../utils"
 // 活动热力图属性。
 export interface ActivityHeatmapProps {
   entries: ActivityDayEntry[]
-  selectedProjectId?: string
-  projectOptions?: LxSelectOption<string>[]
-  onProjectChange?: (projectId: string) => void
 }
 
 const LEVEL_CLASS_MAP: Record<HeatmapCell["level"], string> = {
@@ -123,19 +119,9 @@ MonthBlock.displayName = "MonthBlock"
  * 2. 统一使用项目标准 LxTooltip 组件，以单例控制器挂载，彻底清除 9,400+ 个 Hook 造成的渲染颠簸；
  * 3. 严格对齐 Mon..Sun 7 天垂直基线，单元格放大至 14px。
  */
-export const ActivityHeatmap = ({
-  entries,
-  selectedProjectId,
-  projectOptions,
-  onProjectChange,
-}: ActivityHeatmapProps): React.JSX.Element => {
+export const ActivityHeatmap = ({ entries }: ActivityHeatmapProps): React.JSX.Element => {
   const { t } = useTranslation()
-  const { months, maxCount } = useMemo(() => buildHeatmapMonths(entries), [entries])
-
-  const totalYearActivities = useMemo(
-    () => entries.reduce((acc, curr) => acc + curr.count, 0),
-    [entries],
-  )
+  const { months } = useMemo(() => buildHeatmapMonths(entries), [entries])
 
   const [activeTooltip, setActiveTooltip] = useState<{
     day: HeatmapCell
@@ -231,37 +217,6 @@ export const ActivityHeatmap = ({
 
   return (
     <div className="overview-heatmap-card flex min-w-0 flex-col gap-4 rounded-[6px] border border-[#333333] bg-[#1e1e1e] p-4 [contain:layout_paint_style] [transform:translateZ(0)]">
-      {/* 头部标题与统计及项目切换 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-white/90">
-            {t("home.heatmap.title")}
-          </h3>
-          <p className="truncate text-xs text-white/45">{t("home.heatmap.subtitle")}</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <div className="font-mono text-xs text-white/60">
-            <span className="font-semibold text-emerald-400">
-              {t("home.heatmap.activities", { count: totalYearActivities })}
-            </span>
-            {maxCount > 0 && (
-              <span className="ml-2 text-[10px] text-white/35">(Max: {maxCount}/day)</span>
-            )}
-          </div>
-          {projectOptions && onProjectChange && (
-            <div className="w-40 sm:w-48 shrink-0">
-              <LxSelect
-                size="small"
-                value={selectedProjectId ?? "all"}
-                options={projectOptions}
-                onChange={onProjectChange}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* 绿墙热力图主体：按月流式自适应折行，每行行首自适应展示星期基准标签 */}
       <div
         ref={containerRef}

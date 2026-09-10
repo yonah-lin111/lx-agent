@@ -38,8 +38,16 @@ const getDayRange = (days: number): string[] => {
 export const createOverviewService = (getConnection: () => Database.Database) => ({
   getStats: (input?: GetOverviewStatsInput): OverviewStats => {
     const database = getConnection()
-    const targetProjectId = input?.projectId?.trim()
-    const isFiltered = Boolean(targetProjectId && targetProjectId !== "all")
+    // 绿墙热力图项目筛选（优先使用 heatmapProjectId，兼顾旧版 projectId）
+    const heatmapProjectId = input?.heatmapProjectId?.trim() ?? input?.projectId?.trim()
+    const isHeatmapFiltered = Boolean(heatmapProjectId && heatmapProjectId !== "all")
+
+    // 上方指标卡片项目筛选（若传入了 heatmapProjectId，则 metrics 默认不绑定该项目，实现完全解耦）
+    const metricsProjectId =
+      input?.metricsProjectId?.trim() ??
+      (input?.heatmapProjectId ? undefined : input?.projectId?.trim())
+    const isMetricsFiltered = Boolean(metricsProjectId && metricsProjectId !== "all")
+
     const timeRange: OverviewTimeRange = input?.timeRange ?? "today"
 
     // 1. 获取所有项目列表供切换器使用
@@ -51,12 +59,12 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       name: row.name,
     }))
 
-    // 2. 生成近 365 天日期序列并聚合活动记录
+    // 2. 生成近 365 天日期序列并聚合绿墙活动记录（独立受 heatmapProjectId 控制）
     const heatmapDays = getDayRange(365)
     const startDate = heatmapDays[0]
     const todayKey = heatmapDays[heatmapDays.length - 1]
 
-    const turnRows = isFiltered
+    const heatmapTurnRows = isHeatmapFiltered
       ? (database
           .prepare(
             `SELECT substr(e.created_at, 1, 10) as day, count(*) as count
@@ -65,7 +73,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
              WHERE s.project_id = ? AND substr(e.created_at, 1, 10) >= ?
              GROUP BY substr(e.created_at, 1, 10)`,
           )
-          .all(targetProjectId, startDate) as Array<{ day: string; count: number }>)
+          .all(heatmapProjectId, startDate) as Array<{ day: string; count: number }>)
       : (database
           .prepare(
             `SELECT substr(created_at, 1, 10) as day, count(*) as count
@@ -75,7 +83,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
           )
           .all(startDate) as Array<{ day: string; count: number }>)
 
-    const toolCallRows = isFiltered
+    const heatmapToolCallRows = isHeatmapFiltered
       ? (database
           .prepare(
             `SELECT substr(c.created_at, 1, 10) as day, count(*) as count
@@ -84,7 +92,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
              WHERE s.project_id = ? AND substr(c.created_at, 1, 10) >= ?
              GROUP BY substr(c.created_at, 1, 10)`,
           )
-          .all(targetProjectId, startDate) as Array<{ day: string; count: number }>)
+          .all(heatmapProjectId, startDate) as Array<{ day: string; count: number }>)
       : (database
           .prepare(
             `SELECT substr(created_at, 1, 10) as day, count(*) as count
@@ -94,19 +102,19 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
           )
           .all(startDate) as Array<{ day: string; count: number }>)
 
-    const turnsByDay = new Map<string, number>()
-    for (const row of turnRows) {
-      turnsByDay.set(row.day, row.count)
+    const heatmapTurnsByDay = new Map<string, number>()
+    for (const row of heatmapTurnRows) {
+      heatmapTurnsByDay.set(row.day, row.count)
     }
 
-    const toolCallsByDay = new Map<string, number>()
-    for (const row of toolCallRows) {
-      toolCallsByDay.set(row.day, row.count)
+    const heatmapToolCallsByDay = new Map<string, number>()
+    for (const row of heatmapToolCallRows) {
+      heatmapToolCallsByDay.set(row.day, row.count)
     }
 
     const activityHeatmap: ActivityDayEntry[] = heatmapDays.map((date) => {
-      const turns = turnsByDay.get(date) ?? 0
-      const toolCalls = toolCallsByDay.get(date) ?? 0
+      const turns = heatmapTurnsByDay.get(date) ?? 0
+      const toolCalls = heatmapToolCallsByDay.get(date) ?? 0
       return {
         date,
         count: turns + toolCalls,
@@ -115,13 +123,67 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
       }
     })
 
-    // 3. 计算活跃天数与连续打卡统计（Streak）
+    // 3. 计算上方核心指标卡片数据（独立受 metricsProjectId 控制，默认全量统计）
+    const metricsTurnRows = isMetricsFiltered
+      ? (database
+          .prepare(
+            `SELECT substr(e.created_at, 1, 10) as day, count(*) as count
+             FROM agent_session_entry e
+             JOIN agent_session s ON e.session_id = s.external_id
+             WHERE s.project_id = ? AND substr(e.created_at, 1, 10) >= ?
+             GROUP BY substr(e.created_at, 1, 10)`,
+          )
+          .all(metricsProjectId, startDate) as Array<{ day: string; count: number }>)
+      : !isHeatmapFiltered
+        ? heatmapTurnRows
+        : (database
+            .prepare(
+              `SELECT substr(created_at, 1, 10) as day, count(*) as count
+               FROM agent_session_entry
+               WHERE substr(created_at, 1, 10) >= ?
+               GROUP BY substr(created_at, 1, 10)`,
+            )
+            .all(startDate) as Array<{ day: string; count: number }>)
+
+    const metricsToolCallRows = isMetricsFiltered
+      ? (database
+          .prepare(
+            `SELECT substr(c.created_at, 1, 10) as day, count(*) as count
+             FROM agent_call c
+             JOIN agent_session s ON c.session_id = s.external_id
+             WHERE s.project_id = ? AND substr(c.created_at, 1, 10) >= ?
+             GROUP BY substr(c.created_at, 1, 10)`,
+          )
+          .all(metricsProjectId, startDate) as Array<{ day: string; count: number }>)
+      : !isHeatmapFiltered
+        ? heatmapToolCallRows
+        : (database
+            .prepare(
+              `SELECT substr(created_at, 1, 10) as day, count(*) as count
+               FROM agent_call
+               WHERE substr(created_at, 1, 10) >= ?
+               GROUP BY substr(created_at, 1, 10)`,
+            )
+            .all(startDate) as Array<{ day: string; count: number }>)
+
+    const metricsTurnsByDay = new Map<string, number>()
+    for (const row of metricsTurnRows) {
+      metricsTurnsByDay.set(row.day, row.count)
+    }
+
+    const metricsToolCallsByDay = new Map<string, number>()
+    for (const row of metricsToolCallRows) {
+      metricsToolCallsByDay.set(row.day, row.count)
+    }
+
     let totalActiveDays = 0
     let longestStreak = 0
     let runningStreak = 0
 
-    for (let i = 0; i < activityHeatmap.length; i++) {
-      if (activityHeatmap[i].count > 0) {
+    for (let i = 0; i < heatmapDays.length; i++) {
+      const date = heatmapDays[i]
+      const count = (metricsTurnsByDay.get(date) ?? 0) + (metricsToolCallsByDay.get(date) ?? 0)
+      if (count > 0) {
         totalActiveDays += 1
         runningStreak += 1
         if (runningStreak > longestStreak) {
@@ -133,12 +195,13 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     }
 
     let currentStreak = 0
-    for (let i = activityHeatmap.length - 1; i >= 0; i--) {
-      if (activityHeatmap[i].count > 0) {
+    for (let i = heatmapDays.length - 1; i >= 0; i--) {
+      const date = heatmapDays[i]
+      const count = (metricsTurnsByDay.get(date) ?? 0) + (metricsToolCallsByDay.get(date) ?? 0)
+      if (count > 0) {
         currentStreak += 1
       } else {
-        if (i === activityHeatmap.length - 1) {
-          // 今天尚无交互，允许昨天作为有效连击点
+        if (i === heatmapDays.length - 1) {
           continue
         }
         break
@@ -146,13 +209,13 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     }
 
     const activeRate =
-      activityHeatmap.length > 0 ? Math.round((totalActiveDays / activityHeatmap.length) * 100) : 0
+      heatmapDays.length > 0 ? Math.round((totalActiveDays / heatmapDays.length) * 100) : 0
 
-    // 4. 计算近 30 天与今日 Agent 对话轮次
+    // 计算近 30 天与今日 Agent 对话轮次
     const thirtyDaysAgoKey = heatmapDays[Math.max(0, heatmapDays.length - 30)]
     let total30dTurns = 0
     let todayTurns = 0
-    for (const [day, count] of turnsByDay.entries()) {
+    for (const [day, count] of metricsTurnsByDay.entries()) {
       if (day >= thirtyDaysAgoKey) {
         total30dTurns += count
       }
@@ -163,7 +226,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
 
     // 5. 工具调用总数、成功率与执行耗时（全部历史）
     const toolCallStatsRow = (
-      isFiltered
+      isMetricsFiltered
         ? database
             .prepare(
               `SELECT
@@ -175,7 +238,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
                JOIN agent_session s ON c.session_id = s.external_id
                WHERE s.project_id = ?`,
             )
-            .get(targetProjectId)
+            .get(metricsProjectId)
         : database
             .prepare(
               `SELECT
@@ -203,7 +266,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
 
     // 6. 项目条目完成进度
     const itemRows = (
-      isFiltered
+      isMetricsFiltered
         ? database
             .prepare(
               `SELECT status, count(*) as count
@@ -211,7 +274,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
                WHERE project_id = ?
                GROUP BY status`,
             )
-            .all(targetProjectId)
+            .all(metricsProjectId)
         : database
             .prepare(
               `SELECT status, count(*) as count
@@ -234,14 +297,14 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
 
     // 7. 会话总览
     const sessionRow = (
-      isFiltered
+      isMetricsFiltered
         ? database
             .prepare(
               `SELECT count(*) as total, max(updated_at) as last_active
                FROM agent_session
                WHERE project_id = ?`,
             )
-            .get(targetProjectId)
+            .get(metricsProjectId)
         : database
             .prepare(
               `SELECT count(*) as total, max(updated_at) as last_active
@@ -262,13 +325,13 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
 
     let periodTurns = 0
     if (rangeStartDate) {
-      for (const [day, count] of turnsByDay.entries()) {
+      for (const [day, count] of metricsTurnsByDay.entries()) {
         if (day >= rangeStartDate) {
           periodTurns += count
         }
       }
     } else {
-      const allTurnsRow = isFiltered
+      const allTurnsRow = isMetricsFiltered
         ? (database
             .prepare(
               `SELECT count(*) as count
@@ -276,7 +339,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
                JOIN agent_session s ON e.session_id = s.external_id
                WHERE s.project_id = ?`,
             )
-            .get(targetProjectId) as { count: number } | undefined)
+            .get(metricsProjectId) as { count: number } | undefined)
         : (database.prepare("SELECT count(*) as count FROM agent_session_entry").get() as
             | { count: number }
             | undefined)
@@ -284,7 +347,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     }
 
     const periodToolCallRow = rangeStartDate
-      ? ((isFiltered
+      ? ((isMetricsFiltered
           ? database
               .prepare(
                 `SELECT
@@ -295,7 +358,7 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
                  JOIN agent_session s ON c.session_id = s.external_id
                  WHERE s.project_id = ? AND substr(c.created_at, 1, 10) >= ?`,
               )
-              .get(targetProjectId, rangeStartDate)
+              .get(metricsProjectId, rangeStartDate)
           : database
               .prepare(
                 `SELECT
@@ -319,14 +382,14 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     let periodSessionTotal = 0
     if (rangeStartDate) {
       const periodSessionRow = (
-        isFiltered
+        isMetricsFiltered
           ? database
               .prepare(
                 `SELECT count(*) as total
                  FROM agent_session
                  WHERE project_id = ? AND substr(created_at, 1, 10) >= ?`,
               )
-              .get(targetProjectId, rangeStartDate)
+              .get(metricsProjectId, rangeStartDate)
           : database
               .prepare(
                 `SELECT count(*) as total
@@ -386,7 +449,8 @@ export const createOverviewService = (getConnection: () => Database.Database) =>
     return {
       metrics,
       activityHeatmap,
-      activeProjectId: isFiltered ? targetProjectId : "all",
+      activeProjectId: isMetricsFiltered ? metricsProjectId : "all",
+      heatmapProjectId: isHeatmapFiltered ? heatmapProjectId : "all",
       timeRange,
       projects,
     }
