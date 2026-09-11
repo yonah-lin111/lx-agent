@@ -238,6 +238,8 @@ export const AgentInput = ({
   const handleContainerPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
     const target = event.target as HTMLElement
     if (target.closest("button") || target.closest(".cm-editor")) return
+    // 命令面板为可交互浮层：取消 pointerdown 会抑制后续 mousedown，导致面板点选失效。
+    if (target.closest('[role="listbox"]')) return
     event.preventDefault()
     markdownInputRef.current?.focus()
   }
