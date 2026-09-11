@@ -1,6 +1,5 @@
 import {
   Activity,
-  Bot,
   ChevronDown,
   ChevronsLeftRight,
   ChevronsRightLeft,
@@ -13,7 +12,6 @@ import { useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { AgentJobsMonitorView } from "@/features/agent"
 import { useAgentJobs } from "@/features/agent/hooks/useAgentJobs"
-import { OpenClawChatView } from "@/features/openclaw"
 import { GhosttyTerminalView } from "@/features/terminal"
 import { useTranslation } from "@/i18n"
 import { useBottomSideBarStore } from "./bottomSideBarStore"
@@ -113,7 +111,7 @@ export const BottomSideBar = ({
 
   const { t } = useTranslation()
 
-  // 三视图切换按钮组；折叠态下切换同时展开底边栏。
+  // 双视图切换按钮组；折叠态下切换同时展开底边栏。
   const renderViewSwitcher = (expandOnSelect: boolean): React.JSX.Element => (
     <div className="flex shrink-0 items-center gap-0.5">
       <LxIconButton
@@ -149,19 +147,6 @@ export const BottomSideBar = ({
         <Activity
           className={`h-3.5 w-3.5 ${runningJobs.length > 0 ? "text-sky-400 animate-pulse" : ""}`}
         />
-      </LxIconButton>
-
-      <LxIconButton
-        aria-label={t("bottomBar.switchToOpenClaw")}
-        title={{ content: t("bottomBar.switchToOpenClaw"), placement: "top" }}
-        highlighted={viewMode === "openclaw"}
-        onClick={() => {
-          setViewMode("openclaw")
-          if (expandOnSelect) onExpandedChange(true)
-        }}
-        size="small"
-      >
-        <Bot className="h-3.5 w-3.5" />
       </LxIconButton>
     </div>
   )
@@ -247,14 +232,6 @@ export const BottomSideBar = ({
               }`}
             >
               <AgentJobsMonitorView isExpanded={isExpanded} rightActions={renderRightActions()} />
-            </div>
-
-            <div
-              className={`h-full w-full min-h-0 flex-1 overflow-hidden ${
-                viewMode === "openclaw" ? "flex" : "hidden"
-              }`}
-            >
-              <OpenClawChatView isExpanded={isExpanded} rightActions={renderRightActions()} />
             </div>
           </div>
         )}

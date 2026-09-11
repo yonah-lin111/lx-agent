@@ -182,39 +182,6 @@ export const extractDesignMentions = (text: string): DesignMention[] => {
   return matches
 }
 
-export interface ClawMention {
-  instanceId: string
-  agentId: string
-  fullMatch: string
-  start: number
-  end: number
-}
-
-/**
- * 提取 `@claw:<instanceId>/<agentId>` 提及；可带 ` (name)` 显示后缀。
- */
-export const extractClawMentions = (text: string): ClawMention[] => {
-  const regex = /(?<![\w\[])@claw:([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)(?:\s*\(([^()\r\n]*)\))?/g
-  const matches: ClawMention[] = []
-  let match: RegExpExecArray | null = null
-  while ((match = regex.exec(text)) !== null) {
-    matches.push({
-      instanceId: match[1],
-      agentId: match[2],
-      fullMatch: match[0],
-      start: match.index,
-      end: match.index + match[0].length,
-    })
-  }
-  return matches
-}
-
-/**
- * 移除提及文本，返回剩余的任务正文。
- */
-export const stripClawMention = (text: string, mention: ClawMention): string =>
-  `${text.slice(0, mention.start)}${text.slice(mention.end)}`.trim()
-
 export interface DesignTokenDeletionRange {
   from: number
   to: number
