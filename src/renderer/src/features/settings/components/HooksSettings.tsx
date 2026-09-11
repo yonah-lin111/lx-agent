@@ -3,6 +3,7 @@ import type { HookCommandEntry, HookMatcherGroup, HookSettings } from "@shared/s
 import { AlertTriangle, ArrowDown, ArrowUp, Edit2, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -215,9 +216,10 @@ export const HooksSettings = (): React.JSX.Element => {
       ) : null}
 
       <div className="flex shrink-0 items-center justify-between gap-3">
-        <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]">
-          {t("settings.hooksEffective")}
-        </span>
+        <div className="flex min-w-0 items-center gap-2 text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]">
+          <span>{t("settings.hooksEffective")}</span>
+          <LxInfoTooltip markdown={t("settings.hooksDoc")} placement="right" />
+        </div>
         <button
           type="button"
           onClick={handleOpenAdd}

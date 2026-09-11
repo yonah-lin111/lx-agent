@@ -56,6 +56,7 @@ describe("HooksSettings", () => {
     renderComponent()
 
     expect(await screen.findByText("audit")).toBeTruthy()
+    expect(screen.getByLabelText("Info")).toBeTruthy()
     expect(screen.getByText("block-rm")).toBeTruthy()
     expect(screen.getByText("wire")).toBeTruthy()
     expect(screen.getByText("bash")).toBeTruthy()

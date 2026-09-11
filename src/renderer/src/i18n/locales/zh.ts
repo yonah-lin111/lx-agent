@@ -240,6 +240,20 @@ export const zh: TranslationDictionary = {
     hooks: "钩子",
     hooksDesc: "配置 Agent 生命周期钩子；保存后对新会话生效",
     hooksEffective: "配置仅对新会话生效，运行中的会话不受影响",
+    hooksDoc: `### 生命周期钩子
+
+在 Agent 的会话、提示词提交、工具执行、审批、压缩与子代理等关键节点执行用户命令，扩展或约束 Agent 行为。
+
+#### 💡 事件与能力
+- **会话**：\`SessionStart\`、\`UserPromptSubmit\`、\`Stop\`、\`SessionEnd\`
+- **工具**：\`PreToolUse\`（可阻断）、\`PermissionRequest\`（可替代审批弹窗）、\`PostToolUse\`
+- **压缩**：\`PreCompact\`、\`PostCompact\`（任何输出都不阻断压缩）
+- **子代理**：\`SubagentStart\`、\`SubagentStop\`
+
+#### ⚙️ 执行语义
+- 命令经 stdin 接收 JSON 载荷，stdout 返回严格 JSON（\`additionalContext\` / \`systemMessage\` / \`decision\`）；执行失败、超时或输出非法一律 fail-open。
+- 配置写入 \`~/.lx/config.json\` 的 \`agent.hooks\`；同一事件内按列表顺序执行，可用上/下移调整。
+- 保存后仅对**新会话**生效，运行中的会话沿用旧配置。`,
     hooksAdd: "添加 Hook",
     hooksAddTitle: "添加 Hook",
     hooksEditTitle: "编辑 Hook",
