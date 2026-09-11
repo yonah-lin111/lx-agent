@@ -61,6 +61,7 @@ interface InstanceConnection {
   error?: string
   pairingRequestId?: string
   retryTimer?: NodeJS.Timeout | null
+  retryCount?: number
   readonly sessions: Map<string, AgentSession>
 }
 
@@ -213,6 +214,11 @@ class OpenClawClientManager {
       hostDeps: buildOpenClawHostDeps(instanceId),
       onHelloOk: () => {
         if (connectTimer) clearTimeout(connectTimer)
+        if (connection.retryTimer) {
+          clearTimeout(connection.retryTimer)
+          connection.retryTimer = null
+        }
+        connection.retryCount = 0
         console.log(`[OpenClaw] Connected to instance ${instanceId}`)
         connection.status = "connected"
         delete connection.error
@@ -238,16 +244,22 @@ class OpenClawClientManager {
           ...(info.pairingRequestId ? { pairingRequestId: info.pairingRequestId } : {}),
         })
 
-        // 针对网络层不可达/拒绝等临时故障，自动延迟重试一次，平滑启动时网络接口尚未就绪的情况
-        if (/EHOSTUNREACH|ECONNREFUSED|ENOTFOUND/i.test(info.message)) {
+        // 针对网络层不可达/拒绝等临时故障，自动以退避策略重试（首次 1s，随后 3s），平滑启动时网络接口尚未就绪的情况
+        if (/EHOSTUNREACH|ECONNREFUSED|ENOTFOUND|timed? ?out/i.test(info.message)) {
           if (!connection.retryTimer) {
-            connection.retryTimer = setTimeout(() => {
-              connection.retryTimer = null
-              if (connection.status === "error") {
-                console.log(`[OpenClaw] Auto-retrying connection for instance ${instanceId}...`)
-                void this.connect(instanceId)
-              }
-            }, 2500)
+            connection.retryCount = (connection.retryCount ?? 0) + 1
+            if (connection.retryCount <= 5) {
+              const delay = connection.retryCount === 1 ? 1000 : 3000
+              connection.retryTimer = setTimeout(() => {
+                connection.retryTimer = null
+                if (connection.status === "error" || connection.status === "disconnected") {
+                  console.log(
+                    `[OpenClaw] Auto-retrying connection for instance ${instanceId} (attempt ${connection.retryCount}/5)...`,
+                  )
+                  void this.connect(instanceId)
+                }
+              }, delay)
+            }
           }
         }
       },
