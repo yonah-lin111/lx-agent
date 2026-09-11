@@ -567,6 +567,20 @@ export const toChatMessage = (
     }
   }
 
+  if (message.role === "hookContext") {
+    return {
+      id,
+      role: "hookContext",
+      blocks: message.text ? [{ kind: "text", text: message.text }] : [],
+      isStreaming: false,
+      timestamp: message.timestamp,
+      hookEvent: message.event,
+      hookName: message.hookName,
+      hookStatus: message.status,
+      durationMs: message.durationMs,
+    }
+  }
+
   if (message.role === "toolResult") {
     return {
       id,
@@ -692,6 +706,25 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           timestamp: message.timestamp ?? Date.now(),
           ...(block.subagent ? { subagent: block.subagent } : {}),
           ...(block.lsp ? { lsp: block.lsp } : {}),
+        },
+      ]
+    }
+
+    if (message.role === "hookContext") {
+      // hook 审计消息回传 main（保留 timestamp 供 seq 对齐）。
+      const text = message.blocks
+        .filter((block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text")
+        .map((block) => block.text)
+        .join("\n")
+      return [
+        {
+          role: "hookContext",
+          event: message.hookEvent ?? "SessionStart",
+          hookName: message.hookName ?? "hook",
+          status: message.hookStatus ?? "completed",
+          text,
+          ...(message.durationMs !== undefined ? { durationMs: message.durationMs } : {}),
+          timestamp: message.timestamp ?? Date.now(),
         },
       ]
     }

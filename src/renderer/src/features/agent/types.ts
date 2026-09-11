@@ -5,6 +5,8 @@ import type {
   AgentUndoSummaryItem,
   AgentUndoSummaryPayload,
   CompactionUsage,
+  HookEventName,
+  HookRunStatus,
   LspToolDetails,
   QuestionAnswer,
   QuestionRequest,
@@ -25,6 +27,9 @@ export type {
   AgentUndoSummaryPayload,
   CompactionUsage,
   DiffLinePart,
+  HookContextMessage,
+  HookEventName,
+  HookRunStatus,
   InterAgentCommunication,
   LspToolDetails,
   ModelSwitchMessage,
@@ -188,6 +193,10 @@ export interface ChatMessage {
   family?: string
   instructions?: string
   isInitial?: boolean
+  // hook 运行产物属性（hookContext 专用；驱动 FlowList hook 步骤）。
+  hookEvent?: HookEventName
+  hookName?: string
+  hookStatus?: HookRunStatus
   // 单次生成执行耗时（毫秒）。
   durationMs?: number
 }
@@ -215,6 +224,7 @@ export type ExecutionStepKind =
   | "proposedPlan"
   | "reviewFindings"
   | "frontDesign"
+  | "hook"
 
 // 执行步骤状态。
 export type ExecutionStepStatus = "running" | "done" | "error"
@@ -284,6 +294,8 @@ export interface ExecutionStep {
   frontDesignContent?: FrontDesignData
   // 模型切换/初始模型内容。
   modelSwitchContent?: ExecutionModelSwitchContent
+  // hook 运行内容。
+  hookContent?: ExecutionHookContent
   // 异常/中断说明内容。
   errorContent?: ExecutionErrorContent
 }
@@ -302,6 +314,13 @@ export interface ExecutionModelSwitchContent {
   family?: string
   instructions?: string
   isInitial?: boolean
+}
+
+export interface ExecutionHookContent {
+  event?: HookEventName
+  hookName?: string
+  status?: HookRunStatus
+  text: string
 }
 
 export interface ExecutionSystemContent {

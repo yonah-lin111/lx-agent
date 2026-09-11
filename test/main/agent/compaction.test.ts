@@ -68,6 +68,14 @@ const toolResult = (toolName: string, text: string): AgentMessage => ({
   isError: false,
   timestamp: 0,
 })
+const hookContext = (text: string): AgentMessage => ({
+  role: "hookContext",
+  event: "PreToolUse",
+  hookName: "policy",
+  status: "completed",
+  text,
+  timestamp: 0,
+})
 
 // 模拟 streamText 返回指定文本与 usage。
 const mockStream = (text: string, usage = { inputTokens: 0, outputTokens: 0 }): void => {
@@ -137,6 +145,39 @@ describe("findCutPoint", () => {
     const messages: AgentMessage[] = [user("a"), assistant("b")]
     expect(findCutPoint(messages, 100)).toBe(2)
   })
+
+  it("不把 hookContext 与其锚定的 toolResult 切开（保留起点跳过 hookContext）", () => {
+    const messages: AgentMessage[] = [
+      user("a".repeat(40)),
+      assistant("b".repeat(40)),
+      toolResult("grep", "c".repeat(40)),
+      hookContext("d".repeat(40)),
+      user("e".repeat(40)),
+      assistant("f".repeat(40)),
+    ]
+    // 尾部累计：budget 25 → cutIndex=3（hookContext，40 字符=10 token）。
+    // hookContext 提升到 index4，保证与 toolResult 一起划入压缩区。
+    expect(findCutPoint(messages, 25)).toBe(4)
+  })
+
+  it("连续 Pre/Post hookContext 整体跳过，不残留在保留区首部", () => {
+    const messages: AgentMessage[] = [
+      user("a".repeat(40)),
+      assistant("b".repeat(40)),
+      toolResult("grep", "c".repeat(40)),
+      hookContext("d".repeat(40)),
+      hookContext("e".repeat(40)),
+      user("f".repeat(40)),
+      assistant("g".repeat(40)),
+    ]
+    // budget 35 → cutIndex=3（hookContext）→ 连续跳过至 index5（user）。
+    expect(findCutPoint(messages, 35)).toBe(5)
+  })
+
+  it("hookContext 文本计入 token 估计", () => {
+    const message = hookContext("x".repeat(41))
+    expect(estimateMessageTokens(message)).toBe(Math.ceil(41 / 4))
+  })
 })
 
 describe("isContextOverflowFailure", () => {
@@ -201,6 +242,13 @@ describe("generateCompactionSummary", () => {
     const summary = await generateCompactionSummary([])
     expect(summary).toBeNull()
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it("hookContext 审计文本进入摘要输入", async () => {
+    mockStream("摘要")
+    await generateCompactionSummary([user("hi"), hookContext("policy hit")])
+    const lastCall = streamTextMock.mock.calls.at(-1)?.[0] as { messages: { content: string }[] }
+    expect(lastCall.messages[0]?.content).toContain("Hook(PreToolUse): policy hit")
   })
 
   it("当 compactionModel 未配置时，优先使用传入的 sessionModel，若无则回退使用 titleSummary", async () => {

@@ -149,6 +149,7 @@ export const AgentExecutionFlowItem = ({
     if (step.modelSwitchContent) {
       return `${step.title}\n${step.modelSwitchContent.instructions || ""}`
     }
+    if (step.hookContent) return step.hookContent.text || step.title
     if (step.planContent) return step.planContent.content
     if (step.reviewFindingsContent) return step.reviewFindingsContent.raw
     if (step.frontDesignContent) return step.frontDesignContent.raw || step.frontDesignContent.html
@@ -177,6 +178,9 @@ export const AgentExecutionFlowItem = ({
     }
     if (step.kind === "frontDesign") {
       return "agent-execution-flow-step-body--frontDesign agent-execution-flow-step-body--pink border-pink-500/15 bg-pink-500/[0.05]"
+    }
+    if (step.kind === "hook") {
+      return "agent-execution-flow-step-body--hook border-cyan-500/15 bg-cyan-500/[0.05]"
     }
     const toolName = step.toolContent?.toolName
     if (toolName === "todowrite") {
@@ -522,6 +526,13 @@ export const AgentExecutionFlowItem = ({
           {/* 模型切换/初始模型详情 */}
           {step.modelSwitchContent && (
             <FlowItemModelSwitchContent content={step.modelSwitchContent} previewRef={previewRef} />
+          )}
+
+          {/* hook 运行详情（审计文本） */}
+          {step.hookContent && (
+            <div className="agent-execution-flow-hook-content whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+              {step.hookContent.text}
+            </div>
           )}
 
           {/* 异常/中断详情 */}

@@ -109,6 +109,12 @@ const FILTER_TAB_COLORS: Record<
       "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-pink-500/10 hover:text-pink-300",
     dot: "bg-pink-400",
   },
+  hook: {
+    active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
+    inactive:
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
+    dot: "bg-teal-400",
+  },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
     inactive:

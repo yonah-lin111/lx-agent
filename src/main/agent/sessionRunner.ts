@@ -41,6 +41,7 @@ import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
 import type { AgentTool } from "./core/types"
 import { repeatToolGuard } from "./guard/repeatToolGuard"
+import { firstBlock, firstStop, hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
@@ -100,6 +101,8 @@ export class AgentSessionRunner {
   private activeSkills: LoadedSkill[] = []
   private collaborationMode: CollaborationMode = "build"
   private builtSignature = ""
+  // SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
+  private sessionStartFired = false
   private messageQueue: string[] = []
   private draining = false
   private onSessionCreatedCallback?: (
@@ -125,6 +128,7 @@ export class AgentSessionRunner {
       getRequestedModel: () => this.requestedModel,
       isBusy: () => this.isBusy(),
       emit: (event) => this.emitEvent(event),
+      getCwd: () => this.cwd,
     })
 
     this.turnStore = new TurnStore({
@@ -163,7 +167,13 @@ export class AgentSessionRunner {
       this.subagentPool.clear()
     }
     const oldKey = this.currentSessionId ?? this.tabId ?? "draft"
+    const switchedSession =
+      sessionId === null || (this.currentSessionId !== null && this.currentSessionId !== sessionId)
     this.currentSessionId = sessionId
+    // 会话切换/清空重置 SessionStart；null → 新会话创建不重置（同一 run 内已派发）。
+    if (switchedSession) {
+      this.sessionStartFired = false
+    }
     if (sessionId === null) {
       this.personality = undefined
     } else if (oldKey && oldKey !== sessionId) {
@@ -199,6 +209,56 @@ export class AgentSessionRunner {
       lspManager.clearSession(this.currentSessionId)
       this.subagentPool.clear()
     }
+  }
+
+  // 会话销毁：best-effort 派发 SessionEnd（不等待异步工作），再清理运行态。
+  public dispose(reason: "quit" | "dispose"): void {
+    const sessionId = this.currentSessionId
+    if (sessionId) {
+      void hooksManager.dispatchBestEffort({
+        event: "SessionEnd",
+        sessionId,
+        cwd: this.getEffectiveCwd(),
+        payload: { reason },
+      })
+    }
+    this.cleanUp()
+    this.sessionStartFired = false
+  }
+
+  // 派发 SessionStart（每个会话一次）与 UserPromptSubmit；提交被拒绝时返回 error。
+  private async dispatchPromptHooks(
+    prompt: string,
+    isNewSession: boolean,
+  ): Promise<{ messages: AgentMessage[] } | { error: string }> {
+    const messages: AgentMessage[] = []
+    if (!this.sessionStartFired) {
+      const startResult = await hooksManager.dispatch({
+        event: "SessionStart",
+        sessionId: this.currentSessionId,
+        cwd: this.getEffectiveCwd(),
+        model: this.agent?.state.model.id,
+        payload: { source: isNewSession ? "startup" : "resume" },
+      })
+      messages.push(...hookResultMessages(startResult))
+      this.sessionStartFired = true
+    }
+
+    const submitResult = await hooksManager.dispatch({
+      event: "UserPromptSubmit",
+      sessionId: this.currentSessionId,
+      cwd: this.getEffectiveCwd(),
+      model: this.agent?.state.model.id,
+      payload: { prompt },
+    })
+    const stop = firstStop(submitResult)
+    if (stop) {
+      // 提交被拒绝：SessionStart 视为未发生，允许用户重试。
+      this.sessionStartFired = false
+      return { error: stop.reason || "Prompt submission was rejected by a hook." }
+    }
+    messages.push(...hookResultMessages(submitResult))
+    return { messages }
   }
 
   private ensureReady(): { agent: Agent } | { error: string } {
@@ -291,8 +351,10 @@ export class AgentSessionRunner {
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal, {
               collaborationMode: this.collaborationMode,
+              cwd,
             }),
           getSignal: () => this.agent?.signal,
+          getCwd: () => this.cwd ?? cwd,
           recordChildCall: (parentToolCallId, child) =>
             this.turnStore.recordChildCall(parentToolCallId, child),
         },
@@ -326,6 +388,7 @@ export class AgentSessionRunner {
           }
           return permissionManager.gate(context, this.currentSessionId, signal, {
             collaborationMode: this.collaborationMode,
+            cwd,
           })
         },
         afterToolCall: async (context) => {
@@ -342,6 +405,65 @@ export class AgentSessionRunner {
             }
           }
           return undefined
+        },
+        preToolUse: async (context) => {
+          const result = await hooksManager.dispatch({
+            event: "PreToolUse",
+            sessionId: this.currentSessionId,
+            cwd,
+            model: this.agent?.state.model.id,
+            toolName: context.toolCall.name,
+            payload: {
+              tool_name: context.toolCall.name,
+              tool_input: context.args,
+              tool_use_id: context.toolCall.id,
+            },
+          })
+          const block = firstBlock(result)
+          return {
+            ...(block ? { block } : {}),
+            messages: hookResultMessages(result),
+          }
+        },
+        postToolUse: async (context) => {
+          const toolResponse = context.result.content
+            .map((contentBlock) => (contentBlock.type === "text" ? contentBlock.text : "[image]"))
+            .join("\n")
+          const result = await hooksManager.dispatch({
+            event: "PostToolUse",
+            sessionId: this.currentSessionId,
+            cwd,
+            model: this.agent?.state.model.id,
+            toolName: context.toolCall.name,
+            payload: {
+              tool_name: context.toolCall.name,
+              tool_input: context.args,
+              tool_use_id: context.toolCall.id,
+              tool_response: toolResponse,
+            },
+          })
+          return { messages: hookResultMessages(result) }
+        },
+        onAgentStop: async () => {
+          const messages = this.agent?.state.messages ?? []
+          const lastAssistant = [...messages]
+            .reverse()
+            .find((message) => message.role === "assistant")
+          const lastAssistantMessage =
+            lastAssistant?.role === "assistant"
+              ? lastAssistant.content
+                  .filter((block) => block.type === "text")
+                  .map((block) => block.text)
+                  .join("\n")
+              : ""
+          const result = await hooksManager.dispatch({
+            event: "Stop",
+            sessionId: this.currentSessionId,
+            cwd: this.cwd,
+            model: this.agent?.state.model.id,
+            payload: { last_assistant_message: lastAssistantMessage },
+          })
+          return hookResultMessages(result)
         },
         transformContext: async (messages) => {
           const prunedMessages = pruneHistoricalToolOutputs(messages)
@@ -680,6 +802,11 @@ export class AgentSessionRunner {
       this.turnStore.resetOverflow()
     }
     const { expanded, command } = this._expandAndDetectCommand(text, overrideCwd)
+    // 生命周期 hook：SessionStart（每个会话一次）+ UserPromptSubmit（每次提交）。
+    const promptHooks = await this.dispatchPromptHooks(expanded, isNewSession)
+    if ("error" in promptHooks) {
+      return { ok: false, error: promptHooks.error }
+    }
     this.beginSessionTurn(text)
     this.turnStore.captureSnapshot()
 
@@ -744,7 +871,10 @@ export class AgentSessionRunner {
         timestamp: Date.now(),
         ...(command ? { command } : {}),
       }
-      await agent.prompt(userMessage)
+      // hook 注入消息先于本轮用户消息落位。
+      await agent.prompt(
+        promptHooks.messages.length > 0 ? [...promptHooks.messages, userMessage] : userMessage,
+      )
 
       if (this.turnStore.consumeOverflow()) {
         this.removeLastOverflowMessage()

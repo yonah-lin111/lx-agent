@@ -79,6 +79,9 @@ const api: ProjectApi &
     getPermissionSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getPermissionSettings),
     savePermissionSettings: (settings) =>
       ipcRenderer.invoke(SETTINGS_CHANNELS.savePermissionSettings, settings),
+    getHookSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getHookSettings),
+    saveHookSettings: (settings) =>
+      ipcRenderer.invoke(SETTINGS_CHANNELS.saveHookSettings, settings),
     getUiSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getUiSettings),
     saveUiSettings: (settings) => ipcRenderer.invoke(SETTINGS_CHANNELS.saveUiSettings, settings),
     getCliSettings: () => ipcRenderer.invoke(SETTINGS_CHANNELS.getCliSettings),

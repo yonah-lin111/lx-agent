@@ -235,6 +235,40 @@ export const buildExecutionSteps = (
       continue
     }
 
+    // 处理 hook 运行产物（独立步骤，不计入对话轮次）
+    if (message.role === "hookContext") {
+      stepIndex++
+      const hookText =
+        message.blocks.find(
+          (block): block is Extract<ChatBlock, { kind: "text" }> => block.kind === "text",
+        )?.text ?? ""
+      const startedAt =
+        message.timestamp !== undefined && message.durationMs !== undefined
+          ? message.timestamp - message.durationMs
+          : message.timestamp
+      steps.push({
+        id: `step-${stepIndex}-hook-${message.id}`,
+        messageId: message.id,
+        turnIndex: currentTurn,
+        stepIndex,
+        kind: "hook",
+        title: message.hookName || "Hook",
+        subtitle: `${message.hookEvent ?? "Hook"} · ${message.hookStatus ?? "completed"}`,
+        status: message.hookStatus === "completed" ? "done" : "error",
+        timestamp: message.timestamp,
+        startedAt,
+        completedAt: message.timestamp,
+        durationMs: message.durationMs,
+        hookContent: {
+          event: message.hookEvent,
+          hookName: message.hookName,
+          status: message.hookStatus,
+          text: hookText,
+        },
+      })
+      continue
+    }
+
     // 处理用户轮次开始
     if (message.role === "user") {
       currentTurn++

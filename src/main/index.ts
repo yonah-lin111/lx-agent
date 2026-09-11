@@ -4,6 +4,7 @@ import { is, optimizer } from "@electron-toolkit/utils"
 import { FRONT_DESIGN_PROTOCOL } from "@shared/frontDesign"
 import { LOCAL_IMAGE_PROTOCOL } from "@shared/localImage"
 import { app, BrowserWindow, nativeImage, protocol } from "electron"
+import { agentRunner } from "@/agent/agentRunner"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { initDatabase } from "@/db"
@@ -94,6 +95,8 @@ app.whenReady().then(() => {
   void mcpManager.ensureConnected()
   app.on("will-quit", () => {
     stopScreenshotCleanup()
+    // 生命周期 hook：退出路径 best-effort 派发 SessionEnd（quit，不等待异步工作）。
+    agentRunner.disposeAll("quit")
     terminalService.disposeAll()
     void mcpManager.disconnectAll()
     // OpenClaw Gateway 连接回收。

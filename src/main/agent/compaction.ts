@@ -123,6 +123,8 @@ const messageCharCount = (message: AgentMessage): number => {
       return 0
     case "undoSummary":
       return 0
+    case "hookContext":
+      return message.text.length
   }
 }
 
@@ -188,8 +190,12 @@ export const findCutPoint = (messages: AgentMessage[], keepRecentTokens: number)
   }
   // 全部消息累计仍不足预算：全部保留。
   if (cutIndex === messages.length) return messages.length
-  // 提升到完整 turn 边界：保留部分的第一条不能是 toolResult。
-  while (cutIndex < messages.length && messages[cutIndex]?.role === "toolResult") {
+  // 提升到完整 turn 边界：保留部分的第一条不能是 toolResult（会造成孤儿工具结果），
+  // 也不能是 hookContext（会与其锚定的工具结果消息被切开）。
+  while (
+    cutIndex < messages.length &&
+    (messages[cutIndex]?.role === "toolResult" || messages[cutIndex]?.role === "hookContext")
+  ) {
     cutIndex += 1
   }
   return cutIndex
@@ -201,6 +207,12 @@ const extractConversationText = (messages: AgentMessage[]): string => {
   for (const message of messages) {
     // todoState 仅存在于 transformContext 输出（不进 state.messages），不参与压缩摘要。
     if (message.role === "todoState") continue
+    // hookContext 审计文本直接参与摘要输入（不携带工具结果锚定语义）。
+    if (message.role === "hookContext") {
+      const hookText = message.text.trim()
+      if (hookText) parts.push(`Hook(${message.event}): ${hookText}`)
+      continue
+    }
     const prefix =
       message.role === "user"
         ? "用户"

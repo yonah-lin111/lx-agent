@@ -1,4 +1,4 @@
-import type { PermissionSettings } from "./contracts/agent"
+import type { HookEventName, PermissionSettings } from "./contracts/agent"
 import type { ModelPricing } from "./contracts/usage"
 
 // Provider 传输格式。
@@ -297,6 +297,26 @@ export const DEFAULT_OPENCLAW_SETTINGS: OpenClawSettings = {
 
 export const DEFAULT_OPENCLAW_GATEWAY_URL = "ws://127.0.0.1:18789"
 
+// 单条 command hook（对齐 agent.hooks 的 handler schema）。
+export interface HookCommandEntry {
+  name: string
+  command: string
+  commandWindows?: string
+  timeout?: number
+  // 预留字段：UI 不暴露，读取/保存时按原值透传。
+  type?: "command"
+  additionalContextLimit?: number
+}
+
+// 按工具名过滤的 hook 组（UI 保存时一 hook 一组）。
+export interface HookMatcherGroup {
+  matcher?: string
+  hooks: HookCommandEntry[]
+}
+
+// agent.hooks 配置：事件键 → matcher 组列表。
+export type HookSettings = Partial<Record<HookEventName, HookMatcherGroup[]>>
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -305,6 +325,8 @@ export interface SettingsApi {
     fetchModels: (input: FetchModelsInput) => Promise<FetchedProviderModel[]>
     getPermissionSettings: () => Promise<PermissionSettings>
     savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
+    getHookSettings: () => Promise<HookSettings>
+    saveHookSettings: (settings: HookSettings) => Promise<HookSettings>
     getUiSettings: () => Promise<UiSettings>
     saveUiSettings: (settings: UiSettings) => Promise<UiSettings>
     getCliSettings: () => Promise<CliSettings>

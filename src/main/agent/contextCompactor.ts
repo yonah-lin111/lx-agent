@@ -18,6 +18,7 @@ import {
   resolveCompactionModelId,
 } from "./compaction"
 import type { Agent } from "./core/agent"
+import { hookResultMessages, hooksManager } from "./hooks"
 
 // 压缩与上下文容量依赖（AgentRunner 注入宿主状态，解耦子模块）。
 export interface ContextCompactorDeps {
@@ -33,6 +34,8 @@ export interface ContextCompactorDeps {
   isBusy: () => boolean
   // 事件转发（compaction_start/summary/failed、context_usage 等）。
   emit: (event: AgentEvent) => void
+  // 当前会话 cwd（hook 子进程 LX_CWD；缺省 process.cwd()）。
+  getCwd?: () => string | undefined
 }
 
 // 上下文压缩与容量估计：持有压缩边界，驱动自动/手动压缩与状态栏容量快照。
@@ -181,6 +184,28 @@ export class ContextCompactor {
     })
   }
 
+  // PreCompact / PostCompact：任何输出（含 block / continue:false / 失败 / 超时）均不阻断压缩与溢出恢复。
+  private async dispatchCompactHook(
+    event: "PreCompact" | "PostCompact",
+    manual: boolean,
+  ): Promise<void> {
+    try {
+      const result = await hooksManager.dispatch({
+        event,
+        sessionId: this.deps.getSessionId(),
+        cwd: this.deps.getCwd?.() ?? process.cwd(),
+        model: this.deps.getRequestedModel()?.model,
+        payload: { trigger: manual ? "manual" : "auto" },
+      })
+      for (const message of hookResultMessages(result)) {
+        this.deps.emit({ type: "message_start", message })
+        this.deps.emit({ type: "message_end", message })
+      }
+    } catch {
+      // fail-open：hook 异常不影响压缩。
+    }
+  }
+
   // turn 结束后压缩：估计上下文 token 超阈值（或 overflow 强制）时，摘要化早期历史并建立新边界。
   // 返回是否实际压缩；摘要生成失败静默保留旧边界（下轮再试）。
   // overflow 重试与阈值自动均为 manual=false。
@@ -206,6 +231,7 @@ export class ContextCompactor {
     const compactionId = createExternalId()
     const compactionModelId = resolveCompactionModelId(this.deps.getRequestedModel())
     // 摘要生成是压缩的主要耗时（慢 LLM 调用）：先推送开始事件，renderer 追加 loading 占位并禁止发送。
+    await this.dispatchCompactHook("PreCompact", false)
     this.deps.emit({
       type: "compaction_start",
       compactionId,
@@ -251,6 +277,7 @@ export class ContextCompactor {
       compactionId,
       message: createCompactionSummaryMessage(summary, tokensBefore, false, model, usage),
     })
+    await this.dispatchCompactHook("PostCompact", false)
     // 压缩后容量 = 摘要 + 保留尾部（contextBoundary 已建立，emit 自动走压缩估计）。
     this.emitUsage()
     return true
@@ -286,6 +313,7 @@ export class ContextCompactor {
     const compacted = messages.slice(0, effectiveCut)
     const compactionId = createExternalId()
     const compactionModelId = resolveCompactionModelId(this.deps.getRequestedModel())
+    await this.dispatchCompactHook("PreCompact", true)
     this.deps.emit({
       type: "compaction_start",
       compactionId,
@@ -326,6 +354,7 @@ export class ContextCompactor {
       compactionId,
       message: createCompactionSummaryMessage(summary, tokensBefore, true, model, usage),
     })
+    await this.dispatchCompactHook("PostCompact", true)
     this.emitUsage()
     return { ok: true }
   }
