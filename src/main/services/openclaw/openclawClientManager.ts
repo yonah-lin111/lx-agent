@@ -60,6 +60,7 @@ interface InstanceConnection {
   status: OpenClawConnectionStatus
   error?: string
   pairingRequestId?: string
+  retryTimer?: NodeJS.Timeout | null
   readonly sessions: Map<string, AgentSession>
 }
 
@@ -236,6 +237,19 @@ class OpenClawClientManager {
           error: info.message,
           ...(info.pairingRequestId ? { pairingRequestId: info.pairingRequestId } : {}),
         })
+
+        // 针对网络层不可达/拒绝等临时故障，自动延迟重试一次，平滑启动时网络接口尚未就绪的情况
+        if (/EHOSTUNREACH|ECONNREFUSED|ENOTFOUND/i.test(info.message)) {
+          if (!connection.retryTimer) {
+            connection.retryTimer = setTimeout(() => {
+              connection.retryTimer = null
+              if (connection.status === "error") {
+                console.log(`[OpenClaw] Auto-retrying connection for instance ${instanceId}...`)
+                void this.connect(instanceId)
+              }
+            }, 2500)
+          }
+        }
       },
       onEvent: (event) => this.handleEvent(connection, event),
       onClose: (code, reason) => {
@@ -284,6 +298,11 @@ class OpenClawClientManager {
   async disconnect(instanceId: string): Promise<void> {
     const connection = this.connections.get(instanceId)
     if (!connection) return
+
+    if (connection.retryTimer) {
+      clearTimeout(connection.retryTimer)
+      connection.retryTimer = null
+    }
 
     connection.client?.stop()
     connection.client = null
@@ -457,6 +476,10 @@ class OpenClawClientManager {
   // 释放所有连接。
   disposeAll(): void {
     for (const connection of this.connections.values()) {
+      if (connection.retryTimer) {
+        clearTimeout(connection.retryTimer)
+        connection.retryTimer = null
+      }
       connection.client?.stop()
       connection.client = null
     }
