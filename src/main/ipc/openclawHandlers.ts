@@ -60,15 +60,6 @@ export const registerOpenClawHandlers = (resolveSender: () => WebContents | unde
       requireString(agentId, "AGENT_ID"),
     ),
   )
-  ipcMain.handle(
-    OPENCLAW_CHANNELS.bindSession,
-    (_, instanceId: unknown, agentId: unknown, sessionKey: unknown) =>
-      openClawClientManager.bindSession(
-        requireString(instanceId, "INSTANCE_ID"),
-        requireString(agentId, "AGENT_ID"),
-        requireString(sessionKey, "SESSION_KEY"),
-      ),
-  )
   ipcMain.handle(OPENCLAW_CHANNELS.sendMessage, (_, input: unknown) =>
     openClawClientManager.sendMessage(parseSendMessageInput(input)),
   )

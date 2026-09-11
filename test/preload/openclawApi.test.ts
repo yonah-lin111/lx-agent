@@ -32,7 +32,6 @@ describe("preload openclaw API", () => {
     await api.openclaw.getSnapshot("local", "lily")
     await api.openclaw.listSessions("local", "lily")
     await api.openclaw.createSession("local", "lily")
-    await api.openclaw.bindSession("local", "lily", "agent:lily:main")
     await api.openclaw.sendMessage({ instanceId: "local", agentId: "lily", message: "hi" })
     await api.openclaw.abort("local", "lily")
 
@@ -42,19 +41,12 @@ describe("preload openclaw API", () => {
     expect(invoke).toHaveBeenNthCalledWith(4, OPENCLAW_CHANNELS.getSnapshot, "local", "lily")
     expect(invoke).toHaveBeenNthCalledWith(5, OPENCLAW_CHANNELS.listSessions, "local", "lily")
     expect(invoke).toHaveBeenNthCalledWith(6, OPENCLAW_CHANNELS.createSession, "local", "lily")
-    expect(invoke).toHaveBeenNthCalledWith(
-      7,
-      OPENCLAW_CHANNELS.bindSession,
-      "local",
-      "lily",
-      "agent:lily:main",
-    )
-    expect(invoke).toHaveBeenNthCalledWith(8, OPENCLAW_CHANNELS.sendMessage, {
+    expect(invoke).toHaveBeenNthCalledWith(7, OPENCLAW_CHANNELS.sendMessage, {
       instanceId: "local",
       agentId: "lily",
       message: "hi",
     })
-    expect(invoke).toHaveBeenNthCalledWith(9, OPENCLAW_CHANNELS.abort, "local", "lily")
+    expect(invoke).toHaveBeenNthCalledWith(8, OPENCLAW_CHANNELS.abort, "local", "lily")
   })
 
   it("订阅会话事件并支持退订", () => {

@@ -36,7 +36,9 @@ export const registerClipboardHandlers = (): void => {
         const filename = `screenshot-${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`
         const filePath = join(screenshotsDir, filename)
 
-        const nodeBuffer = Buffer.from(buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer))
+        const nodeBuffer = Buffer.from(
+          buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer),
+        )
         writeFileSync(filePath, nodeBuffer)
         return filePath
       } catch (error) {

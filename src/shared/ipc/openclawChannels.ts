@@ -6,7 +6,6 @@ export const OPENCLAW_CHANNELS = {
   getSnapshot: "openclaw:get-snapshot",
   listSessions: "openclaw:list-sessions",
   createSession: "openclaw:create-session",
-  bindSession: "openclaw:bind-session",
   sendMessage: "openclaw:send-message",
   abort: "openclaw:abort",
   // 主进程 → 渲染进程的会话事件广播。

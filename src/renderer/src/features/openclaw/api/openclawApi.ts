@@ -2,7 +2,6 @@ import type {
   OpenClawConnectResult,
   OpenClawSendMessageInput,
   OpenClawSessionEvent,
-  OpenClawSessionInfo,
   OpenClawSessionSnapshot,
 } from "@shared/contracts/openclaw"
 import type { OpenClawAgentItem } from "@shared/settings"
@@ -18,12 +17,8 @@ export const openclawApi = {
     window.api.openclaw.fetchAgents(instanceId),
   getSnapshot: (instanceId: string, agentId: string): Promise<OpenClawSessionSnapshot> =>
     window.api.openclaw.getSnapshot(instanceId, agentId),
-  listSessions: (instanceId: string, agentId: string): Promise<OpenClawSessionInfo[]> =>
-    window.api.openclaw.listSessions(instanceId, agentId),
-  createSession: (instanceId: string, agentId: string): Promise<OpenClawSessionInfo> =>
+  createSession: (instanceId: string, agentId: string) =>
     window.api.openclaw.createSession(instanceId, agentId),
-  bindSession: (instanceId: string, agentId: string, sessionKey: string): Promise<void> =>
-    window.api.openclaw.bindSession(instanceId, agentId, sessionKey),
   sendMessage: (input: OpenClawSendMessageInput): Promise<void> =>
     window.api.openclaw.sendMessage(input),
   abort: (instanceId: string, agentId: string): Promise<void> =>

@@ -525,9 +525,13 @@ class OpenClawClientManager {
   }
 
   /**
-   * 将该 Agent 绑定到指定 Gateway 会话并持久化到配置。
+   * 将该 Agent 绑定到指定 Gateway 会话并持久化到配置（仅内部使用）。
    */
-  async bindSession(instanceId: string, agentId: string, sessionKey: string): Promise<void> {
+  private async bindSession(
+    instanceId: string,
+    agentId: string,
+    sessionKey: string,
+  ): Promise<void> {
     const key = sessionKey.trim()
     if (!key) throw new Error("Session key is required")
 

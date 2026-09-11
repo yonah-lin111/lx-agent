@@ -6,9 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 const api = vi.hoisted(() => ({
   connect: vi.fn(),
   getSnapshot: vi.fn(),
-  listSessions: vi.fn(),
   createSession: vi.fn(),
-  bindSession: vi.fn(),
   sendMessage: vi.fn(),
   abort: vi.fn(),
   onEvent: vi.fn(),
@@ -35,15 +33,6 @@ describe("openclawChatStore session actions", () => {
     vi.clearAllMocks()
   })
 
-  it("listSessions 透传主进程返回的会话列表", async () => {
-    api.listSessions.mockResolvedValue([sessionInfo("agent:lily:main")])
-
-    const sessions = await useOpenClawChatStore.getState().listSessions("local", "lily")
-
-    expect(api.listSessions).toHaveBeenCalledWith("local", "lily")
-    expect(sessions).toEqual([sessionInfo("agent:lily:main")])
-  })
-
   it("createSession 新建后回读并写入会话投影", async () => {
     api.createSession.mockResolvedValue(sessionInfo("agent:lily:new"))
     api.getSnapshot.mockResolvedValue(snapshot("agent:lily:new"))
@@ -54,17 +43,6 @@ describe("openclawChatStore session actions", () => {
     expect(api.getSnapshot).toHaveBeenCalledWith("local", "lily")
     expect(useOpenClawChatStore.getState().getSession("local", "lily")?.sessionKey).toBe(
       "agent:lily:new",
-    )
-  })
-
-  it("bindSession 绑定后回读并写入会话投影", async () => {
-    api.getSnapshot.mockResolvedValue(snapshot("agent:lily:ops"))
-
-    await useOpenClawChatStore.getState().bindSession("local", "lily", "agent:lily:ops")
-
-    expect(api.bindSession).toHaveBeenCalledWith("local", "lily", "agent:lily:ops")
-    expect(useOpenClawChatStore.getState().getSession("local", "lily")?.sessionKey).toBe(
-      "agent:lily:ops",
     )
   })
 })

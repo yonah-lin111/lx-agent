@@ -86,12 +86,10 @@ export interface OpenClawApi {
     ) => Promise<OpenClawConnectResult & { agents: OpenClawAgentItem[] }>
     // 读取指定会话的权威快照；绑定时会从 Gateway 水合历史消息。
     getSnapshot: (instanceId: string, agentId: string) => Promise<OpenClawSessionSnapshot>
-    // 列出该 Agent 在 Gateway 上已有的会话（绑定发现）。
+    // 列出该 Agent 在 Gateway 上已有的会话（设置页绑定发现）。
     listSessions: (instanceId: string, agentId: string) => Promise<OpenClawSessionInfo[]>
     // 为该 Agent 新建一条 Gateway 会话并立即绑定。
     createSession: (instanceId: string, agentId: string) => Promise<OpenClawSessionInfo>
-    // 将该 Agent 绑定到指定 Gateway 会话并持久化。
-    bindSession: (instanceId: string, agentId: string, sessionKey: string) => Promise<void>
     // 向该 Agent 绑定的会话发送一条任务。
     sendMessage: (input: OpenClawSendMessageInput) => Promise<void>
     // 中止该会话进行中的 run。

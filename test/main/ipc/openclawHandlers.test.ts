@@ -10,7 +10,6 @@ const manager = {
   getSnapshot: vi.fn(),
   listSessions: vi.fn(),
   createSession: vi.fn(),
-  bindSession: vi.fn(),
   sendMessage: vi.fn(),
   abort: vi.fn(),
 }
@@ -38,7 +37,6 @@ describe("openclaw IPC handlers", () => {
       OPENCLAW_CHANNELS.getSnapshot,
       OPENCLAW_CHANNELS.listSessions,
       OPENCLAW_CHANNELS.createSession,
-      OPENCLAW_CHANNELS.bindSession,
       OPENCLAW_CHANNELS.sendMessage,
       OPENCLAW_CHANNELS.abort,
     ].sort()
@@ -46,39 +44,17 @@ describe("openclaw IPC handlers", () => {
     expect(handle.mock.calls.map(([channel]) => channel).sort()).toEqual(expectedChannels)
   })
 
-  it("转发会话绑定参数到会话管理器", async () => {
+  it("转发新建会话参数到会话管理器", async () => {
     const { registerOpenClawHandlers } = await import("@/ipc/openclawHandlers")
     registerOpenClawHandlers(() => undefined)
 
-    const bindCall = handle.mock.calls.find(
-      ([channel]) => channel === OPENCLAW_CHANNELS.bindSession,
+    const createCall = handle.mock.calls.find(
+      ([channel]) => channel === OPENCLAW_CHANNELS.createSession,
     )
-    const handler = bindCall?.[1] as (
-      event: unknown,
-      instanceId: string,
-      agentId: string,
-      sessionKey: string,
-    ) => void
+    const handler = createCall?.[1] as (event: unknown, instanceId: string, agentId: string) => void
 
-    handler({}, "local", "lily", "agent:lily:main")
+    handler({}, "local", "lily")
 
-    expect(manager.bindSession).toHaveBeenCalledWith("local", "lily", "agent:lily:main")
-  })
-
-  it("拒绝空的会话绑定 key", async () => {
-    const { registerOpenClawHandlers } = await import("@/ipc/openclawHandlers")
-    registerOpenClawHandlers(() => undefined)
-
-    const bindCall = handle.mock.calls.find(
-      ([channel]) => channel === OPENCLAW_CHANNELS.bindSession,
-    )
-    const handler = bindCall?.[1] as (
-      event: unknown,
-      instanceId: string,
-      agentId: string,
-      sessionKey: string,
-    ) => void
-
-    expect(() => handler({}, "local", "lily", "  ")).toThrow("INVALID_SESSION_KEY")
+    expect(manager.createSession).toHaveBeenCalledWith("local", "lily")
   })
 })

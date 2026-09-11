@@ -31,7 +31,11 @@ import {
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { useTranslation } from "@/i18n"
 import { getClawMentionDeletionRange } from "../clawMention"
-import { getMatchedOpenClawCommands, type OpenClawCommandId } from "../openclawCommands"
+import {
+  getMatchedOpenClawCommands,
+  keepsCommandText,
+  type OpenClawCommandId,
+} from "../openclawCommands"
 import { type OpenClawPickerItem, OpenClawPickerPanel } from "./OpenClawPickerPanel"
 import { type OpenClawTargetOffice, OpenClawTargetSelect } from "./OpenClawTargetSelect"
 
@@ -41,13 +45,15 @@ export interface OpenClawInputRef {
   setValue: (value: string) => void
 }
 
-// 由父级驱动的选择面板（`/office`、`/agent`）。
+// 由父级驱动的选择面板（`/office`、`/clear`）。
 export interface OpenClawInputPicker {
   key: string
   title: string
   emptyText: string
   items: OpenClawPickerItem[]
   onPick: (id: string) => void
+  // 多选面板：空格切换选中，回车直接发送（回车不再选中）。
+  multiSelect?: boolean
 }
 
 export interface OpenClawInputProps {
@@ -241,15 +247,19 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     }, [pickerKey, updatePanelPosition])
 
     const applyCommand = useCallback((command: AgentInputCommand): void => {
-      const view = editorViewRef.current
-      if (view) {
-        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+      const commandId = command.id as OpenClawCommandId
+      // 支持追加参数的命令保留输入文本（如 `/clear lily & lucy`）。
+      if (!keepsCommandText(commandId)) {
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+        }
+        onChangeRef.current("")
       }
-      onChangeRef.current("")
       setActiveMode(null)
       setMatchedCommands([])
       setPanelPosition(null)
-      onCommandRef.current(command.id as OpenClawCommandId)
+      onCommandRef.current(commandId)
       editorViewRef.current?.focus()
     }, [])
 
@@ -363,6 +373,11 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
               mentionItems: items,
               picker: activePicker,
             } = stateRef.current
+            // 多选面板：回车直接发送当前命令（选中由空格完成）。
+            if (mode === "picker" && activePicker?.multiSelect) {
+              onSendRef.current()
+              return true
+            }
             if (mode === "command") {
               const command = cmds[ci] ?? cmds[0]
               if (command) {
@@ -390,6 +405,17 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           shift: (view) => {
             const cursor = view.state.selection.main.head
             view.dispatch({ changes: { from: cursor, to: cursor, insert: "\n" } })
+            return true
+          },
+        },
+        {
+          key: "Space",
+          run: () => {
+            const { activeMode: mode, picker: activePicker, pickerIndex: pi } = stateRef.current
+            if (mode !== "picker" || !activePicker?.multiSelect) return false
+            const picked = activePicker.items[pi] ?? activePicker.items[0]
+            if (!picked) return false
+            activePicker.onPick(picked.id)
             return true
           },
         },

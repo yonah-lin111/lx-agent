@@ -74,13 +74,12 @@ describe.skipIf(!runE2E)("OpenClawClientManager E2E", () => {
     expect(fetched.agents.every((agent) => agent.id.length > 0)).toBe(true)
   }, 30_000)
 
-  it("绑定会话后发送任务并流式收到助手回复", async () => {
+  it("新建会话后发送任务并流式收到助手回复", async () => {
     const fetched = await manager.fetchAgents(instanceId)
     const agent = fetched.agents[0]
     if (!agent) throw new Error("no agent available on the test gateway")
 
-    const sessionKey = `agent:${agent.id}:e2e-binding`
-    await manager.bindSession(instanceId, agent.id, sessionKey)
+    const created = await manager.createSession(instanceId, agent.id)
     await manager.sendMessage({
       instanceId,
       agentId: agent.id,
@@ -99,7 +98,7 @@ describe.skipIf(!runE2E)("OpenClawClientManager E2E", () => {
 
     const assistant = snapshot.messages.filter((message) => message.role === "assistant").at(-1)
 
-    expect(snapshot.sessionKey).toBe(sessionKey)
+    expect(snapshot.sessionKey).toBe(created.key)
     expect(assistant?.content.trim().toUpperCase()).toContain("PONG")
     expect(snapshot.isStreaming).toBe(false)
     expect(snapshot.messages.some((message) => message.role === "user")).toBe(true)
@@ -118,17 +117,16 @@ describe.skipIf(!runE2E)("OpenClawClientManager E2E", () => {
     expect(sessions.every((session) => session.key.length > 0)).toBe(true)
   }, 30_000)
 
-  it("bindSession 切换绑定并清空本地投影", async () => {
+  it("createSession 切换绑定并清空本地投影", async () => {
     const fetched = await manager.fetchAgents(instanceId)
     const agent = fetched.agents[0]
     if (!agent) throw new Error("no agent available on the test gateway")
 
     const before = await manager.getSnapshot(instanceId, agent.id)
-    const nextKey = `agent:${agent.id}:e2e-switched`
-    await manager.bindSession(instanceId, agent.id, nextKey)
+    const created = await manager.createSession(instanceId, agent.id)
     const after = await manager.getSnapshot(instanceId, agent.id)
 
     expect(after.sessionKey).not.toBe(before.sessionKey)
-    expect(after.sessionKey).toBe(nextKey)
+    expect(after.sessionKey).toBe(created.key)
   }, 30_000)
 })

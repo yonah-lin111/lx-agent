@@ -1,8 +1,8 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ModelProviderSettings } from "@shared/settings"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const holder = vi.hoisted(() => ({
   configPath: "",

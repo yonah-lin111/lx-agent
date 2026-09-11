@@ -30,8 +30,6 @@ export const openclawApi: OpenClawApi["openclaw"] = {
       instanceId,
       agentId,
     ) as Promise<OpenClawSessionInfo>,
-  bindSession: (instanceId: string, agentId: string, sessionKey: string) =>
-    ipcRenderer.invoke(OPENCLAW_CHANNELS.bindSession, instanceId, agentId, sessionKey),
   sendMessage: (input: OpenClawSendMessageInput) =>
     ipcRenderer.invoke(OPENCLAW_CHANNELS.sendMessage, input),
   abort: (instanceId: string, agentId: string) =>

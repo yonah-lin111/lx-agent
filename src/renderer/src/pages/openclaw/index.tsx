@@ -1,4 +1,4 @@
-import type { OpenClawConnectionStatus, OpenClawSessionInfo } from "@shared/contracts/openclaw"
+import type { OpenClawConnectionStatus } from "@shared/contracts/openclaw"
 import { Plus, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -7,16 +7,16 @@ import { useLxToast } from "@/components/ui/LxToast"
 import {
   accentHexForIndex,
   type ConversationAgent,
-  matchOpenClawCommand,
   type OpenClawCommandId,
   OpenClawInput,
   type OpenClawInputPicker,
   type OpenClawInputRef,
   OpenClawMessageList,
-  type OpenClawPickerItem,
   type OpenClawTargetOffice,
-  openClawSessionKey,
+  parseOpenClawCommand,
   resolveClawDispatchTargets,
+  splitClearAgentNames,
+  toggleClearAgentName,
   useOpenClawChatStore,
   useOpenClawConfig,
   useOpenClawOffice,
@@ -24,9 +24,6 @@ import {
 } from "@/features/openclaw"
 import { notifySettingsChanged } from "@/features/settings"
 import { type TranslationKey, useTranslation } from "@/i18n"
-
-// 会话面板中「新建对话」项的固定 id。
-const NEW_SESSION_ITEM_ID = "new-session"
 
 // 连接状态指示灯配色。
 const STATUS_DOT_CLASS: Record<OpenClawConnectionStatus, string> = {
@@ -63,9 +60,9 @@ export const OpenClawPage = (): React.JSX.Element => {
   const consumePendingDispatch = useOpenClawOfficeStore((state) => state.consumePendingDispatch)
 
   const [input, setInput] = useState("")
-  const [pickerKind, setPickerKind] = useState<"agent" | "office" | "session" | null>(null)
-  const [sessionItems, setSessionItems] = useState<OpenClawSessionInfo[]>([])
-  const [sessionLoading, setSessionLoading] = useState(false)
+  const [pickerKind, setPickerKind] = useState<"office" | "session" | null>(null)
+  // session 面板模式：compose 追加 `/clear <name>` 参数；execute 选中即新建。
+  const [sessionMode, setSessionMode] = useState<"compose" | "execute">("compose")
   const inputRef = useRef<OpenClawInputRef | null>(null)
 
   const currentInstance = selectedInstanceId ? instances[selectedInstanceId] : undefined
@@ -75,14 +72,8 @@ export const OpenClawPage = (): React.JSX.Element => {
   )
   const agentIds = useMemo(() => agents.map((agent) => agent.id), [agents])
 
-  const { sessions } = useOpenClawOffice(selectedInstanceId, agentIds)
+  const { sessions, timeline, isAnyStreaming } = useOpenClawOffice(selectedInstanceId, agentIds)
 
-  // 当前查看员工的权威快照（主进程投影）。
-  const activeSession = useOpenClawChatStore((state) =>
-    selectedInstanceId && activeAgentId
-      ? state.sessions[openClawSessionKey(selectedInstanceId, activeAgentId)]
-      : undefined,
-  )
   const activeAgent = useMemo(
     () => agents.find((agent) => agent.id === activeAgentId),
     [activeAgentId, agents],
@@ -104,6 +95,12 @@ export const OpenClawPage = (): React.JSX.Element => {
     return undefined
   }, [sessions])
 
+  const streamingAgentIds = useMemo(
+    () =>
+      sessions.filter((session) => session.snapshot?.isStreaming).map((session) => session.agentId),
+    [sessions],
+  )
+
   const candidates = useMemo(
     () =>
       agents.map((agent) => ({
@@ -123,11 +120,6 @@ export const OpenClawPage = (): React.JSX.Element => {
         accent: accentHexForIndex(index),
       })),
     [agents],
-  )
-
-  const activeConversationAgent = useMemo(
-    () => conversationAgents.find((agent) => agent.agentId === activeAgentId),
-    [activeAgentId, conversationAgents],
   )
 
   // 构建用于输入框选择器的办公区与员工列表
@@ -170,27 +162,18 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
   }, [agentIds, selectedAgentIds, setSelectedAgentIds])
 
-  // 拉取当前查看员工的 Gateway 会话列表，并打开会话面板。
-  const openSessionPicker = useCallback(async (): Promise<void> => {
-    if (!selectedInstanceId || !activeAgentId) {
-      toast.error(t("openclaw.sessionNoAgent"))
-      return
-    }
-    setPickerKind("session")
-    setSessionLoading(true)
-    try {
-      const list = await useOpenClawChatStore
-        .getState()
-        .listSessions(selectedInstanceId, activeAgentId)
-      setSessionItems(list)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      toast.error(message || t("openclaw.sessionLoadFailed"))
-      setSessionItems([])
-    } finally {
-      setSessionLoading(false)
-    }
-  }, [activeAgentId, selectedInstanceId, t, toast])
+  // 打开员工选择面板：compose 模式下选中会追加到 `/clear` 命令行。
+  const openSessionPicker = useCallback(
+    (mode: "compose" | "execute"): void => {
+      if (!selectedInstanceId || agents.length === 0) {
+        toast.error(t("openclaw.noAgents"))
+        return
+      }
+      setSessionMode(mode)
+      setPickerKind("session")
+    },
+    [agents.length, selectedInstanceId, t, toast],
+  )
 
   const runCommand = useCallback(
     (command: OpenClawCommandId): void => {
@@ -198,7 +181,7 @@ export const OpenClawPage = (): React.JSX.Element => {
       const store = useOpenClawChatStore.getState()
       switch (command) {
         case "clear":
-          void openSessionPicker()
+          openSessionPicker("compose")
           break
         case "stop":
           for (const session of sessions) {
@@ -206,9 +189,6 @@ export const OpenClawPage = (): React.JSX.Element => {
               void store.abort(selectedInstanceId, session.agentId)
             }
           }
-          break
-        case "agent":
-          setPickerKind("agent")
           break
         case "office":
           setPickerKind("office")
@@ -222,11 +202,40 @@ export const OpenClawPage = (): React.JSX.Element => {
   const handleSend = useCallback((): void => {
     const text = input.trim()
     if (!text) return
+    // 多选面板下回车直发：发送前收起面板。
+    setPickerKind(null)
 
-    const command = matchOpenClawCommand(text)
+    const command = parseOpenClawCommand(text)
     if (command) {
+      if (command.id === "clear") {
+        const names = splitClearAgentNames(command.args)
+        if (names.length === 0) {
+          // 无参数：保留 `/clear` 文本并打开员工面板。
+          runCommand("clear")
+          return
+        }
+        if (!selectedInstanceId) return
+        const targets = agents.filter((agent) =>
+          names.some((name) => name.toLowerCase() === agent.name.toLowerCase()),
+        )
+        if (targets.length === 0) {
+          toast.error(t("openclaw.sessionNoMatch"))
+          return
+        }
+        setInput("")
+        const store = useOpenClawChatStore.getState()
+        for (const agent of targets) {
+          void store.createSession(selectedInstanceId, agent.id).catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error)
+            toast.error(message || t("openclaw.sessionCreateFailed"))
+          })
+        }
+        notifySettingsChanged("openclaw")
+        toast.success(t("openclaw.sessionCreated", { count: targets.length }))
+        return
+      }
       setInput("")
-      runCommand(command)
+      runCommand(command.id)
       return
     }
 
@@ -249,7 +258,7 @@ export const OpenClawPage = (): React.JSX.Element => {
         toast.error(message || t("openclaw.sendFailed"))
       })
     }
-  }, [agentIds, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
+  }, [agentIds, agents, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
 
   const picker = useMemo<OpenClawInputPicker | null>(() => {
     if (pickerKind === "office") {
@@ -270,62 +279,44 @@ export const OpenClawPage = (): React.JSX.Element => {
         },
       }
     }
-    if (pickerKind === "agent") {
+    if (pickerKind === "session") {
+      const compose = sessionMode === "compose"
+      const parsed = parseOpenClawCommand(input)
+      const clearNames = compose && parsed?.id === "clear" ? splitClearAgentNames(parsed.args) : []
+      const clearNameSet = new Set(clearNames.map((name) => name.toLowerCase()))
       return {
-        key: "agent",
-        title: t("openclaw.agentPickerTitle"),
+        key: `session:${sessionMode}`,
+        title: t("openclaw.sessionPickerTitle"),
         emptyText: t("openclaw.noAgents"),
+        // compose 模式为多选：空格切换员工，回车发送 `/clear` 命令。
+        multiSelect: compose,
         items: agents.map((agent) => ({
           id: agent.id,
           label: agent.name,
           hint: agent.id,
-          selected: selectedAgentIds.includes(agent.id),
+          selected: compose
+            ? clearNameSet.has(agent.name.toLowerCase())
+            : agent.id === activeAgentId,
         })),
-        onPick: (id) => selectAgent(id, { additive: true }),
-      }
-    }
-    if (pickerKind === "session") {
-      const boundKey = activeSession?.sessionKey ?? null
-      const items: OpenClawPickerItem[] = sessionLoading
-        ? []
-        : [
-            {
-              id: NEW_SESSION_ITEM_ID,
-              label: t("openclaw.sessionNew"),
-              hint: t("openclaw.sessionNewHint"),
-            },
-            ...sessionItems.map((session) => ({
-              id: session.key,
-              label: session.displayName || session.label || session.key,
-              hint: session.updatedAt ? new Date(session.updatedAt).toLocaleString() : session.key,
-              selected: session.key === boundKey,
-            })),
-          ]
-      return {
-        key: `session:${activeAgentId ?? ""}`,
-        title: t("openclaw.sessionPickerTitle"),
-        emptyText: sessionLoading ? t("openclaw.sessionLoading") : t("openclaw.sessionEmpty"),
-        items,
         onPick: (id) => {
+          if (compose) {
+            const agent = agents.find((item) => item.id === id)
+            if (!agent) return
+            setInput((current) => toggleClearAgentName(current, agent.name))
+            return
+          }
           setPickerKind(null)
-          if (!selectedInstanceId || !activeAgentId) return
-          const store = useOpenClawChatStore.getState()
-          const action =
-            id === NEW_SESSION_ITEM_ID
-              ? store.createSession(selectedInstanceId, activeAgentId)
-              : store.bindSession(selectedInstanceId, activeAgentId, id)
-          void action
+          if (!selectedInstanceId) return
+          selectAgent(id, { additive: false })
+          void useOpenClawChatStore
+            .getState()
+            .createSession(selectedInstanceId, id)
             .then(() => {
               notifySettingsChanged("openclaw")
             })
             .catch((error: unknown) => {
               const message = error instanceof Error ? error.message : String(error)
-              toast.error(
-                message ||
-                  (id === NEW_SESSION_ITEM_ID
-                    ? t("openclaw.sessionCreateFailed")
-                    : t("openclaw.sessionBindFailed")),
-              )
+              toast.error(message || t("openclaw.sessionCreateFailed"))
             })
         },
       }
@@ -333,17 +324,15 @@ export const OpenClawPage = (): React.JSX.Element => {
     return null
   }, [
     activeAgentId,
-    activeSession,
     agents,
     enabledInstances,
+    input,
     instances,
     pickerKind,
     selectAgent,
     selectOffice,
-    selectedAgentIds,
     selectedInstanceId,
-    sessionItems,
-    sessionLoading,
+    sessionMode,
     t,
     toast,
   ])
@@ -383,29 +372,22 @@ export const OpenClawPage = (): React.JSX.Element => {
         </LxIconButton>
         <LxIconButton
           size="small"
-          aria-label={t("openclaw.sessions")}
-          title={{ content: t("openclaw.sessions"), placement: "bottom" }}
-          disabled={!selectedInstanceId || !activeAgentId}
-          onClick={() => void openSessionPicker()}
+          aria-label={t("openclaw.sessionNew")}
+          title={{ content: t("openclaw.sessionNew"), placement: "bottom" }}
+          disabled={!selectedInstanceId || agents.length === 0}
+          onClick={() => openSessionPicker("execute")}
         >
           <Plus className="h-3.5 w-3.5" />
         </LxIconButton>
       </div>
 
-      {/* 视图区：当前查看员工的会话 */}
+      {/* 视图区：当前办公区内所有员工的消息合流时间线 */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {activeSession?.sessionKey === null ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-4">
-            <p className="text-xs text-white/55">{t("openclaw.sessionUnbound")}</p>
-            <p className="text-[11px] text-white/35">{t("openclaw.sessionUnboundHint")}</p>
-          </div>
-        ) : (
-          <OpenClawMessageList
-            agent={activeConversationAgent}
-            messages={activeSession?.messages ?? []}
-            isStreaming={activeSession?.isStreaming ?? false}
-          />
-        )}
+        <OpenClawMessageList
+          timeline={timeline}
+          agents={conversationAgents}
+          streamingAgentIds={streamingAgentIds}
+        />
       </div>
 
       {/* 输入区 */}
@@ -416,8 +398,10 @@ export const OpenClawPage = (): React.JSX.Element => {
           onChange={setInput}
           onSend={handleSend}
           onStop={() => {
-            if (!selectedInstanceId || !activeAgentId) return
-            void useOpenClawChatStore.getState().abort(selectedInstanceId, activeAgentId)
+            if (!selectedInstanceId) return
+            for (const agentId of streamingAgentIds) {
+              void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
+            }
           }}
           candidates={candidates}
           onCommand={runCommand}
@@ -425,7 +409,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           onPickerClose={() => setPickerKind(null)}
           placeholder={t("openclaw.placeholder")}
           disabled={agentIds.length === 0}
-          isStreaming={activeSession?.isStreaming ?? false}
+          isStreaming={isAnyStreaming}
           offices={offices}
           selectedOfficeId={selectedInstanceId}
           selectedAgentIds={selectedAgentIds}

@@ -173,12 +173,13 @@ describe("openclawClientManager session binding", () => {
     expect(agentCall?.params).toMatchObject({ agentId: "amy", sessionKey: boundKey })
   })
 
-  it("bindSession 持久化新绑定、清理投影并释放旧订阅", async () => {
+  it("createSession 持久化新绑定、清理投影并释放旧订阅", async () => {
     writeConfig([{ id: "lily", name: "Lily", sessionKey: "agent:lily:main" }])
+    gateway.responses.set("sessions.create", { ok: true, key: "agent:lily:ops" })
     await openClawClientManager.connect(instanceId)
     await openClawClientManager.getSnapshot(instanceId, "lily")
 
-    await openClawClientManager.bindSession(instanceId, "lily", "agent:lily:ops")
+    await openClawClientManager.createSession(instanceId, "lily")
 
     expect(readBoundSessionKey("lily")).toBe("agent:lily:ops")
     const snapshot = await openClawClientManager.getSnapshot(instanceId, "lily")
