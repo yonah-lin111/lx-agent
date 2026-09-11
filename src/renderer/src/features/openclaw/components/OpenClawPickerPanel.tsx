@@ -1,6 +1,10 @@
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  panelClassName,
+  useActiveItemScrollIntoView,
+  usePanelAnimation,
+} from "@/features/agent/components/AgentInput"
 
 export interface OpenClawPickerItem {
   id: string
@@ -18,8 +22,17 @@ export interface OpenClawPickerPanelProps {
   activeIndex: number
 }
 
+interface OpenClawPickerDisplayData {
+  position: CSSProperties
+  title: string
+  emptyText: string
+  items: OpenClawPickerItem[]
+  activeIndex: number
+}
+
 /**
- * OpenClaw 选择面板：`/office` 切换办公区、`/agent` 切换员工选中。
+ * OpenClaw 选择面板：`/office` 切换办公区、`/clear` 选择员工会话。
+ * 动画过渡、滚动定位与样式严格对齐 AgentInput 的二级面板（AgentInputModelPanel）。
  */
 export const OpenClawPickerPanel = ({
   isOpen,
@@ -29,43 +42,43 @@ export const OpenClawPickerPanel = ({
   items,
   activeIndex,
 }: OpenClawPickerPanelProps): React.JSX.Element | null => {
-  const [shouldRender, setShouldRender] = useState(false)
-  const panelRef = useRef<HTMLDivElement | null>(null)
+  // 标题为空表示父级未提供面板数据；关闭期间保留最后数据播放退场动画。
+  const hasData = position !== null && title !== ""
+  const animated = usePanelAnimation<OpenClawPickerDisplayData>(
+    isOpen && hasData,
+    hasData ? { position, title, emptyText, items, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
 
-  useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true)
-      return
-    }
-    const timer = setTimeout(() => setShouldRender(false), 120)
-    return () => clearTimeout(timer)
-  }, [isOpen])
-
-  useLayoutEffect(() => {
-    const container = panelRef.current
-    if (!container) return
-    const active = container.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
-    active?.scrollIntoView({ block: "nearest" })
-  }, [activeIndex, isOpen])
-
-  if (!shouldRender || position === null) return null
+  const {
+    position: displayPosition,
+    title: displayTitle,
+    emptyText: displayEmptyText,
+    items: displayItems,
+    activeIndex: displayIndex,
+  } = animated.displayData
 
   return (
     <div
       ref={panelRef}
       role="listbox"
-      aria-label={title}
-      className={`scrollbar-hidden pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
-        isOpen ? "animate-tooltip-in" : "animate-tooltip-out"
+      aria-label={displayTitle}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
-      style={position}
+      style={displayPosition}
     >
-      <div className="px-2 py-1 text-[11px] text-white/40">{title}</div>
-      {items.length === 0 ? (
-        <div className="px-2 py-2 text-[12px] text-white/45">{emptyText}</div>
+      <div className="px-2 py-1 text-[11px] text-white/40">{displayTitle}</div>
+      {displayItems.length === 0 ? (
+        <div className="px-2 py-2 text-[12px] text-white/45">{displayEmptyText}</div>
       ) : (
-        items.map((item, index) => {
-          const isActive = index === activeIndex
+        displayItems.map((item, index) => {
+          const isActive = index === displayIndex
           return (
             <div
               key={item.id}

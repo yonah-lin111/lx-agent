@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { OpenClawInput } from "@/features/openclaw/components/OpenClawInput"
+import {
+  OpenClawInput,
+  type OpenClawInputPicker,
+} from "@/features/openclaw/components/OpenClawInput"
 import { OpenClawTargetSelect } from "@/features/openclaw/components/OpenClawTargetSelect"
 
 const offices = [
@@ -81,5 +84,143 @@ describe("OpenClawTargetSelect & OpenClawInput UI", () => {
     expect(sendBtn).not.toBeNull()
     fireEvent.click(sendBtn)
     expect(onSend).toHaveBeenCalled()
+  })
+})
+
+const baseInputProps = {
+  onChange: vi.fn(),
+  onSend: vi.fn(),
+  onStop: vi.fn(),
+  candidates: [],
+  onCommand: vi.fn(),
+}
+
+const composePicker: OpenClawInputPicker = {
+  key: "session:compose",
+  commandId: "clear",
+  title: "选择员工",
+  emptyText: "无员工",
+  multiSelect: true,
+  items: [{ id: "agent-a", label: "架构师" }],
+  onPick: vi.fn(),
+}
+
+const executePicker: OpenClawInputPicker = {
+  key: "session:execute",
+  title: "新建会话",
+  emptyText: "无员工",
+  items: [{ id: "agent-a", label: "架构师" }],
+  onPick: vi.fn(),
+}
+
+describe("OpenClawInput 命令面板交互（对齐 AgentInput）", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("输入 /clear 直接进入二级选择面板（不经一级命令面板）", async () => {
+    const { rerender } = render(<OpenClawInput {...baseInputProps} value="" picker={null} />)
+
+    rerender(<OpenClawInput {...baseInputProps} value="/cle" picker={null} />)
+    expect(await screen.findByText("/clear")).not.toBeNull()
+
+    rerender(<OpenClawInput {...baseInputProps} value="/clear" picker={composePicker} />)
+    expect(await screen.findByRole("listbox", { name: "选择员工" })).not.toBeNull()
+  })
+
+  it("删除 /clear 失配时在同一事务回落一级命令面板", async () => {
+    const { rerender } = render(<OpenClawInput {...baseInputProps} value="" picker={null} />)
+
+    rerender(<OpenClawInput {...baseInputProps} value="/clear" picker={composePicker} />)
+    await screen.findByRole("listbox", { name: "选择员工" })
+
+    rerender(<OpenClawInput {...baseInputProps} value="/clea" picker={null} />)
+    expect(await screen.findByText("/clear")).not.toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByRole("listbox", { name: "选择员工" })).toBeNull()
+    })
+  })
+
+  it("父级 picker 未及时收回（陈旧 commandId）时仍回落一级命令面板", async () => {
+    const { rerender } = render(<OpenClawInput {...baseInputProps} value="" picker={null} />)
+
+    rerender(<OpenClawInput {...baseInputProps} value="/clear" picker={composePicker} />)
+    await screen.findByRole("listbox", { name: "选择员工" })
+
+    rerender(<OpenClawInput {...baseInputProps} value="/clea" picker={composePicker} />)
+    expect(await screen.findByText("/clear")).not.toBeNull()
+  })
+
+  it("office 显式面板不随文本变化关闭", async () => {
+    const onPickerClose = vi.fn()
+    const officePicker: OpenClawInputPicker = {
+      key: "office",
+      title: "选择办公区",
+      emptyText: "无办公区",
+      items: [{ id: "office-1", label: "研发中心" }],
+      onPick: vi.fn(),
+    }
+    const { rerender } = render(
+      <OpenClawInput
+        {...baseInputProps}
+        value=""
+        picker={officePicker}
+        onPickerClose={onPickerClose}
+      />,
+    )
+    await screen.findByRole("listbox", { name: "选择办公区" })
+
+    rerender(
+      <OpenClawInput
+        {...baseInputProps}
+        value="hello"
+        picker={officePicker}
+        onPickerClose={onPickerClose}
+      />,
+    )
+
+    expect(screen.getByRole("listbox", { name: "选择办公区" })).not.toBeNull()
+    expect(onPickerClose).not.toHaveBeenCalled()
+  })
+
+  it("execute 显式面板不随文本变化关闭", async () => {
+    const onPickerClose = vi.fn()
+    const { rerender } = render(
+      <OpenClawInput
+        {...baseInputProps}
+        value=""
+        picker={executePicker}
+        onPickerClose={onPickerClose}
+      />,
+    )
+    await screen.findByRole("listbox", { name: "新建会话" })
+
+    rerender(
+      <OpenClawInput
+        {...baseInputProps}
+        value="hello"
+        picker={executePicker}
+        onPickerClose={onPickerClose}
+      />,
+    )
+
+    expect(screen.getByRole("listbox", { name: "新建会话" })).not.toBeNull()
+    expect(onPickerClose).not.toHaveBeenCalled()
+  })
+
+  it("一级面板模糊选中 /clear 后写入规范命令文本", async () => {
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <OpenClawInput {...baseInputProps} onChange={onChange} value="" picker={null} />,
+    )
+
+    rerender(<OpenClawInput {...baseInputProps} onChange={onChange} value="/cle" picker={null} />)
+    await screen.findByText("/clear")
+
+    const content = document.querySelector(".cm-content")
+    expect(content).not.toBeNull()
+    fireEvent.keyDown(content as HTMLElement, { key: "Enter" })
+
+    expect(onChange).toHaveBeenLastCalledWith("/clear")
   })
 })

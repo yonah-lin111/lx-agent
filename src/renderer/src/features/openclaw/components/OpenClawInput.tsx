@@ -35,6 +35,7 @@ import {
   getMatchedOpenClawCommands,
   keepsCommandText,
   type OpenClawCommandId,
+  parseOpenClawCommand,
 } from "../openclawCommands"
 import { type OpenClawPickerItem, OpenClawPickerPanel } from "./OpenClawPickerPanel"
 import { type OpenClawTargetOffice, OpenClawTargetSelect } from "./OpenClawTargetSelect"
@@ -54,6 +55,8 @@ export interface OpenClawInputPicker {
   onPick: (id: string) => void
   // 多选面板：空格切换选中，回车直接发送（回车不再选中）。
   multiSelect?: boolean
+  // 绑定命令的面板：可见性由输入文本派生（对齐 /model 二级面板）；缺省表示父级显式控制。
+  commandId?: OpenClawCommandId
 }
 
 export interface OpenClawInputProps {
@@ -190,10 +193,30 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       [getPanelAnchor],
     )
 
-    // 同步面板状态：选择面板 > 命令 > 当前办公区的 @claw 提及
+    // 同步面板状态：文本派生的二级面板 > 命令 > 当前办公区的 @claw 提及
     const syncPanels = useCallback(
       (docText: string, cursor: number): void => {
-        if (stateRef.current.picker) return
+        const parsed = parseOpenClawCommand(docText)
+
+        // 文本绑定的二级面板（/clear）：与 /model 一致，输入即进入选择面板。
+        if (parsed && keepsCommandText(parsed.id)) {
+          if (stateRef.current.picker && !stateRef.current.picker.commandId) {
+            onPickerCloseRef.current?.()
+          }
+          // 已在面板内（如空格切换选中改写文本）时保留当前激活项，避免选择跳回第一项。
+          if (stateRef.current.activeMode !== "picker") {
+            setPickerIndex(0)
+          }
+          setActiveMode("picker")
+          setMatchedCommands([])
+          setMentionItems([])
+          updatePanelPosition("command")
+          return
+        }
+
+        const activePicker = stateRef.current.picker
+        // office/execute 等显式面板由父级控制；文本绑定的面板失配时在同一事务回落。
+        if (activePicker && !activePicker.commandId) return
 
         const commands = getMatchedOpenClawCommands(docText, t)
         if (commands.length > 0) {
@@ -248,19 +271,29 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
 
     const applyCommand = useCallback((command: AgentInputCommand): void => {
       const commandId = command.id as OpenClawCommandId
-      // 支持追加参数的命令保留输入文本（如 `/clear lily & lucy`）。
-      if (!keepsCommandText(commandId)) {
-        const view = editorViewRef.current
-        if (view) {
-          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
-        }
-        onChangeRef.current("")
-      }
+      const view = editorViewRef.current
       setActiveMode(null)
       setMatchedCommands([])
       setPanelPosition(null)
+      // 与 AgentInput 的 /model 一致：写入规范命令文本，二级面板由文本派生。
+      if (keepsCommandText(commandId)) {
+        const insert = command.name
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert },
+            selection: { anchor: insert.length },
+          })
+        }
+        onChangeRef.current(insert)
+        view?.focus()
+        return
+      }
+      if (view) {
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+      }
+      onChangeRef.current("")
       onCommandRef.current(commandId)
-      editorViewRef.current?.focus()
+      view?.focus()
     }, [])
 
     const applyMention = useCallback((item: AgentMentionItem): void => {

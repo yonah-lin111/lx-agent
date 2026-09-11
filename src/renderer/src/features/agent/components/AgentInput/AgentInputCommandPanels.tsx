@@ -70,14 +70,14 @@ interface AgentInputCommandPanelProps {
   activeIndex: number
 }
 
-const panelClassName =
+export const panelClassName =
   "scrollbar-hidden pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
 
 /**
  * 面板淡入/淡出动画：关闭后保留最后数据渲染 120ms 播放退场动画，
  * 与 MarkdownBlockCommandMenu / GitWorktreeCommandMenu 一致的过渡体验。
  */
-const usePanelAnimation = <T,>(
+export const usePanelAnimation = <T,>(
   visible: boolean,
   data: T | null,
 ): { displayData: T; isAnimatingOut: boolean } | null => {
@@ -166,7 +166,7 @@ export const getAgentPanelPosition = (kind: AgentPanelKind, rect: DOMRect): CSSP
 /**
  * 激活项与面板边缘保持间距，避免上下键移动时被裁切。
  */
-const useActiveItemScrollIntoView = (
+export const useActiveItemScrollIntoView = (
   isOpen: boolean,
   position: CSSProperties | null,
   activeIndex: number,

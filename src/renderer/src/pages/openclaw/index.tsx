@@ -61,8 +61,6 @@ export const OpenClawPage = (): React.JSX.Element => {
 
   const [input, setInput] = useState("")
   const [pickerKind, setPickerKind] = useState<"office" | "session" | null>(null)
-  // session 面板模式：compose 追加 `/clear <name>` 参数；execute 选中即新建。
-  const [sessionMode, setSessionMode] = useState<"compose" | "execute">("compose")
   const inputRef = useRef<OpenClawInputRef | null>(null)
 
   const currentInstance = selectedInstanceId ? instances[selectedInstanceId] : undefined
@@ -162,18 +160,14 @@ export const OpenClawPage = (): React.JSX.Element => {
     }
   }, [agentIds, selectedAgentIds, setSelectedAgentIds])
 
-  // 打开员工选择面板：compose 模式下选中会追加到 `/clear` 命令行。
-  const openSessionPicker = useCallback(
-    (mode: "compose" | "execute"): void => {
-      if (!selectedInstanceId || agents.length === 0) {
-        toast.error(t("openclaw.noAgents"))
-        return
-      }
-      setSessionMode(mode)
-      setPickerKind("session")
-    },
-    [agents.length, selectedInstanceId, t, toast],
-  )
+  // 打开新建会话面板：选中员工即创建会话。
+  const openSessionPicker = useCallback((): void => {
+    if (!selectedInstanceId || agents.length === 0) {
+      toast.error(t("openclaw.noAgents"))
+      return
+    }
+    setPickerKind("session")
+  }, [agents.length, selectedInstanceId, t, toast])
 
   const runCommand = useCallback(
     (command: OpenClawCommandId): void => {
@@ -181,7 +175,7 @@ export const OpenClawPage = (): React.JSX.Element => {
       const store = useOpenClawChatStore.getState()
       switch (command) {
         case "clear":
-          openSessionPicker("compose")
+          // compose 面板由 `/clear` 输入文本派生（对齐 /model 二级面板），无需显式打开。
           break
         case "stop":
           for (const session of sessions) {
@@ -195,7 +189,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           break
       }
     },
-    [openSessionPicker, selectedInstanceId, sessions],
+    [selectedInstanceId, sessions],
   )
 
   // 发送：命令优先；`@claw` 提及或选中集合决定扇出目标。
@@ -210,8 +204,7 @@ export const OpenClawPage = (): React.JSX.Element => {
       if (command.id === "clear") {
         const names = splitClearAgentNames(command.args)
         if (names.length === 0) {
-          // 无参数：保留 `/clear` 文本并打开员工面板。
-          runCommand("clear")
+          // 无参数：`/clear` 文本已派生员工选择面板，保持打开即可。
           return
         }
         if (!selectedInstanceId) return
@@ -261,6 +254,32 @@ export const OpenClawPage = (): React.JSX.Element => {
   }, [agentIds, agents, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
 
   const picker = useMemo<OpenClawInputPicker | null>(() => {
+    // compose 面板由输入文本派生（对齐 /model 二级面板）：`/clear` 即展示员工选择。
+    const parsed = parseOpenClawCommand(input)
+    if (parsed?.id === "clear") {
+      const clearNameSet = new Set(
+        splitClearAgentNames(parsed.args).map((name) => name.toLowerCase()),
+      )
+      return {
+        key: "session:compose",
+        commandId: "clear",
+        title: t("openclaw.sessionPickerTitle"),
+        emptyText: t("openclaw.noAgents"),
+        // 多选：空格切换员工，回车发送 `/clear` 命令。
+        multiSelect: true,
+        items: agents.map((agent) => ({
+          id: agent.id,
+          label: agent.name,
+          hint: agent.id,
+          selected: clearNameSet.has(agent.name.toLowerCase()),
+        })),
+        onPick: (id) => {
+          const agent = agents.find((item) => item.id === id)
+          if (!agent) return
+          setInput((current) => toggleClearAgentName(current, agent.name))
+        },
+      }
+    }
     if (pickerKind === "office") {
       return {
         key: "office",
@@ -280,31 +299,17 @@ export const OpenClawPage = (): React.JSX.Element => {
       }
     }
     if (pickerKind === "session") {
-      const compose = sessionMode === "compose"
-      const parsed = parseOpenClawCommand(input)
-      const clearNames = compose && parsed?.id === "clear" ? splitClearAgentNames(parsed.args) : []
-      const clearNameSet = new Set(clearNames.map((name) => name.toLowerCase()))
       return {
-        key: `session:${sessionMode}`,
+        key: "session:execute",
         title: t("openclaw.sessionPickerTitle"),
         emptyText: t("openclaw.noAgents"),
-        // compose 模式为多选：空格切换员工，回车发送 `/clear` 命令。
-        multiSelect: compose,
         items: agents.map((agent) => ({
           id: agent.id,
           label: agent.name,
           hint: agent.id,
-          selected: compose
-            ? clearNameSet.has(agent.name.toLowerCase())
-            : agent.id === activeAgentId,
+          selected: agent.id === activeAgentId,
         })),
         onPick: (id) => {
-          if (compose) {
-            const agent = agents.find((item) => item.id === id)
-            if (!agent) return
-            setInput((current) => toggleClearAgentName(current, agent.name))
-            return
-          }
           setPickerKind(null)
           if (!selectedInstanceId) return
           selectAgent(id, { additive: false })
@@ -332,7 +337,6 @@ export const OpenClawPage = (): React.JSX.Element => {
     selectAgent,
     selectOffice,
     selectedInstanceId,
-    sessionMode,
     t,
     toast,
   ])
@@ -375,7 +379,7 @@ export const OpenClawPage = (): React.JSX.Element => {
           aria-label={t("openclaw.sessionNew")}
           title={{ content: t("openclaw.sessionNew"), placement: "bottom" }}
           disabled={!selectedInstanceId || agents.length === 0}
-          onClick={() => openSessionPicker("execute")}
+          onClick={openSessionPicker}
         >
           <Plus className="h-3.5 w-3.5" />
         </LxIconButton>
