@@ -678,7 +678,7 @@ describe("AgentMessageItem", () => {
         },
       ],
       isStreaming: false,
-      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
     }
 
     render(<AgentMessageItem message={message} />)
@@ -694,7 +694,7 @@ describe("AgentMessageItem", () => {
       blocks: [{ kind: "text", text: "部分输出" }],
       isStreaming: false,
       stopReason: "aborted",
-      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
     }
 
     render(<AgentMessageItem message={message} />)

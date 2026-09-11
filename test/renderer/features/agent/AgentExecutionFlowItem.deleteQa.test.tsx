@@ -25,13 +25,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         assistantContent: { text: "步骤内容" },
       }
 
-      render(
-        <AgentExecutionFlowItem
-          step={step}
-          isExpanded={false}
-          onToggleExpand={vi.fn()}
-        />,
-      )
+      render(<AgentExecutionFlowItem step={step} isExpanded={false} onToggleExpand={vi.fn()} />)
 
       expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
     })
@@ -77,7 +71,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
         role: "assistant",
         model: "claude-3-5-sonnet",
         blocks: [{ kind: "text", text: "已列出目录。" }],
-        usage: { input: 100, output: 50, totalTokens: 150 },
+        usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
         isStreaming: false,
         timestamp: 2000,
       },
@@ -164,11 +158,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       ]
 
       render(
-        <AgentExecutionFlowList
-          messages={messages}
-          isStreaming={true}
-          onDeleteMessage={vi.fn()}
-        />,
+        <AgentExecutionFlowList messages={messages} isStreaming={true} onDeleteMessage={vi.fn()} />,
       )
 
       expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()
@@ -193,11 +183,7 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
       ]
 
       render(
-        <AgentExecutionFlowList
-          messages={messages}
-          readOnly={true}
-          onDeleteMessage={vi.fn()}
-        />,
+        <AgentExecutionFlowList messages={messages} readOnly={true} onDeleteMessage={vi.fn()} />,
       )
 
       expect(screen.queryByRole("button", { name: /删除轮次|Delete turn/i })).toBeNull()

@@ -114,7 +114,7 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
         ],
         provider: "local",
         model: "local",
-        usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
         stopReason: "stop",
         timestamp: 12345,
       },
@@ -137,4 +137,3 @@ describe("AgentQuestionBlock 只读展示与答案恢复", () => {
     }
   })
 })
-

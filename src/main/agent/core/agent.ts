@@ -66,6 +66,7 @@ const EMPTY_USAGE: Usage = {
   input: 0,
   output: 0,
   cacheRead: 0,
+  cacheWrite: 0,
   totalTokens: 0,
 }
 

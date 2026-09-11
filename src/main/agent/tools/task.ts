@@ -153,9 +153,11 @@ const aggregateUsage = (messages: AgentMessage[]): Usage => {
         input: total.input + message.usage.input,
         output: total.output + message.usage.output,
         cacheRead: total.cacheRead + message.usage.cacheRead,
+        // 旧持久化消息无 cacheWrite 字段，按 0 兼容。
+        cacheWrite: total.cacheWrite + (message.usage.cacheWrite ?? 0),
         totalTokens: total.totalTokens + message.usage.totalTokens,
       }),
-      { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
+      { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
     )
 }
 
@@ -200,7 +202,10 @@ export const createTaskTool = (
       const subAgent =
         existingManaged?.agent ??
         new Agent({
-          streamFn: createAiSdkStreamFn(),
+          streamFn: createAiSdkStreamFn({
+            purpose: "subagent",
+            getSessionId: () => deps.getSessionId?.() ?? null,
+          }),
           beforeToolCall: deps.beforeToolCall,
           initialState: {
             systemPrompt: effectivePrompt,

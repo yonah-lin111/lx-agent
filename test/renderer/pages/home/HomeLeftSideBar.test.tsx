@@ -1,13 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 
-const mockNavigate = vi.fn()
+const { mockNavigate, mockLocation } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockLocation: { pathname: "/" },
+}))
+
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
-  useSearchParams: () => [new URLSearchParams()],
+  useLocation: () => mockLocation,
 }))
+
+beforeEach(() => {
+  mockLocation.pathname = "/"
+})
 
 afterEach(() => {
   cleanup()
@@ -15,25 +23,37 @@ afterEach(() => {
 })
 
 describe("HomeLeftSideBar", () => {
-  it("展开模式下渲染标题与概览导航项", () => {
+  it("展开模式下渲染概览与用量两个导航项，并按 pathname 高亮", () => {
     render(<HomeLeftSideBar isCollapsed={false} />)
 
     const overviewItem = screen.getByRole("button", { name: /overview|概览/i })
-    expect(overviewItem).toBeDefined()
+    const usageItem = screen.getByRole("button", { name: /usage|用量统计/i })
     expect(overviewItem.getAttribute("aria-current")).toBe("page")
+    expect(usageItem.getAttribute("aria-current")).toBeNull()
 
-    fireEvent.click(overviewItem)
-    expect(mockNavigate).toHaveBeenCalledWith("/")
+    fireEvent.click(usageItem)
+    expect(mockNavigate).toHaveBeenCalledWith("/usage")
+  })
+
+  it("pathname 为 /usage 时高亮用量项", () => {
+    mockLocation.pathname = "/usage"
+    render(<HomeLeftSideBar isCollapsed={false} />)
+
+    const overviewItem = screen.getByRole("button", { name: /overview|概览/i })
+    const usageItem = screen.getByRole("button", { name: /usage|用量统计/i })
+    expect(usageItem.getAttribute("aria-current")).toBe("page")
+    expect(overviewItem.getAttribute("aria-current")).toBeNull()
   })
 
   it("折叠模式下退化为图标按钮并保留可访问名称", () => {
     render(<HomeLeftSideBar isCollapsed={true} />)
 
-    const iconButton = screen.getByRole("button", { name: /overview|概览/i })
-    expect(iconButton).toBeDefined()
-    expect(iconButton.getAttribute("aria-current")).toBe("page")
+    const overviewButton = screen.getByRole("button", { name: /overview|概览/i })
+    const usageButton = screen.getByRole("button", { name: /usage|用量统计/i })
+    expect(overviewButton.getAttribute("aria-current")).toBe("page")
+    expect(usageButton.getAttribute("aria-current")).toBeNull()
 
-    fireEvent.click(iconButton)
-    expect(mockNavigate).toHaveBeenCalledWith("/")
+    fireEvent.click(usageButton)
+    expect(mockNavigate).toHaveBeenCalledWith("/usage")
   })
 })

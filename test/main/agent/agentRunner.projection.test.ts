@@ -84,7 +84,7 @@ vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
         content: [{ type: "text" as const, text: "hello response" }],
         provider: "p",
         model: "m",
-        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
         stopReason: "stop" as const,
         timestamp: Date.now(),
       }

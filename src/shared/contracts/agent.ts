@@ -40,6 +40,8 @@ export interface Usage {
   output: number
   // 缓存命中读取的输入 token（Anthropic cache_read_input_tokens）。
   cacheRead: number
+  // 缓存创建写入的输入 token（Anthropic cache_creation_input_tokens；其他 provider 恒为 0）。
+  cacheWrite: number
   totalTokens: number
 }
 

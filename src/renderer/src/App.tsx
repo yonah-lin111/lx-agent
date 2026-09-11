@@ -56,7 +56,7 @@ export const App = () => {
   }
 
   const renderLeftSideBarContent = (): React.JSX.Element => {
-    if (pathname === PAGE_ROUTES.home) return <HomeLeftSideBar />
+    if (pathname === PAGE_ROUTES.home || pathname === PAGE_ROUTES.usage) return <HomeLeftSideBar />
     if (pathname === PAGE_ROUTES.ui) return <UiLeftSideBar />
     if (pathname === PAGE_ROUTES.design) return <FrontDesignLeftSideBar />
     if (pathname === PAGE_ROUTES.settings) return <SettingsLeftSideBar />

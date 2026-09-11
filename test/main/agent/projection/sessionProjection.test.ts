@@ -49,7 +49,7 @@ describe("SessionProjection (事件驱动增量投影状态机)", () => {
       content: [{ type: "text", text: "Hi" }],
       provider: "openai",
       model: "gpt-4",
-      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
       stopReason: "pending",
       timestamp: 1001,
     }
@@ -187,7 +187,7 @@ describe("SessionProjection (事件驱动增量投影状态机)", () => {
         content: [],
         provider: "p",
         model: "m",
-        usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
         stopReason: "stop",
         timestamp: 1000,
       },
@@ -203,7 +203,7 @@ describe("SessionProjection (事件驱动增量投影状态机)", () => {
       content: [{ type: "text", text: "Answer" }],
       provider: "p",
       model: "m",
-      usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
       stopReason: "stop",
       timestamp: 2,
     }

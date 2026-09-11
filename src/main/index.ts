@@ -18,6 +18,7 @@ import { registerProjectHandlers } from "@/ipc/projectHandlers"
 import { registerPromptHistoryHandlers } from "@/ipc/promptHistoryHandlers"
 import { registerSettingsHandlers } from "@/ipc/settingsHandlers"
 import { registerTerminalHandlers } from "@/ipc/terminalHandlers"
+import { registerUsageHandlers } from "@/ipc/usageHandlers"
 import { registerFrontDesignProtocol } from "@/protocols/frontDesignProtocol"
 import { registerLocalImageProtocol } from "@/protocols/localImageProtocol"
 import { openClawClientManager } from "@/services/openclaw/openclawClientManager"
@@ -85,6 +86,7 @@ app.whenReady().then(() => {
   registerTerminalHandlers()
   registerAgentHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
   registerOpenClawHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
+  registerUsageHandlers(() => BrowserWindow.getAllWindows()[0]?.webContents)
 
   const stopScreenshotCleanup = startScreenshotCleanupScheduler()
 

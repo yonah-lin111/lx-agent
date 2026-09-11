@@ -11,7 +11,9 @@ import {
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
+import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 摘要生成超时（秒）：兜底避免无响应 provider 挂住 turn 收尾。
 const COMPACTION_TIMEOUT_MS = 30_000
@@ -246,11 +248,15 @@ const cleanSummary = (raw: string): string | null => {
 /**
  * 为被压缩的历史生成结构化摘要（简体中文：目标/已完成/进行中/阻塞/关键决策/下一步）。
  * 裸 AI SDK streamText：单次生成、无工具、不进 Agent 事件流；失败返回 null（调用方保留旧边界）。
+ * 成功与失败均写入 usage 日志。
  */
 export const generateCompactionSummary = async (
   messages: AgentMessage[],
   sessionModel?: ModelSelection,
+  sessionId?: string | null,
 ): Promise<{ summary: string; model: string; usage: CompactionUsage } | null> => {
+  const startedAt = Date.now()
+  let loggedModel: Model | null = null
   try {
     const settings = getModelProviderSettings()
     const selection =
@@ -260,6 +266,7 @@ export const generateCompactionSummary = async (
 
     const resolved = resolveModelSelection(selection)
     if ("error" in resolved) return null
+    loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
 
     const pruned = pruneHistoricalToolOutputs(messages)
@@ -290,15 +297,36 @@ export const generateCompactionSummary = async (
         },
       ],
     })
-    const summary = cleanSummary(await result.text)
-    if (!summary) return null
+    const rawSummary = await result.text
     const usage = await result.usage
+    const tokens = toUsage(usage)
+    recordModelCall({
+      sessionId: sessionId ?? null,
+      purpose: "compaction",
+      provider: resolved.model.provider,
+      model: resolved.model.id,
+      tokens,
+      durationMs: Date.now() - startedAt,
+      status: "success",
+    })
+    const summary = cleanSummary(rawSummary)
+    if (!summary) return null
     return {
       summary,
       model: resolved.model.id,
-      usage: { input: usage?.inputTokens ?? 0, output: usage?.outputTokens ?? 0 },
+      usage: { input: tokens.input, output: tokens.output },
     }
-  } catch {
+  } catch (error) {
+    recordModelCall({
+      sessionId: sessionId ?? null,
+      purpose: "compaction",
+      provider: loggedModel?.provider ?? "unknown",
+      model: loggedModel?.id ?? "unknown",
+      tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      durationMs: Date.now() - startedAt,
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     // 无响应 provider / 网络错误 / 超时：静默返回 null，保留旧边界，下轮再试。
     return null
   }

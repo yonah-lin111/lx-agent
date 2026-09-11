@@ -1,7 +1,9 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
+import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 建议问题生成超时（秒）：兜底避免无响应 provider 挂住渲染端请求。
 const SUGGEST_TIMEOUT_MS = 15_000
@@ -79,11 +81,14 @@ export const trimSuggestedQuestionContext = (
 /**
  * 用配置的 suggestedQuestions 模型为对话生成后续建议问题。
  * 纯生成、无工具、不进 Agent 事件流；功能未开启 / 无模型 / 无 key / 失败均静默返回空数组。
+ * 成功与失败均写入 usage 日志（该调用链无会话上下文，sessionId 为空）。
  */
 export const generateSuggestedQuestions = async (
   messages: SuggestedQuestionContextMessage[],
   excludedQuestions: string[] = [],
 ): Promise<string[]> => {
+  const startedAt = Date.now()
+  let loggedModel: Model | null = null
   try {
     const settings = getModelProviderSettings()
     if (!settings.suggestedQuestionsEnabled || messages.length === 0) return []
@@ -94,6 +99,7 @@ export const generateSuggestedQuestions = async (
 
     const resolved = resolveModelSelection(selection)
     if ("error" in resolved) return []
+    loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
 
     const contextLimit = provider.models[selection.model].limit?.context
@@ -115,8 +121,28 @@ export const generateSuggestedQuestions = async (
         ...context,
       ],
     })
-    return parseSuggestedQuestions(await result.text)
-  } catch {
+    const rawText = await result.text
+    recordModelCall({
+      sessionId: null,
+      purpose: "suggested",
+      provider: resolved.model.provider,
+      model: resolved.model.id,
+      tokens: toUsage(await result.usage),
+      durationMs: Date.now() - startedAt,
+      status: "success",
+    })
+    return parseSuggestedQuestions(rawText)
+  } catch (error) {
+    recordModelCall({
+      sessionId: null,
+      purpose: "suggested",
+      provider: loggedModel?.provider ?? "unknown",
+      model: loggedModel?.id ?? "unknown",
+      tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      durationMs: Date.now() - startedAt,
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     return []
   }
 }

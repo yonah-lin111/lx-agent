@@ -1,7 +1,9 @@
 import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
 import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
+import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 标题生成超时（秒）：兜底避免无响应 provider 挂住后台任务。
 const TITLE_TIMEOUT_MS = 10_000
@@ -43,13 +45,19 @@ const cleanTitle = (raw: string): string | null => {
 /**
  * 用配置的 titleSummary 模型为会话生成标题。
  * 纯生成、无工具、不进 Agent 事件流；失败/无模型/无 key 返回 null（不抛错）。
- * 调用方负责校验会话归属并落库。
+ * 调用方负责校验会话归属并落库；成功与失败均写入 usage 日志。
  */
-export const generateSessionTitle = async (firstTurn: AgentMessage[]): Promise<string | null> => {
+export const generateSessionTitle = async (
+  firstTurn: AgentMessage[],
+  sessionId?: string | null,
+): Promise<string | null> => {
+  const startedAt = Date.now()
+  let loggedModel: Model | null = null
   try {
     const selection = getModelProviderSettings().titleSummary
     const resolved = resolveModelSelection(selection)
     if ("error" in resolved) return null
+    loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
 
     const input = extractTurnText(firstTurn)
@@ -68,8 +76,29 @@ export const generateSessionTitle = async (firstTurn: AgentMessage[]): Promise<s
         },
       ],
     })
-    return cleanTitle(await result.text)
-  } catch {
+    const rawTitle = await result.text
+    const tokens = toUsage(await result.usage)
+    recordModelCall({
+      sessionId: sessionId ?? null,
+      purpose: "title",
+      provider: resolved.model.provider,
+      model: resolved.model.id,
+      tokens,
+      durationMs: Date.now() - startedAt,
+      status: "success",
+    })
+    return cleanTitle(rawTitle)
+  } catch (error) {
+    recordModelCall({
+      sessionId: sessionId ?? null,
+      purpose: "title",
+      provider: loggedModel?.provider ?? "unknown",
+      model: loggedModel?.id ?? "unknown",
+      tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      durationMs: Date.now() - startedAt,
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     // 无响应 provider / 网络错误 / 超时：静默返回 null，保留兜底标题。
     return null
   }
@@ -78,13 +107,16 @@ export const generateSessionTitle = async (firstTurn: AgentMessage[]): Promise<s
 /**
  * 用配置的 titleSummary 模型为模板块内容生成标题。
  * 纯生成、无工具、不进入 Agent 事件流；失败/无模型/无 key 返回 null（不抛错）。
- * 渲染侧负责校验模板块归属并回写开始行「title: 」。
+ * 渲染侧负责校验模板块归属并回写开始行「title: 」；成功与失败均写入 usage 日志。
  */
 export const generateTemplateTitle = async (content: string): Promise<string | null> => {
+  const startedAt = Date.now()
+  let loggedModel: Model | null = null
   try {
     const selection = getModelProviderSettings().titleSummary
     const resolved = resolveModelSelection(selection)
     if ("error" in resolved) return null
+    loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
 
     const result = streamText({
@@ -100,8 +132,29 @@ export const generateTemplateTitle = async (content: string): Promise<string | n
         },
       ],
     })
-    return cleanTitle(await result.text)
-  } catch {
+    const rawTitle = await result.text
+    const tokens = toUsage(await result.usage)
+    recordModelCall({
+      sessionId: null,
+      purpose: "title",
+      provider: resolved.model.provider,
+      model: resolved.model.id,
+      tokens,
+      durationMs: Date.now() - startedAt,
+      status: "success",
+    })
+    return cleanTitle(rawTitle)
+  } catch (error) {
+    recordModelCall({
+      sessionId: null,
+      purpose: "title",
+      provider: loggedModel?.provider ?? "unknown",
+      model: loggedModel?.id ?? "unknown",
+      tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      durationMs: Date.now() - startedAt,
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     // 无响应 provider / 网络错误 / 超时：静默返回 null，由调用方提示失败。
     return null
   }

@@ -308,7 +308,10 @@ export class AgentSessionRunner {
       )
       const previousMessages = this.agent?.state.messages ?? []
       const agent = new Agent({
-        streamFn: createAiSdkStreamFn(),
+        streamFn: createAiSdkStreamFn({
+          purpose: "chat",
+          getSessionId: () => this.currentSessionId,
+        }),
         beforeToolCall: async (context, signal) => {
           this.currentTurnContext?.recordToolCall()
           if (this.currentSessionId) {
@@ -1076,18 +1079,19 @@ export class AgentSessionRunner {
 
   private generateTitle(sessionId: string, userText: string): void {
     this.emitEvent({ type: "session_title", sessionId, title: null })
-    void generateSessionTitle([{ role: "user", content: userText, timestamp: Date.now() }]).then(
-      (generated) => {
-        const session = agentSessionService.getSession(sessionId)
-        if (!session) return
-        let title = session.title
-        if (generated && this.currentSessionId === sessionId) {
-          agentSessionService.renameSession(sessionId, generated, new Date().toISOString())
-          title = generated
-        }
-        this.emitEvent({ type: "session_title", sessionId, title })
-      },
-    )
+    void generateSessionTitle(
+      [{ role: "user", content: userText, timestamp: Date.now() }],
+      sessionId,
+    ).then((generated) => {
+      const session = agentSessionService.getSession(sessionId)
+      if (!session) return
+      let title = session.title
+      if (generated && this.currentSessionId === sessionId) {
+        agentSessionService.renameSession(sessionId, generated, new Date().toISOString())
+        title = generated
+      }
+      this.emitEvent({ type: "session_title", sessionId, title })
+    })
   }
 
   public getTurnStore(): TurnStore {

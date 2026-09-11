@@ -1,3 +1,4 @@
+import type { ModelPricing } from "@shared/contracts/usage"
 import type { FetchedProviderModel } from "@shared/settings"
 import {
   Bot,
@@ -5,6 +6,7 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  Coins,
   Copy,
   Download,
   KeyRound,
@@ -244,6 +246,37 @@ export const ModelProviderSettings = ({
       return {
         ...current,
         providers: { ...current.providers, [providerId]: updater(current.providers[providerId]) },
+      }
+    })
+  }
+
+  // 更新模型计价字段：空值按 0；四项全为 0 时移除 pricing（视为未配置）。
+  const updateModelPricing = (
+    modelKey: string,
+    field: keyof ModelPricing,
+    rawValue: string,
+  ): void => {
+    updateProvider(selectedProviderId, (provider) => {
+      const currentModel = provider.models[modelKey]
+      const nextPricing: ModelPricing = {
+        input: currentModel.pricing?.input ?? 0,
+        output: currentModel.pricing?.output ?? 0,
+        cacheRead: currentModel.pricing?.cacheRead ?? 0,
+        cacheWrite: currentModel.pricing?.cacheWrite ?? 0,
+      }
+      const parsed = rawValue === "" ? 0 : Number(rawValue)
+      nextPricing[field] = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+      const hasAnyPrice =
+        nextPricing.input > 0 ||
+        nextPricing.output > 0 ||
+        nextPricing.cacheRead > 0 ||
+        nextPricing.cacheWrite > 0
+      return {
+        ...provider,
+        models: {
+          ...provider.models,
+          [modelKey]: { ...currentModel, pricing: hasAnyPrice ? nextPricing : undefined },
+        },
       }
     })
   }
@@ -859,6 +892,71 @@ export const ModelProviderSettings = ({
                           </label>
                         </div>
 
+                        {/* 计价配置（USD / 百万 token；未配置时用量页成本显示 --） */}
+                        <div className="mt-4 border-t border-white/8 pt-3">
+                          <div className="flex items-center gap-1.5">
+                            <Coins className="h-3.5 w-3.5 text-amber-400" />
+                            <span className="text-xs font-medium text-white/80">
+                              {t("settings.pricingTitle")}
+                            </span>
+                            <LxInfoTooltip markdown={t("settings.pricingDesc")} placement="right" />
+                          </div>
+                          <div className="mt-2.5 grid gap-3 @[360px]:grid-cols-2 @[580px]:grid-cols-4">
+                            <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                              {t("settings.pricingInput")}
+                              <LxInput
+                                type="number"
+                                min={0}
+                                step="any"
+                                aria-label={`${modelKey} ${t("settings.pricingInput")}`}
+                                value={model.pricing?.input || ""}
+                                onChange={(event) =>
+                                  updateModelPricing(modelKey, "input", event.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                              {t("settings.pricingOutput")}
+                              <LxInput
+                                type="number"
+                                min={0}
+                                step="any"
+                                aria-label={`${modelKey} ${t("settings.pricingOutput")}`}
+                                value={model.pricing?.output || ""}
+                                onChange={(event) =>
+                                  updateModelPricing(modelKey, "output", event.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                              {t("settings.pricingCacheRead")}
+                              <LxInput
+                                type="number"
+                                min={0}
+                                step="any"
+                                aria-label={`${modelKey} ${t("settings.pricingCacheRead")}`}
+                                value={model.pricing?.cacheRead || ""}
+                                onChange={(event) =>
+                                  updateModelPricing(modelKey, "cacheRead", event.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="grid gap-1.5 text-xs text-white/55 min-w-0">
+                              {t("settings.pricingCacheWrite")}
+                              <LxInput
+                                type="number"
+                                min={0}
+                                step="any"
+                                aria-label={`${modelKey} ${t("settings.pricingCacheWrite")}`}
+                                value={model.pricing?.cacheWrite || ""}
+                                onChange={(event) =>
+                                  updateModelPricing(modelKey, "cacheWrite", event.target.value)
+                                }
+                              />
+                            </label>
+                          </div>
+                        </div>
+
                         {/* 思考等级配置 (Thinking Variants) */}
                         <div className="mt-4 border-t border-white/8 pt-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -909,7 +1007,9 @@ export const ModelProviderSettings = ({
                                       newKey = "high"
                                     } else if (val === "openrouter") {
                                       currentVariants["low"] = { reasoning: { effort: "low" } }
-                                      currentVariants["medium"] = { reasoning: { effort: "medium" } }
+                                      currentVariants["medium"] = {
+                                        reasoning: { effort: "medium" },
+                                      }
                                       currentVariants["high"] = { reasoning: { effort: "high" } }
                                       newKey = "high"
                                     } else if (val === "anthropic") {
