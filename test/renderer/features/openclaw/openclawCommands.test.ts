@@ -31,7 +31,7 @@ describe("getMatchedOpenClawCommands", () => {
 describe("matchOpenClawCommand", () => {
   it("精确匹配命令名", () => {
     expect(matchOpenClawCommand("/clear")).toBe("clear")
-    expect(matchOpenClawCommand("  /mode  ")).toBe("mode")
+    expect(matchOpenClawCommand("  /office  ")).toBe("office")
   })
 
   it("忽略大小写", () => {

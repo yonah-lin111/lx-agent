@@ -1,3 +1,4 @@
+export { accentHexForIndex } from "./agentAccent"
 export { type OfficeAgentStatus, resolveOfficeAgentStatus } from "./agentStatus"
 export { openclawApi } from "./api/openclawApi"
 export {
@@ -29,15 +30,6 @@ export {
   useOpenClawOffice,
 } from "./hooks/useOpenClawOffice"
 export {
-  CELL_HEIGHT_TILES,
-  CELL_WIDTH_TILES,
-  computeOfficeLayout,
-  MAX_DESK_COLUMNS,
-  type OfficeLayout,
-  WALL_TILES,
-} from "./office/officeLayout"
-export { accentHexForIndex, accentNumberForIndex } from "./office/officePalette"
-export {
   ensureOpenClawEventSubscription,
   openClawSessionKey,
   useOpenClawChatStore,
@@ -47,8 +39,4 @@ export {
   matchOpenClawCommand,
   type OpenClawCommandId,
 } from "./openclawCommands"
-export {
-  type OpenClawPendingDispatch,
-  type OpenClawViewMode,
-  useOpenClawWorkspaceStore,
-} from "./openclawWorkspaceStore"
+export { type OpenClawPendingDispatch, useOpenClawOfficeStore } from "./openclawOfficeStore"

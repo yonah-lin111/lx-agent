@@ -1,29 +1,24 @@
 import type { OpenClawConnectionStatus } from "@shared/contracts/openclaw"
-import { LayoutGrid, MessagesSquare, Plus, RefreshCw, Send, Square } from "lucide-react"
+import { Plus, RefreshCw, Send, Square } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import {
   accentHexForIndex,
-  accentNumberForIndex,
   type ConversationAgent,
   matchOpenClawCommand,
-  type OfficeAgentStatus,
   type OpenClawCommandId,
   OpenClawConversationView,
   OpenClawInput,
   type OpenClawInputPicker,
   type OpenClawInputRef,
   resolveClawDispatchTargets,
-  resolveOfficeAgentStatus,
   useOpenClawChatStore,
   useOpenClawConfig,
   useOpenClawOffice,
-  useOpenClawWorkspaceStore,
+  useOpenClawOfficeStore,
 } from "@/features/openclaw"
-import { OpenClawOfficeView } from "@/features/openclaw/components/OpenClawOfficeView"
-import type { OfficeSceneAgent } from "@/features/openclaw/office/officeScene"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 // 连接状态指示灯配色。
@@ -45,21 +40,19 @@ const STATUS_LABEL_KEYS: Record<OpenClawConnectionStatus, TranslationKey> = {
 }
 
 /**
- * OpenClaw 页面：一个办公区（实例）= 一条对话流，支持对话模式与像素工作区模式切换。
+ * OpenClaw 页面：一个办公区（实例）= 一条多员工合流的对话流。
  */
 export const OpenClawPage = (): React.JSX.Element => {
   const { t } = useTranslation()
   const toast = useLxToast()
   const { instances, enabledInstances } = useOpenClawConfig()
 
-  const viewMode = useOpenClawWorkspaceStore((state) => state.viewMode)
-  const toggleViewMode = useOpenClawWorkspaceStore((state) => state.toggleViewMode)
-  const selectedInstanceId = useOpenClawWorkspaceStore((state) => state.selectedInstanceId)
-  const selectedAgentIds = useOpenClawWorkspaceStore((state) => state.selectedAgentIds)
-  const selectOffice = useOpenClawWorkspaceStore((state) => state.selectOffice)
-  const selectAgent = useOpenClawWorkspaceStore((state) => state.selectAgent)
-  const setSelectedAgentIds = useOpenClawWorkspaceStore((state) => state.setSelectedAgentIds)
-  const consumePendingDispatch = useOpenClawWorkspaceStore((state) => state.consumePendingDispatch)
+  const selectedInstanceId = useOpenClawOfficeStore((state) => state.selectedInstanceId)
+  const selectedAgentIds = useOpenClawOfficeStore((state) => state.selectedAgentIds)
+  const selectOffice = useOpenClawOfficeStore((state) => state.selectOffice)
+  const selectAgent = useOpenClawOfficeStore((state) => state.selectAgent)
+  const setSelectedAgentIds = useOpenClawOfficeStore((state) => state.setSelectedAgentIds)
+  const consumePendingDispatch = useOpenClawOfficeStore((state) => state.consumePendingDispatch)
 
   const [input, setInput] = useState("")
   const [pickerKind, setPickerKind] = useState<"agent" | "office" | null>(null)
@@ -74,14 +67,6 @@ export const OpenClawPage = (): React.JSX.Element => {
   const agentIds = useMemo(() => agents.map((agent) => agent.id), [agents])
 
   const { sessions, timeline, isAnyStreaming } = useOpenClawOffice(selectedInstanceId, agentIds)
-
-  const statuses = useMemo<Record<string, OfficeAgentStatus>>(
-    () =>
-      Object.fromEntries(
-        sessions.map((session) => [session.agentId, resolveOfficeAgentStatus(session.snapshot)]),
-      ),
-    [sessions],
-  )
 
   const officeStatus = useMemo<OpenClawConnectionStatus>(() => {
     const states = sessions.map((session) => session.snapshot?.connectionStatus)
@@ -115,16 +100,6 @@ export const OpenClawPage = (): React.JSX.Element => {
         agentId: agent.id,
         name: agent.name,
         accent: accentHexForIndex(index),
-      })),
-    [agents],
-  )
-
-  const officeAgents = useMemo<OfficeSceneAgent[]>(
-    () =>
-      agents.map((agent, index) => ({
-        agentId: agent.id,
-        name: agent.name,
-        accent: accentNumberForIndex(index),
       })),
     [agents],
   )
@@ -185,12 +160,9 @@ export const OpenClawPage = (): React.JSX.Element => {
         case "office":
           setPickerKind("office")
           break
-        case "mode":
-          toggleViewMode()
-          break
       }
     },
-    [agentIds, selectedInstanceId, sessions, t, toast, toggleViewMode],
+    [agentIds, selectedInstanceId, sessions, t, toast],
   )
 
   // 发送：命令优先；`@claw` 提及或选中集合决定扇出目标。
@@ -289,7 +261,7 @@ export const OpenClawPage = (): React.JSX.Element => {
 
   return (
     <section className="openclaw-page-container flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
-      {/* 顶部工具条：办公区标题、连接状态、模式切换与操作 */}
+      {/* 顶部工具条：办公区标题、连接状态与操作 */}
       <div className="flex shrink-0 items-center gap-2 border-b border-white/5 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-medium text-white/80">
           {currentInstance?.name ?? t("nav.openclaw")}
@@ -319,50 +291,15 @@ export const OpenClawPage = (): React.JSX.Element => {
         >
           <Plus className="h-3.5 w-3.5" />
         </LxIconButton>
-
-        <div className="mx-1 h-4 w-px bg-white/10" />
-
-        <LxIconButton
-          size="small"
-          aria-label={t("openclaw.modeConversation")}
-          title={{ content: t("openclaw.modeConversation"), placement: "bottom" }}
-          highlighted={viewMode === "conversation"}
-          onClick={() => useOpenClawWorkspaceStore.getState().setViewMode("conversation")}
-        >
-          <MessagesSquare className="h-3.5 w-3.5" />
-        </LxIconButton>
-        <LxIconButton
-          size="small"
-          aria-label={t("openclaw.modeWorkspace")}
-          title={{ content: t("openclaw.modeWorkspace"), placement: "bottom" }}
-          highlighted={viewMode === "workspace"}
-          onClick={() => useOpenClawWorkspaceStore.getState().setViewMode("workspace")}
-        >
-          <LayoutGrid className="h-3.5 w-3.5" />
-        </LxIconButton>
       </div>
 
-      {/* 视图区：两模式常驻 DOM 保活（像素场景不因切换销毁） */}
+      {/* 视图区：当前办公区内所有员工的消息合流时间线 */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div
-          className={`min-h-0 flex-1 overflow-hidden ${viewMode === "conversation" ? "flex" : "hidden"}`}
-        >
-          <OpenClawConversationView
-            timeline={timeline}
-            agents={conversationAgents}
-            streamingAgentIds={streamingAgentIds}
-          />
-        </div>
-        <div
-          className={`min-h-0 flex-1 overflow-hidden ${viewMode === "workspace" ? "flex" : "hidden"}`}
-        >
-          <OpenClawOfficeView
-            agents={officeAgents}
-            statuses={statuses}
-            selectedAgentIds={selectedAgentIds}
-            onSelectAgent={(agentId, additive) => selectAgent(agentId, { additive })}
-          />
-        </div>
+        <OpenClawConversationView
+          timeline={timeline}
+          agents={conversationAgents}
+          streamingAgentIds={streamingAgentIds}
+        />
       </div>
 
       {/* 输入区 */}

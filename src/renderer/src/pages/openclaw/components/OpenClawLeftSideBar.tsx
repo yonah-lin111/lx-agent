@@ -8,7 +8,7 @@ import {
   OFFICE_STATUS_LABEL_KEY,
   useOfficeAgentStatuses,
   useOpenClawConfig,
-  useOpenClawWorkspaceStore,
+  useOpenClawOfficeStore,
 } from "@/features/openclaw"
 import { useTranslation } from "@/i18n"
 
@@ -25,10 +25,10 @@ export const OpenClawLeftSideBar = ({
   const { t } = useTranslation()
   const { instances, enabledInstances } = useOpenClawConfig()
 
-  const selectedInstanceId = useOpenClawWorkspaceStore((state) => state.selectedInstanceId)
-  const selectedAgentIds = useOpenClawWorkspaceStore((state) => state.selectedAgentIds)
-  const selectOffice = useOpenClawWorkspaceStore((state) => state.selectOffice)
-  const selectAgent = useOpenClawWorkspaceStore((state) => state.selectAgent)
+  const selectedInstanceId = useOpenClawOfficeStore((state) => state.selectedInstanceId)
+  const selectedAgentIds = useOpenClawOfficeStore((state) => state.selectedAgentIds)
+  const selectOffice = useOpenClawOfficeStore((state) => state.selectOffice)
+  const selectAgent = useOpenClawOfficeStore((state) => state.selectAgent)
 
   const currentInstance = selectedInstanceId ? instances[selectedInstanceId] : undefined
   const agents = currentInstance?.agents ?? []

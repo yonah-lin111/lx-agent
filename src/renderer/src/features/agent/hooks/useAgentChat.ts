@@ -12,7 +12,7 @@ import type { ModelSelection } from "@shared/settings"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { extractClawMentions, stripClawMention } from "@/features/openclaw/clawMention"
-import { useOpenClawWorkspaceStore } from "@/features/openclaw/openclawWorkspaceStore"
+import { useOpenClawOfficeStore } from "@/features/openclaw/openclawOfficeStore"
 import { useTranslation } from "@/i18n"
 import { navigateTo } from "@/lib/navigate"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
@@ -952,7 +952,7 @@ export const useAgentChat = (
         setInputText("")
         setSelectedFiles([])
         // 页面消费 pendingDispatch 后负责连接与发送，避免在本地 Agent 侧持有 OpenClaw 会话生命周期。
-        useOpenClawWorkspaceStore.getState().requestDispatch({
+        useOpenClawOfficeStore.getState().requestDispatch({
           instanceId: mention.instanceId,
           agentId: mention.agentId,
           task,

@@ -59,7 +59,7 @@ vi.mock("@/features/openclaw", () => ({
       },
     ],
   }),
-  useOpenClawWorkspaceStore: (selector: (state: typeof storeState) => unknown): unknown =>
+  useOpenClawOfficeStore: (selector: (state: typeof storeState) => unknown): unknown =>
     selector(storeState),
 }))
 
