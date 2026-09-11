@@ -5,7 +5,7 @@ import type {
   OpenClawSettings as OpenClawSettingsConfig,
 } from "@shared/settings"
 import { DEFAULT_OPENCLAW_GATEWAY_URL } from "@shared/settings"
-import { Loader2, Network, Plug, RefreshCw, Trash2 } from "lucide-react"
+import { Activity, Loader2, Network, Plug, RefreshCw, Trash2 } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxCheckbox } from "@/components/ui/LxCheckbox"
@@ -57,6 +57,7 @@ export const OpenClawSettings = (): React.JSX.Element => {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [idDraft, setIdDraft] = useState("")
   const [fetchingId, setFetchingId] = useState<string | null>(null)
+  const [testingId, setTestingId] = useState<string | null>(null)
 
   const baselineRef = useRef<string | null>(null)
 
@@ -173,6 +174,25 @@ export const OpenClawSettings = (): React.JSX.Element => {
       ...(current.defaultInstanceId === selectedId ? { defaultInstanceId: next } : {}),
     }))
     setSelectedId(next)
+  }
+
+  const handleTestConnection = async (id: string): Promise<void> => {
+    setTestingId(id)
+    try {
+      const result = await window.api.openclaw.connect(id)
+      if (result.status === "connected") {
+        toast.success(t("settings.openclawTestConnectionSuccess"))
+      } else if (result.status === "pairing-required") {
+        toast.info(t("openclaw.statusPairingRequired"))
+      } else {
+        toast.error(result.error || t("settings.openclawTestConnectionFailed"))
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      toast.error(msg || t("settings.openclawTestConnectionFailed"))
+    } finally {
+      setTestingId(null)
+    }
   }
 
   const handleFetchAgents = async (id: string): Promise<void> => {
@@ -358,21 +378,38 @@ export const OpenClawSettings = (): React.JSX.Element => {
                     {t("settings.openclawAgentCount", { count: selected.agents.length })}
                   </LxTag>
                 </div>
-                <LxIconButton
-                  size="small"
-                  aria-label={t("settings.openclawFetchAgents")}
-                  title={{ content: t("settings.openclawFetchAgents"), placement: "top" }}
-                  disabled={fetchingId === selectedId}
-                  onClick={() => {
-                    if (selectedId) void handleFetchAgents(selectedId)
-                  }}
-                >
-                  {fetchingId === selectedId ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  )}
-                </LxIconButton>
+                <div className="flex items-center gap-1">
+                  <LxIconButton
+                    size="small"
+                    aria-label={t("settings.openclawTestConnection")}
+                    title={{ content: t("settings.openclawTestConnection"), placement: "top" }}
+                    disabled={testingId === selectedId || fetchingId === selectedId}
+                    onClick={() => {
+                      if (selectedId) void handleTestConnection(selectedId)
+                    }}
+                  >
+                    {testingId === selectedId ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Activity className="h-3.5 w-3.5" />
+                    )}
+                  </LxIconButton>
+                  <LxIconButton
+                    size="small"
+                    aria-label={t("settings.openclawFetchAgents")}
+                    title={{ content: t("settings.openclawFetchAgents"), placement: "top" }}
+                    disabled={fetchingId === selectedId || testingId === selectedId}
+                    onClick={() => {
+                      if (selectedId) void handleFetchAgents(selectedId)
+                    }}
+                  >
+                    {fetchingId === selectedId ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                  </LxIconButton>
+                </div>
               </div>
 
               {selected.agents.length === 0 ? (
