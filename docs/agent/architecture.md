@@ -8,6 +8,7 @@ LX Agent 的 Agent 能力（对话 + 工具 + 协作）运行于 Electron main �
 - [runtime.md](./runtime.md)：Turn 状态机、Unified Exec 执行引擎、上下文治理、记忆与后台作业
 - [tools.md](./tools.md)：内置工具全集（文件/检索/补丁/记忆/MCP/Skill/协作）与提示词装配规范
 - [permissions.md](./permissions.md)：四模式硬门禁、三档沙箱策略、Guardian 防护网与多级审批
+- [hooks.md](./hooks.md)：用户级生命周期钩子（11 事件）、配置 schema、子进程线协议与 fail-open 语义
 - [collaboration-modes.md](./collaboration-modes.md)：Plan / Review 模式的输出协议、解析契约与交互卡片
 - [front-design.md](./front-design.md)：Front Design 模式的输出协议、热更新、版本迭代与画布点选微调
 - [openclaw.md](./openclaw.md)：OpenClaw Gateway 接入的页面、会话扇出与跨页委派
@@ -109,6 +110,7 @@ src/main/agent/
 ├── permissions/           # 权限信任与多级审批体系
 │   ├── permissionManager.ts  # 模式/沙箱/规则/会话白名单调度
 │   └── rule.ts               # Tool(arg) 规则解析引擎
+├── hooks/                 # 用户级生命周期钩子引擎 (配置/子进程/解析/派发，详见 hooks.md)
 ├── prompts/               # 动态提示词与自适应装配
 │   ├── systemPromptManager.ts# 分层装配引擎 (Sections, Contexts, Variables, Interceptors)
 │   ├── modelAdapters.ts      # 模型自适应规则 (Codex, Claude, Generic)
