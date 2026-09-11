@@ -18,6 +18,7 @@ import {
   SETTINGS_SECTIONS,
   SettingsActionBar,
   SkillSettings,
+  SubagentSettings,
   settingsApi,
   usePermissionSettings,
   useRegisterSettingsSection,
@@ -40,6 +41,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   voice: "settings.voiceDesc",
   permissions: "settings.permissionsDesc",
   hooks: "settings.hooksDesc",
+  subagents: "settings.subagentsDesc",
   "custom-commands": "settings.customCommandsDesc",
 }
 
@@ -208,6 +210,7 @@ export const SettingsPage = (): React.JSX.Element => {
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}
           {activeSection === "hooks" ? <HooksSettings /> : null}
+          {activeSection === "subagents" ? <SubagentSettings /> : null}
           {activeSection === "custom-commands" ? <CustomCommandSettings /> : null}
         </div>
       )}

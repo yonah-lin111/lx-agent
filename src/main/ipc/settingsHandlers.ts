@@ -4,6 +4,7 @@ import { ipcMain } from "electron"
 import { lspManager } from "@/agent/lsp/lspManager"
 import { mcpManager } from "@/agent/mcp/mcpManager"
 import { invalidateModelCache } from "@/agent/stream/modelFactory"
+import { BUILT_IN_AGENT_ROLES } from "@/agent/subagent/agentRoles"
 import { getCliVersions, runCliLifecycleAction } from "@/services/cliToolService"
 import { fetchProviderModels } from "@/services/modelFetchService"
 import {
@@ -16,6 +17,7 @@ import {
   getOpenClawSettings,
   getPermissionSettings,
   getSkillSettings,
+  getSubagentSettings,
   getUiSettings,
   getVoiceSettings,
   saveCliSettings,
@@ -26,6 +28,7 @@ import {
   saveOpenClawSettings,
   savePermissionSettings,
   saveSkillSettings,
+  saveSubagentSettings,
   saveUiSettings,
   saveVoiceSettings,
 } from "@/services/settingsService"
@@ -50,6 +53,15 @@ export const registerSettingsHandlers = (): void => {
   )
   ipcMain.handle(SETTINGS_CHANNELS.getHookSettings, () => getHookSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveHookSettings, (_, input) => saveHookSettings(input))
+  ipcMain.handle(SETTINGS_CHANNELS.getSubagentSettings, () => getSubagentSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveSubagentSettings, (_, input) => saveSubagentSettings(input))
+  ipcMain.handle(SETTINGS_CHANNELS.getSubagentBuiltins, () =>
+    Object.values(BUILT_IN_AGENT_ROLES).map((role) => ({
+      name: role.name,
+      description: role.description,
+      ...(role.tools ? { tools: [...role.tools] } : {}),
+    })),
+  )
   ipcMain.handle(SETTINGS_CHANNELS.getUiSettings, () => getUiSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveUiSettings, (_, input) => saveUiSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getCliSettings, () => getCliSettings())

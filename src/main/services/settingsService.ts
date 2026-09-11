@@ -22,6 +22,7 @@ import type {
   OpenClawSettings,
   ProviderTransportType,
   SkillSettings,
+  SubagentSettings,
   UiSettings,
   VoiceSettings,
 } from "@shared/settings"
@@ -41,6 +42,7 @@ import { shell } from "electron"
 
 import { hookConfig, readHookSettings, validateHookSettings } from "@/agent/hooks/hookConfig"
 import { skillLoader } from "@/agent/skills/skillLoader"
+import { readSubagentSettings, validateSubagentSettings } from "@/agent/subagent/subagentConfig"
 import { getAppDataRoot, getConfigPath } from "@/paths"
 
 // 原始 Provider 配置。
@@ -510,6 +512,40 @@ export const saveHookSettings = (input: HookSettings): HookSettings => {
   renameSync(temporaryPath, configPath)
 
   hookConfig.reset("global")
+  return settings
+}
+
+/**
+ * 读取 Agent 子代理角色配置（非法条目告警并忽略）。
+ */
+export const getSubagentSettings = (): SubagentSettings => {
+  const rawConfig = readRawConfig(getConfigPath())
+  const rawAgent = isRecord(rawConfig.agent) ? rawConfig.agent : {}
+  return readSubagentSettings(rawAgent.subagents)
+}
+
+/**
+ * 保存 Agent 子代理角色配置：严格校验后整树覆盖 `agent.subagents`，保留其他字段。
+ */
+export const saveSubagentSettings = (input: SubagentSettings): SubagentSettings => {
+  const settings = validateSubagentSettings(input)
+  const configPath = getConfigPath()
+  const rawConfig = readRawConfig(configPath)
+  const directory = dirname(configPath)
+  mkdirSync(directory, { recursive: true })
+
+  const rawAgentObj = isRecord(rawConfig.agent) ? { ...rawConfig.agent } : {}
+  const nextConfig: RawConfig = {
+    ...rawConfig,
+    agent: {
+      ...rawAgentObj,
+      subagents: settings,
+    },
+  }
+  const temporaryPath = `${configPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8")
+  renameSync(temporaryPath, configPath)
+
   return settings
 }
 

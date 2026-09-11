@@ -61,7 +61,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
-| | `task` | `{ description; prompt; name?; subagent_id? }` | 启动独立子代理或向 `SubagentPool` 中的既有子代理续接；名称含 `review` 时注入 Review Agent 审查提示词 |
+| | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` | 启动独立子代理或向 `SubagentPool` 续接；`agent_type` 按角色目录派发（内置 + 用户角色），工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖；并发 `maxConcurrent` 超限快返，嵌套深度 `maxDepth` 1–5 |
 | | `read_skill` | `{ name }` | 读取并加载指定 Skill 指令包的完整 Markdown 正文 |
 | **网络检索** | `web_search` | `{ query; numResults?=8; type? }` | 优先 Exa (mcp.exa.ai) 检索，Tavily (api.tavily.com) 兜底；`numResults` 上限 10 |
 | | `webfetch` | `{ url; format?=markdown; timeout?=30s }` | URL 内容抓取与 HTML 转 Markdown，内置私网/Localhost SSRF 严格阻断 |
@@ -71,6 +71,12 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 - `createRegistry(cwd, activeTools, mcpToolNames, withReadSkill, taskDeps?, questionDeps?, lspDeps?)` 注册内置全集；`lsp` / `question` / `task` 依赖对应 deps 存在才注册，MCP 工具仅注册白名单命中的已连接项，`read_skill` 由 Skill 激活状态决定。
 - `setActive()` 按会话 `active_capabilities` 快照过滤，配置中引用的未注册工具（历史遗留）自动剔除。
 - 能力快照随会话冻结，仅在能力集实际变化时追加 `active_capabilities` entry（见 database.md）。
+
+**子代理角色目录**（详见 [subagent-roles-harness-design.md](./subagent-roles-harness-design.md)）：
+
+- 内置角色：`review`（instructions 复用 `REVIEW_AGENT_SYSTEM_PROMPT`，工具继承）、`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）、`worker`（工具继承）；保留名不可被用户角色占用。
+- 用户角色：`~/.lx/config.json` → `agent.subagents.roles`，可声明 `description` / `instructions` / `model` / `tools`；`task` 工具描述在会话装配时动态注入角色目录。
+- 能力只收缩不提权：子代理工具集 = 父激活集 ∩ 角色白名单，权限与沙箱继承父级；并发上限 `maxConcurrent`（1–32）与嵌套深度 `maxDepth`（1–5，默认 1）由会话级 `SubagentRuntime` 治理。
 
 ---
 
@@ -168,4 +174,4 @@ Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩�
 
 ## 7. 生命周期钩子（Hooks）
 
-工具执行前后的治理扩展点（`PreToolUse` / `PostToolUse` / `PermissionRequest`）以及会话、压缩、子代理等生命周期事件，统一由用户级 hook 体系提供。配置 schema、线协议、失败语义与事件矩阵见 [hooks.md](./hooks.md)。
+工具执行前后的治理扩展点（`PreToolUse` / `PostToolUse` / `PermissionRequest`）以及会话、压缩、子代理等生命周期事件，统一由用户级 hook 体系提供。`SubagentStart` / `SubagentStop` 的 payload `agent_type` 携带解析后的角色名。配置 schema、线协议、失败语义与事件矩阵见 [hooks.md](./hooks.md)。

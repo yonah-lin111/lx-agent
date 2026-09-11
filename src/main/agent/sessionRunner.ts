@@ -25,7 +25,7 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
-import { getSkillSettings } from "@/services/settingsService"
+import { getSkillSettings, getSubagentSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
 import {
   ALL_TOOL_NAMES,
@@ -59,6 +59,7 @@ import {
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { SubagentPool } from "./subagent/subagentPool"
+import { SubagentRuntime } from "./subagent/subagentRuntime"
 import { generateSessionTitle } from "./titleGenerator"
 import { ToolRegistry } from "./tools/registry"
 import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } from "./turnStore"
@@ -89,6 +90,8 @@ export class AgentSessionRunner {
   private agent?: Agent
   private registry?: ToolRegistry
   private subagentPool = new SubagentPool()
+  // 会话级并发槽位：跨嵌套深度共享，registry 重建不重置计数。
+  private subagentRuntime?: SubagentRuntime
   private cwd?: string
   private personality?: PersonalityName
   private unsubscribe?: () => void
@@ -338,6 +341,9 @@ export class AgentSessionRunner {
         activeSkills: this.activeSkills,
         personality: this.personality,
       })
+      // 会话装配时快照子代理设置：设置保存仅对新会话生效。
+      const subagentSettings = getSubagentSettings()
+      this.subagentRuntime ??= new SubagentRuntime(subagentSettings.maxConcurrent)
       const registry = createRegistry(
         cwd,
         this.activeCapabilities,
@@ -348,6 +354,8 @@ export class AgentSessionRunner {
           model: modelResult.model,
           sandboxPolicy: currentSandboxPolicy,
           subagentPool: this.subagentPool,
+          subagentSettings,
+          subagentRuntime: this.subagentRuntime,
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal, {
               collaborationMode: this.collaborationMode,
