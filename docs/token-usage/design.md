@@ -198,7 +198,7 @@ CREATE INDEX idx_usage_log_project ON usage_log(project_id);
 ```text
 features/usage/
   api/usageApi.ts             # 唯一访问 window.api.usage
-  hooks/useUsageData.ts       # 查询、筛选状态、事件订阅、手动刷新
+  hooks/useUsageData.ts       # 查询、筛选状态、事件订阅、手动/自动刷新（时间范围按加载时刻实时解析）
   components/
     UsageSummaryCards.tsx
     UsageTrendChart.tsx        # 每日 Token（堆叠：noCache/输出/缓存读/缓存写）+ 成本折线，双轴
