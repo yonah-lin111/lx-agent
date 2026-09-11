@@ -34,7 +34,7 @@ export const OpenClawUserMessage = ({
       ) : null}
       <div
         data-user-bubble="true"
-        className="openclaw-user-bubble bg-user-bubble max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] rounded-br-[4px] border border-sky-400/20 bg-[#253347] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 shadow-sm"
+        className="openclaw-user-bubble bg-user-bubble max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] rounded-br-[4px] bg-[#253347] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 shadow-sm"
       >
         {content}
       </div>

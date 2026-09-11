@@ -176,6 +176,8 @@ export const en = {
     officePickerTitle: "Switch office",
     agentPickerTitle: "Select coworkers",
     targetLabel: "Targets:",
+    gatewayUnreachable:
+      "Cannot reach OpenClaw Gateway host. Please check the gateway URL, port, and network connectivity.",
     noTarget: "Select at least one coworker, or @ mention one.",
     commandClearDesc: "Clear all messages in this office",
     commandNewDesc: "Start a new session for this office",

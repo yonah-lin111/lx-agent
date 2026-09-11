@@ -177,6 +177,8 @@ export const zh: TranslationDictionary = {
     officePickerTitle: "切换办公区",
     agentPickerTitle: "选择员工",
     targetLabel: "派发目标：",
+    gatewayUnreachable:
+      "无法连接到 OpenClaw Gateway 主机，请检查实例配置中的网关地址、端口及网络连通性。",
     noTarget: "请先选中至少一位员工，或用 @ 提及一位。",
     commandClearDesc: "清空当前办公区的全部消息",
     commandNewDesc: "为当前办公区开启新会话",

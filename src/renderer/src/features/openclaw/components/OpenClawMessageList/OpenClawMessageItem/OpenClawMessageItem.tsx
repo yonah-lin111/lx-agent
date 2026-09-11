@@ -25,7 +25,7 @@ export const OpenClawMessageItem = ({
           }`
         : message.content
     return (
-      <div className="rounded-[8px] border border-amber-400/20 bg-amber-400/[0.06] px-3.5 py-2.5 text-[12px] text-amber-200/90 shadow-sm">
+      <div className="rounded-[8px] bg-amber-400/[0.06] px-3.5 py-2.5 text-[12px] text-amber-200/90 shadow-sm">
         {text}
       </div>
     )

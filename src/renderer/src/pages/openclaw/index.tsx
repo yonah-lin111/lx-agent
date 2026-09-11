@@ -202,7 +202,11 @@ export const OpenClawPage = (): React.JSX.Element => {
     const store = useOpenClawChatStore.getState()
     for (const agentId of targets) {
       void store.sendMessage(selectedInstanceId, agentId, body).catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : t("openclaw.sendFailed"))
+        const message = error instanceof Error ? error.message : String(error)
+        const isUnreachable = /EHOSTUNREACH|ECONNREFUSED|timed? ?out|ENOTFOUND/i.test(message)
+        toast.error(
+          isUnreachable ? t("openclaw.gatewayUnreachable") : message || t("openclaw.sendFailed"),
+        )
       })
     }
   }, [agentIds, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])

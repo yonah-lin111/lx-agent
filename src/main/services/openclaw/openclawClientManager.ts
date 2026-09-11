@@ -211,6 +211,7 @@ class OpenClawClientManager {
       clientVersion: "0.1.0",
       hostDeps: buildOpenClawHostDeps(instanceId),
       onHelloOk: () => {
+        if (connectTimer) clearTimeout(connectTimer)
         connection.status = "connected"
         delete connection.error
         delete connection.pairingRequestId
@@ -220,6 +221,7 @@ class OpenClawClientManager {
         settled.resolve({ status: "connected" })
       },
       onConnectError: (error) => {
+        if (connectTimer) clearTimeout(connectTimer)
         const info = parseConnectError(error)
         connection.status = info.status
         connection.error = info.message
@@ -245,8 +247,31 @@ class OpenClawClientManager {
       },
     })
 
+    // 连接握手安全超时（8秒），避免网络不可达/丢包导致一直挂起
+    let connectTimer: NodeJS.Timeout | null = setTimeout(() => {
+      connectTimer = null
+      if (connection.status === "connecting") {
+        const errorMsg = `Connection to OpenClaw gateway timed out (${connection.config.gatewayUrl})`
+        connection.status = "error"
+        connection.error = errorMsg
+        for (const session of connection.sessions.values()) {
+          this.emitSnapshot(connection, session)
+        }
+        settled.resolve({ status: "error", error: errorMsg })
+        connection.client?.stop()
+      }
+    }, 8000)
+
     connection.client = client
-    client.start()
+    try {
+      client.start()
+    } catch (error) {
+      if (connectTimer) clearTimeout(connectTimer)
+      const info = parseConnectError(error instanceof Error ? error : new Error(String(error)))
+      connection.status = info.status
+      connection.error = info.message
+      settled.resolve({ status: info.status, error: info.message })
+    }
 
     return settled.promise
   }
@@ -620,20 +645,47 @@ class OpenClawClientManager {
   }
 }
 
-// 解析连接错误，识别设备配对待审批场景。
+// 解析连接错误，识别设备配对待审批与网络不可达等场景。
 const parseConnectError = (
   error: Error,
 ): { status: OpenClawConnectionStatus; message: string; pairingRequestId?: string } => {
-  const message = error.message || String(error)
-  if (/PAIRING_REQUIRED|pairing/i.test(message)) {
-    const match = message.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
+  const rawMessage = error.message || String(error)
+  if (/PAIRING_REQUIRED|pairing/i.test(rawMessage)) {
+    const match = rawMessage.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
     return {
       status: "pairing-required",
-      message,
+      message: rawMessage,
       ...(match ? { pairingRequestId: match[0] } : {}),
     }
   }
-  return { status: "error", message }
+
+  // 捕获典型的网络层不可达/拒绝连接异常
+  if (/EHOSTUNREACH/i.test(rawMessage)) {
+    return {
+      status: "error",
+      message: `Cannot reach OpenClaw Gateway host (EHOSTUNREACH): ${rawMessage}`,
+    }
+  }
+  if (/ECONNREFUSED/i.test(rawMessage)) {
+    return {
+      status: "error",
+      message: `OpenClaw Gateway connection refused (ECONNREFUSED): ${rawMessage}`,
+    }
+  }
+  if (/ETIMEDOUT|timeout/i.test(rawMessage)) {
+    return {
+      status: "error",
+      message: `OpenClaw Gateway connection timed out: ${rawMessage}`,
+    }
+  }
+  if (/ENOTFOUND/i.test(rawMessage)) {
+    return {
+      status: "error",
+      message: `OpenClaw Gateway hostname not found (ENOTFOUND): ${rawMessage}`,
+    }
+  }
+
+  return { status: "error", message: rawMessage }
 }
 
 // 将 Gateway 返回的 agent 条目映射为配置模型。
