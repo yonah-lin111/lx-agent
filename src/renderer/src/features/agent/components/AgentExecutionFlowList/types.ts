@@ -16,6 +16,7 @@ import {
   Terminal,
   Undo2,
   User,
+  Webhook,
   Workflow,
   Wrench,
 } from "lucide-react"
@@ -189,6 +190,8 @@ export const getKindMeta = (
       }
     case "modelSwitch":
       return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
+    case "hook":
+      return { icon: Webhook, labelKey: "agent.kindHook", tagColor: "teal" }
     case "assistant":
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
     case "proposedPlan":

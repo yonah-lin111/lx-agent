@@ -9,6 +9,7 @@ import { fetchProviderModels } from "@/services/modelFetchService"
 import {
   deleteSkill,
   getCliSettings,
+  getHookSettings,
   getLspSettings,
   getMcpSettings,
   getModelProviderSettings,
@@ -18,6 +19,7 @@ import {
   getUiSettings,
   getVoiceSettings,
   saveCliSettings,
+  saveHookSettings,
   saveLspSettings,
   saveMcpSettings,
   saveModelProviderSettings,
@@ -46,6 +48,8 @@ export const registerSettingsHandlers = (): void => {
   ipcMain.handle(SETTINGS_CHANNELS.savePermissionSettings, (_, input) =>
     savePermissionSettings(input),
   )
+  ipcMain.handle(SETTINGS_CHANNELS.getHookSettings, () => getHookSettings())
+  ipcMain.handle(SETTINGS_CHANNELS.saveHookSettings, (_, input) => saveHookSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getUiSettings, () => getUiSettings())
   ipcMain.handle(SETTINGS_CHANNELS.saveUiSettings, (_, input) => saveUiSettings(input))
   ipcMain.handle(SETTINGS_CHANNELS.getCliSettings, () => getCliSettings())

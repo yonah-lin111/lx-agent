@@ -11,6 +11,7 @@ import {
   Shield,
   Sparkles,
   Terminal,
+  Webhook,
 } from "lucide-react"
 
 export interface SettingsSection {
@@ -20,6 +21,7 @@ export interface SettingsSection {
     | "settings.models"
     | "settings.providers"
     | "settings.permissions"
+    | "settings.hooks"
     | "settings.customCommands"
     | "settings.cli"
     | "settings.lsp"
@@ -42,5 +44,6 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "providers", labelKey: "settings.providers", icon: Server },
   { id: "voice", labelKey: "settings.voice", icon: Mic },
   { id: "permissions", labelKey: "settings.permissions", icon: Shield },
+  { id: "hooks", labelKey: "settings.hooks", icon: Webhook },
   { id: "custom-commands", labelKey: "settings.customCommands", icon: Code },
 ] as const

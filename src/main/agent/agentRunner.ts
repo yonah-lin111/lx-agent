@@ -513,7 +513,8 @@ export class SessionRunnerManager {
     const key = `sess:${sessionId}`
     const runner = this.runners.get(key)
     if (runner) {
-      runner.cleanUp()
+      // 会话销毁路径：best-effort 派发 SessionEnd（dispose）后清理运行态。
+      runner.dispose("dispose")
       this.runners.delete(key)
       if (runner.tabId) {
         this.runners.delete(`tab:${runner.tabId}`)
@@ -538,6 +539,17 @@ export class SessionRunnerManager {
   public getCurrentCwd(sessionId?: string, tabId?: string): string | undefined {
     const runner = this.getRunner(sessionId, tabId)
     return runner?.getEffectiveCwd()
+  }
+
+  // 应用退出路径：所有活跃会话 best-effort 派发 SessionEnd（quit）后清理。
+  public disposeAll(reason: "quit" | "dispose" = "quit"): void {
+    const disposed = new Set<AgentSessionRunner>()
+    for (const runner of this.runners.values()) {
+      if (disposed.has(runner)) continue
+      disposed.add(runner)
+      runner.dispose(reason)
+    }
+    this.runners.clear()
   }
 
   public getContextUsage(

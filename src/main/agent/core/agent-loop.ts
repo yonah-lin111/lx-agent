@@ -140,12 +140,12 @@ async function runLoop(
           message.stopReason === "length"
             ? await failToolCallsFromTruncatedMessage(toolCalls, emit)
             : await executeToolCalls(currentContext, message, config, signal, emit)
-        toolResults.push(...executedToolBatch.messages)
+        toolResults.push(...executedToolBatch.toolResults)
         hasMoreToolCalls = !executedToolBatch.terminate
 
-        for (const result of toolResults) {
-          currentContext.messages.push(result)
-          newMessages.push(result)
+        for (const emittedMessage of executedToolBatch.messages) {
+          currentContext.messages.push(emittedMessage)
+          newMessages.push(emittedMessage)
         }
       }
 
@@ -195,6 +195,21 @@ async function runLoop(
     }
 
     break
+  }
+
+  // Stop hook：正常停止前注入收尾消息（fail-open，不阻断结束）。
+  if (config.onAgentStop && !signal?.aborted) {
+    try {
+      const stopMessages = (await config.onAgentStop({ newMessages })) ?? []
+      for (const stopMessage of stopMessages) {
+        await emit({ type: "message_start", message: stopMessage })
+        await emit({ type: "message_end", message: stopMessage })
+        currentContext.messages.push(stopMessage)
+        newMessages.push(stopMessage)
+      }
+    } catch {
+      // 注入失败不阻断 agent_end。
+    }
   }
 
   await emit({ type: "agent_end", messages: newMessages })
@@ -299,7 +314,10 @@ async function streamAssistantResponse(
 }
 
 type ExecutedToolCallBatch = {
-  messages: ToolResultMessage[]
+  // 与工具结果交错的消息序列（toolResult + hookContext，落位顺序）。
+  messages: AgentMessage[]
+  // 仅工具结果（turn_end 语义）。
+  toolResults: ToolResultMessage[]
   terminate: boolean
 }
 
@@ -308,7 +326,7 @@ async function failToolCallsFromTruncatedMessage(
   toolCalls: AgentToolCall[],
   emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
-  const messages: ToolResultMessage[] = []
+  const toolResults: ToolResultMessage[] = []
   for (const toolCall of toolCalls) {
     await emit({
       type: "tool_execution_start",
@@ -326,9 +344,9 @@ async function failToolCallsFromTruncatedMessage(
     await emitToolExecutionEnd(finalized, emit)
     const toolResultMessage = createToolResultMessage(finalized)
     await emitToolResultMessage(toolResultMessage, emit)
-    messages.push(toolResultMessage)
+    toolResults.push(toolResultMessage)
   }
-  return { messages, terminate: false }
+  return { messages: [...toolResults], toolResults, terminate: false }
 }
 
 // 执行一条助手消息中的工具调用。
@@ -361,6 +379,8 @@ type FinalizedToolCallOutcome = {
   result: AgentToolResult<any>
   isError: boolean
   durationMs?: number
+  // 随本工具结果落位的 hook 审计/注入消息（Pre 在前、Post 在后）。
+  hookMessages?: AgentMessage[]
 }
 
 type FinalizedToolCallEntry = FinalizedToolCallOutcome | (() => Promise<FinalizedToolCallOutcome>)
@@ -375,7 +395,8 @@ async function executeToolCallsSequential(
   emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
   const finalizedCalls: FinalizedToolCallOutcome[] = []
-  const messages: ToolResultMessage[] = []
+  const toolResults: ToolResultMessage[] = []
+  const emittedMessages: AgentMessage[] = []
 
   for (const toolCall of toolCalls) {
     await emit({
@@ -398,6 +419,7 @@ async function executeToolCallsSequential(
         toolCall,
         result: preparation.result,
         isError: preparation.isError,
+        ...(preparation.hookMessages ? { hookMessages: preparation.hookMessages } : {}),
       }
     } else {
       const executed = await executePreparedToolCall(preparation, signal, emit)
@@ -409,6 +431,14 @@ async function executeToolCallsSequential(
         config,
         signal,
       )
+      await dispatchPostToolUse(
+        currentContext,
+        assistantMessage,
+        preparation,
+        finalized,
+        config,
+        signal,
+      )
     }
 
     attachQuestionAnswers(assistantMessage, finalized)
@@ -416,7 +446,9 @@ async function executeToolCallsSequential(
     const toolResultMessage = createToolResultMessage(finalized)
     await emitToolResultMessage(toolResultMessage, emit)
     finalizedCalls.push(finalized)
-    messages.push(toolResultMessage)
+    toolResults.push(toolResultMessage)
+    emittedMessages.push(toolResultMessage)
+    await emitHookMessages(finalized.hookMessages, emit, emittedMessages)
 
     if (signal?.aborted) {
       break
@@ -424,7 +456,8 @@ async function executeToolCallsSequential(
   }
 
   return {
-    messages,
+    messages: emittedMessages,
+    toolResults,
     terminate: shouldTerminateToolBatch(finalizedCalls),
   }
 }
@@ -460,6 +493,7 @@ async function executeToolCallsParallel(
         toolCall,
         result: preparation.result,
         isError: preparation.isError,
+        ...(preparation.hookMessages ? { hookMessages: preparation.hookMessages } : {}),
       } satisfies FinalizedToolCallOutcome
       await emitToolExecutionEnd(finalized, emit)
       finalizedCalls.push(finalized)
@@ -480,6 +514,14 @@ async function executeToolCallsParallel(
         signal,
       )
       attachQuestionAnswers(assistantMessage, finalized)
+      await dispatchPostToolUse(
+        currentContext,
+        assistantMessage,
+        preparation,
+        finalized,
+        config,
+        signal,
+      )
       await emitToolExecutionEnd(finalized, emit)
       return finalized
     })
@@ -491,15 +533,19 @@ async function executeToolCallsParallel(
   const orderedFinalizedCalls = await Promise.all(
     finalizedCalls.map((entry) => (typeof entry === "function" ? entry() : Promise.resolve(entry))),
   )
-  const messages: ToolResultMessage[] = []
+  const toolResults: ToolResultMessage[] = []
+  const emittedMessages: AgentMessage[] = []
   for (const finalized of orderedFinalizedCalls) {
     const toolResultMessage = createToolResultMessage(finalized)
     await emitToolResultMessage(toolResultMessage, emit)
-    messages.push(toolResultMessage)
+    toolResults.push(toolResultMessage)
+    emittedMessages.push(toolResultMessage)
+    await emitHookMessages(finalized.hookMessages, emit, emittedMessages)
   }
 
   return {
-    messages,
+    messages: emittedMessages,
+    toolResults,
     terminate: shouldTerminateToolBatch(orderedFinalizedCalls),
   }
 }
@@ -509,12 +555,14 @@ type PreparedToolCall = {
   toolCall: AgentToolCall
   tool: AgentTool<any>
   args: unknown
+  hookMessages?: AgentMessage[]
 }
 
 type ImmediateToolCallOutcome = {
   kind: "immediate"
   result: AgentToolResult<any>
   isError: boolean
+  hookMessages?: AgentMessage[]
 }
 
 type ExecutedToolCallOutcome = {
@@ -557,6 +605,7 @@ async function prepareToolCall(
         ? toolCall
         : { ...toolCall, arguments: preparedArguments as Record<string, unknown> }
     const validatedArgs = validateToolArguments(tool, preparedToolCall)
+    const hookMessages: AgentMessage[] = []
     if (config.beforeToolCall) {
       const beforeResult = await config.beforeToolCall(
         {
@@ -567,11 +616,15 @@ async function prepareToolCall(
         },
         signal,
       )
+      if (beforeResult?.hookMessages?.length) {
+        hookMessages.push(...beforeResult.hookMessages)
+      }
       if (signal?.aborted) {
         return {
           kind: "immediate",
           result: createErrorToolResult("Operation aborted"),
           isError: true,
+          ...(hookMessages.length > 0 ? { hookMessages } : {}),
         }
       }
       if (beforeResult?.block) {
@@ -579,6 +632,7 @@ async function prepareToolCall(
           kind: "immediate",
           result: createErrorToolResult(beforeResult.reason || "Tool execution was blocked"),
           isError: true,
+          ...(hookMessages.length > 0 ? { hookMessages } : {}),
         }
       }
     }
@@ -587,6 +641,34 @@ async function prepareToolCall(
         kind: "immediate",
         result: createErrorToolResult("Operation aborted"),
         isError: true,
+        ...(hookMessages.length > 0 ? { hookMessages } : {}),
+      }
+    }
+    // 权限解析通过后派发 PreToolUse（可阻断并注入消息；失败 fail-open）。
+    if (config.preToolUse) {
+      try {
+        const preResult = await config.preToolUse(
+          {
+            assistantMessage,
+            toolCall,
+            args: validatedArgs,
+            context: currentContext,
+          },
+          signal,
+        )
+        if (preResult?.messages?.length) {
+          hookMessages.push(...preResult.messages)
+        }
+        if (preResult?.block) {
+          return {
+            kind: "immediate",
+            result: createErrorToolResult(preResult.block.reason),
+            isError: true,
+            ...(hookMessages.length > 0 ? { hookMessages } : {}),
+          }
+        }
+      } catch {
+        // fail-open：hook 派发异常不影响工具执行。
       }
     }
     return {
@@ -594,6 +676,7 @@ async function prepareToolCall(
       toolCall,
       tool,
       args: validatedArgs,
+      ...(hookMessages.length > 0 ? { hookMessages } : {}),
     }
   } catch (error) {
     return {
@@ -601,6 +684,50 @@ async function prepareToolCall(
       result: createErrorToolResult(error instanceof Error ? error.message : String(error)),
       isError: true,
     }
+  }
+}
+
+// 工具执行收尾后派发 PostToolUse（仅注入消息；失败 fail-open）。
+async function dispatchPostToolUse(
+  currentContext: AgentContext,
+  assistantMessage: AssistantMessage,
+  prepared: PreparedToolCall,
+  finalized: FinalizedToolCallOutcome,
+  config: AgentLoopConfig,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if (!config.postToolUse) return
+  try {
+    const postResult = await config.postToolUse(
+      {
+        assistantMessage,
+        toolCall: prepared.toolCall,
+        args: prepared.args,
+        result: finalized.result,
+        isError: finalized.isError,
+        context: currentContext,
+      },
+      signal,
+    )
+    if (postResult?.messages?.length) {
+      finalized.hookMessages = [...(finalized.hookMessages ?? []), ...postResult.messages]
+    }
+  } catch {
+    // fail-open：Post hook 异常不影响工具结果。
+  }
+}
+
+// 发出 hook 审计消息（message_start/message_end），并追加到交错消息序列。
+async function emitHookMessages(
+  hookMessages: AgentMessage[] | undefined,
+  emit: AgentEventSink,
+  emittedMessages: AgentMessage[],
+): Promise<void> {
+  if (!hookMessages || hookMessages.length === 0) return
+  for (const hookMessage of hookMessages) {
+    await emit({ type: "message_start", message: hookMessage })
+    await emit({ type: "message_end", message: hookMessage })
+    emittedMessages.push(hookMessage)
   }
 }
 
@@ -697,6 +824,8 @@ async function finalizeExecutedToolCall(
     result,
     isError,
     durationMs: executed.durationMs,
+    // PreToolUse（含权限审计）随工具结果落位（Post 由 dispatchPostToolUse 追加在后）。
+    ...(prepared.hookMessages?.length ? { hookMessages: [...prepared.hookMessages] } : {}),
   }
 }
 

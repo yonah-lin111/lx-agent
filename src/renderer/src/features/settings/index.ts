@@ -5,6 +5,7 @@ export * from "./components/CliSettings"
 
 export * from "./components/CustomCommandSettings"
 export * from "./components/GeneralSettings"
+export * from "./components/HooksSettings"
 export * from "./components/LspSettings"
 export * from "./components/McpSettings"
 export * from "./components/ModelProviderSettings"
@@ -19,6 +20,7 @@ export * from "./constants"
 
 export * from "./hooks/settingsDraftStore"
 export * from "./hooks/useCliSettings"
+export * from "./hooks/useHookSettings"
 export * from "./hooks/usePermissionSettings"
 
 export * from "./hooks/useSettingsData"

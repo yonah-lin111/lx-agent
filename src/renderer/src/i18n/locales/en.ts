@@ -236,6 +236,45 @@ Ultra-fast speech-to-text transcription powered by Whisper on Groq.
     voiceLanguage: "Audio Language",
     voiceLanguageDesc: "Primary language spoken in audio; select Auto or a specific language",
     permissionsDesc: "Configure agent tool execution permissions and confirmation modes",
+    hooks: "Hooks",
+    hooksDesc: "Configure agent lifecycle hooks; takes effect for new sessions",
+    hooksEffective: "Changes apply to new sessions only; running sessions are unaffected",
+    hooksDoc: `### Lifecycle Hooks
+
+Run user commands at key agent lifecycle points — sessions, prompt submission, tool execution, approvals, compaction, and subagents — to extend or constrain agent behavior.
+
+#### 💡 Events & Capabilities
+- **Session**: \`SessionStart\`, \`UserPromptSubmit\`, \`Stop\`, \`SessionEnd\`
+- **Tool**: \`PreToolUse\` (can block), \`PermissionRequest\` (can replace the approval dialog), \`PostToolUse\`
+- **Compaction**: \`PreCompact\`, \`PostCompact\` (never blocks compaction)
+- **Subagent**: \`SubagentStart\`, \`SubagentStop\`
+
+#### ⚙️ Execution Semantics
+- Commands receive a JSON payload on stdin and return strict JSON on stdout (\`additionalContext\` / \`systemMessage\` / \`decision\`); failures, timeouts, or invalid output always fail open.
+- Configuration is stored under \`agent.hooks\` in \`~/.lx/config.json\`; hooks within the same event run in list order and can be reordered with Move up / Move down.
+- Changes apply to **new sessions only**; running sessions keep the previous configuration.`,
+    hooksAdd: "Add Hook",
+    hooksAddTitle: "Add Hook",
+    hooksEditTitle: "Edit Hook",
+    hooksEvent: "Event",
+    hooksName: "Name",
+    hooksNamePlaceholder: "e.g. block-rm-rf",
+    hooksMatcher: "Tool Matcher",
+    hooksMatcherPlaceholder: "bash|edit|write",
+    hooksMatcherHint: "Pipe-separated exact tool names; leave empty to match all tools",
+    hooksCommand: "Command",
+    hooksCommandPlaceholder: "e.g. printf '%s' '{\"systemMessage\":\"ok\"}'",
+    hooksCommandWindows: "Windows Command (optional)",
+    hooksCommandWindowsPlaceholder: "e.g. powershell -File C:\\hooks\\audit.ps1",
+    hooksTimeout: "Timeout (seconds)",
+    hooksTimeoutPlaceholder: "600",
+    hooksNameRequired: "Name is required",
+    hooksCommandRequired: "Command is required",
+    hooksTimeoutInvalid: "Timeout must be an integer of at least 1 second",
+    hooksMatcherInvalid: "Invalid matcher; use pipe-separated tool names like a|b",
+    hooksMoveUp: "Move up",
+    hooksMoveDown: "Move down",
+    hooksEmpty: "No hooks configured yet",
     customCommands: "Custom Commands",
     customCommandsDesc: "Manage custom / slash commands for Agent input and Markdown editor",
     skills: "Skills",
@@ -903,6 +942,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     kindCompaction: "Compaction",
     kindUndo: "Undo",
     kindModelSwitch: "Model",
+    kindHook: "Hook",
     kindAssistant: "Assistant",
     kindError: "Error",
     initialModel: "Initial Model",

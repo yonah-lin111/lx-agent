@@ -26,6 +26,23 @@ vi.mock("@/services/settingsService", () => ({
   },
 }))
 
+// hooks 派发用可控 spy（不触达真实配置/子进程）；保留真实辅助函数。
+const hooksHolder = vi.hoisted(() => ({
+  dispatch: vi.fn(async () => ({ runs: [] as unknown[] })),
+  hooks: [] as unknown[],
+}))
+
+vi.mock("@/agent/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/agent/hooks")>()
+  return {
+    ...actual,
+    hooksManager: {
+      dispatch: hooksHolder.dispatch,
+      getHooks: () => hooksHolder.hooks,
+    },
+  }
+})
+
 import { permissionManager } from "@/agent/permissions/permissionManager"
 
 // 重置单例内部状态（module 级单例，测试间清空）。
@@ -564,5 +581,159 @@ describe("permissionManager 永久决策写回（G5）", () => {
           "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
       })
     })
+  })
+})
+
+describe("permissionManager PermissionRequest hook", () => {
+  beforeEach(() => {
+    resetManager()
+    hooksHolder.hooks = []
+    hooksHolder.dispatch.mockClear()
+    hooksHolder.dispatch.mockResolvedValue({ runs: [] })
+    holder.capturedRequests = []
+    permissionManager.attachSender((request) => {
+      holder.capturedRequests.push({
+        requestId: request.requestId,
+        toolName: request.toolName,
+        summary: request.summary,
+        mode: request.mode,
+      })
+    })
+  })
+
+  afterEach(() => {
+    resetManager()
+  })
+
+  const hookRun = (partial: {
+    status?: "completed" | "failed" | "blocked"
+    text?: string
+    permission?: { decision: "allow" | "deny"; reason?: string }
+  }) => ({
+    hook: { name: "gatekeeper", event: "PermissionRequest" },
+    status: partial.status ?? "completed",
+    message: {
+      role: "hookContext",
+      event: "PermissionRequest",
+      hookName: "gatekeeper",
+      status: partial.status ?? "completed",
+      text: partial.text ?? "",
+      timestamp: 1,
+    },
+    ...(partial.permission ? { permission: partial.permission } : {}),
+  })
+
+  it("Guardian / Plan 硬拒绝不可覆盖：hook 不被调用", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const result = await permissionManager.gate(
+      gateContext("bash", { command: "rm -rf /" }),
+      "s1",
+      undefined,
+      { collaborationMode: "plan" },
+    )
+    expect(result?.block).toBe(true)
+    expect(hooksHolder.dispatch).not.toHaveBeenCalled()
+  })
+
+  it("deny 规则与只读沙箱不参与：hook 不被调用", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: ["Bash(rm *)"], ask: [] })
+    const denied = await permissionManager.gate(gateContext("bash", { command: "rm x" }), "s1")
+    expect(denied).toEqual({ block: true, reason: "Action denied by permission rules." })
+
+    applySettings({
+      defaultMode: "default",
+      sandboxPolicy: "read-only",
+      allow: [],
+      deny: [],
+      ask: [],
+    })
+    const readOnly = await permissionManager.gate(gateContext("write", { path: "a.ts" }), "s1")
+    expect(readOnly?.block).toBe(true)
+
+    expect(hooksHolder.dispatch).not.toHaveBeenCalled()
+  })
+
+  it("ask + hook allow → 不弹 UI 直接放行，审计消息返回且仅单次生效", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    hooksHolder.hooks = [{ name: "gatekeeper", event: "PermissionRequest" }]
+    hooksHolder.dispatch.mockResolvedValue({
+      runs: [
+        hookRun({
+          permission: { decision: "allow", reason: "trusted command" },
+          text: "trusted command",
+        }),
+      ],
+    })
+
+    const result = await permissionManager.gate(
+      gateContext("bash", { command: "npm install" }),
+      "s1",
+      undefined,
+      { cwd: "/tmp/proj" },
+    )
+    expect(holder.capturedRequests).toHaveLength(0)
+    expect(result?.block).toBeUndefined()
+    expect(result?.hookMessages).toHaveLength(1)
+    expect(result?.hookMessages?.[0]).toMatchObject({
+      event: "PermissionRequest",
+      status: "completed",
+      text: "trusted command",
+    })
+    // hook 决定不写永久规则/会话白名单：同参数再次调用仍为 ask。
+    expect(permissionManager.isToolAllowedInSession("s1", "bash")).toBe(false)
+    expect(
+      permissionManager.evaluate("bash", { command: "npm install" }, { sessionId: "s1" }),
+    ).toBe("ask")
+    expect(hooksHolder.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: "/tmp/proj", toolName: "bash" }),
+    )
+  })
+
+  it("ask + hook deny → block 原因来自 hook（单次生效）", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    hooksHolder.hooks = [{ name: "gatekeeper", event: "PermissionRequest" }]
+    hooksHolder.dispatch.mockResolvedValue({
+      runs: [
+        hookRun({
+          permission: { decision: "deny", reason: "blocked by policy" },
+          text: "blocked by policy",
+        }),
+      ],
+    })
+    const result = await permissionManager.gate(gateContext("write", { path: "a.ts" }), "s1")
+    expect(result).toMatchObject({ block: true, reason: "blocked by policy" })
+    expect(result?.hookMessages).toHaveLength(1)
+    expect(holder.capturedRequests).toHaveLength(0)
+  })
+
+  it("hook 失败/无决策 → 回落 UI；不写会话白名单/永久规则", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    hooksHolder.hooks = [{ name: "gatekeeper", event: "PermissionRequest" }]
+    hooksHolder.dispatch.mockResolvedValue({
+      runs: [hookRun({ status: "failed", text: "boom" })],
+    })
+    const pending = permissionManager.gate(gateContext("bash", { command: "npm install" }), "s1")
+    await vi.waitFor(() => expect(holder.capturedRequests).toHaveLength(1))
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+    })
+    const result = await pending
+    expect(result?.block).toBeUndefined()
+    expect(result?.hookMessages?.[0]).toMatchObject({ status: "failed", text: "boom" })
+    expect(permissionManager.isToolAllowedInSession("s1", "bash")).toBe(false)
+  })
+
+  it("hook 派发抛错 → 回落 UI（fail-open）", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    hooksHolder.hooks = [{ name: "gatekeeper", event: "PermissionRequest" }]
+    hooksHolder.dispatch.mockRejectedValue(new Error("spawn exploded"))
+    const pending = permissionManager.gate(gateContext("bash", { command: "npm install" }), "s1")
+    await vi.waitFor(() => expect(holder.capturedRequests).toHaveLength(1))
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "deny",
+    })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
   })
 })

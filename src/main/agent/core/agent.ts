@@ -15,6 +15,7 @@ import type {
   AgentLoopConfig,
   AgentLoopTurnUpdate,
   AgentState,
+  AgentStopContext,
   AgentTool,
   BeforeToolCallContext,
   BeforeToolCallResult,
@@ -24,6 +25,7 @@ import type {
   QueueMode,
   StreamFn,
   ToolExecutionMode,
+  ToolHookResult,
 } from "./types"
 
 export type { QueueMode } from "./types"
@@ -54,6 +56,18 @@ function defaultConvertToLlm(messages: AgentMessage[]): LlmMessage[] {
     }
     if (message.role === "modelSwitch" || message.role === "undoSummary") {
       return []
+    }
+    if (message.role === "hookContext") {
+      // 空 text hook 不注入任何 token；非空则映射为带标记的 user 文本。
+      if (!message.text.trim()) return []
+      return [
+        {
+          role: "user",
+          content:
+            `<hook_context event="${message.event}" hook="${message.hookName}" status="${message.status}">\n` +
+            `${message.text}\n</hook_context>`,
+        },
+      ]
     }
     if (message.role === "user" || message.role === "assistant" || message.role === "toolResult") {
       return [message]
@@ -132,6 +146,14 @@ export interface AgentOptions {
     context: AfterToolCallContext,
     signal?: AbortSignal,
   ) => Promise<AfterToolCallResult | undefined>
+  preToolUse?: (
+    context: BeforeToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
+  postToolUse?: (
+    context: AfterToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
   prepareNextTurn?: (
     signal?: AbortSignal,
   ) => Promise<AgentLoopTurnUpdate | undefined> | AgentLoopTurnUpdate | undefined
@@ -139,6 +161,7 @@ export interface AgentOptions {
     context: PrepareNextTurnContext,
     signal?: AbortSignal,
   ) => Promise<AgentLoopTurnUpdate | undefined> | AgentLoopTurnUpdate | undefined
+  onAgentStop?: (context: AgentStopContext) => Promise<AgentMessage[] | undefined>
   steeringMode?: QueueMode
   followUpMode?: QueueMode
   toolExecution?: ToolExecutionMode
@@ -215,6 +238,14 @@ export class Agent {
     context: AfterToolCallContext,
     signal?: AbortSignal,
   ) => Promise<AfterToolCallResult | undefined>
+  public preToolUse?: (
+    context: BeforeToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
+  public postToolUse?: (
+    context: AfterToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
   public prepareNextTurn?: (
     signal?: AbortSignal,
   ) => Promise<AgentLoopTurnUpdate | undefined> | AgentLoopTurnUpdate | undefined
@@ -222,6 +253,7 @@ export class Agent {
     context: PrepareNextTurnContext,
     signal?: AbortSignal,
   ) => Promise<AgentLoopTurnUpdate | undefined> | AgentLoopTurnUpdate | undefined
+  public onAgentStop?: (context: AgentStopContext) => Promise<AgentMessage[] | undefined>
   private activeRun?: ActiveRun
   public toolExecution: ToolExecutionMode
 
@@ -234,8 +266,11 @@ export class Agent {
     this.getApiKey = runtimeOptions.getApiKey
     this.beforeToolCall = runtimeOptions.beforeToolCall
     this.afterToolCall = runtimeOptions.afterToolCall
+    this.preToolUse = runtimeOptions.preToolUse
+    this.postToolUse = runtimeOptions.postToolUse
     this.prepareNextTurn = runtimeOptions.prepareNextTurn
     this.prepareNextTurnWithContext = runtimeOptions.prepareNextTurnWithContext
+    this.onAgentStop = runtimeOptions.onAgentStop
     this.steeringQueue = new PendingMessageQueue(runtimeOptions.steeringMode ?? "one-at-a-time")
     this.followUpQueue = new PendingMessageQueue(runtimeOptions.followUpMode ?? "one-at-a-time")
     this.toolExecution = runtimeOptions.toolExecution ?? "parallel"
@@ -441,6 +476,8 @@ export class Agent {
       toolExecution: this.toolExecution,
       beforeToolCall: this.beforeToolCall,
       afterToolCall: this.afterToolCall,
+      preToolUse: this.preToolUse,
+      postToolUse: this.postToolUse,
       prepareNextTurn:
         this.prepareNextTurnWithContext || this.prepareNextTurn
           ? async (context) => {
@@ -453,6 +490,7 @@ export class Agent {
       convertToLlm: this.convertToLlm,
       transformContext: this.transformContext,
       getApiKey: this.getApiKey,
+      onAgentStop: this.onAgentStop,
       getSteeringMessages: async () => {
         if (skipInitialSteeringPoll) {
           skipInitialSteeringPoll = false

@@ -237,6 +237,45 @@ export const zh: TranslationDictionary = {
     voiceLanguage: "音频语言",
     voiceLanguageDesc: "语音说话的主要语言，选择自动检测或固定语言以优化识别准确率",
     permissionsDesc: "配置 Agent 工具执行权限与确认模式",
+    hooks: "钩子",
+    hooksDesc: "配置 Agent 生命周期钩子；保存后对新会话生效",
+    hooksEffective: "配置仅对新会话生效，运行中的会话不受影响",
+    hooksDoc: `### 生命周期钩子
+
+在 Agent 的会话、提示词提交、工具执行、审批、压缩与子代理等关键节点执行用户命令，扩展或约束 Agent 行为。
+
+#### 💡 事件与能力
+- **会话**：\`SessionStart\`、\`UserPromptSubmit\`、\`Stop\`、\`SessionEnd\`
+- **工具**：\`PreToolUse\`（可阻断）、\`PermissionRequest\`（可替代审批弹窗）、\`PostToolUse\`
+- **压缩**：\`PreCompact\`、\`PostCompact\`（任何输出都不阻断压缩）
+- **子代理**：\`SubagentStart\`、\`SubagentStop\`
+
+#### ⚙️ 执行语义
+- 命令经 stdin 接收 JSON 载荷，stdout 返回严格 JSON（\`additionalContext\` / \`systemMessage\` / \`decision\`）；执行失败、超时或输出非法一律 fail-open。
+- 配置写入 \`~/.lx/config.json\` 的 \`agent.hooks\`；同一事件内按列表顺序执行，可用上/下移调整。
+- 保存后仅对**新会话**生效，运行中的会话沿用旧配置。`,
+    hooksAdd: "添加 Hook",
+    hooksAddTitle: "添加 Hook",
+    hooksEditTitle: "编辑 Hook",
+    hooksEvent: "事件",
+    hooksName: "名称",
+    hooksNamePlaceholder: "e.g. block-rm-rf",
+    hooksMatcher: "工具匹配",
+    hooksMatcherPlaceholder: "bash|edit|write",
+    hooksMatcherHint: "竖线分隔的精确工具名；留空匹配全部工具",
+    hooksCommand: "命令",
+    hooksCommandPlaceholder: "e.g. printf '%s' '{\"systemMessage\":\"ok\"}'",
+    hooksCommandWindows: "Windows 命令（可选）",
+    hooksCommandWindowsPlaceholder: "e.g. powershell -File C:\\hooks\\audit.ps1",
+    hooksTimeout: "超时（秒）",
+    hooksTimeoutPlaceholder: "600",
+    hooksNameRequired: "名称不能为空",
+    hooksCommandRequired: "命令不能为空",
+    hooksTimeoutInvalid: "超时必须是 ≥1 的整数秒",
+    hooksMatcherInvalid: "匹配格式非法，须为 a|b 形式的工具名列表",
+    hooksMoveUp: "上移",
+    hooksMoveDown: "下移",
+    hooksEmpty: "尚未配置任何 Hook",
     customCommands: "自定义命令",
     customCommandsDesc: "管理对话输入框与 Markdown 编辑器的自定义 / 快捷命令",
     skills: "技能管理",
@@ -885,6 +924,7 @@ export const zh: TranslationDictionary = {
     kindCompaction: "压缩",
     kindUndo: "撤销",
     kindModelSwitch: "模型",
+    kindHook: "钩子",
     kindAssistant: "回复",
     kindError: "异常",
     initialModel: "初始模型",

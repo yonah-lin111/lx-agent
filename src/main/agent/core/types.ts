@@ -68,10 +68,17 @@ export type ThinkingLevel = "off" | "low" | "medium" | "high"
 // 单个工具调用内容块。
 export type AgentToolCall = Extract<AssistantMessage["content"][number], { type: "toolCall" }>
 
-// beforeToolCall 返回结果：block 阻止执行。
+// beforeToolCall 返回结果：block 阻止执行；hookMessages 为随工具结果落位的审计消息。
 export interface BeforeToolCallResult {
   block?: boolean
   reason?: string
+  hookMessages?: AgentMessage[]
+}
+
+// 工具前后 hook 回调结果（PreToolUse 可阻断；PostToolUse 仅注入消息）。
+export interface ToolHookResult {
+  block?: { reason: string }
+  messages?: AgentMessage[]
 }
 
 // afterToolCall 返回结果：字段级覆盖执行结果。
@@ -105,6 +112,11 @@ export interface ShouldStopAfterTurnContext {
   message: AssistantMessage
   toolResults: ToolResultMessage[]
   context: AgentContext
+  newMessages: AgentMessage[]
+}
+
+// Agent 正常停止前（agent_end 前）的收尾上下文（Stop hook 注入点）。
+export interface AgentStopContext {
   newMessages: AgentMessage[]
 }
 
@@ -145,6 +157,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
   /** 返回模型将停止时注入的消息（followUp 语义）；不得 throw。 */
   getFollowUpMessages?: () => Promise<AgentMessage[]>
 
+  /** Agent 正常停止前注入收尾消息（Stop hook）；不得 throw（失败按无输出处理）。 */
+  onAgentStop?: (context: AgentStopContext) => Promise<AgentMessage[] | undefined>
+
   toolExecution?: ToolExecutionMode
   beforeToolCall?: (
     context: BeforeToolCallContext,
@@ -154,6 +169,16 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
     context: AfterToolCallContext,
     signal?: AbortSignal,
   ) => Promise<AfterToolCallResult | undefined>
+  /** 工具执行前（权限解析后）派发 PreToolUse；可阻断并注入消息。不得 throw。 */
+  preToolUse?: (
+    context: BeforeToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
+  /** 工具执行收尾后派发 PostToolUse；仅注入消息。不得 throw。 */
+  postToolUse?: (
+    context: AfterToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
 }
 
 // 工具执行结果。
