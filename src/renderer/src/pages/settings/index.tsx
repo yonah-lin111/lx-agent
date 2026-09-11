@@ -7,6 +7,7 @@ import {
   CliSettings,
   CustomCommandSettings,
   GeneralSettings,
+  HooksSettings,
   LspSettings,
   McpSettings,
   ModelProviderSettings,
@@ -38,6 +39,7 @@ const SECTION_DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   providers: "settings.providersDesc",
   voice: "settings.voiceDesc",
   permissions: "settings.permissionsDesc",
+  hooks: "settings.hooksDesc",
   "custom-commands": "settings.customCommandsDesc",
 }
 
@@ -205,6 +207,7 @@ export const SettingsPage = (): React.JSX.Element => {
           {activeSection === "permissions" && permissionSettings ? (
             <PermissionSettings settings={permissionSettings} setSettings={setPermissionSettings} />
           ) : null}
+          {activeSection === "hooks" ? <HooksSettings /> : null}
           {activeSection === "custom-commands" ? <CustomCommandSettings /> : null}
         </div>
       )}

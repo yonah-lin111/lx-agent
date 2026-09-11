@@ -3,6 +3,7 @@
 export type SettingsDomain =
   | "models"
   | "permissions"
+  | "hooks"
   | "ui"
   | "customCommands"
   | "cli"
@@ -17,6 +18,7 @@ type SettingsChangeListener = () => void
 const listeners: Record<SettingsDomain, Set<SettingsChangeListener>> = {
   models: new Set(),
   permissions: new Set(),
+  hooks: new Set(),
   ui: new Set(),
   customCommands: new Set(),
   cli: new Set(),

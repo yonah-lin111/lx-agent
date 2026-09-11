@@ -5,6 +5,8 @@ export const SETTINGS_CHANNELS = {
   fetchModels: "settings:model-providers:fetch-models",
   getPermissionSettings: "settings:permissions:get",
   savePermissionSettings: "settings:permissions:save",
+  getHookSettings: "settings:hooks:get",
+  saveHookSettings: "settings:hooks:save",
   getUiSettings: "settings:ui:get",
   saveUiSettings: "settings:ui:save",
   getCliSettings: "settings:cli:get",

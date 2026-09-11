@@ -6,6 +6,7 @@ import type {
   CliVersionInfo,
   FetchedProviderModel,
   FetchModelsInput,
+  HookSettings,
   LspServerDetailInfo,
   LspSettings,
   McpSettings,
@@ -29,6 +30,9 @@ export const settingsApi = {
     window.api.settings.getPermissionSettings(),
   savePermissionSettings: (settings: PermissionSettings): Promise<PermissionSettings> =>
     window.api.settings.savePermissionSettings(settings),
+  getHookSettings: (): Promise<HookSettings> => window.api.settings.getHookSettings(),
+  saveHookSettings: (settings: HookSettings): Promise<HookSettings> =>
+    window.api.settings.saveHookSettings(settings),
   getUiSettings: (): Promise<UiSettings> => window.api.settings.getUiSettings(),
   saveUiSettings: (settings: UiSettings): Promise<UiSettings> =>
     window.api.settings.saveUiSettings(settings),

@@ -26,7 +26,7 @@ hooksManager.dispatch（串行派发，配置顺序即执行顺序）
                  └─ 调用点效果合并：阻断工具 / 单次审批 / 拒绝提交
 ```
 
-- V1 仅支持 `command` handler；配置来源仅用户级 `~/.lx/config.json` 的 `agent.hooks`，无项目级、无热重载。
+- V1 仅支持 `command` handler；配置来源仅用户级 `~/.lx/config.json` 的 `agent.hooks`，无项目级、无热重载；亦可在 设置 → 钩子 中可视化增删改（保存后仅对新会话生效，运行中会话沿用旧配置）。
 - 所有执行失败（spawn 失败 / 超时 / 非零退出 / 伪 JSON）一律 **fail-open**；阻断只能来自成功执行且显式声明的信号。
 - hook 运行产物为 `HookContextMessage`（role `hookContext`）：非空 `text` 注入模型上下文，同时驱动执行流展示；不进入消息列表（MsgList）分组。
 
@@ -127,6 +127,7 @@ stdout（camelCase 严格 JSON，允许为空）：
 
 - 契约：`src/shared/contracts/agent.ts`（`HookEventName` / `HookRunStatus` / `HookContextMessage`）
 - 引擎：`src/main/agent/hooks/`（`hookConfig` / `commandRunner` / `outputParser` / `dispatcher` / `hooksManager`）
-- 单测：`test/main/agent/hooks/`（配置校验 / parser 全分支 / runner / dispatcher / 压缩 fail-open）
+- 设置读写：`settingsService`（`getHookSettings` / `saveHookSettings`，保存后只清 `global` 缓存）+ IPC `settings:hooks:get/save`；编辑器：`src/renderer/src/features/settings/components/HooksSettings.tsx`
+- 单测：`test/main/agent/hooks/`（配置校验 / parser 全分支 / runner / dispatcher / 压缩 fail-open）、`test/main/services/hookSettingsService.test.ts`（归一 / 写盘 / 拒绝 / 缓存失效）
 - 调用点集成：`test/main/agent/hooks/sessionHooks.integration.test.ts` 与 `test/main/agent/agentRunner.test.ts`
-- 渲染呈现：`test/renderer/features/agent/hookContextPresentation.test.ts`
+- 渲染呈现：`test/renderer/features/agent/hookContextPresentation.test.ts` 与 `test/renderer/features/settings/HooksSettings.test.tsx`

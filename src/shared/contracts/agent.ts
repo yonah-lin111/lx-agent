@@ -387,6 +387,32 @@ export type HookEventName =
   | "SubagentStop"
   | "Stop"
 
+// 全量事件集（PascalCase 精确名，对齐 wire 协议）。
+export const HOOK_EVENT_NAMES: readonly HookEventName[] = [
+  "PreToolUse",
+  "PermissionRequest",
+  "PostToolUse",
+  "PreCompact",
+  "PostCompact",
+  "SessionStart",
+  "SessionEnd",
+  "UserPromptSubmit",
+  "SubagentStart",
+  "SubagentStop",
+  "Stop",
+]
+
+// 仅这些事件消费 matcher 字段；其余事件忽略该字段。
+export const HOOK_MATCHER_EVENTS: readonly HookEventName[] = [
+  "PreToolUse",
+  "PostToolUse",
+  "PermissionRequest",
+]
+
+// 判断事件是否消费 matcher 字段。
+export const isHookMatcherEvent = (event: HookEventName): boolean =>
+  HOOK_MATCHER_EVENTS.includes(event)
+
 // 单次 hook 运行状态。
 export type HookRunStatus = "completed" | "failed" | "blocked"
 
