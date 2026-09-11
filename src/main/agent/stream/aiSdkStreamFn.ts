@@ -6,12 +6,14 @@ import type {
   ToolCall,
   Usage,
 } from "@shared/contracts/agent"
+import type { UsagePurpose } from "@shared/contracts/usage"
 import { stepCountIs, streamText } from "ai"
 import { createAssistantMessageEventStream } from "@/agent/core/event-stream"
 import type { Model, StreamFn } from "@/agent/core/types"
 import { DEFAULT_STREAM_IDLE_TIMEOUT_MS, IdleWatchdog } from "@/agent/stream/idleWatchdog"
 import { resolveLanguageModel } from "@/agent/stream/modelFactory"
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
+import { recordModelCall, toUsage } from "@/agent/usageRecorder"
 import { getModelProviderSettings } from "@/services/settingsService"
 
 // AI SDK finishReason → 本地 StopReason 映射。
@@ -31,7 +33,7 @@ const mapStopReason = (reason: string): StopReason => {
   }
 }
 
-const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
+const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 }
 
 // 构造空助手消息。
 const createEmptyAssistant = (model: Model): AssistantMessage => ({
@@ -45,13 +47,24 @@ const createEmptyAssistant = (model: Model): AssistantMessage => ({
   timestamp: Date.now(),
 })
 
+// 创建 streamFn 的默认选项：空闲超时与使用日志归属。
+export interface CreateAiSdkStreamFnOptions {
+  idleTimeoutMs?: number
+  purpose?: UsagePurpose
+  getSessionId?: () => string | null
+}
+
 /**
  * AI SDK → StreamFn 适配器。
  *
  * 每次调用执行单步生成（stopWhen: stepCountIs(1)），工具调用以 toolcall_end 事件交付，
  * 由 agent-loop 执行工具后回灌上下文。集成 IdleWatchdog 防止流式假死。
+ * 每次调用即一次模型请求，finish / error / abort 路径均写入 usage 日志。
  */
-export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number }): StreamFn => {
+export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions): StreamFn => {
+  const purpose: UsagePurpose = defaultOptions?.purpose ?? "chat"
+  const getSessionId = defaultOptions?.getSessionId
+
   return async (model, context, options) => {
     const stream = createAssistantMessageEventStream()
     const requestStartTime = Date.now()
@@ -317,13 +330,8 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
             case "finish": {
               finalizeActiveBlockDuration()
               pruneEmptyTrailingTextBlock()
-              const usage: Usage = {
-                input: part.totalUsage.inputTokens ?? 0,
-                output: part.totalUsage.outputTokens ?? 0,
-                // 缓存命中读取的输入 token（非 Anthropic provider 未填充时回落 0）。
-                cacheRead: part.totalUsage.inputTokenDetails?.cacheReadTokens ?? 0,
-                totalTokens: part.totalUsage.totalTokens ?? 0,
-              }
+              // stepCountIs(1)：本次调用即单个请求，totalUsage 就是该请求用量。
+              const usage: Usage = toUsage(part.totalUsage)
               const finalMessage: AssistantMessage = {
                 ...partial,
                 content: blocks,
@@ -333,6 +341,15 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
                 firstChunkTimestamp,
                 durationMs: Math.max(0, Date.now() - requestStartTime),
               }
+              recordModelCall({
+                sessionId: getSessionId?.() ?? null,
+                purpose,
+                provider: model.provider,
+                model: model.id,
+                tokens: usage,
+                durationMs: finalMessage.durationMs,
+                status: "success",
+              })
               stream.push({ type: "done", reason: finalMessage.stopReason, message: finalMessage })
               stream.end()
               return
@@ -364,6 +381,16 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
           firstChunkTimestamp,
           durationMs: Math.max(0, Date.now() - requestStartTime),
         }
+        recordModelCall({
+          sessionId: getSessionId?.() ?? null,
+          purpose,
+          provider: model.provider,
+          model: model.id,
+          tokens: EMPTY_USAGE,
+          durationMs: finalMessage.durationMs,
+          status: isUserAbort ? "aborted" : "error",
+          errorMessage: finalMessage.errorMessage ?? null,
+        })
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()
       } catch (error) {
@@ -384,6 +411,16 @@ export const createAiSdkStreamFn = (defaultOptions?: { idleTimeoutMs?: number })
           firstChunkTimestamp,
           durationMs: Math.max(0, Date.now() - requestStartTime),
         }
+        recordModelCall({
+          sessionId: getSessionId?.() ?? null,
+          purpose,
+          provider: model.provider,
+          model: model.id,
+          tokens: EMPTY_USAGE,
+          durationMs: finalMessage.durationMs,
+          status: isUserAbort ? "aborted" : "error",
+          errorMessage: finalMessage.errorMessage ?? null,
+        })
         stream.push({ type: "error", reason: finalMessage.stopReason, error: finalMessage })
         stream.end()
       } finally {

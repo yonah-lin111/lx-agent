@@ -34,5 +34,8 @@ export default defineConfig({
       },
     ],
   },
-  test: { exclude: [...configDefaults.exclude, ".worktrees/**"] },
+  test: {
+    setupFiles: ["test/setup.ts"],
+    exclude: [...configDefaults.exclude, ".worktrees/**"],
+  },
 })

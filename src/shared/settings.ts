@@ -1,4 +1,5 @@
 import type { HookEventName, PermissionSettings } from "./contracts/agent"
+import type { ModelPricing } from "./contracts/usage"
 
 // Provider 传输格式。
 export type ProviderTransportType = "openai" | "anthropic" | "google" | "openai-compatible"
@@ -19,6 +20,8 @@ export type ModelProviderModel = {
   variants?: Record<string, Record<string, unknown>>
   // 默认思考等级 ID（如 "high"）
   variant?: string
+  // 计价配置（USD / 百万 token）；缺失表示未配置，成本统计显示 --。
+  pricing?: ModelPricing
 }
 
 // 模型选择配置。

@@ -1376,7 +1376,10 @@
  * ======================================================== */
 [data-theme="minecraft"] .overview-metric-card,
 [data-theme="minecraft"] .overview-summary-card,
-[data-theme="minecraft"] .overview-heatmap-card {
+[data-theme="minecraft"] .overview-heatmap-card,
+[data-theme="minecraft"] .usage-stat-card,
+[data-theme="minecraft"] .usage-chart-card,
+[data-theme="minecraft"] .usage-table-card {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #1e1e2a !important;
@@ -1391,7 +1394,9 @@
 }
 
 [data-theme="minecraft"] .overview-metric-card:hover,
-[data-theme="minecraft"] .overview-summary-card:hover {
+[data-theme="minecraft"] .overview-summary-card:hover,
+[data-theme="minecraft"] .usage-stat-card:hover,
+[data-theme="minecraft"] .usage-chart-card:hover {
   background-color: #242434 !important;
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.14),
@@ -1485,6 +1490,48 @@
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.7),
     0px 0px 8px rgba(85, 255, 85, 0.8) !important;
+}
+
+/* 用量统计表格：表头凹槽、单元格分隔与文字像素阴影 */
+[data-theme="minecraft"] .usage-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  font-family: var(--theme-font-family) !important;
+}
+
+[data-theme="minecraft"] .usage-table thead tr {
+  background-color: #16161f !important;
+}
+
+[data-theme="minecraft"] .usage-table th {
+  border-bottom: 2px solid #000000 !important;
+  color: #a6a6bc !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .usage-table td {
+  border-bottom: 1px solid #000000 !important;
+  text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .usage-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+[data-theme="minecraft"] .usage-table-card {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    3px 3px 0px 0px #000000 !important;
+}
+
+[data-theme="minecraft"] .usage-chart-tooltip {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
+    2px 2px 0px 0px #000000 !important;
 }
 
 /* 主页侧边栏概览项像素风格 */

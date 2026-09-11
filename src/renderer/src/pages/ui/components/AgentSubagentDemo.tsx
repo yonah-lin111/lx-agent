@@ -20,7 +20,7 @@ const MOCK_SUBAGENT_CALL: ToolCallBlock = {
     name: "explore",
     description: "检索并分析项目中的所有 Agent 相关组件",
     prompt: "请扫描 src/renderer/src/features/agent/components 目录下的所有文件并返回汇总",
-    usage: { input: 360, output: 130, cacheRead: 0, totalTokens: 490 },
+    usage: { input: 360, output: 130, cacheRead: 0, cacheWrite: 0, totalTokens: 490 },
     steps: [
       {
         toolName: "glob",
@@ -44,7 +44,7 @@ const MOCK_SUBAGENT_CALL: ToolCallBlock = {
         content: [{ type: "text", text: "子代理初始化完毕，开始执行探索任务..." }],
         provider: "anthropic",
         model: "claude-3-7-sonnet",
-        usage: { input: 120, output: 50, cacheRead: 0, totalTokens: 170 },
+        usage: { input: 120, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 170 },
         stopReason: "stop",
         timestamp: Date.now() - 5000,
       },
@@ -53,7 +53,7 @@ const MOCK_SUBAGENT_CALL: ToolCallBlock = {
         content: [{ type: "text", text: "已扫描到 24 个组件文件，并完成数据依赖关系梳理。" }],
         provider: "anthropic",
         model: "claude-3-7-sonnet",
-        usage: { input: 240, output: 80, cacheRead: 0, totalTokens: 320 },
+        usage: { input: 240, output: 80, cacheRead: 0, cacheWrite: 0, totalTokens: 320 },
         stopReason: "stop",
         timestamp: Date.now(),
       },

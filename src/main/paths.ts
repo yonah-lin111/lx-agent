@@ -4,8 +4,9 @@ import { join } from "node:path"
 
 /**
  * 获取 LX Agent 的应用数据根目录。
+ * LX_AGENT_DATA_ROOT 可覆盖默认路径（测试隔离用）。
  */
-export const getAppDataRoot = (): string => join(homedir(), ".lx")
+export const getAppDataRoot = (): string => process.env.LX_AGENT_DATA_ROOT ?? join(homedir(), ".lx")
 
 /**
  * 获取模型 Provider 配置文件路径。

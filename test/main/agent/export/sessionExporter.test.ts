@@ -64,7 +64,7 @@ describe("Session Export & Share System (v10)", () => {
         provider: "anthropic",
         model: "claude-3-7-sonnet",
         stopReason: "toolUse",
-        usage: { input: 120, output: 45, cacheRead: 0, totalTokens: 165 },
+        usage: { input: 120, output: 45, cacheRead: 0, cacheWrite: 0, totalTokens: 165 },
         timestamp: 1787047205000,
         content: [
           { type: "thinking", thinking: "分析 auth.ts 的结构并调用 read 工具" },

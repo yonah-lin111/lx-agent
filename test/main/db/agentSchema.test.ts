@@ -35,6 +35,7 @@ describe("agent 表结构与约束", () => {
       "project",
       "project_folder",
       "project_item",
+      "usage_log",
     ])
     expect(indexNames).toEqual(
       expect.arrayContaining([
@@ -49,6 +50,10 @@ describe("agent 表结构与约束", () => {
         "idx_agent_call_parent",
         "idx_agent_call_entry",
         "idx_agent_snapshot_session",
+        "idx_usage_log_created",
+        "idx_usage_log_model",
+        "idx_usage_log_provider",
+        "idx_usage_log_project",
       ]),
     )
     expect(indexNames).not.toContain("idx_agent_session_item")

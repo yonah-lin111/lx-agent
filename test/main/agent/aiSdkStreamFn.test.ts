@@ -64,6 +64,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
       input: 10,
       output: 20,
       cacheRead: 0,
+      cacheWrite: 0,
       totalTokens: 30,
     })
   })
@@ -235,6 +236,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
       input: 10,
       output: 25,
       cacheRead: 0,
+      cacheWrite: 0,
       totalTokens: 35,
     })
   })

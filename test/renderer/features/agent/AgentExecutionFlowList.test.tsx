@@ -491,6 +491,7 @@ describe("AgentExecutionFlowList", () => {
           input: 1200,
           output: 300,
           cacheRead: 400,
+          cacheWrite: 0,
           totalTokens: 1500,
         },
         isStreaming: false,
@@ -1208,6 +1209,7 @@ describe("AgentExecutionFlowList", () => {
           input: 2400,
           output: 650,
           cacheRead: 1200,
+          cacheWrite: 0,
           totalTokens: 3050,
         },
         blocks: [
@@ -1226,6 +1228,7 @@ describe("AgentExecutionFlowList", () => {
                 input: 800,
                 output: 200,
                 cacheRead: 100,
+                cacheWrite: 0,
                 totalTokens: 1000,
               },
             },
@@ -1303,7 +1306,7 @@ describe("AgentExecutionFlowList", () => {
       {
         id: "a1",
         role: "assistant",
-        usage: { input: 1000, output: 50, cacheRead: 0, totalTokens: 1050 },
+        usage: { input: 1000, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 1050 },
         blocks: [
           {
             kind: "toolCall",
@@ -1347,7 +1350,7 @@ describe("AgentExecutionFlowList", () => {
       {
         id: "a2",
         role: "assistant",
-        usage: { input: 1200, output: 60, cacheRead: 0, totalTokens: 1260 },
+        usage: { input: 1200, output: 60, cacheRead: 0, cacheWrite: 0, totalTokens: 1260 },
         blocks: [
           {
             kind: "toolCall",
@@ -1403,7 +1406,7 @@ describe("AgentExecutionFlowList", () => {
       {
         id: "a1",
         role: "assistant",
-        usage: { input: 3500, output: 80, cacheRead: 500, totalTokens: 3580 },
+        usage: { input: 3500, output: 80, cacheRead: 500, cacheWrite: 0, totalTokens: 3580 },
         blocks: [
           {
             kind: "toolCall",
@@ -1627,13 +1630,13 @@ describe("AgentExecutionFlowList", () => {
               name: "task_explorer",
               description: "子任务执行",
               prompt: "检索并分析数据",
-              usage: { input: 120, output: 45, cacheRead: 0, totalTokens: 165 },
+              usage: { input: 120, output: 45, cacheRead: 0, cacheWrite: 0, totalTokens: 165 },
               messages: [
                 {
                   role: "assistant",
                   provider: "anthropic",
                   model: "claude-3-5-sonnet",
-                  usage: { input: 120, output: 45, cacheRead: 0, totalTokens: 165 },
+                  usage: { input: 120, output: 45, cacheRead: 0, cacheWrite: 0, totalTokens: 165 },
                   stopReason: "stop",
                   timestamp: 1000,
                   content: [{ type: "text", text: "子代理内部执行完成" }],
@@ -1752,7 +1755,7 @@ describe("AgentExecutionFlowList", () => {
           },
           { kind: "text", text: "第一轮回答" },
         ],
-        usage: { input: 100, output: 50, cacheRead: 0, totalTokens: 150 },
+        usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, totalTokens: 150 },
         isStreaming: false,
         timestamp: 1010,
       },

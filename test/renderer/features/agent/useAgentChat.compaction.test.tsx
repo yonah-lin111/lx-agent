@@ -28,7 +28,7 @@ const assistant: AgentMessage = {
   content: [{ type: "text", text: "hello" }],
   provider: "p",
   model: "m",
-  usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 10 },
+  usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 10 },
   stopReason: "stop",
   timestamp: 2,
 }

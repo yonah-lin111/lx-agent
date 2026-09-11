@@ -264,7 +264,7 @@ describe("AgentMessageList", () => {
         role: "assistant",
         blocks: [{ kind: "text", text: "第一轮回复" }],
         isStreaming: false,
-        usage: { input: 1, output: 1, cacheRead: 0, totalTokens: 2 },
+        usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2 },
       },
       {
         id: "steer1",

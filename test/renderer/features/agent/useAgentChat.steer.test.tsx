@@ -30,7 +30,7 @@ const assistant = (text: string, stopReason: StopReason): AgentMessage =>
     content: [{ type: "text", text }],
     provider: "p",
     model: "m",
-    usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 10 },
+    usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 10 },
     stopReason,
     timestamp: 2,
   }) as unknown as AgentMessage
@@ -40,7 +40,7 @@ const streamingAssistant: AgentMessage = {
   content: [{ type: "text", text: "正在生成..." }],
   provider: "p",
   model: "m",
-  usage: { input: 0, output: 0, cacheRead: 0, totalTokens: 10 },
+  usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 10 },
   stopReason: "pending",
   timestamp: 2,
 }

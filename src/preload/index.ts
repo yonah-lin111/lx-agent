@@ -7,6 +7,7 @@ import type { OpenClawApi } from "@shared/contracts/openclaw"
 import type { OverviewApi } from "@shared/contracts/overview"
 import type { PromptHistoryApi } from "@shared/contracts/promptHistory"
 import type { TerminalApi } from "@shared/contracts/terminal"
+import type { UsageApi } from "@shared/contracts/usage"
 import { CLIPBOARD_CHANNELS } from "@shared/ipc/clipboardChannels"
 import { PROJECT_CHANNELS } from "@shared/ipc/projectChannels"
 import { SETTINGS_CHANNELS } from "@shared/ipc/settingsChannels"
@@ -21,6 +22,7 @@ import { openclawApi } from "./api/openclaw"
 import { overviewApi } from "./api/overview"
 import { promptHistoryApi } from "./api/promptHistory"
 import { terminalApi } from "./api/terminal"
+import { usageApi } from "./api/usage"
 
 const api: ProjectApi &
   ClipboardApi &
@@ -32,6 +34,7 @@ const api: ProjectApi &
   PromptHistoryApi &
   TerminalApi &
   OverviewApi &
+  UsageApi &
   OpenClawApi = {
   getPathForFile: (file) => webUtils.getPathForFile(file),
   saveClipboardImage: (buffer, mimeType) =>
@@ -112,6 +115,7 @@ const api: ProjectApi &
   customCommand: customCommandApi,
   git: gitApi,
   overview: overviewApi,
+  usage: usageApi,
   promptHistory: promptHistoryApi,
   terminal: terminalApi,
   openclaw: openclawApi,

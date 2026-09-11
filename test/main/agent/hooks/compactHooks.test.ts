@@ -63,7 +63,7 @@ import { ContextCompactor } from "@/agent/contextCompactor"
 import type { Agent } from "@/agent/core/agent"
 import { hookConfig } from "@/agent/hooks/hookConfig"
 
-const EMPTY_USAGE = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
+const EMPTY_USAGE = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 }
 
 const assistant = (text: string): AgentMessage => ({
   role: "assistant",

@@ -770,7 +770,13 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
         // assistant 的 usage.totalTokens 为锚点，重置为 0 会让状态栏上下文误归零。
         provider: message.provider ?? "local",
         model: message.model ?? "local",
-        usage: message.usage ?? { input: 0, output: 0, cacheRead: 0, totalTokens: 0 },
+        usage: message.usage ?? {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+        },
         stopReason: message.stopReason ?? "stop",
         errorMessage: message.error,
         timestamp: message.timestamp ?? Date.now(),

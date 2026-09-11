@@ -241,6 +241,7 @@ export class ContextCompactor {
     const compactionResult = await generateCompactionSummary(
       compacted,
       this.deps.getRequestedModel(),
+      this.deps.getSessionId(),
     )
     if (!compactionResult) {
       // 失败：推送失败事件让 renderer 移除 loading 占位（不建立坏边界，下轮再试）。
@@ -322,6 +323,7 @@ export class ContextCompactor {
     const compactionResult = await generateCompactionSummary(
       compacted,
       this.deps.getRequestedModel(),
+      this.deps.getSessionId(),
     )
     if (!compactionResult) {
       this.deps.emit({ type: "compaction_failed", compactionId, manual: true })
