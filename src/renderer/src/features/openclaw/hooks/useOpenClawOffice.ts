@@ -98,10 +98,11 @@ export const useOpenClawOffice = (
   useEffect(() => {
     if (!instanceId || agentIds.length === 0) return
     const { connect, loadSession } = useOpenClawChatStore.getState()
-    void connect(instanceId)
-    for (const agentId of agentIds) {
-      void loadSession(instanceId, agentId)
-    }
+    void (async () => {
+      // 先加载 snapshot 使得 sessions 数组有初始占位，然后再并发触发 connect 获得真实状态
+      await Promise.all(agentIds.map((agentId) => loadSession(instanceId, agentId)))
+      await connect(instanceId)
+    })()
   }, [instanceId, agentIds])
 
   const sessions = useMemo<OfficeAgentSession[]>(

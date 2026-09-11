@@ -212,6 +212,7 @@ class OpenClawClientManager {
       hostDeps: buildOpenClawHostDeps(instanceId),
       onHelloOk: () => {
         if (connectTimer) clearTimeout(connectTimer)
+        console.log(`[OpenClaw] Connected to instance ${instanceId}`)
         connection.status = "connected"
         delete connection.error
         delete connection.pairingRequestId
@@ -223,6 +224,7 @@ class OpenClawClientManager {
       onConnectError: (error) => {
         if (connectTimer) clearTimeout(connectTimer)
         const info = parseConnectError(error)
+        console.error(`[OpenClaw] Connect error for instance ${instanceId}:`, error)
         connection.status = info.status
         connection.error = info.message
         if (info.pairingRequestId) connection.pairingRequestId = info.pairingRequestId
@@ -663,25 +665,25 @@ const parseConnectError = (
   if (/EHOSTUNREACH/i.test(rawMessage)) {
     return {
       status: "error",
-      message: `Cannot reach OpenClaw Gateway host (EHOSTUNREACH): ${rawMessage}`,
+      message: `EHOSTUNREACH: ${rawMessage}`,
     }
   }
   if (/ECONNREFUSED/i.test(rawMessage)) {
     return {
       status: "error",
-      message: `OpenClaw Gateway connection refused (ECONNREFUSED): ${rawMessage}`,
+      message: `ECONNREFUSED: ${rawMessage}`,
     }
   }
-  if (/ETIMEDOUT|timeout/i.test(rawMessage)) {
+  if (/ETIMEDOUT/i.test(rawMessage)) {
     return {
       status: "error",
-      message: `OpenClaw Gateway connection timed out: ${rawMessage}`,
+      message: `ETIMEDOUT: ${rawMessage}`,
     }
   }
   if (/ENOTFOUND/i.test(rawMessage)) {
     return {
       status: "error",
-      message: `OpenClaw Gateway hostname not found (ENOTFOUND): ${rawMessage}`,
+      message: `ENOTFOUND: ${rawMessage}`,
     }
   }
 

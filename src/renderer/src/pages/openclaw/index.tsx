@@ -77,6 +77,13 @@ export const OpenClawPage = (): React.JSX.Element => {
     return "disconnected"
   }, [sessions])
 
+  const officeError = useMemo<string | undefined>(() => {
+    for (const session of sessions) {
+      if (session.snapshot?.connectionError) return session.snapshot.connectionError
+    }
+    return undefined
+  }, [sessions])
+
   const streamingAgentIds = useMemo(
     () =>
       sessions.filter((session) => session.snapshot?.isStreaming).map((session) => session.agentId),
@@ -203,10 +210,7 @@ export const OpenClawPage = (): React.JSX.Element => {
     for (const agentId of targets) {
       void store.sendMessage(selectedInstanceId, agentId, body).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error)
-        const isUnreachable = /EHOSTUNREACH|ECONNREFUSED|timed? ?out|ENOTFOUND/i.test(message)
-        toast.error(
-          isUnreachable ? t("openclaw.gatewayUnreachable") : message || t("openclaw.sendFailed"),
-        )
+        toast.error(message || t("openclaw.sendFailed"))
       })
     }
   }, [agentIds, input, runCommand, selectedAgentIds, selectedInstanceId, t, toast])
@@ -278,6 +282,11 @@ export const OpenClawPage = (): React.JSX.Element => {
         <span className="flex items-center gap-1.5 text-[11px] text-white/45">
           <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_CLASS[officeStatus]}`} />
           {t(STATUS_LABEL_KEYS[officeStatus])}
+          {officeStatus === "error" && officeError ? (
+            <span className="max-w-[360px] truncate text-[11px] text-red-400" title={officeError}>
+              ({officeError})
+            </span>
+          ) : null}
         </span>
 
         <div className="flex-1" />

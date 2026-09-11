@@ -48,10 +48,12 @@ export const useOpenClawChatStore = create<OpenClawChatState>((set, get) => ({
   connect: async (instanceId) => {
     await openclawApi.connect(instanceId)
     // 连接结果（connected / error / pairing-required）以主进程快照为准，
-    // 这里刷新该实例下已加载会话的权威状态，避免 UI 停留在旧状态。
-    const targets = Object.values(get().sessions)
-      .filter((snapshot) => snapshot.instanceId === instanceId)
-      .map((snapshot) => snapshot.agentId)
+    // 刷新该实例下已加载会话（或已存在 targets）的权威状态。
+    const targets = new Set(
+      Object.values(get().sessions)
+        .filter((snapshot) => snapshot.instanceId === instanceId)
+        .map((snapshot) => snapshot.agentId),
+    )
     for (const agentId of targets) {
       const snapshot = await openclawApi.getSnapshot(instanceId, agentId)
       set((state) => ({
