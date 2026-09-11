@@ -14,6 +14,7 @@ interface MarkdownPasteCommandMenuProps {
   position?: CSSProperties
   visible?: boolean
   options?: MarkdownPasteReferenceOption[]
+  onSelect?: (option: MarkdownPasteReferenceOption) => void
 }
 
 /**
@@ -76,6 +77,7 @@ export const MarkdownPasteCommandMenu = ({
   position,
   visible = false,
   options: customOptions,
+  onSelect,
 }: MarkdownPasteCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const defaultOptions = buildPasteReferenceOptions([], t)
@@ -116,7 +118,7 @@ export const MarkdownPasteCommandMenu = ({
   return (
     <div
       aria-label={t("markdown.pasteReferenceAria")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -128,10 +130,14 @@ export const MarkdownPasteCommandMenu = ({
           <div
             key={option.id}
             aria-selected={isSelected}
-            className={`flex h-11 w-full items-center gap-2.5 rounded-[4px] px-3 text-left text-xs transition-colors ${
-              isSelected ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2.5 rounded-[4px] px-3 text-left text-xs transition-colors ${
+              isSelected ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(option)
+            }}
           >
             {option.icon}
             <span className="truncate">{option.label}</span>

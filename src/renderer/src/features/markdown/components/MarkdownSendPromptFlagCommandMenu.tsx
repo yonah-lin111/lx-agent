@@ -11,6 +11,7 @@ interface MarkdownSendPromptFlagCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+  onSelect?: (option: MarkdownSendPromptFlagOption) => void
 }
 
 /**
@@ -21,6 +22,7 @@ export const MarkdownSendPromptFlagCommandMenu = ({
   activeIndex = 0,
   position,
   visible = false,
+  onSelect,
 }: MarkdownSendPromptFlagCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [shouldRender, setShouldRender] = useState(false)
@@ -67,7 +69,7 @@ export const MarkdownSendPromptFlagCommandMenu = ({
   return (
     <div
       aria-label={t("markdown.sendPromptFlagMenuLabel")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -81,10 +83,14 @@ export const MarkdownSendPromptFlagCommandMenu = ({
             key={option.id}
             data-index={index}
             aria-selected={isActive}
-            className={`flex min-h-8 w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-xs transition-colors mb-0.5 last:mb-0 ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-xs transition-colors mb-0.5 last:mb-0 ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(option)
+            }}
           >
             <CornerDownLeft className="h-3.5 w-3.5 flex-none text-sky-400" />
             <span className="flex min-w-0 flex-1 items-center justify-between gap-3">

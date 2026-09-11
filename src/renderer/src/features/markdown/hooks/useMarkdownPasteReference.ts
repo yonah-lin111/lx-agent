@@ -68,7 +68,10 @@ export const useMarkdownPasteReference = ({
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent): void => {
       if (!pasteReferencePanelRef.current) return
-      if (editorContainerRef.current?.contains(event.target as Node)) return
+      const target = event.target as HTMLElement | null
+      if (editorContainerRef.current?.contains(target)) return
+      // 命令面板内的点选不视为外部点击，避免选择动作执行前面板被提前关闭。
+      if (target?.closest?.(".markdown-command-menu")) return
       closePasteReferencePanel()
     }
     document.addEventListener("pointerdown", handlePointerDown)

@@ -68,14 +68,11 @@ interface UseAgentInputKeymapProps {
   selectWorktree: (option: GitWorktreeOption) => void
   selectProject: (project: AgentInputProjectItem) => void
   selectSession: (session: AgentInputSessionItem) => void
-  selectFile: (file: any) => void
+  selectMentionItem: (item: AgentMentionItem) => void
   selectSkill: (skill: any) => void
-  selectSkillFromMention: (skill: any) => void
-  selectDesign?: (design: any) => void
-  selectClawAgent?: (claw: any) => void
+  selectUndoConfirm: (index: number) => void
   selectBlockCommand: (cmd: MarkdownBlockCommand) => void
   onChangeRef: React.RefObject<(value: string) => void>
-  onUndo?: () => void
   // Streaming & Stop
   isStreamingRef: React.RefObject<boolean>
   escStopRef: React.RefObject<number>
@@ -130,14 +127,11 @@ export const useAgentInputKeymap = ({
   selectWorktree,
   selectProject,
   selectSession,
-  selectFile,
+  selectMentionItem,
   selectSkill,
-  selectSkillFromMention,
-  selectDesign,
-  selectClawAgent,
+  selectUndoConfirm,
   selectBlockCommand,
   onChangeRef,
-  onUndo,
   isStreamingRef,
   escStopRef,
   onStopRef,
@@ -160,20 +154,14 @@ export const useAgentInputKeymap = ({
   selectProjectRef.current = selectProject
   const selectSessionRef = useRef(selectSession)
   selectSessionRef.current = selectSession
-  const selectFileRef = useRef(selectFile)
-  selectFileRef.current = selectFile
+  const selectMentionItemRef = useRef(selectMentionItem)
+  selectMentionItemRef.current = selectMentionItem
   const selectSkillRef = useRef(selectSkill)
   selectSkillRef.current = selectSkill
-  const selectSkillFromMentionRef = useRef(selectSkillFromMention)
-  selectSkillFromMentionRef.current = selectSkillFromMention
-  const selectDesignRef = useRef(selectDesign)
-  selectDesignRef.current = selectDesign
-  const selectClawAgentRef = useRef(selectClawAgent)
-  selectClawAgentRef.current = selectClawAgent
+  const selectUndoConfirmRef = useRef(selectUndoConfirm)
+  selectUndoConfirmRef.current = selectUndoConfirm
   const selectBlockCommandRef = useRef(selectBlockCommand)
   selectBlockCommandRef.current = selectBlockCommand
-  const onUndoRef = useRef(onUndo)
-  onUndoRef.current = onUndo
   const warningToastRef = useRef(warningToast)
   warningToastRef.current = warningToast
   const tRef = useRef(t)
@@ -388,18 +376,7 @@ export const useAgentInputKeymap = ({
                 return selectPasteReferenceRef.current(selected?.id ?? "reference")
               }
               if (activeModeRef.current === "undo_confirm") {
-                const isConfirm = undoConfirmIndexRef.current === 0
-                setActiveMode(null)
-                if (isConfirm) {
-                  const view = editorViewRef.current
-                  if (view) {
-                    view.dispatch({
-                      changes: { from: 0, to: view.state.doc.length, insert: "" },
-                    })
-                  }
-                  onChangeRef.current("")
-                  onUndoRef.current?.()
-                }
+                selectUndoConfirmRef.current(undoConfirmIndexRef.current)
                 return true
               }
               if (activeModeRef.current === "command") {
@@ -450,15 +427,7 @@ export const useAgentInputKeymap = ({
                 const item =
                   mentionItemsRef.current[fileIndexRef.current] ?? mentionItemsRef.current[0]
                 if (item) {
-                  if (item.kind === "skill") {
-                    selectSkillFromMentionRef.current(item.skill)
-                  } else if (item.kind === "design") {
-                    selectDesignRef.current?.(item.design)
-                  } else if (item.kind === "claw") {
-                    selectClawAgentRef.current?.(item.claw)
-                  } else {
-                    selectFileRef.current(item.file)
-                  }
+                  selectMentionItemRef.current(item)
                   return true
                 }
               }

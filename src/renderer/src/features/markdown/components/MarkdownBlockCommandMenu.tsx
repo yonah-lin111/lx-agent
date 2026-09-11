@@ -10,6 +10,7 @@ interface MarkdownBlockCommandMenuProps {
   position?: CSSProperties
   visible?: boolean
   ariaLabel?: string
+  onSelect?: (command: MarkdownBlockCommand) => void
 }
 
 /**
@@ -21,6 +22,7 @@ export const MarkdownBlockCommandMenu = ({
   position,
   visible = false,
   ariaLabel,
+  onSelect,
 }: MarkdownBlockCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [shouldRender, setShouldRender] = useState(false)
@@ -67,7 +69,7 @@ export const MarkdownBlockCommandMenu = ({
   return (
     <div
       aria-label={ariaLabel ?? t("markdown.blockCommandsAria")}
-      className={`markdown-command-menu markdown-command-menu--block pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+      className={`markdown-command-menu markdown-command-menu--block pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -81,10 +83,14 @@ export const MarkdownBlockCommandMenu = ({
           <div
             key={command.id}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(command)
+            }}
           >
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-white/70">
               <Icon className="h-3 w-3" />

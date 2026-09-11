@@ -41,24 +41,31 @@ export const MarkdownCommandPanels = ({
         }
         position={paste.pasteReferencePanel?.position}
         visible={Boolean(paste.pasteReferencePanel)}
+        onSelect={(option) => {
+          if (option.id === "upload") return
+          paste.selectPasteReference(option.id)
+        }}
       />
       <MarkdownBlockCommandMenu
         activeIndex={panels.activeBlockCommandIndex}
         commands={panels.blockCommandPanel?.commands}
         position={panels.blockCommandPanel?.position}
         visible={Boolean(panels.blockCommandPanel)}
+        onSelect={panels.selectBlockCommand}
       />
       <MarkdownSlashCommandMenu
         activeIndex={panels.activeSlashCommandIndex}
         commands={panels.slashCommandPanel?.commands}
         position={panels.slashCommandPanel?.position}
         visible={Boolean(panels.slashCommandPanel)}
+        onSelect={panels.selectSlashCommand}
       />
       <GitWorktreeCommandMenu
         activeIndex={panels.activeGitWorktreeIndex}
         options={panels.gitWorktreePanel?.options}
         position={panels.gitWorktreePanel?.position}
         visible={Boolean(panels.gitWorktreePanel)}
+        onSelect={panels.selectGitWorktree}
       />
       <TemplatePresetCommandMenu
         activeIndex={panels.activeTemplatePresetIndex}
@@ -72,18 +79,21 @@ export const MarkdownCommandPanels = ({
         options={panels.sendPromptPanel?.options}
         position={panels.sendPromptPanel?.position}
         visible={Boolean(panels.sendPromptPanel)}
+        onSelect={panels.selectSendPrompt}
       />
       <MarkdownSendPromptFlagCommandMenu
         activeIndex={panels.activeSendPromptFlagIndex}
         options={panels.sendPromptFlagPanel?.options}
         position={panels.sendPromptFlagPanel?.position}
         visible={Boolean(panels.sendPromptFlagPanel)}
+        onSelect={panels.selectSendPromptFlag}
       />
       <FileMentionCommandMenu
         activeIndex={panels.activeFileMentionIndex}
         files={panels.fileMentionPanel?.files}
         position={panels.fileMentionPanel?.position}
         visible={Boolean(panels.fileMentionPanel)}
+        onSelect={panels.selectFileMention}
       />
       <FileMentionCommandMenu
         activeIndex={panels.activeTemplateFileIndex}
@@ -92,6 +102,7 @@ export const MarkdownCommandPanels = ({
         label="模板块文件快捷输入"
         position={panels.templateFilePanel?.position}
         visible={Boolean(panels.templateFilePanel)}
+        onSelect={panels.selectTemplateFile}
       />
       <MarkdownVariableCommandMenu
         activeIndex={panels.activeVariableIndex}

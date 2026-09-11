@@ -11,6 +11,7 @@ interface MarkdownSendPromptCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+  onSelect?: (option: MarkdownSendPromptOption) => void
 }
 
 /**
@@ -21,6 +22,7 @@ export const MarkdownSendPromptCommandMenu = ({
   activeIndex = 0,
   position,
   visible = false,
+  onSelect,
 }: MarkdownSendPromptCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [shouldRender, setShouldRender] = useState(false)
@@ -67,7 +69,7 @@ export const MarkdownSendPromptCommandMenu = ({
   return (
     <div
       aria-label={t("markdown.sendPromptMenuLabel")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -97,8 +99,14 @@ export const MarkdownSendPromptCommandMenu = ({
             data-is-default={isDefault ? "true" : undefined}
             data-is-running={isRunning ? "true" : undefined}
             aria-selected={isActive}
-            className={`flex min-h-8 w-full items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-xs transition-colors mb-0.5 last:mb-0 ${itemBgClass}`}
+            className={`flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-xs transition-colors mb-0.5 last:mb-0 ${itemBgClass} ${
+              isActive ? "" : "hover:bg-white/5"
+            }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(option)
+            }}
           >
             <CliIcon id={option.targetType || option.id} className="h-3.5 w-3.5 flex-none" />
             <span className="flex min-w-0 flex-1 items-center justify-between gap-3">

@@ -47,6 +47,7 @@ interface AgentInputModelPanelProps {
   position: CSSProperties | null
   models: AgentInputModel[]
   activeIndex: number
+  onSelect?: (model: AgentInputModel) => void
 }
 
 export interface AgentInputProjectPanelProps {
@@ -54,6 +55,7 @@ export interface AgentInputProjectPanelProps {
   position: CSSProperties | null
   projects: AgentInputProjectItem[]
   activeIndex: number
+  onSelect?: (project: AgentInputProjectItem) => void
 }
 
 export interface AgentInputSessionPanelProps {
@@ -61,6 +63,7 @@ export interface AgentInputSessionPanelProps {
   position: CSSProperties | null
   sessions: AgentInputSessionItem[]
   activeIndex: number
+  onSelect?: (session: AgentInputSessionItem) => void
 }
 
 interface AgentInputCommandPanelProps {
@@ -68,10 +71,11 @@ interface AgentInputCommandPanelProps {
   position: CSSProperties | null
   commands: AgentInputCommand[]
   activeIndex: number
+  onSelect?: (command: AgentInputCommand) => void
 }
 
 export const panelClassName =
-  "scrollbar-hidden pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+  "scrollbar-hidden pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
 
 /**
  * 面板淡入/淡出动画：关闭后保留最后数据渲染 120ms 播放退场动画，
@@ -205,6 +209,7 @@ export const AgentInputModelPanel = ({
   position,
   models,
   activeIndex,
+  onSelect,
 }: AgentInputModelPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && models.length > 0
@@ -241,9 +246,13 @@ export const AgentInputModelPanel = ({
           role="option"
           data-index={index}
           aria-selected={index === displayIndex}
-          className={`flex h-11 w-full items-center gap-3 rounded-[4px] px-2 text-left text-xs ${
-            index === displayIndex ? "bg-white/8 text-white" : "text-white/75"
+          className={`flex h-11 w-full cursor-pointer items-center gap-3 rounded-[4px] px-2 text-left text-xs transition-colors ${
+            index === displayIndex ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
           }`}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            onSelect?.(model)
+          }}
         >
           <span className="truncate font-medium">{model.label}</span>
           <span className="ml-auto shrink-0 text-white/35">{model.provider}</span>
@@ -276,6 +285,7 @@ export const AgentInputProjectPanel = ({
   position,
   projects,
   activeIndex,
+  onSelect,
 }: AgentInputProjectPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && projects.length > 0
@@ -314,9 +324,13 @@ export const AgentInputProjectPanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(project)
+            }}
           >
             <Folder
               className={`h-3.5 w-3.5 shrink-0 ${
@@ -357,6 +371,7 @@ export const AgentInputSessionPanel = ({
   position,
   sessions,
   activeIndex,
+  onSelect,
 }: AgentInputSessionPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && sessions.length > 0
@@ -397,9 +412,13 @@ export const AgentInputSessionPanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(session)
+            }}
           >
             <span className="truncate font-medium text-white">
               {session.title || t("agent.unnamedSession")}
@@ -442,6 +461,7 @@ export interface AgentUndoConfirmPanelProps {
   isOpen: boolean
   position: CSSProperties | null
   activeIndex: number
+  onSelect?: (index: number) => void
 }
 
 /**
@@ -451,6 +471,7 @@ export const AgentUndoConfirmPanel = ({
   isOpen,
   position,
   activeIndex,
+  onSelect,
 }: AgentUndoConfirmPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null
@@ -500,15 +521,19 @@ export const AgentUndoConfirmPanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex h-10 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+            className={`flex h-10 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
               isActive
                 ? opt.danger
                   ? "bg-red-500/20 text-red-200"
                   : "bg-white/8 text-white"
                 : opt.danger
-                  ? "text-red-300/80"
-                  : "text-white/75"
+                  ? "text-red-300/80 hover:bg-white/5"
+                  : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(index)
+            }}
           >
             <span
               className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-[11px] font-semibold ${
@@ -546,6 +571,7 @@ export const AgentInputCommandPanel = ({
   position,
   commands,
   activeIndex,
+  onSelect,
 }: AgentInputCommandPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && commands.length > 0
@@ -586,9 +612,13 @@ export const AgentInputCommandPanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(command)
+            }}
           >
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
               {command.kind === "skill" ? "@" : "/"}
@@ -661,6 +691,7 @@ export interface AgentInputFilePanelProps {
   items: AgentMentionItem[]
   activeIndex: number
   worktreeName?: string
+  onSelect?: (item: AgentMentionItem) => void
 }
 
 /**
@@ -672,6 +703,7 @@ export const AgentInputFilePanel = ({
   items,
   activeIndex,
   worktreeName,
+  onSelect,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && items.length > 0
@@ -716,9 +748,13 @@ export const AgentInputFilePanel = ({
               role="option"
               data-index={index}
               aria-selected={isActive}
-              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75"
+              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
               }`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect?.(item)
+              }}
             >
               <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[12px] font-bold text-[#c084fc]">
                 $
@@ -764,9 +800,13 @@ export const AgentInputFilePanel = ({
               role="option"
               data-index={index}
               aria-selected={isActive}
-              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75"
+              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
               }`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect?.(item)
+              }}
             >
               <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 font-mono text-[12px] font-bold text-pink-400">
                 <Palette className="h-3.5 w-3.5" />
@@ -805,9 +845,13 @@ export const AgentInputFilePanel = ({
               role="option"
               data-index={index}
               aria-selected={isActive}
-              className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75"
+              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
               }`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect?.(item)
+              }}
             >
               <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-[12px] font-bold text-sky-400">
                 <Bot className="h-3.5 w-3.5" />
@@ -847,9 +891,13 @@ export const AgentInputFilePanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(item)
+            }}
           >
             <Icon className="h-4 w-4 shrink-0 text-[#eab308]" />
             <span className="min-w-0 flex-1">
@@ -894,6 +942,7 @@ export interface AgentSkillMentionPanelProps {
   position: CSSProperties | null
   skills: SkillItem[]
   activeIndex: number
+  onSelect?: (skill: SkillItem) => void
 }
 
 /**
@@ -904,6 +953,7 @@ export const AgentSkillMentionPanel = ({
   position,
   skills,
   activeIndex,
+  onSelect,
 }: AgentSkillMentionPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const hasData = position !== null && skills.length > 0
@@ -944,9 +994,13 @@ export const AgentSkillMentionPanel = ({
             role="option"
             data-index={index}
             aria-selected={isActive}
-            className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(skill)
+            }}
           >
             <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[13px] font-bold text-[#c084fc]">
               $

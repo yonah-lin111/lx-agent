@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   getMarkdownBlockCommands,
   type MarkdownBlockTriggerKind,
@@ -78,6 +78,29 @@ describe("MarkdownBlockCommandMenu 与块命令国际化", () => {
     expect(menu.getAttribute("aria-label")).toBe("Custom Block Command Menu")
     expect(screen.getByText("Bullet List")).not.toBeNull()
     expect(screen.getByText("Task List")).not.toBeNull()
+  })
+
+  it("点选块命令触发 onSelect，且悬停不改变键盘激活项", () => {
+    const commands = getMarkdownBlockCommands("heading", "en")
+    const onSelect = vi.fn()
+    render(
+      <MarkdownBlockCommandMenu
+        commands={commands}
+        visible={true}
+        activeIndex={0}
+        position={{ top: 100, left: 50 }}
+        onSelect={onSelect}
+      />,
+    )
+
+    const options = screen.getAllByRole("option")
+    fireEvent.mouseEnter(options[1])
+    expect(options[0].getAttribute("aria-selected")).toBe("true")
+    expect(options[1].getAttribute("aria-selected")).toBe("false")
+
+    fireEvent.mouseDown(options[1])
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(commands[1])
   })
 
   it("全部触发类型在中英文下的命令完整性与文本对应关系", () => {

@@ -20,6 +20,7 @@ export interface OpenClawPickerPanelProps {
   emptyText: string
   items: OpenClawPickerItem[]
   activeIndex: number
+  onSelect?: (item: OpenClawPickerItem) => void
 }
 
 interface OpenClawPickerDisplayData {
@@ -41,6 +42,7 @@ export const OpenClawPickerPanel = ({
   emptyText,
   items,
   activeIndex,
+  onSelect,
 }: OpenClawPickerPanelProps): React.JSX.Element | null => {
   // 标题为空表示父级未提供面板数据；关闭期间保留最后数据播放退场动画。
   const hasData = position !== null && title !== ""
@@ -85,9 +87,13 @@ export const OpenClawPickerPanel = ({
               role="option"
               data-index={index}
               aria-selected={isActive}
-              className={`flex min-h-9 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75"
+              className={`flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
               }`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect?.(item)
+              }}
             >
               <span
                 className={`flex h-4 w-4 flex-none items-center justify-center rounded-[3px] border text-[10px] ${

@@ -214,11 +214,14 @@ export const ReferencedFolderCommandMenu = ({
               key={file.path}
               id={`folder-file-${file.path}`}
               aria-selected={isActive}
-              className={`relative flex min-h-11 w-full items-center rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/8"
+              className={`relative flex min-h-11 w-full cursor-pointer items-center rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
               }`}
               role="option"
-              onMouseDown={(event) => event.preventDefault()}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                void copyReference(file)
+              }}
             >
               <Icon className="h-4 w-4 shrink-0 text-violet-300" />
               <div className="ml-2 min-w-0 flex-1">
@@ -237,6 +240,7 @@ export const ReferencedFolderCommandMenu = ({
                       : "text-white/40 hover:bg-white/8 hover:text-white/80"
                   }`}
                   type="button"
+                  onMouseDown={(event) => event.stopPropagation()}
                   onClick={() => void copyReference(file)}
                 >
                   {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

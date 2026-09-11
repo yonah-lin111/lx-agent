@@ -25,6 +25,7 @@ interface FileMentionCommandMenuProps {
   label?: string
   // 选项 DOM id 前缀，避免多种文件面板并存时 id 冲突。
   idPrefix?: string
+  onSelect?: (file: MarkdownFileMentionEntry) => void
 }
 
 /**
@@ -37,6 +38,7 @@ export const FileMentionCommandMenu = ({
   visible = false,
   label = "项目文件提及",
   idPrefix = "markdown-file-mention",
+  onSelect,
 }: FileMentionCommandMenuProps): React.JSX.Element | null => {
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
@@ -115,7 +117,7 @@ export const FileMentionCommandMenu = ({
       ref={containerRef}
       aria-label={label}
       aria-activedescendant={activeFile ? getOptionId(activeFile) : undefined}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -142,10 +144,14 @@ export const FileMentionCommandMenu = ({
             key={optionId}
             id={optionId}
             aria-selected={isActive}
-            className={`relative flex min-h-11 w-full rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`relative flex min-h-11 w-full cursor-pointer rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(file)
+            }}
           >
             <div className="min-w-0 flex-1">
               <div className="flex min-h-8 items-center gap-2">

@@ -10,6 +10,7 @@ interface GitWorktreeCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+  onSelect?: (option: GitWorktreeOption) => void
 }
 
 /**
@@ -21,6 +22,7 @@ export const GitWorktreeCommandMenu = ({
   activeIndex = 0,
   position,
   visible = false,
+  onSelect,
 }: GitWorktreeCommandMenuProps): React.JSX.Element | null => {
   const { t } = useTranslation()
   const [shouldRender, setShouldRender] = useState(false)
@@ -67,7 +69,7 @@ export const GitWorktreeCommandMenu = ({
   return (
     <div
       aria-label={t("git.selectWorktree")}
-      className={`markdown-command-menu markdown-command-menu--file pointer-events-none fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
+      className={`markdown-command-menu markdown-command-menu--file pointer-events-auto fixed z-50 overflow-hidden rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -81,10 +83,14 @@ export const GitWorktreeCommandMenu = ({
           <div
             key={`${option.isDefault ? "default" : option.path}`}
             aria-selected={isActive}
-            className={`flex min-h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75"
+            className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
             }`}
             role="option"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(option)
+            }}
           >
             <span
               className={`flex h-6 w-6 flex-none items-center justify-center rounded-[4px] ${

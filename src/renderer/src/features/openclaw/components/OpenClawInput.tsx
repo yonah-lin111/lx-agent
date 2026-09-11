@@ -624,12 +624,14 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           position={panelPosition}
           commands={matchedCommands}
           activeIndex={commandIndex}
+          onSelect={applyCommand}
         />
         <AgentInputFilePanel
           isOpen={activeMode === "mention"}
           position={panelPosition}
           items={mentionItems}
           activeIndex={mentionIndex}
+          onSelect={applyMention}
         />
         <OpenClawPickerPanel
           isOpen={activeMode === "picker"}
@@ -638,6 +640,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           emptyText={picker?.emptyText ?? ""}
           items={picker?.items ?? []}
           activeIndex={pickerIndex}
+          onSelect={(item) => picker?.onPick(item.id)}
         />
 
         <div

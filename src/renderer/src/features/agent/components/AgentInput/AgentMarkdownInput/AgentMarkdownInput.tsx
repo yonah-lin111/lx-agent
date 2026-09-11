@@ -19,6 +19,7 @@ import {
   AgentInputModelPanel,
   AgentInputProjectPanel,
   AgentInputSessionPanel,
+  type AgentMentionItem,
   AgentSkillMentionPanel,
   AgentUndoConfirmPanel,
 } from "../AgentInputCommandPanels"
@@ -152,6 +153,31 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       t,
     })
 
+    // 统一的提及项选择分发：面板点选与键盘回车共用同一套动作。
+    const selectMentionItem = (item: AgentMentionItem): void => {
+      if (item.kind === "skill") {
+        actions.selectSkillFromMention(item.skill)
+      } else if (item.kind === "design") {
+        actions.selectDesign(item.design)
+      } else if (item.kind === "claw") {
+        actions.selectClawAgent(item.claw)
+      } else {
+        actions.selectFile(item.file)
+      }
+    }
+
+    // /undo 二次确认面板选择：索引 0 为确认删除，其余仅关闭面板。
+    const selectUndoConfirm = (index: number): void => {
+      panels.setActiveMode(null)
+      if (index !== 0) return
+      const view = editorViewRef.current
+      if (view) {
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } })
+      }
+      onChangeRef.current("")
+      onUndo?.()
+    }
+
     // 按键与快捷键映射
     const agentKeymapExtension = useAgentInputKeymap({
       editorViewRef,
@@ -199,14 +225,11 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       selectWorktree: actions.selectWorktree,
       selectProject: actions.selectProject,
       selectSession: actions.selectSession,
-      selectFile: actions.selectFile,
       selectSkill: actions.selectSkill,
-      selectSkillFromMention: actions.selectSkillFromMention,
-      selectDesign: actions.selectDesign,
-      selectClawAgent: actions.selectClawAgent,
+      selectMentionItem,
+      selectUndoConfirm,
       selectBlockCommand: actions.selectBlockCommand,
       onChangeRef,
-      onUndo,
       isStreamingRef,
       escStopRef,
       onStopRef,
@@ -338,35 +361,41 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           position={panels.panelPosition}
           commands={panels.matchedCommands}
           activeIndex={panels.commandIndex}
+          onSelect={actions.executeCommand}
         />
         <AgentUndoConfirmPanel
           isOpen={panels.isUndoConfirmMode}
           position={panels.panelPosition}
           activeIndex={panels.undoConfirmIndex}
+          onSelect={selectUndoConfirm}
         />
         <AgentInputModelPanel
           isOpen={panels.isModelMode}
           position={panels.panelPosition}
           models={panels.matchedModels}
           activeIndex={panels.modelIndex}
+          onSelect={actions.selectModel}
         />
         <GitWorktreeCommandMenu
           visible={panels.isWorktreeMode}
           position={panels.panelPosition ?? undefined}
           options={panels.matchedWorktrees}
           activeIndex={panels.worktreeIndex}
+          onSelect={actions.selectWorktree}
         />
         <AgentInputProjectPanel
           isOpen={panels.isProjectMode}
           position={panels.panelPosition}
           projects={panels.matchedProjects}
           activeIndex={panels.projectIndex}
+          onSelect={actions.selectProject}
         />
         <AgentInputSessionPanel
           isOpen={panels.isSessionMode}
           position={panels.panelPosition}
           sessions={panels.matchedSessions}
           activeIndex={panels.sessionIndex}
+          onSelect={actions.selectSession}
         />
         <AgentInputFilePanel
           isOpen={panels.isFileMode}
@@ -374,24 +403,28 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           items={panels.mentionItems}
           activeIndex={panels.fileIndex}
           worktreeName={worktreeName}
+          onSelect={selectMentionItem}
         />
         <AgentSkillMentionPanel
           isOpen={panels.isSkillMode}
           position={panels.panelPosition}
           skills={panels.matchedSkills}
           activeIndex={panels.skillIndex}
+          onSelect={actions.selectSkill}
         />
         <MarkdownBlockCommandMenu
           commands={panels.blockCommands}
           activeIndex={panels.blockCommandIndex}
           position={panels.blockCommandPosition}
           visible={panels.isBlockCommandOpen}
+          onSelect={actions.selectBlockCommand}
         />
         <MarkdownPasteCommandMenu
           activeIndex={paste.pasteIndex}
           options={paste.pasteOptions}
           position={paste.pastePanel?.position}
           visible={Boolean(paste.pastePanel)}
+          onSelect={(option) => paste.selectPasteReference(option.id)}
         />
 
         {/* CodeMirror 编辑器容器 */}

@@ -9,6 +9,7 @@ interface MarkdownSlashCommandMenuProps {
   activeIndex?: number
   position?: CSSProperties
   visible?: boolean
+  onSelect?: (command: MarkdownSlashCommand) => void
 }
 
 const getCommandTags = (command: MarkdownSlashCommand): { label: string; bgClass: string }[] => {
@@ -92,6 +93,7 @@ export const MarkdownSlashCommandMenu = ({
   activeIndex = 0,
   position,
   visible = false,
+  onSelect,
 }: MarkdownSlashCommandMenuProps): React.JSX.Element | null => {
   const [shouldRender, setShouldRender] = useState(false)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
@@ -148,10 +150,14 @@ export const MarkdownSlashCommandMenu = ({
         key={command.id}
         data-index={index}
         aria-selected={isActive}
-        className={`flex h-11 w-full items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-          isActive ? "bg-white/8 text-white" : "text-white/75"
+        className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
+          isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
         }`}
         role="option"
+        onMouseDown={(event) => {
+          event.preventDefault()
+          onSelect?.(command)
+        }}
       >
         <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
           /
@@ -189,7 +195,7 @@ export const MarkdownSlashCommandMenu = ({
     <div
       ref={panelRef}
       aria-label="Markdown 模板命令"
-      className={`markdown-command-menu markdown-command-menu--slash pointer-events-none fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+      className={`markdown-command-menu markdown-command-menu--slash pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"

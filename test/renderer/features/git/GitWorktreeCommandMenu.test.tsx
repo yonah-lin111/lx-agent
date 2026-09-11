@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { GitWorktreeOption } from "@/features/git"
 import { GitWorktreeCommandMenu } from "@/features/git"
@@ -83,6 +83,28 @@ describe("GitWorktreeCommandMenu 国际化与渲染逻辑", () => {
     expect(screen.getByText("默认工作区")).not.toBeNull()
     // 当前工作区显示中文 当前
     expect(screen.getByText("当前")).not.toBeNull()
+  })
+
+  it("点选工作区项触发 onSelect，且悬停不改变键盘激活项", () => {
+    const onSelect = vi.fn()
+    render(
+      <GitWorktreeCommandMenu
+        visible={true}
+        options={mockOptions}
+        activeIndex={0}
+        position={{ top: 10, left: 10 }}
+        onSelect={onSelect}
+      />,
+    )
+
+    const options = screen.getAllByRole("option")
+    fireEvent.mouseEnter(options[1])
+    expect(options[0].getAttribute("aria-selected")).toBe("true")
+    expect(options[1].getAttribute("aria-selected")).toBe("false")
+
+    fireEvent.mouseDown(options[1])
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(mockOptions[1])
   })
 
   it("当 visible 为 false 且无缓存时，不渲染任何节点", () => {
