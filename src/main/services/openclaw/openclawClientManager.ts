@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import net from "node:net"
 import { GatewayClient } from "@openclaw/gateway-client"
 import type { EventFrame } from "@openclaw/gateway-protocol/frame-guards"
 import { PROTOCOL_VERSION } from "@openclaw/gateway-protocol/version"
@@ -62,6 +63,7 @@ interface InstanceConnection {
   pairingRequestId?: string
   retryTimer?: NodeJS.Timeout | null
   retryCount?: number
+  connectingPromise?: Promise<OpenClawConnectResult> | null
   readonly sessions: Map<string, AgentSession>
 }
 
@@ -183,6 +185,10 @@ class OpenClawClientManager {
       return { status: "connected" }
     }
 
+    if (connection.status === "connecting" && connection.connectingPromise) {
+      return connection.connectingPromise
+    }
+
     if (connection.client) {
       connection.client.stop()
       connection.client = null
@@ -196,10 +202,47 @@ class OpenClawClientManager {
     }
 
     const settled = Promise.withResolvers<OpenClawConnectResult>()
+    connection.connectingPromise = settled.promise.finally(() => {
+      connection.connectingPromise = null
+    })
 
     // 本机 loopback 走 gateway-client/backend 默认身份（仅需 shared token）；
     // 远端必须声明为 WebChat 客户端并提供设备身份，交由 Gateway 走设备配对。
     const isDeviceAuth = connection.config.authMode === "device"
+
+    // 探测底层 TCP 连通性，若遇瞬态 EHOSTUNREACH 则先等待网卡与路由表就绪（重试3次）
+    try {
+      const url = new URL(connection.config.gatewayUrl)
+      const port = Number(url.port) || (url.protocol === "wss:" ? 443 : 80)
+      const host = url.hostname
+
+      // 对非本机 loopback 地址做一次 TCP 预检重试守卫
+      if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
+        await new Promise<void>((resolve) => {
+          let attempts = 0
+          const probe = (): void => {
+            attempts += 1
+            const socket = net.connect({ host, port })
+            socket.once("connect", () => {
+              socket.end()
+              resolve()
+            })
+            socket.once("error", (err) => {
+              socket.destroy()
+              if (attempts < 3 && /EHOSTUNREACH|ECONNREFUSED|timed? ?out/i.test(err.message)) {
+                setTimeout(probe, 300)
+              } else {
+                // 不阻断流程，交由 GatewayClient 处理
+                resolve()
+              }
+            })
+          }
+          probe()
+        })
+      }
+    } catch {
+      // url 解析失败交由 GatewayClient 处理
+    }
 
     const client = new GatewayClient({
       url: connection.config.gatewayUrl,
