@@ -5,7 +5,9 @@ import { languages } from "@codemirror/language-data"
 import { EditorState } from "@codemirror/state"
 import { EditorView, keymap, placeholder } from "@codemirror/view"
 import { GFM } from "@lezer/markdown"
+import { Send, Square } from "lucide-react"
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import {
   type AgentInputCommand,
   AgentInputCommandPanel,
@@ -22,11 +24,16 @@ import {
   getMentionQuery,
   isFuzzyMatch,
 } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
+import {
+  AgentVoiceInputButton,
+  type AgentVoiceInputButtonRef,
+} from "@/features/agent/components/AgentInput/AgentVoiceInputButton"
 import { markdownMarkerHighlight } from "@/features/markdown/extensions/markdownEditorExtensions"
 import { useTranslation } from "@/i18n"
 import { getClawMentionDeletionRange } from "../clawMention"
 import { getMatchedOpenClawCommands, type OpenClawCommandId } from "../openclawCommands"
 import { type OpenClawPickerItem, OpenClawPickerPanel } from "./OpenClawPickerPanel"
+import { type OpenClawTargetOffice, OpenClawTargetSelect } from "./OpenClawTargetSelect"
 
 export interface OpenClawInputRef {
   focus: () => void
@@ -36,7 +43,6 @@ export interface OpenClawInputRef {
 
 // 由父级驱动的选择面板（`/office`、`/agent`）。
 export interface OpenClawInputPicker {
-  // 面板标识：仅当标识变化（重新打开）时才重置高亮下标。
   key: string
   title: string
   emptyText: string
@@ -53,13 +59,17 @@ export interface OpenClawInputProps {
   candidates: ClawMentionCandidate[]
   onCommand: (commandId: OpenClawCommandId) => void
   picker?: OpenClawInputPicker | null
-  // Esc 关闭选择面板时回调，供父级同步清理 picker 状态。
   onPickerClose?: () => void
   placeholder?: string
   disabled?: boolean
   isStreaming?: boolean
-  // 面板定位锚点：整个输入框容器（含 padding/边框），保证面板宽度与输入框一致。
-  panelAnchorRef?: React.RefObject<HTMLElement | null>
+  // 办公区与员工选择器
+  offices?: OpenClawTargetOffice[]
+  selectedOfficeId?: string | null
+  selectedAgentIds?: string[]
+  onSelectOffice?: (officeId: string) => void
+  onToggleAgent?: (agentId: string) => void
+  voiceButtonRef?: React.Ref<AgentVoiceInputButtonRef>
 }
 
 type OpenClawPanelMode = "command" | "mention" | "picker" | null
@@ -72,8 +82,8 @@ const normalizeClawQuery = (query: string): string | null => {
 }
 
 /**
- * OpenClaw 专用 Markdown 输入框：复用 Agent 输入框的编辑器主题与面板组件，
- * 仅保留 OpenClaw 需要的 `/` 命令面板、当前办公区内的 `@claw` 提及面板与选择面板。
+ * OpenClawInput - 布局与样式完全对齐 AgentInput 的输入框容器组件，
+ * 内嵌 Markdown 编辑器、命令与提及面板，底部集成语音识别按钮、OpenClaw/Agent 复合选择器与发送按钮。
  */
 export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputProps>(
   (
@@ -89,12 +99,18 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       placeholder: placeholderText,
       disabled = false,
       isStreaming = false,
-      panelAnchorRef,
+      offices = [],
+      selectedOfficeId = null,
+      selectedAgentIds = [],
+      onSelectOffice,
+      onToggleAgent,
+      voiceButtonRef,
     },
     ref,
   ): React.JSX.Element => {
     const { t } = useTranslation()
     const containerRef = useRef<HTMLDivElement>(null)
+    const editorContainerRef = useRef<HTMLDivElement>(null)
     const editorViewRef = useRef<EditorView | null>(null)
 
     const [activeMode, setActiveMode] = useState<OpenClawPanelMode>(null)
@@ -105,7 +121,11 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     const [matchedCommands, setMatchedCommands] = useState<AgentInputCommand[]>([])
     const [mentionItems, setMentionItems] = useState<AgentMentionItem[]>([])
 
-    // 供 CodeMirror 键位闭包读取的最新状态。
+    // 语音输入状态（录音中 / 转写中），用于动态切换外框样式与占位符
+    const [voiceRecordingState, setVoiceRecordingState] = useState<
+      "idle" | "recording" | "transcribing"
+    >("idle")
+
     const stateRef = useRef({
       activeMode,
       picker,
@@ -142,10 +162,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     const onPickerCloseRef = useRef(onPickerClose)
     onPickerCloseRef.current = onPickerClose
 
-    const getPanelAnchor = useCallback(
-      (): HTMLElement | null => panelAnchorRef?.current ?? containerRef.current,
-      [panelAnchorRef],
-    )
+    const getPanelAnchor = useCallback((): HTMLElement | null => containerRef.current, [])
 
     const closePanels = useCallback((): void => {
       setActiveMode(null)
@@ -154,7 +171,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       setPanelPosition(null)
     }, [])
 
-    // 计算面板位置（基于输入框容器整体宽度对齐）。
+    // 计算面板位置（基于输入框容器整体宽度对齐）
     const updatePanelPosition = useCallback(
       (kind: "command" | "file"): void => {
         const anchor = getPanelAnchor()
@@ -167,7 +184,7 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       [getPanelAnchor],
     )
 
-    // 同步面板状态：选择面板 > 命令 > 当前办公区的 @claw 提及。
+    // 同步面板状态：选择面板 > 命令 > 当前办公区的 @claw 提及
     const syncPanels = useCallback(
       (docText: string, cursor: number): void => {
         if (stateRef.current.picker) return
@@ -212,7 +229,6 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     const syncPanelsRef = useRef(syncPanels)
     syncPanelsRef.current = syncPanels
 
-    // 选择面板开关由父级驱动：仅在面板标识变化时重置高亮下标。
     const pickerKey = picker?.key ?? null
     useEffect(() => {
       if (pickerKey) {
@@ -224,7 +240,6 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       }
     }, [pickerKey, updatePanelPosition])
 
-    // 应用命令选择：清空输入并交给业务层处理。
     const applyCommand = useCallback((command: AgentInputCommand): void => {
       const view = editorViewRef.current
       if (view) {
@@ -238,7 +253,6 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       editorViewRef.current?.focus()
     }, [])
 
-    // 应用提及选择：在光标处替换为 `@claw:<instance>/<agent> (name) `。
     const applyMention = useCallback((item: AgentMentionItem): void => {
       if (item.kind !== "claw") return
       const view = editorViewRef.current
@@ -263,9 +277,9 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
     const applyCommandRef = useRef(applyCommand)
     applyCommandRef.current = applyCommand
 
-    // 初始化 CodeMirror（一次性）。
+    // 初始化 CodeMirror
     useEffect(() => {
-      const container = containerRef.current
+      const container = editorContainerRef.current
       if (!container) return
 
       const keymapExtension = keymap.of([
@@ -413,7 +427,13 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           bracketMatching(),
           keymapExtension,
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          placeholder(placeholderText ?? ""),
+          placeholder(
+            voiceRecordingState === "recording"
+              ? t("agent.voiceListeningPlaceholder")
+              : voiceRecordingState === "transcribing"
+                ? t("agent.voiceTranscribingPlaceholder")
+                : (placeholderText ?? t("openclaw.placeholder")),
+          ),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString())
@@ -440,9 +460,9 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
         view.destroy()
         editorViewRef.current = null
       }
-    }, [placeholderText])
+    }, [placeholderText, voiceRecordingState, t])
 
-    // 外部 value 变动同步回 CodeMirror。
+    // 外部 value 变动同步
     useEffect(() => {
       const view = editorViewRef.current
       if (!view) return
@@ -472,8 +492,74 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
       [],
     )
 
+    // 语音转写文本打字机动画追加至输入框
+    const handleVoiceTranscribed = (transcribedText: string): void => {
+      const trimmed = transcribedText.trim()
+      if (!trimmed) return
+      const view = editorViewRef.current
+      const current = view?.state.doc.toString() ?? valueRef.current
+      const baseText = current
+        ? current.endsWith(" ") || current.endsWith("\n")
+          ? current
+          : `${current} `
+        : ""
+
+      let charIndex = 0
+      const stepInterval = Math.max(10, Math.min(30, Math.floor(300 / trimmed.length)))
+
+      const timer = setInterval(() => {
+        charIndex++
+        const partial = trimmed.slice(0, charIndex)
+        const nextVal = `${baseText}${partial}`
+        onChangeRef.current(nextVal)
+        if (editorViewRef.current) {
+          editorViewRef.current.dispatch({
+            changes: { from: 0, to: editorViewRef.current.state.doc.length, insert: nextVal },
+            selection: { anchor: nextVal.length },
+          })
+        }
+
+        if (charIndex >= trimmed.length) {
+          clearInterval(timer)
+          editorViewRef.current?.focus()
+        }
+      }, stepInterval)
+    }
+
+    const handleContainerPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
+      const target = event.target as HTMLElement
+      if (target.closest("button") || target.closest(".cm-editor")) return
+      event.preventDefault()
+      editorViewRef.current?.focus()
+    }
+
+    const actionButton = isStreaming ? (
+      <LxIconButton
+        shape="circle"
+        aria-label={t("openclaw.abort")}
+        title={{ content: t("openclaw.abort"), placement: "top" }}
+        onClick={onStop}
+        hoverBgClass="hover:bg-white/90"
+        className="agent-input-action-btn agent-input-stop-btn bg-white !text-black shadow-sm"
+      >
+        <Square className="h-3 w-3 fill-current" />
+      </LxIconButton>
+    ) : (
+      <LxIconButton
+        shape="circle"
+        aria-label={t("openclaw.send")}
+        title={{ content: t("openclaw.send"), placement: "top" }}
+        onClick={onSend}
+        disabled={!value.trim() || disabled}
+        hoverBgClass="hover:bg-white/90"
+        className="agent-input-action-btn agent-input-send-btn bg-white !text-black shadow-sm disabled:!bg-white/15 disabled:!text-white/30 disabled:!opacity-100 disabled:shadow-none"
+      >
+        <Send className="h-3.5 w-3.5" />
+      </LxIconButton>
+    )
+
     return (
-      <div className="agent-markdown-input-wrapper relative min-w-0 flex-1">
+      <div className="relative w-full bg-transparent p-0.5 pt-1 pb-0">
         <AgentInputCommandPanel
           isOpen={activeMode === "command"}
           position={panelPosition}
@@ -494,12 +580,48 @@ export const OpenClawInput = React.forwardRef<OpenClawInputRef, OpenClawInputPro
           items={picker?.items ?? []}
           activeIndex={pickerIndex}
         />
+
         <div
           ref={containerRef}
-          className={`agent-markdown-input-editor min-h-[44px] max-h-[200px] w-full overflow-hidden ${
-            disabled ? "pointer-events-none opacity-50" : ""
+          className={`agent-input-container relative flex flex-col justify-between rounded-[6px] border bg-[#2a2a2a] px-2.5 pt-2 pb-2 shadow-sm transition-[border-color,box-shadow] duration-150 focus-within:border-white/20 focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] ${
+            voiceRecordingState === "recording"
+              ? "border-rose-500/40 shadow-[0_0_8px_rgba(244,63,94,0.15)]"
+              : voiceRecordingState === "transcribing"
+                ? "border-blue-500/40"
+                : "border-white/10"
           }`}
-        />
+          onPointerDown={handleContainerPointerDown}
+        >
+          <div
+            ref={editorContainerRef}
+            className={`agent-markdown-input-editor min-h-[44px] max-h-[200px] w-full overflow-hidden ${
+              disabled ? "pointer-events-none opacity-50" : ""
+            }`}
+          />
+
+          <div className="flex w-full items-center justify-between pt-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <AgentVoiceInputButton
+                ref={voiceButtonRef}
+                onTranscribed={handleVoiceTranscribed}
+                onRecordingStateChange={setVoiceRecordingState}
+                disabled={disabled}
+              />
+              {offices.length > 0 && onSelectOffice && onToggleAgent && (
+                <OpenClawTargetSelect
+                  offices={offices}
+                  selectedOfficeId={selectedOfficeId}
+                  selectedAgentIds={selectedAgentIds}
+                  onSelectOffice={onSelectOffice}
+                  onToggleAgent={onToggleAgent}
+                  disabled={disabled}
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">{actionButton}</div>
+          </div>
+        </div>
       </div>
     )
   },

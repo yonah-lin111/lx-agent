@@ -1,5 +1,5 @@
 import type { OpenClawConnectionStatus } from "@shared/contracts/openclaw"
-import { Plus, RefreshCw, Send, Square } from "lucide-react"
+import { Plus, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -9,10 +9,11 @@ import {
   type ConversationAgent,
   matchOpenClawCommand,
   type OpenClawCommandId,
-  OpenClawConversationView,
   OpenClawInput,
   type OpenClawInputPicker,
   type OpenClawInputRef,
+  OpenClawMessageList,
+  type OpenClawTargetOffice,
   resolveClawDispatchTargets,
   useOpenClawChatStore,
   useOpenClawConfig,
@@ -57,7 +58,6 @@ export const OpenClawPage = (): React.JSX.Element => {
   const [input, setInput] = useState("")
   const [pickerKind, setPickerKind] = useState<"agent" | "office" | null>(null)
   const inputRef = useRef<OpenClawInputRef | null>(null)
-  const inputAnchorRef = useRef<HTMLDivElement | null>(null)
 
   const currentInstance = selectedInstanceId ? instances[selectedInstanceId] : undefined
   const agents = useMemo(
@@ -104,6 +104,17 @@ export const OpenClawPage = (): React.JSX.Element => {
     [agents],
   )
 
+  // 构建用于输入框选择器的办公区与员工列表
+  const offices = useMemo<OpenClawTargetOffice[]>(
+    () =>
+      enabledInstances.map(({ id, instance }) => ({
+        id,
+        name: instance.name,
+        agents: instance.agents.map((a) => ({ id: a.id, name: a.name })),
+      })),
+    [enabledInstances],
+  )
+
   // 跨页派发的 @claw 委派：定位办公区/员工后立即下发任务。
   useEffect(() => {
     const dispatch = consumePendingDispatch()
@@ -116,7 +127,6 @@ export const OpenClawPage = (): React.JSX.Element => {
   }, [consumePendingDispatch, selectOffice])
 
   // 未选中或已失效时，回落到第一个启用实例及其首个员工。
-  // 配置尚未加载（enabledInstances 为空）时不做处理，避免清掉跨页派发刚定位的目标。
   useEffect(() => {
     if (enabledInstances.length === 0) return
     const isCurrentEnabled = enabledInstances.some((item) => item.id === selectedInstanceId)
@@ -227,7 +237,6 @@ export const OpenClawPage = (): React.JSX.Element => {
           hint: agent.id,
           selected: selectedAgentIds.includes(agent.id),
         })),
-        // 选择面板保持打开，便于连续多选（扇出目标）。
         onPick: (id) => selectAgent(id, { additive: true }),
       }
     }
@@ -254,10 +263,6 @@ export const OpenClawPage = (): React.JSX.Element => {
     for (const agentId of agentIds) void store.resetSession(selectedInstanceId, agentId)
     toast.success(t("openclaw.sessionCleared"))
   }
-
-  const selectedNames = agents
-    .filter((agent) => selectedAgentIds.includes(agent.id))
-    .map((agent) => agent.name)
 
   return (
     <section className="openclaw-page-container flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-white/5 bg-[#212121]">
@@ -295,7 +300,7 @@ export const OpenClawPage = (): React.JSX.Element => {
 
       {/* 视图区：当前办公区内所有员工的消息合流时间线 */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <OpenClawConversationView
+        <OpenClawMessageList
           timeline={timeline}
           agents={conversationAgents}
           streamingAgentIds={streamingAgentIds}
@@ -303,67 +308,35 @@ export const OpenClawPage = (): React.JSX.Element => {
       </div>
 
       {/* 输入区 */}
-      <div ref={inputAnchorRef} className="shrink-0 border-t border-white/5 px-3 py-2">
-        {selectedNames.length > 0 ? (
-          <div className="mb-1.5 flex flex-wrap items-center gap-1 text-[11px] text-white/40">
-            <span>{t("openclaw.targetLabel")}</span>
-            {selectedNames.map((name) => (
-              <span
-                key={name}
-                className="rounded-[4px] bg-white/[0.06] px-1.5 py-0.5 text-white/60"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex items-end gap-2">
-          <OpenClawInput
-            ref={inputRef}
-            value={input}
-            onChange={setInput}
-            onSend={handleSend}
-            onStop={() => {
-              if (!selectedInstanceId) return
-              for (const agentId of streamingAgentIds) {
-                void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
-              }
-            }}
-            candidates={candidates}
-            onCommand={runCommand}
-            picker={picker}
-            onPickerClose={() => setPickerKind(null)}
-            panelAnchorRef={inputAnchorRef}
-            placeholder={t("openclaw.placeholder")}
-            disabled={agentIds.length === 0}
-            isStreaming={isAnyStreaming}
-          />
-          {isAnyStreaming ? (
-            <LxIconButton
-              size="medium"
-              aria-label={t("openclaw.abort")}
-              title={{ content: t("openclaw.abort"), placement: "top" }}
-              onClick={() => {
-                if (!selectedInstanceId) return
-                for (const agentId of streamingAgentIds) {
-                  void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
-                }
-              }}
-            >
-              <Square className="h-4 w-4 text-rose-300" />
-            </LxIconButton>
-          ) : (
-            <LxIconButton
-              size="medium"
-              aria-label={t("openclaw.send")}
-              title={{ content: t("openclaw.send"), placement: "top" }}
-              disabled={!input.trim() || agentIds.length === 0}
-              onClick={handleSend}
-            >
-              <Send className="h-4 w-4" />
-            </LxIconButton>
-          )}
-        </div>
+      <div className="shrink-0 border-t border-white/5 px-3 py-2">
+        <OpenClawInput
+          ref={inputRef}
+          value={input}
+          onChange={setInput}
+          onSend={handleSend}
+          onStop={() => {
+            if (!selectedInstanceId) return
+            for (const agentId of streamingAgentIds) {
+              void useOpenClawChatStore.getState().abort(selectedInstanceId, agentId)
+            }
+          }}
+          candidates={candidates}
+          onCommand={runCommand}
+          picker={picker}
+          onPickerClose={() => setPickerKind(null)}
+          placeholder={t("openclaw.placeholder")}
+          disabled={agentIds.length === 0}
+          isStreaming={isAnyStreaming}
+          offices={offices}
+          selectedOfficeId={selectedInstanceId}
+          selectedAgentIds={selectedAgentIds}
+          onSelectOffice={(officeId) => {
+            selectOffice(officeId, instances[officeId]?.agents[0]?.id)
+          }}
+          onToggleAgent={(agentId) => {
+            selectAgent(agentId, { additive: true })
+          }}
+        />
       </div>
     </section>
   )

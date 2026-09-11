@@ -6,10 +6,12 @@ import {
   useOpenClawChatStore,
 } from "../openclawChatStore"
 
-// 时间线上的一条消息，附带来源 Agent。
+// 时间线上的一条消息，附带来源 Agent 及扇出目标 Agents。
 export interface OfficeTimelineMessage {
   agentId: string
   message: OpenClawChatMessage
+  // 当用户消息发送给多个 Agent 时合并展示的目标 Agent 列表
+  targetAgentIds?: string[]
 }
 
 export interface OfficeAgentSession {
@@ -26,23 +28,53 @@ export interface UseOpenClawOfficeResult {
 /**
  * 合并各 Agent 的消息为单一时间线（仅视觉合并，底层会话仍相互隔离）。
  * 按时间戳升序，时间戳相同按消息 id 稳定排序。
+ * 针对向多个 Agent 发送的同批次 User 消息，进行去重合并，并汇集 targetAgentIds。
  */
 export const mergeOfficeTimeline = (
   sessions: readonly OfficeAgentSession[],
 ): OfficeTimelineMessage[] => {
-  const merged: OfficeTimelineMessage[] = []
+  const rawList: OfficeTimelineMessage[] = []
   for (const { agentId, snapshot } of sessions) {
     if (!snapshot) continue
     for (const message of snapshot.messages) {
-      merged.push({ agentId, message })
+      rawList.push({ agentId, message })
     }
   }
-  return merged.sort((a, b) => {
+
+  rawList.sort((a, b) => {
     if (a.message.timestamp !== b.message.timestamp) {
       return a.message.timestamp - b.message.timestamp
     }
     return a.message.id.localeCompare(b.message.id)
   })
+
+  // 合并相同时间戳（或相差极短 1500ms 内且内容一致）的用户消息
+  const merged: OfficeTimelineMessage[] = []
+  for (const item of rawList) {
+    if (item.message.role === "user") {
+      const prev = merged[merged.length - 1]
+      if (
+        prev &&
+        prev.message.role === "user" &&
+        prev.message.content === item.message.content &&
+        Math.abs(prev.message.timestamp - item.message.timestamp) <= 1500
+      ) {
+        const existingTargets = prev.targetAgentIds ?? [prev.agentId]
+        if (!existingTargets.includes(item.agentId)) {
+          prev.targetAgentIds = [...existingTargets, item.agentId]
+        }
+        continue
+      }
+      merged.push({
+        ...item,
+        targetAgentIds: [item.agentId],
+      })
+    } else {
+      merged.push(item)
+    }
+  }
+
+  return merged
 }
 
 /**

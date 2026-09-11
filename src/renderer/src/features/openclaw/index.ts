@@ -20,7 +20,18 @@ export {
   type OpenClawInputPicker,
   type OpenClawInputRef,
 } from "./components/OpenClawInput"
+export {
+  OpenClawAssistantMessage,
+  OpenClawMessageItem,
+  OpenClawMessageList,
+  type OpenClawMessageListProps,
+  OpenClawUserMessage,
+} from "./components/OpenClawMessageList"
 export { type OpenClawPickerItem, OpenClawPickerPanel } from "./components/OpenClawPickerPanel"
+export {
+  type OpenClawTargetOffice,
+  OpenClawTargetSelect,
+} from "./components/OpenClawTargetSelect"
 export { useOfficeAgentStatuses } from "./hooks/useOfficeAgentStatuses"
 export { useOpenClawConfig } from "./hooks/useOpenClawConfig"
 export {
