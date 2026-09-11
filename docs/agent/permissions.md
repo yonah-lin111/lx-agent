@@ -115,7 +115,7 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.2 工具分级
 
-- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp`。
+- **豁免工具（`EXEMPT_TOOLS`，永不询问）**：`web_search` / `read` / `ls` / `grep` / `find` / `time` / `read_skill` / `question` / `lsp` / `view_image`。
 - **受控内置工具（`GATED_BUILTIN_TOOLS`）**：`bash` / `write` / `edit` / `apply_patch` / `task` / `webfetch`；加上全部已连接 MCP 工具均进入审批判定。
 
 ### 5.3 审批决策流 (Approval Decisions)

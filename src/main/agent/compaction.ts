@@ -92,15 +92,19 @@ export const isContextOverflowFailure = (message: string): boolean => {
   return OVERFLOW_SIGNATURES.some((signature) => normalized.includes(signature))
 }
 
+// 图片块的等价 token 估计（约 1500 tokens/张；char/4 换算为 6000 字符）。
+const IMAGE_CHAR_EQUIVALENT = 6_000
+
+// 内容块等价字符数（图片按其 token 成本折算，避免按 "[image]" 文本低估）。
+const blockCharCount = (block: { type: string; text?: string }): number =>
+  block.type === "text" ? (block.text ?? "").length : IMAGE_CHAR_EQUIVALENT
+
 // 单条消息的文本字符数（估计 token 用；忽略思考/工具参数细节以降低噪音）。
 const messageCharCount = (message: AgentMessage): number => {
   switch (message.role) {
     case "user": {
-      const content = Array.isArray(message.content) ? message.content : []
-      const text = content
-        .map((block) => (block.type === "text" ? block.text : "[image]"))
-        .join("\n")
-      return typeof message.content === "string" ? message.content.length : text.length
+      if (typeof message.content === "string") return message.content.length
+      return message.content.reduce((total, block) => total + blockCharCount(block), 0)
     }
     case "assistant":
       return message.content
@@ -111,9 +115,7 @@ const messageCharCount = (message: AgentMessage): number => {
         })
         .join("\n").length
     case "toolResult":
-      return message.content
-        .map((block) => (block.type === "text" ? block.text : "[image]"))
-        .join("\n").length
+      return message.content.reduce((total, block) => total + blockCharCount(block), 0)
     case "compactionSummary":
       return message.summary.length
     case "modelSwitch":

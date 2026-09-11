@@ -18,7 +18,7 @@ export interface ContextPrunerOptions {
   prunableTools?: string[]
 }
 
-const DEFAULT_PRUNABLE_TOOLS = ["read", "grep", "find", "ls", "webfetch", "webSearch"]
+const DEFAULT_PRUNABLE_TOOLS = ["read", "grep", "find", "ls", "webfetch", "webSearch", "view_image"]
 
 /**
  * 纯函数：对 AgentMessage[] 执行只读工具大输出修剪
@@ -70,7 +70,17 @@ function pruneToolResultMessage(
 
   let modified = false
   const newContent = msg.content.map((block) => {
-    if (block.type !== "text") return block
+    // 图片块：豁免窗口之外统一替换为文本占位（图片不参与历史上下文重复计费）。
+    if (block.type === "image") {
+      modified = true
+      const path = msg.image?.path
+      return {
+        type: "text",
+        text: path
+          ? `[Image omitted from historical context: ${path}]`
+          : "[Image omitted from historical context.]",
+      } as TextContent
+    }
 
     const text = block.text
     const lines = text.split("\n")

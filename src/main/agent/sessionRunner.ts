@@ -57,6 +57,7 @@ import {
   stripFrontmatter,
 } from "./skills/skillLoader"
 import { createAiSdkStreamFn } from "./stream/aiSdkStreamFn"
+import { modelSupportsImageInput } from "./stream/modelCapabilities"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { SubagentPool } from "./subagent/subagentPool"
 import { generateSessionTitle } from "./titleGenerator"
@@ -366,6 +367,11 @@ export class AgentSessionRunner {
           lspManager,
           getSessionId: () => this.currentSessionId,
           cwd,
+        },
+        {
+          getSessionId: () => this.currentSessionId,
+          supportsImages: () =>
+            modelSupportsImageInput(modelResult.model.provider, modelResult.model.id),
         },
       )
       const previousMessages = this.agent?.state.messages ?? []

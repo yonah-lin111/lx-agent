@@ -23,6 +23,7 @@ import type { AgentDiff, AgentDiffLine, ChatBlock, LspToolDetails } from "@/feat
 import { useTranslation } from "@/i18n"
 import { highlightCode, languageFromFileName } from "@/lib/codeHighlight"
 import { AgentLspBlock } from "./AgentLspBlock"
+import { AgentViewImageBlock } from "./AgentViewImageBlock"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -300,6 +301,15 @@ export const AgentToolCallBlock = ({
   // lsp 专用结果块：可点击位置行 / hover 文本 / 无结果摘要（对齐 read 的专用分支）。
   if (toolName === "lsp") {
     return <AgentLspBlock toolCalls={resolvedToolCalls} details={lspDetails} />
+  }
+
+  // view_image 专用结果块：缩略图 + 大图预览（无结果时回退通用渲染）。
+  if (toolName === "view_image") {
+    const imageDetails =
+      toolResult?.image ?? toolResults?.find((entry) => entry.image !== undefined)?.image
+    if (imageDetails) {
+      return <AgentViewImageBlock details={imageDetails} />
+    }
   }
 
   const displayToolName = toolName.charAt(0).toUpperCase() + toolName.slice(1)

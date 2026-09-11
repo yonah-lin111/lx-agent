@@ -140,8 +140,20 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] =>
         })
         return [{ role: "assistant", content: parts }] as ModelMessage[]
       }
-      case "toolResult":
+      case "toolResult": {
         // 工具错误已编码在内容文本中；isError 不映射到 AI SDK tool-result part。
+        // 含图片块时使用多模态 content parts（AI SDK 按 Provider 适配 file-data）。
+        const hasImage = message.content.some((block) => block.type === "image")
+        const output = hasImage
+          ? {
+              type: "content" as const,
+              value: message.content.map((block) =>
+                block.type === "image"
+                  ? { type: "file-data" as const, data: block.data, mediaType: block.mimeType }
+                  : { type: "text" as const, text: block.text },
+              ),
+            }
+          : { type: "text" as const, value: contentToText(message.content) }
         return [
           {
             role: "tool",
@@ -150,11 +162,12 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] =>
                 type: "tool-result" as const,
                 toolCallId: message.toolCallId,
                 toolName: message.toolName,
-                output: { type: "text" as const, value: contentToText(message.content) },
+                output,
               },
             ],
           },
         ] as ModelMessage[]
+      }
     }
   })
 

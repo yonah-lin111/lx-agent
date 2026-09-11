@@ -21,6 +21,7 @@ export const EXEMPT_TOOLS = new Set([
   "read_skill",
   "question",
   "lsp",
+  "view_image",
 ])
 
 // 规则类别。

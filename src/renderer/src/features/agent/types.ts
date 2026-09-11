@@ -14,6 +14,7 @@ import type {
   SubagentData,
   Usage,
   UserMessageCommand,
+  ViewImageDetails,
 } from "@shared/contracts/agent"
 
 export type {
@@ -42,6 +43,7 @@ export type {
   UndoSummaryMessage,
   Usage,
   UserMessageCommand,
+  ViewImageDetails,
 } from "@shared/contracts/agent"
 
 // 拟定实施计划结构。
@@ -142,6 +144,8 @@ export type ChatBlock =
       subagent?: SubagentData
       // LSP 检索结果（随 lsp 工具结果落库，恢复后渲染块复用跳转）。
       lsp?: LspToolDetails
+      // 图片查看结果（随 view_image 工具结果落库，渲染缩略图与大图预览）。
+      image?: ViewImageDetails
     }
 
 // 消息展示条目（由 AgentEvent 驱动生成）。
@@ -357,6 +361,8 @@ export interface ExecutionToolContent {
   durationMs?: number
   diff?: AgentDiff
   lsp?: LspToolDetails
+  // 图片查看结果（view_image 工具；驱动执行流程图片块渲染）。
+  image?: ViewImageDetails
   // 挂起的模型提问（question 工具；question_request 事件回填，作答后清除）。
   question?: QuestionRequest
   // question 工具的用户作答（随消息落库/事件回填，只读展示用）。

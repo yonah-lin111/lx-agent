@@ -114,6 +114,55 @@ describe("toModelMessages", () => {
     })
   })
 
+  it("含图片的 toolResult 转为多模态 content parts（text + file-data）", () => {
+    const result = toModelMessages([
+      {
+        role: "toolResult",
+        toolCallId: "call-img",
+        toolName: "view_image",
+        content: [
+          { type: "text", text: "Viewed image /repo/shot.png" },
+          { type: "image", data: "aW1n", mimeType: "image/png" },
+        ],
+        isError: false,
+      },
+    ])
+
+    expect(result[0]).toEqual({
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "call-img",
+          toolName: "view_image",
+          output: {
+            type: "content",
+            value: [
+              { type: "text", text: "Viewed image /repo/shot.png" },
+              { type: "file-data", data: "aW1n", mediaType: "image/png" },
+            ],
+          },
+        },
+      ],
+    })
+  })
+
+  it("纯文本 toolResult 仍为 text 结构（不引入 content parts）", () => {
+    const result = toModelMessages([
+      {
+        role: "toolResult",
+        toolCallId: "call-txt",
+        toolName: "read",
+        content: [{ type: "text", text: "内容" }],
+        isError: false,
+      },
+    ])
+
+    expect(result[0]).toMatchObject({
+      content: [{ output: { type: "text", value: "内容" } }],
+    })
+  })
+
   it("user 消息携带 files 图片附件时，应用 nativeImage 比例缩放与 JPEG 压缩", () => {
     const result = toModelMessages([
       {

@@ -5,6 +5,7 @@ import { FlowToolFileOps } from "./tools/FlowToolFileOps"
 import { FlowToolGeneric } from "./tools/FlowToolGeneric"
 import { FlowToolSearch } from "./tools/FlowToolSearch"
 import { FlowToolTodo } from "./tools/FlowToolTodo"
+import { FlowToolViewImage } from "./tools/FlowToolViewImage"
 
 export interface FlowItemToolContentProps {
   content: ExecutionToolContent
@@ -27,6 +28,10 @@ export const FlowItemToolContent = ({ content }: FlowItemToolContentProps): Reac
 
   if (toolName === "todowrite") {
     return <FlowToolTodo content={content} />
+  }
+
+  if (toolName === "view_image" && content.image) {
+    return <FlowToolViewImage content={content} />
   }
 
   return <FlowToolGeneric content={content} />

@@ -480,6 +480,7 @@ export const buildExecutionSteps = (
               durationMs: toolDuration,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
+              image: pairedResult?.image,
             },
           })
         } else {
@@ -507,6 +508,7 @@ export const buildExecutionSteps = (
               durationMs: toolDuration,
               diff: pairedResult?.diff,
               lsp: pairedResult?.lsp,
+              image: pairedResult?.image,
               question: block.question,
               answers: block.answers,
             },
@@ -750,6 +752,7 @@ export const buildExecutionSteps = (
             durationMs: block.durationMs,
             diff: block.diff,
             lsp: block.lsp,
+            image: block.image,
           },
         })
       }

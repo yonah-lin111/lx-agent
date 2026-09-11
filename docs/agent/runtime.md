@@ -112,7 +112,7 @@ User Input / Drain
 
 ### 4.2 Tier-1 历史工具输出修剪 (`ContextPruner`)
 
-在内存视图变换中，将历史只读类工具（`read`/`grep`/`find`/`ls`/`webfetch`/`webSearch`）的超长输出就地替换为轻量占位符。默认参数：尾部 **6** 条消息豁免；单条输出超过 **20 行**或 **500 字符**才修剪；修剪仅作用于内存拷贝，不污染持久化数据。
+在内存视图变换中，将历史只读类工具（`read`/`grep`/`find`/`ls`/`webfetch`/`webSearch`/`view_image`）的超长输出就地替换为轻量占位符。默认参数：尾部 **6** 条消息豁免；单条输出超过 **20 行**或 **500 字符**才修剪；`view_image` 结果的图片块在豁免窗口外统一替换为 `[Image omitted from historical context: <path>]` 文本占位（UI 仍展示原图）。修剪仅作用于内存拷贝，不污染持久化数据。图片块的 token 估计按 **1500 tokens/张** 计入容量与压缩判定。
 
 ### 4.3 Context Window Guidance 动态容量感知 (`systemPromptManager.ts`, order 358)
 
