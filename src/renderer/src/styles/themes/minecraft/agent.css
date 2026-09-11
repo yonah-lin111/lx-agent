@@ -83,7 +83,8 @@
   margin-bottom: 2px !important;
 }
 
-[data-theme="minecraft"] .agent-message-command-tag {
+[data-theme="minecraft"] .agent-message-command-tag,
+[data-theme="minecraft"] .openclaw-target-agent-tag {
   font-family: var(--theme-font-family) !important;
   border: 2px solid #000000 !important;
   background-color: #241e34 !important;

@@ -1,6 +1,9 @@
 import { Check, ChevronDown, Users } from "lucide-react"
 import type React from "react"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
+import { TooltipLayerContext } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
 export interface OpenClawTargetOffice {
@@ -19,6 +22,10 @@ export interface OpenClawTargetSelectProps {
   className?: string
 }
 
+/**
+ * OpenClawTargetSelect - 结构、类名及动效完全对齐 AgentModelSelect / LxSelect 的复合选择组件。
+ * 默认向上弹出并挂载于 document.body，采用 CSS Token 适配全套主题（包括 Minecraft 像素主题）。
+ */
 export const OpenClawTargetSelect = ({
   offices,
   selectedOfficeId,
@@ -42,18 +49,41 @@ export const OpenClawTargetSelect = ({
   const listboxRef = useRef<HTMLDivElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
-  const currentOffice = useMemo(
-    () => offices.find((o) => o.id === selectedOfficeId),
-    [offices, selectedOfficeId],
+  const parentTooltipLayer = useContext(TooltipLayerContext)
+  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
+
+  const registerLayer = (node: HTMLElement): void => {
+    layerNodesRef.current.add(node)
+    parentTooltipLayer?.register(node)
+  }
+
+  const unregisterLayer = (node: HTMLElement): void => {
+    layerNodesRef.current.delete(node)
+    parentTooltipLayer?.unregister(node)
+  }
+
+  const layerContextValue = useMemo(
+    () => ({ register: registerLayer, unregister: unregisterLayer }),
+    [parentTooltipLayer],
   )
 
-  const currentOfficeAgents = useMemo(() => currentOffice?.agents ?? [], [currentOffice])
+  useEffect(() => {
+    if (!parentTooltipLayer || !shouldRender) return
+    const node = listboxRef.current
+    if (!node) return
+    parentTooltipLayer.register(node)
+    return () => parentTooltipLayer.unregister(node)
+  }, [parentTooltipLayer, shouldRender])
 
   // 点击外部收起
   useEffect(() => {
     const handleClickOutside = (event: PointerEvent): void => {
       const target = event.target as Node
-      if (containerRef.current?.contains(target) || listboxRef.current?.contains(target)) {
+      if (
+        containerRef.current?.contains(target) ||
+        listboxRef.current?.contains(target) ||
+        Array.from(layerNodesRef.current).some((node) => node.contains(target))
+      ) {
         return
       }
       setIsOpen(false)
@@ -67,7 +97,11 @@ export const OpenClawTargetSelect = ({
     if (!isOpen) return
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
-      if (!containerRef.current?.contains(target) && !listboxRef.current?.contains(target)) {
+      if (
+        !containerRef.current?.contains(target) &&
+        !listboxRef.current?.contains(target) &&
+        !Array.from(layerNodesRef.current).some((node) => node.contains(target))
+      ) {
         setIsOpen(false)
       }
     }
@@ -87,7 +121,7 @@ export const OpenClawTargetSelect = ({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [isOpen])
 
-  // 定位计算（默认向上弹出）
+  // 定位计算（默认向上弹出，对齐 AgentModelSelect）
   useLayoutEffect(() => {
     if (!shouldRender) return
     const updatePosition = (): void => {
@@ -123,6 +157,13 @@ export const OpenClawTargetSelect = ({
     return () => window.clearTimeout(timer)
   }, [isOpen, shouldRender])
 
+  const currentOffice = useMemo(
+    () => offices.find((o) => o.id === selectedOfficeId),
+    [offices, selectedOfficeId],
+  )
+
+  const currentOfficeAgents = useMemo(() => currentOffice?.agents ?? [], [currentOffice])
+
   // 按钮文案展示：实例 · 选中的员工数 / 名字
   const buttonLabel = useMemo(() => {
     if (!currentOffice) return t("openclaw.noInstances")
@@ -137,93 +178,106 @@ export const OpenClawTargetSelect = ({
   }, [currentOffice, currentOfficeAgents, selectedAgentIds, t])
 
   return (
-    <div ref={containerRef} className={`relative inline-block text-left ${className}`}>
-      <button
-        ref={buttonRef}
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-6 max-w-[240px] items-center gap-1.5 rounded-[4px] border border-white/10 bg-white/[0.04] px-2 text-[12px] text-white/80 transition-colors hover:border-white/20 hover:bg-white/[0.08] focus:outline-none disabled:pointer-events-none disabled:opacity-40"
+    <>
+      <div
+        ref={containerRef}
+        className={`openclaw-target-select relative !w-fit max-w-[240px] min-w-0 ${className}`}
       >
-        <Users className="h-3 w-3 shrink-0 text-white/50" />
-        <span className="truncate">{buttonLabel}</span>
-        <ChevronDown className="h-3 w-3 shrink-0 text-white/40" />
-      </button>
-
-      {shouldRender && listboxStyle && (
-        <div
-          ref={listboxRef}
-          style={{
-            position: "fixed",
-            left: `${listboxStyle.left}px`,
-            top: `${listboxStyle.top}px`,
-            minWidth: `${listboxStyle.minWidth}px`,
-            maxHeight: "360px",
-            zIndex: 9999,
-          }}
-          className={`custom-scrollbar flex flex-col overflow-y-auto rounded-[6px] border border-white/10 bg-[#282828] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.5)] transition-all duration-120 ${
-            isAnimatingOut ? "opacity-0 scale-95" : "opacity-100 scale-100"
-          }`}
+        <button
+          ref={buttonRef}
+          type="button"
+          className="lx-select-trigger flex h-6 w-full items-center justify-between gap-1.5 rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface,#212121)] px-2 text-xs text-[var(--color-theme-text,#ffffff)]/80 transition-colors duration-150 hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.2))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
         >
-          {/* 办公区/实例切换 */}
-          <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-white/40 uppercase">
-            {t("openclaw.officePickerTitle")}
-          </div>
-          <div className="mb-1.5 flex flex-col gap-0.5">
-            {offices.map((office) => {
-              const isSelected = office.id === selectedOfficeId
-              return (
-                <button
-                  key={office.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectOffice(office.id)
-                  }}
-                  className={`flex items-center justify-between rounded-[4px] px-2 py-1 text-left text-[12px] transition-colors ${
-                    isSelected
-                      ? "bg-white/10 font-medium text-white"
-                      : "text-white/70 hover:bg-white/[0.06] hover:text-white/90"
-                  }`}
-                >
-                  <span className="truncate">{office.name}</span>
-                  {isSelected && <Check className="h-3 w-3 text-sky-400" />}
-                </button>
-              )
-            })}
-          </div>
+          <Users className="h-3 w-3 shrink-0 text-white/50" />
+          <span className="min-w-0 flex-1 truncate text-left">{buttonLabel}</span>
+          <ChevronDown
+            className={`h-3 w-3 shrink-0 text-white/50 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
 
-          {/* 员工多选切换 */}
-          <div className="border-t border-white/10 pt-1.5 px-2 py-1 text-[10px] font-semibold tracking-wider text-white/40 uppercase">
-            {t("openclaw.agentPickerTitle")}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            {currentOfficeAgents.length === 0 ? (
-              <div className="px-2 py-1 text-[11px] text-white/40">{t("openclaw.noAgents")}</div>
-            ) : (
-              currentOfficeAgents.map((agent) => {
-                const isChecked = selectedAgentIds.includes(agent.id)
-                return (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    onClick={() => {
-                      onToggleAgent(agent.id)
-                    }}
-                    className={`flex items-center justify-between rounded-[4px] px-2 py-1 text-left text-[12px] transition-colors ${
-                      isChecked
-                        ? "bg-sky-500/15 font-medium text-sky-200"
-                        : "text-white/70 hover:bg-white/[0.06] hover:text-white/90"
-                    }`}
-                  >
-                    <span className="truncate">{agent.name}</span>
-                    {isChecked && <Check className="h-3 w-3 text-sky-400" />}
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+      {shouldRender &&
+        createPortal(
+          <TooltipLayerContext.Provider value={layerContextValue}>
+            <div
+              ref={listboxRef}
+              className={`fixed flex max-h-60 flex-col gap-0.5 overflow-y-auto rounded-[var(--theme-radius-base,6px)] border border-[var(--color-theme-border-strong,rgba(255,255,255,0.1))] bg-[var(--color-theme-surface-hover,#303030)] p-1 shadow-lg [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+                isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+              }`}
+              role="listbox"
+              style={{ ...(listboxStyle ?? undefined), zIndex: 50 }}
+            >
+              {/* 办公区/实例分组 */}
+              <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
+                {t("openclaw.officePickerTitle")}
+              </div>
+              <div className="mb-1 flex flex-col gap-0.5">
+                {offices.map((office) => {
+                  const isSelected = office.id === selectedOfficeId
+                  return (
+                    <button
+                      key={office.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onSelectOffice(office.id)
+                      }}
+                      className={`flex w-full items-center justify-between rounded-[4px] px-2.5 py-1.5 text-left text-xs transition-colors ${
+                        isSelected
+                          ? "bg-white/10 font-medium text-white shadow-xs"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{office.name}</span>
+                      {isSelected && <Check className="ml-2 h-3 w-3 text-sky-400 shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 员工多选分组 */}
+              <div className="border-t border-white/10 pt-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
+                {t("openclaw.agentPickerTitle")}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {currentOfficeAgents.length === 0 ? (
+                  <div className="px-2.5 py-1.5 text-xs text-white/40">
+                    {t("openclaw.noAgents")}
+                  </div>
+                ) : (
+                  currentOfficeAgents.map((agent) => {
+                    const isChecked = selectedAgentIds.includes(agent.id)
+                    return (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isChecked}
+                        onClick={() => {
+                          onToggleAgent(agent.id)
+                        }}
+                        className={`flex w-full items-center justify-between rounded-[4px] px-2.5 py-1.5 text-left text-xs transition-colors ${
+                          isChecked
+                            ? "bg-sky-500/15 font-medium text-sky-200"
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span className="min-w-0 flex-1 truncate pl-1">{agent.name}</span>
+                        {isChecked && <Check className="ml-2 h-3 w-3 text-sky-400 shrink-0" />}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </TooltipLayerContext.Provider>,
+          document.body,
+        )}
+    </>
   )
 }
