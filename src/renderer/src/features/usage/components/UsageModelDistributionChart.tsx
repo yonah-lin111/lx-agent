@@ -51,6 +51,7 @@ export const UsageModelDistributionChart = ({
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
+            accessibilityLayer={false}
             data={data}
             layout="vertical"
             margin={{ top: 0, right: 10, left: 0, bottom: 0 }}
@@ -78,7 +79,10 @@ export const UsageModelDistributionChart = ({
                 value.length > 16 ? `${value.slice(0, 16)}…` : value
               }
             />
-            <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
+            <Tooltip
+              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              cursor={{ fill: "var(--color-theme-border)", fillOpacity: 0.35 }}
+            />
             <Bar
               dataKey={hasPricing ? "cost" : "tokens"}
               name={hasPricing ? t("usage.summary.totalCost") : t("usage.summary.totalTokens")}

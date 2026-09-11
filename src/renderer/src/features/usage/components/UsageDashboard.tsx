@@ -95,7 +95,7 @@ export const UsageDashboard = (): React.JSX.Element => {
                 className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
                   activeTab === tab
                     ? "bg-[var(--color-theme-surface-hover)] font-medium text-[var(--color-theme-text)]"
-                    : "text-[var(--color-theme-text-muted)] hover:bg-white/[0.03] hover:text-[var(--color-theme-text)]"
+                    : "text-[var(--color-theme-text-muted)] hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
                 }`}
               >
                 {t(TAB_LABEL_KEYS[tab])}
@@ -106,9 +106,7 @@ export const UsageDashboard = (): React.JSX.Element => {
           {activeTab === "logs" ? (
             <UsageRequestLogTable logPage={usage.logPage} onPageChange={usage.setPage} />
           ) : null}
-          {activeTab === "models" ? (
-            <UsageModelStatsTable modelStats={usage.modelStats} />
-          ) : null}
+          {activeTab === "models" ? <UsageModelStatsTable modelStats={usage.modelStats} /> : null}
           {activeTab === "providers" ? (
             <UsageProviderStatsTable providerStats={usage.providerStats} />
           ) : null}

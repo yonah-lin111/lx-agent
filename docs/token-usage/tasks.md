@@ -44,11 +44,11 @@
 - [x] T17 汇总卡 + 5 图（趋势/请求柱状/模型分布/Provider 环形/Token 构成）
 - [x] T18 3 表（请求日志分页 / 模型统计 / Provider 统计）
 - [x] T19 筛选（时间预设 / Provider / Model / Project，Provider→Model 级联）
-- [x] T20 `pages/usage/index.tsx` + `PAGE_ROUTES.usage` + `PageRouter` + `App.tsx` 侧栏条件
+- [x] T20 `HomePage` 内联用量视图（初版 `/usage` 路由，T29 改为 `?view=` 组件切换）
 - [x] T21 `HomeLeftSideBar` 两项与 pathname 激活态（含折叠态）
 - [x] T22 i18n：`zh.ts` / `en.ts` 新增 `usage.*` 键
 
-验收：`/usage` 可直达；侧栏两项可切换且高亮正确；筛选、分页、刷新行为符合设计；无硬编码文案与颜色。
+验收：主页内可切换用量视图；侧栏两项高亮正确；筛选、分页、刷新行为符合设计；无硬编码文案与颜色。
 
 ## 阶段 6：测试与验证
 
@@ -61,3 +61,12 @@
 
 - [x] T27 提交代码（不含主工作区未提交改动）
 - [ ] T28 询问用户是否合并回 `dev`
+
+## 阶段 8：试用反馈修复
+
+- [x] T29 测试污染修复：`LX_AGENT_DATA_ROOT` 环境变量 + `test/setup.ts` 临时目录隔离，禁止测试写入真实 `~/.lx`
+- [x] T30 默认时间范围改为「今日」
+- [x] T31 移除 `/usage` 路由，改为 HomePage 内 `?view=usage` 组件切换（对齐设置页 `?section=` 模式）
+- [x] T32 图表优化：关闭 recharts `accessibilityLayer`（焦点黄框），Tooltip cursor 主题化
+- [x] T33 主题兼容：usage 组件与全部表格改用 `--color-theme-*` Token（含行 hover）
+- [x] T34 测试更新：HomeLeftSideBar / HomePage 导航测试、paths 环境变量测试、hook 默认范围断言

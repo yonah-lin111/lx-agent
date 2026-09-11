@@ -47,12 +47,15 @@ export const UsageTokenCompositionChart = ({
     >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <PieChart accessibilityLayer={false}>
             <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Pie data={data} dataKey="value" nameKey="name" outerRadius={82} stroke="none">
               {data.map((item, index) => (
-                <Cell key={item.name} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />
+                <Cell
+                  key={item.name}
+                  fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]}
+                />
               ))}
             </Pie>
           </PieChart>

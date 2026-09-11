@@ -58,7 +58,9 @@ export const UsageTrendChart = ({
   const hasData = series.some((point) => point.requestCount > 0)
 
   const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>
-    entry.dataKey === "cost" ? formatUsd(Number(entry.value ?? 0)) : formatNumber(Number(entry.value ?? 0))
+    entry.dataKey === "cost"
+      ? formatUsd(Number(entry.value ?? 0))
+      : formatNumber(Number(entry.value ?? 0))
 
   return (
     <UsageChartCard
@@ -69,7 +71,11 @@ export const UsageTrendChart = ({
     >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+          <AreaChart
+            accessibilityLayer={false}
+            data={data}
+            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="usageFreshInput" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={USAGE_CHART_COLORS.freshInput} stopOpacity={0.25} />
@@ -116,7 +122,10 @@ export const UsageTrendChart = ({
               tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
               tickFormatter={(value: number) => formatUsd(value, 2)}
             />
-            <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
+            <Tooltip
+              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              cursor={{ stroke: "var(--color-theme-border-strong)", strokeDasharray: "3 3" }}
+            />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Area
               yAxisId="tokens"

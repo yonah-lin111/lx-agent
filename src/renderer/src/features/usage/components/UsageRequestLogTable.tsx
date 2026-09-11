@@ -57,9 +57,7 @@ export const UsageRequestLogTable = ({
                 <th className="px-3 py-2 font-medium">{t("usage.columns.model")}</th>
                 <th className="px-3 py-2 text-right font-medium">{t("usage.columns.input")}</th>
                 <th className="px-3 py-2 text-right font-medium">{t("usage.columns.output")}</th>
-                <th className="px-3 py-2 text-right font-medium">
-                  {t("usage.columns.cacheRead")}
-                </th>
+                <th className="px-3 py-2 text-right font-medium">{t("usage.columns.cacheRead")}</th>
                 <th className="px-3 py-2 text-right font-medium">
                   {t("usage.columns.cacheWrite")}
                 </th>
@@ -82,7 +80,7 @@ export const UsageRequestLogTable = ({
                 rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-[var(--color-theme-border)] last:border-b-0 hover:bg-white/[0.02]"
+                    className="border-b border-[var(--color-theme-border)] last:border-b-0 hover:bg-[var(--color-theme-surface-hover)]"
                   >
                     <td className="whitespace-nowrap px-3 py-2 text-[var(--color-theme-text-muted)]">
                       {formatDateTime(row.createdAt)}

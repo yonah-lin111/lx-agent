@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { ensureDatabaseDir } from "@/paths"
+import { ensureDatabaseDir, getAppDataRoot } from "@/paths"
 
 // 测试临时目录。
 let temporaryDir: string | null = null
@@ -13,6 +13,20 @@ afterEach(() => {
   }
 
   temporaryDir = null
+})
+
+describe("getAppDataRoot", () => {
+  it("支持通过环境变量覆盖应用数据根目录（测试隔离）", () => {
+    const previous = process.env.LX_AGENT_DATA_ROOT
+    const override = join(tmpdir(), "lx-agent-root-override")
+    process.env.LX_AGENT_DATA_ROOT = override
+
+    try {
+      expect(getAppDataRoot()).toBe(override)
+    } finally {
+      process.env.LX_AGENT_DATA_ROOT = previous
+    }
+  })
 })
 
 describe("ensureDatabaseDir", () => {

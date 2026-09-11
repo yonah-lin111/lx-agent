@@ -74,6 +74,7 @@ describe("useUsageData", () => {
     })
 
     expect(result.current.summary).toEqual(summary)
+    expect(result.current.range).toBe("today")
     expect(result.current.error).toBeNull()
     expect(usageMock.getSummary).toHaveBeenCalledTimes(1)
     expect(usageMock.onLogRecorded).toHaveBeenCalledTimes(1)

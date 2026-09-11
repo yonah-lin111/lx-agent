@@ -3,18 +3,18 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { HomeLeftSideBar } from "@/pages/home/components/HomeLeftSideBar"
 
-const { mockNavigate, mockLocation } = vi.hoisted(() => ({
+const { mockNavigate, mockParams } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
-  mockLocation: { pathname: "/" },
+  mockParams: { value: new URLSearchParams() },
 }))
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => mockLocation,
+  useSearchParams: () => [mockParams.value],
 }))
 
 beforeEach(() => {
-  mockLocation.pathname = "/"
+  mockParams.value = new URLSearchParams()
 })
 
 afterEach(() => {
@@ -23,7 +23,7 @@ afterEach(() => {
 })
 
 describe("HomeLeftSideBar", () => {
-  it("展开模式下渲染概览与用量两个导航项，并按 pathname 高亮", () => {
+  it("展开模式下渲染概览与用量两个导航项，并按 view 查询参数高亮", () => {
     render(<HomeLeftSideBar isCollapsed={false} />)
 
     const overviewItem = screen.getByRole("button", { name: /overview|概览/i })
@@ -32,17 +32,20 @@ describe("HomeLeftSideBar", () => {
     expect(usageItem.getAttribute("aria-current")).toBeNull()
 
     fireEvent.click(usageItem)
-    expect(mockNavigate).toHaveBeenCalledWith("/usage")
+    expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")
   })
 
-  it("pathname 为 /usage 时高亮用量项", () => {
-    mockLocation.pathname = "/usage"
+  it("view=usage 时高亮用量项，点击概览回到根路径", () => {
+    mockParams.value = new URLSearchParams("view=usage")
     render(<HomeLeftSideBar isCollapsed={false} />)
 
     const overviewItem = screen.getByRole("button", { name: /overview|概览/i })
     const usageItem = screen.getByRole("button", { name: /usage|用量统计/i })
     expect(usageItem.getAttribute("aria-current")).toBe("page")
     expect(overviewItem.getAttribute("aria-current")).toBeNull()
+
+    fireEvent.click(overviewItem)
+    expect(mockNavigate).toHaveBeenCalledWith("/")
   })
 
   it("折叠模式下退化为图标按钮并保留可访问名称", () => {
@@ -54,6 +57,6 @@ describe("HomeLeftSideBar", () => {
     expect(usageButton.getAttribute("aria-current")).toBeNull()
 
     fireEvent.click(usageButton)
-    expect(mockNavigate).toHaveBeenCalledWith("/usage")
+    expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")
   })
 })

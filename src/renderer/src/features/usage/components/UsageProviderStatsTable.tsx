@@ -42,7 +42,7 @@ export const UsageProviderStatsTable = ({
               providerStats.map((stat) => (
                 <tr
                   key={stat.provider}
-                  className="border-b border-[var(--color-theme-border)] last:border-b-0 hover:bg-white/[0.02]"
+                  className="border-b border-[var(--color-theme-border)] last:border-b-0 hover:bg-[var(--color-theme-surface-hover)]"
                 >
                   <td className="max-w-[220px] truncate px-3 py-2">{stat.provider}</td>
                   <td className="px-3 py-2 text-right tabular-nums">

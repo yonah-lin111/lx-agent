@@ -33,14 +33,12 @@ export const UsageProviderDistributionChart = ({
   const hasPricing = providerStats.some((stat) => stat.totalCostUsd !== null)
   const data = useMemo(
     () =>
-      providerStats
-        .slice(0, MAX_PROVIDERS)
-        .map((stat) => ({
-          provider: stat.provider,
-          cost: stat.totalCostUsd ?? 0,
-          tokens: stat.totalTokens,
-          totalCost: stat.totalCostUsd,
-        })),
+      providerStats.slice(0, MAX_PROVIDERS).map((stat) => ({
+        provider: stat.provider,
+        cost: stat.totalCostUsd ?? 0,
+        tokens: stat.totalTokens,
+        totalCost: stat.totalCostUsd,
+      })),
     [providerStats],
   )
 
@@ -57,7 +55,7 @@ export const UsageProviderDistributionChart = ({
     >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <PieChart accessibilityLayer={false}>
             <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Pie

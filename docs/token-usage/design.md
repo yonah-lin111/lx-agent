@@ -8,7 +8,8 @@
 
 - 每次模型请求（AI SDK step）落一条 usage 日志：provider/model/token/成本/耗时/状态。
 - 模型配置支持手动填写单价（USD / 百万 token），成本在写入时计算并快照。
-- `/usage` 页面：汇总卡 + 5 图 + 3 表（请求日志 / 模型统计 / Provider 统计），支持时间范围、Provider、Model、Project 筛选。
+- 主页用量统计视图（`?view=usage` 组件切换）：汇总卡 + 5 图 + 3 表（请求日志 / 模型统计 / Provider 统计），支持时间范围、Provider、Model、Project 筛选。
+- 默认时间范围为「今日」。
 - 日志写入后通过 IPC 事件推送，页面实时刷新。
 
 ### 非目标
@@ -210,26 +211,34 @@ features/usage/
     UsageTokenCompositionChart.tsx     # input/output/cacheRead/cacheWrite 构成
     UsageFilters.tsx           # 时间预设 + Provider/Model/Project 级联
   types.ts / utils.ts / index.ts
-pages/usage/index.tsx          # 页面组合（仿 HomePage 卡片壳）
 ```
 
 - 图表库：`recharts@^3.5.1`（与 cc-switch 一致，支持 React 19）。
 - 所有样式使用 CSS Token（`--color-theme-*` 等），圆角 6px，禁止渐变。
 - 全部文案接入 `useTranslation`，`zh.ts` / `en.ts` 同步新增 `usage.*` 键。
 
-## 7. 路由与侧栏
+## 7. 导航与侧栏（组件内切换，不新增路由）
 
-- `PAGE_ROUTES.usage = "/usage"`；`PageRouter` 挂载 `UsagePage`。
-- `App.tsx` 侧栏条件扩展为 `pathname === home || pathname === usage` 时渲染 `HomeLeftSideBar`。
-- `HomeLeftSideBar` 两项（概览 / 用量统计），激活态由 `pathname` 驱动；折叠态两个图标按钮；禁止使用原生 `title`（已有 Tooltip 约定）。
+对齐设置页 `?section=` 模式，用量统计是主页内的组件切换，不注册独立路由：
 
-## 8. 计价配置 UI
+- `HomePage` 读取 `?view=`（`lib/homeView.ts` 解析，缺省 `overview`），渲染 `OverviewDashboard` 或 `UsageDashboard`。
+- `HomeLeftSideBar` 两项（概览 / 用量统计），点击导航 `/` 或 `/?view=usage`，激活态由 `view` 查询参数驱动；折叠态两个图标按钮；禁止使用原生 `title`（已有 Tooltip 约定）。
+- 不新增 `PAGE_ROUTES`，`App.tsx` 侧栏条件保持 `pathname === home`。
+
+## 8. 主题兼容
+
+- 所有卡片、表格、按钮、图表坐标轴/网格/hover cursor 一律使用 `--color-theme-*` Token，禁止硬编码白色透明度或固定底色。
+- 表格行 hover 使用 `--color-theme-surface-hover`；表头与边框使用 `--color-theme-border` / `--color-theme-text-muted`。
+- recharts 关闭 `accessibilityLayer`（避免焦点黄框），Tooltip cursor 使用主题边框色。
+- 测试期间通过 `LX_AGENT_DATA_ROOT` 将应用数据根目录隔离到临时目录，禁止测试写入真实 `~/.lx`。
+
+## 9. 计价配置 UI
 
 - `ModelProviderModel` 增加 `pricing?: { input; output; cacheRead; cacheWrite }`（USD / 百万 token）。
 - `ModelProviderSettings.tsx` 模型卡展开区新增 4 个数字输入（与 context/output 同网格），空值 = 不参与成本计算。
 - 设置保存沿用现有 `settingsService` 流程，无数据库迁移。
 
-## 9. 测试策略
+## 10. 测试策略
 
 - `test/shared/contracts/usage.test.ts`：`computeUsageRates`（含 clamp、未配置、四段成本求和）、`resolveUsageRange`。
 - `test/main/services/usageLogService.test.ts`：内存 SQLite 迁移后记录/查询/聚合/筛选/分页；未配置价格成本为 null。
@@ -237,7 +246,7 @@ pages/usage/index.tsx          # 页面组合（仿 HomePage 卡片壳）
 - `test/renderer/features/usage/`：格式化工具、汇总卡、表格空态/数据态、筛选联动 hook。
 - 验证命令：`pnpm test`（受影响文件）、`pnpm typecheck`、`pnpm lint`。
 
-## 10. 风险与取舍
+## 11. 风险与取舍
 
 - 标题 / 建议问题的调用链无 sessionId，此类日志不参与 Project 筛选。
 - 成本使用 SQLite REAL 存储；展示保留 4~6 位小数，不做货币精度审计。

@@ -45,7 +45,11 @@ export const UsageRequestsChart = ({
     >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+          <BarChart
+            accessibilityLayer={false}
+            data={data}
+            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+          >
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
@@ -65,7 +69,10 @@ export const UsageRequestsChart = ({
               tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
               tickFormatter={(value: number) => formatCompact(value)}
             />
-            <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
+            <Tooltip
+              content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
+              cursor={{ fill: "var(--color-theme-border)", fillOpacity: 0.35 }}
+            />
             <Bar
               dataKey="requests"
               name={t("usage.summary.requests")}

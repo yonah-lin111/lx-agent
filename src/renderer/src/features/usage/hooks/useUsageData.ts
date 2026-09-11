@@ -47,7 +47,7 @@ export interface UseUsageDataResult {
  * 管理用量统计的筛选、分页、聚合查询与日志写入事件刷新。
  */
 export const useUsageData = (): UseUsageDataResult => {
-  const [range, setRangeState] = useState<UsageTimeRange>("7d")
+  const [range, setRangeState] = useState<UsageTimeRange>("today")
   const [provider, setProviderState] = useState<string | undefined>(undefined)
   const [model, setModelState] = useState<string | undefined>(undefined)
   const [projectId, setProjectIdState] = useState<string | undefined>(undefined)

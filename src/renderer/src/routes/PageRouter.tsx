@@ -6,7 +6,6 @@ import { OpenClawPage } from "@/pages/openclaw"
 import { ProjectPage } from "@/pages/project"
 import { SettingsPage } from "@/pages/settings"
 import { UiPreviewPage } from "@/pages/ui"
-import { UsagePage } from "@/pages/usage"
 
 /**
  * 声明业务页面路由。
@@ -14,7 +13,6 @@ import { UsagePage } from "@/pages/usage"
 export const PageRouter = (): React.JSX.Element => (
   <Routes>
     <Route path={PAGE_ROUTES.home} element={<HomePage />} />
-    <Route path={PAGE_ROUTES.usage} element={<UsagePage />} />
     <Route path={PAGE_ROUTES.project} element={<ProjectPage />} />
     <Route path={PAGE_ROUTES.settings} element={<SettingsPage />} />
     <Route path={PAGE_ROUTES.ui} element={<UiPreviewPage />} />
