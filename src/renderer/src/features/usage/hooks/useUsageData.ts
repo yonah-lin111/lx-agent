@@ -35,11 +35,14 @@ export interface UseUsageDataResult {
   logPage: UsageLogPage | null
   isLoading: boolean
   error: string | null
+  // 自动刷新间隔毫秒（0 = 关闭）。
+  refreshIntervalMs: number
   setRange: (range: UsageTimeRange) => void
   setProvider: (provider?: string) => void
   setModel: (model?: string) => void
   setProjectId: (projectId?: string) => void
   setPage: (page: number) => void
+  setRefreshIntervalMs: (intervalMs: number) => void
   refresh: () => void
 }
 
@@ -60,6 +63,7 @@ export const useUsageData = (): UseUsageDataResult => {
   const [logPage, setLogPage] = useState<UsageLogPage | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshIntervalMs, setRefreshIntervalMs] = useState<number>(0)
   const requestIdRef = useRef(0)
 
   const rangeBounds = useMemo(() => resolveUsageRange(range), [range])
@@ -126,6 +130,15 @@ export const useUsageData = (): UseUsageDataResult => {
     }
   }, [load])
 
+  // 自动刷新：间隔 > 0 时定时重载当前视图（0 = 关闭）。
+  useEffect(() => {
+    if (refreshIntervalMs <= 0) return
+    const timer = window.setInterval(() => {
+      void load(queryRef.current, pageRef.current)
+    }, refreshIntervalMs)
+    return () => window.clearInterval(timer)
+  }, [refreshIntervalMs, load])
+
   // 筛选变化重置页码；切换 Provider 时级联清空模型。
   const setRange = useCallback((next: UsageTimeRange): void => {
     setRangeState(next)
@@ -165,11 +178,13 @@ export const useUsageData = (): UseUsageDataResult => {
     logPage,
     isLoading,
     error,
+    refreshIntervalMs,
     setRange,
     setProvider,
     setModel,
     setProjectId,
     setPage,
+    setRefreshIntervalMs,
     refresh,
   }
 }

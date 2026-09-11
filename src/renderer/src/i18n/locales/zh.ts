@@ -129,6 +129,9 @@ export const zh: TranslationDictionary = {
     title: "用量统计",
     subtitle: "模型调用的 Token、成本与请求明细",
     refresh: "刷新",
+    autoRefresh: {
+      off: "关闭",
+    },
     allProviders: "全部 Provider",
     allModels: "全部模型",
     allProjects: "全部项目",

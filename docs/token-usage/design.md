@@ -209,7 +209,7 @@ features/usage/
     UsageModelDistributionChart.tsx   # Top N 横向条形（成本）
     UsageProviderDistributionChart.tsx # 环形（成本）
     UsageTokenCompositionChart.tsx     # input/output/cacheRead/cacheWrite 构成
-    UsageFilters.tsx           # 时间预设 + Provider/Model/Project 级联
+    UsageFilters.tsx           # 时间预设 + Provider/Model/Project 级联 + 自动刷新（默认关闭，5s/10s/30s）
   types.ts / utils.ts / index.ts
 ```
 
@@ -230,6 +230,8 @@ features/usage/
 - 所有卡片、表格、按钮、图表坐标轴/网格/hover cursor 一律使用 `--color-theme-*` Token，禁止硬编码白色透明度或固定底色。
 - 表格行 hover 使用 `--color-theme-surface-hover`；表头与边框使用 `--color-theme-border` / `--color-theme-text-muted`。
 - recharts 关闭 `accessibilityLayer`（避免焦点黄框），Tooltip cursor 使用主题边框色。
+- 用量卡片/表格挂 `usage-stat-card` / `usage-chart-card` / `usage-table-card` / `usage-table` / `usage-chart-tooltip` 类，与 `overview-*` 共用我的世界主题浮雕规则组。
+- 自动刷新默认关闭（0ms），可选 5s / 10s / 30s；手动刷新按钮不因加载中禁用。
 - 测试期间通过 `LX_AGENT_DATA_ROOT` 将应用数据根目录隔离到临时目录，禁止测试写入真实 `~/.lx`。
 
 ## 9. 计价配置 UI

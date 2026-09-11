@@ -70,3 +70,9 @@
 - [x] T32 图表优化：关闭 recharts `accessibilityLayer`（焦点黄框），Tooltip cursor 主题化
 - [x] T33 主题兼容：usage 组件与全部表格改用 `--color-theme-*` Token（含行 hover）
 - [x] T34 测试更新：HomeLeftSideBar / HomePage 导航测试、paths 环境变量测试、hook 默认范围断言
+
+## 阶段 9：二次反馈修复
+
+- [x] T35 修复手动刷新按钮（加载中不再禁用，点击必触发重载）
+- [x] T36 自动刷新功能：默认关闭，可选 5s / 10s / 30s
+- [x] T37 我的世界主题：用量卡片与全部表格浮雕样式（复用 overview-* 规则组）

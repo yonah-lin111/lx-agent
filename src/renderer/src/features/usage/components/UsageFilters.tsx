@@ -12,14 +12,19 @@ export interface UsageFiltersProps {
   projectId?: string
   filterOptions: UsageFilterOptions
   isLoading: boolean
+  refreshIntervalMs: number
   onRangeChange: (range: UsageTimeRange) => void
   onProviderChange: (provider?: string) => void
   onModelChange: (model?: string) => void
   onProjectChange: (projectId?: string) => void
+  onRefreshIntervalChange: (intervalMs: number) => void
   onRefresh: () => void
 }
 
 const ALL_VALUE = "__all__"
+
+// 自动刷新间隔选项（毫秒，0 = 关闭）。
+const REFRESH_INTERVAL_OPTIONS_MS = [0, 5000, 10000, 30000] as const
 
 /**
  * 用量页筛选栏：时间预设、Provider / Model / 项目级联筛选与手动刷新。
@@ -31,10 +36,12 @@ export const UsageFilters = ({
   projectId,
   filterOptions,
   isLoading,
+  refreshIntervalMs,
   onRangeChange,
   onProviderChange,
   onModelChange,
   onProjectChange,
+  onRefreshIntervalChange,
   onRefresh,
 }: UsageFiltersProps): React.JSX.Element => {
   const { t } = useTranslation()
@@ -46,6 +53,15 @@ export const UsageFilters = ({
       { value: "30d", label: t("usage.timeRange.30d") },
       { value: "all", label: t("usage.timeRange.all") },
     ],
+    [t],
+  )
+
+  const refreshIntervalOptions: LxSelectOption<string>[] = useMemo(
+    () =>
+      REFRESH_INTERVAL_OPTIONS_MS.map((ms) => ({
+        value: String(ms),
+        label: ms === 0 ? t("usage.autoRefresh.off") : `${ms / 1000}s`,
+      })),
     [t],
   )
 
@@ -102,11 +118,19 @@ export const UsageFilters = ({
           onChange={(value) => onProjectChange(value === ALL_VALUE ? undefined : value)}
         />
       </div>
+      <div className="w-28 shrink-0">
+        <LxSelect
+          size="small"
+          value={String(refreshIntervalMs)}
+          options={refreshIntervalOptions}
+          onChange={(value) => onRefreshIntervalChange(Number(value))}
+        />
+      </div>
       <LxIconButton
         size="small"
         aria-label={t("usage.refresh")}
+        aria-busy={isLoading}
         title={{ content: t("usage.refresh"), placement: "top" }}
-        disabled={isLoading}
         onClick={onRefresh}
       >
         <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />

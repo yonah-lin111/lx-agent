@@ -43,7 +43,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
       {cards.map((card) => (
         <div
           key={card.title}
-          className="flex min-w-0 flex-col gap-1 rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3"
+          className="usage-stat-card flex min-w-0 flex-col gap-1 rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3"
         >
           <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
             {card.title}

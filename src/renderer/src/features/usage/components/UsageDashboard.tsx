@@ -52,10 +52,12 @@ export const UsageDashboard = (): React.JSX.Element => {
           projectId={usage.projectId}
           filterOptions={usage.filterOptions}
           isLoading={usage.isLoading}
+          refreshIntervalMs={usage.refreshIntervalMs}
           onRangeChange={usage.setRange}
           onProviderChange={usage.setProvider}
           onModelChange={usage.setModel}
           onProjectChange={usage.setProjectId}
+          onRefreshIntervalChange={usage.setRefreshIntervalMs}
           onRefresh={usage.refresh}
         />
       </div>

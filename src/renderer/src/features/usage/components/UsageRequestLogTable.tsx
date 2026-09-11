@@ -46,9 +46,9 @@ export const UsageRequestLogTable = ({
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <div className="overflow-hidden rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)]">
+      <div className="usage-table-card overflow-hidden rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)]">
         <div className="custom-scrollbar overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-xs">
+          <table className="usage-table w-full min-w-[860px] border-collapse text-xs">
             <thead>
               <tr className="border-b border-[var(--color-theme-border)] text-left text-[var(--color-theme-text-muted)]">
                 <th className="px-3 py-2 font-medium">{t("usage.columns.time")}</th>

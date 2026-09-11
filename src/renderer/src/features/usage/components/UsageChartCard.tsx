@@ -20,7 +20,7 @@ export const UsageChartCard = ({
   height = 240,
   children,
 }: UsageChartCardProps): React.JSX.Element => (
-  <div className="flex min-w-0 flex-col rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3">
+  <div className="usage-chart-card flex min-w-0 flex-col rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3">
     <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
       <h3 className="truncate text-xs font-semibold text-[var(--color-theme-text)]">{title}</h3>
       {subtitle ? (

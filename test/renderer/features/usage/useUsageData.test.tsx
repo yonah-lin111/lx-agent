@@ -142,4 +142,37 @@ describe("useUsageData", () => {
       { timeout: 2500 },
     )
   })
+
+  it("开启自动刷新后按间隔拉取，关闭后停止", async () => {
+    vi.useFakeTimers()
+    try {
+      const { result, unmount } = renderHook(() => useUsageData())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(usageMock.getSummary).toHaveBeenCalledTimes(1)
+      expect(result.current.refreshIntervalMs).toBe(0)
+
+      act(() => {
+        result.current.setRefreshIntervalMs(5000)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+      expect(usageMock.getSummary.mock.calls.length).toBeGreaterThanOrEqual(2)
+
+      act(() => {
+        result.current.setRefreshIntervalMs(0)
+      })
+      const callsAfterStop = usageMock.getSummary.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(usageMock.getSummary.mock.calls.length).toBe(callsAfterStop)
+
+      unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

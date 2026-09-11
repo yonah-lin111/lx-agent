@@ -25,7 +25,7 @@ export const UsageChartTooltip = ({
   if (!active || !payload || payload.length === 0) return null
 
   return (
-    <div className="rounded-[6px] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] p-2 shadow-lg">
+    <div className="usage-chart-tooltip rounded-[6px] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] p-2 shadow-lg">
       {label !== undefined ? (
         <p className="mb-1 text-[11px] font-medium text-[var(--color-theme-text)]">{label}</p>
       ) : null}

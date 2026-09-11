@@ -127,6 +127,9 @@ export const en = {
     title: "Usage",
     subtitle: "Token, cost and request details of model calls",
     refresh: "Refresh",
+    autoRefresh: {
+      off: "Off",
+    },
     allProviders: "All Providers",
     allModels: "All Models",
     allProjects: "All Projects",
