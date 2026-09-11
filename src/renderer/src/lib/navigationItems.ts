@@ -24,6 +24,7 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
     path: PAGE_ROUTES.project,
     breadcrumbCategory: "PROJECT",
   },
+
   {
     icon: Palette,
     labelKey: "nav.design",
@@ -32,18 +33,18 @@ export const PRIMARY_NAVIGATION_ITEMS: Array<{
     breadcrumbCategory: "DESIGN",
   },
   {
-    icon: Component,
-    labelKey: "nav.ui",
-    label: "UI Preview",
-    path: PAGE_ROUTES.ui,
-    breadcrumbCategory: "UI",
-  },
-  {
     icon: Bot,
     labelKey: "nav.openclaw",
     label: "OpenClaw",
     path: PAGE_ROUTES.openclaw,
     breadcrumbCategory: "OPENCLAW",
+  },
+  {
+    icon: Component,
+    labelKey: "nav.ui",
+    label: "UI Preview",
+    path: PAGE_ROUTES.ui,
+    breadcrumbCategory: "UI",
   },
   {
     icon: Settings,
