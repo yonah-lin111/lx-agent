@@ -2,7 +2,7 @@
 
 本文档定义 LX Agent 的全部工具能力契约、装配机制、MCP 协议集成、Skill 指令包及系统提示词装配规范。
 
-架构总览见 [architecture.md](./architecture.md)；安全门控见 [permissions.md](./permissions.md)；运行时管理见 [runtime.md](./runtime.md)。
+架构总览见 [architecture.md](./architecture.md)；安全门控见 [permissions.md](./permissions.md)；运行时管理见 [runtime.md](./runtime.md)；生命周期钩子见 [hooks.md](./hooks.md)。
 
 ---
 
@@ -129,3 +129,9 @@ Skill 作为领域级指令包，遵循标准 Markdown 组织格式并具备扩�
   - **`$` 专属技能面板**：纯 Skill 快速检索与补全入口；
   - 均无缝支持光标跟随定位、键盘上下方向键导航与快捷回车补全。
 - 全量文案统一接入国际化字典（`agent.skillMention`），无硬编码与原生 title 属性。
+
+---
+
+## 6. 生命周期钩子（Hooks）
+
+工具执行前后的治理扩展点（`PreToolUse` / `PostToolUse` / `PermissionRequest`）以及会话、压缩、子代理等生命周期事件，统一由用户级 hook 体系提供。配置 schema、线协议、失败语义与事件矩阵见 [hooks.md](./hooks.md)。

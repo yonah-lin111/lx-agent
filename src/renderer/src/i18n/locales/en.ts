@@ -903,6 +903,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     kindCompaction: "Compaction",
     kindUndo: "Undo",
     kindModelSwitch: "Model",
+    kindHook: "Hook",
     kindAssistant: "Assistant",
     kindError: "Error",
     initialModel: "Initial Model",

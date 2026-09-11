@@ -885,6 +885,7 @@ export const zh: TranslationDictionary = {
     kindCompaction: "压缩",
     kindUndo: "撤销",
     kindModelSwitch: "模型",
+    kindHook: "钩子",
     kindAssistant: "回复",
     kindError: "异常",
     initialModel: "初始模型",

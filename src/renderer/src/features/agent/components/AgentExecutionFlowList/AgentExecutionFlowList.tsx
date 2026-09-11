@@ -312,6 +312,7 @@ export const AgentExecutionFlowList = forwardRef<
         step.kind === "user" ||
         step.kind === "compaction" ||
         step.kind === "modelSwitch" ||
+        step.kind === "hook" ||
         step.kind === "error" ||
         step.kind === "subagent" ||
         step.kind === "proposedPlan" ||
@@ -741,6 +742,7 @@ export const AgentExecutionFlowList = forwardRef<
         undo: 0,
         assistant: 0,
         modelSwitch: 0,
+        hook: 0,
         proposedPlan: 0,
         reviewFindings: 0,
         frontDesign: 0,

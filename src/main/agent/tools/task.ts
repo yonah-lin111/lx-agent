@@ -11,6 +11,7 @@ import type {
 import { z } from "zod"
 import { Agent } from "../core/agent"
 import type { AgentTool, BeforeToolCallContext, BeforeToolCallResult, Model } from "../core/types"
+import { hookResultMessages, hooksManager } from "../hooks"
 import { spillManager } from "../spill/spillManager"
 import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
 import { DEFAULT_MAX_BYTES, truncateTail } from "./truncate"
@@ -97,6 +98,8 @@ export interface TaskToolDeps {
   recordChildCall: (parentToolCallId: string, child: ChildCallInput) => void
   // 可选当前会话 ID
   getSessionId?: () => string | null
+  // 可选当前会话 cwd（Subagent hook 的 LX_CWD）。
+  getCwd?: () => string | undefined
 }
 
 // 子代理最终文本有界化：未超限原样返回；超限截断 + 完整内容写 spill 文件。
@@ -325,14 +328,48 @@ export const createTaskTool = (
       // 父 run abort → 子代理级联中止。
       const onAbort = (): void => subAgent.abort()
       signal?.addEventListener("abort", onAbort, { once: true })
+
+      // SubagentStart hook：additionalContext 仅注入子代理自身上下文。
+      const hookSessionId = deps.getSessionId?.() ?? null
+      const hookCwd = deps.getCwd?.() ?? process.cwd()
+      const startHookMessages = hookResultMessages(
+        await hooksManager.dispatch({
+          event: "SubagentStart",
+          sessionId: hookSessionId,
+          cwd: hookCwd,
+          payload: { agent_id: subagentId, agent_type: subagentName, task: params.prompt },
+        }),
+      )
+
       try {
-        await subAgent.prompt(params.prompt)
+        const userMessage: AgentMessage = {
+          role: "user",
+          content: params.prompt,
+          timestamp: Date.now(),
+        }
+        await subAgent.prompt(
+          startHookMessages.length > 0 ? [...startHookMessages, userMessage] : userMessage,
+        )
       } finally {
         unsubscribe()
         signal?.removeEventListener("abort", onAbort)
       }
 
       const { text, error } = extractSubagentResult(subAgent.state.messages, startIndex)
+
+      // SubagentStop hook：成功/失败/中止状态审计；消息仅进入子代理自身历史（面板展示）。
+      const subagentStatus = signal?.aborted ? "aborted" : error ? "error" : "done"
+      const stopHookMessages = hookResultMessages(
+        await hooksManager.dispatch({
+          event: "SubagentStop",
+          sessionId: hookSessionId,
+          cwd: hookCwd,
+          payload: { agent_id: subagentId, agent_type: subagentName, status: subagentStatus },
+        }),
+      )
+      if (stopHookMessages.length > 0) {
+        subAgent.state.messages.push(...stopHookMessages)
+      }
 
       // 子代理产出最终结论，回传结构化通信信元
       communications.push({

@@ -1,5 +1,6 @@
 import type {
   CollaborationMode,
+  HookContextMessage,
   PermissionDecision,
   PermissionMode,
   PermissionRequest,
@@ -11,6 +12,7 @@ import { normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
 import { guardianEvaluator } from "@/agent/guard/guardianEvaluator"
+import { firstPermissionDecision, hookResultMessages, hooksManager } from "@/agent/hooks"
 import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
@@ -333,7 +335,7 @@ class PermissionManager {
     context: BeforeToolCallContext,
     sessionId: string | null,
     signal?: AbortSignal,
-    options?: { collaborationMode?: CollaborationMode },
+    options?: { collaborationMode?: CollaborationMode; cwd?: string },
   ): Promise<BeforeToolCallResult | undefined> {
     const toolName = context.toolCall.name
     const args = context.args
@@ -424,8 +426,38 @@ class PermissionManager {
       return { block: true, reason: DENY_RULE_REASON }
     }
 
+    // PermissionRequest hook：仅在系统结论为 ask 且配置了 PermissionRequest hook 时异步介入；
+    // 无 hook 时保持旧链路的同步行为（立即挂起审批 UI）。
+    let hookMessages: HookContextMessage[] = []
+    if (this.hasPermissionRequestHooks(sessionId)) {
+      const hookOutcome = await this.dispatchPermissionRequest(
+        toolName,
+        args,
+        sessionId,
+        options?.cwd,
+      )
+      hookMessages = hookOutcome.messages
+      if (hookOutcome.decision === "allow") {
+        // 仅本次生效：不写永久规则、不写会话白名单/allowAll。
+        return hookMessages.length > 0 ? { hookMessages } : undefined
+      }
+      if (hookOutcome.decision === "deny") {
+        return {
+          block: true,
+          reason: hookOutcome.reason || "Action denied by hook.",
+          ...(hookMessages.length > 0 ? { hookMessages } : {}),
+        }
+      }
+    }
+
     // 无推送目标（未接线）时按拒绝处理（fail-safe）。
-    if (!this.sendRequest) return { block: true, reason: USER_DENY_REASON }
+    if (!this.sendRequest) {
+      return {
+        block: true,
+        reason: USER_DENY_REASON,
+        ...(hookMessages.length > 0 ? { hookMessages } : {}),
+      }
+    }
 
     const requestId = `${sessionId ?? "global"}:${context.toolCall.id}:${++this.requestSequence}`
     const outcome = await new Promise<PermissionDecision & { prefix?: string }>((resolve) => {
@@ -456,7 +488,13 @@ class PermissionManager {
       })
     })
 
-    if (outcome.decision === "deny") return { block: true, reason: USER_DENY_REASON }
+    if (outcome.decision === "deny") {
+      return {
+        block: true,
+        reason: USER_DENY_REASON,
+        ...(hookMessages.length > 0 ? { hookMessages } : {}),
+      }
+    }
     if (outcome.allowAll && sessionId) {
       this.sessionAllowAll.add(sessionId)
     } else if (outcome.rememberForSession && sessionId) {
@@ -464,7 +502,50 @@ class PermissionManager {
     } else if (outcome.prefix && sessionId) {
       this.allowPrefixForSession(sessionId, outcome.prefix)
     }
-    return undefined
+    return hookMessages.length > 0 ? { hookMessages } : undefined
+  }
+
+  // 是否存在生效的 PermissionRequest hook（无则保持审批链路的同步行为）。
+  private hasPermissionRequestHooks(sessionId: string | null): boolean {
+    try {
+      return hooksManager.getHooks(sessionId).some((hook) => hook.event === "PermissionRequest")
+    } catch {
+      return false
+    }
+  }
+
+  // 派发 PermissionRequest hook（失败 fail-open：回落 UI，绝不自动放行）。
+  private async dispatchPermissionRequest(
+    toolName: string,
+    args: unknown,
+    sessionId: string | null,
+    cwd?: string,
+  ): Promise<{ decision?: "allow" | "deny"; reason?: string; messages: HookContextMessage[] }> {
+    try {
+      const result = await hooksManager.dispatch({
+        event: "PermissionRequest",
+        sessionId,
+        cwd: cwd ?? process.cwd(),
+        permissionMode: this.settings.defaultMode,
+        toolName,
+        payload: {
+          tool_name: toolName,
+          tool_input: args,
+        },
+      })
+      const decision = firstPermissionDecision(result)
+      return {
+        ...(decision
+          ? {
+              decision: decision.decision,
+              ...(decision.reason ? { reason: decision.reason } : {}),
+            }
+          : {}),
+        messages: hookResultMessages(result),
+      }
+    } catch {
+      return { messages: [] }
+    }
   }
 
   /**

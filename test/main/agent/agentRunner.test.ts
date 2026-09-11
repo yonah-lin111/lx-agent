@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
   AgentEvent,
+  AgentMessage,
   AssistantMessage,
   StopReason,
   ToolResultMessage,
@@ -936,5 +937,322 @@ describe("agentRunner 持久化", () => {
     } finally {
       rmSync(srcFileDir, { recursive: true, force: true })
     }
+  })
+
+  describe("hooks 工具事件", () => {
+    const writeHookConfig = (hooks: Record<string, unknown>): void => {
+      writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+    }
+    const hookJson = (output: unknown): string => `printf '%s' '${JSON.stringify(output)}'`
+    const readMessagePayloads = (sessionId: string): AgentMessage[] =>
+      (
+        holder
+          .db!.prepare(
+            "SELECT payload FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+          )
+          .all(sessionId) as Array<{ payload: string }>
+      ).map((entry) => JSON.parse(entry.payload) as AgentMessage)
+
+    it("PreToolUse block：工具不执行、原因作为错误结果回灌、hook 消息紧随工具结果", async () => {
+      writeHookConfig({
+        PreToolUse: [
+          {
+            matcher: "write",
+            hooks: [{ name: "block-write", command: 'echo "write is forbidden" >&2; exit 2' }],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "write", { path: "blocked.txt", content: "x\n" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "blocked handled" }]),
+      ]
+      const result = await agentRunner.send("block write", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      // 工具未执行：目标文件不存在。
+      expect(existsSync(join(tmpDir, "blocked.txt"))).toBe(false)
+
+      const messages = readMessagePayloads(result.sessionId)
+      expect(messages.map((message) => message.role)).toEqual([
+        "user",
+        "assistant",
+        "toolResult",
+        "hookContext",
+        "assistant",
+      ])
+      const toolResult = messages[2] as ToolResultMessage
+      expect(toolResult.isError).toBe(true)
+      expect(toolResultText(toolResult)).toContain("write is forbidden")
+      expect(messages[3]).toMatchObject({
+        role: "hookContext",
+        event: "PreToolUse",
+        hookName: "block-write",
+        status: "blocked",
+        text: "write is forbidden",
+      })
+
+      const calls = holder
+        .db!.prepare("SELECT name, status FROM agent_call WHERE session_id = ?")
+        .all(result.sessionId) as Array<{ name: string; status: string }>
+      expect(calls).toEqual([{ name: "write", status: "error" }])
+    })
+
+    it("PreToolUse / PostToolUse additionalContext 紧跟工具结果（Pre 在前、Post 在后）", async () => {
+      writeHookConfig({
+        PreToolUse: [
+          {
+            matcher: "time",
+            hooks: [
+              {
+                name: "pre-ctx",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "PreToolUse",
+                    additionalContext: "pre-ctx-body",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: "time",
+            hooks: [
+              {
+                name: "post-ctx",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "PostToolUse",
+                    additionalContext: "post-ctx-body",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("time?", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      expect(messages.map((message) => message.role)).toEqual([
+        "user",
+        "assistant",
+        "toolResult",
+        "hookContext",
+        "hookContext",
+        "assistant",
+      ])
+      expect(messages[3]).toMatchObject({
+        event: "PreToolUse",
+        hookName: "pre-ctx",
+        text: "pre-ctx-body",
+      })
+      expect(messages[4]).toMatchObject({
+        event: "PostToolUse",
+        hookName: "post-ctx",
+        text: "post-ctx-body",
+      })
+      // 工具正常执行（结果非错误）。
+      expect((messages[2] as ToolResultMessage).isError).toBe(false)
+    })
+
+    it("PermissionRequest ask + hook allow：替代审批 UI 直接放行并产生审计消息", async () => {
+      writeHookConfig({
+        PermissionRequest: [
+          {
+            matcher: "bash",
+            hooks: [
+              {
+                name: "auto-allow",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "PermissionRequest",
+                    decision: { behavior: "allow", message: "auto allowed" },
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "bash", { command: "echo hook-allowed" })], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("run bash", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      // ask + hook allow：不弹 UI（测试环境未接线 sendRequest，落到 UI 会被 fail-safe 拒绝），命令正常执行。
+      const messages = readMessagePayloads(result.sessionId)
+      const toolResult = messages.find(
+        (message): message is ToolResultMessage => message.role === "toolResult",
+      )
+      expect(toolResult?.isError).toBe(false)
+      expect(toolResultText(toolResult!)).toContain("hook-allowed")
+      const audit = messages.filter((message) => message.role === "hookContext")
+      expect(audit).toHaveLength(1)
+      expect(audit[0]).toMatchObject({
+        event: "PermissionRequest",
+        hookName: "auto-allow",
+        status: "completed",
+        text: "auto allowed",
+      })
+    })
+
+    it("SubagentStart additionalContext 仅注入子代理上下文，SubagentStop 状态审计正确", async () => {
+      const evidence = join(tmpDir, "subagent-stop.jsonl")
+      writeHookConfig({
+        SubagentStart: [
+          {
+            hooks: [
+              {
+                name: "sub-start",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "SubagentStart",
+                    additionalContext: "sub-ctx",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+        SubagentStop: [{ hooks: [{ name: "sub-stop", command: `cat >> ${evidence}` }] }],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "task", { description: "调研", prompt: "请调研" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "子代理结果" }]),
+        assistant([{ type: "text", text: "父代理完成" }]),
+      ]
+      const result = await agentRunner.send("调研", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      // 父会话上下文不含子代理 hook 消息。
+      expect(messages.some((message) => message.role === "hookContext")).toBe(false)
+      const toolResult = messages.find(
+        (message): message is ToolResultMessage => message.role === "toolResult",
+      )
+      const subagentMessages = toolResult?.subagent?.messages ?? []
+      expect(
+        subagentMessages.find(
+          (message) => message.role === "hookContext" && message.event === "SubagentStart",
+        ),
+      ).toMatchObject({ text: "sub-ctx" })
+
+      // SubagentStop 审计：status=done。
+      expect(existsSync(evidence)).toBe(true)
+      const stopPayload = JSON.parse(readFileSync(evidence, "utf8").trim()) as Record<
+        string,
+        unknown
+      >
+      expect(stopPayload).toMatchObject({
+        hook_event_name: "SubagentStop",
+        agent_type: "task",
+        status: "done",
+      })
+    })
+
+    it("SubagentStop 失败状态正确（error）", async () => {
+      const evidence = join(tmpDir, "subagent-stop-error.jsonl")
+      writeHookConfig({
+        SubagentStop: [{ hooks: [{ name: "sub-stop", command: `cat >> ${evidence}` }] }],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant(
+          [toolCallBlock("tc1", "task", { description: "失败任务", prompt: "会失败" })],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "" }], "error", "子代理执行失败"),
+        assistant([{ type: "text", text: "父代理收尾" }]),
+      ]
+      const result = await agentRunner.send("执行", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      expect(existsSync(evidence)).toBe(true)
+      const stopPayload = JSON.parse(readFileSync(evidence, "utf8").trim()) as Record<
+        string,
+        unknown
+      >
+      expect(stopPayload).toMatchObject({ hook_event_name: "SubagentStop", status: "error" })
+    })
+
+    it("并行工具批次下每调用各自成对 Pre/Post 消息，顺序确定", async () => {
+      writeHookConfig({
+        PreToolUse: [
+          {
+            matcher: "time",
+            hooks: [
+              {
+                name: "pre-ctx",
+                command: hookJson({
+                  hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: "pre" },
+                }),
+              },
+            ],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: "time",
+            hooks: [
+              {
+                name: "post-ctx",
+                command: hookJson({
+                  hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: "post" },
+                }),
+              },
+            ],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "time", {}), toolCallBlock("tc2", "time", {})], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("times?", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      expect(messages.map((message) => message.role)).toEqual([
+        "user",
+        "assistant",
+        "toolResult",
+        "hookContext",
+        "hookContext",
+        "toolResult",
+        "hookContext",
+        "hookContext",
+        "assistant",
+      ])
+      const hookEvents = messages
+        .filter((message) => message.role === "hookContext")
+        .map((message) => (message as { event: string }).event)
+      expect(hookEvents).toEqual(["PreToolUse", "PostToolUse", "PreToolUse", "PostToolUse"])
+    })
   })
 })
