@@ -1,5 +1,5 @@
 import { resolveUsageRange } from "@shared/contracts/usage"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usageApi } from "../api/usageApi"
 import type {
   UsageDailyPoint,
@@ -25,7 +25,6 @@ export interface UseUsageDataResult {
   model?: string
   projectId?: string
   page: number
-  query: UsageQuery
   rangeBounds: UsageRangeBounds
   summary: UsageSummary | null
   daily: UsageDailyPoint[]
@@ -64,21 +63,28 @@ export const useUsageData = (): UseUsageDataResult => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshIntervalMs, setRefreshIntervalMs] = useState<number>(0)
+  // 图表所需的实时时间边界（每次 load 重新解析，避免挂载时冻结 endTime）。
+  const [rangeBounds, setRangeBounds] = useState<UsageRangeBounds>(() => resolveUsageRange("today"))
   const requestIdRef = useRef(0)
 
-  const rangeBounds = useMemo(() => resolveUsageRange(range), [range])
-  const query = useMemo<UsageQuery>(
-    () => ({ ...rangeBounds, provider, model, projectId }),
-    [rangeBounds, provider, model, projectId],
-  )
-
-  // 事件回调读取最新的查询与页码，避免重新订阅。
-  const queryRef = useRef(query)
-  queryRef.current = query
+  // 事件回调/定时器读取最新筛选与页码，避免重新订阅。
+  const filtersRef = useRef({ range, provider, model, projectId })
+  filtersRef.current = { range, provider, model, projectId }
   const pageRef = useRef(page)
   pageRef.current = page
 
-  const load = useCallback(async (targetQuery: UsageQuery, targetPage: number): Promise<void> => {
+  const load = useCallback(async (targetPage: number): Promise<void> => {
+    // 时间范围在每次加载时按当前时间重新解析：today/7d/30d 的 endTime = 请求时刻，
+    // 否则刷新/自动刷新会一直查询挂载时刻之前的旧区间，新日志永远不可见。
+    const latest = filtersRef.current
+    const bounds = resolveUsageRange(latest.range)
+    const targetQuery: UsageQuery = {
+      ...bounds,
+      provider: latest.provider,
+      model: latest.model,
+      projectId: latest.projectId,
+    }
+
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
     setIsLoading(true)
@@ -101,6 +107,7 @@ export const useUsageData = (): UseUsageDataResult => {
       setProviderStats(nextProviderStats)
       setFilterOptions(nextOptions)
       setLogPage(nextLogs)
+      setRangeBounds(bounds)
     } catch (loadError) {
       if (requestId !== requestIdRef.current) return
       setError(loadError instanceof Error ? loadError.message : "Failed to load usage data")
@@ -112,8 +119,8 @@ export const useUsageData = (): UseUsageDataResult => {
   }, [])
 
   useEffect(() => {
-    void load(query, page)
-  }, [load, query, page])
+    void load(page)
+  }, [load, range, provider, model, projectId, page])
 
   // 日志写入后防抖重载当前视图。
   useEffect(() => {
@@ -121,7 +128,7 @@ export const useUsageData = (): UseUsageDataResult => {
     const unsubscribe = usageApi.onLogRecorded(() => {
       window.clearTimeout(timer)
       timer = window.setTimeout(() => {
-        void load(queryRef.current, pageRef.current)
+        void load(pageRef.current)
       }, RELOAD_DEBOUNCE_MS)
     })
     return () => {
@@ -134,7 +141,7 @@ export const useUsageData = (): UseUsageDataResult => {
   useEffect(() => {
     if (refreshIntervalMs <= 0) return
     const timer = window.setInterval(() => {
-      void load(queryRef.current, pageRef.current)
+      void load(pageRef.current)
     }, refreshIntervalMs)
     return () => window.clearInterval(timer)
   }, [refreshIntervalMs, load])
@@ -159,7 +166,7 @@ export const useUsageData = (): UseUsageDataResult => {
   }, [])
 
   const refresh = useCallback((): void => {
-    void load(queryRef.current, pageRef.current)
+    void load(pageRef.current)
   }, [load])
 
   return {
@@ -168,7 +175,6 @@ export const useUsageData = (): UseUsageDataResult => {
     model,
     projectId,
     page,
-    query,
     rangeBounds,
     summary,
     daily,

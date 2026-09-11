@@ -143,6 +143,34 @@ describe("useUsageData", () => {
     )
   })
 
+  it("刷新时按当前时间重新解析时间范围，endTime 不冻结在挂载时刻", async () => {
+    vi.useFakeTimers()
+    const mountTime = new Date(2026, 8, 11, 10, 0, 0).getTime()
+    vi.setSystemTime(mountTime)
+    try {
+      const { result, unmount } = renderHook(() => useUsageData())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(usageMock.getSummary.mock.calls[0][0].endTime).toBe(mountTime)
+
+      const laterTime = mountTime + 2 * 60 * 60 * 1000
+      vi.setSystemTime(laterTime)
+      act(() => {
+        result.current.refresh()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      const lastQuery = usageMock.getSummary.mock.calls.at(-1)?.[0]
+      expect(lastQuery.endTime).toBe(laterTime)
+      unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("开启自动刷新后按间隔拉取，关闭后停止", async () => {
     vi.useFakeTimers()
     try {
