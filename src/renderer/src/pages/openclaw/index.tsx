@@ -308,7 +308,7 @@ export const OpenClawPage = (): React.JSX.Element => {
       </div>
 
       {/* 输入区 */}
-      <div className="shrink-0 border-t border-white/5 px-3 py-2">
+      <div className="shrink-0 px-3 py-2">
         <OpenClawInput
           ref={inputRef}
           value={input}
