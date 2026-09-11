@@ -1,8 +1,11 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import type { AgentEvent, AgentMessage, HookEventName } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const holder = vi.hoisted(() => ({
-  dispatch: vi.fn(async () => ({ runs: [] as unknown[] })),
+  configPath: "",
   insertedEntries: [] as Array<Record<string, unknown>>,
   streamText: vi.fn(),
 }))
@@ -10,6 +13,12 @@ const holder = vi.hoisted(() => ({
 vi.mock("ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("ai")>()
   return { ...actual, streamText: holder.streamText }
+})
+
+// 真实 hooksManager 读取临时 config.json（不 mock hooks 模块，覆盖配置→子进程→解析全链路）。
+vi.mock("@/paths", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/paths")>()
+  return { ...actual, getConfigPath: () => holder.configPath }
 })
 
 vi.mock("@/services/settingsService", () => ({
@@ -50,19 +59,9 @@ vi.mock("@/services/agentSessionService", async (importOriginal) => {
   }
 })
 
-vi.mock("@/agent/hooks", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/agent/hooks")>()
-  return {
-    ...actual,
-    hooksManager: {
-      dispatch: holder.dispatch,
-      getHooks: () => [],
-    },
-  }
-})
-
 import { ContextCompactor } from "@/agent/contextCompactor"
 import type { Agent } from "@/agent/core/agent"
+import { hookConfig } from "@/agent/hooks/hookConfig"
 
 const EMPTY_USAGE = { input: 0, output: 0, cacheRead: 0, totalTokens: 0 }
 
@@ -76,26 +75,15 @@ const assistant = (text: string): AgentMessage => ({
   timestamp: 0,
 })
 
-const hookRun = (
-  event: HookEventName,
-  text: string,
-  status: "completed" | "blocked" = "completed",
-) => ({
-  hook: { name: `${event}-hook`, event },
-  status,
-  message: {
-    role: "hookContext",
-    event,
-    hookName: `${event}-hook`,
-    status,
-    text,
-    timestamp: 1,
-  },
-  ...(status === "blocked" ? { block: { reason: text } } : {}),
-})
+const hookJson = (output: unknown): string => `printf '%s' '${JSON.stringify(output)}'`
 
 let events: AgentEvent[] = []
 let messages: AgentMessage[] = []
+let tmpDir = ""
+
+const writeHooks = (hooks: Partial<Record<HookEventName, unknown>>): void => {
+  writeFileSync(holder.configPath, JSON.stringify({ agent: { hooks } }, null, 2))
+}
 
 const createCompactor = (): ContextCompactor =>
   new ContextCompactor({
@@ -105,7 +93,7 @@ const createCompactor = (): ContextCompactor =>
     getRequestedModel: () => ({ provider: "p", model: "m" }),
     isBusy: () => false,
     emit: (event) => events.push(event),
-    getCwd: () => "/tmp/proj",
+    getCwd: () => tmpDir,
   })
 
 const hookMessages = (): Array<{ event?: string; text?: string }> =>
@@ -114,8 +102,10 @@ const hookMessages = (): Array<{ event?: string; text?: string }> =>
     .map((event) => (event as { message: { event?: string; text?: string } }).message)
     .filter((message) => message.event?.startsWith("Pre") || message.event?.startsWith("Post"))
 
-describe("compaction hooks", () => {
+describe("compaction hooks（真实派发）", () => {
   beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "lx-compact-hooks-"))
+    holder.configPath = join(tmpDir, "config.json")
     events = []
     messages = [
       assistant("start"),
@@ -123,98 +113,125 @@ describe("compaction hooks", () => {
       assistant("a".repeat(40)),
       { role: "user", content: "b".repeat(40), timestamp: 0 },
     ]
-    holder.dispatch.mockReset()
-    holder.dispatch.mockResolvedValue({ runs: [] })
     holder.insertedEntries = []
     holder.streamText.mockReset()
     holder.streamText.mockReturnValue({
       text: Promise.resolve("压缩摘要"),
       usage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
     })
+    hookConfig.reset()
   })
 
   afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true })
     vi.clearAllMocks()
   })
 
-  it("PreCompact/PostCompact 产生 Flow 消息，压缩正常完成", async () => {
-    holder.dispatch
-      .mockResolvedValueOnce({ runs: [hookRun("PreCompact", "pre-ctx")] })
-      .mockResolvedValueOnce({ runs: [hookRun("PostCompact", "post-ctx")] })
+  it("PreCompact/PostCompact 真实子进程派发 → 状态与文本归一，压缩正常完成", async () => {
+    writeHooks({
+      PreCompact: [
+        { hooks: [{ name: "pre-hook", command: hookJson({ systemMessage: "pre-ctx" }) }] },
+      ],
+      PostCompact: [
+        { hooks: [{ name: "post-hook", command: hookJson({ systemMessage: "post-ctx" }) }] },
+      ],
+    })
 
     const compactor = createCompactor()
     await expect(compactor.compactIfNeeded(true)).resolves.toBe(true)
 
-    // 压缩照常落库。
     expect(holder.insertedEntries.some((entry) => entry.type === "compaction")).toBe(true)
-    // hook 消息出现在 compaction_start 之前（Pre）与 compaction_summary 之后（Post）。
+    expect(hookMessages().map((message) => message.text)).toEqual(["pre-ctx", "post-ctx"])
+
+    // Pre 消息先于 compaction_start；Post 消息在 compaction_summary 之后。
     const eventTypes = events.map((event) => event.type)
-    const preHookIndex = events.findIndex(
+    const preIndex = events.findIndex(
       (event) =>
         event.type === "message_end" &&
         (event as { message: { event?: string } }).message.event === "PreCompact",
     )
-    const compactionStartIndex = eventTypes.indexOf("compaction_start")
-    const compactionSummaryIndex = eventTypes.indexOf("compaction_summary")
-    const postHookIndex = events.findIndex(
+    const postIndex = events.findIndex(
       (event) =>
         event.type === "message_end" &&
         (event as { message: { event?: string } }).message.event === "PostCompact",
     )
-    expect(preHookIndex).toBeGreaterThanOrEqual(0)
-    expect(preHookIndex).toBeLessThan(compactionStartIndex)
-    expect(postHookIndex).toBeGreaterThan(compactionSummaryIndex)
-    expect(hookMessages().map((message) => message.text)).toEqual(["pre-ctx", "post-ctx"])
-    expect(holder.dispatch).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        event: "PreCompact",
-        cwd: "/tmp/proj",
-        payload: { trigger: "auto" },
-      }),
-    )
+    expect(preIndex).toBeLessThan(eventTypes.indexOf("compaction_start"))
+    expect(postIndex).toBeGreaterThan(eventTypes.indexOf("compaction_summary"))
   })
 
-  it("hook 阻断信号 / continue:false 不阻断压缩（fail-open）", async () => {
-    holder.dispatch
-      .mockResolvedValueOnce({ runs: [hookRun("PreCompact", "blocked", "blocked")] })
-      .mockResolvedValueOnce({ runs: [hookRun("PostCompact", "done")] })
+  it("真实 hook 输出 continue:false / decision:block / 非零退出 → 均不阻断压缩（fail-open）", async () => {
+    writeHooks({
+      PreCompact: [
+        {
+          hooks: [
+            { name: "stop-hook", command: hookJson({ continue: false, stopReason: "halt" }) },
+            { name: "block-hook", command: hookJson({ decision: "block", reason: "nope" }) },
+            { name: "exit-hook", command: "echo broken >&2; exit 3" },
+          ],
+        },
+      ],
+    })
 
     const compactor = createCompactor()
     await expect(compactor.compactIfNeeded(true)).resolves.toBe(true)
     expect(holder.insertedEntries.some((entry) => entry.type === "compaction")).toBe(true)
+    // 三条运行均产生审计消息（failed 不产生效果）。
+    expect(hookMessages()).toHaveLength(3)
   })
 
-  it("hook 超时/异常不阻断压缩（fail-open）", async () => {
-    holder.dispatch.mockRejectedValue(new Error("hook timeout"))
+  it("真实 hook 超时 → 不阻断压缩", async () => {
+    writeHooks({
+      PreCompact: [{ hooks: [{ name: "slow-hook", command: "sleep 30", timeout: 1 }] }],
+    })
+    const startedAt = Date.now()
     const compactor = createCompactor()
     await expect(compactor.compactIfNeeded(true)).resolves.toBe(true)
-    expect(holder.insertedEntries.some((entry) => entry.type === "compaction")).toBe(true)
+    expect(Date.now() - startedAt).toBeLessThan(10_000)
   })
 
-  it("摘要生成失败时不派发 PostCompact", async () => {
+  it("摘要生成失败时不派发 PostCompact（真实副作用文件不存在）", async () => {
+    const postEvidence = join(tmpDir, "post-ran.txt")
+    writeHooks({
+      PreCompact: [{ hooks: [{ name: "pre-hook", command: hookJson({ systemMessage: "pre" }) }] }],
+      PostCompact: [{ hooks: [{ name: "post-hook", command: `echo ran >> ${postEvidence}` }] }],
+    })
     holder.streamText.mockReturnValue({
-      text: Promise.reject(new Error("llm down")),
+      // 惰性拒绝：真实 PreCompact 子进程有耗时，避免 Promise 在 await 前触发 unhandledRejection。
+      get text() {
+        return Promise.reject(new Error("llm down"))
+      },
       usage: Promise.resolve({ inputTokens: 0, outputTokens: 0 }),
     })
+
     const compactor = createCompactor()
     await expect(compactor.compactIfNeeded(true)).resolves.toBe(false)
-    expect(holder.dispatch).toHaveBeenCalledTimes(1)
-    expect(holder.dispatch).toHaveBeenCalledWith(expect.objectContaining({ event: "PreCompact" }))
-    expect(holder.insertedEntries).toHaveLength(0)
+    expect(existsSync(postEvidence)).toBe(false)
+    expect(hookMessages().map((message) => message.text)).toEqual(["pre"])
   })
 
   it("手动 compact 派发 manual trigger 并完成", async () => {
-    holder.dispatch
-      .mockResolvedValueOnce({ runs: [hookRun("PreCompact", "pre-manual")] })
-      .mockResolvedValueOnce({ runs: [hookRun("PostCompact", "post-manual")] })
+    const preEvidence = join(tmpDir, "pre-manual.json")
+    writeHooks({
+      PreCompact: [
+        {
+          hooks: [
+            {
+              name: "pre-manual",
+              command: `cat > ${preEvidence} && ${hookJson({ systemMessage: "pre-manual" })}`,
+            },
+          ],
+        },
+      ],
+      PostCompact: [
+        { hooks: [{ name: "post-manual", command: hookJson({ systemMessage: "post-manual" }) }] },
+      ],
+    })
 
     const compactor = createCompactor()
     await expect(compactor.compact()).resolves.toEqual({ ok: true })
-    expect(holder.dispatch).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ event: "PreCompact", payload: { trigger: "manual" } }),
-    )
     expect(hookMessages().map((message) => message.text)).toEqual(["pre-manual", "post-manual"])
+    // stdin 协议：trigger=manual。
+    const payload = JSON.parse(readFileSync(preEvidence, "utf8")) as Record<string, unknown>
+    expect(payload).toMatchObject({ hook_event_name: "PreCompact", trigger: "manual" })
   })
 })

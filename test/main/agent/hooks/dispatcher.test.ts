@@ -123,6 +123,46 @@ describe("dispatchHooks", () => {
     expect(firstPermissionDecision(permissionResult)).toEqual({ decision: "deny", reason: "no" })
   })
 
+  it("工具类事件 stdin 逐字段携带 tool_name/tool_input/tool_use_id（snake_case）", async () => {
+    const evidence = join(tmpDir, "stdin.json")
+    const result = await dispatchHooks(
+      [
+        hook({
+          name: "wire",
+          event: "PreToolUse",
+          matcher: ["bash"],
+          command: `cat > ${evidence}`,
+        }),
+      ],
+      {
+        event: "PreToolUse",
+        sessionId: "s1",
+        turnId: "turn-1",
+        cwd: tmpDir,
+        model: "m",
+        permissionMode: "default",
+        toolName: "bash",
+        payload: {
+          tool_input: { command: "ls -la" },
+          tool_use_id: "call_1",
+        },
+      },
+    )
+    expect(result.runs).toHaveLength(1)
+    const payload = JSON.parse(readFileSync(evidence, "utf8")) as Record<string, unknown>
+    expect(payload).toMatchObject({
+      session_id: "s1",
+      turn_id: "turn-1",
+      cwd: tmpDir,
+      hook_event_name: "PreToolUse",
+      model: "m",
+      permission_mode: "default",
+      tool_name: "bash",
+      tool_input: { command: "ls -la" },
+      tool_use_id: "call_1",
+    })
+  })
+
   it("子进程失败归一为 failed（不抛错）", async () => {
     const result = await dispatchHooks([hook({ command: "echo broken >&2; exit 9" })], {
       event: "Stop",

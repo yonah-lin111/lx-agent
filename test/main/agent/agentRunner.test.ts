@@ -19,6 +19,8 @@ const holder = vi.hoisted(() => ({
   appDataRoot: "",
   db: null as import("better-sqlite3").Database | null,
   streamResponses: [] as import("@shared/contracts/agent").AssistantMessage[],
+  // 每次 LLM 调用收到的 LlmMessage[]（断言 hook 注入用）。
+  llmRequests: [] as unknown[][],
   compaction: {
     enabled: true,
     contextWindow: 128000,
@@ -107,7 +109,8 @@ vi.mock("@/services/agentSessionService", async (importOriginal) => {
 vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   const { createAssistantMessageEventStream } = await import("@/agent/core/event-stream")
   return {
-    createAiSdkStreamFn: () => async () => {
+    createAiSdkStreamFn: () => async (_model: unknown, context: { messages: unknown[] }) => {
+      holder.llmRequests.push(context.messages)
       const response = holder.streamResponses.shift()
       if (!response) {
         throw new Error("No more mock responses")
@@ -167,6 +170,7 @@ describe("agentRunner 持久化", () => {
     holder.appDataRoot = join(tmpDir, "appdata")
     holder.db = null
     holder.streamResponses = []
+    holder.llmRequests = []
     holder.compaction = {
       enabled: true,
       contextWindow: 128000,
@@ -1197,6 +1201,173 @@ describe("agentRunner 持久化", () => {
         unknown
       >
       expect(stopPayload).toMatchObject({ hook_event_name: "SubagentStop", status: "error" })
+    })
+
+    it("hook additionalContext 经 convertToLlm 注入 LLM 请求（首发前 / 工具结果后）", async () => {
+      writeHookConfig({
+        SessionStart: [
+          {
+            hooks: [
+              {
+                name: "start-ctx",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "SessionStart",
+                    additionalContext: "session-ctx",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+        UserPromptSubmit: [
+          {
+            hooks: [
+              {
+                name: "prompt-ctx",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "UserPromptSubmit",
+                    additionalContext: "prompt-ctx",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+        PreToolUse: [
+          {
+            matcher: "time",
+            hooks: [
+              {
+                name: "pre-ctx",
+                command: hookJson({
+                  hookSpecificOutput: {
+                    hookEventName: "PreToolUse",
+                    additionalContext: "tool-ctx",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("hello", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      // 第一次请求：SessionStart / UserPromptSubmit 注入位于用户消息之前。
+      const firstRequest = holder.llmRequests[0] as Array<{ role: string; content: unknown }>
+      expect(firstRequest[0]?.content).toContain('<hook_context event="SessionStart"')
+      expect(firstRequest[0]?.content).toContain("session-ctx")
+      expect(firstRequest[1]?.content).toContain('<hook_context event="UserPromptSubmit"')
+      expect(firstRequest[2]).toMatchObject({ role: "user", content: "hello" })
+
+      // 第二次请求：PreToolUse additionalContext 位于对应工具结果之后。
+      const secondRequest = holder.llmRequests[1] as Array<{ role: string; content: unknown }>
+      const toolResultIndex = secondRequest.findIndex((message) => message.role === "toolResult")
+      const toolHookIndex = secondRequest.findIndex(
+        (message) => typeof message.content === "string" && message.content.includes("tool-ctx"),
+      )
+      expect(toolResultIndex).toBeGreaterThanOrEqual(0)
+      expect(toolHookIndex).toBeGreaterThan(toolResultIndex)
+    })
+
+    it("PreToolUse hook 失败 → fail-open：工具照常执行，failed 审计消息存在", async () => {
+      writeHookConfig({
+        PreToolUse: [
+          {
+            matcher: "time",
+            hooks: [{ name: "broken-pre", command: "echo pre-broken >&2; exit 1" }],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("time?", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      expect(messages.map((message) => message.role)).toEqual([
+        "user",
+        "assistant",
+        "toolResult",
+        "hookContext",
+        "assistant",
+      ])
+      expect((messages[2] as ToolResultMessage).isError).toBe(false)
+      expect(messages[3]).toMatchObject({
+        event: "PreToolUse",
+        hookName: "broken-pre",
+        status: "failed",
+        text: "pre-broken",
+      })
+    })
+
+    it("PostToolUse hook 失败 → fail-open：工具结果不受影响，failed 审计消息存在", async () => {
+      writeHookConfig({
+        PostToolUse: [
+          {
+            matcher: "time",
+            hooks: [{ name: "broken-post", command: "echo post-broken >&2; exit 1" }],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "time", {})], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("time?", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      expect((messages[2] as ToolResultMessage).isError).toBe(false)
+      expect(messages[3]).toMatchObject({
+        event: "PostToolUse",
+        hookName: "broken-post",
+        status: "failed",
+        text: "post-broken",
+      })
+    })
+
+    it("PermissionRequest hook 非法输出 → 回落审批 UI（不自动放行）", async () => {
+      writeHookConfig({
+        PermissionRequest: [
+          {
+            matcher: "bash",
+            hooks: [{ name: "bad-perm", command: "printf '%s' '{ broken'" }],
+          },
+        ],
+      })
+      const { agentRunner } = await importRunner()
+      holder.streamResponses = [
+        assistant([toolCallBlock("tc1", "bash", { command: "echo should-not-run" })], "toolUse"),
+        assistant([{ type: "text", text: "done" }]),
+      ]
+      const result = await agentRunner.send("run bash", undefined, { page: "/", cwd: tmpDir })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+
+      const messages = readMessagePayloads(result.sessionId)
+      const toolResult = messages.find(
+        (message): message is ToolResultMessage => message.role === "toolResult",
+      )
+      // 测试环境未接线 sendRequest：回落 UI 即 fail-safe 拒绝，绝不自动放行。
+      expect(toolResult?.isError).toBe(true)
+      expect(toolResultText(toolResult!)).toContain("Action denied by user.")
+      const audit = messages.filter((message) => message.role === "hookContext")
+      expect(audit[0]).toMatchObject({ event: "PermissionRequest", status: "failed" })
     })
 
     it("并行工具批次下每调用各自成对 Pre/Post 消息，顺序确定", async () => {

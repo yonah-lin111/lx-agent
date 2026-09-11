@@ -312,6 +312,102 @@ describe("session 生命周期 hooks", () => {
     expect(payload).toMatchObject({ hook_event_name: "SessionEnd", reason: "quit" })
   })
 
+  it("UserPromptSubmit stdin 携带 prompt；SessionStart stdin 携带 source=startup", async () => {
+    const promptEvidence = join(tmpDir, "prompt-submit.json")
+    const startEvidence = join(tmpDir, "session-start.json")
+    writeHooks({
+      SessionStart: [
+        {
+          hooks: [
+            {
+              name: "start-capture",
+              command: `cat > ${startEvidence} && ${jsonHook({ systemMessage: "started" })}`,
+            },
+          ],
+        },
+      ],
+      UserPromptSubmit: [
+        {
+          hooks: [
+            {
+              name: "prompt-capture",
+              command: `cat > ${promptEvidence} && ${jsonHook({ systemMessage: "submitted" })}`,
+            },
+          ],
+        },
+      ],
+    })
+
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "a" }])]
+    const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+
+    const startPayload = JSON.parse(readFileSync(startEvidence, "utf8")) as Record<string, unknown>
+    expect(startPayload).toMatchObject({ hook_event_name: "SessionStart", source: "startup" })
+    const promptPayload = JSON.parse(readFileSync(promptEvidence, "utf8")) as Record<
+      string,
+      unknown
+    >
+    expect(promptPayload).toMatchObject({ hook_event_name: "UserPromptSubmit", prompt: "hello" })
+  })
+
+  it("含 hookContext 的会话恢复不丢消息（restoreSession 字段完整）", async () => {
+    writeHooks({
+      UserPromptSubmit: [
+        {
+          hooks: [
+            {
+              name: "prompt-ctx",
+              command: jsonHook({
+                hookSpecificOutput: {
+                  hookEventName: "UserPromptSubmit",
+                  additionalContext: "restore-ctx",
+                },
+              }),
+            },
+          ],
+        },
+      ],
+    })
+
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "a" }])]
+    const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const restored = await agentRunner.restoreSession(result.sessionId)
+    const hooks = restored.messages.filter((message) => message.role === "hookContext")
+    expect(hooks).toHaveLength(1)
+    expect(hooks[0]).toMatchObject({
+      event: "UserPromptSubmit",
+      hookName: "prompt-ctx",
+      status: "completed",
+      text: "restore-ctx",
+    })
+  })
+
+  it("UserPromptSubmit hook 失败（伪 JSON）→ fail-open：照常提交，failed 审计存在", async () => {
+    writeHooks({
+      UserPromptSubmit: [{ hooks: [{ name: "broken", command: "printf '%s' '{ broken'" }] }],
+    })
+
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "a" }])]
+    const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const messages = readMessages(result.sessionId)
+    expect(messages.map((message) => message.role)).toEqual(["hookContext", "user", "assistant"])
+    expect(messages[0]).toMatchObject({
+      event: "UserPromptSubmit",
+      hookName: "broken",
+      status: "failed",
+    })
+  })
+
   it("非法 agent.hooks 配置：会话正常启动、hooks 降级为空并告警", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     try {
