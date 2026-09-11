@@ -204,7 +204,7 @@ class OpenClawClientManager {
       ...(connection.config.token ? { token: connection.config.token } : {}),
       minProtocol: PROTOCOL_VERSION,
       maxProtocol: PROTOCOL_VERSION,
-      ...(isDeviceAuth ? { clientName: "webchat-ui", mode: "webchat" } : {}),
+      ...(isDeviceAuth ? { clientName: "openclaw-macos", mode: "ui" } : {}),
       role: "operator",
       scopes: OPERATOR_SCOPES,
       caps: CLIENT_CAPS,
