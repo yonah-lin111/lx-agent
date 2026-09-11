@@ -256,6 +256,7 @@ class OpenClawClientManager {
       clientVersion: "0.1.0",
       hostDeps: buildOpenClawHostDeps(instanceId),
       onHelloOk: () => {
+        if (connection.client !== client) return
         if (connectTimer) clearTimeout(connectTimer)
         if (connection.retryTimer) {
           clearTimeout(connection.retryTimer)
@@ -272,6 +273,7 @@ class OpenClawClientManager {
         settled.resolve({ status: "connected" })
       },
       onConnectError: (error) => {
+        if (connection.client !== client) return
         if (connectTimer) clearTimeout(connectTimer)
         const info = parseConnectError(error)
         console.error(`[OpenClaw] Connect error for instance ${instanceId}:`, error)
@@ -287,33 +289,22 @@ class OpenClawClientManager {
           ...(info.pairingRequestId ? { pairingRequestId: info.pairingRequestId } : {}),
         })
 
-        // 针对网络层不可达/拒绝等临时故障，自动以退避策略重试（首次 1s，随后 3s），平滑启动时网络接口尚未就绪的情况
+        // 网络层不可达/拒绝/超时等瞬态故障交由统一重连调度（指数退避）。
         if (/EHOSTUNREACH|ECONNREFUSED|ENOTFOUND|timed? ?out/i.test(info.message)) {
-          if (!connection.retryTimer) {
-            connection.retryCount = (connection.retryCount ?? 0) + 1
-            if (connection.retryCount <= 5) {
-              const delay = connection.retryCount === 1 ? 1000 : 3000
-              connection.retryTimer = setTimeout(() => {
-                connection.retryTimer = null
-                if (connection.status === "error" || connection.status === "disconnected") {
-                  console.log(
-                    `[OpenClaw] Auto-retrying connection for instance ${instanceId} (attempt ${connection.retryCount}/5)...`,
-                  )
-                  void this.connect(instanceId)
-                }
-              }, delay)
-            }
-          }
+          this.scheduleReconnect(connection)
         }
       },
       onEvent: (event) => this.handleEvent(connection, event),
       onClose: (code, reason) => {
+        // 已被替换或显式断开（connection.client 不再指向本客户端）时忽略。
+        if (connection.client !== client) return
         if (connection.status === "connected" || connection.status === "connecting") {
           connection.status = "disconnected"
           connection.error = `Connection closed (${code})${reason ? `: ${reason}` : ""}`
           for (const session of connection.sessions.values()) {
             this.emitSnapshot(connection, session)
           }
+          this.scheduleReconnect(connection)
         }
       },
     })
@@ -330,6 +321,7 @@ class OpenClawClientManager {
         }
         settled.resolve({ status: "error", error: errorMsg })
         connection.client?.stop()
+        this.scheduleReconnect(connection)
       }
     }, 8000)
 
@@ -345,6 +337,29 @@ class OpenClawClientManager {
     }
 
     return settled.promise
+  }
+
+  /**
+   * 非预期中断（网络抖动、对端重启、握手超时）后按指数退避自动重连（1s 起步，上限 30s）。
+   * 连接成功、实例被显式断开或移除时终止。
+   */
+  private scheduleReconnect(connection: InstanceConnection): void {
+    if (connection.retryTimer) return
+    if (!this.connections.has(connection.instanceId)) return
+
+    connection.retryCount = (connection.retryCount ?? 0) + 1
+    const delay = Math.min(1000 * 2 ** (connection.retryCount - 1), 30_000)
+    console.log(
+      `[OpenClaw] Reconnecting instance ${connection.instanceId} in ${Math.round(delay / 1000)}s ` +
+        `(attempt ${connection.retryCount})...`,
+    )
+    connection.retryTimer = setTimeout(() => {
+      connection.retryTimer = null
+      if (!this.connections.has(connection.instanceId)) return
+      if (connection.status === "error" || connection.status === "disconnected") {
+        void this.connect(connection.instanceId)
+      }
+    }, delay)
   }
 
   /**
