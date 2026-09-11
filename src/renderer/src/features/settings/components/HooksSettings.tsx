@@ -20,6 +20,9 @@ interface HookRow {
   entry: HookCommandEntry
 }
 
+// 下拉 portal 默认 zIndex 50，须高于 LxModal（999999）与 LxTooltip（999999）才不被遮挡。
+const HOOK_EVENT_SELECT_Z_INDEX = 1000000
+
 // 解析 matcher 输入：空 = 全部；null = 非法（含空段）。
 const parseMatcherInput = (raw: string): string | undefined | null => {
   const text = raw.trim()
@@ -341,6 +344,7 @@ export const HooksSettings = (): React.JSX.Element => {
                 setFormError("")
               }}
               options={eventOptions}
+              zIndex={HOOK_EVENT_SELECT_Z_INDEX}
             />
           </div>
 
