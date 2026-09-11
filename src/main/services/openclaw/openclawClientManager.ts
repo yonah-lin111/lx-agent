@@ -9,17 +9,12 @@ import type {
   OpenClawConnectResult,
   OpenClawSendMessageInput,
   OpenClawSessionEvent,
+  OpenClawSessionInfo,
   OpenClawSessionSnapshot,
 } from "@shared/contracts/openclaw"
 import type { OpenClawAgentItem, OpenClawInstanceConfig } from "@shared/settings"
-import { getOpenClawSettings } from "@/services/settingsService"
+import { getOpenClawSettings, saveOpenClawSettings } from "@/services/settingsService"
 import { buildOpenClawHostDeps } from "./openclawDeviceAuth"
-
-// 本应用在每个 Agent 下使用的专属会话 key 前缀；完整 key 为 agent:<agentId>:<base>。
-const SESSION_KEY_BASE = "lx-agent"
-
-// 组装 Gateway 规范化的会话 key（gateway 会把裸 key 归一为 agent:<agentId>:<key>）。
-const buildSessionKey = (agentId: string, suffix: string): string => `agent:${agentId}:${suffix}`
 
 // operator 连接申请的权限范围。tool-events 用于接收结构化工具事件。
 const OPERATOR_SCOPES = ["operator.read", "operator.write", "operator.approvals"]
@@ -27,6 +22,10 @@ const CLIENT_CAPS = ["tool-events"]
 
 // agent run 的最长等待时间（10 分钟），与 CLI 默认一致。
 const AGENT_RUN_TIMEOUT_MS = 600_000
+
+// 单次历史水合与会话列表的最大条数。
+const HISTORY_LIMIT = 200
+const SESSION_LIST_LIMIT = 100
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -45,12 +44,15 @@ const extractText = (content: unknown): string => {
 // 单个 Agent 会话的运行时状态。
 interface AgentSession {
   agentId: string
-  sessionKey: string
+  // 绑定的 Gateway 会话 key；null 表示该 Agent 尚未绑定会话。
+  sessionKey: string | null
   messages: OpenClawChatMessage[]
   isStreaming: boolean
   activeRunId: string | null
   // 是否已向 Gateway 注册该 sessionKey 的消息订阅。
   subscribed: boolean
+  // 是否已从 Gateway 水合历史消息（连接建立/切换绑定时重置）。
+  hydrated: boolean
 }
 
 // 单个实例的连接状态。
@@ -70,9 +72,9 @@ interface InstanceConnection {
 /**
  * OpenClaw Gateway 连接池与会话状态管理器（主进程权威）。
  *
- * 每个实例维护一条 WebSocket 连接；每个 (instanceId, agentId) 维护一条专属
- * 会话（sessionKey 固定为 agent:<agentId>:lx-agent）。连接与消息状态全部由本
- * 管理器持有，渲染进程仅接收事件投影。
+ * 每个实例维护一条 WebSocket 连接；每个 (instanceId, agentId) 维护一条
+ * 绑定到 Gateway 会话 key 的投影（key 由设置显式绑定，未绑定时不可发送）。
+ * 连接与消息状态全部由本管理器持有，渲染进程仅接收事件投影。
  */
 class OpenClawClientManager {
   private readonly connections = new Map<string, InstanceConnection>()
@@ -138,18 +140,44 @@ class OpenClawClientManager {
     return connection
   }
 
-  // 读取（必要时创建）某个 Agent 的专属会话。
+  // 从实例配置解析该 Agent 绑定的会话 key。
+  private resolveBoundSessionKey(connection: InstanceConnection, agentId: string): string | null {
+    const agent = connection.config.agents.find((item) => item.id === agentId)
+    const key = agent?.sessionKey?.trim()
+    return key ? key : null
+  }
+
+  // 设置页可能改动实例配置，操作前刷新内存配置。
+  private refreshConnectionConfig(connection: InstanceConnection): void {
+    const config = this.resolveConfig(connection.instanceId)
+    if (config) connection.config = config
+  }
+
+  // 配置中的绑定变化时重置该 Agent 的会话投影。
+  private syncSessionBinding(connection: InstanceConnection, session: AgentSession): void {
+    const bound = this.resolveBoundSessionKey(connection, session.agentId)
+    if (session.sessionKey === bound) return
+    session.sessionKey = bound
+    session.messages = []
+    session.isStreaming = false
+    session.activeRunId = null
+    session.subscribed = false
+    session.hydrated = false
+  }
+
+  // 读取（必要时创建）某个 Agent 的会话投影。
   private getOrCreateSession(connection: InstanceConnection, agentId: string): AgentSession {
     const existing = connection.sessions.get(agentId)
     if (existing) return existing
 
     const session: AgentSession = {
       agentId,
-      sessionKey: buildSessionKey(agentId, SESSION_KEY_BASE),
+      sessionKey: this.resolveBoundSessionKey(connection, agentId),
       messages: [],
       isStreaming: false,
       activeRunId: null,
       subscribed: false,
+      hydrated: false,
     }
     connection.sessions.set(agentId, session)
     return session
@@ -268,6 +296,9 @@ class OpenClawClientManager {
         delete connection.error
         delete connection.pairingRequestId
         for (const session of connection.sessions.values()) {
+          // 重连后重新水合历史并重建订阅。
+          session.hydrated = false
+          session.subscribed = false
           this.emitSnapshot(connection, session)
         }
         settled.resolve({ status: "connected" })
@@ -416,16 +447,130 @@ class OpenClawClientManager {
   }
 
   /**
-   * 读取指定会话快照。
+   * 读取指定会话快照；绑定时会从 Gateway 水合历史消息。
    */
   async getSnapshot(instanceId: string, agentId: string): Promise<OpenClawSessionSnapshot> {
     const connection = this.getOrCreateConnection(instanceId)
+    this.refreshConnectionConfig(connection)
     const session = this.getOrCreateSession(connection, agentId)
+    this.syncSessionBinding(connection, session)
+    await this.hydrateSession(connection, session)
     return this.toSnapshot(connection, session)
   }
 
   /**
-   * 向指定 Agent 的专属会话发送任务，并在该会话内流式接收回复。
+   * 列出该 Agent 在 Gateway 上已有的会话（绑定发现）。
+   */
+  async listSessions(instanceId: string, agentId: string): Promise<OpenClawSessionInfo[]> {
+    const connected = await this.connect(instanceId)
+    if (connected.status !== "connected") {
+      throw new Error(connected.error || "OpenClaw connection is not ready")
+    }
+    const connection = this.connections.get(instanceId)
+    const client = connection?.client
+    if (!connection || !client) throw new Error("OpenClaw connection is not ready")
+
+    const payload = await client.request<unknown>("sessions.list", {
+      agentId,
+      limit: SESSION_LIST_LIMIT,
+      includeDerivedTitles: true,
+    })
+    return mapSessionList(payload)
+  }
+
+  /**
+   * 在 Gateway 上为该 Agent 新建会话并立即绑定。
+   */
+  async createSession(instanceId: string, agentId: string): Promise<OpenClawSessionInfo> {
+    const connected = await this.connect(instanceId)
+    if (connected.status !== "connected") {
+      throw new Error(connected.error || "OpenClaw connection is not ready")
+    }
+    const connection = this.connections.get(instanceId)
+    const client = connection?.client
+    if (!connection || !client) throw new Error("OpenClaw connection is not ready")
+
+    const { key, displayName } = await this.mintSession(connection, client, agentId)
+    await this.bindSession(instanceId, agentId, key)
+    return { key, ...(displayName ? { displayName } : {}) }
+  }
+
+  /**
+   * 向 Gateway 申请新会话 key；dynamic scope 不可用时回退为本地生成
+   * （发送首条消息时由 Gateway 自动建会话）。
+   */
+  private async mintSession(
+    connection: InstanceConnection,
+    client: GatewayClient,
+    agentId: string,
+  ): Promise<{ key: string; displayName?: string }> {
+    try {
+      const payload = await client.request<Record<string, unknown>>("sessions.create", {
+        agentId,
+        idempotencyKey: randomUUID(),
+      })
+      const key = typeof payload?.key === "string" ? payload.key.trim() : ""
+      if (key) {
+        const displayName =
+          typeof payload?.displayName === "string" ? payload.displayName.trim() : ""
+        return { key, ...(displayName ? { displayName } : {}) }
+      }
+    } catch (error) {
+      console.warn(
+        `[OpenClaw] sessions.create rejected for ${connection.instanceId}/${agentId}, falling back to a local key:`,
+        error,
+      )
+    }
+    return { key: `agent:${agentId}:lx-agent-${Date.now().toString(36)}` }
+  }
+
+  /**
+   * 将该 Agent 绑定到指定 Gateway 会话并持久化到配置。
+   */
+  async bindSession(instanceId: string, agentId: string, sessionKey: string): Promise<void> {
+    const key = sessionKey.trim()
+    if (!key) throw new Error("Session key is required")
+
+    const connection = this.getOrCreateConnection(instanceId)
+    this.refreshConnectionConfig(connection)
+    const settings = getOpenClawSettings()
+    const instance = settings.instances[instanceId]
+    if (!instance) throw new Error(`OpenClaw instance not found: ${instanceId}`)
+    if (!instance.agents.some((agent) => agent.id === agentId)) {
+      throw new Error(`OpenClaw agent not found: ${agentId}`)
+    }
+
+    const agents = instance.agents.map((agent) =>
+      agent.id === agentId ? { ...agent, sessionKey: key } : agent,
+    )
+    const saved = saveOpenClawSettings({
+      ...settings,
+      instances: { ...settings.instances, [instanceId]: { ...instance, agents } },
+    })
+    connection.config = saved.instances[instanceId] ?? connection.config
+
+    const session = this.getOrCreateSession(connection, agentId)
+    const previousKey = session.sessionKey
+    // 释放旧会话的消息订阅（best-effort）。
+    if (previousKey && previousKey !== key && session.subscribed && connection.client) {
+      void connection.client
+        .request("sessions.messages.unsubscribe", { key: previousKey })
+        .catch(() => {})
+    }
+
+    session.sessionKey = key
+    session.messages = []
+    session.isStreaming = false
+    session.activeRunId = null
+    session.subscribed = false
+    session.hydrated = false
+    this.emitSnapshot(connection, session)
+
+    await this.hydrateSession(connection, session)
+  }
+
+  /**
+   * 向该 Agent 绑定的会话发送任务，并在该会话内流式接收回复。
    */
   async sendMessage(input: OpenClawSendMessageInput): Promise<void> {
     const { instanceId, agentId, message } = input
@@ -439,8 +584,15 @@ class OpenClawClientManager {
     if (!connection || !client) throw new Error("OpenClaw connection is not ready")
 
     const session = this.getOrCreateSession(connection, agentId)
+    this.syncSessionBinding(connection, session)
     if (session.isStreaming) {
       throw new Error("This agent is already running a task")
+    }
+    let sessionKey = session.sessionKey
+    if (!sessionKey) {
+      // 未绑定会话时自动新建并持久化绑定，避免发送死角。
+      const created = await this.createSession(instanceId, agentId)
+      sessionKey = created.key
     }
 
     session.messages.push({
@@ -461,7 +613,7 @@ class OpenClawClientManager {
         "agent",
         {
           agentId,
-          sessionKey: session.sessionKey,
+          sessionKey,
           message,
           idempotencyKey: randomUUID(),
         },
@@ -507,6 +659,8 @@ class OpenClawClientManager {
     const client = connection?.client
     if (!connection || !client) return
     const session = this.getOrCreateSession(connection, agentId)
+    this.syncSessionBinding(connection, session)
+    if (!session.sessionKey) return
     try {
       await client.request("sessions.abort", { key: session.sessionKey })
     } catch {
@@ -514,32 +668,6 @@ class OpenClawClientManager {
     }
     session.isStreaming = false
     session.activeRunId = null
-    this.emitSnapshot(connection, session)
-  }
-
-  /**
-   * 清空会话消息记录（保留 sessionKey 与 OpenClaw 侧上下文）。
-   */
-  async clearMessages(instanceId: string, agentId: string): Promise<void> {
-    const connection = this.connections.get(instanceId)
-    if (!connection) return
-    const session = this.getOrCreateSession(connection, agentId)
-    session.messages = []
-    this.emitSnapshot(connection, session)
-  }
-
-  /**
-   * 清空会话视图并切换到新的 sessionKey。
-   */
-  async resetSession(instanceId: string, agentId: string): Promise<void> {
-    const connection = this.connections.get(instanceId)
-    if (!connection) return
-    const session = this.getOrCreateSession(connection, agentId)
-    session.sessionKey = buildSessionKey(agentId, `${SESSION_KEY_BASE}-${Date.now().toString(36)}`)
-    session.messages = []
-    session.isStreaming = false
-    session.activeRunId = null
-    session.subscribed = false
     this.emitSnapshot(connection, session)
   }
 
@@ -556,9 +684,34 @@ class OpenClawClientManager {
     this.connections.clear()
   }
 
+  // 从 Gateway 水合绑定会话的历史消息，并建立外部消息订阅。
+  private async hydrateSession(
+    connection: InstanceConnection,
+    session: AgentSession,
+  ): Promise<void> {
+    if (session.hydrated) return
+    const client = connection.client
+    const sessionKey = session.sessionKey
+    if (!sessionKey || !client || connection.status !== "connected") return
+
+    session.hydrated = true
+    try {
+      const payload = await client.request<unknown>("chat.history", {
+        sessionKey,
+        limit: HISTORY_LIMIT,
+      })
+      if (session.sessionKey !== sessionKey) return
+      session.messages = mapHistoryMessages(payload)
+      this.emitSnapshot(connection, session)
+      await this.ensureSubscribed(session, client)
+    } catch (error) {
+      console.warn(`[OpenClaw] Failed to hydrate session ${sessionKey}:`, error)
+    }
+  }
+
   // 确保会话消息订阅已建立。
   private async ensureSubscribed(session: AgentSession, client: GatewayClient): Promise<void> {
-    if (session.subscribed) return
+    if (session.subscribed || !session.sessionKey) return
     try {
       await client.request("sessions.messages.subscribe", { key: session.sessionKey })
       session.subscribed = true
@@ -797,6 +950,89 @@ const mapAgent = (raw: Record<string, unknown>, defaultId?: string): OpenClawAge
     ...(workspace ? { workspace } : {}),
     ...(defaultId === id ? { isDefault: true } : {}),
   }
+}
+
+// 从 sessions.list 结果中提取会话行（结果封套为开放 schema，做多形态兼容）。
+const extractSessionRows = (payload: unknown): Record<string, unknown>[] => {
+  if (Array.isArray(payload)) return payload.filter(isRecord)
+  if (!isRecord(payload)) return []
+  for (const field of ["sessions", "rows", "items", "entries"]) {
+    const value = payload[field]
+    if (Array.isArray(value)) return value.filter(isRecord)
+  }
+  return []
+}
+
+// 将 sessions.list 行映射为会话摘要。
+const mapSessionInfo = (raw: Record<string, unknown>): OpenClawSessionInfo | null => {
+  const key = typeof raw.key === "string" ? raw.key.trim() : ""
+  if (!key) return null
+  const label = typeof raw.label === "string" ? raw.label.trim() : ""
+  const displayName =
+    typeof raw.displayName === "string"
+      ? raw.displayName.trim()
+      : typeof raw.derivedTitle === "string"
+        ? raw.derivedTitle.trim()
+        : ""
+  const updatedAt =
+    typeof raw.updatedAt === "number" && Number.isFinite(raw.updatedAt) ? raw.updatedAt : undefined
+  return {
+    key,
+    ...(label ? { label } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(updatedAt !== undefined ? { updatedAt } : {}),
+    ...(raw.isMain === true ? { isMain: true } : {}),
+  }
+}
+
+const mapSessionList = (payload: unknown): OpenClawSessionInfo[] =>
+  extractSessionRows(payload)
+    .map(mapSessionInfo)
+    .filter((session): session is OpenClawSessionInfo => session !== null)
+
+// 将 chat.history 结果中的单条消息映射为聊天消息（历史消息均为已完成态）。
+const mapHistoryMessage = (
+  raw: Record<string, unknown>,
+  index: number,
+): OpenClawChatMessage | null => {
+  const source = isRecord(raw.message) ? raw.message : raw
+  const roleRaw = typeof source.role === "string" ? source.role : ""
+  if (roleRaw !== "user" && roleRaw !== "assistant" && roleRaw !== "system") return null
+  const content =
+    extractText(source.content) || (typeof source.text === "string" ? source.text : "")
+  if (!content) return null
+  const id =
+    typeof source.id === "string" && source.id
+      ? source.id
+      : typeof raw.id === "string" && raw.id
+        ? raw.id
+        : `history-${index}`
+  const timestampCandidates = [source.timestamp, source.at, source.createdAt, raw.timestamp, raw.at]
+  const timestamp =
+    timestampCandidates.find(
+      (value): value is number => typeof value === "number" && Number.isFinite(value),
+    ) ?? Date.now() + index
+  const runId =
+    typeof source.runId === "string" && source.runId
+      ? source.runId
+      : typeof raw.runId === "string" && raw.runId
+        ? raw.runId
+        : undefined
+  return {
+    id,
+    role: roleRaw,
+    content,
+    timestamp,
+    ...(runId ? { runId } : {}),
+    status: "completed",
+  }
+}
+
+const mapHistoryMessages = (payload: unknown): OpenClawChatMessage[] => {
+  const messages = isRecord(payload) && Array.isArray(payload.messages) ? payload.messages : []
+  return messages
+    .map((raw, index) => (isRecord(raw) ? mapHistoryMessage(raw, index) : null))
+    .filter((message): message is OpenClawChatMessage => message !== null)
 }
 
 export const openClawClientManager = new OpenClawClientManager()

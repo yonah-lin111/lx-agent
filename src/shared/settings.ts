@@ -264,6 +264,8 @@ export interface OpenClawAgentItem {
   description?: string
   workspace?: string
   isDefault?: boolean
+  // 绑定的 Gateway 会话 key（未绑定时缺省）；由设置页或 OpenClaw 页面显式选择。
+  sessionKey?: string
 }
 
 // 单个 OpenClaw Gateway 实例配置（key 即实例 id）。

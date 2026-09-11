@@ -2,7 +2,6 @@ import { Check, ChevronDown, Users } from "lucide-react"
 import type React from "react"
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import type { LxSelectGroup, LxSelectOption } from "@/components/ui/LxSelect"
 import { TooltipLayerContext } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 

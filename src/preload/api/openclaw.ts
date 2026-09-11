@@ -2,6 +2,7 @@ import type {
   OpenClawApi,
   OpenClawSendMessageInput,
   OpenClawSessionEvent,
+  OpenClawSessionInfo,
   OpenClawSessionSnapshot,
 } from "@shared/contracts/openclaw"
 import { OPENCLAW_CHANNELS } from "@shared/ipc/openclawChannels"
@@ -19,14 +20,22 @@ export const openclawApi: OpenClawApi["openclaw"] = {
       instanceId,
       agentId,
     ) as Promise<OpenClawSessionSnapshot>,
+  listSessions: (instanceId: string, agentId: string) =>
+    ipcRenderer.invoke(OPENCLAW_CHANNELS.listSessions, instanceId, agentId) as Promise<
+      OpenClawSessionInfo[]
+    >,
+  createSession: (instanceId: string, agentId: string) =>
+    ipcRenderer.invoke(
+      OPENCLAW_CHANNELS.createSession,
+      instanceId,
+      agentId,
+    ) as Promise<OpenClawSessionInfo>,
+  bindSession: (instanceId: string, agentId: string, sessionKey: string) =>
+    ipcRenderer.invoke(OPENCLAW_CHANNELS.bindSession, instanceId, agentId, sessionKey),
   sendMessage: (input: OpenClawSendMessageInput) =>
     ipcRenderer.invoke(OPENCLAW_CHANNELS.sendMessage, input),
   abort: (instanceId: string, agentId: string) =>
     ipcRenderer.invoke(OPENCLAW_CHANNELS.abort, instanceId, agentId),
-  clearMessages: (instanceId: string, agentId: string) =>
-    ipcRenderer.invoke(OPENCLAW_CHANNELS.clearMessages, instanceId, agentId),
-  resetSession: (instanceId: string, agentId: string) =>
-    ipcRenderer.invoke(OPENCLAW_CHANNELS.resetSession, instanceId, agentId),
   onEvent: (handler: (event: OpenClawSessionEvent) => void) => {
     const listener = (_: unknown, event: OpenClawSessionEvent): void => handler(event)
     ipcRenderer.on(OPENCLAW_CHANNELS.event, listener)

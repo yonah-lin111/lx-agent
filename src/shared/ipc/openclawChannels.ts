@@ -4,10 +4,11 @@ export const OPENCLAW_CHANNELS = {
   disconnect: "openclaw:disconnect",
   fetchAgents: "openclaw:fetch-agents",
   getSnapshot: "openclaw:get-snapshot",
+  listSessions: "openclaw:list-sessions",
+  createSession: "openclaw:create-session",
+  bindSession: "openclaw:bind-session",
   sendMessage: "openclaw:send-message",
   abort: "openclaw:abort",
-  clearMessages: "openclaw:clear-messages",
-  resetSession: "openclaw:reset-session",
   // 主进程 → 渲染进程的会话事件广播。
   event: "openclaw:event",
 } as const

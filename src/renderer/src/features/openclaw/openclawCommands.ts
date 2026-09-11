@@ -3,7 +3,7 @@ import { isFuzzyMatch } from "@/features/agent/components/AgentInput/AgentMarkdo
 import type { TranslationKey } from "@/i18n"
 
 // OpenClaw 输入框支持的内置命令。
-export type OpenClawCommandId = "clear" | "new" | "stop" | "agent" | "office"
+export type OpenClawCommandId = "clear" | "stop" | "agent" | "office"
 
 interface OpenClawCommandSpec {
   id: OpenClawCommandId
@@ -13,7 +13,6 @@ interface OpenClawCommandSpec {
 
 export const OPENCLAW_COMMANDS: readonly OpenClawCommandSpec[] = [
   { id: "clear", name: "/clear", descKey: "openclaw.commandClearDesc" },
-  { id: "new", name: "/new", descKey: "openclaw.commandNewDesc" },
   { id: "stop", name: "/stop", descKey: "openclaw.commandStopDesc" },
   { id: "agent", name: "/agent", descKey: "openclaw.commandAgentDesc" },
   { id: "office", name: "/office", descKey: "openclaw.commandOfficeDesc" },

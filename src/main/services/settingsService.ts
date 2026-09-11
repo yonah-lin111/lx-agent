@@ -887,6 +887,7 @@ const normalizeOpenClawAgentItem = (raw: unknown): OpenClawAgentItem | null => {
 
   const description = typeof raw.description === "string" ? raw.description.trim() : ""
   const workspace = typeof raw.workspace === "string" ? raw.workspace.trim() : ""
+  const sessionKey = typeof raw.sessionKey === "string" ? raw.sessionKey.trim() : ""
 
   return {
     id,
@@ -894,6 +895,7 @@ const normalizeOpenClawAgentItem = (raw: unknown): OpenClawAgentItem | null => {
     ...(description ? { description } : {}),
     ...(workspace ? { workspace } : {}),
     ...(typeof raw.isDefault === "boolean" ? { isDefault: raw.isDefault } : {}),
+    ...(sessionKey ? { sessionKey } : {}),
   }
 }
 

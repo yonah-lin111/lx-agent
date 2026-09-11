@@ -1,3 +1,4 @@
+import type { OpenClawSessionInfo } from "@shared/contracts/openclaw"
 import type {
   OpenClawAgentItem,
   OpenClawAuthMode,
@@ -58,6 +59,8 @@ export const OpenClawSettings = (): React.JSX.Element => {
   const [idDraft, setIdDraft] = useState("")
   const [fetchingId, setFetchingId] = useState<string | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
+  const [sessionOptions, setSessionOptions] = useState<Record<string, OpenClawSessionInfo[]>>({})
+  const [sessionLoadingKey, setSessionLoadingKey] = useState<string | null>(null)
 
   const baselineRef = useRef<string | null>(null)
 
@@ -211,9 +214,14 @@ export const OpenClawSettings = (): React.JSX.Element => {
       setSettings((current) => {
         const instance = current.instances[id]
         if (!instance) return current
+        // 拉取刷新时保留已有的会话绑定。
+        const merged = agents.map((agent) => {
+          const bound = instance.agents.find((item) => item.id === agent.id)?.sessionKey
+          return bound ? { ...agent, sessionKey: bound } : agent
+        })
         return {
           ...current,
-          instances: { ...current.instances, [id]: { ...instance, agents } },
+          instances: { ...current.instances, [id]: { ...instance, agents: merged } },
         }
       })
       toast.success(t("settings.openclawFetchAgentsSuccess", { count: agents.length }))
@@ -223,6 +231,44 @@ export const OpenClawSettings = (): React.JSX.Element => {
     } finally {
       setFetchingId(null)
     }
+  }
+
+  // 拉取某个 Agent 在 Gateway 上的会话列表（绑定发现）。
+  const handleFetchSessions = async (instanceId: string, agentId: string): Promise<void> => {
+    const key = `${instanceId}:${agentId}`
+    setSessionLoadingKey(key)
+    try {
+      const sessions = await window.api.openclaw.listSessions(instanceId, agentId)
+      setSessionOptions((current) => ({ ...current, [key]: sessions }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.error(message || t("settings.openclawSessionLoadFailed"))
+    } finally {
+      setSessionLoadingKey(null)
+    }
+  }
+
+  // 更新草稿中的 Agent 会话绑定（空值表示解除绑定）。
+  const updateAgentSessionKey = (
+    instanceId: string,
+    agentId: string,
+    sessionKey?: string,
+  ): void => {
+    setSettings((current) => {
+      const instance = current.instances[instanceId]
+      if (!instance) return current
+      const agents = instance.agents.map((agent) => {
+        if (agent.id !== agentId) return agent
+        const next = { ...agent }
+        if (sessionKey) next.sessionKey = sessionKey
+        else delete next.sessionKey
+        return next
+      })
+      return {
+        ...current,
+        instances: { ...current.instances, [instanceId]: { ...instance, agents } },
+      }
+    })
   }
 
   if (loading) {
@@ -415,12 +461,55 @@ export const OpenClawSettings = (): React.JSX.Element => {
               {selected.agents.length === 0 ? (
                 <p className="px-1 py-2 text-xs text-white/45">{t("settings.openclawNoAgents")}</p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {selected.agents.map((agent) => (
-                    <LxTag key={agent.id} size="small" color="sky">
-                      {agent.name}
-                    </LxTag>
-                  ))}
+                <div className="flex flex-col gap-1.5">
+                  {selected.agents.map((agent) => {
+                    const sessionKey = `${selectedId ?? ""}:${agent.id}`
+                    const options = sessionOptions[sessionKey] ?? []
+                    const boundKey = agent.sessionKey
+                    const boundOption =
+                      boundKey && !options.some((session) => session.key === boundKey)
+                        ? [{ value: boundKey, label: boundKey }]
+                        : []
+                    return (
+                      <div key={agent.id} className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs text-white/75">
+                          {agent.name}
+                        </span>
+                        <LxSelect
+                          size="small"
+                          className="w-56"
+                          value={agent.sessionKey ?? ""}
+                          placeholder={t("settings.openclawSessionUnbound")}
+                          options={[
+                            { value: "", label: t("settings.openclawSessionUnbound") },
+                            ...boundOption,
+                            ...options.map((session) => ({
+                              value: session.key,
+                              label: session.displayName || session.label || session.key,
+                            })),
+                          ]}
+                          onChange={(value) =>
+                            updateAgentSessionKey(selectedId ?? "", agent.id, value || undefined)
+                          }
+                        />
+                        <LxIconButton
+                          size="small"
+                          aria-label={t("settings.openclawSessionLoad")}
+                          title={{ content: t("settings.openclawSessionLoad"), placement: "top" }}
+                          disabled={sessionLoadingKey === sessionKey}
+                          onClick={() => {
+                            if (selectedId) void handleFetchSessions(selectedId, agent.id)
+                          }}
+                        >
+                          {sessionLoadingKey === sessionKey ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          )}
+                        </LxIconButton>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

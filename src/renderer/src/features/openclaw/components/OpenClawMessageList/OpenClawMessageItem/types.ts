@@ -10,6 +10,5 @@ export interface OpenClawMessageItemProps {
   agentId: string
   message: OpenClawChatMessage
   agent?: ConversationAgent
-  targetAgents?: ConversationAgent[]
   isStreaming?: boolean
 }

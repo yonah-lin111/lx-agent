@@ -8,13 +8,12 @@ export const OpenClawMessageItem = ({
   agentId,
   message,
   agent,
-  targetAgents,
   isStreaming = false,
 }: OpenClawMessageItemProps): React.JSX.Element => {
   const { t } = useTranslation()
 
   if (message.role === "user") {
-    return <OpenClawUserMessage content={message.content} targetAgents={targetAgents} />
+    return <OpenClawUserMessage content={message.content} />
   }
 
   if (message.role === "system") {

@@ -1,6 +1,7 @@
 import type {
   OpenClawChatMessage,
   OpenClawSessionEvent,
+  OpenClawSessionInfo,
   OpenClawSessionSnapshot,
 } from "@shared/contracts/openclaw"
 import { create } from "zustand"
@@ -29,8 +30,9 @@ interface OpenClawChatState {
   loadSession: (instanceId: string, agentId: string) => Promise<void>
   sendMessage: (instanceId: string, agentId: string, message: string) => Promise<void>
   abort: (instanceId: string, agentId: string) => Promise<void>
-  clearMessages: (instanceId: string, agentId: string) => Promise<void>
-  resetSession: (instanceId: string, agentId: string) => Promise<void>
+  listSessions: (instanceId: string, agentId: string) => Promise<OpenClawSessionInfo[]>
+  createSession: (instanceId: string, agentId: string) => Promise<void>
+  bindSession: (instanceId: string, agentId: string, sessionKey: string) => Promise<void>
   applyEvent: (event: OpenClawSessionEvent) => void
   clear: (instanceId: string, agentId: string) => void
 }
@@ -77,12 +79,16 @@ export const useOpenClawChatStore = create<OpenClawChatState>((set, get) => ({
     await openclawApi.abort(instanceId, agentId)
   },
 
-  clearMessages: async (instanceId, agentId) => {
-    await openclawApi.clearMessages(instanceId, agentId)
+  listSessions: async (instanceId, agentId) => openclawApi.listSessions(instanceId, agentId),
+
+  createSession: async (instanceId, agentId) => {
+    await openclawApi.createSession(instanceId, agentId)
+    await get().loadSession(instanceId, agentId)
   },
 
-  resetSession: async (instanceId, agentId) => {
-    await openclawApi.resetSession(instanceId, agentId)
+  bindSession: async (instanceId, agentId, sessionKey) => {
+    await openclawApi.bindSession(instanceId, agentId, sessionKey)
+    await get().loadSession(instanceId, agentId)
   },
 
   applyEvent: (event) => {

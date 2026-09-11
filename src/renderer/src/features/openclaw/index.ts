@@ -35,9 +35,7 @@ export {
 export { useOfficeAgentStatuses } from "./hooks/useOfficeAgentStatuses"
 export { useOpenClawConfig } from "./hooks/useOpenClawConfig"
 export {
-  mergeOfficeTimeline,
   type OfficeAgentSession,
-  type OfficeTimelineMessage,
   useOpenClawOffice,
 } from "./hooks/useOpenClawOffice"
 export {

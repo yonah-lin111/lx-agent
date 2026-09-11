@@ -42,4 +42,9 @@ describe("matchOpenClawCommand", () => {
     expect(matchOpenClawCommand("/clear now")).toBeNull()
     expect(matchOpenClawCommand("/unknown")).toBeNull()
   })
+
+  it("/new 已移除并统一到 /clear", () => {
+    expect(matchOpenClawCommand("/new")).toBeNull()
+    expect(OPENCLAW_COMMANDS.some((command) => command.name === "/new")).toBe(false)
+  })
 })
