@@ -15,7 +15,7 @@ export interface UsageModelDistributionChartProps {
 }
 
 /**
- * 模型分布 Top N：配置了计价时按成本展示，否则回落为 Token 用量。
+ * 模型分布 Top N：配置了计价时按成本展示，否则回落为 Token 用量；零 Token 模型不参与。
  */
 export const UsageModelDistributionChart = ({
   modelStats,
@@ -26,10 +26,14 @@ export const UsageModelDistributionChart = ({
   const barRadius: [number, number, number, number] =
     theme === "minecraft" ? [0, 0, 0, 0] : [0, 3, 3, 0]
 
-  const hasPricing = modelStats.some((stat) => stat.totalCostUsd !== null)
+  const visibleStats = useMemo(
+    () => modelStats.filter((stat) => stat.totalTokens > 0),
+    [modelStats],
+  )
+  const hasPricing = visibleStats.some((stat) => stat.totalCostUsd !== null)
   const data = useMemo(
     () =>
-      modelStats
+      visibleStats
         .slice(0, MAX_MODELS)
         .map((stat) => ({
           model: stat.model,
@@ -37,7 +41,7 @@ export const UsageModelDistributionChart = ({
           tokens: stat.totalTokens,
         }))
         .reverse(),
-    [modelStats],
+    [visibleStats],
   )
 
   const formatTooltipValue = (entry: UsageChartTooltipEntry): string =>

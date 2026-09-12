@@ -188,6 +188,20 @@ describe("usage 图表内部主题变量", () => {
     ])
   })
 
+  it("模型分布图过滤零 Token 模型", () => {
+    const withTokens = { ...modelStats[0], model: "claude-sonnet-4", totalTokens: 1200 }
+    const noTokens = { ...modelStats[0], model: "empty-model", totalTokens: 0 }
+
+    const { container } = renderChart(
+      <UsageModelDistributionChart modelStats={[noTokens, withTokens]} />,
+    )
+    expect(container.querySelectorAll(".recharts-bar-rectangle path")).toHaveLength(1)
+
+    const empty = renderChart(<UsageModelDistributionChart modelStats={[noTokens]} />)
+    expect(empty.container.querySelectorAll(".recharts-bar-rectangle path")).toHaveLength(0)
+    expect(empty.getByText(/No data|暂无数据/)).toBeDefined()
+  })
+
   it("趋势图面积/折线描边与渐变均引用主题变量", () => {
     const { container } = renderChart(<UsageTrendChart daily={daily} granularity="day" />)
 
