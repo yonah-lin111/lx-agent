@@ -209,7 +209,12 @@ export const AgentModelSelect = ({
 
   const handleSelect = (modelVal: string, chosenVariant?: string): void => {
     setIsOpen(false)
-    onChange(modelVal, chosenVariant)
+    // 换模型：variant 随 onChange 一次性提交，避免二次触发回调导致重复切换。
+    if (modelVal !== value) {
+      onChange(modelVal, chosenVariant)
+      return
+    }
+    // 同模型：仅思考等级变化。
     if (chosenVariant !== undefined) {
       onVariantChange?.(chosenVariant)
     }

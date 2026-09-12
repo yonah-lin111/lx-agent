@@ -53,7 +53,7 @@ describe("Thinking Variants Display & Components", () => {
     expect(badge?.querySelector("svg")).toBeNull()
   })
 
-  it("AgentModelSelect 直接点击配置了思考等级的模型时应选用默认等级", () => {
+  it("AgentModelSelect 直接点击配置了思考等级的模型时应选用默认等级且只触发一次切换回调", () => {
     const onChange = vi.fn()
     const onVariantChange = vi.fn()
 
@@ -91,8 +91,10 @@ describe("Thinking Variants Display & Components", () => {
     // 直接点击模型选项
     fireEvent.mouseDown(modelOption)
 
+    // 换模型时 variant 随 onChange 一次性提交，不得再触发 onVariantChange 造成二次切换
+    expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith("anthropic::claude-3-7-sonnet", "medium")
-    expect(onVariantChange).toHaveBeenCalledWith("medium")
+    expect(onVariantChange).not.toHaveBeenCalled()
   })
 
   it("AgentModelSelect 在二级菜单中选择特定思考等级时应正确回调", async () => {
@@ -139,8 +141,82 @@ describe("Thinking Variants Display & Components", () => {
     // 点击 high
     fireEvent.click(highItem)
 
-    expect(onChange).toHaveBeenCalledWith("anthropic::claude-3-7-sonnet", "high")
+    // 同一模型仅思考等级变化：只触发 onVariantChange
+    expect(onVariantChange).toHaveBeenCalledTimes(1)
     expect(onVariantChange).toHaveBeenCalledWith("high")
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("AgentModelSelect 在未选中模型的二级菜单选择思考等级时只触发 onChange", async () => {
+    const onChange = vi.fn()
+    const onVariantChange = vi.fn()
+
+    const options = [
+      {
+        value: "anthropic::claude-3-7-sonnet",
+        label: "Claude 3.7 Sonnet",
+        variants: ["low", "medium", "high"],
+        defaultVariant: "medium",
+      },
+    ]
+
+    render(
+      <AgentModelSelect
+        value="openai::gpt-4o"
+        onChange={onChange}
+        onVariantChange={onVariantChange}
+        options={options}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: /gpt-4o/i })
+    fireEvent.click(trigger)
+
+    const modelOption = screen.getByRole("option", { name: /claude 3\.7 sonnet/i })
+    fireEvent.mouseEnter(modelOption)
+
+    const highItem = await screen.findByText("high")
+    fireEvent.click(highItem)
+
+    // 换模型 + 指定等级合并在 onChange 中提交
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith("anthropic::claude-3-7-sonnet", "high")
+    expect(onVariantChange).not.toHaveBeenCalled()
+  })
+
+  it("AgentModelSelect 从带思考等级的模型切到无思考等级的模型时只触发 onChange", () => {
+    const onChange = vi.fn()
+    const onVariantChange = vi.fn()
+
+    const options = [
+      { value: "openai::gpt-4o", label: "GPT-4o" },
+      {
+        value: "anthropic::claude-3-7-sonnet",
+        label: "Claude 3.7 Sonnet",
+        variants: ["low", "medium", "high"],
+        defaultVariant: "medium",
+      },
+    ]
+
+    render(
+      <AgentModelSelect
+        value="anthropic::claude-3-7-sonnet"
+        variant="medium"
+        onChange={onChange}
+        onVariantChange={onVariantChange}
+        options={options}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: /claude 3\.7 sonnet/i })
+    fireEvent.click(trigger)
+
+    const modelOption = screen.getByRole("option", { name: /gpt-4o/i })
+    fireEvent.mouseDown(modelOption)
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith("openai::gpt-4o", undefined)
+    expect(onVariantChange).not.toHaveBeenCalled()
   })
 
   it("AgentMessageItem 应该在顶部模型名称右侧显示思考等级", () => {
