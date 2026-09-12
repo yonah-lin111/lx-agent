@@ -63,7 +63,7 @@ describe("AgentStatusBar", () => {
       toolName: "bash",
       args: { command: "npm test" },
       summary: "Run test",
-      mode: "build",
+      mode: "default",
       sessionId: "sess-1",
     }
 
@@ -74,10 +74,11 @@ describe("AgentStatusBar", () => {
         jobs={[
           {
             id: "job-1",
-            toolName: "test-job",
-            command: "echo 1",
+            kind: "bash",
+            label: "test-job",
             status: "running",
-            startTime: Date.now(),
+            startedAt: Date.now(),
+            sessionId: "sess-1",
           },
         ]}
         pendingRequest={mockRequest}

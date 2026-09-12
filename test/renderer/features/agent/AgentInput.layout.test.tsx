@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type React from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { promptHistoryApi } from "@/features/agent/api/promptHistoryApi"
 import { AgentInput } from "@/features/agent/components/AgentInput"

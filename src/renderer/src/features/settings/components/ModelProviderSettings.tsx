@@ -10,7 +10,6 @@ import {
   Copy,
   Download,
   KeyRound,
-  Plus,
   Search,
   SlidersHorizontal,
   Trash2,
@@ -999,7 +998,6 @@ export const ModelProviderSettings = ({
                                     const currentModel = provider.models[modelKey]
                                     const currentVariants = { ...(currentModel.variants ?? {}) }
                                     let newKey = "high"
-                                    let newConfig: Record<string, unknown> = {}
                                     if (val === "openai") {
                                       currentVariants["low"] = { reasoningEffort: "low" }
                                       currentVariants["medium"] = { reasoningEffort: "medium" }

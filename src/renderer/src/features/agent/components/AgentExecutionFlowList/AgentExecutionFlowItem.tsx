@@ -248,9 +248,7 @@ export const AgentExecutionFlowItem = ({
               </LxTag>
             ) : step.userContent?.command?.kind === "skill" && skillName ? (
               <LxInfoTooltip
-                markdown={
-                  activeSkillMarkdown || step.userContent.command.description || `### ${skillName}`
-                }
+                markdown={activeSkillMarkdown || `### ${skillName}`}
                 showIcon={false}
                 placement="top"
               >

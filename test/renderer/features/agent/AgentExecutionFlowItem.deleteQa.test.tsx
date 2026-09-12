@@ -286,12 +286,8 @@ describe("AgentExecutionFlow - Turn 底部左侧删除 QA 系统测试", () => {
 
       render(<AgentExecutionFlowList messages={messages} onDeleteMessage={onDeleteMessage} />)
 
-      const summary1 = screen.getByTestId("turn-summary-1")
       const summary2 = screen.getByTestId("turn-summary-2")
 
-      const deleteBtn1 = within(summary1).getByRole("button", {
-        name: /删除轮次|Delete turn/i,
-      })
       const deleteBtn2 = within(summary2).getByRole("button", {
         name: /删除轮次|Delete turn/i,
       })

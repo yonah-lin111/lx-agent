@@ -87,7 +87,9 @@ describe("Render Tools Removal & Question Contract System Regression (Main)", ()
         "call-1",
         undefined,
       )
-      expect(execResult.content[0].text).toContain('"选方案？"="方案A"')
+      const firstBlock = execResult.content[0]
+      if (firstBlock.type !== "text") throw new Error("expected a text block")
+      expect(firstBlock.text).toContain('"选方案？"="方案A"')
     })
   })
 })

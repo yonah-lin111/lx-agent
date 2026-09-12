@@ -7,10 +7,7 @@ import { FlowItemQuestionContent } from "@/features/agent/components/AgentExecut
 import { FlowItemToolContent } from "@/features/agent/components/AgentExecutionFlowList/FlowItemToolContent"
 import { useMessageItemGroups } from "@/features/agent/components/AgentMessageList/AgentMessageItem/hooks/useMessageItemGroups"
 import { AgentQuestionBlock } from "@/features/agent/components/blocks/AgentQuestionBlock"
-import {
-  sanitizeGraphicContent,
-  sanitizeHtmlDocument,
-} from "@/features/agent/components/visuals/sanitizeVisual"
+import { sanitizeHtmlDocument } from "@/features/agent/components/visuals/sanitizeVisual"
 import type { ChatBlock, ChatMessage, ExecutionToolContent } from "@/features/agent/types"
 
 // jsdom 下 mock ResizeObserver

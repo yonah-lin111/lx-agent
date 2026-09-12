@@ -40,6 +40,7 @@ import { useProjectNavigationData } from "@/features/project-navigation/hooks/us
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type {
   ProjectNavigationFilterScope,
+  ProjectNavigationMenuTarget,
   ProjectNavigationProject,
   ProjectNavigationSortDirection,
   ProjectNavigationSortKey,

@@ -285,9 +285,7 @@ export const AgentUserMessage = ({
             {commandTag ? (
               message.command?.kind === "skill" ? (
                 <LxInfoTooltip
-                  markdown={
-                    activeSkillMarkdown || message.command.description || `### ${commandTag.label}`
-                  }
+                  markdown={activeSkillMarkdown || `### ${commandTag.label}`}
                   showIcon={false}
                   placement="top"
                 >

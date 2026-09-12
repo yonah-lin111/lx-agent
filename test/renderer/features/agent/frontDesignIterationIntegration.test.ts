@@ -497,7 +497,7 @@ Hope it looks awesome!`
         {
           kind: "proposedPlan",
           plan: {
-            summary: "test plan",
+            content: "test plan",
             raw: rawPlan,
           },
         },
@@ -516,6 +516,7 @@ Hope it looks awesome!`
     expect(agentMessages).toHaveLength(1)
     const assistantMsg = agentMessages[0]
     expect(assistantMsg.role).toBe("assistant")
+    if (assistantMsg.role !== "assistant") throw new Error("expected assistant message")
 
     const contentBlocks = assistantMsg.content as Array<{ type: string; text?: string }>
     expect(contentBlocks).toHaveLength(4)

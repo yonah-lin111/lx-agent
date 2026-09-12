@@ -1,4 +1,4 @@
-import { indentLess, indentMore } from "@codemirror/commands"
+import { indentMore } from "@codemirror/commands"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import {

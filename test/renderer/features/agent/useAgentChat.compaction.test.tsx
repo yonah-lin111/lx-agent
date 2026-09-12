@@ -217,6 +217,10 @@ describe("useAgentChat 压缩事件消息流", () => {
     const assistant2: AgentMessage = {
       role: "assistant",
       content: [{ type: "text", text: "hello 2" }],
+      provider: "p",
+      model: "m",
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 10 },
+      stopReason: "stop",
       timestamp: 3010,
     }
 

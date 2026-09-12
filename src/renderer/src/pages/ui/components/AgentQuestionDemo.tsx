@@ -117,33 +117,6 @@ const MOCK_GRAPHIC_QUESTION_CALL: ToolCallBlock = {
       {
         header: "架构确认",
         question: "请确认以下服务间数据流转架构方案是否符合要求：",
-        content: `
-<div style="text-align: center; margin-bottom: 8px;">
-  <svg viewBox="0 0 420 100" width="100%" height="90" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-    <text x="60" y="54" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">Renderer</text>
-    
-    <path d="M 115 50 L 155 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
-    
-    <rect x="160" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5" />
-    <text x="210" y="54" fill="#c084fc" font-size="12" font-weight="bold" text-anchor="middle">Preload IPC</text>
-    
-    <path d="M 265 50 L 305 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
-    
-    <rect x="310" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#22c55e" stroke-width="1.5" />
-    <text x="360" y="54" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">Main Core</text>
-  </svg>
-</div>
-<table>
-  <thead>
-    <tr><th>模块</th><th>通信协议</th><th>鉴权</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Renderer ↔ Preload</td><td>ContextBridge</td><td>白名单暴露</td></tr>
-    <tr><td>Preload ↔ Main</td><td>Electron IPC</td><td>内部安全通道</td></tr>
-  </tbody>
-</table>
-`,
         options: [
           {
             label: "完全同意该架构",
@@ -165,33 +138,6 @@ const MOCK_GRAPHIC_QUESTION_CALL: ToolCallBlock = {
       {
         header: "架构确认",
         question: "请确认以下服务间数据流转架构方案是否符合要求：",
-        content: `
-<div style="text-align: center; margin-bottom: 8px;">
-  <svg viewBox="0 0 420 100" width="100%" height="90" xmlns="http://www.w3.org/2000/svg">
-    <rect x="10" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-    <text x="60" y="54" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">Renderer</text>
-    
-    <path d="M 115 50 L 155 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
-    
-    <rect x="160" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1.5" />
-    <text x="210" y="54" fill="#c084fc" font-size="12" font-weight="bold" text-anchor="middle">Preload IPC</text>
-    
-    <path d="M 265 50 L 305 50" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow)" />
-    
-    <rect x="310" y="25" width="100" height="50" rx="6" fill="#1e293b" stroke="#22c55e" stroke-width="1.5" />
-    <text x="360" y="54" fill="#4ade80" font-size="12" font-weight="bold" text-anchor="middle">Main Core</text>
-  </svg>
-</div>
-<table>
-  <thead>
-    <tr><th>模块</th><th>通信协议</th><th>鉴权</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Renderer ↔ Preload</td><td>ContextBridge</td><td>白名单暴露</td></tr>
-    <tr><td>Preload ↔ Main</td><td>Electron IPC</td><td>内部安全通道</td></tr>
-  </tbody>
-</table>
-`,
         options: [
           {
             label: "完全同意该架构",
@@ -217,21 +163,6 @@ const MOCK_ASCII_QUESTION_CALL: ToolCallBlock = {
       {
         header: "流程分支",
         question: "检测到多条构建管线，请选择首选的执行路径：",
-        content: `┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Git Push   │ ──► │  CI Trigger  │ ──► │  Lint & TS  │
-└─────────────┘     └──────────────┘     └──────┬──────┘
-                                                │
-                     ┌──────────────────────────┴──────────┐
-                     ▼                                     ▼
-             ┌───────────────┐                     ┌───────────────┐
-             │  Unit Tests   │                     │  Integration  │
-             └───────┬───────┘                     └───────┬───────┘
-                     │                                     │
-                     └──────────────────┬──────────────────┘
-                                        ▼
-                               ┌─────────────────┐
-                               │  Deploy Docker  │
-                               └─────────────────┘`,
         options: [
           {
             label: "全量并行验证 (CI + Lint + Tests)",
@@ -253,21 +184,6 @@ const MOCK_ASCII_QUESTION_CALL: ToolCallBlock = {
       {
         header: "流程分支",
         question: "检测到多条构建管线，请选择首选的执行路径：",
-        content: `┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Git Push   │ ──► │  CI Trigger  │ ──► │  Lint & TS  │
-└─────────────┘     └──────────────┘     └──────┬──────┘
-                                                │
-                     ┌──────────────────────────┴──────────┐
-                     ▼                                     ▼
-             ┌───────────────┐                     ┌───────────────┐
-             │  Unit Tests   │                     │  Integration  │
-             └───────┬───────┘                     └───────┬───────┘
-                     │                                     │
-                     └──────────────────┬──────────────────┘
-                                        ▼
-                               ┌─────────────────┐
-                               │  Deploy Docker  │
-                               └─────────────────┘`,
         options: [
           {
             label: "全量并行验证 (CI + Lint + Tests)",

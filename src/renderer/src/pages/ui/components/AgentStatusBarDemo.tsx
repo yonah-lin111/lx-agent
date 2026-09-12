@@ -12,7 +12,7 @@ const MOCK_PERMISSION: PermissionRequest = {
   toolName: "bash",
   args: { command: "npm test" },
   summary: "执行测试脚本",
-  mode: "build",
+  mode: "default",
 }
 
 export const AgentStatusBarDemo = (): React.JSX.Element => {

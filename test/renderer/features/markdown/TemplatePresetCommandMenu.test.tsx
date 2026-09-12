@@ -21,7 +21,7 @@ describe("TemplatePresetCommandMenu", () => {
   })
 
   it("正常渲染全部预设选项并正确标记当前激活项", () => {
-    const { container } = render(
+    render(
       <TemplatePresetCommandMenu
         activeIndex={1}
         options={MARKDOWN_TEMPLATE_PRESET_OPTIONS}

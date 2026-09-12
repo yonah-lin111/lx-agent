@@ -2,7 +2,6 @@
 import { act, cleanup, render, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { promptHistoryApi } from "@/features/agent/api/promptHistoryApi"
 import { AgentInput } from "@/features/agent/components/AgentInput"
 import { cleanUserPrompt } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"

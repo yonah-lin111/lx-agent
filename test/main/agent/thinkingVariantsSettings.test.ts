@@ -32,9 +32,7 @@ describe("Model Settings Thinking Variants", () => {
   })
 
   it("规范化并保存/读取 variants 配置", async () => {
-    const { getModelProviderSettings, saveModelProviderSettings } = await import(
-      "@/services/settingsService"
-    )
+    const { saveModelProviderSettings } = await import("@/services/settingsService")
     const { resolveModelSelection } = await import("@/agent/stream/modelFactory")
 
     const input: ModelProviderSettings = {

@@ -33,7 +33,7 @@ export const scanMarkdownTokensInLine = (
   line: string,
   addMarker: (from: number, to: number, className: string, atomic?: boolean) => void,
   addMatches: (pattern: RegExp, className: string) => void,
-  referencedRoots: Set<string> | string[],
+  referencedRoots: Set<string>,
 ): boolean => {
   const headingMatch = line.match(/^(\s*)(#{1,6})(?=\s)/)
   if (headingMatch) {

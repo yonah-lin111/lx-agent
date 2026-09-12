@@ -109,7 +109,7 @@ describe("transcribeAudioWithGroq", () => {
       language: "zh-TW",
     })
 
-    let capturedBody: FormData | null = null
+    let capturedBody!: FormData
     globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
       capturedBody = init.body as FormData
       return Promise.resolve({
@@ -123,8 +123,8 @@ describe("transcribeAudioWithGroq", () => {
     })
 
     expect(result.text).toBe("繁體中文輸出")
-    expect(capturedBody).not.toBeNull()
-    expect(capturedBody?.get("language")).toBe("zh")
-    expect(capturedBody?.get("prompt")).toContain("繁體中文")
+    expect(capturedBody).toBeInstanceOf(FormData)
+    expect(capturedBody.get("language")).toBe("zh")
+    expect(capturedBody.get("prompt")).toContain("繁體中文")
   })
 })

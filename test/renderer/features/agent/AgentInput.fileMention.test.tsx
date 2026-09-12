@@ -244,7 +244,7 @@ describe("AgentInput 文件提及面板唤起", () => {
           selectedFiles={[]}
           onFilesChange={vi.fn()}
           supportsImages={false}
-          sessionId="test-mention-session"
+          currentSessionId="test-mention-session"
         />
       )
     }

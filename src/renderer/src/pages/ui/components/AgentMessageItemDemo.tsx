@@ -55,8 +55,9 @@ const UNDO_MESSAGE: ChatMessage = {
         filePath: "src/renderer/src/features/agent/AgentMessageList.tsx",
         toolName: "edit",
         diff: {
-          filePath: "src/renderer/src/features/agent/AgentMessageList.tsx",
+          fileName: "src/renderer/src/features/agent/AgentMessageList.tsx",
           stats: { added: 3, removed: 1 },
+          truncated: false,
           lines: [
             {
               type: "context",

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, renderHook, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   AgentInputProjectPanel,
@@ -8,7 +8,6 @@ import {
 import { getMatchedCommands } from "@/features/agent/components/AgentInput/AgentMarkdownInput/agentMarkdownInputUtils"
 import { useAgentInputActions } from "@/features/agent/components/AgentInput/AgentMarkdownInput/hooks/useAgentInputActions"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
-import { renderHook } from "@testing-library/react"
 
 describe("/project 和 /session 命令测试", () => {
   afterEach(cleanup)
@@ -47,7 +46,7 @@ describe("/project 和 /session 命令测试", () => {
         { id: "p2", name: "Project Two", path: "/path/two", isCurrent: false },
       ]
 
-      const { container } = render(
+      render(
         <AgentInputProjectPanel
           isOpen={true}
           position={{ top: 0, left: 0 }}
