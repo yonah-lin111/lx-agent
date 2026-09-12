@@ -180,7 +180,7 @@ export const AgentExecutionFlowItem = ({
       return "agent-execution-flow-step-body--frontDesign agent-execution-flow-step-body--pink border-pink-500/15 bg-pink-500/[0.05]"
     }
     if (step.kind === "hook") {
-      return "agent-execution-flow-step-body--hook border-cyan-500/15 bg-cyan-500/[0.05]"
+      return "agent-execution-flow-step-body--hook border-orange-500/15 bg-orange-500/[0.05]"
     }
     const toolName = step.toolContent?.toolName
     if (toolName === "todowrite") {

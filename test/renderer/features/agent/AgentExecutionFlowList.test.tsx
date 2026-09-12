@@ -144,6 +144,46 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.queryByText("问答")).toBeNull()
   })
 
+  it("hook 步骤使用 orange 标识并在 Header 提供 hook 筛选", () => {
+    const messages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "run hooks" }],
+        isStreaming: false,
+        timestamp: 1000,
+      },
+      {
+        id: "h1",
+        role: "hookContext",
+        blocks: [{ kind: "text", text: "hook audit text" }],
+        isStreaming: false,
+        timestamp: 2000,
+        hookEvent: "PreToolUse",
+        hookName: "policy",
+        hookStatus: "completed",
+      },
+    ]
+
+    render(<AgentExecutionFlowList messages={messages} />)
+
+    // Header 展示 hook 筛选 tab，点击后激活并使用 orange 配色
+    const hookFilterBtn = screen.getByRole("button", { name: /Hook \(1\)/ })
+    fireEvent.click(hookFilterBtn)
+    expect(hookFilterBtn.className).toContain("bg-orange-500/20")
+
+    // 筛选后仅展示 hook 步骤，用户步骤隐藏
+    expect(screen.getByText("policy")).not.toBeNull()
+    expect(screen.queryByText("run hooks")).toBeNull()
+
+    // hook item 的 tag 色与 body 强调色同步为 orange
+    const hookStep = document.querySelector('[data-step-kind="hook"]')
+    expect(hookStep?.getAttribute("data-tag-color")).toBe("orange")
+    expect(hookStep?.querySelector(".agent-execution-flow-step-body--hook")?.className).toContain(
+      "border-orange-500/15",
+    )
+  })
+
   it("鼠标选择执行流 question 选项时聚焦但不滚动，且仍可正常选中", () => {
     const question: QuestionRequest = {
       requestId: "request-1",

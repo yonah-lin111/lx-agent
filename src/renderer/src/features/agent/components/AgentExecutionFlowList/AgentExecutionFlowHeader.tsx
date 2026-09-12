@@ -110,10 +110,10 @@ const FILTER_TAB_COLORS: Record<
     dot: "bg-pink-400",
   },
   hook: {
-    active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
+    active: "bg-orange-500/20 text-orange-300 font-semibold ring-1 ring-orange-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
-    dot: "bg-teal-400",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-orange-500/10 hover:text-orange-300",
+    dot: "bg-orange-400",
   },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
@@ -249,6 +249,7 @@ export const AgentExecutionFlowHeader = ({
               renderTab("frontDesign", t("frontDesign.designCardBadge"), filterCounts.frontDesign)}
             {filterCounts.modelSwitch > 0 &&
               renderTab("modelSwitch", t("agent.modelSwitched"), filterCounts.modelSwitch)}
+            {filterCounts.hook > 0 && renderTab("hook", t("agent.kindHook"), filterCounts.hook)}
             {filterCounts.compaction > 0 &&
               renderTab("compaction", t("settings.contextCompaction"), filterCounts.compaction)}
             {filterCounts.undo > 0 && renderTab("undo", t("agent.kindUndo"), filterCounts.undo)}

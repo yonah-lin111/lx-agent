@@ -2216,6 +2216,18 @@
   filter: drop-shadow(1px 1px 0px #000000);
 }
 
+/* Hook: 铜矿暖橙 */
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-orange-500\/10,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-webhook) {
+  background-color: #2a1a10 !important;
+  color: #ff8844 !important;
+}
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag.border-orange-500\/10 svg,
+[data-theme="minecraft"] .agent-execution-flow-step-header .lx-tag:has(svg.lucide-webhook) svg {
+  color: #ff8844 !important;
+  filter: drop-shadow(1px 1px 0px #000000);
+}
+
 /* 步骤与折叠组展开详情区基础凹槽结构 */
 [data-theme="minecraft"] .agent-execution-flow-step-body,
 [data-theme="minecraft"] .agent-execution-flow-group-body {
@@ -2264,6 +2276,16 @@
   box-shadow:
     inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
     inset -1px -1px 0px 0px rgba(244, 114, 182, 0.15) !important;
+}
+
+/* 4. Hook: 铜矿暖橙石质方块 */
+[data-theme="minecraft"] .agent-execution-flow-step-body--hook {
+  background-color: #211510 !important;
+  border-top: 2px solid #000000 !important;
+  color: #ffe0c9 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 136, 68, 0.15) !important;
 }
 
 /* 展开内文本颜色定制，避免使用纯白，继承 Minecraft 字体与质感 */

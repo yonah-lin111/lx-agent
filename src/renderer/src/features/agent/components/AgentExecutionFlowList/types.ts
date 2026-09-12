@@ -191,7 +191,7 @@ export const getKindMeta = (
     case "modelSwitch":
       return { icon: Cpu, labelKey: "agent.kindModelSwitch", tagColor: "teal" }
     case "hook":
-      return { icon: Webhook, labelKey: "agent.kindHook", tagColor: "teal" }
+      return { icon: Webhook, labelKey: "agent.kindHook", tagColor: "orange" }
     case "assistant":
       return { icon: FileText, labelKey: "agent.kindAssistant", tagColor: "emerald" }
     case "proposedPlan":
