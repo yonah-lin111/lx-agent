@@ -12,7 +12,7 @@
 
 - `read` 工具拒绝二进制文件（`read.ts` 的 `isBinaryBuffer` 分支），模型无法读取任何图片。
 - `ToolResultMessage.content` 类型上支持 `ImageContent`，但 `toModelMessages.ts` 把工具结果中的图片块降级为 `[image: <mimeType>]` 文本，模型实际看不到图。
-- 用户附件（`AgentUserMessage.files`）已有图片压缩管线（`nativeImage` 缩放 + JPEG 编码），但只覆盖用户主动附图。
+- 用户附件（`AgentUserMessage.files`）中的图片曾以 `nativeImage` 缩放 + JPEG 编码内联注入，绕过 `view_image` 的精度控制、历史修剪与调用审计；现已改为路径提示（见 §6.3）。
 
 目标：模型可主动查看本地图片，覆盖 Front Design 产出审查、报错截图定位、设计稿/图表解读三类场景。
 
@@ -133,6 +133,16 @@ JPEG_QUALITY           = 85
 - 结果含图片块时，在**整段连续工具结果之后**追加一条合并的 user 图片消息（`{ type: "image", image: dataURL }`），每张图片前带来源标签 `Image from tool "<name>" (<path>):`。并行工具调用会产生多条连续 tool 消息，必须全部输出完再追加图片消息（Provider 要求同一 assistant 消息的全部 tool 结果连续，否则报 `Tool result is missing for tool call ...`，已在会话实测复现）。
 
 原因：AI SDK 对 `output.type === "content"` 的多模态工具结果，在 `openai`（Chat Completions）与 `openai-compatible` 路径会被 `JSON.stringify` 成纯文本（实测图片丢失、模型只能读到摘要并产生幻觉），tool 消息的数组 content 也会被网关拒绝。user 图片消息是各 Provider 一致支持的通路（含 Anthropic / OpenAI / Google / OpenAI-compatible），且不进入应用会话历史，仅作用于每次请求的消息投影。
+
+### 6.3 用户图片附件投影
+
+用户附图（`AgentUserMessage.files`）不再内联 base64：`toModelMessages.ts` 的 `convertUserMessage` 对每张图片追加一条文本提示：
+
+```text
+Attached image: <绝对路径> (use the view_image tool to inspect it)
+```
+
+由模型按需调用 `view_image`（精度控制、历史修剪与调用审计统一收敛到该工具）。文本附件仍以 `<document>` 内联。该提示仅存在于每次请求的消息投影中，不落库、不进入 UI 与 `/undo` 回显。附件入口格式白名单收敛为 PNG/JPG/JPEG（与工具支持集一致，`AgentInput.tsx` 拒绝其余图片格式）。
 
 ---
 

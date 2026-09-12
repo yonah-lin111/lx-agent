@@ -16,6 +16,11 @@ import {
 } from "./AgentMarkdownInput"
 import { AgentVoiceInputButton, type AgentVoiceInputButtonRef } from "./AgentVoiceInputButton"
 
+// 图片附件支持集：与 view_image 工具一致（nativeImage 仅稳定解码 PNG/JPEG）。
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg"])
+// 图片格式识别（含工具不支持的格式，避免被误判为文本附件）。
+const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg"])
+
 export interface AgentInputProps {
   inputText: string
   isStreaming: boolean
@@ -183,8 +188,13 @@ export const AgentInput = ({
 
       // Classify type based on extension
       const ext = file.name.split(".").pop()?.toLowerCase() || ""
-      const isImage = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg"].includes(ext)
-      const type: "image" | "text" = isImage ? "image" : "text"
+      const type: "image" | "text" = IMAGE_EXTENSIONS.has(ext) ? "image" : "text"
+
+      // 图片格式白名单：view_image 仅支持 PNG/JPEG，其余格式入口拒绝。
+      if (type === "image" && !SUPPORTED_IMAGE_EXTENSIONS.has(ext)) {
+        errorToast(t("agent.unsupportedImageFormat"))
+        continue
+      }
 
       // Check image modality support
       if (type === "image" && !supportsImages) {
@@ -222,9 +232,16 @@ export const AgentInput = ({
     const nextFiles = [...selectedFiles]
     for (const file of filesToAdd) {
       if (nextFiles.some((f) => f.path === file.path)) continue
-      if (file.type === "image" && !supportsImages) {
-        errorToast(t("agent.unsupportedImageInput"))
-        continue
+      if (file.type === "image") {
+        const ext = (file.extension || file.name.split(".").pop() || "").toLowerCase()
+        if (!SUPPORTED_IMAGE_EXTENSIONS.has(ext)) {
+          errorToast(t("agent.unsupportedImageFormat"))
+          continue
+        }
+        if (!supportsImages) {
+          errorToast(t("agent.unsupportedImageInput"))
+          continue
+        }
       }
       nextFiles.push(file)
     }

@@ -1,26 +1,9 @@
-import { describe, expect, it, vi } from "vitest"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { describe, expect, it } from "vitest"
 import { z } from "zod"
 import type { AgentTool, LlmMessage } from "@/agent/core/types"
-
-// 模拟 electron 及其 nativeImage 原生压缩方法
-vi.mock("electron", () => {
-  const mockSize = { width: 2000, height: 1000 }
-  const mockBuffer = Buffer.from("compressed-image-data")
-  const resizeMock = vi.fn().mockImplementation(() => ({
-    toJPEG: vi.fn().mockReturnValue(mockBuffer),
-  }))
-  const isEmptyMock = vi.fn().mockReturnValue(false)
-
-  return {
-    nativeImage: {
-      createFromPath: vi.fn().mockImplementation(() => ({
-        isEmpty: isEmptyMock,
-        getSize: () => mockSize,
-        resize: resizeMock,
-      })),
-    },
-  }
-})
 
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
 
@@ -272,7 +255,7 @@ describe("toModelMessages", () => {
     })
   })
 
-  it("user 消息携带 files 图片附件时，应用 nativeImage 比例缩放与 JPEG 压缩", () => {
+  it("user 消息携带图片附件时，只注入 view_image 路径提示（不内联图片）", () => {
     const result = toModelMessages([
       {
         role: "user",
@@ -291,9 +274,65 @@ describe("toModelMessages", () => {
       role: "user",
       content: [
         { type: "text", text: "附带图片的测试" },
-        { type: "image", image: "data:image/jpeg;base64,Y29tcHJlc3NlZC1pbWFnZS1kYXRh" },
+        {
+          type: "text",
+          text: "Attached image: /path/to/test.png (use the view_image tool to inspect it)",
+        },
       ],
     })
+  })
+
+  it("多张图片附件按顺序各注入一条路径提示", () => {
+    const result = toModelMessages([
+      {
+        role: "user",
+        content: "对比一下",
+        files: [
+          { name: "a.png", path: "/repo/a.png", type: "image" },
+          { name: "b.jpg", path: "/repo/b.jpg", type: "image" },
+        ],
+      } as any,
+    ])
+
+    expect(result[0]).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: "对比一下" },
+        {
+          type: "text",
+          text: "Attached image: /repo/a.png (use the view_image tool to inspect it)",
+        },
+        {
+          type: "text",
+          text: "Attached image: /repo/b.jpg (use the view_image tool to inspect it)",
+        },
+      ],
+    })
+  })
+
+  it("user 消息携带文本附件时仍内联为 document 块", () => {
+    const dir = mkdtempSync(join(tmpdir(), "lx-to-model-messages-"))
+    const filePath = join(dir, "note.txt")
+    writeFileSync(filePath, "hello attachment")
+    try {
+      const result = toModelMessages([
+        {
+          role: "user",
+          content: "看下附件",
+          files: [{ name: "note.txt", path: filePath, type: "text" }],
+        } as any,
+      ])
+
+      expect(result[0]).toEqual({
+        role: "user",
+        content: [
+          { type: "text", text: "看下附件" },
+          { type: "text", text: '\n\n<document path="note.txt">\nhello attachment\n</document>' },
+        ],
+      })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 

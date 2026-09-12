@@ -963,6 +963,7 @@ export const zh: TranslationDictionary = {
     queuedMessagesCount: "已排队 {{count}} 条消息，当前回复结束后自动发送",
     steerSentNotice: "已发送即时插话，将在当前步骤完成后生效",
     unsupportedImageInput: "当前所选模型不支持图片多模态输入，请切换模型。",
+    unsupportedImageFormat: "仅支持 PNG/JPG/JPEG 图片格式，请转换后重新上传。",
     fillInput: "填入输入框",
     subagentDetail: "详情",
     viewSubagentDetails: "查看子代理执行详情",

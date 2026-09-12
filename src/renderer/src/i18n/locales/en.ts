@@ -978,6 +978,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       "Queued {{count}} messages, will send automatically after current response finishes",
     steerSentNotice: "Interruption sent, will take effect after current step",
     unsupportedImageInput: "Current model does not support image input, please switch models.",
+    unsupportedImageFormat: "Only PNG/JPG/JPEG images are supported, please convert and re-upload.",
     fillInput: "Fill into input",
     subagentDetail: "Detail",
     viewSubagentDetails: "View subagent execution details",
