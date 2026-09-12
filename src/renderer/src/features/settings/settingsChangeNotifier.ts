@@ -4,6 +4,7 @@ export type SettingsDomain =
   | "models"
   | "permissions"
   | "hooks"
+  | "subagents"
   | "ui"
   | "customCommands"
   | "cli"
@@ -19,6 +20,7 @@ const listeners: Record<SettingsDomain, Set<SettingsChangeListener>> = {
   models: new Set(),
   permissions: new Set(),
   hooks: new Set(),
+  subagents: new Set(),
   ui: new Set(),
   customCommands: new Set(),
   cli: new Set(),

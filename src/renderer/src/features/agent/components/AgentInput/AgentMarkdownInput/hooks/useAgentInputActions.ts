@@ -21,6 +21,7 @@ import type {
   AgentInputProjectItem,
   AgentInputSessionItem,
   ClawMentionCandidate,
+  SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
   getArgumentSelectionRange,
@@ -628,6 +629,25 @@ export const useAgentInputActions = ({
     [editorViewRef, setActiveMode],
   )
 
+  const selectSubagentMention = useCallback(
+    (candidate: SubagentMentionCandidate): void => {
+      const view = editorViewRef.current
+      if (!view) return
+      const text = view.state.doc.toString()
+      const cursor = view.state.selection.main.head
+      const mention = getMentionQuery(text, cursor)
+      if (!mention) return
+      const insert = `@agent:${candidate.name} `
+      view.dispatch({
+        changes: { from: mention.start, to: cursor, insert },
+        selection: { anchor: mention.start + insert.length },
+      })
+      view.focus()
+      setActiveMode(null)
+    },
+    [editorViewRef, setActiveMode],
+  )
+
   const selectBlockCommand = useCallback(
     (cmd: MarkdownBlockCommand): void => {
       const view = editorViewRef.current
@@ -664,6 +684,7 @@ export const useAgentInputActions = ({
     selectSkillFromMention,
     selectDesign,
     selectClawAgent,
+    selectSubagentMention,
     selectBlockCommand,
   }
 }

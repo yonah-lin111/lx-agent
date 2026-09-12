@@ -300,8 +300,10 @@ export interface SubagentStep {
 export interface SubagentData {
   // 子代理唯一标识（跨轮次续接主键）。
   subagentId?: string
-  // AI 分发的子代理名（缺失时回退 "task"）。
+  // AI 分发的子代理名（缺失时回退角色名/ "task"）。
   name: string
+  // 创建时固定的角色名（内置/用户自定义；缺省 = 默认子代理）。
+  roleName?: string
   // 任务描述（task 输入）。
   description: string
   // 委托任务全文（task 输入）。

@@ -45,6 +45,16 @@ const mentionItems: AgentMentionItem[] = [
   { kind: "file", file: { path: "/repo/src/b.ts", isDirectory: false } },
 ]
 
+const subagentItem: AgentMentionItem = {
+  kind: "subagent",
+  subagent: { name: "explorer", description: "Explore the codebase", builtIn: true },
+}
+
+const customSubagentItem: AgentMentionItem = {
+  kind: "subagent",
+  subagent: { name: "auditor", description: "Audit a change set", builtIn: false },
+}
+
 const skills: SkillItem[] = [
   {
     name: "review",
@@ -155,6 +165,42 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
     fireEvent.mouseDown(screen.getByRole("option", { name: /b\.ts/ }))
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(mentionItems[1])
+  })
+
+  it("子代理提及面板：渲染 @agent token、描述与 Agent 标签，点选触发 onSelect", () => {
+    const onSelect = vi.fn()
+    render(
+      <AgentInputFilePanel
+        isOpen={true}
+        position={position}
+        items={[subagentItem]}
+        activeIndex={0}
+        onSelect={onSelect}
+      />,
+    )
+
+    expect(screen.getByText("@agent:explorer")).toBeDefined()
+    expect(screen.getByText("Explore the codebase")).toBeDefined()
+    expect(screen.getByText("Agent")).toBeDefined()
+
+    fireEvent.mouseDown(screen.getByRole("option", { name: /@agent:explorer/ }))
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(subagentItem)
+  })
+
+  it("子代理提及面板：自定义角色显示 Custom 标识", () => {
+    render(
+      <AgentInputFilePanel
+        isOpen={true}
+        position={position}
+        items={[customSubagentItem]}
+        activeIndex={0}
+      />,
+    )
+
+    expect(screen.getByText("@agent:auditor")).toBeDefined()
+    expect(screen.getByText("Custom")).toBeDefined()
+    expect(screen.queryByText("Agent")).toBeNull()
   })
 
   it("Skill 提及面板：点选技能触发 onSelect", () => {

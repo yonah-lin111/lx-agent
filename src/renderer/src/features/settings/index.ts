@@ -15,6 +15,7 @@ export * from "./components/PermissionSettings"
 export * from "./components/SettingsActionBar"
 export * from "./components/SettingsStatusPill"
 export * from "./components/SkillSettings"
+export * from "./components/SubagentSettings"
 export * from "./components/VoiceSettings"
 export * from "./constants"
 
@@ -22,9 +23,9 @@ export * from "./hooks/settingsDraftStore"
 export * from "./hooks/useCliSettings"
 export * from "./hooks/useHookSettings"
 export * from "./hooks/usePermissionSettings"
-
 export * from "./hooks/useSettingsData"
 export * from "./hooks/useSettingsMutations"
+export * from "./hooks/useSubagentSettings"
 export * from "./settingsChangeNotifier"
 export type {
   ModelProvider,

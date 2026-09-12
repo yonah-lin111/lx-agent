@@ -671,9 +671,20 @@ export type AgentMentionItem =
       design: FrontDesignItem
     }
   | {
+      kind: "subagent"
+      subagent: SubagentMentionCandidate
+    }
+  | {
       kind: "claw"
       claw: ClawMentionCandidate
     }
+
+// 子代理角色提及候选（内置角色 + 用户自定义角色）。
+export interface SubagentMentionCandidate {
+  name: string
+  description: string
+  builtIn: boolean
+}
 
 // OpenClaw 提及候选（渲染层展示用）。
 export interface ClawMentionCandidate {
@@ -831,6 +842,54 @@ export const AgentInputFilePanel = ({
                   size="small"
                 >
                   Design
+                </LxTag>
+              </div>
+            </div>
+          )
+        }
+
+        if (item.kind === "subagent") {
+          const { subagent } = item
+          return (
+            <div
+              key={`subagent-${subagent.name}`}
+              role="option"
+              data-index={index}
+              aria-selected={isActive}
+              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
+                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
+              }`}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onSelect?.(item)
+              }}
+            >
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-[12px] font-bold text-sky-300">
+                @
+              </span>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                  <span className="font-mono font-medium">@agent:{subagent.name}</span>
+                </span>
+                {subagent.description && (
+                  <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                    {subagent.description}
+                  </span>
+                )}
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <LxTag
+                  bgClass={
+                    subagent.builtIn
+                      ? "bg-sky-500/20 text-sky-300"
+                      : "bg-[#7c3aed]/20 text-[#c084fc]"
+                  }
+                  className="pointer-events-none shrink-0"
+                  size="small"
+                >
+                  {subagent.builtIn
+                    ? t("agent.subagentMentionTag")
+                    : t("settings.subagentsCustomTag")}
                 </LxTag>
               </div>
             </div>

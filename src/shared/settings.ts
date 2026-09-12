@@ -317,6 +317,44 @@ export interface HookMatcherGroup {
 // agent.hooks 配置：事件键 → matcher 组列表。
 export type HookSettings = Partial<Record<HookEventName, HookMatcherGroup[]>>
 
+// 用户自定义子代理角色配置。
+export interface SubagentRoleConfig {
+  description: string
+  instructions?: string
+  model?: ModelSelection
+  // 非空 = 白名单；空数组或缺失 = 继承父工具集。
+  tools?: string[]
+}
+
+// 子代理全局设置（~/.lx/config.json 的 agent.subagents 节点）。
+export interface SubagentSettings {
+  roles: Record<string, SubagentRoleConfig>
+  maxConcurrent?: number
+  maxDepth?: number
+  defaultModel?: ModelSelection
+}
+
+export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth: 1 }
+
+// 角色名格式：小写字母开头，仅含小写字母/数字/下划线/连字符，最长 32 字符。
+export const SUBAGENT_ROLE_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/
+
+// 内置角色保留名，用户角色不可占用。
+export const RESERVED_SUBAGENT_ROLE_NAMES = ["review", "explorer", "worker"] as const
+
+// 子代理嵌套深度上限。
+export const SUBAGENT_MAX_DEPTH_LIMIT = 5
+
+// 单会话子代理并发上限。
+export const SUBAGENT_MAX_CONCURRENCY_LIMIT = 32
+
+// 内置子代理角色只读信息（单一来源：主进程角色目录）。
+export interface SubagentBuiltinRoleInfo {
+  name: string
+  description: string
+  tools?: string[]
+}
+
 // 渲染进程可调用的设置 IPC 接口。
 export interface SettingsApi {
   settings: {
@@ -327,6 +365,9 @@ export interface SettingsApi {
     savePermissionSettings: (settings: PermissionSettings) => Promise<PermissionSettings>
     getHookSettings: () => Promise<HookSettings>
     saveHookSettings: (settings: HookSettings) => Promise<HookSettings>
+    getSubagentSettings: () => Promise<SubagentSettings>
+    saveSubagentSettings: (settings: SubagentSettings) => Promise<SubagentSettings>
+    getSubagentBuiltins: () => Promise<SubagentBuiltinRoleInfo[]>
     getUiSettings: () => Promise<UiSettings>
     saveUiSettings: (settings: UiSettings) => Promise<UiSettings>
     getCliSettings: () => Promise<CliSettings>

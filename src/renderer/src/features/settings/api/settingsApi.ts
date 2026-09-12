@@ -13,6 +13,8 @@ import type {
   ModelProviderSettings,
   OpenClawSettings,
   SkillSettings,
+  SubagentBuiltinRoleInfo,
+  SubagentSettings,
   TranscribeAudioInput,
   TranscribeAudioResult,
   UiSettings,
@@ -33,6 +35,11 @@ export const settingsApi = {
   getHookSettings: (): Promise<HookSettings> => window.api.settings.getHookSettings(),
   saveHookSettings: (settings: HookSettings): Promise<HookSettings> =>
     window.api.settings.saveHookSettings(settings),
+  getSubagentSettings: (): Promise<SubagentSettings> => window.api.settings.getSubagentSettings(),
+  saveSubagentSettings: (settings: SubagentSettings): Promise<SubagentSettings> =>
+    window.api.settings.saveSubagentSettings(settings),
+  getSubagentBuiltins: (): Promise<SubagentBuiltinRoleInfo[]> =>
+    window.api.settings.getSubagentBuiltins(),
   getUiSettings: (): Promise<UiSettings> => window.api.settings.getUiSettings(),
   saveUiSettings: (settings: UiSettings): Promise<UiSettings> =>
     window.api.settings.saveUiSettings(settings),

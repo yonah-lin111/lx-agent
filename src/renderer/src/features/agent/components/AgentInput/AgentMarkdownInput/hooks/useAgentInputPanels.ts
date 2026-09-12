@@ -25,6 +25,7 @@ import {
   type AgentMentionItem,
   type ClawMentionCandidate,
   getAgentPanelPosition,
+  type SubagentMentionCandidate,
 } from "../../AgentInputCommandPanels"
 import {
   getMatchedCommands,
@@ -407,6 +408,69 @@ export const useAgentInputPanels = ({
     })
   }, [loadClawCandidates])
 
+  // 已配置的子代理角色候选（内置角色在前 + 用户自定义角色按配置顺序）。
+  const [subagentCandidates, setSubagentCandidates] = useState<SubagentMentionCandidate[]>([])
+  const subagentCandidatesRef = useRef(subagentCandidates)
+  subagentCandidatesRef.current = subagentCandidates
+
+  useEffect(() => {
+    let active = true
+    const fetchSubagents = async (): Promise<void> => {
+      try {
+        const [builtins, settings] = await Promise.all([
+          settingsApi.getSubagentBuiltins(),
+          settingsApi.getSubagentSettings(),
+        ])
+        if (!active) return
+        const candidates: SubagentMentionCandidate[] = [
+          ...builtins.map((role) => ({
+            name: role.name,
+            description: role.description,
+            builtIn: true,
+          })),
+          ...Object.entries(settings.roles).map(([name, role]) => ({
+            name,
+            description: role.description,
+            builtIn: false,
+          })),
+        ]
+        setSubagentCandidates(candidates)
+      } catch {
+        if (active) setSubagentCandidates([])
+      }
+    }
+    void fetchSubagents()
+    const unsubscribe = subscribeSettingsChanged("subagents", () => {
+      void fetchSubagents()
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
+
+  const matchedMentionSubagents = useMemo<SubagentMentionCandidate[]>(() => {
+    if (activeMode !== "file") return []
+    const view = editorViewRef.current
+    const cursor = view?.state.selection.main.head ?? value.length
+    const mention = getMentionQuery(value, cursor)
+    if (!mention) return []
+    const q = mention.query.toLowerCase()
+
+    // `claw` 前缀由 OpenClaw 候选优先消费，子代理不再参与。
+    if (q.startsWith("claw")) return []
+    if (!q) return subagentCandidates
+    if (!q.startsWith("agent")) return []
+
+    const keyword = q.replace(/^agent:?/, "")
+    if (!keyword) return subagentCandidates
+    return subagentCandidates.filter(
+      (candidate) =>
+        isFuzzyMatch(keyword, candidate.name.toLowerCase()) ||
+        isFuzzyMatch(keyword, candidate.description.toLowerCase()),
+    )
+  }, [activeMode, value, subagentCandidates, editorViewRef])
+
   const matchedMentionClawAgents = useMemo<ClawMentionCandidate[]>(() => {
     if (activeMode !== "file" || clawCandidates.length === 0) return []
     const view = editorViewRef.current
@@ -483,6 +547,10 @@ export const useAgentInputPanels = ({
       kind: "skill",
       skill,
     }))
+    const subagentItems: AgentMentionItem[] = matchedMentionSubagents.map((subagent) => ({
+      kind: "subagent",
+      subagent,
+    }))
     const fileItems: AgentMentionItem[] = files.map((file) => ({
       kind: "file",
       file,
@@ -492,8 +560,15 @@ export const useAgentInputPanels = ({
       kind: "claw",
       claw,
     }))
-    return [...designItems, ...skillItems, ...fileItems, ...clawItems]
-  }, [activeMode, matchedMentionDesigns, matchedMentionSkills, matchedMentionClawAgents, files])
+    return [...designItems, ...skillItems, ...subagentItems, ...fileItems, ...clawItems]
+  }, [
+    activeMode,
+    matchedMentionDesigns,
+    matchedMentionSkills,
+    matchedMentionSubagents,
+    matchedMentionClawAgents,
+    files,
+  ])
   const mentionItemsRef = useRef(mentionItems)
   mentionItemsRef.current = mentionItems
 
@@ -655,6 +730,7 @@ export const useAgentInputPanels = ({
         (projectId ||
           currentPath ||
           skillsRef.current.length > 0 ||
+          subagentCandidatesRef.current.length > 0 ||
           frontDesignStore.getAllDesigns().length > 0)
       ) {
         setActiveMode("file")

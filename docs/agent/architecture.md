@@ -101,7 +101,9 @@ src/main/agent/
 │   └── persistentShell.ts    # 基于 node-pty 的持久化会话
 ├── subagent/              # 多 Agent 协作与特化代理池
 │   ├── subagentPool.ts    #   SubagentPool (会话续接、隔离生命周期)
-│   └── reviewAgent.ts     #   专精代码审查子代理 (Rubric 评估体系)
+│   ├── reviewAgent.ts     #   专精代码审查子代理 (Rubric 评估体系)
+│   ├── agentRoles.ts      #   内置角色目录与用户角色合并解析 (review/explorer/worker)
+│   └── subagentRuntime.ts #   会话级子代理并发槽位治理 (超限快返)
 ├── guard/                 # 安全防护网与死循环守卫
 │   ├── guardianEvaluator.ts   # Guardian 四维安全规则引擎
 │   ├── commandSafetyGuard.ts  # 高危 Shell 命令语法树拆解与拦截

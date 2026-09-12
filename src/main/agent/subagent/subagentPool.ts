@@ -6,6 +6,8 @@ export interface ManagedSubagent {
   name: string
   agent: Agent
   data?: Partial<SubagentData>
+  // 创建时固定的角色名（缺省 = 默认子代理）；续接时角色不可变更。
+  roleName?: string
   createdAt: number
   lastActiveAt: number
 }
