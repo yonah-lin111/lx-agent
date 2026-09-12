@@ -17,7 +17,7 @@ import { AgentExecutionFlowList } from "./components/AgentExecutionFlowList"
 import { AgentInput } from "./components/AgentInput"
 import type { AgentVoiceInputButtonRef } from "./components/AgentInput/AgentVoiceInputButton"
 import { AgentMessageList } from "./components/AgentMessageList"
-import { AgentSubagentPanel } from "./components/panels"
+import { AgentHistoryPanel, AgentSubagentPanel } from "./components/panels"
 import { AgentStatusBar } from "./components/status-bar"
 import { agentTabStore } from "./hooks/agentTabStore"
 import { agentViewStore } from "./hooks/agentViewStore"
@@ -35,11 +35,15 @@ export interface AgentPageProps {
   initialSessionId?: string | null
   onSessionBound?: (sessionId: string) => void
   onNewChatRef?: (fn: () => void) => void
-  onRestoreChatRef?: (fn: (sessionId: string) => void) => void
   onToggleExecutionFlowRef?: (fn: () => void) => void
+  onToggleHistoryRef?: (fn: () => void) => void
   context?: AgentSendContext
   currentProjectId?: string
   currentProjectPath?: string
+  // 项目列表（历史面板 Project tag 筛选用）。
+  projects?: { id: string; name: string }[]
+  // 删除历史会话（由右侧栏统一处理多 Tab 重置）。
+  onDeleteSession?: (sessionId: string) => void
 }
 
 /**
@@ -50,11 +54,13 @@ export const AgentPage = ({
   initialSessionId,
   onSessionBound,
   onNewChatRef,
-  onRestoreChatRef,
   onToggleExecutionFlowRef,
+  onToggleHistoryRef,
   context,
   currentProjectId,
   currentProjectPath,
+  projects,
+  onDeleteSession,
 }: AgentPageProps): React.JSX.Element => {
   const {
     messages,
@@ -359,6 +365,9 @@ export const AgentPage = ({
   // 当前打开的子代理面板 toolCallId（点击 AgentSubagentBlock 顶部 label 触发；从头部下方覆盖消息列表展开）。
   const [activeSubagentId, setActiveSubagentId] = useState<string | null>(null)
 
+  // 历史会话面板开关（右侧栏历史 icon 触发；与子代理面板互斥）。
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+
   // 实时从 messages 中解析最新的 subagent toolCall 块，确保子代理流式更新能够被面板响应
   const activeSubagent = useMemo<SubagentToolCall | null>(() => {
     if (!activeSubagentId) return null
@@ -386,7 +395,43 @@ export const AgentPage = ({
 
   const openSubagent = useCallback((toolCall: SubagentToolCall): void => {
     setActiveSubagentId(toolCall.toolCallId)
+    setIsHistoryOpen(false)
   }, [])
+
+  // 切换历史面板：打开时关闭子代理面板并刷新会话列表（两面板互斥）。
+  const toggleHistory = useCallback((): void => {
+    if (isHistoryOpen) {
+      setIsHistoryOpen(false)
+      return
+    }
+    setActiveSubagentId(null)
+    setIsHistoryOpen(true)
+    void sessionListStore.refresh()
+  }, [isHistoryOpen])
+
+  // 关闭历史面板。
+  const closeHistory = useCallback((): void => {
+    setIsHistoryOpen(false)
+  }, [])
+
+  // 从历史面板恢复会话：生成中拦截；已有 Tab 打开则切换，否则当前 Tab 恢复。
+  const handleHistoryRestore = useCallback(
+    (sessionId: string): void => {
+      if (agentViewStore.isGenerating()) {
+        warning(t("agent.sessionSwitchBlocked"))
+        return
+      }
+      const existingTab = agentTabStore.findTabBySessionId(sessionId)
+      if (existingTab) {
+        agentTabStore.switchTab(existingTab.id)
+        warning(t("agent.switchedToExistingTab"))
+      } else {
+        restoreChat(sessionId)
+      }
+      setIsHistoryOpen(false)
+    },
+    [restoreChat, warning, t],
+  )
   // 子代理面板消息列表滚动容器。
   const subagentScrollRef = useRef<HTMLDivElement>(null)
   const pageContainerRef = useRef<HTMLDivElement>(null)
@@ -517,6 +562,11 @@ export const AgentPage = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
       if (e.key !== "Escape") return
+      // 历史面板优先关闭，其次子代理面板
+      if (isHistoryOpen) {
+        setIsHistoryOpen(false)
+        return
+      }
       // 若处于子代理面板打开状态，让子代理面板优先关闭
       if (activeSubagentId !== null) {
         setActiveSubagentId(null)
@@ -545,7 +595,7 @@ export const AgentPage = ({
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown)
     }
-  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t])
+  }, [isStreaming, activeSubagent, pendingRequest, handleStop, warning, t, isHistoryOpen])
 
   // 切换会话工作区：更新会话 cwd 后刷新会话列表（状态栏路径与面板高亮同步）。
   const handleWorktreeSelect = useCallback(
@@ -740,11 +790,11 @@ export const AgentPage = ({
   if (onNewChatRef) {
     onNewChatRef(handleNewChat)
   }
-  if (onRestoreChatRef) {
-    onRestoreChatRef(handleRestoreChat)
-  }
   if (onToggleExecutionFlowRef) {
     onToggleExecutionFlowRef(toggleExecutionFlow)
+  }
+  if (onToggleHistoryRef) {
+    onToggleHistoryRef(toggleHistory)
   }
 
   return (
@@ -802,6 +852,17 @@ export const AgentPage = ({
             />
           </>
         )}
+        {/* 历史面板：右侧栏历史 icon 触发，覆盖消息/流程视图（与子代理面板互斥）。 */}
+        <AgentHistoryPanel
+          isOpen={isHistoryOpen}
+          onClose={closeHistory}
+          sessions={chatSessions}
+          currentSessionId={currentSessionId}
+          currentProjectId={currentProjectId}
+          projects={projects ?? []}
+          onRestore={handleHistoryRestore}
+          onDelete={(sessionId) => onDeleteSession?.(sessionId)}
+        />
       </div>
       <AgentInput
         inputText={inputText}

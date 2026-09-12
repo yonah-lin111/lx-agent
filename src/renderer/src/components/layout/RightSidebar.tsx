@@ -5,8 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useLocation, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxAgentToast } from "@/components/ui/LxToast"
-import { LxTooltip } from "@/components/ui/LxTooltip"
-import { AgentPage, AgentTabBar, agentViewStore, ChatHistoryPanel } from "@/features/agent"
+import { AgentPage, AgentTabBar, agentViewStore } from "@/features/agent"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
@@ -26,7 +25,6 @@ const clampWidth = (value: number): number => Math.min(Math.max(value, MIN_WIDTH
  */
 export const RightSideBar = (): React.JSX.Element => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { t } = useTranslation()
   const { warning } = useLxAgentToast()
 
@@ -39,8 +37,8 @@ export const RightSideBar = (): React.JSX.Element => {
       string,
       {
         newChat?: () => void
-        restoreChat?: (sessionId: string) => void
         toggleExecutionFlow?: () => void
+        toggleHistory?: () => void
       }
     >
   >({})
@@ -71,11 +69,6 @@ export const RightSideBar = (): React.JSX.Element => {
   const [currentProject, setCurrentProject] = useState<{ id: string; path?: string }>()
   // 项目列表（历史面板项目 tag 筛选用）。
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
-
-  const chatSessions = useSyncExternalStore(
-    sessionListStore.subscribe,
-    sessionListStore.getSessions,
-  )
 
   // 删除会话：确认后删除并本地移除；若某个 Tab 打开了该会话，则重置该 Tab 为新对话。
   const handleDeleteSession = (sessionId: string): void => {
@@ -250,54 +243,18 @@ export const RightSideBar = (): React.JSX.Element => {
             <div className="flex shrink-0 items-center gap-1">
               {newChatButton}
 
-              <LxTooltip
-                hover={{
-                  content: t("rightSidebar.chatHistory"),
-                  placement: "bottom",
+              <LxIconButton
+                aria-label={t("rightSidebar.chatHistory")}
+                onClick={() => {
+                  if (activeTab) {
+                    tabActionsRef.current[activeTab.id]?.toggleHistory?.()
+                  }
                 }}
-                click={{
-                  content: (
-                    <ChatHistoryPanel
-                      currentSessionId={activeTab?.sessionId ?? null}
-                      sessions={chatSessions}
-                      currentProjectId={currentProject?.id}
-                      projects={projects}
-                      onRestore={(sessionId) => {
-                        if (blockIfGenerating()) return
-                        const existingTab = agentTabStore.findTabBySessionId(sessionId)
-                        if (existingTab) {
-                          agentTabStore.switchTab(existingTab.id)
-                          warning(t("agent.switchedToExistingTab"))
-                        } else {
-                          const current = agentTabStore.getActiveTab()
-                          if (current) {
-                            tabActionsRef.current[current.id]?.restoreChat?.(sessionId)
-                          }
-                        }
-                        setIsHistoryOpen(false)
-                      }}
-                      onDelete={handleDeleteSession}
-                    />
-                  ),
-                  contentClassName: "!p-2",
-                  placement: "bottom",
-                  open: isHistoryOpen,
-                  onOpenChange: (open) => {
-                    setIsHistoryOpen(open)
-                    if (open) {
-                      void sessionListStore.refresh()
-                    }
-                  },
-                }}
+                size="small"
+                className="shrink-0"
               >
-                <LxIconButton
-                  aria-label={t("rightSidebar.chatHistory")}
-                  size="small"
-                  className="shrink-0"
-                >
-                  <History className="h-3.5 w-3.5" />
-                </LxIconButton>
-              </LxTooltip>
+                <History className="h-3.5 w-3.5" />
+              </LxIconButton>
 
               <LxIconButton
                 aria-label={viewMode === "flow" ? t("agent.qaView") : t("agent.executionFlowView")}
@@ -351,21 +308,23 @@ export const RightSideBar = (): React.JSX.Element => {
                       newChat: fn,
                     }
                   }}
-                  onRestoreChatRef={(fn) => {
-                    tabActionsRef.current[tab.id] = {
-                      ...tabActionsRef.current[tab.id],
-                      restoreChat: fn,
-                    }
-                  }}
                   onToggleExecutionFlowRef={(fn) => {
                     tabActionsRef.current[tab.id] = {
                       ...tabActionsRef.current[tab.id],
                       toggleExecutionFlow: fn,
                     }
                   }}
+                  onToggleHistoryRef={(fn) => {
+                    tabActionsRef.current[tab.id] = {
+                      ...tabActionsRef.current[tab.id],
+                      toggleHistory: fn,
+                    }
+                  }}
                   context={context}
                   currentProjectId={currentProject?.id}
                   currentProjectPath={currentProject?.path}
+                  projects={projects}
+                  onDeleteSession={handleDeleteSession}
                 />
               </div>
             ))}

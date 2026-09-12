@@ -944,6 +944,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     planGenerating: "Generating plan...",
     suggestedQuestions: "Suggested Questions",
     historyTitle: "Chat History",
+    closeHistoryPanel: "Close History Panel",
     searchHistory: "Search history sessions...",
     noHistory: "No history sessions found",
     deleteSessionConfirm: "Are you sure you want to delete this session?",
