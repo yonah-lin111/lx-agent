@@ -1,4 +1,4 @@
-import type { UsageQuery } from "@shared/contracts/usage"
+import type { UsageGranularity, UsageQuery } from "@shared/contracts/usage"
 import { USAGE_CHANNELS } from "@shared/ipc/usageChannels"
 import { ipcMain, type WebContents } from "electron"
 import { setUsageLogRecordedListener } from "@/agent/usageRecorder"
@@ -40,6 +40,13 @@ const parseUsageQuery = (input: unknown): UsageQuery => {
   }
 }
 
+// 校验序列聚合粒度（缺省按天）。
+const parseGranularity = (input: unknown): UsageGranularity => {
+  if (input === undefined) return "day"
+  if (input === "hour" || input === "day") return input
+  throw new Error("INVALID_USAGE_QUERY")
+}
+
 // 校验分页参数并收敛到合法区间。
 const parsePageNumber = (input: unknown, fallback: number, max: number): number => {
   if (input === undefined) return fallback
@@ -70,8 +77,8 @@ export const registerUsageHandlers = (getWebContents: () => WebContents | undefi
   ipcMain.handle(USAGE_CHANNELS.getSummary, (_, query: unknown) =>
     usageLogService.getSummary(parseUsageQuery(query)),
   )
-  ipcMain.handle(USAGE_CHANNELS.getDaily, (_, query: unknown) =>
-    usageLogService.getDaily(parseUsageQuery(query)),
+  ipcMain.handle(USAGE_CHANNELS.getDaily, (_, query: unknown, granularity: unknown) =>
+    usageLogService.getDaily(parseUsageQuery(query), parseGranularity(granularity)),
   )
   ipcMain.handle(USAGE_CHANNELS.getModelStats, (_, query: unknown) =>
     usageLogService.getModelStats(parseUsageQuery(query)),

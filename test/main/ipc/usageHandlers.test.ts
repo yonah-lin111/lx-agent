@@ -78,6 +78,22 @@ describe("usage IPC handlers", () => {
       projectId: undefined,
     })
 
+    const getDaily = handlers.get(USAGE_CHANNELS.getDaily)!
+    getDaily({}, { provider: "p1" }, "hour")
+    expect(usageLogService.getDaily).toHaveBeenCalledWith(
+      {
+        startTime: undefined,
+        endTime: undefined,
+        provider: "p1",
+        model: undefined,
+        projectId: undefined,
+      },
+      "hour",
+    )
+    getDaily({}, undefined, undefined)
+    expect(usageLogService.getDaily).toHaveBeenLastCalledWith(expect.anything(), "day")
+    expect(() => getDaily({}, {}, "week")).toThrow("INVALID_USAGE_QUERY")
+
     expect(() => getSummary({}, "invalid")).toThrow("INVALID_USAGE_QUERY")
     expect(() => getSummary({}, { startTime: -1 })).toThrow("INVALID_USAGE_QUERY")
     expect(() => listLogs({}, {}, 0, 10)).toThrow("INVALID_USAGE_QUERY")

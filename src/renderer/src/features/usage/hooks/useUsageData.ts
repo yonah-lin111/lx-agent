@@ -1,9 +1,10 @@
-import { resolveUsageRange } from "@shared/contracts/usage"
+import { resolveUsageGranularity, resolveUsageRange } from "@shared/contracts/usage"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usageApi } from "../api/usageApi"
 import type {
   UsageDailyPoint,
   UsageFilterOptions,
+  UsageGranularity,
   UsageLogPage,
   UsageModelStats,
   UsageProviderStats,
@@ -26,6 +27,8 @@ export interface UseUsageDataResult {
   projectId?: string
   page: number
   rangeBounds: UsageRangeBounds
+  // 图表序列粒度：today 为 hour，其余为 day。
+  granularity: UsageGranularity
   summary: UsageSummary | null
   daily: UsageDailyPoint[]
   modelStats: UsageModelStats[]
@@ -78,6 +81,7 @@ export const useUsageData = (): UseUsageDataResult => {
     // 否则刷新/自动刷新会一直查询挂载时刻之前的旧区间，新日志永远不可见。
     const latest = filtersRef.current
     const bounds = resolveUsageRange(latest.range)
+    const granularity = resolveUsageGranularity(latest.range)
     const targetQuery: UsageQuery = {
       ...bounds,
       provider: latest.provider,
@@ -93,7 +97,7 @@ export const useUsageData = (): UseUsageDataResult => {
       const [nextSummary, nextDaily, nextModelStats, nextProviderStats, nextOptions, nextLogs] =
         await Promise.all([
           usageApi.getSummary(targetQuery),
-          usageApi.getDaily(targetQuery),
+          usageApi.getDaily(targetQuery, granularity),
           usageApi.getModelStats(targetQuery),
           usageApi.getProviderStats(targetQuery),
           usageApi.getFilterOptions(targetQuery),
@@ -176,6 +180,7 @@ export const useUsageData = (): UseUsageDataResult => {
     projectId,
     page,
     rangeBounds,
+    granularity: resolveUsageGranularity(range),
     summary,
     daily,
     modelStats,

@@ -151,7 +151,7 @@ describe("usage 图表内部主题变量", () => {
   })
 
   it("每日请求柱状图使用 requests 变量", () => {
-    const { container } = renderChart(<UsageRequestsChart daily={daily} />)
+    const { container } = renderChart(<UsageRequestsChart daily={daily} granularity="day" />)
 
     expect(fillValues(container, ".recharts-bar-rectangle path")).toEqual([
       "var(--color-usage-chart-requests)",
@@ -160,13 +160,13 @@ describe("usage 图表内部主题变量", () => {
 
   it("Minecraft 主题柱形改直角，默认主题保留圆角", () => {
     applyThemeToDom("default")
-    const rounded = renderChart(<UsageRequestsChart daily={daily} />)
+    const rounded = renderChart(<UsageRequestsChart daily={daily} granularity="day" />)
     const roundedPath = rounded.container.querySelector(".recharts-bar-rectangle path")
     expect(roundedPath?.getAttribute("d")).toContain("A")
     rounded.unmount()
 
     applyThemeToDom("minecraft")
-    const sharp = renderChart(<UsageRequestsChart daily={daily} />)
+    const sharp = renderChart(<UsageRequestsChart daily={daily} granularity="day" />)
     const sharpPath = sharp.container.querySelector(".recharts-bar-rectangle path")
     expect(sharpPath?.getAttribute("d")).not.toContain("A")
   })
@@ -189,7 +189,7 @@ describe("usage 图表内部主题变量", () => {
   })
 
   it("趋势图面积/折线描边与渐变均引用主题变量", () => {
-    const { container } = renderChart(<UsageTrendChart daily={daily} />)
+    const { container } = renderChart(<UsageTrendChart daily={daily} granularity="day" />)
 
     expect(strokeValues(container, ".recharts-area-curve")).toEqual([
       "var(--color-usage-chart-fresh-input)",

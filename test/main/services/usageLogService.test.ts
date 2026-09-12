@@ -188,6 +188,35 @@ describe("usageLogService", () => {
     expect(daily[1].inputTokens).toBe(5)
   })
 
+  it("hour 粒度按本地整点聚合", () => {
+    const service = createUsageLogService(() => database)
+    const hour9 = new Date(2026, 8, 11, 9, 10, 0)
+    const hour10 = new Date(2026, 8, 11, 10, 5, 0)
+
+    for (const [createdAt, input] of [
+      [hour9.getTime(), 10],
+      [hour9.getTime() + 60_000, 20],
+      [hour10.getTime(), 5],
+    ] as const) {
+      service.record({
+        purpose: "chat",
+        provider: "p",
+        model: "m",
+        tokens: { input, output: 1, cacheRead: 0, cacheWrite: 0 },
+        status: "success",
+        createdAt,
+      })
+    }
+
+    const hourly = service.getDaily({}, "hour")
+    expect(hourly).toHaveLength(2)
+    expect(hourly[0].date).toBe("2026-09-11 09:00")
+    expect(hourly[0].requestCount).toBe(2)
+    expect(hourly[0].inputTokens).toBe(30)
+    expect(hourly[1].date).toBe("2026-09-11 10:00")
+    expect(hourly[1].inputTokens).toBe(5)
+  })
+
   it("按模型与 Provider 聚合成功率、平均耗时与平均成本", () => {
     const service = createUsageLogService(() => database)
     const pricing = { input: 100, output: 0, cacheRead: 0, cacheWrite: 0 }

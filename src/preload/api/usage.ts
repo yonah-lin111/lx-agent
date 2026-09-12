@@ -1,4 +1,4 @@
-import type { UsageApi, UsageQuery } from "@shared/contracts/usage"
+import type { UsageApi, UsageGranularity, UsageQuery } from "@shared/contracts/usage"
 import { USAGE_CHANNELS } from "@shared/ipc/usageChannels"
 import { ipcRenderer } from "electron"
 
@@ -7,7 +7,8 @@ export const usageApi: UsageApi["usage"] = {
   listLogs: (query: UsageQuery, page?: number, pageSize?: number) =>
     ipcRenderer.invoke(USAGE_CHANNELS.listLogs, query, page, pageSize),
   getSummary: (query: UsageQuery) => ipcRenderer.invoke(USAGE_CHANNELS.getSummary, query),
-  getDaily: (query: UsageQuery) => ipcRenderer.invoke(USAGE_CHANNELS.getDaily, query),
+  getDaily: (query: UsageQuery, granularity?: UsageGranularity) =>
+    ipcRenderer.invoke(USAGE_CHANNELS.getDaily, query, granularity),
   getModelStats: (query: UsageQuery) => ipcRenderer.invoke(USAGE_CHANNELS.getModelStats, query),
   getProviderStats: (query: UsageQuery) =>
     ipcRenderer.invoke(USAGE_CHANNELS.getProviderStats, query),

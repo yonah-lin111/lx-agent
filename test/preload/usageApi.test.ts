@@ -27,13 +27,15 @@ describe("preload usage API", () => {
 
     await api.usage.getSummary(query)
     await api.usage.getDaily(query)
+    await api.usage.getDaily(query, "hour")
     await api.usage.getModelStats(query)
     await api.usage.getProviderStats(query)
     await api.usage.getFilterOptions(query)
     await api.usage.listLogs(query, 2, 50)
 
     expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getSummary, query)
-    expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getDaily, query)
+    expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getDaily, query, undefined)
+    expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getDaily, query, "hour")
     expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getModelStats, query)
     expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getProviderStats, query)
     expect(invoke).toHaveBeenCalledWith(USAGE_CHANNELS.getFilterOptions, query)

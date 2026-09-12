@@ -17,6 +17,9 @@ export type UsageLogStatus = "success" | "error" | "aborted"
 // 统计时间范围预设。
 export type UsageTimeRange = "today" | "7d" | "30d" | "all"
 
+// 时间序列聚合粒度：按小时（today 视图）或按天。
+export type UsageGranularity = "hour" | "day"
+
 // 每百万 token 的美元单价（模型配置中手动维护）。
 export interface ModelPricing {
   input: number
@@ -93,7 +96,7 @@ export interface UsageSummary {
   avgDurationMs: number | null
 }
 
-// 按日聚合点（date 为本地日期 YYYY-MM-DD）。
+// 按日聚合点（date 为本地日期 YYYY-MM-DD；hour 粒度为本地小时 YYYY-MM-DD HH:00）。
 export interface UsageDailyPoint {
   date: string
   requestCount: number
@@ -202,12 +205,16 @@ export const resolveUsageRange = (
   return { startTime: start.getTime(), endTime: now }
 }
 
+// today 视图按小时观察当天分布，其余范围按天聚合。
+export const resolveUsageGranularity = (range: UsageTimeRange): UsageGranularity =>
+  range === "today" ? "hour" : "day"
+
 // Token 使用统计 preload API 契约。
 export interface UsageApi {
   usage: {
     listLogs: (query: UsageQuery, page?: number, pageSize?: number) => Promise<UsageLogPage>
     getSummary: (query: UsageQuery) => Promise<UsageSummary>
-    getDaily: (query: UsageQuery) => Promise<UsageDailyPoint[]>
+    getDaily: (query: UsageQuery, granularity?: UsageGranularity) => Promise<UsageDailyPoint[]>
     getModelStats: (query: UsageQuery) => Promise<UsageModelStats[]>
     getProviderStats: (query: UsageQuery) => Promise<UsageProviderStats[]>
     getFilterOptions: (query: UsageQuery) => Promise<UsageFilterOptions>

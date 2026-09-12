@@ -3,6 +3,7 @@ import type { UsageTimeRange } from "@shared/contracts/usage"
 export type {
   UsageDailyPoint,
   UsageFilterOptions,
+  UsageGranularity,
   UsageLogPage,
   UsageLogRecord,
   UsageLogStatus,

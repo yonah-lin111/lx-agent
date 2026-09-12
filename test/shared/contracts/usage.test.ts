@@ -1,5 +1,6 @@
 import {
   computeUsageRates,
+  resolveUsageGranularity,
   resolveUsageRange,
   type UsageTokens,
 } from "@shared/contracts/usage"
@@ -74,5 +75,12 @@ describe("resolveUsageRange", () => {
     const thirtyDays = new Date(startOfToday)
     thirtyDays.setDate(thirtyDays.getDate() - 29)
     expect(resolveUsageRange("30d", now.getTime()).startTime).toBe(thirtyDays.getTime())
+  })
+
+  it("today 按小时聚合，其余范围按天聚合", () => {
+    expect(resolveUsageGranularity("today")).toBe("hour")
+    expect(resolveUsageGranularity("7d")).toBe("day")
+    expect(resolveUsageGranularity("30d")).toBe("day")
+    expect(resolveUsageGranularity("all")).toBe("day")
   })
 })

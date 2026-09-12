@@ -3,6 +3,7 @@ import type {
   ModelPricing,
   UsageDailyPoint,
   UsageFilterOptions,
+  UsageGranularity,
   UsageLogInput,
   UsageLogPage,
   UsageLogRecord,
@@ -256,14 +257,18 @@ export const createUsageLogService = (getConnection: () => Database.Database) =>
     }
   },
 
-  // 按本地日期聚合每日用量。
-  getDaily: (query: UsageQuery): UsageDailyPoint[] => {
+  // 按本地日期或小时聚合用量序列。
+  getDaily: (query: UsageQuery, granularity: UsageGranularity = "day"): UsageDailyPoint[] => {
     const database = getConnection()
     const { clause, params } = buildWhere(query)
+    const bucket =
+      granularity === "hour"
+        ? "strftime('%Y-%m-%d %H:00', created_at, 'localtime')"
+        : "date(created_at, 'localtime')"
     const rows = database
       .prepare(
         `SELECT
-          date(created_at, 'localtime') as day,
+          ${bucket} as day,
           COUNT(*) as request_count,
           COALESCE(SUM(input_tokens), 0) as input_tokens,
           COALESCE(SUM(output_tokens), 0) as output_tokens,

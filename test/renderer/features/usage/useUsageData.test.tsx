@@ -75,10 +75,25 @@ describe("useUsageData", () => {
 
     expect(result.current.summary).toEqual(summary)
     expect(result.current.range).toBe("today")
+    expect(result.current.granularity).toBe("hour")
     expect(result.current.error).toBeNull()
     expect(usageMock.getSummary).toHaveBeenCalledTimes(1)
+    expect(usageMock.getDaily).toHaveBeenCalledWith(expect.anything(), "hour")
     expect(usageMock.onLogRecorded).toHaveBeenCalledTimes(1)
     expect(onLogRecordedHandler).toBeTypeOf("function")
+  })
+
+  it("切换时间范围同步切换图表粒度", async () => {
+    const { result } = renderHook(() => useUsageData())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.setRange("7d")
+    })
+    await waitFor(() => {
+      expect(usageMock.getDaily).toHaveBeenLastCalledWith(expect.anything(), "day")
+    })
+    expect(result.current.granularity).toBe("day")
   })
 
   it("加载失败时暴露错误信息", async () => {

@@ -1,4 +1,4 @@
-import type { UsageDailyPoint } from "./types"
+import type { UsageDailyPoint, UsageGranularity } from "./types"
 
 // 美元金额格式化：未配置价格（null）显示 --。
 export const formatUsd = (value: number | null | undefined, fractionDigits = 4): string => {
@@ -70,43 +70,78 @@ export const getFreshInputTokens = (point: {
   cacheWriteTokens: number
 }): number => Math.max(0, point.inputTokens - point.cacheReadTokens - point.cacheWriteTokens)
 
+// 空桶数据点（补齐缺失的日期/小时）。
+const createEmptyPoint = (date: string): UsageDailyPoint => ({
+  date,
+  requestCount: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  totalCostUsd: null,
+})
+
+// 时间戳转本地小时键（YYYY-MM-DD HH:00）。
+export const toLocalHourKey = (timestamp: number): string => {
+  const date = new Date(timestamp)
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  return `${date.getFullYear()}-${month}-${day} ${hours}:00`
+}
+
+// 图表桶标签：小时显示 HH:00，日期显示 MM-DD。
+export const formatBucketLabel = (date: string, granularity: UsageGranularity): string =>
+  granularity === "hour" ? date.slice(11) : date.slice(5)
+
+// 解析本地小时键为时间戳。
+const parseHourKey = (key: string): number => new Date(key.replace(" ", "T")).getTime()
+
 /**
- * 按时间范围补齐每日数据点（缺失日期补零，保证图表 X 轴连续）。
+ * 按时间范围补齐序列（缺失桶补零，保证图表 X 轴连续）。
+ * hour 以本地整点为桶（最多 24 个），day 以本地日期为桶（最多 366 天）；
  * startTime 缺省时以首个数据点为起点；无数据时返回空数组。
  */
-export const fillDailySeries = (
+export const fillUsageSeries = (
   points: UsageDailyPoint[],
+  granularity: UsageGranularity,
   startTime?: number,
   endTime?: number,
 ): UsageDailyPoint[] => {
   const pointMap = new Map(points.map((point) => [point.date, point]))
-  const fallbackStart = points.length > 0 ? new Date(`${points[0].date}T00:00:00`).getTime() : null
+  const fallbackStart =
+    points.length > 0
+      ? granularity === "hour"
+        ? parseHourKey(points[0].date)
+        : new Date(`${points[0].date}T00:00:00`).getTime()
+      : null
   const rangeStart = startTime ?? fallbackStart
   if (rangeStart === null) return []
 
-  const end = endTime ?? Date.now()
+  const result: UsageDailyPoint[] = []
+  if (granularity === "hour") {
+    const cursor = new Date(rangeStart)
+    cursor.setMinutes(0, 0, 0)
+    const endHour = new Date(endTime ?? Date.now())
+    endHour.setMinutes(0, 0, 0)
+    // 上限 24 个整点，防止异常时间边界导致超长循环。
+    for (let index = 0; index < 24 && cursor.getTime() <= endHour.getTime(); index += 1) {
+      const key = toLocalHourKey(cursor.getTime())
+      result.push(pointMap.get(key) ?? createEmptyPoint(key))
+      cursor.setHours(cursor.getHours() + 1)
+    }
+    return result
+  }
+
   const cursor = new Date(rangeStart)
   cursor.setHours(0, 0, 0, 0)
-  const endDate = new Date(end)
+  const endDate = new Date(endTime ?? Date.now())
   endDate.setHours(0, 0, 0, 0)
-
-  const result: UsageDailyPoint[] = []
   // 上限 366 天，防止异常时间边界导致超长循环。
   for (let index = 0; index < 366 && cursor.getTime() <= endDate.getTime(); index += 1) {
     const key = toLocalDateKey(cursor.getTime())
-    result.push(
-      pointMap.get(key) ?? {
-        date: key,
-        requestCount: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheReadTokens: 0,
-        cacheWriteTokens: 0,
-        totalCostUsd: null,
-      },
-    )
+    result.push(pointMap.get(key) ?? createEmptyPoint(key))
     cursor.setDate(cursor.getDate() + 1)
   }
-
   return result
 }

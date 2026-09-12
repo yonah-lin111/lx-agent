@@ -74,12 +74,14 @@ export const UsageDashboard = (): React.JSX.Element => {
             <div className="min-w-0 xl:col-span-2">
               <UsageTrendChart
                 daily={usage.daily}
+                granularity={usage.granularity}
                 startTime={usage.rangeBounds.startTime}
                 endTime={usage.rangeBounds.endTime}
               />
             </div>
             <UsageRequestsChart
               daily={usage.daily}
+              granularity={usage.granularity}
               startTime={usage.rangeBounds.startTime}
               endTime={usage.rangeBounds.endTime}
             />

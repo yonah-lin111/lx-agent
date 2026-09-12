@@ -12,9 +12,10 @@ import {
 } from "recharts"
 import { useTranslation } from "@/i18n"
 import { USAGE_CHART_COLORS } from "../constants"
-import type { UsageDailyPoint } from "../types"
+import type { UsageDailyPoint, UsageGranularity } from "../types"
 import {
-  fillDailySeries,
+  fillUsageSeries,
+  formatBucketLabel,
   formatCompact,
   formatNumber,
   formatUsd,
@@ -25,28 +26,30 @@ import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTool
 
 export interface UsageTrendChartProps {
   daily: UsageDailyPoint[]
+  granularity: UsageGranularity
   startTime?: number
   endTime?: number
 }
 
 /**
- * 每日 Token（堆叠：新鲜输入 / 输出 / 缓存读 / 缓存写）+ 成本折线趋势图。
+ * Token（堆叠：新鲜输入 / 输出 / 缓存读 / 缓存写）+ 成本折线趋势图（today 按小时，其余按天）。
  */
 export const UsageTrendChart = ({
   daily,
+  granularity,
   startTime,
   endTime,
 }: UsageTrendChartProps): React.JSX.Element => {
   const { t } = useTranslation()
 
   const series = useMemo(
-    () => fillDailySeries(daily, startTime, endTime),
-    [daily, startTime, endTime],
+    () => fillUsageSeries(daily, granularity, startTime, endTime),
+    [daily, granularity, startTime, endTime],
   )
   const data = useMemo(
     () =>
       series.map((point) => ({
-        label: point.date.slice(5),
+        label: formatBucketLabel(point.date, granularity),
         freshInput: getFreshInputTokens(point),
         output: point.outputTokens,
         cacheRead: point.cacheReadTokens,

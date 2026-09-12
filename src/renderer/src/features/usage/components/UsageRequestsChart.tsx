@@ -3,22 +3,24 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useTranslation } from "@/i18n"
 import { useAppThemeValue } from "@/stores/themeStore"
 import { USAGE_CHART_COLORS } from "../constants"
-import type { UsageDailyPoint } from "../types"
-import { fillDailySeries, formatCompact, formatNumber } from "../utils"
+import type { UsageDailyPoint, UsageGranularity } from "../types"
+import { fillUsageSeries, formatBucketLabel, formatCompact, formatNumber } from "../utils"
 import { UsageChartCard } from "./UsageChartCard"
 import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 export interface UsageRequestsChartProps {
   daily: UsageDailyPoint[]
+  granularity: UsageGranularity
   startTime?: number
   endTime?: number
 }
 
 /**
- * 每日请求数柱状图。
+ * 请求数柱状图（today 按小时，其余按天）。
  */
 export const UsageRequestsChart = ({
   daily,
+  granularity,
   startTime,
   endTime,
 }: UsageRequestsChartProps): React.JSX.Element => {
@@ -29,12 +31,16 @@ export const UsageRequestsChart = ({
     theme === "minecraft" ? [0, 0, 0, 0] : [3, 3, 0, 0]
 
   const series = useMemo(
-    () => fillDailySeries(daily, startTime, endTime),
-    [daily, startTime, endTime],
+    () => fillUsageSeries(daily, granularity, startTime, endTime),
+    [daily, granularity, startTime, endTime],
   )
   const data = useMemo(
-    () => series.map((point) => ({ label: point.date.slice(5), requests: point.requestCount })),
-    [series],
+    () =>
+      series.map((point) => ({
+        label: formatBucketLabel(point.date, granularity),
+        requests: point.requestCount,
+      })),
+    [series, granularity],
   )
   const hasData = series.some((point) => point.requestCount > 0)
 
