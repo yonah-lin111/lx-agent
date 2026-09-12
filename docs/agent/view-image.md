@@ -164,6 +164,7 @@ JPEG_QUALITY           = 85
 ## 9. UI 渲染
 
 - **消息流**：`AgentToolCallBlock` 新增 `toolName === "view_image"` 分支，渲染新组件 `AgentViewImageBlock`：缩略图（`lx-image://local` + `details.path`）+ 悬浮大图预览 + 文件名/尺寸/`detail` 标签；错误态回退文本。
+- **工具名分类**：`view_image` 是内置工具但名字含下划线，必须加入 `BUILTIN_UNDERSCORE_TOOLS`（`AgentMessageItem/constants.ts`）。否则消息流会按 MCP 服务 "view" 归组渲染（`AgentMcpCallBlock`），执行流程标题显示 `MCP · view · image`，图片无法展示。`FlowItemToolTitle` 原有的重复内联工具名列表已删除，统一引用该集合。
 - **执行流程**：新增 `FlowToolViewImage`，由 `FlowItemToolContent` 按工具名分派；图片数据经 `executionFlow.ts` 从配对 toolResult 透传。
 - **数据透传链**：`ToolResultMessage.image` → `ChatBlock.toolResult.image`（`types.ts`）→ `utils.ts` 两处映射 → 上列两个渲染位点；`executionFlow.ts` 同步透传。
 - **i18n**：新增文案键（缩略图标签、detail 标签、尺寸/路径提示）同时写入 `zh.ts` / `en.ts`，全部经 `useTranslation`。

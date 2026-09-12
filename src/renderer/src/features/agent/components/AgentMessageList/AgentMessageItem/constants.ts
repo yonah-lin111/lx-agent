@@ -18,4 +18,5 @@ export const BUILTIN_UNDERSCORE_TOOLS = new Set([
   "job_list",
   "job_kill",
   "switch_mode",
+  "view_image",
 ])

@@ -629,6 +629,47 @@ describe("AgentMessageItem", () => {
     expect(screen.getByText("MCP Call")).not.toBeNull()
   })
 
+  it("view_image 作为内置工具渲染图片预览，不归入 MCP 分类", () => {
+    const message: ChatMessage = {
+      id: "exec-6",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "toolCall",
+          toolCallId: "img-1",
+          toolName: "view_image",
+          args: { path: "/tmp/shot.png" },
+          status: "done",
+        },
+        {
+          kind: "toolResult",
+          toolCallId: "img-1",
+          toolName: "view_image",
+          text: "Viewed image /tmp/shot.png (source 800x600, sent original).",
+          isError: false,
+          image: {
+            path: "/tmp/shot.png",
+            mimeType: "image/png",
+            detail: "original",
+            width: 800,
+            height: 600,
+            sourceWidth: 800,
+            sourceHeight: 600,
+            resized: false,
+            sizeBytes: 12345,
+          },
+        },
+      ],
+      isStreaming: false,
+    }
+
+    const { container } = render(<AgentMessageItem message={message} />)
+
+    expect(screen.queryByText("MCP Call")).toBeNull()
+    fireEvent.click(screen.getByText("Execute Group"))
+    expect(container.querySelector('img[src="lx-image://local/tmp/shot.png"]')).not.toBeNull()
+  })
+
   it("即时插话（steer）气泡使用专属底色、移除标签、只展示内容（不出现 /steer 命令）", () => {
     const message: ChatMessage = {
       id: "steer-1",
