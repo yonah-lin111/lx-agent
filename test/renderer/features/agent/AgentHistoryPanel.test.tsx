@@ -4,6 +4,7 @@ import type { AgentSessionSummary } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { AgentHistoryPanel } from "@/features/agent"
+import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
 
 // jsdom 未实现 ResizeObserver / requestAnimationFrame，用空实现代替。
 vi.stubGlobal(
@@ -128,10 +129,43 @@ describe("AgentHistoryPanel", () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it("不再渲染更多按钮，右键会话行打开上下文菜单", () => {
+    renderPanel()
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull()
+    const row = screen.getByText("Alpha session").closest(".agent-history-session-row")
+    expect(row).not.toBeNull()
+    fireEvent.contextMenu(row!)
+    expect(screen.getByRole("menu", { name: "More" })).not.toBeNull()
+    expect(screen.getByText("Rename")).not.toBeNull()
+  })
+
+  it("右键菜单打开期间触发行保持 hover 高亮，关闭后还原", () => {
+    renderPanel()
+    const row = screen.getByText("Alpha session").closest(".agent-history-session-row")
+    expect(row?.getAttribute("data-menu-open")).toBeNull()
+    fireEvent.contextMenu(row!)
+    expect(row?.getAttribute("data-menu-open")).toBe("true")
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(row?.getAttribute("data-menu-open")).toBeNull()
+  })
+
+  it("标题生成中的会话行不响应右键菜单", () => {
+    sessionListStore.setSessionTitlePending("s1")
+    try {
+      const { container } = renderPanel()
+      const row = container.querySelectorAll(".agent-history-session-row")[0]
+      fireEvent.contextMenu(row!)
+      expect(screen.queryByRole("menu")).toBeNull()
+    } finally {
+      sessionListStore.updateSessionTitle("s1", "Alpha session")
+    }
+  })
+
   it("删除需二次确认后才触发 onDelete", () => {
     const onDelete = vi.fn()
     renderPanel({ onDelete })
-    fireEvent.click(screen.getAllByRole("button", { name: "More" })[0])
+    const row = screen.getByText("Alpha session").closest(".agent-history-session-row")
+    fireEvent.contextMenu(row!)
     fireEvent.click(screen.getByText("Delete"))
     expect(onDelete).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText("Confirm Delete"))

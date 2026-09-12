@@ -882,6 +882,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
 
         <ProjectNavigationList
           activePromptId={activePromptId}
+          activeMenuId={menu?.id ?? null}
           collapsedProjectFolders={collapsedProjectFolders}
           collapsedProjects={collapsedProjects}
           editingItem={editingItem}

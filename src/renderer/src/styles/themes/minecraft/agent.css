@@ -2081,7 +2081,9 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] .agent-history-session-row:not(.agent-history-session-row--current):hover {
+[data-theme="minecraft"] .agent-history-session-row:not(.agent-history-session-row--current):hover,
+[data-theme="minecraft"]
+  .agent-history-session-row:not(.agent-history-session-row--current)[data-menu-open="true"] {
   background-color: #35354a !important;
 }
 
@@ -2108,6 +2110,10 @@
 [data-theme="minecraft"]
   .agent-history-panel-dialog
   .agent-history-session-row:not(.agent-history-session-row--current):hover
+  .agent-history-session-title,
+[data-theme="minecraft"]
+  .agent-history-panel-dialog
+  .agent-history-session-row:not(.agent-history-session-row--current)[data-menu-open="true"]
   .agent-history-session-title {
   color: #ffffff !important;
 }
@@ -2127,20 +2133,6 @@
   .agent-history-session-title {
   color: #7dd3fc !important;
   font-weight: 700 !important;
-}
-
-/* 更多按钮：同款迷你浮雕方块 */
-[data-theme="minecraft"] .agent-history-session-more {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    1px 1px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] .agent-history-session-more:hover {
-  background-color: #3a3a52 !important;
 }
 
 [data-theme="minecraft"] .agent-execution-flow-step,

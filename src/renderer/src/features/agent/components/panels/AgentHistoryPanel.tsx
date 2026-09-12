@@ -9,7 +9,6 @@ import {
   Globe,
   History,
   MessageSquare,
-  MoreHorizontal,
   Search,
   Trash2,
   X,
@@ -18,7 +17,7 @@ import type React from "react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
-import { LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -77,10 +76,16 @@ export const AgentHistoryPanel = ({
     sessionListStore.subscribe,
     sessionListStore.getPendingSessionIds,
   )
-  // 正在编辑标题的会话 id（点击条目更多菜单进入，行内输入框编辑）。
+  // 正在编辑标题的会话 id（右键菜单进入，行内输入框编辑）。
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
-  // 更多操作菜单状态（哪个会话的更多菜单处于打开状态）。
-  const [activeMoreSessionId, setActiveMoreSessionId] = useState<string | null>(null)
+  // 右键菜单目标：触发会话快照与视口坐标（关闭动画期间保留菜单内容）。
+  const [menuTarget, setMenuTarget] = useState<{
+    session: AgentSessionSummary
+    x: number
+    y: number
+  } | null>(null)
+  // 右键菜单是否打开。
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   // 删除二次确认状态（记录正在确认删除的会话 id）。
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState("")
@@ -147,10 +152,33 @@ export const AgentHistoryPanel = ({
     centeredRef.current = true
   }, [isOpen, currentSessionId, filteredSessions])
 
+  // 面板关闭时收起右键菜单。
+  useEffect(() => {
+    if (!isOpen) setIsMenuOpen(false)
+  }, [isOpen])
+
+  // 关闭右键菜单并复位删除确认态。
+  const closeSessionMenu = (): void => {
+    setIsMenuOpen(false)
+    setDeletingSessionId(null)
+  }
+
+  // 打开会话右键菜单（标题生成中的行不响应）。
+  const openSessionMenu = (session: AgentSessionSummary, event: React.MouseEvent): void => {
+    event.preventDefault()
+    if (pendingSessionIds.has(session.id)) return
+    setDeletingSessionId(null)
+    setMenuTarget({ session, x: event.clientX, y: event.clientY })
+    setIsMenuOpen(true)
+  }
+
   const projectOptions: LxSelectOption<string>[] = projects.map((project) => ({
     value: project.id,
     label: project.name,
   }))
+
+  // 菜单内容取快照会话；关闭动画期间 menuTarget 保留，内容不闪空。
+  const menuSession = menuTarget?.session
 
   return (
     <div
@@ -221,11 +249,18 @@ export const AgentHistoryPanel = ({
                 <div
                   key={session.id}
                   data-session-current={isCurrent ? "true" : undefined}
+                  data-menu-open={
+                    isMenuOpen && menuTarget?.session.id === session.id ? "true" : undefined
+                  }
                   className={`agent-history-session-row group flex h-6 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
                     isCurrent
                       ? "agent-history-session-row--current cursor-default bg-white/10 text-white"
-                      : "text-white/70 hover:bg-white/5"
+                      : "text-white/70 hover:bg-white/5 data-[menu-open=true]:bg-white/5"
                   }`}
+                  onContextMenu={(event) => {
+                    if (isEditing) return
+                    openSessionMenu(session, event)
+                  }}
                 >
                   {isEditing ? (
                     <input
@@ -249,217 +284,18 @@ export const AgentHistoryPanel = ({
                       }}
                     />
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isCurrent}
-                        className="agent-history-session-title flex h-full min-w-0 flex-1 items-center truncate text-left"
-                        onClick={() => onRestore(session.id)}
-                      >
-                        {pendingSessionIds.has(session.id) ? (
-                          <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
-                        ) : (
-                          <span className="block truncate">{session.title}</span>
-                        )}
-                      </button>
-                      <LxTooltip
-                        open={activeMoreSessionId === session.id}
-                        onOpenChange={(open) => {
-                          setActiveMoreSessionId(open ? session.id : null)
-                          if (!open) {
-                            setDeletingSessionId(null)
-                          }
-                        }}
-                        placement="bottom"
-                        trigger="click"
-                        contentClassName="!p-1"
-                        content={
-                          <div className="flex w-max min-w-32 flex-col gap-0.5" role="menu">
-                            <LxTooltip
-                              placement="right"
-                              trigger="hover"
-                              contentClassName="!p-1"
-                              content={
-                                <div className="flex w-max min-w-36 flex-col gap-0.5" role="menu">
-                                  <LxMenuItem
-                                    leading={<Globe className="h-3.5 w-3.5 text-[#38bdf8]" />}
-                                    onClick={() => {
-                                      setActiveMoreSessionId(null)
-                                      void agentApi
-                                        .exportSession({
-                                          sessionId: session.id,
-                                          format: "html",
-                                          openAfterExport: true,
-                                        })
-                                        .then((res) => {
-                                          if (res.ok && !res.canceled && res.filePath) {
-                                            successToast(`HTML: ${res.filePath}`)
-                                          } else if (!res.ok) {
-                                            errorToast(res.error || t("common.failed"))
-                                          }
-                                        })
-                                    }}
-                                  >
-                                    HTML (.html)
-                                  </LxMenuItem>
-                                  <LxMenuItem
-                                    leading={<FileText className="h-3.5 w-3.5 text-[#34d399]" />}
-                                    onClick={() => {
-                                      setActiveMoreSessionId(null)
-                                      void agentApi
-                                        .exportSession({
-                                          sessionId: session.id,
-                                          format: "markdown",
-                                          openAfterExport: true,
-                                        })
-                                        .then((res) => {
-                                          if (res.ok && !res.canceled && res.filePath) {
-                                            successToast(`Markdown: ${res.filePath}`)
-                                          } else if (!res.ok) {
-                                            errorToast(res.error || t("common.failed"))
-                                          }
-                                        })
-                                    }}
-                                  >
-                                    Markdown (.md)
-                                  </LxMenuItem>
-                                  <LxMenuItem
-                                    leading={<FileCode className="h-3.5 w-3.5 text-[#fbbf24]" />}
-                                    onClick={() => {
-                                      setActiveMoreSessionId(null)
-                                      void agentApi
-                                        .exportSession({
-                                          sessionId: session.id,
-                                          format: "jsonl",
-                                          openAfterExport: true,
-                                        })
-                                        .then((res) => {
-                                          if (res.ok && !res.canceled && res.filePath) {
-                                            successToast(`JSONL: ${res.filePath}`)
-                                          } else if (!res.ok) {
-                                            errorToast(res.error || t("common.failed"))
-                                          }
-                                        })
-                                    }}
-                                  >
-                                    JSONL (.jsonl)
-                                  </LxMenuItem>
-                                  <LxMenuSeparator />
-                                  <LxMenuItem
-                                    leading={<Copy className="h-3.5 w-3.5 text-white/60" />}
-                                    onClick={() => {
-                                      setActiveMoreSessionId(null)
-                                      void agentApi
-                                        .copySession({
-                                          sessionId: session.id,
-                                          target: "markdown",
-                                        })
-                                        .then((res) => {
-                                          if (res.ok && res.text) {
-                                            void navigator.clipboard
-                                              .writeText(res.text)
-                                              .then(() => {
-                                                successToast(t("common.copied"))
-                                              })
-                                          } else if (!res.ok) {
-                                            errorToast(res.error || t("common.failed"))
-                                          }
-                                        })
-                                    }}
-                                  >
-                                    Copy Markdown
-                                  </LxMenuItem>
-                                  <LxMenuItem
-                                    leading={
-                                      <MessageSquare className="h-3.5 w-3.5 text-white/60" />
-                                    }
-                                    onClick={() => {
-                                      setActiveMoreSessionId(null)
-                                      void agentApi
-                                        .copySession({
-                                          sessionId: session.id,
-                                          target: "last_assistant",
-                                        })
-                                        .then((res) => {
-                                          if (res.ok && res.text) {
-                                            void navigator.clipboard
-                                              .writeText(res.text)
-                                              .then(() => {
-                                                successToast(t("common.copied"))
-                                              })
-                                          } else if (!res.ok) {
-                                            errorToast(res.error || t("common.failed"))
-                                          }
-                                        })
-                                    }}
-                                  >
-                                    Copy Last Reply
-                                  </LxMenuItem>
-                                </div>
-                              }
-                            >
-                              <LxMenuItem
-                                leading={<Download className="h-3.5 w-3.5 text-white/45" />}
-                                trailing={<ChevronRight className="h-3.5 w-3.5 text-white/35" />}
-                              >
-                                {t("agent.exportSession")}
-                              </LxMenuItem>
-                            </LxTooltip>
-                            <LxMenuItem
-                              leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
-                              onClick={() => {
-                                setActiveMoreSessionId(null)
-                                setTitleDraft(session.title)
-                                setEditingSessionId(session.id)
-                              }}
-                            >
-                              {t("agent.renameSession")}
-                            </LxMenuItem>
-                            <LxMenuItem
-                              active={deletingSessionId === session.id}
-                              danger
-                              leading={
-                                <Trash2
-                                  className={`h-3.5 w-3.5 ${
-                                    deletingSessionId === session.id
-                                      ? "text-white"
-                                      : "text-rose-400/80"
-                                  }`}
-                                />
-                              }
-                              onClick={() => {
-                                if (deletingSessionId !== session.id) {
-                                  setDeletingSessionId(session.id)
-                                  return
-                                }
-                                setActiveMoreSessionId(null)
-                                setDeletingSessionId(null)
-                                onDelete(session.id)
-                              }}
-                            >
-                              {deletingSessionId === session.id
-                                ? t("common.confirmDelete")
-                                : t("common.delete")}
-                            </LxMenuItem>
-                          </div>
-                        }
-                      >
-                        <LxIconButton
-                          aria-label={t("common.more")}
-                          className={`agent-history-session-more transition-opacity ${
-                            activeMoreSessionId === session.id
-                              ? "opacity-100"
-                              : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                          }`}
-                          disabled={pendingSessionIds.has(session.id)}
-                          highlighted={activeMoreSessionId === session.id}
-                          size="small"
-                          title={{ content: t("common.more"), placement: "bottom" }}
-                        >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                        </LxIconButton>
-                      </LxTooltip>
-                    </>
+                    <button
+                      type="button"
+                      disabled={isCurrent}
+                      className="agent-history-session-title flex h-full min-w-0 flex-1 items-center truncate text-left"
+                      onClick={() => onRestore(session.id)}
+                    >
+                      {pendingSessionIds.has(session.id) ? (
+                        <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+                      ) : (
+                        <span className="block truncate">{session.title}</span>
+                      )}
+                    </button>
                   )}
                 </div>
               )
@@ -470,6 +306,179 @@ export const AgentHistoryPanel = ({
           )}
         </div>
       </div>
+
+      {/* 会话右键菜单：导出子菜单 + 重命名 + 删除（二次确认）。 */}
+      <LxMenu
+        ariaLabel={t("common.more")}
+        isOpen={isMenuOpen}
+        x={menuTarget?.x ?? 0}
+        y={menuTarget?.y ?? 0}
+        onClose={closeSessionMenu}
+      >
+        {menuSession && (
+          <>
+            <LxTooltip
+              placement="right"
+              trigger="hover"
+              contentClassName="!p-1"
+              content={
+                <div className="flex w-max min-w-36 flex-col gap-0.5" role="menu">
+                  <LxMenuItem
+                    leading={<Globe className="h-3.5 w-3.5 text-[#38bdf8]" />}
+                    onClick={() => {
+                      closeSessionMenu()
+                      void agentApi
+                        .exportSession({
+                          sessionId: menuSession.id,
+                          format: "html",
+                          openAfterExport: true,
+                        })
+                        .then((res) => {
+                          if (res.ok && !res.canceled && res.filePath) {
+                            successToast(`HTML: ${res.filePath}`)
+                          } else if (!res.ok) {
+                            errorToast(res.error || t("common.failed"))
+                          }
+                        })
+                    }}
+                  >
+                    HTML (.html)
+                  </LxMenuItem>
+                  <LxMenuItem
+                    leading={<FileText className="h-3.5 w-3.5 text-[#34d399]" />}
+                    onClick={() => {
+                      closeSessionMenu()
+                      void agentApi
+                        .exportSession({
+                          sessionId: menuSession.id,
+                          format: "markdown",
+                          openAfterExport: true,
+                        })
+                        .then((res) => {
+                          if (res.ok && !res.canceled && res.filePath) {
+                            successToast(`Markdown: ${res.filePath}`)
+                          } else if (!res.ok) {
+                            errorToast(res.error || t("common.failed"))
+                          }
+                        })
+                    }}
+                  >
+                    Markdown (.md)
+                  </LxMenuItem>
+                  <LxMenuItem
+                    leading={<FileCode className="h-3.5 w-3.5 text-[#fbbf24]" />}
+                    onClick={() => {
+                      closeSessionMenu()
+                      void agentApi
+                        .exportSession({
+                          sessionId: menuSession.id,
+                          format: "jsonl",
+                          openAfterExport: true,
+                        })
+                        .then((res) => {
+                          if (res.ok && !res.canceled && res.filePath) {
+                            successToast(`JSONL: ${res.filePath}`)
+                          } else if (!res.ok) {
+                            errorToast(res.error || t("common.failed"))
+                          }
+                        })
+                    }}
+                  >
+                    JSONL (.jsonl)
+                  </LxMenuItem>
+                  <LxMenuSeparator />
+                  <LxMenuItem
+                    leading={<Copy className="h-3.5 w-3.5 text-white/60" />}
+                    onClick={() => {
+                      closeSessionMenu()
+                      void agentApi
+                        .copySession({
+                          sessionId: menuSession.id,
+                          target: "markdown",
+                        })
+                        .then((res) => {
+                          if (res.ok && res.text) {
+                            void navigator.clipboard.writeText(res.text).then(() => {
+                              successToast(t("common.copied"))
+                            })
+                          } else if (!res.ok) {
+                            errorToast(res.error || t("common.failed"))
+                          }
+                        })
+                    }}
+                  >
+                    Copy Markdown
+                  </LxMenuItem>
+                  <LxMenuItem
+                    leading={<MessageSquare className="h-3.5 w-3.5 text-white/60" />}
+                    onClick={() => {
+                      closeSessionMenu()
+                      void agentApi
+                        .copySession({
+                          sessionId: menuSession.id,
+                          target: "last_assistant",
+                        })
+                        .then((res) => {
+                          if (res.ok && res.text) {
+                            void navigator.clipboard.writeText(res.text).then(() => {
+                              successToast(t("common.copied"))
+                            })
+                          } else if (!res.ok) {
+                            errorToast(res.error || t("common.failed"))
+                          }
+                        })
+                    }}
+                  >
+                    Copy Last Reply
+                  </LxMenuItem>
+                </div>
+              }
+            >
+              <LxMenuItem
+                leading={<Download className="h-3.5 w-3.5 text-white/45" />}
+                trailing={<ChevronRight className="h-3.5 w-3.5 text-white/35" />}
+              >
+                {t("agent.exportSession")}
+              </LxMenuItem>
+            </LxTooltip>
+            <LxMenuItem
+              leading={<Edit3 className="h-3.5 w-3.5 text-white/45" />}
+              onClick={() => {
+                const sessionId = menuSession.id
+                closeSessionMenu()
+                setTitleDraft(menuSession.title)
+                setEditingSessionId(sessionId)
+              }}
+            >
+              {t("agent.renameSession")}
+            </LxMenuItem>
+            <LxMenuItem
+              active={deletingSessionId === menuSession.id}
+              danger
+              leading={
+                <Trash2
+                  className={`h-3.5 w-3.5 ${
+                    deletingSessionId === menuSession.id ? "text-white" : "text-rose-400/80"
+                  }`}
+                />
+              }
+              onClick={() => {
+                if (deletingSessionId !== menuSession.id) {
+                  setDeletingSessionId(menuSession.id)
+                  return
+                }
+                const sessionId = menuSession.id
+                closeSessionMenu()
+                onDelete(sessionId)
+              }}
+            >
+              {deletingSessionId === menuSession.id
+                ? t("common.confirmDelete")
+                : t("common.delete")}
+            </LxMenuItem>
+          </>
+        )}
+      </LxMenu>
     </div>
   )
 }

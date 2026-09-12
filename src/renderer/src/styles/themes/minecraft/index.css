@@ -132,7 +132,9 @@
 }
 
 [data-theme="minecraft"] [data-item-level="project"]:hover,
-[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80):hover {
+[data-theme="minecraft"] [data-item-level="project"][data-menu-open="true"],
+[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80):hover,
+[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80)[data-menu-open="true"] {
   background-color: #494964 !important;
   color: #ffffff !important;
 }
@@ -145,7 +147,8 @@
   box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4) !important;
 }
 
-[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"]:hover {
+[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"]:hover,
+[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"][data-menu-open="true"] {
   background-color: #343448 !important;
   color: #e2e2ee !important;
 }
@@ -163,7 +166,9 @@
 }
 
 [data-theme="minecraft"] [data-item-level="folder"]:hover,
-[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80):hover {
+[data-theme="minecraft"] [data-item-level="folder"][data-menu-open="true"],
+[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80):hover,
+[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80)[data-menu-open="true"] {
   background-color: #3b3b4f !important;
   color: #ffffff !important;
 }
@@ -184,9 +189,17 @@
 [data-theme="minecraft"]
   [data-item-level="prompt"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):hover,
 [data-theme="minecraft"]
+  [data-item-level="prompt"]:not([aria-current]):not(.bg-white\/10):not(
+    .bg-white\/5
+  )[data-menu-open="true"],
+[data-theme="minecraft"]
   div[role="button"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):has(
     svg.lucide-file
-  ):hover {
+  ):hover,
+[data-theme="minecraft"]
+  div[role="button"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):has(
+    svg.lucide-file
+  )[data-menu-open="true"] {
   background-color: #2b2b3b !important;
 }
 

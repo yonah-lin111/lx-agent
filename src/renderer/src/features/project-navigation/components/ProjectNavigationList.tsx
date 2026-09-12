@@ -52,6 +52,8 @@ interface ProjectNavigationListProps {
   projects: ProjectNavigationProject[]
   searchKeyword: string
   activePromptId: string
+  // 当前右键菜单目标 id（菜单打开期间保持触发节点 hover 高亮）。
+  activeMenuId?: string | null
   editingItem: EditingItem | null
   collapsedProjects: Record<string, boolean>
   collapsedProjectFolders: Record<string, boolean>
@@ -87,6 +89,7 @@ export const ProjectNavigationList = ({
   projects,
   searchKeyword,
   activePromptId,
+  activeMenuId,
   editingItem,
   collapsedProjects,
   collapsedProjectFolders,
@@ -222,9 +225,10 @@ export const ProjectNavigationList = ({
         role="button"
         tabIndex={0}
         data-item-level="prompt"
+        data-menu-open={activeMenuId === prompt.id ? "true" : undefined}
         aria-current={isActive ? "page" : undefined}
         style={{ marginLeft: `${marginLeft}px` }}
-        className={`flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+        className={`flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 data-[menu-open=true]:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
           isActive ? "bg-white/5 text-white" : "text-white/70"
         }`}
         onClick={() => {
@@ -279,8 +283,9 @@ export const ProjectNavigationList = ({
           role="button"
           tabIndex={0}
           data-item-level="folder"
+          data-menu-open={activeMenuId === folder.id ? "true" : undefined}
           style={{ marginLeft: `${marginLeft}px` }}
-          className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10"
+          className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 data-[menu-open=true]:bg-white/10"
           aria-expanded={!isFolderCollapsed}
           onClick={() => onProjectFolderToggle(folder.id)}
           onKeyDown={(event) => {
@@ -339,7 +344,8 @@ export const ProjectNavigationList = ({
                 tabIndex={0}
                 data-item-level="project"
                 data-unimported={project.isImported === false ? "true" : undefined}
-                className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 ${
+                data-menu-open={activeMenuId === project.id ? "true" : undefined}
+                className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 data-[menu-open=true]:bg-white/10 ${
                   project.isImported === false ? "opacity-75" : ""
                 }`}
                 aria-expanded={!isProjectCollapsed}

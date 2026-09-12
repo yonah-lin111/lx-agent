@@ -1,6 +1,16 @@
 import type React from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
+
+import { TooltipLayerContext } from "@/components/ui/LxTooltip"
 
 // 菜单定位坐标。
 type LxMenuPosition = {
@@ -52,6 +62,36 @@ export const LxMenu = ({
   const [shouldRender, setShouldRender] = useState<boolean>(false)
   const [position, setPosition] = useState<LxMenuPosition>({ left: x, top: y })
   const menuRef = useRef<HTMLDivElement>(null)
+  // 父级浮层集合（菜单嵌套在 Tooltip 等浮层内时注册自身，避免被父级误判为外部点击）。
+  const parentLayer = useContext(TooltipLayerContext)
+  // 嵌套浮层节点集合（如菜单内的二级子菜单 portal），外部点击判定需放行。
+  const layerNodesRef = useRef<Set<HTMLElement>>(new Set())
+  const registerLayer = useCallback(
+    (node: HTMLElement): void => {
+      layerNodesRef.current.add(node)
+      parentLayer?.register(node)
+    },
+    [parentLayer],
+  )
+  const unregisterLayer = useCallback(
+    (node: HTMLElement): void => {
+      layerNodesRef.current.delete(node)
+      parentLayer?.unregister(node)
+    },
+    [parentLayer],
+  )
+  const layerContextValue = useMemo(
+    () => ({ register: registerLayer, unregister: unregisterLayer }),
+    [registerLayer, unregisterLayer],
+  )
+
+  // 菜单根节点注册到父级浮层集合。
+  useEffect(() => {
+    if (!parentLayer || !shouldRender || !menuRef.current) return
+    const node = menuRef.current
+    parentLayer.register(node)
+    return () => parentLayer.unregister(node)
+  }, [parentLayer, shouldRender])
 
   useEffect(() => {
     let animationTimeout: ReturnType<typeof setTimeout> | undefined
@@ -97,7 +137,12 @@ export const LxMenu = ({
     if (!isOpen) return
 
     const handlePointerDown = (event: MouseEvent): void => {
-      if (!menuRef.current?.contains(event.target as Node)) onClose()
+      const target = event.target as Node
+      if (menuRef.current?.contains(target)) return
+      for (const node of layerNodesRef.current) {
+        if (node.contains(target)) return
+      }
+      onClose()
     }
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") onClose()
@@ -133,7 +178,9 @@ export const LxMenu = ({
             }),
       }}
     >
-      {children}
+      <TooltipLayerContext.Provider value={layerContextValue}>
+        {children}
+      </TooltipLayerContext.Provider>
     </div>,
     document.body,
   )
