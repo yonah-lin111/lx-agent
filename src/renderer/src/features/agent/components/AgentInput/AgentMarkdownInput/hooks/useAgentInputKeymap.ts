@@ -5,6 +5,7 @@ import { useMemo, useRef } from "react"
 import type { GitWorktreeOption } from "@/features/git"
 import type { MarkdownBlockCommand } from "@/features/markdown/commands/markdownBlockCommands"
 import type { MarkdownPasteReferenceOption } from "@/features/markdown/components/MarkdownPasteCommandMenu"
+import { getAgentMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentMentions"
 import type { TranslationKey } from "@/i18n"
 import type {
   AgentInputCommand,
@@ -485,6 +486,16 @@ export const useAgentInputKeymap = ({
                 view.dispatch({
                   changes: { from: designRange.from, to: designRange.to, insert: "" },
                   selection: { anchor: designRange.from },
+                })
+                return true
+              }
+
+              // 其次匹配 @agent 子代理提及的快速整块删除
+              const agentRange = getAgentMentionDeletionRange(docText, cursor.from)
+              if (agentRange) {
+                view.dispatch({
+                  changes: { from: agentRange.from, to: agentRange.to, insert: "" },
+                  selection: { anchor: agentRange.from },
                 })
                 return true
               }

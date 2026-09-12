@@ -112,10 +112,22 @@
 - **验证步骤**：经执行流程面板 PromptAssembly 或 `getPromptAssembly` 检查工具定义。
 - **期望**：描述包含 `Available agent types:` 且逐条列出内置 + 自定义角色（内置顺序 review → explorer → worker）；配置并发上限时追加 `Concurrency: at most 4 subagents may run at the same time. …`；未配置时无该行。
 
+## 组 14：子代理卡片角色标注
+
+- **提示词**：`并行派两个 explorer 分别调查工具注册与权限门控`，并复现一次只传 `agent_type` 不传名称的派发。
+- **验证步骤**：观察消息列表的子代理卡片标题与子代理面板头部；再次派发时在入参中省略 `name`。
+- **期望**：卡片显示 `Subagent - tool-registry-explorer (explorer)`（名称与角色不同）或 `Subagent - explorer`（名称与角色相同）；未传 `name` 时展示名回退为角色名，不再出现 `Subagent - task`；无角色的普通子代理仍显示 `名称(task)`。
+
+## 组 15：`@` 面板子代理提及与快捷删除
+
+- **提示词**：在输入框输入 `@`，观察面板类目；选择 `@agent:explorer` 后输入任务文本；再按 Backspace 删除。
+- **验证步骤**：检查面板行格式（专属图标、`@agent:<name>`、描述、`Agent` 标签）；检查输入框 token 高亮；光标置于 token 末尾按 Backspace；输入 `@claw` 验证优先级。
+- **期望**：面板列出内置 + 自定义角色；选定后插入 `@agent:<name> ` 并以独立天蓝色 token 高亮；Backspace 在 token 末尾整块删除（含尾随空格）；`@agent:xxx` 不再被当作文件提及高亮/删除；`@claw` 前缀仍优先展示 OpenClaw 候选；发送后 token 原文进入消息与模型上下文。
+
 ---
 
 ## 附：补充说明
 
-- 已知限制：多行角色描述在工具描述中折叠为单行；`tools` 白名单为「与父激活集求交集」，未激活的 MCP/内置工具名静默缺失（不报错）；运行中会话不做热重载。
-- 自动化覆盖：`test/main/services/subagentSettingsService.test.ts`（配置归一/校验/写盘）、`test/main/agent/subagent/agentRoles.test.ts`（角色目录/合并/描述）、`test/main/agent/subagent/subagentRuntime.test.ts`（并发槽位）、`test/main/agent/tools/task.test.ts`（派发/降级/续接/深度）、`test/renderer/features/settings/SubagentSettings.test.tsx`（设置页 CRUD/校验/保存载荷）。
-- 回归命令：`pnpm vitest run test/main/agent/tools/task.test.ts test/main/agent/subagent/agentRoles.test.ts test/main/agent/subagent/subagentRuntime.test.ts test/main/services/subagentSettingsService.test.ts test/renderer/features/settings/SubagentSettings.test.tsx`；全量 `pnpm test` 需对照 dev 基线（既有 18 文件 / 67 用例失败与本次改动无关）。
+- 已知限制：多行角色描述在工具描述中折叠为单行；`tools` 白名单为「与父激活集求交集」，未激活的 MCP/内置工具名静默缺失（不报错）；运行中会话不做热重载；`@agent:<name>` 仅作为委派意图提示进入模型上下文，主进程不做强制路由。
+- 自动化覆盖：`test/main/services/subagentSettingsService.test.ts`（配置归一/校验/写盘）、`test/main/agent/subagent/agentRoles.test.ts`（角色目录/合并/描述）、`test/main/agent/subagent/subagentRuntime.test.ts`（并发槽位）、`test/main/agent/tools/task.test.ts`（派发/降级/续接/深度/角色快照）、`test/renderer/features/settings/SubagentSettings.test.tsx`（设置页 CRUD/校验/保存载荷）、`test/renderer/features/markdown/markdownAgentMentions.test.ts`（提及提取/删除范围）、`test/renderer/features/agent/AgentInputCommandPanels.test.tsx`（@ 面板子代理行）、`test/renderer/features/agent/subagentLabel.test.ts`（角色标注格式）。
+- 回归命令：`pnpm vitest run test/main/agent/tools/task.test.ts test/main/agent/subagent/agentRoles.test.ts test/main/agent/subagent/subagentRuntime.test.ts test/main/services/subagentSettingsService.test.ts test/renderer/features/settings/SubagentSettings.test.tsx test/renderer/features/markdown/markdownAgentMentions.test.ts test/renderer/features/agent`；全量 `pnpm test` 需对照 dev 基线（既有失败与本次改动无关）。

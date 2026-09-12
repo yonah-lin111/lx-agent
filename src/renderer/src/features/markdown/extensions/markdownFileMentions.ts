@@ -6,7 +6,7 @@ const MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN = String.raw`(?=$|[\s.,;:!?，。�
 
 // 编辑器和预览共用的普通文件提及匹配表达式。
 export const MARKDOWN_FILE_MENTION_PATTERN = new RegExp(
-  String.raw`(?<![\w\[])@(?!design:)(${MARKDOWN_FILE_MENTION_PATH_PATTERN})${MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN}`,
+  String.raw`(?<![\w\[])@(?!design:|agent:)(${MARKDOWN_FILE_MENTION_PATH_PATTERN})${MARKDOWN_FILE_MENTION_BOUNDARY_PATTERN}`,
   "gu",
 )
 
@@ -21,7 +21,7 @@ export const MARKDOWN_DESIGN_MENTION_PATTERN = new RegExp(
 
 // 文件提及和 Markdown 引用 token 匹配表达式。
 const FILE_MENTION_PATTERN = new RegExp(
-  String.raw`(^|\s)(@\[refer-(?:project|folder|file|image|common)\]\((?:[^()\r\n]|\([^()\r\n]*\))+\)|@(?!design:)${MARKDOWN_FILE_MENTION_PATH_PATTERN})(?=$|\s)`,
+  String.raw`(^|\s)(@\[refer-(?:project|folder|file|image|common)\]\((?:[^()\r\n]|\([^()\r\n]*\))+\)|@(?!design:|agent:)${MARKDOWN_FILE_MENTION_PATH_PATTERN})(?=$|\s)`,
   "gu",
 )
 

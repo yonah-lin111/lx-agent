@@ -221,8 +221,6 @@ export const createTaskTool = (
         params.subagent_id?.trim() ??
         `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-      const subagentName = params.name?.trim() || existingManaged?.name || "task"
-
       // 3. 角色解析：续接角色不可变；新建按 agent_type > 遗留 review 别名 > 默认子代理。
       const requestedType = params.agent_type?.trim()
       let role: ResolvedAgentRole | undefined
@@ -257,6 +255,9 @@ export const createTaskTool = (
       }
 
       const roleName = role?.name ?? existingManaged?.roleName
+
+      // 展示名回退顺序：显式 name → 池内旧名 → 角色名 → "task"。
+      const subagentName = params.name?.trim() || existingManaged?.name || roleName || "task"
 
       // 4. 并发槽位：所有早退校验之后、启动子代理 turn 之前占用；失败不消费流。
       if (!runtime.tryAcquire()) {
@@ -382,6 +383,7 @@ export const createTaskTool = (
         const buildSubagentData = (filePath?: string): SubagentData => ({
           subagentId,
           name: subagentName,
+          ...(roleName ? { roleName } : {}),
           description: params.description,
           prompt: params.prompt,
           communications: [...communications],

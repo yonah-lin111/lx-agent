@@ -9,6 +9,7 @@ import { AgentMessageItem } from "@/features/agent/components/AgentMessageList"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
 import type { ChatBlock, InterAgentCommunication, SubagentData } from "@/features/agent/types"
 import { toChatMessage } from "@/features/agent/utils"
+import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { markdownRenderer } from "@/features/markdown/utils/markdownRenderer"
 import { useTranslation } from "@/i18n"
 
@@ -115,6 +116,7 @@ export const AgentSubagentPanel = ({
   const isOpen = toolCall !== null
   const data: SubagentData | undefined = toolCall?.subagent
   const displayName = data?.name.trim() || "task"
+  const displayLabel = formatSubagentLabel(displayName, data?.roleName)
 
   const messages = useMemo(() => {
     if (!data) return []
@@ -150,9 +152,7 @@ export const AgentSubagentPanel = ({
       <div className="agent-subagent-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="font-mono text-[13px] font-bold text-blue-300">Subagent</span>
-          <span className="truncate text-[13px] text-white/70">
-            {displayName !== "task" ? ` - ${displayName}(task)` : " - task"}
-          </span>
+          <span className="truncate text-[13px] text-white/70">{displayLabel}</span>
           {data?.subagentId && (
             <span className="agent-subagent-id inline-flex items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
               ID: {data.subagentId}

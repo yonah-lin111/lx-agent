@@ -6,6 +6,7 @@ import {
   MarkdownActionCopyButton,
   MarkdownActionFoldButton,
 } from "@/components/ui/LxMarkdown/extensions/markdownActionWidgets"
+import { extractAgentMentions } from "@/features/markdown/extensions/markdownAgentMentions"
 
 // 代码块折叠状态变更事件。
 const markdownBlockFoldToggleEffect = StateEffect.define<void>()
@@ -313,9 +314,22 @@ const buildMarkdownMarkerDecorations = (
       continue
     }
 
+    const agentRanges: { from: number; to: number }[] = []
+    for (const mention of extractAgentMentions(line)) {
+      agentRanges.push({ from: mention.start, to: mention.end })
+      addMarker(mention.start, mention.end, "cm-md-agent-mention")
+    }
+
     addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")
     addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
-    addMatches(/(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g, "cm-md-emphasis-marker")
+    for (const match of line.matchAll(
+      /(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g,
+    )) {
+      if (match.index === undefined) continue
+      if (!agentRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+        addMarker(match.index, match.index + match[0].length, "cm-md-emphasis-marker")
+      }
+    }
     addMatches(/(?<!\\)`/g, "cm-md-inline-code-marker")
     addMatches(/(?<![\\]【)(?<=\【)[^【】\r\n]+(?=\】)/g, "cm-md-bracket-content-marker")
     if (!taskMatch) {

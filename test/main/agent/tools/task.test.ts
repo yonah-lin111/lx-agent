@@ -307,6 +307,9 @@ describe("task 子代理角色", () => {
     const managed = pool.get(id)
     const prompt = managed?.agent.state.systemPrompt ?? ""
 
+    // 快照携带固定角色名，供 UI 展示角色标注。
+    expect((res1.details as { subagent: SubagentData }).subagent.roleName).toBe("custom")
+
     // 追加顺序：父提示词 → 子代理后缀 → 角色指令。
     const parentIndex = prompt.indexOf("父系统提示词")
     const suffixIndex = prompt.indexOf("You are now a sub-agent")
@@ -329,6 +332,20 @@ describe("task 子代理角色", () => {
     expect(pool.get(id)?.roleName).toBe("custom")
     expect(resolveModelSelection).toHaveBeenCalledTimes(1)
     expect((res2.details as { subagent: SubagentData }).subagent.communications).toHaveLength(4)
+  })
+
+  it("角色派发未传 name 时展示名回退角色名", async () => {
+    const tool = createTestTool({ settings: { roles: {} } })
+
+    holder.streamResponses.push(assistant([{ type: "text", text: "探索完成" }]))
+    const res = await tool.execute("call-role-name-fallback", {
+      description: "探索",
+      prompt: "调查工具注册流程",
+      agent_type: "explorer",
+    })
+    const subagent = (res.details as { subagent: SubagentData }).subagent
+    expect(subagent.roleName).toBe("explorer")
+    expect(subagent.name).toBe("explorer")
   })
 
   it("角色模型解析失败降级 defaultModel 并 console.warn", async () => {

@@ -188,7 +188,7 @@ Concurrency: at most N subagents may run at the same time. Reuse existing subage
 5. **模型**：`role.model` → `defaultModel` → 父会话模型（见 4.4）。
 6. **并发**：启动子代理 turn 前 `runtime.tryAcquire()`，`finally` 中 `runtime.release()`（含异常/中止路径）。acquire 失败 → error ToolResult（见 4.3）。
 7. **Hook**：`SubagentStart` / `SubagentStop` payload 的 `agent_type` 使用**解析后的角色名**（未命中角色时沿用现有 `name` 回退值），保持线协议字段不变。
-8. **落池**：`SubagentPool` 条目追加 `roleName` 字段（用于续接冲突判定），`SubagentData` 结构不变。
+8. **落池与快照**：`SubagentPool` 条目追加 `roleName` 字段（用于续接冲突判定）；`SubagentData` 同步携带 `roleName`，消息卡片与子代理面板据此标注角色（名称缺失时展示名回退角色名）。
 
 ### 4.2 深度与嵌套
 
@@ -240,6 +240,13 @@ Concurrency: at most N subagents may run at the same time. Reuse existing subage
 1. **全局治理卡片**：`defaultModel` 两级下拉（provider / model，含「继承当前会话模型」空选项，复用 `ModelSettings` 的选择器样式）、`maxConcurrent` 数字输入（空 = 不限）、`maxDepth` 数字输入（默认 1，范围 1–5）。
 2. **内置角色列表**：只读卡片，展示名称、description、工具边界；标注「内置」。
 3. **用户角色列表**：卡片列表 + `LxModal` 新增/编辑（名称、description、instructions 多行、model 两级下拉、tools 文本框逐行一个工具名），行内删除；名称实时校验（格式 + 保留名 + 重名），保存时主进程二次校验并返回错误。
+
+### 5.1 输入框 `@` 子代理提及
+
+- AgentInput `@` 提及面板新增「子代理」类目：内置角色在前、用户角色按配置顺序，展示 `@agent:<name>`、描述与专属 `Agent` 标签。
+- 选定后插入专属 token `@agent:<name> `（镜像 `@design:` / `@claw:` 规范），编辑器内以独立高亮样式呈现（`cm-md-agent-mention`）。
+- Backspace 在 token 末尾整块删除（`getAgentMentionDeletionRange`，与 `@design` / `@claw` 语义一致）；文件提及解析显式排除 `@agent:` 前缀避免误判。
+- token 随用户消息原样进入模型上下文，作为委派意图提示；主进程不做强制路由。
 
 ---
 

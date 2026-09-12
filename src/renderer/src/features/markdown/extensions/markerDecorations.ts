@@ -6,6 +6,7 @@ import {
   getMarkdownReferenceType,
 } from "@/features/markdown/commands/markdownReferenceCommands"
 import { MARKDOWN_REFERENCE_PATTERN } from "@/features/markdown/extensions/editorHighlight"
+import { extractAgentMentions } from "@/features/markdown/extensions/markdownAgentMentions"
 import {
   isPathUnderReferencedRoots,
   MARKDOWN_DESIGN_MENTION_PATTERN,
@@ -88,20 +89,25 @@ export const scanMarkdownTokensInLine = (
     return true
   }
 
-  const designRanges: { from: number; to: number }[] = []
+  const mentionRanges: { from: number; to: number }[] = []
   for (const match of line.matchAll(MARKDOWN_DESIGN_MENTION_PATTERN)) {
     if (match.index === undefined) continue
     const start = match.index
     const end = match.index + match[0].length
-    designRanges.push({ from: start, to: end })
+    mentionRanges.push({ from: start, to: end })
     addMarker(start, end, "cm-md-design-mention")
+  }
+
+  for (const mention of extractAgentMentions(line)) {
+    mentionRanges.push({ from: mention.start, to: mention.end })
+    addMarker(mention.start, mention.end, "cm-md-agent-mention")
   }
 
   addMatches(/(?<!\\)(?:\*\*|__)/g, "cm-md-strong-marker")
   addMatches(/(?<!\\)~~/g, "cm-md-strike-marker")
   for (const match of line.matchAll(/(?<!\\)(?<!\*)(?:\*)(?!\*|\s)|(?<!\\)(?<!_)(?:_)(?!_|\s)/g)) {
     if (match.index === undefined) continue
-    if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+    if (!mentionRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
       addMarker(match.index, match.index + match[0].length, "cm-md-emphasis-marker")
     }
   }
@@ -110,7 +116,7 @@ export const scanMarkdownTokensInLine = (
   if (!taskMatch) {
     for (const match of line.matchAll(/(?<!\\)[\[\]\(\)]/g)) {
       if (match.index === undefined) continue
-      if (!designRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
+      if (!mentionRanges.some((r) => match.index! >= r.from && match.index! < r.to)) {
         addMarker(match.index, match.index + match[0].length, "cm-md-link-marker")
       }
     }

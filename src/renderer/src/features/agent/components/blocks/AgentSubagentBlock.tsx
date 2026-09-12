@@ -2,6 +2,7 @@ import { Bot, CornerDownRight } from "lucide-react"
 import type React from "react"
 import { Fragment } from "react"
 import type { AgentMessage, ChatBlock, SubagentStep } from "@/features/agent/types"
+import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 
 // 工具调用块类型。
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
@@ -91,6 +92,7 @@ export const AgentSubagentBlock = ({
   const name = getSubagentName(toolCall)
   const description = getTaskDescription(toolCall)
   const subagent = toolCall.subagent
+  const label = formatSubagentLabel(name, subagent?.roleName)
   const steps = subagent?.steps ?? []
   const thinkingCount = countThinking(subagent?.messages)
   const { tool: toolCount, mcp: mcpCount, webSearch: webSearchCount } = countSteps(steps)
@@ -115,9 +117,7 @@ export const AgentSubagentBlock = ({
         <span className="agent-subagent-name font-mono text-[12px] font-bold text-blue-300">
           Subagent
         </span>
-        <span className="agent-subagent-detail truncate text-[12px] text-white/50">
-          {name !== "task" ? ` - ${name}(task)` : " - task"}
-        </span>
+        <span className="agent-subagent-detail truncate text-[12px] text-white/50">{label}</span>
       </button>
 
       {/* 第一个直角 icon：任务描述。 */}

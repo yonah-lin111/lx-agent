@@ -1114,6 +1114,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     thinkingEffort: "Effort",
     effort: "Effort",
     fileMention: "Project File Mention",
+    subagentMentionTag: "Agent",
     modelSelect: "Model Select",
     commandClearDesc: "Clear current chat",
     commandUndoDesc: "Undo last turn",
