@@ -81,6 +81,27 @@ describe("AgentHistoryPanel", () => {
     expect(screen.getByText("Beta session")).not.toBeNull()
   })
 
+  it("重新打开面板时重置搜索筛选", () => {
+    const view = renderPanel()
+    fireEvent.change(screen.getByPlaceholderText("Search history sessions..."), {
+      target: { value: "beta" },
+    })
+    expect(screen.queryByText("Alpha session")).toBeNull()
+    const props: PanelProps = {
+      isOpen: false,
+      onClose: vi.fn(),
+      sessions,
+      currentSessionId: null,
+      projects: [{ id: "p1", name: "Project One" }],
+      onRestore: vi.fn(),
+      onDelete: vi.fn(),
+    }
+    view.rerender(<AgentHistoryPanel {...props} />)
+    view.rerender(<AgentHistoryPanel {...props} isOpen />)
+    expect(screen.getByText("Alpha session")).not.toBeNull()
+    expect(screen.getByText("Beta session")).not.toBeNull()
+  })
+
   it("Current Project tag 只保留当前项目会话", () => {
     renderPanel({ currentProjectId: "p1" })
     fireEvent.click(screen.getByText("Current Project"))
@@ -88,9 +109,12 @@ describe("AgentHistoryPanel", () => {
     expect(screen.queryByText("Beta session")).toBeNull()
   })
 
-  it("点击非当前会话触发恢复，当前会话项禁用", () => {
+  it("点击非当前会话触发恢复，当前会话项禁用并标记", () => {
     const onRestore = vi.fn()
-    renderPanel({ currentSessionId: "s1", onRestore })
+    const { container } = renderPanel({ currentSessionId: "s1", onRestore })
+    const currentRows = container.querySelectorAll('[data-session-current="true"]')
+    expect(currentRows).toHaveLength(1)
+    expect(currentRows[0]?.textContent).toContain("Alpha session")
     const alphaButton = screen.getByText("Alpha session").closest("button")
     expect(alphaButton?.disabled).toBe(true)
     fireEvent.click(screen.getByText("Beta session"))

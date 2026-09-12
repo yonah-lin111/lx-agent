@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react"
 import type React from "react"
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
@@ -84,6 +84,10 @@ export const AgentHistoryPanel = ({
   // 删除二次确认状态（记录正在确认删除的会话 id）。
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState("")
+  // 会话列表滚动容器（打开面板时用于将当前会话居中）。
+  const listRef = useRef<HTMLDivElement>(null)
+  // 本次打开是否已完成居中（避免筛选/列表刷新反复回拉滚动条）。
+  const centeredRef = useRef(false)
 
   // 提交标题修改：写入 DB 并本地同步，随后退出编辑态。
   const commitTitle = (): void => {
@@ -116,6 +120,32 @@ export const AgentHistoryPanel = ({
       return true
     })
   }, [query, sessions, projectTag, selectedProjectId, currentProjectId])
+
+  // 打开面板时重置筛选，确保当前会话一定在列表中（关闭态不卸载，需手动复位）。
+  useEffect(() => {
+    if (!isOpen) return
+    setQuery("")
+    setProjectTag("all")
+    setSelectedProjectId(null)
+  }, [isOpen])
+
+  // 打开面板时将当前会话滚动到列表视口中间，无需手动调整滚动条（每次打开只居中一次）。
+  useEffect(() => {
+    if (!isOpen) {
+      centeredRef.current = false
+      return
+    }
+    if (centeredRef.current) return
+    const container = listRef.current
+    if (!container) return
+    const activeRow = container.querySelector<HTMLElement>('[data-session-current="true"]')
+    if (!activeRow) return
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeRow.getBoundingClientRect()
+    container.scrollTop +=
+      activeRect.top - containerRect.top - (containerRect.height - activeRect.height) / 2
+    centeredRef.current = true
+  }, [isOpen, currentSessionId, filteredSessions])
 
   const projectOptions: LxSelectOption<string>[] = projects.map((project) => ({
     value: project.id,
@@ -182,7 +212,7 @@ export const AgentHistoryPanel = ({
             zIndex={1_000_000}
           />
         )}
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div ref={listRef} className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-0.5">
             {filteredSessions.map((session) => {
               const isCurrent = session.id === currentSessionId
@@ -190,9 +220,10 @@ export const AgentHistoryPanel = ({
               return (
                 <div
                   key={session.id}
-                  className={`group flex h-6 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
+                  data-session-current={isCurrent ? "true" : undefined}
+                  className={`agent-history-session-row group flex h-6 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
                     isCurrent
-                      ? "cursor-default bg-white/10 text-white"
+                      ? "agent-history-session-row--current cursor-default bg-white/10 text-white"
                       : "text-white/70 hover:bg-white/5"
                   }`}
                 >
@@ -222,7 +253,7 @@ export const AgentHistoryPanel = ({
                       <button
                         type="button"
                         disabled={isCurrent}
-                        className="flex h-full min-w-0 flex-1 items-center truncate text-left"
+                        className="agent-history-session-title flex h-full min-w-0 flex-1 items-center truncate text-left"
                         onClick={() => onRestore(session.id)}
                       >
                         {pendingSessionIds.has(session.id) ? (
@@ -415,7 +446,7 @@ export const AgentHistoryPanel = ({
                       >
                         <LxIconButton
                           aria-label={t("common.more")}
-                          className={`transition-opacity ${
+                          className={`agent-history-session-more transition-opacity ${
                             activeMoreSessionId === session.id
                               ? "opacity-100"
                               : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
