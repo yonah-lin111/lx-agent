@@ -17,8 +17,8 @@ describe("usage 图表主题变量", () => {
     const defaultTokens = extractChartTokens(defaultCss)
     const minecraftTokens = extractChartTokens(minecraftCss)
 
-    // 6 个语义色 + 8 个 Provider 循环色。
-    expect(defaultTokens.length).toBe(14)
+    // 7 个语义色 + 8 个 Provider 循环色。
+    expect(defaultTokens.length).toBe(15)
     expect(minecraftTokens).toEqual(defaultTokens)
   })
 

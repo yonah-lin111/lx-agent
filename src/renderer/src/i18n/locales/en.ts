@@ -149,6 +149,7 @@ export const en = {
       outputTokens: "Output Tokens",
       cacheReadTokens: "Cache Read",
       cacheWriteTokens: "Cache Write",
+      cacheHitRate: "Cache Hit Rate",
       pricedRequests: "priced",
       noPricing: "No pricing configured",
     },

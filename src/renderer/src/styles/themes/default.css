@@ -17,6 +17,7 @@
   --color-usage-chart-output: #22c55e;
   --color-usage-chart-cache-read: #a855f7;
   --color-usage-chart-cache-write: #f97316;
+  --color-usage-chart-cache-hit: #10b981;
   --color-usage-chart-cost: #f43f5e;
   --color-usage-chart-requests: #eab308;
   --color-usage-chart-provider-1: #38bdf8;

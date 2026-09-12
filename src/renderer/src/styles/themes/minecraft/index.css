@@ -16,21 +16,22 @@
   --color-theme-text-muted: #a6a6bc;
   --color-theme-text-subtle: #727288;
   --color-theme-accent: #55ff55;
-  /* 用量图表配色：矿物色板（钻石 / 绿宝石 / 紫水晶 / 金 / 红石 / 青金石 + 羊皮 / 安山岩）。 */
-  --color-usage-chart-fresh-input: #55ffff;
-  --color-usage-chart-output: #55ff55;
-  --color-usage-chart-cache-read: #c084fc;
-  --color-usage-chart-cache-write: #ffaa00;
-  --color-usage-chart-cost: #ff5555;
-  --color-usage-chart-requests: #55aaff;
-  --color-usage-chart-provider-1: #55ffff;
-  --color-usage-chart-provider-2: #55ff55;
-  --color-usage-chart-provider-3: #c084fc;
-  --color-usage-chart-provider-4: #ffaa00;
-  --color-usage-chart-provider-5: #ff5555;
-  --color-usage-chart-provider-6: #55aaff;
-  --color-usage-chart-provider-7: #ffea88;
-  --color-usage-chart-provider-8: #a6a6bc;
+  /* 用量图表配色：压暗矿物色板（钻石 / 绿宝石 / 紫水晶 / 金 / 红石 / 青金石 + 羊皮 / 安山岩）。 */
+  --color-usage-chart-fresh-input: #4ec5c5;
+  --color-usage-chart-output: #4fc94f;
+  --color-usage-chart-cache-read: #a774e0;
+  --color-usage-chart-cache-write: #cc8a1f;
+  --color-usage-chart-cache-hit: #4fc94f;
+  --color-usage-chart-cost: #cc5f5f;
+  --color-usage-chart-requests: #5590cc;
+  --color-usage-chart-provider-1: #4ec5c5;
+  --color-usage-chart-provider-2: #4fc94f;
+  --color-usage-chart-provider-3: #a774e0;
+  --color-usage-chart-provider-4: #cc8a1f;
+  --color-usage-chart-provider-5: #cc5f5f;
+  --color-usage-chart-provider-6: #5590cc;
+  --color-usage-chart-provider-7: #c9bb70;
+  --color-usage-chart-provider-8: #8c8ca0;
   --theme-font-family:
     "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
     "Microsoft YaHei", monospace;
@@ -148,7 +149,8 @@
 }
 
 [data-theme="minecraft"] [data-item-level="project"][data-unimported="true"]:hover,
-[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"][data-menu-open="true"] {
+[data-theme="minecraft"]
+  [data-item-level="project"][data-unimported="true"][data-menu-open="true"] {
   background-color: #343448 !important;
   color: #e2e2ee !important;
 }
@@ -1520,7 +1522,7 @@
     0px 0px 8px rgba(85, 255, 85, 0.8) !important;
 }
 
-/* 用量统计表格：表头凹槽、单元格分隔与文字像素阴影 */
+/* 用量统计表格：表头凹槽、单元格分隔与文字像素阴影（对比度整体收敛一档） */
 [data-theme="minecraft"] .usage-table {
   border-collapse: separate !important;
   border-spacing: 0 !important;
@@ -1532,25 +1534,45 @@
 }
 
 [data-theme="minecraft"] .usage-table th {
-  border-bottom: 2px solid #000000 !important;
-  color: #a6a6bc !important;
+  border-bottom: 2px solid #14141c !important;
+  color: #8b8ba0 !important;
   text-shadow: 1px 1px 0px #000000;
 }
 
 [data-theme="minecraft"] .usage-table td {
-  border-bottom: 1px solid #000000 !important;
+  border-bottom: 1px solid #14141c !important;
+  color: #bcbcd0 !important;
   text-shadow: 1px 1px 0px #000000;
+}
+
+[data-theme="minecraft"] .usage-table tbody tr:hover {
+  background-color: #2a2a3a !important;
 }
 
 [data-theme="minecraft"] .usage-table tbody tr:last-child td {
   border-bottom: none !important;
 }
 
+[data-theme="minecraft"] .usage-table .lx-tag {
+  opacity: 0.85 !important;
+}
+
 [data-theme="minecraft"] .usage-table-card {
   box-shadow:
-    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.1),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
     3px 3px 0px 0px #000000 !important;
+}
+
+/* 用量图表像素化：柱形直角由组件按主题传 radius，饼图与网格线去抗锯齿处理 */
+[data-theme="minecraft"] .usage-chart-card .recharts-bar-rectangle path,
+[data-theme="minecraft"] .usage-chart-card .recharts-cartesian-grid line {
+  shape-rendering: crispEdges !important;
+}
+
+[data-theme="minecraft"] .usage-chart-card .recharts-pie-sector path {
+  shape-rendering: crispEdges !important;
+  stroke: #000000 !important;
+  stroke-width: 2px !important;
 }
 
 [data-theme="minecraft"] .usage-chart-tooltip {

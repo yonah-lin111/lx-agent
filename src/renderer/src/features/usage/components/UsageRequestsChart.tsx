@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useTranslation } from "@/i18n"
+import { useAppThemeValue } from "@/stores/themeStore"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageDailyPoint } from "../types"
 import { fillDailySeries, formatCompact, formatNumber } from "../utils"
@@ -22,6 +23,10 @@ export const UsageRequestsChart = ({
   endTime,
 }: UsageRequestsChartProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const theme = useAppThemeValue()
+  // Minecraft 像素主题用直角柱形，其余主题保留顶部圆角。
+  const barRadius: [number, number, number, number] =
+    theme === "minecraft" ? [0, 0, 0, 0] : [3, 3, 0, 0]
 
   const series = useMemo(
     () => fillDailySeries(daily, startTime, endTime),
@@ -77,7 +82,7 @@ export const UsageRequestsChart = ({
               dataKey="requests"
               name={t("usage.summary.requests")}
               fill={USAGE_CHART_COLORS.requests}
-              radius={[3, 3, 0, 0]}
+              radius={barRadius}
             />
           </BarChart>
         </ResponsiveContainer>

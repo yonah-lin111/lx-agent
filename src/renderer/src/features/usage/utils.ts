@@ -27,6 +27,13 @@ export const formatPercent = (value: number, fractionDigits = 1): string => {
   return `${value.toFixed(fractionDigits)}%`
 }
 
+// 缓存命中率（%）：input 为总输入（已包含缓存读写），无输入时为 null。
+export const calcCacheHitRate = (inputTokens: number, cacheReadTokens: number): number | null => {
+  if (!Number.isFinite(inputTokens) || inputTokens <= 0) return null
+  const rate = (cacheReadTokens / inputTokens) * 100
+  return Math.min(100, Math.max(0, rate))
+}
+
 // 耗时格式化（ms / s / m）。
 export const formatDuration = (ms: number | null | undefined): string => {
   if (ms === null || ms === undefined || !Number.isFinite(ms) || ms <= 0) return "--"

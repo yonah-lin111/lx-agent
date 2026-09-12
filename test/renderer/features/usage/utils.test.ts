@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { UsageDailyPoint } from "@/features/usage/types"
 import {
+  calcCacheHitRate,
   fillDailySeries,
   formatCompact,
   formatDuration,
@@ -42,6 +43,14 @@ describe("usage utils formatters", () => {
     expect(formatDuration(1500)).toBe("1.5s")
     expect(formatDuration(65_000)).toBe("1m 5s")
   })
+
+  it("calcCacheHitRate 按总输入计算命中率并处理边界", () => {
+    expect(calcCacheHitRate(1000, 100)).toBeCloseTo(10)
+    expect(calcCacheHitRate(1000, 0)).toBe(0)
+    expect(calcCacheHitRate(0, 100)).toBeNull()
+    expect(calcCacheHitRate(Number.NaN, 100)).toBeNull()
+    expect(calcCacheHitRate(100, 300)).toBe(100)
+  })
 })
 
 describe("usage utils series", () => {
@@ -50,10 +59,12 @@ describe("usage utils series", () => {
   })
 
   it("getFreshInputTokens 扣除缓存并做非负钳制", () => {
-    expect(getFreshInputTokens({ inputTokens: 100, cacheReadTokens: 30, cacheWriteTokens: 20 })).toBe(
-      50,
-    )
-    expect(getFreshInputTokens({ inputTokens: 10, cacheReadTokens: 30, cacheWriteTokens: 20 })).toBe(0)
+    expect(
+      getFreshInputTokens({ inputTokens: 100, cacheReadTokens: 30, cacheWriteTokens: 20 }),
+    ).toBe(50)
+    expect(
+      getFreshInputTokens({ inputTokens: 10, cacheReadTokens: 30, cacheWriteTokens: 20 }),
+    ).toBe(0)
   })
 
   it("fillDailySeries 按范围补齐缺失日期", () => {

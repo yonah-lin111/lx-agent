@@ -151,6 +151,7 @@ export const zh: TranslationDictionary = {
       outputTokens: "输出 Tokens",
       cacheReadTokens: "缓存读取",
       cacheWriteTokens: "缓存写入",
+      cacheHitRate: "缓存命中率",
       pricedRequests: "条已计价",
       noPricing: "未配置计价",
     },

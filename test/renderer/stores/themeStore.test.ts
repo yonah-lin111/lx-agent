@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { applyThemeToDom, getInitialTheme, useAppTheme } from "@/stores/themeStore"
+import {
+  applyThemeToDom,
+  getInitialTheme,
+  useAppTheme,
+  useAppThemeValue,
+} from "@/stores/themeStore"
 
 describe("themeStore", () => {
   beforeEach(() => {
@@ -54,5 +59,22 @@ describe("themeStore", () => {
     })
 
     expect(result.current.theme).toBe("default")
+  })
+
+  it("useAppThemeValue 跟随 documentElement 的 data-theme 变化", async () => {
+    applyThemeToDom("default")
+    const { result } = renderHook(() => useAppThemeValue())
+    expect(result.current).toBe("default")
+
+    await act(async () => {
+      applyThemeToDom("minecraft")
+    })
+    expect(result.current).toBe("minecraft")
+  })
+
+  it("useAppThemeValue 属性缺失时回退到持久化主题", () => {
+    localStorage.setItem("lx_app_theme", "minecraft")
+    const { result } = renderHook(() => useAppThemeValue())
+    expect(result.current).toBe("minecraft")
   })
 })

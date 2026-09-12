@@ -15,6 +15,7 @@ import type {
   UsageProviderStats,
   UsageSummary,
 } from "@/features/usage/types"
+import { applyThemeToDom } from "@/stores/themeStore"
 
 // 让 ResponsiveContainer 立刻拿到尺寸，recharts 才会真正渲染 SVG。
 class ResizeObserverStub {
@@ -124,6 +125,7 @@ describe("usage 图表内部主题变量", () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    document.documentElement.removeAttribute("data-theme")
   })
 
   it("Provider 环形图使用主题 Provider 色板", () => {
@@ -154,6 +156,19 @@ describe("usage 图表内部主题变量", () => {
     expect(fillValues(container, ".recharts-bar-rectangle path")).toEqual([
       "var(--color-usage-chart-requests)",
     ])
+  })
+
+  it("Minecraft 主题柱形改直角，默认主题保留圆角", () => {
+    applyThemeToDom("default")
+    const rounded = renderChart(<UsageRequestsChart daily={daily} />)
+    const roundedPath = rounded.container.querySelector(".recharts-bar-rectangle path")
+    expect(roundedPath?.getAttribute("d")).toContain("A")
+    rounded.unmount()
+
+    applyThemeToDom("minecraft")
+    const sharp = renderChart(<UsageRequestsChart daily={daily} />)
+    const sharpPath = sharp.container.querySelector(".recharts-bar-rectangle path")
+    expect(sharpPath?.getAttribute("d")).not.toContain("A")
   })
 
   it("模型分布图有计价时使用 cost 变量，无计价回落 tokens 变量", () => {

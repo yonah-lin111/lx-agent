@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useTranslation } from "@/i18n"
+import { useAppThemeValue } from "@/stores/themeStore"
 import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageModelStats } from "../types"
 import { formatCompact, formatNumber, formatUsd } from "../utils"
@@ -20,6 +21,10 @@ export const UsageModelDistributionChart = ({
   modelStats,
 }: UsageModelDistributionChartProps): React.JSX.Element => {
   const { t } = useTranslation()
+  const theme = useAppThemeValue()
+  // Minecraft 像素主题用直角柱形，其余主题保留右侧圆角。
+  const barRadius: [number, number, number, number] =
+    theme === "minecraft" ? [0, 0, 0, 0] : [0, 3, 3, 0]
 
   const hasPricing = modelStats.some((stat) => stat.totalCostUsd !== null)
   const data = useMemo(
@@ -87,7 +92,7 @@ export const UsageModelDistributionChart = ({
               dataKey={hasPricing ? "cost" : "tokens"}
               name={hasPricing ? t("usage.summary.totalCost") : t("usage.summary.totalTokens")}
               fill={hasPricing ? USAGE_CHART_COLORS.cost : USAGE_CHART_COLORS.freshInput}
-              radius={[0, 3, 3, 0]}
+              radius={barRadius}
             />
           </BarChart>
         </ResponsiveContainer>
