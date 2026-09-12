@@ -233,7 +233,9 @@ export const AgentModelSelect = ({
         : isSelected && variants && variants.length > 0
           ? variants
           : undefined
-    const defaultVar = modelItem.defaultVariant ?? (itemVariants ? itemVariants[0] : undefined)
+    const defaultVar = modelItem.defaultVariant
+    // 未选中显式等级时 default 项高亮（模型未配置默认等级也始终展示 default 项）。
+    const isDefaultActive = isSelected && !variant
 
     if (itemVariants && itemVariants.length > 0) {
       return (
@@ -247,9 +249,22 @@ export const AgentModelSelect = ({
               <div className="agent-model-effort-header flex select-none items-center justify-center border-b border-white/10 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-white/40">
                 <span>{t("agent.thinkingEffort")}</span>
               </div>
+              <LxMenuItem
+                key="__default__"
+                active={isDefaultActive}
+                className={isDefaultActive ? "!bg-white/10 !text-white font-medium" : ""}
+                trailing={isDefaultActive ? <Check className="h-3 w-3 text-sky-400" /> : null}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setIsOpen(false)
+                  // 选择 default：回落模型配置的默认等级；未配置时不带任何等级。
+                  onChange(item.value, defaultVar)
+                }}
+              >
+                <span className="font-mono text-xs">{t("agent.thinkingDefault")}</span>
+              </LxMenuItem>
               {itemVariants.map((v) => {
-                const isVariantActive =
-                  isSelected && (variant === v || (!variant && v === defaultVar))
+                const isVariantActive = isSelected && variant === v
                 return (
                   <LxMenuItem
                     key={v}

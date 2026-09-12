@@ -1053,24 +1053,33 @@ export const ModelProviderSettings = ({
                                 <div className="flex items-center gap-2 text-xs text-white/60">
                                   <span className="shrink-0">{t("settings.defaultVariant")}:</span>
                                   <LxSelect
-                                    value={model.variant ?? Object.keys(model.variants)[0]}
+                                    value={model.variant ?? "default"}
                                     size="small"
                                     className="!w-[140px]"
-                                    options={Object.keys(model.variants).map((k) => ({
-                                      value: k,
-                                      label: k,
-                                    }))}
+                                    options={[
+                                      { value: "default", label: t("settings.defaultVariantNone") },
+                                      ...Object.keys(model.variants).map((k) => ({
+                                        value: k,
+                                        label: k,
+                                      })),
+                                    ]}
                                     onChange={(v) => {
-                                      updateProvider(selectedProviderId, (provider) => ({
-                                        ...provider,
-                                        models: {
-                                          ...provider.models,
-                                          [modelKey]: {
-                                            ...provider.models[modelKey],
-                                            variant: v,
+                                      updateProvider(selectedProviderId, (provider) => {
+                                        const currentModel = provider.models[modelKey]
+                                        const nextModel = { ...currentModel }
+                                        if (v === "default") {
+                                          delete nextModel.variant
+                                        } else {
+                                          nextModel.variant = v
+                                        }
+                                        return {
+                                          ...provider,
+                                          models: {
+                                            ...provider.models,
+                                            [modelKey]: nextModel,
                                           },
-                                        },
-                                      }))
+                                        }
+                                      })
                                     }}
                                   />
                                 </div>

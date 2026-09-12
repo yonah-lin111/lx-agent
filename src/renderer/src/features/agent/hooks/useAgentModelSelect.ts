@@ -65,8 +65,7 @@ export const useAgentModelSelect = () => {
       const validVariant =
         saved.variant && modelConfig?.variants && modelConfig.variants[saved.variant]
           ? saved.variant
-          : (modelConfig?.variant ??
-            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined))
+          : modelConfig?.variant
       setSelectedVariant(validVariant)
     } else if (isValidSelection(settings.defaultModel, settings)) {
       const def = settings.defaultModel
@@ -75,8 +74,7 @@ export const useAgentModelSelect = () => {
       const validVariant =
         def.variant && modelConfig?.variants && modelConfig.variants[def.variant]
           ? def.variant
-          : (modelConfig?.variant ??
-            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined))
+          : modelConfig?.variant
       setSelectedVariant(validVariant)
     } else {
       setSelectedModel("")
@@ -112,8 +110,7 @@ export const useAgentModelSelect = () => {
           value: `${provider.id}::${model.id}`,
           label: model.name || model.id,
           variants: model.variants ? Object.keys(model.variants) : undefined,
-          defaultVariant:
-            model.variant ?? (model.variants ? Object.keys(model.variants)[0] : undefined),
+          defaultVariant: model.variant,
         })),
       }))
     return groups.length > 0 ? groups : [{ value: "", label: t("agent.noAvailableModels") }]
@@ -152,9 +149,7 @@ export const useAgentModelSelect = () => {
       if (provider && model && settings) {
         const modelConfig = settings.providers[provider]?.models[model]
         if (variantToSet === undefined) {
-          variantToSet =
-            modelConfig?.variant ??
-            (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+          variantToSet = modelConfig?.variant
         }
         setSelectedVariant(variantToSet)
         try {

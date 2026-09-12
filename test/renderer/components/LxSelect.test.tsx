@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 
 describe("LxSelect", () => {
+  afterEach(cleanup)
+
   it("正确渲染选项并区分未导入项目样式与 data-unimported 标记", () => {
     const handleChange = vi.fn()
     const options: LxSelectOption<string>[] = [
@@ -40,5 +44,41 @@ describe("LxSelect", () => {
     rerender(<LxSelect value="p1" onChange={handleChange} options={options} />)
     const updatedTrigger = screen.getByRole("button")
     expect(updatedTrigger.getAttribute("data-unimported")).toBeNull()
+  })
+
+  it("滚动关闭：仅触发按钮所在滚动链路（含 document）的滚动会收起下拉", () => {
+    const handleChange = vi.fn()
+    const options: LxSelectOption<string>[] = [
+      { value: "a", label: "A" },
+      { value: "b", label: "B" },
+    ]
+    render(<LxSelect value="a" onChange={handleChange} options={options} />)
+
+    const trigger = screen.getByRole("button", { expanded: false })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    // 无关容器滚动（如消息列表吸底滚动）：不关闭
+    const unrelatedScrollArea = document.createElement("div")
+    document.body.appendChild(unrelatedScrollArea)
+    fireEvent.scroll(unrelatedScrollArea)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    // 下拉列表自身滚动：不关闭
+    fireEvent.scroll(screen.getByRole("listbox"))
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    // 触发按钮的祖先滚动容器滚动：关闭
+    const container = trigger.closest(".lx-select") as HTMLElement
+    fireEvent.scroll(container.parentElement as HTMLElement)
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+
+    // 页面级（document，如 window 滚动）滚动：重新打开后关闭
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    fireEvent.scroll(document)
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+
+    unrelatedScrollArea.remove()
   })
 })

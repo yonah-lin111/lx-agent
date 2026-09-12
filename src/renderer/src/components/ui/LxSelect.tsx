@@ -104,13 +104,21 @@ export const LxSelect = <T extends string>({
     return () => document.removeEventListener("pointerdown", handleClickOutside)
   }, [])
 
-  // 任意滚动条滚动时收起下拉，排除自身容器与下拉列表内滚动。
+  // 滚动时检测：仅当滚动发生在触发按钮的祖先滚动链路（含页面级 document 滚动）时收起下拉，
+  // 无关容器滚动（如消息列表/执行流程列表吸底滚动）不影响下拉；排除自身容器与下拉列表内滚动。
   useEffect(() => {
     if (!isOpen) return
     const handleScroll = (event: Event): void => {
       const target = event.target as Node
-      if (!containerRef.current?.contains(target) && !listboxRef.current?.contains(target))
+      if (containerRef.current?.contains(target) || listboxRef.current?.contains(target)) return
+
+      const triggerNode = containerRef.current
+      if (
+        triggerNode &&
+        ((target instanceof Element && target.contains(triggerNode)) || target === document)
+      ) {
         setIsOpen(false)
+      }
     }
     document.addEventListener("scroll", handleScroll, true)
     return () => document.removeEventListener("scroll", handleScroll, true)

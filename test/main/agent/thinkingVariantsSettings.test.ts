@@ -84,4 +84,44 @@ describe("Model Settings Thinking Variants", () => {
       },
     })
   })
+
+  it("模型有 variants 但未配置默认 variant 时解析结果不携带任何等级", async () => {
+    const { saveModelProviderSettings } = await import("@/services/settingsService")
+    const { resolveModelSelection } = await import("@/agent/stream/modelFactory")
+
+    saveModelProviderSettings({
+      enabledProviders: ["test-provider"],
+      providers: {
+        "test-provider": {
+          id: "test-provider",
+          name: "Test Provider",
+          type: "openai-compatible",
+          options: { apiKey: "key", baseURL: "http://localhost" },
+          models: {
+            "test-model": {
+              id: "test-model",
+              name: "Test Model",
+              variants: {
+                low: { reasoningEffort: "low" },
+                high: { reasoningEffort: "high" },
+              },
+            },
+          },
+        },
+      },
+      defaultModel: { provider: "test-provider", model: "test-model" },
+      titleSummary: { provider: "test-provider", model: "test-model" },
+      suggestedQuestions: { provider: "test-provider", model: "test-model" },
+      suggestedQuestionsEnabled: true,
+      compactionEnabled: true,
+    })
+
+    const resolved = resolveModelSelection({ provider: "test-provider", model: "test-model" })
+    expect(resolved).toEqual({
+      model: {
+        provider: "test-provider",
+        id: "test-model",
+      },
+    })
+  })
 })

@@ -184,6 +184,76 @@ describe("Thinking Variants Display & Components", () => {
     expect(onVariantChange).not.toHaveBeenCalled()
   })
 
+  it("AgentModelSelect 二级菜单在未配置默认等级时也显示 default 项并可清除等级", async () => {
+    const onChange = vi.fn()
+    const onVariantChange = vi.fn()
+
+    const options = [
+      {
+        value: "anthropic::claude-3-7-sonnet",
+        label: "Claude 3.7 Sonnet",
+        variants: ["low", "medium", "high"],
+      },
+    ]
+
+    render(
+      <AgentModelSelect
+        value="anthropic::claude-3-7-sonnet"
+        onChange={onChange}
+        onVariantChange={onVariantChange}
+        options={options}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: /claude 3\.7 sonnet/i })
+    fireEvent.click(trigger)
+
+    const modelOption = screen.getByRole("option", { name: /claude 3\.7 sonnet/i })
+    fireEvent.mouseEnter(modelOption)
+
+    // 未配置默认等级也必须展示 default 项
+    const defaultItem = await screen.findByText("default")
+    fireEvent.click(defaultItem)
+
+    // 点击 default 清除显式等级：不携带 variant，且不触发二次切换
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenCalledWith("anthropic::claude-3-7-sonnet", undefined)
+    expect(onVariantChange).not.toHaveBeenCalled()
+  })
+
+  it("AgentModelSelect 二级菜单 default 项在配置了默认等级时回落到该等级", async () => {
+    const onChange = vi.fn()
+
+    const options = [
+      {
+        value: "anthropic::claude-3-7-sonnet",
+        label: "Claude 3.7 Sonnet",
+        variants: ["low", "medium", "high"],
+        defaultVariant: "medium",
+      },
+    ]
+
+    render(
+      <AgentModelSelect
+        value="anthropic::claude-3-7-sonnet"
+        variant="low"
+        onChange={onChange}
+        options={options}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: /claude 3\.7 sonnet/i })
+    fireEvent.click(trigger)
+
+    const modelOption = screen.getByRole("option", { name: /claude 3\.7 sonnet/i })
+    fireEvent.mouseEnter(modelOption)
+
+    const defaultItem = await screen.findByText("default")
+    fireEvent.click(defaultItem)
+
+    expect(onChange).toHaveBeenCalledWith("anthropic::claude-3-7-sonnet", "medium")
+  })
+
   it("AgentModelSelect 从带思考等级的模型切到无思考等级的模型时只触发 onChange", () => {
     const onChange = vi.fn()
     const onVariantChange = vi.fn()

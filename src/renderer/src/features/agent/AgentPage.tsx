@@ -286,10 +286,7 @@ export const AgentPage = ({
       const [provider, model] = value.split("::")
       if (provider && model && currentSessionId) {
         const modelConfig = settings?.providers[provider]?.models[model]
-        const defaultVar =
-          explicitVariant ??
-          modelConfig?.variant ??
-          (modelConfig?.variants ? Object.keys(modelConfig.variants)[0] : undefined)
+        const defaultVar = explicitVariant ?? modelConfig?.variant
         void switchModel({
           provider,
           model,
