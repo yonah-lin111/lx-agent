@@ -46,7 +46,7 @@ flowchart TD
         Tools --> Exec[UnifiedExecManager: HeadTailBuffer + PTY]
         Tools --> FileOps[FileMutationQueue: Read/Write/Edit/ApplyPatch]
         Tools --> Memory[MemoryManager: MEMORY.md + Topic Notes]
-        Tools --> Subagents[SubagentPool: Task / ReviewAgent]
+        Tools --> Subagents[SubagentPool: Task / Explorer / Worker]
         Tools --> MCP[McpManager: Stdio Servers]
         Tools --> Skills[SkillLoader: SKILL.md]
         Tools --> LSP[LspManager: 语言服务器与写后诊断]
@@ -101,8 +101,7 @@ src/main/agent/
 │   └── persistentShell.ts    # 基于 node-pty 的持久化会话
 ├── subagent/              # 多 Agent 协作与特化代理池
 │   ├── subagentPool.ts    #   SubagentPool (会话续接、隔离生命周期)
-│   ├── reviewAgent.ts     #   专精代码审查子代理 (Rubric 评估体系)
-│   ├── agentRoles.ts      #   内置角色目录与用户角色合并解析 (review/explorer/worker)
+│   ├── agentRoles.ts      #   内置角色目录与用户角色合并解析 (explorer/worker)
 │   └── subagentRuntime.ts #   会话级子代理并发槽位治理 (超限快返)
 ├── guard/                 # 安全防护网与死循环守卫
 │   ├── guardianEvaluator.ts   # Guardian 四维安全规则引擎

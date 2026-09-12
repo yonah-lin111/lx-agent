@@ -378,7 +378,7 @@ Run user commands at key agent lifecycle points — sessions, prompt submission,
     subagentsNamePlaceholder: "e.g. my-reviewer",
     subagentsNameInvalid:
       "Name must start with a lowercase letter and use only lowercase letters, digits, underscores, or hyphens (max 32 characters)",
-    subagentsNameReserved: "This name is reserved by a built-in role",
+    subagentsNameReserved: "This name is reserved",
     subagentsNameDuplicate: "A role with this name already exists",
     subagentsDescription: "Description",
     subagentsDescriptionPlaceholder: "Describe when the model should use this role",

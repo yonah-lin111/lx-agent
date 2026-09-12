@@ -75,7 +75,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 
 **子代理角色目录**（详见 [subagent-roles-harness-design.md](./subagent-roles-harness-design.md)）：
 
-- 内置角色：`review`（instructions 复用 `REVIEW_AGENT_SYSTEM_PROMPT`，工具继承）、`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）、`worker`（工具继承）；保留名不可被用户角色占用。
+- 内置角色：`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）、`worker`（工具继承）；保留名不可被用户角色占用（`review` 归属协作模式 Review Mode，禁止子代理角色使用）。
 - 用户角色：`~/.lx/config.json` → `agent.subagents.roles`，可声明 `description` / `instructions` / `model` / `tools`；`task` 工具描述在会话装配时动态注入角色目录。
 - 能力只收缩不提权：子代理工具集 = 父激活集 ∩ 角色白名单，权限与沙箱继承父级；并发上限 `maxConcurrent`（1–32）与嵌套深度 `maxDepth`（1–5，默认 1）由会话级 `SubagentRuntime` 治理。
 

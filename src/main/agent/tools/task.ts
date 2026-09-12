@@ -221,7 +221,7 @@ export const createTaskTool = (
         params.subagent_id?.trim() ??
         `subagent-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-      // 3. 角色解析：续接角色不可变；新建按 agent_type > 遗留 review 别名 > 默认子代理。
+      // 3. 角色解析：续接角色不可变；新建按 agent_type > 默认子代理。
       const requestedType = params.agent_type?.trim()
       let role: ResolvedAgentRole | undefined
       if (existingManaged) {
@@ -249,9 +249,6 @@ export const createTaskTool = (
             ],
           }
         }
-      } else if (params.name?.toLowerCase().includes("review")) {
-        // 遗留别名：name 含 review 映射到内置 review 角色（仅新建生效）。
-        role = roles.get("review")
       }
 
       const roleName = role?.name ?? existingManaged?.roleName

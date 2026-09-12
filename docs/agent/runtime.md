@@ -138,7 +138,7 @@ User Input / Drain
 
 ### 5.1 Subagent Pool 执行模型与角色治理
 
-- **角色派发**：`task` 新增 `agent_type`，从内置角色（`review` / `explorer` / `worker`）与用户角色（`agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。新建时未传 `agent_type` 且 `name` 含 `review`（大小写不敏感）→ 遗留别名映射到内置 `review`，仅新建生效。
+- **角色派发**：`task` 新增 `agent_type`，从内置角色（`explorer` / `worker`）与用户角色（`agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。
 - **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础——`role.tools` 非空 → 与白名单求交集，缺省 → 继承父集；权限门控（复用父 `permissionManager.gate`）与沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且角色白名单未排除 `task` 时注入，否则维持剔除。
 - **模型优先级**：`role.model → defaultModel → 父会话模型`；任一级解析失败 `console.warn` 并降级到下一级，仅新建时解析，续接沿用创建时模型。
 - **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时 fail-fast 返回错误文案，不排队；`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
@@ -146,11 +146,11 @@ User Input / Drain
 - **续接不可变**：经 `subagent_id` / `name` 命中池内子代理时沿用创建时的角色、模型与工具集；携带与已固定角色冲突的 `agent_type` 直接报错，未携带或相同则等价于未携带。
 - **长程上下文续接与快照持久化**：向同一子代理多轮追问并保留内部执行状态；内部时间轴、步骤与 Token 统计通过 `SubagentData` 挂载于 `ToolResultMessage.subagent` 随事务落盘。
 
-### 5.2 内置 Review 角色 (`reviewAgent.ts`)
+### 5.2 代码审查（Review 模式）
 
-- Review 不再是 `task` 的特判分支：`review` 是内置角色之一，`reviewAgent.ts` 的 `REVIEW_AGENT_SYSTEM_PROMPT` 作为其 `instructions` 单一来源；经 `agent_type: "review"`（或遗留 `name` 含 `review` 别名）派发。
-- 子代理系统提示词按「父系统提示词 → `SUBAGENT_PROMPT_SUFFIX` → `role.instructions`」顺序追加，`review` 同样追加在子代理后缀之后（不再替换后缀）。
-- 遵循标准 Rubric 评估体系对代码 Diff 进行多维度审查：正确性与边界条件、架构一致性与反样板、安全隐患与凭据泄露、性能与资源泄漏。
+- 代码审查的唯一路径是协作模式 Review Mode（只读审计 + `<review_findings>` 输出契约），不存在 `review` 子代理角色；保留名 `review` 因此禁止用户角色占用。
+- 处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。
+- 子代理系统提示词按「父系统提示词 → `SUBAGENT_PROMPT_SUFFIX` → `role.instructions`」顺序追加（适用于 `explorer` / `worker` 与用户角色）。
 - 详细审查模式的输出协议与卡片见 [collaboration-modes.md](./collaboration-modes.md)。
 
 ---

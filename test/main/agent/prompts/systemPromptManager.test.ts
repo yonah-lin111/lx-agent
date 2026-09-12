@@ -330,6 +330,22 @@ describe("SystemPromptManager", () => {
     })
 
     describe("协作模式指令段注入 (Collaboration Modes)", () => {
+      it("处于 review 模式时注入只读审查契约与默认审查目标", async () => {
+        const manager = createDefaultSystemPromptManager()
+        const assembly = await manager.assemble({
+          collaborationMode: "review",
+        })
+
+        expect(assembly.rendered).toContain(
+          "# Collaboration Mode: Review Mode (Strictly Read-Only Audit)",
+        )
+        expect(assembly.rendered).toContain("## Default Review Target")
+        expect(assembly.rendered).toContain(
+          "current uncommitted changes (staged, unstaged, and untracked files)",
+        )
+        expect(assembly.rendered).toContain("<review_findings>")
+      })
+
       it("处于 design 模式时注入 Front Design 指令并要求输出 <front_design>", async () => {
         const manager = createDefaultSystemPromptManager()
         const assembly = await manager.assemble({

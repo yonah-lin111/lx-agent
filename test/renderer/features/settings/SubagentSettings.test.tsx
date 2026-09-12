@@ -29,8 +29,8 @@ const getModelProviders = vi.fn<() => Promise<ModelProviderSettings>>()
 const getUiSettings = vi.fn(async () => ({ locale: "en" as const }))
 
 const loadedBuiltins = (): SubagentBuiltinRoleInfo[] => [
-  { name: "review", description: "Strict review of a change set" },
   { name: "explorer", description: "Fast codebase answers", tools: ["read", "grep", "lsp"] },
+  { name: "worker", description: "Execution and production work" },
 ]
 
 const loadedProviders = (): ModelProviderSettings => ({
@@ -84,9 +84,9 @@ describe("SubagentSettings", () => {
   it("内置角色只读展示名称、描述与工具/继承文案", async () => {
     renderComponent()
 
-    expect(await screen.findByText("review")).toBeTruthy()
+    expect(await screen.findByText("worker")).toBeTruthy()
     expect(screen.getByText("explorer")).toBeTruthy()
-    expect(screen.getByText("Strict review of a change set")).toBeTruthy()
+    expect(screen.getByText("Execution and production work")).toBeTruthy()
     expect(screen.getByText("read, grep, lsp")).toBeTruthy()
     expect(screen.getByText("Inherit parent tools")).toBeTruthy()
     expect(screen.getByText("No custom roles yet")).toBeTruthy()
@@ -120,7 +120,7 @@ describe("SubagentSettings", () => {
 
     fireEvent.change(nameInput, { target: { value: "review" } })
     confirm()
-    expect(await screen.findByText("This name is reserved by a built-in role")).toBeTruthy()
+    expect(await screen.findByText("This name is reserved")).toBeTruthy()
 
     fireEvent.change(nameInput, { target: { value: "my-reviewer" } })
     confirm()

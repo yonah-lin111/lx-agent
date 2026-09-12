@@ -339,7 +339,7 @@ export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth
 // 角色名格式：小写字母开头，仅含小写字母/数字/下划线/连字符，最长 32 字符。
 export const SUBAGENT_ROLE_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/
 
-// 内置角色保留名，用户角色不可占用。
+// 保留名不可被用户角色占用：explorer / worker 为内置子代理角色；review 归属协作模式 Review Mode，禁止子代理角色使用。
 export const RESERVED_SUBAGENT_ROLE_NAMES = ["review", "explorer", "worker"] as const
 
 // 子代理嵌套深度上限。

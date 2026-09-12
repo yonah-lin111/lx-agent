@@ -1,6 +1,5 @@
 import type { ModelSelection, SubagentSettings } from "@shared/settings"
 import { RESERVED_SUBAGENT_ROLE_NAMES, SUBAGENT_ROLE_NAME_PATTERN } from "@shared/settings"
-import { REVIEW_AGENT_SYSTEM_PROMPT } from "./reviewAgent"
 
 // 运行时解析后的子代理角色模型。
 export interface ResolvedAgentRole {
@@ -30,15 +29,8 @@ const WORKER_INSTRUCTIONS = [
   "- State intent before side-effecting tool calls; finish with a concise summary of changes and verification performed.",
 ].join("\n")
 
-// 内置角色目录（固定顺序：review → explorer → worker）。
+// 内置角色目录（固定顺序：explorer → worker）。
 export const BUILT_IN_AGENT_ROLES: Record<string, ResolvedAgentRole> = {
-  review: {
-    name: "review",
-    description: "Strict, uncompromising review of a given change set or proposal.",
-    // Rubric 单一来源，避免与 reviewAgent.ts 重复定义。
-    instructions: REVIEW_AGENT_SYSTEM_PROMPT,
-    builtIn: true,
-  },
   explorer: {
     name: "explorer",
     description:

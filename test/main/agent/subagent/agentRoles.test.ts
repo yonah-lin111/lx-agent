@@ -5,13 +5,12 @@ import {
   buildAgentTypesDescription,
   resolveAgentRoles,
 } from "@/agent/subagent/agentRoles"
-import { REVIEW_AGENT_SYSTEM_PROMPT } from "@/agent/subagent/reviewAgent"
 
 const EXPLORER_TOOLS = ["read", "ls", "grep", "find", "lsp", "web_search", "webfetch", "time"]
 
 describe("BUILT_IN_AGENT_ROLES", () => {
-  it("defines exactly review, explorer, worker in fixed order", () => {
-    expect(Object.keys(BUILT_IN_AGENT_ROLES)).toEqual(["review", "explorer", "worker"])
+  it("defines exactly explorer, worker in fixed order", () => {
+    expect(Object.keys(BUILT_IN_AGENT_ROLES)).toEqual(["explorer", "worker"])
   })
 
   it("marks every built-in role with builtIn: true and a matching name", () => {
@@ -19,15 +18,6 @@ describe("BUILT_IN_AGENT_ROLES", () => {
       expect(role.name).toBe(key)
       expect(role.builtIn).toBe(true)
     }
-  })
-
-  it("review reuses REVIEW_AGENT_SYSTEM_PROMPT and inherits tools", () => {
-    const review = BUILT_IN_AGENT_ROLES.review
-    expect(review.description).toBe(
-      "Strict, uncompromising review of a given change set or proposal.",
-    )
-    expect(review.instructions).toBe(REVIEW_AGENT_SYSTEM_PROMPT)
-    expect(review.tools).toBeUndefined()
   })
 
   it("explorer uses the exact read-only tool whitelist", () => {
@@ -63,7 +53,7 @@ describe("resolveAgentRoles", () => {
 
     const roles = resolveAgentRoles(settings)
 
-    expect([...roles.keys()]).toEqual(["review", "explorer", "worker", "zeta", "alpha"])
+    expect([...roles.keys()]).toEqual(["explorer", "worker", "zeta", "alpha"])
     expect(roles.get("zeta")).toEqual({ name: "zeta", description: "Zeta role", builtIn: false })
     expect(roles.get("alpha")).toEqual({ name: "alpha", description: "Alpha role", builtIn: false })
   })
@@ -103,24 +93,23 @@ describe("resolveAgentRoles", () => {
       },
     }
 
-    expect([...resolveAgentRoles(settings).keys()]).toEqual(["review", "explorer", "worker"])
+    expect([...resolveAgentRoles(settings).keys()]).toEqual(["explorer", "worker"])
   })
 
   it("keeps built-in metadata unchanged after merging", () => {
     const roles = resolveAgentRoles({ roles: {} })
 
-    expect(roles.get("review")).toBe(BUILT_IN_AGENT_ROLES.review)
     expect(roles.get("explorer")).toBe(BUILT_IN_AGENT_ROLES.explorer)
     expect(roles.get("worker")).toBe(BUILT_IN_AGENT_ROLES.worker)
-    expect(roles.get("review")?.builtIn).toBe(true)
-    expect(roles.get("review")?.instructions).toBe(REVIEW_AGENT_SYSTEM_PROMPT)
+    expect(roles.get("explorer")?.builtIn).toBe(true)
+    expect(roles.has("review")).toBe(false)
   })
 })
 
 describe("buildAgentTypesDescription", () => {
   it("renders the exact block in iteration order", () => {
     const description = buildAgentTypesDescription([
-      { name: "review", description: "Strict review.", builtIn: true },
+      { name: "auditor", description: "Strict review.", builtIn: true },
       { name: "explorer", description: "Line one\n  line two", builtIn: true },
       { name: "custom", description: "", builtIn: false },
     ])
@@ -128,7 +117,7 @@ describe("buildAgentTypesDescription", () => {
     expect(description).toBe(
       [
         "Available agent types:",
-        "- review: Strict review.",
+        "- auditor: Strict review.",
         "- explorer: Line one line two",
         "- custom: no description",
       ].join("\n"),
@@ -140,7 +129,6 @@ describe("buildAgentTypesDescription", () => {
 
     expect(description.split("\n")).toEqual([
       "Available agent types:",
-      "- review: Strict, uncompromising review of a given change set or proposal.",
       "- explorer: Fast, authoritative answers to specific, well-scoped codebase questions. Use multiple explorers in parallel for independent questions.",
       "- worker: Execution and production work: implement part of a feature, fix tests or bugs, split large refactors into independent chunks.",
     ])

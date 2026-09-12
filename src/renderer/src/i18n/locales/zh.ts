@@ -379,7 +379,7 @@ export const zh: TranslationDictionary = {
     subagentsNamePlaceholder: "例如 my-reviewer",
     subagentsNameInvalid:
       "名称须以小写字母开头，仅含小写字母、数字、下划线或连字符（最长 32 字符）",
-    subagentsNameReserved: "该名称为内置角色保留",
+    subagentsNameReserved: "该名称为保留名称，不可使用",
     subagentsNameDuplicate: "已存在同名角色",
     subagentsDescription: "描述",
     subagentsDescriptionPlaceholder: "描述模型何时应使用该角色",

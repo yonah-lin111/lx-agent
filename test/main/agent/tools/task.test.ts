@@ -3,7 +3,6 @@ import type { SubagentSettings } from "@shared/settings"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 import type { AgentTool } from "@/agent/core/types"
-import { REVIEW_AGENT_SYSTEM_PROMPT } from "@/agent/subagent/reviewAgent"
 import { SubagentPool } from "@/agent/subagent/subagentPool"
 import { SubagentRuntime } from "@/agent/subagent/subagentRuntime"
 import { createTaskTool, type TaskToolDeps } from "@/agent/tools/task"
@@ -267,7 +266,7 @@ describe("task 子代理角色", () => {
     })
 
     expect(tool.description).toContain("Available agent types:")
-    expect(tool.description).toContain("- review: Strict, uncompromising review")
+    expect(tool.description).not.toContain("- review:")
     expect(tool.description).toContain("- explorer: Fast, authoritative")
     expect(tool.description).toContain("- worker: Execution and production work")
     expect(tool.description).toContain("- custom: Custom role")
@@ -441,7 +440,21 @@ describe("task 子代理角色", () => {
 
     const text = resultText(result)
     expect(text).toContain('Unknown agent_type "ghost"')
-    expect(text).toContain("review, explorer, worker")
+    expect(text).toContain("explorer, worker")
+    expect(holder.streamResponses).toHaveLength(1)
+  })
+
+  it("agent_type 显式传 review 视为未知角色（内置 review 角色已移除）", async () => {
+    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
+    const tool = createTestTool({})
+
+    const result = await tool.execute("call-review-type", {
+      description: "已移除角色",
+      prompt: "p",
+      agent_type: "review",
+    })
+
+    expect(resultText(result)).toContain('Unknown agent_type "review"')
     expect(holder.streamResponses).toHaveLength(1)
   })
 
@@ -479,11 +492,11 @@ describe("task 子代理角色", () => {
     expect(pool.get(id)?.agent.state.messages.filter((m) => m.role === "user")).toHaveLength(1)
   })
 
-  it("遗留 review 别名：name 含 review 的新建子代理套用内置 review 角色", async () => {
+  it("review 子代理角色已移除：name 含 review 按默认子代理运行且不追加角色指令", async () => {
     const pool = new SubagentPool()
     const tool = createTestTool({ pool })
 
-    holder.streamResponses.push(assistant([{ type: "text", text: "review 完成" }]))
+    holder.streamResponses.push(assistant([{ type: "text", text: "完成" }]))
     const res = await tool.execute("call-review", {
       name: "review-agent",
       description: "评审",
@@ -494,11 +507,8 @@ describe("task 子代理角色", () => {
     const prompt = managed?.agent.state.systemPrompt ?? ""
 
     expect(prompt.startsWith("父系统提示词\n\nYou are now a sub-agent")).toBe(true)
-    expect(prompt).toContain(REVIEW_AGENT_SYSTEM_PROMPT)
-    expect(prompt.indexOf(REVIEW_AGENT_SYSTEM_PROMPT)).toBeGreaterThan(
-      prompt.indexOf("You are now a sub-agent"),
-    )
-    expect(managed?.roleName).toBe("review")
+    expect(prompt).not.toContain("You are a specialized Code Review Agent.")
+    expect(managed?.roleName).toBeUndefined()
   })
 
   it("默认子代理：仅父提示词 + 子代理后缀，无角色指令", async () => {
@@ -516,7 +526,6 @@ describe("task 子代理角色", () => {
     const prompt = managed?.agent.state.systemPrompt ?? ""
 
     expect(prompt.startsWith("父系统提示词\n\nYou are now a sub-agent")).toBe(true)
-    expect(prompt).not.toContain("## Review Rubric")
     expect(managed?.roleName).toBeUndefined()
   })
 })
