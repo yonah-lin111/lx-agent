@@ -198,6 +198,80 @@ describe("toModelMessages", () => {
     })
   })
 
+  it("并行工具调用的多条 toolResult：tool 消息保持连续，图片合并为一条 user 消息", () => {
+    const result = toModelMessages([
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "c1", name: "view_image", arguments: { path: "a.png" } },
+          { type: "toolCall", id: "c2", name: "view_image", arguments: { path: "b.png" } },
+        ],
+      } as any,
+      {
+        role: "toolResult",
+        toolCallId: "c1",
+        toolName: "view_image",
+        content: [
+          { type: "text", text: "Viewed image /repo/a.png" },
+          { type: "image", data: "YQ==", mimeType: "image/png" },
+        ],
+        isError: false,
+        image: { path: "/repo/a.png" },
+      } as any,
+      {
+        role: "toolResult",
+        toolCallId: "c2",
+        toolName: "view_image",
+        content: [
+          { type: "text", text: "Viewed image /repo/b.png" },
+          { type: "image", data: "Yg==", mimeType: "image/png" },
+        ],
+        isError: false,
+        image: { path: "/repo/b.png" },
+      } as any,
+    ])
+
+    // assistant → tool → tool → user（图片合并到整段工具结果之后）
+    expect(result.map((message) => message.role)).toEqual(["assistant", "tool", "tool", "user"])
+    expect(result[3]).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: 'Image from tool "view_image" (/repo/a.png):' },
+        { type: "image", image: "data:image/png;base64,YQ==" },
+        { type: "text", text: 'Image from tool "view_image" (/repo/b.png):' },
+        { type: "image", image: "data:image/png;base64,Yg==" },
+      ],
+    })
+  })
+
+  it("并行工具调用中仅部分结果带图片时仍只追加一条图片消息", () => {
+    const result = toModelMessages([
+      {
+        role: "toolResult",
+        toolCallId: "c1",
+        toolName: "view_image",
+        content: [{ type: "image", data: "YQ==", mimeType: "image/png" }],
+        isError: false,
+      } as any,
+      {
+        role: "toolResult",
+        toolCallId: "c2",
+        toolName: "read",
+        content: [{ type: "text", text: "file content" }],
+        isError: false,
+      },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["tool", "tool", "user"])
+    expect(result[2]).toMatchObject({
+      role: "user",
+      content: [
+        { type: "text", text: 'Image from tool "view_image":' },
+        { type: "image", image: "data:image/png;base64,YQ==" },
+      ],
+    })
+  })
+
   it("user 消息携带 files 图片附件时，应用 nativeImage 比例缩放与 JPEG 压缩", () => {
     const result = toModelMessages([
       {
