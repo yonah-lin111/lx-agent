@@ -54,6 +54,11 @@ describe("AgentViewImageBlock", () => {
     expect(screen.getByText("High detail")).not.toBeNull()
     expect(screen.getByText(/2048×1152/)).not.toBeNull()
     expect(screen.getByText(/source 4096×2304/)).not.toBeNull()
+    // 其他工具的摘要行格式：直角 icon + 参数行，图片缩进在参数下方。
+    expect(container.querySelector(".agent-tool-call-summary .agent-tool-corner")).not.toBeNull()
+    expect(
+      container.querySelector(".agent-tool-call-summary .agent-view-image-thumbnail"),
+    ).not.toBeNull()
   })
 
   it("original 精度显示 Original detail", () => {
