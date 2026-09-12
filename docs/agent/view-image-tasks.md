@@ -18,7 +18,7 @@
 
 - [ ] `src/main/agent/tools/viewImage.ts`
   - `const viewImageSchema = z.object({ path: z.string(), detail: z.enum(["high","original"]).optional() })`
-  - 魔数探测（PNG/JPEG/GIF/BMP/WebP/AVIF）；SVG 与未知格式抛错并列出支持格式
+  - 魔数探测（仅 PNG/JPEG 受支持，nativeImage 解码边界）；GIF/BMP/WebP/AVIF/SVG 与未知格式抛错并列出支持格式
   - 双路径预处理（直传 / `nativeImage` 缩放重编码），常量与编码策略见设计 §5
   - 返回 `content`（英文摘要 + `ImageContent`）与 `details.image`
   - `executionMode: "parallel"`；`supportsImages` 依赖注入，`false` 时抛错

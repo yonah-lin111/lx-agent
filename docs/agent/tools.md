@@ -65,7 +65,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `read_skill` | `{ name }` | 读取并加载指定 Skill 指令包的完整 Markdown 正文 |
 | **网络检索** | `web_search` | `{ query; numResults?=8; type? }` | 优先 Exa (mcp.exa.ai) 检索，Tavily (api.tavily.com) 兜底；`numResults` 上限 10 |
 | | `webfetch` | `{ url; format?=markdown; timeout?=30s }` | URL 内容抓取与 HTML 转 Markdown，内置私网/Localhost SSRF 严格阻断 |
-| **图像** | `view_image` | `{ path; detail?="high" }` | 本地图片查看：魔数探测 + 双路径预处理（≤4MiB 且未超限直传，否则缩放重编码；`high` 长边 ≤2048 / `original` ≤6000）；仅视觉模型注册（见 view-image.md） |
+| **图像** | `view_image` | `{ path; detail?="high" }` | 本地图片查看（PNG/JPEG）：魔数探测 + 双路径预处理（≤4MiB 且未超限直传，否则缩放重编码；`high` 长边 ≤2048 / `original` ≤6000）；仅视觉模型注册（见 view-image.md） |
 
 ### 2.1 装配与能力快照 (`assembly.ts` / `capabilityService.ts`)
 

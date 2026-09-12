@@ -16,8 +16,8 @@ export const MAX_SOURCE_BYTES = 20 * 1024 * 1024
 // 重编码 JPEG 质量。
 export const JPEG_QUALITY = 85
 
-// 支持格式族（决定重编码目标格式）。
-type ImageFamily = "png" | "jpeg" | "gif" | "bmp" | "webp" | "avif"
+// 支持格式族（决定重编码目标格式；nativeImage 仅解码 PNG/JPEG）。
+type ImageFamily = "png" | "jpeg"
 
 interface DetectedImageFormat {
   mimeType: string
@@ -38,38 +38,15 @@ export const detectImageFormat = (buffer: Buffer): DetectedImageFormat | null =>
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return { mimeType: "image/jpeg", family: "jpeg" }
   }
-  if (buffer.length >= 6) {
-    const header = buffer.subarray(0, 6).toString("latin1")
-    if (header === "GIF87a" || header === "GIF89a") {
-      return { mimeType: "image/gif", family: "gif" }
-    }
-  }
-  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
-    return { mimeType: "image/bmp", family: "bmp" }
-  }
-  if (
-    buffer.length >= 12 &&
-    buffer.subarray(0, 4).toString("latin1") === "RIFF" &&
-    buffer.subarray(8, 12).toString("latin1") === "WEBP"
-  ) {
-    return { mimeType: "image/webp", family: "webp" }
-  }
-  if (
-    buffer.length >= 12 &&
-    buffer.subarray(4, 8).toString("latin1") === "ftyp" &&
-    buffer.subarray(8, 12).toString("latin1") === "avif"
-  ) {
-    return { mimeType: "image/avif", family: "avif" }
-  }
   return null
 }
 
-// 重编码目标：PNG 族保持无损，其余压为 JPEG。
+// 重编码目标：PNG 保持无损，JPEG 按质量参数重压。
 const encodeImage = (
   resized: Electron.NativeImage,
   family: ImageFamily,
 ): { data: Buffer; mimeType: string } => {
-  if (family === "png" || family === "gif" || family === "bmp") {
+  if (family === "png") {
     return { data: resized.toPNG(), mimeType: "image/png" }
   }
   return { data: resized.toJPEG(JPEG_QUALITY), mimeType: "image/jpeg" }
@@ -110,14 +87,14 @@ export interface ViewImageToolDeps {
 }
 
 const UNSUPPORTED_FORMAT_MESSAGE =
-  "Unable to process image: unsupported or invalid image format (supported: PNG, JPEG, GIF, BMP, WebP, AVIF)."
+  "Unable to process image: unsupported or invalid image format (supported: PNG, JPEG)."
 
 /**
  * 创建 view_image 工具：读取项目内本地图片并投喂给视觉模型。
  *
  * 预处理双路径（详见 docs/agent/view-image.md）：
  * - 文件 ≤ 4MiB 且长边未超限：原字节直传（零重编码）；
- * - 需缩放或超过 4MiB：nativeImage 缩放后按格式族重编码（PNG 族→PNG，其余→JPEG）。
+ * - 需缩放或超过 4MiB：nativeImage 缩放后重编码（PNG→PNG，JPEG→JPEG）。
  */
 export const createViewImageTool = (
   cwd: string,
@@ -126,7 +103,7 @@ export const createViewImageTool = (
   name: "view_image",
   label: "View image",
   description:
-    "View a local image file from the filesystem when visual inspection is needed. Use this for images already available on disk (screenshots, design mockups, diagrams).",
+    "View a local image file (PNG or JPEG) from the filesystem when visual inspection is needed. Use this for images already available on disk (screenshots, design mockups, diagrams).",
   inputSchema: viewImageSchema,
   executionMode: "parallel",
   execute: async (_toolCallId, params) => {

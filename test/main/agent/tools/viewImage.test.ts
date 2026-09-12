@@ -77,16 +77,16 @@ const textBlock = (content: Array<{ type: string; text?: string }>) =>
   content.find((block) => block.type === "text")
 
 describe("detectImageFormat", () => {
-  it("按魔数识别 PNG / JPEG / GIF / BMP / WebP / AVIF", () => {
+  it("按魔数识别 PNG / JPEG", () => {
     expect(detectImageFormat(pngBytes())?.mimeType).toBe("image/png")
     expect(detectImageFormat(jpegBytes())?.mimeType).toBe("image/jpeg")
-    expect(detectImageFormat(Buffer.from("GIF89a----"))?.mimeType).toBe("image/gif")
-    expect(detectImageFormat(Buffer.from([0x42, 0x4d, 0x00, 0x00]))?.mimeType).toBe("image/bmp")
-    expect(detectImageFormat(Buffer.from("RIFF0000WEBPVP8 "))?.mimeType).toBe("image/webp")
-    expect(detectImageFormat(Buffer.from("0000ftypavif0000"))?.mimeType).toBe("image/avif")
   })
 
-  it("SVG 与未知格式返回 null", () => {
+  it("GIF / BMP / WebP / AVIF / SVG 与未知格式返回 null（nativeImage 仅解码 PNG/JPEG）", () => {
+    expect(detectImageFormat(Buffer.from("GIF89a----"))).toBe(null)
+    expect(detectImageFormat(Buffer.from([0x42, 0x4d, 0x00, 0x00]))).toBe(null)
+    expect(detectImageFormat(Buffer.from("RIFF0000WEBPVP8 "))).toBe(null)
+    expect(detectImageFormat(Buffer.from("0000ftypavif0000"))).toBe(null)
     expect(detectImageFormat(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'))).toBe(
       null,
     )
@@ -208,16 +208,27 @@ describe("view_image 重编码路径", () => {
     })
   })
 
-  it("GIF/BMP 族重编码目标为 PNG", async () => {
+  it("JPEG 源缩放后保持 JPEG 编码", async () => {
     const cwd = await makeTmp()
-    await writeFile(join(cwd, "anim.gif"), Buffer.from("GIF89a---------"))
+    await writeFile(join(cwd, "photo.jpg"), jpegBytes())
     mockNativeImage({ width: 3000, height: 1000 })
 
     const tool = createViewImageTool(cwd)
-    const result = await tool.execute("c1", { path: "anim.gif" })
+    const result = await tool.execute("c1", { path: "photo.jpg" })
 
-    expect(mocks.toPNG).toHaveBeenCalled()
-    expect(result.details?.image.mimeType).toBe("image/png")
+    expect(mocks.toJPEG).toHaveBeenCalledWith(JPEG_QUALITY)
+    expect(mocks.toPNG).not.toHaveBeenCalled()
+    expect(result.details?.image.mimeType).toBe("image/jpeg")
+  })
+
+  it("GIF 等非 PNG/JPEG 格式直接拒绝（nativeImage 解码边界）", async () => {
+    const cwd = await makeTmp()
+    await writeFile(join(cwd, "anim.gif"), Buffer.from("GIF89a---------"))
+    const tool = createViewImageTool(cwd)
+    await expect(tool.execute("c1", { path: "anim.gif" })).rejects.toThrow(
+      /unsupported or invalid image format/,
+    )
+    expect(mocks.createFromBuffer).not.toHaveBeenCalled()
   })
 })
 

@@ -2,30 +2,24 @@
 
 **前置说明：**
 
-- 环境/配置：在 `.worktrees/view-image` 下执行 `pnpm dev` 启动应用（predev 会自动重编 electron 原生模块）；`设置 → 模型服务 → 展开模型 → Modalities (In)` 填 `text, image`（或使用模型名含 `gpt-4o` / `claude-3` / `gemini` 的模型）；测试图片放入项目目录 `artifacts/`。
+- 环境/配置：在 `.worktrees/view-image` 下执行 `pnpm dev` 启动应用（predev 会自动重编 electron 原生模块）；`设置 → 模型服务 → 展开模型 → Modalities (In)` 填 `text, image`（或使用模型名含 `gpt-4o` / `claude-3` / `gemini` 的模型）；测试素材已生成在 `~/Desktop/view-image-fixtures/`。
 - 生效时机：工具随会话装配；模型切换后下一轮自动重建生效（非视觉模型不注入）；无需重启应用。
 - 观察位置：Agent 消息流（图片缩略图 / 悬浮大图 / 尺寸与精度标签）、执行流程面板（`view_image` 步骤与结果摘要）、模型回复内容、状态栏上下文容量指示（`AgentContextUsagePill`）；`view_image` 为豁免工具，不应出现权限审批弹窗。
 
 ```bash
-# 在项目根目录准备测试素材（macOS）
-mkdir -p artifacts && cd artifacts
+# 素材已生成（macOS）：~/Desktop/view-image-fixtures/
+# 复制到项目内使用（view_image 同时支持绝对路径，可直接指定桌面路径）：
+mkdir -p artifacts
+cp -R ~/Desktop/view-image-fixtures/* artifacts/
 
-# 1) 小图（直传路径，长边 ≤2048）
-screencapture -x small-shot.png
-sips --resampleHeightWidth 800 600 small-shot.png --out small-shot.png
-
-# 2) 大图（high 缩放路径，长边 4000）
-sips --resampleHeightWidth 4000 4000 small-shot.png --out big-4000.png
-
-# 3) 文字截图（original 精度验证，使用含小字号文本的界面截图）
-screencapture -x text-shot.png
-
-# 4) 超 4MiB 但尺寸未超限（重编码路径；1500×1500 BMP ≈ 6.4MiB）
-sips --resampleHeightWidth 1500 1500 small-shot.png -s format bmp --out heavy.bmp
-
-# 5) 错误分支素材
-printf '<svg xmlns="http://www.w3.org/2000/svg"></svg>' > icon.svg
-mkfile 21m huge.png
+# 素材清单：
+# small-shot.png   800×600     直传路径
+# small-shot.jpg   800×600     JPEG 直传路径
+# big-4000.png     4000×4000   high 缩放路径
+# text-shot.png    1200×800    original 文字精度验证
+# heavy-noise.png  1500×1500   6.4MiB，超 4MiB 重编码路径（尺寸未超限）
+# unsupported.gif / unsupported.bmp / icon.svg   不支持格式
+# huge.png         21MiB       超硬上限
 ```
 
 ---
@@ -53,17 +47,17 @@ mkfile 21m huge.png
 
 ## 组 4：`超 4MiB 重编码（尺寸未超限）`
 
-- **提示词**：`查看 artifacts/heavy.bmp`
+- **提示词**：`查看 artifacts/heavy-noise.png`
 - **验证步骤**：观察元信息与结果摘要。
 
-- **期望**：发送尺寸仍为 `1500×1500`，但带“原图 …”后缀且摘要为 `sent ... as image/png`（BMP 族重编码为 PNG）；模型可正常描述。
+- **期望**：发送尺寸仍为 `1500×1500`，但带“原图 …”后缀且摘要为 `sent 1500x1500 as image/png`（超过 4MiB 直传上限触发重编码，尺寸未变）；模型可正常描述。
 
 ## 组 5：`错误分支（缺文件 / 目录 / 非法格式 / 超大文件）`
 
-- **提示词**：依次发送 `查看 artifacts/missing.png`、`查看 artifacts/`、`查看 artifacts/icon.svg`、`查看 artifacts/huge.png`
+- **提示词**：依次发送 `查看 artifacts/missing.png`、`查看 artifacts/`、`查看 artifacts/icon.svg`、`查看 artifacts/unsupported.gif`、`查看 artifacts/huge.png`
 - **验证步骤**：逐条观察工具结果与 UI 渲染。
 
-- **期望**：工具结果标记为 error 且消息为英文明确原因（`file not found` / `is not a file` / `unsupported or invalid image format` / `20MiB limit`）；UI 回退文本渲染、不崩溃；应用可继续对话。
+- **期望**：工具结果标记为 error 且消息为英文明确原因（`file not found` / `is not a file` / `unsupported or invalid image format (supported: PNG, JPEG)` / `20MiB limit`）；UI 回退文本渲染、不崩溃；应用可继续对话。
 
 ## 组 6：`非视觉模型门控`
 
@@ -104,7 +98,7 @@ mkfile 21m huge.png
 
 ## 附：`补充说明`
 
-- 已知限制：仅支持 PNG / JPEG / GIF / BMP / WebP / AVIF（SVG 等直接报错）；GIF 仅首帧；UI 预览依赖本地文件路径，源文件删除/移动后失效；多模态 tool result 在 `openai-compatible` 端点可能不被支持（错误回灌模型）；图片 base64 与会话一并落库，会话体积随图片数量增长。
+- 已知限制：仅支持 PNG / JPEG（`nativeImage` 解码边界，GIF/BMP/WebP/AVIF/SVG 直接报错）；UI 预览依赖本地文件路径，源文件删除/移动后失效；多模态 tool result 在 `openai-compatible` 端点可能不被支持（错误回灌模型）；图片 base64 与会话一并落库，会话体积随图片数量增长。
 - 自动化覆盖与回归命令：
 
   ```bash

@@ -90,18 +90,14 @@ export interface ViewImageDetails {
 
 ### 5.1 格式探测与支持集
 
-按魔数（magic bytes）探测，不信任扩展名。支持集：
+按魔数（magic bytes）探测，不信任扩展名。支持集为 **PNG / JPEG**（Electron `nativeImage` 在 macOS 仅稳定解码这两种格式，已实测 GIF/BMP/WebP/AVIF 解码为空）：
 
 | 格式 | 魔数 | 编码策略（需重编码时） |
 | :--- | :--- | :--- |
 | PNG | `89 50 4E 47` | PNG（无损） |
 | JPEG | `FF D8 FF` | JPEG q85 |
-| GIF | `47 49 46 38` | PNG（仅首帧） |
-| BMP | `42 4D` | PNG |
-| WebP | `52 49 46 46 ... 57 45 42 50` | JPEG q85 |
-| AVIF | `ftypavif` | JPEG q85 |
 
-SVG 与其他无法用 `nativeImage` 解码的格式：直接抛错，消息明确列出支持格式。
+GIF / BMP / WebP / AVIF / SVG 及其他格式：直接抛错，消息明确列出支持格式（`supported: PNG, JPEG`）。
 
 ### 5.2 双路径策略
 
@@ -192,5 +188,5 @@ JPEG_QUALITY           = 85
 | :--- | :--- | :--- |
 | Provider 兼容性 | 多模态 tool result 为 AI SDK 实验特性，`openai-compatible` 端点可能拒绝 | 报错原样回灌模型；后续可降级为「工具结果后追加 user 图片消息」仅当前不实现 |
 | 数据库体积 | 图片 base64 随 entry 落库 | 发送尺寸上限 2048/6000 + 重编码压缩约束单图体积 |
-| 格式差异 | `nativeImage` 各平台解码能力不同（GIF 仅首帧） | 魔数探测 + 解码失败显式报错，不做静默降级 |
+| 格式差异 | `nativeImage` 各平台解码能力不同（macOS 实测仅 PNG/JPEG 可解码） | 支持集收敛为 PNG/JPEG + 魔数探测 + 其他格式显式报错，不做静默降级 |
 | 图片 token 估算 | 固定 1500/张为启发式 | 仅影响容量指示与压缩触发时机；usage 锚点修正后自然收敛 |
