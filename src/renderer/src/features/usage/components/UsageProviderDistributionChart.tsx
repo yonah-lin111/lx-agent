@@ -1,22 +1,13 @@
 import { useMemo } from "react"
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { useTranslation } from "@/i18n"
+import { USAGE_PROVIDER_COLORS } from "../constants"
 import type { UsageProviderStats } from "../types"
 import { formatNumber, formatUsd } from "../utils"
 import { UsageChartCard } from "./UsageChartCard"
 import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
 const MAX_PROVIDERS = 8
-const PROVIDER_COLORS = [
-  "#38bdf8",
-  "#22c55e",
-  "#a855f7",
-  "#f97316",
-  "#f43f5e",
-  "#eab308",
-  "#14b8a6",
-  "#6366f1",
-]
 
 export interface UsageProviderDistributionChartProps {
   providerStats: UsageProviderStats[]
@@ -68,7 +59,10 @@ export const UsageProviderDistributionChart = ({
               stroke="none"
             >
               {data.map((item, index) => (
-                <Cell key={item.provider} fill={PROVIDER_COLORS[index % PROVIDER_COLORS.length]} />
+                <Cell
+                  key={item.provider}
+                  fill={USAGE_PROVIDER_COLORS[index % USAGE_PROVIDER_COLORS.length]}
+                />
               ))}
             </Pie>
           </PieChart>

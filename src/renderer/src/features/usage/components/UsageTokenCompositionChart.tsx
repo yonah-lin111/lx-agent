@@ -1,13 +1,19 @@
 import { useMemo } from "react"
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { useTranslation } from "@/i18n"
+import { USAGE_CHART_COLORS } from "../constants"
 import type { UsageSummary } from "../types"
 import { formatNumber } from "../utils"
 import { UsageChartCard } from "./UsageChartCard"
 import { UsageChartTooltip, type UsageChartTooltipEntry } from "./UsageChartTooltip"
 
-// Token 构成固定配色：新鲜输入 / 输出 / 缓存读 / 缓存写。
-const COMPOSITION_COLORS = ["#38bdf8", "#22c55e", "#a855f7", "#f97316"]
+// Token 构成固定配色：新鲜输入 / 输出 / 缓存读 / 缓存写（复用主题语义色）。
+const COMPOSITION_COLORS = [
+  USAGE_CHART_COLORS.freshInput,
+  USAGE_CHART_COLORS.output,
+  USAGE_CHART_COLORS.cacheRead,
+  USAGE_CHART_COLORS.cacheWrite,
+]
 
 export interface UsageTokenCompositionChartProps {
   summary: UsageSummary | null

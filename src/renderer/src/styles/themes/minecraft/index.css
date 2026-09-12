@@ -16,6 +16,21 @@
   --color-theme-text-muted: #a6a6bc;
   --color-theme-text-subtle: #727288;
   --color-theme-accent: #55ff55;
+  /* 用量图表配色：矿物色板（钻石 / 绿宝石 / 紫水晶 / 金 / 红石 / 青金石 + 羊皮 / 安山岩）。 */
+  --color-usage-chart-fresh-input: #55ffff;
+  --color-usage-chart-output: #55ff55;
+  --color-usage-chart-cache-read: #c084fc;
+  --color-usage-chart-cache-write: #ffaa00;
+  --color-usage-chart-cost: #ff5555;
+  --color-usage-chart-requests: #55aaff;
+  --color-usage-chart-provider-1: #55ffff;
+  --color-usage-chart-provider-2: #55ff55;
+  --color-usage-chart-provider-3: #c084fc;
+  --color-usage-chart-provider-4: #ffaa00;
+  --color-usage-chart-provider-5: #ff5555;
+  --color-usage-chart-provider-6: #55aaff;
+  --color-usage-chart-provider-7: #ffea88;
+  --color-usage-chart-provider-8: #a6a6bc;
   --theme-font-family:
     "JetBrains Mono", "Cascadia Code", "Fira Code", Menlo, Monaco, Consolas, "PingFang SC",
     "Microsoft YaHei", monospace;

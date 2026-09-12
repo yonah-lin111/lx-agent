@@ -12,6 +12,21 @@
   --color-theme-text-muted: rgba(255, 255, 255, 0.45);
   --color-theme-text-subtle: rgba(255, 255, 255, 0.3);
   --color-theme-accent: #38bdf8;
+  /* 用量图表配色：系列语义色 + Provider 循环色板（主题级定义，图表仅引用变量）。 */
+  --color-usage-chart-fresh-input: #38bdf8;
+  --color-usage-chart-output: #22c55e;
+  --color-usage-chart-cache-read: #a855f7;
+  --color-usage-chart-cache-write: #f97316;
+  --color-usage-chart-cost: #f43f5e;
+  --color-usage-chart-requests: #eab308;
+  --color-usage-chart-provider-1: #38bdf8;
+  --color-usage-chart-provider-2: #22c55e;
+  --color-usage-chart-provider-3: #a855f7;
+  --color-usage-chart-provider-4: #f97316;
+  --color-usage-chart-provider-5: #f43f5e;
+  --color-usage-chart-provider-6: #eab308;
+  --color-usage-chart-provider-7: #14b8a6;
+  --color-usage-chart-provider-8: #6366f1;
   --theme-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --theme-radius-base: 6px;
 }

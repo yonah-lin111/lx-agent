@@ -54,6 +54,12 @@ select {
   font: inherit;
 }
 
+/* Recharts 扇区等内部元素可聚焦：点击产生的焦点框会以包围盒矩形覆盖图表，需屏蔽；
+   键盘 :focus-visible 轮廓保留，不牺牲可访问性。 */
+.recharts-wrapper :focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* 块命令面板：在空行或 Markdown 块上下文中显示。 */
 .markdown-command-menu--block {
   width: var(--markdown-command-menu-block-width);
