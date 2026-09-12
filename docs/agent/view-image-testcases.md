@@ -96,7 +96,7 @@
 
 ## 附：`补充说明`
 
-- 已知限制：仅支持 PNG / JPEG（`nativeImage` 解码边界，GIF/BMP/WebP/AVIF/SVG 直接报错）；UI 预览依赖本地文件路径，源文件删除/移动后失效；多模态 tool result 在 `openai-compatible` 端点可能不被支持（错误回灌模型）；图片 base64 与会话一并落库，会话体积随图片数量增长。
+- 已知限制：仅支持 PNG / JPEG（`nativeImage` 解码边界，GIF/BMP/WebP/AVIF/SVG 直接报错）；UI 预览依赖本地文件路径，源文件删除/移动后失效；图片经“工具结果 + 紧随的 user 图片消息”投递以兼容全部 Provider；图片 base64 与会话一并落库，会话体积随图片数量增长。
 - 自动化覆盖与回归命令：
 
   ```bash

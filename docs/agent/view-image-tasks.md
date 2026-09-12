@@ -41,8 +41,8 @@
 ## 4. 消息管道
 
 - [ ] `src/main/agent/core/agent-loop.ts`：`createToolResultMessage` 提取 `details.image`
-- [ ] `src/main/agent/stream/toModelMessages.ts`：toolResult 含图片块时输出 `output: { type: "content", value: [text, file-data] }`
-- [ ] `test/main/agent/toModelMessages.test.ts` 增补：图片工具结果 → content parts；纯文本结果保持 `type: "text"`
+- [ ] `src/main/agent/stream/toModelMessages.ts`：toolResult 一律 text 输出；含图片块时追加紧随的 user 图片消息（兼容 openai-compatible）
+- [ ] `test/main/agent/toModelMessages.test.ts` 增补：图片工具结果 → text 工具结果 + user 图片消息；纯文本结果无附加消息
 
 ## 5. 上下文治理
 

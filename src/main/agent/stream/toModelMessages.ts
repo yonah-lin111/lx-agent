@@ -142,31 +142,41 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] =>
       }
       case "toolResult": {
         // 工具错误已编码在内容文本中；isError 不映射到 AI SDK tool-result part。
-        // 含图片块时使用多模态 content parts（AI SDK 按 Provider 适配 file-data）。
-        const hasImage = message.content.some((block) => block.type === "image")
-        const output = hasImage
-          ? {
-              type: "content" as const,
-              value: message.content.map((block) =>
-                block.type === "image"
-                  ? { type: "file-data" as const, data: block.data, mediaType: block.mimeType }
-                  : { type: "text" as const, text: block.text },
-              ),
-            }
-          : { type: "text" as const, value: contentToText(message.content) }
-        return [
-          {
-            role: "tool",
-            content: [
-              {
-                type: "tool-result" as const,
-                toolCallId: message.toolCallId,
-                toolName: message.toolName,
-                output,
-              },
-            ],
-          },
-        ] as ModelMessage[]
+        // 图片不放进 tool-result output：openai / openai-compatible 会把 content parts
+        // JSON.stringify 成纯文本，图像实际丢失（见 openai-compatible mapping）。
+        // 统一改为紧随工具结果后的 user 图片消息，兼容全部 Provider。
+        const images = message.content.filter(
+          (block): block is ImageContent => block.type === "image",
+        )
+        const toolMessage = {
+          role: "tool" as const,
+          content: [
+            {
+              type: "tool-result" as const,
+              toolCallId: message.toolCallId,
+              toolName: message.toolName,
+              output: { type: "text" as const, value: contentToText(message.content) },
+            },
+          ],
+        }
+        if (images.length === 0) return [toolMessage] as ModelMessage[]
+
+        const imageDetails = (message as { image?: { path?: string } }).image
+        const pathHint = imageDetails?.path ? ` (${imageDetails.path})` : ""
+        const imageMessage = {
+          role: "user" as const,
+          content: [
+            {
+              type: "text" as const,
+              text: `Image from tool "${message.toolName}"${pathHint}:`,
+            },
+            ...images.map((block) => ({
+              type: "image" as const,
+              image: `data:${block.mimeType};base64,${block.data}`,
+            })),
+          ],
+        }
+        return [toolMessage, imageMessage] as ModelMessage[]
       }
     }
   })

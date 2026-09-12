@@ -129,10 +129,10 @@ JPEG_QUALITY           = 85
 
 `toModelMessages.ts` 的 `toolResult` 分支：
 
-- 结果不含图片块 → 保持现状 `output: { type: "text", value }`；
-- 结果含图片块 → `output: { type: "content", value: [ { type: "text", text }, { type: "file-data", data, mediaType } ] }`。
+- 工具结果一律以 `output: { type: "text", value }` 投递；
+- 结果含图片块时，在工具结果**之后追加一条 user 图片消息**（`{ type: "image", image: dataURL }`），文本为 `Image from tool "<name>" (<path>):`。
 
-`file-data` 为 AI SDK v6 `ToolResultOutput` 的官方多模态工具结果形态，由 AI SDK 按 Provider 适配。用户消息图片路径（`{ type: "image", image: dataURL }`）不变。
+原因：AI SDK 对 `output.type === "content"` 的多模态工具结果，在 `openai`（Chat Completions）与 `openai-compatible` 路径会被 `JSON.stringify` 成纯文本（实测图片丢失、模型只能读到摘要并产生幻觉），tool 消息的数组 content 也会被网关拒绝。user 图片消息是各 Provider 一致支持的通路（含 Anthropic / OpenAI / Google / OpenAI-compatible），且不进入应用会话历史，仅作用于每次请求的消息投影。
 
 ---
 
@@ -186,7 +186,7 @@ JPEG_QUALITY           = 85
 
 | 风险 | 说明 | 缓解 |
 | :--- | :--- | :--- |
-| Provider 兼容性 | 多模态 tool result 为 AI SDK 实验特性，`openai-compatible` 端点可能拒绝 | 报错原样回灌模型；后续可降级为「工具结果后追加 user 图片消息」仅当前不实现 |
+| Provider 兼容性 | `openai`（Chat Completions）与 `openai-compatible` 会把多模态 tool result 序列化为纯文本，图片丢失（已实测） | 图片统一改写为工具结果后的 user 图片消息投递，兼容全部 Provider（见 §6.2） |
 | 数据库体积 | 图片 base64 随 entry 落库 | 发送尺寸上限 2048/6000 + 重编码压缩约束单图体积 |
 | 格式差异 | `nativeImage` 各平台解码能力不同（macOS 实测仅 PNG/JPEG 可解码） | 支持集收敛为 PNG/JPEG + 魔数探测 + 其他格式显式报错，不做静默降级 |
 | 图片 token 估算 | 固定 1500/张为启发式 | 仅影响容量指示与压缩触发时机；usage 锚点修正后自然收敛 |

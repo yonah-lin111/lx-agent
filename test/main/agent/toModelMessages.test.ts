@@ -114,7 +114,7 @@ describe("toModelMessages", () => {
     })
   })
 
-  it("含图片的 toolResult 转为多模态 content parts（text + file-data）", () => {
+  it("含图片的 toolResult 转为 text 工具结果 + 紧随的 user 图片消息（跨 Provider 兼容）", () => {
     const result = toModelMessages([
       {
         role: "toolResult",
@@ -125,9 +125,21 @@ describe("toModelMessages", () => {
           { type: "image", data: "aW1n", mimeType: "image/png" },
         ],
         isError: false,
-      },
+        image: {
+          path: "/repo/shot.png",
+          mimeType: "image/png",
+          detail: "high",
+          width: 100,
+          height: 50,
+          sourceWidth: 100,
+          sourceHeight: 50,
+          resized: false,
+          sizeBytes: 3,
+        },
+      } as any,
     ])
 
+    // 工具结果仅回文本（图片不进入 tool-result output，避免被 Provider JSON 序列化丢失）。
     expect(result[0]).toEqual({
       role: "tool",
       content: [
@@ -135,14 +147,37 @@ describe("toModelMessages", () => {
           type: "tool-result",
           toolCallId: "call-img",
           toolName: "view_image",
-          output: {
-            type: "content",
-            value: [
-              { type: "text", text: "Viewed image /repo/shot.png" },
-              { type: "file-data", data: "aW1n", mediaType: "image/png" },
-            ],
-          },
+          output: { type: "text", value: "Viewed image /repo/shot.png\n[image: image/png]" },
         },
+      ],
+    })
+    // 图片以 user 图片消息紧随工具结果投递。
+    expect(result[1]).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: 'Image from tool "view_image" (/repo/shot.png):' },
+        { type: "image", image: "data:image/png;base64,aW1n" },
+      ],
+    })
+  })
+
+  it("无 image details 的图片工具结果不追加路径提示", () => {
+    const result = toModelMessages([
+      {
+        role: "toolResult",
+        toolCallId: "call-img",
+        toolName: "view_image",
+        content: [{ type: "image", data: "aW1n", mimeType: "image/png" }],
+        isError: false,
+      },
+    ])
+
+    expect(result).toHaveLength(2)
+    expect(result[1]).toMatchObject({
+      role: "user",
+      content: [
+        { type: "text", text: 'Image from tool "view_image":' },
+        { type: "image", image: "data:image/png;base64,aW1n" },
       ],
     })
   })
