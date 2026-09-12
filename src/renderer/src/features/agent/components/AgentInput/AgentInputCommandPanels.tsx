@@ -879,11 +879,17 @@ export const AgentInputFilePanel = ({
               </span>
               <div className="ml-auto flex shrink-0 items-center gap-1">
                 <LxTag
-                  bgClass="bg-sky-500/20 text-sky-300"
+                  bgClass={
+                    subagent.builtIn
+                      ? "bg-sky-500/20 text-sky-300"
+                      : "bg-[#7c3aed]/20 text-[#c084fc]"
+                  }
                   className="pointer-events-none shrink-0"
                   size="small"
                 >
-                  {t("agent.subagentMentionTag")}
+                  {subagent.builtIn
+                    ? t("agent.subagentMentionTag")
+                    : t("settings.subagentsCustomTag")}
                 </LxTag>
               </div>
             </div>

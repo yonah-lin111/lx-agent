@@ -384,9 +384,14 @@ export const SubagentSettings = (): React.JSX.Element => {
                 className="flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
-                    {name}
-                  </span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
+                      {name}
+                    </span>
+                    <LxTag size="small" color="purple">
+                      {t("settings.subagentsCustomTag")}
+                    </LxTag>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <LxIconButton
                       preset="default"

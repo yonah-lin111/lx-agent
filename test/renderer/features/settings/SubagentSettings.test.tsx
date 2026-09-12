@@ -103,6 +103,8 @@ describe("SubagentSettings", () => {
     })
     renderComponent()
     await screen.findByText("my-reviewer")
+    // 自定义角色来源标识。
+    expect(screen.getByText("Custom")).toBeTruthy()
 
     fireEvent.click(screen.getByRole("button", { name: "Add Role" }))
     const nameInput = await screen.findByPlaceholderText("e.g. my-reviewer")

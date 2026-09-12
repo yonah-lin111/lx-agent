@@ -371,6 +371,7 @@ export const zh: TranslationDictionary = {
     subagentsMaxDepth: "最大嵌套深度",
     subagentsBuiltins: "内置角色",
     subagentsBuiltinTag: "内置",
+    subagentsCustomTag: "自定义",
     subagentsUserRoles: "自定义角色",
     subagentsAddRole: "添加角色",
     subagentsEditRole: "编辑角色",
