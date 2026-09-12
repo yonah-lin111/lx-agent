@@ -7,6 +7,17 @@ vi.mock("@/agent/stream/modelFactory", () => ({
   resolveLanguageModel: vi.fn().mockReturnValue({}),
 }))
 
+// Mock settingsService：可控 provider 配置（opencode Go 请求头注入用例）。
+const settingsState = vi.hoisted(() => ({
+  settings: {
+    providers: {} as Record<string, unknown>,
+    streamIdleTimeoutMs: undefined as number | undefined,
+  },
+}))
+vi.mock("@/services/settingsService", () => ({
+  getModelProviderSettings: () => settingsState.settings,
+}))
+
 // Mock ai streamText
 const mockStreamText = vi.fn()
 vi.mock("ai", () => ({
@@ -20,6 +31,7 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    settingsState.settings = { providers: {}, streamIdleTimeoutMs: undefined }
   })
 
   afterEach(() => {
@@ -290,5 +302,84 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
       name: "render_html",
       arguments: { html: "<h1>App</h1>" },
     })
+  })
+
+  it("opencode Go Provider 注入 x-opencode-session 会话头与客户端 UA", async () => {
+    async function* createMockStream() {
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    settingsState.settings.providers = {
+      "oc-go": {
+        id: "oc-go",
+        type: "openai-compatible",
+        name: "OpenCode Go",
+        options: { apiKey: "sk-test", baseURL: "https://opencode.ai/zen/go/v1" },
+        models: { "deepseek-v4.1-flash": { id: "deepseek-v4.1-flash", name: "DeepSeek" } },
+      },
+    }
+
+    const streamFn = createAiSdkStreamFn({
+      idleTimeoutMs: 5000,
+      getSessionId: () => "ses_lx_42",
+    })
+    const stream = await streamFn(
+      { provider: "oc-go", id: "deepseek-v4.1-flash" },
+      { systemPrompt: "", messages: [] },
+      {},
+    )
+    for await (const _ of stream) {
+      // consume
+    }
+    await stream.result()
+
+    expect(mockStreamText).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        headers: {
+          "x-opencode-session": "ses_lx_42",
+          "user-agent": expect.stringMatching(/^lx-agent\//),
+        },
+      }),
+    )
+  })
+
+  it("非 opencode Go Provider 不额外注入请求头", async () => {
+    async function* createMockStream() {
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createMockStream() })
+    settingsState.settings.providers = {
+      compat: {
+        id: "compat",
+        type: "openai-compatible",
+        name: "MiniMax",
+        options: { apiKey: "sk-test", baseURL: "https://api.minimax.chat/v1" },
+        models: { m: { id: "m", name: "m" } },
+      },
+    }
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(
+      { provider: "compat", id: "m" },
+      { systemPrompt: "", messages: [] },
+      {},
+    )
+    for await (const _ of stream) {
+      // consume
+    }
+    await stream.result()
+
+    const lastOptions = mockStreamText.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
   })
 })

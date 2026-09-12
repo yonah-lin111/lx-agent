@@ -1,9 +1,19 @@
 import type { AssistantMessage, TextContent, ThinkingContent } from "@shared/contracts/agent"
+import type { ModelProvider } from "@shared/settings"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-// 共享可变 settings 状态：按用例切换 titleSummary 配置。
+// 共享可变 settings 状态：按用例切换 titleSummary 配置与 Provider baseURL。
 const settings = vi.hoisted(() => ({
   titleSummary: { provider: "p", model: "m" } as { provider: string; model: string } | undefined,
+  providers: {
+    p: {
+      id: "p",
+      type: "openai-compatible",
+      name: "p",
+      options: { apiKey: "x", baseURL: "http://localhost" },
+      models: { m: { id: "m", name: "m" } },
+    },
+  } as Record<string, ModelProvider>,
 }))
 
 // mock ai.streamText：返回可控文本，避免真实 LLM 调用。
@@ -16,15 +26,7 @@ vi.mock("ai", () => ({
 // mock settingsService：titleSummary 指向固定模型。
 vi.mock("@/services/settingsService", () => ({
   getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
-      },
-    },
+    providers: settings.providers,
     enabledProviders: ["p"],
     defaultModel: { provider: "p", model: "m" },
     titleSummary: settings.titleSummary,
@@ -34,7 +36,7 @@ vi.mock("@/services/settingsService", () => ({
 }))
 
 import { streamText } from "ai"
-import { generateSessionTitle } from "@/agent/titleGenerator"
+import { generateSessionTitle, generateTemplateTitle } from "@/agent/titleGenerator"
 
 const streamTextMock = vi.mocked(streamText)
 
@@ -58,6 +60,7 @@ describe("generateSessionTitle", () => {
   beforeEach(() => {
     streamTextMock.mockReset()
     settings.titleSummary = { provider: "p", model: "m" }
+    settings.providers.p.options.baseURL = "http://localhost"
   })
 
   it("由首轮 user 消息文本生成标题", async () => {
@@ -131,5 +134,39 @@ describe("generateSessionTitle", () => {
     const title = await generateSessionTitle([{ role: "user", content: "test", timestamp: 0 }])
     expect(title).toBeNull()
     expect(streamTextMock).not.toHaveBeenCalled()
+  })
+
+  it("opencode Go Provider 的会话标题携带真实会话 ID 头", async () => {
+    mockStream("会话标题")
+    settings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
+    await generateSessionTitle([{ role: "user", content: "test", timestamp: 0 }], "ses_lx_7")
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-opencode-session": "ses_lx_7",
+          "user-agent": expect.stringMatching(/^lx-agent\//),
+        }),
+      }),
+    )
+  })
+
+  it("模板标题无会话上下文时使用合成会话 ID 头", async () => {
+    mockStream("模板标题")
+    settings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
+    await generateTemplateTitle("实现一个功能")
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-opencode-session": "lx-agent:template-title",
+        }),
+      }),
+    )
+  })
+
+  it("非 opencode Go Provider 不注入请求头", async () => {
+    mockStream("普通标题")
+    await generateSessionTitle([{ role: "user", content: "test", timestamp: 0 }], "ses_lx_7")
+    const lastOptions = streamTextMock.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
   })
 })

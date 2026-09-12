@@ -1,6 +1,40 @@
 import type { SuggestedQuestionContextMessage } from "@shared/contracts/agent"
-import { describe, expect, it } from "vitest"
+import { streamText } from "ai"
+import { describe, expect, it, vi } from "vitest"
+
+// mock ai.streamText：避免真实 LLM 调用。
+vi.mock("ai", () => ({
+  streamText: vi.fn(),
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
+  extractReasoningMiddleware: vi.fn(),
+}))
+
+// 共享可变 settings：按用例切换 Provider baseURL（opencode Go 头注入）。
+const settingsState = vi.hoisted(() => ({
+  settings: {
+    providers: {
+      p: {
+        id: "p",
+        type: "openai-compatible",
+        name: "p",
+        options: { apiKey: "x", baseURL: "http://localhost" },
+        models: { m: { id: "m", name: "m" } },
+      },
+    },
+    enabledProviders: ["p"],
+    defaultModel: { provider: "p", model: "m" },
+    titleSummary: { provider: "p", model: "m" },
+    suggestedQuestions: { provider: "p", model: "m" },
+    suggestedQuestionsEnabled: true,
+  },
+}))
+
+vi.mock("@/services/settingsService", () => ({
+  getModelProviderSettings: () => settingsState.settings,
+}))
+
 import {
+  generateSuggestedQuestions,
   parseSuggestedQuestions,
   trimSuggestedQuestionContext,
 } from "@/agent/suggestedQuestionsGenerator"
@@ -64,5 +98,30 @@ describe("trimSuggestedQuestionContext", () => {
 
   it("空输入返回空数组", () => {
     expect(trimSuggestedQuestionContext([], 100)).toEqual([])
+  })
+})
+
+describe("generateSuggestedQuestions 请求头", () => {
+  it("opencode Go Provider 使用合成会话 ID 头", async () => {
+    const streamTextMock = vi.mocked(streamText)
+    streamTextMock.mockReset()
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve('["问题一？","问题二？"]'),
+      usage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+    } as never)
+
+    settingsState.settings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
+    const questions = await generateSuggestedQuestions([{ role: "user", content: "hi" }])
+
+    expect(questions).toEqual(["问题一？", "问题二？"])
+    expect(streamTextMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-opencode-session": "lx-agent:suggested-questions",
+          "user-agent": expect.stringMatching(/^lx-agent\//),
+        }),
+      }),
+    )
+    settingsState.settings.providers.p.options.baseURL = "http://localhost"
   })
 })

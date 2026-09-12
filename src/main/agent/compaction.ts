@@ -13,6 +13,10 @@ import { getModelProviderSettings } from "@/services/settingsService"
 import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import {
+  buildOpencodeGoRequestHeaders,
+  OPENCODE_GO_AUXILIARY_SESSION_IDS,
+} from "./stream/opencodeGoHeaders"
 import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 摘要生成超时（秒）：兜底避免无响应 provider 挂住 turn 收尾。
@@ -282,6 +286,10 @@ export const generateCompactionSummary = async (
     if ("error" in resolved) return null
     loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
+    const requestHeaders = buildOpencodeGoRequestHeaders(
+      settings.providers[resolved.model.provider],
+      sessionId ?? OPENCODE_GO_AUXILIARY_SESSION_IDS.auxiliary,
+    )
 
     const pruned = pruneHistoricalToolOutputs(messages)
     const input = extractConversationText(pruned)
@@ -295,6 +303,7 @@ export const generateCompactionSummary = async (
     const result = streamText({
       model: languageModel,
       abortSignal: AbortSignal.timeout(COMPACTION_TIMEOUT_MS),
+      ...(requestHeaders ? { headers: requestHeaders } : {}),
       messages: [
         {
           role: "user",

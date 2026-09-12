@@ -5,55 +5,47 @@ import type { AgentTool } from "../core/types"
 import { ensureMemoryWorkspace, truncateMemoryIndex } from "../memories/memoryManager"
 import { resolveToCwd } from "./path-utils"
 
-const memoryInputSchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("view").describe("View the MEMORY.md index or a specific topic note"),
-    path: z
-      .string()
-      .optional()
-      .describe(
-        "Relative path to a note file under .lx/memory/ (e.g. notes/user_preferences.md). Omit to view the main MEMORY.md index.",
-      ),
-  }),
-  z.object({
-    action: z.literal("save").describe("Save or update a memory topic note and update MEMORY.md"),
-    topic: z
-      .string()
-      .describe(
-        "Topic identifier/filename without extension (e.g. 'user_preferences', 'architecture_rules')",
-      ),
-    name: z.string().describe("Human readable title of the memory topic"),
-    description: z
-      .string()
-      .describe("Concise 1-line description of what this memory topic covers for the index"),
-    type: z
-      .enum(["user", "feedback", "project", "reference"])
-      .default("project")
-      .describe(
-        "Category of the memory (user: preferences/role, feedback: lessons/corrections, project: context/goals, reference: external info)",
-      ),
-    content: z.string().describe("Detailed markdown body of the topic note"),
-  }),
-  z.object({
-    action: z.literal("search").describe("Search across memory index and topic notes for keywords"),
-    query: z.string().describe("Keywords to search in memory files"),
-  }),
-  z.object({
-    action: z
-      .literal("delete")
-      .describe("Delete a memory topic note and remove its entry from MEMORY.md"),
-    topic: z
-      .string()
-      .optional()
-      .describe("Topic identifier/filename without extension (e.g. 'user_preferences')"),
-    path: z
-      .string()
-      .optional()
-      .describe(
-        "Relative path to the note file under .lx/memory/ (e.g. 'notes/user_preferences.md')",
-      ),
-  }),
-])
+// 扁平 object schema：OpenAI 兼容端点要求 function 参数根节点为 type: object，
+// 不接受 discriminatedUnion 生成的 oneOf 根节点；动作级必填约束在 execute 中校验。
+export const memoryInputSchema = z.object({
+  action: z
+    .enum(["view", "save", "search", "delete"])
+    .describe("Action to perform on long-term project memory"),
+  path: z
+    .string()
+    .optional()
+    .describe(
+      "Relative path to a note file under .lx/memory/ (e.g. notes/user_preferences.md). For 'view': omit to view the main MEMORY.md index; for 'delete': alternative to topic.",
+    ),
+  topic: z
+    .string()
+    .optional()
+    .describe(
+      "Topic identifier/filename without extension (e.g. 'user_preferences', 'architecture_rules'). Required for 'save'.",
+    ),
+  name: z
+    .string()
+    .optional()
+    .describe("Human readable title of the memory topic. Required for 'save'."),
+  description: z
+    .string()
+    .optional()
+    .describe("Concise 1-line description of what this memory topic covers. Required for 'save'."),
+  type: z
+    .enum(["user", "feedback", "project", "reference"])
+    .optional()
+    .describe(
+      "Category of the memory (user: preferences/role, feedback: lessons/corrections, project: context/goals, reference: external info). Defaults to 'project'.",
+    ),
+  content: z
+    .string()
+    .optional()
+    .describe("Detailed markdown body of the topic note. Required for 'save'."),
+  query: z
+    .string()
+    .optional()
+    .describe("Keywords to search in memory files. Required for 'search'."),
+})
 
 export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchema> => ({
   name: "memory",
@@ -120,8 +112,22 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
 
     if (params.action === "save") {
       throwIfAborted()
-      const cleanTopic = params.topic
-        .trim()
+      const topic = params.topic?.trim()
+      const name = params.name?.trim()
+      const description = params.description?.trim()
+      const content = params.content?.trim()
+      if (!topic || !name || !description || !content) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Missing required save parameters: topic, name, description and content are required.",
+            },
+          ],
+          details: { error: "Missing required parameters" },
+        }
+      }
+      const cleanTopic = topic
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, "_")
         .replace(/^[._]+/, "")
@@ -139,14 +145,14 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
 
       const frontmatter = [
         "---",
-        `name: ${params.name.trim()}`,
-        `description: ${params.description.trim()}`,
-        `type: ${params.type}`,
+        `name: ${name}`,
+        `description: ${description}`,
+        `type: ${params.type ?? "project"}`,
         "---",
         "",
       ].join("\n")
 
-      const fullNoteContent = `${frontmatter}${params.content.trim()}\n`
+      const fullNoteContent = `${frontmatter}${content}\n`
       await writeFile(noteFilePath, fullNoteContent, "utf-8")
       throwIfAborted()
 
@@ -158,7 +164,7 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         memoryIndexContent = "# Project Memory Index\n\n"
       }
 
-      const indexEntryLine = `- [${noteFileName}](${noteRelPath}): ${params.description.trim()}`
+      const indexEntryLine = `- [${noteFileName}](${noteRelPath}): ${description}`
       const lines = memoryIndexContent.split("\n")
       let replaced = false
 
@@ -198,14 +204,14 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
         details: {
           notePath: `.lx/memory/${noteRelPath}`,
           topic: cleanTopic,
-          name: params.name,
+          name,
         },
       }
     }
 
     if (params.action === "search") {
       throwIfAborted()
-      const query = params.query.trim().toLowerCase()
+      const query = (params.query ?? "").trim().toLowerCase()
       if (!query) {
         return {
           content: [{ type: "text", text: "Empty search query provided." }],

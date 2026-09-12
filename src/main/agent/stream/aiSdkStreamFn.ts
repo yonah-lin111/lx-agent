@@ -12,6 +12,7 @@ import { createAssistantMessageEventStream } from "@/agent/core/event-stream"
 import type { Model, StreamFn } from "@/agent/core/types"
 import { DEFAULT_STREAM_IDLE_TIMEOUT_MS, IdleWatchdog } from "@/agent/stream/idleWatchdog"
 import { resolveLanguageModel } from "@/agent/stream/modelFactory"
+import { buildOpencodeGoRequestHeaders } from "@/agent/stream/opencodeGoHeaders"
 import { toAiTools, toModelMessages } from "@/agent/stream/toModelMessages"
 import { recordModelCall, toUsage } from "@/agent/usageRecorder"
 import { getModelProviderSettings } from "@/services/settingsService"
@@ -176,6 +177,10 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
         const providerSettings = getModelProviderSettings()
         const providerConfig = providerSettings.providers[model.provider]
         const modelConfig = providerConfig?.models[model.id]
+        const requestHeaders = buildOpencodeGoRequestHeaders(
+          providerConfig,
+          getSessionId?.() ?? null,
+        )
         const effectiveVariantKey = options?.variant ?? model.variant ?? modelConfig?.variant
         const variantConfig =
           effectiveVariantKey && modelConfig?.variants
@@ -234,6 +239,7 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
           tools: toAiTools(context.tools),
           stopWhen: stepCountIs(1),
           abortSignal: combinedSignal,
+          ...(requestHeaders ? { headers: requestHeaders } : {}),
           ...(Object.keys(providerOptions).length > 0 ? { providerOptions } : {}),
         })
 

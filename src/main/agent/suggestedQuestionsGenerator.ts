@@ -3,6 +3,10 @@ import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
+import {
+  buildOpencodeGoRequestHeaders,
+  OPENCODE_GO_AUXILIARY_SESSION_IDS,
+} from "./stream/opencodeGoHeaders"
 import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 建议问题生成超时（秒）：兜底避免无响应 provider 挂住渲染端请求。
@@ -101,6 +105,10 @@ export const generateSuggestedQuestions = async (
     if ("error" in resolved) return []
     loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
+    const requestHeaders = buildOpencodeGoRequestHeaders(
+      provider,
+      OPENCODE_GO_AUXILIARY_SESSION_IDS.suggestedQuestions,
+    )
 
     const contextLimit = provider.models[selection.model].limit?.context
     const budget = Math.max(BASE_CONTEXT_CHARS, (contextLimit ?? BASE_CONTEXT_CHARS) * 3)
@@ -110,6 +118,7 @@ export const generateSuggestedQuestions = async (
     const result = streamText({
       model: languageModel,
       abortSignal: AbortSignal.timeout(SUGGEST_TIMEOUT_MS),
+      ...(requestHeaders ? { headers: requestHeaders } : {}),
       messages: [
         {
           role: "system",
