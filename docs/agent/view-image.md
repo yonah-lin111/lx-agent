@@ -90,18 +90,14 @@ export interface ViewImageDetails {
 
 ### 5.1 格式探测与支持集
 
-按魔数（magic bytes）探测，不信任扩展名。支持集：
+按魔数（magic bytes）探测，不信任扩展名。支持集为 **PNG / JPEG**（Electron `nativeImage` 在 macOS 仅稳定解码这两种格式，已实测 GIF/BMP/WebP/AVIF 解码为空）：
 
 | 格式 | 魔数 | 编码策略（需重编码时） |
 | :--- | :--- | :--- |
 | PNG | `89 50 4E 47` | PNG（无损） |
 | JPEG | `FF D8 FF` | JPEG q85 |
-| GIF | `47 49 46 38` | PNG（仅首帧） |
-| BMP | `42 4D` | PNG |
-| WebP | `52 49 46 46 ... 57 45 42 50` | JPEG q85 |
-| AVIF | `ftypavif` | JPEG q85 |
 
-SVG 与其他无法用 `nativeImage` 解码的格式：直接抛错，消息明确列出支持格式。
+GIF / BMP / WebP / AVIF / SVG 及其他格式：直接抛错，消息明确列出支持格式（`supported: PNG, JPEG`）。
 
 ### 5.2 双路径策略
 
@@ -133,10 +129,10 @@ JPEG_QUALITY           = 85
 
 `toModelMessages.ts` 的 `toolResult` 分支：
 
-- 结果不含图片块 → 保持现状 `output: { type: "text", value }`；
-- 结果含图片块 → `output: { type: "content", value: [ { type: "text", text }, { type: "file-data", data, mediaType } ] }`。
+- 工具结果一律以 `output: { type: "text", value }` 投递；
+- 结果含图片块时，在**整段连续工具结果之后**追加一条合并的 user 图片消息（`{ type: "image", image: dataURL }`），每张图片前带来源标签 `Image from tool "<name>" (<path>):`。并行工具调用会产生多条连续 tool 消息，必须全部输出完再追加图片消息（Provider 要求同一 assistant 消息的全部 tool 结果连续，否则报 `Tool result is missing for tool call ...`，已在会话实测复现）。
 
-`file-data` 为 AI SDK v6 `ToolResultOutput` 的官方多模态工具结果形态，由 AI SDK 按 Provider 适配。用户消息图片路径（`{ type: "image", image: dataURL }`）不变。
+原因：AI SDK 对 `output.type === "content"` 的多模态工具结果，在 `openai`（Chat Completions）与 `openai-compatible` 路径会被 `JSON.stringify` 成纯文本（实测图片丢失、模型只能读到摘要并产生幻觉），tool 消息的数组 content 也会被网关拒绝。user 图片消息是各 Provider 一致支持的通路（含 Anthropic / OpenAI / Google / OpenAI-compatible），且不进入应用会话历史，仅作用于每次请求的消息投影。
 
 ---
 
@@ -167,8 +163,9 @@ JPEG_QUALITY           = 85
 
 ## 9. UI 渲染
 
-- **消息流**：`AgentToolCallBlock` 新增 `toolName === "view_image"` 分支，渲染新组件 `AgentViewImageBlock`：缩略图（`lx-image://local` + `details.path`）+ 悬浮大图预览 + 文件名/尺寸/`detail` 标签；错误态回退文本。
-- **执行流程**：新增 `FlowToolViewImage`，由 `FlowItemToolContent` 按工具名分派；图片数据经 `executionFlow.ts` 从配对 toolResult 透传。
+- **消息流**：`AgentToolCallBlock` 新增 `toolName === "view_image"` 分支，渲染新组件 `AgentViewImageBlock`：缩略图（`lx-image://local` + `details.path`）+ 悬浮大图预览 + 文件名/尺寸/`detail` 标签；布局对齐其他工具的摘要行（`CornerDownRight` 直角 icon 右侧放参数，图片缩进在参数下方）；错误态回退文本。
+- **工具名分类**：`view_image` 是内置工具但名字含下划线，必须加入 `BUILTIN_UNDERSCORE_TOOLS`（`AgentMessageItem/constants.ts`）。否则消息流会按 MCP 服务 "view" 归组渲染（`AgentMcpCallBlock`），执行流程标题显示 `MCP · view · image`，图片无法展示。`FlowItemToolTitle` 原有的重复内联工具名列表已删除，统一引用该集合。
+- **执行流程**：新增 `FlowToolViewImage`，由 `FlowItemToolContent` 按工具名分派；结构与其他流程工具一致：元信息行（精度标签为纯文本、无边框）+ 缩略图 + `Input Arguments` + `Execution Result`；图片数据经 `executionFlow.ts` 从配对 toolResult 透传。
 - **数据透传链**：`ToolResultMessage.image` → `ChatBlock.toolResult.image`（`types.ts`）→ `utils.ts` 两处映射 → 上列两个渲染位点；`executionFlow.ts` 同步透传。
 - **i18n**：新增文案键（缩略图标签、detail 标签、尺寸/路径提示）同时写入 `zh.ts` / `en.ts`，全部经 `useTranslation`。
 - 样式沿用现有 Token 与暗色体系，不引入硬编码主题色。
@@ -190,7 +187,7 @@ JPEG_QUALITY           = 85
 
 | 风险 | 说明 | 缓解 |
 | :--- | :--- | :--- |
-| Provider 兼容性 | 多模态 tool result 为 AI SDK 实验特性，`openai-compatible` 端点可能拒绝 | 报错原样回灌模型；后续可降级为「工具结果后追加 user 图片消息」仅当前不实现 |
+| Provider 兼容性 | `openai`（Chat Completions）与 `openai-compatible` 会把多模态 tool result 序列化为纯文本，图片丢失（已实测） | 图片统一改写为工具结果后的 user 图片消息投递，兼容全部 Provider（见 §6.2） |
 | 数据库体积 | 图片 base64 随 entry 落库 | 发送尺寸上限 2048/6000 + 重编码压缩约束单图体积 |
-| 格式差异 | `nativeImage` 各平台解码能力不同（GIF 仅首帧） | 魔数探测 + 解码失败显式报错，不做静默降级 |
+| 格式差异 | `nativeImage` 各平台解码能力不同（macOS 实测仅 PNG/JPEG 可解码） | 支持集收敛为 PNG/JPEG + 魔数探测 + 其他格式显式报错，不做静默降级 |
 | 图片 token 估算 | 固定 1500/张为启发式 | 仅影响容量指示与压缩触发时机；usage 锚点修正后自然收敛 |

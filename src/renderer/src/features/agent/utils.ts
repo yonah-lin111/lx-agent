@@ -598,6 +598,7 @@ export const toChatMessage = (
           ...(message.diff ? { diff: message.diff } : {}),
           ...(message.subagent ? { subagent: message.subagent } : {}),
           ...(message.lsp ? { lsp: message.lsp } : {}),
+          ...(message.image ? { image: message.image } : {}),
         },
       ],
       isStreaming: false,
@@ -706,6 +707,7 @@ export const toAgentMessages = (messages: ChatMessage[]): AgentMessage[] =>
           timestamp: message.timestamp ?? Date.now(),
           ...(block.subagent ? { subagent: block.subagent } : {}),
           ...(block.lsp ? { lsp: block.lsp } : {}),
+          ...(block.image ? { image: block.image } : {}),
         },
       ]
     }

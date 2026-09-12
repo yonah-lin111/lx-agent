@@ -112,6 +112,33 @@ describe("estimateContextTokens", () => {
   it("空消息返回 0", () => {
     expect(estimateContextTokens([])).toBe(0)
   })
+
+  it("图片块按等价 token（约 1500/张）计入，不按 [image] 文本低估", () => {
+    const summaryText = "Viewed image /repo/shot.png"
+    const imageResult: AgentMessage = {
+      role: "toolResult",
+      toolCallId: "t1",
+      toolName: "view_image",
+      content: [
+        { type: "text", text: summaryText },
+        { type: "image", data: "aW1n", mimeType: "image/png" },
+      ],
+      isError: false,
+      timestamp: 0,
+    }
+
+    expect(estimateMessageTokens(imageResult)).toBe(Math.ceil((summaryText.length + 6_000) / 4))
+    expect(estimateMessageTokens(imageResult)).toBeGreaterThan(1_400)
+  })
+
+  it("user 消息中的图片块同样按等价字符计入", () => {
+    const imageUser: AgentMessage = {
+      role: "user",
+      content: [{ type: "image", data: "aW1n", mimeType: "image/png" }],
+      timestamp: 0,
+    }
+    expect(estimateMessageTokens(imageUser)).toBe(Math.ceil(6_000 / 4))
+  })
 })
 
 describe("findCutPoint", () => {

@@ -18,7 +18,7 @@
 
 - [ ] `src/main/agent/tools/viewImage.ts`
   - `const viewImageSchema = z.object({ path: z.string(), detail: z.enum(["high","original"]).optional() })`
-  - 魔数探测（PNG/JPEG/GIF/BMP/WebP/AVIF）；SVG 与未知格式抛错并列出支持格式
+  - 魔数探测（仅 PNG/JPEG 受支持，nativeImage 解码边界）；GIF/BMP/WebP/AVIF/SVG 与未知格式抛错并列出支持格式
   - 双路径预处理（直传 / `nativeImage` 缩放重编码），常量与编码策略见设计 §5
   - 返回 `content`（英文摘要 + `ImageContent`）与 `details.image`
   - `executionMode: "parallel"`；`supportsImages` 依赖注入，`false` 时抛错
@@ -41,8 +41,8 @@
 ## 4. 消息管道
 
 - [ ] `src/main/agent/core/agent-loop.ts`：`createToolResultMessage` 提取 `details.image`
-- [ ] `src/main/agent/stream/toModelMessages.ts`：toolResult 含图片块时输出 `output: { type: "content", value: [text, file-data] }`
-- [ ] `test/main/agent/toModelMessages.test.ts` 增补：图片工具结果 → content parts；纯文本结果保持 `type: "text"`
+- [ ] `src/main/agent/stream/toModelMessages.ts`：toolResult 一律 text 输出；含图片块时追加紧随的 user 图片消息（兼容 openai-compatible）
+- [ ] `test/main/agent/toModelMessages.test.ts` 增补：图片工具结果 → text 工具结果 + user 图片消息；纯文本结果无附加消息
 
 ## 5. 上下文治理
 

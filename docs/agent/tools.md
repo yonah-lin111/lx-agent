@@ -65,10 +65,11 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `read_skill` | `{ name }` | 读取并加载指定 Skill 指令包的完整 Markdown 正文 |
 | **网络检索** | `web_search` | `{ query; numResults?=8; type? }` | 优先 Exa (mcp.exa.ai) 检索，Tavily (api.tavily.com) 兜底；`numResults` 上限 10 |
 | | `webfetch` | `{ url; format?=markdown; timeout?=30s }` | URL 内容抓取与 HTML 转 Markdown，内置私网/Localhost SSRF 严格阻断 |
+| **图像** | `view_image` | `{ path; detail?="high" }` | 本地图片查看（PNG/JPEG）：魔数探测 + 双路径预处理（≤4MiB 且未超限直传，否则缩放重编码；`high` 长边 ≤2048 / `original` ≤6000）；仅视觉模型注册（见 view-image.md） |
 
 ### 2.1 装配与能力快照 (`assembly.ts` / `capabilityService.ts`)
 
-- `createRegistry(cwd, activeTools, mcpToolNames, withReadSkill, taskDeps?, questionDeps?, lspDeps?)` 注册内置全集；`lsp` / `question` / `task` 依赖对应 deps 存在才注册，MCP 工具仅注册白名单命中的已连接项，`read_skill` 由 Skill 激活状态决定。
+- `createRegistry(cwd, activeTools, mcpToolNames, withReadSkill, taskDeps?, questionDeps?, lspDeps?, sessionDeps?)` 注册内置全集；`lsp` / `question` / `task` 依赖对应 deps 存在才注册，`view_image` 依赖 `sessionDeps.supportsImages` 门控（非视觉模型不注册/不激活），MCP 工具仅注册白名单命中的已连接项，`read_skill` 由 Skill 激活状态决定。
 - `setActive()` 按会话 `active_capabilities` 快照过滤，配置中引用的未注册工具（历史遗留）自动剔除。
 - 能力快照随会话冻结，仅在能力集实际变化时追加 `active_capabilities` entry（见 database.md）。
 

@@ -21,6 +21,7 @@ import { ToolRegistry } from "./tools/registry"
 import { createTaskTool, type TaskToolDeps } from "./tools/task"
 import { createTimeTool } from "./tools/time"
 import { createTodoTool } from "./tools/todowrite"
+import { createViewImageTool } from "./tools/viewImage"
 import { createWebFetchTool } from "./tools/webfetch"
 import { createWebSearchTool } from "./tools/webSearch"
 import { createWriteTool } from "./tools/write"
@@ -165,6 +166,7 @@ export const ALL_TOOL_NAMES = new Set([
   "question",
   "memory",
   "lsp",
+  "view_image",
   "job_output",
   "job_list",
   "job_kill",
@@ -184,6 +186,8 @@ export const resolveCwd = (): string | undefined => {
 
 export interface SessionToolDeps {
   getSessionId: () => string | null
+  // 当前模型视觉能力（false 时不注册/不激活 view_image；缺省视为 true）。
+  supportsImages?: () => boolean
 }
 
 // 装配会话工具集：注册内置工具全集 + task + MCP 包装工具 + read_skill + lsp，按能力集激活。
@@ -199,6 +203,7 @@ export const createRegistry = (
 ): ToolRegistry => {
   const effectiveSessionDeps =
     sessionDeps ?? (lspDeps ? { getSessionId: lspDeps.getSessionId } : undefined)
+  const viewImageEnabled = effectiveSessionDeps?.supportsImages?.() ?? true
   const registry = new ToolRegistry(cwd)
   registry.register(createReadTool(cwd, effectiveSessionDeps))
   registry.register(createMemoryTool(cwd))
@@ -216,6 +221,12 @@ export const createRegistry = (
   registry.register(createJobOutputTool(effectiveSessionDeps))
   registry.register(createJobListTool(effectiveSessionDeps))
   registry.register(createJobKillTool(effectiveSessionDeps))
+  // view_image：仅视觉模型注册（装配时门控；执行侧仍保留兜底校验）。
+  if (viewImageEnabled) {
+    registry.register(
+      createViewImageTool(cwd, { supportsImages: effectiveSessionDeps?.supportsImages }),
+    )
+  }
   if (lspDeps) {
     registry.register(createLspTool(lspDeps))
   }
@@ -243,9 +254,11 @@ export const createRegistry = (
   if (withReadSkill) {
     registry.register(createReadSkillTool(cwd))
   }
-  // 配置可能引用未注册工具，过滤后激活。
+  // 配置可能引用未注册工具，过滤后激活（非视觉模型剔除 view_image）。
   registry.setActive([
-    ...activeTools.filter((name) => ALL_TOOL_NAMES.has(name)),
+    ...activeTools.filter(
+      (name) => ALL_TOOL_NAMES.has(name) && (name !== "view_image" || viewImageEnabled),
+    ),
     ...activeMcpNames,
     ...(withReadSkill ? ["read_skill"] : []),
   ])

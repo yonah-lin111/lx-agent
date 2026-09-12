@@ -359,6 +359,25 @@ export interface LspToolDetails {
   error?: string
 }
 
+// view_image 结构化结果（随 ToolResultMessage 落库，供 UI 渲染与审计）。
+export interface ViewImageDetails {
+  // 图片绝对路径（renderer 经 lx-image://local 渲染）。
+  path: string
+  // 实际发送给模型的 MIME 类型。
+  mimeType: string
+  detail: "high" | "original"
+  // 发送给模型的尺寸。
+  width: number
+  height: number
+  // 原图尺寸。
+  sourceWidth: number
+  sourceHeight: number
+  // 是否发生缩放或重编码。
+  resized: boolean
+  // 实际发送的字节数。
+  sizeBytes: number
+}
+
 // 工具结果消息。
 export interface ToolResultMessage {
   role: "toolResult"
@@ -375,6 +394,8 @@ export interface ToolResultMessage {
   subagent?: SubagentData
   // LSP 检索结果（lsp 工具产物，供渲染与落库）。
   lsp?: LspToolDetails
+  // 图片查看结果（view_image 工具产物，供渲染与落库）。
+  image?: ViewImageDetails
 }
 
 // 钩子生命周期事件名（对齐 Codex hook wire 协议）。

@@ -19,6 +19,7 @@ export const DEFAULT_TOOLS = [
   "question",
   "memory",
   "lsp",
+  "view_image",
   "job_output",
   "job_list",
   "job_kill",

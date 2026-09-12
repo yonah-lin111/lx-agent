@@ -12,6 +12,7 @@ import type {
   SubagentData,
   ToolCall,
   ToolResultMessage,
+  ViewImageDetails,
 } from "@shared/contracts/agent"
 import { getDefaultStreamFn } from "./stream-fn"
 import type {
@@ -869,11 +870,12 @@ const attachQuestionAnswers = (
 // 由工具执行结果构造 ToolResultMessage。
 function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResultMessage {
   const details = finalized.result.details as
-    | { diff?: AgentDiff; subagent?: SubagentData; lsp?: LspToolDetails }
+    | { diff?: AgentDiff; subagent?: SubagentData; lsp?: LspToolDetails; image?: ViewImageDetails }
     | undefined
   const diff = details?.diff
   const subagent = details?.subagent
   const lsp = details?.lsp
+  const image = details?.image
   return {
     role: "toolResult",
     toolCallId: finalized.toolCall.id,
@@ -885,6 +887,7 @@ function createToolResultMessage(finalized: FinalizedToolCallOutcome): ToolResul
     ...(diff ? { diff } : {}),
     ...(subagent ? { subagent } : {}),
     ...(lsp ? { lsp } : {}),
+    ...(image ? { image } : {}),
   }
 }
 

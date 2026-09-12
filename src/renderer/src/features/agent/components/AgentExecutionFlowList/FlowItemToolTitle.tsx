@@ -1,5 +1,6 @@
 import { Bot, FileCode, Folder, Globe, ListTodo, Search, Sparkles } from "lucide-react"
 import type React from "react"
+import { BUILTIN_UNDERSCORE_TOOLS } from "@/features/agent/components/AgentMessageList/AgentMessageItem/constants"
 import type { ExecutionToolContent } from "@/features/agent/types"
 
 export interface FlowItemToolTitleProps {
@@ -250,18 +251,7 @@ export const FlowItemToolTitle = ({ toolContent }: FlowItemToolTitleProps): Reac
     )
   }
 
-  if (
-    ![
-      "web_search",
-      "apply_patch",
-      "read_skill",
-      "job_output",
-      "job_list",
-      "job_kill",
-      "switch_mode",
-    ].includes(toolName) &&
-    toolName.includes("_")
-  ) {
+  if (!BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_")) {
     const sepIdx = toolName.indexOf("_")
     const serverName = toolName.slice(0, sepIdx)
     const method = toolName.slice(sepIdx + 1)
