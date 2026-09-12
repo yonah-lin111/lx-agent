@@ -931,6 +931,7 @@ export const zh: TranslationDictionary = {
     planGenerating: "正在生成方案...",
     suggestedQuestions: "推荐问题",
     historyTitle: "历史对话",
+    closeHistoryPanel: "关闭历史面板",
     searchHistory: "搜索历史会话...",
     noHistory: "暂无历史对话",
     deleteSessionConfirm: "确定要删除此会话吗？",
