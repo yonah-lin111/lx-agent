@@ -112,6 +112,9 @@ describe("FlowItemToolContent view_image 分派", () => {
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "lx-image://local/repo/artifacts/shot.png",
     )
+    // 与其他流程工具一致：展示 Input Arguments 与 Execution Result。
+    expect(screen.getByText("Input Arguments")).not.toBeNull()
+    expect(screen.getByText("Execution Result")).not.toBeNull()
   })
 
   it("缺少 image 数据时回退通用块", () => {

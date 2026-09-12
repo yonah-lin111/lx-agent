@@ -90,9 +90,7 @@ export const AgentViewImageBlock = ({ details }: AgentViewImageBlockProps): Reac
             <LxTooltip content={details.path}>
               <span className="min-w-0 truncate text-white/70">{fileName}</span>
             </LxTooltip>
-            <span className="shrink-0 rounded border border-white/10 bg-white/[0.04] px-1 py-0.5 text-[10px] text-white/50">
-              {t(detailKey)}
-            </span>
+            <span className="shrink-0 text-[10px] text-white/40">{t(detailKey)}</span>
             <span className="shrink-0 text-[10px] text-white/40">
               {details.width}×{details.height}
               {details.resized
