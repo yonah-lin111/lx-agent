@@ -15,110 +15,148 @@ export interface AgentExecutionFlowHeaderProps {
   showStats?: boolean
 }
 
+// 未激活 Tab 的统一灰色文本（激活时由分类色覆盖）
+const TAB_INACTIVE_TEXT_CLASS = "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))]"
+
 /**
- * 各筛选 Tab 对应的配色映射（基于主题语义 token 与柔和半透明色）
+ * 各筛选 Tab 对应的分类高亮配色、分类 hover 色与圆点（经 LxIconButton 显式 prop 传入）
  */
 const FILTER_TAB_COLORS: Record<
   FilterKind,
   {
-    active: string
-    inactive: string
+    highlightBg: string
+    highlightText: string
+    hoverBg: string
+    hoverText: string
+    highlightExtra?: string
     dot?: string
   }
 > = {
   all: {
-    active: "bg-white/15 text-[var(--color-theme-text,#ffffff)] font-semibold shadow-sm",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-white/15",
+    highlightText: "text-[var(--color-theme-text,#ffffff)]",
+    hoverBg: "hover:bg-white/5",
+    hoverText: "hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightExtra: "font-semibold shadow-sm",
   },
   calls: {
-    active: "bg-cyan-500/20 text-cyan-300 font-semibold ring-1 ring-cyan-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-cyan-500/20",
+    highlightText: "text-cyan-300",
+    hoverBg: "hover:bg-cyan-500/10",
+    hoverText: "hover:text-cyan-300",
+    highlightExtra: "font-semibold ring-1 ring-cyan-500/30",
     dot: "bg-cyan-400",
   },
   system: {
-    active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-indigo-500/20",
+    highlightText: "text-indigo-300",
+    hoverBg: "hover:bg-indigo-500/10",
+    hoverText: "hover:text-indigo-300",
+    highlightExtra: "font-semibold ring-1 ring-indigo-500/30",
     dot: "bg-indigo-400",
   },
   tool: {
-    active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-amber-500/20",
+    highlightText: "text-amber-300",
+    hoverBg: "hover:bg-amber-500/10",
+    hoverText: "hover:text-amber-300",
+    highlightExtra: "font-semibold ring-1 ring-amber-500/30",
     dot: "bg-amber-400",
   },
   thinking: {
-    active: "bg-purple-500/20 text-purple-300 font-semibold ring-1 ring-purple-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-purple-500/20",
+    highlightText: "text-purple-300",
+    hoverBg: "hover:bg-purple-500/10",
+    hoverText: "hover:text-purple-300",
+    highlightExtra: "font-semibold ring-1 ring-purple-500/30",
     dot: "bg-purple-400",
   },
   subagent: {
-    active: "bg-blue-500/20 text-blue-300 font-semibold ring-1 ring-blue-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-blue-500/20",
+    highlightText: "text-blue-300",
+    hoverBg: "hover:bg-blue-500/10",
+    hoverText: "hover:text-blue-300",
+    highlightExtra: "font-semibold ring-1 ring-blue-500/30",
     dot: "bg-blue-400",
   },
   user: {
-    active: "bg-sky-500/20 text-sky-300 font-semibold ring-1 ring-sky-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-sky-500/20",
+    highlightText: "text-sky-300",
+    hoverBg: "hover:bg-sky-500/10",
+    hoverText: "hover:text-sky-300",
+    highlightExtra: "font-semibold ring-1 ring-sky-500/30",
     dot: "bg-sky-400",
   },
   assistant: {
-    active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-emerald-500/20",
+    highlightText: "text-emerald-300",
+    hoverBg: "hover:bg-emerald-500/10",
+    hoverText: "hover:text-emerald-300",
+    highlightExtra: "font-semibold ring-1 ring-emerald-500/30",
     dot: "bg-emerald-400",
   },
   compaction: {
-    active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-indigo-500/20",
+    highlightText: "text-indigo-300",
+    hoverBg: "hover:bg-indigo-500/10",
+    hoverText: "hover:text-indigo-300",
+    highlightExtra: "font-semibold ring-1 ring-indigo-500/30",
     dot: "bg-indigo-400",
   },
   undo: {
-    active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-rose-500/20",
+    highlightText: "text-rose-300",
+    hoverBg: "hover:bg-rose-500/10",
+    hoverText: "hover:text-rose-300",
+    highlightExtra: "font-semibold ring-1 ring-rose-500/30",
     dot: "bg-rose-400",
   },
   modelSwitch: {
-    active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-teal-500/20",
+    highlightText: "text-teal-300",
+    hoverBg: "hover:bg-teal-500/10",
+    hoverText: "hover:text-teal-300",
+    highlightExtra: "font-semibold ring-1 ring-teal-500/30",
     dot: "bg-teal-400",
   },
   proposedPlan: {
-    active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-emerald-500/20",
+    highlightText: "text-emerald-300",
+    hoverBg: "hover:bg-emerald-500/10",
+    hoverText: "hover:text-emerald-300",
+    highlightExtra: "font-semibold ring-1 ring-emerald-500/30",
     dot: "bg-emerald-400",
   },
   reviewFindings: {
-    active: "bg-violet-500/20 text-violet-300 font-semibold ring-1 ring-violet-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-violet-500/20",
+    highlightText: "text-violet-300",
+    hoverBg: "hover:bg-violet-500/10",
+    hoverText: "hover:text-violet-300",
+    highlightExtra: "font-semibold ring-1 ring-violet-500/30",
     dot: "bg-violet-400",
   },
   frontDesign: {
-    active: "bg-pink-500/20 text-pink-300 font-semibold ring-1 ring-pink-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-pink-500/20",
+    highlightText: "text-pink-300",
+    hoverBg: "hover:bg-pink-500/10",
+    hoverText: "hover:text-pink-300",
+    highlightExtra: "font-semibold ring-1 ring-pink-500/30",
     dot: "bg-pink-400",
   },
   hook: {
-    active: "bg-orange-500/20 text-orange-300 font-semibold ring-1 ring-orange-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-orange-500/20",
+    highlightText: "text-orange-300",
+    hoverBg: "hover:bg-orange-500/10",
+    hoverText: "hover:text-orange-300",
+    highlightExtra: "font-semibold ring-1 ring-orange-500/30",
     dot: "bg-orange-400",
   },
   error: {
-    active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
-    inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
+    highlightBg: "bg-rose-500/20",
+    highlightText: "text-rose-300",
+    hoverBg: "hover:bg-rose-500/10",
+    hoverText: "hover:text-rose-300",
+    highlightExtra: "font-semibold ring-1 ring-rose-500/30",
     dot: "bg-rose-400",
   },
 }
@@ -188,26 +226,34 @@ export const AgentExecutionFlowHeader = ({
     const isActive = activeFilter === kind
     const tabColor = FILTER_TAB_COLORS[kind]
     return (
-      <button
+      <LxIconButton
         key={kind}
-        type="button"
+        iconOnly={false}
+        highlighted={isActive}
         onClick={() => onFilterChange(kind)}
-        className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[4px] px-2 py-0.5 font-mono text-[11px] transition-all select-none focus:outline-none ${
-          isActive ? tabColor.active : tabColor.inactive
+        textClass={TAB_INACTIVE_TEXT_CLASS}
+        hoverBgClass={tabColor.hoverBg}
+        hoverTextClass={tabColor.hoverText}
+        highlightBgClass={tabColor.highlightBg}
+        highlightTextClass={tabColor.highlightText}
+        className={`shrink-0 px-2 py-0.5 font-mono text-[11px] ${
+          isActive ? (tabColor.highlightExtra ?? "") : ""
         }`}
+        icon={
+          tabColor.dot ? (
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 shrink-0 rounded-full transition-opacity ${tabColor.dot} ${
+                isActive ? "opacity-100 ring-2 ring-white/10" : "opacity-40"
+              }`}
+            />
+          ) : undefined
+        }
       >
-        {tabColor.dot && (
-          <span
-            aria-hidden
-            className={`h-1.5 w-1.5 shrink-0 rounded-full transition-opacity ${tabColor.dot} ${
-              isActive ? "opacity-100 ring-2 ring-white/10" : "opacity-40"
-            }`}
-          />
-        )}
         <span>
           {label} ({count})
         </span>
-      </button>
+      </LxIconButton>
     )
   }
 
