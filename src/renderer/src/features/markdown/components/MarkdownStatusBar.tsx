@@ -24,7 +24,7 @@ export const MarkdownStatusBar = ({
       </div>
 
       {/* 右侧：项目共享文件夹引用标签栏（自适应空间，内部滚动，右对齐） */}
-      <div className="flex min-w-0 flex-1 shrink items-center justify-end overflow-hidden">
+      <div className="flex min-w-0 flex-1 shrink items-center justify-end">
         <ProjectReferencedFolderTags />
       </div>
     </div>

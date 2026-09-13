@@ -1,4 +1,4 @@
-import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, BarChart3 } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -268,7 +268,7 @@ export const AgentExecutionFlowHeader = ({
             size="small"
             onClick={() => handleTabScroll("left")}
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3.5 w-3.5" />
           </LxIconButton>
           <div
             ref={tabScrollRef}
@@ -308,7 +308,7 @@ export const AgentExecutionFlowHeader = ({
             size="small"
             onClick={() => handleTabScroll("right")}
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ArrowRight className="h-3.5 w-3.5" />
           </LxIconButton>
         </div>
       ) : (

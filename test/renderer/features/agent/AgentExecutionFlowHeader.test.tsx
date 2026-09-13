@@ -77,4 +77,19 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
     expect(activeClasses).toContain("text-amber-300")
     expect(activeClasses).not.toContain("hover:bg-amber-500/10")
   })
+
+  it("左右滚动按钮使用 ArrowLeft/ArrowRight 图标", () => {
+    const { container } = render(
+      <AgentExecutionFlowHeader
+        stepsCount={3}
+        activeFilter="all"
+        filterCounts={FILTER_COUNTS}
+        stats={STATS}
+        onFilterChange={() => {}}
+      />,
+    )
+
+    expect(container.querySelector(".lucide-arrow-left")).not.toBeNull()
+    expect(container.querySelector(".lucide-arrow-right")).not.toBeNull()
+  })
 })

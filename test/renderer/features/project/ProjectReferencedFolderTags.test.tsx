@@ -55,6 +55,24 @@ describe("ProjectReferencedFolderTags Component", () => {
     expect(screen.getByLabelText("Add Folder")).not.toBeNull()
   })
 
+  it("根容器不使用 overflow-hidden，标签上下边框不被裁剪", async () => {
+    let container: HTMLElement
+    await act(async () => {
+      ;({ container } = render(<ProjectReferencedFolderTags />))
+    })
+    const root = container!.firstElementChild as HTMLElement
+    expect(root.classList.contains("overflow-hidden")).toBe(false)
+  })
+
+  it("左右滚动按钮使用 ArrowLeft/ArrowRight 图标", async () => {
+    let container: HTMLElement
+    await act(async () => {
+      ;({ container } = render(<ProjectReferencedFolderTags />))
+    })
+    expect(container!.querySelector(".lucide-arrow-left")).not.toBeNull()
+    expect(container!.querySelector(".lucide-arrow-right")).not.toBeNull()
+  })
+
   it("当有 itemId 且有引用文件夹时正确渲染文件夹标签", async () => {
     mockSearchParams = new URLSearchParams("itemId=item-1")
     useProjectReferencedFoldersStore.setState({

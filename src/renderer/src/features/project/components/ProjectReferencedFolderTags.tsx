@@ -1,5 +1,5 @@
 import type { ReferencedFolder } from "@shared/project"
-import { Check, ChevronLeft, ChevronRight, Copy, Folder, FolderPlus, Pin } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Copy, Folder, FolderPlus, Pin } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInRouterContext, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -350,9 +350,7 @@ const ProjectReferencedFolderTagsContent = ({
   }, [])
 
   return (
-    <div
-      className={`relative flex h-6 min-w-0 max-w-full items-center overflow-hidden ${className}`}
-    >
+    <div className={`relative flex h-6 min-w-0 max-w-full items-center ${className}`}>
       <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1 overflow-hidden">
         <LxIconButton
           aria-label={t("project.scrollLeft")}
@@ -360,7 +358,7 @@ const ProjectReferencedFolderTagsContent = ({
           size="small"
           onClick={() => handleScroll("left")}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" />
         </LxIconButton>
         <div
           ref={scrollRef}
@@ -470,7 +468,7 @@ const ProjectReferencedFolderTagsContent = ({
           size="small"
           onClick={() => handleScroll("right")}
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-3.5 w-3.5" />
         </LxIconButton>
         <LxIconButton
           aria-label={t("project.addFolder")}

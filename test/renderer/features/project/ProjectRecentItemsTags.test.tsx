@@ -56,6 +56,15 @@ describe("ProjectRecentItemsTags Component", () => {
     ).not.toBeNull()
   })
 
+  it("左右滚动按钮使用 ArrowLeft/ArrowRight 图标", async () => {
+    let container: HTMLElement
+    await act(async () => {
+      ;({ container } = render(<ProjectRecentItemsTags />))
+    })
+    expect(container!.querySelector(".lucide-arrow-left")).not.toBeNull()
+    expect(container!.querySelector(".lucide-arrow-right")).not.toBeNull()
+  })
+
   it("当有最近打开项时渲染对应 tags 并能显示面包屑文本", async () => {
     useRecentItemsStore.setState({ ids: ["item-1"] })
 
