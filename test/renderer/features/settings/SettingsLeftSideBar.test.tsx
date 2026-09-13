@@ -47,6 +47,7 @@ describe("SettingsLeftSideBar navigation guard", () => {
     // 统一使用默认尺寸的 LxNavItem
     expect(modelsButton.className).toContain("lx-nav-item")
     expect(modelsButton.className).toContain("h-7")
+    expect(modelsButton.getAttribute("data-item-level")).toBe("1")
     fireEvent.click(modelsButton)
 
     expect(mockNavigate).toHaveBeenCalledWith("/settings?section=models")

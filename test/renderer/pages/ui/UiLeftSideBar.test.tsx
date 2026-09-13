@@ -38,11 +38,13 @@ describe("UiLeftSideBar 统一 LxNavItem", () => {
     expect(groupHeader).not.toBeNull()
     expect(groupHeader?.className).toContain("h-7")
     expect(groupHeader?.getAttribute("aria-expanded")).toBe("true")
+    expect(groupHeader?.getAttribute("data-item-level")).toBe("1")
 
     const sectionItem = screen.getByText("LxIconButton").closest(".lx-nav-item")
     expect(sectionItem).not.toBeNull()
     expect(sectionItem?.className).toContain("h-7")
     expect(sectionItem?.getAttribute("aria-current")).toBe("page")
+    expect(sectionItem?.getAttribute("data-item-level")).toBe("3")
     expect((sectionItem as HTMLElement).style.marginLeft).toBe("10px")
   })
 

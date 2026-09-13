@@ -75,6 +75,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
           return (
             <div key={group.id} className="space-y-1">
               <LxNavItem
+                level={1}
                 aria-expanded={isGroupExpanded}
                 className={`font-semibold ${groupHasActive ? "text-white" : "text-white/45"}`}
                 onClick={() => toggleGroup(group.id)}
@@ -101,6 +102,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
                     return (
                       <LxNavItem
                         key={section.id}
+                        level={3}
                         depth={1}
                         aria-current={isActive ? "page" : undefined}
                         className={isActive ? "bg-white/5 text-white" : "text-white/70"}

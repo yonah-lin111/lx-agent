@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -52,6 +52,15 @@ describe("控件尺寸阶梯对齐", () => {
       <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} size={size} />,
     )
     expect(container.querySelector(".lx-select-trigger")?.className).toContain(height)
+  })
+
+  it.each(HEIGHT_STEPS)("LxSelect $size 展开列表项高度为 $height", async ({ size, height }) => {
+    render(
+      <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} size={size} />,
+    )
+    fireEvent.click(document.querySelector(".lx-select-trigger") as HTMLElement)
+    const option = await screen.findByRole("option")
+    expect(option.className).toContain(height)
   })
 
   it.each(INPUT_HEIGHT_STEPS)("LxInput $size 单行高度为 $height", ({ size, height }) => {

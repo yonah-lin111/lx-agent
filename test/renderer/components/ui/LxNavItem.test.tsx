@@ -68,14 +68,31 @@ describe("LxNavItem", () => {
     expect(container.querySelector(".lx-nav-item")?.className).not.toContain("hover:bg-white/10")
   })
 
+  it("level 默认一级，可显式指定二/三级", () => {
+    const defaultLevel = render(<LxNavItem>item</LxNavItem>)
+    expect(
+      defaultLevel.container.querySelector<HTMLElement>(".lx-nav-item")?.dataset.itemLevel,
+    ).toBe("1")
+
+    const levelTwo = render(<LxNavItem level={2}>item</LxNavItem>)
+    expect(levelTwo.container.querySelector<HTMLElement>(".lx-nav-item")?.dataset.itemLevel).toBe(
+      "2",
+    )
+
+    const levelThree = render(<LxNavItem level={3}>item</LxNavItem>)
+    expect(levelThree.container.querySelector<HTMLElement>(".lx-nav-item")?.dataset.itemLevel).toBe(
+      "3",
+    )
+  })
+
   it("透传 data-*/aria-* 与自定义 className", () => {
     const { container } = render(
-      <LxNavItem className="text-white/70" data-item-level="prompt" aria-current="page">
+      <LxNavItem level={3} className="text-white/70" aria-current="page">
         item
       </LxNavItem>,
     )
     const row = container.querySelector<HTMLElement>(".lx-nav-item")
-    expect(row?.dataset.itemLevel).toBe("prompt")
+    expect(row?.dataset.itemLevel).toBe("3")
     expect(row?.getAttribute("aria-current")).toBe("page")
     expect(row?.className).toContain("text-white/70")
   })

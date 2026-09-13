@@ -168,7 +168,7 @@ export const ProjectNavigationList = ({
         key={tempPromptId}
         depth={1}
         hoverable={false}
-        data-item-level="temp-prompt"
+        data-item-variant="temp-prompt"
         aria-current={isActive ? "page" : undefined}
         className={`project-nav-temp-prompt border ${
           isActive
@@ -209,7 +209,7 @@ export const ProjectNavigationList = ({
       <LxNavItem
         key={prompt.id}
         depth={depth}
-        data-item-level="prompt"
+        level={3}
         data-menu-open={activeMenuId === prompt.id ? "true" : undefined}
         aria-current={isActive ? "page" : undefined}
         className={isActive ? "bg-white/5 text-white" : "text-white/70"}
@@ -249,7 +249,7 @@ export const ProjectNavigationList = ({
       <div key={folder.id} className="space-y-0.5">
         <LxNavItem
           depth={depth}
-          data-item-level="folder"
+          level={2}
           data-menu-open={activeMenuId === folder.id ? "true" : undefined}
           className="text-white/70"
           aria-expanded={!isFolderCollapsed}
@@ -295,7 +295,7 @@ export const ProjectNavigationList = ({
           return (
             <div key={project.id} className="space-y-1">
               <LxNavItem
-                data-item-level="project"
+                level={1}
                 data-unimported={project.isImported === false ? "true" : undefined}
                 data-menu-open={activeMenuId === project.id ? "true" : undefined}
                 className={project.isImported === false ? "opacity-75" : ""}

@@ -283,7 +283,7 @@ export const FrontDesignLeftSideBar = ({
               <div key={item.tab.id} className="space-y-0.5">
                 {/* 父级：Tab 节点（参考 ProjectNavigationList 的 Project 节点视觉与排版） */}
                 <LxNavItem
-                  data-item-level="tab"
+                  level={1}
                   aria-expanded={!isTabCollapsed}
                   aria-current={isTabActive ? "true" : undefined}
                   onClick={() => handleTabClick(item.tab.id)}
@@ -362,7 +362,7 @@ export const FrontDesignLeftSideBar = ({
                           <LxNavItem
                             key={root.id}
                             depth={1}
-                            data-item-level="prompt"
+                            level={3}
                             aria-current={isCurrentActive ? "page" : undefined}
                             onClick={() => {
                               handleDesignClick(currentVersionItem, item.tab.id)

@@ -40,7 +40,8 @@ export interface LxSelectProps<T> {
   placeholder?: string
 }
 
-const SIZE_BUTTON_CLASSES: Record<LxSelectSize, string> = {
+// 统一高度阶梯：触发按钮、展开列表项与分组标题共用，保证列表行高与触发按钮逐档同步。
+const SIZE_ROW_CLASSES: Record<LxSelectSize, string> = {
   small: "h-6 px-2 text-xs",
   medium: "h-7 px-2.5 text-xs",
   large: "h-8 px-3 text-sm",
@@ -50,6 +51,13 @@ const SIZE_CHEVRON_CLASSES: Record<LxSelectSize, string> = {
   small: "h-3 w-3",
   medium: "h-3.5 w-3.5",
   large: "h-4 w-4",
+}
+
+// 分组内选项的额外左缩进，随尺寸档递增。
+const SIZE_GROUPED_INDENT_CLASSES: Record<LxSelectSize, string> = {
+  small: "pl-4",
+  medium: "pl-5",
+  large: "pl-6",
 }
 
 const isGroup = <T,>(item: LxSelectOption<T> | LxSelectGroup<T>): item is LxSelectGroup<T> =>
@@ -196,15 +204,15 @@ export const LxSelect = <T extends string>({
         role="option"
         aria-selected={isSelected}
         data-unimported={isUnimported ? "true" : undefined}
-        className={`flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-xs transition-colors ${
-          isSelected ? "bg-white/10 font-medium shadow-xs" : "hover:bg-white/5"
-        } ${
+        className={`flex w-full items-center justify-between rounded-[6px] text-left transition-colors ${
+          SIZE_ROW_CLASSES[size]
+        } ${isSelected ? "bg-white/10 font-medium shadow-xs" : "hover:bg-white/5"} ${
           isUnimported
             ? "text-white/40 font-normal opacity-75"
             : isSelected
               ? "text-white"
               : "text-white/70 hover:text-white"
-        } ${isGrouped ? "pl-5" : ""} ${option.className ?? ""}`}
+        } ${isGrouped ? SIZE_GROUPED_INDENT_CLASSES[size] : ""} ${option.className ?? ""}`}
         onMouseDown={(event) => {
           event.preventDefault()
           setIsOpen(false)
@@ -216,7 +224,7 @@ export const LxSelect = <T extends string>({
         >
           {option.label}
         </span>
-        {isSelected ? <Check className="ml-2 h-3 w-3 shrink-0" /> : null}
+        {isSelected ? <Check className={`ml-2 shrink-0 ${SIZE_CHEVRON_CLASSES[size]}`} /> : null}
       </button>
     )
   }
@@ -232,7 +240,7 @@ export const LxSelect = <T extends string>({
           data-unimported={isTriggerUnimported ? "true" : undefined}
           className={`lx-select-trigger flex w-full items-center justify-between rounded-[6px] border border-white/10 bg-[#212121] text-left transition-colors duration-150 hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-40 ${
             isTriggerUnimported ? "text-white/40 font-normal opacity-85" : "text-white/80"
-          } ${SIZE_BUTTON_CLASSES[size]}`}
+          } ${SIZE_ROW_CLASSES[size]}`}
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -263,7 +271,9 @@ export const LxSelect = <T extends string>({
             {options.map((item) =>
               isGroup(item) ? (
                 <div key={item.label} className="flex flex-col gap-0.5">
-                  <div className="px-2.5 py-1.5 text-xs text-white/35">{item.label}</div>
+                  <div className={`flex items-center ${SIZE_ROW_CLASSES[size]} text-white/35`}>
+                    {item.label}
+                  </div>
                   {item.options.map((option) => renderOption(option, true))}
                 </div>
               ) : (

@@ -4,10 +4,14 @@ import { forwardRef } from "react"
 // 导航行尺寸类型。
 export type LxNavItemSize = "small" | "default" | "large"
 
+// 导航行层级：1 = 根容器，2 = 中间容器，3 = 叶子。
+export type LxNavItemLevel = 1 | 2 | 3
+
 // 导航行属性。
 export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "prefix"> {
   children?: React.ReactNode
   size?: LxNavItemSize
+  level?: LxNavItemLevel
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   // 嵌套层级缩进，0 或负值不缩进。
@@ -31,6 +35,7 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
   {
     children,
     size = "default",
+    level = 1,
     prefix,
     suffix,
     depth = 0,
@@ -63,6 +68,7 @@ export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxN
         onKeyDown?.(event)
       }}
       {...restProps}
+      data-item-level={String(level)}
     >
       {prefix}
       {children}

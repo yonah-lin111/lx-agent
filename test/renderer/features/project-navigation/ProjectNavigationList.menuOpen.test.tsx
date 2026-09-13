@@ -45,9 +45,9 @@ describe("ProjectNavigationList menu-open highlight", () => {
 
   it("activeMenuId 命中当前右键目标时仅标记该节点 data-menu-open", () => {
     const targets = [
-      ["p1", '[data-item-level="project"]'],
-      ["f1", '[data-item-level="folder"]'],
-      ["item1", '[data-item-level="prompt"]'],
+      ["p1", '[data-item-level="1"]'],
+      ["f1", '[data-item-level="2"]'],
+      ["item1", '[data-item-level="3"]'],
     ] as const
 
     for (const [menuId, selector] of targets) {

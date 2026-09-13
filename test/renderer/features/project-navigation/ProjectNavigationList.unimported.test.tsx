@@ -38,9 +38,7 @@ describe("ProjectNavigationList unimported items", () => {
       <ProjectNavigationList {...defaultProps} projects={[unimportedProject]} />,
     )
 
-    const projectRow = container.querySelector(
-      '[data-item-level="project"][data-unimported="true"]',
-    )
+    const projectRow = container.querySelector('[data-item-level="1"][data-unimported="true"]')
     expect(projectRow).not.toBeNull()
     expect(projectRow?.className).toContain("opacity-75")
 
@@ -71,7 +69,7 @@ describe("ProjectNavigationList unimported items", () => {
       <ProjectNavigationList {...defaultProps} projects={[importedProject]} />,
     )
 
-    const projectRow = container.querySelector('[data-item-level="project"]')
+    const projectRow = container.querySelector('[data-item-level="1"]')
     expect(projectRow).not.toBeNull()
     expect(projectRow?.querySelector(".lucide-boxes")).not.toBeNull()
     expect(projectRow?.querySelector(".lucide-folder-git")).toBeNull()
@@ -98,7 +96,7 @@ describe("ProjectNavigationList unimported items", () => {
       />,
     )
 
-    const projectRow = container.querySelector('[data-item-level="project"]')
+    const projectRow = container.querySelector('[data-item-level="1"]')
     expect(projectRow).not.toBeNull()
     fireEvent.contextMenu(projectRow!)
 
@@ -148,7 +146,7 @@ describe("ProjectNavigationList unimported items", () => {
       />,
     )
 
-    const projectRow = container.querySelector<HTMLElement>('[data-item-level="project"]')
+    const projectRow = container.querySelector<HTMLElement>('[data-item-level="1"]')
     expect(projectRow).not.toBeNull()
     expect(projectRow?.className).toContain("lx-nav-item")
     expect(projectRow?.className).toContain("h-7")
@@ -163,7 +161,7 @@ describe("ProjectNavigationList unimported items", () => {
     fireEvent.keyDown(projectRow!, { key: "Enter" })
     expect(onProjectToggle).toHaveBeenCalledWith("p1")
 
-    const promptRow = container.querySelector<HTMLElement>('[data-item-level="prompt"]')
+    const promptRow = container.querySelector<HTMLElement>('[data-item-level="3"]')
     expect(promptRow).not.toBeNull()
     expect(promptRow?.className).toContain("h-7")
     fireEvent.keyDown(promptRow!, { key: "Enter" })

@@ -34,6 +34,7 @@ describe("HomeLeftSideBar", () => {
     // 统一使用默认尺寸的 LxNavItem
     expect(overviewItem.className).toContain("lx-nav-item")
     expect(overviewItem.className).toContain("h-7")
+    expect(overviewItem.getAttribute("data-item-level")).toBe("1")
 
     fireEvent.click(usageItem)
     expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")

@@ -117,12 +117,11 @@
 }
 
 /* --------------------------------------------------------
- * 1. ProjectNavigationList 精准三级层级背景与边框（3D 凸起）
+ * 1. 树形导航三级层级背景与边框（所有 LxNavItem 共用，1/2/3 = 根容器/中间容器/叶子）
  * -------------------------------------------------------- */
 
-/* Level 1: 项目根节点（Boxes 图标容器）—— 较亮黑曜石基底 + 明显外凸高光 */
-[data-theme="minecraft"] [data-item-level="project"],
-[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80) {
+/* Level 1: 根容器行（项目 / 分组头 / Tab）—— 较亮黑曜石基底 + 明显外凸高光 */
+[data-theme="minecraft"] [data-item-level="1"] {
   background-color: #38384e !important;
   color: #ffffff !important;
   border: 2px solid #000000 !important;
@@ -132,32 +131,28 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] [data-item-level="project"]:hover,
-[data-theme="minecraft"] [data-item-level="project"][data-menu-open="true"],
-[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80):hover,
-[data-theme="minecraft"] div[role="button"]:has(svg.text-sky-400\/80)[data-menu-open="true"] {
+[data-theme="minecraft"] [data-item-level="1"]:hover,
+[data-theme="minecraft"] [data-item-level="1"][data-menu-open="true"] {
   background-color: #494964 !important;
   color: #ffffff !important;
 }
 
 /* Level 1 (未导入项目): 沉暗基岩色 + 虚线/弱化边框 + 扁平内嵌质感 */
-[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"] {
+[data-theme="minecraft"] [data-item-level="1"][data-unimported="true"] {
   background-color: #262636 !important;
   color: #a8a8be !important;
   border: 2px dashed #484860 !important;
   box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4) !important;
 }
 
-[data-theme="minecraft"] [data-item-level="project"][data-unimported="true"]:hover,
-[data-theme="minecraft"]
-  [data-item-level="project"][data-unimported="true"][data-menu-open="true"] {
+[data-theme="minecraft"] [data-item-level="1"][data-unimported="true"]:hover,
+[data-theme="minecraft"] [data-item-level="1"][data-unimported="true"][data-menu-open="true"] {
   background-color: #343448 !important;
   color: #e2e2ee !important;
 }
 
-/* Level 2: 文件夹头节点（Folder 图标容器）—— 安山岩中灰槽 */
-[data-theme="minecraft"] [data-item-level="folder"],
-[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80) {
+/* Level 2: 中间容器行（文件夹）—— 安山岩中灰槽 */
+[data-theme="minecraft"] [data-item-level="2"] {
   background-color: #2c2c3c !important;
   color: #e2e2ee !important;
   border: 2px solid #000000 !important;
@@ -167,19 +162,15 @@
     2px 2px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] [data-item-level="folder"]:hover,
-[data-theme="minecraft"] [data-item-level="folder"][data-menu-open="true"],
-[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80):hover,
-[data-theme="minecraft"] div[role="button"]:has(svg.text-amber-400\/80)[data-menu-open="true"] {
+[data-theme="minecraft"] [data-item-level="2"]:hover,
+[data-theme="minecraft"] [data-item-level="2"][data-menu-open="true"] {
   background-color: #3b3b4f !important;
   color: #ffffff !important;
 }
 
-/* Level 3: 具体条目 Prompt Item（File 图标容器）—— 深石墨暗槽 */
+/* Level 3: 叶子行（条目 / 设计 / 侧栏导航项）—— 深石墨暗槽 */
 [data-theme="minecraft"]
-[data-item-level="prompt"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5),
-[data-theme="minecraft"]
-  div[role="button"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):has(svg.lucide-file) {
+[data-item-level="3"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5) {
   background-color: #1e1e2a !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -189,24 +180,16 @@
 }
 
 [data-theme="minecraft"]
-  [data-item-level="prompt"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):hover,
+  [data-item-level="3"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):hover,
 [data-theme="minecraft"]
-  [data-item-level="prompt"]:not([aria-current]):not(.bg-white\/10):not(
+  [data-item-level="3"]:not([aria-current]):not(.bg-white\/10):not(
     .bg-white\/5
-  )[data-menu-open="true"],
-[data-theme="minecraft"]
-  div[role="button"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):has(
-    svg.lucide-file
-  ):hover,
-[data-theme="minecraft"]
-  div[role="button"]:not([aria-current]):not(.bg-white\/10):not(.bg-white\/5):has(
-    svg.lucide-file
   )[data-menu-open="true"] {
   background-color: #2b2b3b !important;
 }
 
 /* Level 3-Special: 根位置临时提示词（青金石暗蓝微凸/末影矿质感） */
-[data-theme="minecraft"] [data-item-level="temp-prompt"]:not([aria-current]) {
+[data-theme="minecraft"] [data-item-variant="temp-prompt"]:not([aria-current]) {
   background-color: #24385a !important;
   color: #93c5fd !important;
   border: 2px solid #000000 !important;
@@ -216,7 +199,7 @@
     1px 1px 0px 0px #000000 !important;
 }
 
-[data-theme="minecraft"] [data-item-level="temp-prompt"]:not([aria-current]):hover {
+[data-theme="minecraft"] [data-item-variant="temp-prompt"]:not([aria-current]):hover {
   background-color: #2e4773 !important;
   color: #bfdbfe !important;
 }
