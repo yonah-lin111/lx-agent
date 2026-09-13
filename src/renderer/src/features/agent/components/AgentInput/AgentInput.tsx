@@ -2,6 +2,7 @@ import { Loader2, Send, Square, Zap } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { GitWorktreeOption } from "@/features/git"
@@ -455,6 +456,11 @@ export const AgentInput = ({
               variants={availableVariants}
               onVariantChange={onVariantChange}
             />
+            {selectedVariant ? (
+              <LxTag size="small" color="sky" className="shrink-0 font-mono">
+                {selectedVariant}
+              </LxTag>
+            ) : null}
             <AgentContextUsagePill contextUsage={contextUsage} />
           </div>
 

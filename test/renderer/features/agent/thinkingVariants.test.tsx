@@ -21,36 +21,20 @@ describe("Thinking Variants Display & Components", () => {
     cleanup()
   })
 
-  it("AgentModelSelect 应该在存在 variant 时在触发按钮上渲染思考等级徽章", () => {
-    const onVariantChange = vi.fn()
-    const { rerender } = render(
-      <AgentModelSelect
-        value="openai::gpt-4o"
-        onChange={vi.fn()}
-        options={[{ value: "openai::gpt-4o", label: "GPT-4o" }]}
-      />,
-    )
-
-    // 未传入 variant 时不显示思考等级选择徽章
-    expect(screen.queryByText("high")).toBeNull()
-
-    // 传入 variant 时正确渲染徽章
-    rerender(
+  it("AgentModelSelect 触发按钮不再内嵌思考等级徽章（等级由父级以 LxTag 展示）", () => {
+    render(
       <AgentModelSelect
         value="openai::gpt-4o"
         onChange={vi.fn()}
         options={[{ value: "openai::gpt-4o", label: "GPT-4o" }]}
         variant="high"
         variants={["low", "medium", "high"]}
-        onVariantChange={onVariantChange}
+        onVariantChange={vi.fn()}
       />,
     )
 
-    const badge = document.querySelector(".agent-model-variant-badge")
-    expect(badge).not.toBeNull()
-    expect(badge?.textContent).toContain("high")
-    // 验证 badge 中不包含思考 icon
-    expect(badge?.querySelector("svg")).toBeNull()
+    expect(document.querySelector(".agent-model-variant-badge")).toBeNull()
+    expect(screen.queryByText("high")).toBeNull()
   })
 
   it("AgentModelSelect 直接点击配置了思考等级的模型时应选用默认等级且只触发一次切换回调", () => {
@@ -119,9 +103,6 @@ describe("Thinking Variants Display & Components", () => {
         options={options}
       />,
     )
-
-    // 验证触发按钮展示了当前 variant "low"
-    expect(screen.getByText("low")).not.toBeNull()
 
     // 展开下拉
     const trigger = screen.getByRole("button", { name: /claude 3\.7 sonnet/i })

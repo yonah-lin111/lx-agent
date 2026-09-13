@@ -54,7 +54,7 @@ const isGroup = (
 
 /**
  * AgentModelSelect - Agent 输入栏的模型选择器，向上弹出并限制宽度。
- * 内部集成思考等级二级菜单（LxTooltip 悬停展示），主按钮展示当前模型及微型思考等级徽章。
+ * 内部集成思考等级二级菜单（LxTooltip 悬停展示）；当前思考等级由父级在触发按钮右侧以 LxTag 展示。
  */
 export const AgentModelSelect = ({
   value,
@@ -348,11 +348,6 @@ export const AgentModelSelect = ({
           <span className="min-w-0 flex-1 truncate text-left">
             {selectedOption?.label ?? value}
           </span>
-          {variant ? (
-            <span className="agent-model-variant-badge inline-flex shrink-0 items-center rounded bg-white/10 px-1 py-0.5 font-mono text-[10px] leading-none text-sky-300/90 shadow-xs">
-              <span>{variant}</span>
-            </span>
-          ) : null}
           <ChevronDown
             className={`h-3 w-3 shrink-0 text-white/50 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />

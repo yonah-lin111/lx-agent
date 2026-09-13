@@ -155,11 +155,11 @@ const colorStyles: Record<
 // 标签高度与内部尺度：对齐 LxIconButton / LxSelect / LxInput 的尺寸阶梯。
 const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }> = {
   small: {
-    container: "h-6 gap-0.5 rounded-[6px] px-2 text-xs",
+    container: "h-6 gap-1.5 rounded-[6px] px-2 text-xs",
     closeIconSize: "h-3 w-3",
   },
   default: {
-    container: "h-7 gap-1 rounded-[6px] px-2.5 text-xs",
+    container: "h-7 gap-1.5 rounded-[6px] px-2.5 text-xs",
     closeIconSize: "h-3 w-3",
   },
   large: {

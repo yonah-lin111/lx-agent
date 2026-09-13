@@ -34,91 +34,91 @@ const FILTER_TAB_COLORS: Record<
   calls: {
     active: "bg-cyan-500/20 text-cyan-300 font-semibold ring-1 ring-cyan-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-cyan-500/10 hover:text-cyan-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-cyan-400",
   },
   system: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-indigo-400",
   },
   tool: {
     active: "bg-amber-500/20 text-amber-300 font-semibold ring-1 ring-amber-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-amber-500/10 hover:text-amber-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-amber-400",
   },
   thinking: {
     active: "bg-purple-500/20 text-purple-300 font-semibold ring-1 ring-purple-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-purple-500/10 hover:text-purple-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-purple-400",
   },
   subagent: {
     active: "bg-blue-500/20 text-blue-300 font-semibold ring-1 ring-blue-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-blue-500/10 hover:text-blue-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-blue-400",
   },
   user: {
     active: "bg-sky-500/20 text-sky-300 font-semibold ring-1 ring-sky-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-sky-500/10 hover:text-sky-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-sky-400",
   },
   assistant: {
     active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-emerald-500/10 hover:text-emerald-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-emerald-400",
   },
   compaction: {
     active: "bg-indigo-500/20 text-indigo-300 font-semibold ring-1 ring-indigo-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-indigo-500/10 hover:text-indigo-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-indigo-400",
   },
   undo: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-rose-500/10 hover:text-rose-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-rose-400",
   },
   modelSwitch: {
     active: "bg-teal-500/20 text-teal-300 font-semibold ring-1 ring-teal-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-teal-500/10 hover:text-teal-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-teal-400",
   },
   proposedPlan: {
     active: "bg-emerald-500/20 text-emerald-300 font-semibold ring-1 ring-emerald-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-emerald-500/10 hover:text-emerald-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-emerald-400",
   },
   reviewFindings: {
     active: "bg-violet-500/20 text-violet-300 font-semibold ring-1 ring-violet-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-violet-500/10 hover:text-violet-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-violet-400",
   },
   frontDesign: {
     active: "bg-pink-500/20 text-pink-300 font-semibold ring-1 ring-pink-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-pink-500/10 hover:text-pink-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-pink-400",
   },
   hook: {
     active: "bg-orange-500/20 text-orange-300 font-semibold ring-1 ring-orange-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-orange-500/10 hover:text-orange-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-orange-400",
   },
   error: {
     active: "bg-rose-500/20 text-rose-300 font-semibold ring-1 ring-rose-500/30",
     inactive:
-      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-rose-500/10 hover:text-rose-300",
+      "text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] hover:bg-white/5 hover:text-[var(--color-theme-text,#ffffff)]",
     dot: "bg-rose-400",
   },
 }

@@ -27,7 +27,7 @@ export interface GitStatusBarProps {
   isImported?: boolean
   // 是否启用交互模式（支持点击弹出菜单切换项目、分支与工作区）。默认 false。
   interactive?: boolean
-  // 是否允许切换项目（例如非新 session 下禁止切换项目，仅展示）。默认 true。
+  // 是否允许切换项目（例如非新 session 下禁止切换项目，项目项展示 LxIconButton 禁用态）。默认 true。
   allowProjectChange?: boolean
   // 是否始终展示工作区（缺省时展示 'none'）。默认 false。
   alwaysShowWorktree?: boolean
@@ -197,13 +197,14 @@ export const GitStatusBar = ({
 
   // 渲染项目部分
   const renderProjectItem = (): React.JSX.Element => {
-    if (!interactive || !allowProjectChange) {
-      const tooltipContent = isUnimported
-        ? `${projectName} (${t("project.unimported")}) · ${projectPath}`
-        : projectPath
+    const readOnlyTooltipContent = isUnimported
+      ? `${projectName} (${t("project.unimported")}) · ${projectPath}`
+      : projectPath
 
+    // 非交互模式（MarkdownStatusBar）：只读标签展示。
+    if (!interactive) {
       return (
-        <LxTooltip content={tooltipContent} placement="top">
+        <LxTooltip content={readOnlyTooltipContent} placement="top">
           <LxTag
             size="small"
             variant="ghost"
@@ -230,6 +231,46 @@ export const GitStatusBar = ({
           >
             {projectName}
           </LxTag>
+        </LxTooltip>
+      )
+    }
+
+    // 项目项统一保留 LxIconButton 形态；不可切换时使用禁用态，不降级为 LxTag。
+    const renderProjectButton = (projectChangeDisabled: boolean): React.JSX.Element => (
+      <LxIconButton
+        disabled={projectChangeDisabled}
+        data-unimported={isUnimported ? "true" : undefined}
+        textClass={
+          isUnimported
+            ? "text-white/40"
+            : isCurrentPathDesktop
+              ? "text-violet-300"
+              : "text-white/50"
+        }
+        className={`min-w-0 px-1.5 py-0.5 text-xs ${
+          isCurrentPathDesktop ? "font-medium" : ""
+        } ${isUnimported ? "opacity-75" : ""}`}
+        icon={
+          isUnimported ? (
+            <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+          ) : (
+            <Folder
+              className={`h-3.5 w-3.5 shrink-0 ${
+                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+              }`}
+            />
+          )
+        }
+      >
+        <span className="truncate">{projectName}</span>
+      </LxIconButton>
+    )
+
+    // 当前会话不允许切换项目：保持按钮形态并展示禁用态。
+    if (!allowProjectChange) {
+      return (
+        <LxTooltip content={readOnlyTooltipContent} placement="top">
+          {renderProjectButton(true)}
         </LxTooltip>
       )
     }
@@ -313,14 +354,10 @@ export const GitStatusBar = ({
       </div>
     )
 
-    const hoverTooltipContent = isUnimported
-      ? `${projectName} (${t("project.unimported")}) · ${projectPath}`
-      : projectPath
-
     return (
       <LxTooltip
         hover={{
-          content: hoverTooltipContent,
+          content: readOnlyTooltipContent,
           placement: "top",
         }}
         click={{
@@ -340,32 +377,7 @@ export const GitStatusBar = ({
           },
         }}
       >
-        <LxIconButton
-          data-unimported={isUnimported ? "true" : undefined}
-          textClass={
-            isUnimported
-              ? "text-white/40"
-              : isCurrentPathDesktop
-                ? "text-violet-300"
-                : "text-white/50"
-          }
-          className={`min-w-0 px-1.5 py-0.5 text-xs ${
-            isCurrentPathDesktop ? "font-medium" : ""
-          } ${isUnimported ? "opacity-75" : ""}`}
-          icon={
-            isUnimported ? (
-              <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
-            ) : (
-              <Folder
-                className={`h-3.5 w-3.5 shrink-0 ${
-                  isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
-                }`}
-              />
-            )
-          }
-        >
-          <span className="truncate">{projectName}</span>
-        </LxIconButton>
+        {renderProjectButton(false)}
       </LxTooltip>
     )
   }

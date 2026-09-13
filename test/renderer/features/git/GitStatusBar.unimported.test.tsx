@@ -91,4 +91,29 @@ describe("GitStatusBar unimported styling", () => {
     expect(container.querySelector(".lucide-folder")).not.toBeNull()
     expect(container.querySelector(".lucide-folder-git")).toBeNull()
   })
+
+  it("allowProjectChange=false 时项目项保持 LxIconButton 禁用态，不降级为 LxTag", () => {
+    const { container } = render(
+      <GitStatusBar projectPath="/imported/path" interactive={true} allowProjectChange={false} />,
+    )
+
+    const projectButton = container.querySelector<HTMLButtonElement>(
+      ".git-status-bar button:first-of-type",
+    )
+    expect(projectButton).not.toBeNull()
+    expect(projectButton?.disabled).toBe(true)
+    expect(container.querySelector(".lx-tag")).toBeNull()
+  })
+
+  it("allowProjectChange=true 时项目项保持可点击", () => {
+    const { container } = render(
+      <GitStatusBar projectPath="/imported/path" interactive={true} allowProjectChange={true} />,
+    )
+
+    const projectButton = container.querySelector<HTMLButtonElement>(
+      ".git-status-bar button:first-of-type",
+    )
+    expect(projectButton).not.toBeNull()
+    expect(projectButton?.disabled).toBe(false)
+  })
 })
