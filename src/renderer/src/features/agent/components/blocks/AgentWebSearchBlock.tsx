@@ -34,19 +34,17 @@ export const AgentWebSearchBlock = ({
     <div className="agent-web-search-block my-0.5 min-w-0">
       <div className="agent-web-search-header flex items-center gap-1">
         <Search className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-        <span className="agent-web-search-name font-mono text-[12px] font-bold text-emerald-300">
+        <span className="agent-web-search-name font-mono text-xs font-bold text-emerald-300">
           Web Search
         </span>
         {allFailed && (
-          <span className="agent-web-search-failed text-[12px] text-red-400">
-            · Web search failed
-          </span>
+          <span className="agent-web-search-failed text-xs text-red-400">· Web search failed</span>
         )}
       </div>
       {queries.length > 0 && (
         <div className="mt-1 flex min-w-0 items-start gap-1 pl-1">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
-          <span className="agent-web-search-queries min-w-0 break-all font-mono text-[12px] leading-relaxed text-white/45">
+          <span className="agent-web-search-queries min-w-0 break-all font-mono text-xs leading-relaxed text-white/45">
             {queries.map((query) => `[${query}]`).join(", ")}
           </span>
         </div>

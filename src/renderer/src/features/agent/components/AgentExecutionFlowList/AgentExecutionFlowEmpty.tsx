@@ -76,16 +76,16 @@ export const AgentExecutionFlowEmpty = ({
             <div className="flex flex-col text-left min-w-0">
               <div className="flex items-center gap-1.5">
                 <Workflow className="h-4 w-4 shrink-0 text-emerald-400" />
-                <span className="agent-flow-empty-title text-[13px] font-semibold text-[var(--color-theme-text,#ffffff)] truncate">
+                <span className="agent-flow-empty-title text-sm font-semibold text-[var(--color-theme-text,#ffffff)] truncate">
                   {t("agent.emptyTitle")} · {t("agent.executionFlowView")}
                 </span>
               </div>
-              <p className="agent-flow-empty-desc mt-0.5 text-[11px] leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] line-clamp-1">
+              <p className="agent-flow-empty-desc mt-0.5 text-xs leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] line-clamp-1">
                 {t("agent.emptyFlowModeDesc")}
               </p>
             </div>
           </div>
-          <span className="agent-flow-ready-badge shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-400">
+          <span className="agent-flow-ready-badge shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-mono text-xs font-medium text-emerald-400">
             READY
           </span>
         </div>
@@ -93,10 +93,10 @@ export const AgentExecutionFlowEmpty = ({
         {/* 流程管道预览视图（平铺 Step 列表，移除嵌套外框） */}
         <div className="agent-flow-empty-pipeline flex flex-col gap-2 text-left">
           <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-semibold tracking-wider text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] uppercase">
+            <span className="text-xs font-semibold tracking-wider text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] uppercase">
               {t("agent.emptyFlowPipelineTitle")}
             </span>
-            <span className="agent-flow-stages-badge font-mono text-[10px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.3))]">
+            <span className="agent-flow-stages-badge font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.3))]">
               4 STAGES
             </span>
           </div>
@@ -114,16 +114,16 @@ export const AgentExecutionFlowEmpty = ({
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[12px] font-medium text-[var(--color-theme-text,#ffffff)] truncate">
+                      <span className="text-xs font-medium text-[var(--color-theme-text,#ffffff)] truncate">
                         {step.title}
                       </span>
                       <span
-                        className={`rounded border px-1.5 py-0.2 font-mono text-[9px] font-semibold ${step.badgeClass}`}
+                        className={`rounded border px-1.5 py-0.2 font-mono text-xs font-semibold ${step.badgeClass}`}
                       >
                         {step.badge}
                       </span>
                     </div>
-                    <span className="mt-0.5 text-[11px] leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] line-clamp-1">
+                    <span className="mt-0.5 text-xs leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] line-clamp-1">
                       {step.desc}
                     </span>
                   </div>
@@ -137,7 +137,7 @@ export const AgentExecutionFlowEmpty = ({
       {/* 底部推荐问题（卡片化，带不同图标与完整对齐） */}
       {onSelectPrompt && (
         <div className="agent-flow-empty-prompts mt-2 flex flex-col gap-1.5 text-left">
-          <span className="px-1 text-[11px] font-medium text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+          <span className="px-1 text-xs font-medium text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
             {t("agent.suggestedPrompts")}
           </span>
           <div className="flex flex-col gap-1.5">
@@ -154,10 +154,10 @@ export const AgentExecutionFlowEmpty = ({
                     <PromptIcon className="h-3 w-3 text-white/40 transition-colors group-hover:text-emerald-400" />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-[12px] font-medium text-[var(--color-theme-text,#ffffff)] transition-colors group-hover:text-white truncate">
+                    <span className="text-xs font-medium text-[var(--color-theme-text,#ffffff)] transition-colors group-hover:text-white truncate">
                       {card.title}
                     </span>
-                    <span className="mt-0.5 text-[11px] leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] group-hover:text-white/70">
+                    <span className="mt-0.5 text-xs leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.45))] group-hover:text-white/70">
                       {card.description}
                     </span>
                   </div>

@@ -66,7 +66,7 @@ export const AgentCompactionSummary = ({
       ? "Compressing context manually..."
       : "Compressing context automatically..."
     return (
-      <div className="agent-compaction-loading my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-[11px] font-medium text-white/35">
+      <div className="agent-compaction-loading my-1.5 flex w-full max-w-full select-none items-center gap-1.5 text-xs font-medium text-white/35">
         <Loader2 className="agent-compaction-spinner h-3.5 w-3.5 animate-spin" />
         <span className="agent-compaction-loading-text italic">{loadingText}</span>
       </div>
@@ -96,7 +96,7 @@ export const AgentCompactionSummary = ({
         type="button"
         aria-label={titleText}
         aria-expanded={isExpanded}
-        className="agent-compaction-toggle-btn mb-1 flex h-5 w-full items-center gap-1.5 text-[11px] font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
+        className="agent-compaction-toggle-btn mb-1 flex h-5 w-full items-center gap-1.5 text-xs font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
         onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
       >
         <span className="agent-compaction-title italic">{titleText}</span>
@@ -107,7 +107,7 @@ export const AgentCompactionSummary = ({
         />
       </button>
       {metricSegments.length > 0 && (
-        <div className="agent-message-usage mb-1 flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+        <div className="agent-message-usage mb-1 flex items-center gap-1 text-xs leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
           {metricSegments.map((segment, index) => (
             <Fragment key={index}>
               {index > 0 && (
@@ -134,7 +134,7 @@ export const AgentCompactionSummary = ({
         className="overflow-hidden"
       >
         <div ref={innerRef} className="w-full">
-          <div className="agent-compaction-bubble rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-[13px] text-white/45">
+          <div className="agent-compaction-bubble rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3 py-2 text-sm text-white/45">
             <LxMarkdownPreview
               html={markdownRenderer.render(summary)}
               previewMode="preview"

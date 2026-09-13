@@ -192,7 +192,7 @@ export const AgentJobsMonitorView = ({
           className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5"
         >
           {jobs.length === 0 ? (
-            <div className="flex items-center gap-1.5 text-[11px] text-white/35 pl-1">
+            <div className="flex items-center gap-1.5 text-xs text-white/35 pl-1">
               <Activity className="h-3.5 w-3.5 text-white/20" />
               <span>(No background jobs in this session)</span>
             </div>
@@ -216,11 +216,11 @@ export const AgentJobsMonitorView = ({
                   onClick={() => selectJob(job.id)}
                 >
                   <JobStatusDot status={job.status} />
-                  <span className="font-mono text-[11px] font-semibold leading-none">{job.id}</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-white/50 leading-none">
+                  <span className="font-mono text-xs font-semibold leading-none">{job.id}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-white/50 leading-none">
                     {job.label}
                   </span>
-                  <span className="shrink-0 text-[10px] text-white/35 tabular-nums leading-none">
+                  <span className="shrink-0 text-xs text-white/35 tabular-nums leading-none">
                     {formatDuration(job.startedAt, job.finishedAt)}
                   </span>
 
@@ -294,7 +294,7 @@ export const AgentJobsMonitorView = ({
                     type="button"
                     disabled={isKilling}
                     onClick={() => void handleKillJob()}
-                    className="flex h-6 items-center gap-1 rounded-[4px] border border-red-500/30 bg-red-500/15 px-2 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/25 cursor-pointer disabled:opacity-50"
+                    className="flex h-6 items-center gap-1 rounded-[4px] border border-red-500/30 bg-red-500/15 px-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/25 cursor-pointer disabled:opacity-50"
                   >
                     {isKilling ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -355,12 +355,12 @@ export const AgentJobsMonitorView = ({
         {activeJob ? (
           <>
             {/* 顶栏元信息 */}
-            <div className="agent-jobs-log-header flex h-7 shrink-0 items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 font-mono text-[11px] text-white/50 select-text">
+            <div className="agent-jobs-log-header flex h-7 shrink-0 items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 font-mono text-xs text-white/50 select-text">
               <div className="min-w-0 flex-1 truncate mr-2">
                 <span className="text-sky-400 font-semibold mr-1.5">{activeJob.id}</span>
                 <span className="text-white/80">$ {activeJob.label}</span>
               </div>
-              <div className="flex shrink-0 items-center gap-2 text-[10px] text-white/40">
+              <div className="flex shrink-0 items-center gap-2 text-xs text-white/40">
                 <span>PID: {activeJob.pid ?? "N/A"}</span>
                 <span>·</span>
                 <span
@@ -385,7 +385,7 @@ export const AgentJobsMonitorView = ({
             {/* 终端实时日志流 */}
             <div
               ref={logContainerRef}
-              className="agent-jobs-log-content flex-1 overflow-y-auto p-3 font-mono text-[12px] leading-relaxed text-zinc-200 select-text bg-[#0d0d12]"
+              className="agent-jobs-log-content flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed text-zinc-200 select-text bg-[#0d0d12]"
             >
               {currentLogs ? (
                 <pre className="whitespace-pre-wrap break-all font-mono">{currentLogs}</pre>
@@ -400,7 +400,7 @@ export const AgentJobsMonitorView = ({
           <div className="agent-jobs-empty-state flex h-full w-full flex-col items-center justify-center gap-1.5 text-white/40 select-none">
             <TerminalIcon className="h-8 w-8 text-white/15 mb-1" />
             <span className="text-xs text-white/60">No background jobs in this session</span>
-            <span className="text-[11px] text-white/30">
+            <span className="text-xs text-white/30">
               Tasks started via <code>bash(background: true)</code> will be monitored here in
               real-time.
             </span>

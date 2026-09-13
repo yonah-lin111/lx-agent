@@ -35,7 +35,7 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
   )
 
   return (
-    <div className="agent-execution-flow-tool-file-ops flex flex-col gap-2 font-mono text-[11px]">
+    <div className="agent-execution-flow-tool-file-ops flex flex-col gap-2 font-mono text-xs">
       {/* 路径与徽标 */}
       <div className="flex flex-wrap items-center justify-between gap-1.5 rounded bg-black/40 px-2.5 py-1.5">
         <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
@@ -87,7 +87,7 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
           </span>
           {content.toolCallId && (
-            <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+            <span className="text-xs text-white/30">ID: {content.toolCallId}</span>
           )}
         </div>
         <div className="rounded bg-black/40 p-2 text-sky-200/90">
@@ -116,7 +116,7 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
                         : "text-white/60"
                   }`}
                 >
-                  <span className="w-4 shrink-0 select-none text-right text-[10px] opacity-40">
+                  <span className="w-4 shrink-0 select-none text-right text-xs opacity-40">
                     {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
                   </span>
                   <span className="whitespace-pre-wrap">{line.text}</span>
@@ -134,9 +134,7 @@ export const FlowToolFileOps = ({ content }: FlowToolFileOpsProps): React.JSX.El
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
-            {content.isError && (
-              <span className="text-[10px] text-rose-400 font-medium">ERROR</span>
-            )}
+            {content.isError && <span className="text-xs text-rose-400 font-medium">ERROR</span>}
           </div>
           <div
             className={`rounded p-2.5 ${

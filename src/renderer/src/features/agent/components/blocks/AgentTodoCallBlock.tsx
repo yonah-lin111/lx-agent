@@ -45,7 +45,7 @@ export const AgentTodoCallBlock = ({
     <div className="agent-todo-call-block my-0.5 min-w-0">
       <div className="agent-todo-header flex items-center gap-1">
         <ListTodo className="h-3.5 w-3.5 shrink-0 text-orange-300" />
-        <span className="agent-todo-title text-[12px] font-bold text-orange-300">Todos</span>
+        <span className="agent-todo-title text-xs font-bold text-orange-300">Todos</span>
       </div>
       <div className="mt-1 flex min-w-0 items-start gap-1.5 pl-1">
         <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/45" />
@@ -55,7 +55,7 @@ export const AgentTodoCallBlock = ({
               {/* mt 对齐第一行文字（icon 14px 相对内容行高 20px 垂直居中）。 */}
               <TodoStatusIcon status={todo.status} className="mt-[3px]" />
               <span
-                className={`agent-todo-content min-w-0 flex-1 whitespace-pre-wrap break-words text-[13px] leading-[20px] ${
+                className={`agent-todo-content min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-[20px] ${
                   isTodoDone(todo.status) ? "text-orange-300/40 line-through" : "text-orange-300"
                 }`}
               >

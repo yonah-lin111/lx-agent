@@ -175,7 +175,7 @@ export const AgentVoiceInputButton = forwardRef<
           {isRecording ? t("agent.voiceStopRecording") : t("agent.voiceInput")}
         </span>
       </div>
-      <div className="border-t border-white/10 pt-1 text-[11px] text-white/45">
+      <div className="border-t border-white/10 pt-1 text-xs text-white/45">
         {t("agent.voiceShortcutHint")}
       </div>
     </div>

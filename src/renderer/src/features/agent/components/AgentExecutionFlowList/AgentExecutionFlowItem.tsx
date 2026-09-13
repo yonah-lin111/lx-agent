@@ -227,7 +227,7 @@ export const AgentExecutionFlowItem = ({
 
           {/* 步骤全局统一顺序索引 */}
           {!isRunning && (
-            <span className="shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+            <span className="shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
               #{step.stepIndex}
             </span>
           )}
@@ -270,7 +270,7 @@ export const AgentExecutionFlowItem = ({
               <FlowItemToolTitle toolContent={step.toolContent} />
             ) : step.kind === "user" ? null : (
               <span
-                className={`truncate font-mono text-[12px] font-medium leading-none ${
+                className={`truncate font-mono text-xs font-medium leading-none ${
                   step.kind === "error"
                     ? step.errorContent?.isAborted
                       ? "text-amber-300"
@@ -288,7 +288,7 @@ export const AgentExecutionFlowItem = ({
               step.kind !== "user" &&
               step.subtitle &&
               step.status !== "running" && (
-                <span className="hidden min-w-0 truncate text-[11px] leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
+                <span className="hidden min-w-0 truncate text-xs leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] sm:inline">
                   {step.subtitle}
                 </span>
               )}
@@ -296,7 +296,7 @@ export const AgentExecutionFlowItem = ({
         </div>
 
         {/* 右侧状态与指标 */}
-        <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
+        <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
           {/* 单步耗时指标：区分自身执行耗时与模型响应/步进跨度 */}
           {step.status !== "running" && (
             <>
@@ -318,7 +318,7 @@ export const AgentExecutionFlowItem = ({
                     >
                       <span
                         data-testid="flow-item-duration"
-                        className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
+                        className="agent-execution-flow-step-duration shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                       >
                         {formatDurationMs(step.durationMs)}
                       </span>
@@ -327,7 +327,7 @@ export const AgentExecutionFlowItem = ({
                 ) : step.agentOverheadMs !== undefined && step.agentOverheadMs >= 100 ? (
                   <LxTooltip
                     content={
-                      <div className="flex flex-col gap-0.5 font-mono text-[11px] leading-tight">
+                      <div className="flex flex-col gap-0.5 font-mono text-xs leading-tight">
                         <div className="text-[var(--color-theme-text,#ffffff)]/80">
                           {t("agent.stepDuration", { duration: formatDurationMs(step.durationMs) })}
                         </div>
@@ -349,10 +349,10 @@ export const AgentExecutionFlowItem = ({
                   >
                     <span
                       data-testid="flow-item-duration"
-                      className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
+                      className="agent-execution-flow-step-duration inline-flex items-center gap-1 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                     >
                       <span>{formatDurationMs(step.durationMs)}</span>
-                      <span className="text-[10px] font-normal text-amber-400/80 hover:text-amber-300">
+                      <span className="text-xs font-normal text-amber-400/80 hover:text-amber-300">
                         (+{formatDurationMs(step.agentOverheadMs)})
                       </span>
                     </span>
@@ -366,7 +366,7 @@ export const AgentExecutionFlowItem = ({
                   >
                     <span
                       data-testid="flow-item-duration"
-                      className="agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
+                      className="agent-execution-flow-step-duration shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))] hover:text-[var(--color-theme-text,#ffffff)]/80 cursor-default"
                     >
                       {formatDurationMs(step.durationMs)}
                     </span>
@@ -433,7 +433,7 @@ export const AgentExecutionFlowItem = ({
       {step.toolContent?.toolName === "question" && (
         <div
           hidden={!isExpanded}
-          className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]"
+          className="agent-execution-flow-step-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-xs"
         >
           <FlowItemQuestionContent content={step.toolContent} />
         </div>
@@ -442,7 +442,7 @@ export const AgentExecutionFlowItem = ({
       {/* 展开详情区（question 工具的详情已内嵌展示，跳过空详情体） */}
       {effectiveExpanded && step.toolContent?.toolName !== "question" ? (
         <div
-          className={`agent-execution-flow-step-body border-t px-3 py-2.5 text-[12px] ${bodyStyleClass}`}
+          className={`agent-execution-flow-step-body border-t px-3 py-2.5 text-xs ${bodyStyleClass}`}
         >
           {/* 系统提示词与注入详情 */}
           {step.systemContent && <FlowItemSystemContent content={step.systemContent} />}
@@ -528,7 +528,7 @@ export const AgentExecutionFlowItem = ({
 
           {/* hook 运行详情（审计文本） */}
           {step.hookContent && (
-            <div className="agent-execution-flow-hook-content whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+            <div className="agent-execution-flow-hook-content whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
               {step.hookContent.text}
             </div>
           )}
@@ -546,7 +546,7 @@ export const AgentExecutionFlowItem = ({
         (step.tokens?.total !== undefined && step.tokens.total > 0) ||
         Boolean(step.parallel) ||
         (step.kind === "subagent" && Boolean(step.subagentContent))) && (
-        <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-[10px]">
+        <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-xs">
           {/* 左侧 Token 指标与 Subagent Detail 按钮 */}
           <div className="flex items-center gap-2">
             {step.tokens &&
@@ -556,7 +556,7 @@ export const AgentExecutionFlowItem = ({
               <LxTooltip
                 placement="top"
                 content={
-                  <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+                  <div className="flex flex-col gap-0.5 font-mono text-xs">
                     <span>Input: {(step.tokens.input ?? 0).toLocaleString()}</span>
                     <span>Output: {(step.tokens.output ?? 0).toLocaleString()}</span>
                     {step.tokens.cacheRead !== undefined && step.tokens.cacheRead > 0 && (
@@ -595,7 +595,7 @@ export const AgentExecutionFlowItem = ({
                       onOpenSubagent?.(step.subagentContent)
                     }
                   }}
-                  className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
+                  className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-xs font-medium leading-none text-blue-300 transition-colors hover:bg-blue-500/20 hover:text-blue-200 focus:outline-none"
                 >
                   <span>{t("agent.subagentDetail")}</span>
                   <ExternalLink className="h-2.5 w-2.5 opacity-70" />
@@ -615,7 +615,7 @@ export const AgentExecutionFlowItem = ({
             >
               <span
                 data-testid="flow-item-parallel"
-                className={`shrink-0 leading-none select-none font-mono text-[10px] font-medium cursor-default transition-opacity hover:opacity-80 ${
+                className={`shrink-0 leading-none select-none font-mono text-xs font-medium cursor-default transition-opacity hover:opacity-80 ${
                   PARALLEL_BATCH_COLORS[
                     (step.parallel.batchIndex ?? 0) % PARALLEL_BATCH_COLORS.length
                   ]

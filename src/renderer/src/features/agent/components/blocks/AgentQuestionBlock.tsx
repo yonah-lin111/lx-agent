@@ -93,11 +93,11 @@ export const AgentQuestionBlock = ({
           type="button"
           aria-label={t("agent.answeredQuestions")}
           aria-expanded={isExpanded}
-          className="agent-question-header flex h-5 w-fit items-center gap-1 pr-2 text-[12px] transition-all duration-200 hover:text-white/70 focus:outline-none"
+          className="agent-question-header flex h-5 w-fit items-center gap-1 pr-2 text-xs transition-all duration-200 hover:text-white/70 focus:outline-none"
           onClick={() => setIsExpanded((previousExpanded) => !previousExpanded)}
         >
           <CircleHelp className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-          <span className="agent-question-name font-mono text-[12px] font-bold text-sky-300">
+          <span className="agent-question-name font-mono text-xs font-bold text-sky-300">
             Question
           </span>
           <ChevronDown
@@ -129,7 +129,7 @@ export const AgentQuestionBlock = ({
                   <CornerDownRight className="agent-question-corner mt-[2px] h-3 w-3 shrink-0 text-white/45" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="agent-question-answered-question-card min-w-0">
-                      <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
+                      <div className="agent-question-answered-title min-w-0 break-words text-xs leading-relaxed text-white/75">
                         {question.question}
                       </div>
                     </div>
@@ -138,7 +138,7 @@ export const AgentQuestionBlock = ({
                         {answers.map((answer) => (
                           <div
                             key={answer}
-                            className="agent-question-answered-value min-w-0 break-words text-[12px] leading-relaxed text-white/70"
+                            className="agent-question-answered-value min-w-0 break-words text-xs leading-relaxed text-white/70"
                           >
                             {answer}
                           </div>
@@ -224,7 +224,7 @@ export const AgentQuestionBlock = ({
     <div className="agent-question-block my-0.5 min-w-0">
       <div className="agent-question-header flex items-center gap-1">
         <CircleHelp className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-        <span className="agent-question-name font-mono text-[12px] font-bold text-sky-300">
+        <span className="agent-question-name font-mono text-xs font-bold text-sky-300">
           Question
         </span>
       </div>
@@ -245,7 +245,7 @@ export const AgentQuestionBlock = ({
                     type="button"
                     data-active={isActive ? "true" : undefined}
                     onClick={() => setActiveIndex(index)}
-                    className={`agent-question-tab flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[12px] transition-colors ${
+                    className={`agent-question-tab flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-xs transition-colors ${
                       isActive
                         ? "border-white/20 bg-white/15 text-white"
                         : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
@@ -261,9 +261,7 @@ export const AgentQuestionBlock = ({
 
           {/* 当前问题：纯文本提问 + 选项/自定义输入。 */}
           <div className="agent-question-card min-w-0">
-            <div className="text-[13px] leading-relaxed text-white/85">
-              {activeQuestion.question}
-            </div>
+            <div className="text-sm leading-relaxed text-white/85">{activeQuestion.question}</div>
 
             {activeQuestion.options ? (
               <>
@@ -274,7 +272,7 @@ export const AgentQuestionBlock = ({
                       return (
                         <label
                           key={option.label}
-                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-[12px] text-white/75 transition-colors hover:bg-white/[0.04]"
+                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[6px] px-2 py-1.5 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
                         >
                           <LxCheckbox
                             checked={checked}
@@ -284,7 +282,7 @@ export const AgentQuestionBlock = ({
                           <span className="flex min-w-0 flex-col">
                             <span>{option.label}</span>
                             {option.description && (
-                              <span className="mt-0.5 text-[10px] text-white/40">
+                              <span className="mt-0.5 text-xs text-white/40">
                                 {option.description}
                               </span>
                             )}
@@ -309,9 +307,7 @@ export const AgentQuestionBlock = ({
                           option.description ? (
                             <span className="flex min-w-0 flex-col">
                               <span>{option.label}</span>
-                              <span className="text-[10px] text-white/40">
-                                {option.description}
-                              </span>
+                              <span className="text-xs text-white/40">{option.description}</span>
                             </span>
                           ) : (
                             option.label
@@ -325,7 +321,7 @@ export const AgentQuestionBlock = ({
                   value={customTexts[activeIndex] ?? ""}
                   onChange={(event) => setCustomText(event.target.value)}
                   placeholder={t("agent.questionCustomOther")}
-                  className="agent-question-input mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                  className="agent-question-input mt-1.5 h-7 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-xs text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
                 />
               </>
             ) : (
@@ -334,7 +330,7 @@ export const AgentQuestionBlock = ({
                 onChange={(event) => setCustomText(event.target.value)}
                 rows={2}
                 placeholder={t("agent.questionAnswerPlaceholder")}
-                className="agent-question-input mt-1.5 min-h-[40px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-[12px] leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                className="agent-question-input mt-1.5 min-h-[40px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-xs leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
               />
             )}
           </div>
@@ -348,7 +344,7 @@ export const AgentQuestionBlock = ({
                   aria-label={t("agent.questionPrev")}
                   disabled={activeIndex === 0}
                   onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-                  className="agent-question-prev-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="agent-question-prev-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   {t("agent.questionPrev")}
@@ -360,7 +356,7 @@ export const AgentQuestionBlock = ({
                   onClick={() =>
                     setActiveIndex((index) => Math.min(questions.length - 1, index + 1))
                   }
-                  className="agent-question-next-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-[12px] text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
+                  className="agent-question-next-btn flex h-7 items-center gap-1 rounded-[4px] border border-white/10 bg-white/5 px-2 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white/90 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   {t("agent.questionNext")}
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -371,7 +367,7 @@ export const AgentQuestionBlock = ({
               type="button"
               disabled={!isComplete}
               onClick={handleSubmit}
-              className="agent-question-submit-btn flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-[12px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
+              className="agent-question-submit-btn flex h-7 items-center gap-1.5 rounded-[4px] bg-white px-2.5 text-xs font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
             >
               <Send className="h-3 w-3" />
               {t("agent.questionSubmit")}

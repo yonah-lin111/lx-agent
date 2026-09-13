@@ -147,9 +147,9 @@ export const AgentTabBar = (): React.JSX.Element => {
     }
 
     return (
-      <div className="flex min-w-[140px] max-w-[260px] flex-col gap-1.5 py-0.5 text-[11px] font-sans">
+      <div className="flex min-w-[140px] max-w-[260px] flex-col gap-1.5 py-0.5 text-xs font-sans">
         <div className="font-semibold text-white leading-snug break-words">{title}</div>
-        <div className="flex items-center gap-1.5 text-white/70 text-[10px]">
+        <div className="flex items-center gap-1.5 text-white/70 text-xs">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${
               isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
@@ -158,18 +158,18 @@ export const AgentTabBar = (): React.JSX.Element => {
           <span>{isStreaming ? t("agent.statusRunning") : t("agent.statusReady")}</span>
         </div>
         {typeof tab.turnCount === "number" && tab.turnCount > 0 && (
-          <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+          <div className="flex items-center gap-1.5 text-white/50 text-xs truncate">
             <MessageSquare className="h-3 w-3 shrink-0 text-sky-400/70" />
             <span className="truncate">{t("agent.turnCount", { count: tab.turnCount })}</span>
           </div>
         )}
         {modelName && (
-          <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+          <div className="flex items-center gap-1.5 text-white/50 text-xs truncate">
             <Cpu className="h-3 w-3 shrink-0 text-teal-300/60" />
             <span className="truncate">{modelName}</span>
           </div>
         )}
-        <div className="flex items-center gap-1.5 text-white/50 text-[10px] truncate">
+        <div className="flex items-center gap-1.5 text-white/50 text-xs truncate">
           <Folder className="h-3 w-3 shrink-0 text-white/40" />
           <span className="truncate">{projectName}</span>
         </div>
@@ -230,7 +230,7 @@ export const AgentTabBar = (): React.JSX.Element => {
                     }`}
                     role="status"
                   />
-                  <span className="min-w-0 flex-1 truncate text-left font-mono text-[11px] leading-none">
+                  <span className="min-w-0 flex-1 truncate text-left font-mono text-xs leading-none">
                     {label}
                   </span>
                   {tabs.length > 1 &&

@@ -207,7 +207,7 @@ const renderDiffLines = (diff: AgentDiff, highlightedLines: string[]): React.JSX
     // 省略占位行（长上下文段，无行号）。
     if (line.type === "context" && line.newLine === undefined && line.oldLine === undefined) {
       return (
-        <div key={index} className="select-none px-3 py-px text-[11px] leading-[1.8] text-white/25">
+        <div key={index} className="select-none px-3 py-px text-xs leading-[1.8] text-white/25">
           …
         </div>
       )
@@ -215,7 +215,7 @@ const renderDiffLines = (diff: AgentDiff, highlightedLines: string[]): React.JSX
     return (
       <div
         key={index}
-        className={`flex min-w-0 items-start px-1 font-mono text-[12px] leading-[1.7] ${ROW_BACKGROUND[line.type]}`}
+        className={`flex min-w-0 items-start px-1 font-mono text-xs leading-[1.7] ${ROW_BACKGROUND[line.type]}`}
       >
         <span className="w-9 shrink-0 select-none pr-2 text-right text-white/30">
           {getLineNumber(line)}
@@ -335,7 +335,7 @@ export const AgentToolCallBlock = ({
     <div className="agent-tool-call-block my-0.5 min-w-0">
       <div className="agent-tool-call-header flex items-center gap-1">
         <ToolIcon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-        <span className="agent-tool-call-name font-mono text-[12px] font-bold text-amber-300">
+        <span className="agent-tool-call-name font-mono text-xs font-bold text-amber-300">
           {displayToolName}
         </span>
       </div>
@@ -345,14 +345,14 @@ export const AgentToolCallBlock = ({
             type="button"
             aria-label={t("agent.diffContent")}
             aria-expanded={isDiffExpanded}
-            className="agent-tool-diff-toggle mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-[12px] text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
+            className="agent-tool-diff-toggle mt-1 flex h-5 w-fit max-w-full min-w-0 items-center gap-1 pl-1 pr-2 text-xs text-white/50 transition-all duration-200 hover:text-white/70 focus:outline-none"
             onClick={() => setIsDiffExpanded((previous) => !previous)}
           >
             <CornerDownRight className="agent-tool-corner h-3 w-3 shrink-0" />
             <span className="agent-tool-diff-title min-w-0 flex-1 truncate text-left">
               {commandSummary}
             </span>
-            <span className="shrink-0 text-[11px]">
+            <span className="shrink-0 text-xs">
               <span className="agent-tool-diff-added text-emerald-400">
                 +{resolvedDiff.stats.added}
               </span>
@@ -377,7 +377,7 @@ export const AgentToolCallBlock = ({
           </div>
         </>
       ) : isSimpleTool ? (
-        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-xs leading-relaxed text-white/45">
           <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
           {groupSummary ? (
             <span className="agent-tool-call-desc min-w-0 break-all">{groupSummary}</span>
@@ -386,17 +386,17 @@ export const AgentToolCallBlock = ({
           )}
         </div>
       ) : (
-        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+        <div className="agent-tool-call-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-xs leading-relaxed text-white/45">
           <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
           <span className="agent-tool-call-desc min-w-0 break-all">{summary}</span>
         </div>
       )}
       {spillFilePath && (
-        <div className="mt-1 flex min-w-0 items-center gap-1 pl-1 text-[12px] text-white/45">
+        <div className="mt-1 flex min-w-0 items-center gap-1 pl-1 text-xs text-white/45">
           <CornerDownRight className="agent-tool-corner mt-[2px] h-3 w-3 shrink-0" />
           <span>Output truncated.</span>
           <span
-            className="cursor-pointer text-[12px] text-white/60 underline underline-offset-2 transition-colors hover:text-white/90 focus:outline-none"
+            className="cursor-pointer text-xs text-white/60 underline underline-offset-2 transition-colors hover:text-white/90 focus:outline-none"
             onClick={() => {
               if (window.api?.agent?.showItemInFolder) {
                 void window.api.agent.showItemInFolder(spillFilePath)
@@ -410,7 +410,7 @@ export const AgentToolCallBlock = ({
         </div>
       )}
       {firstToolCall?.progress && (
-        <div className="agent-tool-call-progress mt-1 max-h-24 overflow-y-auto rounded-[4px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] leading-relaxed text-white/50 whitespace-pre-wrap break-all">
+        <div className="agent-tool-call-progress mt-1 max-h-24 overflow-y-auto rounded-[4px] border border-white/10 bg-white/[0.03] px-2 py-1 text-xs leading-relaxed text-white/50 whitespace-pre-wrap break-all">
           {firstToolCall.progress}
         </div>
       )}

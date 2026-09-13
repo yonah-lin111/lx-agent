@@ -9,14 +9,14 @@ export const FlowItemSubagentContent = ({
   content,
 }: FlowItemSubagentContentProps): React.JSX.Element => {
   return (
-    <div className="agent-execution-flow-subagent-content flex flex-col gap-2 font-mono text-[11px]">
+    <div className="agent-execution-flow-subagent-content flex flex-col gap-2 font-mono text-xs">
       <div className="flex items-center gap-2 text-white/70">
         <span className="text-white/40">Task:</span>
         <span className="font-bold text-blue-300">{content.name}</span>
       </div>
       {content.subagent?.prompt && (
         <div className="rounded bg-black/30 p-2 text-white/80">
-          <div className="text-[10px] text-white/40 mb-0.5">Prompt:</div>
+          <div className="text-xs text-white/40 mb-0.5">Prompt:</div>
           <div className="whitespace-pre-wrap">{content.subagent.prompt}</div>
         </div>
       )}

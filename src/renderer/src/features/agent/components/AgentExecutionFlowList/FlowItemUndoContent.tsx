@@ -53,7 +53,7 @@ export const FlowItemUndoContent = ({
     })
 
     return (
-      <div className="custom-scrollbar max-h-[220px] overflow-y-auto rounded bg-black/60 py-1 font-mono text-[11px] select-text">
+      <div className="custom-scrollbar max-h-[220px] overflow-y-auto rounded bg-black/60 py-1 font-mono text-xs select-text">
         {diff.lines.map((line, idx) => {
           const sign = getSign(line)
           const signColor = SIGN_COLORS[line.type]
@@ -67,7 +67,7 @@ export const FlowItemUndoContent = ({
               key={idx}
               className={`flex items-start leading-5 ${bg} hover:bg-white/[0.03] transition-colors`}
             >
-              <span className="w-8 shrink-0 pr-2 text-right text-[10px] text-white/20 select-none">
+              <span className="w-8 shrink-0 pr-2 text-right text-xs text-white/20 select-none">
                 {lineNumber}
               </span>
               <span className={`w-4 shrink-0 text-center font-bold select-none ${signColor}`}>
@@ -94,7 +94,7 @@ export const FlowItemUndoContent = ({
   const isMultiple = items.length > 1
 
   return (
-    <div className="agent-execution-flow-undo-content flex flex-col gap-3 font-mono text-[11px] text-white/70">
+    <div className="agent-execution-flow-undo-content flex flex-col gap-3 font-mono text-xs text-white/70">
       {items.map((item, itemIdx) => {
         const hasDiffs = Boolean(item.diffs && item.diffs.length > 0)
         const hasToolCalls = Boolean(item.toolCalls && item.toolCalls.length > 0)
@@ -111,9 +111,7 @@ export const FlowItemUndoContent = ({
             {isMultiple && (
               <div className="flex items-center justify-between text-rose-300/80 font-sans font-semibold">
                 <span>#{itemIdx + 1}</span>
-                {item.modelName && (
-                  <span className="text-[10px] text-white/40">{item.modelName}</span>
-                )}
+                {item.modelName && <span className="text-xs text-white/40">{item.modelName}</span>}
               </div>
             )}
 
@@ -140,7 +138,7 @@ export const FlowItemUndoContent = ({
                 )}
                 {item.files && item.files.length > 0 && (
                   <div className="flex flex-col gap-1 pt-0.5">
-                    <div className="text-[11px] font-mono text-white/40">
+                    <div className="text-xs font-mono text-white/40">
                       {t("agent.attachedFiles")}:
                     </div>
                     <AgentMessageFiles files={item.files} align="left" className="mb-0" />
@@ -157,7 +155,7 @@ export const FlowItemUndoContent = ({
                     <FileCode className="h-3.5 w-3.5" />
                     <span>{t("agent.undoRevokedChanges")}</span>
                   </span>
-                  <span className="text-[10px] text-white/40">
+                  <span className="text-xs text-white/40">
                     {t("agent.undoFileCount", { count: item.diffs.length })}
                   </span>
                 </div>
@@ -173,7 +171,7 @@ export const FlowItemUndoContent = ({
                           <span className="truncate">{diffItem.filePath}</span>
                         </div>
                         {diffItem.diff?.stats && (
-                          <div className="flex items-center gap-1 text-[10px] shrink-0">
+                          <div className="flex items-center gap-1 text-xs shrink-0">
                             <span className="text-emerald-400">+{diffItem.diff.stats.added}</span>
                             <span className="text-white/20">/</span>
                             <span className="text-rose-400">−{diffItem.diff.stats.removed}</span>
@@ -201,7 +199,7 @@ export const FlowItemUndoContent = ({
                   {item.toolCalls.map((tc, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-white/70"
+                      className="inline-flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 text-xs text-white/70"
                     >
                       <span className="text-amber-300/90">{tc.toolName}</span>
                       {tc.summary && (

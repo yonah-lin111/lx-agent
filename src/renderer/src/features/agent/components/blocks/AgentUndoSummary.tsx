@@ -146,7 +146,7 @@ export const AgentUndoSummary = ({
     })
 
     return (
-      <div className="custom-scrollbar max-h-[220px] overflow-y-auto rounded bg-black/60 py-1 font-mono text-[11px] select-text">
+      <div className="custom-scrollbar max-h-[220px] overflow-y-auto rounded bg-black/60 py-1 font-mono text-xs select-text">
         {diff.lines.map((line, idx) => {
           const sign = getSign(line)
           const signColor = SIGN_COLORS[line.type]
@@ -160,7 +160,7 @@ export const AgentUndoSummary = ({
               key={idx}
               className={`flex items-start leading-5 ${bg} hover:bg-white/[0.03] transition-colors`}
             >
-              <span className="w-10 shrink-0 pr-2 text-right text-[10px] text-white/20 select-none">
+              <span className="w-10 shrink-0 pr-2 text-right text-xs text-white/20 select-none">
                 {lineNumber}
               </span>
               <span className={`w-4 shrink-0 text-center font-bold select-none ${signColor}`}>
@@ -183,7 +183,7 @@ export const AgentUndoSummary = ({
         type="button"
         aria-label={titleText}
         aria-expanded={isExpanded}
-        className="agent-undo-toggle-btn mb-1 flex h-5 w-full items-center gap-1.5 text-[11px] font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
+        className="agent-undo-toggle-btn mb-1 flex h-5 w-full items-center gap-1.5 text-xs font-medium text-white/35 transition-colors hover:text-white/55 focus:outline-none"
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <Undo2 className="h-3.5 w-3.5 text-rose-400/80 shrink-0" />
@@ -196,7 +196,7 @@ export const AgentUndoSummary = ({
       </button>
 
       {metricSegments.length > 0 && (
-        <div className="agent-message-usage mb-1 flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+        <div className="agent-message-usage mb-1 flex items-center gap-1 text-xs leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
           {metricSegments.map((segment, index) => (
             <Fragment key={index}>
               {index > 0 && (
@@ -224,7 +224,7 @@ export const AgentUndoSummary = ({
         className="overflow-hidden"
       >
         <div ref={innerRef} className="w-full">
-          <div className="agent-undo-bubble rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3.5 py-3 text-[12px] text-white/70 flex flex-col gap-3.5 border border-white/5 shadow-sm">
+          <div className="agent-undo-bubble rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3.5 py-3 text-xs text-white/70 flex flex-col gap-3.5 border border-white/5 shadow-sm">
             {undoneTurns.map((turn, turnIdx) => {
               const hasTurnDiffs = Boolean(turn.diffs && turn.diffs.length > 0)
               const hasTurnToolCalls = Boolean(turn.toolCalls && turn.toolCalls.length > 0)
@@ -239,15 +239,13 @@ export const AgentUndoSummary = ({
                   }`}
                 >
                   {isMultiple && (
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-rose-300/80">
+                    <div className="flex items-center justify-between text-xs font-semibold text-rose-300/80">
                       <span className="flex items-center gap-1.5 font-mono">
                         <Undo2 className="h-3 w-3" />
                         <span>#{turnIdx + 1}</span>
                       </span>
                       {turn.modelName && (
-                        <span className="text-[10px] text-white/40 font-mono">
-                          {turn.modelName}
-                        </span>
+                        <span className="text-xs text-white/40 font-mono">{turn.modelName}</span>
                       )}
                     </div>
                   )}
@@ -257,11 +255,11 @@ export const AgentUndoSummary = ({
                     <div className="flex flex-col gap-1.5">
                       {hasTurnPrompt && turn.userPrompt && (
                         <>
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300/80">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300/80">
                             <User className="h-3.5 w-3.5 shrink-0" />
                             <span>{t("agent.undoUndonePrompt")}</span>
                           </div>
-                          <div className="rounded-[10px] bg-black/30 px-3 py-2 text-[12px] text-white/80">
+                          <div className="rounded-[10px] bg-black/30 px-3 py-2 text-xs text-white/80">
                             <LxMarkdownPreview
                               html={markdownRenderer.render(turn.userPrompt)}
                               previewMode="preview"
@@ -274,7 +272,7 @@ export const AgentUndoSummary = ({
                       )}
                       {turn.files && turn.files.length > 0 && (
                         <div className="flex flex-col gap-1 pt-0.5">
-                          <div className="text-[11px] font-mono text-white/40">
+                          <div className="text-xs font-mono text-white/40">
                             {t("agent.attachedFiles")}:
                           </div>
                           <AgentMessageFiles files={turn.files} align="left" className="mb-0" />
@@ -286,12 +284,12 @@ export const AgentUndoSummary = ({
                   {/* 2. 被撤销的代码变更 Diff */}
                   {hasTurnDiffs && turn.diffs && (
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-rose-300/90">
+                      <div className="flex items-center justify-between text-xs font-semibold text-rose-300/90">
                         <span className="flex items-center gap-1.5">
                           <FileCode className="h-3.5 w-3.5 shrink-0" />
                           <span>{t("agent.undoRevokedChanges")}</span>
                         </span>
-                        <span className="text-[10px] text-white/40 font-mono">
+                        <span className="text-xs text-white/40 font-mono">
                           {t("agent.undoFileCount", { count: turn.diffs.length })}
                         </span>
                       </div>
@@ -302,12 +300,12 @@ export const AgentUndoSummary = ({
                             className="rounded-[10px] border border-white/5 bg-black/30 p-2.5 flex flex-col gap-1.5"
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 truncate text-[11px] font-mono text-white/85">
+                              <div className="flex items-center gap-1.5 truncate text-xs font-mono text-white/85">
                                 <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
                                 <span className="truncate">{item.filePath}</span>
                               </div>
                               {item.diff?.stats && (
-                                <div className="flex items-center gap-1 text-[10px] font-mono shrink-0">
+                                <div className="flex items-center gap-1 text-xs font-mono shrink-0">
                                   <span className="text-emerald-400">+{item.diff.stats.added}</span>
                                   <span className="text-white/20">/</span>
                                   <span className="text-rose-400">−{item.diff.stats.removed}</span>
@@ -327,7 +325,7 @@ export const AgentUndoSummary = ({
                   {/* 3. 被撤销的工具调用 */}
                   {hasTurnToolCalls && turn.toolCalls && (
                     <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/50">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
                         <Terminal className="h-3.5 w-3.5 shrink-0 text-amber-300/80" />
                         <span>{t("agent.undoRevokedTools")}</span>
                       </div>
@@ -335,7 +333,7 @@ export const AgentUndoSummary = ({
                         {turn.toolCalls.map((tc, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1.5 rounded-[6px] bg-white/[0.04] px-2 py-1 font-mono text-[10px] text-white/70 border border-white/5"
+                            className="inline-flex items-center gap-1.5 rounded-[6px] bg-white/[0.04] px-2 py-1 font-mono text-xs text-white/70 border border-white/5"
                           >
                             <span className="font-semibold text-amber-300/90">{tc.toolName}</span>
                             {tc.summary && (
@@ -352,10 +350,10 @@ export const AgentUndoSummary = ({
                   {/* 4. 助手回复摘要（若存在且未含 diff） */}
                   {!hasTurnDiffs && hasTurnAssistant && turn.assistantSnippet && (
                     <div className="flex flex-col gap-1">
-                      <div className="text-[11px] font-semibold text-white/40">
+                      <div className="text-xs font-semibold text-white/40">
                         {t("agent.undoAssistantPreview")}
                       </div>
-                      <div className="rounded-[10px] bg-black/20 p-2 text-[11px] text-white/60 line-clamp-3">
+                      <div className="rounded-[10px] bg-black/20 p-2 text-xs text-white/60 line-clamp-3">
                         {turn.assistantSnippet}
                       </div>
                     </div>

@@ -29,7 +29,7 @@ export const AgentSkillCallBlock = ({
     <div className="agent-skill-call-block my-0.5 min-w-0">
       <div className="agent-skill-header flex items-center gap-1">
         <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-300" />
-        <span className="agent-skill-name font-mono text-[12px] font-bold text-violet-300">
+        <span className="agent-skill-name font-mono text-xs font-bold text-violet-300">
           Load_skill
         </span>
       </div>
@@ -37,7 +37,7 @@ export const AgentSkillCallBlock = ({
         {toolCalls.map((call) => (
           <div
             key={call.toolCallId}
-            className="agent-skill-item-row flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45"
+            className="agent-skill-item-row flex min-w-0 items-start gap-1 text-xs leading-relaxed text-white/45"
           >
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
             <span className="agent-skill-item-name min-w-0 break-all font-mono">

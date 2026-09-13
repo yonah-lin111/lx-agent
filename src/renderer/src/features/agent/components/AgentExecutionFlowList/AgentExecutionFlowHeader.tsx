@@ -236,7 +236,7 @@ export const AgentExecutionFlowHeader = ({
         hoverTextClass={tabColor.hoverText}
         highlightBgClass={tabColor.highlightBg}
         highlightTextClass={tabColor.highlightText}
-        className={`shrink-0 px-2 py-0.5 font-mono text-[11px] ${
+        className={`shrink-0 px-2 py-0.5 font-mono text-xs ${
           isActive ? (tabColor.highlightExtra ?? "") : ""
         }`}
         icon={
@@ -322,7 +322,7 @@ export const AgentExecutionFlowHeader = ({
             multiline
             placement="bottom"
             content={
-              <div className="flex flex-col gap-1 whitespace-nowrap font-mono text-[11px]">
+              <div className="flex flex-col gap-1 whitespace-nowrap font-mono text-xs">
                 <div className="font-bold text-[var(--color-theme-text,#ffffff)]">
                   {t("agent.turnCount", { count: stats.turnsCount })} · {stats.totalSteps}
                 </div>

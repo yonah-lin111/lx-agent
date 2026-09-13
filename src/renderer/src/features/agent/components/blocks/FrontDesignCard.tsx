@@ -128,7 +128,7 @@ export const FrontDesignCard = ({
 
       {/* 单独一行的 title 与统计 Chip */}
       <div className="front-design-title-row mt-2.5 flex items-center gap-2 flex-wrap">
-        <span className="front-design-title truncate text-[13px] font-semibold text-white/95">
+        <span className="front-design-title truncate text-sm font-semibold text-white/95">
           {title}
         </span>
 
@@ -153,7 +153,7 @@ export const FrontDesignCard = ({
 
         {/* 基准血缘标示 */}
         {design.parentId && (
-          <span className="text-[11px] text-pink-300/60 truncate max-w-[200px]">
+          <span className="text-xs text-pink-300/60 truncate max-w-[200px]">
             {t("frontDesign.basedOnPrefix")} {design.parentId}
           </span>
         )}
@@ -171,14 +171,14 @@ export const FrontDesignCard = ({
       </div>
 
       {/* 概要说明区：对齐 ReviewFindingsCard 的 summary 布局 */}
-      <div className="front-design-summary mt-2.5 rounded-[6px] bg-black/20 px-3 py-2 text-[12.5px] leading-relaxed text-white/80">
-        <span className="text-[12px] text-white/75">{t("frontDesign.summaryDesc")}</span>
+      <div className="front-design-summary mt-2.5 rounded-[6px] bg-black/20 px-3 py-2 text-sm leading-relaxed text-white/80">
+        <span className="text-xs text-white/75">{t("frontDesign.summaryDesc")}</span>
       </div>
 
       {/* 代码预览容器：默认显示 20 行，流式输出完毕后再显示，支持点击更多展开 */}
       {!isGenerating && design.html.trim() && (
         <div className="front-design-code-wrapper mt-2.5">
-          <div className="front-design-code-container rounded-[6px] border border-pink-500/15 bg-black/25 p-1 text-[12px] leading-relaxed">
+          <div className="front-design-code-container rounded-[6px] border border-pink-500/15 bg-black/25 p-1 text-xs leading-relaxed">
             <LxCodeBlock
               code={displayedHtml}
               language="html"
@@ -195,7 +195,7 @@ export const FrontDesignCard = ({
                 aria-expanded={isCodeExpanded}
                 onClick={() => setIsCodeExpanded((prev) => !prev)}
                 textClass="text-pink-400/90"
-                className="front-design-expand-toggle text-[11px] font-medium"
+                className="front-design-expand-toggle text-xs font-medium"
               >
                 <span className="italic underline underline-offset-2">
                   {isCodeExpanded
@@ -215,7 +215,7 @@ export const FrontDesignCard = ({
             <LxIconButton
               onClick={handleOpenDirectory}
               textClass="text-white/80"
-              className="front-design-dir-btn border border-white/10 px-2.5 py-1 text-[11.5px] max-w-full"
+              className="front-design-dir-btn border border-white/10 px-2.5 py-1 text-xs max-w-full"
               icon={<FolderOpen className="h-3 w-3 shrink-0" />}
             >
               <span className="break-words">{t("frontDesign.openDesignDir")}</span>
@@ -227,7 +227,7 @@ export const FrontDesignCard = ({
             onClick={handleIterate}
             textClass="text-pink-300"
             hoverBgClass="hover:bg-pink-500/20"
-            className="front-design-iterate-btn border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-[11.5px] font-medium max-w-full"
+            className="front-design-iterate-btn border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-xs font-medium max-w-full"
             icon={<GitBranch className="h-3 w-3 shrink-0" />}
           >
             <span className="break-words">{t("frontDesign.iterateAction")}</span>
@@ -237,7 +237,7 @@ export const FrontDesignCard = ({
             onClick={handleOpenDesign}
             textClass="text-white"
             hoverBgClass="hover:bg-pink-500"
-            className="front-design-open-btn bg-pink-600 px-3 py-1 text-[12px] font-medium max-w-full"
+            className="front-design-open-btn bg-pink-600 px-3 py-1 text-xs font-medium max-w-full"
             icon={<ExternalLink className="h-3 w-3 shrink-0" />}
           >
             <span className="break-words">{t("frontDesign.openDesignPage")}</span>

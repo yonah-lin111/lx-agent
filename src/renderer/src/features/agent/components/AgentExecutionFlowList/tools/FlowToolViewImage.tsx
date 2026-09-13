@@ -25,7 +25,7 @@ export const FlowToolViewImage = ({
     details.detail === "original" ? "agent.viewImageDetailOriginal" : "agent.viewImageDetailHigh"
 
   return (
-    <div className="agent-execution-flow-tool-view-image flex flex-col gap-2 font-mono text-[11px]">
+    <div className="agent-execution-flow-tool-view-image flex flex-col gap-2 font-mono text-xs">
       {/* 元信息行 */}
       <div className="flex flex-wrap items-center gap-2 leading-none">
         <span className="flex shrink-0 items-center gap-1 text-amber-300">
@@ -50,7 +50,7 @@ export const FlowToolViewImage = ({
           </LxTag>
         )}
         {content.toolCallId && (
-          <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+          <span className="text-xs text-white/30">ID: {content.toolCallId}</span>
         )}
       </div>
 
@@ -76,9 +76,7 @@ export const FlowToolViewImage = ({
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
-            {content.isError && (
-              <span className="text-[10px] font-medium text-rose-400">ERROR</span>
-            )}
+            {content.isError && <span className="text-xs font-medium text-rose-400">ERROR</span>}
           </div>
           <div
             className={`rounded p-2 ${

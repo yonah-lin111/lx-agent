@@ -461,7 +461,7 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                   <button
                     type="button"
                     onClick={loadMoreHistory}
-                    className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                    className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
                   >
                     <ChevronUp className="h-3 w-3" />
                     <span>加载更早消息 ({windowStartIndex} 条未展开)</span>

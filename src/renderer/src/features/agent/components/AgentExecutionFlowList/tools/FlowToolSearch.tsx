@@ -29,7 +29,7 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
   }, [])
 
   return (
-    <div className="agent-execution-flow-tool-search flex flex-col gap-2 font-mono text-[11px]">
+    <div className="agent-execution-flow-tool-search flex flex-col gap-2 font-mono text-xs">
       {/* 搜索查询条件 */}
       <div className="flex flex-col gap-1.5 rounded border border-white/5 bg-black/40 p-2">
         <div className="flex items-center gap-1.5 text-sky-300">
@@ -38,7 +38,7 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
           <span className="text-white/85 select-all">"{pattern || "(all)"}"</span>
         </div>
         {(path || include) && (
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/45">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-white/45">
             {path && <span>Scope: {path}</span>}
             {include && <span>Include: {include}</span>}
           </div>
@@ -62,9 +62,7 @@ export const FlowToolSearch = ({ content }: FlowToolSearchProps): React.JSX.Elem
       {/* 结构化 LSP 结果条目 */}
       {content.lsp && content.lsp.results && content.lsp.results.length > 0 && (
         <div className="flex flex-col gap-1">
-          <div className="text-[10px] text-white/40">
-            LSP References ({content.lsp.results.length})
-          </div>
+          <div className="text-xs text-white/40">LSP References ({content.lsp.results.length})</div>
           <div className="custom-scrollbar max-h-48 overflow-y-auto rounded bg-black/50 p-1.5 flex flex-col gap-1">
             {content.lsp.results.map((loc, idx) => (
               <div

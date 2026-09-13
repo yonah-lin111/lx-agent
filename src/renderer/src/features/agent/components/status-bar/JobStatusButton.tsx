@@ -30,7 +30,7 @@ export const JobStatusButton = ({
 
   const tooltipContent = (
     <div className="flex min-w-[160px] max-w-[260px] flex-col gap-1.5">
-      <span className="text-[11px] font-semibold text-white/50">
+      <span className="text-xs font-semibold text-white/50">
         {runningCount > 0
           ? t("agent.backgroundJobsCount", { running: runningCount, total: jobs.length })
           : t("agent.backgroundJobsTotal", { count: jobs.length })}
@@ -39,7 +39,7 @@ export const JobStatusButton = ({
         <div key={job.id} className="flex items-center justify-between gap-2 text-xs">
           <span className="truncate text-white/80 font-mono">{job.id}</span>
           <span
-            className={`shrink-0 rounded px-1 text-[10px] ${
+            className={`shrink-0 rounded px-1 text-xs ${
               job.status === "running"
                 ? "bg-sky-500/20 text-sky-300"
                 : job.status === "completed"
@@ -54,7 +54,7 @@ export const JobStatusButton = ({
         </div>
       ))}
       {jobs.length > 5 && (
-        <span className="text-[10px] text-white/40">
+        <span className="text-xs text-white/40">
           {t("agent.moreJobsClickToView", { count: jobs.length })}
         </span>
       )}

@@ -106,7 +106,7 @@ export const FlowItemSystemContent = ({
   )
 
   return (
-    <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-[11px]">
+    <div className="agent-execution-flow-system-content flex flex-col gap-3 font-mono text-xs">
       {/* 分段概览 */}
       {visibleSections.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -123,7 +123,7 @@ export const FlowItemSystemContent = ({
                 <summary className="cursor-pointer font-semibold text-white/80 select-none">
                   {sec.name}
                 </summary>
-                <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-white/70">
+                <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
                   {sec.text}
                 </div>
               </details>
@@ -148,7 +148,7 @@ export const FlowItemSystemContent = ({
                 <summary className="cursor-pointer font-semibold text-white/80 select-none">
                   {ctx.name}
                 </summary>
-                <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-white/70">
+                <div className="custom-scrollbar mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded bg-black/40 p-2 font-mono text-xs leading-relaxed text-white/70">
                   {ctx.text}
                 </div>
               </details>
@@ -172,7 +172,7 @@ export const FlowItemSystemContent = ({
                 const serverGroups = groupMcpToolsByServer(tools)
                 return (
                   <div key={category} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] text-white/50">
+                    <div className="flex items-center gap-1.5 text-xs text-white/50">
                       <span className={`h-1.5 w-1.5 rounded-full ${catConfig.dotColor}`} />
                       <span className="font-mono">{catConfig.label}</span>
                       <span className="text-white/30">({tools.length})</span>
@@ -180,14 +180,14 @@ export const FlowItemSystemContent = ({
                     <div className="flex flex-col gap-1.5 pl-3">
                       {serverGroups.map(({ serverName, tools: serverTools }) => (
                         <div key={serverName} className="flex flex-col gap-1">
-                          <div className="text-[10px] text-cyan-300/70 font-mono">
+                          <div className="text-xs text-cyan-300/70 font-mono">
                             {serverName} ({serverTools.length})
                           </div>
                           <div className="flex flex-wrap gap-1 pl-2">
                             {serverTools.map((tool) => (
                               <span
                                 key={tool}
-                                className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 font-mono"
+                                className="rounded bg-white/5 px-1.5 py-0.5 text-xs text-white/70 font-mono"
                               >
                                 {tool}
                               </span>
@@ -202,7 +202,7 @@ export const FlowItemSystemContent = ({
 
               return (
                 <div key={category} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-white/50">
+                  <div className="flex items-center gap-1.5 text-xs text-white/50">
                     <span className={`h-1.5 w-1.5 rounded-full ${catConfig.dotColor}`} />
                     <span className="font-mono">{catConfig.label}</span>
                     <span className="text-white/30">({tools.length})</span>
@@ -211,7 +211,7 @@ export const FlowItemSystemContent = ({
                     {tools.map((tool) => (
                       <span
                         key={tool}
-                        className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/70 font-mono"
+                        className="rounded bg-white/5 px-1.5 py-0.5 text-xs text-white/70 font-mono"
                       >
                         {tool}
                       </span>

@@ -14,7 +14,7 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
   const { t } = useTranslation()
 
   return (
-    <div className="agent-execution-flow-tool-generic flex flex-col gap-2 font-mono text-[11px]">
+    <div className="agent-execution-flow-tool-generic flex flex-col gap-2 font-mono text-xs">
       {/* 参数 */}
       <div>
         <div className="mb-1 flex items-center justify-between text-white/45">
@@ -28,7 +28,7 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
               </LxTag>
             )}
             {content.toolCallId && (
-              <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+              <span className="text-xs text-white/30">ID: {content.toolCallId}</span>
             )}
           </div>
         </div>
@@ -44,9 +44,7 @@ export const FlowToolGeneric = ({ content }: FlowToolGenericProps): React.JSX.El
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
-            {content.isError && (
-              <span className="text-[10px] text-rose-400 font-medium">ERROR</span>
-            )}
+            {content.isError && <span className="text-xs text-rose-400 font-medium">ERROR</span>}
           </div>
           <div
             className={`rounded p-2 ${

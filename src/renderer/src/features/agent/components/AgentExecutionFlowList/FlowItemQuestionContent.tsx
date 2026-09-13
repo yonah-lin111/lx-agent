@@ -32,11 +32,11 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
   if (!hasArgs && content.result === undefined) return null
 
   return (
-    <div className="border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] pt-1 font-mono text-[11px]">
+    <div className="border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] pt-1 font-mono text-xs">
       <button
         type="button"
         onClick={() => setShowDebug((prev) => !prev)}
-        className="flex items-center gap-1 text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-[var(--color-theme-text,rgba(255,255,255,0.8))] transition-colors"
+        className="flex items-center gap-1 text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] hover:text-[var(--color-theme-text,rgba(255,255,255,0.8))] transition-colors"
       >
         {showDebug ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         <span>{t("agent.todoRawDebug")}</span>
@@ -52,7 +52,7 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
                   <Terminal className="h-3 w-3" /> {t("agent.toolArgs")}
                 </span>
                 {content.toolCallId && (
-                  <span className="text-[10px] text-white/30">ID: {content.toolCallId}</span>
+                  <span className="text-xs text-white/30">ID: {content.toolCallId}</span>
                 )}
               </div>
               <div className="rounded bg-black/40 p-2 text-sky-200/90">
@@ -69,7 +69,7 @@ const QuestionToolMeta = ({ content }: FlowItemQuestionContentProps): React.JSX.
                   <FileText className="h-3 w-3" /> {t("agent.toolResult")}
                 </span>
                 {content.isError && (
-                  <span className="text-[10px] font-medium text-rose-400">ERROR</span>
+                  <span className="text-xs font-medium text-rose-400">ERROR</span>
                 )}
               </div>
               <div
@@ -131,7 +131,7 @@ export const FlowItemQuestionContent = ({
             answersByQuestion.get(question.question) ?? content.answers?.[index]?.answer ?? []
           return (
             <div key={index} className="min-w-0">
-              <div className="agent-question-answered-title min-w-0 break-words text-[12px] leading-relaxed text-white/75">
+              <div className="agent-question-answered-title min-w-0 break-words text-xs leading-relaxed text-white/75">
                 {question.question}
               </div>
               {answers.length > 0 && (
@@ -139,7 +139,7 @@ export const FlowItemQuestionContent = ({
                   {answers.map((answer) => (
                     <div
                       key={answer}
-                      className="agent-question-answered-value min-w-0 break-words font-mono text-[12px] leading-relaxed text-white/70"
+                      className="agent-question-answered-value min-w-0 break-words font-mono text-xs leading-relaxed text-white/70"
                     >
                       → {answer}
                     </div>
@@ -246,11 +246,11 @@ export const FlowItemQuestionContent = ({
         return (
           <div key={questionIndex} className="min-w-0">
             {questions.length > 1 && (
-              <div className="mb-0.5 shrink-0 font-mono text-[10px] leading-none text-white/40">
+              <div className="mb-0.5 shrink-0 font-mono text-xs leading-none text-white/40">
                 {question.header || `#${questionIndex + 1}`}
               </div>
             )}
-            <div className="min-w-0 break-words text-[12px] leading-relaxed text-white/85">
+            <div className="min-w-0 break-words text-xs leading-relaxed text-white/85">
               {question.question}
             </div>
 
@@ -263,7 +263,7 @@ export const FlowItemQuestionContent = ({
                       return (
                         <label
                           key={option.label}
-                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-[12px] text-white/75 transition-colors hover:bg-white/[0.04]"
+                          className="agent-question-option flex cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-xs text-white/75 transition-colors hover:bg-white/[0.04]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <LxCheckbox
@@ -298,7 +298,7 @@ export const FlowItemQuestionContent = ({
                   value={currentCustomText}
                   onChange={(event) => setCustomText(questionIndex, event.target.value)}
                   placeholder={t("agent.questionCustomOther")}
-                  className="agent-question-input mt-1 h-6 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-[11px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                  className="agent-question-input mt-1 h-6 w-full rounded-[4px] border border-white/10 bg-white/5 px-2 text-xs text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
                   onClick={(e) => e.stopPropagation()}
                 />
               </>
@@ -308,7 +308,7 @@ export const FlowItemQuestionContent = ({
                 onChange={(event) => setCustomText(questionIndex, event.target.value)}
                 rows={2}
                 placeholder={t("agent.questionAnswerPlaceholder")}
-                className="agent-question-input mt-1 min-h-[36px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-[11px] leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
+                className="agent-question-input mt-1 min-h-[36px] w-full resize-none rounded-[4px] border border-white/10 bg-white/5 px-2 py-1 text-xs leading-[18px] text-white/90 placeholder-white/35 focus:border-white/20 focus:outline-none"
                 onClick={(e) => e.stopPropagation()}
               />
             )}
@@ -322,7 +322,7 @@ export const FlowItemQuestionContent = ({
           type="button"
           disabled={!isComplete}
           onClick={handleSubmit}
-          className="agent-question-submit-btn flex h-6 items-center gap-1 rounded-[4px] bg-white px-2 text-[11px] font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
+          className="agent-question-submit-btn flex h-6 items-center gap-1 rounded-[4px] bg-white px-2 text-xs font-medium text-black transition-colors hover:bg-white/90 disabled:!bg-white/15 disabled:!text-white/30"
         >
           {t("agent.questionSubmit")}
         </button>

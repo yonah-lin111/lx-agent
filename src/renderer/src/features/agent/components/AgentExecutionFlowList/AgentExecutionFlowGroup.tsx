@@ -227,20 +227,20 @@ export const AgentExecutionFlowGroup = ({
                 isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
               }`}
             />
-            <span className="shrink-0 font-mono text-[12px] font-semibold text-[var(--color-theme-text,#ffffff)]/90">
+            <span className="shrink-0 font-mono text-xs font-semibold text-[var(--color-theme-text,#ffffff)]/90">
               Execute Group
             </span>
-            <span className="shrink-0 font-mono text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+            <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
               ({steps.length})
             </span>
           </div>
 
           {/* 右侧总运行时间与状态指标 */}
-          <div className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] leading-none">
+          <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
             {totalDurationMs > 0 && (
               <span
                 data-testid="flow-group-duration"
-                className={`agent-execution-flow-step-duration shrink-0 font-mono text-[11px] font-medium leading-none ${
+                className={`agent-execution-flow-step-duration shrink-0 font-mono text-xs font-medium leading-none ${
                   isRunning
                     ? "text-sky-300"
                     : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
@@ -305,14 +305,14 @@ export const AgentExecutionFlowGroup = ({
 
         {/* 第二行：展示代表步骤标题（运行中为正在运行项，完成态为最后项） */}
         {activeStep && (
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-[11px] leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-xs leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
             <CornerDownRight
               className={`h-3 w-3 shrink-0 ${isRunning ? "text-sky-400/80" : "text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"}`}
             />
             {activeStep.kind === "tool" && activeStep.toolContent ? (
               <FlowItemToolTitle toolContent={activeStep.toolContent} />
             ) : (
-              <span className="truncate font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+              <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
                 {activeStep.title}
               </span>
             )}
@@ -343,14 +343,14 @@ export const AgentExecutionFlowGroup = ({
           <LxTooltip
             placement="top"
             content={
-              <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+              <div className="flex flex-col gap-0.5 font-mono text-xs">
                 <span>Input: {inputTokens.toLocaleString()}</span>
                 <span>Output: {outputTokens.toLocaleString()}</span>
                 {cacheReadTokens > 0 && <span>Cache read: {cacheReadTokens.toLocaleString()}</span>}
               </div>
             }
           >
-            <span className="flex items-center gap-1 font-mono text-[10px] leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))] select-text tabular-nums whitespace-nowrap cursor-default hover:text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] transition-colors">
+            <span className="flex items-center gap-1 font-mono text-xs leading-none text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))] select-text tabular-nums whitespace-nowrap cursor-default hover:text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] transition-colors">
               <span>IN {formatTokensShort(inputTokens)}</span>
               <span aria-hidden="true" className="opacity-40">
                 ·

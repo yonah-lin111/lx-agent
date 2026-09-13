@@ -75,7 +75,7 @@ interface AgentInputCommandPanelProps {
 }
 
 export const panelClassName =
-  "scrollbar-hidden pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
+  "scrollbar-hidden pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
 
 /**
  * 面板淡入/淡出动画：关闭后保留最后数据渲染 120ms 播放退场动画，
@@ -353,7 +353,7 @@ export const AgentInputProjectPanel = ({
                 current
               </LxTag>
             )}
-            <span className="ml-auto shrink-0 max-w-[50%] truncate text-[11px] text-white/35">
+            <span className="ml-auto shrink-0 max-w-[50%] truncate text-xs text-white/35">
               {project.path}
             </span>
           </div>
@@ -433,7 +433,7 @@ export const AgentInputSessionPanel = ({
               </LxTag>
             )}
             {timeDisplay && (
-              <span className="ml-auto shrink-0 text-[11px] text-white/35">{timeDisplay}</span>
+              <span className="ml-auto shrink-0 text-xs text-white/35">{timeDisplay}</span>
             )}
           </div>
         )
@@ -510,7 +510,7 @@ export const AgentUndoConfirmPanel = ({
       role="listbox"
       style={displayPosition}
     >
-      <div className="px-2.5 py-1.5 text-[11px] font-medium text-white/50 border-b border-white/10 mb-1">
+      <div className="px-2.5 py-1.5 text-xs font-medium text-white/50 border-b border-white/10 mb-1">
         {t("agent.undoConfirmTitle")}
       </div>
       {options.map((opt, index) => {
@@ -536,7 +536,7 @@ export const AgentUndoConfirmPanel = ({
             }}
           >
             <span
-              className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-[11px] font-semibold ${
+              className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-xs font-semibold ${
                 opt.danger ? "bg-red-500/30 text-red-200" : "bg-white/10 text-white/70"
               }`}
             >
@@ -544,14 +544,14 @@ export const AgentUndoConfirmPanel = ({
             </span>
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span
-                className={`flex shrink-0 items-center text-[13px] font-medium leading-none ${
+                className={`flex shrink-0 items-center text-sm font-medium leading-none ${
                   opt.danger ? "text-red-300" : "text-white"
                 }`}
               >
                 {opt.label}
               </span>
               {opt.desc && (
-                <span className="min-w-0 flex-1 truncate text-[11px] leading-none text-white/40">
+                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/40">
                   {opt.desc}
                 </span>
               )}
@@ -620,19 +620,17 @@ export const AgentInputCommandPanel = ({
               onSelect?.(command)
             }}
           >
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-[13px] text-white/70">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-sm text-white/70">
               {command.kind === "skill" ? "@" : "/"}
             </span>
             <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+              <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                 <span className="font-medium">{command.name}</span>
                 {command.argumentHint && (
-                  <span className="text-[12px] font-normal text-white/35">
-                    {command.argumentHint}
-                  </span>
+                  <span className="text-xs font-normal text-white/35">{command.argumentHint}</span>
                 )}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+              <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
                 {command.description}
               </span>
             </span>
@@ -767,20 +765,18 @@ export const AgentInputFilePanel = ({
                 onSelect?.(item)
               }}
             >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[12px] font-bold text-[#c084fc]">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-xs font-bold text-[#c084fc]">
                 $
               </span>
               <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                   <span className="font-mono font-medium">${skill.name}</span>
                   {skill.displayName && (
-                    <span className="text-[12px] font-normal text-white/35">
-                      ({skill.displayName})
-                    </span>
+                    <span className="text-xs font-normal text-white/35">({skill.displayName})</span>
                   )}
                 </span>
                 {description && (
-                  <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                  <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
                     {description}
                   </span>
                 )}
@@ -819,19 +815,19 @@ export const AgentInputFilePanel = ({
                 onSelect?.(item)
               }}
             >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 font-mono text-[12px] font-bold text-pink-400">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 font-mono text-xs font-bold text-pink-400">
                 <Palette className="h-3.5 w-3.5" />
               </span>
               <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                   <span className="font-medium text-white truncate max-w-[220px]">{title}</span>
                   {versionLabel && (
-                    <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-[9px] font-medium text-pink-300">
+                    <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-xs font-medium text-pink-300">
                       {versionLabel}
                     </span>
                   )}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[11px] leading-none text-white/45">
+                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
                   {lines} {t("frontDesign.lines")} · {modeLabel}
                 </span>
               </span>
@@ -864,15 +860,15 @@ export const AgentInputFilePanel = ({
                 onSelect?.(item)
               }}
             >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-[12px] font-bold text-sky-300">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-xs font-bold text-sky-300">
                 @
               </span>
               <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                   <span className="font-mono font-medium">@agent:{subagent.name}</span>
                 </span>
                 {subagent.description && (
-                  <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                  <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
                     {subagent.description}
                   </span>
                 )}
@@ -912,14 +908,14 @@ export const AgentInputFilePanel = ({
                 onSelect?.(item)
               }}
             >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-[12px] font-bold text-sky-400">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-xs font-bold text-sky-400">
                 <Bot className="h-3.5 w-3.5" />
               </span>
               <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                   <span className="font-medium text-white truncate max-w-[220px]">{claw.name}</span>
                 </span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-none text-white/45">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
                   {claw.instanceId}/{claw.agentId}
                 </span>
               </span>
@@ -986,7 +982,7 @@ export const AgentInputFilePanel = ({
                 )}
               </span>
               {directory && (
-                <span className="block truncate text-[12px] text-white/40">{directory}</span>
+                <span className="block truncate text-xs text-white/40">{directory}</span>
               )}
             </span>
           </div>
@@ -1061,20 +1057,18 @@ export const AgentSkillMentionPanel = ({
               onSelect?.(skill)
             }}
           >
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-[13px] font-bold text-[#c084fc]">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-sm font-bold text-[#c084fc]">
               $
             </span>
             <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex shrink-0 items-center gap-1.5 text-[13px] leading-none text-white">
+              <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
                 <span className="font-mono font-medium">${skill.name}</span>
                 {skill.displayName && (
-                  <span className="text-[12px] font-normal text-white/35">
-                    ({skill.displayName})
-                  </span>
+                  <span className="text-xs font-normal text-white/35">({skill.displayName})</span>
                 )}
               </span>
               {description && (
-                <span className="min-w-0 flex-1 truncate text-[12px] leading-none text-white/45">
+                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
                   {description}
                 </span>
               )}

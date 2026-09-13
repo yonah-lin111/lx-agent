@@ -84,7 +84,7 @@ const FileItem = ({ file }: { file: AgentMessageFile }) => {
       content={
         <div className="flex flex-col gap-0.5 text-xs text-left w-fit max-w-[min(360px,80vw)]">
           <span className="font-semibold text-white/95 break-words">{file.name}</span>
-          {file.path && <span className="text-[10px] text-white/40 break-all">{file.path}</span>}
+          {file.path && <span className="text-xs text-white/40 break-all">{file.path}</span>}
         </div>
       }
       placement="top"
@@ -96,7 +96,7 @@ const FileItem = ({ file }: { file: AgentMessageFile }) => {
         </div>
         <div className="min-w-0 flex-1 text-left flex flex-col justify-center">
           <div className="truncate text-xs font-medium text-white/80">{file.name}</div>
-          <div className="truncate text-[10px] text-white/30 mt-0.5">
+          <div className="truncate text-xs text-white/30 mt-0.5">
             {extension} · {sizeStr}
           </div>
         </div>
