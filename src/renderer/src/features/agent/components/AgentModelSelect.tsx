@@ -287,11 +287,11 @@ export const AgentModelSelect = ({
             type="button"
             role="option"
             aria-selected={isSelected}
-            className={`group flex w-full items-center justify-between rounded-[4px] px-2.5 py-1.5 text-left text-xs transition-colors ${
+            className={`group flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-xs transition-colors ${
               isSelected
                 ? "bg-white/10 text-white font-medium shadow-xs"
                 : "text-white/70 hover:bg-white/5 hover:text-white"
-            } ${isGrouped ? "pl-4" : ""}`}
+            } ${isGrouped ? "pl-5" : ""}`}
             onMouseDown={(event) => {
               event.preventDefault()
               const chosenVar = isSelected ? (variant ?? defaultVar) : defaultVar
@@ -300,8 +300,8 @@ export const AgentModelSelect = ({
           >
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
             <div className="ml-2 flex shrink-0 items-center gap-1">
-              {isSelected ? <Check className="h-3 w-3 text-white" /> : null}
-              <ChevronRight className="h-3 w-3 text-white/35 transition-colors group-hover:text-white/70" />
+              {isSelected ? <Check className="h-3.5 w-3.5 text-white" /> : null}
+              <ChevronRight className="h-3.5 w-3.5 text-white/35 transition-colors group-hover:text-white/70" />
             </div>
           </button>
         </LxTooltip>
@@ -314,18 +314,18 @@ export const AgentModelSelect = ({
         type="button"
         role="option"
         aria-selected={isSelected}
-        className={`flex w-full items-center justify-between rounded-[4px] px-2.5 py-1.5 text-left text-xs transition-colors ${
+        className={`flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-xs transition-colors ${
           isSelected
             ? "bg-white/10 text-white font-medium shadow-xs"
             : "text-white/70 hover:bg-white/5 hover:text-white"
-        } ${isGrouped ? "pl-4" : ""}`}
+        } ${isGrouped ? "pl-5" : ""}`}
         onMouseDown={(event) => {
           event.preventDefault()
           handleSelect(item.value, undefined)
         }}
       >
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
-        {isSelected ? <Check className="ml-2 h-3 w-3 shrink-0" /> : null}
+        {isSelected ? <Check className="ml-2 h-3.5 w-3.5 shrink-0" /> : null}
       </button>
     )
   }
@@ -367,7 +367,7 @@ export const AgentModelSelect = ({
               {options.map((item) =>
                 isGroup(item) ? (
                   <div key={item.label} className="flex flex-col gap-0.5">
-                    <div className="px-2.5 py-1 text-[11px] font-medium text-white/35">
+                    <div className="flex h-7 items-center px-2.5 text-xs font-medium text-white/35">
                       {item.label}
                     </div>
                     {item.options.map((option) => renderOption(option, true))}

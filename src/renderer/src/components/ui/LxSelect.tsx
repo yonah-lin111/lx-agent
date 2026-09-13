@@ -40,12 +40,15 @@ export interface LxSelectProps<T> {
   placeholder?: string
 }
 
-// 统一高度阶梯：触发按钮、展开列表项与分组标题共用，保证列表行高与触发按钮逐档同步。
+// 统一高度阶梯：触发按钮按 size 逐档；展开列表项与分组标题固定使用默认档（medium），不随触发器缩放。
 const SIZE_ROW_CLASSES: Record<LxSelectSize, string> = {
   small: "h-6 px-2 text-xs",
   medium: "h-7 px-2.5 text-xs",
   large: "h-8 px-3 text-sm",
 }
+
+// 展开列表固定使用默认尺寸档。
+const LIST_SIZE: LxSelectSize = "medium"
 
 const SIZE_CHEVRON_CLASSES: Record<LxSelectSize, string> = {
   small: "h-3 w-3",
@@ -205,14 +208,14 @@ export const LxSelect = <T extends string>({
         aria-selected={isSelected}
         data-unimported={isUnimported ? "true" : undefined}
         className={`flex w-full items-center justify-between rounded-[6px] text-left transition-colors ${
-          SIZE_ROW_CLASSES[size]
+          SIZE_ROW_CLASSES[LIST_SIZE]
         } ${isSelected ? "bg-white/10 font-medium shadow-xs" : "hover:bg-white/5"} ${
           isUnimported
             ? "text-white/40 font-normal opacity-75"
             : isSelected
               ? "text-white"
               : "text-white/70 hover:text-white"
-        } ${isGrouped ? SIZE_GROUPED_INDENT_CLASSES[size] : ""} ${option.className ?? ""}`}
+        } ${isGrouped ? SIZE_GROUPED_INDENT_CLASSES[LIST_SIZE] : ""} ${option.className ?? ""}`}
         onMouseDown={(event) => {
           event.preventDefault()
           setIsOpen(false)
@@ -224,7 +227,9 @@ export const LxSelect = <T extends string>({
         >
           {option.label}
         </span>
-        {isSelected ? <Check className={`ml-2 shrink-0 ${SIZE_CHEVRON_CLASSES[size]}`} /> : null}
+        {isSelected ? (
+          <Check className={`ml-2 shrink-0 ${SIZE_CHEVRON_CLASSES[LIST_SIZE]}`} />
+        ) : null}
       </button>
     )
   }
@@ -271,7 +276,7 @@ export const LxSelect = <T extends string>({
             {options.map((item) =>
               isGroup(item) ? (
                 <div key={item.label} className="flex flex-col gap-0.5">
-                  <div className={`flex items-center ${SIZE_ROW_CLASSES[size]} text-white/35`}>
+                  <div className={`flex items-center ${SIZE_ROW_CLASSES[LIST_SIZE]} text-white/35`}>
                     {item.label}
                   </div>
                   {item.options.map((option) => renderOption(option, true))}
