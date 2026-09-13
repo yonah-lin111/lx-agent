@@ -23,11 +23,15 @@ export type LxTagColor =
 
 // Tag 组件属性。
 export interface LxTagProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, "prefix"> {
-  children: React.ReactNode
+  children?: React.ReactNode
   size?: LxTagSize
+  // 外观变体：solid = 带边框与底色（默认）；ghost = 无边框无底色，仅有文字/图标。
+  variant?: "solid" | "ghost"
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   highlighted?: boolean
+  // 是否应用 hover 样式；缺省时仅在可交互（onClick/onClose）时应用。
+  showHover?: boolean
   onClick?: (event: React.MouseEvent<HTMLSpanElement>) => void
   onClose?: () => void
   confirmClose?: boolean
@@ -36,69 +40,144 @@ export interface LxTagProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 
   bgClass?: string
   highlightBgClass?: string
   hoverClass?: string
+  // 覆盖默认文字色；使用 bgClass 时若已含 text-* 请勿再传，避免同类冲突。
+  textClass?: string
   className?: string
 }
 
-const colorStyles: Record<LxTagColor, { bg: string; highlightBg: string; hover: string }> = {
+// 颜色档位：边框、底色、文字色各自独立，供 solid/ghost 与 textClass 精确组合。
+const colorStyles: Record<
+  LxTagColor,
+  {
+    border: string
+    bg: string
+    text: string
+    activeBorder: string
+    activeBg: string
+    activeText: string
+    hoverBorder: string
+    hoverText: string
+  }
+> = {
   default: {
-    bg: "border-white/5 bg-white/[0.03] text-white/45",
-    highlightBg: "border-white/15 bg-white/10 text-white/90",
-    hover: "hover:border-white/20 hover:text-white/80",
+    border: "border-white/5",
+    bg: "bg-white/[0.03]",
+    text: "text-white/45",
+    activeBorder: "border-white/15",
+    activeBg: "bg-white/10",
+    activeText: "text-white/90",
+    hoverBorder: "hover:border-white/20",
+    hoverText: "hover:text-white/80",
   },
   pink: {
-    bg: "border-pink-500/10 bg-pink-500/[0.03] text-pink-400/80",
-    highlightBg: "border-pink-500/20 bg-pink-500/10 text-pink-400",
-    hover: "hover:border-pink-500/30 hover:text-pink-300",
+    border: "border-pink-500/10",
+    bg: "bg-pink-500/[0.03]",
+    text: "text-pink-400/80",
+    activeBorder: "border-pink-500/20",
+    activeBg: "bg-pink-500/10",
+    activeText: "text-pink-400",
+    hoverBorder: "hover:border-pink-500/30",
+    hoverText: "hover:text-pink-300",
   },
   amber: {
-    bg: "border-amber-500/10 bg-amber-500/[0.03] text-amber-400/80",
-    highlightBg: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-    hover: "hover:border-amber-500/30 hover:text-amber-300",
+    border: "border-amber-500/10",
+    bg: "bg-amber-500/[0.03]",
+    text: "text-amber-400/80",
+    activeBorder: "border-amber-500/20",
+    activeBg: "bg-amber-500/10",
+    activeText: "text-amber-400",
+    hoverBorder: "hover:border-amber-500/30",
+    hoverText: "hover:text-amber-300",
   },
   blue: {
-    bg: "border-blue-500/10 bg-blue-500/[0.03] text-blue-400/80",
-    highlightBg: "border-blue-500/20 bg-blue-500/10 text-blue-400",
-    hover: "hover:border-blue-500/30 hover:text-blue-300",
+    border: "border-blue-500/10",
+    bg: "bg-blue-500/[0.03]",
+    text: "text-blue-400/80",
+    activeBorder: "border-blue-500/20",
+    activeBg: "bg-blue-500/10",
+    activeText: "text-blue-400",
+    hoverBorder: "hover:border-blue-500/30",
+    hoverText: "hover:text-blue-300",
   },
   teal: {
-    bg: "border-teal-500/10 bg-teal-500/[0.03] text-teal-400/80",
-    highlightBg: "border-teal-500/20 bg-teal-500/10 text-teal-400",
-    hover: "hover:border-teal-500/30 hover:text-teal-300",
+    border: "border-teal-500/10",
+    bg: "bg-teal-500/[0.03]",
+    text: "text-teal-400/80",
+    activeBorder: "border-teal-500/20",
+    activeBg: "bg-teal-500/10",
+    activeText: "text-teal-400",
+    hoverBorder: "hover:border-teal-500/30",
+    hoverText: "hover:text-teal-300",
   },
   emerald: {
-    bg: "border-emerald-500/10 bg-emerald-500/[0.03] text-emerald-400/80",
-    highlightBg: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-    hover: "hover:border-emerald-500/30 hover:text-emerald-300",
+    border: "border-emerald-500/10",
+    bg: "bg-emerald-500/[0.03]",
+    text: "text-emerald-400/80",
+    activeBorder: "border-emerald-500/20",
+    activeBg: "bg-emerald-500/10",
+    activeText: "text-emerald-400",
+    hoverBorder: "hover:border-emerald-500/30",
+    hoverText: "hover:text-emerald-300",
   },
   rose: {
-    bg: "border-rose-500/10 bg-rose-500/[0.03] text-rose-400/80",
-    highlightBg: "border-rose-500/20 bg-rose-500/10 text-rose-400",
-    hover: "hover:border-rose-500/30 hover:text-rose-300",
+    border: "border-rose-500/10",
+    bg: "bg-rose-500/[0.03]",
+    text: "text-rose-400/80",
+    activeBorder: "border-rose-500/20",
+    activeBg: "bg-rose-500/10",
+    activeText: "text-rose-400",
+    hoverBorder: "hover:border-rose-500/30",
+    hoverText: "hover:text-rose-300",
   },
   gray: {
-    bg: "border-neutral-500/10 bg-neutral-500/[0.03] text-neutral-400/80",
-    highlightBg: "border-neutral-500/20 bg-neutral-500/10 text-neutral-400",
-    hover: "hover:border-neutral-500/30 hover:text-neutral-300",
+    border: "border-neutral-500/10",
+    bg: "bg-neutral-500/[0.03]",
+    text: "text-neutral-400/80",
+    activeBorder: "border-neutral-500/20",
+    activeBg: "bg-neutral-500/10",
+    activeText: "text-neutral-400",
+    hoverBorder: "hover:border-neutral-500/30",
+    hoverText: "hover:text-neutral-300",
   },
   purple: {
-    bg: "border-purple-500/10 bg-purple-500/[0.03] text-purple-400/80",
-    highlightBg: "border-purple-500/20 bg-purple-500/10 text-purple-400",
-    hover: "hover:border-purple-500/30 hover:text-purple-300",
+    border: "border-purple-500/10",
+    bg: "bg-purple-500/[0.03]",
+    text: "text-purple-400/80",
+    activeBorder: "border-purple-500/20",
+    activeBg: "bg-purple-500/10",
+    activeText: "text-purple-400",
+    hoverBorder: "hover:border-purple-500/30",
+    hoverText: "hover:text-purple-300",
   },
   indigo: {
-    bg: "border-indigo-500/10 bg-indigo-500/[0.03] text-indigo-400/80",
-    highlightBg: "border-indigo-500/20 bg-indigo-500/10 text-indigo-400",
-    hover: "hover:border-indigo-500/30 hover:text-indigo-300",
+    border: "border-indigo-500/10",
+    bg: "bg-indigo-500/[0.03]",
+    text: "text-indigo-400/80",
+    activeBorder: "border-indigo-500/20",
+    activeBg: "bg-indigo-500/10",
+    activeText: "text-indigo-400",
+    hoverBorder: "hover:border-indigo-500/30",
+    hoverText: "hover:text-indigo-300",
   },
   sky: {
-    bg: "border-sky-500/10 bg-sky-500/[0.03] text-sky-400/80",
-    highlightBg: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-    hover: "hover:border-sky-500/30 hover:text-sky-300",
+    border: "border-sky-500/10",
+    bg: "bg-sky-500/[0.03]",
+    text: "text-sky-400/80",
+    activeBorder: "border-sky-500/20",
+    activeBg: "bg-sky-500/10",
+    activeText: "text-sky-400",
+    hoverBorder: "hover:border-sky-500/30",
+    hoverText: "hover:text-sky-300",
   },
   orange: {
-    bg: "border-orange-500/10 bg-orange-500/[0.03] text-orange-400/80",
-    highlightBg: "border-orange-500/20 bg-orange-500/10 text-orange-400",
-    hover: "hover:border-orange-500/30 hover:text-orange-300",
+    border: "border-orange-500/10",
+    bg: "bg-orange-500/[0.03]",
+    text: "text-orange-400/80",
+    activeBorder: "border-orange-500/20",
+    activeBg: "bg-orange-500/10",
+    activeText: "text-orange-400",
+    hoverBorder: "hover:border-orange-500/30",
+    hoverText: "hover:text-orange-300",
   },
 }
 
@@ -125,9 +204,11 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
   {
     children,
     size = "default",
+    variant = "solid",
     prefix,
     suffix,
     highlighted = false,
+    showHover,
     onClick,
     onClose,
     confirmClose = true,
@@ -136,6 +217,7 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
     bgClass,
     highlightBgClass,
     hoverClass,
+    textClass,
     className = "",
     ...restProps
   },
@@ -145,10 +227,19 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
   const currentStyles = sizeStyles[size]
   const isClickable = typeof onClick === "function"
   const isInteractive = isClickable || typeof onClose === "function"
+  const isGhost = variant === "ghost"
   const activeColorStyle = colorStyles[color] ?? colorStyles.default
-  const defaultBg = bgClass ?? activeColorStyle.bg
-  const defaultHighlightBg = highlightBgClass ?? activeColorStyle.highlightBg
-  const defaultHover = hoverClass ?? activeColorStyle.hover
+  const defaultChrome = isGhost
+    ? ""
+    : (bgClass ?? `${activeColorStyle.border} ${activeColorStyle.bg}`)
+  // 自定义背景（bgClass）已自带文字色时不再注入色板文字色，避免同类冲突。
+  const defaultText = textClass ?? (!isGhost && bgClass ? "" : activeColorStyle.text)
+  const activeChrome = isGhost
+    ? ""
+    : (highlightBgClass ?? `${activeColorStyle.activeBorder} ${activeColorStyle.activeBg}`)
+  const activeText = textClass ?? (!isGhost && highlightBgClass ? "" : activeColorStyle.activeText)
+  const hoverEnabled = showHover ?? isInteractive
+  const defaultHover = hoverClass ?? `${activeColorStyle.hoverBorder} ${activeColorStyle.hoverText}`
   const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
 
   return (
@@ -156,20 +247,27 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
       ref={ref}
       aria-label={isClickable && typeof children === "string" ? children : undefined}
       data-color={color}
+      data-variant={variant}
       data-highlighted={highlighted ? "true" : undefined}
-      className={`lx-tag inline-flex select-none items-center justify-center border font-semibold transition-all duration-150 ${
-        currentStyles.container
-      } ${
-        highlighted ? defaultHighlightBg : `${defaultBg} ${isInteractive ? defaultHover : ""}`
+      className={`lx-tag inline-flex select-none items-center justify-center font-semibold transition-all duration-150 ${
+        isGhost ? "" : "border"
+      } ${currentStyles.container} ${
+        highlighted
+          ? `${activeChrome} ${activeText}`
+          : `${defaultChrome} ${defaultText} ${hoverEnabled ? defaultHover : ""}`
       } ${isInteractive ? "cursor-pointer" : "cursor-default"} ${className}`}
       role={isClickable ? "button" : undefined}
       onClick={onClick}
       {...restProps}
     >
       {prefix && (
-        <span className="flex shrink-0 items-center justify-center text-current/60">{prefix}</span>
+        <span
+          className={`flex shrink-0 items-center justify-center ${isGhost ? "text-current" : "text-current/60"}`}
+        >
+          {prefix}
+        </span>
       )}
-      <span className="truncate leading-none">{children}</span>
+      {children != null && <span className="truncate leading-none">{children}</span>}
       {(suffix || onClose) && (
         <span className="flex shrink-0 items-center gap-0.5">
           {suffix}

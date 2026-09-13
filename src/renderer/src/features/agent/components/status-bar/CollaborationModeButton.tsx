@@ -1,6 +1,7 @@
 import type { CollaborationMode } from "@shared/contracts/agent"
 import { Compass, Palette, ShieldAlert, Zap } from "lucide-react"
 import type React from "react"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
@@ -51,28 +52,25 @@ export const CollaborationModeButton = ({
         </div>
       }
     >
-      <span
-        className={`flex shrink-0 cursor-default items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors ${
-          isPlan
-            ? "text-sky-400 font-medium"
-            : isReview
-              ? "text-violet-400 font-medium"
-              : isDesign
-                ? "text-pink-400 font-medium"
-                : "text-white/60"
-        }`}
+      <LxTag
+        size="small"
+        variant="ghost"
+        color={isPlan ? "sky" : isReview ? "purple" : isDesign ? "pink" : "default"}
+        className="shrink-0"
+        prefix={
+          isPlan ? (
+            <Compass className="h-3.5 w-3.5 shrink-0" />
+          ) : isReview ? (
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+          ) : isDesign ? (
+            <Palette className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <Zap className="h-3.5 w-3.5 shrink-0" />
+          )
+        }
       >
-        {isPlan ? (
-          <Compass className="h-3.5 w-3.5 shrink-0" />
-        ) : isReview ? (
-          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-        ) : isDesign ? (
-          <Palette className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <Zap className="h-3.5 w-3.5 shrink-0" />
-        )}
-        <span>{displayName}</span>
-      </span>
+        {displayName}
+      </LxTag>
     </LxTooltip>
   )
 }

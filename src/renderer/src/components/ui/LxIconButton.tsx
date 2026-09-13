@@ -95,6 +95,8 @@ export interface LxIconButtonProps
   highlighted?: boolean
   hoverBgClass?: string
   hoverTextClass?: string
+  // 覆盖基础文本色；未提供时按 preset 取色，缺省 text-white/45。
+  textClass?: string
   // 前置 icon：提供时渲染「icon + 文字内容」布局（容器自适应宽度、icon 与文字间留 gap）。
   icon?: React.ReactNode
   iconOnly?: boolean
@@ -119,6 +121,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       highlighted = false,
       hoverBgClass,
       hoverTextClass,
+      textClass,
       icon,
       iconOnly = true,
       preset,
@@ -143,7 +146,8 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       : ""
     const finalHoverText =
       hoverTextClass ?? (preset ? PRESET_TEXT_CLASSES[preset] : "hover:text-white")
-    const defaultTextClass = preset ? PRESET_DEFAULT_TEXT_CLASSES[preset] : "text-white/45"
+    const defaultTextClass =
+      textClass ?? (preset ? PRESET_DEFAULT_TEXT_CLASSES[preset] : "text-white/45")
     const highlightedStyles = preset
       ? `${finalHoverBg.replace("hover:", "")} ${finalHoverText.replace("hover:", "")}`.trim()
       : "bg-white/5 text-white"

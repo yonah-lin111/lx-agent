@@ -1,6 +1,7 @@
 import type { JobSnapshot } from "@shared/contracts/agent"
 import { Loader2, Terminal } from "lucide-react"
 import { useBottomSideBarStore } from "@/components/layout/bottomSideBarStore"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useTranslation } from "@/i18n"
 
@@ -62,25 +63,27 @@ export const JobStatusButton = ({
 
   return (
     <LxTooltip content={tooltipContent} placement="top">
-      <button
-        type="button"
+      <LxIconButton
         aria-label={t("agent.jobStatus")}
         onClick={handleClick}
-        className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs transition-colors hover:bg-white/10 ${
-          runningCount > 0
-            ? "text-sky-300 bg-sky-500/10 font-medium"
-            : "text-white/50 hover:text-white/80"
+        iconOnly={false}
+        hoverTextClass={runningCount > 0 ? "" : "hover:text-white/80"}
+        textClass={runningCount > 0 ? "text-sky-300" : "text-white/50"}
+        className={`shrink-0 px-1.5 py-0.5 text-xs ${
+          runningCount > 0 ? "bg-sky-500/10 font-medium" : ""
         }`}
+        icon={
+          runningCount > 0 ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
+          ) : (
+            <Terminal className="h-3.5 w-3.5 shrink-0" />
+          )
+        }
       >
-        {runningCount > 0 ? (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-400" />
-        ) : (
-          <Terminal className="h-3.5 w-3.5 shrink-0" />
-        )}
         <span className="tabular-nums font-mono">
           {runningCount > 0 ? `${runningCount} running` : `${jobs.length} jobs`}
         </span>
-      </button>
+      </LxIconButton>
     </LxTooltip>
   )
 }

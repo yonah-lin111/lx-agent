@@ -2,7 +2,9 @@ import type { Project } from "@shared/project"
 import { Check, Folder, FolderGit, GitBranch, GitFork, Search } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -202,33 +204,32 @@ export const GitStatusBar = ({
 
       return (
         <LxTooltip content={tooltipContent} placement="top">
-          <span
+          <LxTag
+            size="small"
+            variant="ghost"
             data-unimported={isUnimported ? "true" : undefined}
-            className={`git-status-item flex min-w-0 items-center gap-1.5 ${
-              isUnimported ? "text-white/40 opacity-75" : ""
-            }`}
+            textClass={
+              isUnimported
+                ? "text-white/40"
+                : isCurrentPathDesktop
+                  ? "text-violet-300"
+                  : "text-white/50"
+            }
+            className={`git-status-item min-w-0 ${isUnimported ? "opacity-75" : ""}`}
+            prefix={
+              isUnimported ? (
+                <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+              ) : (
+                <Folder
+                  className={`h-3.5 w-3.5 shrink-0 ${
+                    isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+                  }`}
+                />
+              )
+            }
           >
-            {isUnimported ? (
-              <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
-            ) : (
-              <Folder
-                className={`h-3.5 w-3.5 shrink-0 ${
-                  isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
-                }`}
-              />
-            )}
-            <span
-              className={`truncate ${
-                isCurrentPathDesktop
-                  ? "text-violet-300 font-medium"
-                  : isUnimported
-                    ? "text-white/40 font-normal"
-                    : ""
-              }`}
-            >
-              {projectName}
-            </span>
-          </span>
+            {projectName}
+          </LxTag>
         </LxTooltip>
       )
     }
@@ -339,34 +340,33 @@ export const GitStatusBar = ({
           },
         }}
       >
-        <button
-          type="button"
+        <LxIconButton
+          hoverTextClass=""
           data-unimported={isUnimported ? "true" : undefined}
-          className={`git-status-item flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-white/10 ${
-            isUnimported ? "text-white/40 opacity-75" : ""
-          }`}
+          textClass={
+            isUnimported
+              ? "text-white/40"
+              : isCurrentPathDesktop
+                ? "text-violet-300"
+                : "text-white/50"
+          }
+          className={`git-status-item min-w-0 px-1.5 py-0.5 text-xs ${
+            isCurrentPathDesktop ? "font-medium" : ""
+          } ${isUnimported ? "opacity-75" : ""}`}
+          icon={
+            isUnimported ? (
+              <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+            ) : (
+              <Folder
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
+                }`}
+              />
+            )
+          }
         >
-          {isUnimported ? (
-            <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
-          ) : (
-            <Folder
-              className={`h-3.5 w-3.5 shrink-0 ${
-                isCurrentPathDesktop ? "text-violet-400" : "text-sky-400"
-              }`}
-            />
-          )}
-          <span
-            className={`truncate ${
-              isCurrentPathDesktop
-                ? "text-violet-300 font-medium"
-                : isUnimported
-                  ? "text-white/40 font-normal"
-                  : ""
-            }`}
-          >
-            {projectName}
-          </span>
-        </button>
+          <span className="truncate">{projectName}</span>
+        </LxIconButton>
       </LxTooltip>
     )
   }
@@ -380,10 +380,15 @@ export const GitStatusBar = ({
     if (!interactive) {
       return (
         <LxTooltip content={t("git.currentBranch", { branch: displayBranch })} placement="top">
-          <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
-            <GitBranch className="h-3.5 w-3.5 text-emerald-400" />
+          <LxTag
+            size="small"
+            variant="ghost"
+            textClass="text-white/70"
+            className="git-status-item shrink-0"
+            prefix={<GitBranch className="h-3.5 w-3.5 text-emerald-400" />}
+          >
             {displayBranch}
-          </span>
+          </LxTag>
         </LxTooltip>
       )
     }
@@ -455,13 +460,14 @@ export const GitStatusBar = ({
           },
         }}
       >
-        <button
-          type="button"
-          className="git-status-item flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-white/70 transition-colors hover:bg-white/10"
+        <LxIconButton
+          hoverTextClass=""
+          textClass="text-white/70"
+          className="git-status-item shrink-0 px-1 py-0.5 text-xs"
+          icon={<GitBranch className="h-3.5 w-3.5 text-emerald-400" />}
         >
-          <GitBranch className="h-3.5 w-3.5 text-emerald-400" />
           <span>{displayBranch}</span>
-        </button>
+        </LxIconButton>
       </LxTooltip>
     )
   }
@@ -483,10 +489,15 @@ export const GitStatusBar = ({
       if (!worktreeName && !alwaysShowWorktree) return null
       return (
         <LxTooltip content={t("git.worktree", { name: displayWorktree })} placement="top">
-          <span className="git-status-item flex shrink-0 items-center gap-1 text-white/70">
-            <GitFork className="h-3.5 w-3.5 text-amber-400" />
+          <LxTag
+            size="small"
+            variant="ghost"
+            textClass="text-white/70"
+            className="git-status-item shrink-0"
+            prefix={<GitFork className="h-3.5 w-3.5 text-amber-400" />}
+          >
             {displayWorktree}
-          </span>
+          </LxTag>
         </LxTooltip>
       )
     }
@@ -560,13 +571,14 @@ export const GitStatusBar = ({
           },
         }}
       >
-        <button
-          type="button"
-          className="git-status-item flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-white/70 transition-colors hover:bg-white/10"
+        <LxIconButton
+          hoverTextClass=""
+          textClass="text-white/70"
+          className="git-status-item shrink-0 px-1 py-0.5 text-xs"
+          icon={<GitFork className="h-3.5 w-3.5 text-amber-400" />}
         >
-          <GitFork className="h-3.5 w-3.5 text-amber-400" />
           <span>{displayWorktree}</span>
-        </button>
+        </LxIconButton>
       </LxTooltip>
     )
   }

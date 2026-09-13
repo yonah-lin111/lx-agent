@@ -535,7 +535,7 @@
 /* ========================================================
  * LxTag 标签组件魔改（经典直角矿石像素槽）
  * ======================================================== */
-[data-theme="minecraft"] .lx-tag {
+[data-theme="minecraft"] .lx-tag:not([data-variant="ghost"]) {
   border-radius: 0px !important;
   border: 1px solid #000000 !important;
   box-shadow:

@@ -2,6 +2,8 @@ import type { PermissionRequest, SandboxPolicy } from "@shared/contracts/agent"
 import { Shield, ShieldAlert, ShieldCheck, ShieldOff } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
@@ -234,12 +236,15 @@ export const PermissionStatusButton = ({
         }
         content={tooltipContent}
       >
-        <span
+        <LxIconButton
           aria-label={t("agent.permissionTitle")}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-amber-300/90 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+          textClass="text-amber-300/90"
+          hoverBgClass="hover:bg-white/5"
+          hoverTextClass=""
+          className="shrink-0"
         >
           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-        </span>
+        </LxIconButton>
       </LxTooltip>
     )
   }
@@ -287,12 +292,15 @@ export const PermissionStatusButton = ({
         </div>
       }
     >
-      <span
+      <LxTag
+        size="small"
+        variant="ghost"
+        showHover
+        hoverClass="hover:bg-white/5"
         aria-label={t("settings.sandboxPolicy")}
-        className="flex shrink-0 cursor-default items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-xs text-white/60 outline-none ring-0 transition-colors hover:bg-white/5 focus:outline-none"
-      >
-        {renderSandboxIcon()}
-      </span>
+        className="shrink-0"
+        prefix={renderSandboxIcon()}
+      />
     </LxTooltip>
   )
 }

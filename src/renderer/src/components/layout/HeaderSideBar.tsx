@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { LxBreadcrumbToast, useLxBreadcrumbToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
@@ -222,26 +223,39 @@ export const HeaderSideBar = ({
                 key={`${pathname}-${itemId ?? ""}-${settingsSection}-${uiSection}-${projectBreadcrumb?.itemName ?? ""}`}
                 className="header-breadcrumb flex min-w-0 items-center gap-1.5 animate-header-breadcrumb-in"
               >
-                <span className="header-breadcrumb-slash inline-flex items-center rounded-[4px] border border-white/10 bg-white/5 px-1.5 py-0.5 text-white/50 text-[11px] shadow-xs">
+                <LxTag
+                  size="small"
+                  bgClass="border-white/10 bg-white/5"
+                  textClass="text-white/50"
+                  className="header-breadcrumb-slash shrink-0 shadow-xs"
+                >
                   //
-                </span>
+                </LxTag>
                 {breadcrumbParts.map((part, index) => (
                   <span
                     key={`${part}-${index}`}
                     className="flex min-w-0 items-center gap-1.5 truncate"
                   >
                     {index > 0 && (
-                      <span className="header-breadcrumb-slash inline-flex items-center rounded-[4px] border border-white/10 bg-white/5 px-1 py-0.5 text-white/40 text-[11px] shadow-xs shrink-0">
+                      <LxTag
+                        size="small"
+                        bgClass="border-white/10 bg-white/5"
+                        textClass="text-white/40"
+                        className="header-breadcrumb-slash shrink-0 shadow-xs"
+                      >
                         /
-                      </span>
+                      </LxTag>
                     )}
-                    <span
-                      className={`header-breadcrumb-part inline-flex min-w-0 items-center rounded-[5px] border border-white/10 bg-white/5 px-2 py-0.5 truncate font-bold text-xs shadow-xs ${
-                        index === 0 ? "uppercase tracking-wider text-white/60" : "text-white"
+                    <LxTag
+                      size="small"
+                      bgClass="border-white/10 bg-white/5"
+                      textClass={index === 0 ? "text-white/60" : "text-white"}
+                      className={`header-breadcrumb-part min-w-0 shadow-xs ${
+                        index === 0 ? "uppercase tracking-wider" : ""
                       }`}
                     >
                       {part}
-                    </span>
+                    </LxTag>
                   </span>
                 ))}
               </div>
