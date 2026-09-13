@@ -3,6 +3,8 @@ import type React from "react"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { LxCodeBlock } from "@/components/ui/LxCodeBlock"
+import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxTag } from "@/components/ui/LxTag"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import { frontDesignStore } from "@/features/agent/hooks/frontDesignStore"
@@ -113,9 +115,14 @@ export const FrontDesignCard = ({
           <div className="front-design-icon-wrapper flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-pink-500/15 text-pink-400">
             <Palette className="h-3.5 w-3.5" />
           </div>
-          <span className="front-design-badge shrink-0 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-medium text-pink-300">
+          <LxTag
+            size="small"
+            bgClass="border-pink-500/20 bg-pink-500/10"
+            textClass="text-pink-300"
+            className="front-design-badge shrink-0"
+          >
             {t("frontDesign.prototypeBadge")}
-          </span>
+          </LxTag>
         </div>
       </div>
 
@@ -127,16 +134,21 @@ export const FrontDesignCard = ({
 
         {/* 版本徽标 */}
         {design.version && (
-          <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-medium text-pink-300">
+          <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
             v{design.version}
-          </span>
+          </LxTag>
         )}
 
         {/* 定向节点标示 */}
         {design.target && (
-          <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-mono text-pink-300">
+          <LxTag
+            size="small"
+            bgClass="border-pink-500/30 bg-pink-500/20"
+            textClass="text-pink-300"
+            className="font-mono"
+          >
             {design.target}
-          </span>
+          </LxTag>
         )}
 
         {/* 基准血缘标示 */}
@@ -147,15 +159,15 @@ export const FrontDesignCard = ({
         )}
 
         {/* 统计指标 Chip */}
-        <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-medium text-pink-300">
+        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
           {lineCount} {t("frontDesign.lines")}
-        </span>
-        <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-medium text-pink-300">
+        </LxTag>
+        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
           {sizeFormatted}
-        </span>
-        <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1.5 py-0.2 text-[10px] font-medium text-pink-300">
+        </LxTag>
+        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
           {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
-        </span>
+        </LxTag>
       </div>
 
       {/* 概要说明区：对齐 ReviewFindingsCard 的 summary 布局 */}
@@ -177,18 +189,20 @@ export const FrontDesignCard = ({
           </div>
           {hasMoreLines && (
             <div className="mt-1.5 flex items-center px-1">
-              <button
-                type="button"
+              <LxIconButton
+                variant="ghost"
+                iconOnly={false}
                 aria-expanded={isCodeExpanded}
                 onClick={() => setIsCodeExpanded((prev) => !prev)}
-                className="front-design-expand-toggle inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-[11px] font-medium text-pink-400/90 transition-colors hover:text-pink-300 select-none focus:outline-none"
+                textClass="text-pink-400/90"
+                className="front-design-expand-toggle text-[11px] font-medium"
               >
                 <span className="italic underline underline-offset-2">
                   {isCodeExpanded
                     ? t("common.collapse")
                     : `...${t("common.more")} (${lineCount - DEFAULT_VISIBLE_LINES} ${t("frontDesign.lines")})`}
                 </span>
-              </button>
+              </LxIconButton>
             </div>
           )}
         </div>
@@ -198,34 +212,36 @@ export const FrontDesignCard = ({
       <div className="front-design-footer mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-pink-500/15 pt-2.5">
         <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-0 max-w-full">
           {design.sessionId && (
-            <button
-              type="button"
+            <LxIconButton
               onClick={handleOpenDirectory}
-              className="front-design-dir-btn flex min-h-7 h-auto items-center gap-1 rounded-[6px] border border-white/10 px-2.5 py-1 text-[11.5px] text-white/80 transition-all max-w-full hover:bg-white/5 hover:text-white cursor-pointer"
+              textClass="text-white/80"
+              className="front-design-dir-btn border border-white/10 px-2.5 py-1 text-[11.5px] max-w-full"
+              icon={<FolderOpen className="h-3 w-3 shrink-0" />}
             >
-              <FolderOpen className="h-3 w-3 shrink-0" />
               <span className="break-words">{t("frontDesign.openDesignDir")}</span>
-            </button>
+            </LxIconButton>
           )}
 
           {/* 基于此迭代按钮 */}
-          <button
-            type="button"
+          <LxIconButton
             onClick={handleIterate}
-            className="front-design-iterate-btn flex min-h-7 h-auto items-center gap-1.5 rounded-[6px] border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-[11.5px] font-medium text-pink-300 hover:bg-pink-500/20 active:scale-[0.98] transition-all max-w-full cursor-pointer"
+            textClass="text-pink-300"
+            hoverBgClass="hover:bg-pink-500/20"
+            className="front-design-iterate-btn border border-pink-500/30 bg-pink-500/10 px-2.5 py-1 text-[11.5px] font-medium max-w-full"
+            icon={<GitBranch className="h-3 w-3 shrink-0" />}
           >
-            <GitBranch className="h-3 w-3 shrink-0" />
             <span className="break-words">{t("frontDesign.iterateAction")}</span>
-          </button>
+          </LxIconButton>
 
-          <button
-            type="button"
+          <LxIconButton
             onClick={handleOpenDesign}
-            className="front-design-open-btn flex min-h-7 h-auto items-start gap-1.5 rounded-[6px] bg-pink-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-pink-500 active:scale-[0.98] shadow-sm transition-all max-w-full cursor-pointer"
+            textClass="text-white"
+            hoverBgClass="hover:bg-pink-500"
+            className="front-design-open-btn bg-pink-600 px-3 py-1 text-[12px] font-medium max-w-full"
+            icon={<ExternalLink className="h-3 w-3 shrink-0" />}
           >
-            <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
             <span className="break-words">{t("frontDesign.openDesignPage")}</span>
-          </button>
+          </LxIconButton>
         </div>
       </div>
     </div>

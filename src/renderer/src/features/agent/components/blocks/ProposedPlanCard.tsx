@@ -4,6 +4,7 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { LxTag } from "@/components/ui/LxTag"
 import type { ProposedPlanData } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -96,9 +97,14 @@ export const ProposedPlanCard = ({
           <div className="proposed-plan-icon-wrapper flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-400">
             <ClipboardCheck className="h-3.5 w-3.5" />
           </div>
-          <span className="proposed-plan-badge shrink-0 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+          <LxTag
+            size="small"
+            bgClass="border-emerald-500/20 bg-emerald-500/10"
+            textClass="text-emerald-300"
+            className="proposed-plan-badge shrink-0"
+          >
             {t("agent.proposedPlanBadge")}
-          </span>
+          </LxTag>
         </div>
 
         <LxIconButton
@@ -124,9 +130,13 @@ export const ProposedPlanCard = ({
         <span className="proposed-plan-title truncate text-[13px] font-semibold text-white/95">
           {title}
         </span>
-        <span className="rounded bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-medium text-emerald-300">
+        <LxTag
+          size="small"
+          bgClass="border-emerald-500/30 bg-emerald-500/20"
+          textClass="text-emerald-300"
+        >
           {rawLineCount} {t("frontDesign.lines")}
-        </span>
+        </LxTag>
       </div>
 
       {/* 计划 Markdown 正文：无滚动条，默认 30 行截断，支持省略号展开/折叠 */}
@@ -161,51 +171,47 @@ export const ProposedPlanCard = ({
         {/* 左侧：折叠/展开按钮 */}
         <div>
           {(isOverflowing || isExpanded) && (
-            <button
-              type="button"
+            <LxIconButton
+              variant="ghost"
+              iconOnly={false}
               aria-expanded={isExpanded}
               aria-controls={contentId}
               onClick={(e) => {
                 e.stopPropagation()
                 setIsExpanded((prev) => !prev)
               }}
-              className="proposed-plan-expand-toggle inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-[11px] font-medium text-emerald-400/90 transition-colors hover:text-emerald-300 select-none focus:outline-none"
+              textClass="text-emerald-400/90"
+              className="proposed-plan-expand-toggle text-[11px] font-medium"
             >
               <span className="italic underline underline-offset-2">
                 {isExpanded ? t("common.collapse") : `...${t("common.more")}`}
               </span>
-            </button>
+            </LxIconButton>
           )}
         </div>
 
         {/* 右侧：采纳执行按钮 */}
         {!readOnly && onAccept && (
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0 max-w-full">
-            <button
-              type="button"
+            <LxIconButton
               disabled={isStreaming || isExecutionDisabled}
               data-accepted={isExecutionDisabled ? "true" : undefined}
               onClick={handleAccept}
-              className={`proposed-plan-accept-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-emerald-600 px-3 py-1 text-[12px] font-medium text-white transition-all max-w-full ${
-                isExecutionDisabled
-                  ? "cursor-not-allowed pointer-events-none opacity-40 shadow-none"
-                  : isStreaming
-                    ? "cursor-not-allowed opacity-40 shadow-none"
-                    : "hover:bg-emerald-500 active:scale-[0.98] shadow-sm cursor-pointer"
-              }`}
+              textClass="text-white"
+              hoverBgClass="hover:bg-emerald-500"
+              className="proposed-plan-accept-btn bg-emerald-600 px-3 py-1 text-[12px] font-medium max-w-full"
+              icon={
+                isExecutionDisabled ? (
+                  <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                ) : (
+                  <Play className="h-3 w-3 shrink-0 fill-current" />
+                )
+              }
             >
-              {isExecutionDisabled ? (
-                <>
-                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-white/30" />
-                  <span className="break-words">{t("agent.planAccepted")}</span>
-                </>
-              ) : (
-                <>
-                  <Play className="h-3 w-3 shrink-0 mt-0.5 fill-current" />
-                  <span className="break-words">{t("agent.acceptAndExecute")}</span>
-                </>
-              )}
-            </button>
+              <span className="break-words">
+                {isExecutionDisabled ? t("agent.planAccepted") : t("agent.acceptAndExecute")}
+              </span>
+            </LxIconButton>
           </div>
         )}
       </div>

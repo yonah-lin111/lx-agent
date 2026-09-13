@@ -539,20 +539,23 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
  * ======================================================== */
 [data-theme="minecraft"] .lx-tag:not([data-variant="ghost"]) {
   border-radius: 0px !important;
-  border: 1px solid #000000 !important;
+  transition: none !important;
+  border: 2px solid #000000 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
 }
 
+/* 高亮态保持凸起浮雕（不凹陷），叠加绿色矿物指示条与微光 */
 [data-theme="minecraft"] .lx-tag[data-highlighted="true"]:not([data-variant="ghost"]) {
   background-color: #14141c !important;
-  border: 1px solid #000000 !important;
-  border-left: 2px solid #55ff55 !important;
+  border-left: 4px solid #55ff55 !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    0px 0px 6px rgba(85, 255, 85, 0.2) !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000,
+    0px 0px 6px rgba(85, 255, 85, 0.25) !important;
 }
 
 /* ========================================================
@@ -846,9 +849,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border: 2px solid #000000 !important;
   border-left: 4px solid transparent !important;
   box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.12),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    1px 1px 0px 0px #000000 !important;
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
   background-color: #242434 !important;
   color: #a0a0b0 !important;
 }
@@ -945,8 +948,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border: 2px solid #000000 !important;
   border-left: 4px solid #ffffff !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.15),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000,
     0px 0px 8px rgba(255, 255, 255, 0.15) !important;
 }
 
@@ -961,8 +965,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border: 2px solid #000000 !important;
   border-left: 4px solid #fbbf24 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(251, 191, 36, 0.25),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000,
     0px 0px 8px rgba(251, 191, 36, 0.25) !important;
 }
 
@@ -977,8 +982,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border: 2px solid #000000 !important;
   border-left: 4px solid #34d399 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(52, 211, 153, 0.25),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000,
     0px 0px 8px rgba(52, 211, 153, 0.25) !important;
 }
 
@@ -993,8 +999,9 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border: 2px solid #000000 !important;
   border-left: 4px solid #38bdf8 !important;
   box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(56, 189, 248, 0.25),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000,
     0px 0px 8px rgba(56, 189, 248, 0.25) !important;
 }
 

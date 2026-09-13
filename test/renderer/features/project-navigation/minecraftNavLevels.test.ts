@@ -45,4 +45,29 @@ describe("我的世界主题导航层级词表", () => {
       /\.git-status-item\[data-unimported="true"\]:not\(\[data-variant="ghost"\]\)/,
     )
   })
+
+  it("solid LxTag 对齐按钮级浮雕，高亮态保持凸起不凹陷", () => {
+    const readBlock = (selector: string): string => {
+      const start = minecraftCss.indexOf(selector)
+      expect(start).toBeGreaterThanOrEqual(0)
+      return minecraftCss.slice(start, minecraftCss.indexOf("}", start))
+    }
+
+    const baseBlock = readBlock('.lx-tag:not([data-variant="ghost"])')
+    expect(baseBlock).toContain("border: 2px solid #000000")
+    expect(baseBlock).toContain("inset -2px -2px 0px 0px")
+    expect(baseBlock).toContain("2px 2px 0px 0px #000000")
+
+    for (const selector of [
+      '.lx-tag[data-highlighted="true"]:not([data-variant="ghost"])',
+      '.project-recent-tag[data-color="default"][data-highlighted="true"] {',
+      '.project-recent-tag[data-color="amber"][data-highlighted="true"] {',
+      '.project-recent-tag[data-color="emerald"][data-highlighted="true"] {',
+      '.project-recent-tag[data-color="sky"][data-highlighted="true"] {',
+    ]) {
+      const block = readBlock(selector)
+      expect(block).toContain("2px 2px 0px 0px #000000")
+      expect(block).not.toMatch(/inset 2px 2px 0px 0px rgba\(0, 0, 0, 0\.9/)
+    }
+  })
 })

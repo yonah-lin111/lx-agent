@@ -15,6 +15,7 @@ import { useCallback, useId, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { LxTag } from "@/components/ui/LxTag"
 import type { ReviewFindingItem, ReviewFindingsData, ReviewSeverity } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 
@@ -72,42 +73,48 @@ const FindingItemCard = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0 flex-1">
-          <button
-            type="button"
+          <LxIconButton
+            size="small"
+            variant="ghost"
             onClick={() => onToggleSelect(item.id)}
-            className="mt-0.5 text-white/40 hover:text-white/80 transition-colors focus:outline-none"
-          >
-            {isSelected ? (
-              <CheckSquare className="h-3.5 w-3.5 text-violet-400" />
-            ) : (
-              <Square className="h-3.5 w-3.5" />
-            )}
-          </button>
+            textClass={isSelected ? "text-violet-400" : "text-white/40"}
+            className="review-finding-select mt-0.5"
+            icon={
+              isSelected ? (
+                <CheckSquare className="h-3.5 w-3.5" />
+              ) : (
+                <Square className="h-3.5 w-3.5" />
+              )
+            }
+          />
 
           <div className="flex flex-col gap-1 min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span
-                className={`review-finding-severity rounded border px-1.5 py-0.2 text-[10px] font-semibold uppercase ${severityStyle.bg} ${severityStyle.text} ${severityStyle.border}`}
+              <LxTag
+                size="small"
+                bgClass={`${severityStyle.bg} ${severityStyle.border}`}
+                textClass={severityStyle.text}
+                className="review-finding-severity uppercase"
               >
                 {item.severity}
-              </span>
+              </LxTag>
               <span className="review-finding-title text-[13px] font-medium text-white/95 truncate">
                 {item.title}
               </span>
             </div>
 
             {/* 文件行跳转 */}
-            <button
-              type="button"
+            <LxIconButton
               onClick={() => onOpenFile(item.location.filePath, item.location.lineStart)}
-              className="review-finding-file-link flex items-start gap-1 max-w-full text-left text-[11px] font-mono text-cyan-400/80 hover:text-cyan-300 transition-colors w-fit focus:outline-none"
+              textClass="text-cyan-400/80"
+              className="review-finding-file-link max-w-full text-left text-[11px] font-mono"
+              icon={<ExternalLink className="h-3 w-3 shrink-0" />}
             >
-              <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
               <span className="break-all">
                 {item.location.filePath}:{item.location.lineStart}
                 {item.location.lineEnd ? `-${item.location.lineEnd}` : ""}
               </span>
-            </button>
+            </LxIconButton>
 
             {/* 问题描述：使用 LxMarkdownPreview 渲染富文本 */}
             <div className="review-finding-description text-[12px] text-white/85 leading-relaxed mt-0.5">
@@ -124,19 +131,25 @@ const FindingItemCard = ({
             {/* 修复建议折叠展开：使用 LxMarkdownPreview 渲染代码或方案 */}
             {item.suggestion && (
               <div className="review-finding-suggestion mt-1">
-                <button
-                  type="button"
+                <LxIconButton
+                  variant="ghost"
+                  aria-expanded={isExpanded}
                   onClick={() => onToggleExpand(item.id)}
-                  className="review-finding-suggestion-toggle flex items-center gap-1 text-[11px] text-violet-400/90 hover:text-violet-300 transition-colors focus:outline-none"
+                  textClass="text-violet-400/90"
+                  className="review-finding-suggestion-toggle text-[11px]"
+                  icon={
+                    <>
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3 shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 shrink-0" />
+                      )}
+                      <Sparkles className="h-3 w-3 shrink-0" />
+                    </>
+                  }
                 >
-                  {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                  <Sparkles className="h-3 w-3" />
                   <span>{t("agent.review.fixSuggestion")}</span>
-                </button>
+                </LxIconButton>
 
                 {isExpanded && (
                   <div className="review-finding-suggestion-content mt-1.5 rounded-md bg-black/30 border border-white/5 p-2 font-mono text-[11.5px] text-white/85 leading-relaxed">
@@ -283,9 +296,14 @@ export const ReviewFindingsCard = ({
           <div className="review-findings-icon-wrapper flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/15 text-violet-400">
             <ShieldAlert className="h-3.5 w-3.5" />
           </div>
-          <span className="review-findings-badge shrink-0 rounded border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
+          <LxTag
+            size="small"
+            bgClass="border-violet-500/20 bg-violet-500/10"
+            textClass="text-violet-300"
+            className="review-findings-badge shrink-0"
+          >
             {t("agent.review.badge")}
-          </span>
+          </LxTag>
         </div>
 
         <LxIconButton
@@ -316,19 +334,34 @@ export const ReviewFindingsCard = ({
 
         {/* 严重级别分布 Chip */}
         {counts.critical > 0 && (
-          <span className="review-severity-badge-critical rounded bg-red-500/20 border border-red-500/30 px-1.5 py-0.2 text-[10px] font-medium text-red-300">
+          <LxTag
+            size="small"
+            bgClass="border-red-500/30 bg-red-500/20"
+            textClass="text-red-300"
+            className="review-severity-badge-critical"
+          >
             {counts.critical} Critical
-          </span>
+          </LxTag>
         )}
         {counts.high > 0 && (
-          <span className="review-severity-badge-high rounded bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.2 text-[10px] font-medium text-amber-300">
+          <LxTag
+            size="small"
+            bgClass="border-amber-500/30 bg-amber-500/20"
+            textClass="text-amber-300"
+            className="review-severity-badge-high"
+          >
             {counts.high} High
-          </span>
+          </LxTag>
         )}
         {counts.medium > 0 && (
-          <span className="review-severity-badge-medium rounded bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-medium text-blue-300">
+          <LxTag
+            size="small"
+            bgClass="border-blue-500/30 bg-blue-500/20"
+            textClass="text-blue-300"
+            className="review-severity-badge-medium"
+          >
             {counts.medium} Medium
-          </span>
+          </LxTag>
         )}
       </div>
 
@@ -350,22 +383,25 @@ export const ReviewFindingsCard = ({
       {findings.length > 0 && (
         <div id={contentId} className="review-findings-list mt-3 flex flex-col gap-2">
           <div className="flex items-center justify-between text-[11px] text-white/50 px-1">
-            <button
-              type="button"
+            <LxIconButton
+              variant="ghost"
               onClick={toggleSelectAll}
-              className="flex items-center gap-1 hover:text-white/80 transition-colors focus:outline-none"
+              textClass="text-white/50"
+              className="review-findings-select-all"
+              icon={
+                selectedIds.size === findings.length ? (
+                  <CheckSquare className="h-3.5 w-3.5 text-violet-400" />
+                ) : (
+                  <Square className="h-3.5 w-3.5" />
+                )
+              }
             >
-              {selectedIds.size === findings.length ? (
-                <CheckSquare className="h-3.5 w-3.5 text-violet-400" />
-              ) : (
-                <Square className="h-3.5 w-3.5" />
-              )}
               <span>
                 {selectedIds.size === findings.length
                   ? t("common.deselectAll")
                   : t("common.selectAll")}
               </span>
-            </button>
+            </LxIconButton>
             <span>
               {t("agent.review.selectedCount", { count: selectedIds.size, total: findings.length })}
             </span>
@@ -390,22 +426,24 @@ export const ReviewFindingsCard = ({
         {/* 左侧：省略号展开/折叠 */}
         <div>
           {hasMoreFindings && (
-            <button
-              type="button"
+            <LxIconButton
+              variant="ghost"
+              iconOnly={false}
               aria-expanded={isListExpanded}
               aria-controls={contentId}
               onClick={(e) => {
                 e.stopPropagation()
                 setIsListExpanded((prev) => !prev)
               }}
-              className="review-findings-expand-toggle inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-[11px] font-medium text-violet-400/90 transition-colors hover:text-violet-300 select-none focus:outline-none"
+              textClass="text-violet-400/90"
+              className="review-findings-expand-toggle text-[11px] font-medium"
             >
               <span className="italic underline underline-offset-2">
                 {isListExpanded
                   ? t("common.collapse")
                   : `...${t("common.more")} (${findings.length - DEFAULT_VISIBLE_COUNT})`}
               </span>
-            </button>
+            </LxIconButton>
           )}
         </div>
 
@@ -413,42 +451,39 @@ export const ReviewFindingsCard = ({
         {findings.length > 0 && !readOnly && (
           <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-0 max-w-full">
             {onFillInput && (
-              <button
-                type="button"
+              <LxIconButton
+                iconOnly={false}
                 disabled={selectedFindings.length === 0}
                 onClick={handleFillInput}
-                className="review-findings-fill-btn flex min-h-7 h-auto items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-[11.5px] text-white/80 transition-all max-w-full disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:bg-white/5 hover:enabled:text-white"
+                textClass="text-white/80"
+                className="review-findings-fill-btn border border-white/10 px-2.5 py-1 text-[11.5px] max-w-full"
               >
                 <span className="break-words">{t("agent.review.fillInput")}</span>
-              </button>
+              </LxIconButton>
             )}
 
             {onApplyFixes && (
-              <button
-                type="button"
+              <LxIconButton
                 disabled={isStreaming || isExecutionDisabled || selectedFindings.length === 0}
                 data-accepted={isExecutionDisabled ? "true" : undefined}
                 onClick={handleApplyFixes}
-                className={`review-findings-apply-btn flex min-h-7 h-auto items-start gap-1.5 rounded-lg bg-violet-600 px-3 py-1 text-[12px] font-medium text-white transition-all max-w-full ${
-                  isExecutionDisabled
-                    ? "cursor-not-allowed pointer-events-none opacity-40 shadow-none"
-                    : isStreaming || selectedFindings.length === 0
-                      ? "cursor-not-allowed opacity-40 shadow-none"
-                      : "hover:bg-violet-500 active:scale-[0.98] shadow-sm cursor-pointer"
-                }`}
+                textClass="text-white"
+                hoverBgClass="hover:bg-violet-500"
+                className="review-findings-apply-btn bg-violet-600 px-3 py-1 text-[12px] font-medium max-w-full"
+                icon={
+                  isExecutionDisabled ? (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />
+                  ) : (
+                    <Wrench className="h-3 w-3 shrink-0" />
+                  )
+                }
               >
-                {isExecutionDisabled ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-white/30" />
-                    <span className="break-words">{t("agent.review.fixesApplied")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Wrench className="h-3 w-3 shrink-0 mt-0.5" />
-                    <span className="break-words">{t("agent.review.applyFixes")}</span>
-                  </>
-                )}
-              </button>
+                <span className="break-words">
+                  {isExecutionDisabled
+                    ? t("agent.review.fixesApplied")
+                    : t("agent.review.applyFixes")}
+                </span>
+              </LxIconButton>
             )}
           </div>
         )}
