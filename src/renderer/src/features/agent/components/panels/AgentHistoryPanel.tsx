@@ -18,13 +18,14 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
-import { useTranslation } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 interface AgentHistoryPanelProps {
   // 面板是否展开（false = 上移收起，保持挂载）。
@@ -45,12 +46,12 @@ interface AgentHistoryPanelProps {
   onDelete: (sessionId: string) => void
 }
 
-// 项目 tag（英文单选）：全部 / 指定项目 / 当前项目。
+// 项目筛选 tag（单选）：全部 / 指定项目 / 当前项目。
 type ProjectTag = "all" | "project" | "current"
-const PROJECT_TAGS: { value: ProjectTag; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "project", label: "Project" },
-  { value: "current", label: "Current Project" },
+const PROJECT_TAGS: { value: ProjectTag; labelKey: TranslationKey }[] = [
+  { value: "all", labelKey: "agent.historyFilterAll" },
+  { value: "project", labelKey: "agent.historyFilterProject" },
+  { value: "current", labelKey: "agent.historyFilterCurrentProject" },
 ]
 
 /**
@@ -219,14 +220,14 @@ export const AgentHistoryPanel = ({
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="flex flex-wrap items-center gap-1">
-          {PROJECT_TAGS.map(({ value, label }) => (
+          {PROJECT_TAGS.map(({ value, labelKey }) => (
             <LxTag
               key={value}
               size="small"
               highlighted={projectTag === value}
               onClick={() => setProjectTag(value)}
             >
-              {label}
+              {t(labelKey)}
             </LxTag>
           ))}
         </div>
@@ -246,17 +247,23 @@ export const AgentHistoryPanel = ({
               const isCurrent = session.id === currentSessionId
               const isEditing = editingSessionId === session.id
               return (
-                <div
+                <LxNavItem
                   key={session.id}
+                  level={2}
+                  aria-current={isCurrent ? "page" : undefined}
                   data-session-current={isCurrent ? "true" : undefined}
                   data-menu-open={
                     isMenuOpen && menuTarget?.session.id === session.id ? "true" : undefined
                   }
-                  className={`agent-history-session-row group flex h-6 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
+                  className={`agent-history-session-row ${
                     isCurrent
-                      ? "agent-history-session-row--current cursor-default bg-white/10 text-white"
-                      : "text-white/70 hover:bg-white/5 data-[menu-open=true]:bg-white/5"
+                      ? "agent-history-session-row--current cursor-default bg-white/5 text-white"
+                      : "text-white/70"
                   }`}
+                  onClick={() => {
+                    if (isCurrent) return
+                    onRestore(session.id)
+                  }}
                   onContextMenu={(event) => {
                     if (isEditing) return
                     openSessionMenu(session, event)
@@ -266,11 +273,12 @@ export const AgentHistoryPanel = ({
                     <input
                       autoFocus
                       aria-label={t("agent.editSessionTitle")}
-                      className="h-full min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-xs text-white/80 outline-none"
+                      className="h-full min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-sm text-white/80 outline-none"
                       maxLength={40}
                       value={titleDraft}
                       onBlur={commitTitle}
                       onChange={(event) => setTitleDraft(event.target.value)}
+                      onClick={(event) => event.stopPropagation()}
                       onFocus={(event) => event.target.select()}
                       onKeyDown={(event) => {
                         event.stopPropagation()
@@ -283,21 +291,14 @@ export const AgentHistoryPanel = ({
                         }
                       }}
                     />
+                  ) : pendingSessionIds.has(session.id) ? (
+                    <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
                   ) : (
-                    <button
-                      type="button"
-                      disabled={isCurrent}
-                      className="agent-history-session-title flex h-full min-w-0 flex-1 items-center truncate text-left"
-                      onClick={() => onRestore(session.id)}
-                    >
-                      {pendingSessionIds.has(session.id) ? (
-                        <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
-                      ) : (
-                        <span className="block truncate">{session.title}</span>
-                      )}
-                    </button>
+                    <span className="agent-history-session-title min-w-0 flex-1 truncate select-none">
+                      {session.title}
+                    </span>
                   )}
-                </div>
+                </LxNavItem>
               )
             })}
           </div>

@@ -17,13 +17,14 @@ import { useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect, type LxSelectOption } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
 import { sessionListStore } from "@/features/agent/hooks/sessionListStore"
-import { useTranslation } from "@/i18n"
+import { type TranslationKey, useTranslation } from "@/i18n"
 
 interface ChatHistoryPanelProps {
   sessions: AgentSessionSummary[]
@@ -36,12 +37,12 @@ interface ChatHistoryPanelProps {
   onDelete: (sessionId: string) => void
 }
 
-// 项目 tag（英文单选）：全部 / 指定项目 / 当前项目。
+// 项目筛选 tag（单选）：全部 / 指定项目 / 当前项目。
 type ProjectTag = "all" | "project" | "current"
-const PROJECT_TAGS: { value: ProjectTag; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "project", label: "Project" },
-  { value: "current", label: "Current Project" },
+const PROJECT_TAGS: { value: ProjectTag; labelKey: TranslationKey }[] = [
+  { value: "all", labelKey: "agent.historyFilterAll" },
+  { value: "project", labelKey: "agent.historyFilterProject" },
+  { value: "current", labelKey: "agent.historyFilterCurrentProject" },
 ]
 
 /**
@@ -120,14 +121,14 @@ export const ChatHistoryPanel = ({
         onChange={(event) => setQuery(event.target.value)}
       />
       <div className="flex flex-wrap items-center gap-1">
-        {PROJECT_TAGS.map(({ value, label }) => (
+        {PROJECT_TAGS.map(({ value, labelKey }) => (
           <LxTag
             key={value}
             size="small"
             highlighted={projectTag === value}
             onClick={() => setProjectTag(value)}
           >
-            {label}
+            {t(labelKey)}
           </LxTag>
         ))}
       </div>
@@ -147,49 +148,18 @@ export const ChatHistoryPanel = ({
             const isCurrent = session.id === currentSessionId
             const isEditing = editingSessionId === session.id
             return (
-              <div
+              <LxNavItem
                 key={session.id}
-                className={`group flex h-6 w-full items-center gap-1 rounded-[3px] px-1.5 text-left text-xs ${
-                  isCurrent
-                    ? "cursor-default bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/5"
-                }`}
-              >
-                {isEditing ? (
-                  <input
-                    autoFocus
-                    aria-label={t("agent.editSessionTitle")}
-                    className="h-full min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-xs text-white/80 outline-none"
-                    maxLength={40}
-                    value={titleDraft}
-                    onBlur={commitTitle}
-                    onChange={(event) => setTitleDraft(event.target.value)}
-                    onFocus={(event) => event.target.select()}
-                    onKeyDown={(event) => {
-                      event.stopPropagation()
-                      if (event.key === "Escape") {
-                        setEditingSessionId(null)
-                        return
-                      }
-                      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                        commitTitle()
-                      }
-                    }}
-                  />
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isCurrent}
-                      className="flex h-full min-w-0 flex-1 items-center truncate text-left"
-                      onClick={() => onRestore(session.id)}
-                    >
-                      {pendingSessionIds.has(session.id) ? (
-                        <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
-                      ) : (
-                        <span className="block truncate">{session.title}</span>
-                      )}
-                    </button>
+                level={2}
+                aria-current={isCurrent ? "page" : undefined}
+                data-menu-open={activeMoreSessionId === session.id ? "true" : undefined}
+                className={isCurrent ? "cursor-default bg-white/5 text-white" : "text-white/70"}
+                onClick={() => {
+                  if (isCurrent) return
+                  onRestore(session.id)
+                }}
+                suffix={
+                  isEditing ? undefined : (
                     <LxTooltip
                       open={activeMoreSessionId === session.id}
                       onOpenChange={(open) => {
@@ -381,9 +351,37 @@ export const ChatHistoryPanel = ({
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </LxIconButton>
                     </LxTooltip>
-                  </>
+                  )
+                }
+              >
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    aria-label={t("agent.editSessionTitle")}
+                    className="h-full min-w-0 flex-1 border-b border-white/20 bg-transparent px-0.5 text-sm text-white/80 outline-none"
+                    maxLength={40}
+                    value={titleDraft}
+                    onBlur={commitTitle}
+                    onChange={(event) => setTitleDraft(event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
+                    onFocus={(event) => event.target.select()}
+                    onKeyDown={(event) => {
+                      event.stopPropagation()
+                      if (event.key === "Escape") {
+                        setEditingSessionId(null)
+                        return
+                      }
+                      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                        commitTitle()
+                      }
+                    }}
+                  />
+                ) : pendingSessionIds.has(session.id) ? (
+                  <span className="inline-block h-3 w-24 animate-pulse rounded-[3px] bg-white/[0.08]" />
+                ) : (
+                  <span className="min-w-0 flex-1 truncate select-none">{session.title}</span>
                 )}
-              </div>
+              </LxNavItem>
             )
           })}
         </div>

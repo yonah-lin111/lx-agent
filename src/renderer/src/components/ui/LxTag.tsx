@@ -58,9 +58,9 @@ const colorStyles: Record<
     border: "border-white/5",
     bg: "bg-white/[0.03]",
     text: "text-white/45",
-    activeBorder: "border-white/15",
-    activeBg: "bg-white/10",
-    activeText: "text-white/90",
+    activeBorder: "border-transparent",
+    activeBg: "bg-white/5",
+    activeText: "text-white",
   },
   pink: {
     border: "border-pink-500/10",

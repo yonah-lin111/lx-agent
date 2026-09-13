@@ -32,6 +32,19 @@ describe("LxTag", () => {
     expect(tag?.querySelector(".truncate")).toBeNull()
   })
 
+  it("default 选中态对齐 LxIconButton 高亮：bg-white/5 + text-white 且无高亮边框", () => {
+    const { container } = render(<LxTag highlighted>tag</LxTag>)
+    const tag = container.querySelector(".lx-tag")
+    const className = tag?.className ?? ""
+    expect(tag?.getAttribute("data-highlighted")).toBe("true")
+    expect(className).toContain("bg-white/5")
+    expect(className).toContain("text-white")
+    expect(className).not.toContain("bg-white/10")
+    expect(className).not.toContain("text-white/90")
+    expect(className).not.toContain("text-white/45")
+    expect(className).not.toContain("border-white/15")
+  })
+
   it("ghost 变体不渲染边框、底色与 hover", () => {
     const { container } = render(
       <LxTag variant="ghost" color="sky">

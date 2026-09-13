@@ -110,14 +110,24 @@ describe("AgentHistoryPanel", () => {
     expect(screen.queryByText("Beta session")).toBeNull()
   })
 
-  it("点击非当前会话触发恢复，当前会话项禁用并标记", () => {
-    const onRestore = vi.fn()
-    const { container } = renderPanel({ currentSessionId: "s1", onRestore })
+  it("会话行渲染为二级 LxNavItem 并标记当前会话", () => {
+    const { container } = renderPanel({ currentSessionId: "s1" })
+    const rows = container.querySelectorAll(".lx-nav-item")
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      expect(row.getAttribute("data-item-level")).toBe("2")
+    }
     const currentRows = container.querySelectorAll('[data-session-current="true"]')
     expect(currentRows).toHaveLength(1)
     expect(currentRows[0]?.textContent).toContain("Alpha session")
-    const alphaButton = screen.getByText("Alpha session").closest("button")
-    expect(alphaButton?.disabled).toBe(true)
+    expect(currentRows[0]?.getAttribute("aria-current")).toBe("page")
+  })
+
+  it("点击非当前会话触发恢复，当前会话不触发", () => {
+    const onRestore = vi.fn()
+    renderPanel({ currentSessionId: "s1", onRestore })
+    fireEvent.click(screen.getByText("Alpha session"))
+    expect(onRestore).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText("Beta session"))
     expect(onRestore).toHaveBeenCalledWith("s2")
   })
