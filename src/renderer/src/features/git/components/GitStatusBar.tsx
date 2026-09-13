@@ -341,7 +341,6 @@ export const GitStatusBar = ({
         }}
       >
         <LxIconButton
-          hoverTextClass=""
           data-unimported={isUnimported ? "true" : undefined}
           textClass={
             isUnimported
@@ -350,7 +349,7 @@ export const GitStatusBar = ({
                 ? "text-violet-300"
                 : "text-white/50"
           }
-          className={`git-status-item min-w-0 px-1.5 py-0.5 text-xs ${
+          className={`min-w-0 px-1.5 py-0.5 text-xs ${
             isCurrentPathDesktop ? "font-medium" : ""
           } ${isUnimported ? "opacity-75" : ""}`}
           icon={
@@ -461,9 +460,8 @@ export const GitStatusBar = ({
         }}
       >
         <LxIconButton
-          hoverTextClass=""
           textClass="text-white/70"
-          className="git-status-item shrink-0 px-1 py-0.5 text-xs"
+          className="shrink-0 px-1 py-0.5 text-xs"
           icon={<GitBranch className="h-3.5 w-3.5 text-emerald-400" />}
         >
           <span>{displayBranch}</span>
@@ -572,9 +570,8 @@ export const GitStatusBar = ({
         }}
       >
         <LxIconButton
-          hoverTextClass=""
           textClass="text-white/70"
-          className="git-status-item shrink-0 px-1 py-0.5 text-xs"
+          className="shrink-0 px-1 py-0.5 text-xs"
           icon={<GitFork className="h-3.5 w-3.5 text-amber-400" />}
         >
           <span>{displayWorktree}</span>

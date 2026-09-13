@@ -21,6 +21,9 @@ export type LxIconButtonSize = "small" | "medium" | "large"
 // 图标按钮形状类型。
 export type LxIconButtonShape = "square" | "circle"
 
+// 图标按钮外观变体：solid = 参与主题化（Minecraft 3D 底座）；ghost = 无边框/无底色，主题不得强制浮雕。
+export type LxIconButtonVariant = "solid" | "ghost"
+
 // 图标按钮内置 Tooltip 配置。
 export interface LxIconButtonTooltip {
   content: React.ReactNode
@@ -104,6 +107,8 @@ export interface LxIconButtonProps
   showHoverBg?: boolean
   preset?: LxIconButtonPreset
   shape?: LxIconButtonShape
+  // 外观变体：ghost 时不带边框/底色，主题不得强制浮雕。默认 solid。
+  variant?: LxIconButtonVariant
   size?: LxIconButtonSize
   // 内置 Tooltip 配置。
   title?: LxIconButtonTooltip
@@ -126,6 +131,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       iconOnly = true,
       preset,
       shape = "square",
+      variant = "solid",
       showHoverBg = true,
       size = "small",
       disabled,
@@ -188,6 +194,7 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
         ref={ref}
         type={type}
         data-highlighted={highlighted ? "true" : undefined}
+        data-variant={variant}
         className={`${baseStyles} ${hasIconAndLabel ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}

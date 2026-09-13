@@ -30,4 +30,19 @@ describe("我的世界主题导航层级词表", () => {
   it("不再使用按图标兜底的分组件选择器", () => {
     expect(minecraftCss).not.toMatch(/:has\(\s*svg\.(text-sky-400|text-amber-400|lucide-file)/)
   })
+
+  it("ghost 变体不被主题强制浮雕、边框与文字色", () => {
+    expect(minecraftCss).toContain('.lx-tag:not([data-variant="ghost"])')
+    expect(minecraftCss).toMatch(
+      /button:not\(\[role="option"\]\):not\(\.agent-tool-diff-toggle\):not\(\[data-variant="ghost"\]\)/,
+    )
+    expect(minecraftCss).toMatch(
+      /\[role="button"\]:not\(\[role="option"\]\):not\(\.agent-tool-diff-toggle\):not\(\[data-variant="ghost"\]\)/,
+    )
+    expect(minecraftCss).toContain('.font-semibold:not([data-variant="ghost"])')
+    expect(minecraftCss).toMatch(/\.git-status-item:not\(\[data-variant="ghost"\]\)/)
+    expect(minecraftCss).toMatch(
+      /\.git-status-item\[data-unimported="true"\]:not\(\[data-variant="ghost"\]\)/,
+    )
+  })
 })

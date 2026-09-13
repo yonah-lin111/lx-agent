@@ -46,14 +46,10 @@ describe("LxTag", () => {
     expect(container.querySelector(".lx-tag")?.getAttribute("data-variant")).toBe("ghost")
   })
 
-  it("showHover 让展示态标签仅应用指定 hoverClass", () => {
-    const { container } = render(
-      <LxTag variant="ghost" showHover hoverClass="hover:bg-white/5">
-        x
-      </LxTag>,
-    )
+  it("可点击标签也不渲染 hover 变色", () => {
+    const { container } = render(<LxTag onClick={() => {}}>Action</LxTag>)
     const className = container.querySelector(".lx-tag")?.className ?? ""
-    expect(className).toContain("hover:bg-white/5")
-    expect(className).not.toContain("hover:border")
+    expect(className).toContain("cursor-pointer")
+    expect(className).not.toContain("hover:")
   })
 })

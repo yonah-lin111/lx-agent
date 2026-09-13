@@ -398,7 +398,6 @@ const ProjectReferencedFolderTagsContent = ({
                     key={folder.path}
                     bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
                     closeTooltipContent={t("project.deleteFolderConfirm")}
-                    hoverClass=""
                     prefix={<Folder className="h-3 w-3" />}
                     size="small"
                     suffix={

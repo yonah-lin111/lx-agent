@@ -30,8 +30,6 @@ export interface LxTagProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 
   prefix?: React.ReactNode
   suffix?: React.ReactNode
   highlighted?: boolean
-  // 是否应用 hover 样式；缺省时仅在可交互（onClick/onClose）时应用。
-  showHover?: boolean
   onClick?: (event: React.MouseEvent<HTMLSpanElement>) => void
   onClose?: () => void
   confirmClose?: boolean
@@ -39,7 +37,6 @@ export interface LxTagProps extends Omit<React.HTMLAttributes<HTMLSpanElement>, 
   color?: LxTagColor
   bgClass?: string
   highlightBgClass?: string
-  hoverClass?: string
   // 覆盖默认文字色；使用 bgClass 时若已含 text-* 请勿再传，避免同类冲突。
   textClass?: string
   className?: string
@@ -55,8 +52,6 @@ const colorStyles: Record<
     activeBorder: string
     activeBg: string
     activeText: string
-    hoverBorder: string
-    hoverText: string
   }
 > = {
   default: {
@@ -66,8 +61,6 @@ const colorStyles: Record<
     activeBorder: "border-white/15",
     activeBg: "bg-white/10",
     activeText: "text-white/90",
-    hoverBorder: "hover:border-white/20",
-    hoverText: "hover:text-white/80",
   },
   pink: {
     border: "border-pink-500/10",
@@ -76,8 +69,6 @@ const colorStyles: Record<
     activeBorder: "border-pink-500/20",
     activeBg: "bg-pink-500/10",
     activeText: "text-pink-400",
-    hoverBorder: "hover:border-pink-500/30",
-    hoverText: "hover:text-pink-300",
   },
   amber: {
     border: "border-amber-500/10",
@@ -86,8 +77,6 @@ const colorStyles: Record<
     activeBorder: "border-amber-500/20",
     activeBg: "bg-amber-500/10",
     activeText: "text-amber-400",
-    hoverBorder: "hover:border-amber-500/30",
-    hoverText: "hover:text-amber-300",
   },
   blue: {
     border: "border-blue-500/10",
@@ -96,8 +85,6 @@ const colorStyles: Record<
     activeBorder: "border-blue-500/20",
     activeBg: "bg-blue-500/10",
     activeText: "text-blue-400",
-    hoverBorder: "hover:border-blue-500/30",
-    hoverText: "hover:text-blue-300",
   },
   teal: {
     border: "border-teal-500/10",
@@ -106,8 +93,6 @@ const colorStyles: Record<
     activeBorder: "border-teal-500/20",
     activeBg: "bg-teal-500/10",
     activeText: "text-teal-400",
-    hoverBorder: "hover:border-teal-500/30",
-    hoverText: "hover:text-teal-300",
   },
   emerald: {
     border: "border-emerald-500/10",
@@ -116,8 +101,6 @@ const colorStyles: Record<
     activeBorder: "border-emerald-500/20",
     activeBg: "bg-emerald-500/10",
     activeText: "text-emerald-400",
-    hoverBorder: "hover:border-emerald-500/30",
-    hoverText: "hover:text-emerald-300",
   },
   rose: {
     border: "border-rose-500/10",
@@ -126,8 +109,6 @@ const colorStyles: Record<
     activeBorder: "border-rose-500/20",
     activeBg: "bg-rose-500/10",
     activeText: "text-rose-400",
-    hoverBorder: "hover:border-rose-500/30",
-    hoverText: "hover:text-rose-300",
   },
   gray: {
     border: "border-neutral-500/10",
@@ -136,8 +117,6 @@ const colorStyles: Record<
     activeBorder: "border-neutral-500/20",
     activeBg: "bg-neutral-500/10",
     activeText: "text-neutral-400",
-    hoverBorder: "hover:border-neutral-500/30",
-    hoverText: "hover:text-neutral-300",
   },
   purple: {
     border: "border-purple-500/10",
@@ -146,8 +125,6 @@ const colorStyles: Record<
     activeBorder: "border-purple-500/20",
     activeBg: "bg-purple-500/10",
     activeText: "text-purple-400",
-    hoverBorder: "hover:border-purple-500/30",
-    hoverText: "hover:text-purple-300",
   },
   indigo: {
     border: "border-indigo-500/10",
@@ -156,8 +133,6 @@ const colorStyles: Record<
     activeBorder: "border-indigo-500/20",
     activeBg: "bg-indigo-500/10",
     activeText: "text-indigo-400",
-    hoverBorder: "hover:border-indigo-500/30",
-    hoverText: "hover:text-indigo-300",
   },
   sky: {
     border: "border-sky-500/10",
@@ -166,8 +141,6 @@ const colorStyles: Record<
     activeBorder: "border-sky-500/20",
     activeBg: "bg-sky-500/10",
     activeText: "text-sky-400",
-    hoverBorder: "hover:border-sky-500/30",
-    hoverText: "hover:text-sky-300",
   },
   orange: {
     border: "border-orange-500/10",
@@ -176,8 +149,6 @@ const colorStyles: Record<
     activeBorder: "border-orange-500/20",
     activeBg: "bg-orange-500/10",
     activeText: "text-orange-400",
-    hoverBorder: "hover:border-orange-500/30",
-    hoverText: "hover:text-orange-300",
   },
 }
 
@@ -208,7 +179,6 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
     prefix,
     suffix,
     highlighted = false,
-    showHover,
     onClick,
     onClose,
     confirmClose = true,
@@ -216,7 +186,6 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
     color = "default",
     bgClass,
     highlightBgClass,
-    hoverClass,
     textClass,
     className = "",
     ...restProps
@@ -238,8 +207,6 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
     ? ""
     : (highlightBgClass ?? `${activeColorStyle.activeBorder} ${activeColorStyle.activeBg}`)
   const activeText = textClass ?? (!isGhost && highlightBgClass ? "" : activeColorStyle.activeText)
-  const hoverEnabled = showHover ?? isInteractive
-  const defaultHover = hoverClass ?? `${activeColorStyle.hoverBorder} ${activeColorStyle.hoverText}`
   const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
 
   return (
@@ -252,9 +219,7 @@ export const LxTag = React.forwardRef<HTMLSpanElement, LxTagProps>(function LxTa
       className={`lx-tag inline-flex select-none items-center justify-center font-semibold transition-all duration-150 ${
         isGhost ? "" : "border"
       } ${currentStyles.container} ${
-        highlighted
-          ? `${activeChrome} ${activeText}`
-          : `${defaultChrome} ${defaultText} ${hoverEnabled ? defaultHover : ""}`
+        highlighted ? `${activeChrome} ${activeText}` : `${defaultChrome} ${defaultText}`
       } ${isInteractive ? "cursor-pointer" : "cursor-default"} ${className}`}
       role={isClickable ? "button" : undefined}
       onClick={onClick}

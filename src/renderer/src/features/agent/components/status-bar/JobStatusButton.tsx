@@ -67,7 +67,6 @@ export const JobStatusButton = ({
         aria-label={t("agent.jobStatus")}
         onClick={handleClick}
         iconOnly={false}
-        hoverTextClass={runningCount > 0 ? "" : "hover:text-white/80"}
         textClass={runningCount > 0 ? "text-sky-300" : "text-white/50"}
         className={`shrink-0 px-1.5 py-0.5 text-xs ${
           runningCount > 0 ? "bg-sky-500/10 font-medium" : ""

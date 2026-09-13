@@ -19,4 +19,12 @@ describe("LxIconButton", () => {
     const { container } = render(<LxIconButton aria-label="default" />)
     expect(container.querySelector("button")?.className).toContain("text-white/45")
   })
+
+  it("variant 默认 solid，ghost 标记供主题跳过强制浮雕", () => {
+    const solid = render(<LxIconButton aria-label="solid" />)
+    expect(solid.container.querySelector("button")?.getAttribute("data-variant")).toBe("solid")
+
+    const ghost = render(<LxIconButton aria-label="ghost" variant="ghost" />)
+    expect(ghost.container.querySelector("button")?.getAttribute("data-variant")).toBe("ghost")
+  })
 })

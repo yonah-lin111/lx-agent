@@ -58,6 +58,7 @@ describe("GitStatusBar unimported styling", () => {
     const item = container.querySelector('[data-unimported="true"]')
     expect(item).not.toBeNull()
     expect(item?.className).toContain("text-white/40")
+    expect(item?.getAttribute("data-variant")).toBe("solid")
     const dot = item?.querySelector(".rounded-full")
     expect(dot).toBeNull()
 

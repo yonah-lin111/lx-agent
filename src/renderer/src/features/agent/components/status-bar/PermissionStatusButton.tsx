@@ -238,9 +238,8 @@ export const PermissionStatusButton = ({
       >
         <LxIconButton
           aria-label={t("agent.permissionTitle")}
+          variant="ghost"
           textClass="text-amber-300/90"
-          hoverBgClass="hover:bg-white/5"
-          hoverTextClass=""
           className="shrink-0"
         >
           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
@@ -295,8 +294,6 @@ export const PermissionStatusButton = ({
       <LxTag
         size="small"
         variant="ghost"
-        showHover
-        hoverClass="hover:bg-white/5"
         aria-label={t("settings.sandboxPolicy")}
         className="shrink-0"
         prefix={renderSandboxIcon()}

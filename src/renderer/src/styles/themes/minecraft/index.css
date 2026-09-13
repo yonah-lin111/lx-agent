@@ -57,8 +57,8 @@
 
 [data-theme="minecraft"] strong,
 [data-theme="minecraft"] b,
-[data-theme="minecraft"] .font-bold,
-[data-theme="minecraft"] .font-semibold {
+[data-theme="minecraft"] .font-bold:not([data-variant="ghost"]),
+[data-theme="minecraft"] .font-semibold:not([data-variant="ghost"]) {
   color: #e6e6f0;
   font-weight: 600;
 }
@@ -105,9 +105,11 @@
 /* ========================================================
  * 经典 Minecraft 树形导航与多层级阶梯背景（Project / Folder / Prompt / UI Preview）
  * ======================================================== */
-/* 基础按钮风格（非下拉/菜单选项，排除 Agent 消息内部的内联切换按钮） */
-[data-theme="minecraft"] button:not([role="option"]):not(.agent-tool-diff-toggle),
-[data-theme="minecraft"] [role="button"]:not([role="option"]):not(.agent-tool-diff-toggle) {
+/* 基础按钮风格（非下拉/菜单选项，排除 Agent 消息内部的内联切换按钮；ghost 变体为显式无边框/无底色，不强制浮雕） */
+[data-theme="minecraft"]
+button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghost"]),
+[data-theme="minecraft"]
+  [role="button"]:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghost"]) {
   transition: none !important;
   border: 2px solid #000000 !important;
   box-shadow:
@@ -543,7 +545,7 @@
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
 }
 
-[data-theme="minecraft"] .lx-tag[data-highlighted="true"] {
+[data-theme="minecraft"] .lx-tag[data-highlighted="true"]:not([data-variant="ghost"]) {
   background-color: #14141c !important;
   border: 1px solid #000000 !important;
   border-left: 2px solid #55ff55 !important;
@@ -1087,7 +1089,7 @@
 }
 
 /* ========================================================
- * Git 状态栏（GitStatusBar） - 3D 凸起像素胶囊
+ * Git 状态栏（GitStatusBar） - 3D 凸起像素胶囊（ghost 变体为显式无边框/无底色，不参与）
  * ======================================================== */
 [data-theme="minecraft"] .git-status-bar {
   border-top: none !important;
@@ -1096,7 +1098,7 @@
   gap: 6px !important;
 }
 
-[data-theme="minecraft"] .git-status-item {
+[data-theme="minecraft"] .git-status-item:not([data-variant="ghost"]) {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #222232 !important;
@@ -1109,7 +1111,7 @@
   font-family: var(--theme-font-family) !important;
 }
 
-[data-theme="minecraft"] .git-status-item[data-unimported="true"] {
+[data-theme="minecraft"] .git-status-item[data-unimported="true"]:not([data-variant="ghost"]) {
   border: 2px solid #333340 !important;
   background-color: #171720 !important;
   color: #707080 !important;
