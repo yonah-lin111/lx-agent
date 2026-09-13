@@ -1,6 +1,7 @@
 import { BarChart3, LayoutDashboard, type LucideIcon } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type TranslationKey, useTranslation } from "@/i18n"
 import { HOME_VIEW_QUERY_KEY, type HomeView, parseHomeView } from "@/lib/homeView"
 
@@ -59,17 +60,17 @@ export const HomeLeftSideBar = ({
             const isActive = activeView === item.view
             const Icon = item.icon
             return (
-              <LxIconButton
-                key={item.view}
-                size="small"
-                aria-current={isActive ? "page" : undefined}
-                aria-label={t(item.labelKey)}
-                title={{ content: t(item.labelKey), placement: "right" }}
-                highlighted={isActive}
-                onClick={() => handleSelect(item.view)}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </LxIconButton>
+              <LxTooltip key={item.view} content={t(item.labelKey)} placement="right">
+                <LxNavItem
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={t(item.labelKey)}
+                  className={`w-full justify-center ${
+                    isActive ? "bg-white/5 text-white" : "text-white/70"
+                  }`}
+                  onClick={() => handleSelect(item.view)}
+                  prefix={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                />
+              </LxTooltip>
             )
           })}
         </nav>
@@ -95,22 +96,15 @@ export const HomeLeftSideBar = ({
           const isActive = activeView === item.view
           const Icon = item.icon
           return (
-            <button
+            <LxNavItem
               key={item.view}
-              type="button"
               aria-current={isActive ? "page" : undefined}
-              className={`home-sidebar-item group flex h-7 w-full items-center gap-2 rounded-[6px] px-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
-                isActive
-                  ? "bg-[var(--color-theme-surface-hover)] text-[var(--color-theme-text)] font-medium"
-                  : "text-[var(--color-theme-text-muted)] hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"
-              }`}
+              className={isActive ? "bg-white/5 text-white" : "text-white/70"}
               onClick={() => handleSelect(item.view)}
+              prefix={<Icon className={`h-3.5 w-3.5 shrink-0 ${item.iconClassName}`} />}
             >
-              <Icon className={`h-3.5 w-3.5 shrink-0 ${item.iconClassName}`} />
-              <span className="min-w-0 flex-1 truncate select-none text-xs">
-                {t(item.labelKey)}
-              </span>
-            </button>
+              <span className="min-w-0 flex-1 truncate select-none">{t(item.labelKey)}</span>
+            </LxNavItem>
           )
         })}
       </nav>

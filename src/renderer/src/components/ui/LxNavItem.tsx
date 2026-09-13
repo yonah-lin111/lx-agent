@@ -1,11 +1,12 @@
 import type React from "react"
+import { forwardRef } from "react"
 
 // 导航行尺寸类型。
 export type LxNavItemSize = "small" | "default" | "large"
 
 // 导航行属性。
 export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "prefix"> {
-  children: React.ReactNode
+  children?: React.ReactNode
   size?: LxNavItemSize
   prefix?: React.ReactNode
   suffix?: React.ReactNode
@@ -26,23 +27,27 @@ const sizeStyles: Record<LxNavItemSize, string> = {
 /**
  * 渲染树形列表的通用行，支持前后缀插槽、尺寸档位、嵌套缩进与键盘可达。
  */
-export const LxNavItem = ({
-  children,
-  size = "default",
-  prefix,
-  suffix,
-  depth = 0,
-  hoverable = true,
-  className = "",
-  style,
-  onClick,
-  onKeyDown,
-  ...restProps
-}: LxNavItemProps): React.JSX.Element => {
+export const LxNavItem = forwardRef<HTMLDivElement, LxNavItemProps>(function LxNavItem(
+  {
+    children,
+    size = "default",
+    prefix,
+    suffix,
+    depth = 0,
+    hoverable = true,
+    className = "",
+    style,
+    onClick,
+    onKeyDown,
+    ...restProps
+  },
+  ref,
+): React.JSX.Element {
   const indent = depth > 0 ? 10 + (depth - 1) * 12 : 0
 
   return (
     <div
+      ref={ref}
       role="button"
       tabIndex={0}
       style={indent > 0 ? { marginLeft: `${indent}px`, ...style } : style}
@@ -64,4 +69,4 @@ export const LxNavItem = ({
       {suffix}
     </div>
   )
-}
+})

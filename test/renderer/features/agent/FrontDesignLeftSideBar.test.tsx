@@ -107,6 +107,9 @@ describe("FrontDesignLeftSideBar 侧边栏多 Tab 原型树", () => {
 
     // 点击 Tab 1 整行：仅收起 Tab 1，不切换 agentTabStore，不激活 Tab 1 设计
     const tab1Row = screen.getByText("Tab 1").closest("[data-item-level='tab']")!
+    // 统一使用默认尺寸的 LxNavItem
+    expect(tab1Row.className).toContain("lx-nav-item")
+    expect(tab1Row.className).toContain("h-7")
     fireEvent.click(tab1Row)
 
     // agentTabStore 依然保持在 Tab 2

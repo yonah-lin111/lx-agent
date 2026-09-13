@@ -222,38 +222,7 @@
 }
 
 /* --------------------------------------------------------
- * 2. UI Preview 组件展示页左侧栏层级区分（3D 凸起）
- * -------------------------------------------------------- */
-/* Level 1: 大分组头节点（深黑曜石承托感） */
-[data-theme="minecraft"] nav > div > button[aria-expanded] {
-  background-color: #38384e !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.28),
-    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.7),
-    2px 2px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] nav > div > button[aria-expanded]:hover {
-  background-color: #494964 !important;
-}
-
-/* Level 2: 具体组件项按钮（深石墨暗槽） */
-[data-theme="minecraft"] nav > div > div > button {
-  background-color: #1e1e2a !important;
-  border: 2px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
-    1px 1px 0px 0px #000000 !important;
-}
-
-[data-theme="minecraft"] nav > div > div > button:hover {
-  background-color: #2b2b3b !important;
-}
-
-/* --------------------------------------------------------
- * 3. 激活/选中高亮态（精确统一所有选中的 Prompt、页面项、配置项与导航）
+ * 2. 激活/选中高亮态（精确统一所有选中的 Prompt、页面项、配置项与导航）
  * -------------------------------------------------------- */
 [data-theme="minecraft"] div[role="button"][aria-current],
 [data-theme="minecraft"] div[role="button"][aria-current="page"],
@@ -667,29 +636,6 @@
 [data-theme="minecraft"] .settings-cli-custom-path {
   border-top: 1px solid #000000 !important;
   box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.06) !important;
-}
-
-[data-theme="minecraft"] .settings-sidebar-nav-item {
-  border-radius: 0px !important;
-  border: 1px solid transparent !important;
-}
-
-[data-theme="minecraft"] .settings-sidebar-nav-item:hover {
-  border: 1px solid #000000 !important;
-  background-color: #242434 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.5) !important;
-}
-
-[data-theme="minecraft"] .settings-sidebar-nav-item.active {
-  border: 1px solid #000000 !important;
-  background-color: #2c2c3e !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.65),
-    1px 1px 0px 0px #000000 !important;
-  color: #55ff55 !important;
 }
 
 [data-theme="minecraft"] .settings-model-card {
@@ -1346,38 +1292,6 @@
   transform: translate(1px, 1px);
 }
 
-/* UI 预览左侧边栏分组与项目导航 */
-[data-theme="minecraft"] .ui-preview-nav-group-btn {
-  border-radius: 0px !important;
-  font-family: var(--theme-font-family) !important;
-}
-
-[data-theme="minecraft"] .ui-preview-nav-item-btn {
-  border-radius: 0px !important;
-  border: 1px solid transparent !important;
-  font-family: var(--theme-font-family) !important;
-}
-
-[data-theme="minecraft"] .ui-preview-nav-item-btn[aria-current="page"] {
-  background-color: #14141c !important;
-  border: 1px solid #000000 !important;
-  border-left: 3px solid #55ff55 !important;
-  color: #ffffff !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25),
-    0px 0px 6px rgba(85, 255, 85, 0.2) !important;
-}
-
-[data-theme="minecraft"] .ui-preview-nav-item-btn:hover:not([aria-current="page"]) {
-  background-color: #2b2b3b !important;
-  color: #ffffff !important;
-  border: 1px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
-}
-
 /* UI 预览各个 Demo 内部容器卡片（黑曜石/深板岩马赛克基底 + 3D 浮雕投影） */
 [data-theme="minecraft"] .ui-preview-section-card .bg-\[\#1a1a1a\],
 [data-theme="minecraft"] .ui-preview-section-card .bg-\[\#1e1e1e\],
@@ -1583,30 +1497,4 @@
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.08),
     inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6),
     2px 2px 0px 0px #000000 !important;
-}
-
-/* 主页侧边栏概览项像素风格 */
-[data-theme="minecraft"] .home-sidebar-item {
-  border-radius: 0px !important;
-  font-family: var(--theme-font-family) !important;
-}
-
-[data-theme="minecraft"] .home-sidebar-item[aria-current="page"] {
-  background-color: #283852 !important;
-  border: 2px solid #000000 !important;
-  border-left: 3px solid #38bdf8 !important;
-  color: #ffffff !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.9),
-    inset -1px -1px 0px 0px rgba(56, 189, 248, 0.25),
-    0px 0px 6px rgba(56, 189, 248, 0.2) !important;
-}
-
-[data-theme="minecraft"] .home-sidebar-item:hover:not([aria-current="page"]) {
-  background-color: #2b2b3b !important;
-  color: #ffffff !important;
-  border: 1px solid #000000 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
 }

@@ -166,7 +166,6 @@ export const ProjectNavigationList = ({
     return (
       <LxNavItem
         key={tempPromptId}
-        size="small"
         depth={1}
         hoverable={false}
         data-item-level="temp-prompt"
@@ -209,7 +208,6 @@ export const ProjectNavigationList = ({
     return (
       <LxNavItem
         key={prompt.id}
-        size="small"
         depth={depth}
         data-item-level="prompt"
         data-menu-open={activeMenuId === prompt.id ? "true" : undefined}
@@ -250,7 +248,6 @@ export const ProjectNavigationList = ({
     return (
       <div key={folder.id} className="space-y-0.5">
         <LxNavItem
-          size="small"
           depth={depth}
           data-item-level="folder"
           data-menu-open={activeMenuId === folder.id ? "true" : undefined}
@@ -298,7 +295,6 @@ export const ProjectNavigationList = ({
           return (
             <div key={project.id} className="space-y-1">
               <LxNavItem
-                size="small"
                 data-item-level="project"
                 data-unimported={project.isImported === false ? "true" : undefined}
                 data-menu-open={activeMenuId === project.id ? "true" : undefined}

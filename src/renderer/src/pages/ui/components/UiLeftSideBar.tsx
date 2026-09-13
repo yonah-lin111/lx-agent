@@ -2,7 +2,8 @@ import { ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
-import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { UI_SECTION_GROUPS, UI_SECTIONS } from "@/features/ui-preview"
 import { useTranslation } from "@/i18n"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
@@ -42,16 +43,17 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
             const isActive = activeSection === section.id
             const Icon = section.icon
             return (
-              <LxIconButton
-                key={section.id}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={section.label}
-                title={{ content: section.label, placement: "right" }}
-                highlighted={isActive}
-                onClick={() => navigate(`${PAGE_ROUTES.ui}?section=${section.id}`)}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </LxIconButton>
+              <LxTooltip key={section.id} content={section.label} placement="right">
+                <LxNavItem
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={section.label}
+                  className={`w-full justify-center ${
+                    isActive ? "bg-white/5 text-white" : "text-white/70"
+                  }`}
+                  onClick={() => navigate(`${PAGE_ROUTES.ui}?section=${section.id}`)}
+                  prefix={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                />
+              </LxTooltip>
             )
           })}
         </nav>
@@ -72,42 +74,41 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
           const GroupIcon = group.icon
           return (
             <div key={group.id} className="space-y-1">
-              <button
-                type="button"
+              <LxNavItem
                 aria-expanded={isGroupExpanded}
-                className={`ui-preview-nav-group-btn flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-xs font-semibold transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-                  groupHasActive ? "text-white" : "text-white/45"
-                }`}
+                className={`font-semibold ${groupHasActive ? "text-white" : "text-white/45"}`}
                 onClick={() => toggleGroup(group.id)}
+                prefix={
+                  <GroupIcon
+                    className={`h-3.5 w-3.5 shrink-0 ${groupHasActive ? "text-white" : ""}`}
+                  />
+                }
+                suffix={
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${
+                      isGroupExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
+                  />
+                }
               >
-                <GroupIcon
-                  className={`h-3.5 w-3.5 shrink-0 ${groupHasActive ? "text-white" : ""}`}
-                />
                 <span className="min-w-0 flex-1 truncate">{t(group.labelKey)}</span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 ${
-                    isGroupExpanded ? "rotate-0" : "-rotate-90"
-                  }`}
-                />
-              </button>
+              </LxNavItem>
               {isGroupExpanded ? (
                 <div className="space-y-1">
                   {group.sections.map((section) => {
                     const isActive = activeSection === section.id
                     const Icon = section.icon
                     return (
-                      <button
+                      <LxNavItem
                         key={section.id}
-                        type="button"
-                        className={`ui-preview-nav-item-btn ml-2.5 flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-                          isActive ? "bg-white/5 text-white" : "text-white/70"
-                        }`}
+                        depth={1}
                         aria-current={isActive ? "page" : undefined}
+                        className={isActive ? "bg-white/5 text-white" : "text-white/70"}
                         onClick={() => navigate(`${PAGE_ROUTES.ui}?section=${section.id}`)}
+                        prefix={<Icon className="h-3.5 w-3.5 shrink-0" />}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{section.label}</span>
-                      </button>
+                        <span className="min-w-0 flex-1 truncate">{section.label}</span>
+                      </LxNavItem>
                     )
                   })}
                 </div>

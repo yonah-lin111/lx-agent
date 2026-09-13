@@ -31,6 +31,10 @@ describe("HomeLeftSideBar", () => {
     expect(overviewItem.getAttribute("aria-current")).toBe("page")
     expect(usageItem.getAttribute("aria-current")).toBeNull()
 
+    // 统一使用默认尺寸的 LxNavItem
+    expect(overviewItem.className).toContain("lx-nav-item")
+    expect(overviewItem.className).toContain("h-7")
+
     fireEvent.click(usageItem)
     expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")
   })

@@ -151,7 +151,7 @@ describe("ProjectNavigationList unimported items", () => {
     const projectRow = container.querySelector<HTMLElement>('[data-item-level="project"]')
     expect(projectRow).not.toBeNull()
     expect(projectRow?.className).toContain("lx-nav-item")
-    expect(projectRow?.className).toContain("h-6")
+    expect(projectRow?.className).toContain("h-7")
 
     // 旧的 F2 / Delete / Shift+Alt+C 快捷键不再触发任何编辑或删除行为
     fireEvent.keyDown(projectRow!, { key: "F2" })
@@ -165,7 +165,7 @@ describe("ProjectNavigationList unimported items", () => {
 
     const promptRow = container.querySelector<HTMLElement>('[data-item-level="prompt"]')
     expect(promptRow).not.toBeNull()
-    expect(promptRow?.className).toContain("h-6")
+    expect(promptRow?.className).toContain("h-7")
     fireEvent.keyDown(promptRow!, { key: "Enter" })
     expect(onItemOpen).toHaveBeenCalledWith("prompt-1")
   })

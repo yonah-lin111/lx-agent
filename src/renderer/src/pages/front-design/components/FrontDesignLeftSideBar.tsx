@@ -3,6 +3,8 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxNavItem } from "@/components/ui/LxNavItem"
+import { LxTooltip } from "@/components/ui/LxTooltip"
 import { type AgentTab, agentTabStore } from "@/features/agent/hooks/agentTabStore"
 import {
   type FrontDesignItem,
@@ -188,28 +190,35 @@ export const FrontDesignLeftSideBar = ({
         <nav className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-0.5 pb-2">
           {allVisibleDesigns.map((d) => {
             const isActive = d.id === activeDesignId
+            const label = d.title || t("frontDesign.title")
             return (
-              <LxIconButton
-                key={d.id}
-                highlighted={isActive}
-                onClick={() => {
-                  frontDesignStore.setActiveDesignId(d.id)
-                  if (d.sessionId) {
-                    const targetTab = agentTabStore.findTabBySessionId(d.sessionId)
-                    if (targetTab && targetTab.id !== activeTabId) {
-                      agentTabStore.switchTab(targetTab.id)
+              <LxTooltip key={d.id} content={label} placement="right">
+                <LxNavItem
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={label}
+                  className={`w-full justify-center ${
+                    isActive ? "bg-white/5 text-white" : "text-white/70"
+                  }`}
+                  onClick={() => {
+                    frontDesignStore.setActiveDesignId(d.id)
+                    if (d.sessionId) {
+                      const targetTab = agentTabStore.findTabBySessionId(d.sessionId)
+                      if (targetTab && targetTab.id !== activeTabId) {
+                        agentTabStore.switchTab(targetTab.id)
+                      }
                     }
+                  }}
+                  prefix={
+                    d.isStreaming ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-400" />
+                    ) : (
+                      <Palette
+                        className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-pink-400" : ""}`}
+                      />
+                    )
                   }
-                }}
-                aria-label={d.title || t("frontDesign.title")}
-                title={{ content: d.title || t("frontDesign.title"), placement: "right" }}
-              >
-                {d.isStreaming ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-pink-400" />
-                ) : (
-                  <Palette className={`h-3.5 w-3.5 ${isActive ? "text-pink-400" : ""}`} />
-                )}
-              </LxIconButton>
+                />
+              </LxTooltip>
             )
           })}
         </nav>
@@ -273,68 +282,61 @@ export const FrontDesignLeftSideBar = ({
             return (
               <div key={item.tab.id} className="space-y-0.5">
                 {/* 父级：Tab 节点（参考 ProjectNavigationList 的 Project 节点视觉与排版） */}
-                <div
-                  role="button"
-                  tabIndex={0}
+                <LxNavItem
                   data-item-level="tab"
                   aria-expanded={!isTabCollapsed}
                   aria-current={isTabActive ? "true" : undefined}
                   onClick={() => handleTabClick(item.tab.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      handleTabClick(item.tab.id)
-                    }
-                  }}
-                  className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
-                    isTabActive
-                      ? "bg-white/10 text-white font-medium shadow-sm"
-                      : "text-white/70 hover:bg-white/5"
-                  }`}
+                  className={isTabActive ? "bg-white/5 text-white font-medium" : "text-white/70"}
+                  prefix={
+                    <>
+                      {/* 折叠/展开切换箭头 */}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleTab(item.tab.id)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.stopPropagation()
+                            handleToggleTab(item.tab.id)
+                          }
+                        }}
+                        className="flex h-4 w-4 shrink-0 items-center justify-center text-white/40 hover:text-white transition-transform cursor-pointer"
+                      >
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                            isTabCollapsed ? "-rotate-90 text-white/30" : "text-white/60"
+                          }`}
+                        />
+                      </span>
+
+                      {/* 运行状态指示灯 */}
+                      <span
+                        aria-label={
+                          item.isStreaming ? t("agent.statusRunning") : t("agent.statusReady")
+                        }
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          item.isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                        }`}
+                        role="status"
+                      />
+                    </>
+                  }
+                  suffix={
+                    /* 下属设计原型数量角标 */
+                    <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
+                      {item.designs.length}
+                    </span>
+                  }
                 >
-                  {/* 折叠/展开切换箭头 */}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleToggleTab(item.tab.id)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation()
-                        handleToggleTab(item.tab.id)
-                      }
-                    }}
-                    className="flex h-4 w-4 shrink-0 items-center justify-center text-white/40 hover:text-white transition-transform cursor-pointer"
-                  >
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform duration-150 ${
-                        isTabCollapsed ? "-rotate-90 text-white/30" : "text-white/60"
-                      }`}
-                    />
-                  </span>
-
-                  {/* 运行状态指示灯 */}
-                  <span
-                    aria-label={
-                      item.isStreaming ? t("agent.statusRunning") : t("agent.statusReady")
-                    }
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      item.isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
-                    }`}
-                    role="status"
-                  />
-
                   {/* Tab 标题 */}
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white/80">
                     {item.tabLabel}
                   </span>
-
-                  {/* 下属设计原型数量角标 */}
-                  <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
-                    {item.designs.length}
-                  </span>
-                </div>
+                </LxNavItem>
 
                 {/* 子级：设计原型列表（按设计族与版本聚合） */}
                 {!isTabCollapsed && (
@@ -357,29 +359,21 @@ export const FrontDesignLeftSideBar = ({
                         const currentVersionItem = activeItemInGroup ?? latestVersion
 
                         return (
-                          <div
+                          <LxNavItem
                             key={root.id}
-                            role="button"
-                            tabIndex={0}
+                            depth={1}
                             data-item-level="prompt"
                             aria-current={isCurrentActive ? "page" : undefined}
-                            style={{ marginLeft: "10px" }}
                             onClick={() => {
                               handleDesignClick(currentVersionItem, item.tab.id)
                             }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                handleDesignClick(currentVersionItem, item.tab.id)
-                              }
-                            }}
-                            className={`group flex h-7 items-center justify-between gap-1.5 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 cursor-pointer ${
+                            className={
                               isCurrentActive
-                                ? "bg-white/10 text-white font-medium"
+                                ? "bg-white/5 text-white font-medium"
                                 : "text-white/70"
-                            }`}
-                          >
-                            <div className="flex min-w-0 items-center gap-1.5 flex-1">
-                              {currentVersionItem.isStreaming ? (
+                            }
+                            prefix={
+                              currentVersionItem.isStreaming ? (
                                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-pink-400" />
                               ) : (
                                 <Palette
@@ -387,35 +381,39 @@ export const FrontDesignLeftSideBar = ({
                                     isCurrentActive ? "text-pink-400" : "text-white/45"
                                   }`}
                                 />
-                              )}
-                              <span className="min-w-0 flex-1 truncate text-xs select-none">
-                                {root.title || t("frontDesign.title")}
-                              </span>
+                              )
+                            }
+                            suffix={
+                              <>
+                                {/* 当前显示的版本号 */}
+                                <span className="shrink-0 rounded bg-pink-500/20 px-1 py-0.2 font-mono text-[9px] font-semibold leading-none text-pink-300">
+                                  v{currentVersionItem.version ?? 1}
+                                </span>
 
-                              {/* 当前显示的版本号 */}
-                              <span className="shrink-0 rounded bg-pink-500/20 px-1 py-0.2 font-mono text-[9px] font-semibold leading-none text-pink-300">
-                                v{currentVersionItem.version ?? 1}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
-                              <LxIconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // 删除该族的所有版本
-                                  versions.forEach((v) => frontDesignStore.removeDesign(v.id))
-                                }}
-                                aria-label={t("frontDesign.deleteDesign")}
-                                title={{
-                                  content: t("frontDesign.deleteDesign"),
-                                  placement: "top",
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
-                              </LxIconButton>
-                            </div>
-                          </div>
+                                <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
+                                  <LxIconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      // 删除该族的所有版本
+                                      versions.forEach((v) => frontDesignStore.removeDesign(v.id))
+                                    }}
+                                    aria-label={t("frontDesign.deleteDesign")}
+                                    title={{
+                                      content: t("frontDesign.deleteDesign"),
+                                      placement: "top",
+                                    }}
+                                  >
+                                    <Trash2 className="h-3 w-3 text-white/40 hover:text-red-400" />
+                                  </LxIconButton>
+                                </div>
+                              </>
+                            }
+                          >
+                            <span className="min-w-0 flex-1 truncate select-none">
+                              {root.title || t("frontDesign.title")}
+                            </span>
+                          </LxNavItem>
                         )
                       })
                     )}
