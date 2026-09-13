@@ -21,10 +21,10 @@ export interface LxNavItemProps extends Omit<React.HTMLAttributes<HTMLDivElement
   className?: string
 }
 
-// 尺寸阶梯：高度与内部尺度对齐 LxTag 的容器度量。
+// 尺寸阶梯：高度与内部尺度对齐 LxTag 的容器度量；字号 small=xs，default/large=sm。
 const sizeStyles: Record<LxNavItemSize, string> = {
   small: "h-6 gap-1.5 px-2 text-xs",
-  default: "h-7 gap-1.5 px-2.5 text-xs",
+  default: "h-7 gap-1.5 px-2.5 text-sm",
   large: "h-8 gap-1.5 px-3 text-sm",
 }
 

@@ -48,7 +48,7 @@ export const UsageProviderDistributionChart = ({
         <ResponsiveContainer width="100%" height="100%">
           <PieChart accessibilityLayer={false}>
             <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             <Pie
               data={data}
               dataKey={hasPricing ? "cost" : "tokens"}

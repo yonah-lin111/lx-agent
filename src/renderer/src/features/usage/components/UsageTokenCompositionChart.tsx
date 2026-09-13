@@ -55,7 +55,7 @@ export const UsageTokenCompositionChart = ({
         <ResponsiveContainer width="100%" height="100%">
           <PieChart accessibilityLayer={false}>
             <Tooltip content={<UsageChartTooltip valueFormatter={formatTooltipValue} />} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             <Pie data={data} dataKey="value" nameKey="name" outerRadius={82} stroke="none">
               {data.map((item, index) => (
                 <Cell

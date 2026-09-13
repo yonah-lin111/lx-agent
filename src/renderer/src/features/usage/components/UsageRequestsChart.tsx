@@ -70,14 +70,14 @@ export const UsageRequestsChart = ({
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
             />
             <YAxis
               width={40}
               allowDecimals={false}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
               tickFormatter={(value: number) => formatCompact(value)}
             />
             <Tooltip

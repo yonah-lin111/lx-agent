@@ -41,9 +41,10 @@ export interface LxSelectProps<T> {
 }
 
 // 统一高度阶梯：触发按钮按 size 逐档；展开列表项与分组标题固定使用默认档（medium），不随触发器缩放。
+// 字号规则：small=xs，medium/large=sm。
 const SIZE_ROW_CLASSES: Record<LxSelectSize, string> = {
   small: "h-6 px-2 text-xs",
-  medium: "h-7 px-2.5 text-xs",
+  medium: "h-7 px-2.5 text-sm",
   large: "h-8 px-3 text-sm",
 }
 

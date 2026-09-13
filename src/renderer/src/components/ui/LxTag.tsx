@@ -159,7 +159,7 @@ const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }
     closeIconSize: "h-3 w-3",
   },
   default: {
-    container: "h-7 gap-1.5 rounded-[6px] px-2.5 text-xs",
+    container: "h-7 gap-1.5 rounded-[6px] px-2.5 text-sm",
     closeIconSize: "h-3 w-3",
   },
   large: {

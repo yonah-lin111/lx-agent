@@ -48,9 +48,9 @@ export const UsageRequestLogTable = ({
     <div className="flex min-w-0 flex-col gap-2">
       <div className="usage-table-card overflow-hidden rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)]">
         <div className="custom-scrollbar overflow-x-auto">
-          <table className="usage-table w-full min-w-[860px] border-collapse text-xs">
+          <table className="usage-table w-full min-w-[860px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[var(--color-theme-border)] text-left text-[var(--color-theme-text-muted)]">
+              <tr className="border-b border-[var(--color-theme-border)] text-left text-xs text-[var(--color-theme-text-muted)]">
                 <th className="px-3 py-2 font-medium">{t("usage.columns.time")}</th>
                 <th className="px-3 py-2 font-medium">{t("usage.columns.purpose")}</th>
                 <th className="px-3 py-2 font-medium">{t("usage.columns.provider")}</th>
@@ -121,7 +121,7 @@ export const UsageRequestLogTable = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-theme-text-muted)]">
+      <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-theme-text-muted)]">
         <span>{t("usage.pagination.total", { count: total })}</span>
         <div className="flex items-center gap-1">
           <LxIconButton

@@ -27,13 +27,13 @@ export const UsageChartTooltip = ({
   return (
     <div className="usage-chart-tooltip rounded-[6px] border border-[var(--color-theme-border-strong)] bg-[var(--color-theme-surface-hover)] p-2 shadow-lg">
       {label !== undefined ? (
-        <p className="mb-1 text-[11px] font-medium text-[var(--color-theme-text)]">{label}</p>
+        <p className="mb-1 text-xs font-medium text-[var(--color-theme-text)]">{label}</p>
       ) : null}
       <div className="flex flex-col gap-0.5">
         {payload.map((entry, index) => (
           <div
             key={`${entry.dataKey ?? entry.name ?? index}`}
-            className="flex items-center gap-1.5 text-[11px]"
+            className="flex items-center gap-1.5 text-xs"
           >
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full"

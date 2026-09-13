@@ -16,6 +16,7 @@ describe("LxNavItem", () => {
     const middleClassName = middle.container.querySelector(".lx-nav-item")?.className ?? ""
     expect(middleClassName).toContain("h-7")
     expect(middleClassName).toContain("px-2.5")
+    expect(middleClassName).toContain("text-sm")
 
     const large = render(<LxNavItem size="large">item</LxNavItem>)
     const largeClassName = large.container.querySelector(".lx-nav-item")?.className ?? ""

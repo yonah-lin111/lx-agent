@@ -74,7 +74,7 @@ export const UsageModelDistributionChart = ({
               type="number"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
               tickFormatter={(value: number) => formatCompact(value)}
             />
             <YAxis
@@ -83,7 +83,7 @@ export const UsageModelDistributionChart = ({
               width={120}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
               tickFormatter={(value: string) =>
                 value.length > 16 ? `${value.slice(0, 16)}…` : value
               }

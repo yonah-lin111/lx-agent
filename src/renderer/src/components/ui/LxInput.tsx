@@ -98,7 +98,8 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const [hasValue, setHasValue] = useState<boolean>(() => Boolean(value ?? defaultValue))
     const [showPassword, setShowPassword] = useState<boolean>(false)
     const { t } = useTranslation()
-    const textSizeClass = size === "lg" ? "text-sm" : "text-xs"
+    // 字号规则：xs（small）= text-xs，sm（default）/lg（大号）= text-sm。
+    const textSizeClass = size === "xs" ? "text-xs" : "text-sm"
     const sizeClass = multiline ? SIZE_MULTILINE_CLASSES[size] : SIZE_CONTAINER_CLASSES[size]
     const variantClass =
       variant === "simple"

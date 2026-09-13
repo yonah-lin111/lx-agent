@@ -37,7 +37,7 @@ export const MetricCard = ({
           </div>
           {badge && (
             <span
-              className={`overview-badge shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium leading-none ${
+              className={`overview-badge shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-medium leading-none ${
                 badge.variant === "success"
                   ? "border border-[#1b582e] bg-[#143320] text-[#4ade80]"
                   : badge.variant === "info"
@@ -54,13 +54,13 @@ export const MetricCard = ({
 
         {/* 标题与描述：全卡片宽度自适应，杜绝截断 */}
         <div className="mt-2.5 min-w-0">
-          <h3 className="text-xs font-semibold text-white/90 leading-snug">{title}</h3>
-          <p className="mt-1 text-[11px] leading-relaxed text-white/45 break-words">{subtitle}</p>
+          <h3 className="text-sm font-semibold text-white/90 leading-snug">{title}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-white/45 break-words">{subtitle}</p>
         </div>
       </div>
 
       <div className="mt-3 flex items-baseline justify-between min-w-0">
-        <div className="truncate font-mono text-[20px]/[28px] font-bold tracking-tight text-white xl:text-[24px]/[32px]">
+        <div className="truncate font-mono text-lg font-bold tracking-tight text-white">
           {mainValue}
         </div>
       </div>

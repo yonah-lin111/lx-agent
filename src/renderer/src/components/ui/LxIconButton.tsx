@@ -50,6 +50,13 @@ const SIZE_CHIP_ICON_CLASSES: Record<LxIconButtonSize, string> = {
   large: "h-4 w-4",
 }
 
+// 带文字按钮的字号：small=xs，medium/large=sm。
+const SIZE_FONT_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "text-xs",
+  medium: "text-sm",
+  large: "text-sm",
+}
+
 const PRESET_ICONS: Record<LxIconButtonPreset, React.ComponentType<{ className?: string }>> = {
   add: Plus,
   close: X,
@@ -151,7 +158,9 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       "flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
     const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
     const sizeStyles =
-      iconOnly && !hasIconAndLabel ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0` : ""
+      iconOnly && !hasIconAndLabel
+        ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0`
+        : SIZE_FONT_CLASSES[size]
     const finalHoverBg = showHoverBg
       ? (hoverBgClass ?? (preset ? PRESET_BG_CLASSES[preset] : "hover:bg-white/10"))
       : ""

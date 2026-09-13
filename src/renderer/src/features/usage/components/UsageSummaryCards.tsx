@@ -65,7 +65,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
           key={card.title}
           className="usage-stat-card flex min-w-0 flex-col gap-1 rounded-[6px] border border-[var(--color-theme-border)] bg-[var(--color-theme-surface)] p-3"
         >
-          <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
+          <span className="truncate text-sm text-[var(--color-theme-text-muted)]">
             {card.title}
           </span>
           <span className="truncate text-lg font-semibold text-[var(--color-theme-text)]">
@@ -79,7 +79,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
               />
             </div>
           ) : null}
-          <span className="truncate text-[11px] text-[var(--color-theme-text-subtle)]">
+          <span className="truncate text-xs text-[var(--color-theme-text-subtle)]">
             {card.detail}
           </span>
         </div>

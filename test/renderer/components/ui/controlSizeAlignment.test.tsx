@@ -63,11 +63,23 @@ describe("控件尺寸阶梯对齐", () => {
     expect(option.className).toContain("h-7")
     expect(option.className).not.toContain("h-6")
     expect(option.className).not.toContain("h-8")
+    expect(option.className).toContain("text-sm")
   })
 
   it.each(INPUT_HEIGHT_STEPS)("LxInput $size 单行高度为 $height", ({ size, height }) => {
     const { container } = render(<LxInput size={size} aria-label="size-check" />)
     expect(container.querySelector(".lx-input")?.className).toContain(height)
+  })
+
+  it("LxInput 字号：xs（small）=text-xs，sm（default）/lg（大号）=text-sm", () => {
+    const xs = render(<LxInput size="xs" aria-label="font-xs" />)
+    expect(xs.container.querySelector("input")?.className).toContain("text-xs")
+
+    const sm = render(<LxInput size="sm" aria-label="font-sm" />)
+    expect(sm.container.querySelector("input")?.className).toContain("text-sm")
+
+    const lg = render(<LxInput size="lg" aria-label="font-lg" />)
+    expect(lg.container.querySelector("input")?.className).toContain("text-sm")
   })
 
   it.each(TAG_HEIGHT_STEPS)("LxTag $size 高度为 $height", ({ size, height }) => {
@@ -90,12 +102,12 @@ describe("控件尺寸阶梯对齐", () => {
     expect(multilineClassName).toContain("py-1.5")
   })
 
-  it("LxTag 内部尺度对齐控件档位：文字字号与关闭图标逐档递增", () => {
+  it("LxTag 内部尺度对齐控件档位：small=xs、default/large=sm，关闭图标逐档递增", () => {
     const small = render(<LxTag size="small">tag</LxTag>)
     expect(small.container.querySelector(".lx-tag")?.className).toContain("text-xs")
 
     const middle = render(<LxTag size="default">tag</LxTag>)
-    expect(middle.container.querySelector(".lx-tag")?.className).toContain("text-xs")
+    expect(middle.container.querySelector(".lx-tag")?.className).toContain("text-sm")
 
     const large = render(<LxTag size="large">tag</LxTag>)
     expect(large.container.querySelector(".lx-tag")?.className).toContain("text-sm")

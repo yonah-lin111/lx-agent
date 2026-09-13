@@ -106,14 +106,14 @@ export const UsageTrendChart = ({
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
             />
             <YAxis
               yAxisId="tokens"
               width={44}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
               tickFormatter={(value: number) => formatCompact(value)}
             />
             <YAxis
@@ -122,14 +122,14 @@ export const UsageTrendChart = ({
               width={56}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 10 }}
+              tick={{ fill: "var(--color-theme-text-muted)", fontSize: 12 }}
               tickFormatter={(value: number) => formatUsd(value, 2)}
             />
             <Tooltip
               content={<UsageChartTooltip valueFormatter={formatTooltipValue} />}
               cursor={{ stroke: "var(--color-theme-border-strong)", strokeDasharray: "3 3" }}
             />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             <Area
               yAxisId="tokens"
               type="monotone"

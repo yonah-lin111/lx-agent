@@ -75,11 +75,11 @@ export const OverviewDashboard = (): React.JSX.Element => {
         <h1 className="truncate text-lg font-bold tracking-tight text-white">
           {t("home.overview")}
         </h1>
-        <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>
+        <p className="truncate text-sm text-white/50">{t("home.overviewSubtitle")}</p>
       </div>
 
       {error ? (
-        <div className="rounded-[6px] border border-[#552222] bg-[#2a1212] p-3 text-xs text-red-400">
+        <div className="rounded-[6px] border border-[#552222] bg-[#2a1212] p-3 text-sm text-red-400">
           {error}
         </div>
       ) : (
@@ -100,7 +100,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#2d224e] bg-[#1d1633] text-purple-400">
                   <BarChart3 className="h-3.5 w-3.5" />
                 </div>
-                <h2 className="truncate text-xs font-semibold text-white/90">
+                <h2 className="truncate text-sm font-semibold text-white/90">
                   {t("home.metricsSectionTitle")}
                 </h2>
               </div>
@@ -157,7 +157,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
                   variant: "warning",
                 }}
                 extra={
-                  <div className="flex min-w-0 items-center justify-between gap-1 text-[11px] text-white/50">
+                  <div className="flex min-w-0 items-center justify-between gap-1 text-xs text-white/50">
                     <span className="truncate">
                       {t("home.metrics.currentStreak", {
                         count: metrics?.activeDays.currentStreak ?? 0,
@@ -180,7 +180,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
                 subtitle={t("home.metrics.sessionsDesc")}
                 mainValue={formatNumber(metrics?.sessions.total ?? 0)}
                 extra={
-                  <div className="truncate text-[11px] text-white/50">
+                  <div className="truncate text-xs text-white/50">
                     {t("home.metrics.lastActive")}: {formattedLastActive}
                   </div>
                 }

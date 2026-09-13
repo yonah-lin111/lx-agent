@@ -287,7 +287,7 @@ export const AgentModelSelect = ({
             type="button"
             role="option"
             aria-selected={isSelected}
-            className={`group flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-xs transition-colors ${
+            className={`group flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-sm transition-colors ${
               isSelected
                 ? "bg-white/10 text-white font-medium shadow-xs"
                 : "text-white/70 hover:bg-white/5 hover:text-white"
@@ -314,7 +314,7 @@ export const AgentModelSelect = ({
         type="button"
         role="option"
         aria-selected={isSelected}
-        className={`flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-xs transition-colors ${
+        className={`flex h-7 w-full items-center justify-between rounded-[4px] px-2.5 text-left text-sm transition-colors ${
           isSelected
             ? "bg-white/10 text-white font-medium shadow-xs"
             : "text-white/70 hover:bg-white/5 hover:text-white"
@@ -367,7 +367,7 @@ export const AgentModelSelect = ({
               {options.map((item) =>
                 isGroup(item) ? (
                   <div key={item.label} className="flex flex-col gap-0.5">
-                    <div className="flex h-7 items-center px-2.5 text-xs font-medium text-white/35">
+                    <div className="flex h-7 items-center px-2.5 text-sm font-medium text-white/35">
                       {item.label}
                     </div>
                     {item.options.map((option) => renderOption(option, true))}

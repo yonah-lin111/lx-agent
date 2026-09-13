@@ -41,7 +41,7 @@ export const UsageDashboard = (): React.JSX.Element => {
           <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-theme-text)]">
             {t("usage.title")}
           </h1>
-          <p className="truncate text-xs text-[var(--color-theme-text-muted)]">
+          <p className="truncate text-sm text-[var(--color-theme-text-muted)]">
             {t("usage.subtitle")}
           </p>
         </div>
@@ -63,7 +63,7 @@ export const UsageDashboard = (): React.JSX.Element => {
       </div>
 
       {usage.error ? (
-        <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
+        <div className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-400">
           {usage.error}
         </div>
       ) : (
@@ -96,7 +96,7 @@ export const UsageDashboard = (): React.JSX.Element => {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex h-7 items-center rounded-[6px] px-3 text-xs transition-colors ${
+                className={`flex h-7 items-center rounded-[6px] px-3 text-sm transition-colors ${
                   activeTab === tab
                     ? "bg-[var(--color-theme-surface-hover)] font-medium text-[var(--color-theme-text)]"
                     : "text-[var(--color-theme-text-muted)] hover:bg-[var(--color-theme-surface-hover)] hover:text-[var(--color-theme-text)]"

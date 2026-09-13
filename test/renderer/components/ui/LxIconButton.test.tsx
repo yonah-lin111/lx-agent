@@ -51,4 +51,27 @@ describe("LxIconButton", () => {
     expect(className).toContain("bg-white/5")
     expect(className).toContain("text-white")
   })
+
+  it("带文字按钮按尺寸档位设置字号：small=xs，medium/large=sm", () => {
+    const small = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="small" aria-label="font-small">
+        label
+      </LxIconButton>,
+    )
+    expect(small.container.querySelector("button")?.className).toContain("text-xs")
+
+    const medium = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="medium" aria-label="font-medium">
+        label
+      </LxIconButton>,
+    )
+    expect(medium.container.querySelector("button")?.className).toContain("text-sm")
+
+    const large = render(
+      <LxIconButton icon={<span />} iconOnly={false} size="large" aria-label="font-large">
+        label
+      </LxIconButton>,
+    )
+    expect(large.container.querySelector("button")?.className).toContain("text-sm")
+  })
 })

@@ -80,7 +80,7 @@ const MonthBlock = React.memo(
       >
         {/* 当处于当前行行首时，显示星期基准标签（严格对齐 Mon..Sun 7 天基线） */}
         {showWeekdayLabels && (
-          <div className="flex flex-col gap-1 pr-1 text-[9px] text-white/35 select-none shrink-0 pt-[22px]">
+          <div className="flex flex-col gap-1 pr-1 text-xs text-white/35 select-none shrink-0 pt-[22px]">
             {DAY_LABELS.map((label, idx) => (
               <div key={idx} className="flex h-3 w-5 items-center leading-none sm:h-3.5 sm:w-6">
                 {label}
@@ -91,7 +91,7 @@ const MonthBlock = React.memo(
 
         <div className="flex flex-col items-center gap-1.5 shrink-0">
           {/* 月份名称 */}
-          <div className="h-4 text-[11px] font-medium leading-none text-white/50 select-none">
+          <div className="h-4 text-xs font-medium leading-none text-white/50 select-none">
             {month.label}
           </div>
 
@@ -238,15 +238,15 @@ export const ActivityHeatmap = ({
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border border-[#1b582e] bg-[#144222] text-emerald-400">
             <Activity className="h-3.5 w-3.5" />
           </div>
-          <h3 className="truncate text-xs font-semibold text-white/90">
+          <h3 className="truncate text-sm font-semibold text-white/90">
             {t("home.heatmap.title")}
           </h3>
-          <div className="font-mono text-xs text-white/60">
+          <div className="font-mono text-sm text-white/60">
             <span className="font-semibold text-emerald-400">
               {t("home.heatmap.activities", { count: totalYearActivities })}
             </span>
             {maxCount > 0 && (
-              <span className="ml-1.5 text-[10px] text-white/35">(Max: {maxCount}/day)</span>
+              <span className="ml-1.5 text-xs text-white/35">(Max: {maxCount}/day)</span>
             )}
           </div>
         </div>
@@ -282,7 +282,7 @@ export const ActivityHeatmap = ({
         </div>
 
         {/* 底部图例 */}
-        <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-white/40 select-none">
+        <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-white/40 select-none">
           <span>{t("home.heatmap.less")}</span>
           <div className="flex items-center gap-1 px-1">
             <span
