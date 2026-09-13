@@ -38,7 +38,7 @@ export const UsageDashboard = (): React.JSX.Element => {
 
       <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-bold tracking-tight text-[var(--color-theme-text)]">
+          <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-theme-text)]">
             {t("usage.title")}
           </h1>
           <p className="truncate text-xs text-[var(--color-theme-text-muted)]">

@@ -60,7 +60,7 @@ export const MetricCard = ({
       </div>
 
       <div className="mt-3 flex items-baseline justify-between min-w-0">
-        <div className="truncate font-mono text-xl font-bold tracking-tight text-white xl:text-2xl">
+        <div className="truncate font-mono text-[20px]/[28px] font-bold tracking-tight text-white xl:text-[24px]/[32px]">
           {mainValue}
         </div>
       </div>

@@ -4,9 +4,14 @@
 @import "./styles/themes/minecraft/index.css";
 
 @theme {
-  --font-size-xs: 13px;
-  --font-size-sm: 14px;
-  --font-size-base: 14px;
+  /* 字号预设仅三档：xs=12px、sm=14px（默认正文字号）、lg=16px（大字体） */
+  --text-*: initial;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-lg: 16px;
+  --text-lg--line-height: 24px;
   /* 用户消息气泡色 */
   --color-user-bubble: #1f4e79;
   /* 即时插话（steer）消息气泡色：暖色暗调，与普通用户消息区分 */
@@ -44,7 +49,8 @@ body {
   min-height: 100vh;
   overflow: hidden;
   background: #000000;
-  font-size: 13px;
+  /* 默认正文字号，对应 sm 预设（14px）。 */
+  font-size: 14px;
 }
 
 button,

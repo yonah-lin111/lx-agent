@@ -72,7 +72,7 @@ export const OverviewDashboard = (): React.JSX.Element => {
 
       {/* 顶部标题 */}
       <div className="mb-4 min-w-0">
-        <h1 className="truncate text-base font-bold tracking-tight text-white">
+        <h1 className="truncate text-lg font-bold tracking-tight text-white">
           {t("home.overview")}
         </h1>
         <p className="truncate text-xs text-white/50">{t("home.overviewSubtitle")}</p>

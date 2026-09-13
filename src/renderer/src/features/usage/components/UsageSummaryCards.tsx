@@ -68,7 +68,7 @@ export const UsageSummaryCards = ({ summary }: UsageSummaryCardsProps): React.JS
           <span className="truncate text-[11px] text-[var(--color-theme-text-muted)]">
             {card.title}
           </span>
-          <span className="truncate text-base font-semibold text-[var(--color-theme-text)]">
+          <span className="truncate text-lg font-semibold text-[var(--color-theme-text)]">
             {card.value}
           </span>
           {card.progress !== undefined ? (
