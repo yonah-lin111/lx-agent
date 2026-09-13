@@ -21,7 +21,7 @@ export const FlowItemModelSwitchContent = ({
   const modelDisplayName = getModelDisplayName(content.model, content.provider, settings)
 
   return (
-    <div className="agent-execution-flow-model-switch-content flex flex-col gap-2 font-mono text-[11px] text-white/70">
+    <div className="agent-execution-flow-model-switch-content flex flex-col gap-2 font-mono text-xs text-white/70">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <div className="flex items-center gap-1.5">
           <span className="text-white/40">Model:</span>
@@ -51,7 +51,7 @@ export const FlowItemModelSwitchContent = ({
 
       {content.instructions ? (
         <div className="mt-1 flex flex-col gap-1">
-          <div className="flex items-center gap-1 text-[10px] font-semibold tracking-wider text-cyan-300/80 uppercase">
+          <div className="flex items-center gap-1 text-xs font-semibold tracking-wider text-cyan-300/80 uppercase">
             <Sparkles className="h-3 w-3" />
             <span>{t("agent.vendorPrompt")}</span>
           </div>

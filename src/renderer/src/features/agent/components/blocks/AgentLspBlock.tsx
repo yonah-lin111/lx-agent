@@ -60,20 +60,20 @@ const renderDetails = (
   return (
     <div key={index} className="agent-lsp-detail min-w-0">
       {details.error ? (
-        <div className="agent-lsp-error mt-1 pl-1 text-[12px] leading-relaxed text-red-400">
+        <div className="agent-lsp-error mt-1 pl-1 text-xs leading-relaxed text-red-400">
           <CornerDownRight className="agent-lsp-corner mr-1 inline h-3 w-3" />
           {details.error}
         </div>
       ) : details.text ? (
         <div className="agent-lsp-text-row mt-1 min-w-0 pl-1">
           <LxTooltip content={details.text}>
-            <div className="agent-lsp-text-card rounded-[6px] border border-white/10 bg-white/[0.03] px-2 py-1 text-[12px] leading-relaxed text-white/60 whitespace-pre-wrap break-all">
+            <div className="agent-lsp-text-card rounded-[6px] border border-white/10 bg-white/[0.03] px-2 py-1 text-xs leading-relaxed text-white/60 whitespace-pre-wrap break-all">
               {details.text}
             </div>
           </LxTooltip>
         </div>
       ) : results.length === 0 ? (
-        <div className="agent-lsp-empty mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+        <div className="agent-lsp-empty mt-1 flex min-w-0 items-start gap-1 pl-1 text-xs leading-relaxed text-white/45">
           <CornerDownRight className="agent-lsp-corner mt-[2px] h-3 w-3 shrink-0" />
           <span className="agent-lsp-empty-text">
             {label} - {t("project.noProjects")}
@@ -88,7 +88,7 @@ const renderDetails = (
                 onClick={() => {
                   void agentApi.openFileAt(result.filePath, result.line)
                 }}
-                className="agent-lsp-result-item flex min-w-0 items-start gap-1 pl-1 text-left font-mono text-[12px] leading-[1.7] text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white/90 focus:outline-none"
+                className="agent-lsp-result-item flex min-w-0 items-start gap-1 pl-1 text-left font-mono text-xs leading-[1.7] text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white/90 focus:outline-none"
               >
                 <span className="agent-lsp-location shrink-0 text-white/30">
                   {compactPath(result.filePath)}:{result.line}:{result.character}
@@ -125,7 +125,7 @@ export const AgentLspBlock = ({
     <div className="agent-lsp-block my-0.5 min-w-0">
       <div className="agent-lsp-header flex items-center gap-1">
         <Braces className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
-        <span className="agent-lsp-name font-mono text-[12px] font-bold text-cyan-300">
+        <span className="agent-lsp-name font-mono text-xs font-bold text-cyan-300">
           LSP{details[0] ? ` · ${title}` : ""}
           {headerCount}
         </span>
@@ -133,7 +133,7 @@ export const AgentLspBlock = ({
       {details.length > 0 ? (
         details.map((entry, index) => renderDetails(entry, index, t))
       ) : (
-        <div className="agent-lsp-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-[12px] leading-relaxed text-white/45">
+        <div className="agent-lsp-summary mt-1 flex min-w-0 items-start gap-1 pl-1 text-xs leading-relaxed text-white/45">
           <CornerDownRight className="agent-lsp-corner mt-[2px] h-3 w-3 shrink-0" />
           <span className="agent-lsp-summary-text min-w-0 break-all">
             {summarizeCalls(toolCalls)}

@@ -64,7 +64,7 @@ export const AgentMcpCallBlock = ({
     <div className="agent-mcp-call-block my-0.5 min-w-0">
       <div className="agent-mcp-header flex items-center gap-1">
         <Server className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
-        <span className="agent-mcp-name font-mono text-[12px] font-bold text-cyan-300">
+        <span className="agent-mcp-name font-mono text-xs font-bold text-cyan-300">
           MCP · {serverName}
         </span>
       </div>
@@ -72,7 +72,7 @@ export const AgentMcpCallBlock = ({
         {groupRows.map((row, index) => (
           <div
             key={index}
-            className="agent-mcp-method-row flex min-w-0 items-start gap-1 text-[12px] leading-relaxed text-white/45"
+            className="agent-mcp-method-row flex min-w-0 items-start gap-1 text-xs leading-relaxed text-white/45"
           >
             <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0" />
             <span className="agent-mcp-method min-w-0 break-all font-mono">{row}</span>

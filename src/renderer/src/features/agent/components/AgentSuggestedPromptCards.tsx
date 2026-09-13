@@ -21,7 +21,7 @@ export const AgentSuggestedPromptCards = ({
 
   return (
     <div className={`agent-empty-prompts flex flex-col gap-2 ${className ?? ""}`}>
-      <span className="agent-empty-prompts-title px-1 text-[11px] font-medium text-white/35">
+      <span className="agent-empty-prompts-title px-1 text-xs font-medium text-white/35">
         {t("agent.suggestedPrompts")}
       </span>
       {DEFAULT_PROMPT_CARDS.map((card) => (
@@ -31,10 +31,10 @@ export const AgentSuggestedPromptCards = ({
           onClick={() => onSelectPrompt(card.prompt)}
           className="agent-empty-prompt-card flex flex-col items-start rounded-[6px] bg-white/[0.04] p-2.5 text-left transition-colors hover:bg-white/10"
         >
-          <span className="agent-empty-prompt-title text-[12px] font-medium text-white/80">
+          <span className="agent-empty-prompt-title text-xs font-medium text-white/80">
             {card.title}
           </span>
-          <span className="agent-empty-prompt-desc mt-0.5 text-[11px] text-white/40">
+          <span className="agent-empty-prompt-desc mt-0.5 text-xs text-white/40">
             {card.description}
           </span>
         </button>

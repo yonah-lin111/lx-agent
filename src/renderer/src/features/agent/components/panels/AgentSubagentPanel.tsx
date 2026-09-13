@@ -67,11 +67,11 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
               <ChevronRight className="h-3.5 w-3.5" />
             )}
           </div>
-          <span className="agent-subagent-comm-route font-mono text-[12px] font-bold leading-none text-sky-300">
+          <span className="agent-subagent-comm-route font-mono text-xs font-bold leading-none text-sky-300">
             {comm.author} &rarr; {comm.recipient}
           </span>
           {comm.triggerTurn && (
-            <span className="agent-subagent-comm-trigger shrink-0 rounded bg-sky-500/20 px-1 py-0.5 font-mono text-[10px] leading-none text-sky-300">
+            <span className="agent-subagent-comm-trigger shrink-0 rounded bg-sky-500/20 px-1 py-0.5 font-mono text-xs leading-none text-sky-300">
               trigger
             </span>
           )}
@@ -80,7 +80,7 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
 
       {/* 展开详情区：与 AgentExecutionFlowItem 相同的条件渲染 */}
       {isExpanded ? (
-        <div className="agent-subagent-comm-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-[12px]">
+        <div className="agent-subagent-comm-body border-t border-white/5 bg-black/25 px-3 py-2.5 text-xs">
           <div className="agent-subagent-comm-content text-white/80">
             {isFromSubagent ? (
               <LxMarkdownPreview
@@ -88,10 +88,10 @@ const SubagentCommItem = ({ comm }: CommItemProps): React.JSX.Element => {
                 previewMode="preview"
                 previewRef={previewRef}
                 className="px-0 text-white/80"
-                contentClassName="py-0 text-white/80 text-[12px] [&_p]:my-1 leading-relaxed"
+                contentClassName="py-0 text-white/80 text-xs [&_p]:my-1 leading-relaxed"
               />
             ) : (
-              <div className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">
+              <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/70">
                 {comm.content}
               </div>
             )}
@@ -151,15 +151,15 @@ export const AgentSubagentPanel = ({
       {/* 面板头部：Subagent 名称 + 关闭。 */}
       <div className="agent-subagent-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="font-mono text-[13px] font-bold text-blue-300">Subagent</span>
-          <span className="truncate text-[13px] text-white/70">{displayLabel}</span>
+          <span className="font-mono text-sm font-bold text-blue-300">Subagent</span>
+          <span className="truncate text-sm text-white/70">{displayLabel}</span>
           {data?.subagentId && (
-            <span className="agent-subagent-id inline-flex items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
+            <span className="agent-subagent-id inline-flex items-center rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-xs text-sky-300">
               ID: {data.subagentId}
             </span>
           )}
           {data?.sandboxPolicy && (
-            <span className="agent-subagent-policy inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/60">
+            <span className="agent-subagent-policy inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-white/60">
               <Shield className="h-2.5 w-2.5 text-sky-400" />
               {data.sandboxPolicy}
             </span>
@@ -203,7 +203,7 @@ export const AgentSubagentPanel = ({
           {/* 结构化通信信元（置于消息列表顶部，随列表一起滚动） */}
           {data.communications && data.communications.length > 0 && (
             <div className="agent-interagent-section flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-black/20 p-2.5">
-              <div className="agent-interagent-title flex items-center gap-1 text-[11px] font-semibold text-white/50">
+              <div className="agent-interagent-title flex items-center gap-1 text-xs font-semibold text-white/50">
                 <MessageSquareShare className="h-3.5 w-3.5 text-sky-400" />
                 <span>Inter-Agent Protocol</span>
               </div>
@@ -219,7 +219,7 @@ export const AgentSubagentPanel = ({
           {data.communications && data.communications.length > 0 && messages.length > 0 && (
             <div className="agent-subagent-flow-divider my-1 flex items-center gap-2">
               <div className="h-[1px] flex-1 bg-white/10" />
-              <span className="font-mono text-[10px] font-semibold tracking-wider text-white/35 uppercase">
+              <span className="font-mono text-xs font-semibold tracking-wider text-white/35 uppercase">
                 {t("agent.executionFlow")}
               </span>
               <div className="h-[1px] flex-1 bg-white/10" />
@@ -258,13 +258,13 @@ export const AgentSubagentPanel = ({
               </div>
             )
           ) : (
-            <div className="flex min-h-24 flex-1 items-center justify-center text-[12px] text-white/35">
+            <div className="flex min-h-24 flex-1 items-center justify-center text-xs text-white/35">
               {t("agent.subagentNoContent")}
             </div>
           )}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-white/35">
+        <div className="flex min-h-0 flex-1 items-center justify-center text-xs text-white/35">
           {t("agent.subagentNoDetails")}
         </div>
       )}

@@ -233,7 +233,7 @@ export const AgentUserMessage = ({
                   handleCancelEdit()
                 }
               }}
-              className="custom-scrollbar h-[100px] w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-[20px] text-white/90 focus:outline-none"
+              className="custom-scrollbar h-[100px] w-full resize-none overflow-y-auto bg-transparent text-sm leading-[20px] text-white/90 focus:outline-none"
             />
             <div className="flex items-center justify-end gap-1 pt-1">
               <LxIconButton
@@ -261,7 +261,7 @@ export const AgentUserMessage = ({
             {userText ? (
               <div
                 data-user-bubble="true"
-                className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-[13px] text-white/90 whitespace-pre-wrap break-words`}
+                className={`w-fit max-w-full rounded-[18px] rounded-br-[4px] ${userBubbleClass} px-3 py-2 text-sm text-white/90 whitespace-pre-wrap break-words`}
                 onCopy={handleBubbleCopy}
               >
                 <div
@@ -289,12 +289,12 @@ export const AgentUserMessage = ({
                   showIcon={false}
                   placement="top"
                 >
-                  <span className="agent-message-command-tag flex cursor-help items-center gap-1 text-[10px] leading-none text-white/60 hover:text-white/90 select-text font-mono whitespace-nowrap pl-0.5 transition-colors">
+                  <span className="agent-message-command-tag flex cursor-help items-center gap-1 text-xs leading-none text-white/60 hover:text-white/90 select-text font-mono whitespace-nowrap pl-0.5 transition-colors">
                     <span className="agent-message-command-label">{commandTag.label}</span>
                   </span>
                 </LxInfoTooltip>
               ) : (
-                <span className="agent-message-command-tag flex items-center gap-1 text-[10px] leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
+                <span className="agent-message-command-tag flex items-center gap-1 text-xs leading-none text-white/60 select-text font-mono whitespace-nowrap pl-0.5">
                   <span className="agent-message-command-label">{commandTag.label}</span>
                   {commandTag.sourceTag && (
                     <>
@@ -304,7 +304,7 @@ export const AgentUserMessage = ({
                       >
                         ·
                       </span>
-                      <span className="agent-message-command-source text-[10px] font-sans tracking-wide text-white/35">
+                      <span className="agent-message-command-source text-xs font-sans tracking-wide text-white/35">
                         {commandTag.sourceTag}
                       </span>
                     </>

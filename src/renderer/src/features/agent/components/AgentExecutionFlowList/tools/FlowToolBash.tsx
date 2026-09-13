@@ -23,14 +23,14 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
     <div className="agent-execution-flow-tool-bash flex flex-col gap-2 font-mono">
       {/* 终端命令行窗格 */}
       <div className="rounded border border-white/10 bg-black/60 p-2.5">
-        <div className="flex items-start gap-2 text-[12px] text-emerald-300">
+        <div className="flex items-start gap-2 text-xs text-emerald-300">
           <span className="shrink-0 select-none text-white/40">$</span>
           <FlowItemExpandableText content={command} maxLines={3} />
         </div>
       </div>
 
       {/* 参数与状态徽标 */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         {content.durationMs !== undefined && (
           <LxTag size="small" color="default">
             <span className="text-white/60">{formatDurationMs(content.durationMs)}</span>
@@ -56,13 +56,13 @@ export const FlowToolBash = ({ content }: FlowToolBashProps): React.JSX.Element 
       {/* 输出结果 */}
       {content.result !== undefined && (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between text-[11px] text-white/45">
+          <div className="flex items-center justify-between text-xs text-white/45">
             <span className="flex items-center gap-1">
               <Terminal className="h-3 w-3" /> {t("agent.toolResult")}
             </span>
           </div>
           <div
-            className={`rounded p-2.5 text-[11px] ${
+            className={`rounded p-2.5 text-xs ${
               content.isError
                 ? "border border-rose-500/20 bg-rose-950/20 text-rose-200"
                 : "bg-black/40 text-white/80"

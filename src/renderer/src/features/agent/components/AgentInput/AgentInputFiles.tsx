@@ -106,7 +106,7 @@ export const AgentInputFiles = ({
           ) : (
             <div className="flex flex-col gap-0.5 text-xs text-left max-w-[280px]">
               <span className="font-semibold text-white/95 truncate">{file.name}</span>
-              <span className="text-[10px] text-white/40 break-all">{file.path}</span>
+              <span className="text-xs text-white/40 break-all">{file.path}</span>
             </div>
           )
 

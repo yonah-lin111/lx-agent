@@ -83,7 +83,7 @@ export const FlowItemExpandableText = ({
             e.stopPropagation()
             setIsExpanded((prev) => !prev)
           }}
-          className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-[11px] font-medium text-sky-400/90 transition-colors hover:text-sky-300 select-none focus:outline-none"
+          className="inline-flex cursor-pointer items-center border-0 bg-transparent p-0 text-xs font-medium text-sky-400/90 transition-colors hover:text-sky-300 select-none focus:outline-none"
         >
           <span className="italic underline underline-offset-2">
             {isExpanded ? t("common.collapse") : `...${t("common.more")}`}

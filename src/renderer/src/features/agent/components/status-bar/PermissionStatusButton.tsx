@@ -182,7 +182,7 @@ export const PermissionStatusButton = ({
 
     const tooltipContent = (
       <div className="flex w-max flex-col gap-1.5 whitespace-nowrap">
-        <span className="block w-fit max-w-full rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-[12px] text-amber-300">
+        <span className="block w-fit max-w-full rounded-[4px] bg-amber-300/10 px-1.5 py-0.5 font-mono text-xs text-amber-300">
           {request.toolName}
         </span>
         {phase === "confirm" && (
@@ -205,10 +205,10 @@ export const PermissionStatusButton = ({
                 index === activeIndex,
               )}`}
             >
-              <span className="shrink-0 text-[13px] font-medium leading-none whitespace-nowrap">
+              <span className="shrink-0 text-sm font-medium leading-none whitespace-nowrap">
                 {t(option.labelKey)}
               </span>
-              <span className="shrink-0 text-[12px] leading-none opacity-60 whitespace-nowrap">
+              <span className="shrink-0 text-xs leading-none opacity-60 whitespace-nowrap">
                 {t(option.descriptionKey)}
               </span>
             </button>
@@ -230,8 +230,8 @@ export const PermissionStatusButton = ({
         title={
           <span className="flex min-w-0 items-center gap-1.5">
             <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-            <span className="shrink-0 text-[13px] font-medium text-white/90">Permission</span>
-            <span className="ml-auto shrink-0 text-[12px] text-white/50">{request.mode}</span>
+            <span className="shrink-0 text-sm font-medium text-white/90">Permission</span>
+            <span className="ml-auto shrink-0 text-xs text-white/50">{request.mode}</span>
           </span>
         }
         content={tooltipContent}

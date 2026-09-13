@@ -43,7 +43,7 @@ export const FlowItemUserContent = ({
       )}
       {content.files && content.files.length > 0 && (
         <div className="flex flex-col gap-1 pt-1">
-          <div className="text-[11px] font-mono text-white/40">{t("agent.attachedFiles")}:</div>
+          <div className="text-xs font-mono text-white/40">{t("agent.attachedFiles")}:</div>
           <AgentMessageFiles files={content.files} align="left" className="mb-0" />
         </div>
       )}

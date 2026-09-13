@@ -793,7 +793,7 @@ export const AgentExecutionFlowList = forwardRef<
                 <button
                   type="button"
                   onClick={loadMoreHistory}
-                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
                 >
                   <ChevronUp className="h-3 w-3" />
                   <span>加载更早步骤 ({windowStartIndex} 个单元未展开)</span>
@@ -873,7 +873,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {isNewTurn && elementTurnIndex > 0 && (
                         <div className="agent-execution-flow-turn-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-purple-500/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-purple-300/65 uppercase flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold tracking-wider text-purple-300/65 uppercase flex items-center gap-1.5">
                             <Layers className="h-3 w-3" />
                             {t("agent.turnLabel", { turn: elementTurnIndex })}
                           </span>
@@ -884,7 +884,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {element.kind === "single" && element.step.kind === "undo" && (
                         <div className="agent-execution-flow-undo-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-rose-500/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-rose-300/65 uppercase flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold tracking-wider text-rose-300/65 uppercase flex items-center gap-1.5">
                             <Undo2 className="h-3 w-3" />
                             {t("agent.undoSummary")}
                           </span>
@@ -895,7 +895,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {element.kind === "single" && element.step.kind === "compaction" && (
                         <div className="agent-execution-flow-compaction-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-indigo-500/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-indigo-300/65 uppercase flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold tracking-wider text-indigo-300/65 uppercase flex items-center gap-1.5">
                             <Minimize2 className="h-3 w-3" />
                             {t("settings.contextCompaction")}
                           </span>
@@ -906,7 +906,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {element.kind === "single" && element.step.kind === "modelSwitch" && (
                         <div className="agent-execution-flow-model-switch-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-cyan-500/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-cyan-300/65 uppercase flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold tracking-wider text-cyan-300/65 uppercase flex items-center gap-1.5">
                             <Cpu className="h-3 w-3" />
                             {element.step.modelSwitchContent?.isInitial
                               ? t("agent.initialModel") || "INITIAL MODEL"
@@ -919,7 +919,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {isSystemStart && (
                         <div className="agent-execution-flow-system-divider my-1.5 flex items-center gap-2">
                           <div className="h-[1px] flex-1 bg-slate-500/10" />
-                          <span className="font-mono text-[10px] font-semibold tracking-wider text-slate-400/65 uppercase flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold tracking-wider text-slate-400/65 uppercase flex items-center gap-1.5">
                             <Compass className="h-3 w-3" />
                             {t("agent.systemPrompt")}
                           </span>
@@ -958,7 +958,7 @@ export const AgentExecutionFlowList = forwardRef<
                       {showTurnBottomBar && (
                         <div
                           data-testid={`turn-summary-${elementTurnIndex}`}
-                          className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-[11px] text-white/40"
+                          className="agent-turn-summary flex flex-wrap items-center gap-1.5 py-1 pl-1 font-mono text-xs text-white/40"
                         >
                           {/* 删除整轮问答按钮：始终显示，位于模型名称左侧并同行 */}
                           {canDeleteTurn && turnMessageId && (
@@ -1054,7 +1054,7 @@ export const AgentExecutionFlowList = forwardRef<
                 })}
               </div>
             ) : (
-              <div className="flex min-h-full items-center justify-center text-[12px] text-white/35">
+              <div className="flex min-h-full items-center justify-center text-xs text-white/35">
                 {t("agent.noMatchingSteps")}
               </div>
             )}
@@ -1063,10 +1063,8 @@ export const AgentExecutionFlowList = forwardRef<
           /* 空状态（无步骤无消息时保底） */
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
             <Workflow className="h-8 w-8 text-white/20" />
-            <div className="text-[13px] font-medium text-white/60">
-              {t("agent.noExecutionFlow")}
-            </div>
-            <div className="max-w-[240px] text-[12px] text-white/35">
+            <div className="text-sm font-medium text-white/60">{t("agent.noExecutionFlow")}</div>
+            <div className="max-w-[240px] text-xs text-white/35">
               {t("agent.noExecutionFlowDesc")}
             </div>
           </div>

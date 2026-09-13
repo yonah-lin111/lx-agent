@@ -15,7 +15,7 @@ export const FlowItemCompactionContent = ({
   previewRef,
 }: FlowItemCompactionContentProps): React.JSX.Element => {
   return (
-    <div className="agent-execution-flow-compaction-content flex flex-col gap-1.5 font-mono text-[11px] text-white/70">
+    <div className="agent-execution-flow-compaction-content flex flex-col gap-1.5 font-mono text-xs text-white/70">
       <div className="flex items-center gap-2">
         <span className="text-white/40">Mode:</span>
         <span className="text-indigo-300 font-semibold">

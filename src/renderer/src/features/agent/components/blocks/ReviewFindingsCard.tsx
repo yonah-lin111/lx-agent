@@ -98,7 +98,7 @@ const FindingItemCard = ({
               >
                 {item.severity}
               </LxTag>
-              <span className="review-finding-title text-[13px] font-medium text-white/95 truncate">
+              <span className="review-finding-title text-sm font-medium text-white/95 truncate">
                 {item.title}
               </span>
             </div>
@@ -107,7 +107,7 @@ const FindingItemCard = ({
             <LxIconButton
               onClick={() => onOpenFile(item.location.filePath, item.location.lineStart)}
               textClass="text-cyan-400/80"
-              className="review-finding-file-link max-w-full text-left text-[11px] font-mono"
+              className="review-finding-file-link max-w-full text-left text-xs font-mono"
               icon={<ExternalLink className="h-3 w-3 shrink-0" />}
             >
               <span className="break-all">
@@ -117,13 +117,13 @@ const FindingItemCard = ({
             </LxIconButton>
 
             {/* 问题描述：使用 LxMarkdownPreview 渲染富文本 */}
-            <div className="review-finding-description text-[12px] text-white/85 leading-relaxed mt-0.5">
+            <div className="review-finding-description text-xs text-white/85 leading-relaxed mt-0.5">
               <LxMarkdownPreview
                 html={markdownRenderer.render(item.description)}
                 previewMode="preview"
                 previewRef={previewRef}
                 className="px-0"
-                contentClassName="py-0 text-[12px] text-white/80"
+                contentClassName="py-0 text-xs text-white/80"
                 sanitizeCopy
               />
             </div>
@@ -136,7 +136,7 @@ const FindingItemCard = ({
                   aria-expanded={isExpanded}
                   onClick={() => onToggleExpand(item.id)}
                   textClass="text-violet-400/90"
-                  className="review-finding-suggestion-toggle text-[11px]"
+                  className="review-finding-suggestion-toggle text-xs"
                   icon={
                     <>
                       {isExpanded ? (
@@ -152,13 +152,13 @@ const FindingItemCard = ({
                 </LxIconButton>
 
                 {isExpanded && (
-                  <div className="review-finding-suggestion-content mt-1.5 rounded-md bg-black/30 border border-white/5 p-2 font-mono text-[11.5px] text-white/85 leading-relaxed">
+                  <div className="review-finding-suggestion-content mt-1.5 rounded-md bg-black/30 border border-white/5 p-2 font-mono text-xs text-white/85 leading-relaxed">
                     <LxMarkdownPreview
                       html={markdownRenderer.render(item.suggestion)}
                       previewMode="preview"
                       previewRef={suggestionPreviewRef}
                       className="px-0"
-                      contentClassName="py-0 text-[11.5px]"
+                      contentClassName="py-0 text-xs"
                       sanitizeCopy
                     />
                   </div>
@@ -326,7 +326,7 @@ export const ReviewFindingsCard = ({
 
       {/* 单独一行的 title 与严重级别分布 Chip */}
       <div className="review-findings-title-row mt-2.5 flex items-center gap-2 flex-wrap">
-        <span className="review-findings-title truncate text-[13px] font-semibold text-white/95">
+        <span className="review-findings-title truncate text-sm font-semibold text-white/95">
           {findings.length > 0
             ? `${findings.length} ${t("agent.review.findingsCount")}`
             : t("agent.review.noFindings")}
@@ -367,13 +367,13 @@ export const ReviewFindingsCard = ({
 
       {/* 概要说明：使用 LxMarkdownPreview 渲染 */}
       {summary && (
-        <div className="review-findings-summary mt-2.5 rounded-lg bg-black/20 px-3 py-2 text-[12.5px] leading-relaxed text-white/80">
+        <div className="review-findings-summary mt-2.5 rounded-lg bg-black/20 px-3 py-2 text-sm leading-relaxed text-white/80">
           <LxMarkdownPreview
             html={markdownRenderer.render(summary)}
             previewMode="preview"
             previewRef={summaryPreviewRef}
             className="px-0"
-            contentClassName="py-0 text-[12.5px]"
+            contentClassName="py-0 text-sm"
             sanitizeCopy
           />
         </div>
@@ -382,7 +382,7 @@ export const ReviewFindingsCard = ({
       {/* 发现项列表 */}
       {findings.length > 0 && (
         <div id={contentId} className="review-findings-list mt-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between text-[11px] text-white/50 px-1">
+          <div className="flex items-center justify-between text-xs text-white/50 px-1">
             <LxIconButton
               variant="ghost"
               onClick={toggleSelectAll}
@@ -436,7 +436,7 @@ export const ReviewFindingsCard = ({
                 setIsListExpanded((prev) => !prev)
               }}
               textClass="text-violet-400/90"
-              className="review-findings-expand-toggle text-[11px] font-medium"
+              className="review-findings-expand-toggle text-xs font-medium"
             >
               <span className="italic underline underline-offset-2">
                 {isListExpanded
@@ -456,7 +456,7 @@ export const ReviewFindingsCard = ({
                 disabled={selectedFindings.length === 0}
                 onClick={handleFillInput}
                 textClass="text-white/80"
-                className="review-findings-fill-btn border border-white/10 px-2.5 py-1 text-[11.5px] max-w-full"
+                className="review-findings-fill-btn border border-white/10 px-2.5 py-1 text-xs max-w-full"
               >
                 <span className="break-words">{t("agent.review.fillInput")}</span>
               </LxIconButton>
@@ -469,7 +469,7 @@ export const ReviewFindingsCard = ({
                 onClick={handleApplyFixes}
                 textClass="text-white"
                 hoverBgClass="hover:bg-violet-500"
-                className="review-findings-apply-btn bg-violet-600 px-3 py-1 text-[12px] font-medium max-w-full"
+                className="review-findings-apply-btn bg-violet-600 px-3 py-1 text-xs font-medium max-w-full"
                 icon={
                   isExecutionDisabled ? (
                     <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />

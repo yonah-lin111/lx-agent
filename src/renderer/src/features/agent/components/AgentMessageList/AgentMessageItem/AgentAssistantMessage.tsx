@@ -162,12 +162,12 @@ export const AgentAssistantMessage = ({
             placement="top"
             content={message.provider ? `${message.provider} / ${message.model}` : message.model}
           >
-            <span className="agent-message-model flex select-text items-center text-[11px] text-white/40">
+            <span className="agent-message-model flex select-text items-center text-xs text-white/40">
               {modelDisplayName}
             </span>
           </LxTooltip>
           {message.variant && (
-            <span className="agent-message-variant select-text font-mono text-[11px] text-sky-400/90">
+            <span className="agent-message-variant select-text font-mono text-xs text-sky-400/90">
               {message.variant}
             </span>
           )}
@@ -175,7 +175,7 @@ export const AgentAssistantMessage = ({
       )}
       <div
         data-assistant-bubble="true"
-        className={`relative min-w-0 w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-[13px] text-white/90`}
+        className={`relative min-w-0 w-full rounded-[18px] rounded-bl-[4px] ${assistantBubbleClass} px-3 py-2 text-sm text-white/90`}
       >
         <div className="flex min-w-0 max-w-full flex-col gap-1.5">
           {executionGroups.map((group, groupIndex) => {
@@ -384,7 +384,7 @@ export const AgentAssistantMessage = ({
         {assistantError && (
           <div className="agent-message-error-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />
-            <div className="agent-message-error text-[13px] text-red-400 italic whitespace-pre-wrap break-words">
+            <div className="agent-message-error text-sm text-red-400 italic whitespace-pre-wrap break-words">
               {assistantError}
             </div>
           </div>
@@ -392,7 +392,7 @@ export const AgentAssistantMessage = ({
         {isAborted && !assistantError && (
           <div className="agent-message-aborted-container mt-2 flex flex-col gap-1.5">
             <div className="border-t border-white/10" />
-            <div className="agent-message-aborted text-[13px] text-amber-400 italic">
+            <div className="agent-message-aborted text-sm text-amber-400 italic">
               Generation cancelled
             </div>
           </div>
@@ -477,7 +477,7 @@ export const AgentAssistantMessage = ({
                 </div>
               }
             >
-              <span className="agent-message-usage flex items-center gap-1 text-[10px] leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
+              <span className="agent-message-usage flex items-center gap-1 text-xs leading-none text-white/35 select-text tabular-nums whitespace-nowrap">
                 <span className="agent-message-usage-item">
                   IN {formatTokensShort(qaUsage.input)}
                 </span>

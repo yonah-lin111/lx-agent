@@ -196,7 +196,7 @@ export const AgentHistoryPanel = ({
       <div className="agent-history-panel-header flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <History className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-          <span className="truncate text-[13px] text-white/80">{t("agent.historyTitle")}</span>
+          <span className="truncate text-sm text-white/80">{t("agent.historyTitle")}</span>
         </div>
         <LxIconButton
           size="small"

@@ -36,20 +36,20 @@ export const AgentEmptyHero = ({
         alt="LX Agent"
         className="agent-empty-logo mb-3.5 h-16 w-16 rounded-2xl object-contain drop-shadow-md select-none pointer-events-none"
       />
-      <h3 className="agent-empty-title text-[15px] font-semibold text-white/90">
+      <h3 className="agent-empty-title text-sm font-semibold text-white/90">
         {t("agent.emptyTitle")}
       </h3>
-      <p className="agent-empty-description mt-1 max-w-[340px] text-[12px] leading-relaxed text-white/45">
+      <p className="agent-empty-description mt-1 max-w-[340px] text-xs leading-relaxed text-white/45">
         {t("agent.emptyDescription")}
       </p>
 
       {/* 当前模式指引卡片 */}
-      <div className="agent-empty-modes mt-4 flex max-w-[360px] flex-col gap-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-left text-[11px]">
+      <div className="agent-empty-modes mt-4 flex max-w-[360px] flex-col gap-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-left text-xs">
         <div className="flex items-center gap-2 text-white/70">
           <IconComponent className={`h-3.5 w-3.5 shrink-0 ${iconColor}`} />
           <span className="font-medium text-white/85">{modeDesc}</span>
         </div>
-        <div className="border-t border-white/5 pt-1 text-center text-[10px] text-white/35">
+        <div className="border-t border-white/5 pt-1 text-center text-xs text-white/35">
           {t("agent.emptySwitchHint")}
         </div>
       </div>

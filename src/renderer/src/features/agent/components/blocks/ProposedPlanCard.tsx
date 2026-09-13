@@ -127,7 +127,7 @@ export const ProposedPlanCard = ({
 
       {/* 单独一行的 title 与统计指标 Chip */}
       <div className="proposed-plan-title-row mt-2.5 flex items-center gap-2 flex-wrap">
-        <span className="proposed-plan-title truncate text-[13px] font-semibold text-white/95">
+        <span className="proposed-plan-title truncate text-sm font-semibold text-white/95">
           {title}
         </span>
         <LxTag
@@ -140,7 +140,7 @@ export const ProposedPlanCard = ({
       </div>
 
       {/* 计划 Markdown 正文：无滚动条，默认 30 行截断，支持省略号展开/折叠 */}
-      <div className="proposed-plan-body relative mt-2.5 px-0.5 text-[13px] leading-relaxed text-white/90">
+      <div className="proposed-plan-body relative mt-2.5 px-0.5 text-sm leading-relaxed text-white/90">
         <div
           id={contentId}
           ref={contentContainerRef}
@@ -156,7 +156,7 @@ export const ProposedPlanCard = ({
             previewMode="preview"
             previewRef={previewRef}
             className="px-0"
-            contentClassName="py-1 text-[13px]"
+            contentClassName="py-1 text-sm"
             sanitizeCopy
           />
           {/* 截断时的底部淡绿渐变遮罩 */}
@@ -181,7 +181,7 @@ export const ProposedPlanCard = ({
                 setIsExpanded((prev) => !prev)
               }}
               textClass="text-emerald-400/90"
-              className="proposed-plan-expand-toggle text-[11px] font-medium"
+              className="proposed-plan-expand-toggle text-xs font-medium"
             >
               <span className="italic underline underline-offset-2">
                 {isExpanded ? t("common.collapse") : `...${t("common.more")}`}
@@ -199,7 +199,7 @@ export const ProposedPlanCard = ({
               onClick={handleAccept}
               textClass="text-white"
               hoverBgClass="hover:bg-emerald-500"
-              className="proposed-plan-accept-btn bg-emerald-600 px-3 py-1 text-[12px] font-medium max-w-full"
+              className="proposed-plan-accept-btn bg-emerald-600 px-3 py-1 text-xs font-medium max-w-full"
               icon={
                 isExecutionDisabled ? (
                   <Check className="h-3.5 w-3.5 shrink-0 text-white/30" />

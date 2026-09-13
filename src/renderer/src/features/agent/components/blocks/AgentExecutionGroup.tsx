@@ -86,15 +86,15 @@ export const AgentExecutionGroup = ({
       <button
         type="button"
         aria-expanded={isExpanded}
-        className="agent-execution-group-header flex w-fit items-center gap-1.5 rounded-[4px] py-0.5 pr-1 text-[12px] text-white/70 transition-colors hover:text-white/90 focus:outline-none"
+        className="agent-execution-group-header flex w-fit items-center gap-1.5 rounded-[4px] py-0.5 pr-1 text-xs text-white/70 transition-colors hover:text-white/90 focus:outline-none"
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <span
           aria-hidden
           className="agent-execution-group-dot h-1.5 w-1.5 shrink-0 rounded-full bg-white/80"
         />
-        <span className="font-mono text-[12px] font-semibold text-white/90">Execute Group</span>
-        <span className="text-[11px] text-white/40">({items.length})</span>
+        <span className="font-mono text-xs font-semibold text-white/90">Execute Group</span>
+        <span className="text-xs text-white/40">({items.length})</span>
         <ChevronDown
           className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"}`}
         />
@@ -102,7 +102,7 @@ export const AgentExecutionGroup = ({
 
       {/* 直角 icon 与类型汇总统计行 */}
       {statsSegments.length > 0 && (
-        <div className="agent-execution-group-stats-row flex min-w-0 items-start gap-1 pl-1 text-[12px] text-white/45">
+        <div className="agent-execution-group-stats-row flex min-w-0 items-start gap-1 pl-1 text-xs text-white/45">
           <CornerDownRight className="mt-[2px] h-3 w-3 shrink-0 text-white/40" />
           <span className="agent-execution-group-stats flex min-w-0 flex-1 flex-wrap items-center leading-relaxed">
             {statsSegments.map((segment, index) => (
