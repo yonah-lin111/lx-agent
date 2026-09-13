@@ -1006,6 +1006,13 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* ========================================================
+ * 引用文件夹标签（ProjectReferencedFolderTags）实体矿石槽底色
+ * ======================================================== */
+[data-theme="minecraft"] .project-referenced-tag {
+  background-color: #2e2619 !important;
+}
+
+/* ========================================================
  * 页面主体容器（PageContent）
  * ======================================================== */
 [data-theme="minecraft"] .page-content {

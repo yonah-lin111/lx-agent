@@ -22,11 +22,6 @@ interface ProjectReferencedFolderTagsProps {
 const EMPTY_REFERENCED_FOLDERS: ReferencedFolder[] = []
 const EMPTY_ENABLED_FOLDER_PATHS: string[] = []
 
-// loading 最短展示时长，避免 IPC 过快时闪烁。
-const MIN_LOADING_DURATION = 300
-// loading 淡出时长。
-const FADE_OUT_DURATION = 300
-
 // 换算 CSS 中的尺寸为像素，用于命令面板在可视区域内的边界定位。
 const getCssDimensionInPixels = (variableName: string): number => {
   const cssValue = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim()
@@ -57,9 +52,6 @@ const ProjectReferencedFolderTagsContent = ({
   const [projectId, setProjectId] = useState<string | null>(null)
   const [folderPanel, setFolderPanel] = useState<FolderPanelState | null>(null)
   const [copiedFolderPath, setCopiedFolderPath] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isFadingOut, setIsFadingOut] = useState(false)
-  const loadingEndTimerRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -93,20 +85,11 @@ const ProjectReferencedFolderTagsContent = ({
    */
   useEffect(() => {
     let isCurrent = true
-    if (loadingEndTimerRef.current !== null) {
-      window.clearTimeout(loadingEndTimerRef.current)
-      loadingEndTimerRef.current = null
-    }
-    setIsFadingOut(false)
 
     if (!itemId) {
       setProjectId(null)
-      setIsLoading(false)
       return
     }
-
-    setIsLoading(true)
-    const startedAt = Date.now()
 
     if (itemId.startsWith("temp-")) {
       const targetProjectId = itemId.slice("temp-".length)
@@ -118,8 +101,6 @@ const ProjectReferencedFolderTagsContent = ({
       } catch {
         setItemEnabledPaths(itemId, [])
       }
-      setIsLoading(false)
-      setIsFadingOut(false)
       return
     }
 
@@ -133,24 +114,6 @@ const ProjectReferencedFolderTagsContent = ({
       })
       .catch((error) => {
         if (isCurrent) console.error("Failed to load item references", error)
-      })
-      .finally(() => {
-        const finishLoading = (): void => {
-          setIsFadingOut(true)
-          loadingEndTimerRef.current = window.setTimeout(() => {
-            loadingEndTimerRef.current = null
-            if (isCurrent) {
-              setIsLoading(false)
-              setIsFadingOut(false)
-            }
-          }, FADE_OUT_DURATION)
-        }
-        const remainingDuration = Math.max(0, MIN_LOADING_DURATION - (Date.now() - startedAt))
-        if (remainingDuration > 0) {
-          loadingEndTimerRef.current = window.setTimeout(finishLoading, remainingDuration)
-        } else {
-          finishLoading()
-        }
       })
 
     return () => {
@@ -364,103 +327,76 @@ const ProjectReferencedFolderTagsContent = ({
           ref={scrollRef}
           className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
         >
-          {isLoading ? (
-            <div
-              className={`flex items-center gap-1.5 transition-opacity duration-300 ease-out ${
-                isFadingOut ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {Array.from({ length: 3 }, (_, index) => (
-                <div
-                  key={index}
-                  className="flex animate-pulse items-center gap-1 rounded-[6px] border border-white/5 bg-white/[0.03] px-2 py-0.5 h-5"
-                >
-                  <div className="h-3 w-3 shrink-0 rounded-[4px] bg-white/10" />
-                  <div
-                    className={`h-3 rounded-[4px] bg-white/10 ${
-                      ["w-16", "w-24", "w-20"][index] ?? "w-20"
-                    }`}
-                  />
-                  <div className="h-2.5 w-2.5 shrink-0 rounded-[4px] bg-white/[0.06]" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="animate-fade-in flex min-w-0 items-center gap-1">
-              {sortedFolders.map((folder) => {
-                const isCopied = copiedFolderPath === folder.path
-                const isEnabled = enabledFolderPaths.includes(folder.path)
+          {sortedFolders.map((folder) => {
+            const isCopied = copiedFolderPath === folder.path
+            const isEnabled = enabledFolderPaths.includes(folder.path)
 
-                return (
-                  <LxTag
-                    key={folder.path}
-                    bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
-                    closeTooltipContent={t("project.deleteFolderConfirm")}
-                    prefix={<Folder className="h-3 w-3" />}
-                    suffix={
-                      <>
-                        <LxTooltip
-                          content={
-                            isEnabled
-                              ? t("project.disableFolderInMention")
-                              : t("project.enableFolderInMention")
-                          }
-                          placement="top"
-                        >
-                          <button
-                            aria-label={
-                              isEnabled
-                                ? t("project.disableFolderInMention")
-                                : t("project.enableFolderInMention")
-                            }
-                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
-                              isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
-                            }`}
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              toggleFolderReference(folder.path)
-                            }}
-                          >
-                            <Pin
-                              className="h-2.5 w-2.5"
-                              fill={isEnabled ? "currentColor" : "none"}
-                            />
-                          </button>
-                        </LxTooltip>
-                        <LxTooltip
-                          content={isCopied ? t("common.copied") : t("project.copyFolderRef")}
-                          placement="top"
-                        >
-                          <button
-                            aria-label={t("project.copyFolderRef")}
-                            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
-                              isCopied ? "text-current" : "text-current/60 hover:text-current"
-                            }`}
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              void copyFolderReference(folder.path)
-                            }}
-                          >
-                            {isCopied ? (
-                              <Check className="h-2.5 w-2.5" />
-                            ) : (
-                              <Copy className="h-2.5 w-2.5" />
-                            )}
-                          </button>
-                        </LxTooltip>
-                      </>
-                    }
-                    onClick={(event) => openFolderPanel(folder.path, event)}
-                    onClose={() => removeFolderReference(folder.path)}
-                  >
-                    {getMarkdownReferenceName(folder.path)}
-                  </LxTag>
-                )
-              })}
-            </div>
-          )}
+            return (
+              <LxTag
+                key={folder.path}
+                className="project-referenced-tag"
+                bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
+                closeTooltipContent={t("project.deleteFolderConfirm")}
+                prefix={<Folder className="h-3 w-3" />}
+                suffix={
+                  <>
+                    <LxTooltip
+                      content={
+                        isEnabled
+                          ? t("project.disableFolderInMention")
+                          : t("project.enableFolderInMention")
+                      }
+                      placement="top"
+                    >
+                      <button
+                        aria-label={
+                          isEnabled
+                            ? t("project.disableFolderInMention")
+                            : t("project.enableFolderInMention")
+                        }
+                        className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
+                          isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
+                        }`}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggleFolderReference(folder.path)
+                        }}
+                      >
+                        <Pin className="h-2.5 w-2.5" fill={isEnabled ? "currentColor" : "none"} />
+                      </button>
+                    </LxTooltip>
+                    <LxTooltip
+                      content={isCopied ? t("common.copied") : t("project.copyFolderRef")}
+                      placement="top"
+                    >
+                      <button
+                        aria-label={t("project.copyFolderRef")}
+                        className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
+                          isCopied ? "text-current" : "text-current/60 hover:text-current"
+                        }`}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void copyFolderReference(folder.path)
+                        }}
+                      >
+                        {isCopied ? (
+                          <Check className="h-2.5 w-2.5" />
+                        ) : (
+                          <Copy className="h-2.5 w-2.5" />
+                        )}
+                      </button>
+                    </LxTooltip>
+                  </>
+                }
+                onClick={(event) => openFolderPanel(folder.path, event)}
+                onClose={() => removeFolderReference(folder.path)}
+              >
+                {getMarkdownReferenceName(folder.path)}
+              </LxTag>
+            )
+          })}
         </div>
         <LxIconButton
           aria-label={t("project.scrollRight")}

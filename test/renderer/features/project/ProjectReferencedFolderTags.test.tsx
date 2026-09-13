@@ -127,5 +127,6 @@ describe("ProjectReferencedFolderTags Component", () => {
       },
       { timeout: 1000 },
     )
+    expect(document.querySelector(".project-referenced-tag")).not.toBeNull()
   })
 })

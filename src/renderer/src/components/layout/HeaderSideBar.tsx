@@ -2,7 +2,7 @@
  * 渲染页面顶部栏。
  */
 import { Check, ChevronDown, ChevronUp, Palette, Tags } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -17,9 +17,6 @@ import { useTranslation } from "@/i18n"
 import { PRIMARY_NAVIGATION_ITEMS } from "@/lib/navigationItems"
 import { PAGE_ROUTES } from "@/lib/pageRoutes"
 import { type AppTheme, useAppTheme } from "@/stores/themeStore"
-
-// tag 栏退场动画时长，与面包屑入场动画时长一致。
-const TAGS_LEAVE_DURATION = 300
 
 // 项目页面包屑名称。
 interface ProjectBreadcrumb {
@@ -49,10 +46,6 @@ export const HeaderSideBar = ({
   const [projectBreadcrumb, setProjectBreadcrumb] = useState<ProjectBreadcrumb | null>(null)
   // 是否将顶部行从面包屑切换为最近打开 tag 栏。
   const [showRecentTags, setShowRecentTags] = useState(false)
-  // tag 栏退场动画播放期间仍保留渲染，结束后卸载。
-  const [isTagsLeaving, setIsTagsLeaving] = useState(false)
-  const tagsLeaveTimerRef = useRef<number | null>(null)
-  const renderTags = showRecentTags || isTagsLeaving
   const breadcrumbToasts = useLxBreadcrumbToast()
   const hasBreadcrumbToast = breadcrumbToasts.length > 0
   const activeNavigationItem =
@@ -142,35 +135,10 @@ export const HeaderSideBar = ({
     }
   }, [itemId, pathname, t])
 
-  // 切换 tag 栏显示：关闭时先播放退场动画，结束后再卸载。
+  // 切换 tag 栏与面包屑显示。
   const handleToggleRecentTags = (): void => {
-    const next = !showRecentTags
-    setShowRecentTags(next)
-    if (next) {
-      if (tagsLeaveTimerRef.current !== null) {
-        window.clearTimeout(tagsLeaveTimerRef.current)
-        tagsLeaveTimerRef.current = null
-      }
-      setIsTagsLeaving(false)
-      return
-    }
-    if (tagsLeaveTimerRef.current === null) {
-      setIsTagsLeaving(true)
-      tagsLeaveTimerRef.current = window.setTimeout(() => {
-        tagsLeaveTimerRef.current = null
-        setIsTagsLeaving(false)
-      }, TAGS_LEAVE_DURATION)
-    }
+    setShowRecentTags((current) => !current)
   }
-
-  // 卸载时清理退场定时器。
-  useEffect(() => {
-    return () => {
-      if (tagsLeaveTimerRef.current !== null) {
-        window.clearTimeout(tagsLeaveTimerRef.current)
-      }
-    }
-  }, [])
 
   const breadcrumbParts =
     pathname === PAGE_ROUTES.project && projectBreadcrumb
@@ -208,14 +176,8 @@ export const HeaderSideBar = ({
           <div className="flex h-6 min-w-0 flex-1 items-center gap-2 mr-2 text-xs font-mono">
             {hasBreadcrumbToast ? (
               <LxBreadcrumbToast />
-            ) : renderTags ? (
-              <div
-                className={`flex min-w-0 flex-1 items-center ${
-                  isTagsLeaving
-                    ? "animate-header-breadcrumb-out pointer-events-none"
-                    : "animate-header-breadcrumb-in"
-                }`}
-              >
+            ) : showRecentTags ? (
+              <div className="flex min-w-0 flex-1 items-center">
                 <ProjectRecentItemsTags />
               </div>
             ) : (
