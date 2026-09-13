@@ -1130,7 +1130,7 @@ export const ModelProviderSettings = ({
                                           }}
                                         />
                                       </div>
-                                      <div className="min-w-0 flex-1 font-mono text-xs">
+                                      <div className="min-w-0 flex-1 font-mono">
                                         <LxInput
                                           aria-label={`${vKey} ${t("settings.variantConfigJson")}`}
                                           value={JSON.stringify(vConfig)}

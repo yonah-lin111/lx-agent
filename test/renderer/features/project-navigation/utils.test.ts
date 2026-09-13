@@ -3,10 +3,6 @@ import { describe, expect, it } from "vitest"
 import {
   createProjectNavigationTree,
   filterProjectNavigationTree,
-  getShortcutLabels,
-  isCopyPathShortcut,
-  isDeleteShortcut,
-  isRenameShortcut,
   sortProjectNavigationTree,
 } from "@/features/project-navigation/utils"
 
@@ -175,72 +171,6 @@ describe("project navigation utils", () => {
 
       const result = sortProjectNavigationTree(tree, "name", "asc")
       expect(result.map((current) => current.id)).toEqual(["p2", "p1", "u1", "u2"])
-    })
-  })
-
-  describe("keyboard shortcut matchers and labels", () => {
-    it("getShortcutLabels 返回预期操作的快捷键文本", () => {
-      const labels = getShortcutLabels()
-      expect(labels.rename).toBe("F2")
-      expect(labels.copyPath).toBe("Shift + Alt + C")
-      expect(labels.delete).toMatch(/^(Cmd \+ Backspace|Del)$/)
-    })
-
-    it("isRenameShortcut 仅在按下纯 F2 时返回 true", () => {
-      expect(
-        isRenameShortcut({
-          key: "F2",
-          metaKey: false,
-          ctrlKey: false,
-          altKey: false,
-          shiftKey: false,
-        } as any),
-      ).toBe(true)
-
-      expect(
-        isRenameShortcut({
-          key: "F2",
-          metaKey: true,
-          ctrlKey: false,
-          altKey: false,
-          shiftKey: false,
-        } as any),
-      ).toBe(false)
-    })
-
-    it("isDeleteShortcut 识别 Delete 或 macOS Cmd+Backspace", () => {
-      expect(
-        isDeleteShortcut({
-          key: "Delete",
-          metaKey: false,
-          ctrlKey: false,
-          altKey: false,
-          shiftKey: false,
-        } as any),
-      ).toBe(true)
-
-      expect(
-        isDeleteShortcut({
-          key: "Backspace",
-          metaKey: true,
-          ctrlKey: false,
-          altKey: false,
-          shiftKey: false,
-        } as any),
-      ).toBe(true)
-    })
-
-    it("isCopyPathShortcut 识别 Alt/Option + Shift + C", () => {
-      expect(
-        isCopyPathShortcut({
-          key: "c",
-          code: "KeyC",
-          metaKey: false,
-          ctrlKey: false,
-          altKey: true,
-          shiftKey: true,
-        } as any),
-      ).toBe(true)
     })
   })
 })

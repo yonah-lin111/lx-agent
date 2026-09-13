@@ -1,5 +1,4 @@
 import type { Project, ProjectFolder, ProjectItem } from "@shared/project"
-import type React from "react"
 import type {
   ProjectNavigationFilterScope,
   ProjectNavigationFolder,
@@ -8,7 +7,6 @@ import type {
   ProjectNavigationSortDirection,
   ProjectNavigationSortKey,
 } from "@/features/project-navigation/types"
-import { isMacOS } from "@/lib/platform"
 
 /**
  * 将持久化记录组装为项目导航所需的树形数据。
@@ -212,52 +210,4 @@ export const filterProjectNavigationTreeByStatus = (
       ? [{ ...project, projectFolders, prompts }]
       : []
   })
-}
-
-/**
- * 获取对应操作在当前操作系统下的快捷键提示文本。
- */
-export const getShortcutLabels = (): {
-  rename: string
-  copyPath: string
-  delete: string
-} => {
-  const isMac = isMacOS()
-  return {
-    rename: "F2",
-    copyPath: "Shift + Alt + C",
-    delete: isMac ? "Cmd + Backspace" : "Del",
-  }
-}
-
-/**
- * 判断键盘事件是否匹配重命名快捷键（F2）。
- */
-export const isRenameShortcut = (event: React.KeyboardEvent): boolean => {
-  return event.key === "F2" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
-}
-
-/**
- * 判断键盘事件是否匹配删除快捷键（macOS: Cmd + Backspace 或 Delete，Windows/Linux: Delete）。
- */
-export const isDeleteShortcut = (event: React.KeyboardEvent): boolean => {
-  if (isMacOS()) {
-    if (event.metaKey && event.key === "Backspace" && !event.altKey && !event.ctrlKey) return true
-    if (event.key === "Delete" && !event.metaKey && !event.ctrlKey && !event.altKey) return true
-    return false
-  }
-  return event.key === "Delete" && !event.metaKey && !event.ctrlKey && !event.altKey
-}
-
-/**
- * 判断键盘事件是否匹配复制路径快捷键（Shift + Alt + C）。
- */
-export const isCopyPathShortcut = (event: React.KeyboardEvent): boolean => {
-  return (
-    event.altKey &&
-    event.shiftKey &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    (event.code === "KeyC" || event.key.toLowerCase() === "c" || event.key === "Ç")
-  )
 }

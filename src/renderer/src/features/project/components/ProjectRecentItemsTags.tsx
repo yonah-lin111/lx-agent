@@ -297,7 +297,7 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                   className={`flex shrink-0 cursor-grab items-center ${isDragging ? "opacity-40" : ""}`}
                 >
                   <LxTag
-                    size="default"
+                    size="small"
                     color={getCardTagColor(card)}
                     highlighted={isActive}
                     className="project-recent-tag"

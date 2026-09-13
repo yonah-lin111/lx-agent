@@ -330,7 +330,8 @@
     0 0 6px rgba(85, 255, 85, 0.3) !important;
 }
 
-[data-theme="minecraft"] .lx-input input,
+/* 保持与全局 input 规则同链的 :not() 以取得更高权重，避免内层 input 再次套上边框/不透明底，遮住底部高亮 */
+[data-theme="minecraft"] .lx-input input:not([type="checkbox"]):not([type="radio"]),
 [data-theme="minecraft"] .lx-input textarea {
   border: none !important;
   background-color: transparent !important;

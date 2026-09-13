@@ -902,9 +902,6 @@ export const ProjectNavigation = (): React.JSX.Element => {
           onPromptStatusChange={(promptId, status) =>
             void handlePromptStatusToggle(promptId, status)
           }
-          onEditProject={openEditProjectModal}
-          onDeleteItem={(target) => void handleDeleteTarget(target)}
-          onCopyProjectPath={(path) => void handleCopyPath(path)}
         />
       </div>
       <ProjectNavigationMenu

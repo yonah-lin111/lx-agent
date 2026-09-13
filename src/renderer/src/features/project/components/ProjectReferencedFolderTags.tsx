@@ -400,7 +400,7 @@ const ProjectReferencedFolderTagsContent = ({
                     closeTooltipContent={t("project.deleteFolderConfirm")}
                     hoverClass=""
                     prefix={<Folder className="h-3 w-3" />}
-                    size="default"
+                    size="small"
                     suffix={
                       <>
                         <LxTooltip

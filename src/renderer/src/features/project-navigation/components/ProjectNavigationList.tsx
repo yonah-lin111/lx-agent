@@ -11,20 +11,15 @@ import {
 import type React from "react"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import type {
   EditingItem,
-  ProjectNavigationMenuTarget,
   ProjectNavigationMenuType,
   ProjectNavigationProject,
   ProjectNavigationPrompt,
   PromptStatus,
 } from "@/features/project-navigation/types"
-import {
-  isCopyPathShortcut,
-  isDeleteShortcut,
-  isRenameShortcut,
-} from "@/features/project-navigation/utils"
 import { type TranslationKey, useTranslation } from "@/i18n"
 
 export type {
@@ -77,9 +72,6 @@ interface ProjectNavigationListProps {
     projectId?: string,
     depth?: number,
   ) => void
-  onEditProject?: (project: ProjectNavigationProject) => void
-  onDeleteItem?: (target: ProjectNavigationMenuTarget) => void
-  onCopyProjectPath?: (path: string) => void
 }
 
 /**
@@ -101,9 +93,6 @@ export const ProjectNavigationList = ({
   onProjectToggle,
   onProjectFolderToggle,
   onOpenMenu,
-  onEditProject,
-  onDeleteItem,
-  onCopyProjectPath,
 }: ProjectNavigationListProps): React.JSX.Element => {
   const { t } = useTranslation()
 
@@ -175,14 +164,14 @@ export const ProjectNavigationList = ({
     const isActive = activePromptId === tempPromptId
 
     return (
-      <div
+      <LxNavItem
         key={tempPromptId}
-        role="button"
-        tabIndex={0}
+        size="small"
+        depth={1}
+        hoverable={false}
         data-item-level="temp-prompt"
         aria-current={isActive ? "page" : undefined}
-        style={{ marginLeft: "10px" }}
-        className={`project-nav-temp-prompt flex h-7 items-center gap-2 rounded-[6px] border px-1.5 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
+        className={`project-nav-temp-prompt border ${
           isActive
             ? "border-[var(--color-theme-accent,rgba(56,189,248,0.4))] bg-[rgba(56,189,248,0.2)] text-[var(--color-theme-text,#ffffff)] font-medium"
             : "border-[var(--color-theme-border,rgba(255,255,255,0.1))] bg-transparent text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))] hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.2))] hover:bg-white/5"
@@ -190,21 +179,20 @@ export const ProjectNavigationList = ({
         onClick={() => {
           onItemOpen(tempPromptId)
         }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") event.currentTarget.click()
-        }}
+        prefix={
+          <FileText
+            className={`h-3.5 w-3.5 shrink-0 ${
+              isActive
+                ? "text-[var(--color-theme-accent,#38bdf8)]"
+                : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
+            }`}
+          />
+        }
       >
-        <FileText
-          className={`h-3.5 w-3.5 shrink-0 ${
-            isActive
-              ? "text-[var(--color-theme-accent,#38bdf8)]"
-              : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
-          }`}
-        />
         <span className="min-w-0 flex-1 truncate select-none font-medium">
           {t("project.temporaryPrompt")}
         </span>
-      </div>
+      </LxNavItem>
     )
   }
 
@@ -217,51 +205,34 @@ export const ProjectNavigationList = ({
     projectId?: string,
   ): React.JSX.Element => {
     const isActive = activePromptId === prompt.id
-    const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
 
     return (
-      <div
+      <LxNavItem
         key={prompt.id}
-        role="button"
-        tabIndex={0}
+        size="small"
+        depth={depth}
         data-item-level="prompt"
         data-menu-open={activeMenuId === prompt.id ? "true" : undefined}
         aria-current={isActive ? "page" : undefined}
-        style={{ marginLeft: `${marginLeft}px` }}
-        className={`flex h-7 items-center gap-2 rounded-[6px] px-1.5 text-left text-sm transition-colors hover:bg-white/10 data-[menu-open=true]:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-          isActive ? "bg-white/5 text-white" : "text-white/70"
-        }`}
+        className={isActive ? "bg-white/5 text-white" : "text-white/70"}
         onClick={() => {
           onItemOpen(prompt.id)
         }}
-        onKeyDown={(event) => {
-          if (editingItem) return
-          if (isRenameShortcut(event)) {
-            event.preventDefault()
-            onEditingItemChange({ id: prompt.id, name: prompt.name })
-            return
-          }
-          if (isDeleteShortcut(event)) {
-            event.preventDefault()
-            onDeleteItem?.({ type: "prompt", id: prompt.id, projectId })
-            return
-          }
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            event.currentTarget.click()
-          }
-        }}
         onContextMenu={(event) => onOpenMenu(event, "prompt", prompt, projectId, depth)}
+        prefix={
+          <File
+            className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`}
+          />
+        }
+        suffix={renderStatusIcon(prompt)}
       >
-        <File className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-white/80" : "text-white/45"}`} />
         {renderItemName(
           prompt,
           prompt.status === "completed"
             ? "min-w-0 flex-1 truncate text-white/40 line-through"
             : "min-w-0 flex-1 truncate",
         )}
-        {renderStatusIcon(prompt)}
-      </div>
+      </LxNavItem>
     )
   }
 
@@ -274,51 +245,38 @@ export const ProjectNavigationList = ({
     projectId: string,
   ): React.JSX.Element => {
     const isFolderCollapsed = searchKeyword ? false : !Boolean(collapsedProjectFolders[folder.id])
-    const marginLeft = depth === 1 ? 10 : 10 + (depth - 1) * 12
     const totalChildCount = folder.projectFolders.length + folder.prompts.length
 
     return (
       <div key={folder.id} className="space-y-0.5">
-        <div
-          role="button"
-          tabIndex={0}
+        <LxNavItem
+          size="small"
+          depth={depth}
           data-item-level="folder"
           data-menu-open={activeMenuId === folder.id ? "true" : undefined}
-          style={{ marginLeft: `${marginLeft}px` }}
-          className="group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-sm text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 data-[menu-open=true]:bg-white/10"
+          className="text-white/70"
           aria-expanded={!isFolderCollapsed}
           onClick={() => onProjectFolderToggle(folder.id)}
-          onKeyDown={(event) => {
-            if (editingItem) return
-            if (isRenameShortcut(event)) {
-              event.preventDefault()
-              onEditingItemChange({ id: folder.id, name: folder.name })
-              return
-            }
-            if (isDeleteShortcut(event)) {
-              event.preventDefault()
-              onDeleteItem?.({ type: "project_folder", id: folder.id, projectId, depth })
-              return
-            }
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault()
-              event.currentTarget.click()
-            }
-          }}
           onContextMenu={(event) => onOpenMenu(event, "project_folder", folder, projectId, depth)}
-        >
-          <TreeBranchIcon />
-          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
-          {renderItemName(folder, "min-w-0 flex-1 truncate")}
-          {isFolderCollapsed ? (
+          prefix={
             <>
-              <span className="text-xs text-white/35 group-hover:hidden">{totalChildCount}</span>
-              <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+              <TreeBranchIcon />
+              <Folder className="h-3.5 w-3.5 shrink-0 text-amber-400/80" />
             </>
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
-          )}
-        </div>
+          }
+          suffix={
+            isFolderCollapsed ? (
+              <>
+                <span className="text-xs text-white/35 group-hover:hidden">{totalChildCount}</span>
+                <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+              </>
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
+            )
+          }
+        >
+          {renderItemName(folder, "min-w-0 flex-1 truncate")}
+        </LxNavItem>
         {!isFolderCollapsed && (
           <>
             {folder.projectFolders.map((childFolder) =>
@@ -339,63 +297,42 @@ export const ProjectNavigationList = ({
 
           return (
             <div key={project.id} className="space-y-1">
-              <div
-                role="button"
-                tabIndex={0}
+              <LxNavItem
+                size="small"
                 data-item-level="project"
                 data-unimported={project.isImported === false ? "true" : undefined}
                 data-menu-open={activeMenuId === project.id ? "true" : undefined}
-                className={`group flex h-7 items-center gap-1.5 rounded-[6px] px-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 hover:bg-white/10 data-[menu-open=true]:bg-white/10 ${
-                  project.isImported === false ? "opacity-75" : ""
-                }`}
+                className={project.isImported === false ? "opacity-75" : ""}
                 aria-expanded={!isProjectCollapsed}
                 onClick={() => onProjectToggle(project.id)}
-                onKeyDown={(event) => {
-                  if (editingItem) return
-                  if (isRenameShortcut(event)) {
-                    event.preventDefault()
-                    onEditProject?.(project)
-                    return
-                  }
-                  if (isDeleteShortcut(event)) {
-                    event.preventDefault()
-                    onDeleteItem?.({ type: "project", id: project.id })
-                    return
-                  }
-                  if (isCopyPathShortcut(event) && project.path) {
-                    event.preventDefault()
-                    onCopyProjectPath?.(project.path)
-                    return
-                  }
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    event.currentTarget.click()
-                  }
-                }}
                 onContextMenu={(event) => onOpenMenu(event, "project", project)}
+                prefix={
+                  project.isImported === false ? (
+                    <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                  ) : (
+                    <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
+                  )
+                }
+                suffix={
+                  isProjectCollapsed ? (
+                    <>
+                      <span className="text-xs text-white/35 group-hover:hidden">
+                        {project.projectFolders.length}
+                      </span>
+                      <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
+                    </>
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
+                  )
+                }
               >
-                {project.isImported === false ? (
-                  <FolderGit className="h-3.5 w-3.5 shrink-0 text-white/40" />
-                ) : (
-                  <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400/80" />
-                )}
                 {renderItemName(
                   project,
-                  `min-w-0 flex-1 truncate text-sm font-semibold uppercase transition-colors ${
+                  `min-w-0 flex-1 truncate font-semibold uppercase transition-colors ${
                     project.isImported === false ? "text-white/40 font-normal" : "text-white/55"
                   }`,
                 )}
-                {isProjectCollapsed ? (
-                  <>
-                    <span className="text-xs text-white/35 group-hover:hidden">
-                      {project.projectFolders.length}
-                    </span>
-                    <ChevronDown className="hidden h-3.5 w-3.5 -rotate-90 text-white/30 group-hover:block" />
-                  </>
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-white/30 transition-transform" />
-                )}
-              </div>
+              </LxNavItem>
 
               {!isProjectCollapsed && (
                 <div className="space-y-0.5">

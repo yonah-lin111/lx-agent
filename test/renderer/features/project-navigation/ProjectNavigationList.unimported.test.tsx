@@ -113,10 +113,9 @@ describe("ProjectNavigationList unimported items", () => {
     )
   })
 
-  it("当节点聚焦时支持按快捷键触发编辑、删除与复制路径", () => {
-    const onEditProject = vi.fn()
-    const onDeleteItem = vi.fn()
-    const onCopyProjectPath = vi.fn()
+  it("快捷键已移除，Enter 仍可触发节点行为，且行使用 small 尺寸的 LxNavItem", () => {
+    const onItemOpen = vi.fn()
+    const onProjectToggle = vi.fn()
     const onEditingItemChange = vi.fn()
 
     const projectItem: ProjectNavigationProject = {
@@ -143,36 +142,31 @@ describe("ProjectNavigationList unimported items", () => {
         {...defaultProps}
         projects={[projectItem]}
         collapsedProjects={{ p1: true }}
-        onEditProject={onEditProject}
-        onDeleteItem={onDeleteItem}
-        onCopyProjectPath={onCopyProjectPath}
+        onItemOpen={onItemOpen}
+        onProjectToggle={onProjectToggle}
         onEditingItemChange={onEditingItemChange}
       />,
     )
 
-    const projectRow = container.querySelector('[data-item-level="project"]')
+    const projectRow = container.querySelector<HTMLElement>('[data-item-level="project"]')
     expect(projectRow).not.toBeNull()
+    expect(projectRow?.className).toContain("lx-nav-item")
+    expect(projectRow?.className).toContain("h-6")
 
-    // 1. 项目节点按 F2 触发编辑
+    // 旧的 F2 / Delete / Shift+Alt+C 快捷键不再触发任何编辑或删除行为
     fireEvent.keyDown(projectRow!, { key: "F2" })
-    expect(onEditProject).toHaveBeenCalledWith(projectItem)
-
-    // 2. 项目节点按 Alt+Shift+C 触发复制路径
-    fireEvent.keyDown(projectRow!, { key: "c", code: "KeyC", altKey: true, shiftKey: true })
-    expect(onCopyProjectPath).toHaveBeenCalledWith("/Users/yonah/my-path")
-
-    // 3. 项目节点按 Delete 触发删除
     fireEvent.keyDown(projectRow!, { key: "Delete" })
-    expect(onDeleteItem).toHaveBeenCalledWith({ type: "project", id: "p1" })
+    fireEvent.keyDown(projectRow!, { key: "c", code: "KeyC", altKey: true, shiftKey: true })
+    expect(onEditingItemChange).not.toHaveBeenCalled()
 
-    // 4. Prompt 节点按 F2 触发重命名
-    const promptRow = container.querySelector('[data-item-level="prompt"]')
+    // Enter 仍由 LxNavItem 转换为 click
+    fireEvent.keyDown(projectRow!, { key: "Enter" })
+    expect(onProjectToggle).toHaveBeenCalledWith("p1")
+
+    const promptRow = container.querySelector<HTMLElement>('[data-item-level="prompt"]')
     expect(promptRow).not.toBeNull()
-    fireEvent.keyDown(promptRow!, { key: "F2" })
-    expect(onEditingItemChange).toHaveBeenCalledWith({ id: "prompt-1", name: "Prompt 1" })
-
-    // 5. Prompt 节点按 Delete 触发删除
-    fireEvent.keyDown(promptRow!, { key: "Delete" })
-    expect(onDeleteItem).toHaveBeenCalledWith({ type: "prompt", id: "prompt-1", projectId: "p1" })
+    expect(promptRow?.className).toContain("h-6")
+    fireEvent.keyDown(promptRow!, { key: "Enter" })
+    expect(onItemOpen).toHaveBeenCalledWith("prompt-1")
   })
 })

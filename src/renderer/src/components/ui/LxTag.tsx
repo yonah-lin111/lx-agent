@@ -102,18 +102,19 @@ const colorStyles: Record<LxTagColor, { bg: string; highlightBg: string; hover: 
   },
 }
 
+// 标签高度与内部尺度：对齐 LxIconButton / LxSelect / LxInput 的尺寸阶梯。
 const sizeStyles: Record<LxTagSize, { container: string; closeIconSize: string }> = {
   small: {
-    container: "gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[10px]",
-    closeIconSize: "h-2 w-2",
+    container: "h-6 gap-0.5 rounded-[6px] px-2 text-xs",
+    closeIconSize: "h-3 w-3",
   },
   default: {
-    container: "gap-1 rounded-[6px] px-2 py-1 text-xs",
-    closeIconSize: "h-2.5 w-2.5",
+    container: "h-7 gap-1 rounded-[6px] px-2.5 text-xs",
+    closeIconSize: "h-3 w-3",
   },
   large: {
-    container: "gap-1.5 rounded-[6px] px-2.5 py-1.5 text-sm",
-    closeIconSize: "h-3 w-3",
+    container: "h-8 gap-1.5 rounded-[6px] px-3 text-sm",
+    closeIconSize: "h-3.5 w-3.5",
   },
 }
 

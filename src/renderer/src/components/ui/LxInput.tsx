@@ -57,6 +57,20 @@ export interface LxInputProps
   onSelect?(event: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>): void
 }
 
+// 单行输入框固定高度：对齐 LxIconButton / LxSelect 的尺寸阶梯。
+const SIZE_CONTAINER_CLASSES: Record<LxInputSize, string> = {
+  xs: "h-6 gap-1.5 px-2",
+  sm: "h-7 gap-1.5 px-2.5",
+  lg: "h-8 gap-1.5 px-3",
+}
+
+// 多行输入框按内容撑高，仅保留内边距。
+const SIZE_MULTILINE_CLASSES: Record<LxInputSize, string> = {
+  xs: "gap-1.5 px-2 py-1",
+  sm: "gap-1.5 px-2.5 py-1.5",
+  lg: "gap-1.5 px-3 py-1.5",
+}
+
 /**
  * 提供深色主题样式以及前后缀插槽的单行输入框，multiline 时渲染多行 textarea。
  */
@@ -85,7 +99,7 @@ export const LxInput = forwardRef<HTMLInputElement, LxInputProps>(
     const [showPassword, setShowPassword] = useState<boolean>(false)
     const { t } = useTranslation()
     const textSizeClass = size === "lg" ? "text-sm" : "text-xs"
-    const sizeClass = size === "xs" ? "gap-1.5 px-2 py-1" : "gap-1.5 px-2.5 py-1.5"
+    const sizeClass = multiline ? SIZE_MULTILINE_CLASSES[size] : SIZE_CONTAINER_CLASSES[size]
     const variantClass =
       variant === "simple"
         ? "border-transparent bg-transparent hover:border-transparent focus-within:border-transparent"
