@@ -1,3 +1,4 @@
+import type { CollaborationMode } from "@shared/contracts/agent"
 import type { ModelSelection, SubagentRoleConfig, SubagentSettings } from "@shared/settings"
 import {
   RESERVED_SUBAGENT_ROLE_NAMES,
@@ -140,6 +141,16 @@ const parseMaxConcurrent = (raw: unknown, errors: string[]): number | undefined 
   return undefined
 }
 
+// 解析 mode：非法或缺失一律忽略（生效值回退 build）并告警。
+const parseMode = (raw: unknown, errors: string[]): CollaborationMode | undefined => {
+  if (raw === undefined) return undefined
+  if (raw === "build" || raw === "plan" || raw === "review" || raw === "design") {
+    return raw
+  }
+  errors.push(`mode 须为 build | plan | review | design，已忽略: ${describeValue(raw)}`)
+  return undefined
+}
+
 /**
  * 解析 `agent.subagents` 原始配置：同时兼容 `{ roles, ... }` 域模型与裸角色映射表。
  * 非法条目记入 errors 且跳过，绝不抛出。
@@ -164,6 +175,9 @@ export const parseSubagentSettings = (raw: unknown): SubagentSettingsParseResult
   const settings: SubagentSettings = { roles: {}, maxDepth: parseMaxDepth(raw.maxDepth, errors) }
   const maxConcurrent = parseMaxConcurrent(raw.maxConcurrent, errors)
   if (maxConcurrent !== undefined) settings.maxConcurrent = maxConcurrent
+
+  const mode = parseMode(raw.mode, errors)
+  if (mode !== undefined) settings.mode = mode
 
   const parsedDefaultModel = parseModelSelection(raw.defaultModel, "defaultModel")
   if (parsedDefaultModel.error) errors.push(parsedDefaultModel.error)

@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe("getSubagentSettings", () => {
-  it("合法配置完整归一化：指令、模型、工具去重去空白、深度与并发、默认模型", () => {
+  it("合法配置完整归一化：指令、模型、工具去重去空白、深度与并发、默认模型、协作模式", () => {
     writeConfig({
       agent: {
         subagents: {
@@ -51,6 +51,7 @@ describe("getSubagentSettings", () => {
           maxDepth: 3,
           maxConcurrent: 4,
           defaultModel: { provider: "anthropic", model: "claude-sonnet-4-5" },
+          mode: "review",
         },
       },
     })
@@ -67,6 +68,7 @@ describe("getSubagentSettings", () => {
       maxDepth: 3,
       maxConcurrent: 4,
       defaultModel: { provider: "anthropic", model: "claude-sonnet-4-5" },
+      mode: "review",
     })
   })
 
@@ -150,6 +152,17 @@ describe("getSubagentSettings", () => {
     expect(warnMessages().some((m) => m.includes("maxConcurrent"))).toBe(true)
     expect(warnMessages().some((m) => m.includes("必须是对象"))).toBe(true)
   })
+
+  it("非法 mode 告警并忽略（缺省回退 build），合法 mode 保留", () => {
+    writeConfig({ agent: { subagents: { roles: {}, mode: "default" } } })
+    expect(getSubagentSettings()).toEqual({ roles: {}, maxDepth: 1 })
+    expect(warnMessages().some((m) => m.includes("mode 须为 build | plan | review | design"))).toBe(
+      true,
+    )
+
+    writeConfig({ agent: { subagents: { roles: {}, mode: "plan" } } })
+    expect(getSubagentSettings().mode).toBe("plan")
+  })
 })
 
 describe("saveSubagentSettings", () => {
@@ -201,12 +214,13 @@ describe("saveSubagentSettings", () => {
       maxDepth: 3,
       maxConcurrent: 2,
       defaultModel: { provider: "anthropic", model: "claude-sonnet-4-5" },
+      mode: "plan",
     })
 
     expect(getSubagentSettings()).toEqual(saved)
   })
 
-  it("保留名/空 description/越界深度或并发均拒绝写入且文件不变", () => {
+  it("保留名/空 description/非法 mode/越界深度或并发均拒绝写入且文件不变", () => {
     writeConfig({ agent: { permissions: { defaultMode: "default" } } })
     const before = readFileSync(holder.configPath, "utf8")
 
@@ -224,6 +238,12 @@ describe("saveSubagentSettings", () => {
         roles: { keeper: { description: "x" } },
         maxDepth: 1,
         maxConcurrent: 33,
+      }),
+    ).toThrow()
+    expect(() =>
+      saveSubagentSettings({
+        roles: { keeper: { description: "x" } },
+        mode: "ghost" as never,
       }),
     ).toThrow()
 

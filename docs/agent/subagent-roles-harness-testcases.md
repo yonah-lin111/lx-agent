@@ -2,7 +2,7 @@
 
 **前置说明：**
 
-- 环境/配置：`~/.lx/config.json` → `agent.subagents`（`roles` / `maxConcurrent` / `maxDepth` / `defaultModel`）；推荐通过 设置 → 子代理 可视化编辑，手改配置用于容错用例。
+- 环境/配置：`~/.lx/config.json` → `agent.subagents`（`roles` / `maxConcurrent` / `maxDepth` / `defaultModel` / `mode`）；推荐通过 设置 → 子代理 可视化编辑，手改配置用于容错用例。
 - 生效时机：配置保存后**仅对新会话生效**；运行中会话沿用装配时的角色目录快照。
 - 观察位置：设置页「子代理」分区、Agent 执行流程面板（`task` 调用参数、子代理卡片、PromptAssembly）、主进程 console（`[subagents]` / `console.warn` 降级日志）、`~/.lx/config.json`。
 
@@ -28,7 +28,7 @@
 
 - **提示词**：`用 auditor 角色审计 src/main/agent/tools/task.ts 的边界处理`
 - **验证步骤**：执行后打开执行流程面板，展开 `task` 调用与子代理卡片；检查子代理系统提示词与工具集。
-- **期望**：`task` 入参出现 `agent_type: "auditor"`；子代理提示词 = 父提示词 → 子代理后缀 → auditor instructions；子代理可用工具仅为 `read`、`grep`（白名单未含的工具在子代理内不可见）；结果正常回传。
+- **期望**：`task` 入参出现 `agent_type: "auditor"`；子代理提示词 = 子代理基座提示词（按 `agent.subagents.mode` 渲染，缺省 Build）→ 子代理后缀 → auditor instructions；子代理可用工具仅为 `read`、`grep`（白名单未含的工具在子代理内不可见）；结果正常回传。
 
 ## 组 3：未知 `agent_type` 显式报错
 
@@ -94,11 +94,11 @@
 
   ```jsonc
   "roles": { "BadName": {...}, "review": {...}, "ok": { "description": "" } },
-  "maxDepth": 9, "maxConcurrent": 0
+  "maxDepth": 9, "maxConcurrent": 0, "mode": "default"
   ```
 
 - **验证步骤**：观察启动日志与会话可用性；观察设置页报错。
-- **期望**：读取时逐条 `console.warn`（`[subagents] …`）并忽略非法角色/越界值（`maxDepth` 回退 1、`maxConcurrent` 忽略），会话正常启动不阻断；设置页保存保留名/非法名/空描述/`maxDepth` 越界（不在 1–5）/`maxConcurrent` 越界（不在 1–32）被阻止并提示，主进程二次校验同样拒绝。
+- **期望**：读取时逐条 `console.warn`（`[subagents] …`）并忽略非法角色/越界值（`maxDepth` 回退 1、`maxConcurrent` 忽略、非法 `mode` 忽略并回退 `build`），会话正常启动不阻断；设置页保存保留名/非法名/空描述/`maxDepth` 越界（不在 1–5）/`maxConcurrent` 越界（不在 1–32）被阻止并提示，主进程二次校验同样拒绝。
 
 ## 组 12：权限不提升（安全不变量）
 
@@ -118,7 +118,18 @@
 - **验证步骤**：观察消息列表的子代理卡片标题与子代理面板头部；再次派发时在入参中省略 `name`。
 - **期望**：卡片显示 `Subagent - tool-registry-explorer (explorer)`（名称与角色不同）或 `Subagent - explorer`（名称与角色相同）；未传 `name` 时展示名回退为角色名，不再出现 `Subagent - task`；无角色的普通子代理仍显示 `名称(task)`。
 
-## 组 15：`@` 面板子代理提及与快捷删除
+## 组 15：协作模式隔离（不继承主 Agent）
+
+- **提示词**：主 Agent 切到 Plan（`Shift + Tab`），配置 `"mode": "review"` 后派发 `用一个 explorer 检查权限门控实现`；再清空 `mode` 重发一次；最后改 `"mode": "plan"` 让子代理尝试写文件。
+- **验证步骤**：经执行流程面板 PromptAssembly 检查子代理基座提示词；观察子代理内部工具调用是否触发 Plan/Review 门禁拒绝。
+
+  ```jsonc
+  "subagents": { "roles": {}, "mode": "review" }
+  ```
+
+- **期望**：主 Agent 处于 Plan 时，子代理提示词为 Review Mode（主 Agent 切 design/review 时同样不注入其模式）；`mode` 缺省时子代理为 Build Mode；子代理工具门禁按 `mode` 绑定（`review`/`plan` 拦截写工具，硬拒文案为对应模式），不继承主 Agent 的协作模式；沙箱 `read-only` 仍独立拦截写操作。
+
+## 组 16：`@` 面板子代理提及与快捷删除
 
 - **提示词**：在输入框输入 `@`，观察面板类目；选择 `@agent:explorer` 后输入任务文本；再按 Backspace 删除。
 - **验证步骤**：检查面板行格式（专属图标、`@agent:<name>`、描述、来源标签：内置 `Agent` / 自定义 `Custom`）；检查输入框 token 高亮；光标置于 token 末尾按 Backspace；输入 `@claw` 验证优先级。
@@ -129,5 +140,5 @@
 ## 附：补充说明
 
 - 已知限制：多行角色描述在工具描述中折叠为单行；`tools` 白名单为「与父激活集求交集」，未激活的 MCP/内置工具名静默缺失（不报错）；运行中会话不做热重载；`@agent:<name>` 仅作为委派意图提示进入模型上下文，主进程不做强制路由。
-- 自动化覆盖：`test/main/services/subagentSettingsService.test.ts`（配置归一/校验/写盘）、`test/main/agent/subagent/agentRoles.test.ts`（角色目录/合并/描述）、`test/main/agent/subagent/subagentRuntime.test.ts`（并发槽位）、`test/main/agent/tools/task.test.ts`（派发/降级/续接/深度/角色快照）、`test/renderer/features/settings/SubagentSettings.test.tsx`（设置页 CRUD/校验/保存载荷）、`test/renderer/features/markdown/markdownAgentMentions.test.ts`（提及提取/删除范围）、`test/renderer/features/agent/AgentInputCommandPanels.test.tsx`（@ 面板子代理行）、`test/renderer/features/agent/subagentLabel.test.ts`（角色标注格式）。
-- 回归命令：`pnpm vitest run test/main/agent/tools/task.test.ts test/main/agent/subagent/agentRoles.test.ts test/main/agent/subagent/subagentRuntime.test.ts test/main/services/subagentSettingsService.test.ts test/renderer/features/settings/SubagentSettings.test.tsx test/renderer/features/markdown/markdownAgentMentions.test.ts test/renderer/features/agent`；全量 `pnpm test` 需对照 dev 基线（既有失败与本次改动无关）。
+- 自动化覆盖：`test/main/services/subagentSettingsService.test.ts`（配置归一/校验/写盘，含 `mode`）、`test/main/agent/subagent/agentRoles.test.ts`（角色目录/合并/描述）、`test/main/agent/subagent/subagentRuntime.test.ts`（并发槽位）、`test/main/agent/tools/task.test.ts`（派发/降级/续接/深度/角色快照）、`test/main/agent/agentRunner.subagentMode.test.ts`（子代理模式隔离：提示词与门禁均不继承主 Agent）、`test/renderer/features/settings/SubagentSettings.test.tsx`（设置页 CRUD/校验/保存载荷，含模式下拉）、`test/renderer/features/markdown/markdownAgentMentions.test.ts`（提及提取/删除范围）、`test/renderer/features/agent/AgentInputCommandPanels.test.tsx`（@ 面板子代理行）、`test/renderer/features/agent/subagentLabel.test.ts`（角色标注格式）。
+- 回归命令：`pnpm vitest run test/main/agent/tools/task.test.ts test/main/agent/subagent/agentRoles.test.ts test/main/agent/subagent/subagentRuntime.test.ts test/main/agent/agentRunner.subagentMode.test.ts test/main/services/subagentSettingsService.test.ts test/renderer/features/settings/SubagentSettings.test.tsx test/renderer/features/markdown/markdownAgentMentions.test.ts test/renderer/features/agent`；全量 `pnpm test` 需对照 dev 基线（既有失败与本次改动无关）。

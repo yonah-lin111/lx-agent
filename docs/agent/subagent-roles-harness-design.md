@@ -53,6 +53,8 @@ flowchart TD
       "maxDepth": 1,
       // 可选；缺省继承父会话模型。
       "defaultModel": { "provider": "anthropic", "model": "claude-sonnet-4-5", "variant": "high" },
+      // 可选；子代理协作模式（build | plan | review | design），缺省 build；不继承主 Agent 模式。
+      "mode": "build",
       "roles": {
         "my-reviewer": {
           // 必填：注入 task 工具描述，模型据此选型。
@@ -98,6 +100,7 @@ export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth
 | `maxDepth` | 整数 1–5 | 越界保存拒绝；读时回退 1 并告警 |
 | `maxConcurrent` | 整数 1–32 | 越界保存拒绝；读时回退缺省（不限）并告警 |
 | `defaultModel` | `ModelSelection`（provider/model 需存在于 provider 配置，由消费者降级） | 缺省即继承；非法仅在运行时告警降级 |
+| `mode` | `CollaborationMode`（`build` / `plan` / `review` / `design`） | 缺省即 `build`；非法保存拒绝，读时告警 + 忽略（回退 `build`） |
 
 ### 2.2 运行时角色模型（`src/main/agent/subagent/agentRoles.ts`）
 
@@ -178,9 +181,9 @@ Concurrency: at most N subagents may run at the same time. Reuse existing subage
 2. **角色解析（仅新建）**：
    - `agent_type` 命中角色目录 → 采用；
    - 未传 `agent_type` 且 `name` 含 `"review"`（大小写不敏感）→ 遗留别名映射到内置 `review`（仅新建生效）；
-   - 未传 `agent_type` → 默认子代理（现状：父提示词 + 子代理后缀）；
+   - 未传 `agent_type` → 默认子代理（子代理基座提示词 + 子代理后缀）；
    - `agent_type` 非空但未命中 → 返回 error ToolResult：`Unknown agent_type "<x>". Available: review, explorer, ...`（禁止静默回退）。
-3. **系统提示词**：按 `父系统提示词 → SUBAGENT_PROMPT_SUFFIX → role.instructions` 顺序追加（`review` 同样追加角色指令，不再替换子代理后缀）。
+3. **系统提示词**：按 `子代理基座提示词（按 agent.subagents.mode 渲染，缺省 Build）→ SUBAGENT_PROMPT_SUFFIX → role.instructions` 顺序追加；主 Agent 协作模式不注入子代理提示词。
 4. **工具集**：以父激活集（assembly 已剔除 `task`）为基础：
    - `role.tools` 非空 → 与父激活集求交集（只读工具名未激活时静默缺失，永不新增能力）；
    - `role.tools` 缺省 → 继承父激活集；
@@ -237,7 +240,7 @@ Concurrency: at most N subagents may run at the same time. Reuse existing subage
 
 组件布局（沿用 `HooksSettings` 的加载/保存/`SettingsActionBar` 模式）：
 
-1. **全局治理卡片**：`defaultModel` 两级下拉（provider / model，含「继承当前会话模型」空选项，复用 `ModelSettings` 的选择器样式）、`maxConcurrent` 数字输入（空 = 不限）、`maxDepth` 数字输入（默认 1，范围 1–5）。
+1. **全局治理卡片**：`defaultModel` 两级下拉（provider / model，含「继承当前会话模型」空选项，复用 `ModelSettings` 的选择器样式）、`mode` 单级下拉（build / plan / review / design，缺省 build，不继承主 Agent）、`maxConcurrent` 数字输入（空 = 不限）、`maxDepth` 数字输入（默认 1，范围 1–5）。
 2. **内置角色列表**：只读卡片，展示名称、description、工具边界；标注「内置」。
 3. **用户角色列表**：卡片列表 + `LxModal` 新增/编辑（名称、description、instructions 多行、model 两级下拉、tools 文本框逐行一个工具名），行内删除；名称实时校验（格式 + 保留名 + 重名），保存时主进程二次校验并返回错误。
 
@@ -253,7 +256,7 @@ Concurrency: at most N subagents may run at the same time. Reuse existing subage
 ## 6. 安全不变量
 
 1. **只能收缩**：角色工具集 = 父激活集 ∩ 白名单，永远不新增工具；未激活的 MCP/内置工具不可被角色带入。
-2. **权限不提升**：子代理继续复用父 `permissionManager.gate`，角色不能修改 `sandboxPolicy` / `PermissionMode` / 协作模式硬门禁。
+2. **权限不提升**：子代理继续复用父 `permissionManager.gate`；协作模式取 `agent.subagents.mode`（缺省 `build`，不继承主 Agent 模式），沙箱策略继承父级，角色不能修改 `sandboxPolicy` / `PermissionMode`。
 3. **保留名不可占用**：`review` / `explorer` / `worker` 校验拦截，防止用户角色冒充内置语义。
 4. **未知角色显式报错**，不静默回退，避免模型误以为已切换角色。
 5. **角色不可中途替换**：续接冲突报错，防止同一上下文被换提示词产生不可预测行为。

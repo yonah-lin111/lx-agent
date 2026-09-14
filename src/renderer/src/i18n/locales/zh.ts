@@ -367,6 +367,8 @@ export const zh: TranslationDictionary = {
     subagentsGlobal: "全局治理",
     subagentsDefaultModel: "默认子代理模型",
     subagentsInheritModel: "继承当前会话模型",
+    subagentsMode: "子代理模式",
+    subagentsModeHint: "不继承主 Agent 的协作模式；缺省为 Build",
     subagentsMaxConcurrent: "最大并发子代理数",
     subagentsMaxConcurrentHint: "1–32；留空表示不限制",
     subagentsMaxDepth: "最大嵌套深度",
