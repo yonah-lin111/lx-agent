@@ -14,7 +14,7 @@ import type React from "react"
 import { useCallback, useId, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { renderMarkdown } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTag } from "@/components/ui/LxTag"
 import type { ReviewFindingItem, ReviewFindingsData, ReviewSeverity } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -44,6 +44,7 @@ interface FindingItemCardProps {
   item: ReviewFindingItem
   isSelected: boolean
   isExpanded: boolean
+  isStreaming?: boolean
   onToggleSelect: (id: string) => void
   onToggleExpand: (id: string) => void
   onOpenFile: (filePath: string, line?: number) => void
@@ -53,6 +54,7 @@ const FindingItemCard = ({
   item,
   isSelected,
   isExpanded,
+  isStreaming = false,
   onToggleSelect,
   onToggleExpand,
   onOpenFile,
@@ -119,9 +121,10 @@ const FindingItemCard = ({
             {/* 问题描述：使用 LxMarkdownPreview 渲染富文本 */}
             <div className="review-finding-description text-xs text-white/85 leading-relaxed mt-0.5">
               <LxMarkdownPreview
-                html={markdownRenderer.render(item.description)}
+                html={renderMarkdown(item.description, { streaming: isStreaming })}
                 previewMode="preview"
                 previewRef={previewRef}
+                disableStickyBlockHeaders={isStreaming}
                 className="px-0"
                 contentClassName="py-0 text-xs text-white/80"
                 sanitizeCopy
@@ -154,9 +157,10 @@ const FindingItemCard = ({
                 {isExpanded && (
                   <div className="review-finding-suggestion-content mt-1.5 rounded-md bg-black/30 border border-white/5 p-2 font-mono text-xs text-white/85 leading-relaxed">
                     <LxMarkdownPreview
-                      html={markdownRenderer.render(item.suggestion)}
+                      html={renderMarkdown(item.suggestion, { streaming: isStreaming })}
                       previewMode="preview"
                       previewRef={suggestionPreviewRef}
+                      disableStickyBlockHeaders={isStreaming}
                       className="px-0"
                       contentClassName="py-0 text-xs"
                       sanitizeCopy
@@ -369,9 +373,10 @@ export const ReviewFindingsCard = ({
       {summary && (
         <div className="review-findings-summary mt-2.5 rounded-lg bg-black/20 px-3 py-2 text-sm leading-relaxed text-white/80">
           <LxMarkdownPreview
-            html={markdownRenderer.render(summary)}
+            html={renderMarkdown(summary, { streaming: isStreaming })}
             previewMode="preview"
             previewRef={summaryPreviewRef}
+            disableStickyBlockHeaders={isStreaming}
             className="px-0"
             contentClassName="py-0 text-sm"
             sanitizeCopy
@@ -413,6 +418,7 @@ export const ReviewFindingsCard = ({
               item={item}
               isSelected={selectedIds.has(item.id)}
               isExpanded={expandedIds.has(item.id)}
+              isStreaming={isStreaming}
               onToggleSelect={toggleSelect}
               onToggleExpand={toggleExpand}
               onOpenFile={handleOpenFile}

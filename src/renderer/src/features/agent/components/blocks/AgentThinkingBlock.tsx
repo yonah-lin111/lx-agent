@@ -2,7 +2,7 @@ import { Brain, ChevronDown, CornerDownRight } from "lucide-react"
 import type React from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { renderMarkdown } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { useTranslation } from "@/i18n"
 
 // 思考块组件属性类型。
@@ -85,9 +85,10 @@ export const AgentThinkingBlock = ({
             <CornerDownRight className="mt-1 h-3 w-3 shrink-0" />
             <div className="custom-scrollbar max-h-72 min-w-0 flex-1 overflow-y-auto">
               <LxMarkdownPreview
-                html={markdownRenderer.render(content)}
+                html={renderMarkdown(content, { streaming: isGenerating })}
                 previewMode="preview"
                 previewRef={previewRef}
+                disableStickyBlockHeaders={isGenerating}
                 className="px-0 text-white/45"
                 contentClassName="py-0 text-white/45 [&_*]:!text-white/45"
               />

@@ -14,7 +14,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
-import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
+import { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
 import { FlowItemToolTitle } from "./FlowItemToolTitle"
 import { copyToClipboard, formatDurationMs, formatJsonString, formatTokensShort } from "./types"
 
@@ -325,7 +325,7 @@ export const AgentExecutionFlowGroup = ({
         <div className="agent-execution-flow-group-body border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-bg,#000000)]/20 p-2">
           <div className="flex flex-col gap-1.5">
             {steps.map((step) => (
-              <AgentExecutionFlowItem
+              <AgentExecutionFlowItemMemo
                 key={step.id}
                 step={step}
                 isExpanded={isStepExpanded(step)}

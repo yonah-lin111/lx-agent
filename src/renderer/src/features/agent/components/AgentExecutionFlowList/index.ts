@@ -14,6 +14,7 @@ export {
   AgentExecutionFlowItem,
   type AgentExecutionFlowItemProps,
 } from "./AgentExecutionFlowItem"
+export { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
 export {
   AgentExecutionFlowList,
   type AgentExecutionFlowListProps,

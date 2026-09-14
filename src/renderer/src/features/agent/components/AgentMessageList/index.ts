@@ -1,5 +1,5 @@
 export { AgentMessageFiles } from "./AgentMessageFiles"
-export { AgentMessageItem } from "./AgentMessageItem"
+export { AgentMessageItem, AgentMessageItemMemo } from "./AgentMessageItem"
 export {
   AgentMessageList,
   type AgentMessageListProps,

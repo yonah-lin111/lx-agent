@@ -5,9 +5,14 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { AgentExecutionFlowList } from "@/features/agent/components/AgentExecutionFlowList"
-import { AgentMessageItem } from "@/features/agent/components/AgentMessageList"
+import { AgentMessageItemMemo } from "@/features/agent/components/AgentMessageList"
 import { buildQaGroups, groupAgentMessages } from "@/features/agent/messageGrouping"
-import type { ChatBlock, InterAgentCommunication, SubagentData } from "@/features/agent/types"
+import type {
+  ChatBlock,
+  ChatMessage,
+  InterAgentCommunication,
+  SubagentData,
+} from "@/features/agent/types"
 import { toChatMessage } from "@/features/agent/utils"
 import { formatSubagentLabel } from "@/features/agent/utils/subagentLabel"
 import { markdownRenderer } from "@/features/markdown/utils/markdownRenderer"
@@ -118,19 +123,40 @@ export const AgentSubagentPanel = ({
   const displayName = data?.name.trim() || "task"
   const displayLabel = formatSubagentLabel(displayName, data?.roleName)
 
+  // 快照跨 IPC 每帧都是全新对象；按消息内容比对，复用未变化消息的转换结果，
+  // 既避免每帧对所有历史消息重跑 toChatMessage，也让子项 memo 只命中真正变化的消息。
+  const conversionCacheRef = useRef<{ keys: string[]; messages: ChatMessage[] }>({
+    keys: [],
+    messages: [],
+  })
+
   const messages = useMemo(() => {
-    if (!data) return []
-    let sequence = 0
-    // 在子代理面板中，过滤掉用户的原始 prompt 消息（已在顶部的 orchestrator->subagent 结构化展示）
-    return data.messages
-      .filter((message) => message.role !== "user")
-      .map((message) =>
+    if (!data) {
+      conversionCacheRef.current = { keys: [], messages: [] }
+      return []
+    }
+    const previous = conversionCacheRef.current
+    const rawMessages = data.messages.filter((message) => message.role !== "user")
+    const nextKeys: string[] = []
+    const nextMessages: ChatMessage[] = []
+    for (let index = 0; index < rawMessages.length; index++) {
+      const raw = rawMessages[index]
+      const key = JSON.stringify(raw)
+      nextKeys.push(key)
+      if (previous.keys[index] === key && previous.messages[index]) {
+        nextMessages.push(previous.messages[index])
+        continue
+      }
+      nextMessages.push(
         toChatMessage(
-          message,
-          message.role === "assistant" && message.stopReason === "pending",
-          `subagent-${sequence++}`,
+          raw,
+          raw.role === "assistant" && raw.stopReason === "pending",
+          `subagent-${index}`,
         ),
       )
+    }
+    conversionCacheRef.current = { keys: nextKeys, messages: nextMessages }
+    return nextMessages
   }, [data])
 
   // 与 AgentMessageList 相同的 QA 分组：一次子代理运行的 AI 内容（助手消息 + 工具结果 + 续写）合并到一个 AgentMessageItem 内展示。
@@ -242,11 +268,11 @@ export const AgentSubagentPanel = ({
                     <Fragment key={groupKey}>
                       {userMessage && (
                         <div className="mb-2 w-full">
-                          <AgentMessageItem message={userMessage} readOnly />
+                          <AgentMessageItemMemo message={userMessage} readOnly />
                         </div>
                       )}
                       {assistant && (
-                        <AgentMessageItem
+                        <AgentMessageItemMemo
                           message={assistant.message}
                           continuationMessages={assistant.continuationMessages}
                           readOnly

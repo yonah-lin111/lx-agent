@@ -25,7 +25,7 @@ import {
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
-import { buildExecutionSteps } from "@/features/agent/executionFlow"
+import { buildExecutionSteps, reuseExecutionSteps } from "@/features/agent/executionFlow"
 import { getModelDisplayName, useModelSettings } from "@/features/agent/hooks/modelsStore"
 import type {
   ChatBlock,
@@ -40,7 +40,7 @@ import { AgentSubagentPanel } from "../panels/AgentSubagentPanel"
 import { AgentExecutionFlowEmpty } from "./AgentExecutionFlowEmpty"
 import { AgentExecutionFlowGroup } from "./AgentExecutionFlowGroup"
 import { AgentExecutionFlowHeader } from "./AgentExecutionFlowHeader"
-import { AgentExecutionFlowItem } from "./AgentExecutionFlowItem"
+import { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
 import {
   type ExecutionFlowStats,
   type FilterKind,
@@ -198,11 +198,17 @@ export const AgentExecutionFlowList = forwardRef<
       prevScrollTopRef.current = null
     }, [sessionId])
 
-    // 提取步骤列表：直接由实时 messages 响应式计算，AI 生成输出中实时跟进新步骤与流式内容
-    const steps = useMemo(
-      () => buildExecutionSteps(messages, promptAssembly),
-      [messages, promptAssembly],
-    )
+    // 提取步骤列表：直接由实时 messages 响应式计算，AI 生成输出中实时跟进新步骤与流式内容。
+    // reuseExecutionSteps 稳定未变化步骤的对象引用，使子项 memo 只命中真正变化的步骤。
+    const prevStepsRef = useRef<ExecutionStep[]>([])
+    const steps = useMemo(() => {
+      const next = reuseExecutionSteps(
+        buildExecutionSteps(messages, promptAssembly),
+        prevStepsRef.current,
+      )
+      prevStepsRef.current = next
+      return next
+    }, [messages, promptAssembly])
 
     // 计算最大轮次（最后一轮）
     const maxTurn = useMemo(() => {
@@ -394,6 +400,27 @@ export const AgentExecutionFlowList = forwardRef<
 
       return elements
     }, [filteredSteps, activeFilter, isGroupableStep])
+
+    // 每个元素之后是否还有"不可聚合的 single 元素"：一次反向扫描预计算，替代渲染期内 slice().some() 的 O(n²)。
+    const hasNonGroupableAfterByIndex = useMemo(() => {
+      const flags = new Array<boolean>(renderedFlowElements.length)
+      let seen = false
+      for (let index = renderedFlowElements.length - 1; index >= 0; index--) {
+        flags[index] = seen
+        const element = renderedFlowElements[index]
+        if (element.kind === "single" && !isGroupableStep(element.step)) seen = true
+      }
+      return flags
+    }, [renderedFlowElements, isGroupableStep])
+
+    // 含用户步骤的最大轮次：用于判断某步骤之后是否仍有用户消息，替代逐元素全量扫描。
+    const maxUserTurnIndex = useMemo(() => {
+      let max = -1
+      for (const step of steps) {
+        if (step.kind === "user" && step.turnIndex > max) max = step.turnIndex
+      }
+      return max
+    }, [steps])
 
     // --- Sliding Window (滑动窗口) ---
     // 窗口起始索引：从该索引到末尾的 elements 实际渲染到 DOM 中。
@@ -863,9 +890,7 @@ export const AgentExecutionFlowList = forwardRef<
                     isStreaming &&
                     element.kind === "group" &&
                     element.turnIndex === maxTurn &&
-                    !renderedFlowElements
-                      .slice(actualIdx + 1)
-                      .some((el) => el.kind === "single" && !isGroupableStep(el.step))
+                    !hasNonGroupableAfterByIndex[actualIdx]
 
                   return (
                     <Fragment key={element.kind === "single" ? element.step.id : element.groupId}>
@@ -929,7 +954,7 @@ export const AgentExecutionFlowList = forwardRef<
 
                       {/* 渲染单个 Step 或 Group */}
                       {element.kind === "single" ? (
-                        <AgentExecutionFlowItem
+                        <AgentExecutionFlowItemMemo
                           step={element.step}
                           isExpanded={isStepExpanded(element.step)}
                           onToggleExpand={() => toggleStepExpanded(element.step)}
@@ -937,9 +962,7 @@ export const AgentExecutionFlowList = forwardRef<
                           onAcceptPlan={onAcceptPlan}
                           onApplyReviewFixes={onApplyReviewFixes}
                           onFillInput={onFillInput}
-                          hasSubsequentUserMessage={steps.some(
-                            (s) => s.turnIndex > element.step.turnIndex && s.kind === "user",
-                          )}
+                          hasSubsequentUserMessage={element.step.turnIndex < maxUserTurnIndex}
                         />
                       ) : (
                         <AgentExecutionFlowGroup

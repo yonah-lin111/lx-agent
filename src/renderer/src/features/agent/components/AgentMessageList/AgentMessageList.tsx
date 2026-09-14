@@ -3,7 +3,6 @@ import { ArrowDownToLine, ChevronUp } from "lucide-react"
 import type React from "react"
 import {
   forwardRef,
-  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -24,7 +23,7 @@ import type {
 } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { rightSidebarStore } from "@/lib/rightSidebarStore"
-import { AgentMessageItem } from "./AgentMessageItem"
+import { AgentMessageItemMemo } from "./AgentMessageItem/AgentMessageItemMemo"
 import { AgentMessageListSkeleton } from "./AgentMessageListSkeleton"
 
 // 子代理调用块类型（点击 label 打开面板）。
@@ -76,22 +75,6 @@ const LOAD_MORE_TOP_THRESHOLD = 150
 const WINDOW_INITIAL_SIZE = 25
 // 向上滚动触发加载时，每次追加的历史组数。
 const WINDOW_PAGE_SIZE = 20
-
-// 仅比较数据 props 的 memo：流式时 useAgentChat 只替换当前消息对象，其余消息引用不变，
-// 借此跳过所有未变化消息的重渲染（其 markdown 渲染成本不再每 tick 重跑）。
-const AgentMessageItemMemo = memo(AgentMessageItem, (prev, next) => {
-  return (
-    prev.message === next.message &&
-    prev.continuationMessages === next.continuationMessages &&
-    prev.isLoading === next.isLoading &&
-    prev.isEditing === next.isEditing &&
-    prev.isLastAssistant === next.isLastAssistant &&
-    prev.readOnly === next.readOnly &&
-    prev.showScrollToBottom === next.showScrollToBottom &&
-    prev.canContinue === next.canContinue &&
-    prev.suggestedQuestionContext === next.suggestedQuestionContext
-  )
-})
 
 export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageListProps>(
   (
@@ -164,6 +147,17 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
       () => messageGroups.slice(windowStartIndex),
       [messageGroups, windowStartIndex],
     )
+
+    // 每组"其后是否仍有用户消息"：一次反向扫描预计算，替代渲染 map 内的 indexOf/slice（O(n²)）。
+    const hasSubsequentUserMessageByIndex = useMemo(() => {
+      const flags = new Array<boolean>(messageGroups.length)
+      let seenUser = false
+      for (let index = messageGroups.length - 1; index >= 0; index--) {
+        flags[index] = seenUser
+        if (messageGroups[index].userMessage) seenUser = true
+      }
+      return flags
+    }, [messageGroups])
 
     const lastGroup = messageGroups.at(-1)
     // Agent 运行期间由最后一条 AI 条目接管 loader，填补 turn 间隙。
@@ -482,10 +476,8 @@ export const AgentMessageList = forwardRef<AgentMessageListRef, AgentMessageList
                   isLastGroup && assistant?.message.role === "compactionSummary"
                 const isLastGroupUndo = isLastGroup && assistant?.message.role === "undoSummary"
 
-                const groupGlobalIndex = messageGroups.indexOf(group)
-                const hasSubsequentUserMessage = messageGroups
-                  .slice(groupGlobalIndex + 1)
-                  .some((g) => Boolean(g.userMessage))
+                const hasSubsequentUserMessage =
+                  hasSubsequentUserMessageByIndex[windowStartIndex + index] ?? false
 
                 return (
                   <div

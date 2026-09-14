@@ -21,6 +21,8 @@ interface LxMarkdownPreviewProps {
   sanitizeCopy?: boolean
   // 循环切换模板块状态（line 为源码结束行，0 起）。
   onTemplateStatusToggle?: (line: number) => void
+  // 流式渲染期间禁用代码块/模板块头部吸顶（避免头部跟随内容增长吸附滚动容器顶部）。
+  disableStickyBlockHeaders?: boolean
 }
 
 // 预览 HTML 中可交互节点的挂载配置。
@@ -301,6 +303,7 @@ export const LxMarkdownPreview = ({
   contentClassName = "py-4",
   sanitizeCopy = false,
   onTemplateStatusToggle,
+  disableStickyBlockHeaders = false,
 }: LxMarkdownPreviewProps): React.JSX.Element => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [mounts, setMounts] = useState<MarkdownPreviewMount[]>([])
@@ -435,7 +438,9 @@ export const LxMarkdownPreview = ({
   return (
     <article
       ref={previewRef}
-      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto text-sm ${className}`}
+      className={`markdown-preview min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto text-sm ${
+        disableStickyBlockHeaders ? "markdown-block-headers-static" : ""
+      } ${className}`}
     >
       <div
         ref={contentRef}
