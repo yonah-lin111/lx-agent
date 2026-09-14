@@ -532,6 +532,7 @@ export const ModelProviderSettings = ({
               return (
                 <LxNavItem
                   key={providerKey}
+                  level={2}
                   className={`w-full ${isSelected ? "bg-white/5 text-white" : "text-white/70"}`}
                   aria-current={isSelected ? "true" : undefined}
                   onClick={() => setSelectedProviderId(providerKey)}

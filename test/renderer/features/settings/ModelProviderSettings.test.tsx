@@ -51,6 +51,9 @@ const renderComponent = (): ReturnType<typeof render> =>
 beforeEach(() => {
   cleanup()
   vi.clearAllMocks()
+  window.api = {
+    settings: { getUiSettings: async () => ({ locale: "en" as const }) },
+  } as unknown as typeof window.api
 })
 
 describe("ModelProviderSettings 供应商导航行", () => {
@@ -59,6 +62,9 @@ describe("ModelProviderSettings 供应商导航行", () => {
 
     const openaiRow = screen.getByText("OpenAI").closest('[role="button"]')
     const anthropicRow = screen.getByText("Anthropic").closest('[role="button"]')
+    // 左侧 tab item 使用等级 2（中间容器），作为主题层级样式契约。
+    expect(openaiRow?.getAttribute("data-item-level")).toBe("2")
+    expect(anthropicRow?.getAttribute("data-item-level")).toBe("2")
     expect(openaiRow?.getAttribute("aria-current")).toBe("true")
     expect(anthropicRow?.getAttribute("aria-current")).toBeNull()
 

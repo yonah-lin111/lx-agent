@@ -53,6 +53,7 @@ beforeEach(() => {
   window.api = {
     customCommand: { list: listCommands },
     project: { projects: { list: async () => [] } },
+    settings: { getUiSettings: async () => ({ locale: "en" as const }) },
   } as unknown as typeof window.api
 })
 
@@ -60,6 +61,7 @@ describe("CustomCommandSettings 命令行", () => {
   it("以 role=button 暴露并支持点击切换选中后同步表单", async () => {
     renderComponent()
     await screen.findByText("alpha")
+    await screen.findByDisplayValue("alpha")
 
     const betaRow = screen.getByText("beta").closest('[role="button"]')
     expect(betaRow).not.toBeNull()
