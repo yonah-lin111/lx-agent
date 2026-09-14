@@ -38,7 +38,7 @@ import { SuggestedQuestionsDemo } from "@/pages/ui/components/SuggestedQuestions
  * 渲染 UI 组件预览页面。
  */
 export const UiPreviewPage = (): React.JSX.Element => {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const [searchParams] = useSearchParams()
   const activeSection = searchParams.get("section") ?? UI_SECTIONS[0].id
   const activeUiSection =
@@ -51,7 +51,11 @@ export const UiPreviewPage = (): React.JSX.Element => {
           {t(activeUiSection.descriptionKey)}
         </p>
       </div>
-      <div className="ui-preview-page-content custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+      {/* 语言切换时重建 Demo，确保示例数据随词条刷新 */}
+      <div
+        key={locale}
+        className="ui-preview-page-content custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4"
+      >
         {activeSection === "icon-button" ? <LxIconButtonDemo /> : null}
         {activeSection === "checkbox" ? <LxCheckboxDemo /> : null}
         {activeSection === "input" ? <LxInputDemo /> : null}

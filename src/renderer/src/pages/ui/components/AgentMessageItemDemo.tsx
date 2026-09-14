@@ -1,25 +1,28 @@
 import type React from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { AgentMessageItem, type ChatMessage } from "@/features/agent"
-import { useTranslation } from "@/i18n"
+import { type I18nContextType, useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 // 示例用户消息。
-const USER_MESSAGE: ChatMessage = {
+const createUserMessage = (t: I18nContextType["t"]): ChatMessage => ({
   id: "user-demo",
   role: "user",
   isStreaming: false,
-  blocks: [{ kind: "text", text: "请解释 Agent 消息是如何渲染的？" }],
-}
+  blocks: [{ kind: "text", text: t("uiPreview.demos.mock.messageItem.userText") }],
+})
 
 // 示例 AI 消息。
-const ASSISTANT_MESSAGE: ChatMessage = {
+const createAssistantMessage = (t: I18nContextType["t"]): ChatMessage => ({
   id: "assistant-demo",
   role: "assistant",
   isStreaming: false,
   blocks: [
-    { kind: "thinking", text: "用户询问 Agent 消息渲染，我先梳理聊天数据流与 block 展示逻辑。" },
+    {
+      kind: "thinking",
+      text: t("uiPreview.demos.mock.messageItem.assistantThinking"),
+    },
     {
       kind: "toolCall",
       toolCallId: "msg-read",
@@ -29,19 +32,19 @@ const ASSISTANT_MESSAGE: ChatMessage = {
     },
     {
       kind: "text",
-      text: "Agent 会话以 **事件流** 驱动，消息按内容块（文本 / 思考 / 工具调用）拆分渲染。",
+      text: t("uiPreview.demos.mock.messageItem.assistantText"),
     },
   ],
-}
+})
 
 // 示例撤销/删除摘要消息。
-const UNDO_MESSAGE: ChatMessage = {
+const createUndoMessage = (t: I18nContextType["t"]): ChatMessage => ({
   id: "undo-demo",
   role: "undoSummary",
   isStreaming: false,
-  blocks: [{ kind: "text", text: "优化 AgentMessageList 的滚动吸底逻辑" }],
+  blocks: [{ kind: "text", text: t("uiPreview.demos.mock.messageItem.undoTarget") }],
   undoPayload: {
-    userPrompt: "优化 AgentMessageList 的滚动吸底逻辑并添加单元测试",
+    userPrompt: t("uiPreview.demos.mock.messageItem.undoPrompt"),
     modelName: "claude-3-7-sonnet",
     undoneAt: Date.now() - 60000,
     toolCallCount: 2,
@@ -75,14 +78,16 @@ const UNDO_MESSAGE: ChatMessage = {
       },
     ],
   },
-}
+})
 
 /**
  * 预览 AgentMessageItem 组件。
  */
 export const AgentMessageItemDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const [userMessage, setUserMessage] = useState<ChatMessage>(USER_MESSAGE)
+  const [userMessage, setUserMessage] = useState<ChatMessage>(() => createUserMessage(t))
+  const assistantMessage = useMemo(() => createAssistantMessage(t), [t])
+  const undoMessage = useMemo(() => createUndoMessage(t), [t])
 
   /**
    * 受控更新用户消息文本。
@@ -115,12 +120,12 @@ export const AgentMessageItemDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.aiMessageDesc")}
       >
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
-          <AgentMessageItem message={ASSISTANT_MESSAGE} onDelete={() => {}} />
+          <AgentMessageItem message={assistantMessage} onDelete={() => {}} />
         </div>
       </UiPreviewSection>
       <UiPreviewSection title={t("agent.turnUndoneSummary")} description={t("agent.undoSummary")}>
         <div className="flex flex-col gap-2 rounded-[6px] border border-white/5 bg-[#212121] p-3">
-          <AgentMessageItem message={UNDO_MESSAGE} onDelete={() => {}} />
+          <AgentMessageItem message={undoMessage} onDelete={() => {}} />
         </div>
       </UiPreviewSection>
     </div>

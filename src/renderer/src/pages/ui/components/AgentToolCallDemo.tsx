@@ -153,7 +153,7 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
                 type: "thinking",
                 dotColor: "bg-rose-300",
                 node: (
-                  <AgentThinkingBlock content="用户询问组件折叠方式，需要先梳理 Agent 消息块结构，再确认思考与工具调用的合并策略。" />
+                  <AgentThinkingBlock content={t("uiPreview.demos.mock.toolCall.thinkingFold")} />
                 ),
               },
               {
@@ -181,7 +181,7 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
                 type: "thinking",
                 dotColor: "bg-rose-300",
                 node: (
-                  <AgentThinkingBlock content="需要调用 MCP 服务获取仓库信息，先确认服务与工具方法名。" />
+                  <AgentThinkingBlock content={t("uiPreview.demos.mock.toolCall.thinkingMcp")} />
                 ),
               },
               {
@@ -209,7 +209,7 @@ export const AgentToolCallDemo = (): React.JSX.Element => {
                 type: "thinking",
                 dotColor: "bg-rose-300",
                 node: (
-                  <AgentThinkingBlock content="需要联网搜索确认最新版本号，再通过 MCP 查询仓库信息。" />
+                  <AgentThinkingBlock content={t("uiPreview.demos.mock.toolCall.thinkingMcpWeb")} />
                 ),
               },
               {

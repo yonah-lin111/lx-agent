@@ -35,20 +35,25 @@ export const AgentInputDemo = (): React.JSX.Element => {
             queuedCount={0}
             queuedMessages={[]}
             onSend={(opts) => {
-              toast.success(`发送消息: ${text || "（空）"} [模式: ${opts?.delivery ?? "direct"}]`)
+              toast.success(
+                t("uiPreview.demos.toast.sendMessage", {
+                  text: text || t("uiPreview.demos.toast.emptyText"),
+                  mode: opts?.delivery ?? "direct",
+                }),
+              )
               setText("")
             }}
             onStop={() => {
               setIsStreaming(false)
-              toast.info("已停止生成")
+              toast.info(t("uiPreview.demos.toast.stopped"))
             }}
             onClear={() => {
               setText("")
               setFiles([])
-              toast.info("已清除输入")
+              toast.info(t("uiPreview.demos.toast.cleared"))
             }}
-            onUndo={() => toast.info("撤销上一条")}
-            onCompact={() => toast.info("触发上下文压缩")}
+            onUndo={() => toast.info(t("uiPreview.demos.toast.undo"))}
+            onCompact={() => toast.info(t("uiPreview.demos.toast.compact"))}
             selectedModel={model}
             onModelChange={setModel}
             modelOptions={modelOptions}

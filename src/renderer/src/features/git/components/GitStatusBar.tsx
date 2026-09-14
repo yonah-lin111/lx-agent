@@ -278,7 +278,7 @@ export const GitStatusBar = ({
     const projectTooltipContent = (
       <div className="flex w-64 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">{t("git.switchProject")}</div>
+          <div className="text-xs font-medium text-white/40">{t("git.switchProject")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchProjects")}
@@ -343,7 +343,7 @@ export const GitStatusBar = ({
                     >
                       {p.name}
                     </span>
-                    <span className="truncate text-[10px] text-white/40">{p.path}</span>
+                    <span className="truncate text-xs text-white/40">{p.path}</span>
                   </div>
                   {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
                 </button>
@@ -407,7 +407,7 @@ export const GitStatusBar = ({
     const branchTooltipContent = (
       <div className="flex w-56 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">{t("git.switchBranch")}</div>
+          <div className="text-xs font-medium text-white/40">{t("git.switchBranch")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchBranches")}
@@ -515,7 +515,7 @@ export const GitStatusBar = ({
     const worktreeTooltipContent = (
       <div className="flex w-64 flex-col">
         <div className="flex shrink-0 flex-col gap-1.5 border-b border-white/5 p-2">
-          <div className="text-[11px] font-medium text-white/40">{t("git.switchWorktree")}</div>
+          <div className="text-xs font-medium text-white/40">{t("git.switchWorktree")}</div>
           <LxInput
             size="xs"
             placeholder={t("git.searchWorktrees")}
@@ -548,7 +548,7 @@ export const GitStatusBar = ({
                   <GitFork className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-white">{name}</span>
-                    <span className="truncate text-[10px] text-white/40">{wt.path}</span>
+                    <span className="truncate text-xs text-white/40">{wt.path}</span>
                   </div>
                   {isCurrent && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
                 </button>

@@ -1795,6 +1795,160 @@ Controls the **interactive approval behavior** between Agent and human user (ali
       subagentPanelTitle: "Subagent Detail Panel",
       subagentPanelDesc:
         "Expanded view showing internal execution history and interactions of a subagent",
+      // Demo interaction toasts
+      toast: {
+        sendMessage: "Message sent: {{text}} [mode: {{mode}}]",
+        emptyText: "(empty)",
+        stopped: "Generation stopped",
+        cleared: "Input cleared",
+        undo: "Last turn undone",
+        compact: "Context compaction triggered",
+        permissionResponse: "Permission response: {{decision}}",
+        openJobs: "Opening the background jobs monitor",
+        questionSend: "Send clicked: {{question}}",
+        sessionRestore: "Session restored: {{id}}",
+        sessionDelete: "Session deleted: {{id}}",
+      },
+      // Demo mock content
+      mock: {
+        markdownSample: [
+          "# Sample Document",
+          "",
+          "## Basic Syntax",
+          "",
+          "- **Bold** and *italic*",
+          "- `inline code`",
+          "- [Hyperlink](https://example.com)",
+          "",
+          "## Code Block",
+          "",
+          "```ts",
+          "export const add = (a: number, b: number): number => a + b",
+          "```",
+          "",
+          "## Table",
+          "",
+          "| Name | Description |",
+          "| --- | --- |",
+          "| LxMarkdown | Editor and preview |",
+          "| LxTag | Generic tag |",
+        ].join("\n"),
+        iconButton: {
+          smallSize: "Small size",
+          mediumSize: "Medium size",
+          largeSize: "Large size",
+          circleAdd: "Add (circle)",
+          circleDelete: "Delete (circle)",
+          disabledAdd: "Add (disabled)",
+        },
+        toolCall: {
+          thinkingFold:
+            "The user asked how component folding works. First map the Agent message block structure, then confirm the merge strategy for thinking and tool calls.",
+          thinkingMcp:
+            "Need to call the MCP service for repository info. Confirm the service and tool method names first.",
+          thinkingMcpWeb:
+            "Need a web search to confirm the latest version, then query the repository through MCP.",
+        },
+        messageItem: {
+          userText: "How are Agent messages rendered?",
+          assistantThinking:
+            "The user asked about Agent message rendering. Let me first walk through the chat data flow and block display logic.",
+          assistantText:
+            "Agent sessions are **event-stream** driven; messages are rendered by content block (text / thinking / tool call).",
+          undoTarget: "Optimize the scroll-to-bottom logic of AgentMessageList",
+          undoPrompt: "Optimize the scroll-to-bottom logic of AgentMessageList and add unit tests",
+        },
+        messageList: {
+          userText: "Analyze the agent rendering flow of lx-agent and check for TODO items.",
+          thinking: "Locate the agent rendering entry point first, then search for TODO markers.",
+          assistantText:
+            "Analysis complete. Agent rendering is driven by **AgentMessageList**, and tool calls are grouped by **AgentMessageItem**.",
+        },
+        todo: {
+          analysis:
+            "Analyze all components and prop structures under the agent directory that need demos",
+          demoPages: "Build demo pages for each new Agent component and wire them into UI Preview",
+          i18nEntries: "Add Chinese and English i18n entries",
+          typecheck: "Run type checking and build validation",
+          obsoleteReview: "Outdated redundant verification flow",
+        },
+        subagent: {
+          description: "Search and analyze all Agent-related components in the project",
+          prompt:
+            "Scan every file under src/renderer/src/features/agent/components and return a summary",
+          initMessage: "Subagent initialized, starting the exploration task...",
+          scanResult: "Scanned 24 component files and mapped their data dependencies.",
+        },
+        suggestedQuestions: {
+          q1: "How do I configure a local MCP server and tool calls?",
+          q2: "Analyze the directory architecture of the src/renderer/src/features/agent module",
+          q3: "What is the project's i18n entry convention?",
+          echoedPrefix: "Echoed to input:",
+        },
+        chatHistory: {
+          session1: "Refactor UI Preview sections and add complete Agent component demos",
+          session2: "Optimize LSP tool calls and i18n configuration",
+          session3: "Explore Subagent Panel drawer display and step aggregation",
+        },
+        question: {
+          stages: {
+            pending: "1. Pending Answer Stage (Pending)",
+            ascii: "2. ASCII Art Stage (Claude Code ASCII Art)",
+            graphic: "3. Graphic & Structured Layout Question Stage (SVG & HTML Graphic)",
+            answered: "4. Answered / Readonly Stage (Answered / Readonly)",
+          },
+          pending: {
+            runModeHeader: "Run Mode",
+            runModeQuestion: "Select the execution strategy for the current task:",
+            fastLabel: "Turbo Mode",
+            fastDesc: "Run only minimal local checks and skip the full build.",
+            standardLabel: "Standard Mode",
+            standardDesc: "Run the full test suite and produce a change analysis report.",
+            auxHeader: "Additional Config",
+            auxQuestion: "Enable extra assist features? (multiple selection)",
+            logsLabel: "Enable verbose logs",
+            logsDesc: "Keep the debug-level trace log stream.",
+            snapshotLabel: "Auto-save snapshots",
+            snapshotDesc: "Create a restore point after each step.",
+          },
+          inline: {
+            question: "Hi! This is a test question. Can you see it and pick this option?",
+            optionLabel: "Working as expected",
+            optionDesc: "The component renders and interacts correctly",
+          },
+          graphic: {
+            header: "Architecture Confirmation",
+            question:
+              "Please confirm whether the following inter-service data flow architecture is acceptable:",
+            agreeLabel: "Fully agree with the architecture",
+            agreeDesc: "Proceed with the remaining modules using this topology",
+            ipcLabel: "Tweak the IPC boundary",
+            ipcDesc: "Add a bidirectional streaming channel design",
+          },
+          pipeline: {
+            header: "Pipeline Branch",
+            question: "Multiple build pipelines detected. Select the preferred execution path:",
+            fullLabel: "Full parallel validation (CI + Lint + Tests)",
+            fullDesc: "Run the complete unit and integration test pipeline",
+            fastLabel: "Fast bypass deploy (Skip Tests)",
+            fastDesc: "Skip the slow integration tests and run only basic type checks",
+          },
+        },
+        statusBar: {
+          permissionSummary: "Run test script",
+          statusButtonsLabel: "Status buttons shown separately:",
+        },
+        compaction: {
+          summary: [
+            "",
+            "### Context Compaction Summary",
+            "- **Key decisions kept**: the user confirmed that all Agent components are included in the UI Preview demos.",
+            "- **Completed**: component analysis and i18n entry expansion are done.",
+            "- **Current state**: building each standalone demo page.",
+            "",
+          ].join("\n"),
+        },
+      },
     },
   },
   frontDesign: {

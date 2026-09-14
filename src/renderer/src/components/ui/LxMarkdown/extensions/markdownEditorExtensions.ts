@@ -9,7 +9,8 @@ export const editorTheme = EditorView.theme(
       height: "100%",
       backgroundColor: "#212121",
       color: "#e5e5e5",
-      fontSize: "14px",
+      // 基座字号引用 sm 预设（14px），与全局正文字号保持一致。
+      fontSize: "var(--text-sm)",
     },
     ".cm-content": {
       minHeight: "100%",

@@ -3,13 +3,14 @@ import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { ChatHistoryPanel } from "@/features/agent"
-import { useTranslation } from "@/i18n"
+import { type I18nContextType, useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
-const MOCK_SESSIONS: AgentSessionSummary[] = [
+// 示例会话列表。
+const createMockSessions = (t: I18nContextType["t"]): AgentSessionSummary[] => [
   {
     id: "sess_1",
-    title: "重构 UI Preview 分区并补充 Agent 完整组件演示",
+    title: t("uiPreview.demos.mock.chatHistory.session1"),
     projectId: "proj_lx_agent",
     cwd: "/Users/dev/projects/lx-agent",
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
@@ -17,7 +18,7 @@ const MOCK_SESSIONS: AgentSessionSummary[] = [
   },
   {
     id: "sess_2",
-    title: "优化 LSP 工具调用与多语言国际化配置",
+    title: t("uiPreview.demos.mock.chatHistory.session2"),
     projectId: "proj_lx_agent",
     cwd: "/Users/dev/projects/lx-agent",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
@@ -25,7 +26,7 @@ const MOCK_SESSIONS: AgentSessionSummary[] = [
   },
   {
     id: "sess_3",
-    title: "探索 Subagent Panel 抽屉展示与步骤聚合",
+    title: t("uiPreview.demos.mock.chatHistory.session3"),
     projectId: "proj_other",
     cwd: "/Users/dev/projects/other-project",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
@@ -41,7 +42,7 @@ const MOCK_PROJECTS = [
 export const ChatHistoryDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
   const toast = useLxToast()
-  const [sessions, setSessions] = useState<AgentSessionSummary[]>(MOCK_SESSIONS)
+  const [sessions, setSessions] = useState<AgentSessionSummary[]>(() => createMockSessions(t))
   const [currentId, setCurrentId] = useState<string | null>("sess_1")
 
   return (
@@ -58,11 +59,11 @@ export const ChatHistoryDemo = (): React.JSX.Element => {
             projects={MOCK_PROJECTS}
             onRestore={(id) => {
               setCurrentId(id)
-              toast.success(`恢复会话: ${id}`)
+              toast.success(t("uiPreview.demos.toast.sessionRestore", { id }))
             }}
             onDelete={(id) => {
               setSessions((prev) => prev.filter((s) => s.id !== id))
-              toast.info(`删除会话: ${id}`)
+              toast.info(t("uiPreview.demos.toast.sessionDelete", { id }))
             }}
           />
         </div>

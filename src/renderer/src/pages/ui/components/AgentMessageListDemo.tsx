@@ -2,25 +2,23 @@ import type React from "react"
 import { useState } from "react"
 
 import { AgentMessageList, type ChatMessage } from "@/features/agent"
-import { useTranslation } from "@/i18n"
+import { type I18nContextType, useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 // 示例对话流。
-const SAMPLE_CONVERSATION: ChatMessage[] = [
+const createSampleConversation = (t: I18nContextType["t"]): ChatMessage[] => [
   {
     id: "user-1",
     role: "user",
     isStreaming: false,
-    blocks: [
-      { kind: "text", text: "帮我分析 lx-agent 的 agent 渲染流程，并检查项目中是否有 TODO 待办。" },
-    ],
+    blocks: [{ kind: "text", text: t("uiPreview.demos.mock.messageList.userText") }],
   },
   {
     id: "assistant-1",
     role: "assistant",
     isStreaming: false,
     blocks: [
-      { kind: "thinking", text: "需要先定位 agent 渲染入口，再搜索 TODO 标记。" },
+      { kind: "thinking", text: t("uiPreview.demos.mock.messageList.thinking") },
       {
         kind: "toolCall",
         toolCallId: "ls-1",
@@ -44,7 +42,7 @@ const SAMPLE_CONVERSATION: ChatMessage[] = [
       },
       {
         kind: "text",
-        text: "已梳理完成。agent 渲染由 **AgentMessageList** 驱动，工具调用通过 **AgentMessageItem** 分组展示。",
+        text: t("uiPreview.demos.mock.messageList.assistantText"),
       },
     ],
   },
@@ -55,7 +53,7 @@ const SAMPLE_CONVERSATION: ChatMessage[] = [
  */
 export const AgentMessageListDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
-  const [messages, setMessages] = useState<ChatMessage[]>(SAMPLE_CONVERSATION)
+  const [messages, setMessages] = useState<ChatMessage[]>(() => createSampleConversation(t))
 
   /**
    * 受控更新指定消息的文本内容。

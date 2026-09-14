@@ -192,7 +192,7 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
       className="my-4 overflow-hidden rounded-[6px] border border-white/10 bg-[#171717]"
     >
       <div className="flex h-10 items-center justify-between border-b border-white/10 bg-[#212121] px-2">
-        <span className="text-[12px] text-white/50">Mermaid</span>
+        <span className="text-xs text-white/50">Mermaid</span>
         <div className="flex items-center gap-0.5" aria-label={t("markdown.viewControl")}>
           <LxIconButton
             aria-label={t("common.zoomOut")}
@@ -271,11 +271,11 @@ export const MermaidDiagram = ({ source }: MermaidDiagramProps): React.JSX.Eleme
             }}
           />
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#171717] px-4 text-center text-[13px] text-rose-300">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#171717] px-4 text-center text-xs text-rose-300">
               {error}
             </div>
           )}
-          <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[4px] bg-black/55 px-2 py-1 text-[11px] text-white/45">
+          <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-[4px] bg-black/55 px-2 py-1 text-xs text-white/45">
             <Maximize2 className="h-3 w-3" />
             <span>{Math.round(transform.scale * 100)}%</span>
           </div>

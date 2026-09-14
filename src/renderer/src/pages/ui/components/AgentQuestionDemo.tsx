@@ -1,207 +1,132 @@
+import type { QuestionAnswer, QuestionPrompt } from "@shared/contracts/agent"
 import type React from "react"
+import { useMemo } from "react"
 import { AgentQuestionBlock } from "@/features/agent"
 import type { ChatBlock } from "@/features/agent/types"
-import { useTranslation } from "@/i18n"
+import { type I18nContextType, useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
 type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 
-const MOCK_QUESTION_CALL: ToolCallBlock = {
+// 构造单次 question 工具调用的完整快照。
+const buildQuestionCall = (
+  toolCallId: string,
+  requestId: string,
+  questions: QuestionPrompt[],
+  answers?: QuestionAnswer[],
+): ToolCallBlock => ({
   kind: "toolCall",
-  toolCallId: "call_question_1",
+  toolCallId,
   toolName: "question",
-  args: {
-    questions: [
-      {
-        header: "运行模式",
-        question: "请选择当前任务需要采用的执行策略：",
-        options: [
-          {
-            label: "极速模式",
-            description: "只进行局部最小验证并跳过全量构建。",
-          },
-          {
-            label: "标准模式",
-            description: "执行完整测试并输出变更分析报告。",
-          },
-        ],
-      },
-      {
-        header: "辅助配置",
-        question: "是否开启额外的辅助能力？（可多选）",
-        multiSelect: true,
-        options: [
-          {
-            label: "启用详细日志",
-            description: "保留调试级别的 trace 日志流。",
-          },
-          {
-            label: "自动保存快照",
-            description: "每个步骤完成后自动生成还原点。",
-          },
-        ],
-      },
-    ],
-  },
+  args: { questions },
   question: {
-    requestId: "q_request_1",
-    toolCallId: "call_question_1",
+    requestId,
+    toolCallId,
     sessionId: "sess_demo",
-    questions: [
-      {
-        header: "运行模式",
-        question: "请选择当前任务需要采用的执行策略：",
-        options: [
-          {
-            label: "极速模式",
-            description: "只进行局部最小验证并跳过全量构建。",
-          },
-          {
-            label: "标准模式",
-            description: "执行完整测试并输出变更分析报告。",
-          },
-        ],
-      },
-      {
-        header: "辅助配置",
-        question: "是否开启额外的辅助能力？（可多选）",
-        multiSelect: true,
-        options: [
-          {
-            label: "启用详细日志",
-            description: "保留调试级别的 trace 日志流。",
-          },
-          {
-            label: "自动保存快照",
-            description: "每个步骤完成后自动生成还原点。",
-          },
-        ],
-      },
-    ],
+    questions,
   },
+  answers,
   status: "done",
-}
+})
 
-const MOCK_ANSWERED_QUESTION_CALL: ToolCallBlock = {
-  kind: "toolCall",
-  toolCallId: "call_question_2",
-  toolName: "question",
-  args: {
-    questions: [
-      {
-        question: "你好！这是一条测试提问，你能看到并选择这个选项吗？",
-        options: [
-          {
-            label: "工作正常",
-            description: "组件能够正常渲染和交互",
-          },
-        ],
-      },
-    ],
-  },
-  answers: [
+// 示例提问数据。
+const createMockQuestionCalls = (
+  t: I18nContextType["t"],
+): {
+  pending: ToolCallBlock
+  pipeline: ToolCallBlock
+  graphic: ToolCallBlock
+  answered: ToolCallBlock
+} => {
+  const pendingQuestions: QuestionPrompt[] = [
     {
-      question: "你好！这是一条测试提问，你能看到并选择这个选项吗？",
-      answer: ["工作正常"],
+      header: t("uiPreview.demos.mock.question.pending.runModeHeader"),
+      question: t("uiPreview.demos.mock.question.pending.runModeQuestion"),
+      options: [
+        {
+          label: t("uiPreview.demos.mock.question.pending.fastLabel"),
+          description: t("uiPreview.demos.mock.question.pending.fastDesc"),
+        },
+        {
+          label: t("uiPreview.demos.mock.question.pending.standardLabel"),
+          description: t("uiPreview.demos.mock.question.pending.standardDesc"),
+        },
+      ],
     },
-  ],
-  status: "done",
-}
+    {
+      header: t("uiPreview.demos.mock.question.pending.auxHeader"),
+      question: t("uiPreview.demos.mock.question.pending.auxQuestion"),
+      multiSelect: true,
+      options: [
+        {
+          label: t("uiPreview.demos.mock.question.pending.logsLabel"),
+          description: t("uiPreview.demos.mock.question.pending.logsDesc"),
+        },
+        {
+          label: t("uiPreview.demos.mock.question.pending.snapshotLabel"),
+          description: t("uiPreview.demos.mock.question.pending.snapshotDesc"),
+        },
+      ],
+    },
+  ]
 
-const MOCK_GRAPHIC_QUESTION_CALL: ToolCallBlock = {
-  kind: "toolCall",
-  toolCallId: "call_question_3",
-  toolName: "question",
-  args: {
-    questions: [
+  const pipelineQuestion: QuestionPrompt = {
+    header: t("uiPreview.demos.mock.question.pipeline.header"),
+    question: t("uiPreview.demos.mock.question.pipeline.question"),
+    options: [
       {
-        header: "架构确认",
-        question: "请确认以下服务间数据流转架构方案是否符合要求：",
-        options: [
-          {
-            label: "完全同意该架构",
-            description: "按照此拓扑推进后续模块实现",
-          },
-          {
-            label: "需要微调 IPC 边界",
-            description: "补充双向流式通道设计",
-          },
-        ],
+        label: t("uiPreview.demos.mock.question.pipeline.fullLabel"),
+        description: t("uiPreview.demos.mock.question.pipeline.fullDesc"),
+      },
+      {
+        label: t("uiPreview.demos.mock.question.pipeline.fastLabel"),
+        description: t("uiPreview.demos.mock.question.pipeline.fastDesc"),
       },
     ],
-  },
-  question: {
-    requestId: "q_request_3",
-    toolCallId: "call_question_3",
-    sessionId: "sess_demo",
-    questions: [
-      {
-        header: "架构确认",
-        question: "请确认以下服务间数据流转架构方案是否符合要求：",
-        options: [
-          {
-            label: "完全同意该架构",
-            description: "按照此拓扑推进后续模块实现",
-          },
-          {
-            label: "需要微调 IPC 边界",
-            description: "补充双向流式通道设计",
-          },
-        ],
-      },
-    ],
-  },
-  status: "done",
-}
+  }
 
-const MOCK_ASCII_QUESTION_CALL: ToolCallBlock = {
-  kind: "toolCall",
-  toolCallId: "call_question_4",
-  toolName: "question",
-  args: {
-    questions: [
+  const graphicQuestion: QuestionPrompt = {
+    header: t("uiPreview.demos.mock.question.graphic.header"),
+    question: t("uiPreview.demos.mock.question.graphic.question"),
+    options: [
       {
-        header: "流程分支",
-        question: "检测到多条构建管线，请选择首选的执行路径：",
-        options: [
-          {
-            label: "全量并行验证 (CI + Lint + Tests)",
-            description: "执行完整的单元测试与集成测试流水线",
-          },
-          {
-            label: "极速旁路部署 (Skip Tests)",
-            description: "跳过耗时集成测试，仅执行基础类型检查",
-          },
-        ],
+        label: t("uiPreview.demos.mock.question.graphic.agreeLabel"),
+        description: t("uiPreview.demos.mock.question.graphic.agreeDesc"),
+      },
+      {
+        label: t("uiPreview.demos.mock.question.graphic.ipcLabel"),
+        description: t("uiPreview.demos.mock.question.graphic.ipcDesc"),
       },
     ],
-  },
-  question: {
-    requestId: "q_request_4",
-    toolCallId: "call_question_4",
-    sessionId: "sess_demo",
-    questions: [
-      {
-        header: "流程分支",
-        question: "检测到多条构建管线，请选择首选的执行路径：",
-        options: [
-          {
-            label: "全量并行验证 (CI + Lint + Tests)",
-            description: "执行完整的单元测试与集成测试流水线",
-          },
-          {
-            label: "极速旁路部署 (Skip Tests)",
-            description: "跳过耗时集成测试，仅执行基础类型检查",
-          },
-        ],
-      },
-    ],
-  },
-  status: "done",
+  }
+
+  const inlineQuestionText = t("uiPreview.demos.mock.question.inline.question")
+  const inlineOptionLabel = t("uiPreview.demos.mock.question.inline.optionLabel")
+  const inlineQuestions: QuestionPrompt[] = [
+    {
+      question: inlineQuestionText,
+      options: [
+        {
+          label: inlineOptionLabel,
+          description: t("uiPreview.demos.mock.question.inline.optionDesc"),
+        },
+      ],
+    },
+  ]
+
+  return {
+    pending: buildQuestionCall("call_question_1", "q_request_1", pendingQuestions),
+    pipeline: buildQuestionCall("call_question_2", "q_request_2", [pipelineQuestion]),
+    graphic: buildQuestionCall("call_question_3", "q_request_3", [graphicQuestion]),
+    answered: buildQuestionCall("call_question_4", "q_request_4", inlineQuestions, [
+      { question: inlineQuestionText, answer: [inlineOptionLabel] },
+    ]),
+  }
 }
 
 export const AgentQuestionDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
+  const mockCalls = useMemo(() => createMockQuestionCalls(t), [t])
 
   return (
     <div className="flex flex-col gap-6">
@@ -211,28 +136,28 @@ export const AgentQuestionDemo = (): React.JSX.Element => {
       >
         <div className="flex flex-col gap-4">
           <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-            <div className="mb-2 text-[11px] font-medium text-white/40">
-              1. 待作答交互阶段 (Pending)
+            <div className="mb-2 text-xs font-medium text-white/40">
+              {t("uiPreview.demos.mock.question.stages.pending")}
             </div>
-            <AgentQuestionBlock toolCall={MOCK_QUESTION_CALL} />
+            <AgentQuestionBlock toolCall={mockCalls.pending} />
           </div>
           <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-            <div className="mb-2 text-[11px] font-medium text-white/40">
-              2. 字符图案绘画阶段 (Claude Code ASCII Art)
+            <div className="mb-2 text-xs font-medium text-white/40">
+              {t("uiPreview.demos.mock.question.stages.ascii")}
             </div>
-            <AgentQuestionBlock toolCall={MOCK_ASCII_QUESTION_CALL} />
+            <AgentQuestionBlock toolCall={mockCalls.pipeline} />
           </div>
           <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-            <div className="mb-2 text-[11px] font-medium text-white/40">
-              3. 图形化与结构化排版提问阶段 (SVG & HTML Graphic)
+            <div className="mb-2 text-xs font-medium text-white/40">
+              {t("uiPreview.demos.mock.question.stages.graphic")}
             </div>
-            <AgentQuestionBlock toolCall={MOCK_GRAPHIC_QUESTION_CALL} />
+            <AgentQuestionBlock toolCall={mockCalls.graphic} />
           </div>
           <div className="w-full max-w-xl max-h-[80vh] overflow-y-auto custom-scrollbar rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-            <div className="mb-2 text-[11px] font-medium text-white/40">
-              4. 已完成展示/折叠阶段 (Answered / Readonly)
+            <div className="mb-2 text-xs font-medium text-white/40">
+              {t("uiPreview.demos.mock.question.stages.answered")}
             </div>
-            <AgentQuestionBlock toolCall={MOCK_ANSWERED_QUESTION_CALL} />
+            <AgentQuestionBlock toolCall={mockCalls.answered} />
           </div>
         </div>
       </UiPreviewSection>

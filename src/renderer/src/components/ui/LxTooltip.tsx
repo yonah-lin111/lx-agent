@@ -406,9 +406,7 @@ const TooltipBubble = ({
         {minimizable && (
           <div className="mb-1 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-1 pb-1">
             {title && (
-              <div className="min-w-0 truncate text-[13px] font-semibold text-white/80">
-                {title}
-              </div>
+              <div className="min-w-0 truncate text-xs font-semibold text-white/80">{title}</div>
             )}
             <button
               type="button"
