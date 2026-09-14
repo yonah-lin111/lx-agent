@@ -98,6 +98,9 @@ describe("AgentInput /historyPrompt 历史提示词面板", () => {
     expect(options).toHaveLength(2)
     expect(options[0]?.textContent).toContain("最新提示词")
     expect(options[1]?.textContent).toContain("较旧提示词")
+    // 左侧 index 按展示条数倒序编号。
+    expect(options[0]?.textContent?.startsWith("2")).toBe(true)
+    expect(options[1]?.textContent?.startsWith("1")).toBe(true)
   })
 
   it("↑↓ 切换激活项，Enter 整体回填选中历史且面板关闭、不发送", async () => {
@@ -124,6 +127,8 @@ describe("AgentInput /historyPrompt 历史提示词面板", () => {
     const options = screen.getAllByRole("option")
     expect(options).toHaveLength(1)
     expect(options[0]?.textContent).toContain("重构面板")
+    // 过滤后按结果条数重新倒序编号。
+    expect(options[0]?.textContent?.startsWith("1")).toBe(true)
   })
 
   it("历史为空时面板不出现，Enter 不发送命令文本并清空输入", async () => {

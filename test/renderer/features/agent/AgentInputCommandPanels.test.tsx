@@ -257,6 +257,9 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
 
     const options = screen.getAllByRole("option")
     expect(options).toHaveLength(2)
+    // 左侧 index 按展示条数倒序编号。
+    expect(options[0]?.textContent?.startsWith("2")).toBe(true)
+    expect(options[1]?.textContent?.startsWith("1")).toBe(true)
     fireEvent.mouseDown(options[1])
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(prompts[1])

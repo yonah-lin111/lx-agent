@@ -1,6 +1,6 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Bot, FileText, Folder, History, Palette } from "lucide-react"
+import { Bot, FileText, Folder, Palette } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -730,8 +730,8 @@ export const AgentInputHistoryPromptPanel = ({
             }}
           >
             <div className="flex w-full items-center gap-2">
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[3px] bg-white/5 text-white/70">
-                <History className="h-3 w-3" />
+              <span className="flex h-5 min-w-5 flex-none items-center justify-center rounded-[3px] bg-white/5 px-1 font-mono text-xs tabular-nums text-white/70">
+                {displayPrompts.length - index}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm leading-none text-white">
                 {title}
