@@ -155,7 +155,6 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
                   min={0}
                   max={600}
                   step={5}
-                  size="xs"
                   value={Math.round((settings.streamIdleTimeoutMs ?? 60_000) / 1000)}
                   onChange={(e) => {
                     const parsed = Number(e.target.value)

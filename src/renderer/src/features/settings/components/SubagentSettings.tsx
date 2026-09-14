@@ -332,7 +332,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               type="number"
               min={1}
               max={SUBAGENT_MAX_CONCURRENCY_LIMIT}
-              size="xs"
               aria-label={t("settings.subagentsMaxConcurrent")}
               value={settings.maxConcurrent ?? ""}
               onChange={handleMaxConcurrentChange}
@@ -347,7 +346,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               type="number"
               min={1}
               max={SUBAGENT_MAX_DEPTH_LIMIT}
-              size="xs"
               aria-label={t("settings.subagentsMaxDepth")}
               value={settings.maxDepth ?? 1}
               onChange={handleMaxDepthChange}

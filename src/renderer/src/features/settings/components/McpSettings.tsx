@@ -499,12 +499,14 @@ export const McpSettings = (): React.JSX.Element => {
                     {isExpandedTools && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5 rounded-[6px] bg-black/20 p-2 border border-white/5">
                         {tools.map((toolName) => (
-                          <span
+                          <LxTag
                             key={toolName}
-                            className="rounded-[4px] bg-white/[0.04] px-1.5 py-0.5 font-mono text-xs text-white/70"
+                            size="small"
+                            bgClass="border-transparent bg-white/[0.04] text-white/70"
+                            className="rounded-[4px] font-mono"
                           >
                             {toolName}
-                          </span>
+                          </LxTag>
                         ))}
                       </div>
                     )}

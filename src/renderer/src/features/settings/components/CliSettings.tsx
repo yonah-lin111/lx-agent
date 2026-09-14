@@ -265,15 +265,17 @@ export const CliSettings = (): React.JSX.Element => {
                       {displayCommand}
                     </code>
                     {tool.homepage ? (
-                      <LxTooltip content={t("settings.cliHomepage")} placement="top">
-                        <button
-                          type="button"
-                          className="shrink-0 text-white/30 transition-colors hover:text-white/70"
-                          onClick={() => handleOpenHomepage(tool.homepage)}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </button>
-                      </LxTooltip>
+                      <LxIconButton
+                        size="small"
+                        variant="ghost"
+                        showHoverBg={false}
+                        aria-label={t("settings.cliHomepage")}
+                        title={{ content: t("settings.cliHomepage"), placement: "top" }}
+                        className="shrink-0"
+                        onClick={() => handleOpenHomepage(tool.homepage)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </LxIconButton>
                     ) : null}
                   </div>
 
@@ -431,7 +433,6 @@ export const CliSettings = (): React.JSX.Element => {
                     </span>
                     <div className="flex-1">
                       <LxInput
-                        size="xs"
                         placeholder={t("settings.cliCustomPathPlaceholder")}
                         value={currentCustomPath}
                         onChange={(e) => handleCustomPathChange(tool.id, e.target.value)}
