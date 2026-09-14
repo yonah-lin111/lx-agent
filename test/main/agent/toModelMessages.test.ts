@@ -56,6 +56,42 @@ describe("toModelMessages", () => {
     })
   })
 
+  it("thinking 块带 signature 时以 providerOptions.anthropic.signature 回传", () => {
+    const messages: LlmMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "思考", signature: "sig-1" },
+          { type: "text", text: "文本" },
+        ],
+      },
+    ]
+    const result = toModelMessages(messages)
+
+    expect(result[0]).toEqual({
+      role: "assistant",
+      content: [
+        {
+          type: "reasoning",
+          text: "思考",
+          providerOptions: { anthropic: { signature: "sig-1" } },
+        },
+        { type: "text", text: "文本" },
+      ],
+    })
+  })
+
+  it("thinking 块无 signature 时保持无 providerOptions 的 reasoning part", () => {
+    const result = toModelMessages([
+      { role: "assistant", content: [{ type: "thinking", thinking: "思考" }] },
+    ])
+
+    expect(result[0]).toEqual({
+      role: "assistant",
+      content: [{ type: "reasoning", text: "思考" }],
+    })
+  })
+
   it("tool-call part 使用 input 字段承载参数（AI SDK schema 要求）", () => {
     const result = toModelMessages(buildMessages())
     const assistant = result[1]
@@ -333,6 +369,125 @@ describe("toModelMessages", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe("toModelMessages 悬空 toolCall 兜底", () => {
+  it("assistant toolCall 无对应 toolResult 时补发合成错误结果", () => {
+    const result = toModelMessages([
+      { role: "user", content: "hi" },
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "call-1", name: "read", arguments: {} }],
+      },
+      { role: "user", content: "继续" },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["user", "assistant", "tool", "user"])
+    expect(result[2]).toEqual({
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "call-1",
+          toolName: "read",
+          output: {
+            type: "text",
+            value: expect.stringContaining('Tool call "read" was not executed'),
+          },
+        },
+      ],
+    })
+  })
+
+  it("仅缺失的并行工具调用被补齐，已有结果保持不变", () => {
+    const result = toModelMessages([
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "c1", name: "read", arguments: {} },
+          { type: "toolCall", id: "c2", name: "grep", arguments: {} },
+        ],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "c1",
+        toolName: "read",
+        content: [{ type: "text", text: "真实内容" }],
+        isError: false,
+      },
+      { role: "user", content: "继续" },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["assistant", "tool", "tool", "user"])
+    expect(result[1]).toMatchObject({
+      content: [{ toolCallId: "c1", output: { type: "text", value: "真实内容" } }],
+    })
+    expect(result[2]).toMatchObject({
+      content: [
+        {
+          toolCallId: "c2",
+          output: { type: "text", value: expect.stringContaining("was not executed") },
+        },
+      ],
+    })
+  })
+
+  it("toolCall 全部有结果时不产生额外消息", () => {
+    const result = toModelMessages(buildMessages())
+
+    expect(result.map((message) => message.role)).toEqual(["user", "assistant", "tool"])
+  })
+
+  it("悬空调用被补齐后，迟到的真实结果被丢弃（避免孤儿 tool_result）", () => {
+    const result = toModelMessages([
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "c1", name: "read", arguments: {} },
+          { type: "toolCall", id: "c2", name: "grep", arguments: {} },
+        ],
+      },
+      {
+        role: "toolResult",
+        toolCallId: "c1",
+        toolName: "read",
+        content: [{ type: "text", text: "内容" }],
+        isError: false,
+      },
+      { role: "user", content: "hook 审计文本" },
+      {
+        role: "toolResult",
+        toolCallId: "c2",
+        toolName: "grep",
+        content: [{ type: "text", text: "迟到结果" }],
+        isError: false,
+      },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["assistant", "tool", "tool", "user"])
+    expect(result[2]).toMatchObject({
+      content: [
+        {
+          toolCallId: "c2",
+          output: { type: "text", value: expect.stringContaining("was not executed") },
+        },
+      ],
+    })
+    // 迟到结果不再出现在请求中。
+    expect(JSON.stringify(result)).not.toContain("迟到结果")
+  })
+
+  it("连续 assistant 消息时前一条的悬空 toolCall 先被补齐", () => {
+    const result = toModelMessages([
+      {
+        role: "assistant",
+        content: [{ type: "toolCall", id: "c1", name: "read", arguments: {} }],
+      },
+      { role: "assistant", content: [{ type: "text", text: "重试" }] },
+    ])
+
+    expect(result.map((message) => message.role)).toEqual(["assistant", "tool", "assistant"])
   })
 })
 

@@ -23,38 +23,42 @@ vi.mock("@/paths", async (importOriginal) => {
 })
 
 // 模型解析回退到固定 Provider。
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  // 权限配置默认（agentRunner 装配时 permissionManager.load 读取）。
-  getPermissionSettings: () => ({
-    defaultMode: "default",
-    allow: [],
-    deny: [],
-    ask: [],
-  }),
-  // 压缩配置（默认值；测试上下文小，阈值不会触发）。
-  getCompactionSettings: () => ({
-    enabled: true,
-    contextWindow: 128000,
-    keepRecentTokens: 20000,
-    reserveTokens: 16384,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    // 权限配置默认（agentRunner 装配时 permissionManager.load 读取）。
+    getPermissionSettings: () => ({
+      defaultMode: "default",
+      allow: [],
+      deny: [],
+      ask: [],
+    }),
+    // 压缩配置（默认值；测试上下文小，阈值不会触发）。
+    getCompactionSettings: () => ({
+      enabled: true,
+      contextWindow: 128000,
+      keepRecentTokens: 20000,
+      reserveTokens: 16384,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },

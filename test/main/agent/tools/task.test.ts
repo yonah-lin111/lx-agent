@@ -1,8 +1,10 @@
 import type { AssistantMessage, SubagentData, Usage } from "@shared/contracts/agent"
 import type { SubagentSettings } from "@shared/settings"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
-import type { AgentTool } from "@/agent/core/types"
+import { Agent } from "@/agent/core/agent"
+import type { AfterToolCallContext, AgentTool, BeforeToolCallContext } from "@/agent/core/types"
+import { type HookDispatchResult, hooksManager } from "@/agent/hooks"
 import { SubagentPool } from "@/agent/subagent/subagentPool"
 import { SubagentRuntime } from "@/agent/subagent/subagentRuntime"
 import { createTaskTool, type TaskToolDeps } from "@/agent/tools/task"
@@ -89,6 +91,11 @@ const resultText = (result: { content: Array<{ type: string; text?: string }> })
 
 beforeEach(() => {
   holder.streamResponses.length = 0
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 describe("task 子代理工具", () => {
@@ -646,5 +653,131 @@ describe("task 子代理嵌套深度", () => {
     })
     const id = (res.details as { subagent: SubagentData }).subagent.subagentId!
     expect(pool.get(id)?.agent.state.tools.map((item) => item.name)).toEqual(["echo"])
+  })
+})
+
+describe("task 子代理 hooks 接线", () => {
+  it("子代理工具执行接入 PreToolUse/PostToolUse/afterToolCall 回调", async () => {
+    const preToolUse = vi.fn(async (_context: BeforeToolCallContext) => undefined)
+    const postToolUse = vi.fn(async (_context: AfterToolCallContext) => undefined)
+    const afterToolCall = vi.fn(async (_context: AfterToolCallContext) => undefined)
+    const echo = makeTool("echo")
+
+    const tool = createTaskTool({
+      subagentSystemPrompt: "子代理基座提示词",
+      model: { provider: "p", id: "m" },
+      beforeToolCall: async () => undefined,
+      afterToolCall,
+      preToolUse,
+      postToolUse,
+      getSignal: () => undefined,
+      recordChildCall: vi.fn(),
+      getTools: () => [echo],
+    })
+
+    holder.streamResponses.push(
+      { ...assistant([toolCallBlock("hook-1", "echo", {})]), stopReason: "toolUse" },
+      assistant([{ type: "text", text: "done" }]),
+    )
+
+    const result = await tool.execute("call-hooks", {
+      name: "hook-child",
+      description: "hooks",
+      prompt: "p",
+    })
+
+    expect(resultText(result)).toContain("done")
+    expect(preToolUse).toHaveBeenCalledTimes(1)
+    expect(preToolUse.mock.calls[0]?.[0].toolCall.name).toBe("echo")
+    expect(postToolUse).toHaveBeenCalledTimes(1)
+    expect(postToolUse.mock.calls[0]?.[0].toolCall.name).toBe("echo")
+    expect(afterToolCall).toHaveBeenCalledTimes(1)
+    expect(afterToolCall.mock.calls[0]?.[0].result.content[0]).toMatchObject({
+      type: "text",
+      text: "echo ok",
+    })
+  })
+})
+
+describe("task 子代理推流节流与中止竞态", () => {
+  it("onUpdate 全量快照按时间合并，结束后强制 flush 最终快照", async () => {
+    vi.useFakeTimers()
+    const recordChildCall = vi.fn()
+    const tool = createTaskTool({
+      subagentSystemPrompt: "子代理基座提示词",
+      model: { provider: "p", id: "m" },
+      beforeToolCall: async () => undefined,
+      getSignal: () => undefined,
+      recordChildCall,
+      getTools: () => [makeTool("echo")],
+    })
+
+    holder.streamResponses.push(
+      {
+        ...assistant([
+          toolCallBlock("throttle-1", "echo", {}),
+          toolCallBlock("throttle-2", "echo", {}),
+        ]),
+        stopReason: "toolUse",
+      },
+      assistant([{ type: "text", text: "最终完成" }]),
+    )
+
+    const updates: SubagentData[] = []
+    await tool.execute(
+      "call-throttle",
+      { name: "throttle-child", description: "节流", prompt: "p" },
+      undefined,
+      (update) => {
+        const subagent = (update as { details?: { subagent?: SubagentData } }).details?.subagent
+        if (subagent) updates.push(subagent)
+      },
+    )
+
+    // 无节流时事件数 >= 6；合并 + 最终 flush 后只推极少数快照。
+    expect(updates.length).toBeGreaterThanOrEqual(1)
+    expect(updates.length).toBeLessThanOrEqual(2)
+    // 最终强制 flush 的快照包含完整助手输出（完成态不丢）。
+    const lastMessages = updates.at(-1)?.messages ?? []
+    expect(
+      lastMessages.some(
+        (message) =>
+          message.role === "assistant" &&
+          message.content.some((block) => block.type === "text" && block.text.includes("最终完成")),
+      ),
+    ).toBe(true)
+    // 内部步骤捕获不节流：2 个工具 × start/end。
+    expect(recordChildCall).toHaveBeenCalledTimes(4)
+  })
+
+  it("SubagentStart hook 派发期间父 run 中止：不启动子 run，直接返回取消结果", async () => {
+    const controller = new AbortController()
+    let releaseDispatch: ((result: HookDispatchResult) => void) | undefined
+    const dispatchSpy = vi.spyOn(hooksManager, "dispatch").mockImplementationOnce(
+      () =>
+        new Promise<HookDispatchResult>((resolve) => {
+          releaseDispatch = resolve
+        }),
+    )
+    const promptSpy = vi.spyOn(Agent.prototype, "prompt")
+    const tool = createTestTool({})
+    holder.streamResponses.push(assistant([{ type: "text", text: "不应被消费" }]))
+
+    const execution = tool.execute(
+      "call-abort-race",
+      { name: "aborted-child", description: "中止竞态", prompt: "p" },
+      controller.signal,
+    )
+    // SubagentStart 同步进入挂起状态；此时父 run 中止。
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ event: "SubagentStart" }))
+    controller.abort()
+    releaseDispatch?.({ runs: [] })
+
+    const result = await execution
+
+    expect(promptSpy).not.toHaveBeenCalled()
+    expect(resultText(result)).toContain("aborted before start")
+    // 未消费任何模型响应。
+    expect(holder.streamResponses).toHaveLength(1)
   })
 })

@@ -69,6 +69,25 @@ const runPrompt = async (agent: Agent, prompt: string): Promise<AgentEvent[]> =>
   return events
 }
 
+// 断言每条 assistant toolCall 都有对应 toolResult（MissingToolResultsError 的触发条件）。
+const assertNoDanglingToolCalls = (messages: AgentMessage[]): void => {
+  const toolResultIds = new Set(
+    messages
+      .filter(
+        (message): message is Extract<AgentMessage, { role: "toolResult" }> =>
+          message.role === "toolResult",
+      )
+      .map((message) => message.toolCallId),
+  )
+  for (const message of messages) {
+    if (message.role !== "assistant") continue
+    for (const block of message.content) {
+      if (block.type !== "toolCall") continue
+      expect(toolResultIds.has(block.id), `悬空 toolCall: ${block.id}`).toBe(true)
+    }
+  }
+}
+
 // 构造 echo 工具：返回参数透传。
 const createEchoTool = (): AgentTool<z.ZodType<{ text: string }>> => ({
   name: "echo",
@@ -320,6 +339,104 @@ describe("Agent 工具循环", () => {
     if (toolResult?.message.role !== "toolResult") return
     expect(toolResult.message.content[0]).toEqual({ type: "text", text: "echo:world" })
     expect(toolResult.message.toolName).toBe("echo")
+  })
+
+  it("error 停止时为已创建的 toolCall 补错误结果，会话可继续", async () => {
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant([toolCallBlock("call-1", "echo", { text: "hi" })], "error"),
+        assistant([{ type: "text", text: "继续" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [createEchoTool()] },
+    })
+
+    const events = await runPrompt(agent, "第一轮")
+
+    const toolEnd = events.find((event) => event.type === "tool_execution_end")
+    expect(toolEnd?.type).toBe("tool_execution_end")
+    if (toolEnd?.type !== "tool_execution_end") return
+    expect(toolEnd.isError).toBe(true)
+    expect(toolEnd.toolName).toBe("echo")
+
+    const endEvent = events.find((event) => event.type === "agent_end")
+    expect(endEvent?.type).toBe("agent_end")
+    if (endEvent?.type !== "agent_end") return
+    expect(endEvent.messages.map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+      "toolResult",
+    ])
+    assertNoDanglingToolCalls(endEvent.messages)
+
+    // 第二轮请求的历史中不再有悬空 toolCall。
+    await runPrompt(agent, "第二轮")
+    assertNoDanglingToolCalls(agent.state.messages)
+  })
+
+  it("aborted 停止时为已创建的 toolCall 补错误结果", async () => {
+    const agent = new Agent({
+      streamFn: createMockStreamFn([
+        assistant([toolCallBlock("call-1", "echo", { text: "hi" })], "aborted"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [createEchoTool()] },
+    })
+
+    const events = await runPrompt(agent, "hi")
+
+    const resultMessage = events.find(
+      (event): event is Extract<AgentEvent, { type: "message_start" }> =>
+        event.type === "message_start" && event.message.role === "toolResult",
+    )
+    expect(resultMessage?.message.role).toBe("toolResult")
+    if (resultMessage?.message.role !== "toolResult") return
+    expect(resultMessage.message.isError).toBe(true)
+    expect(resultMessage.message.content[0]).toEqual(
+      expect.objectContaining({ type: "text", text: expect.stringContaining("was aborted") }),
+    )
+
+    const endEvent = events.find((event) => event.type === "agent_end")
+    expect(endEvent?.type).toBe("agent_end")
+    if (endEvent?.type !== "agent_end") return
+    assertNoDanglingToolCalls(endEvent.messages)
+  })
+
+  it("工具批次中途中止时为未执行的 toolCall 补错误结果", async () => {
+    let agentRef: Agent | undefined
+    const abortingTool: AgentTool = {
+      name: "abort-tool",
+      label: "中止",
+      description: "执行后中止当前 run",
+      inputSchema: z.object({}),
+      executionMode: "sequential",
+      execute: async () => {
+        agentRef?.abort()
+        return { content: [{ type: "text", text: "已中止" }] }
+      },
+    }
+
+    agentRef = new Agent({
+      streamFn: createMockStreamFn([
+        assistant(
+          [toolCallBlock("c1", "abort-tool", {}), toolCallBlock("c2", "abort-tool", {})],
+          "toolUse",
+        ),
+        assistant([{ type: "text", text: "继续" }], "stop"),
+      ]),
+      initialState: { model: TEST_MODEL, tools: [abortingTool] },
+    })
+
+    const events = await runPrompt(agentRef, "hi")
+
+    const toolResultMessages = events.flatMap((event) => {
+      if (event.type !== "message_start" || event.message.role !== "toolResult") return []
+      return [event.message]
+    })
+    expect(toolResultMessages.map((message) => message.toolCallId).sort()).toEqual(["c1", "c2"])
+
+    const endEvent = events.find((event) => event.type === "agent_end")
+    expect(endEvent?.type).toBe("agent_end")
+    if (endEvent?.type !== "agent_end") return
+    assertNoDanglingToolCalls(endEvent.messages)
   })
 
   it("sequential 工具（如 question）执行完成后将 answers 回填到 assistant message", async () => {

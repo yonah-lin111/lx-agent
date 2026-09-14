@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { AgentEvent, AssistantMessage, StopReason, Usage } from "@shared/contracts/agent"
@@ -27,32 +27,36 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-// 模型解析回退到固定 Provider。
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+// 模型解析回退到固定 Provider；其余设置读取真实实现（config 已指向临时目录）。
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  getPermissionSettings: () => ({ defaultMode: "default", allow: [], deny: [], ask: [] }),
-  getCompactionSettings: () => ({
-    enabled: true,
-    contextWindow: 128000,
-    keepRecentTokens: 20000,
-    reserveTokens: 16384,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    getPermissionSettings: () => ({ defaultMode: "default", allow: [], deny: [], ask: [] }),
+    getCompactionSettings: () => ({
+      enabled: true,
+      contextWindow: 128000,
+      keepRecentTokens: 20000,
+      reserveTokens: 16384,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },
@@ -217,6 +221,69 @@ describe("agentRunner 消息队列（deferred queue）", () => {
     expect(userTexts(agentRunner.getMessages())).toEqual(["A", "B", "C", "D"])
     // 出队序列：3 → 2 → 1 → 0。
     expect(queueLengths(events).slice(3)).toEqual([2, 1, 0])
+  })
+
+  it("流式期间排队保留附件与发送上下文，drain 后按直接发送语义复制并附着", async () => {
+    const { agentRunner, events } = await importRunner()
+    holder.streamResponses = [
+      assistant([{ type: "text", text: "A 回答" }]),
+      assistant([{ type: "text", text: "B 回答" }]),
+    ]
+    const attachmentSource = join(tmpDir, "note.txt")
+    writeFileSync(attachmentSource, "attachment-body")
+
+    const sendA = agentRunner.send("A", undefined, { page: "/", cwd: "/tmp" })
+    await waitForAgentStart(events)
+    const queued = await agentRunner.send("B", undefined, {
+      page: "/",
+      cwd: "/tmp",
+      files: [{ name: "note.txt", path: attachmentSource, type: "text", extension: "txt" }],
+    })
+    expect(queued).toMatchObject({ ok: true, queued: true, queueLength: 1 })
+
+    await releaseNext()
+    await sendA
+    await releaseNext()
+    await vi.waitFor(() => expect(userTexts(agentRunner.getMessages())).toEqual(["A", "B"]))
+
+    const userMessages = agentRunner.getMessages().filter((message) => message.role === "user")
+    const bMessage = userMessages.find((message) => userTexts([message])[0] === "B")
+    expect(bMessage?.files).toHaveLength(1)
+    expect(bMessage?.files?.[0]?.name).toBe("note.txt")
+    expect(readFileSync(bMessage!.files![0]!.path, "utf8")).toBe("attachment-body")
+  })
+
+  it("附件文件名消毒：剥离路径穿越且非法名跳过，不打断发送", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "A 回答" }])]
+    const attachmentSource = join(tmpDir, "payload.txt")
+    writeFileSync(attachmentSource, "safe-body")
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const sending = agentRunner.send("A", undefined, {
+        page: "/",
+        cwd: "/tmp",
+        files: [
+          { name: "../../escape.txt", path: attachmentSource, type: "text", extension: "txt" },
+          { name: "..", path: attachmentSource, type: "text", extension: "txt" },
+        ],
+      })
+      await vi.waitFor(() => expect(holder.releases.length).toBeGreaterThan(0))
+      holder.releases.shift()!()
+      const result = await sending
+      expect(result.ok).toBe(true)
+
+      const userMessage = agentRunner.getMessages().find((message) => message.role === "user")
+      expect(userMessage?.files).toHaveLength(1)
+      expect(userMessage?.files?.[0]?.name).toBe("escape.txt")
+      expect(readFileSync(userMessage!.files![0]!.path, "utf8")).toBe("safe-body")
+      // 复制目标被限制在会话目录内，未逃逸到 session 根目录。
+      expect(userMessage!.files![0]!.path).toContain(join(holder.appDataRoot, "session"))
+      expect(existsSync(join(holder.appDataRoot, "session", "escape.txt"))).toBe(false)
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid file name"))
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 
   it("排队超过上限拒绝并明确报错，不覆盖不静默丢", async () => {

@@ -39,7 +39,14 @@ import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
-import type { AgentTool } from "./core/types"
+import type {
+  AfterToolCallContext,
+  AfterToolCallResult,
+  AgentTool,
+  BeforeToolCallContext,
+  BeforeToolCallResult,
+  ToolHookResult,
+} from "./core/types"
 import { repeatToolGuard } from "./guard/repeatToolGuard"
 import { firstBlock, firstStop, hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
@@ -50,6 +57,7 @@ import type { PersonalityName } from "./prompts/personalities"
 import { promptTemplateLoader } from "./prompts/promptTemplateLoader"
 import { defaultSystemPromptManager } from "./prompts/systemPromptManager"
 import { questionManager } from "./question/questionManager"
+import { unifiedExecManager } from "./shell/unifiedExecManager"
 import {
   extractSkillMentions,
   type LoadedSkill,
@@ -67,6 +75,22 @@ import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } 
 
 // 排队消息上限（流式中入队；超限明确报错，不覆盖、不静默丢）。
 const MAX_QUEUE = 20
+
+// 排队消息：文本 + 完整发送上下文（附件/cwd），drain 时与直接发送语义一致。
+interface QueuedMessage {
+  text: string
+  context?: AgentSendContext
+}
+
+// 附件文件名消毒：仅保留最后一段路径（剥离分隔符与 ..），非法名返回 undefined。
+const sanitizeAttachmentName = (name: string): string | undefined => {
+  const base = name
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .pop()
+  if (!base || base === "." || base === "..") return undefined
+  return base
+}
 
 // 构造任务清单状态消息（transformContext 注入；不进 state.messages）。
 const createTodoStateMessage = (todos: TodoList): TodoStateMessage => ({
@@ -107,8 +131,10 @@ export class AgentSessionRunner {
   private builtSignature = ""
   // SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
   private sessionStartFired = false
-  private messageQueue: string[] = []
+  private messageQueue: QueuedMessage[] = []
   private draining = false
+  // 本会话待附加的重复调用提醒（toolCallId → reminder，afterToolCall 附加后清除）。
+  private readonly guardReminders = new Map<string, string>()
   private onSessionCreatedCallback?: (
     runner: AgentSessionRunner,
     oldKey: string,
@@ -168,8 +194,10 @@ export class AgentSessionRunner {
       permissionManager.clearSession(this.currentSessionId)
       questionManager.clearSession(this.currentSessionId)
       lspManager.clearSession(this.currentSessionId)
+      unifiedExecManager.clearSession(this.currentSessionId)
       this.subagentPool.clear()
     }
+    this.guardReminders.clear()
     const oldKey = this.currentSessionId ?? this.tabId ?? "draft"
     const switchedSession =
       sessionId === null || (this.currentSessionId !== null && this.currentSessionId !== sessionId)
@@ -211,8 +239,10 @@ export class AgentSessionRunner {
       permissionManager.clearSession(this.currentSessionId)
       questionManager.clearSession(this.currentSessionId)
       lspManager.clearSession(this.currentSessionId)
+      unifiedExecManager.clearSession(this.currentSessionId)
       this.subagentPool.clear()
     }
+    this.guardReminders.clear()
   }
 
   // 会话销毁：best-effort 派发 SessionEnd（不等待异步工作），再清理运行态。
@@ -265,9 +295,96 @@ export class AgentSessionRunner {
     return { messages }
   }
 
+  // 重复调用守卫 + 权限门控（主/子代理共用）；提醒暂存到 toolCallId，由 afterToolCall 附加。
+  private beforeToolCallWithGuard(
+    context: BeforeToolCallContext,
+    signal: AbortSignal | undefined,
+    collaborationMode: CollaborationMode,
+    cwd: string,
+  ): Promise<BeforeToolCallResult | undefined> {
+    if (this.currentSessionId) {
+      const guardResult = repeatToolGuard.record(
+        this.currentSessionId,
+        context.toolCall.name,
+        context.args,
+      )
+      if (guardResult.blocked) {
+        return Promise.resolve({ block: true, reason: guardResult.blockReason })
+      }
+      if (guardResult.reminder) {
+        this.guardReminders.set(context.toolCall.id, guardResult.reminder)
+      }
+    }
+    return permissionManager.gate(context, this.currentSessionId, signal, {
+      collaborationMode,
+      cwd,
+    })
+  }
+
+  // 工具结果收尾：附加本调用的重复调用提醒（仅成功结果），随后清除暂存。
+  private afterToolCallWithGuard(context: AfterToolCallContext): AfterToolCallResult | undefined {
+    const reminder = this.guardReminders.get(context.toolCall.id)
+    if (reminder === undefined) return undefined
+    this.guardReminders.delete(context.toolCall.id)
+    if (context.isError) return undefined
+    return { content: [...context.result.content, { type: "text", text: reminder }] }
+  }
+
+  // PreToolUse hook 派发（权限解析后）；可阻断并注入审计消息。
+  private async dispatchPreToolUse(
+    context: BeforeToolCallContext,
+    cwd: string,
+    signal?: AbortSignal,
+  ): Promise<ToolHookResult | undefined> {
+    const result = await hooksManager.dispatch({
+      event: "PreToolUse",
+      sessionId: this.currentSessionId,
+      cwd,
+      model: this.agent?.state.model.id,
+      toolName: context.toolCall.name,
+      payload: {
+        tool_name: context.toolCall.name,
+        tool_input: context.args,
+        tool_use_id: context.toolCall.id,
+      },
+      signal,
+    })
+    const block = firstBlock(result)
+    return {
+      ...(block ? { block } : {}),
+      messages: hookResultMessages(result),
+    }
+  }
+
+  // PostToolUse hook 派发：仅注入审计消息。
+  private async dispatchPostToolUse(
+    context: AfterToolCallContext,
+    cwd: string,
+    signal?: AbortSignal,
+  ): Promise<ToolHookResult | undefined> {
+    const toolResponse = context.result.content
+      .map((contentBlock) => (contentBlock.type === "text" ? contentBlock.text : "[image]"))
+      .join("\n")
+    const result = await hooksManager.dispatch({
+      event: "PostToolUse",
+      sessionId: this.currentSessionId,
+      cwd,
+      model: this.agent?.state.model.id,
+      toolName: context.toolCall.name,
+      payload: {
+        tool_name: context.toolCall.name,
+        tool_input: context.args,
+        tool_use_id: context.toolCall.id,
+        tool_response: toolResponse,
+      },
+      signal,
+    })
+    return { messages: hookResultMessages(result) }
+  }
+
   private ensureReady(): { agent: Agent } | { error: string } {
     permissionManager.load()
-    permissionManager.setMcpTools(this.activeMcp)
+    permissionManager.setMcpTools(this.currentSessionId, this.activeMcp)
 
     let cwd = this.requestedCwd ?? resolveCwd()
 
@@ -370,10 +487,10 @@ export class AgentSessionRunner {
           subagentSettings,
           subagentRuntime: this.subagentRuntime,
           beforeToolCall: (context, signal) =>
-            permissionManager.gate(context, this.currentSessionId, signal, {
-              collaborationMode: subagentMode,
-              cwd,
-            }),
+            this.beforeToolCallWithGuard(context, signal, subagentMode, cwd),
+          afterToolCall: async (context) => this.afterToolCallWithGuard(context),
+          preToolUse: (context, signal) => this.dispatchPreToolUse(context, cwd, signal),
+          postToolUse: (context, signal) => this.dispatchPostToolUse(context, cwd, signal),
           getSignal: () => this.agent?.signal,
           getCwd: () => this.cwd ?? cwd,
           recordChildCall: (parentToolCallId, child) =>
@@ -402,74 +519,11 @@ export class AgentSessionRunner {
         }),
         beforeToolCall: async (context, signal) => {
           this.currentTurnContext?.recordToolCall()
-          if (this.currentSessionId) {
-            const guardResult = repeatToolGuard.checkBeforeExecute(
-              this.currentSessionId,
-              context.toolCall.name,
-              context.args,
-            )
-            if (guardResult.blocked) {
-              return { block: true, reason: guardResult.blockReason }
-            }
-          }
-          return permissionManager.gate(context, this.currentSessionId, signal, {
-            collaborationMode: this.collaborationMode,
-            cwd,
-          })
+          return this.beforeToolCallWithGuard(context, signal, this.collaborationMode, cwd)
         },
-        afterToolCall: async (context) => {
-          if (this.currentSessionId) {
-            const guardResult = repeatToolGuard.checkBeforeExecute(
-              this.currentSessionId,
-              context.toolCall.name,
-              context.args,
-            )
-            if (guardResult.reminder && !context.isError) {
-              return {
-                content: [...context.result.content, { type: "text", text: guardResult.reminder }],
-              }
-            }
-          }
-          return undefined
-        },
-        preToolUse: async (context) => {
-          const result = await hooksManager.dispatch({
-            event: "PreToolUse",
-            sessionId: this.currentSessionId,
-            cwd,
-            model: this.agent?.state.model.id,
-            toolName: context.toolCall.name,
-            payload: {
-              tool_name: context.toolCall.name,
-              tool_input: context.args,
-              tool_use_id: context.toolCall.id,
-            },
-          })
-          const block = firstBlock(result)
-          return {
-            ...(block ? { block } : {}),
-            messages: hookResultMessages(result),
-          }
-        },
-        postToolUse: async (context) => {
-          const toolResponse = context.result.content
-            .map((contentBlock) => (contentBlock.type === "text" ? contentBlock.text : "[image]"))
-            .join("\n")
-          const result = await hooksManager.dispatch({
-            event: "PostToolUse",
-            sessionId: this.currentSessionId,
-            cwd,
-            model: this.agent?.state.model.id,
-            toolName: context.toolCall.name,
-            payload: {
-              tool_name: context.toolCall.name,
-              tool_input: context.args,
-              tool_use_id: context.toolCall.id,
-              tool_response: toolResponse,
-            },
-          })
-          return { messages: hookResultMessages(result) }
-        },
+        afterToolCall: async (context) => this.afterToolCallWithGuard(context),
+        preToolUse: (context, signal) => this.dispatchPreToolUse(context, cwd, signal),
+        postToolUse: (context, signal) => this.dispatchPostToolUse(context, cwd, signal),
         onAgentStop: async () => {
           const messages = this.agent?.state.messages ?? []
           const lastAssistant = [...messages]
@@ -666,14 +720,14 @@ export class AgentSessionRunner {
     return { expanded: text }
   }
 
-  private enqueueMessage(text: string): AgentSendResult {
+  private enqueueMessage(text: string, context?: AgentSendContext): AgentSendResult {
     if (this.messageQueue.length >= MAX_QUEUE) {
       return {
         ok: false,
         error: `消息队列已满（最多 ${MAX_QUEUE} 条），请等待当前回复完成后发送。`,
       }
     }
-    this.messageQueue.push(text)
+    this.messageQueue.push({ text, ...(context ? { context } : {}) })
     this.emitQueueChanged()
     return {
       ok: true,
@@ -687,7 +741,7 @@ export class AgentSessionRunner {
     this.emitEvent({
       type: "queue_changed",
       length: this.messageQueue.length,
-      messages: [...this.messageQueue],
+      messages: this.messageQueue.map((item) => item.text),
     })
   }
 
@@ -702,9 +756,9 @@ export class AgentSessionRunner {
     this.draining = true
     try {
       while (this.messageQueue.length > 0) {
-        const text = this.messageQueue.shift()!
+        const item = this.messageQueue.shift()!
         this.emitQueueChanged()
-        await this.runOne(text)
+        await this.runOne(item.text, item.context?.files, item.context?.cwd)
       }
     } finally {
       this.draining = false
@@ -771,7 +825,7 @@ export class AgentSessionRunner {
     }
 
     if (this.isBusy()) {
-      return this.enqueueMessage(processedText)
+      return this.enqueueMessage(processedText, context)
     }
     const ready = this.ensureReady()
     if ("error" in ready) {
@@ -787,6 +841,12 @@ export class AgentSessionRunner {
     const sessionDir = join(getAppDataRoot(), "session", sessionId)
 
     for (const file of files) {
+      const safeName = sanitizeAttachmentName(file.name)
+      if (!safeName) {
+        console.warn(`Skipped attachment with invalid file name: "${file.name}"`)
+        continue
+      }
+
       const subFolder = file.type === "image" ? "image" : "text"
       const destFolder = join(sessionDir, subFolder)
 
@@ -794,11 +854,11 @@ export class AgentSessionRunner {
         mkdirSync(destFolder, { recursive: true })
       }
 
-      const destPath = join(destFolder, file.name)
+      const destPath = join(destFolder, safeName)
       try {
         copyFileSync(file.path, destPath)
         copied.push({
-          name: file.name,
+          name: safeName,
           path: destPath,
           type: file.type,
           size: file.size,
@@ -850,7 +910,7 @@ export class AgentSessionRunner {
         )
       })
       if (createResult?.initialModelMessage) {
-        agent.state.messages.push(createResult.initialModelMessage)
+        agent.state.appendMessage(createResult.initialModelMessage)
         this.emitEvent({
           type: "model_switch",
           message: createResult.initialModelMessage,
@@ -1153,7 +1213,7 @@ export class AgentSessionRunner {
     })
 
     if (this.agent) {
-      this.agent.state.messages.push(message)
+      this.agent.state.appendMessage(message)
     }
 
     this.emitEvent({ type: "model_switch", message })
@@ -1226,10 +1286,13 @@ export class AgentSessionRunner {
   }
 
   private removeLastOverflowMessage(): void {
-    const messages = this.agent?.state.messages
-    if (!messages) return
-    while (messages.length > 0 && isOverflowFailure(messages[messages.length - 1])) {
-      messages.pop()
+    const state = this.agent?.state
+    if (!state) return
+    while (
+      state.messages.length > 0 &&
+      isOverflowFailure(state.messages[state.messages.length - 1])
+    ) {
+      state.removeLastMessage()
     }
   }
 

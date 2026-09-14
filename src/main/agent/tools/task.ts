@@ -12,7 +12,15 @@ import type { ModelSelection, SubagentSettings } from "@shared/settings"
 import { DEFAULT_SUBAGENT_SETTINGS } from "@shared/settings"
 import { z } from "zod"
 import { Agent } from "../core/agent"
-import type { AgentTool, BeforeToolCallContext, BeforeToolCallResult, Model } from "../core/types"
+import type {
+  AfterToolCallContext,
+  AfterToolCallResult,
+  AgentTool,
+  BeforeToolCallContext,
+  BeforeToolCallResult,
+  Model,
+  ToolHookResult,
+} from "../core/types"
 import { hookResultMessages, hooksManager } from "../hooks"
 import { spillManager } from "../spill/spillManager"
 import { createAiSdkStreamFn } from "../stream/aiSdkStreamFn"
@@ -101,6 +109,21 @@ export interface TaskToolDeps {
     context: BeforeToolCallContext,
     signal?: AbortSignal,
   ) => Promise<BeforeToolCallResult | undefined>
+  // 子代理工具结果收尾（重复调用提醒附加；与主代理一致）。
+  afterToolCall?: (
+    context: AfterToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<AfterToolCallResult | undefined>
+  // 子代理 PreToolUse hook（与主代理一致；可阻断并注入审计消息）。
+  preToolUse?: (
+    context: BeforeToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
+  // 子代理 PostToolUse hook（与主代理一致；仅注入审计消息）。
+  postToolUse?: (
+    context: AfterToolCallContext,
+    signal?: AbortSignal,
+  ) => Promise<ToolHookResult | undefined>
   // 父 run 的 abort signal（级联中止子代理）。
   getSignal: () => AbortSignal | undefined
   // 记录子代理内部工具调用（parent_call_id 指向触发它的父 task 调用行；与父 turn 同事务落库）。
@@ -330,6 +353,9 @@ export const createTaskTool = (
               getSessionId: () => deps.getSessionId?.() ?? null,
             }),
             beforeToolCall: deps.beforeToolCall,
+            afterToolCall: deps.afterToolCall,
+            preToolUse: deps.preToolUse,
+            postToolUse: deps.postToolUse,
             initialState: {
               systemPrompt: effectivePrompt,
               model: childModel,
@@ -393,7 +419,55 @@ export const createTaskTool = (
 
         const startIndex = subAgent.state.messages.length
 
-        // 子代理事件 → 快照桥接：内部步骤始终捕获，onUpdate 存在时回传快照。
+        // onUpdate 全量快照节流：100ms 合并推送 + prompt 结束强制 flush（内部步骤捕获不受影响）。
+        const SNAPSHOT_THROTTLE_MS = 100
+        let lastSnapshotAt = 0
+        let snapshotTimer: ReturnType<typeof setTimeout> | undefined
+        let pendingProgress: TextContent | undefined
+        let hasPendingSnapshot = false
+
+        const pushSnapshot = (): void => {
+          if (!onUpdate) return
+          hasPendingSnapshot = false
+          lastSnapshotAt = Date.now()
+          const progress = pendingProgress
+          pendingProgress = undefined
+          onUpdate({
+            content: progress ? [progress] : [],
+            details: { subagent: buildSubagentData() },
+          })
+        }
+
+        const scheduleSnapshot = (progress?: TextContent): void => {
+          if (!onUpdate) return
+          if (progress) pendingProgress = progress
+          hasPendingSnapshot = true
+          const elapsed = Date.now() - lastSnapshotAt
+          if (elapsed >= SNAPSHOT_THROTTLE_MS) {
+            if (snapshotTimer) {
+              clearTimeout(snapshotTimer)
+              snapshotTimer = undefined
+            }
+            pushSnapshot()
+            return
+          }
+          snapshotTimer ??= setTimeout(() => {
+            snapshotTimer = undefined
+            if (hasPendingSnapshot) pushSnapshot()
+          }, SNAPSHOT_THROTTLE_MS - elapsed)
+          snapshotTimer.unref?.()
+        }
+
+        // prompt 结束前强制 flush 最后一次快照，保证完成态不丢。
+        const flushSnapshot = (): void => {
+          if (snapshotTimer) {
+            clearTimeout(snapshotTimer)
+            snapshotTimer = undefined
+          }
+          if (hasPendingSnapshot) pushSnapshot()
+        }
+
+        // 子代理事件 → 快照桥接：内部步骤始终捕获，onUpdate 存在时按节流回传快照。
         const unsubscribe = subAgent.subscribe((event) => {
           let progress: TextContent | undefined
           switch (event.type) {
@@ -445,11 +519,7 @@ export const createTaskTool = (
               break
             }
           }
-          if (!onUpdate) return
-          onUpdate({
-            content: progress ? [progress] : [],
-            details: { subagent: buildSubagentData() },
-          })
+          scheduleSnapshot(progress)
         })
         // 父 run abort → 子代理级联中止。
         const onAbort = (): void => subAgent.abort()
@@ -468,10 +538,22 @@ export const createTaskTool = (
               agent_type: roleName ?? subagentName,
               task: params.prompt,
             },
+            signal,
           }),
         )
 
         try {
+          // 父 run 在 hook 派发期间中止：不启动新 turn（无活动 run 的 abort 是 no-op）。
+          if (signal?.aborted) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Subagent execution was aborted before start.\n\n[Subagent ID: ${subagentId}]`,
+                },
+              ],
+            }
+          }
           const userMessage: AgentMessage = {
             role: "user",
             content: params.prompt,
@@ -481,6 +563,7 @@ export const createTaskTool = (
             startHookMessages.length > 0 ? [...startHookMessages, userMessage] : userMessage,
           )
         } finally {
+          flushSnapshot()
           unsubscribe()
           signal?.removeEventListener("abort", onAbort)
         }
@@ -501,8 +584,8 @@ export const createTaskTool = (
             },
           }),
         )
-        if (stopHookMessages.length > 0) {
-          subAgent.state.messages.push(...stopHookMessages)
+        for (const hookMessage of stopHookMessages) {
+          subAgent.state.appendMessage(hookMessage)
         }
 
         // 子代理产出最终结论，回传结构化通信信元

@@ -125,13 +125,24 @@ async function runLoop(
       )
       newMessages.push(message)
 
+      const toolCalls = message.content.filter((c) => c.type === "toolCall")
+
       if (message.stopReason === "error" || message.stopReason === "aborted") {
-        await emit({ type: "turn_end", message, toolResults: [] })
+        // 流中断/中止时可能已通过 tool-input-start 创建 toolCall 块；
+        // 必须补发错误结果，否则残缺 assistant 消息会悬空并卡死后续请求。
+        const interruptedToolBatch = await failToolCallsFromInterruptedMessage(
+          toolCalls,
+          message.stopReason,
+          emit,
+        )
+        for (const emittedMessage of interruptedToolBatch.messages) {
+          currentContext.messages.push(emittedMessage)
+          newMessages.push(emittedMessage)
+        }
+        await emit({ type: "turn_end", message, toolResults: interruptedToolBatch.toolResults })
         await emit({ type: "agent_end", messages: newMessages })
         return
       }
-
-      const toolCalls = message.content.filter((c) => c.type === "toolCall")
 
       const toolResults: ToolResultMessage[] = []
       hasMoreToolCalls = false
@@ -145,6 +156,23 @@ async function runLoop(
         hasMoreToolCalls = !executedToolBatch.terminate
 
         for (const emittedMessage of executedToolBatch.messages) {
+          currentContext.messages.push(emittedMessage)
+          newMessages.push(emittedMessage)
+        }
+      }
+
+      // 兜底：工具批次因中止提前中断时，为未产生结果的 toolCall 补错误结果。
+      const missingToolCalls = toolCalls.filter(
+        (toolCall) => !toolResults.some((toolResult) => toolResult.toolCallId === toolCall.id),
+      )
+      if (missingToolCalls.length > 0) {
+        const interruptedToolBatch = await failToolCallsFromInterruptedMessage(
+          missingToolCalls,
+          signal?.aborted ? "aborted" : "error",
+          emit,
+        )
+        toolResults.push(...interruptedToolBatch.toolResults)
+        for (const emittedMessage of interruptedToolBatch.messages) {
           currentContext.messages.push(emittedMessage)
           newMessages.push(emittedMessage)
         }
@@ -327,6 +355,35 @@ async function failToolCallsFromTruncatedMessage(
   toolCalls: AgentToolCall[],
   emit: AgentEventSink,
 ): Promise<ExecutedToolCallBatch> {
+  return failToolCalls(
+    toolCalls,
+    (toolCall) =>
+      `Tool call "${toolCall.name}" was not executed: the response hit the output token limit, so its arguments may be truncated. Re-issue the tool call with complete arguments.`,
+    emit,
+  )
+}
+
+// 流被错误/中止打断时，为未执行的工具调用补错误结果。
+async function failToolCallsFromInterruptedMessage(
+  toolCalls: AgentToolCall[],
+  stopReason: "error" | "aborted",
+  emit: AgentEventSink,
+): Promise<ExecutedToolCallBatch> {
+  const interruption = stopReason === "aborted" ? "was aborted" : "failed"
+  return failToolCalls(
+    toolCalls,
+    (toolCall) =>
+      `Tool call "${toolCall.name}" was not executed: the assistant response ${interruption} before the tool call completed. Re-issue the tool call if it is still needed.`,
+    emit,
+  )
+}
+
+// 构造"未执行"工具调用的错误结果批次（截断/中断共用消息形状与事件顺序）。
+async function failToolCalls(
+  toolCalls: AgentToolCall[],
+  buildErrorMessage: (toolCall: AgentToolCall) => string,
+  emit: AgentEventSink,
+): Promise<ExecutedToolCallBatch> {
   const toolResults: ToolResultMessage[] = []
   for (const toolCall of toolCalls) {
     await emit({
@@ -337,9 +394,7 @@ async function failToolCallsFromTruncatedMessage(
     })
     const finalized: FinalizedToolCallOutcome = {
       toolCall,
-      result: createErrorToolResult(
-        `Tool call "${toolCall.name}" was not executed: the response hit the output token limit, so its arguments may be truncated. Re-issue the tool call with complete arguments.`,
-      ),
+      result: createErrorToolResult(buildErrorMessage(toolCall)),
       isError: true,
     }
     await emitToolExecutionEnd(finalized, emit)

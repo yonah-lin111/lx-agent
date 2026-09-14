@@ -13,45 +13,70 @@ describe("RepeatToolGuard", () => {
     expect(computeToolFingerprint("read", objA)).toBe(computeToolFingerprint("read", objB))
   })
 
-  it("should track consecutive calls and trigger warnings and blocks", () => {
-    const guard = new RepeatToolGuard({
-      warningThresholds: [2, 4],
-      blockThreshold: 5,
-      transparentTools: ["todowrite"],
-    })
-    const sessionId = "session-1"
+  it("should increment exactly once per call and fire warning 3 / warning 5 / block 7", () => {
+    const guard = new RepeatToolGuard()
+    const sessionId = "session-sequence"
     const args = { path: "foo.ts" }
 
-    // 1st call: normal
-    let res = guard.checkBeforeExecute(sessionId, "read", args)
-    expect(res.blocked).toBe(false)
-    expect(res.reminder).toBeUndefined()
+    // 1st / 2nd call: silent.
+    for (const _ of [1, 2]) {
+      const res = guard.record(sessionId, "read", args)
+      expect(res.blocked).toBe(false)
+      expect(res.reminder).toBeUndefined()
+    }
 
-    // 2nd call: triggers 1st warning
-    res = guard.checkBeforeExecute(sessionId, "read", args)
-    expect(res.blocked).toBe(false)
-    expect(res.reminder).toContain("Warning: You are repeating the exact same tool call")
+    // 3rd call: first warning.
+    const third = guard.record(sessionId, "read", args)
+    expect(third.blocked).toBe(false)
+    expect(third.reminder).toContain("Warning: You are repeating the exact same tool call")
+    expect(third.reminder).toContain("for 3 consecutive times")
 
-    // transparent tool call should not reset chain
-    res = guard.checkBeforeExecute(sessionId, "todowrite", { todos: [] })
-    expect(res.blocked).toBe(false)
+    // 4th call: silent again (no reminder loss, count is exact).
+    const fourth = guard.record(sessionId, "read", args)
+    expect(fourth.blocked).toBe(false)
+    expect(fourth.reminder).toBeUndefined()
 
-    // 3rd consecutive read call (chain count = 3): normal
-    res = guard.checkBeforeExecute(sessionId, "read", args)
-    expect(res.blocked).toBe(false)
-    expect(res.reminder).toBeUndefined()
+    // 5th call: critical warning with count 5.
+    const fifth = guard.record(sessionId, "read", args)
+    expect(fifth.blocked).toBe(false)
+    expect(fifth.reminder).toContain("Critical Warning: Repeated tool call detected")
+    expect(fifth.reminder).toContain("consecutive_calls=5")
 
-    // 4th consecutive call: triggers 2nd warning
-    res = guard.checkBeforeExecute(sessionId, "read", args)
-    expect(res.blocked).toBe(false)
-    expect(res.reminder).toContain("Critical Warning: Repeated tool call detected")
+    // 6th call: silent.
+    const sixth = guard.record(sessionId, "read", args)
+    expect(sixth.blocked).toBe(false)
+    expect(sixth.reminder).toBeUndefined()
 
-    // 5th consecutive call: blocked
-    res = guard.checkBeforeExecute(sessionId, "read", args)
-    expect(res.blocked).toBe(true)
-    expect(res.blockReason).toContain(
-      'Execution blocked: Tool "read" has been called 5 consecutive times',
+    // 7th call: hard block.
+    const seventh = guard.record(sessionId, "read", args)
+    expect(seventh.blocked).toBe(true)
+    expect(seventh.blockReason).toContain(
+      'Execution blocked: Tool "read" has been called 7 consecutive times',
     )
+
+    // Blocked state persists until the fingerprint changes.
+    const eighth = guard.record(sessionId, "read", args)
+    expect(eighth.blocked).toBe(true)
+  })
+
+  it("should keep transparent tools out of the chain (no increment, no reset)", () => {
+    const guard = new RepeatToolGuard({
+      warningThresholds: [2],
+      blockThreshold: 4,
+      transparentTools: ["todowrite"],
+    })
+    const sessionId = "session-transparent"
+    const args = { path: "foo.ts" }
+
+    guard.record(sessionId, "read", args)
+    // 透明工具既不递增也不打断连续计数（第 2 次 read 仍命中阈值）。
+    const transparent = guard.record(sessionId, "todowrite", { todos: [] })
+    expect(transparent.blocked).toBe(false)
+    expect(transparent.reminder).toBeUndefined()
+
+    const second = guard.record(sessionId, "read", args)
+    expect(second.reminder).toBeDefined()
+    expect(second.reminder).toContain("for 2 consecutive times")
   })
 
   it("should reset consecutive count when different tool or arguments are used", () => {
@@ -61,17 +86,35 @@ describe("RepeatToolGuard", () => {
     })
     const sessionId = "session-2"
 
-    guard.checkBeforeExecute(sessionId, "read", { path: "a.ts" })
-    const warned = guard.checkBeforeExecute(sessionId, "read", { path: "a.ts" })
+    guard.record(sessionId, "read", { path: "a.ts" })
+    const warned = guard.record(sessionId, "read", { path: "a.ts" })
     expect(warned.reminder).toBeDefined()
 
     // Change argument -> resets count
-    const changed = guard.checkBeforeExecute(sessionId, "read", { path: "b.ts" })
+    const changed = guard.record(sessionId, "read", { path: "b.ts" })
     expect(changed.blocked).toBe(false)
     expect(changed.reminder).toBeUndefined()
 
     // Repeat new argument -> starts fresh count to 2
-    const secondCall = guard.checkBeforeExecute(sessionId, "read", { path: "b.ts" })
+    const secondCall = guard.record(sessionId, "read", { path: "b.ts" })
     expect(secondCall.reminder).toBeDefined()
+  })
+
+  it("should isolate sessions and support resetSession", () => {
+    const guard = new RepeatToolGuard({ warningThresholds: [2], blockThreshold: 3 })
+    const args = { path: "foo.ts" }
+
+    guard.record("session-a", "read", args)
+    guard.record("session-a", "read", args)
+    // 另一会话独立计数：仍是第 1 次。
+    const otherSession = guard.record("session-b", "read", args)
+    expect(otherSession.blocked).toBe(false)
+    expect(otherSession.reminder).toBeUndefined()
+
+    guard.resetSession("session-a")
+    // 重置后从第 1 次重新开始。
+    const afterReset = guard.record("session-a", "read", args)
+    expect(afterReset.blocked).toBe(false)
+    expect(afterReset.reminder).toBeUndefined()
   })
 })

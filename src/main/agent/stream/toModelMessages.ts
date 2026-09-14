@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import type { AgentMessage, ImageContent, TextContent } from "@shared/contracts/agent"
+import type { AgentMessage, ImageContent, TextContent, ToolCall } from "@shared/contracts/agent"
 import type { ModelMessage } from "ai"
 import { tool as aiTool } from "ai"
 import type { AgentTool, LlmMessage } from "../core/types"
@@ -83,7 +83,15 @@ const convertAssistantMessage = (message: AssistantLlmMessage): ModelMessage => 
       return { type: "text" as const, text: block.text }
     }
     if (block.type === "thinking") {
-      return { type: "reasoning" as const, text: block.thinking }
+      // 带签名的思考块必须原样回传：Anthropic 扩展思考 + 工具续轮校验签名，
+      // 无签名 reasoning 会被 @ai-sdk/anthropic 丢弃（unsupported reasoning metadata）。
+      return block.signature
+        ? {
+            type: "reasoning" as const,
+            text: block.thinking,
+            providerOptions: { anthropic: { signature: block.signature } },
+          }
+        : { type: "reasoning" as const, text: block.thinking }
     }
     return {
       type: "tool-call" as const,
@@ -140,6 +148,59 @@ const convertToolResultImages = (group: ToolResultLlmMessage[]): ModelMessage | 
 }
 
 /**
+ * 悬空 toolCall 兜底修复：assistant 的 toolCall 在后续消息中找不到对应 toolResult 时，
+ * 在投递前补一条合成错误结果。残缺 assistant 消息（流中断/中止/旧数据）会让 AI SDK
+ * 抛 MissingToolResultsError 并卡死会话；此处只修请求载荷，不改写会话历史。
+ */
+const repairDanglingToolCalls = (messages: LlmMessage[]): LlmMessage[] => {
+  const repaired: LlmMessage[] = []
+  let pendingToolCalls: Array<{ id: string; name: string }> = []
+  // 已补合成结果的 toolCall：迟到的真实结果必须丢弃，否则会变成 provider 拒绝的孤儿 tool_result。
+  const synthesizedToolCallIds = new Set<string>()
+
+  const flushPendingToolCalls = () => {
+    for (const toolCall of pendingToolCalls) {
+      synthesizedToolCallIds.add(toolCall.id)
+      repaired.push({
+        role: "toolResult",
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+        content: [
+          {
+            type: "text",
+            text: `Tool call "${toolCall.name}" was not executed: no matching tool result exists in the assistant turn. Re-issue the tool call if it is still needed.`,
+          },
+        ],
+        isError: true,
+      })
+    }
+    pendingToolCalls = []
+  }
+
+  for (const message of messages) {
+    if (message.role === "assistant") {
+      flushPendingToolCalls()
+      repaired.push(message)
+      pendingToolCalls = message.content
+        .filter((block): block is ToolCall => block.type === "toolCall")
+        .map((block) => ({ id: block.id, name: block.name }))
+      continue
+    }
+    if (message.role === "toolResult") {
+      if (synthesizedToolCallIds.has(message.toolCallId)) continue
+      pendingToolCalls = pendingToolCalls.filter((toolCall) => toolCall.id !== message.toolCallId)
+      repaired.push(message)
+      continue
+    }
+    // user 消息前的悬空调用先补齐，保证 toolResult 紧跟其 assistant 消息。
+    flushPendingToolCalls()
+    repaired.push(message)
+  }
+  flushPendingToolCalls()
+  return repaired
+}
+
+/**
  * LlmMessage → AI SDK ModelMessage。
  *
  * 字段名必须与 AI SDK ModelMessage schema 完全一致（zod 默认 strip 未知字段）：
@@ -148,8 +209,9 @@ const convertToolResultImages = (group: ToolResultLlmMessage[]): ModelMessage | 
  */
 export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] => {
   const result: ModelMessage[] = []
-  for (let index = 0; index < messages.length; index += 1) {
-    const message = messages[index]
+  const repairedMessages = repairDanglingToolCalls(messages)
+  for (let index = 0; index < repairedMessages.length; index += 1) {
+    const message = repairedMessages[index]
     if (message.role === "user") {
       result.push(convertUserMessage(message))
       continue
@@ -161,8 +223,8 @@ export const toModelMessages = (messages: LlmMessage[]): ModelMessage[] => {
 
     // 收集连续 toolResult：先输出全部 tool 消息，再按段合并一条 user 图片消息。
     const group: ToolResultLlmMessage[] = []
-    while (index < messages.length && messages[index].role === "toolResult") {
-      group.push(messages[index] as ToolResultLlmMessage)
+    while (index < repairedMessages.length && repairedMessages[index].role === "toolResult") {
+      group.push(repairedMessages[index] as ToolResultLlmMessage)
       index += 1
     }
     index -= 1

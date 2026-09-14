@@ -72,9 +72,13 @@ export class RepeatToolGuard {
   }
 
   /**
-   * 在工具执行前检查调用频率与重复状态
+   * 记录一次工具调用并返回该次调用的守卫结论。
+   *
+   * 每次工具调用只允许调用一次（调用即自增计数）：
+   * - 命中 warningThresholds 时返回 reminder，由调用方随本次结果送达模型；
+   * - 达到 blockThreshold 时返回 blocked，调用方必须拒绝执行。
    */
-  checkBeforeExecute(sessionId: string, toolName: string, args: unknown): GuardCheckResult {
+  record(sessionId: string, toolName: string, args: unknown): GuardCheckResult {
     if (this.transparentTools.has(toolName)) {
       return { blocked: false }
     }

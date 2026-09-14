@@ -36,6 +36,13 @@ const mapStopReason = (reason: string): StopReason => {
 
 const EMPTY_USAGE: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 }
 
+// 读取 Anthropic thinking 签名（@ai-sdk/anthropic 在 signature_delta 中以 reasoning-delta 事件携带）。
+const readAnthropicSignature = (providerMetadata: unknown): string | undefined => {
+  const signature = (providerMetadata as { anthropic?: { signature?: unknown } } | undefined)
+    ?.anthropic?.signature
+  return typeof signature === "string" && signature.length > 0 ? signature : undefined
+}
+
 // 构造空助手消息。
 const createEmptyAssistant = (model: Model): AssistantMessage => ({
   role: "assistant",
@@ -273,6 +280,8 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
             }
             case "reasoning-start": {
               const block = ensureThinkingBlock()
+              const signature = readAnthropicSignature(part.providerMetadata)
+              if (signature) block.signature = signature
               lastChunkTime = Date.now()
               emitUpdate({
                 type: "thinking_start",
@@ -285,6 +294,9 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
             case "reasoning-delta": {
               const block = ensureThinkingBlock()
               block.thinking += part.text
+              // 签名以空文本 delta 单独到达；也可能与文本同帧，delta 阶段即写入。
+              const signature = readAnthropicSignature(part.providerMetadata)
+              if (signature) block.signature = signature
               lastChunkTime = Date.now()
               emitUpdate({
                 type: "thinking_delta",
@@ -294,7 +306,13 @@ export const createAiSdkStreamFn = (defaultOptions?: CreateAiSdkStreamFnOptions)
               })
               break
             }
-            case "reasoning-end":
+            case "reasoning-end": {
+              const signature = readAnthropicSignature(part.providerMetadata)
+              const block = blocks[blocks.length - 1]
+              if (signature && block?.type === "thinking") block.signature = signature
+              finalizeActiveBlockDuration()
+              break
+            }
             case "text-end": {
               finalizeActiveBlockDuration()
               break
