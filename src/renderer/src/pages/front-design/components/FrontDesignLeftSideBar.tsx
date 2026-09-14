@@ -194,6 +194,7 @@ export const FrontDesignLeftSideBar = ({
             return (
               <LxTooltip key={d.id} content={label} placement="right">
                 <LxNavItem
+                  level={3}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={label}
                   className={`w-full justify-center ${

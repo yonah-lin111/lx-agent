@@ -65,6 +65,8 @@ describe("CustomCommandSettings 命令行", () => {
 
     const betaRow = screen.getByText("beta").closest('[role="button"]')
     expect(betaRow).not.toBeNull()
+    // 左侧命令行使用等级 2（中间容器），与供应商列一致。
+    expect(betaRow?.getAttribute("data-item-level")).toBe("2")
 
     fireEvent.click(betaRow as Element)
 

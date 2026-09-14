@@ -509,6 +509,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                 {hasDraft && (
                   <LxNavItem
                     size="small"
+                    level={2}
                     className={`group w-full justify-between ${
                       isEditingDraft ? "bg-white/10 text-white font-medium" : "text-emerald-400"
                     }`}
@@ -552,6 +553,7 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                     <LxNavItem
                       key={cmd.name}
                       size="small"
+                      level={2}
                       className={`group w-full justify-between ${
                         isSelected
                           ? "bg-white/10 text-white font-medium"

@@ -493,6 +493,7 @@ export const ModelProviderSettings = ({
               <LxNavItem
                 key={model.id}
                 size="small"
+                level={3}
                 className="w-full justify-between gap-3 text-white/80 hover:text-white"
                 onClick={() => applyFetchedModel(providerId, modelKey, model)}
               >

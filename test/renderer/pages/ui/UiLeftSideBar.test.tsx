@@ -72,6 +72,8 @@ describe("UiLeftSideBar 统一 LxNavItem", () => {
     const iconRow = screen.getByRole("button", { name: "LxIconButton" })
     expect(iconRow.className).toContain("lx-nav-item")
     expect(iconRow.className).toContain("h-7")
+    // 折叠态条目与展开态条目同层级（叶子）
+    expect(iconRow.getAttribute("data-item-level")).toBe("3")
 
     fireEvent.click(iconRow)
     expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining("section=icon-button"))
