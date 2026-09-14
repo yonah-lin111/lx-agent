@@ -15,6 +15,20 @@ vi.mock("@/components/ui/LxCodeBlock", () => ({
   LxCodeBlock: ({ code }: { code: string }) => <pre data-testid="code-block">{code}</pre>,
 }))
 
+// 以 spy 替换全局 Blob，用于断言流式生成期间不触发 html 体积计算
+const stubBlobSpy = (): ReturnType<typeof vi.fn> => {
+  const blobSpy = vi.fn()
+  class MockBlob {
+    size: number
+    constructor(parts: unknown[]) {
+      blobSpy()
+      this.size = String(parts.join("")).length
+    }
+  }
+  vi.stubGlobal("Blob", MockBlob)
+  return blobSpy
+}
+
 describe("FrontDesignCard", () => {
   const resetTabs = () => {
     const currentTabs = [...agentTabStore.getTabs()]
@@ -39,6 +53,57 @@ describe("FrontDesignCard", () => {
     cleanup()
     frontDesignStore.clear()
     resetTabs()
+    vi.unstubAllGlobals()
+  })
+
+  it("流式生成中不展示顶部标题与统计信息，且不计算 html 统计", () => {
+    const blobSpy = stubBlobSpy()
+
+    render(
+      <FrontDesignCard
+        design={{
+          id: "design-streaming-1",
+          title: "Streaming Hero",
+          html: "<div>partial</div>",
+          raw: "<front_design>...",
+          version: 2,
+          target: "hero-section",
+          isStreaming: true,
+        }}
+        isStreaming
+      />,
+    )
+
+    expect(screen.getByText("Front Design Prototype")).not.toBeNull()
+    expect(screen.queryByText("Streaming Hero")).toBeNull()
+    expect(screen.queryByText("v2")).toBeNull()
+    expect(screen.queryByText("hero-section")).toBeNull()
+    expect(screen.queryByText(/18 B/)).toBeNull()
+    expect(screen.queryByText(/1 行|1 lines/i)).toBeNull()
+    expect(blobSpy).not.toHaveBeenCalled()
+  })
+
+  it("流式生成完成后展示顶部 title、统计 Chip 与代码预览", () => {
+    const blobSpy = stubBlobSpy()
+    const design = {
+      id: "design-streaming-2",
+      title: "Streaming Pricing",
+      html: "<div>A</div>\n<div>B</div>",
+      raw: "<front_design>...",
+    }
+
+    const { rerender } = render(<FrontDesignCard design={design} isStreaming />)
+    expect(screen.queryByText("Streaming Pricing")).toBeNull()
+    expect(screen.queryByTestId("code-block")).toBeNull()
+    expect(blobSpy).not.toHaveBeenCalled()
+
+    rerender(<FrontDesignCard design={design} isStreaming={false} />)
+
+    expect(screen.getByText("Streaming Pricing")).not.toBeNull()
+    expect(screen.getByText(/2 行|2 lines/i)).not.toBeNull()
+    expect(screen.getByText("25 B")).not.toBeNull()
+    expect(screen.getByTestId("code-block").textContent).toContain("<div>A</div>")
+    expect(blobSpy).toHaveBeenCalledTimes(1)
   })
 
   it("正确渲染设计原型基础信息与代码行数", () => {

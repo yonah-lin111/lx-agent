@@ -17,6 +17,8 @@ export interface FrontDesignCardProps {
   isStreaming?: boolean
 }
 
+const DEFAULT_VISIBLE_LINES = 20
+
 /**
  * FrontDesignCard - 渲染消息流中捕获的 <front_design> 前端设计卡片。
  * 视觉风格与结构对齐 ReviewFindingsCard，支持展示代码与统计指标，并可一键打开本地工程目录或跳转看板。
@@ -31,24 +33,29 @@ export const FrontDesignCard = ({
   const isGenerating = isStreaming || Boolean(design.isStreaming)
   const title = design.title || t("frontDesign.title")
   const mode = design.mode ?? "tailwindcss"
-  const lines = useMemo(() => design.html.split("\n"), [design.html])
-  const lineCount = lines.length
-  const byteSize = useMemo(() => new Blob([design.html]).size, [design.html])
-  const sizeFormatted = useMemo(() => {
-    if (byteSize < 1024) return `${byteSize} B`
-    return `${(byteSize / 1024).toFixed(1)} KB`
-  }, [byteSize])
 
-  const DEFAULT_VISIBLE_LINES = 20
-  const hasMoreLines = lineCount > DEFAULT_VISIBLE_LINES
+  // 流式生成期间不计算 html 统计（split/Blob），生成完成后一次性计算
+  const htmlStats = useMemo(() => {
+    if (isGenerating) return null
+    const lines = design.html.split("\n")
+    const byteSize = new Blob([design.html]).size
+    return {
+      lines,
+      lineCount: lines.length,
+      sizeFormatted: byteSize < 1024 ? `${byteSize} B` : `${(byteSize / 1024).toFixed(1)} KB`,
+      hasMoreLines: lines.length > DEFAULT_VISIBLE_LINES,
+    }
+  }, [design.html, isGenerating])
+
   const [isCodeExpanded, setIsCodeExpanded] = useState(false)
 
   const displayedHtml = useMemo(() => {
-    if (isCodeExpanded || !hasMoreLines) {
+    if (!htmlStats) return ""
+    if (isCodeExpanded || !htmlStats.hasMoreLines) {
       return design.html
     }
-    return lines.slice(0, DEFAULT_VISIBLE_LINES).join("\n")
-  }, [design.html, isCodeExpanded, hasMoreLines, lines])
+    return htmlStats.lines.slice(0, DEFAULT_VISIBLE_LINES).join("\n")
+  }, [design.html, isCodeExpanded, htmlStats])
 
   const handleOpenDesign = (): void => {
     const targetId = design.id || `design-default`
@@ -126,49 +133,55 @@ export const FrontDesignCard = ({
         </div>
       </div>
 
-      {/* 单独一行的 title 与统计 Chip */}
-      <div className="front-design-title-row mt-2.5 flex items-center gap-2 flex-wrap">
-        <span className="front-design-title truncate text-sm font-semibold text-white/95">
-          {title}
-        </span>
-
-        {/* 版本徽标 */}
-        {design.version && (
-          <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
-            v{design.version}
-          </LxTag>
-        )}
-
-        {/* 定向节点标示 */}
-        {design.target && (
-          <LxTag
-            size="small"
-            bgClass="border-pink-500/30 bg-pink-500/20"
-            textClass="text-pink-300"
-            className="font-mono"
-          >
-            {design.target}
-          </LxTag>
-        )}
-
-        {/* 基准血缘标示 */}
-        {design.parentId && (
-          <span className="text-xs text-pink-300/60 truncate max-w-[200px]">
-            {t("frontDesign.basedOnPrefix")} {design.parentId}
+      {/* 单独一行的 title 与统计 Chip：生成完成后一次性展示 */}
+      {!isGenerating && htmlStats && (
+        <div className="front-design-title-row mt-2.5 flex items-center gap-2 flex-wrap">
+          <span className="front-design-title truncate text-sm font-semibold text-white/95">
+            {title}
           </span>
-        )}
 
-        {/* 统计指标 Chip */}
-        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
-          {lineCount} {t("frontDesign.lines")}
-        </LxTag>
-        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
-          {sizeFormatted}
-        </LxTag>
-        <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
-          {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
-        </LxTag>
-      </div>
+          {/* 版本徽标 */}
+          {design.version && (
+            <LxTag
+              size="small"
+              bgClass="border-pink-500/30 bg-pink-500/20"
+              textClass="text-pink-300"
+            >
+              v{design.version}
+            </LxTag>
+          )}
+
+          {/* 定向节点标示 */}
+          {design.target && (
+            <LxTag
+              size="small"
+              bgClass="border-pink-500/30 bg-pink-500/20"
+              textClass="text-pink-300"
+              className="font-mono"
+            >
+              {design.target}
+            </LxTag>
+          )}
+
+          {/* 基准血缘标示 */}
+          {design.parentId && (
+            <span className="text-xs text-pink-300/60 truncate max-w-[200px]">
+              {t("frontDesign.basedOnPrefix")} {design.parentId}
+            </span>
+          )}
+
+          {/* 统计指标 Chip */}
+          <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
+            {htmlStats.lineCount} {t("frontDesign.lines")}
+          </LxTag>
+          <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
+            {htmlStats.sizeFormatted}
+          </LxTag>
+          <LxTag size="small" bgClass="border-pink-500/30 bg-pink-500/20" textClass="text-pink-300">
+            {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
+          </LxTag>
+        </div>
+      )}
 
       {/* 概要说明区：对齐 ReviewFindingsCard 的 summary 布局 */}
       <div className="front-design-summary mt-2.5 rounded-[6px] bg-black/20 px-3 py-2 text-sm leading-relaxed text-white/80">
@@ -176,7 +189,7 @@ export const FrontDesignCard = ({
       </div>
 
       {/* 代码预览容器：默认显示 20 行，流式输出完毕后再显示，支持点击更多展开 */}
-      {!isGenerating && design.html.trim() && (
+      {htmlStats && design.html.trim() && (
         <div className="front-design-code-wrapper mt-2.5">
           <div className="front-design-code-container rounded-[6px] border border-pink-500/15 bg-black/25 p-1 text-xs leading-relaxed">
             <LxCodeBlock
@@ -187,7 +200,7 @@ export const FrontDesignCard = ({
               copyContent={design.html}
             />
           </div>
-          {hasMoreLines && (
+          {htmlStats.hasMoreLines && (
             <div className="mt-1.5 flex items-center px-1">
               <LxIconButton
                 variant="ghost"
@@ -200,7 +213,7 @@ export const FrontDesignCard = ({
                 <span className="italic underline underline-offset-2">
                   {isCodeExpanded
                     ? t("common.collapse")
-                    : `...${t("common.more")} (${lineCount - DEFAULT_VISIBLE_LINES} ${t("frontDesign.lines")})`}
+                    : `...${t("common.more")} (${htmlStats.lineCount - DEFAULT_VISIBLE_LINES} ${t("frontDesign.lines")})`}
                 </span>
               </LxIconButton>
             </div>
