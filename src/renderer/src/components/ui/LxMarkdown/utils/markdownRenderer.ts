@@ -110,10 +110,11 @@ markdownRenderer.renderer.rules.fence = (
     return `<section class="markdown-mermaid" data-mermaid-source="${source}"${lineAttribute}></section>`
   }
 
-  // 流式中尚未闭合的代码块走增量高亮（已完成行缓存复用，只逐帧高亮尾部）；闭合/结束后整块高亮。
+  // 流式中尚未闭合的代码块按纯文本转义输出（无语法着色）：避免逐帧对增长中的代码全量高亮；
+  // 代码块闭合或生成结束后恢复正常高亮。
   const renderedCode =
     token.meta?.incompleteFence === true
-      ? renderStreamingFenceCode(token.content, language)
+      ? markdownRenderer.utils.escapeHtml(token.content)
       : getCachedHighlight(token.content, language)
 
   return `<section class="markdown-code-block"${lineAttribute}><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content"><pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderedCode}</code></pre>\n</div></section>`
@@ -138,31 +139,6 @@ const getCachedHighlight = (content: string, language: string): string => {
   return html
 }
 
-// 未闭合代码块的增量高亮缓存：按"语言 + 已完成行前缀"复用整块高亮结果，每帧只重高亮最后一行。
-let streamingFenceCache: { language: string; prefix: string; html: string } | null = null
-
-const renderStreamingFenceCode = (content: string, language: string): string => {
-  const lastBreak = content.lastIndexOf("\n")
-  const prefix = lastBreak >= 0 ? content.slice(0, lastBreak + 1) : ""
-  const tail = lastBreak >= 0 ? content.slice(lastBreak + 1) : content
-
-  let prefixHtml = ""
-  if (prefix) {
-    if (
-      streamingFenceCache &&
-      streamingFenceCache.language === language &&
-      streamingFenceCache.prefix === prefix
-    ) {
-      prefixHtml = streamingFenceCache.html
-    } else {
-      prefixHtml = renderCode(prefix, language)
-      streamingFenceCache = { language, prefix, html: prefixHtml }
-    }
-  }
-
-  return tail ? `${prefixHtml}${renderCode(tail, language)}` : prefixHtml
-}
-
 // 渲染结果缓存：流式条目每帧整体重渲染时，已稳定的文本块直接复用 HTML（不再重复解析与高亮）。
 // 有界缓存，超大文本不进入缓存以避免常驻内存膨胀。
 const RENDER_CACHE_LIMIT = 32
@@ -170,9 +146,8 @@ const RENDER_CACHE_MAX_TEXT_LENGTH = 64 * 1024
 const renderCache = new Map<string, string>()
 
 /**
- * 渲染 Markdown。streaming=true 时对尚未闭合的代码块走增量高亮：
- * 已完成行的高亮结果整块缓存复用，每帧只重新高亮尾部（正在增长的最后一行），
- * 在保留语法着色的同时消除逐帧全量高亮的 O(n²) 开销；
+ * 渲染 Markdown。streaming=true 时对尚未闭合的最后一个代码块跳过语法高亮
+ * （闭合或生成结束后正常高亮），消除逐帧全量高亮的 O(n²) 开销；
  * 相同输入（文本 + streaming 标志）复用缓存结果，避免同一内容的重复解析。
  */
 export const renderMarkdown = (text: string, options?: { streaming?: boolean }): string => {
