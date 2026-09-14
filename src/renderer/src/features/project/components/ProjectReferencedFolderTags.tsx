@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, Check, Copy, Folder, FolderPlus, Pin } from "luc
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useInRouterContext, useSearchParams } from "react-router-dom"
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   createMarkdownReference,
@@ -332,12 +331,23 @@ const ProjectReferencedFolderTagsContent = ({
             const isEnabled = enabledFolderPaths.includes(folder.path)
 
             return (
-              <LxTag
+              <LxIconButton
                 key={folder.path}
-                className="project-referenced-tag"
-                bgClass="border-[#d97706] bg-[rgba(217,119,6,0.12)] text-[#d97706]"
+                variant="ghost"
+                size="medium"
+                iconOnly={false}
+                textClass=""
+                showHoverBg={false}
+                hoverTextClass=""
+                className="project-referenced-tag h-7 cursor-pointer border border-[#d97706] bg-[rgba(217,119,6,0.12)] px-2.5 font-semibold text-[#d97706] select-none"
+                icon={
+                  <span className="flex shrink-0 items-center justify-center text-current/60">
+                    <Folder className="h-3 w-3" />
+                  </span>
+                }
                 closeTooltipContent={t("project.deleteFolderConfirm")}
-                prefix={<Folder className="h-3 w-3" />}
+                onClose={() => removeFolderReference(folder.path)}
+                onClick={(event) => openFolderPanel(folder.path, event)}
                 suffix={
                   <>
                     <LxTooltip
@@ -348,37 +358,53 @@ const ProjectReferencedFolderTagsContent = ({
                       }
                       placement="top"
                     >
-                      <button
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        data-variant="ghost"
                         aria-label={
                           isEnabled
                             ? t("project.disableFolderInMention")
                             : t("project.enableFolderInMention")
                         }
-                        className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
+                        className={`flex h-3.5 w-3.5 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
                           isEnabled ? "text-[#fbbf24]" : "text-current/60 hover:text-current"
                         }`}
-                        type="button"
                         onClick={(event) => {
                           event.stopPropagation()
                           toggleFolderReference(folder.path)
                         }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            toggleFolderReference(folder.path)
+                          }
+                        }}
                       >
                         <Pin className="h-2.5 w-2.5" fill={isEnabled ? "currentColor" : "none"} />
-                      </button>
+                      </span>
                     </LxTooltip>
                     <LxTooltip
                       content={isCopied ? t("common.copied") : t("project.copyFolderRef")}
                       placement="top"
                     >
-                      <button
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        data-variant="ghost"
                         aria-label={t("project.copyFolderRef")}
-                        className={`flex h-3.5 w-3.5 items-center justify-center rounded-[4px] transition-colors ${
+                        className={`flex h-3.5 w-3.5 cursor-pointer items-center justify-center rounded-[4px] transition-colors ${
                           isCopied ? "text-current" : "text-current/60 hover:text-current"
                         }`}
-                        type="button"
                         onClick={(event) => {
                           event.stopPropagation()
                           void copyFolderReference(folder.path)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            void copyFolderReference(folder.path)
+                          }
                         }}
                       >
                         {isCopied ? (
@@ -386,15 +412,13 @@ const ProjectReferencedFolderTagsContent = ({
                         ) : (
                           <Copy className="h-2.5 w-2.5" />
                         )}
-                      </button>
+                      </span>
                     </LxTooltip>
                   </>
                 }
-                onClick={(event) => openFolderPanel(folder.path, event)}
-                onClose={() => removeFolderReference(folder.path)}
               >
                 {getMarkdownReferenceName(folder.path)}
-              </LxTag>
+              </LxIconButton>
             )
           })}
         </div>

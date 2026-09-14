@@ -846,6 +846,7 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
  * ======================================================== */
 [data-theme="minecraft"] .project-recent-tag {
   border-radius: 0px !important;
+  transition: none !important;
   border: 2px solid #000000 !important;
   border-left: 4px solid transparent !important;
   box-shadow:
@@ -1006,9 +1007,16 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* ========================================================
- * 引用文件夹标签（ProjectReferencedFolderTags）实体矿石槽底色
+ * 引用文件夹标签（ProjectReferencedFolderTags）实体矿石槽底色与像素槽边框
  * ======================================================== */
 [data-theme="minecraft"] .project-referenced-tag {
+  border-radius: 0px !important;
+  transition: none !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.65),
+    2px 2px 0px 0px #000000 !important;
   background-color: #2e2619 !important;
 }
 

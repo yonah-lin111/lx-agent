@@ -16,6 +16,15 @@ describe("我的世界主题引用文件夹标签底色", () => {
 
     const block = minecraftCss.slice(start, minecraftCss.indexOf("}", start))
     expect(block).toContain("background-color: #2e2619 !important")
-    expect(block).not.toContain("rgba(")
+    expect(block).not.toContain("background-color: rgba(")
+  })
+
+  it("引用文件夹标签保留像素槽边框与浮雕，迁移后外观不降级", () => {
+    const start = minecraftCss.indexOf('[data-theme="minecraft"] .project-referenced-tag {')
+    expect(start).toBeGreaterThanOrEqual(0)
+
+    const block = minecraftCss.slice(start, minecraftCss.indexOf("}", start))
+    expect(block).toContain("border: 2px solid #000000 !important")
+    expect(block).toContain("box-shadow:")
   })
 })
