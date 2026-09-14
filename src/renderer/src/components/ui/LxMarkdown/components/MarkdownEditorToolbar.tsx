@@ -81,7 +81,7 @@ export const MarkdownEditorToolbar = ({
   const tablePicker = useMemo(
     () => (
       <div className="flex flex-col gap-1" aria-label={t("markdown.formatTable")}>
-        <div className="px-0.5 text-center text-[11px] text-white/70" aria-live="polite">
+        <div className="px-0.5 text-center text-xs text-white/70" aria-live="polite">
           {tableSize ? `${tableSize.columns} x ${tableSize.rows}` : t("markdown.formatTable")}
         </div>
         <div className="grid grid-cols-5 gap-1" role="grid">
@@ -136,7 +136,7 @@ export const MarkdownEditorToolbar = ({
               className="flex min-h-7 items-center justify-between gap-3 rounded-[3px] px-1.5 text-xs hover:bg-white/5"
             >
               <span className="min-w-0 text-white/55">{t(descKey)}</span>
-              <kbd className="shrink-0 font-mono text-[11px] text-white/75">
+              <kbd className="shrink-0 font-mono text-xs text-white/75">
                 {getShortcutKeys(keys)}
               </kbd>
             </div>

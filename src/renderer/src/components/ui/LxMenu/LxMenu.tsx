@@ -216,7 +216,7 @@ export const LxMenuItem = ({
     ) : null}
     <span className="min-w-0 flex-1 truncate whitespace-nowrap">{children}</span>
     {trailing ? (
-      <span className="ml-auto flex shrink-0 items-center pl-2 text-[11px] font-mono text-white/40">
+      <span className="ml-auto flex shrink-0 items-center pl-2 text-xs font-mono text-white/40">
         {trailing}
       </span>
     ) : null}

@@ -3,22 +3,25 @@ import type React from "react"
 import { useState } from "react"
 import { useLxToast } from "@/components/ui/LxToast"
 import { AgentContextUsagePill, AgentStatusBar, PermissionStatusButton } from "@/features/agent"
-import { useTranslation } from "@/i18n"
+import { type I18nContextType, useTranslation } from "@/i18n"
 import { UiPreviewSection } from "@/pages/ui/components/UiPreviewSection"
 
-const MOCK_PERMISSION: PermissionRequest = {
+// 示例权限请求。
+const createMockPermission = (t: I18nContextType["t"]): PermissionRequest => ({
   requestId: "perm_req_1",
   sessionId: "sess_demo",
   toolName: "bash",
   args: { command: "npm test" },
-  summary: "执行测试脚本",
+  summary: t("uiPreview.demos.mock.statusBar.permissionSummary"),
   mode: "default",
-}
+})
 
 export const AgentStatusBarDemo = (): React.JSX.Element => {
   const { t } = useTranslation()
   const toast = useLxToast()
-  const [pendingReq, setPendingReq] = useState<PermissionRequest | null>(MOCK_PERMISSION)
+  const [pendingReq, setPendingReq] = useState<PermissionRequest | null>(() =>
+    createMockPermission(t),
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,21 +35,23 @@ export const AgentStatusBarDemo = (): React.JSX.Element => {
               projectPath="/Users/dev/projects/lx-agent"
               pendingRequest={pendingReq}
               onPermissionRespond={(decision) => {
-                toast.info(`权限响应: ${decision}`)
+                toast.info(t("uiPreview.demos.toast.permissionResponse", { decision }))
                 setPendingReq(null)
               }}
-              onOpenJobs={() => toast.info("点击打开长任务监控面板")}
+              onOpenJobs={() => toast.info(t("uiPreview.demos.toast.openJobs"))}
             />
           </div>
 
           <div className="flex items-center gap-4 rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
-            <span className="text-xs text-white/50">状态按钮单独展示：</span>
+            <span className="text-xs text-white/50">
+              {t("uiPreview.demos.mock.statusBar.statusButtonsLabel")}
+            </span>
             <AgentContextUsagePill contextUsage={{ tokens: 68000, contextWindow: 200000 }} />
             <PermissionStatusButton
               request={pendingReq}
               sandboxPolicy="workspace-write"
               onRespond={(decision) => {
-                toast.info(`权限响应: ${decision}`)
+                toast.info(t("uiPreview.demos.toast.permissionResponse", { decision }))
                 setPendingReq(null)
               }}
             />

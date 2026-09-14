@@ -72,7 +72,7 @@ export const LxInfoTooltip = ({
         html={html}
         previewMode="preview"
         className="px-0"
-        contentClassName="py-0 text-white/80 [&_h3]:text-[13px] [&_h3]:font-semibold [&_h3]:text-white/95 [&_h4]:text-[12px] [&_h4]:font-semibold [&_h4]:text-white/90 [&_ul]:pl-4 [&_ul]:list-disc [&_li]:mt-1 [&_strong]:text-theme-foreground [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-emerald-300"
+        contentClassName="py-0 text-white/80 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-white/95 [&_h4]:text-xs [&_h4]:font-semibold [&_h4]:text-white/90 [&_ul]:pl-4 [&_ul]:list-disc [&_li]:mt-1 [&_strong]:text-theme-foreground [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-emerald-300"
       />
     </div>
   )

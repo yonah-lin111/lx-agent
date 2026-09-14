@@ -11,9 +11,9 @@ export const SuggestedQuestionsDemo = (): React.JSX.Element => {
   const [echoedText, setEchoedText] = useState("")
 
   const questions = [
-    "如何配置本地 MCP 服务器与工具调用？",
-    "帮我分析一下 src/renderer/src/features/agent 模块的目录架构",
-    "当前项目的国际化词条规范是什么？",
+    t("uiPreview.demos.mock.suggestedQuestions.q1"),
+    t("uiPreview.demos.mock.suggestedQuestions.q2"),
+    t("uiPreview.demos.mock.suggestedQuestions.q3"),
   ]
 
   return (
@@ -26,14 +26,15 @@ export const SuggestedQuestionsDemo = (): React.JSX.Element => {
           <div className="rounded-[6px] border border-white/5 bg-[#1a1a1a] p-3">
             <SuggestedQuestions
               questions={questions}
-              onSelect={(q) => toast.info(`点击发送: ${q}`)}
+              onSelect={(q) => toast.info(t("uiPreview.demos.toast.questionSend", { question: q }))}
               onEcho={(q) => setEchoedText(q)}
             />
           </div>
 
           {echoedText ? (
             <div className="text-xs text-white/60">
-              已回显到输入框：<span className="text-white/90">{echoedText}</span>
+              {t("uiPreview.demos.mock.suggestedQuestions.echoedPrefix")}
+              <span className="text-white/90">{echoedText}</span>
             </div>
           ) : null}
 

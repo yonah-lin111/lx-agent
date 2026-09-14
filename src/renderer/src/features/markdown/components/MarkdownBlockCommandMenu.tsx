@@ -69,7 +69,7 @@ export const MarkdownBlockCommandMenu = ({
   return (
     <div
       aria-label={ariaLabel ?? t("markdown.blockCommandsAria")}
-      className={`markdown-command-menu markdown-command-menu--block pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-[13px] shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+      className={`markdown-command-menu markdown-command-menu--block pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
       }`}
       role="listbox"
@@ -96,8 +96,8 @@ export const MarkdownBlockCommandMenu = ({
               <Icon className="h-3 w-3" />
             </span>
             <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="shrink-0 text-[13px] leading-none text-white">{command.label}</span>
-              <span className="min-w-0 flex-1 truncate font-mono text-[11px] leading-none text-white/45">
+              <span className="shrink-0 text-sm leading-none text-white">{command.label}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
                 {command.preview}
               </span>
             </span>

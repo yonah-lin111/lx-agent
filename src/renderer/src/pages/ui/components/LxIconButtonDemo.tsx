@@ -57,29 +57,29 @@ export const LxIconButtonDemo = (): React.JSX.Element => {
         <div className="flex flex-wrap items-center gap-2">
           <LxIconButton
             size="small"
-            aria-label="small 尺寸"
+            aria-label={t("uiPreview.demos.mock.iconButton.smallSize")}
             title={{ content: "small", placement: "bottom" }}
           />
           <LxIconButton
             size="medium"
-            aria-label="medium 尺寸"
+            aria-label={t("uiPreview.demos.mock.iconButton.mediumSize")}
             title={{ content: "medium", placement: "bottom" }}
           />
           <LxIconButton
             size="large"
-            aria-label="large 尺寸"
+            aria-label={t("uiPreview.demos.mock.iconButton.largeSize")}
             title={{ content: "large", placement: "bottom" }}
           />
           <LxIconButton
             shape="circle"
             preset="add"
-            aria-label="圆形添加"
+            aria-label={t("uiPreview.demos.mock.iconButton.circleAdd")}
             title={{ content: "circle + add", placement: "bottom" }}
           />
           <LxIconButton
             shape="circle"
             preset="delete"
-            aria-label="圆形删除"
+            aria-label={t("uiPreview.demos.mock.iconButton.circleDelete")}
             title={{ content: "circle + delete", placement: "bottom" }}
           />
         </div>
@@ -89,7 +89,11 @@ export const LxIconButtonDemo = (): React.JSX.Element => {
         description={t("uiPreview.demos.statesDesc")}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <LxIconButton preset="add" disabled aria-label="禁用添加" />
+          <LxIconButton
+            preset="add"
+            disabled
+            aria-label={t("uiPreview.demos.mock.iconButton.disabledAdd")}
+          />
           <LxIconButton
             highlighted
             aria-label={t("common.status")}
