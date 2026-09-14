@@ -43,12 +43,8 @@ export interface LxToastItem {
   duration?: number
 }
 
-// 消息提示上下文。
-interface LxToastContextType {
-  // 当前展示的消息列表。
-  toasts: LxToastItem[]
-  // 全局默认展示方位。
-  defaultPosition: LxToastPosition
+// 消息提示操作接口：消息增删不改变其引用，可安全用作 effect/callback 依赖。
+interface LxToastApi {
   // 显示任意类型的消息。
   show: (message: string, type?: LxToastType, duration?: number, position?: LxToastPosition) => void
   // 显示成功消息。
@@ -65,8 +61,30 @@ interface LxToastContextType {
   resumeToast: (id: string) => void
 }
 
-// 消息提示上下文实例。
-const LxToastContext = createContext<LxToastContextType | undefined>(undefined)
+// 消息列表与默认方位：随消息生命周期变化，仅由需要渲染消息的组件订阅。
+interface LxToastState {
+  // 当前展示的消息列表。
+  toasts: LxToastItem[]
+  // 全局默认展示方位。
+  defaultPosition: LxToastPosition
+}
+
+// 操作接口与状态拆为两个上下文：状态变化不改变操作接口引用。
+const LxToastApiContext = createContext<LxToastApi | undefined>(undefined)
+const LxToastStateContext = createContext<LxToastState | undefined>(undefined)
+
+// 无 Provider 时的稳定兜底，避免每次调用返回新对象。
+const EMPTY_TOAST_API: LxToastApi = {
+  show: () => {},
+  success: () => {},
+  error: () => {},
+  info: () => {},
+  warning: () => {},
+  pauseToast: () => {},
+  resumeToast: () => {},
+}
+
+const EMPTY_TOAST_STATE: LxToastState = { toasts: [], defaultPosition: "breadcrumb" }
 
 /**
  * 返回提示类型对应的文字颜色。
@@ -247,84 +265,74 @@ export const LxToastProvider = ({
     return groups
   }, [position, toasts])
 
+  const api = useMemo<LxToastApi>(
+    () => ({ show, success, error, info, warning, pauseToast, resumeToast }),
+    [show, success, error, info, warning, pauseToast, resumeToast],
+  )
+  const toastState = useMemo<LxToastState>(
+    () => ({ toasts, defaultPosition: position }),
+    [toasts, position],
+  )
+
   return (
-    <LxToastContext.Provider
-      value={{
-        toasts,
-        show,
-        success,
-        error,
-        info,
-        warning,
-        defaultPosition: position,
-        pauseToast,
-        resumeToast,
-      }}
-    >
-      {children}
-      {[...groupedToasts.entries()].map(([toastPosition, positionToasts]) => (
-        <div
-          key={toastPosition}
-          role="status"
-          aria-live="assertive"
-          className={`pointer-events-none fixed z-[999999] flex flex-col ${POSITION_CLASS[toastPosition]}`}
-        >
-          {positionToasts.map((toast) => (
-            <div
-              key={toast.id}
-              className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-                toast.isExiting ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
-              }`}
-            >
-              <div className="min-h-0 overflow-hidden">
-                <span
-                  data-toast-type={toast.type}
-                  className={`lx-toast-item pointer-events-auto mb-2 block max-w-[min(80vw,24rem)] break-words whitespace-pre-wrap rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-text ${getLxToastColorClass(toast.type)} ${
-                    toast.isExiting ? "animate-toast-out" : "animate-toast-in"
-                  }`}
-                  style={getSlideStyle(toastPosition)}
-                  onMouseEnter={() => pauseToast(toast.id)}
-                  onMouseLeave={() => resumeToast(toast.id)}
-                >
-                  {toast.message}
-                </span>
+    <LxToastApiContext.Provider value={api}>
+      <LxToastStateContext.Provider value={toastState}>
+        {children}
+        {[...groupedToasts.entries()].map(([toastPosition, positionToasts]) => (
+          <div
+            key={toastPosition}
+            role="status"
+            aria-live="assertive"
+            className={`pointer-events-none fixed z-[999999] flex flex-col ${POSITION_CLASS[toastPosition]}`}
+          >
+            {positionToasts.map((toast) => (
+              <div
+                key={toast.id}
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+                  toast.isExiting ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+                }`}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <span
+                    data-toast-type={toast.type}
+                    className={`lx-toast-item pointer-events-auto mb-2 block max-w-[min(80vw,24rem)] break-words whitespace-pre-wrap rounded-[6px] border border-white/10 bg-[#303030] px-2.5 py-1.5 text-xs font-medium tracking-wide shadow-[0_10px_28px_rgba(0,0,0,0.45)] select-text ${getLxToastColorClass(toast.type)} ${
+                      toast.isExiting ? "animate-toast-out" : "animate-toast-in"
+                    }`}
+                    style={getSlideStyle(toastPosition)}
+                    onMouseEnter={() => pauseToast(toast.id)}
+                    onMouseLeave={() => resumeToast(toast.id)}
+                  >
+                    {toast.message}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </LxToastContext.Provider>
+            ))}
+          </div>
+        ))}
+      </LxToastStateContext.Provider>
+    </LxToastApiContext.Provider>
   )
 }
 
 /**
- * 获取全局消息提示接口。
+ * 获取全局消息提示接口。返回值引用稳定，可安全用作 effect/callback 依赖。
  */
-export const useLxToast = (): LxToastContextType => {
-  const context = useContext(LxToastContext)
+export const useLxToast = (): LxToastApi => {
+  return useContext(LxToastApiContext) ?? EMPTY_TOAST_API
+}
 
-  if (context) {
-    return context
-  }
-
-  return {
-    toasts: [],
-    defaultPosition: "breadcrumb",
-    show: () => {},
-    success: () => {},
-    error: () => {},
-    info: () => {},
-    warning: () => {},
-    pauseToast: () => {},
-    resumeToast: () => {},
-  }
+/**
+ * 获取当前展示的消息列表与默认方位（供内部渲染订阅）。
+ */
+const useLxToastState = (): LxToastState => {
+  return useContext(LxToastStateContext) ?? EMPTY_TOAST_STATE
 }
 
 /**
  * 获取在面包屑位置内联展示的消息列表。
  */
 export const useLxBreadcrumbToast = (): LxToastItem[] => {
-  const { toasts, defaultPosition } = useLxToast()
+  const { toasts, defaultPosition } = useLxToastState()
   return toasts.filter((toast) => (toast.position ?? defaultPosition) === "breadcrumb")
 }
 
@@ -359,7 +367,7 @@ export const LxBreadcrumbToast = (): React.JSX.Element | null => {
  * 获取在 Agent 页面顶部栏下方内联/绝对定位展示的消息列表。
  */
 export const useLxAgentTopToast = (): LxToastItem[] => {
-  const { toasts, defaultPosition } = useLxToast()
+  const { toasts, defaultPosition } = useLxToastState()
   return toasts.filter((toast) => {
     const pos = toast.position ?? defaultPosition
     return pos === "agent-top" || pos === "agent-input"
@@ -407,7 +415,7 @@ export const LxAgentInputToast = LxAgentTopToast
 /**
  * 获取 Agent 专属消息提示接口（默认展示在 AgentPage 顶部栏下方）。
  */
-export const useLxAgentToast = (): LxToastContextType => {
+export const useLxAgentToast = (): LxToastApi & { defaultPosition: LxToastPosition } => {
   const context = useLxToast()
   const agentPosition: LxToastPosition = "agent-top"
 

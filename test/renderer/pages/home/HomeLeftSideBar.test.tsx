@@ -60,6 +60,8 @@ describe("HomeLeftSideBar", () => {
     const usageButton = screen.getByRole("button", { name: /usage|用量统计/i })
     expect(overviewButton.getAttribute("aria-current")).toBe("page")
     expect(usageButton.getAttribute("aria-current")).toBeNull()
+    // 折叠态与展开态同层级（根级导航）
+    expect(overviewButton.getAttribute("data-item-level")).toBe("1")
 
     fireEvent.click(usageButton)
     expect(mockNavigate).toHaveBeenCalledWith("/?view=usage")

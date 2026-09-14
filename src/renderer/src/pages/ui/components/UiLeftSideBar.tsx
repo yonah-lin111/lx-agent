@@ -45,6 +45,7 @@ export const UiLeftSideBar = ({ isCollapsed = false }: UiLeftSideBarProps): Reac
             return (
               <LxTooltip key={section.id} content={section.label} placement="right">
                 <LxNavItem
+                  level={3}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={section.label}
                   className={`w-full justify-center ${

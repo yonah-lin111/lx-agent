@@ -47,6 +47,24 @@ describe("usage Minecraft 主题适配", () => {
     expect(pieBlock).toContain("stroke-width: 2px")
   })
 
+  it("概览与用量卡片移除马赛克底纹，保留实体底色与像素浮雕", () => {
+    const selector =
+      '[data-theme="minecraft"] .overview-metric-card,\n' +
+      '[data-theme="minecraft"] .overview-summary-card,\n' +
+      '[data-theme="minecraft"] .overview-heatmap-card,\n' +
+      '[data-theme="minecraft"] .usage-stat-card,\n' +
+      '[data-theme="minecraft"] .usage-chart-card,\n' +
+      '[data-theme="minecraft"] .usage-table-card {'
+    const start = minecraftCss.indexOf(selector)
+    expect(start).toBeGreaterThanOrEqual(0)
+
+    const block = minecraftCss.slice(start, minecraftCss.indexOf("}", start))
+    expect(block).not.toContain("background-image")
+    expect(block).toContain("background-color: #1e1e2a !important")
+    expect(block).toContain("border: 2px solid #000000 !important")
+    expect(block).toContain("box-shadow:")
+  })
+
   it("表格对比度收敛：表头/正文降亮、hover 压暗、边框去纯黑、投影去亮边", () => {
     const thBlock = ruleBlock(minecraftCss, '[data-theme="minecraft"] .usage-table th')
     expect(thBlock).toContain("color: #8b8ba0")

@@ -19,6 +19,7 @@ import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
@@ -478,7 +479,6 @@ export const ModelProviderSettings = ({
             aria-label={t("common.search")}
             placeholder={t("common.search")}
             prefix={<Search className="h-3.5 w-3.5 shrink-0 text-white/35" />}
-            size="xs"
             value={modelListQuery}
             onChange={(event) => setModelListQuery(event.target.value)}
           />
@@ -490,17 +490,18 @@ export const ModelProviderSettings = ({
             <div className="py-1 text-white/45">{t("settings.noModelsConfigured")}</div>
           ) : (
             filteredModels.map((model) => (
-              <button
+              <LxNavItem
                 key={model.id}
-                type="button"
-                className="flex w-full items-center justify-between gap-3 rounded px-1 py-1 text-left text-xs text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+                size="small"
+                level={3}
+                className="w-full justify-between gap-3 text-white/80 hover:text-white"
                 onClick={() => applyFetchedModel(providerId, modelKey, model)}
               >
                 <span className="min-w-0 truncate">{model.id}</span>
                 {model.ownedBy ? (
-                  <span className="shrink-0 text-[10px] text-white/35">{model.ownedBy}</span>
+                  <span className="shrink-0 text-xs text-white/35">{model.ownedBy}</span>
                 ) : null}
-              </button>
+              </LxNavItem>
             ))
           )}
         </div>
@@ -530,13 +531,10 @@ export const ModelProviderSettings = ({
               const isSelected = providerKey === selectedProviderId
               const isEnabled = settings.enabledProviders.includes(providerKey)
               return (
-                <div
+                <LxNavItem
                   key={providerKey}
-                  role="button"
-                  tabIndex={0}
-                  className={`flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 ${
-                    isSelected ? "bg-white/5 text-white" : "text-white/70"
-                  }`}
+                  level={2}
+                  className={`w-full ${isSelected ? "bg-white/5 text-white" : "text-white/70"}`}
                   aria-current={isSelected ? "true" : undefined}
                   onClick={() => setSelectedProviderId(providerKey)}
                   onContextMenu={(event) => {
@@ -548,11 +546,6 @@ export const ModelProviderSettings = ({
                       x: event.clientX,
                       y: event.clientY,
                     })
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      setSelectedProviderId(providerKey)
-                    }
                   }}
                 >
                   <LxIconButton
@@ -576,7 +569,7 @@ export const ModelProviderSettings = ({
                   <span className="min-w-0 flex-1 truncate select-none">
                     {provider.name || provider.id}
                   </span>
-                </div>
+                </LxNavItem>
               )
             })}
           </div>
@@ -974,7 +967,6 @@ export const ModelProviderSettings = ({
                               <LxSelect
                                 value=""
                                 placeholder={t("settings.addVariant")}
-                                size="small"
                                 className="!w-[160px]"
                                 options={[
                                   { value: "openai", label: t("settings.presetVariantOpenAI") },
@@ -1054,7 +1046,6 @@ export const ModelProviderSettings = ({
                                   <span className="shrink-0">{t("settings.defaultVariant")}:</span>
                                   <LxSelect
                                     value={model.variant ?? "default"}
-                                    size="small"
                                     className="!w-[140px]"
                                     options={[
                                       { value: "default", label: t("settings.defaultVariantNone") },

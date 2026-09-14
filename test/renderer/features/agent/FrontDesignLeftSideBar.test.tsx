@@ -232,6 +232,8 @@ describe("FrontDesignLeftSideBar 侧边栏多 Tab 原型树", () => {
     // 渲染了带图标的 IconButton
     const iconBtn = screen.getByRole("button", { name: "Icon Prototype" })
     expect(iconBtn).not.toBeNull()
+    // 折叠态设计项与展开态设计项同层级（叶子）
+    expect(iconBtn.getAttribute("data-item-level")).toBe("3")
 
     // 点击图标按钮激活该设计项
     fireEvent.click(iconBtn)

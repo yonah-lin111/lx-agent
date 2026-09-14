@@ -203,7 +203,6 @@ export const CliSettings = (): React.JSX.Element => {
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0 max-w-xs">
           <LxInput
-            size="sm"
             prefix={<Search className="h-3.5 w-3.5 text-white/40" />}
             placeholder={t("settings.cliSearchPlaceholder")}
             value={searchQuery}
@@ -261,19 +260,21 @@ export const CliSettings = (): React.JSX.Element => {
                       {tool.displayName}
                     </span>
 
-                    <code className="settings-cli-command shrink-0 rounded bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-white/40">
+                    <code className="settings-cli-command shrink-0 rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-white/40">
                       {displayCommand}
                     </code>
                     {tool.homepage ? (
-                      <LxTooltip content={t("settings.cliHomepage")} placement="top">
-                        <button
-                          type="button"
-                          className="shrink-0 text-white/30 transition-colors hover:text-white/70"
-                          onClick={() => handleOpenHomepage(tool.homepage)}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </button>
-                      </LxTooltip>
+                      <LxIconButton
+                        size="small"
+                        variant="ghost"
+                        showHoverBg={false}
+                        aria-label={t("settings.cliHomepage")}
+                        title={{ content: t("settings.cliHomepage"), placement: "top" }}
+                        className="shrink-0"
+                        onClick={() => handleOpenHomepage(tool.homepage)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </LxIconButton>
                     ) : null}
                   </div>
 
@@ -345,11 +346,11 @@ export const CliSettings = (): React.JSX.Element => {
                   {/* 左侧：可执行路径或错误信息 */}
                   <div className="min-w-0 flex-1">
                     {tool.path ? (
-                      <p className="truncate font-mono text-[11px] text-white/35" title={tool.path}>
+                      <p className="truncate font-mono text-xs text-white/35" title={tool.path}>
                         {tool.path}
                       </p>
                     ) : (
-                      <p className="truncate text-[11px] text-white/25">
+                      <p className="truncate text-xs text-white/25">
                         {tool.error || t("settings.cliNotInstalled")}
                       </p>
                     )}
@@ -361,7 +362,7 @@ export const CliSettings = (): React.JSX.Element => {
                       <button
                         type="button"
                         disabled={Boolean(operating)}
-                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded bg-purple-500/20 px-2 text-[11px] font-medium text-purple-300 transition-colors hover:bg-purple-500/30 disabled:opacity-50"
+                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded bg-purple-500/20 px-2 text-xs font-medium text-purple-300 transition-colors hover:bg-purple-500/30 disabled:opacity-50"
                         onClick={() => void handleRunAction(tool.id, "update", tool.displayName)}
                       >
                         {operating === "update" ? (
@@ -379,7 +380,7 @@ export const CliSettings = (): React.JSX.Element => {
                       <button
                         type="button"
                         disabled={Boolean(operating)}
-                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 text-[11px] font-medium text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
+                        className="settings-cli-action-btn flex h-5.5 items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 text-xs font-medium text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:opacity-40"
                         onClick={() => void handleRunAction(tool.id, "install", tool.displayName)}
                       >
                         {operating === "install" ? (
@@ -431,7 +432,6 @@ export const CliSettings = (): React.JSX.Element => {
                     </span>
                     <div className="flex-1">
                       <LxInput
-                        size="xs"
                         placeholder={t("settings.cliCustomPathPlaceholder")}
                         value={currentCustomPath}
                         onChange={(e) => handleCustomPathChange(tool.id, e.target.value)}

@@ -11,6 +11,7 @@ import {
 import { AlertTriangle, Edit2, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -276,7 +277,6 @@ export const SubagentSettings = (): React.JSX.Element => {
             </span>
             <div className="grid gap-2">
               <LxSelect
-                size="small"
                 value={settings.defaultModel?.provider ?? ""}
                 options={[
                   { value: "", label: t("settings.subagentsInheritModel") },
@@ -285,7 +285,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                 onChange={handleDefaultProviderChange}
               />
               <LxSelect
-                size="small"
                 value={settings.defaultModel?.model ?? ""}
                 options={modelOptions(settings.defaultModel?.provider ?? "")}
                 disabled={
@@ -298,11 +297,13 @@ export const SubagentSettings = (): React.JSX.Element => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-              {t("settings.subagentsMode")}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                {t("settings.subagentsMode")}
+              </span>
+              <LxInfoTooltip markdown={t("settings.subagentsModeHint")} placement="right" />
+            </div>
             <LxSelect
-              size="small"
               value={settings.mode ?? "build"}
               options={[
                 { value: "build", label: t("agent.collaborationModeBuild") },
@@ -312,27 +313,26 @@ export const SubagentSettings = (): React.JSX.Element => {
               ]}
               onChange={handleModeChange}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-              {t("settings.subagentsModeHint")}
-            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-              {t("settings.subagentsMaxConcurrent")}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                {t("settings.subagentsMaxConcurrent")}
+              </span>
+              <LxInfoTooltip
+                markdown={t("settings.subagentsMaxConcurrentHint")}
+                placement="right"
+              />
+            </div>
             <LxInput
               type="number"
               min={1}
               max={SUBAGENT_MAX_CONCURRENCY_LIMIT}
-              size="xs"
               aria-label={t("settings.subagentsMaxConcurrent")}
               value={settings.maxConcurrent ?? ""}
               onChange={handleMaxConcurrentChange}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-              {t("settings.subagentsMaxConcurrentHint")}
-            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -343,7 +343,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               type="number"
               min={1}
               max={SUBAGENT_MAX_DEPTH_LIMIT}
-              size="xs"
               aria-label={t("settings.subagentsMaxDepth")}
               value={settings.maxDepth ?? 1}
               onChange={handleMaxDepthChange}
@@ -361,7 +360,7 @@ export const SubagentSettings = (): React.JSX.Element => {
           {builtins.map((role) => (
             <div
               key={role.name}
-              className="flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+              className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
@@ -374,7 +373,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                 {role.description}
               </p>
-              <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+              <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                 <span>{t("settings.subagentsTools")}:</span>{" "}
                 <span className="font-mono">
                   {role.tools && role.tools.length > 0
@@ -412,7 +411,7 @@ export const SubagentSettings = (): React.JSX.Element => {
             {roleEntries.map(([name, config]) => (
               <div
                 key={name}
-                className="flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+                className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
@@ -447,7 +446,7 @@ export const SubagentSettings = (): React.JSX.Element => {
                 <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                   {config.description}
                 </p>
-                <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                   <span>{t("settings.subagentsModel")}:</span>{" "}
                   <span>
                     {config.model
@@ -455,7 +454,7 @@ export const SubagentSettings = (): React.JSX.Element => {
                       : t("settings.subagentsInheritModel")}
                   </span>
                 </p>
-                <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                   <span>{t("settings.subagentsTools")}:</span>{" "}
                   <span className="font-mono">
                     {config.tools?.length
@@ -486,7 +485,6 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsName")} *</span>
             <LxInput
-              size="sm"
               placeholder={t("settings.subagentsNamePlaceholder")}
               value={formName}
               onChange={(e) => {
@@ -501,7 +499,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               {t("settings.subagentsDescription")} *
             </span>
             <LxInput
-              size="sm"
               placeholder={t("settings.subagentsDescriptionPlaceholder")}
               value={formDescription}
               onChange={(e) => {
@@ -514,7 +511,6 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsInstructions")}</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.subagentsInstructionsPlaceholder")}
               value={formInstructions}
@@ -526,7 +522,6 @@ export const SubagentSettings = (): React.JSX.Element => {
             <span className="font-medium text-white/70">{t("settings.subagentsModel")}</span>
             <div className="grid gap-2">
               <LxSelect
-                size="small"
                 zIndex={MODAL_SELECT_Z_INDEX}
                 value={formModelProvider}
                 options={[
@@ -540,7 +535,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                 }}
               />
               <LxSelect
-                size="small"
                 zIndex={MODAL_SELECT_Z_INDEX}
                 value={formModelModel}
                 options={modelOptions(formModelProvider)}
@@ -553,13 +547,12 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsTools")}</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.subagentsToolsPlaceholder")}
               value={formTools}
               onChange={(e) => setFormTools(e.target.value)}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
               {t("settings.subagentsToolsHint")}
             </span>
           </div>

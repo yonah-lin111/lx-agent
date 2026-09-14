@@ -87,6 +87,7 @@ export const SettingsLeftSideBar = ({
             return (
               <LxTooltip key={section.id} content={label} placement="right">
                 <LxNavItem
+                  level={1}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={label}
                   className={`w-full justify-center ${
@@ -118,6 +119,7 @@ export const SettingsLeftSideBar = ({
           return (
             <LxNavItem
               key={section.id}
+              level={1}
               aria-current={isActive ? "page" : undefined}
               className={isActive ? "bg-white/5 text-white" : "text-white/70"}
               onClick={() => handleSectionClick(section.id)}

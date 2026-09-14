@@ -259,7 +259,6 @@ export const en = {
       "This task needs an approval on the Gateway host before it can continue. Approve it there, or stop the task.",
     officesSection: "Offices",
     rosterSection: "Team",
-    rosterHint: "Click a coworker to assign tasks; Ctrl/Cmd-click to multi-select.",
     conversationEmpty: "No message yet. Pick a coworker and send a task.",
     workingCount: "{{count}} coworker(s) working…",
     officePickerTitle: "Switch office",

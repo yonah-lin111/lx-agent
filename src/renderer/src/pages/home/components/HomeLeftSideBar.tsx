@@ -62,6 +62,7 @@ export const HomeLeftSideBar = ({
             return (
               <LxTooltip key={item.view} content={t(item.labelKey)} placement="right">
                 <LxNavItem
+                  level={1}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={t(item.labelKey)}
                   className={`w-full justify-center ${
@@ -98,6 +99,7 @@ export const HomeLeftSideBar = ({
           return (
             <LxNavItem
               key={item.view}
+              level={1}
               aria-current={isActive ? "page" : undefined}
               className={isActive ? "bg-white/5 text-white" : "text-white/70"}
               onClick={() => handleSelect(item.view)}

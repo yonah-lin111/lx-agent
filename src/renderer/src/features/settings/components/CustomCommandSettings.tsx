@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
+import { LxNavItem } from "@/components/ui/LxNavItem"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 import { useLxToast } from "@/components/ui/LxToast"
@@ -506,23 +507,15 @@ ${t("settings.customCommandAgentMDHelpDesc")}
               <>
                 {/* 草稿项：只要 hasDraft 存在就常驻列表，不随查看其它命令而消失 */}
                 {hasDraft && (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className={`group flex items-center justify-between rounded-[4px] px-2 py-1.5 text-xs transition-colors cursor-pointer ${
-                      isEditingDraft
-                        ? "bg-white/10 text-white font-medium"
-                        : "text-emerald-400 hover:bg-white/5"
+                  <LxNavItem
+                    size="small"
+                    level={2}
+                    className={`group w-full justify-between ${
+                      isEditingDraft ? "bg-white/10 text-white font-medium" : "text-emerald-400"
                     }`}
                     onClick={() => {
                       setIsEditingDraft(true)
                       setSelectedCommandName(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        setIsEditingDraft(true)
-                        setSelectedCommandName(null)
-                      }
                     }}
                   >
                     <div className="flex min-w-0 items-center gap-1.5">
@@ -535,43 +528,40 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                       <LxTag size="small" bgClass="bg-emerald-500/20 text-emerald-300">
                         Draft
                       </LxTag>
-                      <button
-                        type="button"
+                      <LxIconButton
+                        size="small"
+                        variant="ghost"
+                        showHoverBg={false}
                         aria-label={t("common.delete")}
-                        className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-opacity"
+                        hoverTextClass="hover:text-rose-400"
+                        className="opacity-0 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDeleteDraft()
                         }}
                       >
                         <Trash2 className="h-3 w-3" />
-                      </button>
+                      </LxIconButton>
                     </div>
-                  </div>
+                  </LxNavItem>
                 )}
 
                 {commands.map((cmd) => {
                   const isSelected = !isEditingDraft && cmd.name === selectedCommandName
                   const isItemModified = Boolean(modifiedStore[getCommandKey(cmd.name)])
                   return (
-                    <div
+                    <LxNavItem
                       key={cmd.name}
-                      role="button"
-                      tabIndex={0}
-                      className={`group flex items-center justify-between rounded-[4px] px-2 py-1.5 text-xs transition-colors cursor-pointer ${
+                      size="small"
+                      level={2}
+                      className={`group w-full justify-between ${
                         isSelected
                           ? "bg-white/10 text-white font-medium"
-                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                          : "text-white/70 hover:text-white"
                       }`}
                       onClick={() => {
                         setIsEditingDraft(false)
                         setSelectedCommandName(cmd.name)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          setIsEditingDraft(false)
-                          setSelectedCommandName(cmd.name)
-                        }
                       }}
                     >
                       <div className="flex min-w-0 items-center gap-1.5">
@@ -591,17 +581,20 @@ ${t("settings.customCommandAgentMDHelpDesc")}
                           onConfirm={() => void handleDelete(cmd.name)}
                           placement="top"
                         >
-                          <button
-                            type="button"
+                          <LxIconButton
+                            size="small"
+                            variant="ghost"
+                            showHoverBg={false}
+                            hoverTextClass="hover:text-rose-400"
                             aria-label={t("common.delete")}
-                            className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-opacity"
+                            className="opacity-0 group-hover:opacity-100"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Trash2 className="h-3 w-3" />
-                          </button>
+                          </LxIconButton>
                         </LxTooltip>
                       </div>
-                    </div>
+                    </LxNavItem>
                   )
                 })}
               </>

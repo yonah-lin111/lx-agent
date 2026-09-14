@@ -1,4 +1,5 @@
 import { RotateCcw, Save } from "lucide-react"
+import { LxIconButton } from "@/components/ui/LxIconButton"
 import { useLxToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { useSettingsDraftStore } from "@/features/settings/hooks/settingsDraftStore"
@@ -46,26 +47,26 @@ export const SettingsActionBar = ({
         content={!isDirty || isSaving ? undefined : t("settings.confirmResetContent")}
         onConfirm={!isDirty || isSaving ? undefined : handleConfirmReset}
       >
-        <button
-          type="button"
+        <LxIconButton
           disabled={!isDirty || isSaving}
-          className="flex items-center gap-1 rounded-[6px] border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          textClass="text-white/70"
+          className="px-2.5 py-1"
+          icon={<RotateCcw className="h-3.5 w-3.5" />}
         >
-          <RotateCcw className="h-3 w-3" />
           <span>{t("common.reset")}</span>
-        </button>
+        </LxIconButton>
       </LxTooltip>
 
       {/* 保存按钮 */}
-      <button
-        type="button"
+      <LxIconButton
         disabled={!isDirty || isSaving}
+        textClass="text-white"
+        className="px-3 py-1 font-medium"
+        icon={<Save className="h-3.5 w-3.5" />}
         onClick={() => void handleSave()}
-        className="flex items-center gap-1 rounded-[6px] border border-white/15 bg-white/[0.08] px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-white/[0.14] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Save className="h-3 w-3" />
         <span>{isSaving ? t("common.saving") : t("common.save")}</span>
-      </button>
+      </LxIconButton>
 
       {/* 状态小圆点（调整到保存按钮左侧） */}
       <SettingsStatusPill />

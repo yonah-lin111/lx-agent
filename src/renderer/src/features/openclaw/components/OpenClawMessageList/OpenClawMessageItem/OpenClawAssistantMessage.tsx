@@ -33,7 +33,10 @@ export const OpenClawAssistantMessage = ({
         <span className="text-[12px] font-medium text-white/70">{agent?.name ?? agentId}</span>
       </div>
 
-      <div className="relative min-w-0 max-w-full rounded-[18px] rounded-bl-[4px] bg-[#2a2a2a] px-3.5 py-2.5 text-[13px] text-white/90 shadow-sm">
+      <div
+        data-assistant-bubble="true"
+        className="relative min-w-0 max-w-full rounded-[18px] rounded-bl-[4px] bg-[#303030] px-3.5 py-2.5 text-[13px] text-white/90 shadow-sm"
+      >
         {content ? (
           <LxMarkdownPreview
             html={markdownRenderer.render(content)}
