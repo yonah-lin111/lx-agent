@@ -85,6 +85,15 @@ export const AgentExecutionFlowItem = ({
 
   const isRunning = step.status === "running"
 
+  // 时间/token 等指标仅在步骤执行完成后展示；运行中不渲染，避免指标频繁跳动
+  const hasTokenMetrics =
+    (step.tokens?.input ?? 0) > 0 || (step.tokens?.output ?? 0) > 0 || (step.tokens?.total ?? 0) > 0
+  const showTokenMetrics = !isRunning && hasTokenMetrics
+  const showFooter =
+    showTokenMetrics ||
+    Boolean(step.parallel) ||
+    (step.kind === "subagent" && Boolean(step.subagentContent))
+
   const effectiveExpanded = isExpanded
 
   // 解析用户步骤中的 Skill 名称与 markdown 说明（用于 hover 时的 LxInfoTooltip）
@@ -548,19 +557,12 @@ export const AgentExecutionFlowItem = ({
         </div>
       ) : null}
 
-      {/* 底部 Token 指标与并行状态栏：折叠与展开状态下均可见，存在有效 Token、并行状态或 Subagent 详情时始终渲染（包括 running 状态） */}
-      {((step.tokens?.input !== undefined && step.tokens.input > 0) ||
-        (step.tokens?.output !== undefined && step.tokens.output > 0) ||
-        (step.tokens?.total !== undefined && step.tokens.total > 0) ||
-        Boolean(step.parallel) ||
-        (step.kind === "subagent" && Boolean(step.subagentContent))) && (
+      {/* 底部 Token 指标与并行状态栏：指标仅在步骤执行完成后展示；并行标记与 Subagent 详情不受运行态限制 */}
+      {showFooter && (
         <div className="agent-execution-flow-step-footer flex items-center justify-between gap-2 border-t border-white/5 px-2.5 py-1 select-none font-mono text-xs">
           {/* 左侧 Token 指标与 Subagent Detail 按钮 */}
           <div className="flex items-center gap-2">
-            {step.tokens &&
-            ((step.tokens.input !== undefined && step.tokens.input > 0) ||
-              (step.tokens.output !== undefined && step.tokens.output > 0) ||
-              (step.tokens.total !== undefined && step.tokens.total > 0)) ? (
+            {showTokenMetrics && step.tokens ? (
               <LxTooltip
                 placement="top"
                 content={

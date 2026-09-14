@@ -221,20 +221,23 @@ export const AgentExecutionFlowList = forwardRef<
       return max
     }, [steps])
 
-    // 获取最后一个 turn（maxTurn）的最后一个步骤 ID（仅在 AI 输出完成即 !isStreaming 时才默认展开）
-    const lastStepOfMaxTurnId = useMemo(() => {
-      if (isStreaming || maxTurn <= 0) return null
+    // 每个已完成 turn 的最后一个合格步骤 ID 集合（排除 modelSwitch / compaction / undo）。
+    // 这些收尾步骤默认展开；turn 完成后即使再发送新消息也保持展开，不再自动折叠。
+    const lastStepIdsOfCompletedTurns = useMemo(() => {
+      const ids = new Set<string>()
+      const seenTurns = new Set<number>()
       for (let i = steps.length - 1; i >= 0; i--) {
-        if (
-          steps[i].turnIndex === maxTurn &&
-          steps[i].kind !== "modelSwitch" &&
-          steps[i].kind !== "compaction" &&
-          steps[i].kind !== "undo"
-        ) {
-          return steps[i].id
+        const step = steps[i]
+        if (step.turnIndex <= 0 || seenTurns.has(step.turnIndex)) continue
+        if (step.kind === "modelSwitch" || step.kind === "compaction" || step.kind === "undo") {
+          continue
+        }
+        seenTurns.add(step.turnIndex)
+        if (step.turnIndex < maxTurn || !isStreaming) {
+          ids.add(step.id)
         }
       }
-      return null
+      return ids
     }, [steps, maxTurn, isStreaming])
 
     // 计算某个步骤当前的展开状态（用户手动覆盖 > 默认展开规则）
@@ -246,7 +249,7 @@ export const AgentExecutionFlowList = forwardRef<
         if (step.toolContent?.toolName === "question") {
           return step.toolContent.question !== undefined
         }
-        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；最后一个 turn 的最后一个 step（非流式）默认展开；其余全部折叠
+        // 默认规则：全部用户 item 默认展开；异常/中断 item 默认展开；方案卡片 proposedPlan 默认展开；审查卡片 reviewFindings 默认展开；todowrite 工具默认展开；每个已完成 turn 的最后一个 step 默认展开；其余全部折叠
         if (
           step.kind === "user" ||
           step.kind === "error" ||
@@ -257,17 +260,12 @@ export const AgentExecutionFlowList = forwardRef<
         ) {
           return true
         }
-        if (
-          step.id === lastStepOfMaxTurnId &&
-          step.kind !== "modelSwitch" &&
-          step.kind !== "compaction" &&
-          step.kind !== "undo"
-        ) {
+        if (lastStepIdsOfCompletedTurns.has(step.id)) {
           return true
         }
         return false
       },
-      [userExpansionOverrides, lastStepOfMaxTurnId],
+      [userExpansionOverrides, lastStepIdsOfCompletedTurns],
     )
 
     // question 完成后清除其手动展开覆盖，恢复完成态默认折叠；历史 question 仍可由用户再次展开查看。

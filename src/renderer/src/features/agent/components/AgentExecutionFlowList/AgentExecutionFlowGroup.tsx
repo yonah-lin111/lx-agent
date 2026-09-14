@@ -5,17 +5,15 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  CornerDownRight,
   Loader2,
 } from "lucide-react"
 import type React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import type { ExecutionStep, ExecutionSubagentContent } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
 import { AgentExecutionFlowItemMemo } from "./AgentExecutionFlowItemMemo"
-import { FlowItemToolTitle } from "./FlowItemToolTitle"
 import { copyToClipboard, formatDurationMs, formatJsonString, formatTokensShort } from "./types"
 
 export interface AgentExecutionFlowGroupProps {
@@ -31,7 +29,7 @@ export interface AgentExecutionFlowGroupProps {
 
 /**
  * AgentExecutionFlowGroup - 连续非 AI / 思考 / todo / question 的执行步骤折叠组组件
- * 默认不展开（包括运行中也不展开）；在 group 头部实时展示当前执行步骤（如运行中的 tool 或最新完成的 tool）
+ * 默认不展开（包括运行中也不展开）；时间与 Token 指标仅在 group 执行完成后展示。
  */
 export const AgentExecutionFlowGroup = ({
   steps,
@@ -49,108 +47,71 @@ export const AgentExecutionFlowGroup = ({
     return null
   }
 
-  // 计算当前组的状态及代表性步骤
+  // 计算当前组的状态：running 步骤存在或仍是流式尾部（后方无不可折叠 item）时视为运行中
   const runningStep = useMemo(() => steps.find((s) => s.status === "running"), [steps])
   const errorStep = useMemo(() => steps.find((s) => s.status === "error"), [steps])
-  const lastStep = steps[steps.length - 1]
-  const activeStep = runningStep || lastStep
-
-  // 计算运行时长（支持 running 动态累计计时）
-  const [runningElapsedMs, setRunningElapsedMs] = useState(0)
   const isRunning = Boolean(runningStep || isStreamingActive)
   const isError = Boolean(!isRunning && errorStep)
   const isDone = !isRunning && !isError
 
   // 聚合静态总耗时与总 Token（优先按首尾时间戳跨度计算，兼顾单步累加保底）
-  const {
-    staticDurationMs,
-    totalTokens,
-    inputTokens,
-    outputTokens,
-    cacheReadTokens,
-    firstTimestamp,
-  } = useMemo(() => {
-    let sumDuration = 0
-    let tokens = 0
-    let input = 0
-    let output = 0
-    let cacheRead = 0
-    let firstTs: number | undefined
-    let lastTs: number | undefined
-    let lastStepDuration: number | undefined
+  const { staticDurationMs, totalTokens, inputTokens, outputTokens, cacheReadTokens } =
+    useMemo(() => {
+      let sumDuration = 0
+      let tokens = 0
+      let input = 0
+      let output = 0
+      let cacheRead = 0
+      let firstTs: number | undefined
+      let lastTs: number | undefined
+      let lastStepDuration: number | undefined
 
-    for (const step of steps) {
-      if (step.durationMs !== undefined) {
-        sumDuration += step.durationMs
+      for (const step of steps) {
+        if (step.durationMs !== undefined) {
+          sumDuration += step.durationMs
+        }
+        if (step.tokens) {
+          if (step.tokens.total !== undefined) {
+            tokens += step.tokens.total
+          }
+          if (step.tokens.input !== undefined) {
+            input += step.tokens.input
+          }
+          if (step.tokens.output !== undefined) {
+            output += step.tokens.output
+          }
+          if (step.tokens.cacheRead !== undefined) {
+            cacheRead += step.tokens.cacheRead
+          }
+        }
+        if (step.timestamp !== undefined) {
+          if (firstTs === undefined) {
+            firstTs = step.timestamp
+          }
+          lastTs = step.timestamp
+          lastStepDuration = step.durationMs
+        }
       }
-      if (step.tokens) {
-        if (step.tokens.total !== undefined) {
-          tokens += step.tokens.total
-        }
-        if (step.tokens.input !== undefined) {
-          input += step.tokens.input
-        }
-        if (step.tokens.output !== undefined) {
-          output += step.tokens.output
-        }
-        if (step.tokens.cacheRead !== undefined) {
-          cacheRead += step.tokens.cacheRead
+
+      let calculatedDuration = sumDuration
+      if (firstTs !== undefined && lastTs !== undefined && lastTs >= firstTs) {
+        const span =
+          lastTs -
+          firstTs +
+          (lastStepDuration !== undefined && lastStepDuration > 0 ? lastStepDuration : 0)
+        if (span > 0) {
+          calculatedDuration = span
         }
       }
-      if (step.timestamp !== undefined) {
-        if (firstTs === undefined) {
-          firstTs = step.timestamp
-        }
-        lastTs = step.timestamp
-        lastStepDuration = step.durationMs
+
+      return {
+        staticDurationMs: calculatedDuration,
+        totalTokens: tokens,
+        inputTokens: input,
+        outputTokens: output,
+        cacheReadTokens: cacheRead,
       }
-    }
-
-    let calculatedDuration = sumDuration
-    if (firstTs !== undefined && lastTs !== undefined && lastTs >= firstTs) {
-      const span =
-        lastTs -
-        firstTs +
-        (lastStepDuration !== undefined && lastStepDuration > 0 ? lastStepDuration : 0)
-      if (span > 0) {
-        calculatedDuration = span
-      }
-    }
-
-    return {
-      staticDurationMs: calculatedDuration,
-      totalTokens: tokens,
-      inputTokens: input,
-      outputTokens: output,
-      cacheReadTokens: cacheRead,
-      firstTimestamp: firstTs,
-    }
-  }, [steps])
-
-  // 运行中的实时动态耗时更新（若存在首个时间戳则直接以 Date.now() - firstTimestamp 动态刷新）
-  useEffect(() => {
-    if (!isRunning) {
-      setRunningElapsedMs(0)
-      return
-    }
-    const baseTs = firstTimestamp ?? runningStep?.timestamp
-    if (!baseTs) {
-      setRunningElapsedMs(0)
-      return
-    }
-    const updateElapsed = () => {
-      setRunningElapsedMs(Math.max(0, Date.now() - baseTs))
-    }
-    updateElapsed()
-    const timer = setInterval(updateElapsed, 500)
-    return () => clearInterval(timer)
-  }, [isRunning, firstTimestamp, runningStep?.timestamp])
-
-  const totalDurationMs = isRunning
-    ? firstTimestamp
-      ? runningElapsedMs
-      : staticDurationMs + runningElapsedMs
-    : staticDurationMs
+    }, [steps])
 
   // 聚合复制文本
   const copyPayload = useMemo(() => {
@@ -195,7 +156,7 @@ export const AgentExecutionFlowGroup = ({
       data-expanded={isExpanded}
       className="agent-execution-flow-group rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-white/[0.06] transition-colors hover:border-[var(--color-theme-border-strong,rgba(255,255,255,0.12))] hover:bg-white/[0.09]"
     >
-      {/* 头部摘要栏（固定双行展示） */}
+      {/* 头部摘要栏（单行：折叠箭头、Group 标题、数量、右侧状态图标与完成后的总耗时） */}
       <div
         role="button"
         tabIndex={0}
@@ -206,118 +167,95 @@ export const AgentExecutionFlowGroup = ({
             onToggleExpand()
           }
         }}
-        className="agent-execution-flow-group-header flex cursor-pointer flex-col justify-center gap-1 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
+        className="agent-execution-flow-group-header flex cursor-pointer items-center justify-between gap-2 py-1.5 px-2.5 select-none transition-colors hover:bg-white/[0.02]"
       >
-        {/* 第一行：折叠箭头、Group 标题、数量、右侧总耗时与状态图标 */}
-        <div className="flex h-5 w-full items-center justify-between gap-2 leading-none">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none overflow-hidden">
-            {/* 折叠箭头 */}
-            <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
-              {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5" />
-              )}
-            </div>
-
-            {/* Group 标识小圆点与标题 */}
-            <span
-              aria-hidden
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
-              }`}
-            />
-            <span className="shrink-0 font-mono text-xs font-semibold text-[var(--color-theme-text,#ffffff)]/90">
-              Execute Group
-            </span>
-            <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
-              ({steps.length})
-            </span>
-          </div>
-
-          {/* 右侧总运行时间与状态指标 */}
-          <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
-            {totalDurationMs > 0 && (
-              <span
-                data-testid="flow-group-duration"
-                className={`agent-execution-flow-step-duration shrink-0 font-mono text-xs font-medium leading-none ${
-                  isRunning
-                    ? "text-sky-300"
-                    : "text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
-                }`}
-              >
-                {formatDurationMs(totalDurationMs)}
-              </span>
-            )}
-
-            {/* 状态图标 */}
-            {isRunning && (
-              <LxIconButton
-                size="small"
-                aria-label="Running"
-                title={{ content: "Running", placement: "left" }}
-                className="text-sky-400"
-              >
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
-              </LxIconButton>
-            )}
-            {isError && (
-              <LxIconButton
-                size="small"
-                aria-label="Error"
-                title={{ content: "Error", placement: "left" }}
-                className="text-rose-400"
-              >
-                <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
-              </LxIconButton>
-            )}
-            {isDone && (
-              <LxIconButton
-                size="small"
-                aria-label="Done"
-                title={{ content: "Done", placement: "left" }}
-                className="text-emerald-400/80"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
-              </LxIconButton>
-            )}
-
-            {/* 快捷复制全部步骤 */}
-            {!isRunning && (
-              <LxIconButton
-                size="small"
-                aria-label={t("agent.copyContent")}
-                title={{
-                  content: isCopied ? t("common.copied") : t("agent.copyContent"),
-                  placement: "left",
-                }}
-                onClick={handleCopy}
-              >
-                {isCopied ? (
-                  <Check className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <Copy className="h-3 w-3 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
-                )}
-              </LxIconButton>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 leading-none overflow-hidden">
+          {/* 折叠箭头 */}
+          <div className="flex shrink-0 items-center text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]">
+            {isExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
             )}
           </div>
+
+          {/* Group 标识小圆点与标题 */}
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+              isRunning ? "bg-sky-400 animate-pulse" : isError ? "bg-rose-400" : "bg-white/80"
+            }`}
+          />
+          <span className="shrink-0 font-mono text-xs font-semibold text-[var(--color-theme-text,#ffffff)]/90">
+            Execute Group
+          </span>
+          <span className="shrink-0 font-mono text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+            ({steps.length})
+          </span>
         </div>
 
-        {/* 第二行：展示代表步骤标题（运行中为正在运行项，完成态为最后项） */}
-        {activeStep && (
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-5 text-xs leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
-            <CornerDownRight
-              className={`h-3 w-3 shrink-0 ${isRunning ? "text-sky-400/80" : "text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]"}`}
-            />
-            {activeStep.kind === "tool" && activeStep.toolContent ? (
-              <FlowItemToolTitle toolContent={activeStep.toolContent} />
-            ) : (
-              <span className="truncate font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
-                {activeStep.title}
-              </span>
-            )}
-          </div>
-        )}
+        {/* 右侧指标与状态：总耗时仅在 group 执行完成后展示 */}
+        <div className="flex shrink-0 items-center gap-1.5 font-mono text-xs leading-none">
+          {!isRunning && staticDurationMs > 0 && (
+            <span
+              data-testid="flow-group-duration"
+              className="agent-execution-flow-step-duration shrink-0 font-mono text-xs font-medium leading-none text-[var(--color-theme-text-muted,rgba(255,255,255,0.5))]"
+            >
+              {formatDurationMs(staticDurationMs)}
+            </span>
+          )}
+
+          {/* 状态图标 */}
+          {isRunning && (
+            <LxIconButton
+              size="small"
+              aria-label="Running"
+              title={{ content: "Running", placement: "left" }}
+              className="text-sky-400"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+            </LxIconButton>
+          )}
+          {isError && (
+            <LxIconButton
+              size="small"
+              aria-label="Error"
+              title={{ content: "Error", placement: "left" }}
+              className="text-rose-400"
+            >
+              <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
+            </LxIconButton>
+          )}
+          {isDone && (
+            <LxIconButton
+              size="small"
+              aria-label="Done"
+              title={{ content: "Done", placement: "left" }}
+              className="text-emerald-400/80"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
+            </LxIconButton>
+          )}
+
+          {/* 快捷复制全部步骤 */}
+          {!isRunning && (
+            <LxIconButton
+              size="small"
+              aria-label={t("agent.copyContent")}
+              title={{
+                content: isCopied ? t("common.copied") : t("agent.copyContent"),
+                placement: "left",
+              }}
+              onClick={handleCopy}
+            >
+              {isCopied ? (
+                <Check className="h-3 w-3 text-emerald-400" />
+              ) : (
+                <Copy className="h-3 w-3 text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]" />
+              )}
+            </LxIconButton>
+          )}
+        </div>
       </div>
 
       {/* 展开子步骤列表 */}
@@ -337,8 +275,8 @@ export const AgentExecutionFlowGroup = ({
         </div>
       )}
 
-      {/* 底部 Token 指标栏：折叠与展开状态下均可见，存在有效 Token 时始终渲染（包括 running 状态） */}
-      {(inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
+      {/* 底部 Token 指标栏：仅在 group 执行完成后展示（运行中不渲染，避免指标频繁跳动） */}
+      {!isRunning && (inputTokens > 0 || outputTokens > 0 || totalTokens > 0) && (
         <div className="agent-execution-flow-group-footer flex items-center justify-start border-t border-[var(--color-theme-border,rgba(255,255,255,0.06))] px-2.5 py-1 select-none">
           <LxTooltip
             placement="top"
