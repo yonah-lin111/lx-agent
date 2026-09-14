@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { projectApi } from "@/features/project/api/projectApi"
 import { ProjectRecentItemsTags } from "@/features/project/components/ProjectRecentItemsTags"
@@ -136,5 +136,71 @@ describe("ProjectRecentItemsTags Component", () => {
 
     const tag = document.querySelector('.project-recent-tag[data-color="sky"]')
     expect(tag).not.toBeNull()
+  })
+
+  // 渲染单个 todo 状态的最近条目，返回渲染后的容器。
+  const renderSingleRecentItem = async (): Promise<HTMLElement> => {
+    mockSearchParams = new URLSearchParams("itemId=item-1")
+    useRecentItemsStore.setState({ ids: ["item-1"] })
+
+    mockedApi.listProjects.mockResolvedValue([
+      {
+        id: "p1",
+        name: "Project A",
+        type: "virtual",
+        referencedFolders: [],
+        createdAt: "",
+        updatedAt: "",
+      },
+    ])
+    mockedApi.listFolders.mockResolvedValue([
+      { id: "f1", projectId: "p1", name: "Folder B", createdAt: "", updatedAt: "" },
+    ])
+    mockedApi.list.mockResolvedValue([
+      {
+        id: "item-1",
+        projectId: "p1",
+        projectFolderId: "f1",
+        name: "Item C",
+        itemData: "[]",
+        enabledFolderPaths: [],
+        status: "todo",
+        createdAt: "",
+        updatedAt: "",
+      },
+    ])
+
+    let container: HTMLElement
+    await act(async () => {
+      ;({ container } = render(<ProjectRecentItemsTags />))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+    return container!
+  }
+
+  it("最近打开芯片为 button，并保留状态色与高亮属性", async () => {
+    await renderSingleRecentItem()
+
+    const tag = document.querySelector(".project-recent-tag") as HTMLElement
+    expect(tag).not.toBeNull()
+    expect(tag.tagName).toBe("BUTTON")
+    expect(tag.getAttribute("data-color")).toBe("default")
+    expect(tag.getAttribute("data-highlighted")).toBe("true")
+  })
+
+  it("点击芯片关闭入口直接移除最近项，且不触发跳转导航", async () => {
+    await renderSingleRecentItem()
+
+    const tag = document.querySelector(".project-recent-tag") as HTMLElement
+    const closeIcon = tag.querySelector('[role="button"]') as HTMLElement
+    expect(closeIcon).not.toBeNull()
+
+    fireEvent.click(closeIcon)
+
+    expect(useRecentItemsStore.getState().ids).toEqual([])
+    expect(document.querySelector(".project-recent-tag")).toBeNull()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

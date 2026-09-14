@@ -78,6 +78,27 @@ describe("AgentExecutionFlowHeader 筛选 Tab", () => {
     expect(activeClasses).not.toContain("hover:bg-amber-500/10")
   })
 
+  it("筛选 Tab 芯片统一 default 档尺寸：h-7 + text-sm", () => {
+    const { container } = render(
+      <AgentExecutionFlowHeader
+        stepsCount={3}
+        activeFilter="all"
+        filterCounts={FILTER_COUNTS}
+        stats={STATS}
+        onFilterChange={() => {}}
+      />,
+    )
+
+    const tabClasses = buttonClasses(container).filter((className) =>
+      className.includes("font-mono"),
+    )
+    expect(tabClasses.length).toBeGreaterThan(0)
+    for (const className of tabClasses) {
+      expect(className).toContain("h-7")
+      expect(className).toContain("text-sm")
+    }
+  })
+
   it("左右滚动按钮使用 ArrowLeft/ArrowRight 图标", () => {
     const { container } = render(
       <AgentExecutionFlowHeader

@@ -4,6 +4,7 @@ import { forwardRef } from "react"
 
 import type { LxTooltipPlacement } from "@/components/ui/LxTooltip"
 import { LxTooltip } from "@/components/ui/LxTooltip"
+import { useTranslation } from "@/i18n"
 
 // 图标按钮预设类型。
 export type LxIconButtonPreset =
@@ -55,6 +56,13 @@ const SIZE_FONT_CLASSES: Record<LxIconButtonSize, string> = {
   small: "text-xs",
   medium: "text-sm",
   large: "text-sm",
+}
+
+// 尾部关闭图标尺寸：对齐 LxTag 档位。
+const SIZE_CLOSE_ICON_CLASSES: Record<LxIconButtonSize, string> = {
+  small: "h-3 w-3",
+  medium: "h-3 w-3",
+  large: "h-3.5 w-3.5",
 }
 
 const PRESET_ICONS: Record<LxIconButtonPreset, React.ComponentType<{ className?: string }>> = {
@@ -112,6 +120,14 @@ export interface LxIconButtonProps
   textClass?: string
   // 前置 icon：提供时渲染「icon + 文字内容」布局（容器自适应宽度、icon 与文字间留 gap）。
   icon?: React.ReactNode
+  // 尾部内容：自定义 icon 或 icon 组，原样渲染，不添加边框/底色。
+  suffix?: React.ReactNode
+  // 尾部关闭回调；点击关闭阻止冒泡，不触发主 onClick。
+  onClose?: () => void
+  // 是否二次确认后关闭，默认为 true。
+  confirmClose?: boolean
+  // 二次确认提示内容；未提供时使用 common.confirmDelete。
+  closeTooltipContent?: React.ReactNode
   iconOnly?: boolean
   // 是否显示悬停背景颜色，默认为显示。
   showHoverBg?: boolean
@@ -140,6 +156,10 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       highlightTextClass,
       textClass,
       icon,
+      suffix,
+      onClose,
+      confirmClose = true,
+      closeTooltipContent,
       iconOnly = true,
       preset,
       shape = "square",
@@ -152,13 +172,16 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
     },
     ref,
   ): React.JSX.Element => {
+    const { t } = useTranslation()
+    // 尾部内容存在时按芯片模式渲染：容器自适应宽度、字号随尺寸档位。
+    const hasSuffix = suffix != null || onClose != null
     // icon + 文字布局：icon 提供且 children 非空时容器自适应宽度、icon 与文字 gap。
     const hasIconAndLabel = icon != null && children != null
     const baseStyles =
       "flex items-center justify-center transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 disabled:cursor-not-allowed disabled:opacity-35"
     const shapeStyles = shape === "circle" ? "rounded-full" : "rounded-[6px]"
     const sizeStyles =
-      iconOnly && !hasIconAndLabel
+      iconOnly && !hasIconAndLabel && !hasSuffix
         ? `${SIZE_CONTAINER_CLASSES[size]} flex-shrink-0`
         : SIZE_FONT_CLASSES[size]
     const finalHoverBg = showHoverBg
@@ -206,13 +229,54 @@ export const LxIconButton = forwardRef<HTMLButtonElement, LxIconButtonProps>(
       renderContent = <DefaultIcon className={SIZE_ICON_CLASSES[size]} />
     }
 
+    // 尾部关闭入口：关闭图标直接渲染，主题不得为其追加边框（data-variant=ghost）。
+    const resolvedCloseTooltip = closeTooltipContent ?? t("common.confirmDelete")
+    const renderCloseIcon = (handleClose: () => void): React.ReactNode => (
+      <span
+        aria-label={t("common.close")}
+        data-variant="ghost"
+        className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
+        role="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          handleClose()
+        }}
+      >
+        <X className={SIZE_CLOSE_ICON_CLASSES[size]} />
+      </span>
+    )
+    const closeEntry = onClose ? (
+      confirmClose ? (
+        <LxTooltip
+          hover={{ content: t("common.close"), placement: "top" }}
+          click={{ content: resolvedCloseTooltip, placement: "top", onConfirm: onClose }}
+        >
+          {renderCloseIcon(() => {})}
+        </LxTooltip>
+      ) : (
+        <LxTooltip hover={{ content: resolvedCloseTooltip, placement: "top" }}>
+          {renderCloseIcon(onClose)}
+        </LxTooltip>
+      )
+    ) : null
+
+    if (hasSuffix) {
+      renderContent = (
+        <>
+          {renderContent}
+          {suffix}
+          {closeEntry}
+        </>
+      )
+    }
+
     const button = (
       <button
         ref={ref}
         type={type}
         data-highlighted={highlighted ? "true" : undefined}
         data-variant={variant}
-        className={`${baseStyles} ${hasIconAndLabel ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
+        className={`${baseStyles} ${hasIconAndLabel || hasSuffix ? "gap-1.5" : ""} ${shapeStyles} ${sizeStyles} ${stateStyles} ${className}`}
         disabled={disabled}
         {...props}
       >

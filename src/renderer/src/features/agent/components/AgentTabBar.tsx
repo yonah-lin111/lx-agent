@@ -1,6 +1,6 @@
 import type { AgentSessionSummary } from "@shared/contracts/agent"
 import type { Project } from "@shared/project"
-import { ArrowLeft, ArrowRight, Cpu, Folder, MessageSquare, Plus, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Cpu, Folder, MessageSquare, Plus } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
@@ -94,8 +94,7 @@ export const AgentTabBar = (): React.JSX.Element => {
   }, [warning, t])
 
   const handleCloseTab = useCallback(
-    (event: React.SyntheticEvent, tabId: string) => {
-      event.stopPropagation()
+    (tabId: string) => {
       if (tabs.length <= 1) {
         warning(t("agent.cannotCloseLastTab"))
         return
@@ -193,7 +192,7 @@ export const AgentTabBar = (): React.JSX.Element => {
       {/* 横向滚动标签容器 */}
       <div
         ref={tabScrollRef}
-        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 py-0.5"
+        className="scrollbar-hidden flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5"
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId
@@ -209,11 +208,35 @@ export const AgentTabBar = (): React.JSX.Element => {
                   placement: "bottom",
                 }}
               >
-                <button
-                  type="button"
+                <LxIconButton
+                  iconOnly={false}
+                  size="medium"
+                  textClass=""
+                  showHoverBg={false}
+                  hoverTextClass=""
                   onClick={() => agentTabStore.switchTab(tab.id)}
                   aria-selected={isActive}
-                  className={`flex h-6 max-w-[140px] items-center gap-1.5 rounded-[6px] border px-2 text-xs transition-all duration-150 cursor-pointer ${
+                  closeTooltipContent={
+                    isStreaming ? (
+                      <div className="p-1 text-xs leading-relaxed max-w-[200px]">
+                        {t("agent.closeTabConfirmGenerating")}
+                      </div>
+                    ) : (
+                      t("agent.closeTab")
+                    )
+                  }
+                  confirmClose={isStreaming}
+                  onClose={
+                    tabs.length > 1
+                      ? isStreaming
+                        ? () => {
+                            agentApi.abort(tab.sessionId ?? undefined, tab.id)
+                            agentTabStore.closeTab(tab.id)
+                          }
+                        : () => handleCloseTab(tab.id)
+                      : undefined
+                  }
+                  className={`h-7 max-w-[140px] border px-2.5 cursor-pointer ${
                     isStreaming
                       ? isActive
                         ? "border-amber-500/50 bg-amber-500/20 text-amber-200 font-medium shadow-sm"
@@ -222,60 +245,20 @@ export const AgentTabBar = (): React.JSX.Element => {
                         ? "border-white/10 bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.12))] text-[var(--color-theme-text,#fff)] font-medium shadow-sm"
                         : "border-transparent text-[var(--color-theme-text-muted,#888)] hover:border-white/10 hover:bg-[var(--color-theme-surface-hover,rgba(255,255,255,0.06))] hover:text-white/90"
                   }`}
+                  icon={
+                    <span
+                      aria-label={isStreaming ? t("agent.statusRunning") : t("agent.statusReady")}
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
+                      }`}
+                      role="status"
+                    />
+                  }
                 >
-                  <span
-                    aria-label={isStreaming ? t("agent.statusRunning") : t("agent.statusReady")}
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      isStreaming ? "bg-amber-400 animate-pulse" : "bg-emerald-400"
-                    }`}
-                    role="status"
-                  />
-                  <span className="min-w-0 flex-1 truncate text-left font-mono text-xs leading-none">
+                  <span className="min-w-0 flex-1 truncate text-left font-mono leading-none">
                     {label}
                   </span>
-                  {tabs.length > 1 &&
-                    (isStreaming ? (
-                      <LxTooltip
-                        click={{
-                          content: (
-                            <div className="p-1 text-xs leading-relaxed max-w-[200px]">
-                              {t("agent.closeTabConfirmGenerating")}
-                            </div>
-                          ),
-                          placement: "bottom",
-                        }}
-                        onConfirm={() => {
-                          agentApi.abort(tab.sessionId ?? undefined, tab.id)
-                          agentTabStore.closeTab(tab.id)
-                        }}
-                      >
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={t("agent.closeTab")}
-                          className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] opacity-70 hover:opacity-100 hover:bg-white/15 text-amber-300 hover:text-red-400 transition-all cursor-pointer"
-                        >
-                          <X className="h-3 w-3" />
-                        </span>
-                      </LxTooltip>
-                    ) : (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => handleCloseTab(e, tab.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            handleCloseTab(e, tab.id)
-                          }
-                        }}
-                        aria-label={t("agent.closeTab")}
-                        className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] opacity-40 hover:opacity-100 hover:bg-white/15 hover:text-red-400 transition-all cursor-pointer"
-                      >
-                        <X className="h-3 w-3" />
-                      </span>
-                    ))}
-                </button>
+                </LxIconButton>
               </LxTooltip>
             </div>
           )

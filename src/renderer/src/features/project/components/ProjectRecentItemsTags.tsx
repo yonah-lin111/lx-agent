@@ -1,18 +1,8 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  Boxes,
-  BrushCleaning,
-  File,
-  FileText,
-  Folder,
-  X,
-} from "lucide-react"
+import { ArrowLeft, ArrowRight, Boxes, BrushCleaning, File, FileText, Folder } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { LxIconButton } from "@/components/ui/LxIconButton"
-import { LxTag } from "@/components/ui/LxTag"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { TreeBranchIcon } from "@/components/ui/TreeBranchIcon"
 import {
@@ -45,6 +35,13 @@ const renderTagLabel = (
     <span className="truncate">
       {card.id.startsWith("temp-") ? t("project.temporaryPrompt") : card.itemName}
     </span>
+  </span>
+)
+
+// 渲染最近打开芯片前置图标，保持 LxTag 前缀的弱化观感。
+const renderCardIcon = (card: RecentItemCard): React.ReactNode => (
+  <span className="flex shrink-0 items-center justify-center text-current/60">
+    {card.id.startsWith("temp-") ? <FileText className="h-3 w-3" /> : <File className="h-3 w-3" />}
   </span>
 )
 
@@ -95,6 +92,37 @@ const getCardTagColor = (card: RecentItemCard): "default" | "amber" | "emerald" 
     return "amber"
   }
   return "default"
+}
+
+// 最近打开芯片四态配色：常态与高亮态独立，保持原 LxTag 观感。
+const TAG_CHROME: Record<
+  ReturnType<typeof getCardTagColor>,
+  { idle: string; activeBorder: string; activeBg: string; activeText: string }
+> = {
+  default: {
+    idle: "border-white/5 bg-white/[0.03] text-white/45",
+    activeBorder: "border-transparent",
+    activeBg: "bg-white/5",
+    activeText: "text-white",
+  },
+  amber: {
+    idle: "border-amber-500/10 bg-amber-500/[0.03] text-amber-400/80",
+    activeBorder: "border-amber-500/20",
+    activeBg: "bg-amber-500/10",
+    activeText: "text-amber-400",
+  },
+  emerald: {
+    idle: "border-emerald-500/10 bg-emerald-500/[0.03] text-emerald-400/80",
+    activeBorder: "border-emerald-500/20",
+    activeBg: "bg-emerald-500/10",
+    activeText: "text-emerald-400",
+  },
+  sky: {
+    idle: "border-sky-500/10 bg-sky-500/[0.03] text-sky-400/80",
+    activeBorder: "border-sky-500/20",
+    activeBg: "bg-sky-500/10",
+    activeText: "text-sky-400",
+  },
 }
 
 // 渲染 tag 悬停详情：项目/文件夹/条目树与状态数量，带直角分支缩进与 icon 颜色。
@@ -269,6 +297,8 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
           cards.map((card) => {
             const isActive = card.id === itemId
             const isDragging = draggingId === card.id
+            const color = getCardTagColor(card)
+            const chrome = TAG_CHROME[color]
             return (
               <LxTooltip
                 key={card.id}
@@ -296,34 +326,30 @@ export const ProjectRecentItemsTags = (): React.JSX.Element => {
                   }}
                   className={`flex shrink-0 cursor-grab items-center ${isDragging ? "opacity-40" : ""}`}
                 >
-                  <LxTag
-                    color={getCardTagColor(card)}
+                  <LxIconButton
+                    variant="ghost"
+                    size="medium"
+                    iconOnly={false}
+                    data-color={color}
                     highlighted={isActive}
-                    className="project-recent-tag"
+                    textClass=""
+                    showHoverBg={false}
+                    hoverTextClass=""
+                    highlightBgClass={chrome.activeBg}
+                    highlightTextClass={chrome.activeText}
+                    className={`project-recent-tag h-7 cursor-pointer border px-2.5 font-semibold select-none ${
+                      isActive
+                        ? `${chrome.activeBorder} ${chrome.activeBg} ${chrome.activeText}`
+                        : chrome.idle
+                    }`}
+                    icon={renderCardIcon(card)}
+                    closeTooltipContent={t("agent.removeFromRecent")}
+                    confirmClose={false}
+                    onClose={() => removeRecentTag(card.id)}
                     onClick={() => navigate(`${PAGE_ROUTES.project}?itemId=${card.id}`)}
-                    prefix={
-                      card.id.startsWith("temp-") ? (
-                        <FileText className="h-3 w-3" />
-                      ) : (
-                        <File className="h-3 w-3" />
-                      )
-                    }
-                    suffix={
-                      <span
-                        aria-label={t("agent.removeFromRecent")}
-                        className="flex cursor-pointer items-center justify-center text-current opacity-60 transition-all hover:text-rose-400 hover:opacity-100"
-                        role="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          removeRecentTag(card.id)
-                        }}
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </span>
-                    }
                   >
                     {renderTagLabel(card, t)}
-                  </LxTag>
+                  </LxIconButton>
                 </div>
               </LxTooltip>
             )
