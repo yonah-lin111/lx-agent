@@ -476,7 +476,6 @@ export const OpenClawSettings = (): React.JSX.Element => {
                           {agent.name}
                         </span>
                         <LxSelect
-                          size="small"
                           className="w-56"
                           value={agent.sessionKey ?? ""}
                           placeholder={t("settings.openclawSessionUnbound")}

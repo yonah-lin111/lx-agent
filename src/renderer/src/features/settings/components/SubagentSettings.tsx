@@ -277,7 +277,6 @@ export const SubagentSettings = (): React.JSX.Element => {
             </span>
             <div className="grid gap-2">
               <LxSelect
-                size="small"
                 value={settings.defaultModel?.provider ?? ""}
                 options={[
                   { value: "", label: t("settings.subagentsInheritModel") },
@@ -286,7 +285,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                 onChange={handleDefaultProviderChange}
               />
               <LxSelect
-                size="small"
                 value={settings.defaultModel?.model ?? ""}
                 options={modelOptions(settings.defaultModel?.provider ?? "")}
                 disabled={
@@ -306,7 +304,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               <LxInfoTooltip markdown={t("settings.subagentsModeHint")} placement="right" />
             </div>
             <LxSelect
-              size="small"
               value={settings.mode ?? "build"}
               options={[
                 { value: "build", label: t("agent.collaborationModeBuild") },
@@ -488,7 +485,6 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsName")} *</span>
             <LxInput
-              size="sm"
               placeholder={t("settings.subagentsNamePlaceholder")}
               value={formName}
               onChange={(e) => {
@@ -503,7 +499,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               {t("settings.subagentsDescription")} *
             </span>
             <LxInput
-              size="sm"
               placeholder={t("settings.subagentsDescriptionPlaceholder")}
               value={formDescription}
               onChange={(e) => {
@@ -516,7 +511,6 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsInstructions")}</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.subagentsInstructionsPlaceholder")}
               value={formInstructions}
@@ -528,7 +522,6 @@ export const SubagentSettings = (): React.JSX.Element => {
             <span className="font-medium text-white/70">{t("settings.subagentsModel")}</span>
             <div className="grid gap-2">
               <LxSelect
-                size="small"
                 zIndex={MODAL_SELECT_Z_INDEX}
                 value={formModelProvider}
                 options={[
@@ -542,7 +535,6 @@ export const SubagentSettings = (): React.JSX.Element => {
                 }}
               />
               <LxSelect
-                size="small"
                 zIndex={MODAL_SELECT_Z_INDEX}
                 value={formModelModel}
                 options={modelOptions(formModelProvider)}
@@ -555,7 +547,6 @@ export const SubagentSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.subagentsTools")}</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.subagentsToolsPlaceholder")}
               value={formTools}

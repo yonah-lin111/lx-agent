@@ -339,7 +339,6 @@ export const HooksSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.hooksEvent")}</span>
             <LxSelect
-              size="small"
               value={formEvent}
               onChange={(value) => {
                 setFormEvent(value)
@@ -353,7 +352,6 @@ export const HooksSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.hooksName")} *</span>
             <LxInput
-              size="sm"
               placeholder={t("settings.hooksNamePlaceholder")}
               value={formName}
               onChange={(e) => {
@@ -367,7 +365,6 @@ export const HooksSettings = (): React.JSX.Element => {
             <div className="flex flex-col gap-1">
               <span className="font-medium text-white/70">{t("settings.hooksMatcher")}</span>
               <LxInput
-                size="sm"
                 placeholder={t("settings.hooksMatcherPlaceholder")}
                 value={formMatcher}
                 onChange={(e) => {
@@ -382,7 +379,6 @@ export const HooksSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.hooksCommand")} *</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.hooksCommandPlaceholder")}
               value={formCommand}
@@ -396,7 +392,6 @@ export const HooksSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.hooksCommandWindows")}</span>
             <LxInput
-              size="sm"
               multiline
               placeholder={t("settings.hooksCommandWindowsPlaceholder")}
               value={formCommandWindows}
@@ -407,7 +402,6 @@ export const HooksSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.hooksTimeout")}</span>
             <LxInput
-              size="sm"
               placeholder={t("settings.hooksTimeoutPlaceholder")}
               value={formTimeout}
               onChange={(e) => {

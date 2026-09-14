@@ -286,7 +286,6 @@ export const SkillSettings = (): React.JSX.Element => {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-theme-border,rgba(255,255,255,0.06))] pb-3">
         <div className="flex min-w-[200px] max-w-sm flex-1 items-center gap-2">
           <LxInput
-            size="sm"
             prefix={
               <Search className="h-3.5 w-3.5 text-[var(--color-theme-text-muted,rgba(255,255,255,0.4))]" />
             }
@@ -313,7 +312,6 @@ export const SkillSettings = (): React.JSX.Element => {
             </span>
             <div className="w-48">
               <LxSelect
-                size="small"
                 options={projectOptions}
                 value={selectedProjectId}
                 onChange={(val) => setSelectedProjectId(val)}

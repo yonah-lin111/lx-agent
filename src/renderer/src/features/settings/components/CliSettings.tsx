@@ -203,7 +203,6 @@ export const CliSettings = (): React.JSX.Element => {
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0 max-w-xs">
           <LxInput
-            size="sm"
             prefix={<Search className="h-3.5 w-3.5 text-white/40" />}
             placeholder={t("settings.cliSearchPlaceholder")}
             value={searchQuery}

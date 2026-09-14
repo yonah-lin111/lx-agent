@@ -290,7 +290,6 @@ export const McpSettings = (): React.JSX.Element => {
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0 max-w-xs">
           <LxInput
-            size="sm"
             prefix={<Search className="h-3.5 w-3.5 text-white/40" />}
             placeholder={t("settings.mcpSearchPlaceholder")}
             value={searchQuery}
@@ -537,7 +536,6 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.mcpServerName")} *</span>
             <LxInput
-              size="sm"
               placeholder="e.g. filesystem"
               value={formName}
               onChange={(e) => {
@@ -554,7 +552,6 @@ export const McpSettings = (): React.JSX.Element => {
               {t("settings.mcpExecutableCommand")} *
             </span>
             <LxInput
-              size="sm"
               placeholder="e.g. npx or /usr/local/bin/node"
               value={formCommand}
               onChange={(e) => {
@@ -568,7 +565,6 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.mcpArgs")}</span>
             <LxInput
-              size="sm"
               placeholder="e.g. -y @modelcontextprotocol/server-filesystem /path"
               value={formArgs}
               onChange={(e) => setFormArgs(e.target.value)}
@@ -579,7 +575,6 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.mcpCwd")}</span>
             <LxInput
-              size="sm"
               placeholder={t("settings.mcpCwdPlaceholder")}
               value={formCwd}
               onChange={(e) => setFormCwd(e.target.value)}
@@ -603,7 +598,6 @@ export const McpSettings = (): React.JSX.Element => {
             {formEnvRows.map((row, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <LxInput
-                  size="sm"
                   placeholder="KEY"
                   value={row.key}
                   onChange={(e) => {
@@ -614,7 +608,6 @@ export const McpSettings = (): React.JSX.Element => {
                   className="flex-1"
                 />
                 <LxInput
-                  size="sm"
                   placeholder="VALUE"
                   value={row.value}
                   onChange={(e) => {
@@ -643,7 +636,6 @@ export const McpSettings = (): React.JSX.Element => {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-white/70">{t("settings.mcpTimeout")}</span>
             <LxInput
-              size="sm"
               placeholder="30000"
               value={formTimeout}
               onChange={(e) => setFormTimeout(e.target.value)}

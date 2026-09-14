@@ -967,7 +967,6 @@ export const ModelProviderSettings = ({
                               <LxSelect
                                 value=""
                                 placeholder={t("settings.addVariant")}
-                                size="small"
                                 className="!w-[160px]"
                                 options={[
                                   { value: "openai", label: t("settings.presetVariantOpenAI") },
@@ -1047,7 +1046,6 @@ export const ModelProviderSettings = ({
                                   <span className="shrink-0">{t("settings.defaultVariant")}:</span>
                                   <LxSelect
                                     value={model.variant ?? "default"}
-                                    size="small"
                                     className="!w-[140px]"
                                     options={[
                                       { value: "default", label: t("settings.defaultVariantNone") },
