@@ -620,7 +620,7 @@ export const ProjectNavigation = (): React.JSX.Element => {
   )
 
   const filterPanel = (
-    <div className="flex w-56 flex-col gap-1.5" aria-label={t("project.filterItems")}>
+    <div className="flex flex-col gap-1.5" aria-label={t("project.filterItems")}>
       <div className="flex flex-col gap-1 text-xs font-semibold text-white/55">
         {t("project.scope")}
         <div className="flex flex-nowrap gap-1">
