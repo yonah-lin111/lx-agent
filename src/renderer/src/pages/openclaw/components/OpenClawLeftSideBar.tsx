@@ -74,11 +74,11 @@ export const OpenClawLeftSideBar = ({
       <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto px-1 pb-2 [scrollbar-gutter:stable]">
         {/* 办公区列表 */}
         <div className="space-y-1">
-          <p className="px-1 text-[10px] font-medium uppercase tracking-wide text-white/35">
+          <p className="px-1 text-xs font-medium uppercase tracking-wide text-white/35">
             {t("openclaw.officesSection")}
           </p>
           {enabledInstances.length === 0 ? (
-            <p className="px-1 py-1 text-[11px] text-white/40">{t("openclaw.noInstances")}</p>
+            <p className="px-1 py-1 text-xs text-white/40">{t("openclaw.noInstances")}</p>
           ) : (
             enabledInstances.map(({ id, instance }) => {
               const isActive = id === selectedInstanceId
@@ -98,7 +98,7 @@ export const OpenClawLeftSideBar = ({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs text-white/80">{instance.name}</span>
-                    <span className="block truncate text-[10px] text-white/40">{id}</span>
+                    <span className="block truncate text-xs text-white/40">{id}</span>
                   </span>
                   <LxTag size="small">{instance.agents.length}</LxTag>
                 </button>
@@ -109,11 +109,11 @@ export const OpenClawLeftSideBar = ({
 
         {/* 员工名册 */}
         <div className="space-y-1">
-          <p className="px-1 text-[10px] font-medium uppercase tracking-wide text-white/35">
+          <p className="px-1 text-xs font-medium uppercase tracking-wide text-white/35">
             {t("openclaw.rosterSection")}
           </p>
           {agents.length === 0 ? (
-            <p className="px-1 py-1 text-[11px] text-white/40">{t("openclaw.noAgents")}</p>
+            <p className="px-1 py-1 text-xs text-white/40">{t("openclaw.noAgents")}</p>
           ) : (
             agents.map((agent, index) => {
               const status = statuses[agent.id] ?? "offline"
@@ -133,14 +133,14 @@ export const OpenClawLeftSideBar = ({
                   }`}
                 >
                   <span
-                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] text-[9px] font-medium text-black/80"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] text-xs font-medium text-black/80"
                     style={{ backgroundColor: accentHexForIndex(index) }}
                   >
                     {agent.name.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs text-white/80">{agent.name}</span>
-                    <span className="block truncate text-[10px] text-white/40">
+                    <span className="block truncate text-xs text-white/40">
                       {t(OFFICE_STATUS_LABEL_KEY[status])}
                     </span>
                   </span>
@@ -155,7 +155,7 @@ export const OpenClawLeftSideBar = ({
       </div>
 
       <div className="shrink-0 px-1 pb-1">
-        <div className="flex items-center gap-1.5 rounded-[6px] border border-white/5 bg-white/[0.02] px-2 py-1.5 text-[10px] text-white/40">
+        <div className="flex items-center gap-1.5 rounded-[6px] border border-white/5 bg-white/[0.02] px-2 py-1.5 text-xs text-white/40">
           <Bot className="h-3 w-3 shrink-0" />
           <span className="min-w-0 truncate">{t("openclaw.rosterHint")}</span>
         </div>

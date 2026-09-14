@@ -234,7 +234,7 @@ export const FrontDesignLeftSideBar = ({
           <span className="text-xs font-semibold text-white/80 truncate">
             {t("frontDesign.historyList")}
           </span>
-          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
+          <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-xs text-white/50 shrink-0 font-mono">
             {totalVisibleDesigns}
           </span>
         </div>
@@ -327,7 +327,7 @@ export const FrontDesignLeftSideBar = ({
                   }
                   suffix={
                     /* 下属设计原型数量角标 */
-                    <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-[10px] text-white/50 shrink-0 font-mono">
+                    <span className="rounded-[4px] bg-white/10 px-1.5 py-0.2 text-xs text-white/50 shrink-0 font-mono">
                       {item.designs.length}
                     </span>
                   }
@@ -344,7 +344,7 @@ export const FrontDesignLeftSideBar = ({
                     {item.designs.length === 0 ? (
                       <div
                         style={{ marginLeft: "10px" }}
-                        className="flex h-7 items-center px-2 text-[11px] text-white/30 italic select-none"
+                        className="flex h-7 items-center px-2 text-xs text-white/30 italic select-none"
                       >
                         <span>{t("frontDesign.noDesignsInSession")}</span>
                       </div>
@@ -386,7 +386,7 @@ export const FrontDesignLeftSideBar = ({
                             suffix={
                               <>
                                 {/* 当前显示的版本号 */}
-                                <span className="shrink-0 rounded bg-pink-500/20 px-1 py-0.2 font-mono text-[9px] font-semibold leading-none text-pink-300">
+                                <span className="shrink-0 rounded bg-pink-500/20 px-1 py-0.2 font-mono text-xs font-semibold leading-none text-pink-300">
                                   v{currentVersionItem.version ?? 1}
                                 </span>
 
