@@ -8,6 +8,7 @@ import type { MarkdownPasteReferenceOption } from "@/features/markdown/component
 import { getAgentMentionDeletionRange } from "@/features/markdown/extensions/markdownAgentMentions"
 import type { TranslationKey } from "@/i18n"
 import type {
+  AgentHistoryPromptItem,
   AgentInputCommand,
   AgentInputModel,
   AgentInputProjectItem,
@@ -34,6 +35,9 @@ interface UseAgentInputKeymapProps {
   commandIndexRef: React.RefObject<number>
   setCommandIndex: React.Dispatch<React.SetStateAction<number>>
   matchedCommandsRef: React.RefObject<AgentInputCommand[]>
+  historyPromptIndexRef: React.RefObject<number>
+  setHistoryPromptIndex: React.Dispatch<React.SetStateAction<number>>
+  matchedHistoryPromptsRef: React.RefObject<AgentHistoryPromptItem[]>
   modelIndexRef: React.RefObject<number>
   setModelIndex: React.Dispatch<React.SetStateAction<number>>
   matchedModelsRef: React.RefObject<AgentInputModel[]>
@@ -65,6 +69,7 @@ interface UseAgentInputKeymapProps {
   // Actions
   handleSendAction: (forceDelivery?: "queue" | "steer") => void
   executeCommand: (command: AgentInputCommand) => void
+  selectHistoryPrompt: (item: AgentHistoryPromptItem) => void
   selectModel: (model: AgentInputModel) => void
   selectWorktree: (option: GitWorktreeOption) => void
   selectProject: (project: AgentInputProjectItem) => void
@@ -97,6 +102,9 @@ export const useAgentInputKeymap = ({
   commandIndexRef,
   setCommandIndex,
   matchedCommandsRef,
+  historyPromptIndexRef,
+  setHistoryPromptIndex,
+  matchedHistoryPromptsRef,
   modelIndexRef,
   setModelIndex,
   matchedModelsRef,
@@ -124,6 +132,7 @@ export const useAgentInputKeymap = ({
   navigateRef,
   handleSendAction,
   executeCommand,
+  selectHistoryPrompt,
   selectModel,
   selectWorktree,
   selectProject,
@@ -147,6 +156,8 @@ export const useAgentInputKeymap = ({
   handleSendActionRef.current = handleSendAction
   const executeCommandRef = useRef(executeCommand)
   executeCommandRef.current = executeCommand
+  const selectHistoryPromptRef = useRef(selectHistoryPrompt)
+  selectHistoryPromptRef.current = selectHistoryPrompt
   const selectModelRef = useRef(selectModel)
   selectModelRef.current = selectModel
   const selectWorktreeRef = useRef(selectWorktree)
@@ -186,6 +197,13 @@ export const useAgentInputKeymap = ({
               }
               if (activeModeRef.current === "command" && matchedCommandsRef.current.length > 0) {
                 setCommandIndex((i) => (i + 1) % matchedCommandsRef.current.length)
+                return true
+              }
+              if (
+                activeModeRef.current === "historyPrompt" &&
+                matchedHistoryPromptsRef.current.length > 0
+              ) {
+                setHistoryPromptIndex((i) => (i + 1) % matchedHistoryPromptsRef.current.length)
                 return true
               }
               if (activeModeRef.current === "model" && matchedModelsRef.current.length > 0) {
@@ -251,6 +269,17 @@ export const useAgentInputKeymap = ({
                 setCommandIndex(
                   (i) =>
                     (i - 1 + matchedCommandsRef.current.length) % matchedCommandsRef.current.length,
+                )
+                return true
+              }
+              if (
+                activeModeRef.current === "historyPrompt" &&
+                matchedHistoryPromptsRef.current.length > 0
+              ) {
+                setHistoryPromptIndex(
+                  (i) =>
+                    (i - 1 + matchedHistoryPromptsRef.current.length) %
+                    matchedHistoryPromptsRef.current.length,
                 )
                 return true
               }
@@ -379,6 +408,15 @@ export const useAgentInputKeymap = ({
               if (activeModeRef.current === "undo_confirm") {
                 selectUndoConfirmRef.current(undoConfirmIndexRef.current)
                 return true
+              }
+              if (activeModeRef.current === "historyPrompt") {
+                const item =
+                  matchedHistoryPromptsRef.current[historyPromptIndexRef.current] ??
+                  matchedHistoryPromptsRef.current[0]
+                if (item) {
+                  selectHistoryPromptRef.current(item)
+                  return true
+                }
               }
               if (activeModeRef.current === "command") {
                 const cmd =
@@ -533,6 +571,9 @@ export const useAgentInputKeymap = ({
       commandIndexRef,
       setCommandIndex,
       matchedCommandsRef,
+      historyPromptIndexRef,
+      setHistoryPromptIndex,
+      matchedHistoryPromptsRef,
       modelIndexRef,
       setModelIndex,
       matchedModelsRef,

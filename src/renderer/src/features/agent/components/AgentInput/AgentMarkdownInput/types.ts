@@ -49,6 +49,7 @@ export type AgentInputActiveMode =
   | "session"
   | "undo_confirm"
   | "skill"
+  | "historyPrompt"
   | null
 
 export interface AgentInputPastePanelState {

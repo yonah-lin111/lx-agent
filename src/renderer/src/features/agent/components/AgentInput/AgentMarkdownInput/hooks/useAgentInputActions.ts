@@ -16,6 +16,7 @@ import { projectApi } from "@/features/project/api/projectApi"
 import { useProjectItemsVersionStore } from "@/features/project-navigation/projectItemsStore"
 import type { TranslationKey } from "@/i18n"
 import type {
+  AgentHistoryPromptItem,
   AgentInputCommand,
   AgentInputModel,
   AgentInputProjectItem,
@@ -27,6 +28,7 @@ import {
   getArgumentSelectionRange,
   getMentionQuery,
   getSkillMentionQuery,
+  HISTORY_PROMPT_COMMAND,
 } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode } from "../types"
 
@@ -328,6 +330,19 @@ export const useAgentInputActions = ({
         return
       }
 
+      // 拦截 /historyPrompt 相关命令：面板未接管时不允许作为普通消息发送。
+      if (text === HISTORY_PROMPT_COMMAND || text.startsWith(`${HISTORY_PROMPT_COMMAND} `)) {
+        onChangeRef.current("")
+        const view = editorViewRef.current
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          })
+        }
+        warningToast(t("agent.noPromptHistory"))
+        return
+      }
+
       let delivery = forceDelivery
       if (text.startsWith("/steer ") || text === "/steer") {
         delivery = "steer"
@@ -456,6 +471,13 @@ export const useAgentInputActions = ({
             selection,
           })
         }
+      } else if (command.id === "historyPrompt") {
+        const insertText = `${HISTORY_PROMPT_COMMAND} `
+        onChangeRef.current(insertText)
+        view?.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: insertText },
+          selection: { anchor: insertText.length },
+        })
       }
       view?.focus()
     },
@@ -469,6 +491,23 @@ export const useAgentInputActions = ({
       setUndoConfirmIndex,
       updatePanelPosition,
     ],
+  )
+
+  // 选中历史提示词：整体替换输入内容并聚焦，等待用户确认发送。
+  const selectHistoryPrompt = useCallback(
+    (item: AgentHistoryPromptItem): void => {
+      const view = editorViewRef.current
+      onChangeRef.current(item.text)
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: item.text },
+          selection: { anchor: item.text.length },
+        })
+        view.focus()
+      }
+      setActiveMode(null)
+    },
+    [editorViewRef, onChangeRef, setActiveMode],
   )
 
   const selectModel = useCallback(
@@ -675,6 +714,7 @@ export const useAgentInputActions = ({
   return {
     handleSendAction,
     executeCommand,
+    selectHistoryPrompt,
     selectModel,
     selectWorktree,
     selectProject,

@@ -2,6 +2,9 @@ import type { PromptTemplateItem } from "@shared/contracts/agent"
 import type { TranslationKey } from "@/i18n"
 import type { AgentInputCommand } from "../AgentInputCommandPanels"
 
+// 历史提示词命令名（二级面板入口）。
+export const HISTORY_PROMPT_COMMAND = "/historyPrompt"
+
 export const BUILTIN_COMMAND_KEYS: {
   id: string
   name: string
@@ -58,6 +61,13 @@ export const BUILTIN_COMMAND_KEYS: {
     descKey: "agent.commandCopyDesc",
     kind: "builtin",
     argumentHint: "[all]",
+  },
+  {
+    id: "historyPrompt",
+    name: HISTORY_PROMPT_COMMAND,
+    descKey: "agent.commandHistoryPromptDesc",
+    kind: "builtin",
+    argumentHint: "[query]",
   },
 ]
 

@@ -1,6 +1,6 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Bot, FileText, Folder, Palette } from "lucide-react"
+import { Bot, FileText, Folder, History, Palette } from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -72,6 +72,20 @@ interface AgentInputCommandPanelProps {
   commands: AgentInputCommand[]
   activeIndex: number
   onSelect?: (command: AgentInputCommand) => void
+}
+
+// 历史提示词条目（新→旧）。
+export interface AgentHistoryPromptItem {
+  id: string
+  text: string
+}
+
+export interface AgentInputHistoryPromptPanelProps {
+  isOpen: boolean
+  position: CSSProperties | null
+  prompts: AgentHistoryPromptItem[]
+  activeIndex: number
+  onSelect?: (item: AgentHistoryPromptItem) => void
 }
 
 export const panelClassName =
@@ -646,6 +660,98 @@ export const AgentInputCommandPanel = ({
                     {tag.label}
                   </LxTag>
                 ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * 渲染 Agent 输入框的历史提示词选择面板（/historyPrompt 触发）。
+ * item 结构对齐 Markdown 变量菜单：图标 + 首行标题 + 单行预览 + tag，激活项展开全文。
+ */
+export const AgentInputHistoryPromptPanel = ({
+  isOpen,
+  position,
+  prompts,
+  activeIndex,
+  onSelect,
+}: AgentInputHistoryPromptPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const hasData = position !== null && prompts.length > 0
+  const animated = usePanelAnimation(
+    isOpen && hasData,
+    hasData ? { position, prompts, activeIndex } : null,
+  )
+  const panelRef = useActiveItemScrollIntoView(
+    isOpen,
+    position,
+    animated?.displayData.activeIndex ?? 0,
+  )
+  if (!animated) return null
+
+  const {
+    position: displayPosition,
+    prompts: displayPrompts,
+    activeIndex: displayIndex,
+  } = animated.displayData
+
+  return (
+    <div
+      ref={panelRef}
+      aria-label={t("agent.historyPromptSelect")}
+      className={`${panelClassName} ${
+        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
+      }`}
+      role="listbox"
+      style={displayPosition}
+    >
+      {displayPrompts.map((item, index) => {
+        const isActive = index === displayIndex
+        const [firstLine = "", ...restLines] = item.text.split("\n")
+        const title = firstLine.trim() || item.text.trim()
+        const preview = restLines.join(" ").replace(/\s+/g, " ").trim()
+
+        return (
+          <div
+            key={item.id}
+            role="option"
+            data-index={index}
+            aria-selected={isActive}
+            className={`group relative flex min-h-11 w-full cursor-pointer flex-col justify-center rounded-[4px] px-2 py-1 text-left transition-colors ${
+              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
+            }`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect?.(item)
+            }}
+          >
+            <div className="flex w-full items-center gap-2">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[3px] bg-white/5 text-white/70">
+                <History className="h-3 w-3" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm leading-none text-white">
+                {title}
+              </span>
+              {preview && (
+                <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
+                  {preview}
+                </span>
+              )}
+              <LxTag
+                bgClass="bg-white/10 text-white/50"
+                className="pointer-events-none shrink-0 font-mono tabular-nums"
+                size="small"
+              >
+                {displayPrompts.length - index}
+              </LxTag>
+            </div>
+            {isActive && (
+              <div className="mt-1 max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded border border-white/5 bg-black/20 p-1.5 font-mono text-xs text-white/60">
+                {item.text}
               </div>
             )}
           </div>

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
 import type { SkillItem } from "@shared/contracts/agent"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  type AgentHistoryPromptItem,
   type AgentInputCommand,
   AgentInputCommandPanel,
   AgentInputFilePanel,
+  AgentInputHistoryPromptPanel,
   type AgentInputModel,
   AgentInputModelPanel,
   type AgentInputProjectItem,
@@ -235,5 +237,31 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
     fireEvent.mouseDown(options[1])
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(1)
+  })
+
+  it("历史提示词面板：点选历史条目触发 onSelect", () => {
+    const onSelect = vi.fn()
+    const prompts: AgentHistoryPromptItem[] = [
+      { id: "history-0", text: "最新提示词" },
+      { id: "history-1", text: "较旧提示词" },
+    ]
+    render(
+      <AgentInputHistoryPromptPanel
+        isOpen={true}
+        position={position}
+        prompts={prompts}
+        activeIndex={0}
+        onSelect={onSelect}
+      />,
+    )
+
+    const options = screen.getAllByRole("option")
+    expect(options).toHaveLength(2)
+    // 右侧 tag 按展示条数倒序展示 index。
+    expect(within(options[0] as HTMLElement).getByText("2")).toBeDefined()
+    expect(within(options[1] as HTMLElement).getByText("1")).toBeDefined()
+    fireEvent.mouseDown(options[1])
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(prompts[1])
   })
 })

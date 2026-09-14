@@ -75,6 +75,9 @@ describe("AgentMarkdownInput 工具函数单元测试", () => {
 
     const steerCmds = getMatchedCommands("/steer", [], mockT)
     expect(steerCmds.some((c) => c.id === "steer")).toBe(true)
+
+    const historyCmds = getMatchedCommands("/hist", [], mockT)
+    expect(historyCmds.some((c) => c.id === "historyPrompt")).toBe(true)
   })
 
   it("getMentionQuery 正确解析 @ 提及输入", () => {

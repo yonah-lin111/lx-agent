@@ -84,4 +84,19 @@ describe("usePromptHistory", () => {
     expect(result.current.browsing).toBe(false)
     expect(navigate(result, "up", "草稿2")).toEqual({ text: "p1", cursor: "start" })
   })
+
+  it("暴露 history，refresh 重新拉取最新历史", async () => {
+    vi.mocked(promptHistoryApi.get).mockResolvedValueOnce(["第一条"])
+    const { result } = renderHook(() => usePromptHistory())
+    await act(async () => {})
+
+    expect(result.current.history).toEqual(["第一条"])
+
+    vi.mocked(promptHistoryApi.get).mockResolvedValueOnce(["新一条", "第一条"])
+    await act(async () => {
+      await result.current.refresh()
+    })
+
+    expect(result.current.history).toEqual(["新一条", "第一条"])
+  })
 })

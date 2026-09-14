@@ -17,15 +17,14 @@ export const usePromptHistory = () => {
   // 进入历史时保存的输入草稿，离开历史时恢复。
   const draft = useRef("")
 
-  useEffect(() => {
-    let current = true
-    void promptHistoryApi.get().then((items) => {
-      if (current) setHistory(items)
-    })
-    return () => {
-      current = false
-    }
+  // 重新从主进程拉取历史（打开历史面板时保证数据新鲜）。
+  const refresh = useCallback((): Promise<void> => {
+    return promptHistoryApi.get().then(setHistory)
   }, [])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
 
   // 记录一条已发送提示词（去空白、跳过连续重复由主进程服务负责）。
   const record = useCallback((text: string): void => {
@@ -77,5 +76,5 @@ export const usePromptHistory = () => {
     [history],
   )
 
-  return { browsing, record, reset, navigate }
+  return { history, refresh, browsing, record, reset, navigate }
 }
