@@ -199,6 +199,16 @@ describe("ProjectReferencedFolderTags Component", () => {
     expect(useProjectReferencedFoldersStore.getState().foldersByProjectId.p1).toEqual([])
   })
 
+  it("文件夹名称单行完整展示：芯片不收缩、文本不换行", async () => {
+    const container = await renderReferencedFolder()
+    const tag = container.querySelector(".project-referenced-tag") as HTMLElement
+    expect(tag.className).toContain("shrink-0")
+
+    const label = tag.querySelector("span.truncate") as HTMLElement
+    expect(label).not.toBeNull()
+    expect(label.textContent).toBe("my-folder")
+  })
+
   it("点击 Pin 图标切换条目启用状态并持久化", async () => {
     const container = await renderReferencedFolder()
     const tag = container.querySelector(".project-referenced-tag") as HTMLElement
