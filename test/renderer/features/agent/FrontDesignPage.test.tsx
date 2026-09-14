@@ -623,4 +623,59 @@ describe("FrontDesignPage 前端设计预览看板", () => {
     expect(frontDesignStore.getState().activeDesignId).toBe("app-page-v3")
     expect(container.querySelector("iframe")?.getAttribute("srcdoc")).toContain("Version 3 Content")
   })
+
+  it("顶部工具栏与 Inspector 提示字号统一使用 xs 预设，无任意值字号", () => {
+    frontDesignStore.registerDesign({
+      id: "design-font-v1",
+      title: "Font Preset Design",
+      html: "<div>Font Preset</div>",
+      mode: "css",
+      sessionId: "session-font",
+    })
+    frontDesignStore.registerDesign({
+      id: "design-font-v2",
+      title: "Font Preset Design",
+      html: "<div>Font Preset V2</div>",
+      mode: "css",
+      parentId: "design-font-v1",
+    })
+    frontDesignStore.setActiveDesignId("design-font-v2")
+
+    render(<FrontDesignPage />)
+
+    // 模式徽标
+    const modeBadge = screen.getByText(/原生 CSS|Pure CSS/i)
+    expect(modeBadge.className).toContain("text-xs")
+    expect(modeBadge.className).not.toContain("text-[10px]")
+
+    // 版本切换触发按钮
+    const versionTrigger = screen.getByRole("button", { name: /选择版本|select version/i })
+    expect(versionTrigger.className).toContain("text-xs")
+    expect(versionTrigger.className).not.toContain("text-[10px]")
+
+    // 版本下拉菜单项
+    const versionOption = screen.getByRole("button", { name: /版本 1|v1/i })
+    expect(versionOption.className).toContain("text-xs")
+
+    // Inspector 快捷键提示
+    const shortcutHint = screen.getByText(/Shift \+ Alt/i)
+    expect(shortcutHint.className).toContain("text-xs")
+    expect(shortcutHint.className).not.toContain("text-[11px]")
+  })
+
+  it("单版本静态版本徽标字号使用 xs 预设，无任意值字号", () => {
+    frontDesignStore.registerDesign({
+      id: "design-font-single",
+      title: "Single Version Design",
+      html: "<div>Single Version</div>",
+    })
+
+    const { container } = render(<FrontDesignPage />)
+
+    const staticVersionBadge = container.querySelector("header span.font-mono")
+    expect(staticVersionBadge).not.toBeNull()
+    expect(staticVersionBadge?.textContent).toContain("v1")
+    expect(staticVersionBadge?.className).toContain("text-xs")
+    expect(staticVersionBadge?.className).not.toContain("text-[10px]")
+  })
 })
