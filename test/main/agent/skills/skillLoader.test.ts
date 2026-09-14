@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -256,6 +256,26 @@ policy:
     expect(skillA?.description).toBe("agents 目录技能")
     expect(dupSkill).toBeDefined()
     expect(dupSkill?.description).toBe("lx 版本")
+  })
+
+  it("符号链接环（loop -> ..）有限递归、不爆栈并记诊断", async () => {
+    const { skillLoader } = await importLoader()
+    const skillsDir = join(rootDir, "skills")
+    mkdirSync(skillsDir, { recursive: true })
+    writeFileSync(
+      join(skillsDir, "top-note.md"),
+      "---\nname: top-note\ndescription: 环外技能\n---\n\nbody\n",
+    )
+    // loop 指向 skills 的父目录，形成 loop -> .. 环。
+    symlinkSync("..", join(skillsDir, "loop"), "dir")
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const skills = skillLoader.load(projectCwd)
+    expect(skills.map((skill) => skill.name)).toContain("top-note")
+    expect(warnSpy.mock.calls.some((call) => String(call[0]).includes("cyclic directory"))).toBe(
+      true,
+    )
+    warnSpy.mockRestore()
   })
 
   it("extractSkillMentions 提取独立 $name 与 [$name](path) 格式提及", async () => {

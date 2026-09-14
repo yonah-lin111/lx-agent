@@ -29,6 +29,7 @@ class HooksManager {
       permissionMode: input.permissionMode,
       toolName: input.toolName,
       payload: input.payload,
+      signal: input.signal,
     }
     return dispatchHooks(hooks, context)
   }

@@ -237,16 +237,39 @@ const loadSkillFromFile = (filePath: string, diagnostics: string[]): LoadedSkill
   }
 }
 
+// skill 目录扫描深度上限（符号链接环 + 超深目录兜底）。
+const MAX_SKILL_SCAN_DEPTH = 20
+
 // 递归扫描目录：含 SKILL.md 即 skill 根（不再递归）；否则加载直接 .md 子文件并继续递归子目录。
+// visited 基于 realpath 去重：符号链接环（如 loop -> ..）跳过并记诊断，避免无限递归。
 const loadSkillsFromDirInternal = (
   dir: string,
   includeRootFiles: boolean,
   diagnostics: string[],
   matcher?: IgnoreMatcher,
   rootDir?: string,
+  visited?: Set<string>,
+  depth = 0,
 ): LoadedSkill[] => {
   const skills: LoadedSkill[] = []
   if (!existsSync(dir)) return skills
+
+  let realDir: string
+  try {
+    realDir = realpathSync(dir)
+  } catch {
+    realDir = resolve(dir)
+  }
+  const visitedDirs = visited ?? new Set<string>()
+  if (visitedDirs.has(realDir)) {
+    diagnostics.push(`[skill] ${dir}: skipped cyclic directory (already visited)`)
+    return skills
+  }
+  if (depth > MAX_SKILL_SCAN_DEPTH) {
+    diagnostics.push(`[skill] ${dir}: skipped directory deeper than ${MAX_SKILL_SCAN_DEPTH} levels`)
+    return skills
+  }
+  visitedDirs.add(realDir)
 
   const root = rootDir ?? dir
   const matcherInstance = matcher ?? ignore()
@@ -296,7 +319,17 @@ const loadSkillsFromDirInternal = (
     const relPath = toPosixPath(relative(root, fullPath))
     if (matcherInstance.ignores(isDirectory ? `${relPath}/` : relPath)) continue
     if (isDirectory) {
-      skills.push(...loadSkillsFromDirInternal(fullPath, false, diagnostics, matcherInstance, root))
+      skills.push(
+        ...loadSkillsFromDirInternal(
+          fullPath,
+          false,
+          diagnostics,
+          matcherInstance,
+          root,
+          visitedDirs,
+          depth + 1,
+        ),
+      )
       continue
     }
     if (!isFile || !includeRootFiles || !entry.name.endsWith(".md")) continue

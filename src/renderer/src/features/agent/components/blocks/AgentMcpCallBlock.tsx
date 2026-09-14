@@ -1,5 +1,6 @@
 import { CornerDownRight, Server } from "lucide-react"
 import type React from "react"
+import { parseMcpToolName } from "@/features/agent/components/AgentMessageList/AgentMessageItem/utils"
 import type { ChatBlock } from "@/features/agent/types"
 
 // 工具调用块类型。
@@ -9,16 +10,6 @@ type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
 type AgentMcpCallBlockProps = {
   // 同一 MCP 服务连续执行的工具调用。
   toolCalls: ToolCallBlock[]
-}
-
-// 将 MCP 工具全名 `server_tool` 拆分为服务名与工具方法名。
-const splitMcpToolName = (name: string): { serverName: string; toolName: string } => {
-  const separatorIndex = name.indexOf("_")
-  if (separatorIndex <= 0) return { serverName: name, toolName: name }
-  return {
-    serverName: name.slice(0, separatorIndex),
-    toolName: name.slice(separatorIndex + 1),
-  }
 }
 
 // 将连续的同名 MCP 工具调用合并为摘要行，工具方法以「名称」包裹，逗号分隔（末项无逗号）。
@@ -35,7 +26,7 @@ const buildMcpGroupRows = (toolCalls: ToolCallBlock[]): string[] => {
   }
 
   for (const call of toolCalls) {
-    const { toolName } = splitMcpToolName(call.toolName)
+    const { toolName } = parseMcpToolName(call.toolName)
     if (lastToolName !== null && lastToolName !== call.toolName) {
       flush()
     }
@@ -57,7 +48,7 @@ export const AgentMcpCallBlock = ({
     return null
   }
 
-  const serverName = splitMcpToolName(toolCalls[0]!.toolName).serverName
+  const serverName = parseMcpToolName(toolCalls[0]!.toolName).serverName
   const groupRows = buildMcpGroupRows(toolCalls)
 
   return (

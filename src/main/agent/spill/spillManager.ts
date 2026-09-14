@@ -1,11 +1,17 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { join, resolve, sep } from "node:path"
 import { formatSize, type TruncationResult } from "../tools/truncate"
 
 export interface SpillHandleResult {
   text: string
   spillFilePath?: string
+}
+
+// 路径段消毒：仅保留字符白名单（同 callId）；替换后不含 `.`，天然排除 `.`/`..`。
+const sanitizePathSegment = (value: string): string => {
+  const cleaned = value.replace(/[^a-zA-Z0-9_-]/g, "_")
+  return cleaned || "_"
 }
 
 export class SpillManager {
@@ -19,8 +25,14 @@ export class SpillManager {
     return this.baseDir
   }
 
+  // 会话目录：sessionId 消毒后拼接，并校验最终路径仍在 baseDir 内（防目录穿越）。
   getSessionDir(sessionId: string): string {
-    return join(this.baseDir, sessionId)
+    const base = resolve(this.baseDir)
+    const dir = resolve(base, sanitizePathSegment(sessionId))
+    if (dir !== base && !dir.startsWith(`${base}${sep}`)) {
+      throw new Error(`[SpillManager] session id escapes base directory: ${sessionId}`)
+    }
+    return dir
   }
 
   saveSpillFile(sessionId: string, callId: string, content: string): string {
@@ -28,7 +40,7 @@ export class SpillManager {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
     }
-    const safeCallId = callId.replace(/[^a-zA-Z0-9_-]/g, "_")
+    const safeCallId = sanitizePathSegment(callId)
     const filePath = join(dir, `${safeCallId}.txt`)
     writeFileSync(filePath, content, "utf-8")
     return filePath

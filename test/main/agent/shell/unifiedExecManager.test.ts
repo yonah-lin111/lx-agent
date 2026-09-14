@@ -106,5 +106,22 @@ describe("UnifiedExecManager", () => {
       unifiedExecManager.clearSession("sess-123")
       expect(unifiedExecManager.listProcesses("sess-123")).toHaveLength(0)
     })
+
+    it("removes the entry from the registry after killProcess", async () => {
+      const result = await unifiedExecManager.execCommand({
+        command: "sleep 5",
+        cwd: process.cwd(),
+        sessionId: "sess-kill",
+        yieldTimeMs: 250,
+      })
+
+      expect(unifiedExecManager.getProcess(result.processId)).toBeDefined()
+      expect(unifiedExecManager.listProcesses("sess-kill")).toHaveLength(1)
+
+      expect(unifiedExecManager.killProcess(result.processId)).toBe(true)
+      expect(unifiedExecManager.getProcess(result.processId)).toBeUndefined()
+      expect(unifiedExecManager.listProcesses("sess-kill")).toHaveLength(0)
+      expect(unifiedExecManager.killProcess(result.processId)).toBe(false)
+    })
   })
 })

@@ -42,6 +42,8 @@ export interface HookDispatchInput {
   toolName?: string
   // 事件私有字段（snake_case，直接并入 stdin payload）。
   payload?: Record<string, unknown>
+  // 取消通道：中止时停止后续 hook 并杀掉在途子进程（fail-open，不抛错）。
+  signal?: AbortSignal
 }
 
 // hook 子进程 stdin 协议载荷（对齐 Codex / Claude 生态）。
@@ -75,6 +77,8 @@ export interface HookCommandOutput {
   stderr: string
   timedOut: boolean
   spawnFailed: boolean
+  // 被 signal 中止（子进程已杀，输出丢弃）。
+  aborted: boolean
   durationMs: number
   stdoutTruncated: boolean
   stderrTruncated: boolean

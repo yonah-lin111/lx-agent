@@ -295,7 +295,9 @@ export class UnifiedExecManager {
   }
 
   /**
-   * Kill a process by processId.
+   * Kill a process by processId and release its registry entry.
+   * The entry holds the ChildProcess and up to 1MiB of buffered output, so it must not
+   * linger after termination (callers already captured output before killing).
    */
   public killProcess(processId: number, signal: "SIGTERM" | "SIGKILL" = "SIGTERM"): boolean {
     const entry = this.processes.get(processId)
@@ -315,6 +317,8 @@ export class UnifiedExecManager {
         }
       }
     }
+    // 已结束进程的缓冲不再有消费方，直接释放 entry。
+    this.processes.delete(processId)
     return true
   }
 

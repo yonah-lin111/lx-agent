@@ -147,6 +147,8 @@ export type LspClientFactory = (spec: LspServerSpec) => LspClient
  */
 export class LspManager {
   private readonly sessions = new Map<string, Map<string, LspClient>>()
+  // 会话内 in-flight 初始化 client（会话初始化窗口被关闭时须一并回收）。
+  private readonly pendingInits = new Map<string, Set<LspClient>>()
   private readonly clientFactory: LspClientFactory
   private readonly installer: PackageInstaller
   // 并发安装去重：package → 进行中的安装 Promise。
@@ -202,10 +204,21 @@ export class LspManager {
       this.sessions.set(sessionId, languageClients)
     }
     let client = languageClients.get(language)
+    // 崩溃缓存的 client 不再可用：关闭旧实例并按新 client 重建。
+    if (client && client.isCrashed) {
+      languageClients.delete(language)
+      void client.shutdown()
+      client = undefined
+    }
     if (!client) {
       const root = findWorkspaceRoot(filePath, spec.rootMarkers, cwd)
-      const result = await this.initClient(spec, root)
+      const result = await this.initClient(spec, root, sessionId)
       if ("error" in result) return result
+      // 初始化窗口内会话被清除/替换：关闭新 client，避免写入已脱离 sessions 的 Map。
+      if (this.sessions.get(sessionId) !== languageClients) {
+        void result.client.shutdown()
+        return { error: "会话已关闭，LSP client 已回收" }
+      }
       client = result.client
       languageClients.set(language, client)
     }
@@ -213,15 +226,26 @@ export class LspManager {
   }
 
   // 首次 spawn + initialize；若命令缺失直接返回明确错误，不再自动 npm 安装。
-  private async initClient(spec: LspServerSpec, root: string): Promise<LspClientResult> {
+  // 初始化期间登记到会话 pendingInits，clearSession 可及时回收 in-flight 子进程。
+  private async initClient(
+    spec: LspServerSpec,
+    root: string,
+    sessionId: string,
+  ): Promise<LspClientResult> {
     const rootUri = pathToFileURL(root).toString()
     const client = this.clientFactory(spec)
+    const pending = this.pendingInits.get(sessionId) ?? new Set<LspClient>()
+    pending.add(client)
+    this.pendingInits.set(sessionId, pending)
     try {
       await client.initialize(rootUri)
       return { client }
     } catch (error) {
       await client.shutdown()
       return { error: this.describeError(spec, error) }
+    } finally {
+      pending.delete(client)
+      if (pending.size === 0) this.pendingInits.delete(sessionId)
     }
   }
 
@@ -309,19 +333,30 @@ export class LspManager {
     return `LSP 服务 (${spec.command}) 启动失败: ${reason}。请在设置中配置自定义路径或手动安装对应服务。`
   }
 
-  // 清空会话缓存并回收进程（会话切换/关闭/删除时调用）。
+  // 清空会话缓存并回收进程（会话切换/关闭/删除时调用；含 in-flight 初始化 client）。
   clearSession(sessionId: string): void {
     const languageClients = this.sessions.get(sessionId)
-    if (!languageClients) return
-    this.sessions.delete(sessionId)
-    for (const client of languageClients.values()) {
-      void client.shutdown()
+    if (languageClients) {
+      this.sessions.delete(sessionId)
+      for (const client of languageClients.values()) {
+        void client.shutdown()
+      }
+    }
+    const pending = this.pendingInits.get(sessionId)
+    if (pending) {
+      for (const client of pending) {
+        void client.shutdown()
+      }
     }
   }
 
   // 应用退出：回收全部进程。
   async dispose(): Promise<void> {
     for (const sessionId of [...this.sessions.keys()]) {
+      this.clearSession(sessionId)
+    }
+    // 仅剩 in-flight 初始化的会话（理论上 sessions 已随创建留存，兜底处理）。
+    for (const sessionId of [...this.pendingInits.keys()]) {
       this.clearSession(sessionId)
     }
   }

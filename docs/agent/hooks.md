@@ -75,7 +75,7 @@ hooksManager.dispatch（串行派发，配置顺序即执行顺序）
 - 事件键为 PascalCase 精确名；未知键告警并忽略。
 - `matcher`：`"a|b|c"` 竖线分隔的精确工具名（非正则），缺省 = 全部；仅 `PreToolUse` / `PostToolUse` / `PermissionRequest` 使用。
 - `command` 必填（`type` 缺省即 `command`）；`commandWindows` 在 win32 优先。
-- `timeout` 秒，默认 600，下限 1；`additionalContextLimit` token，默认 2500，`0` 禁用 spill。
+- `timeout` 秒，默认 600，下限 1；`additionalContextLimit`：注入模型上下文的 additionalContext 上限（按 token 估算，默认 2500），超限截断并附截断标记，`0` 表示不注入 additionalContext（hook 输出无 spill 落盘）。
 - 非法条目（结构错误 / 未知 handler 类型 / 空命令）→ 警告 + 忽略该条，不阻断会话启动。
 
 ## 4. 线协议（对齐 Codex / Claude 生态）

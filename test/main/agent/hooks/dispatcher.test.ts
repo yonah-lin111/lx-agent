@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -170,5 +170,103 @@ describe("dispatchHooks", () => {
     })
     expect(result.runs[0]?.status).toBe("failed")
     expect(result.runs[0]?.message.text).toBe("broken")
+  })
+
+  it("additionalContextLimit 超限截断并附标记，未超限原样注入", async () => {
+    const contextJson = (text: string): string =>
+      `printf '%s' '${JSON.stringify({
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text },
+      })}'`
+
+    const within = await dispatchHooks(
+      [
+        hook({
+          event: "SessionStart",
+          additionalContextLimit: 100,
+          command: contextJson("hello"),
+        }),
+      ],
+      { event: "SessionStart", cwd: tmpDir },
+    )
+    expect(within.runs[0]?.additionalContext).toBe("hello")
+    expect(within.runs[0]?.message.text).toBe("hello")
+
+    // 5 token × 4 字符 = 20 字符上限，超出部分截断。
+    const over = await dispatchHooks(
+      [
+        hook({
+          event: "SessionStart",
+          additionalContextLimit: 5,
+          command: contextJson("x".repeat(50)),
+        }),
+      ],
+      { event: "SessionStart", cwd: tmpDir },
+    )
+    const expected = `${"x".repeat(20)}\n\n[hook additional context truncated: exceeded 5 tokens]`
+    expect(over.runs[0]?.additionalContext).toBe(expected)
+    expect(over.runs[0]?.message.text).toBe(expected)
+  })
+
+  it("additionalContextLimit=0 禁用注入；其余审计文本回退（block reason 保留）", async () => {
+    const contextJson = (text: string): string =>
+      `printf '%s' '${JSON.stringify({
+        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: text },
+      })}'`
+    const disabled = await dispatchHooks(
+      [
+        hook({
+          event: "PreToolUse",
+          additionalContextLimit: 0,
+          command: contextJson("ctx"),
+        }),
+      ],
+      { event: "PreToolUse", cwd: tmpDir },
+    )
+    expect(disabled.runs[0]?.additionalContext).toBeUndefined()
+    expect(disabled.runs[0]?.message.text).toBe("")
+
+    const blockJson = `printf '%s' '${JSON.stringify({
+      decision: "block",
+      reason: "policy",
+      hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: "ctx" },
+    })}'`
+    const blocked = await dispatchHooks(
+      [hook({ event: "PreToolUse", additionalContextLimit: 0, command: blockJson })],
+      { event: "PreToolUse", cwd: tmpDir },
+    )
+    expect(blocked.runs[0]?.additionalContext).toBeUndefined()
+    expect(blocked.runs[0]?.message.text).toBe("policy")
+    expect(firstBlock(blocked)).toEqual({ reason: "policy" })
+  })
+
+  it("signal 中止停止派发剩余 hook，在途 hook 归一为 failed", async () => {
+    const marker = join(tmpDir, "second-ran")
+    const controller = new AbortController()
+    const startedAt = Date.now()
+    const promise = dispatchHooks(
+      [
+        hook({ name: "slow", order: 0, command: "sleep 30", timeoutSec: 60 }),
+        hook({ name: "after", order: 1, command: `touch ${marker}` }),
+      ],
+      { event: "Stop", cwd: tmpDir, signal: controller.signal },
+    )
+    setTimeout(() => controller.abort(), 100)
+    const result = await promise
+    expect(result.runs.map((run) => run.hook.name)).toEqual(["slow"])
+    expect(result.runs[0]?.status).toBe("failed")
+    expect(result.runs[0]?.message.text).toBe("")
+    expect(existsSync(marker)).toBe(false)
+    expect(Date.now() - startedAt).toBeLessThan(2000)
+  })
+
+  it("signal 已中止 → 一个 hook 都不派发", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await dispatchHooks([hook({ command: "sleep 30" })], {
+      event: "Stop",
+      cwd: tmpDir,
+      signal: controller.signal,
+    })
+    expect(result.runs).toEqual([])
   })
 })

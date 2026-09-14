@@ -10,6 +10,7 @@ const output = (partial: Partial<HookCommandOutput>): HookCommandOutput => ({
   stderr: "",
   timedOut: false,
   spawnFailed: false,
+  aborted: false,
   durationMs: 5,
   stdoutTruncated: false,
   stderrTruncated: false,
@@ -172,11 +173,15 @@ describe("parseHookOutput", () => {
     expect(parsed.systemMessage).toBe("compacted")
   })
 
-  it("超时 / spawn 失败 → failed", () => {
+  it("超时 / spawn 失败 / 中止 → failed", () => {
     expect(parseHookOutput("Stop", output({ timedOut: true })).status).toBe("failed")
     expect(parseHookOutput("Stop", output({ spawnFailed: true, exitCode: null })).status).toBe(
       "failed",
     )
+    const aborted = parseHookOutput("Stop", output({ aborted: true, exitCode: null }))
+    expect(aborted.status).toBe("failed")
+    expect(aborted.text).toBe("")
+    expect(aborted.block).toBeUndefined()
   })
 
   it("所有事件名解析不抛错", () => {
