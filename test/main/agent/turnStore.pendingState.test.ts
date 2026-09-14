@@ -180,4 +180,45 @@ describe("TurnStore 跨轮 pending 状态与 seq 对齐", () => {
     expect(store.getMessageSeqs()).toEqual([0])
     expect(store.readSessionEntries(sessionId).seqs).toEqual([0])
   })
+
+  it("新建会话：预建事务回滚不产生幽灵 seq，提交后才由调用方追加", () => {
+    let currentSessionId: string | null = null
+    const store = new TurnStore({
+      setSessionId: (id: string | null) => {
+        currentSessionId = id
+      },
+      getCurrentSessionId: () => currentSessionId,
+      setSessionBinding: () => {},
+      getCwd: () => "/tmp",
+      emit: () => {},
+      emitUsage: () => {},
+    })
+    const createInput = {
+      binding: {},
+      cwd: "/tmp",
+      title: "draft",
+      capabilities,
+      modelSelection: { provider: "p", model: "m" },
+    }
+
+    // 回滚路径：createSessionIfNeeded 不再写内存 seq。
+    expect(() =>
+      agentSessionService.transaction(() => {
+        store.createSessionIfNeeded(createInput, new Date().toISOString())
+        throw new Error("boom")
+      }),
+    ).toThrow("boom")
+    expect(store.getMessageSeqs()).toEqual([])
+
+    // 提交路径：返回值携带 initialModelSeq，由调用方在事务提交后追加。
+    currentSessionId = null
+    let created: { sessionId: string; initialModelSeq?: number } | undefined
+    agentSessionService.transaction(() => {
+      created = store.createSessionIfNeeded(createInput, new Date().toISOString())
+    })
+    expect(store.getMessageSeqs()).toEqual([])
+    expect(created?.initialModelSeq).toBeTypeOf("number")
+    store.appendMessageSeq(created!.initialModelSeq!)
+    expect(store.getMessageSeqs()).toEqual([created!.initialModelSeq])
+  })
 })

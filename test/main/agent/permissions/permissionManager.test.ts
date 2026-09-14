@@ -148,6 +148,13 @@ describe("permissionManager.evaluate", () => {
     expect(permissionManager.evaluate("question", { questions: [{ question: "q" }] })).toBe("allow")
   })
 
+  it("memory 显式登记为豁免：任意路径 view 不询问（读全放开产品决策）", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("memory", { action: "view", path: "/etc/hosts" })).toBe(
+      "allow",
+    )
+  })
+
   it("已注册 MCP 工具 → ask；未注册同名 → 放行", () => {
     applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
     permissionManager.setMcpTools(null, ["codegraph_codegraph_search"])

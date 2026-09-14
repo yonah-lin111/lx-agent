@@ -217,6 +217,11 @@ export class TurnStore {
     this.messageSeqs = seqs
   }
 
+  // 事务提交后追加单个消息 seq（事务内变更内存对齐会在回滚时产生幽灵 seq）。
+  appendMessageSeq(seq: number): void {
+    this.messageSeqs.push(seq)
+  }
+
   // 清空 seq 对齐（新会话从空上下文开始）。
   resetSeqs(): void {
     this.messageSeqs = []
@@ -405,12 +410,14 @@ export class TurnStore {
   }
 
   // 会话不存在时创建会话行 + 能力快照；已存在则直接返回（须在事务内调用）。
+  // 返回的 initialModelSeq 由调用方在事务提交后经 appendMessageSeq 追加，避免回滚产生幽灵 seq。
   createSessionIfNeeded(
     input: PendingSessionInput,
     now: string,
-  ): { sessionId: string; initialModelMessage?: ModelSwitchMessage } {
+  ): { sessionId: string; initialModelMessage?: ModelSwitchMessage; initialModelSeq?: number } {
     let sessionId = this.deps.getCurrentSessionId()
     let initialModelMessage: ModelSwitchMessage | undefined
+    let initialModelSeq: number | undefined
     if (!sessionId) {
       sessionId = createExternalId()
       agentSessionService.insertSession({
@@ -452,13 +459,17 @@ export class TurnStore {
           payload: JSON.stringify(initialModelMessage),
           createdAt: now,
         })
-        this.messageSeqs.push(seq - 1)
+        initialModelSeq = seq - 1
       }
       this.deps.setSessionId(sessionId)
       this.deps.setSessionBinding(input.binding)
       this.projection.apply({ type: "session_title", sessionId, title: input.title })
     }
-    return { sessionId, initialModelMessage }
+    return {
+      sessionId,
+      initialModelMessage,
+      ...(initialModelSeq !== undefined ? { initialModelSeq } : {}),
+    }
   }
 
   // 会话是否已落库消息（首轮 prompt 失败清理空会话判定）。

@@ -124,8 +124,6 @@ export interface TaskToolDeps {
     context: AfterToolCallContext,
     signal?: AbortSignal,
   ) => Promise<ToolHookResult | undefined>
-  // 父 run 的 abort signal（级联中止子代理）。
-  getSignal: () => AbortSignal | undefined
   // 记录子代理内部工具调用（parent_call_id 指向触发它的父 task 调用行；与父 turn 同事务落库）。
   recordChildCall: (parentToolCallId: string, child: ChildCallInput) => void
   // 可选当前会话 ID

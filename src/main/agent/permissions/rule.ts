@@ -12,6 +12,7 @@ export const GATED_BUILTIN_TOOLS = new Set([
 ])
 
 // 豁免工具集：永不询问（纯公开检索 + 本地只读 + 纯交互无副作用）。
+// 读操作不设路径边界是产品决策（AGENTS.md 级别说明见 docs/agent/permissions.md），memory 显式登记避免落入"未知工具默认放行"的隐式路径。
 export const EXEMPT_TOOLS = new Set([
   "web_search",
   "read",
@@ -23,6 +24,7 @@ export const EXEMPT_TOOLS = new Set([
   "question",
   "lsp",
   "view_image",
+  "memory",
 ])
 
 // 规则类别。

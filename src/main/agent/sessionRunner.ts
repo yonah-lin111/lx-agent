@@ -491,7 +491,6 @@ export class AgentSessionRunner {
           afterToolCall: async (context) => this.afterToolCallWithGuard(context),
           preToolUse: (context, signal) => this.dispatchPreToolUse(context, cwd, signal),
           postToolUse: (context, signal) => this.dispatchPostToolUse(context, cwd, signal),
-          getSignal: () => this.agent?.signal,
           getCwd: () => this.cwd ?? cwd,
           recordChildCall: (parentToolCallId, child) =>
             this.turnStore.recordChildCall(parentToolCallId, child),
@@ -901,6 +900,7 @@ export class AgentSessionRunner {
         | {
             sessionId: string
             initialModelMessage?: ModelSwitchMessage
+            initialModelSeq?: number
           }
         | undefined
       agentSessionService.transaction(() => {
@@ -909,6 +909,10 @@ export class AgentSessionRunner {
           new Date().toISOString(),
         )
       })
+      // 事务提交成功后再对齐内存 seq（回滚不得留下幽灵 seq）。
+      if (createResult?.initialModelSeq !== undefined) {
+        this.turnStore.appendMessageSeq(createResult.initialModelSeq)
+      }
       if (createResult?.initialModelMessage) {
         agent.state.appendMessage(createResult.initialModelMessage)
         this.emitEvent({

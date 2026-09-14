@@ -73,7 +73,6 @@ const createTestTool = (options: {
     subagentSystemPrompt: "子代理基座提示词",
     model: { provider: "p", id: "m" },
     beforeToolCall: async () => undefined,
-    getSignal: () => undefined,
     recordChildCall: vi.fn(),
     getTools: () => options.tools ?? [],
     ...(options.pool ? { subagentPool: options.pool } : {}),
@@ -116,7 +115,6 @@ describe("task 子代理工具", () => {
       subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
-      getSignal: () => undefined,
       recordChildCall: vi.fn(),
       getTools: () => [mockTool],
     })
@@ -184,7 +182,6 @@ describe("task 子代理工具", () => {
       subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
-      getSignal: () => undefined,
       recordChildCall: vi.fn(),
       getTools: () => [failingTool],
     })
@@ -215,7 +212,6 @@ describe("task 子代理工具", () => {
       model: { provider: "p", id: "m" },
       subagentPool,
       beforeToolCall: async () => undefined,
-      getSignal: () => undefined,
       recordChildCall: vi.fn(),
       getTools: () => [],
     })
@@ -670,7 +666,6 @@ describe("task 子代理 hooks 接线", () => {
       afterToolCall,
       preToolUse,
       postToolUse,
-      getSignal: () => undefined,
       recordChildCall: vi.fn(),
       getTools: () => [echo],
     })
@@ -707,7 +702,6 @@ describe("task 子代理推流节流与中止竞态", () => {
       subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
-      getSignal: () => undefined,
       recordChildCall,
       getTools: () => [makeTool("echo")],
     })
