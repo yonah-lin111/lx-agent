@@ -4,9 +4,11 @@ import type { SkillItem } from "@shared/contracts/agent"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  type AgentHistoryPromptItem,
   type AgentInputCommand,
   AgentInputCommandPanel,
   AgentInputFilePanel,
+  AgentInputHistoryPromptPanel,
   type AgentInputModel,
   AgentInputModelPanel,
   type AgentInputProjectItem,
@@ -235,5 +237,28 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
     fireEvent.mouseDown(options[1])
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(1)
+  })
+
+  it("历史提示词面板：点选历史条目触发 onSelect", () => {
+    const onSelect = vi.fn()
+    const prompts: AgentHistoryPromptItem[] = [
+      { id: "history-0", text: "最新提示词" },
+      { id: "history-1", text: "较旧提示词" },
+    ]
+    render(
+      <AgentInputHistoryPromptPanel
+        isOpen={true}
+        position={position}
+        prompts={prompts}
+        activeIndex={0}
+        onSelect={onSelect}
+      />,
+    )
+
+    const options = screen.getAllByRole("option")
+    expect(options).toHaveLength(2)
+    fireEvent.mouseDown(options[1])
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(prompts[1])
   })
 })

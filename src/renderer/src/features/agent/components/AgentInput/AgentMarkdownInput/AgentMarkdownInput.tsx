@@ -16,6 +16,7 @@ import { useTranslation } from "@/i18n"
 import {
   AgentInputCommandPanel,
   AgentInputFilePanel,
+  AgentInputHistoryPromptPanel,
   AgentInputModelPanel,
   AgentInputProjectPanel,
   AgentInputSessionPanel,
@@ -34,7 +35,7 @@ import type { AgentMarkdownInputProps, AgentMarkdownInputRef } from "./types"
  * Agent 专用 Markdown 输入框组件，使用 CodeMirror 6 引擎，支持：
  * 1. Markdown 语法高亮与语法扩展
  * 2. Markdown 块命令面板（输入 - / # / > / ``` 等触发）
- * 3. Agent 斜杠命令面板（/clear, /undo, /model, /gitWorktree, /compact）
+ * 3. Agent 斜杠命令面板（/clear, /undo, /model, /gitWorktree, /compact, /historyPrompt）
  * 4. @ 项目文件提及搜索
  * 5. 回车发送（Shift+Enter 换行）与上下键历史记录导航
  */
@@ -79,7 +80,14 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       return panelAnchorRef?.current ?? containerRef.current
     }, [panelAnchorRef])
 
-    const { browsing, record, reset, navigate } = usePromptHistory()
+    const {
+      history: promptHistory,
+      refresh: refreshPromptHistory,
+      browsing,
+      record,
+      reset,
+      navigate,
+    } = usePromptHistory()
     const browsingRef = useRef(browsing)
     browsingRef.current = browsing
     const navigateRef = useRef(navigate)
@@ -108,6 +116,8 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       allowProjectChange,
       modelOptions,
       worktreeOptions,
+      promptHistory,
+      refreshPromptHistory,
       getPanelAnchor,
       t,
       locale,
@@ -196,6 +206,9 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       commandIndexRef: panels.commandIndexRef,
       setCommandIndex: panels.setCommandIndex,
       matchedCommandsRef: panels.matchedCommandsRef,
+      historyPromptIndexRef: panels.historyPromptIndexRef,
+      setHistoryPromptIndex: panels.setHistoryPromptIndex,
+      matchedHistoryPromptsRef: panels.matchedHistoryPromptsRef,
       modelIndexRef: panels.modelIndexRef,
       setModelIndex: panels.setModelIndex,
       matchedModelsRef: panels.matchedModelsRef,
@@ -223,6 +236,7 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
       navigateRef,
       handleSendAction: actions.handleSendAction,
       executeCommand: actions.executeCommand,
+      selectHistoryPrompt: actions.selectHistoryPrompt,
       selectModel: actions.selectModel,
       selectWorktree: actions.selectWorktree,
       selectProject: actions.selectProject,
@@ -364,6 +378,13 @@ export const AgentMarkdownInput = React.forwardRef<AgentMarkdownInputRef, AgentM
           commands={panels.matchedCommands}
           activeIndex={panels.commandIndex}
           onSelect={actions.executeCommand}
+        />
+        <AgentInputHistoryPromptPanel
+          isOpen={panels.isHistoryPromptMode}
+          position={panels.panelPosition}
+          prompts={panels.matchedHistoryPrompts}
+          activeIndex={panels.historyPromptIndex}
+          onSelect={actions.selectHistoryPrompt}
         />
         <AgentUndoConfirmPanel
           isOpen={panels.isUndoConfirmMode}

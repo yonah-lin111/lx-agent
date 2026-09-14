@@ -19,6 +19,7 @@ import { projectApi } from "@/features/project/api/projectApi"
 import { settingsApi, subscribeSettingsChanged } from "@/features/settings"
 import type { TranslationKey } from "@/i18n"
 import {
+  type AgentHistoryPromptItem,
   type AgentInputModel,
   type AgentInputProjectItem,
   type AgentInputSessionItem,
@@ -31,6 +32,7 @@ import {
   getMatchedCommands,
   getMentionQuery,
   getSkillMentionQuery,
+  HISTORY_PROMPT_COMMAND,
   isFuzzyMatch,
 } from "../agentMarkdownInputUtils"
 import type { AgentInputActiveMode, AgentMarkdownInputProps } from "../types"
@@ -45,6 +47,10 @@ interface UseAgentInputPanelsProps {
   allowProjectChange?: boolean
   modelOptions?: AgentMarkdownInputProps["modelOptions"]
   worktreeOptions?: GitWorktreeOption[] | null
+  // 全局历史提示词（新→旧）。
+  promptHistory?: string[]
+  // 重新拉取历史提示词（进入二级面板时调用）。
+  refreshPromptHistory?: () => void
   getPanelAnchor: () => HTMLElement | null
   t: (key: TranslationKey, params?: Record<string, string | number>) => string
   locale?: Locale
@@ -60,6 +66,8 @@ export const useAgentInputPanels = ({
   allowProjectChange = true,
   modelOptions = [],
   worktreeOptions,
+  promptHistory = [],
+  refreshPromptHistory,
   getPanelAnchor,
   t,
   locale = "zh",
@@ -76,6 +84,10 @@ export const useAgentInputPanels = ({
   const [commandIndex, setCommandIndex] = useState(0)
   const commandIndexRef = useRef(commandIndex)
   commandIndexRef.current = commandIndex
+
+  const [historyPromptIndex, setHistoryPromptIndex] = useState(0)
+  const historyPromptIndexRef = useRef(historyPromptIndex)
+  historyPromptIndexRef.current = historyPromptIndex
 
   const [fileIndex, setFileIndex] = useState(0)
   const fileIndexRef = useRef(fileIndex)
@@ -212,6 +224,20 @@ export const useAgentInputPanels = ({
   )
   const matchedCommandsRef = useRef(matchedCommands)
   matchedCommandsRef.current = matchedCommands
+
+  // 历史提示词候选：`/historyPrompt` 后的文本作为模糊查询（新→旧）。
+  const matchedHistoryPrompts = useMemo<AgentHistoryPromptItem[]>(() => {
+    if (value !== HISTORY_PROMPT_COMMAND && !value.startsWith(`${HISTORY_PROMPT_COMMAND} `)) {
+      return []
+    }
+    const query = value.slice(HISTORY_PROMPT_COMMAND.length).trim().toLowerCase()
+    const matches = query
+      ? promptHistory.filter((text) => isFuzzyMatch(query, text.toLowerCase()))
+      : promptHistory
+    return matches.map((text, index) => ({ id: `history-${index}`, text }))
+  }, [value, promptHistory])
+  const matchedHistoryPromptsRef = useRef(matchedHistoryPrompts)
+  matchedHistoryPromptsRef.current = matchedHistoryPrompts
 
   const matchedModels = useMemo<AgentInputModel[]>(() => {
     if (!value.startsWith("/model")) return []
@@ -573,6 +599,7 @@ export const useAgentInputPanels = ({
   mentionItemsRef.current = mentionItems
 
   const isCommandMode = activeMode === "command" && matchedCommands.length > 0
+  const isHistoryPromptMode = activeMode === "historyPrompt" && matchedHistoryPrompts.length > 0
   const isFileMode = activeMode === "file" && mentionItems.length > 0
   const isModelMode = activeMode === "model" && matchedModels.length > 0
   const isWorktreeMode = activeMode === "worktree" && matchedWorktrees.length > 0
@@ -592,6 +619,7 @@ export const useAgentInputPanels = ({
     const kind: "command" | "file" | null = isFileMode
       ? "file"
       : isCommandMode ||
+          isHistoryPromptMode ||
           isModelMode ||
           isWorktreeMode ||
           isProjectMode ||
@@ -607,6 +635,7 @@ export const useAgentInputPanels = ({
     setPanelPosition(getAgentPanelPosition(kind, anchor.getBoundingClientRect()))
   }, [
     isCommandMode,
+    isHistoryPromptMode,
     isFileMode,
     isModelMode,
     isWorktreeMode,
@@ -694,6 +723,20 @@ export const useAgentInputPanels = ({
       if (isSessionInput) {
         setActiveMode("session")
         setSessionIndex(0)
+        setFiles([])
+        setBlockCommands([])
+        return
+      }
+
+      const isHistoryPromptInput =
+        docText === HISTORY_PROMPT_COMMAND || docText.startsWith(`${HISTORY_PROMPT_COMMAND} `)
+      if (isHistoryPromptInput) {
+        // 首次进入二级面板时重取历史，避免多输入实例间的脏数据。
+        if (activeModeRef.current !== "historyPrompt") {
+          refreshPromptHistory?.()
+        }
+        setActiveMode("historyPrompt")
+        setHistoryPromptIndex(0)
         setFiles([])
         setBlockCommands([])
         return
@@ -801,7 +844,7 @@ export const useAgentInputPanels = ({
       setBlockCommands([])
       setBlockCommandPosition(undefined)
     },
-    [projectId, currentPath, getPanelAnchor, t, allowProjectChange],
+    [projectId, currentPath, getPanelAnchor, t, allowProjectChange, refreshPromptHistory],
   )
 
   const syncPanelsRef = useRef(syncPanels)
@@ -819,6 +862,9 @@ export const useAgentInputPanels = ({
     commandIndex,
     setCommandIndex,
     commandIndexRef,
+    historyPromptIndex,
+    setHistoryPromptIndex,
+    historyPromptIndexRef,
     fileIndex,
     setFileIndex,
     fileIndexRef,
@@ -849,6 +895,8 @@ export const useAgentInputPanels = ({
     skills,
     matchedCommands,
     matchedCommandsRef,
+    matchedHistoryPrompts,
+    matchedHistoryPromptsRef,
     matchedModels,
     matchedModelsRef,
     matchedWorktrees,
@@ -862,6 +910,7 @@ export const useAgentInputPanels = ({
     mentionItems,
     mentionItemsRef,
     isCommandMode,
+    isHistoryPromptMode,
     isFileMode,
     isModelMode,
     isWorktreeMode,
