@@ -344,6 +344,18 @@ export class AgentSessionRunner {
       })
       // 会话装配时快照子代理设置：设置保存仅对新会话生效。
       const subagentSettings = getSubagentSettings()
+      // 子代理协作模式由设置决定（缺省 build），不继承主 agent 模式。
+      const subagentMode = normalizeCollaborationMode(subagentSettings.mode)
+      const subagentSystemPrompt = buildSystemPromptSync({
+        cwd,
+        sessionId: this.currentSessionId ?? undefined,
+        modelId: modelResult.model.id,
+        sandboxPolicy: currentSandboxPolicy,
+        collaborationMode: subagentMode,
+        contextUsage,
+        activeSkills: this.activeSkills,
+        personality: this.personality,
+      })
       this.subagentRuntime ??= new SubagentRuntime(subagentSettings.maxConcurrent)
       const registry = createRegistry(
         cwd,
@@ -351,7 +363,7 @@ export class AgentSessionRunner {
         this.activeMcp,
         this.activeSkills.length > 0,
         {
-          systemPrompt,
+          subagentSystemPrompt,
           model: modelResult.model,
           sandboxPolicy: currentSandboxPolicy,
           subagentPool: this.subagentPool,
@@ -359,7 +371,7 @@ export class AgentSessionRunner {
           subagentRuntime: this.subagentRuntime,
           beforeToolCall: (context, signal) =>
             permissionManager.gate(context, this.currentSessionId, signal, {
-              collaborationMode: this.collaborationMode,
+              collaborationMode: subagentMode,
               cwd,
             }),
           getSignal: () => this.agent?.signal,

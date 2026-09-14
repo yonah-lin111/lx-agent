@@ -61,7 +61,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `todowrite` | `{ todos: { content; status }[] }` | 任务清单状态机整表替换；驱动状态栏与执行面板；Plan/Review 模式下被硬拦截 |
 | **语言服务** | `lsp` | `{ operation; filePath; line?; character?; query? }` | 9 种 LSP 语义操作：`goToDefinition` / `findReferences` / `hover` / `documentSymbol` / `workspaceSymbol` / `goToImplementation` / `prepareCallHierarchy` / `incomingCalls` / `outgoingCalls`；支持懒安装 |
 | **交互与协作** | `question` | `{ questions: { question; header; options; multiple? }[] }` | 向用户发起结构化交互式提问（支持 Markdown 与选项选择） |
-| | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` | 启动独立子代理或向 `SubagentPool` 续接；`agent_type` 按角色目录派发（内置 + 用户角色），工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖；并发 `maxConcurrent` 超限快返，嵌套深度 `maxDepth` 1–5 |
+| | `task` | `{ description; prompt; agent_type?; name?; subagent_id? }` | 启动独立子代理或向 `SubagentPool` 续接；`agent_type` 按角色目录派发（内置 + 用户角色），工具集取父激活集与角色白名单交集，模型按 `role.model → defaultModel → 父模型` 覆盖，协作模式按 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）绑定提示词与门禁；并发 `maxConcurrent` 超限快返，嵌套深度 `maxDepth` 1–5 |
 | | `read_skill` | `{ name }` | 读取并加载指定 Skill 指令包的完整 Markdown 正文 |
 | **网络检索** | `web_search` | `{ query; numResults?=8; type? }` | 优先 Exa (mcp.exa.ai) 检索，Tavily (api.tavily.com) 兜底；`numResults` 上限 10 |
 | | `webfetch` | `{ url; format?=markdown; timeout?=30s }` | URL 内容抓取与 HTML 转 Markdown，内置私网/Localhost SSRF 严格阻断 |
@@ -77,7 +77,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 
 - 内置角色：`explorer`（只读白名单：`read` / `ls` / `grep` / `find` / `lsp` / `web_search` / `webfetch` / `time`）、`worker`（工具继承）；保留名不可被用户角色占用（`review` 归属协作模式 Review Mode，禁止子代理角色使用）。
 - 用户角色：`~/.lx/config.json` → `agent.subagents.roles`，可声明 `description` / `instructions` / `model` / `tools`；`task` 工具描述在会话装配时动态注入角色目录。
-- 能力只收缩不提权：子代理工具集 = 父激活集 ∩ 角色白名单，权限与沙箱继承父级；并发上限 `maxConcurrent`（1–32）与嵌套深度 `maxDepth`（1–5，默认 1）由会话级 `SubagentRuntime` 治理。
+- 能力只收缩不提权：子代理工具集 = 父激活集 ∩ 角色白名单，权限与沙箱继承父级；协作模式取 `agent.subagents.mode`（缺省 `build`，不继承主 Agent）；并发上限 `maxConcurrent`（1–32）与嵌套深度 `maxDepth`（1–5，默认 1）由会话级 `SubagentRuntime` 治理。
 
 ---
 

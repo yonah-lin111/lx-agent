@@ -1,4 +1,4 @@
-import type { HookEventName, PermissionSettings } from "./contracts/agent"
+import type { CollaborationMode, HookEventName, PermissionSettings } from "./contracts/agent"
 import type { ModelPricing } from "./contracts/usage"
 
 // Provider 传输格式。
@@ -332,6 +332,8 @@ export interface SubagentSettings {
   maxConcurrent?: number
   maxDepth?: number
   defaultModel?: ModelSelection
+  // 子代理协作模式（不继承主 agent；缺省为 build）。
+  mode?: CollaborationMode
 }
 
 export const DEFAULT_SUBAGENT_SETTINGS: SubagentSettings = { roles: {}, maxDepth: 1 }

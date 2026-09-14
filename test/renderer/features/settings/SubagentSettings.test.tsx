@@ -192,4 +192,25 @@ describe("SubagentSettings", () => {
     await waitFor(() => expect(saveSubagentSettings).toHaveBeenCalledTimes(2))
     expect(saveSubagentSettings.mock.calls[1]![0].maxConcurrent).toBeUndefined()
   })
+
+  it("切换子代理模式写入保存载荷，切回 Build 时省略字段", async () => {
+    renderComponent()
+    await screen.findByText("explorer")
+
+    // 缺省展示 Build 模式。
+    fireEvent.click(screen.getByRole("button", { name: "Build Mode" }))
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "Review Mode" }))
+
+    await useSettingsDraftStore.getState().save()
+    await waitFor(() => expect(saveSubagentSettings).toHaveBeenCalledTimes(1))
+    expect(saveSubagentSettings.mock.calls[0]![0].mode).toBe("review")
+
+    // 切回 Build：缺省值不落盘。
+    fireEvent.click(screen.getByRole("button", { name: "Review Mode" }))
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "Build Mode" }))
+
+    await useSettingsDraftStore.getState().save()
+    await waitFor(() => expect(saveSubagentSettings).toHaveBeenCalledTimes(2))
+    expect(saveSubagentSettings.mock.calls[1]![0].mode).toBeUndefined()
+  })
 })

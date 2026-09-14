@@ -88,15 +88,15 @@ export interface ChildCallInput {
 
 // task 工具依赖（agentRunner 装配时注入；execute 时解析）。
 export interface TaskToolDeps {
-  // 父系统提示词（子代理在其后追加子代理前缀）。
-  systemPrompt: string
+  // 子代理基座系统提示词（已按子代理协作模式渲染；子代理在其后追加子代理前缀）。
+  subagentSystemPrompt: string
   // 父会话模型（子代理沿用）。
   model: Model
   // 父会话沙箱策略（继承至子代理）。
   sandboxPolicy?: SandboxPolicy
   // 会话级子代理池（跨轮次复用 Agent 实例）。
   subagentPool?: SubagentPool
-  // 父权限门控（子代理内部工具复用同一 permissionManager.gate，不豁免）。
+  // 子代理权限门控（复用父 permissionManager.gate；协作模式按子代理配置绑定，不继承主 agent）。
   beforeToolCall: (
     context: BeforeToolCallContext,
     signal?: AbortSignal,
@@ -272,10 +272,10 @@ export const createTaskTool = (
         // 5. 子代理实例：续接复用池内实例（角色/模型/工具与创建时一致），否则按角色新建。
         let subAgent = existingManaged?.agent
         if (!subAgent) {
-          // 系统提示词追加顺序：父提示词 → 子代理后缀 → 角色指令。
+          // 系统提示词追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
           const effectivePrompt = role?.instructions
-            ? `${deps.systemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
-            : `${deps.systemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`
+            ? `${deps.subagentSystemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}\n\n${role.instructions}`
+            : `${deps.subagentSystemPrompt}\n\n${SUBAGENT_PROMPT_SUFFIX}`
 
           // 工具集 = 父激活集去 task，再与角色白名单求交集（永不新增能力）。
           const parentTools = deps.getTools().filter((tool) => tool.name !== "task")
@@ -315,7 +315,7 @@ export const createTaskTool = (
             childTools.push(
               createTaskTool({
                 ...deps,
-                systemPrompt: effectivePrompt,
+                subagentSystemPrompt: effectivePrompt,
                 model: childModel,
                 depth: childDepth,
                 subagentRuntime: runtime,

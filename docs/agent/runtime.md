@@ -139,7 +139,7 @@ User Input / Drain
 ### 5.1 Subagent Pool 执行模型与角色治理
 
 - **角色派发**：`task` 新增 `agent_type`，从内置角色（`explorer` / `worker`）与用户角色（`agent.subagents.roles`）中显式选型；未知值返回错误并列出可用角色，不静默回退。
-- **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础——`role.tools` 非空 → 与白名单求交集，缺省 → 继承父集；权限门控（复用父 `permissionManager.gate`）与沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且角色白名单未排除 `task` 时注入，否则维持剔除。
+- **能力只收缩不提权**：子代理工具集以父激活集（已剔除 `task`）为基础——`role.tools` 非空 → 与白名单求交集，缺省 → 继承父集；权限门控复用父 `permissionManager.gate`（协作模式按 `agent.subagents.mode` 绑定，缺省 `build`，不继承主 Agent 模式），沙箱策略原样继承，角色无法提升。嵌套 `task` 仅在子代理深度 `< maxDepth` 且角色白名单未排除 `task` 时注入，否则维持剔除。
 - **模型优先级**：`role.model → defaultModel → 父会话模型`；任一级解析失败 `console.warn` 并降级到下一级，仅新建时解析，续接沿用创建时模型。
 - **并发与深度治理**：会话级 `SubagentRuntime` 在 `maxConcurrent`（1–32，缺省不限）达到上限时 fail-fast 返回错误文案，不排队；`maxDepth` 取 1–5（默认 1；根会话为 0，子代理 = 父 + 1），越界不再嵌套。
 - **配置快照**：角色目录与治理项在会话 registry 装配时快照，设置保存仅对新会话生效。
@@ -150,7 +150,7 @@ User Input / Drain
 
 - 代码审查的唯一路径是协作模式 Review Mode（只读审计 + `<review_findings>` 输出契约），不存在 `review` 子代理角色；保留名 `review` 因此禁止用户角色占用。
 - 处于 Review 模式且用户未指定审查目标时，默认审查当前未提交变更（staged / unstaged / untracked）。
-- 子代理系统提示词按「父系统提示词 → `SUBAGENT_PROMPT_SUFFIX` → `role.instructions`」顺序追加（适用于 `explorer` / `worker` 与用户角色）。
+- 子代理系统提示词按「子代理基座提示词（按 `agent.subagents.mode` 渲染，缺省 Build，不注入主 Agent 协作模式）→ `SUBAGENT_PROMPT_SUFFIX` → `role.instructions`」顺序追加（适用于 `explorer` / `worker` 与用户角色）。
 - 详细审查模式的输出协议与卡片见 [collaboration-modes.md](./collaboration-modes.md)。
 
 ---

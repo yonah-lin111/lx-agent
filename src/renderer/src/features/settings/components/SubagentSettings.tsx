@@ -1,3 +1,4 @@
+import type { CollaborationMode } from "@shared/contracts/agent"
 import {
   type ModelProviderSettings,
   RESERVED_SUBAGENT_ROLE_NAMES,
@@ -122,6 +123,16 @@ export const SubagentSettings = (): React.JSX.Element => {
         ? { ...current, defaultModel: { ...current.defaultModel, model } }
         : current,
     )
+  }
+
+  // 协作模式：build 为缺省值，不落盘；其余模式显式存储。
+  const handleModeChange = (mode: string): void => {
+    setSettings((current) => {
+      const next = { ...current }
+      if (mode === "build") delete next.mode
+      else next.mode = mode as CollaborationMode
+      return next
+    })
   }
 
   const handleMaxConcurrentChange = (
@@ -284,6 +295,26 @@ export const SubagentSettings = (): React.JSX.Element => {
                 onChange={handleDefaultModelChange}
               />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+              {t("settings.subagentsMode")}
+            </span>
+            <LxSelect
+              size="small"
+              value={settings.mode ?? "build"}
+              options={[
+                { value: "build", label: t("agent.collaborationModeBuild") },
+                { value: "plan", label: t("agent.collaborationModePlan") },
+                { value: "review", label: t("agent.collaborationModeReview") },
+                { value: "design", label: t("agent.collaborationModeDesign") },
+              ]}
+              onChange={handleModeChange}
+            />
+            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+              {t("settings.subagentsModeHint")}
+            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">

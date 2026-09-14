@@ -68,7 +68,7 @@ const createTestTool = (options: {
   resolveModelSelection?: NonNullable<TaskToolDeps["resolveModelSelection"]>
 }): ReturnType<typeof createTaskTool> => {
   return createTaskTool({
-    systemPrompt: "父系统提示词",
+    subagentSystemPrompt: "子代理基座提示词",
     model: { provider: "p", id: "m" },
     beforeToolCall: async () => undefined,
     getSignal: () => undefined,
@@ -106,7 +106,7 @@ describe("task 子代理工具", () => {
     }
 
     const tool = createTaskTool({
-      systemPrompt: "父系统提示词",
+      subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
       getSignal: () => undefined,
@@ -174,7 +174,7 @@ describe("task 子代理工具", () => {
     }
 
     const tool = createTaskTool({
-      systemPrompt: "父系统提示词",
+      subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       beforeToolCall: async () => undefined,
       getSignal: () => undefined,
@@ -204,7 +204,7 @@ describe("task 子代理工具", () => {
     const subagentPool = new SubagentPool()
 
     const tool = createTaskTool({
-      systemPrompt: "父系统提示词",
+      subagentSystemPrompt: "子代理基座提示词",
       model: { provider: "p", id: "m" },
       subagentPool,
       beforeToolCall: async () => undefined,
@@ -309,12 +309,12 @@ describe("task 子代理角色", () => {
     // 快照携带固定角色名，供 UI 展示角色标注。
     expect((res1.details as { subagent: SubagentData }).subagent.roleName).toBe("custom")
 
-    // 追加顺序：父提示词 → 子代理后缀 → 角色指令。
-    const parentIndex = prompt.indexOf("父系统提示词")
+    // 追加顺序：子代理基座提示词 → 子代理后缀 → 角色指令。
+    const baseIndex = prompt.indexOf("子代理基座提示词")
     const suffixIndex = prompt.indexOf("You are now a sub-agent")
     const instructionsIndex = prompt.indexOf("CUSTOM ROLE INSTRUCTIONS")
-    expect(parentIndex).toBe(0)
-    expect(suffixIndex).toBeGreaterThan(parentIndex)
+    expect(baseIndex).toBe(0)
+    expect(suffixIndex).toBeGreaterThan(baseIndex)
     expect(instructionsIndex).toBeGreaterThan(suffixIndex)
     expect(managed?.agent.state.model).toEqual({ provider: "role-p", id: "role-m" })
     expect(managed?.roleName).toBe("custom")
@@ -506,7 +506,7 @@ describe("task 子代理角色", () => {
     const managed = pool.get(id)
     const prompt = managed?.agent.state.systemPrompt ?? ""
 
-    expect(prompt.startsWith("父系统提示词\n\nYou are now a sub-agent")).toBe(true)
+    expect(prompt.startsWith("子代理基座提示词\n\nYou are now a sub-agent")).toBe(true)
     expect(prompt).not.toContain("You are a specialized Code Review Agent.")
     expect(managed?.roleName).toBeUndefined()
   })
@@ -525,7 +525,7 @@ describe("task 子代理角色", () => {
     const managed = pool.get(id)
     const prompt = managed?.agent.state.systemPrompt ?? ""
 
-    expect(prompt.startsWith("父系统提示词\n\nYou are now a sub-agent")).toBe(true)
+    expect(prompt.startsWith("子代理基座提示词\n\nYou are now a sub-agent")).toBe(true)
     expect(managed?.roleName).toBeUndefined()
   })
 })
