@@ -267,12 +267,9 @@ export const SubagentSettings = (): React.JSX.Element => {
 
       {/* 全局治理卡片 */}
       <div className="settings-item-card flex flex-col gap-3 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
-            {t("settings.subagentsGlobal")}
-          </h3>
-          <LxInfoTooltip markdown={t("settings.subagentsGlobalDoc")} placement="right" />
-        </div>
+        <h3 className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
+          {t("settings.subagentsGlobal")}
+        </h3>
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
@@ -302,9 +299,12 @@ export const SubagentSettings = (): React.JSX.Element => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-              {t("settings.subagentsMode")}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                {t("settings.subagentsMode")}
+              </span>
+              <LxInfoTooltip markdown={t("settings.subagentsModeHint")} placement="right" />
+            </div>
             <LxSelect
               size="small"
               value={settings.mode ?? "build"}
@@ -316,15 +316,18 @@ export const SubagentSettings = (): React.JSX.Element => {
               ]}
               onChange={handleModeChange}
             />
-            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-              {t("settings.subagentsModeHint")}
-            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
-              {t("settings.subagentsMaxConcurrent")}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
+                {t("settings.subagentsMaxConcurrent")}
+              </span>
+              <LxInfoTooltip
+                markdown={t("settings.subagentsMaxConcurrentHint")}
+                placement="right"
+              />
+            </div>
             <LxInput
               type="number"
               min={1}
@@ -334,9 +337,6 @@ export const SubagentSettings = (): React.JSX.Element => {
               value={settings.maxConcurrent ?? ""}
               onChange={handleMaxConcurrentChange}
             />
-            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
-              {t("settings.subagentsMaxConcurrentHint")}
-            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">

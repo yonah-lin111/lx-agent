@@ -86,8 +86,8 @@ describe("SubagentSettings", () => {
 
     expect(await screen.findByText("worker")).toBeTruthy()
     expect(screen.getByText("explorer")).toBeTruthy()
-    // Global Governance 说明图标与内置角色卡片的主题钩子类。
-    expect(screen.getByLabelText("Info")).toBeTruthy()
+    // 子代理模式与最大并发提示各有 Info 图标；内置角色卡片接入主题钩子类。
+    expect(screen.getAllByLabelText("Info")).toHaveLength(2)
     expect(screen.getByText("explorer").closest(".settings-item-card")).not.toBeNull()
     expect(screen.getByText("Execution and production work")).toBeTruthy()
     expect(screen.getByText("read, grep, lsp")).toBeTruthy()
