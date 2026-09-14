@@ -39,8 +39,8 @@ describe("preload agent API", () => {
       undefined,
       undefined,
     )
-    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.abort)
-    expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.restore, [])
+    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.abort, undefined, undefined)
+    expect(invoke).toHaveBeenNthCalledWith(3, AGENT_CHANNELS.restore, [], undefined, undefined)
     expect(invoke).toHaveBeenNthCalledWith(
       4,
       AGENT_CHANNELS.send,
@@ -74,7 +74,7 @@ describe("preload agent API", () => {
     await api.agent.restoreSession("sess-1")
 
     expect(invoke).toHaveBeenNthCalledWith(1, AGENT_CHANNELS.listSessions)
-    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.restoreSession, "sess-1")
+    expect(invoke).toHaveBeenNthCalledWith(2, AGENT_CHANNELS.restoreSession, "sess-1", undefined)
   })
 
   it("renameSession/deleteSession/deleteMessageTurn 转发参数到共享 channel", async () => {
@@ -114,6 +114,11 @@ describe("preload agent API", () => {
     const api = exposeInMainWorld.mock.calls[0]?.[1]
 
     await api.agent.getPromptAssembly("sess-1", "/foo/path")
-    expect(invoke).toHaveBeenCalledWith(AGENT_CHANNELS.getPromptAssembly, "sess-1", "/foo/path")
+    expect(invoke).toHaveBeenCalledWith(
+      AGENT_CHANNELS.getPromptAssembly,
+      "sess-1",
+      "/foo/path",
+      undefined,
+    )
   })
 })

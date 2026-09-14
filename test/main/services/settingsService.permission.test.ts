@@ -29,6 +29,7 @@ describe("settingsService 权限配置", () => {
     writeFileSync(holder.configPath, "{}\n", "utf8")
     expect(getPermissionSettings()).toEqual({
       defaultMode: "default",
+      sandboxPolicy: "workspace-write",
       allow: [],
       deny: [],
       ask: [],
@@ -52,6 +53,7 @@ describe("settingsService 权限配置", () => {
     )
     expect(getPermissionSettings()).toEqual({
       defaultMode: "acceptEdits",
+      sandboxPolicy: "workspace-write",
       allow: ["Bash(git status)"],
       deny: [],
       ask: ["Bash(docker *)"],
