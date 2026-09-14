@@ -369,6 +369,7 @@ export const createMarkdownEditorKeymaps = ({
               line.text,
               isInsideAnyBlock,
               formattedCustomSlashCommands,
+              isInsideMarkdownVariableBlock(view.state.doc.toString(), cursor),
             )
             if (armedCommand) {
               if (armedCommand.id === "sendPrompt") {

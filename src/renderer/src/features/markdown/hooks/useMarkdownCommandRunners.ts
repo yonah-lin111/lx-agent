@@ -19,7 +19,10 @@ import {
   parseMarkdownSendPromptCommandLine,
   stripMarkdownSlashCommands,
 } from "@/features/markdown/commands/markdownSlashCommands"
-import { stripMarkdownFrontmatter } from "@/features/markdown/commands/markdownVariableCommands"
+import {
+  isInsideMarkdownVariableBlock,
+  stripMarkdownFrontmatter,
+} from "@/features/markdown/commands/markdownVariableCommands"
 import {
   stripEmptyTemplateItems,
   stripMarkdownSubblockFences,
@@ -178,7 +181,12 @@ export const useMarkdownCommandRunners = ({
         view.state.doc.sliceString(0, line.from),
       )
       const isInsideAnyBlock = isInsideSupple || isInsideTemplate
-      const branch = getMarkdownSelectCommandValue(line.text, isInsideAnyBlock)
+      const branch = getMarkdownSelectCommandValue(
+        line.text,
+        isInsideAnyBlock,
+        [],
+        isInsideMarkdownVariableBlock(docText, cursor),
+      )
       const currentProjectPath = projectPathRef.current
       if (branch === null || !currentProjectPath) return
 

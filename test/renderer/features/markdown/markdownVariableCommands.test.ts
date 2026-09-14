@@ -16,6 +16,7 @@ import {
   getVariableTag,
   handleMarkdownVarBlockTab,
   isInsideMarkdownFrontmatter,
+  isInsideMarkdownVariableBlock,
   isInsideMarkdownVarMultilineString,
   mergeMarkdownVarBlock,
   moveMarkdownVarBlockToTop,
@@ -1037,6 +1038,78 @@ $$$ varTemplate --end`
 
       const outsidePos = doc.indexOf("outside") + 15
       expect(isInsideMarkdownVarMultilineString(doc, outsidePos)).toBe(false)
+    })
+
+    it("isInsideMarkdownVariableBlock 仅在 [开始行行首, 结束行行尾] 闭区间内返回 true", () => {
+      const startLine = "$$$ varTemplate --start 「title: 变量」"
+      const endLine = "$$$ varTemplate --end"
+      const doc = ["前置正文 /", "", startLine, 'key: "value"', endLine, "", "后置正文 /"].join(
+        "\n",
+      )
+
+      const startLineStart = doc.indexOf(startLine)
+      const startLineEnd = startLineStart + startLine.length
+      const endLineStart = doc.indexOf(endLine)
+      const endLineEnd = endLineStart + endLine.length
+
+      // 块上方：不得判定为块内
+      expect(isInsideMarkdownVariableBlock(doc, 0)).toBe(false)
+      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf("前置正文"))).toBe(false)
+      expect(isInsideMarkdownVariableBlock(doc, startLineStart - 1)).toBe(false)
+
+      // 边界行与块内
+      expect(isInsideMarkdownVariableBlock(doc, startLineStart)).toBe(true)
+      expect(isInsideMarkdownVariableBlock(doc, startLineEnd)).toBe(true)
+      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf('key: "value"'))).toBe(true)
+      expect(isInsideMarkdownVariableBlock(doc, endLineStart)).toBe(true)
+      expect(isInsideMarkdownVariableBlock(doc, endLineEnd)).toBe(true)
+
+      // 块下方：不得判定为块内
+      expect(isInsideMarkdownVariableBlock(doc, endLineEnd + 1)).toBe(false)
+      expect(isInsideMarkdownVariableBlock(doc, doc.indexOf("后置正文"))).toBe(false)
+      expect(isInsideMarkdownVariableBlock(doc, doc.length)).toBe(false)
+    })
+
+    it("isInsideMarkdownVariableBlock 支持裸 $$$ 开始/结束行且多块之间为块外", () => {
+      const bareDoc = ["上方 /", "$$$", '  key: "value"', "$$$", "下方 /"].join("\n")
+      const firstMarker = bareDoc.indexOf("$$$")
+      const secondMarker = bareDoc.indexOf("$$$", firstMarker + 3)
+      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("上方"))).toBe(false)
+      expect(isInsideMarkdownVariableBlock(bareDoc, firstMarker)).toBe(true)
+      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("key"))).toBe(true)
+      expect(isInsideMarkdownVariableBlock(bareDoc, secondMarker)).toBe(true)
+      expect(isInsideMarkdownVariableBlock(bareDoc, bareDoc.indexOf("下方"))).toBe(false)
+
+      const multiDoc = [
+        "$$$ varTemplate --start",
+        'a: "1"',
+        "$$$ varTemplate --end",
+        "中间正文 /",
+        "$$$ varTemplate --start",
+        'b: "2"',
+        "$$$ varTemplate --end",
+      ].join("\n")
+      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf("中间正文"))).toBe(false)
+      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf('a: "1"'))).toBe(true)
+      expect(isInsideMarkdownVariableBlock(multiDoc, multiDoc.indexOf('b: "2"'))).toBe(true)
+    })
+
+    it("isInsideMarkdownVariableBlock 未闭合块从开始行起视为块内，CRLF 行尾同样正确", () => {
+      const unclosed = ["前置 /", "$$$ varTemplate --start", 'key: "value"'].join("\n")
+      expect(isInsideMarkdownVariableBlock(unclosed, 0)).toBe(false)
+      expect(isInsideMarkdownVariableBlock(unclosed, unclosed.indexOf("$$$"))).toBe(true)
+      expect(isInsideMarkdownVariableBlock(unclosed, unclosed.length)).toBe(true)
+
+      const crlf = [
+        "前置 /",
+        "$$$ varTemplate --start",
+        'key: "value"',
+        "$$$ varTemplate --end",
+        "后置 /",
+      ].join("\r\n")
+      expect(isInsideMarkdownVariableBlock(crlf, 0)).toBe(false)
+      expect(isInsideMarkdownVariableBlock(crlf, crlf.indexOf('key: "value"'))).toBe(true)
+      expect(isInsideMarkdownVariableBlock(crlf, crlf.indexOf("后置"))).toBe(false)
     })
 
     it("从斜杠菜单选中或输入 / 时，光标处的命令行（如 /、/ap、/apply）被清空为纯换行，保留换行符（参考 /sendPrompt）", () => {
