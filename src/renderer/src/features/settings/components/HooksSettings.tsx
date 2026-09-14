@@ -242,7 +242,7 @@ export const HooksSettings = (): React.JSX.Element => {
                 <span className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
                   {event}
                 </span>
-                <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
+                <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.35))]">
                   {rows.length}
                 </span>
               </div>
@@ -306,12 +306,12 @@ export const HooksSettings = (): React.JSX.Element => {
                     </div>
                   </div>
 
-                  <code className="overflow-x-auto rounded bg-black/30 px-1.5 py-1 font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
+                  <code className="overflow-x-auto rounded bg-black/30 px-1.5 py-1 font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.7))]">
                     {row.entry.command}
                   </code>
 
                   {row.entry.timeout !== undefined ? (
-                    <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                    <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                       {t("settings.hooksTimeout")}: {row.entry.timeout}s
                     </span>
                   ) : null}
@@ -375,7 +375,7 @@ export const HooksSettings = (): React.JSX.Element => {
                   setFormError("")
                 }}
               />
-              <span className="text-[11px] text-white/40">{t("settings.hooksMatcherHint")}</span>
+              <span className="text-xs text-white/40">{t("settings.hooksMatcherHint")}</span>
             </div>
           ) : null}
 

@@ -146,7 +146,7 @@ export const ModelSettings = ({ settings, setSettings }: ModelSettingsProps): Re
           <div className="settings-item-card flex flex-col gap-2 rounded-[6px] border border-white/8 bg-white/[0.02] p-3">
             <div className="flex flex-col gap-0.5">
               <h4 className="text-xs text-white/60">{t("settings.streamIdleTimeout")}</h4>
-              <p className="text-[11px] text-white/40">{t("settings.streamIdleTimeoutDesc")}</p>
+              <p className="text-xs text-white/40">{t("settings.streamIdleTimeoutDesc")}</p>
             </div>
             <div className="flex items-center gap-2 pt-0.5">
               <div className="w-28">

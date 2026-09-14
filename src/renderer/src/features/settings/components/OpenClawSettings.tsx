@@ -322,7 +322,7 @@ export const OpenClawSettings = (): React.JSX.Element => {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs text-white/80">{instance.name}</span>
-                    <span className="block truncate text-[10px] text-white/40">{id}</span>
+                    <span className="block truncate text-xs text-white/40">{id}</span>
                   </span>
                   <LxTag size="small">{instance.agents.length}</LxTag>
                 </button>

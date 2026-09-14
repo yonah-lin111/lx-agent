@@ -455,20 +455,20 @@ export const McpSettings = (): React.JSX.Element => {
                 <div className="flex flex-col gap-1 text-xs text-white/60">
                   <div className="flex items-center gap-1.5 overflow-x-auto">
                     <span className="shrink-0 text-white/40">{t("settings.mcpCommand")}:</span>
-                    <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-[11px] text-white/80 select-all">
+                    <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-xs text-white/80 select-all">
                       {config.command.join(" ")}
                     </code>
                   </div>
 
                   {config.cwd && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                    <div className="flex items-center gap-1.5 text-xs text-white/40">
                       <FolderOpen className="h-3 w-3" />
                       <span>{config.cwd}</span>
                     </div>
                   )}
 
                   {config.environment && Object.keys(config.environment).length > 0 && (
-                    <div className="text-[11px] text-white/40">
+                    <div className="text-xs text-white/40">
                       <span>
                         {t("settings.mcpEnvCount", {
                           count: Object.keys(config.environment).length,
@@ -486,7 +486,7 @@ export const McpSettings = (): React.JSX.Element => {
                       onClick={() =>
                         setExpandedToolsMap((prev) => ({ ...prev, [name]: !prev[name] }))
                       }
-                      className="flex items-center gap-1 text-[11px] text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors cursor-pointer"
                     >
                       {isExpandedTools ? (
                         <ChevronDown className="h-3 w-3" />
@@ -501,7 +501,7 @@ export const McpSettings = (): React.JSX.Element => {
                         {tools.map((toolName) => (
                           <span
                             key={toolName}
-                            className="rounded-[4px] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-white/70"
+                            className="rounded-[4px] bg-white/[0.04] px-1.5 py-0.5 font-mono text-xs text-white/70"
                           >
                             {toolName}
                           </span>
@@ -591,7 +591,7 @@ export const McpSettings = (): React.JSX.Element => {
               <button
                 type="button"
                 onClick={() => setFormEnvRows((prev) => [...prev, { key: "", value: "" }])}
-                className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors cursor-pointer"
               >
                 <Plus className="h-3 w-3" />
                 <span>{t("settings.mcpAddEnvRow")}</span>

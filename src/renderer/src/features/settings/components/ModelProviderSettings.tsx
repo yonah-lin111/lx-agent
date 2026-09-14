@@ -498,7 +498,7 @@ export const ModelProviderSettings = ({
               >
                 <span className="min-w-0 truncate">{model.id}</span>
                 {model.ownedBy ? (
-                  <span className="shrink-0 text-[10px] text-white/35">{model.ownedBy}</span>
+                  <span className="shrink-0 text-xs text-white/35">{model.ownedBy}</span>
                 ) : null}
               </button>
             ))

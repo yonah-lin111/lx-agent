@@ -516,10 +516,10 @@ export const SkillSettings = (): React.JSX.Element => {
 
                 {/* 路径与复制 */}
                 <div className="flex items-center gap-2 pt-0.5">
-                  <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] shrink-0">
+                  <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))] shrink-0">
                     {t("settings.skillsFilePath")}:
                   </span>
-                  <span className="font-mono text-[11px] text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
+                  <span className="font-mono text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))] truncate max-w-md">
                     {selectedSkill.filePath}
                   </span>
                   <LxTooltip

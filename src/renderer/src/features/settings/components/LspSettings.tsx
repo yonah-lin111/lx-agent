@@ -309,12 +309,12 @@ export const LspSettings = (): React.JSX.Element => {
                 {/* 第 2 行：快捷安装与自定义配置入口 */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/5 text-xs text-white/50">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-white/40">
+                    <span className="text-xs text-white/40">
                       {t("settings.lspDefaultBin")}:{" "}
                       <code className="font-mono text-white/70">{item.defaultBin}</code>
                     </span>
                     {item.detectedPath && (
-                      <span className="text-[11px] text-white/30 truncate max-w-[280px]">
+                      <span className="text-xs text-white/30 truncate max-w-[280px]">
                         ({item.detectedPath})
                       </span>
                     )}
@@ -354,7 +354,7 @@ export const LspSettings = (): React.JSX.Element => {
                       onClick={() =>
                         setShowCustomConfigMap((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
                       }
-                      className="flex items-center gap-1 text-[11px] text-white/50 hover:text-white/80 transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors cursor-pointer"
                     >
                       <FolderOpen className="h-3 w-3" />
                       <span>
@@ -368,7 +368,7 @@ export const LspSettings = (): React.JSX.Element => {
                 {isCustomOpen && (
                   <div className="mt-1 flex flex-col gap-2 rounded-[6px] bg-white/[0.02] p-2.5 border border-white/5">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] text-white/50 font-medium">
+                      <span className="text-xs text-white/50 font-medium">
                         {t("settings.lspCustomPath")}
                       </span>
                       <LxInput
@@ -383,7 +383,7 @@ export const LspSettings = (): React.JSX.Element => {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] text-white/50 font-medium">
+                      <span className="text-xs text-white/50 font-medium">
                         {t("settings.lspCustomArgs")}
                       </span>
                       <LxInput

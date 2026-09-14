@@ -312,7 +312,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               ]}
               onChange={handleModeChange}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
               {t("settings.subagentsModeHint")}
             </span>
           </div>
@@ -330,7 +330,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               value={settings.maxConcurrent ?? ""}
               onChange={handleMaxConcurrentChange}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
               {t("settings.subagentsMaxConcurrentHint")}
             </span>
           </div>
@@ -374,7 +374,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                 {role.description}
               </p>
-              <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+              <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                 <span>{t("settings.subagentsTools")}:</span>{" "}
                 <span className="font-mono">
                   {role.tools && role.tools.length > 0
@@ -447,7 +447,7 @@ export const SubagentSettings = (): React.JSX.Element => {
                 <p className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
                   {config.description}
                 </p>
-                <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                   <span>{t("settings.subagentsModel")}:</span>{" "}
                   <span>
                     {config.model
@@ -455,7 +455,7 @@ export const SubagentSettings = (): React.JSX.Element => {
                       : t("settings.subagentsInheritModel")}
                   </span>
                 </p>
-                <p className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+                <p className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
                   <span>{t("settings.subagentsTools")}:</span>{" "}
                   <span className="font-mono">
                     {config.tools?.length
@@ -559,7 +559,7 @@ export const SubagentSettings = (): React.JSX.Element => {
               value={formTools}
               onChange={(e) => setFormTools(e.target.value)}
             />
-            <span className="text-[11px] text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
+            <span className="text-xs text-[var(--color-theme-text-subtle,rgba(255,255,255,0.4))]">
               {t("settings.subagentsToolsHint")}
             </span>
           </div>
