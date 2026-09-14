@@ -187,6 +187,7 @@ export const AgentAssistantMessage = ({
                   html={renderMarkdown(group.block.text, { streaming: group.isStreaming })}
                   previewMode="preview"
                   previewRef={previewRef}
+                  disableStickyBlockHeaders={group.isStreaming}
                   className="px-0"
                   contentClassName="py-1"
                   sanitizeCopy

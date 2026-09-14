@@ -20,6 +20,8 @@ export interface LxCodeBlockProps {
   copyContent?: string
   /** 自定义类名 */
   className?: string
+  /** 流式渲染期间禁用代码块头部吸顶（避免头部跟随内容增长吸附滚动容器顶部） */
+  disableStickyBlockHeaders?: boolean
 }
 
 /**
@@ -57,6 +59,7 @@ export const LxCodeBlock = ({
   copyable = true,
   copyContent,
   className = "",
+  disableStickyBlockHeaders = false,
 }: LxCodeBlockProps): React.JSX.Element => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
@@ -97,7 +100,11 @@ export const LxCodeBlock = ({
   }, [])
 
   return (
-    <div className={`markdown-preview lx-code-block-wrapper ${className}`}>
+    <div
+      className={`markdown-preview lx-code-block-wrapper ${
+        disableStickyBlockHeaders ? "markdown-block-headers-static" : ""
+      } ${className}`}
+    >
       <section className={`markdown-code-block ${isCollapsed ? "is-collapsed" : ""}`}>
         <header className="markdown-code-block-header">
           <span className="markdown-code-language">{language}</span>

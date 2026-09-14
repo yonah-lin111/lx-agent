@@ -21,6 +21,7 @@ export const FlowItemAssistantContent = ({
         html={renderMarkdown(content.text, { streaming: isStreaming })}
         previewMode="preview"
         previewRef={previewRef}
+        disableStickyBlockHeaders={isStreaming}
         className="px-0"
         contentClassName="py-0 leading-relaxed text-white/90"
         sanitizeCopy

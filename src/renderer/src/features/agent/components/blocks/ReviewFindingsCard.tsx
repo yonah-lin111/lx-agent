@@ -124,6 +124,7 @@ const FindingItemCard = ({
                 html={renderMarkdown(item.description, { streaming: isStreaming })}
                 previewMode="preview"
                 previewRef={previewRef}
+                disableStickyBlockHeaders={isStreaming}
                 className="px-0"
                 contentClassName="py-0 text-xs text-white/80"
                 sanitizeCopy
@@ -159,6 +160,7 @@ const FindingItemCard = ({
                       html={renderMarkdown(item.suggestion, { streaming: isStreaming })}
                       previewMode="preview"
                       previewRef={suggestionPreviewRef}
+                      disableStickyBlockHeaders={isStreaming}
                       className="px-0"
                       contentClassName="py-0 text-xs"
                       sanitizeCopy
@@ -374,6 +376,7 @@ export const ReviewFindingsCard = ({
             html={renderMarkdown(summary, { streaming: isStreaming })}
             previewMode="preview"
             previewRef={summaryPreviewRef}
+            disableStickyBlockHeaders={isStreaming}
             className="px-0"
             contentClassName="py-0 text-sm"
             sanitizeCopy

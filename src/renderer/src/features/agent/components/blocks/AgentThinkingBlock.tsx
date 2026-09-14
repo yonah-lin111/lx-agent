@@ -88,6 +88,7 @@ export const AgentThinkingBlock = ({
                 html={renderMarkdown(content, { streaming: isGenerating })}
                 previewMode="preview"
                 previewRef={previewRef}
+                disableStickyBlockHeaders={isGenerating}
                 className="px-0 text-white/45"
                 contentClassName="py-0 text-white/45 [&_*]:!text-white/45"
               />

@@ -155,6 +155,7 @@ export const ProposedPlanCard = ({
             html={renderMarkdown(plan.content, { streaming: isStreaming })}
             previewMode="preview"
             previewRef={previewRef}
+            disableStickyBlockHeaders={isStreaming}
             className="px-0"
             contentClassName="py-1 text-sm"
             sanitizeCopy
