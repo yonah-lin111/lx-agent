@@ -41,6 +41,13 @@ beforeEach(() => {
         .fn()
         .mockResolvedValue({ branch: "dev", changes: { staged: 0, unstaged: 0, untracked: 0 } }),
       listWorktrees: vi.fn().mockResolvedValue([]),
+      listBranches: vi.fn().mockResolvedValue([]),
+    },
+    agent: { getDefaultPath: vi.fn().mockResolvedValue("") },
+    project: {
+      items: { list: vi.fn().mockResolvedValue([]) },
+      projects: { list: vi.fn().mockResolvedValue([]) },
+      folders: { list: vi.fn().mockResolvedValue([]) },
     },
     markdown: {
       generateTemplateTitle: vi.fn().mockResolvedValue(null),

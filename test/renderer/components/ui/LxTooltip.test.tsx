@@ -15,6 +15,20 @@ vi.stubGlobal(
 )
 vi.stubGlobal("requestAnimationFrame", (() => 0) as typeof requestAnimationFrame)
 
+// jsdom 无布局：提供非零矩形，让 calculatePosition 通过零矩形门禁并移除 tooltip 隐藏态。
+const rect = {
+  left: 100,
+  right: 140,
+  top: 100,
+  bottom: 120,
+  width: 40,
+  height: 20,
+  x: 100,
+  y: 100,
+  toJSON: () => ({}),
+} as DOMRect
+Element.prototype.getBoundingClientRect = () => rect
+
 // tooltip 关闭有 120ms 退场动画，用假定时器推进后内容才卸载。
 const flushCloseAnimation = (): void => {
   act(() => {
@@ -42,7 +56,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
     expect(screen.getByText("Tip 内容")).not.toBeNull()
     expect(screen.queryByRole("button", { name: "最小化" })).toBeNull()
 
-    fireEvent.scroll(document)
+    fireEvent.scroll(document.documentElement)
     flushCloseAnimation()
     expect(screen.queryByText("Tip 内容")).toBeNull()
 
@@ -56,7 +70,7 @@ describe("LxTooltip closeOnScroll / closeOnOutsideClick / minimizable", () => {
   it("closeOnScroll=false：滚动条滚动不关闭", () => {
     renderTooltip({ closeOnScroll: false })
     fireEvent.click(screen.getByText("触发"))
-    fireEvent.scroll(document)
+    fireEvent.scroll(document.documentElement)
     flushCloseAnimation()
     expect(screen.getByText("Tip 内容")).not.toBeNull()
   })

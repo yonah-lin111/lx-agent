@@ -18,6 +18,22 @@ const worktrees = [
   { path: "/repo", branch: "dev", isDefault: true },
   { path: "/repo/.worktrees/feature-x", branch: "git-worktree-switch", isDefault: false },
 ]
+
+// jsdom 未实现 Range 几何 API；CodeMirror 6 测量依赖（与 features/undoRedo 测试一致）。
+const rangeRect = {
+  left: 10,
+  right: 10,
+  top: 5,
+  bottom: 25,
+  width: 0,
+  height: 20,
+  x: 10,
+  y: 5,
+  toJSON: () => ({}),
+} as DOMRect
+Range.prototype.getClientRects = () => [rangeRect] as unknown as DOMRectList
+Range.prototype.getBoundingClientRect = () => rangeRect
+
 const getCm = (): HTMLElement | null => document.querySelector(".cm-content")
 
 beforeEach(() => {
@@ -41,6 +57,13 @@ beforeEach(() => {
         .fn()
         .mockResolvedValue({ branch: "dev", changes: { staged: 0, unstaged: 0, untracked: 0 } }),
       listWorktrees: vi.fn().mockResolvedValue(worktrees),
+      listBranches: vi.fn().mockResolvedValue([]),
+    },
+    agent: { getDefaultPath: vi.fn().mockResolvedValue("") },
+    project: {
+      items: { list: vi.fn().mockResolvedValue([]) },
+      projects: { list: vi.fn().mockResolvedValue([]) },
+      folders: { list: vi.fn().mockResolvedValue([]) },
     },
     markdown: { generateTemplateTitle: vi.fn().mockResolvedValue(null) },
     getPathForFile: vi.fn().mockReturnValue("/path"),

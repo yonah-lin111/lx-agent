@@ -19,6 +19,21 @@ vi.stubGlobal(
 
 const getCm = (): HTMLElement | null => document.querySelector(".cm-content")
 
+// jsdom 未实现 Range 几何 API；CodeMirror 6 测量依赖（与 features/undoRedo 测试一致）。
+const rangeRect = {
+  left: 10,
+  right: 10,
+  top: 5,
+  bottom: 25,
+  width: 0,
+  height: 20,
+  x: 10,
+  y: 5,
+  toJSON: () => ({}),
+} as DOMRect
+Range.prototype.getClientRects = () => [rangeRect] as unknown as DOMRectList
+Range.prototype.getBoundingClientRect = () => rangeRect
+
 beforeEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -30,6 +45,13 @@ beforeEach(() => {
         .fn()
         .mockResolvedValue({ branch: "dev", changes: { staged: 0, unstaged: 0, untracked: 0 } }),
       listWorktrees: vi.fn().mockResolvedValue([]),
+      listBranches: vi.fn().mockResolvedValue([]),
+    },
+    agent: { getDefaultPath: vi.fn().mockResolvedValue("") },
+    project: {
+      items: { list: vi.fn().mockResolvedValue([]) },
+      projects: { list: vi.fn().mockResolvedValue([]) },
+      folders: { list: vi.fn().mockResolvedValue([]) },
     },
     terminal: {
       write: vi.fn().mockResolvedValue(undefined),
@@ -167,14 +189,21 @@ describe("LxMarkdownEditor /sendPrompt 派发", () => {
       selection: { anchor: commandOffset },
     })
 
-    getCm()!.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "Enter",
-        code: "Enter",
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
+    const pressEnter = (): void => {
+      getCm()!.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    }
+
+    // 首次回车：三级标志位面板选中 -enter；等待面板关闭为武装态后再次回车派发。
+    pressEnter()
+    await new Promise((r) => setTimeout(r, 50))
+    pressEnter()
     await new Promise((r) => setTimeout(r, 120))
 
     expect(useBottomSideBarStore.getState().isExpanded).toBe(true)
