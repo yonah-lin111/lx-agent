@@ -282,7 +282,7 @@ describe("AgentExecutionFlowList", () => {
     expect(questionContent?.hasAttribute("hidden")).toBe(false)
   })
 
-  it("进入时默认展开全部用户 item 与最后一个 turn 的最后一个 step，早期非用户步骤默认折叠，且手动操作状态得以保持", () => {
+  it("进入时默认展开全部用户 item 与每个已完成 turn 的最后一个 step，手动折叠状态保持且发送新消息后不再自动折叠", () => {
     const messages: ChatMessage[] = [
       // 第一轮
       {
@@ -324,23 +324,21 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("第一轮用户提问")).not.toBeNull()
     expect(screen.getByText("第二轮用户提问")).not.toBeNull()
 
-    // 早期轮次（第一轮）助手步骤默认折叠：只在 title 中出现 1 次（不在 body 中展示）
-    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBe(1)
+    // 每个已完成 turn 的最后一个 step（助手回复）默认展开：title 和 markdown preview body 均出现（>=2）
+    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText("第二轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
 
     // 思考过程作为中间步骤默认折叠：只在 title 中出现 1 次
     expect(screen.getAllByText("第一轮思考过程").length).toBe(1)
     expect(screen.getAllByText("第二轮思考过程").length).toBe(1)
 
-    // 第二轮（最后一个 turn）的最后一个 step（助手回复）默认展开：title 和 markdown preview body 均出现（>=2）
-    expect(screen.getAllByText("第二轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
-
-    // 手动展开第一轮助手回复
+    // 手动折叠第一轮助手回复
     const firstAssistantStepHeader = screen.getAllByText("第一轮助手回复详细内容")[0]
     fireEvent.click(firstAssistantStepHeader)
-    // 手动展开后详情内容出现
-    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
+    // 手动折叠后详情内容消失，仅剩标题一处
+    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBe(1)
 
-    // 新增第三轮消息后，第一轮手动展开的助手回复依然保持展开
+    // 新增第三轮消息（等价于发送新消息）后，历史轮次收尾项不再自动折叠
     const updatedMessages: ChatMessage[] = [
       ...messages,
       {
@@ -364,10 +362,10 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("第二轮用户提问")).not.toBeNull()
     expect(screen.getByText("第三轮用户提问")).not.toBeNull()
 
-    // 第一轮手动展开的助手回复依然保持展开
-    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
-    // 第二轮（非最后一个 turn 且未手动展开）自动折叠
-    expect(screen.getAllByText("第二轮助手回复详细内容").length).toBe(1)
+    // 第一轮手动折叠的助手回复依然保持折叠
+    expect(screen.getAllByText("第一轮助手回复详细内容").length).toBe(1)
+    // 第二轮的收尾助手回复保持展开（发送新消息后不再自动折叠）
+    expect(screen.getAllByText("第二轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
     // 第三轮（最后一个 turn）的最后一个 step 默认展开
     expect(screen.getAllByText("第三轮助手回复详细内容").length).toBeGreaterThanOrEqual(2)
   })
@@ -967,7 +965,7 @@ describe("AgentExecutionFlowList", () => {
     expect(toolBody?.className).not.toContain("bg-sky-500")
   })
 
-  it("思考与检索类步骤聚合为 Group 默认折叠，写操作（write/edit）保持独立展开/单条，并在 title 实时显示正在执行的 step", () => {
+  it("思考与检索类步骤聚合为 Group 默认折叠，写操作（write/edit）保持独立展开/单条，且头部不再渲染执行中的 step 行", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -1013,8 +1011,10 @@ describe("AgentExecutionFlowList", () => {
     expect(screen.getByText("Execute Group")).not.toBeNull()
     expect(screen.getByText("(2)")).not.toBeNull()
 
-    // 运行态下展示第二行（正在执行的 grep 步骤）
-    expect(screen.getByText('"calculate"')).not.toBeNull()
+    // 头部已移除"正在执行的 step"第二行：grep 参数不出现，也不存在 CornerDownRight 指示行
+    expect(screen.queryByText('"calculate"')).toBeNull()
+    expect(group?.querySelector(".lucide-corner-down-right")).toBeNull()
+    // 运行态仍由状态图标反馈
     expect(group?.querySelector(".animate-spin")).not.toBeNull()
 
     // 默认折叠：内部的 read 不直接展示 body
@@ -1435,7 +1435,7 @@ describe("AgentExecutionFlowList", () => {
     expect(parallelElements[3].className).toContain("text-purple-400")
   })
 
-  it("当 Group 处于运行中（loading / running 状态）时，底部 Token 统计栏依然始终展示", () => {
+  it("Group 运行中不渲染时间/token 指标，待其后方出现不可折叠 item（执行完成）后才渲染", () => {
     const messages: ChatMessage[] = [
       {
         id: "u1",
@@ -1481,19 +1481,243 @@ describe("AgentExecutionFlowList", () => {
       },
     ]
 
-    const { container } = render(<AgentExecutionFlowList messages={messages} isStreaming={true} />)
+    const { container, rerender } = render(
+      <AgentExecutionFlowList messages={messages} isStreaming={true} />,
+    )
 
     // Group 处于 running 状态（包含 running 状态的 grep 工具）
     const group = container.querySelector('[data-flow-group="true"]')
     expect(group).not.toBeNull()
     expect(group?.querySelector(".animate-spin")).not.toBeNull()
 
-    // 验证 Group 底部 Token 统计栏依然始终展示，不会被隐藏
-    const groupFooter = group?.querySelector(".agent-execution-flow-group-footer")
-    expect(groupFooter).not.toBeNull()
-    expect(groupFooter?.textContent).toContain("IN 3.5k")
-    expect(groupFooter?.textContent).toContain("OUT 80")
-    expect(groupFooter?.textContent).toContain("CACHE 500")
+    // 运行中：不渲染 Token 统计栏与总耗时，避免指标频繁跳动
+    expect(group?.querySelector(".agent-execution-flow-group-footer")).toBeNull()
+    expect(group?.querySelector('[data-testid="flow-group-duration"]')).toBeNull()
+
+    // 全部工具完成，并在 Group 后方追加不可折叠的 assistant 文本，Group 判定为执行完成
+    const completedMessages: ChatMessage[] = [
+      messages[0]!,
+      {
+        ...messages[1]!,
+        isStreaming: false,
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "src/main.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "grep",
+            args: { pattern: "App" },
+            status: "done",
+          },
+        ],
+      },
+      messages[2]!,
+      {
+        id: "a2",
+        role: "assistant",
+        blocks: [{ kind: "text", text: "执行完成" }],
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} isStreaming={false} />)
+
+    // 完成后：状态切换为 Done，Token 统计栏恢复展示
+    const completedGroup = container.querySelector('[data-flow-group="true"]')
+    expect(completedGroup).not.toBeNull()
+    expect(completedGroup?.querySelector('[aria-label="Done"]')).not.toBeNull()
+    const completedFooter = completedGroup?.querySelector(".agent-execution-flow-group-footer")
+    expect(completedFooter).not.toBeNull()
+    expect(completedFooter?.textContent).toContain("IN 3.5k")
+    expect(completedFooter?.textContent).toContain("OUT 80")
+    expect(completedFooter?.textContent).toContain("CACHE 500")
+  })
+
+  it("运行中的 item 不渲染耗时与 token 指标，步骤执行完成后才渲染", () => {
+    const streamingMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        blocks: [{ kind: "text", text: "流式指标测试" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        usage: { input: 2400, output: 650, cacheRead: 1200, cacheWrite: 0, totalTokens: 3050 },
+        blocks: [{ kind: "text", text: "生成中..." }],
+        isStreaming: true,
+      },
+    ]
+
+    const { container, rerender } = render(
+      <AgentExecutionFlowList messages={streamingMessages} isStreaming={true} />,
+    )
+
+    // 运行中：assistant item 不渲染 token footer 与耗时
+    const runningStep = container.querySelector('[data-step-kind="assistant"]')
+    expect(runningStep).not.toBeNull()
+    expect(runningStep?.querySelector(".agent-execution-flow-step-footer")).toBeNull()
+    expect(runningStep?.querySelector('[data-testid="flow-item-duration"]')).toBeNull()
+
+    // 完成后（携带 message.durationMs）：footer 与耗时恢复展示
+    rerender(
+      <AgentExecutionFlowList
+        messages={[
+          streamingMessages[0]!,
+          { ...streamingMessages[1]!, durationMs: 3200, isStreaming: false },
+        ]}
+        isStreaming={false}
+      />,
+    )
+
+    const doneStep = container.querySelector('[data-step-kind="assistant"]')
+    expect(doneStep).not.toBeNull()
+    const footer = doneStep?.querySelector(".agent-execution-flow-step-footer")
+    expect(footer).not.toBeNull()
+    expect(footer?.textContent).toContain("IN 2.4k")
+    expect(footer?.textContent).toContain("OUT 650")
+    expect(footer?.textContent).toContain("CACHE 1.2k")
+    expect(doneStep?.querySelector('[data-testid="flow-item-duration"]')).not.toBeNull()
+    expect(screen.getAllByText("3.2s").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("Group 运行中不渲染总耗时，执行完成后展示聚合耗时", () => {
+    const startTime = 1700000000000
+    const runningMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        timestamp: startTime,
+        blocks: [{ kind: "text", text: "执行批处理" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        timestamp: startTime + 1000,
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "read_file",
+            args: { path: "b.ts" },
+            status: "running",
+          },
+        ],
+        isStreaming: true,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        timestamp: startTime + 3000,
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "read_file",
+            text: "content",
+            isError: false,
+            durationMs: 500,
+          },
+        ],
+        isStreaming: false,
+      },
+    ]
+
+    const { container, rerender } = render(
+      <AgentExecutionFlowList messages={runningMessages} isStreaming={true} />,
+    )
+
+    // 运行中：即使已聚合出耗时数据也不渲染
+    const group = container.querySelector('[data-flow-group="true"]')
+    expect(group).not.toBeNull()
+    expect(group?.querySelector('[data-testid="flow-group-duration"]')).toBeNull()
+
+    // 工具全部完成并在 Group 后方产生 assistant 文本，判定执行完成
+    const completedMessages: ChatMessage[] = [
+      {
+        id: "u1",
+        role: "user",
+        timestamp: startTime,
+        blocks: [{ kind: "text", text: "执行批处理" }],
+        isStreaming: false,
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        timestamp: startTime + 1000,
+        blocks: [
+          {
+            kind: "toolCall",
+            toolCallId: "c1",
+            toolName: "read_file",
+            args: { path: "a.ts" },
+            status: "done",
+          },
+          {
+            kind: "toolCall",
+            toolCallId: "c2",
+            toolName: "read_file",
+            args: { path: "b.ts" },
+            status: "done",
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "t1",
+        role: "toolResult",
+        timestamp: startTime + 3000,
+        blocks: [
+          {
+            kind: "toolResult",
+            toolCallId: "c1",
+            toolName: "read_file",
+            text: "content",
+            isError: false,
+            durationMs: 500,
+          },
+          {
+            kind: "toolResult",
+            toolCallId: "c2",
+            toolName: "read_file",
+            text: "content",
+            isError: false,
+            durationMs: 700,
+          },
+        ],
+        isStreaming: false,
+      },
+      {
+        id: "a2",
+        role: "assistant",
+        timestamp: startTime + 5000,
+        blocks: [{ kind: "text", text: "批处理完成" }],
+        isStreaming: false,
+      },
+    ]
+
+    rerender(<AgentExecutionFlowList messages={completedMessages} isStreaming={false} />)
+
+    const completedGroup = container.querySelector('[data-flow-group="true"]')
+    expect(completedGroup).not.toBeNull()
+    const durationEl = completedGroup?.querySelector('[data-testid="flow-group-duration"]')
+    expect(durationEl).not.toBeNull()
+    expect((durationEl?.textContent ?? "").trim().length).toBeGreaterThan(0)
   })
 
   it("在 loading / 流式执行过程中用户手动打开 Group 后，后续新步骤产生时保持展开状态不被重置折叠", () => {
