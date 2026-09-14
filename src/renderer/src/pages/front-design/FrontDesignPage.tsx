@@ -670,7 +670,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             {isInspectorActive ? t("frontDesign.inspectModeActive") : t("frontDesign.inspectMode")}
           </span>
         </div>
-        <div className="border-t border-white/10 pt-1 text-[11px] text-white/45">
+        <div className="border-t border-white/10 pt-1 text-xs text-white/45">
           {t("frontDesign.inspectShortcutHint")}
         </div>
       </div>
@@ -694,7 +694,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
         {/* 左侧：版本、模式与刷新 */}
         <div className="flex flex-1 items-center gap-2 min-w-0">
           {html && (
-            <span className="front-design-badge shrink-0 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-medium text-pink-300">
+            <span className="front-design-badge shrink-0 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-xs font-medium text-pink-300">
               {mode === "css" ? t("frontDesign.pureCssMode") : t("frontDesign.tailwindMode")}
             </span>
           )}
@@ -734,7 +734,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
             >
               <button
                 type="button"
-                className="flex items-center gap-1 rounded border border-pink-500/30 bg-pink-500/15 px-1.5 py-0.5 text-[10px] font-medium text-pink-300 hover:bg-pink-500/25 transition-colors cursor-pointer"
+                className="flex items-center gap-1 rounded border border-pink-500/30 bg-pink-500/15 px-1.5 py-0.5 text-xs font-medium text-pink-300 hover:bg-pink-500/25 transition-colors cursor-pointer"
                 aria-label={t("frontDesign.selectVersion")}
               >
                 <GitBranch className="h-3 w-3" />
@@ -743,7 +743,7 @@ export const FrontDesignPage = (): React.JSX.Element => {
               </button>
             </LxTooltip>
           ) : activeDesignId && html ? (
-            <span className="flex items-center gap-1 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-pink-300 select-none">
+            <span className="flex items-center gap-1 rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-xs font-mono font-medium text-pink-300 select-none">
               <GitBranch className="h-3 w-3 opacity-70" />
               <span>v{designState.version ?? 1}</span>
             </span>
