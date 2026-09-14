@@ -72,7 +72,7 @@ export class ContextCompactor {
           parsed.firstKeptSeq >= 0 &&
           typeof parsed.tokensBefore === "number"
         ) {
-          // 旧 entry 无 manual 字段：按自动压缩处理（不可撤销），避免存量数据不可用。
+          // 旧 entry 无 manual / anchorSeq 字段：manual 按自动压缩处理（不可撤销），anchorSeq 缺失走边界回退。
           return {
             summary: parsed.summary,
             firstKeptSeq: parsed.firstKeptSeq,
@@ -80,6 +80,7 @@ export class ContextCompactor {
             manual: parsed.manual === true,
             model: parsed.model,
             usage: parsed.usage,
+            ...(typeof parsed.anchorSeq === "number" ? { anchorSeq: parsed.anchorSeq } : {}),
           }
         }
       } catch {
@@ -142,8 +143,20 @@ export class ContextCompactor {
     }
   }
 
-  // 在消息列表底部追加可见摘要块（与实时压缩的 UI 位置一致；
-  // 模型上下文仍走 transformContext 的边界拆分，与显示顺序解耦）。
+  // 当前上下文最后一条已落库消息的 seq（压缩锚点；未落库消息与 -1 幽灵消息不参与）。
+  private lastPersistedSeq(messageCount: number): number | undefined {
+    const seqs = this.deps.getMessageSeqs()
+    for (let index = Math.min(seqs.length, messageCount) - 1; index >= 0; index--) {
+      const seq = seqs[index]
+      if (typeof seq === "number" && seq >= 0) return seq
+    }
+    return undefined
+  }
+
+  // 恢复会话时的可见摘要落点（与实时压缩 UI 位置一致）：
+  // 1. 压缩时刻锚点消息仍在：插到它之后；
+  // 2. 锚点缺失/已删除（旧 entry）：插到 firstKeptSeq 边界（第一个保留消息之前）；
+  // 3. 边界也无法定位：追加到末尾（不回退到"摘要置顶"）。
   withSummary(messages: AgentMessage[]): AgentMessage[] {
     const boundary = this.boundary
     if (!boundary) return messages
@@ -154,6 +167,23 @@ export class ContextCompactor {
       boundary.model,
       boundary.usage,
     )
+    const seqs = this.deps.getMessageSeqs()
+    if (boundary.anchorSeq !== undefined) {
+      let anchorIndex = -1
+      for (let index = 0; index < messages.length; index++) {
+        const seq = seqs[index] ?? -1
+        if (seq >= 0 && seq <= boundary.anchorSeq) anchorIndex = index
+      }
+      if (anchorIndex >= 0) {
+        return [...messages.slice(0, anchorIndex + 1), summary, ...messages.slice(anchorIndex + 1)]
+      }
+    }
+    const firstKeptIndex = messages.findIndex(
+      (_, index) => (seqs[index] ?? -1) >= boundary.firstKeptSeq,
+    )
+    if (firstKeptIndex >= 0) {
+      return [...messages.slice(0, firstKeptIndex), summary, ...messages.slice(firstKeptIndex)]
+    }
     return [...messages, summary]
   }
 
@@ -216,6 +246,8 @@ export class ContextCompactor {
     if (!agent) return false
     const messages = agent.state.messages
     if (messages.length === 0) return false
+    // 压缩锚点：压缩开始时刻最后一条已落库消息（恢复时摘要插到它之后，复刻实时 UI 位置）。
+    const anchorSeq = this.lastPersistedSeq(messages.length)
     // 压缩窗口随当前模型 limit.context 动态（模型切换自动适配，无需手动配固定窗口）。
     // 保留/预留预算受模型窗口约束：配置值超过模型窗口时按比例收敛，避免触发阈值非正导致每轮都压缩。
     const contextWindow = this.resolveWindow()
@@ -265,6 +297,7 @@ export class ContextCompactor {
       manual: false,
       model,
       usage,
+      ...(anchorSeq !== undefined ? { anchorSeq } : {}),
     }
     this.boundary = boundary
     const sessionId = this.deps.getSessionId()
@@ -300,6 +333,8 @@ export class ContextCompactor {
     if (messages.length <= 1) {
       return { ok: false, error: "历史消息过短，暂无可压缩内容。" }
     }
+    // 压缩锚点：压缩开始时刻最后一条已落库消息（恢复时摘要插到它之后，复刻实时 UI 位置）。
+    const anchorSeq = this.lastPersistedSeq(messages.length)
     const contextWindow = this.resolveWindow()
     const config = getCompactionSettings()
     const keepRecentTokens = Math.min(config.keepRecentTokens, Math.floor(contextWindow * 0.4))
@@ -343,6 +378,7 @@ export class ContextCompactor {
       manual: true,
       model,
       usage,
+      ...(anchorSeq !== undefined ? { anchorSeq } : {}),
     }
     this.boundary = boundary
     const sessionId = this.deps.getSessionId()

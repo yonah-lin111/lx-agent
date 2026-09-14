@@ -307,6 +307,64 @@ describe("agentRunner 持久化", () => {
     ])
   })
 
+  it("renderer 刷新后：restoreSession 重绑定新 tabId，后续 send 事件路由到新 tab", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "旧回答" }])]
+    const first = await agentRunner.send("旧问题", undefined, {
+      page: "/",
+      cwd: "/tmp",
+      tabId: "tab-old",
+    })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    // 模拟页面刷新：renderer 生成新 tabId，用新 tabId 恢复同一会话。
+    await agentRunner.restoreSession(first.sessionId, "tab-new")
+
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((event) => events.push(event))
+    holder.streamResponses = [assistant([{ type: "text", text: "新回答" }])]
+    const second = await agentRunner.send("新问题", undefined, {
+      page: "/",
+      cwd: "/tmp",
+      sessionId: first.sessionId,
+      tabId: "tab-new",
+    })
+    expect(second.ok).toBe(true)
+
+    // 旧 tabId 的事件会被 renderer 路由守卫整体丢弃：必须全部携带刷新后的 tabId。
+    expect(events.length).toBeGreaterThan(0)
+    expect(events.every((event) => event.tabId === "tab-new")).toBe(true)
+    expect(
+      events.some((event) => event.type === "message_start" && event.message.role === "user"),
+    ).toBe(true)
+    expect(
+      events.some((event) => event.type === "message_start" && event.message.role === "assistant"),
+    ).toBe(true)
+  })
+
+  it("renderer 刷新后：continue（getRunner 路径）同样重绑定新 tabId", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "截断输出" }], "aborted")]
+    const first = await agentRunner.send("问题", undefined, {
+      page: "/",
+      cwd: "/tmp",
+      tabId: "tab-old",
+    })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    await agentRunner.restoreSession(first.sessionId, "tab-new")
+    const events: AgentEvent[] = []
+    agentRunner.attachEventSink((event) => events.push(event))
+    holder.streamResponses = [assistant([{ type: "text", text: "续写输出" }])]
+    const continued = await agentRunner.continue(undefined, first.sessionId, "tab-new")
+    expect(continued.ok).toBe(true)
+
+    expect(events.length).toBeGreaterThan(0)
+    expect(events.every((event) => event.tabId === "tab-new")).toBe(true)
+  })
+
   it("工具调用写入 agent_call 并关联触发 entry", async () => {
     const { agentRunner } = await importRunner()
     holder.streamResponses = [
@@ -608,7 +666,7 @@ describe("agentRunner 持久化", () => {
     expect(second.ok).toBe(true)
     if (!second.ok) return
 
-    // compaction entry 落库。
+    // compaction entry 落库（含恢复锚点）。
     const compactionRows = holder
       .db!.prepare(
         "SELECT payload FROM agent_session_entry WHERE session_id = ? AND type = 'compaction'",
@@ -618,15 +676,121 @@ describe("agentRunner 持久化", () => {
     const boundary = JSON.parse(compactionRows[0].payload) as {
       summary: string
       firstKeptSeq: number
+      anchorSeq?: number
     }
     expect(boundary.summary).toBe("早期对话摘要")
     expect(typeof boundary.firstKeptSeq).toBe("number")
+    expect(typeof boundary.anchorSeq).toBe("number")
 
     // 恢复会话：UI 消息列表在压缩边界处插入可见摘要块。
     const restored = await agentRunner.restoreSession(second.sessionId)
     expect(
       restored.messages.filter((message) => message.role === "compactionSummary"),
     ).toHaveLength(1)
+  })
+
+  it("压缩后再聊一轮并恢复：摘要落在压缩锚点之后，而非列表末尾", async () => {
+    const { agentRunner } = await importRunner()
+    holder.compaction = {
+      enabled: true,
+      contextWindow: 100,
+      keepRecentTokens: 10,
+      reserveTokens: 0,
+    }
+    holder.streamResponses = [assistant([{ type: "text", text: "第一轮回答".repeat(20) }])]
+    const first = await agentRunner.send("第一轮问题".repeat(20), undefined, {
+      page: "/",
+      cwd: "/tmp",
+    })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    // 第二轮 assistant 带大 usage：估计上下文超阈值触发压缩（锚点 = 第二轮 assistant）。
+    streamTextMock.mockReturnValueOnce({
+      text: Promise.resolve("早期对话摘要"),
+      usage: Promise.resolve({ promptTokens: 10, completionTokens: 10, totalTokens: 20 }),
+    } as never)
+    holder.streamResponses = [
+      assistantWithUsage([{ type: "text", text: "第二轮回答".repeat(20) }], {
+        input: 300,
+        output: 200,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 500,
+      }),
+    ]
+    const second = await agentRunner.send("第二轮问题".repeat(30), undefined, {
+      page: "/",
+      cwd: "/tmp",
+    })
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+
+    // 压缩后再聊一轮：小 usage 不触发二次压缩，摘要应停留在压缩时刻的位置。
+    holder.streamResponses = [
+      assistantWithUsage([{ type: "text", text: "第三轮回答" }], {
+        input: 5,
+        output: 5,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 10,
+      }),
+    ]
+    const third = await agentRunner.send("第三轮问题", undefined, { page: "/", cwd: "/tmp" })
+    expect(third.ok).toBe(true)
+
+    const restored = await agentRunner.restoreSession(second.sessionId)
+    expect(restored.messages.map((message) => message.role)).toEqual([
+      "user",
+      "assistant",
+      "user",
+      "assistant",
+      "compactionSummary",
+      "user",
+      "assistant",
+    ])
+  })
+
+  it("旧阈值压缩 entry（无 anchorSeq）恢复时回退到 firstKeptSeq 边界", async () => {
+    const { agentRunner } = await importRunner()
+    holder.streamResponses = [assistant([{ type: "text", text: "第一轮回答" }])]
+    const first = await agentRunner.send("第一轮问题", undefined, { page: "/", cwd: "/tmp" })
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+
+    // 手工写入旧格式 compaction entry（无 anchorSeq），模拟存量数据。
+    const messageEntries = holder
+      .db!.prepare(
+        "SELECT seq FROM agent_session_entry WHERE session_id = ? AND type = 'message' ORDER BY seq ASC",
+      )
+      .all(first.sessionId) as Array<{ seq: number }>
+    const firstKeptSeq = messageEntries[1]!.seq
+    const maxSeq = holder
+      .db!.prepare("SELECT MAX(seq) AS maxSeq FROM agent_session_entry WHERE session_id = ?")
+      .get(first.sessionId) as { maxSeq: number }
+    holder
+      .db!.prepare(
+        "INSERT INTO agent_session_entry (external_id, session_id, seq, parent_id, type, payload, created_at) VALUES (?, ?, ?, NULL, 'compaction', ?, ?)",
+      )
+      .run(
+        "legacy-compaction-1",
+        first.sessionId,
+        maxSeq.maxSeq + 1,
+        JSON.stringify({
+          summary: "旧摘要",
+          firstKeptSeq,
+          tokensBefore: 10,
+          manual: false,
+        }),
+        new Date().toISOString(),
+      )
+
+    const restored = await agentRunner.restoreSession(first.sessionId)
+    expect(restored.messages.map((message) => message.role)).toEqual([
+      "user",
+      "compactionSummary",
+      "assistant",
+    ])
   })
 
   it("手动 compact() 落 manual 边界，恢复摘要带 manual，undoCompaction 可撤销", async () => {
@@ -682,7 +846,7 @@ describe("agentRunner 持久化", () => {
     expect(rows).toHaveLength(1)
     expect(JSON.parse(rows[0].payload)).toMatchObject({ manual: true })
 
-    // 恢复会话：摘要追加到消息底部且带 manual=true。
+    // 恢复会话：摘要按压缩锚点插入且带 manual=true。
     const restored = await agentRunner.restoreSession(second.sessionId)
     const summaries = restored.messages.filter((message) => message.role === "compactionSummary")
     expect(summaries).toHaveLength(1)

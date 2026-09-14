@@ -29,6 +29,9 @@ export interface CompactionBoundary {
   summary: string
   // 保留起点的消息 seq（seq >= firstKeptSeq 的尾部进入模型上下文）。
   firstKeptSeq: number
+  // 压缩时刻最后一条已落库消息的 seq（恢复时把可见摘要插到它之后，与实时 UI 位置一致）；
+  // 旧 entry 无此字段，恢复时回退到 firstKeptSeq 边界。
+  anchorSeq?: number
   // 被压缩部分的估计 token 数。
   tokensBefore: number
   // 是否手动触发（/compact）；自动压缩不可经 /undo 撤销。

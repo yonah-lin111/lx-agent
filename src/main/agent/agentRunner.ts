@@ -67,6 +67,18 @@ export class SessionRunnerManager {
     return "default"
   }
 
+  // renderer 刷新后会生成新 tabId：把已存在会话 runner 重绑定到当前 tab，
+  // 否则 runner 仍携带旧 tabId 下发事件，被 renderer 的路由守卫整体丢弃（发送消息不显示）。
+  private bindRunnerToTab(
+    runner: AgentSessionRunner,
+    sessionId?: string | null,
+    tabId?: string,
+  ): void {
+    if (!tabId || !sessionId || runner.currentSessionId !== sessionId) return
+    if (runner.tabId === tabId) return
+    runner.tabId = tabId
+  }
+
   public getOrCreateRunner(sessionId?: string | null, tabId?: string): AgentSessionRunner {
     const key = this.resolveKey(sessionId, tabId)
     this.lastActiveKey = key
@@ -76,6 +88,7 @@ export class SessionRunnerManager {
       for (const r of this.runners.values()) {
         if (r.currentSessionId === sessionId) {
           this.runners.set(key, r)
+          this.bindRunnerToTab(r, sessionId, tabId)
           return r
         }
       }
@@ -111,6 +124,7 @@ export class SessionRunnerManager {
       if (sessionId && runner.currentSessionId !== sessionId) {
         runner.setSessionId(sessionId)
       }
+      this.bindRunnerToTab(runner, sessionId, tabId)
     }
     return runner
   }
@@ -120,7 +134,10 @@ export class SessionRunnerManager {
     let runner = this.runners.get(key)
     if (!runner && sessionId) {
       for (const r of this.runners.values()) {
-        if (r.currentSessionId === sessionId) return r
+        if (r.currentSessionId === sessionId) {
+          this.bindRunnerToTab(r, sessionId, tabId)
+          return r
+        }
       }
     }
     if (!runner && tabId) {
@@ -128,6 +145,10 @@ export class SessionRunnerManager {
     }
     if (!runner && this.runners.has(this.lastActiveKey)) {
       runner = this.runners.get(this.lastActiveKey)
+    }
+    if (runner) {
+      // 通过 sess: key 直接命中时同样需要按当前 tab 重绑定（continue/compact/abort 等路径）。
+      this.bindRunnerToTab(runner, sessionId, tabId)
     }
     return runner ?? this.runners.values().next().value
   }

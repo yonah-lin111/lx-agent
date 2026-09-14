@@ -94,4 +94,23 @@ describe("buildQaGroups", () => {
     expect(groups[0].userMessage).toBeNull()
     expect(groups[0].assistant?.message.id).toBe("a1")
   })
+
+  it("中部的压缩摘要独立成组，不吞并其后的用户消息与其 AI 回复", () => {
+    const groups = buildQaGroups(
+      groupAgentMessages([
+        user("u1"),
+        assistant("a1"),
+        compactionSummary("c1"),
+        user("u2"),
+        assistant("a2"),
+      ]),
+    )
+    expect(
+      groups.map((group) => [group.userMessage?.id ?? null, group.assistant?.message.id ?? null]),
+    ).toEqual([
+      ["u1", "a1"],
+      [null, "c1"],
+      ["u2", "a2"],
+    ])
+  })
 })
