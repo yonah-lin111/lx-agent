@@ -1,4 +1,4 @@
-import { Bot, Network } from "lucide-react"
+import { Network } from "lucide-react"
 import type React from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxTag } from "@/components/ui/LxTag"
@@ -86,8 +86,9 @@ export const OpenClawLeftSideBar = ({
                 <button
                   key={id}
                   type="button"
+                  data-active={isActive ? "true" : undefined}
                   onClick={() => handleSelectOffice(id, instance.agents[0]?.id)}
-                  className={`flex w-full items-center gap-2 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
+                  className={`openclaw-office-item flex w-full items-center gap-2 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
                     isActive
                       ? "border-white/10 bg-white/[0.06]"
                       : "border-transparent hover:bg-white/[0.03]"
@@ -126,7 +127,7 @@ export const OpenClawLeftSideBar = ({
                   onClick={(event) =>
                     selectAgent(agent.id, { additive: event.ctrlKey || event.metaKey })
                   }
-                  className={`flex w-full items-center gap-2 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
+                  className={`openclaw-agent-item flex w-full items-center gap-2 rounded-[6px] border px-2 py-1.5 text-left transition-colors ${
                     isSelected
                       ? "border-sky-400/30 bg-sky-400/10"
                       : "border-transparent hover:bg-white/[0.03]"
@@ -151,13 +152,6 @@ export const OpenClawLeftSideBar = ({
               )
             })
           )}
-        </div>
-      </div>
-
-      <div className="shrink-0 px-1 pb-1">
-        <div className="flex items-center gap-1.5 rounded-[6px] border border-white/5 bg-white/[0.02] px-2 py-1.5 text-xs text-white/40">
-          <Bot className="h-3 w-3 shrink-0" />
-          <span className="min-w-0 truncate">{t("openclaw.rosterHint")}</span>
         </div>
       </div>
     </div>

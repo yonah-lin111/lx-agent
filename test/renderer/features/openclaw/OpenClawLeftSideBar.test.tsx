@@ -98,6 +98,21 @@ describe("OpenClawLeftSideBar", () => {
     expect(selectAgent).toHaveBeenCalledWith("amy", { additive: true })
   })
 
+  it("办公区与员工条目使用主题钩子类，且不再渲染底部操作提示", () => {
+    render(<OpenClawLeftSideBar />)
+
+    const officeButton = screen.getByText("本机 Gateway").closest("button")
+    expect(officeButton?.className).toContain("openclaw-office-item")
+    expect(officeButton?.getAttribute("data-active")).toBe("true")
+
+    const agentButton = screen.getByText("Lily").closest("button")
+    expect(agentButton?.className).toContain("openclaw-agent-item")
+    expect(agentButton?.getAttribute("aria-pressed")).toBe("true")
+
+    // 底部派发提示已移除（中英文案均包含 Ctrl/Cmd）。
+    expect(document.body.textContent).not.toContain("Ctrl/Cmd")
+  })
+
   it("折叠态仅渲染办公区图标列表", () => {
     render(<OpenClawLeftSideBar isCollapsed />)
 

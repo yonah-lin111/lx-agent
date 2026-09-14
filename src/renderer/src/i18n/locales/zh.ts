@@ -260,7 +260,6 @@ export const zh: TranslationDictionary = {
     approvalRequired: "该任务需要在 Gateway 主机上完成审批才能继续。请在主机侧批准，或中止该任务。",
     officesSection: "办公区",
     rosterSection: "员工",
-    rosterHint: "点击员工派发任务；Ctrl/Cmd 点击可多选。",
     conversationEmpty: "还没有消息，选中员工后派发一条任务。",
     workingCount: "{{count}} 位员工工作中…",
     officePickerTitle: "切换办公区",

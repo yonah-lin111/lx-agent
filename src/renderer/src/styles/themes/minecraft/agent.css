@@ -96,6 +96,22 @@
     2px 2px 0px 0px #000000 !important;
 }
 
+/* OpenClaw 左侧栏条目：实体槽位底色，避免透出侧栏马赛克 */
+[data-theme="minecraft"] .openclaw-office-item,
+[data-theme="minecraft"] .openclaw-agent-item {
+  background-color: #2c2c3c !important;
+}
+
+[data-theme="minecraft"] .openclaw-office-item:hover,
+[data-theme="minecraft"] .openclaw-agent-item:hover {
+  background-color: #3b3b4f !important;
+}
+
+[data-theme="minecraft"] .openclaw-office-item[data-active="true"],
+[data-theme="minecraft"] .openclaw-agent-item[aria-pressed="true"] {
+  background-color: #2e4773 !important;
+}
+
 [data-theme="minecraft"] .agent-message-command-label {
   color: #ffaa00 !important; /* 金矿石暖金 */
   font-weight: 700;
@@ -1495,8 +1511,7 @@
 /* ========================================================
  * 16. Agent 输入框底栏魔改（安山岩石质外框 + 黑曜石马赛克编辑槽）
  * ======================================================== */
-[data-theme="minecraft"] .agent-input-container,
-[data-theme="minecraft"] .bg-\[\#2a2a2a\] {
+[data-theme="minecraft"] .agent-input-container {
   border-radius: 0px !important;
   border: 2px solid #000000 !important;
   background-color: #222232 !important;
@@ -1511,8 +1526,7 @@
   transition: box-shadow 0.15s ease !important;
 }
 
-[data-theme="minecraft"] .agent-input-container:focus-within,
-[data-theme="minecraft"] .bg-\[\#2a2a2a\]:focus-within {
+[data-theme="minecraft"] .agent-input-container:focus-within {
   box-shadow:
     inset 1px 1px 0px 0px rgba(255, 255, 255, 0.3),
     inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
