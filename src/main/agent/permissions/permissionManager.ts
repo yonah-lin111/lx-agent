@@ -20,7 +20,7 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
 const PLAN_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and modifying filesystem state are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
+  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
 const REVIEW_MODE_MUTATION_REASON =
   "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
 const READ_ONLY_SANDBOX_REASON =
