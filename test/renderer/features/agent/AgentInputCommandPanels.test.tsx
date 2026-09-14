@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { SkillItem } from "@shared/contracts/agent"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   type AgentHistoryPromptItem,
@@ -257,9 +257,9 @@ describe("AgentInput 命令面板鼠标点选交互", () => {
 
     const options = screen.getAllByRole("option")
     expect(options).toHaveLength(2)
-    // 左侧 index 按展示条数倒序编号。
-    expect(options[0]?.textContent?.startsWith("2")).toBe(true)
-    expect(options[1]?.textContent?.startsWith("1")).toBe(true)
+    // 右侧 tag 按展示条数倒序展示 index。
+    expect(within(options[0] as HTMLElement).getByText("2")).toBeDefined()
+    expect(within(options[1] as HTMLElement).getByText("1")).toBeDefined()
     fireEvent.mouseDown(options[1])
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect).toHaveBeenCalledWith(prompts[1])

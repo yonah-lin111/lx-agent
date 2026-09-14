@@ -1135,7 +1135,6 @@ export const zh: TranslationDictionary = {
     commandCopyDesc: "复制会话到剪贴板（参数：[all] 复制全文，缺省复制最近回复）",
     commandHistoryPromptDesc: "浏览并回填历史提示词",
     historyPromptSelect: "历史提示词选择",
-    promptHistoryTag: "历史",
     noPromptHistory: "暂无历史提示词",
     questionCustomOther: "其他（自定义输入）",
     questionAnswerPlaceholder: "输入回答...",

@@ -1155,7 +1155,6 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     commandCopyDesc: "Copy session to clipboard ([all] full text, default last reply)",
     commandHistoryPromptDesc: "Browse and reuse prompt history",
     historyPromptSelect: "Prompt History Select",
-    promptHistoryTag: "History",
     noPromptHistory: "No prompt history yet",
     questionCustomOther: "Other (custom input)",
     questionAnswerPlaceholder: "Type answer...",

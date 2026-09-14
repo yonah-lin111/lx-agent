@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { promptHistoryApi } from "@/features/agent/api/promptHistoryApi"
@@ -98,9 +98,9 @@ describe("AgentInput /historyPrompt 历史提示词面板", () => {
     expect(options).toHaveLength(2)
     expect(options[0]?.textContent).toContain("最新提示词")
     expect(options[1]?.textContent).toContain("较旧提示词")
-    // 左侧 index 按展示条数倒序编号。
-    expect(options[0]?.textContent?.startsWith("2")).toBe(true)
-    expect(options[1]?.textContent?.startsWith("1")).toBe(true)
+    // 右侧 tag 按展示条数倒序展示 index。
+    expect(within(options[0] as HTMLElement).getByText("2")).toBeDefined()
+    expect(within(options[1] as HTMLElement).getByText("1")).toBeDefined()
   })
 
   it("↑↓ 切换激活项，Enter 整体回填选中历史且面板关闭、不发送", async () => {
@@ -128,7 +128,7 @@ describe("AgentInput /historyPrompt 历史提示词面板", () => {
     expect(options).toHaveLength(1)
     expect(options[0]?.textContent).toContain("重构面板")
     // 过滤后按结果条数重新倒序编号。
-    expect(options[0]?.textContent?.startsWith("1")).toBe(true)
+    expect(within(options[0] as HTMLElement).getByText("1")).toBeDefined()
   })
 
   it("历史为空时面板不出现，Enter 不发送命令文本并清空输入", async () => {
