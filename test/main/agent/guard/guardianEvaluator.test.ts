@@ -10,8 +10,7 @@ describe("GuardianEvaluator", () => {
       })
       expect(assessment.riskLevel).toBe("high")
       expect(assessment.category).toBe("data_exfiltration")
-      expect(assessment.outcome).toBe("deny")
-      expect(assessment.requiresApproval).toBe(true)
+      expect(assessment.rationale).toBeTruthy()
     })
 
     it("flags webhook and pastebin egress", () => {
@@ -32,7 +31,6 @@ describe("GuardianEvaluator", () => {
       })
       expect(assessment.riskLevel).toBe("high")
       expect(assessment.category).toBe("credential_probing")
-      expect(assessment.requiresApproval).toBe(true)
     })
 
     it("flags /etc/shadow reads and keychain dumping", () => {
@@ -101,9 +99,16 @@ describe("GuardianEvaluator", () => {
           args: { command: cmd },
         })
         expect(assessment.riskLevel).toBe("low")
-        expect(assessment.outcome).toBe("allow")
-        expect(assessment.requiresApproval).toBe(false)
+        expect(assessment.category).toBe("safe")
       }
+    })
+
+    it("评估结果仅含 riskLevel/category/rationale 三个字段", () => {
+      const assessment = guardianEvaluator.evaluateAction({
+        toolName: "bash",
+        args: { command: "git status" },
+      })
+      expect(Object.keys(assessment).sort()).toEqual(["category", "rationale", "riskLevel"])
     })
 
     it("allows standard file writes in workspace", () => {
@@ -112,7 +117,7 @@ describe("GuardianEvaluator", () => {
         args: { path: "src/main/index.ts", content: "export {}" },
       })
       expect(assessment.riskLevel).toBe("low")
-      expect(assessment.outcome).toBe("allow")
+      expect(assessment.category).toBe("safe")
     })
   })
 })

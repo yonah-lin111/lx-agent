@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { LocalJobRegistry } from "@/agent/jobs/jobRegistry"
+import { LocalJobRegistry, MAX_MEMORY_BUFFER_BYTES } from "@/agent/jobs/jobRegistry"
+import { spillManager } from "@/agent/spill/spillManager"
+
+const LARGE_OUTPUT_BYTES = 200_000
+const TAIL_MARKER = "TAIL-MARKER"
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe("LocalJobRegistry", () => {
   let registry: LocalJobRegistry
@@ -11,7 +17,32 @@ describe("LocalJobRegistry", () => {
   afterEach(() => {
     registry.cleanSessionJobs("test-session")
     registry.cleanSessionJobs("test-session-2")
+    spillManager.cleanSessionSpill("test-session")
+    spillManager.cleanSessionSpill("test-session-2")
   })
+
+  // 等待任务进入终态。
+  const waitForSettled = async (jobId: string): Promise<void> => {
+    const deadline = Date.now() + 15_000
+    while (Date.now() < deadline) {
+      const snapshot = registry.getJob(jobId)
+      if (snapshot && snapshot.status !== "running" && snapshot.status !== "stopping") return
+      await sleep(25)
+    }
+    throw new Error(`Job ${jobId} did not settle in time`)
+  }
+
+  // 等待完整输出达到预期长度（Spill 落盘存在异步刷盘）。
+  const waitForFullOutput = async (jobId: string, expectedChars: number): Promise<string> => {
+    const deadline = Date.now() + 15_000
+    let text = ""
+    while (Date.now() < deadline) {
+      text = registry.getFullOutput(jobId) ?? ""
+      if (text.length >= expectedChars) return text
+      await sleep(25)
+    }
+    return text
+  }
 
   it("能够启动后台任务并生成顺序 ID 与快照", async () => {
     const startedEvents: any[] = []
@@ -135,5 +166,92 @@ describe("LocalJobRegistry", () => {
     const killRes = await registry.killJob(job.id, "reason", "test-session-2")
     expect(killRes.ok).toBe(false)
     expect(killRes.error).toMatch(/Cross-session (?:kill|termination) of background job denied/)
+  })
+
+  it("长输出触发 Spill 后内存缓冲被裁剪且完整输出仍可读", async () => {
+    const job = registry.startJob({
+      kind: "bash",
+      command: `"${process.execPath}" -e "process.stdout.write('a'.repeat(${LARGE_OUTPUT_BYTES}))"`,
+      cwd: process.cwd(),
+      sessionId: "test-session",
+    })
+
+    await waitForSettled(job.id)
+    const full = await waitForFullOutput(job.id, LARGE_OUTPUT_BYTES)
+
+    // 内存缓冲只保留尾部窗口，其余字符已被淘汰
+    const stats = registry.getMemoryBufferStats(job.id)
+    expect(stats).not.toBeNull()
+    expect(stats?.retainedBytes).toBeLessThanOrEqual(MAX_MEMORY_BUFFER_BYTES)
+    expect(stats?.droppedChars).toBeGreaterThan(0)
+
+    // Spill 文件保留完整内容
+    expect(full).toHaveLength(LARGE_OUTPUT_BYTES)
+
+    // 游标落后于裁剪边界时从 Spill 补齐：完整返回且只返回一次
+    const first = await registry.readOutput(job.id, false, undefined, "test-session")
+    expect(first?.text).toHaveLength(LARGE_OUTPUT_BYTES)
+    const second = await registry.readOutput(job.id, false, undefined, "test-session")
+    expect(second?.text).toBe("")
+  })
+
+  it("裁剪边界后继续输出时增量读取不丢不重", async () => {
+    const job = registry.startJob({
+      kind: "bash",
+      command: `"${process.execPath}" -e "process.stdout.write('a'.repeat(${LARGE_OUTPUT_BYTES})); setTimeout(() => process.stdout.write('${TAIL_MARKER}'), 200)"`,
+      cwd: process.cwd(),
+      sessionId: "test-session",
+    })
+
+    // 分段累积消费首段大输出（可能因管道分片跨多次读取）
+    let head = ""
+    const headDeadline = Date.now() + 10_000
+    while (head.length < LARGE_OUTPUT_BYTES && Date.now() < headDeadline) {
+      const res = await registry.readOutput(job.id, true, 1000, "test-session")
+      head += res?.text ?? ""
+    }
+    expect(head.length).toBeGreaterThanOrEqual(LARGE_OUTPUT_BYTES)
+
+    await waitForSettled(job.id)
+    const full = await waitForFullOutput(job.id, LARGE_OUTPUT_BYTES + TAIL_MARKER.length)
+    expect(full).toBe(`${"a".repeat(LARGE_OUTPUT_BYTES)}${TAIL_MARKER}`)
+
+    const rest = await registry.readOutput(job.id, false, undefined, "test-session")
+    expect(`${head}${rest?.text ?? ""}`).toBe(full)
+
+    const extra = await registry.readOutput(job.id, false, undefined, "test-session")
+    expect(extra?.text).toBe("")
+  })
+
+  it("readOutput(wait) 在新输出到达时被唤醒", async () => {
+    const job = registry.startJob({
+      kind: "bash",
+      command: "sleep 0.3; echo 'wake-up'",
+      cwd: process.cwd(),
+      sessionId: "test-session",
+    })
+
+    let text = ""
+    const deadline = Date.now() + 5000
+    while (!text.includes("wake-up") && Date.now() < deadline) {
+      const res = await registry.readOutput(job.id, true, 1000, "test-session")
+      text += res?.text ?? ""
+    }
+    expect(text).toContain("wake-up")
+  })
+
+  it("readOutput(wait) 在任务结束且无新输出时被唤醒", async () => {
+    const job = registry.startJob({
+      kind: "bash",
+      command: "sleep 0.3",
+      cwd: process.cwd(),
+      sessionId: "test-session",
+    })
+
+    const startedAt = Date.now()
+    const res = await registry.readOutput(job.id, true, 5000, "test-session")
+    expect(res?.text).toBe("")
+    expect(res?.job.status).toBe("completed")
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(150)
   })
 })

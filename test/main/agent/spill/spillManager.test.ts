@@ -103,6 +103,23 @@ describe("SpillManager", () => {
     expect(res.text).toContain("Full output saved to:")
   })
 
+  it("getSessionDir 消毒 sessionId 并拦截目录穿越", () => {
+    const base = manager.getBaseDir()
+    const escaped = manager.getSessionDir("../../etc/passwd")
+    expect(escaped.startsWith(base)).toBe(true)
+    expect(escaped).not.toContain("..")
+    // `.` / `..` 被替换为下划线，不产生 baseDir 之外的路径。
+    expect(manager.getSessionDir("..")).toBe(join(base, "__"))
+    expect(manager.getSessionDir(".")).toBe(join(base, "_"))
+  })
+
+  it("saveSpillFile 使用消毒后的会话目录", () => {
+    const filePath = manager.saveSpillFile("../../evil", "call:../1", "content")
+    expect(filePath.startsWith(manager.getBaseDir())).toBe(true)
+    expect(existsSync(filePath)).toBe(true)
+    expect(readFileSync(filePath, "utf-8")).toBe("content")
+  })
+
   it("cleanStaleSpills 清理超过 TTL 的旧会话目录", () => {
     const sOld = join(tmpBase, "old-sess")
     const sNew = join(tmpBase, "new-sess")

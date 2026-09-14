@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { AgentDiff } from "@shared/contracts/agent"
 import { afterEach, describe, expect, it } from "vitest"
+import { createApplyPatchTool } from "@/agent/tools/applyPatch"
 import { createBashTool } from "@/agent/tools/bash"
 import { createEditTool } from "@/agent/tools/edit"
 import { createFindTool } from "@/agent/tools/find"
@@ -121,6 +122,38 @@ describe("read / write / edit", () => {
     }
   })
 
+  it("write 允许越界路径（不再返回拒绝分支）", async () => {
+    const cwd = await makeTmp()
+    const outsidePath = join(cwd, "../outside-write.txt")
+    try {
+      const write = createWriteTool(cwd)
+      const w = await write.execute("t1", { path: "../outside-write.txt", content: "outside" })
+      expect(toolText(w)).toMatch(/Wrote|已写入/)
+      expect(toolText(w)).not.toContain("Access denied")
+      expect(await readFile(outsidePath, "utf-8")).toBe("outside")
+    } finally {
+      await rm(outsidePath, { force: true })
+    }
+  })
+
+  it("edit 允许越界路径（不再返回拒绝分支）", async () => {
+    const cwd = await makeTmp()
+    const outsidePath = join(cwd, "../outside-edit.txt")
+    await writeFile(outsidePath, "a\nb\n", "utf-8")
+    try {
+      const edit = createEditTool(cwd)
+      const e = await edit.execute("t1", {
+        path: "../outside-edit.txt",
+        edits: [{ oldText: "b", newText: "B!" }],
+      })
+      expect(toolText(e)).toMatch(/Applied|已替换/)
+      expect(toolText(e)).not.toContain("Access denied")
+      expect(await readFile(outsidePath, "utf-8")).toBe("a\nB!\n")
+    } finally {
+      await rm(outsidePath, { force: true })
+    }
+  })
+
   it("edit 替换并产出结构化 diff", async () => {
     const cwd = await makeTmp()
     await writeFile(join(cwd, "f.txt"), "a\nb\nc\n")
@@ -190,6 +223,26 @@ describe("ls / grep / find", () => {
     expect(text).toContain("spec.ts")
     expect(text).toContain("src/inner.spec.ts")
     expect(text).not.toContain("app.ts")
+  })
+})
+
+describe("apply_patch", () => {
+  it("允许越界路径（不再返回拒绝分支）", async () => {
+    const cwd = await makeTmp()
+    const outsidePath = join(cwd, "../outside-patch.txt")
+    try {
+      const applyPatch = createApplyPatchTool(cwd)
+      const patch = `*** Begin Patch
+*** Add File: ../outside-patch.txt
++outside
+*** End Patch`
+      const r = await applyPatch.execute("t1", { patch })
+      expect(toolText(r)).toContain("Successfully applied patch")
+      expect(toolText(r)).not.toContain("Access denied")
+      expect(await readFile(outsidePath, "utf-8")).toBe("outside")
+    } finally {
+      await rm(outsidePath, { force: true })
+    }
   })
 })
 

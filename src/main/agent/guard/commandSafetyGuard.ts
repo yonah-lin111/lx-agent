@@ -32,20 +32,20 @@ const MAX_SUBSTITUTION_DEPTH = 8
 // rm 的受保护目标由 isDangerousRmCommand 结构化判定（引号/变量/路径归一化），不用正则匹配。
 const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
-    pattern: /^\s*git\s+reset\s+--hard(\s|$)/,
+    pattern: /^\s*git\s+reset\s+--hard(\s|$)/i,
     reason:
       "Destructive git reset --hard is prohibited to prevent uncommitted changes from being lost.",
   },
   {
-    pattern: /^\s*git\s+clean\s+[^;&|]*-[a-zA-Z]*f[a-zA-Z]*(\s|$)/,
+    pattern: /^\s*git\s+clean\s+[^;&|]*-[a-zA-Z]*f[a-zA-Z]*(\s|$)/i,
     reason: "Forced removal of untracked files (git clean -f) is prohibited.",
   },
   {
-    pattern: /^\s*mkfs(\.[a-zA-Z0-9]+)?(\s|$)/,
+    pattern: /^\s*mkfs(\.[a-zA-Z0-9]+)?(\s|$)/i,
     reason: "Formatting disk filesystems is prohibited.",
   },
   {
-    pattern: /^\s*dd\s+[^;&|]*if=[^;&|]*of=(\/dev\/[a-zA-Z0-9]+)(\s|$)/,
+    pattern: /^\s*dd\s+[^;&|]*if=[^;&|]*of=(\/dev\/[a-zA-Z0-9]+)(\s|$)/i,
     reason: "Overwriting raw disk devices (dd of=/dev/...) is prohibited.",
   },
   {
@@ -57,19 +57,19 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
 // 敏感指令（提升为必须经用户确认 / ASK）
 const SENSITIVE_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   {
-    pattern: /^\s*git\s+push\s+[^;&|]*(-[a-zA-Z]*f[a-zA-Z]*|--force)(\s|$)/,
+    pattern: /^\s*git\s+push\s+[^;&|]*(-[a-zA-Z]*f[a-zA-Z]*|--force)(\s|$)/i,
     reason: "Force pushing to remote git repositories may overwrite others' commits.",
   },
   {
-    pattern: /^\s*git\s+checkout\s+(--\s+)?\.(\s|$)/,
+    pattern: /^\s*git\s+checkout\s+(--\s+)?\.(\s|$)/i,
     reason: "Discarding all unstaged changes in working directory.",
   },
   {
-    pattern: /^\s*chmod\s+[^;&|]*-[a-zA-Z]*R[a-zA-Z]*\s+777(\s|$)/,
+    pattern: /^\s*chmod\s+[^;&|]*-[a-zA-Z]*R[a-zA-Z]*\s+777(\s|$)/i,
     reason: "Recursively granting 777 permissions introduces security risks.",
   },
   {
-    pattern: /^\s*shutdown(\s|$)|^\s*reboot(\s|$)/,
+    pattern: /^\s*shutdown(\s|$)|^\s*reboot(\s|$)/i,
     reason: "System shutdown or reboot operation.",
   },
 ]
@@ -339,7 +339,7 @@ const STATEMENT_END = new Set([";", "&", "|", "(", ")"])
  * 目标词做 ${VAR} 与路径归一化后与 DANGEROUS_RM_TARGETS 比对；仅当带强删标志 (-f/--force) 时成立。
  */
 const isDangerousRmCommand = (command: string): boolean => {
-  const match = /^\s*rm\s+([\s\S]*)$/.exec(command)
+  const match = /^\s*rm\s+([\s\S]*)$/i.exec(command)
   if (!match) return false
 
   const args = match[1]
@@ -353,7 +353,7 @@ const isDangerousRmCommand = (command: string): boolean => {
 
     const { word, end } = readShellWord(args, i, RM_WORD_STOP)
     i = end
-    if (word === "--force" || /^-[a-zA-Z]*f[a-zA-Z]*$/.test(word)) hasForce = true
+    if (word === "--force" || /^-[a-zA-Z]*f[a-zA-Z]*$/i.test(word)) hasForce = true
     else if (!word.startsWith("-")) targets.push(normalizeRmTarget(word))
   }
 
@@ -481,23 +481,43 @@ export function unwrapCommand(commandStr: string, depth = 0): string {
 
   const trimmed = commandStr.trim()
 
+  // 反斜杠转义命令名: \rm → rm
+  if (/^\\[a-zA-Z_]/.test(trimmed)) {
+    return unwrapCommand(trimmed.slice(1), depth + 1)
+  }
+
+  // 引号包裹命令名: 'rm' -rf /、"rm" -rf /
+  const quotedCommand = /^(["'])([^"']+)\1(?:\s+([\s\S]*))?$/.exec(trimmed)
+  if (quotedCommand?.[2]) {
+    const rest = quotedCommand[3]?.trim()
+    return unwrapCommand(rest ? `${quotedCommand[2]} ${rest}` : quotedCommand[2], depth + 1)
+  }
+
   // 处理 sudo 包装: sudo [options] <command>
-  if (/^sudo\s+/.test(trimmed)) {
-    const withoutSudo = trimmed.replace(/^sudo(\s+-[a-zA-Z0-9]+)*\s+/, "")
+  if (/^sudo\s+/i.test(trimmed)) {
+    const withoutSudo = trimmed.replace(/^sudo(\s+-[a-zA-Z0-9]+)*\s+/i, "")
     return unwrapCommand(withoutSudo, depth + 1)
   }
 
   // 处理 env 包装: env [VAR=VAL ...] <command>
-  if (/^env\s+/.test(trimmed)) {
+  if (/^env\s+/i.test(trimmed)) {
     const withoutEnv = trimmed.replace(
-      /^env(\s+[a-zA-Z_][a-zA-Z0-9_]*=[^\s]*|\s+-[a-zA-Z0-9]+)*\s+/,
+      /^env(\s+[a-zA-Z_][a-zA-Z0-9_]*=[^\s]*|\s+-[a-zA-Z0-9]+)*\s+/i,
       "",
     )
     return unwrapCommand(withoutEnv, depth + 1)
   }
 
-  // 处理 shell -c 包装: sh -c "...", bash -c '...', zsh -c "..."
-  const shellMatch = trimmed.match(/^(?:sh|bash|zsh)\s+-c\s+["'](.*)["']$/)
+  // 处理 eval / command 包装: eval "rm -rf /"、command rm -rf /
+  const builtinMatch = /^(?:eval|command)\s+([\s\S]*)$/i.exec(trimmed)
+  if (builtinMatch?.[1]?.trim()) {
+    return unwrapCommand(builtinMatch[1], depth + 1)
+  }
+
+  // 处理 shell -c 包装: sh -c "...", bash -lc '...', bash -l -c '...', zsh -ic "..."
+  const shellMatch = trimmed.match(
+    /^(?:sh|bash|zsh)\s+(?:-[a-zA-Z]+\s+)*-[a-zA-Z]*c[a-zA-Z]*\s+["']([\s\S]*)["']$/i,
+  )
   if (shellMatch?.[1]) {
     return unwrapCommand(shellMatch[1], depth + 1)
   }
@@ -529,9 +549,9 @@ export function evaluateCommandSafety(commandStr: string, depth = 0): CommandSaf
     if (verdict.level !== "safe") return verdict
   }
 
-  // 针对复合命令（如 `cmd1 && cmd2`、`cmd1 ; cmd2`、`cmd1 | cmd2`）拆分子命令逐个评估
+  // 针对复合命令（`cmd1 && cmd2`、`cmd1 ; cmd2`、`cmd1 | cmd2`、换行与 `&` 后台分隔）拆分子命令逐个评估
   const subCommands = command
-    .split(/&&|\|\||;|\|/)
+    .split(/&&|\|\||;|\||\n|\r|(?<![&])&(?![&])/)
     .map((c) => c.trim())
     .filter(Boolean)
 

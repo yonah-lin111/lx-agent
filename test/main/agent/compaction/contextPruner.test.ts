@@ -85,6 +85,38 @@ describe("ContextPruner", () => {
     expect((toolMsg.content[0] as any).text).toBe(longOutput)
   })
 
+  it("should prune large historical web_search outputs (real tool name)", () => {
+    const longOutput = "line1\n".repeat(30)
+    const messages: AgentMessage[] = [
+      {
+        role: "toolResult",
+        toolCallId: "call-ws",
+        toolName: "web_search",
+        content: [{ type: "text", text: longOutput }],
+        isError: false,
+        timestamp: Date.now(),
+      } as ToolResultMessage,
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "next step" }],
+        provider: "anthropic",
+        model: "claude-3-5-sonnet",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      },
+    ]
+
+    const pruned = pruneHistoricalToolOutputs(messages, {
+      recentMessagesToKeep: 1,
+      lineThreshold: 20,
+    })
+    const toolMsg = pruned[0] as ToolResultMessage
+    expect((toolMsg.content[0] as any).text).toContain(
+      '[Historical output of tool "web_search" pruned',
+    )
+  })
+
   it("should replace historical image blocks with a path placeholder", () => {
     const imageResult: ToolResultMessage = {
       role: "toolResult",

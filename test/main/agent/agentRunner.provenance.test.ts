@@ -26,37 +26,41 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  // task 委托与 mcp 工具进门控集：显式 allow，避免测试挂起权限弹窗。
-  getPermissionSettings: () => ({
-    defaultMode: "default",
-    allow: ["Task()", "Fs_read()"],
-    deny: [],
-    ask: [],
-  }),
-  getCompactionSettings: () => ({
-    enabled: false,
-    contextWindow: 0,
-    keepRecentTokens: 0,
-    reserveTokens: 0,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    // task 委托与 mcp 工具进门控集：显式 allow，避免测试挂起权限弹窗。
+    getPermissionSettings: () => ({
+      defaultMode: "default",
+      allow: ["Task()", "Fs_read()"],
+      deny: [],
+      ask: [],
+    }),
+    getCompactionSettings: () => ({
+      enabled: false,
+      contextWindow: 0,
+      keepRecentTokens: 0,
+      reserveTokens: 0,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },
@@ -65,6 +69,7 @@ vi.mock("@/services/projectService", () => ({
 // skill 注入：固定一个可用 skill（驱动 withReadSkill=true，注册 read_skill）。
 vi.mock("@/agent/skills/skillLoader", () => ({
   formatSkillsForPrompt: () => "",
+  extractSkillMentions: () => [],
   skillLoader: {
     load: () => [
       {

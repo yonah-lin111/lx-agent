@@ -51,7 +51,7 @@ interface AgentTool<TParams extends z.ZodType = z.ZodType, TDetails = unknown> {
 | | `find` | `{ pattern; path?; limit? }` | 文件名匹配搜索：优先系统 `fd`，缺失降级为递归 readdir 模式匹配 |
 | | `write` | `{ path; content }` | 文件全量写入/新建，自动创建父级目录；由 `file-mutation-queue` 串行化 |
 | | `edit` | `{ path; edits: { oldText; newText }[] }` | 精确块替换：BOM/CRLF 归一化；生成行级结构化 Diff；联动写后 LSP 诊断 |
-| | `apply_patch` | `{ patch }` | V4A 格式多文件原子补丁（Add/Update/Delete），全量前置校验，失败整体回滚；Patch 失配经 HarnessFeedbackGuard 反馈自愈 |
+| | `apply_patch` | `{ patch }` | V4A 格式多文件原子补丁（Add/Update/Delete），全量前置校验，失败整体回滚并回灌错误信息 |
 | **执行与终端** | `bash` | `{ command; timeout?; background?; session? }` | 通过 `UnifiedExecManager` 调度；支持 `background` 后台作业与 `session` PTY 持久会话 |
 | | `job_output` | `{ job_id; wait?; timeout_ms? }` | 消费后台作业的增量输出流（带等待唤醒机制） |
 | | `job_list` | `{}` | 查询当前会话内所有存活与已终结后台作业状态 |

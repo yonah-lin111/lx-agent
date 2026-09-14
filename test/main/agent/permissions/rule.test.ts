@@ -9,6 +9,18 @@ const parsed = (sources: string[]): ParsedRule[] =>
     return rule
   })
 
+// 构造多目标路径的 V4A 补丁。
+const patchWithPaths = (...paths: string[]): string =>
+  [
+    "*** Begin Patch",
+    ...paths.flatMap((path) => [`*** Update File: ${path}`, "@@", "-old", "+new"]),
+    "*** End Patch",
+  ].join("\n")
+
+// 目标为 src/b.ts 但内容引用 src/a.ts 的补丁。
+const patchReferencingOtherPath =
+  '*** Begin Patch\n*** Update File: src/b.ts\n@@\n-old\n+const ref = "src/a.ts"\n*** End Patch'
+
 describe("EXEMPT_TOOLS", () => {
   it("lsp 归入豁免集（只读检索永不询问）", () => {
     expect(EXEMPT_TOOLS.has("lsp")).toBe(true)
@@ -58,6 +70,22 @@ describe("matchRule", () => {
     expect(matchRule(rules, "bash", { command: "npmx install" })).toBe(false)
   })
 
+  it("bash 前缀匹配要求命令词边界（pnpm test 不命中 pnpm testing）", () => {
+    const rules = parsed(["Bash(pnpm test)"])
+    expect(matchRule(rules, "bash", { command: "pnpm test" })).toBe(true)
+    expect(matchRule(rules, "bash", { command: "pnpm test src" })).toBe(true)
+    expect(matchRule(rules, "bash", { command: "pnpm test;echo ok" })).toBe(true)
+    expect(matchRule(rules, "bash", { command: "pnpm test&&echo ok" })).toBe(true)
+    expect(matchRule(rules, "bash", { command: "pnpm testing" })).toBe(false)
+    expect(matchRule(rules, "bash", { command: "pnpm test2" })).toBe(false)
+  })
+
+  it("bash 规则以空白结尾时本身已处于词边界", () => {
+    const rules = parsed(["Bash(pnpm test )"])
+    expect(matchRule(rules, "bash", { command: "pnpm test --watch" })).toBe(true)
+    expect(matchRule(rules, "bash", { command: "pnpm test" })).toBe(false)
+  })
+
   it("bash 命令 glob 跨斜杠（rm -rf * 命中带路径命令）", () => {
     const rules = parsed(["Bash(rm -rf *)"])
     expect(matchRule(rules, "bash", { command: "rm -rf /tmp/x" })).toBe(true)
@@ -71,12 +99,75 @@ describe("matchRule", () => {
     expect(matchRule(rules, "write", { path: "lib/a.ts" })).toBe(false)
   })
 
-  it("webfetch URL 前缀匹配（同 bash 前缀语义）", () => {
+  it("apply_patch 单路径规则命中同路径补丁", () => {
+    const rules = parsed(["apply_patch(src/a.ts)"])
+    expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("src/a.ts") })).toBe(true)
+    expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("src/b.ts") })).toBe(false)
+  })
+
+  it("apply_patch 多路径补丁任一目标命中即命中", () => {
+    const rules = parsed(["apply_patch(src/b.ts)"])
+    expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("src/a.ts", "src/b.ts") })).toBe(
+      true,
+    )
+  })
+
+  it("apply_patch 规则支持路径 glob", () => {
+    const rules = parsed(["apply_patch(src/**)"])
+    expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("src/nested/a.ts") })).toBe(true)
+    expect(matchRule(rules, "apply_patch", { patch: patchWithPaths("lib/a.ts") })).toBe(false)
+  })
+
+  it("apply_patch 仅匹配目标路径，不匹配补丁内容文本", () => {
+    const rules = parsed(["apply_patch(src/a.ts)"])
+    expect(matchRule(rules, "apply_patch", { patch: patchReferencingOtherPath })).toBe(false)
+  })
+
+  it("apply_patch 解析失败或缺失 patch 参数不命中", () => {
+    const rules = parsed(["apply_patch(src/a.ts)"])
+    expect(matchRule(rules, "apply_patch", { patch: "not a valid patch" })).toBe(false)
+    expect(matchRule(rules, "apply_patch", { patch: "*** Begin Patch\n*** End Patch" })).toBe(false)
+    expect(matchRule(rules, "apply_patch", {})).toBe(false)
+  })
+
+  it("webfetch 同 scheme/host/port 前缀匹配，路径按段边界", () => {
     const rules = parsed(["WebFetch(https://api.example.com)"])
     expect(matchRule(rules, "webfetch", { url: "https://api.example.com/v1/x" })).toBe(true)
     expect(matchRule(rules, "webfetch", { url: "https://api.example.com" })).toBe(true)
     expect(matchRule(rules, "webfetch", { url: "https://other.com" })).toBe(false)
     expect(matchRule(rules, "webfetch", {})).toBe(false)
+  })
+
+  it("webfetch 相似域名不命中（host 边界）", () => {
+    const rules = parsed(["WebFetch(https://example.com)"])
+    expect(matchRule(rules, "webfetch", { url: "https://example.com.evil.io/x" })).toBe(false)
+    expect(matchRule(rules, "webfetch", { url: "https://sub.example.com/x" })).toBe(false)
+    expect(matchRule(rules, "webfetch", { url: "https://example.com:8443/x" })).toBe(false)
+    expect(matchRule(rules, "webfetch", { url: "http://example.com/x" })).toBe(false)
+  })
+
+  it("webfetch 子路径按段边界前缀匹配", () => {
+    const rules = parsed(["WebFetch(https://example.com/api)"])
+    expect(matchRule(rules, "webfetch", { url: "https://example.com/api" })).toBe(true)
+    expect(matchRule(rules, "webfetch", { url: "https://example.com/api/x" })).toBe(true)
+    expect(matchRule(rules, "webfetch", { url: "https://example.com/api/" })).toBe(true)
+    expect(matchRule(rules, "webfetch", { url: "https://example.com/apix" })).toBe(false)
+    expect(matchRule(rules, "webfetch", { url: "https://example.com/other" })).toBe(false)
+  })
+
+  it("webfetch 显式端口与末尾斜杠规则", () => {
+    const portRules = parsed(["WebFetch(https://example.com:8443)"])
+    expect(matchRule(portRules, "webfetch", { url: "https://example.com:8443/x" })).toBe(true)
+    expect(matchRule(portRules, "webfetch", { url: "https://example.com/x" })).toBe(false)
+    const slashRules = parsed(["WebFetch(https://example.com/api/)"])
+    expect(matchRule(slashRules, "webfetch", { url: "https://example.com/api/x" })).toBe(true)
+  })
+
+  it("webfetch 非 URL 规则保守不命中", () => {
+    const bareRules = parsed(["WebFetch(example.com)"])
+    expect(matchRule(bareRules, "webfetch", { url: "https://example.com/x" })).toBe(false)
+    const globRules = parsed(["WebFetch(https://example.com/*)"])
+    expect(matchRule(globRules, "webfetch", { url: "https://example.com/x" })).toBe(false)
   })
 
   it("空参命中全部调用", () => {

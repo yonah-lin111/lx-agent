@@ -104,49 +104,23 @@ describe("PermissionMode & Session Whitelist Engine", () => {
       expect(evalResult).toBe("allow")
     })
 
-    it("auto-allows command matching prefix whitelist in session", () => {
-      permissionManager.allowPrefixForSession(sessionId, "pnpm test")
+    it("session whitelist is tool-level only: matching path does not auto-allow write", () => {
+      permissionManager.rememberForSession(sessionId, "bash")
 
-      expect(permissionManager.isPrefixAllowedInSession(sessionId, "pnpm test")).toBe(true)
-      expect(permissionManager.isPrefixAllowedInSession(sessionId, "pnpm test src/main")).toBe(true)
-      expect(permissionManager.isPrefixAllowedInSession(sessionId, "pnpm build")).toBe(false)
+      const allowedBash = permissionManager.evaluate("bash", { command: "git log" }, { sessionId })
+      expect(allowedBash).toBe("allow")
 
-      const allowedResult = permissionManager.evaluate(
-        "bash",
-        { command: "pnpm test --run" },
-        { sessionId },
-      )
-      expect(allowedResult).toBe("allow")
-
-      const promptResult = permissionManager.evaluate(
-        "bash",
-        { command: "pnpm build" },
-        { sessionId },
-      )
-      expect(promptResult).toBe("ask")
-    })
-
-    it("auto-allows file path matching path whitelist in session", () => {
-      permissionManager.allowPathForSession(sessionId, "src/main/agent")
-
-      expect(permissionManager.isPathAllowedInSession(sessionId, "src/main/agent/test.ts")).toBe(
-        true,
-      )
-      expect(permissionManager.isPathAllowedInSession(sessionId, "src/renderer/App.tsx")).toBe(
-        false,
-      )
-
-      const allowedResult = permissionManager.evaluate(
+      const writeResult = permissionManager.evaluate(
         "write",
         { path: "src/main/agent/test.ts" },
         { sessionId },
       )
-      expect(allowedResult).toBe("allow")
+      expect(writeResult).toBe("ask")
     })
   })
 
   describe("Interactive Gate with PermissionResponse", () => {
-    it("handles prefix decision and registers session prefix", async () => {
+    it("handles session remember decision and registers tool whitelist", async () => {
       const sendRequest = vi.fn()
       permissionManager.attachSender(sendRequest)
 
@@ -157,18 +131,20 @@ describe("PermissionMode & Session Whitelist Engine", () => {
       expect(sendRequest).toHaveBeenCalledTimes(1)
       const req = sendRequest.mock.calls[0][0]
 
-      // Respond with prefix permission
+      // Respond with session-scoped permission
       const handled = permissionManager.respond({
         requestId: req.requestId,
         decision: "allow",
-        prefix: "pnpm test",
+        rememberForSession: true,
       })
       expect(handled).toBe(true)
 
       const gateResult = await gatePromise
       expect(gateResult).toBeUndefined() // Allowed
 
-      // Subsequent call matching prefix is automatically allowed
+      expect(permissionManager.isToolAllowedInSession(sessionId, "bash")).toBe(true)
+
+      // Subsequent call on the same tool is automatically allowed
       const nextEval = permissionManager.evaluate(
         "bash",
         { command: "pnpm test file.ts" },

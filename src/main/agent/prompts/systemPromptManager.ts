@@ -90,6 +90,8 @@ export interface PromptSection {
   readonly text: string | ((context: AssembleContext) => string | Promise<string>)
   /** 是否独占整个系统提示词（为 true 时覆盖所有其他段） */
   readonly complete?: boolean
+  /** 外部注入文本标记：为 true 时跳过模板插值，原样注入（AGENTS.md/SKILL.md/MEMORY.md） */
+  readonly literal?: boolean
 }
 
 /** 动态运行时上下文输入 */
@@ -97,6 +99,8 @@ export interface PromptContext {
   readonly name: string
   readonly order: number
   readonly text: string | ((context: AssembleContext) => string | Promise<string>)
+  /** 外部注入文本标记：为 true 时跳过模板插值，原样注入 */
+  readonly literal?: boolean
 }
 
 /** 提示词变量提供者 */
@@ -352,7 +356,11 @@ export class SystemPromptManager {
     for (const section of sortedSections) {
       const rawText =
         typeof section.text === "function" ? (section.text(context) as string) : section.text
-      const text = interpolateVariables(rawText, resolvedVariables, "section", section.name).trim()
+      const text = (
+        section.literal === true
+          ? rawText
+          : interpolateVariables(rawText, resolvedVariables, "section", section.name)
+      ).trim()
       if (text.length > 0) {
         const item = { name: section.name, text }
         assembledSections.push(item)
@@ -366,7 +374,11 @@ export class SystemPromptManager {
     const assembledContexts: AssembledContext[] = []
     for (const ctx of sortedContexts) {
       const rawText = typeof ctx.text === "function" ? (ctx.text(context) as string) : ctx.text
-      const text = interpolateVariables(rawText, resolvedVariables, "context", ctx.name).trim()
+      const text = (
+        ctx.literal === true
+          ? rawText
+          : interpolateVariables(rawText, resolvedVariables, "context", ctx.name)
+      ).trim()
       if (text.length > 0) {
         assembledContexts.push({ name: ctx.name, text })
       }
@@ -462,7 +474,11 @@ export class SystemPromptManager {
     for (const section of sortedSections) {
       const rawText =
         typeof section.text === "function" ? await section.text(context) : section.text
-      const text = interpolateVariables(rawText, resolvedVariables, "section", section.name).trim()
+      const text = (
+        section.literal === true
+          ? rawText
+          : interpolateVariables(rawText, resolvedVariables, "section", section.name)
+      ).trim()
       if (text.length > 0) {
         const item = { name: section.name, text }
         assembledSections.push(item)
@@ -476,7 +492,11 @@ export class SystemPromptManager {
     const assembledContexts: AssembledContext[] = []
     for (const ctx of sortedContexts) {
       const rawText = typeof ctx.text === "function" ? await ctx.text(context) : ctx.text
-      const text = interpolateVariables(rawText, resolvedVariables, "context", ctx.name).trim()
+      const text = (
+        ctx.literal === true
+          ? rawText
+          : interpolateVariables(rawText, resolvedVariables, "context", ctx.name)
+      ).trim()
       if (text.length > 0) {
         assembledContexts.push({ name: ctx.name, text })
       }
@@ -827,30 +847,33 @@ export function createDefaultSystemPromptManager(
     },
   })
 
-  // 100: 技能分层（动态根据 context.activeSkills 生成）
+  // 100: 技能分层（动态根据 context.activeSkills 生成，技能描述来自外部 SKILL.md，原样注入）
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.SKILLS,
     order: PROMPT_ORDERS.SKILLS,
+    literal: true,
     text: (ctx) => {
       if (!ctx.activeSkills || ctx.activeSkills.length === 0) return ""
       return formatSkillsForPrompt(ctx.activeSkills).trim()
     },
   })
 
-  // 200: 项目与用户指令文件（动态根据 context.cwd 加载）
+  // 200: 项目与用户指令文件（动态根据 context.cwd 加载，外部 AGENTS.md 原样注入）
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.INSTRUCTIONS,
     order: PROMPT_ORDERS.INSTRUCTIONS,
+    literal: true,
     text: (ctx) => {
       if (!ctx.cwd) return ""
       return formatInstructions(loadInstructions(ctx.cwd)).trim()
     },
   })
 
-  // 250: 分层工作区记忆 (MEMORY.md & Citations Guidance)
+  // 250: 分层工作区记忆 (MEMORY.md & Citations Guidance，外部记忆原文原样注入)
   manager.registerSection({
     name: PROMPT_SECTION_NAMES.WORKSPACE_MEMORY,
     order: PROMPT_ORDERS.WORKSPACE_MEMORY,
+    literal: true,
     text: (ctx) => {
       if (ctx.workspaceMemory !== undefined) {
         return formatMemorySummaryPrompt(ctx.workspaceMemory).trim()

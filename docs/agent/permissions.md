@@ -101,13 +101,13 @@ Guardian 在工具执行前进行实时四维风险评估：
 
 ### 5.1 判定顺序（`permissionManager.evaluate()`）
 
-1. Plan / Review 模式写入工具与 `todowrite` → `deny`；
+1. Plan / Review 模式写入工具、`todowrite` 与 `task` 子代理派发 → `deny`；
 2. `read-only` 沙箱的 `write` / `edit` / `apply_patch` → `deny`；
 3. `CommandSafetyGuard` 判定 `dangerous` 的 bash 命令 → `deny`；
 4. **Deny 规则**命中 → `deny`（最高优先级的配置规则）；
-5. **Guardian** `high`/`critical`：Plan/Review → `deny`，其余模式 → `ask`；
-6. **会话白名单**：`allowAll` → 工具级放行 → Bash 前缀放行 → 文件路径放行；
-7. 全局放行通道：`bypassPermissions` 或 `danger-full-access` → `allow`；`EXEMPT_TOOLS` → `allow`；非受控内置工具与非 MCP 工具 → `allow`；
+5. **Guardian** `high`/`critical`：Plan/Review → `deny`，其余模式 → `ask`（`apply_patch` 按补丁正文解析出的每个目标路径逐条评估）；
+6. **会话白名单**：`allowAll` → 工具级放行；
+7. 全局放行通道：`bypassPermissions` 或 `danger-full-access` → `allow`；非 MCP 工具的 `EXEMPT_TOOLS` → `allow`；非受控内置工具与非 MCP 工具 → `allow`（`mcp__` 命名空间工具始终走审批，不因名称进入豁免/默认放行）；
 8. `CommandSafetyGuard` 判定 `sensitive` 的 bash 命令 → `ask`；
 9. **Ask 规则**优先于 **Allow 规则**匹配；
 10. `acceptEdits` 模式的 `write` / `edit` / `apply_patch` → `allow`；
@@ -123,10 +123,10 @@ Guardian 在工具执行前进行实时四维风险评估：
 触发 `permission_request` 事件时，用户在 UI 中的可选决策：
 
 1. **`approve_once`（单次放行）**：仅批准当前这次工具调用。
-2. **`approve_session`（会话级放行）**：当前会话内存白名单放行该工具；Bash 可附 `prefix` 做命令前缀放行；随会话切换重置。路径白名单判定（`isPathAllowedInSession`）已接入 `evaluate()`，但当前交互不写入路径级白名单。
+2. **`approve_session`（会话级放行）**：当前会话内存白名单按工具整类放行（`rememberForSession`）；随会话切换重置。
 3. **`allowAll`（会话全放行）**：跳过后续规则与弹窗，仅限当前会话。
 4. **`deny`（拒绝执行）**：拒绝本次调用，返回 `USER_DENY_REASON` 回灌模型；拒绝原因可附在结果中。
-5. **`permanent`（永久规则）**：勾选后经 `persistRule()` 将 `Tool(arg)` 形态规则原子写入配置文件（永久 allow 或永久 deny），实时热重载生效。
+5. **`permanent`（永久规则）**：勾选后经 `persistRule()` 将 `Tool(arg)` 形态规则原子写入配置文件（永久 allow 或永久 deny），实时热重载生效；`apply_patch` 仅在补丁恰好命中单一目标路径时写入路径规则，多路径补丁不写永久规则。
 
 ### 5.4 权限确认模式 (`PermissionMode`)
 
@@ -166,6 +166,6 @@ Guardian 在工具执行前进行实时四维风险评估：
 }
 ```
 
-- **规则形态**：`Tool(arg)`，支持 `Bash(git status*)` 前缀匹配、`Edit(src/**)` 路径 glob、MCP 全名（`server_tool`）与无参工具 `Tool()`；`rule.ts` 负责解析与匹配，非法规则忽略并告警。
+- **规则形态**：`Tool(arg)`，支持 `Bash(git status*)` 前缀匹配（带命令词边界）、`Edit(src/**)` 路径 glob、`webfetch(https://example.com)` 按 URL scheme/host/port 与路径段边界匹配、`apply_patch(src/a.ts)` 按补丁目标路径匹配、MCP 全名（`mcp__server__tool`）与无参工具 `Tool()`；`rule.ts` 负责解析与匹配，非法规则忽略并告警。
 - **优先级铁律**（与 §5.1 一致）：`模式硬门禁 > read-only 沙箱 > dangerous 命令 > Deny 规则 > Guardian > 会话白名单 > 全局放行 > sensitive 命令 > Ask 规则 > Allow 规则 > acceptEdits > 默认审批`。
 - **原子持久化**：永久允许/拒绝经 `settingsService.savePermissionSettings` 安全写入 `~/.lx/config.json` 并热重载。

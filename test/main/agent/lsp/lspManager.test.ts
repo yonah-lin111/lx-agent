@@ -9,11 +9,15 @@ class FakeClient {
   shutdownCalls = 0
   shouldFail = false
   failWithEnOent = false
+  crashed = false
+  // 初始化挂起闸门（测试控制 initClient 时序）。
+  initializeGate: Promise<void> | null = null
 
   constructor(readonly spec: LspServerSpec) {}
 
   async initialize(): Promise<void> {
     this.initializeCalls += 1
+    if (this.initializeGate) await this.initializeGate
     if (this.failWithEnOent) {
       const error = Object.assign(new Error(`spawn ${this.spec.command} ENOENT`), {
         code: "ENOENT",
@@ -28,7 +32,7 @@ class FakeClient {
   }
 
   get isCrashed(): boolean {
-    return false
+    return this.crashed
   }
 
   getStartupError(): string | null {
@@ -41,19 +45,22 @@ interface MakeManagerOptions {
   shouldFail?: boolean
   installer?: PackageInstaller
   settings?: () => any
+  // 为新建 client 挂初始化闸门（控制 initClient 时序）。
+  initializeGate?: Promise<void>
 }
 
 const makeManager = (
   created: FakeClient[] = [],
   options: MakeManagerOptions = {},
 ): { manager: LspManager; installs: string[] } => {
-  const { enoentClients = 0, shouldFail = false, installer, settings } = options
+  const { enoentClients = 0, shouldFail = false, installer, settings, initializeGate } = options
   const installs: string[] = []
   let enoentLeft = enoentClients
   const manager = new LspManager(
     (spec) => {
       const client = new FakeClient(spec)
       client.shouldFail = shouldFail
+      if (initializeGate) client.initializeGate = initializeGate
       if (enoentLeft > 0) {
         enoentLeft--
         client.failWithEnOent = true
@@ -201,5 +208,48 @@ describe("LspManager", () => {
     expect("client" in result).toBe(true)
     expect(created[0]?.spec.command).toBe("/custom/bin/ts-lsp")
     expect(created[0]?.spec.args).toEqual(["--custom-arg"])
+  })
+
+  it("初始化窗口内 clearSession：in-flight client 被回收且不写回缓存", async () => {
+    const created: FakeClient[] = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { manager } = makeManager(created, { initializeGate: gate })
+    const file = "/tmp/lx-session/a.ts"
+
+    const pending = manager.getClient("s1", file, "/tmp/lx-session")
+    // 初始化挂起期间会话被关闭（对应会话切换/关闭落在 spawn+initialize 窗口）。
+    manager.clearSession("s1")
+    expect(created).toHaveLength(1)
+    expect(created[0]?.shutdownCalls).toBe(1)
+
+    release()
+    const result = await pending
+    expect("error" in result).toBe(true)
+    // 新 client 已脱离 sessions，必须被关闭而不是泄漏。
+    expect(created[0]?.shutdownCalls).toBeGreaterThanOrEqual(1)
+
+    // 未残留缓存：再次取会话会重新 spawn。
+    const again = await manager.getClient("s1", file, "/tmp/lx-session")
+    expect("client" in again).toBe(true)
+    expect(created).toHaveLength(2)
+  })
+
+  it("缓存 client 崩溃后重建（关闭旧实例）", async () => {
+    const created: FakeClient[] = []
+    const { manager } = makeManager(created)
+    const file = "/tmp/lx-session/a.ts"
+
+    const first = await manager.getClient("s1", file, "/tmp/lx-session")
+    expect("client" in first).toBe(true)
+    created[0]!.crashed = true
+
+    const second = await manager.getClient("s1", file, "/tmp/lx-session")
+    expect("client" in second).toBe(true)
+    expect(created).toHaveLength(2)
+    expect(created[0]?.shutdownCalls).toBe(1)
+    expect(created[1]?.initializeCalls).toBe(1)
   })
 })

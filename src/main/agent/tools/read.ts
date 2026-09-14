@@ -28,7 +28,6 @@ export interface ReadToolDetails {
   truncation?: TruncationResult
   binary?: boolean
   size?: number
-  refused?: boolean
   error?: string
 }
 
@@ -57,19 +56,11 @@ export const createReadTool = (
   name: "read",
   label: "Read file",
   description:
-    "Read content of a file or directory within the project. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Access outside project root is prohibited.",
+    "Read content of a file or directory. Supports line-numbered pagination (<line>: <content>) for large files or entry listings for directories. Relative paths resolve against the project root; absolute paths are supported.",
   inputSchema: readSchema,
   executionMode: "sequential",
   execute: async (toolCallId, params) => {
     const absolutePath = resolveToCwd(params.path, cwd)
-    if (!absolutePath) {
-      return {
-        content: [
-          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
-        ],
-        details: { refused: true },
-      }
-    }
 
     try {
       const fileStat = await stat(absolutePath)

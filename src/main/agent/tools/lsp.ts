@@ -263,17 +263,6 @@ export const createLspTool = ({
   executionMode: "parallel",
   execute: async (_toolCallId, params) => {
     const absolutePath = resolveToCwd(params.filePath, cwd)
-    if (!absolutePath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `lsp ${params.operation} access denied to path outside project root: ${params.filePath}`,
-          },
-        ],
-        details: { refused: true },
-      }
-    }
     const sessionId = getSessionId()
     if (!sessionId) {
       return {

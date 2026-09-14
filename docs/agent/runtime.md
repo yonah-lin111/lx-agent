@@ -73,7 +73,7 @@ User Input / Drain
   ```text
   \n... [N bytes / M lines omitted] ...\n
   ```
-- 具备 `pushChunk`、`pushBuffer`、`retainedBytes` 与 `omittedBytes` 统计能力；触发截断时经 `HarnessFeedbackGuard` 向模型注入 `<harness_warning>`，引导缩小查询范围而非重读全量。
+- 具备 `pushChunk`、`pushBuffer`、`retainedBytes` 与 `omittedBytes` 统计能力；触发截断时在输出中保留省略标记，引导模型缩小查询范围而非重读全量。
 
 ### 3.2 进程生命周期与调度
 

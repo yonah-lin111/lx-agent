@@ -89,7 +89,8 @@ const DEFAULT_MODEL: Model = {
   id: "unknown",
 }
 
-type MutableAgentState = Omit<
+// Agent 内部可变状态：对外暴露显式消息变更方法，避免消费方直接 push/pop 内部数组。
+export type MutableAgentState = Omit<
   AgentState,
   "isStreaming" | "streamingMessage" | "pendingToolCalls" | "errorMessage"
 > & {
@@ -97,6 +98,10 @@ type MutableAgentState = Omit<
   streamingMessage?: AgentMessage
   pendingToolCalls: Set<string>
   errorMessage?: string
+  // 追加一条消息（与内部 messages 数组同一引用，按真实语义变更）。
+  appendMessage(message: AgentMessage): void
+  // 移除并返回最后一条消息（空数组返回 undefined）。
+  removeLastMessage(): AgentMessage | undefined
 }
 
 function createMutableAgentState(
@@ -117,11 +122,18 @@ function createMutableAgentState(
     set tools(nextTools: AgentTool<any>[]) {
       tools = nextTools.slice()
     },
+    // 读取用途；变更请走 appendMessage / removeLastMessage。
     get messages() {
       return messages
     },
     set messages(nextMessages: AgentMessage[]) {
       messages = nextMessages.slice()
+    },
+    appendMessage(message: AgentMessage) {
+      messages.push(message)
+    },
+    removeLastMessage() {
+      return messages.pop()
     },
     isStreaming: false,
     streamingMessage: undefined,
@@ -288,7 +300,7 @@ export class Agent {
   }
 
   /** 当前 Agent 状态。 */
-  get state(): AgentState {
+  get state(): MutableAgentState {
     return this._state
   }
 
@@ -569,7 +581,7 @@ export class Agent {
 
       case "message_end":
         this._state.streamingMessage = undefined
-        this._state.messages.push(event.message)
+        this._state.appendMessage(event.message)
         break
 
       case "tool_execution_start": {

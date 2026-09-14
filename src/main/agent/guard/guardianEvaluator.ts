@@ -9,7 +9,6 @@
  */
 
 export type GuardianRiskLevel = "low" | "medium" | "high" | "critical"
-export type GuardianUserAuthorization = "unknown" | "low" | "medium" | "high"
 export type GuardianCategory =
   | "data_exfiltration"
   | "credential_probing"
@@ -25,11 +24,8 @@ export interface GuardianAction {
 
 export interface GuardianAssessment {
   riskLevel: GuardianRiskLevel
-  userAuthorization: GuardianUserAuthorization
-  outcome: "allow" | "deny"
   category: GuardianCategory
   rationale: string
-  requiresApproval: boolean
 }
 
 // 1. Data Exfiltration patterns
@@ -97,11 +93,8 @@ export class GuardianEvaluator {
         if (pattern.test(command)) {
           return {
             riskLevel: "critical",
-            userAuthorization: "unknown",
-            outcome: "deny",
             category: "destructive_action",
             rationale: `Destructive action pattern detected: command matches critical system disruption or broad deletion signature (${command.slice(0, 60)}).`,
-            requiresApproval: true,
           }
         }
       }
@@ -111,11 +104,8 @@ export class GuardianEvaluator {
         if (pattern.test(command)) {
           return {
             riskLevel: "high",
-            userAuthorization: "unknown",
-            outcome: "deny",
             category: "security_weakening",
             rationale: `Persistent security weakening detected: command attempts to modify security controls, hosts, or elevated privileges.`,
-            requiresApproval: true,
           }
         }
       }
@@ -125,11 +115,8 @@ export class GuardianEvaluator {
         if (pattern.test(command)) {
           return {
             riskLevel: "high",
-            userAuthorization: "unknown",
-            outcome: "deny",
             category: "credential_probing",
             rationale: `Credential probing detected: command attempts to read private keys, keychain entries, or credential stores.`,
-            requiresApproval: true,
           }
         }
       }
@@ -139,11 +126,8 @@ export class GuardianEvaluator {
         if (pattern.test(command)) {
           return {
             riskLevel: "high",
-            userAuthorization: "unknown",
-            outcome: "deny",
             category: "data_exfiltration",
             rationale: `Potential data exfiltration detected: command sends sensitive payloads or local files to external endpoints.`,
-            requiresApproval: true,
           }
         }
       }
@@ -155,21 +139,15 @@ export class GuardianEvaluator {
       if (/^\/(?:etc|usr|bin|sbin|var|System|Library)/.test(targetPath)) {
         return {
           riskLevel: "critical",
-          userAuthorization: "unknown",
-          outcome: "deny",
           category: "security_weakening",
           rationale: `Mutating system directory outside user workspace (${targetPath}).`,
-          requiresApproval: true,
         }
       }
       if (/(?:\.ssh|\.aws|\.gnupg)\//.test(targetPath)) {
         return {
           riskLevel: "high",
-          userAuthorization: "unknown",
-          outcome: "deny",
           category: "credential_probing",
           rationale: `Mutating user credential store (${targetPath}).`,
-          requiresApproval: true,
         }
       }
     }
@@ -177,11 +155,8 @@ export class GuardianEvaluator {
     // Safe by default
     return {
       riskLevel: "low",
-      userAuthorization: "high",
-      outcome: "allow",
       category: "safe",
       rationale: "Action verified safe according to Guardian security heuristics.",
-      requiresApproval: false,
     }
   }
 }

@@ -7,9 +7,10 @@ import {
   type Tool,
   ToolListChangedNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js"
-import type { McpServerStatusItem } from "@shared/contracts/agent"
+import { MCP_TOOL_NAMESPACE, type McpServerStatusItem } from "@shared/contracts/agent"
 import { getConfigPath } from "@/paths"
 import type { AgentTool } from "../core/types"
+import { formatSize, truncateHead } from "../tools/truncate"
 import { jsonSchemaToZod } from "./jsonSchemaToZod"
 
 // MCP server 配置（config.json `agent.mcp` 节点，字段对齐 opencode Local）。
@@ -24,7 +25,7 @@ export type McpServerConfig = {
 // server 连接状态。
 export type McpServerStatus = "connected" | "disabled" | "failed"
 
-// 已连接工具句柄（供 AgentTool 适配；全名 `server_tool` 前缀化）。
+// 已连接工具句柄（供 AgentTool 适配；全名 `mcp__server__tool` 命名空间）。
 export type McpToolHandle = {
   server: string
   def: Tool
@@ -39,12 +40,19 @@ const DEFAULT_TIMEOUT = 30000
 // 分页拉全工具列表上限（页）。
 const MAX_LIST_TOOL_PAGES = 1000
 
-// 工具名前缀化（对齐 opencode sanitize）。
-const sanitize = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, "_")
+// 名称段消毒：非法字符替换为 `_`，折叠连续下划线并去除首尾下划线。
+// 保证名称段自身不含 `__` 且不以 `_` 开头/结尾，使 `__` 分隔符可无歧义解析。
+const sanitize = (value: string): string => {
+  const cleaned = value
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+  return cleaned || "unnamed"
+}
 
-// MCP 工具全名：`sanitize(server)_sanitize(name)`，防与内置工具/跨 server 冲突。
+// MCP 工具全名：`mcp__sanitize(server)__sanitize(name)`，防与内置工具/跨 server 冲突。
 export const mcpToolName = (server: string, name: string): string =>
-  `${sanitize(server)}_${sanitize(name)}`
+  `${MCP_TOOL_NAMESPACE}${sanitize(server)}__${sanitize(name)}`
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -99,7 +107,14 @@ const contentToText = (content: CallToolResult["content"]): string =>
     .filter(Boolean)
     .join("\n")
 
-// MCP 工具 → AgentTool 适配：前缀命名、串行执行、isError 抛错、structuredContent 兜底。
+// MCP 输出统一头部截断（无会话上下文不落盘 spill，仅追加截断提示）。
+const truncateMcpOutput = (text: string): string => {
+  const result = truncateHead(text)
+  if (!result.truncated) return text
+  return `${result.content}\n\n[Output truncated: Showing ${result.outputLines} of ${result.totalLines} lines (${formatSize(result.outputBytes)} / ${formatSize(result.totalBytes)}).]`
+}
+
+// MCP 工具 → AgentTool 适配：命名空间前缀、串行执行、isError 抛错、structuredContent 兜底。
 export const wrapMcpTool = (
   server: string,
   def: Tool,
@@ -118,13 +133,14 @@ export const wrapMcpTool = (
       { signal, timeout, resetTimeoutOnProgress: true, onprogress: () => {} },
     )) as CallToolResult
     if (result.isError) {
-      const message = contentToText(result.content)
+      const message = truncateMcpOutput(contentToText(result.content))
       throw new Error(message || `MCP tool ${def.name} execution failed`)
     }
-    if (result.content.length > 0 || result.structuredContent == null) {
-      return { content: [{ type: "text", text: contentToText(result.content) }] }
-    }
-    return { content: [{ type: "text", text: JSON.stringify(result.structuredContent) }] }
+    const text =
+      result.content.length > 0 || result.structuredContent == null
+        ? contentToText(result.content)
+        : JSON.stringify(result.structuredContent)
+    return { content: [{ type: "text", text: truncateMcpOutput(text) }] }
   },
 })
 
@@ -142,9 +158,11 @@ type ServerState = {
  *
  * 单 server 失败降级不阻塞（记 failed 状态），其余照常。
  */
-class McpManager {
+export class McpManager {
   private states = new Map<string, ServerState>()
   private connectPromise?: Promise<void>
+  // 连接世代号：reload 自增，使在途旧连接全部失效并回收。
+  private generation = 0
   private statusChangeListeners = new Set<() => void>()
 
   // 订阅连接状态变更，返回退订函数（渲染层状态 icon 刷新）。
@@ -177,11 +195,15 @@ class McpManager {
     }))
   }
 
-  // 重新加载配置并重连所有 MCP 服务
+  // 重新加载配置并重连所有 MCP 服务（世代号递增；并发 ensureConnected 共享本次重连）。
   async reloadAndReconnect(): Promise<void> {
-    await this.disconnectAll()
-    this.connectPromise = undefined
-    await this.connectAll()
+    const generation = ++this.generation
+    const promise = (async () => {
+      await this.disconnectAll()
+      await this.connectAll(generation)
+    })()
+    this.connectPromise = promise
+    await promise
   }
 
   // 读取 agent.mcp 配置（disabled / 非法条目跳过）。
@@ -189,22 +211,28 @@ class McpManager {
     return readMcpServerConfig()
   }
 
-  // 幂等连接：并发调用共享同一次连接。
+  // 幂等连接：并发调用共享同一次连接；世代变化后由新连接流程接管。
   ensureConnected(): Promise<void> {
-    this.connectPromise ??= this.connectAll()
+    this.connectPromise ??= this.connectAll(this.generation)
     return this.connectPromise
   }
 
   // 逐 server 并发连接。
-  async connectAll(): Promise<void> {
+  async connectAll(generation: number): Promise<void> {
+    if (generation !== this.generation) return
     const servers = readMcpServerConfig()
     await Promise.all(
-      Object.entries(servers).map(([name, config]) => this.connectServer(name, config)),
+      Object.entries(servers).map(([name, config]) => this.connectServer(name, config, generation)),
     )
   }
 
-  // 单 server 连接；失败记 failed 不抛。
-  private async connectServer(name: string, config: McpServerConfig): Promise<void> {
+  // 单 server 连接；失败记 failed 不抛；过期世代（reload 已发生）时关闭本次连接且不写状态。
+  private async connectServer(
+    name: string,
+    config: McpServerConfig,
+    generation: number,
+  ): Promise<void> {
+    if (generation !== this.generation) return
     const timeout = config.timeout ?? DEFAULT_TIMEOUT
     const [command, ...args] = config.command
     if (config.disabled || !command) {
@@ -221,16 +249,25 @@ class McpManager {
     try {
       await client.connect(transport, { timeout })
       const tools = await listAllTools(client, timeout).catch(() => [])
+      // 连接窗口内发生 reload：本次 client 已脱离当前世代，显式关闭避免泄漏。
+      if (generation !== this.generation) {
+        await client.close().catch(() => {})
+        return
+      }
       // 监听：ToolListChanged → 重拉工具；onclose → failed。
       client.setRequestHandler(ToolListChangedNotificationSchema, async () => {
         const refreshed = await listAllTools(client, timeout).catch(() => [])
         const state = this.states.get(name)
-        if (state && state.status === "connected") state.tools = refreshed
+        if (state && state.client === client && state.status === "connected") {
+          state.tools = refreshed
+        }
         return {}
       })
       client.onclose = () => {
         const state = this.states.get(name)
-        if (state && state.status === "connected") {
+        // 身份比对：过期 client 的 close 不得改写当前连接状态。
+        if (!state || state.client !== client) return
+        if (state.status === "connected") {
           this.updateState(name, {
             server: name,
             status: "failed",
@@ -242,6 +279,9 @@ class McpManager {
       }
       this.updateState(name, { server: name, status: "connected", tools, client, timeout })
     } catch (error) {
+      // 关闭 transport 避免残留子进程。
+      void transport.close()
+      if (generation !== this.generation) return
       this.updateState(name, {
         server: name,
         status: "failed",
@@ -249,8 +289,6 @@ class McpManager {
         timeout,
         error: error instanceof Error ? error.message : String(error),
       })
-      // 关闭 transport 避免残留子进程。
-      void transport.close()
     }
   }
 

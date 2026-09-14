@@ -18,7 +18,7 @@ export const parseHookOutput = (
   event: HookEventName,
   output: HookCommandOutput,
 ): ParsedHookOutput => {
-  if (output.spawnFailed || output.timedOut) return failed()
+  if (output.spawnFailed || output.timedOut || output.aborted) return failed()
 
   const exitCode = output.exitCode ?? 0
   if (event === "PreToolUse" && exitCode === 2) {

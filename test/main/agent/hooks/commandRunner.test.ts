@@ -1,7 +1,7 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { resolveHookShell, runHookCommand } from "@/agent/hooks/commandRunner"
 import type { HookCommandPayload, LoadedHook } from "@/agent/hooks/types"
 
@@ -79,6 +79,66 @@ describe("runHookCommand", () => {
     })
     expect(result.stdout.length).toBe(1024 * 1024)
     expect(result.stdoutTruncated).toBe(true)
+  })
+
+  it("stdout 硬顶按 UTF-8 字节计（多字节字符不超限、不产生替换字符）", async () => {
+    const result = await runHookCommand({
+      hook: hook({ command: `node -e 'process.stdout.write("中".repeat(600000))'` }),
+      payload: payload(),
+      cwd: tmpDir,
+    })
+    const bytes = Buffer.byteLength(result.stdout, "utf8")
+    expect(bytes).toBeLessThanOrEqual(1024 * 1024)
+    expect(bytes).toBeGreaterThan(1024 * 1024 - 8)
+    expect(result.stdoutTruncated).toBe(true)
+    expect(result.stdout.includes("\uFFFD")).toBe(false)
+  })
+
+  it("signal abort 杀子进程并立即返回 aborted（不悬挂）", async () => {
+    const pidFile = join(tmpDir, "hook.pid")
+    const controller = new AbortController()
+    const promise = runHookCommand({
+      hook: hook({ command: `echo $$ > ${pidFile}; sleep 30`, timeoutSec: 60 }),
+      payload: payload(),
+      cwd: tmpDir,
+      signal: controller.signal,
+    })
+    await vi.waitFor(() => expect(existsSync(pidFile)).toBe(true))
+    controller.abort()
+    const startedAt = Date.now()
+    const result = await promise
+    expect(result.aborted).toBe(true)
+    expect(result.stdout).toBe("")
+    expect(Date.now() - startedAt).toBeLessThan(2000)
+    const pid = Number(readFileSync(pidFile, "utf8").trim())
+    await vi.waitFor(() => {
+      expect(() => process.kill(pid, 0)).toThrow()
+    })
+  })
+
+  it("signal 已中止 → 不启动子进程直接返回 aborted", async () => {
+    const marker = join(tmpDir, "should-not-exist")
+    const controller = new AbortController()
+    controller.abort()
+    const result = await runHookCommand({
+      hook: hook({ command: `touch ${marker}` }),
+      payload: payload(),
+      cwd: tmpDir,
+      signal: controller.signal,
+    })
+    expect(result.aborted).toBe(true)
+    expect(result.spawnFailed).toBe(false)
+    expect(existsSync(marker)).toBe(false)
+  })
+
+  it("无 signal 不产生 aborted（行为不变）", async () => {
+    const result = await runHookCommand({
+      hook: hook({ command: "echo ok" }),
+      payload: payload(),
+      cwd: tmpDir,
+    })
+    expect(result.aborted).toBe(false)
+    expect(result.stdout.trim()).toBe("ok")
   })
 
   it("非零退出码透传", async () => {

@@ -8,11 +8,12 @@ import type {
   PermissionSettings,
   SandboxPolicy,
 } from "@shared/contracts/agent"
-import { normalizeCollaborationMode } from "@shared/contracts/agent"
+import { MCP_TOOL_NAMESPACE, normalizeCollaborationMode } from "@shared/contracts/agent"
 import type { BeforeToolCallContext, BeforeToolCallResult } from "@/agent/core/types"
 import { evaluateCommandSafety } from "@/agent/guard/commandSafetyGuard"
-import { guardianEvaluator } from "@/agent/guard/guardianEvaluator"
+import { type GuardianAssessment, guardianEvaluator } from "@/agent/guard/guardianEvaluator"
 import { firstPermissionDecision, hookResultMessages, hooksManager } from "@/agent/hooks"
+import { parsePatch } from "@/agent/tools/applyPatchParser"
 import { getPermissionSettings, savePermissionSettings } from "@/services/settingsService"
 import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRule } from "./rule"
 
@@ -20,11 +21,20 @@ import { EXEMPT_TOOLS, GATED_BUILTIN_TOOLS, matchRule, type ParsedRule, parseRul
 const DENY_RULE_REASON = "Action denied by permission rules."
 const USER_DENY_REASON = "Action denied by user."
 const PLAN_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
+  "Action denied: Current collaboration mode is Plan Mode. Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Plan Mode. Please finalize your plan using <proposed_plan> tags."
 const REVIEW_MODE_MUTATION_REASON =
-  "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
+  "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags."
 const READ_ONLY_SANDBOX_REASON =
   "Action denied: Current sandbox policy is read-only. File modifications and write operations are strictly prohibited."
+
+// Plan / Review 模式下硬拦截的工具（含 task：禁止派发可写子代理绕过协作模式限制）。
+const PLAN_REVIEW_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch", "todowrite", "task"])
+// read-only 沙箱策略下硬拦截的工具。
+const READ_ONLY_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch"])
+// 无会话上下文（全局）时的 MCP 工具集合键。
+const GLOBAL_SESSION_KEY = "__global__"
+// 未注册会话的回退空集合。
+const EMPTY_MCP_TOOLS: ReadonlySet<string> = new Set()
 
 // 将规则源解析为 ParsedRule[]，非法条目跳过并记警告。
 const parseList = (sources: string[]): ParsedRule[] => {
@@ -40,22 +50,52 @@ const parseList = (sources: string[]): ParsedRule[] => {
   return rules
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+// 解析 apply_patch 的目标路径；解析失败返回空数组（补丁报错仍由工具自身负责）。
+const parsePatchPaths = (args: Record<string, unknown>): string[] => {
+  if (typeof args.patch !== "string") return []
+  try {
+    return parsePatch(args.patch).actions.map((action) => action.path)
+  } catch {
+    return []
+  }
+}
+
+// 计算本次调用的 Guardian 评估集：apply_patch 按目标路径逐个评估，其余工具单次评估。
+const assessGuardian = (toolName: string, args: Record<string, unknown>): GuardianAssessment[] => {
+  if (toolName === "apply_patch") {
+    const paths = parsePatchPaths(args)
+    if (paths.length > 0) {
+      return paths.map((path) =>
+        guardianEvaluator.evaluateAction({ toolName: "apply_patch", args: { path } }),
+      )
+    }
+  }
+  return [guardianEvaluator.evaluateAction({ toolName, args })]
+}
+
+// 判断评估集是否命中高危风险。
+const hasHighRisk = (assessments: GuardianAssessment[]): boolean =>
+  assessments.some(
+    (assessment) => assessment.riskLevel === "critical" || assessment.riskLevel === "high",
+  )
+
 // 生成面板单行展示摘要。
 const summarize = (toolName: string, args: unknown): string => {
   const record = isRecord(args) ? args : {}
   if (toolName === "bash" && typeof record.command === "string") return record.command
-  if (
-    (toolName === "write" || toolName === "edit" || toolName === "apply_patch") &&
-    typeof record.path === "string"
-  ) {
+  if (toolName === "apply_patch") {
+    const paths = parsePatchPaths(record)
+    if (paths.length > 0) return `apply_patch ${paths.join(", ")}`
+  }
+  if ((toolName === "write" || toolName === "edit") && typeof record.path === "string") {
     return `${toolName} ${record.path}`
   }
   const json = JSON.stringify(args ?? {})
   return json.length > 96 ? `${json.slice(0, 96)}...` : json
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
 
 /**
  * 工具执行权限管理器（main 进程单例）。
@@ -69,20 +109,18 @@ class PermissionManager {
     deny: [],
     ask: [],
   }
-  // 当前激活的 MCP 工具全名。
-  private mcpTools = new Set<string>()
+  // 各会话的 MCP 工具全名集合（null 会话归入全局 key）。
+  private mcpToolsBySession = new Map<string, Set<string>>()
 
-  // 会话白名单：工具、命令前缀、文件路径
+  // 会话白名单：已允许的工具名
   private sessionAllowed = new Map<string, Set<string>>()
-  private sessionAllowedPrefixes = new Map<string, Set<string>>()
-  private sessionAllowedPaths = new Map<string, Set<string>>()
   private sessionAllowAll = new Set<string>()
 
   // 挂起的权限请求
   private pending = new Map<
     string,
     {
-      resolve: (decision: PermissionDecision & { prefix?: string }) => void
+      resolve: (decision: PermissionDecision) => void
       toolName: string
       args: unknown
     }
@@ -124,9 +162,14 @@ class PermissionManager {
     this.settings.defaultMode = mode
   }
 
-  // 注入 MCP 工具全名集合。
-  setMcpTools(names: string[]): void {
-    this.mcpTools = new Set(names)
+  // 注入指定会话的 MCP 工具全名集合；sessionId 为 null 时归入全局集合。
+  setMcpTools(sessionId: string | null, names: string[]): void {
+    this.mcpToolsBySession.set(sessionId ?? GLOBAL_SESSION_KEY, new Set(names))
+  }
+
+  // 查询指定会话的 MCP 工具集合；未注册会话回退空集。
+  private getMcpTools(sessionId?: string): ReadonlySet<string> {
+    return this.mcpToolsBySession.get(sessionId ?? GLOBAL_SESSION_KEY) ?? EMPTY_MCP_TOOLS
   }
 
   // 注入权限请求推送目标。
@@ -147,72 +190,10 @@ class PermissionManager {
   }
 
   /**
-   * 记录会话内已允许的命令前缀规则。
-   */
-  allowPrefixForSession(sessionId: string, prefix: string): void {
-    const trimmed = prefix.trim()
-    if (!trimmed) return
-    let prefixes = this.sessionAllowedPrefixes.get(sessionId)
-    if (!prefixes) {
-      prefixes = new Set()
-      this.sessionAllowedPrefixes.set(sessionId, prefixes)
-    }
-    prefixes.add(trimmed)
-  }
-
-  /**
-   * 记录会话内已允许的文件路径。
-   */
-  allowPathForSession(sessionId: string, path: string): void {
-    const trimmed = path.trim()
-    if (!trimmed) return
-    let paths = this.sessionAllowedPaths.get(sessionId)
-    if (!paths) {
-      paths = new Set()
-      this.sessionAllowedPaths.set(sessionId, paths)
-    }
-    paths.add(trimmed)
-  }
-
-  /**
    * 检查指定工具是否在会话白名单中。
    */
   isToolAllowedInSession(sessionId: string, toolName: string): boolean {
     return this.sessionAllowed.get(sessionId)?.has(toolName) ?? false
-  }
-
-  /**
-   * 检查指定命令是否匹配会话前缀白名单。
-   */
-  isPrefixAllowedInSession(sessionId: string, command: string): boolean {
-    const prefixes = this.sessionAllowedPrefixes.get(sessionId)
-    if (!prefixes) return false
-    const trimmedCmd = command.trim()
-    for (const prefix of prefixes) {
-      if (
-        trimmedCmd === prefix ||
-        trimmedCmd.startsWith(`${prefix} `) ||
-        trimmedCmd.startsWith(`${prefix}&&`)
-      ) {
-        return true
-      }
-    }
-    return false
-  }
-
-  /**
-   * 检查指定路径是否匹配会话路径白名单。
-   */
-  isPathAllowedInSession(sessionId: string, targetPath: string): boolean {
-    const paths = this.sessionAllowedPaths.get(sessionId)
-    if (!paths) return false
-    const trimmed = targetPath.trim()
-    for (const p of paths) {
-      if (trimmed === p || trimmed.startsWith(p)) {
-        return true
-      }
-    }
-    return false
   }
 
   /**
@@ -223,6 +204,24 @@ class PermissionManager {
     args: unknown,
     contextOptions?: { collaborationMode?: CollaborationMode; sessionId?: string },
   ): "allow" | "deny" | "ask" {
+    const record = isRecord(args) ? args : {}
+    return this.evaluateWithAssessments(
+      toolName,
+      args,
+      contextOptions,
+      assessGuardian(toolName, record),
+    )
+  }
+
+  /**
+   * 内部判定：复用调用方已计算的 Guardian 评估集，避免同一调用重复评估。
+   */
+  private evaluateWithAssessments(
+    toolName: string,
+    args: unknown,
+    contextOptions: { collaborationMode?: CollaborationMode; sessionId?: string } | undefined,
+    guardianAssessments: GuardianAssessment[],
+  ): "allow" | "deny" | "ask" {
     const mode = this.settings.defaultMode
     const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
     const collaborationMode = normalizeCollaborationMode(
@@ -232,21 +231,16 @@ class PermissionManager {
 
     const record = isRecord(args) ? args : {}
 
-    // 1. 协作模式 (Plan / Review Mode)：严禁任何写文件/编辑/修改操作与 todowrite 任务清单
+    // 1. 协作模式 (Plan / Review Mode)：严禁任何写文件/编辑/修改操作、todowrite 任务清单与 task 子代理派发
     if (collaborationMode === "plan" || collaborationMode === "review") {
-      if (
-        toolName === "write" ||
-        toolName === "edit" ||
-        toolName === "apply_patch" ||
-        toolName === "todowrite"
-      ) {
+      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return "deny"
       }
     }
 
     // 2. 只读沙箱策略 (read-only)：严禁任何写文件/编辑/修改操作
     if (sandboxPolicy === "read-only") {
-      if (toolName === "write" || toolName === "edit" || toolName === "apply_patch") {
+      if (READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
         return "deny"
       }
     }
@@ -262,44 +256,28 @@ class PermissionManager {
     // 4. deny 规则绝对优先
     if (matchRule(this.parsed.deny, toolName, args)) return "deny"
 
-    // 5. Guardian 风险评估器检测 (在 Plan / Review 模式下高危硬阻断；在 Build 模式下高危强制升级为 ask)
-    const guardianAssessment = guardianEvaluator.evaluateAction({
-      toolName,
-      args: record,
-    })
-
-    if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
+    // 5. Guardian 风险评估：任一路径高危时 Plan/Review 硬阻断；其余模式强制升级为 ask (人工审批，
+    //    即使处于 bypassPermissions 也生效；apply_patch 已按目标路径逐个评估)
+    if (hasHighRisk(guardianAssessments)) {
       if (collaborationMode === "plan" || collaborationMode === "review") {
         return "deny"
       }
-      // 在 Build 模式下，即使处于 bypassPermissions，高危风险也强制升级为 ask (人工审批)
       return "ask"
     }
 
-    // 6. 检查会话白名单
+    // 6. 检查会话白名单（工具级）
     if (sessionId) {
       if (this.sessionAllowAll.has(sessionId)) return "allow"
       if (this.isToolAllowedInSession(sessionId, toolName)) return "allow"
-      if (
-        toolName === "bash" &&
-        typeof record.command === "string" &&
-        this.isPrefixAllowedInSession(sessionId, record.command)
-      ) {
-        return "allow"
-      }
-      if (
-        (toolName === "write" || toolName === "edit" || toolName === "apply_patch") &&
-        typeof record.path === "string" &&
-        this.isPathAllowedInSession(sessionId, record.path)
-      ) {
-        return "allow"
-      }
     }
 
-    // 7. 豁免工具与全局绕过
+    // 7. 豁免工具与全局绕过；已注册 MCP 工具优先于豁免判定，永远走门控，不得借豁免名绕过
     if (mode === "bypassPermissions" || sandboxPolicy === "danger-full-access") return "allow"
-    if (EXEMPT_TOOLS.has(toolName)) return "allow"
-    if (!GATED_BUILTIN_TOOLS.has(toolName) && !this.mcpTools.has(toolName)) return "allow"
+    // 命名空间前缀兜底：即使会话未注册 MCP 集合（如会话切换窗口），mcp__ 工具也永远走门控
+    const isMcpTool =
+      toolName.startsWith(MCP_TOOL_NAMESPACE) || this.getMcpTools(sessionId).has(toolName)
+    if (!isMcpTool && EXEMPT_TOOLS.has(toolName)) return "allow"
+    if (!isMcpTool && !GATED_BUILTIN_TOOLS.has(toolName)) return "allow"
 
     // 8. 敏感指令提升为 ask
     if (toolName === "bash" && typeof record.command === "string") {
@@ -317,11 +295,8 @@ class PermissionManager {
         : null
     if (kind) return kind
 
-    // 10. acceptEdits 模式下自动放行文件修改类工具
-    if (
-      mode === "acceptEdits" &&
-      (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
-    ) {
+    // 10. acceptEdits 模式下自动放行文件修改类工具（高危路径已在第 5 步升级，不会走到这里）
+    if (mode === "acceptEdits" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
       return "allow"
     }
 
@@ -344,23 +319,18 @@ class PermissionManager {
     )
     const record = isRecord(args) ? args : {}
 
-    // Guardian 评估
-    const guardianAssessment = guardianEvaluator.evaluateAction({
-      toolName,
-      args: record,
-    })
+    // 单次 Guardian 评估：apply_patch 按目标路径逐个评估后透传给内部判定，避免重复评估。
+    const guardianAssessments = assessGuardian(toolName, record)
+    const guardianAssessment = guardianAssessments.find(
+      (assessment) => assessment.riskLevel === "critical" || assessment.riskLevel === "high",
+    )
 
     // Plan Mode 门控硬拦截
     if (collaborationMode === "plan") {
-      if (
-        toolName === "write" ||
-        toolName === "edit" ||
-        toolName === "apply_patch" ||
-        toolName === "todowrite"
-      ) {
+      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: PLAN_MODE_MUTATION_REASON }
       }
-      if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
+      if (guardianAssessment) {
         return {
           block: true,
           reason: `Action denied: Guardian risk detected [${guardianAssessment.category}] - ${guardianAssessment.rationale}`,
@@ -370,15 +340,10 @@ class PermissionManager {
 
     // Review Mode 门控硬拦截
     if (collaborationMode === "review") {
-      if (
-        toolName === "write" ||
-        toolName === "edit" ||
-        toolName === "apply_patch" ||
-        toolName === "todowrite"
-      ) {
+      if (PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
       }
-      if (guardianAssessment.riskLevel === "critical" || guardianAssessment.riskLevel === "high") {
+      if (guardianAssessment) {
         return {
           block: true,
           reason: `Action denied: Guardian risk detected in Review Mode [${guardianAssessment.category}] - ${guardianAssessment.rationale}`,
@@ -386,35 +351,25 @@ class PermissionManager {
       }
     }
 
-    const decision = this.evaluate(toolName, args, {
-      collaborationMode,
-      sessionId: sessionId ?? undefined,
-    })
+    const decision = this.evaluateWithAssessments(
+      toolName,
+      args,
+      {
+        collaborationMode,
+        sessionId: sessionId ?? undefined,
+      },
+      guardianAssessments,
+    )
     if (decision === "allow") return undefined
     if (decision === "deny") {
       const sandboxPolicy = this.settings.sandboxPolicy ?? "workspace-write"
-      if (
-        collaborationMode === "plan" &&
-        (toolName === "write" ||
-          toolName === "edit" ||
-          toolName === "apply_patch" ||
-          toolName === "todowrite")
-      ) {
+      if (collaborationMode === "plan" && PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: PLAN_MODE_MUTATION_REASON }
       }
-      if (
-        collaborationMode === "review" &&
-        (toolName === "write" ||
-          toolName === "edit" ||
-          toolName === "apply_patch" ||
-          toolName === "todowrite")
-      ) {
+      if (collaborationMode === "review" && PLAN_REVIEW_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: REVIEW_MODE_MUTATION_REASON }
       }
-      if (
-        sandboxPolicy === "read-only" &&
-        (toolName === "write" || toolName === "edit" || toolName === "apply_patch")
-      ) {
+      if (sandboxPolicy === "read-only" && READ_ONLY_BLOCKED_TOOLS.has(toolName)) {
         return { block: true, reason: READ_ONLY_SANDBOX_REASON }
       }
       if (toolName === "bash" && typeof record.command === "string") {
@@ -460,7 +415,7 @@ class PermissionManager {
     }
 
     const requestId = `${sessionId ?? "global"}:${context.toolCall.id}:${++this.requestSequence}`
-    const outcome = await new Promise<PermissionDecision & { prefix?: string }>((resolve) => {
+    const outcome = await new Promise<PermissionDecision>((resolve) => {
       const onAbort = (): void => {
         this.pending.delete(requestId)
         resolve({ decision: "deny" })
@@ -499,8 +454,6 @@ class PermissionManager {
       this.sessionAllowAll.add(sessionId)
     } else if (outcome.rememberForSession && sessionId) {
       this.rememberForSession(sessionId, toolName)
-    } else if (outcome.prefix && sessionId) {
-      this.allowPrefixForSession(sessionId, outcome.prefix)
     }
     return hookMessages.length > 0 ? { hookMessages } : undefined
   }
@@ -563,7 +516,6 @@ class PermissionManager {
     resolve({
       decision: response.decision === "deny" ? "deny" : "allow",
       rememberForSession: response.rememberForSession === true,
-      prefix: response.prefix,
       allowAll: response.allowAll === true,
     })
     return true
@@ -572,6 +524,8 @@ class PermissionManager {
   // 永久决策写回配置。
   private persistRule(kind: "allow" | "deny", toolName: string, args: unknown): void {
     const rule = formatRule(toolName, args)
+    // 无法安全表达为单条规则（如多目标路径 apply_patch）时不写永久规则。
+    if (!rule) return
     const list = this.settings[kind]
     if (list.includes(rule)) return
     const next = savePermissionSettings({ ...this.settings, [kind]: [...list, rule] })
@@ -586,8 +540,6 @@ class PermissionManager {
   // 会话切换/结束时清理。
   clearSession(sessionId: string): void {
     this.sessionAllowed.delete(sessionId)
-    this.sessionAllowedPrefixes.delete(sessionId)
-    this.sessionAllowedPaths.delete(sessionId)
     this.sessionAllowAll.delete(sessionId)
     const prefix = `${sessionId}:`
     for (const [requestId, entry] of this.pending) {
@@ -599,17 +551,18 @@ class PermissionManager {
   }
 }
 
-// 格式化规则
-const formatRule = (toolName: string, args: unknown): string => {
+// 格式化规则；apply_patch 仅支持单一目标路径，多路径或解析失败返回 null（不写永久规则）。
+const formatRule = (toolName: string, args: unknown): string | null => {
   const record = isRecord(args) ? args : {}
   const capitalized = toolName.charAt(0).toUpperCase() + toolName.slice(1)
   if (toolName === "bash" && typeof record.command === "string") {
     return `Bash(${record.command})`
   }
-  if (
-    (toolName === "write" || toolName === "edit" || toolName === "apply_patch") &&
-    typeof record.path === "string"
-  ) {
+  if (toolName === "apply_patch") {
+    const paths = parsePatchPaths(record)
+    return paths.length === 1 ? `apply_patch(${paths[0]})` : null
+  }
+  if ((toolName === "write" || toolName === "edit") && typeof record.path === "string") {
     return `${capitalized}(${record.path})`
   }
   if (toolName === "webfetch" && typeof record.url === "string") {

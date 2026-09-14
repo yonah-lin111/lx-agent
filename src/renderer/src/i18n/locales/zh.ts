@@ -1150,7 +1150,7 @@ export const zh: TranslationDictionary = {
     permAllow: "允许",
     permAllowDesc: "本次放行该操作",
     permSession: "允许本次会话",
-    permSessionDesc: "本次会话内不再询问同类操作",
+    permSessionDesc: "本次会话内允许该工具，不再询问",
     permAlways: "永久允许",
     permAlwaysDesc: "加入永久放行规则列表",
     permDeny: "拒绝",

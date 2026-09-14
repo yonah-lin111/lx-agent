@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { Model } from "@/agent/core/types"
+import { z } from "zod"
+import { Agent } from "@/agent/core/agent"
+import type { AgentTool, Model } from "@/agent/core/types"
 import { createAiSdkStreamFn } from "@/agent/stream/aiSdkStreamFn"
 
 // Mock modelFactory
@@ -23,6 +25,7 @@ const mockStreamText = vi.fn()
 vi.mock("ai", () => ({
   stepCountIs: vi.fn().mockReturnValue(() => false),
   streamText: (options: unknown) => mockStreamText(options),
+  tool: (config: unknown) => config,
 }))
 
 const TEST_MODEL: Model = { provider: "test-provider", id: "test-model" }
@@ -250,6 +253,154 @@ describe("createAiSdkStreamFn 与流式看门狗集成", () => {
       cacheRead: 0,
       cacheWrite: 0,
       totalTokens: 35,
+    })
+  })
+
+  it("reasoning-delta 携带 Anthropic signature 时写入 thinking 块", async () => {
+    async function* createSignedReasoningStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "带签名的思考" }
+      // @ai-sdk/anthropic 以空文本 delta 单独下发 signature_delta。
+      yield {
+        type: "reasoning-delta" as const,
+        text: "",
+        providerMetadata: { anthropic: { signature: "sig-delta" } },
+      }
+      yield { type: "reasoning-end" as const }
+      yield {
+        type: "finish" as const,
+        finishReason: "tool-calls",
+        totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createSignedReasoningStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content).toEqual([
+      {
+        type: "thinking",
+        thinking: "带签名的思考",
+        signature: "sig-delta",
+        durationMs: expect.any(Number),
+      },
+    ])
+  })
+
+  it("reasoning-end 携带 Anthropic signature 时同样被保留", async () => {
+    async function* createSignedEndStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "思考" }
+      yield {
+        type: "reasoning-end" as const,
+        providerMetadata: { anthropic: { signature: "sig-end" } },
+      }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      }
+    }
+
+    mockStreamText.mockReturnValue({ fullStream: createSignedEndStream() })
+
+    const streamFn = createAiSdkStreamFn({ idleTimeoutMs: 5000 })
+    const stream = await streamFn(TEST_MODEL, { systemPrompt: "", messages: [] }, {})
+    for await (const _ of stream) {
+      // consume
+    }
+
+    const finalResult = await stream.result()
+    expect(finalResult.content[0]).toMatchObject({
+      type: "thinking",
+      thinking: "思考",
+      signature: "sig-end",
+    })
+  })
+
+  it("thinking + tool-call 双轮：第二轮请求回传带签名的 reasoning 块", async () => {
+    async function* firstRoundStream() {
+      yield { type: "reasoning-start" as const }
+      yield { type: "reasoning-delta" as const, text: "先调用工具" }
+      yield {
+        type: "reasoning-delta" as const,
+        text: "",
+        providerMetadata: { anthropic: { signature: "sig-round-1" } },
+      }
+      yield { type: "reasoning-end" as const }
+      yield { type: "tool-input-start" as const, id: "call-1", toolName: "echo" }
+      yield {
+        type: "tool-call" as const,
+        toolCallId: "call-1",
+        toolName: "echo",
+        input: { text: "hi" },
+      }
+      yield {
+        type: "finish" as const,
+        finishReason: "tool-calls",
+        totalUsage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      }
+    }
+    async function* secondRoundStream() {
+      yield { type: "text-start" as const }
+      yield { type: "text-delta" as const, text: "完成" }
+      yield {
+        type: "finish" as const,
+        finishReason: "stop",
+        totalUsage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
+      }
+    }
+
+    mockStreamText
+      .mockReturnValueOnce({ fullStream: firstRoundStream() })
+      .mockReturnValueOnce({ fullStream: secondRoundStream() })
+
+    const echoTool: AgentTool<z.ZodType<{ text: string }>> = {
+      name: "echo",
+      label: "回显",
+      description: "回显输入文本",
+      inputSchema: z.object({ text: z.string() }),
+      execute: async (_toolCallId, params) => ({
+        content: [{ type: "text", text: `echo:${params.text}` }],
+      }),
+    }
+    const agent = new Agent({
+      streamFn: createAiSdkStreamFn({ idleTimeoutMs: 5000 }),
+      initialState: { model: { provider: "anthropic", id: "claude-test" }, tools: [echoTool] },
+    })
+
+    await agent.prompt("hi")
+
+    expect(mockStreamText).toHaveBeenCalledTimes(2)
+    const secondRequest = mockStreamText.mock.calls[1]?.[0] as {
+      messages: Array<{ role: string; content: Array<Record<string, unknown>> }>
+    }
+    const assistantMessage = secondRequest.messages.find((message) => message.role === "assistant")
+    expect(assistantMessage?.content).toEqual(
+      expect.arrayContaining([
+        {
+          type: "reasoning",
+          text: "先调用工具",
+          providerOptions: { anthropic: { signature: "sig-round-1" } },
+        },
+      ]),
+    )
+    // tool-call 与紧随的 tool-result 成对回传（无悬空工具调用）。
+    expect(assistantMessage?.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "tool-call", toolCallId: "call-1", toolName: "echo" }),
+      ]),
+    )
+    const toolMessage = secondRequest.messages.find((message) => message.role === "tool")
+    expect(toolMessage?.content[0]).toMatchObject({
+      type: "tool-result",
+      toolCallId: "call-1",
     })
   })
 

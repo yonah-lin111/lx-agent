@@ -57,6 +57,22 @@ describe("hooksManager", () => {
     expect(result.runs).toEqual([])
   })
 
+  it("dispatch 转发 signal（已中止 → 一个 hook 都不派发）", async () => {
+    writeHooks({ Stop: [{ hooks: [{ name: "slow", command: "sleep 30" }] }] })
+    const controller = new AbortController()
+    controller.abort()
+    const startedAt = Date.now()
+    const result = await hooksManager.dispatch({
+      event: "Stop",
+      sessionId: "s-signal",
+      cwd: tmpDir,
+      payload: {},
+      signal: controller.signal,
+    })
+    expect(result.runs).toEqual([])
+    expect(Date.now() - startedAt).toBeLessThan(2000)
+  })
+
   it("dispatchBestEffort 超时不等待慢 hook（退出路径不被阻塞）", async () => {
     writeHooks({
       Stop: [{ hooks: [{ name: "slow", command: "sleep 5", timeout: 1 }] }],

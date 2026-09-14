@@ -5,9 +5,12 @@ import type {
   AssistantMessage,
   CollaborationMode,
   StopReason,
+  SubagentData,
   Usage,
 } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { repeatToolGuard } from "@/agent/guard/repeatToolGuard"
+import { hooksManager } from "@/agent/hooks"
 
 // 共享状态：临时 config/appData、内存 DB、脚本化 stream 响应、捕获子代理提示词与门禁模式。
 const holder = vi.hoisted(() => ({
@@ -16,6 +19,7 @@ const holder = vi.hoisted(() => ({
   db: null as import("better-sqlite3").Database | null,
   streamResponses: [] as AssistantMessage[],
   capturedSystemPrompts: [] as string[],
+  capturedMessages: [] as Array<Array<{ role: string; content: unknown }>>,
   gateModes: [] as Array<CollaborationMode | undefined>,
 }))
 
@@ -97,22 +101,26 @@ vi.mock("@/services/agentSessionService", async (importOriginal) => {
   }
 })
 
-// 脚本化 streamFn：捕获每次请求的 systemPrompt（主 agent 与子代理共用）。
+// 脚本化 streamFn：捕获每次请求的 systemPrompt 与 messages（主 agent 与子代理共用）。
 vi.mock("@/agent/stream/aiSdkStreamFn", async () => {
   const { createAssistantMessageEventStream } = await import("@/agent/core/event-stream")
   return {
-    createAiSdkStreamFn: () => async (_model: unknown, context: { systemPrompt?: string }) => {
-      if (context.systemPrompt) {
-        holder.capturedSystemPrompts.push(context.systemPrompt)
-      }
-      const response = holder.streamResponses.shift()
-      if (!response) throw new Error("No more mock responses")
-      const stream = createAssistantMessageEventStream()
-      stream.push({ type: "start", partial: response })
-      stream.push({ type: "done", reason: response.stopReason, message: response })
-      stream.end()
-      return stream
-    },
+    createAiSdkStreamFn:
+      () => async (_model: unknown, context: { systemPrompt?: string; messages?: unknown[] }) => {
+        if (context.systemPrompt) {
+          holder.capturedSystemPrompts.push(context.systemPrompt)
+        }
+        holder.capturedMessages.push(
+          (context.messages ?? []) as Array<{ role: string; content: unknown }>,
+        )
+        const response = holder.streamResponses.shift()
+        if (!response) throw new Error("No more mock responses")
+        const stream = createAssistantMessageEventStream()
+        stream.push({ type: "start", partial: response })
+        stream.push({ type: "done", reason: response.stopReason, message: response })
+        stream.end()
+        return stream
+      },
   }
 })
 
@@ -174,6 +182,7 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     projectDir = mkdtempSync(join(tmpdir(), "lx-subagent-mode-project-"))
     holder.streamResponses = []
     holder.capturedSystemPrompts = []
+    holder.capturedMessages = []
     holder.gateModes = []
   })
 
@@ -266,5 +275,77 @@ describe("AgentRunner 子代理协作模式隔离", () => {
     expect(holder.gateModes).not.toContain("plan")
 
     expect(resultText(result)).toContain("child ok")
+  })
+
+  it("子代理工具调用共用会话守卫与 Pre/PostToolUse hooks：第 3/5 次提醒、第 7 次硬阻断", async () => {
+    writeFileSync(holder.configPath, JSON.stringify({ agent: {} }))
+    const { runner, taskTool } = await primeRunner("sess-subagent-guard")
+    const sessionId = runner.getCurrentSessionId()
+    expect(sessionId).toBe("sess-subagent-guard")
+
+    const recordSpy = vi.spyOn(repeatToolGuard, "record")
+    const dispatchSpy = vi.spyOn(hooksManager, "dispatch")
+    try {
+      // 单轮内 7 次完全相同的 time 调用：阈值 3/5 提醒，第 7 次硬阻断。
+      const repeatedCalls = Array.from({ length: 7 }, (_, index) =>
+        toolCallBlock(`guard-${index}`, "time", {}),
+      )
+      holder.streamResponses = [
+        assistant(repeatedCalls, "toolUse"),
+        assistantText("guard child done"),
+      ]
+
+      const result = await taskTool.execute("parent-guard-1", {
+        name: "guard-child",
+        description: "重复熔断",
+        prompt: "重复调用 time",
+      })
+
+      // 子代理工具走同一会话的守卫计数（task 自身透明不计）。
+      expect(recordSpy.mock.calls.some(([sid, name]) => sid === sessionId && name === "time")).toBe(
+        true,
+      )
+      // Pre/PostToolUse hook 在子代理工具上派发。
+      expect(
+        dispatchSpy.mock.calls.some(
+          ([input]) => input.event === "PreToolUse" && input.toolName === "time",
+        ),
+      ).toBe(true)
+      expect(
+        dispatchSpy.mock.calls.some(
+          ([input]) => input.event === "PostToolUse" && input.toolName === "time",
+        ),
+      ).toBe(true)
+
+      // 6 次放行、第 7 次阻断。
+      const subagent = (result.details as { subagent: SubagentData }).subagent
+      expect(subagent.steps).toHaveLength(7)
+      expect(subagent.steps.filter((step) => step.status === "done")).toHaveLength(6)
+      const blockedStep = subagent.steps.find((step) => step.status === "error")
+      expect(blockedStep?.result).toContain("Execution blocked")
+
+      // 第 3/5 次提醒随工具结果送达模型（子代理第二次请求的 toolResult 内容）。
+      const childRequest = [...holder.capturedMessages]
+        .reverse()
+        .find((messages) => messages.some((message) => message.role === "toolResult"))
+      const toolResultTexts = (childRequest ?? [])
+        .filter((message) => message.role === "toolResult")
+        .map((message) => {
+          if (typeof message.content === "string") return message.content
+          if (!Array.isArray(message.content)) return ""
+          return message.content
+            .map((block) =>
+              block && typeof block === "object" && "text" in block
+                ? String((block as { text: unknown }).text)
+                : "",
+            )
+            .join("")
+        })
+      expect(toolResultTexts.some((text) => text.includes("Warning: You are repeating"))).toBe(true)
+      expect(toolResultTexts.some((text) => text.includes("Critical Warning"))).toBe(true)
+    } finally {
+      recordSpy.mockRestore()
+      dispatchSpy.mockRestore()
+    }
   })
 })

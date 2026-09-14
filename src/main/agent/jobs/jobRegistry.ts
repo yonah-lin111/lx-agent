@@ -14,7 +14,7 @@ import { spillManager } from "../spill/spillManager"
 const MAX_CONCURRENT_JOBS_PER_SESSION = 10
 const DEFAULT_WAIT_TIMEOUT_MS = 10_000
 const MAX_WAIT_TIMEOUT_MS = 60_000
-const MAX_MEMORY_BUFFER_BYTES = 64 * 1024 // 64KB 内存环形/截断缓冲
+export const MAX_MEMORY_BUFFER_BYTES = 64 * 1024 // 64KB 内存缓冲上限（同时作为 Spill 激活阈值）
 
 interface ShellConfig {
   shell: string
@@ -104,6 +104,8 @@ interface ActiveJobRecord {
   pid?: number
   child?: ChildProcess
   outputChunks: string[]
+  retainedBytes: number
+  droppedChars: number
   totalOutputBytes: number
   readCursor: number
   spillFilePath?: string
@@ -171,6 +173,8 @@ export class LocalJobRegistry {
       pid: child.pid,
       child,
       outputChunks: [],
+      retainedBytes: 0,
+      droppedChars: 0,
       totalOutputBytes: 0,
       readCursor: 0,
       outputLimitBytes: spec.outputLimitBytes,
@@ -182,17 +186,26 @@ export class LocalJobRegistry {
 
     const handleData = (data: Buffer): void => {
       const text = data.toString("utf-8")
-      jobRecord.outputChunks.push(text)
-      jobRecord.totalOutputBytes += Buffer.byteLength(text, "utf-8")
+      const textBytes = Buffer.byteLength(text, "utf-8")
 
-      // 超过内存缓冲阈值时激活 Spill 文件
-      if (jobRecord.totalOutputBytes > MAX_MEMORY_BUFFER_BYTES && !jobRecord.spillFilePath) {
+      // 超过内存缓冲阈值时激活 Spill 文件（先补齐此前的历史分片，当前分片随后只写入一次）
+      if (
+        jobRecord.totalOutputBytes + textBytes > MAX_MEMORY_BUFFER_BYTES &&
+        !jobRecord.spillFilePath
+      ) {
         this.ensureSpillFile(jobRecord)
       }
+
+      jobRecord.outputChunks.push(text)
+      jobRecord.retainedBytes += textBytes
+      jobRecord.totalOutputBytes += textBytes
 
       if (jobRecord.spillStream) {
         jobRecord.spillStream.write(text)
       }
+
+      // Spill 已兜底后裁剪内存缓冲，只保留尾部窗口
+      this.trimMemoryBuffer(jobRecord)
 
       // 推送分片事件给 Renderer 抽屉
       this.emitEvent({
@@ -238,7 +251,8 @@ export class LocalJobRegistry {
       }
       const safeId = job.id.replace(/[^a-zA-Z0-9_-]/g, "_")
       const filePath = join(jobsDir, `${safeId}.log`)
-      const stream = createWriteStream(filePath, { flags: "a", encoding: "utf-8" })
+      // 任务 ID 在同一会话内唯一，重新启动同名任务时必须截断旧日志（避免追加历史残留）
+      const stream = createWriteStream(filePath, { flags: "w", encoding: "utf-8" })
       job.spillFilePath = filePath
       job.spillStream = stream
       // 把此前累积的全部文本灌入 spill 文件
@@ -248,6 +262,34 @@ export class LocalJobRegistry {
     } catch (err) {
       console.warn(`[LocalJobRegistry] Failed to initialize spill stream for job ${job.id}:`, err)
     }
+  }
+
+  // 内存缓冲只保留尾部窗口；仅当 Spill 文件已落盘时才淘汰，避免未落盘数据丢失。
+  private trimMemoryBuffer(job: ActiveJobRecord): void {
+    if (!job.spillFilePath || !existsSync(job.spillFilePath)) return
+    const maxRetainedBytes = job.outputLimitBytes ?? MAX_MEMORY_BUFFER_BYTES
+    while (job.retainedBytes > maxRetainedBytes && job.outputChunks.length > 0) {
+      const evicted = job.outputChunks.shift()
+      if (evicted === undefined) break
+      job.droppedChars += evicted.length
+      job.retainedBytes -= Buffer.byteLength(evicted, "utf-8")
+    }
+  }
+
+  // 读取自 readCursor 起的未消费文本：优先内存缓冲，越过裁剪边界时回退 Spill 文件。
+  private readUnreadOutput(job: ActiveJobRecord): string {
+    const relativeStart = job.readCursor - job.droppedChars
+    if (relativeStart >= 0) {
+      return job.outputChunks.join("").slice(relativeStart)
+    }
+    if (job.spillFilePath && existsSync(job.spillFilePath)) {
+      try {
+        return readFileSync(job.spillFilePath, "utf-8").slice(job.readCursor)
+      } catch {
+        // 忽略落盘读取异常，降级为空
+      }
+    }
+    return ""
   }
 
   private settleJob(job: ActiveJobRecord, status: JobStatus, detail?: string): void {
@@ -305,6 +347,21 @@ export class LocalJobRegistry {
   }
 
   /**
+   * 测试与诊断用：查看任务内存缓冲的保留统计（生产链路不依赖）。
+   */
+  getMemoryBufferStats(
+    jobId: JobId,
+  ): { retainedBytes: number; retainedChunks: number; droppedChars: number } | null {
+    const job = this.jobs.get(jobId)
+    if (!job) return null
+    return {
+      retainedBytes: job.retainedBytes,
+      retainedChunks: job.outputChunks.length,
+      droppedChars: job.droppedChars,
+    }
+  }
+
+  /**
    * 读取任务输出：
    * - mode === "delta"（默认，供模型工具消费式增量读取，推进 readCursor）
    * - mode === "full"（供 UI 监控视口拉取完整历史日志，不污染增量游标）
@@ -336,11 +393,11 @@ export class LocalJobRegistry {
       MAX_WAIT_TIMEOUT_MS,
     )
 
-    // 如果指定 wait 且当前是运行态且尚无新数据
-    const allTextSoFar = job.outputChunks.join("")
-    const currentUnread = allTextSoFar.slice(job.readCursor)
+    // 如果指定 wait 且当前是运行态且尚无新数据（readCursor 追平绝对字符末尾）
+    const retainedChars = job.outputChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+    const totalChars = job.droppedChars + retainedChars
 
-    if (wait && job.status === "running" && currentUnread.length === 0) {
+    if (wait && job.status === "running" && job.readCursor >= totalChars) {
       await new Promise<void>((resolve) => {
         let timer: NodeJS.Timeout | undefined
         const onWake = (): void => {
@@ -356,9 +413,9 @@ export class LocalJobRegistry {
       })
     }
 
-    const updatedText = job.outputChunks.join("")
-    const deltaText = updatedText.slice(job.readCursor)
-    job.readCursor = updatedText.length
+    // 增量返回未消费文本：越过裁剪边界时从 Spill 文件补齐，游标按绝对字符位推进
+    const deltaText = this.readUnreadOutput(job)
+    job.readCursor += deltaText.length
 
     if (job.status !== "running" && job.status !== "stopping") {
       job.reported = true

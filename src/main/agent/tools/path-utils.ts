@@ -2,8 +2,8 @@ import { constants } from "node:fs"
 import { access } from "node:fs/promises"
 import { isAbsolute, resolve } from "node:path"
 
-// 解析相对 cwd 的路径；若为相对路径，则优先以 cwd（当前目录）解析。不限制在 cwd 目录内。
-export const resolveToCwd = (filePath: string, cwd: string): string | null => {
+// 解析为绝对路径：绝对路径规范化，相对路径以 cwd 为基准；读类工具不设路径边界（产品决策）。
+export const resolveToCwd = (filePath: string, cwd: string): string => {
   return isAbsolute(filePath) ? resolve(filePath) : resolve(cwd, filePath)
 }
 

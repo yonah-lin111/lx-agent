@@ -17,6 +17,16 @@ export interface PersistentSession {
 /** 默认空闲回收时长：10 分钟 */
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000
 
+// 退出码 marker 指令：Unix 用 `$?`；Windows cmd.exe 用 `%errorlevel%`（无引号避免回显引号破坏解析）。
+// PowerShell 不支持该 marker 协议（$? 为布尔、$LASTEXITCODE 不稳定），在会话创建时明确拒绝。
+export const buildEndMarkerCommand = (
+  marker: string,
+  platform: NodeJS.Platform = process.platform,
+): string => {
+  const prefix = `__LX_AGENT_END_${marker}__:`
+  return platform === "win32" ? `echo ${prefix}%errorlevel%\r\n` : `echo "${prefix}$?"\n`
+}
+
 /**
  * 持久 Shell 管理器 (PersistentShellManager)
  * 采用分隔符 Marker 协议捕获命令执行输出与退出码。
@@ -36,7 +46,7 @@ export class PersistentShellManager {
 
   private resolveDefaultShell(): string {
     if (process.platform === "win32") {
-      return process.env.COMSPEC || "powershell.exe"
+      return process.env.COMSPEC || "cmd.exe"
     }
     return process.env.SHELL || "/bin/bash" || "/bin/sh"
   }
@@ -57,6 +67,12 @@ export class PersistentShellManager {
     }
 
     const shell = this.resolveDefaultShell()
+    // PowerShell 的退出码语义与 marker 协议不兼容：明确报错，避免命令静默挂到超时。
+    if (process.platform === "win32" && /powershell|pwsh/i.test(shell)) {
+      throw new Error(
+        "Persistent shell sessions do not support PowerShell; configure cmd.exe (ComSpec).",
+      )
+    }
     const ptyProcess = pty.spawn(shell, process.platform === "win32" ? [] : ["-i"], {
       name: "xterm-256color",
       cols: 120,
@@ -97,6 +113,10 @@ export class PersistentShellManager {
     timeoutMs: number,
     signal?: AbortSignal,
   ): Promise<{ output: string; exitCode: number }> {
+    // 已中止的 signal 直接取消，不写命令、不占用 busy。
+    if (signal?.aborted) {
+      throw new Error("命令已中止。")
+    }
     if (session.busy) {
       throw new Error(`持久会话 ${session.name} 正忙于执行上一条命令，请稍候。`)
     }
@@ -105,7 +125,6 @@ export class PersistentShellManager {
     session.lastUsedAt = Date.now()
 
     const marker = `MK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    const endMarkerPrefix = `__LX_AGENT_END_${marker}__:`
 
     let rawBuffer = ""
     let resolved = false
@@ -113,11 +132,20 @@ export class PersistentShellManager {
     return new Promise((resolve, reject) => {
       let timer: NodeJS.Timeout | null = null
 
+      // 中止回调：一次性监听，cleanup 中显式移除避免同一 signal 复用时累积。
+      const onAbort = () => {
+        if (resolved) return
+        resolved = true
+        cleanup()
+        reject(new Error("命令已中止。"))
+      }
+
       const cleanup = () => {
         session.busy = false
         session.lastUsedAt = Date.now()
         if (timer) clearTimeout(timer)
         listener.dispose()
+        signal?.removeEventListener("abort", onAbort)
       }
 
       const listener = session.ptyProcess.onData((data) => {
@@ -166,22 +194,12 @@ export class PersistentShellManager {
       }
 
       if (signal) {
-        signal.addEventListener(
-          "abort",
-          () => {
-            if (!resolved) {
-              resolved = true
-              cleanup()
-              reject(new Error("命令已中止。"))
-            }
-          },
-          { once: true },
-        )
+        signal.addEventListener("abort", onAbort, { once: true })
       }
 
-      // 发送命令与 Marker 指令（使用换行与明确 marker 格式）
-      const wrappedCommand = `${command}\necho "${endMarkerPrefix}$?"\n`
-      session.ptyProcess.write(wrappedCommand)
+      // 发送命令与 Marker 指令（换行按平台；Windows cmd 用 %errorlevel%）。
+      const eol = process.platform === "win32" ? "\r\n" : "\n"
+      session.ptyProcess.write(`${command}${eol}${buildEndMarkerCommand(marker)}`)
     })
   }
 

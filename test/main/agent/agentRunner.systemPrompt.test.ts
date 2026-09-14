@@ -167,6 +167,28 @@ describe("AgentRunner 动态分层系统提示词端到端生效验证", () => {
     expect(prompt).toContain("Do not break production.")
   })
 
+  it("AGENTS.md 含 {{name}}/{{#if}} 模板文本时不阻断发送，新会话不被回滚", async () => {
+    const { agentRunner } = await import("@/agent/agentRunner")
+    // agentRunner 为模块单例，先清掉前序用例残留的 runner，确保本用例创建全新会话。
+    agentRunner.disposeAll("dispose")
+    writeFileSync(
+      join(projectDir, "AGENTS.md"),
+      "# Template Rules\nKeep {{name}} and {{#if feature}}...{{/if}} as literal examples.",
+    )
+
+    const res = await agentRunner.send("hello template", undefined, { page: "/", cwd: projectDir })
+
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(holder.capturedSystemPrompts.length).toBeGreaterThan(0)
+    const prompt = holder.capturedSystemPrompts[0]!
+    expect(prompt).toContain("{{name}}")
+    expect(prompt).toContain("{{#if feature}}")
+
+    const { agentSessionService } = await import("@/services/agentSessionService")
+    expect(agentSessionService.getSession(res.sessionId)).toBeTruthy()
+  })
+
   it("会话级作用域覆盖：按 sessionId 覆盖 persona，不污染其他会话", async () => {
     const { agentRunner } = await import("@/agent/agentRunner")
     holder.streamResponses = [

@@ -24,6 +24,7 @@ const holder = vi.hoisted(() => ({
   clearedSessions: [] as string[],
   loadCalls: 0,
   mcpTools: [] as string[],
+  mcpToolCalls: [] as Array<{ sessionId: string | null; names: string[] }>,
 }))
 
 vi.mock("@/paths", async (importOriginal) => {
@@ -35,31 +36,35 @@ vi.mock("@/paths", async (importOriginal) => {
   }
 })
 
-vi.mock("@/services/settingsService", () => ({
-  getModelProviderSettings: () => ({
-    providers: {
-      p: {
-        id: "p",
-        type: "openai-compatible",
-        name: "p",
-        options: { apiKey: "x", baseURL: "http://localhost" },
-        models: { m: { id: "m", name: "m" } },
+vi.mock("@/services/settingsService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/settingsService")>()
+  return {
+    ...actual,
+    getModelProviderSettings: () => ({
+      providers: {
+        p: {
+          id: "p",
+          type: "openai-compatible",
+          name: "p",
+          options: { apiKey: "x", baseURL: "http://localhost" },
+          models: { m: { id: "m", name: "m" } },
+        },
       },
-    },
-    enabledProviders: ["p"],
-    defaultModel: { provider: "p", model: "m" },
-    titleSummary: { provider: "p", model: "m" },
-    suggestedQuestions: { provider: "p", model: "m" },
-    suggestedQuestionsEnabled: true,
-  }),
-  // 压缩配置（默认值；测试上下文小，阈值不会触发）。
-  getCompactionSettings: () => ({
-    enabled: true,
-    contextWindow: 128000,
-    keepRecentTokens: 20000,
-    reserveTokens: 16384,
-  }),
-}))
+      enabledProviders: ["p"],
+      defaultModel: { provider: "p", model: "m" },
+      titleSummary: { provider: "p", model: "m" },
+      suggestedQuestions: { provider: "p", model: "m" },
+      suggestedQuestionsEnabled: true,
+    }),
+    // 压缩配置（默认值；测试上下文小，阈值不会触发）。
+    getCompactionSettings: () => ({
+      enabled: true,
+      contextWindow: 128000,
+      keepRecentTokens: 20000,
+      reserveTokens: 16384,
+    }),
+  }
+})
 
 vi.mock("@/services/projectService", () => ({
   projectService: { listProjects: () => [] },
@@ -108,8 +113,9 @@ vi.mock("@/agent/permissions/permissionManager", () => ({
       holder.loadCalls += 1
     }),
     getSandboxPolicy: vi.fn(() => "workspace-write"),
-    setMcpTools: vi.fn((names: string[]) => {
+    setMcpTools: vi.fn((sessionId: string | null, names: string[]) => {
       holder.mcpTools = names
+      holder.mcpToolCalls.push({ sessionId, names })
     }),
     gate: vi.fn((ctx: unknown, sessionId: string | null, signal?: AbortSignal) => {
       holder.gateCalls.push({ sessionId })
@@ -158,6 +164,7 @@ describe("agentRunner 权限接线", () => {
     holder.clearedSessions = []
     holder.loadCalls = 0
     holder.mcpTools = []
+    holder.mcpToolCalls = []
   })
 
   afterEach(() => {
@@ -170,11 +177,19 @@ describe("agentRunner 权限接线", () => {
 
   it("send 时装配刷新权限配置并注入门控集", async () => {
     const { agentRunner } = await importRunner()
-    holder.streamResponses = [assistant([{ type: "text", text: "你好" }])]
+    holder.streamResponses = [
+      assistant([{ type: "text", text: "你好" }]),
+      assistant([{ type: "text", text: "再次" }]),
+    ]
     const result = await agentRunner.send("hello", undefined, { page: "/", cwd: "/tmp" })
     expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error(result.error)
     expect(holder.loadCalls).toBeGreaterThan(0)
     expect(Array.isArray(holder.mcpTools)).toBe(true)
+    // 会话建立后按 sessionId 注入 MCP 门控集。
+    await agentRunner.send("again", undefined, { page: "/", cwd: "/tmp" })
+    const sessionCall = holder.mcpToolCalls.find((call) => call.sessionId === result.sessionId)
+    expect(sessionCall?.names).toEqual(holder.mcpTools)
   })
 
   it("beforeToolCall 将当前会话 id 传入 gate；允许后工具执行成功", async () => {

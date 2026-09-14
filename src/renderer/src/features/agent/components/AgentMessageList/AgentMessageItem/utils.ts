@@ -24,15 +24,38 @@ export const isTodoToolCall = (toolName: string): boolean => toolName === TODO_T
 // 判断是否为模型提问（question 工具）调用。
 export const isQuestionToolCall = (toolName: string): boolean => toolName === QUESTION_TOOL_NAME
 
-// 判断是否为 MCP 调用（MCP 工具全名为 `server_tool`，排除内置下划线工具）。
+// MCP 工具命名空间前缀（main 侧 `mcp__server__tool`）。
+export const MCP_TOOL_PREFIX = "mcp__"
+
+// 解析 MCP 工具全名为服务名与工具方法名。
+// 新命名空间 `mcp__server__tool` 优先；未带前缀的旧格式（server_tool）仅用于历史消息展示。
+export const parseMcpToolName = (toolName: string): { serverName: string; toolName: string } => {
+  if (toolName.startsWith(MCP_TOOL_PREFIX)) {
+    const rest = toolName.slice(MCP_TOOL_PREFIX.length)
+    const separatorIndex = rest.indexOf("__")
+    if (separatorIndex > 0) {
+      return {
+        serverName: rest.slice(0, separatorIndex),
+        toolName: rest.slice(separatorIndex + 2),
+      }
+    }
+    return { serverName: rest, toolName: rest }
+  }
+  const separatorIndex = toolName.indexOf("_")
+  if (separatorIndex <= 0) return { serverName: toolName, toolName }
+  return {
+    serverName: toolName.slice(0, separatorIndex),
+    toolName: toolName.slice(separatorIndex + 1),
+  }
+}
+
+// 判断是否为 MCP 调用（命名空间前缀命中；旧格式排除内置下划线工具）。
 export const isMcpToolCall = (toolName: string): boolean =>
-  !BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_")
+  toolName.startsWith(MCP_TOOL_PREFIX) ||
+  (!BUILTIN_UNDERSCORE_TOOLS.has(toolName) && toolName.includes("_"))
 
 // 获取 MCP 服务名。
-export const getMcpServerName = (toolName: string): string => {
-  const separatorIndex = toolName.indexOf("_")
-  return separatorIndex > 0 ? toolName.slice(0, separatorIndex) : toolName
-}
+export const getMcpServerName = (toolName: string): string => parseMcpToolName(toolName).serverName
 
 // 判断是否为写操作工具（文件修改，独立展示且不参与执行折叠）。
 export const isWriteToolCall = (toolName: string): boolean =>

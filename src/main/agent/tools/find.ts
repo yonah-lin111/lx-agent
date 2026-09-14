@@ -139,17 +139,6 @@ export const createFindTool = (
   inputSchema: findSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
-    if (!searchPath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Access denied to path outside project root: ${params.path ?? "."}`,
-          },
-        ],
-        details: { refused: true },
-      }
-    }
 
     const effectiveLimit = Math.max(1, params.limit ?? DEFAULT_LIMIT)
     const sessionId = sessionDeps?.getSessionId?.() ?? undefined
