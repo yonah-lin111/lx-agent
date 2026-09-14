@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { useEffect, useRef } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   LxAgentInputToast,
@@ -36,6 +37,30 @@ const TestToastComponent = (): React.JSX.Element => {
       </button>
     </div>
   )
+}
+
+// 记录 useLxToast 返回引用与依赖它的 effect 执行次数，用于锁定 API 引用稳定性。
+interface ToastApiStabilityProbeState {
+  renderCount: number
+  effectCount: number
+  isApiStable: boolean
+}
+
+const ToastApiStabilityProbe = ({
+  resultRef,
+}: {
+  resultRef: { current: ToastApiStabilityProbeState }
+}): React.JSX.Element => {
+  const toast = useLxToast()
+  const firstApiRef = useRef(toast)
+
+  resultRef.current.renderCount += 1
+  resultRef.current.isApiStable = firstApiRef.current === toast
+  useEffect(() => {
+    resultRef.current.effectCount += 1
+  }, [toast])
+
+  return <div data-testid="toast-api-probe" />
 }
 
 describe("LxToast", () => {
@@ -205,5 +230,34 @@ describe("LxToast", () => {
       vi.advanceTimersByTime(300)
     })
     expect(screen.queryByText("Agent成功提示")).toBeNull()
+  })
+
+  it("消息生命周期变化不改变 useLxToast 返回引用，也不触发以它为依赖的 effect", () => {
+    const probeState: { current: ToastApiStabilityProbeState } = {
+      current: { renderCount: 0, effectCount: 0, isApiStable: true },
+    }
+
+    render(
+      <LxToastProvider>
+        <ToastApiStabilityProbe resultRef={probeState} />
+        <TestToastComponent />
+      </LxToastProvider>,
+    )
+
+    fireEvent.click(screen.getByText("触发全局"))
+    expect(screen.queryByText("全局提示")).not.toBeNull()
+
+    // 走完显示 → 退场 → 移除的完整生命周期
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(screen.queryByText("全局提示")).toBeNull()
+
+    expect(probeState.current.isApiStable).toBe(true)
+    expect(probeState.current.effectCount).toBe(1)
+    expect(probeState.current.renderCount).toBe(1)
   })
 })
