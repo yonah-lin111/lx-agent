@@ -21,6 +21,10 @@ describe("我的世界主题 OpenClaw 外观", () => {
     expect(minecraftAgentCss).toContain("background-color: #2e4773 !important")
   })
 
+  it("AI 消息气泡沿用助手气泡钩子，命中 3D 像素浮雕规则", () => {
+    expect(minecraftAgentCss).toContain('[data-theme="minecraft"] [data-assistant-bubble="true"]')
+  })
+
   it("AI 消息气泡不再命中输入框马赛克规则，输入框本身仍保留主题化", () => {
     // .bg-[#2a2a2a] 曾让 OpenClaw AI 气泡继承输入框的马赛克外框，现仅保留输入框容器选择器。
     expect(minecraftAgentCss).not.toContain(".bg-\\[\\#2a2a2a\\]")
