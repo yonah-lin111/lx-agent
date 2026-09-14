@@ -454,7 +454,11 @@ export const AgentExecutionFlowItem = ({
 
           {/* 思考过程详情 */}
           {step.thinkingContent && (
-            <FlowItemThinkingContent content={step.thinkingContent} previewRef={previewRef} />
+            <FlowItemThinkingContent
+              content={step.thinkingContent}
+              previewRef={previewRef}
+              isStreaming={isRunning}
+            />
           )}
 
           {/* 工具调用详情 */}
@@ -518,7 +522,11 @@ export const AgentExecutionFlowItem = ({
             !step.planContent &&
             !step.reviewFindingsContent &&
             !step.frontDesignContent && (
-              <FlowItemAssistantContent content={step.assistantContent} previewRef={previewRef} />
+              <FlowItemAssistantContent
+                content={step.assistantContent}
+                previewRef={previewRef}
+                isStreaming={isRunning}
+              />
             )}
 
           {/* 模型切换/初始模型详情 */}

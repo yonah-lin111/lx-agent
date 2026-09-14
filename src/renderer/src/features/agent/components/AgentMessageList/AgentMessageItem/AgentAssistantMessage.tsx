@@ -4,7 +4,7 @@ import type React from "react"
 import { useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { renderMarkdown } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import {
   AgentExecutionGroup,
@@ -184,7 +184,7 @@ export const AgentAssistantMessage = ({
               return (
                 <LxMarkdownPreview
                   key={groupIndex}
-                  html={markdownRenderer.render(group.block.text)}
+                  html={renderMarkdown(group.block.text, { streaming: group.isStreaming })}
                   previewMode="preview"
                   previewRef={previewRef}
                   className="px-0"

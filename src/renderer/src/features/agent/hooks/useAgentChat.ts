@@ -1,5 +1,6 @@
 import type {
   AgentEvent,
+  AgentMessage,
   AgentSendContext,
   AgentSendOptions,
   AgentUndoDiffSummary,
@@ -37,6 +38,21 @@ import { sessionListStore } from "./sessionListStore"
 // 展示条目 id 自增。
 let messageSequence = 0
 
+// 请求下一帧（rAF 不可用时退化为 16ms 定时器）。
+const requestFrame = (callback: () => void): number =>
+  typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame(callback)
+    : (setTimeout(callback, 16) as unknown as number)
+
+// 取消帧回调。
+const cancelFrame = (handle: number): void => {
+  if (typeof cancelAnimationFrame === "function") {
+    cancelAnimationFrame(handle)
+  } else {
+    clearTimeout(handle)
+  }
+}
+
 // 恢复会话时把 task 子代理快照与 question 答案（兜底）回填到对应 toolCall 块。
 const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
   const subagentByToolCallId = new Map<string, SubagentData>()
@@ -73,6 +89,10 @@ const mergeSubagentSnapshots = (chatMessages: ChatMessage[]): ChatMessage[] => {
     }),
   }))
 }
+
+// 工具调用块及补丁类型（流式进度/子代理快照按 toolCallId 定点更新）。
+type ToolCallBlock = Extract<ChatBlock, { kind: "toolCall" }>
+type ToolCallPatch = Partial<ToolCallBlock>
 
 /**
  * 管理 Agent 对话：订阅 main 进程事件流，驱动消息列表、流式更新与工具状态。
@@ -142,28 +162,118 @@ export const useAgentChat = (
   // 进行中的压缩事件集合：终态事件仅结束同 compactionId 的压缩，避免陈旧事件错误解锁输入。
   const activeCompactionIdsRef = useRef(new Set<string>())
 
+  // 按 toolCallId 批量打补丁：仅重建命中块所在的消息，未命中消息保持原引用（击穿下游 memo 的成本在此归零）。
+  const patchToolCallBlocks = useCallback((patches: Map<string, ToolCallPatch>) => {
+    if (patches.size === 0) return
+    setMessages((prev) => {
+      let changed = false
+      const next = prev.map((message) => {
+        let messageChanged = false
+        const blocks = message.blocks.map((block) => {
+          if (block.kind !== "toolCall") return block
+          const patch = patches.get(block.toolCallId)
+          if (!patch) return block
+          messageChanged = true
+          return { ...block, ...patch }
+        })
+        if (!messageChanged) return message
+        changed = true
+        return { ...message, blocks }
+      })
+      return changed ? next : prev
+    })
+  }, [])
+
   // 按 toolCallId 更新消息内工具块状态。
   const updateToolStatus = useCallback(
     (toolCallId: string, status: "running" | "done" | "error") => {
-      setMessages((prev) =>
-        prev.map((message) =>
-          message.blocks.some(
-            (block) => block.kind === "toolCall" && block.toolCallId === toolCallId,
-          )
-            ? {
-                ...message,
-                blocks: message.blocks.map((block) =>
-                  block.kind === "toolCall" && block.toolCallId === toolCallId
-                    ? { ...block, status }
-                    : block,
-                ),
-              }
-            : message,
-        ),
-      )
+      patchToolCallBlocks(new Map([[toolCallId, { status }]]))
     },
-    [],
+    [patchToolCallBlocks],
   )
+
+  // --- 流式事件按帧合并（latest-wins） ---
+  // message_update / tool_execution_update 在高速流式下可达每秒上百次；每个事件只暂存最新快照，
+  // 每个动画帧最多提交一次 React 状态更新，避免每 token 触发一次整树重渲染。
+  const pendingMessageUpdateRef = useRef<AgentMessage | null>(null)
+  const pendingToolUpdatesRef = useRef(new Map<string, unknown>())
+  const flushFrameRef = useRef<number | null>(null)
+
+  // 提交挂起快照：助手消息整体替换（仅流式条目换引用），工具进度按 toolCallId 定点打补丁。
+  const commitPendingStreamUpdates = useCallback((): void => {
+    const pendingMessage = pendingMessageUpdateRef.current
+    const pendingTools = pendingToolUpdatesRef.current
+    pendingMessageUpdateRef.current = null
+    if (pendingTools.size > 0) {
+      pendingToolUpdatesRef.current = new Map()
+    }
+
+    if (pendingMessage) {
+      const streaming = streamingRef.current
+      if (streaming) {
+        const updated = toChatMessage(
+          pendingMessage,
+          true,
+          streaming.id,
+          currentSessionIdRef.current,
+        )
+        updated.isStreaming = true
+        streamingRef.current = updated
+        setMessages((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+
+        // 在流式输出过程中，如果包含前端设计卡片，实时同步到 frontDesignStore
+        updated.blocks.forEach((block) => {
+          if (block.kind === "frontDesign" && !block.design.isUpdate) {
+            frontDesignStore.registerDesign({
+              id: block.design.id,
+              parentId: block.design.parentId,
+              title: block.design.title,
+              html: block.design.html,
+              isStreaming: true,
+              autoActivate: true,
+              sessionId: currentSessionIdRef.current,
+              updatedAt: updated.timestamp,
+              mode: block.design.mode,
+              designDir: block.design.designDir,
+            })
+          }
+        })
+      }
+    }
+
+    if (pendingTools.size > 0) {
+      const patches = new Map<string, ToolCallPatch>()
+      for (const [toolCallId, partialResult] of pendingTools) {
+        const progress = extractToolProgressText(partialResult)
+        const subagent = extractSubagentData(partialResult)
+        if (progress === undefined && subagent === undefined) continue
+        patches.set(toolCallId, {
+          ...(progress !== undefined ? { progress } : {}),
+          ...(subagent !== undefined ? { subagent } : {}),
+        })
+      }
+      patchToolCallBlocks(patches)
+    }
+  }, [patchToolCallBlocks])
+
+  // 请求下一帧提交（同一帧内的多次更新只提交一次）。
+  const requestStreamFlush = useCallback((): void => {
+    if (flushFrameRef.current !== null) return
+    flushFrameRef.current = requestFrame(() => {
+      flushFrameRef.current = null
+      commitPendingStreamUpdates()
+    })
+  }, [commitPendingStreamUpdates])
+
+  // 丢弃挂起快照（流终止/新流接管/卸载时调用）。
+  const discardPendingStreamUpdates = useCallback((): void => {
+    if (flushFrameRef.current !== null) {
+      cancelFrame(flushFrameRef.current)
+      flushFrameRef.current = null
+    }
+    pendingMessageUpdateRef.current = null
+    pendingToolUpdatesRef.current = new Map()
+  }, [])
 
   // 分发 main 进程推送的 AgentEvent，支持基于 sessionId 与 tabId 的精准路由。
   const dispatchEvent = useCallback(
@@ -194,6 +304,7 @@ export const useAgentChat = (
 
         case "agent_end":
           setIsStreaming(false)
+          discardPendingStreamUpdates()
           streamingRef.current = null
           break
 
@@ -222,6 +333,8 @@ export const useAgentChat = (
                 ),
               )
             }
+            // 新流接管：撤销上一流尚未提交的挂起分片，避免其写入新条目。
+            pendingMessageUpdateRef.current = null
             streamingRef.current = item
           }
           setMessages((prev) => [...prev, item])
@@ -229,39 +342,10 @@ export const useAgentChat = (
         }
 
         case "message_update": {
-          const streaming = streamingRef.current
-          if (!streaming) return
-          const updated = toChatMessage(
-            event.message,
-            true,
-            streaming.id,
-            currentSessionIdRef.current,
-          )
-          updated.isStreaming = true
-          streamingRef.current = updated
-          setMessages((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-
-          // 在流式输出过程中，如果包含前端设计卡片，实时同步到 frontDesignStore
-          updated.blocks.forEach((block) => {
-            if (block.kind === "frontDesign") {
-              // 局部定向更新流式期间不覆盖基准完整设计，等待 message_end 完成 DOM 拼接
-              if (block.design.isUpdate) {
-                return
-              }
-              frontDesignStore.registerDesign({
-                id: block.design.id,
-                parentId: block.design.parentId,
-                title: block.design.title,
-                html: block.design.html,
-                isStreaming: true,
-                autoActivate: true,
-                sessionId: currentSessionIdRef.current,
-                updatedAt: updated.timestamp,
-                mode: block.design.mode,
-                designDir: block.design.designDir,
-              })
-            }
-          })
+          if (!streamingRef.current) return
+          // 只暂存最新完整分片，实际转换与提交延到下一帧（同一帧多次更新合并为一次）。
+          pendingMessageUpdateRef.current = event.message
+          requestStreamFlush()
           break
         }
 
@@ -271,6 +355,8 @@ export const useAgentChat = (
           // 仅助手消息的 message_end 与流式条目关联；用户/工具结果消息的 end（如 steer 即时插话）
           // 不会携带流式状态，直接忽略，避免用其内容覆盖正在流式的助手条目。
           if (event.message.role !== "assistant") return
+          // 最终消息覆盖挂起分片的全部内容，丢弃未提交分片避免其回写旧内容。
+          pendingMessageUpdateRef.current = null
           const final = toChatMessage(
             event.message,
             false,
@@ -352,47 +438,30 @@ export const useAgentChat = (
           break
 
         case "tool_execution_update": {
-          // task 子代理流式回传：更新对应 toolCall 块的实时进度文本与面板快照。
-          const progress = extractToolProgressText(event.partialResult)
-          const subagent = extractSubagentData(event.partialResult)
-          if (progress === undefined && subagent === undefined) break
-          setMessages((prev) =>
-            prev.map((message) => ({
-              ...message,
-              blocks: message.blocks.map((block) =>
-                block.kind === "toolCall" && block.toolCallId === event.toolCallId
-                  ? {
-                      ...block,
-                      ...(progress !== undefined ? { progress } : {}),
-                      ...(subagent !== undefined ? { subagent } : {}),
-                    }
-                  : block,
-              ),
-            })),
-          )
+          // task 子代理流式回传：暂存每个 toolCallId 的最新快照，按帧合并提交（并行工具互不覆盖）。
+          pendingToolUpdatesRef.current.set(event.toolCallId, event.partialResult)
+          requestStreamFlush()
           break
         }
 
         case "tool_execution_end": {
           // 最终快照（含聚合 usage）随结果回传，覆盖流式期间的中间快照。
+          pendingToolUpdatesRef.current.delete(event.toolCallId)
           const subagent = extractSubagentData(event.result)
           const answers = extractQuestionAnswers(event.result)
-          setMessages((prev) =>
-            prev.map((message) => ({
-              ...message,
-              blocks: message.blocks.map((block) =>
-                block.kind === "toolCall" && block.toolCallId === event.toolCallId
-                  ? {
-                      ...block,
-                      status: event.isError ? "error" : "done",
-                      // question 作答完成：清除挂起请求，块退回只读清单；答案随 block 回填。
-                      ...(event.toolName === "question" ? { question: undefined } : {}),
-                      ...(answers !== undefined ? { answers } : {}),
-                      ...(subagent !== undefined ? { subagent } : {}),
-                    }
-                  : block,
-              ),
-            })),
+          patchToolCallBlocks(
+            new Map([
+              [
+                event.toolCallId,
+                {
+                  status: event.isError ? ("error" as const) : ("done" as const),
+                  // question 作答完成：清除挂起请求，块退回只读清单；答案随 block 回填。
+                  ...(event.toolName === "question" ? { question: undefined } : {}),
+                  ...(answers !== undefined ? { answers } : {}),
+                  ...(subagent !== undefined ? { subagent } : {}),
+                },
+              ],
+            ]),
           )
           break
         }
@@ -526,16 +595,7 @@ export const useAgentChat = (
 
         case "question_request":
           // 模型提问挂起：把请求回填到对应 question 工具调用块，驱动内联提问表单。
-          setMessages((prev) =>
-            prev.map((message) => ({
-              ...message,
-              blocks: message.blocks.map((block) =>
-                block.kind === "toolCall" && block.toolCallId === event.request.toolCallId
-                  ? { ...block, question: event.request }
-                  : block,
-              ),
-            })),
-          )
+          patchToolCallBlocks(new Map([[event.request.toolCallId, { question: event.request }]]))
           break
 
         case "context_usage":
@@ -547,19 +607,36 @@ export const useAgentChat = (
           break
       }
     },
-    [updateToolStatus, tabId, onSessionBound, successToast, warningToast, t],
+    [
+      updateToolStatus,
+      patchToolCallBlocks,
+      requestStreamFlush,
+      discardPendingStreamUpdates,
+      tabId,
+      onSessionBound,
+      successToast,
+      warningToast,
+      t,
+    ],
   )
 
-  // 挂载时订阅事件流；卸载时退订。
+  // 挂载时订阅事件流；卸载时退订并取消挂起的流式提交帧。
   useEffect(() => {
     const unsubscribe = agentApi.onEvent(dispatchEvent)
-    return unsubscribe
+    return () => {
+      unsubscribe()
+      if (flushFrameRef.current !== null) {
+        cancelFrame(flushFrameRef.current)
+        flushFrameRef.current = null
+      }
+    }
   }, [dispatchEvent])
 
   // 停止流式生成：中止 main 侧 run（排队消息由 main 清空并推 queue_changed{0}，此处先本地归零）。
   const stopStreaming = useCallback(() => {
     void agentApi.abort(currentSessionIdRef.current ?? undefined, tabId)
     setIsStreaming(false)
+    discardPendingStreamUpdates()
     streamingRef.current = null
     setQueuedCount(0)
     setQueuedMessages([])
@@ -574,7 +651,7 @@ export const useAgentChat = (
           : message,
       ),
     )
-  }, [tabId])
+  }, [tabId, discardPendingStreamUpdates])
 
   // 新建/重置对话：脱离当前会话并清空 main 侧上下文。即时完成，不展示骨架屏。
   const createNewChat = useCallback(() => {

@@ -203,7 +203,8 @@ export const LxMarkdownPreview = ({
       ),
     ]
     nextMounts.forEach(({ container }) => container.replaceChildren())
-    setMounts(nextMounts)
+    // 无挂载点时保持原状态，避免流式逐帧触发一次多余渲染。
+    setMounts((prev) => (prev.length === 0 && nextMounts.length === 0 ? prev : nextMounts))
   }, [html])
 
   return (

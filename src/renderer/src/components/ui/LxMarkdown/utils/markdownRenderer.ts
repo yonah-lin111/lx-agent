@@ -14,14 +14,39 @@ markdownRenderer.renderer.rules.task_checkbox = (tokens, idx) => {
   return `<input type="checkbox" class="task-list-item-checkbox" disabled${checked ? " checked" : ""}>`
 }
 
+// 打开中的围栏行（仅 ``` / ~~~ 本身的行）。
+const FENCE_MARKER_RE = /^\s*(`{3,}|~{3,})\s*$/
+
+// 围栏 token 是否为"尚未闭合"的最后一个代码块：结束行即输入末尾，且末行不是闭合标记。
+const isUnclosedFenceToken = (token: Token, source: string): boolean => {
+  const map = token.map
+  if (!map) return false
+  const lines = source.split("\n")
+  // 去掉尾部换行产生的空元素，避免输入以 \n 结尾时误判。
+  if (lines.at(-1) === "") lines.pop()
+  if (map[1] !== lines.length) return false
+  return !FENCE_MARKER_RE.test(lines.at(-1) ?? "")
+}
+
 // 为可滚动预览挂载的顶层块标注源码行，供编辑区与预览区同步滚动定位。
 markdownRenderer.core.ruler.push("markdown-scroll-anchor", (state) => {
+  const deferIncompleteHighlight = state.env?.deferIncompleteHighlight === true
+
   state.tokens.forEach((token) => {
     if (!token.map || token.level !== 0 || (token.nesting !== 1 && token.type !== "fence")) {
       return
     }
 
     token.attrSet("data-line", String(token.map[0]))
+
+    // 流式渲染：标记尚未闭合的代码块，由 fence 规则跳过语法高亮（逐帧全量高亮是 O(n²) 开销）。
+    if (
+      deferIncompleteHighlight &&
+      token.type === "fence" &&
+      isUnclosedFenceToken(token, state.src)
+    ) {
+      token.meta = { ...(token.meta ?? {}), incompleteFence: true }
+    }
   })
 
   return true
@@ -85,7 +110,39 @@ markdownRenderer.renderer.rules.fence = (
     return `<section class="markdown-mermaid" data-mermaid-source="${source}"${lineAttribute}></section>`
   }
 
-  const renderedCode = `<pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderCode(token.content, language)}</code></pre>\n`
+  // 流式中尚未闭合的代码块按纯文本转义输出：避免逐帧对增长中的代码全量高亮；闭合/结束后走正常高亮。
+  const renderedCode =
+    token.meta?.incompleteFence === true
+      ? markdownRenderer.utils.escapeHtml(token.content)
+      : renderCode(token.content, language)
 
-  return `<section class="markdown-code-block"${lineAttribute}><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content">${renderedCode}</div></section>`
+  return `<section class="markdown-code-block"${lineAttribute}><header class="markdown-code-block-header"><span class="markdown-code-language">${markdownRenderer.utils.escapeHtml(language)}</span><span class="markdown-code-actions"><span class="markdown-code-copy"></span><span class="markdown-code-collapse"></span></span></header><div class="markdown-code-content"><pre><code class="${options.langPrefix}${markdownRenderer.utils.escapeHtml(language)} hljs">${renderedCode}</code></pre>\n</div></section>`
+}
+
+// 渲染结果缓存：流式条目每帧整体重渲染时，已稳定的文本块直接复用 HTML（不再重复解析与高亮）。
+// 有界缓存，超大文本不进入缓存以避免常驻内存膨胀。
+const RENDER_CACHE_LIMIT = 32
+const RENDER_CACHE_MAX_TEXT_LENGTH = 64 * 1024
+const renderCache = new Map<string, string>()
+
+/**
+ * 渲染 Markdown。streaming=true 时对尚未闭合的最后一个代码块跳过语法高亮
+ * （闭合或生成结束后正常高亮），消除逐帧全量高亮的 O(n²) 开销；
+ * 相同输入（文本 + streaming 标志）复用缓存结果，避免同一内容的重复解析。
+ */
+export const renderMarkdown = (text: string, options?: { streaming?: boolean }): string => {
+  const streaming = options?.streaming === true
+  if (text.length > RENDER_CACHE_MAX_TEXT_LENGTH) {
+    return markdownRenderer.render(text, streaming ? { deferIncompleteHighlight: true } : {})
+  }
+  const key = `${streaming ? "1" : "0"}\u0000${text}`
+  const cached = renderCache.get(key)
+  if (cached !== undefined) return cached
+  const html = markdownRenderer.render(text, streaming ? { deferIncompleteHighlight: true } : {})
+  renderCache.set(key, html)
+  if (renderCache.size > RENDER_CACHE_LIMIT) {
+    const oldest = renderCache.keys().next().value
+    if (oldest !== undefined) renderCache.delete(oldest)
+  }
+  return html
 }

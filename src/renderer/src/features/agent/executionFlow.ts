@@ -883,3 +883,74 @@ export const buildExecutionSteps = (
 
   return steps
 }
+
+// 纯值结构比较：基础类型按值，数组按元素，普通对象按递归键值；非普通对象（函数/类实例）按引用。
+const isSamePlainValue = (a: unknown, b: unknown, depth: number): boolean => {
+  if (a === b) return true
+  if (depth === 0 || a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+    return false
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+    for (let index = 0; index < a.length; index++) {
+      if (!isSamePlainValue(a[index], b[index], depth - 1)) return false
+    }
+    return true
+  }
+  const prototype = Object.getPrototypeOf(a)
+  if (prototype !== Object.prototype && prototype !== null) return false
+  if (Object.getPrototypeOf(b) !== prototype) return false
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false
+    if (
+      !isSamePlainValue(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key],
+        depth - 1,
+      )
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+// 比较深度上限：覆盖 step → 内容对象 → 文本/diff 等嵌套；超出深度按"已变化"处理（最多多渲染，不会漏渲染）。
+const STEP_COMPARE_DEPTH = 5
+
+/**
+ * 两步是否结构一致（id 相同且字段全部相等）。
+ */
+export const isSameExecutionStep = (a: ExecutionStep, b: ExecutionStep): boolean =>
+  a.id === b.id && isSamePlainValue(a, b, STEP_COMPARE_DEPTH)
+
+/**
+ * 步骤对象引用复用：buildExecutionSteps 每帧全量重建，直接喂给 React.memo 会全部失效。
+ * 在输出语义不变的前提下，把与上一轮结构一致的步骤替换回旧引用，使 memo 只命中真正变化的步骤。
+ */
+export const reuseExecutionSteps = (
+  nextSteps: ExecutionStep[],
+  prevSteps: ExecutionStep[],
+): ExecutionStep[] => {
+  if (prevSteps.length === 0 || nextSteps.length === 0) return nextSteps
+
+  if (prevSteps.length === nextSteps.length) {
+    let identical = true
+    for (let index = 0; index < nextSteps.length; index++) {
+      if (!isSameExecutionStep(prevSteps[index], nextSteps[index])) {
+        identical = false
+        break
+      }
+    }
+    if (identical) return prevSteps
+  }
+
+  const prevById = new Map(prevSteps.map((step) => [step.id, step]))
+  return nextSteps.map((step) => {
+    const prev = prevById.get(step.id)
+    return prev && isSameExecutionStep(prev, step) ? prev : step
+  })
+}

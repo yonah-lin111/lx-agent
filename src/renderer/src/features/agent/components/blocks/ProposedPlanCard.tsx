@@ -3,7 +3,7 @@ import type React from "react"
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxMarkdownPreview } from "@/components/ui/LxMarkdown/LxMarkdownPreview"
-import { markdownRenderer } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
+import { renderMarkdown } from "@/components/ui/LxMarkdown/utils/markdownRenderer"
 import { LxTag } from "@/components/ui/LxTag"
 import type { ProposedPlanData } from "@/features/agent/types"
 import { useTranslation } from "@/i18n"
@@ -152,7 +152,7 @@ export const ProposedPlanCard = ({
           className="relative transition-[max-height] duration-200"
         >
           <LxMarkdownPreview
-            html={markdownRenderer.render(plan.content)}
+            html={renderMarkdown(plan.content, { streaming: isStreaming })}
             previewMode="preview"
             previewRef={previewRef}
             className="px-0"
