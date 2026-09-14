@@ -43,6 +43,7 @@ vi.mock("@/agent/hooks", async (importOriginal) => {
   }
 })
 
+import { guardianEvaluator } from "@/agent/guard/guardianEvaluator"
 import { permissionManager } from "@/agent/permissions/permissionManager"
 
 // 重置单例内部状态（module 级单例，测试间清空）。
@@ -50,7 +51,7 @@ const resetManager = (): void => {
   const manager = permissionManager as unknown as {
     settings: PermissionSettings
     parsed: { allow: unknown[]; deny: unknown[]; ask: unknown[] }
-    mcpTools: Set<string>
+    mcpToolsBySession: Map<string, Set<string>>
     sessionAllowed: Map<string, Set<string>>
     sessionAllowAll: Set<string>
     pending: Map<string, unknown>
@@ -59,7 +60,7 @@ const resetManager = (): void => {
   }
   manager.settings = { defaultMode: "default", allow: [], deny: [], ask: [] }
   manager.parsed = { allow: [], deny: [], ask: [] }
-  manager.mcpTools = new Set()
+  manager.mcpToolsBySession = new Map()
   manager.sessionAllowed = new Map()
   manager.sessionAllowAll = new Set()
   manager.pending = new Map()
@@ -103,6 +104,16 @@ const gateContext = (toolName: string, args: unknown): BeforeToolCallContext => 
   context: { systemPrompt: "", messages: [], tools: [] },
 })
 
+// apply_patch 测试用 V4A 补丁文本。
+const PATCH_SAFE = "*** Begin Patch\n*** Add File: src/safe.ts\n+export const x = 1\n*** End Patch"
+const PATCH_ETC = "*** Begin Patch\n*** Add File: /etc/hosts\n+127.0.0.1 evil\n*** End Patch"
+const PATCH_SSH =
+  "*** Begin Patch\n*** Update File: /Users/u/.ssh/authorized_keys\n+ssh-rsa AAAA\n*** End Patch"
+const PATCH_MULTI =
+  "*** Begin Patch\n*** Add File: src/safe.ts\n+x\n*** Add File: /etc/hosts\n+y\n*** End Patch"
+const PATCH_MULTI_SAFE =
+  "*** Begin Patch\n*** Add File: src/a.ts\n+a\n*** Add File: src/b.ts\n+b\n*** End Patch"
+
 describe("permissionManager.evaluate", () => {
   beforeEach(resetManager)
   afterEach(resetManager)
@@ -139,9 +150,28 @@ describe("permissionManager.evaluate", () => {
 
   it("已注册 MCP 工具 → ask；未注册同名 → 放行", () => {
     applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
-    permissionManager.setMcpTools(["codegraph_codegraph_search"])
+    permissionManager.setMcpTools(null, ["codegraph_codegraph_search"])
     expect(permissionManager.evaluate("codegraph_codegraph_search", { query: "x" })).toBe("ask")
     expect(permissionManager.evaluate("some_other_mcp", { query: "x" })).toBe("allow")
+  })
+
+  it("MCP 工具集合按会话隔离：他会话注册不覆盖本会话门控", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    permissionManager.setMcpTools("s1", ["mcp_a"])
+    permissionManager.setMcpTools("s2", ["mcp_b"])
+    // 各自会话内的 MCP 工具仍被门控，不因对方注册而 fail-open。
+    expect(permissionManager.evaluate("mcp_a", {}, { sessionId: "s1" })).toBe("ask")
+    expect(permissionManager.evaluate("mcp_b", {}, { sessionId: "s2" })).toBe("ask")
+    // 未注册会话/未注册名按未知工具默认语义放行，不继承他会话集合。
+    expect(permissionManager.evaluate("mcp_b", {}, { sessionId: "s1" })).toBe("allow")
+    expect(permissionManager.evaluate("mcp_a", {}, { sessionId: "s3" })).toBe("allow")
+  })
+
+  it("MCP 工具集合命中优先于豁免集：同名工具仍走门控", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    permissionManager.setMcpTools("s1", ["read"])
+    expect(permissionManager.evaluate("read", { path: "a" }, { sessionId: "s1" })).toBe("ask")
+    expect(permissionManager.evaluate("read", { path: "a" }, { sessionId: "s2" })).toBe("allow")
   })
 
   it("deny 规则直接拒绝，优先级 deny > ask > allow", () => {
@@ -191,6 +221,46 @@ describe("permissionManager.evaluate", () => {
   })
 })
 
+describe("permissionManager apply_patch 路径级 Guardian", () => {
+  beforeEach(resetManager)
+  afterEach(resetManager)
+
+  it("默认模式下系统目录/凭据目录补丁升级为 ask", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_ETC })).toBe("ask")
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_SSH })).toBe("ask")
+  })
+
+  it("acceptEdits 仅在全部目标路径无高危时自动放行", () => {
+    applySettings({ defaultMode: "acceptEdits", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_SAFE })).toBe("allow")
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_MULTI })).toBe("ask")
+  })
+
+  it("Plan/Review 模式下高危路径补丁拒绝", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(
+      permissionManager.evaluate(
+        "apply_patch",
+        { patch: PATCH_ETC },
+        { collaborationMode: "plan" },
+      ),
+    ).toBe("deny")
+    expect(
+      permissionManager.evaluate(
+        "apply_patch",
+        { patch: PATCH_SSH },
+        { collaborationMode: "review" },
+      ),
+    ).toBe("deny")
+  })
+
+  it("补丁解析失败静默跳过路径检查，不改变门控结论", () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    expect(permissionManager.evaluate("apply_patch", { patch: "not a patch" })).toBe("ask")
+  })
+})
+
 describe("permissionManager.gate", () => {
   beforeEach(() => {
     resetManager()
@@ -219,6 +289,68 @@ describe("permissionManager.gate", () => {
     expect(
       await permissionManager.gate(gateContext("write", { path: "a.ts" }), "s1"),
     ).toBeUndefined()
+  })
+
+  it("apply_patch：高危目标路径 build 下弹窗，acceptEdits 不自动放行", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(gateContext("apply_patch", { patch: PATCH_ETC }), "s1")
+    expect(holder.capturedRequests).toHaveLength(1)
+    expect(holder.capturedRequests[0].summary).toBe("apply_patch /etc/hosts")
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "deny",
+    })
+    expect(await pending).toEqual({ block: true, reason: "Action denied by user." })
+
+    applySettings({ defaultMode: "acceptEdits", allow: [], deny: [], ask: [] })
+    const pendingSafe = permissionManager.gate(
+      gateContext("apply_patch", { patch: PATCH_SAFE }),
+      "s1",
+    )
+    expect(await pendingSafe).toBeUndefined()
+    const pendingRisky = permissionManager.gate(
+      gateContext("apply_patch", { patch: PATCH_ETC }),
+      "s1",
+    )
+    expect(holder.capturedRequests).toHaveLength(2)
+    permissionManager.respond({
+      requestId: holder.capturedRequests[1].requestId,
+      decision: "deny",
+    })
+    expect(await pendingRisky).toEqual({ block: true, reason: "Action denied by user." })
+  })
+
+  it("gate 单次 Guardian 评估：assessment 透传内部判定不重复评估", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const spy = vi.spyOn(guardianEvaluator, "evaluateAction")
+    try {
+      const pending = permissionManager.gate(gateContext("bash", { command: "npm install" }), "s1")
+      expect(spy).toHaveBeenCalledTimes(1)
+      permissionManager.respond({
+        requestId: holder.capturedRequests[0].requestId,
+        decision: "deny",
+      })
+      await pending
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it("gate apply_patch 按目标路径评估一次，不评估原始 patch 文本", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const spy = vi.spyOn(guardianEvaluator, "evaluateAction")
+    try {
+      const pending = permissionManager.gate(gateContext("apply_patch", { patch: PATCH_ETC }), "s1")
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith({ toolName: "apply_patch", args: { path: "/etc/hosts" } })
+      permissionManager.respond({
+        requestId: holder.capturedRequests[0].requestId,
+        decision: "deny",
+      })
+      await pending
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it("ask：允许后同会话同工具不再询问，新会话恢复", async () => {
@@ -420,6 +552,39 @@ describe("permissionManager 永久决策写回（G5）", () => {
     expect(holder.permissionSettings.allow).toEqual(["Bash(git status --short)"])
   })
 
+  it("apply_patch 单路径：永久允许写回路径规则，重载后同路径放行", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(gateContext("apply_patch", { patch: PATCH_SAFE }), "s1")
+    expect(holder.capturedRequests).toHaveLength(1)
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual(["apply_patch(src/safe.ts)"])
+    // 重载后同路径补丁直接放行，其他路径仍询问。
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_SAFE })).toBe("allow")
+    expect(permissionManager.evaluate("apply_patch", { patch: PATCH_MULTI_SAFE })).toBe("ask")
+  })
+
+  it("apply_patch 多路径：永久决策不写回规则（禁止存整段 patch/整工具放行）", async () => {
+    applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
+    const pending = permissionManager.gate(
+      gateContext("apply_patch", { patch: PATCH_MULTI_SAFE }),
+      "s1",
+    )
+    expect(holder.capturedRequests).toHaveLength(1)
+    permissionManager.respond({
+      requestId: holder.capturedRequests[0].requestId,
+      decision: "allow",
+      permanent: true,
+    })
+    expect(await pending).toBeUndefined()
+    expect(holder.permissionSettings.allow).toEqual([])
+    expect(holder.permissionSettings.deny).toEqual([])
+  })
+
   it("永久允许 webfetch：URL 规则写回 allow[]，重载后同前缀 URL 放行", async () => {
     applySettings({ defaultMode: "default", allow: [], deny: [], ask: [] })
     const pending = permissionManager.gate(
@@ -578,8 +743,32 @@ describe("permissionManager 永久决策写回（G5）", () => {
       expect(result).toEqual({
         block: true,
         reason:
-          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
+          "Action denied: Current collaboration mode is Review Mode (Read-Only Audit). Mutating actions (write, edit, apply_patch, todowrite) and task subagent dispatch are strictly prohibited in Review Mode. Please output structured findings using <review_findings> tags.",
       })
+    })
+
+    it("Plan/Review 模式下 task 子代理派发被硬拦（防止子代理绕过写限制）", async () => {
+      applySettings({
+        defaultMode: "default",
+        allow: [],
+        deny: [],
+        ask: [],
+      })
+      expect(
+        permissionManager.evaluate("task", { prompt: "x" }, { collaborationMode: "plan" }),
+      ).toBe("deny")
+      expect(
+        permissionManager.evaluate("task", { prompt: "x" }, { collaborationMode: "review" }),
+      ).toBe("deny")
+
+      const result = await permissionManager.gate(
+        gateContext("task", { prompt: "x" }),
+        "s1",
+        undefined,
+        { collaborationMode: "plan" },
+      )
+      expect(result?.block).toBe(true)
+      expect(result?.reason).toContain("subagent dispatch")
     })
   })
 })

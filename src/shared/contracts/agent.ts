@@ -1,5 +1,8 @@
 import type { ModelSelection } from "@shared/settings"
 
+// MCP 工具全名命名空间前缀（`mcp__server__tool`），与内置工具名隔离。
+export const MCP_TOOL_NAMESPACE = "mcp__"
+
 // 消息内容块：文本。
 export interface TextContent {
   type: "text"
@@ -11,6 +14,8 @@ export interface TextContent {
 export interface ThinkingContent {
   type: "thinking"
   thinking: string
+  // 思考签名（Anthropic thinking block signature，回传校验用）。
+  signature?: string
   durationMs?: number
 }
 
@@ -513,7 +518,6 @@ export interface PermissionRequest {
 export type PermissionDecision = {
   decision: "allow" | "deny"
   rememberForSession?: boolean
-  prefix?: string
   allowAll?: boolean
   permanent?: boolean
 }
@@ -523,7 +527,6 @@ export interface PermissionResponse {
   requestId: string
   decision: "allow" | "deny"
   rememberForSession?: boolean
-  prefix?: string
   allowAll?: boolean
   // 永久允许/拒绝写回配置（allowAll 不写回）。
   permanent?: boolean

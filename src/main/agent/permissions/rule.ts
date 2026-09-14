@@ -1,3 +1,4 @@
+import { parsePatch } from "@/agent/tools/applyPatchParser"
 import { globToRegExp } from "@/agent/tools/search"
 
 // 门控内置工具（有副作用或可外发数据；task 委托子代理运行，须确认后才 spawn；webfetch 拉取外网原文；apply_patch/write/edit 修改文件）。
@@ -64,14 +65,61 @@ const commandGlobToRegExp = (pattern: string): RegExp => {
   return new RegExp(`${source}$`)
 }
 
-// bash 参数匹配：命令前缀（CC 语义），含 `*` 时按命令 glob 全匹配。
+// bash 命令词边界：前缀之后必须是空白或 shell 分隔符，避免 `pnpm test` 放行 `pnpm testing`。
+const COMMAND_BOUNDARY = /[\s;&|()<>]/
+
+// 单字符是否处于命令词边界（结束视为边界）。
+const isCommandBoundary = (char: string | undefined): boolean =>
+  char === undefined || COMMAND_BOUNDARY.test(char)
+
+// bash 参数匹配：命令前缀（CC 语义，前缀后须为命令词边界），含 `*` 时按命令 glob 全匹配。
 const matchBashArg = (ruleArg: string, command: string): boolean => {
   if (ruleArg.includes("*")) return commandGlobToRegExp(ruleArg).test(command)
-  return command.startsWith(ruleArg)
+  if (!command.startsWith(ruleArg)) return false
+  // 规则本身以空白/分隔符结尾时已处于词边界，直接命中。
+  return (
+    isCommandBoundary(ruleArg[ruleArg.length - 1]) || isCommandBoundary(command[ruleArg.length])
+  )
+}
+
+// 去除路径末尾斜杠（根路径保留），用于 URL 路径段边界比较。
+const stripTrailingSlash = (path: string): string =>
+  path.length > 1 ? path.replace(/\/+$/, "") : path
+
+// webfetch URL 匹配：scheme/host/port 一致，路径按段边界前缀匹配；无法解析为 URL 时不命中。
+const matchWebfetchArg = (ruleArg: string, url: string): boolean => {
+  let ruleUrl: URL
+  let targetUrl: URL
+  try {
+    ruleUrl = new URL(ruleArg)
+    targetUrl = new URL(url)
+  } catch {
+    // 非 URL 规则或非法目标 URL：保守不命中（allow 规则不会误放行）。
+    return false
+  }
+  if (ruleUrl.protocol !== targetUrl.protocol) return false
+  if (ruleUrl.hostname !== targetUrl.hostname) return false
+  if (ruleUrl.port !== targetUrl.port) return false
+  const rulePath = stripTrailingSlash(ruleUrl.pathname)
+  if (rulePath === "/") return true
+  const targetPath = stripTrailingSlash(targetUrl.pathname)
+  return targetPath === rulePath || targetPath.startsWith(`${rulePath}/`)
 }
 
 // 路径 glob 匹配（相对会话 cwd）。
 const matchPathArg = (ruleArg: string, path: string): boolean => globToRegExp(ruleArg).test(path)
+
+// apply_patch 参数匹配：解析补丁目标路径，ruleArg 作为路径命中任一目标即算命中；解析失败不命中。
+const matchApplyPatchArg = (ruleArg: string, args: unknown): boolean => {
+  const patch = isRecord(args) && typeof args.patch === "string" ? args.patch : ""
+  if (!patch) return false
+  try {
+    return parsePatch(patch).actions.some((action) => matchPathArg(ruleArg, action.path))
+  } catch {
+    // 补丁无法解析：不命中（解析错误本身由工具报错）。
+    return false
+  }
+}
 
 /**
  * 单条规则对一次调用的命中判定。
@@ -88,8 +136,9 @@ const matchArgs = (rule: ParsedRule, toolName: string, args: unknown): boolean =
   }
   if (toolName === "webfetch") {
     const url = isRecord(args) && typeof args.url === "string" ? args.url : ""
-    return matchBashArg(rule.arg, url)
+    return matchWebfetchArg(rule.arg, url)
   }
+  if (toolName === "apply_patch") return matchApplyPatchArg(rule.arg, args)
   // MCP 工具：参数 JSON 子串匹配（宽松）。
   return JSON.stringify(args ?? {}).includes(rule.arg)
 }

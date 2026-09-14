@@ -1170,7 +1170,7 @@ Controls the **interactive approval behavior** between Agent and human user (ali
     permAllow: "Allow",
     permAllowDesc: "Allow this operation this time",
     permSession: "Allow for Session",
-    permSessionDesc: "Do not ask again for similar operations in this session",
+    permSessionDesc: "Allow this tool for the rest of this session without asking again",
     permAlways: "Always Allow",
     permAlwaysDesc: "Add to persistent allow list",
     permDeny: "Deny",

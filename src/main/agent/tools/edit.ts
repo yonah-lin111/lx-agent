@@ -160,14 +160,6 @@ export const createEditTool = (
   prepareArguments: prepareEditArguments,
   execute: async (_toolCallId, params, signal) => {
     const absolutePath = resolveToCwd(params.path, cwd)
-    if (!absolutePath) {
-      return {
-        content: [
-          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
-        ],
-        details: { refused: true },
-      }
-    }
 
     return withFileMutationQueue(absolutePath, async () => {
       // 不在 abort 监听器里 reject：那会提前释放 queue，而磁盘操作可能仍在进行。

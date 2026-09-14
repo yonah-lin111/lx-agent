@@ -159,6 +159,38 @@ describe("CommandSafetyGuard", () => {
     expect(evaluateCommandSafety('git reset "--hard"').level).toBe("dangerous")
   })
 
+  it("换行与后台分隔不构成绕过", () => {
+    expect(evaluateCommandSafety("true\ngit reset --hard").level).toBe("dangerous")
+    expect(evaluateCommandSafety("true\nrm -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("echo ok\r\ngit clean -fdx").level).toBe("dangerous")
+    expect(evaluateCommandSafety("git reset --hard & echo ok").level).toBe("dangerous")
+    expect(evaluateCommandSafety("echo a\necho b").level).toBe("safe")
+  })
+
+  it("shell -c 组合参数、eval/command 与引号命令名不构成绕过", () => {
+    expect(evaluateCommandSafety("bash -lc 'rm -rf /'").level).toBe("dangerous")
+    expect(evaluateCommandSafety('sh -ic "git reset --hard"').level).toBe("dangerous")
+    expect(evaluateCommandSafety("bash -l -c 'rm -rf /'").level).toBe("dangerous")
+    expect(evaluateCommandSafety("eval 'rm -rf /'").level).toBe("dangerous")
+    expect(evaluateCommandSafety('eval "git reset --hard"').level).toBe("dangerous")
+    expect(evaluateCommandSafety("command rm -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("'rm' -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety('"rm" -rf /').level).toBe("dangerous")
+    expect(evaluateCommandSafety("\\rm -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("RM -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("rm -RF /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("SUDO rm -rf /").level).toBe("dangerous")
+    expect(evaluateCommandSafety("bash -lc 'git status'").level).toBe("safe")
+    expect(evaluateCommandSafety("eval 'echo hi'").level).toBe("safe")
+    expect(evaluateCommandSafety("command -v rm").level).toBe("safe")
+  })
+
+  it("wrapper 展开后引号内的重定向仍被拦截", () => {
+    expect(evaluateCommandSafety("sh -c 'echo p > /tmp/lx-out.txt'").level).toBe("dangerous")
+    expect(evaluateCommandSafety('bash -lc "echo x >> log.txt"').level).toBe("dangerous")
+    expect(evaluateCommandSafety("sh -c 'echo x > /dev/null'").level).toBe("safe")
+  })
+
   it("常见文件操作指令不做硬拦截，交由权限确认流程", () => {
     expect(evaluateCommandSafety("touch index.ts").level).toBe("safe")
     expect(evaluateCommandSafety("mkdir -p src/features").level).toBe("safe")

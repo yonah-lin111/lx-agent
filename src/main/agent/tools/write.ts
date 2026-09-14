@@ -8,11 +8,11 @@ import { withFileMutationQueue } from "./file-mutation-queue"
 import { resolveToCwd } from "./path-utils"
 
 const writeSchema = z.object({
-  path: z.string().describe("Path of the file to write (relative to project root)"),
+  path: z.string().describe("Path of the file to write (relative to cwd; absolute paths allowed)"),
   content: z.string().describe("Content to write into the file"),
 })
 
-// 创建 write 工具：写入/覆盖 cwd 内文件，自动创建父目录，经 mutation queue 串行化，写后自动进行 LSP 诊断探测。
+// 创建 write 工具：写入/覆盖目标路径文件（相对路径按 cwd 解析，也接受绝对路径），自动创建父目录，经 mutation queue 串行化，写后自动进行 LSP 诊断探测；路径的权限审批由 permissionManager 负责。
 export const createWriteTool = (
   cwd: string,
   lspDeps?: LspFeedbackDeps,
@@ -20,18 +20,10 @@ export const createWriteTool = (
   name: "write",
   label: "Write file",
   description:
-    "Write content to a file. Creates the file if it does not exist, overwrites if it does, and automatically creates missing parent directories. Only files within the project root directory are allowed.",
+    "Write content to a file. Creates the file if it does not exist, overwrites if it does, and automatically creates missing parent directories. Relative paths resolve against the current working directory; absolute paths are also accepted. File mutations are subject to permission approval.",
   inputSchema: writeSchema,
   execute: async (_toolCallId, params, signal) => {
     const absolutePath = resolveToCwd(params.path, cwd)
-    if (!absolutePath) {
-      return {
-        content: [
-          { type: "text", text: `Access denied to path outside project root: ${params.path}` },
-        ],
-        details: { refused: true },
-      }
-    }
     const dir = dirname(absolutePath)
 
     return withFileMutationQueue(absolutePath, async () => {

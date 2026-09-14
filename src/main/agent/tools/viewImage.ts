@@ -114,9 +114,6 @@ export const createViewImageTool = (
     }
 
     const absolutePath = resolveToCwd(params.path, cwd)
-    if (!absolutePath) {
-      throw new Error(`Unable to resolve image path: ${params.path}`)
-    }
 
     let fileStat: Awaited<ReturnType<typeof stat>>
     try {

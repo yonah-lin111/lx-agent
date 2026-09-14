@@ -66,19 +66,7 @@ export const createMemoryTool = (cwd: string): AgentTool<typeof memoryInputSchem
       let filePath = paths.memoryFile
 
       if (targetRelPath) {
-        const resolved = resolveToCwd(targetRelPath, paths.root)
-        if (!resolved) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Access denied or invalid path outside memory root: ${targetRelPath}`,
-              },
-            ],
-            details: { error: "Access denied" },
-          }
-        }
-        filePath = resolved
+        filePath = resolveToCwd(targetRelPath, paths.root)
       }
 
       try {

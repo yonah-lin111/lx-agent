@@ -25,17 +25,6 @@ export const createLsTool = (
   inputSchema: lsSchema,
   execute: async (toolCallId, params) => {
     const dirPath = resolveToCwd(params.path || ".", cwd)
-    if (!dirPath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Access denied to path outside project root: ${params.path ?? "."}`,
-          },
-        ],
-        details: { refused: true },
-      }
-    }
 
     try {
       const statResult = await stat(dirPath)

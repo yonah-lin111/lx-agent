@@ -314,17 +314,6 @@ export const createGrepTool = (
   inputSchema: grepSchema,
   execute: async (toolCallId, params, signal) => {
     const searchPath = resolveToCwd(params.path || ".", cwd)
-    if (!searchPath) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Access denied to path outside project root: ${params.path ?? "."}`,
-          },
-        ],
-        details: { refused: true },
-      }
-    }
 
     let isDirectory = true
     try {

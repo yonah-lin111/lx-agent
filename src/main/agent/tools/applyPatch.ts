@@ -25,7 +25,6 @@ Syntax specification:
 export interface ApplyPatchToolDetails {
   diffs?: AgentDiff[]
   diagnostics?: Diagnostic[]
-  refused?: boolean
   error?: string
 }
 
@@ -56,7 +55,7 @@ export const createApplyPatchTool = (
       }
     }
 
-    // 1. 路径边界检查与预处理
+    // 1. 路径解析与预处理
     const fileOperations: Array<{
       action: (typeof parsed.actions)[number]
       absolutePath: string
@@ -65,14 +64,6 @@ export const createApplyPatchTool = (
 
     for (const action of parsed.actions) {
       const abs = resolveToCwd(action.path, cwd)
-      if (!abs) {
-        return {
-          content: [
-            { type: "text", text: `Access denied to path outside project root: ${action.path}` },
-          ],
-          details: { refused: true },
-        }
-      }
       fileOperations.push({
         action,
         absolutePath: abs,
