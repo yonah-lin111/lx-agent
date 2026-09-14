@@ -122,3 +122,66 @@ describe("TemplatePresetCommandMenu", () => {
     expect(result.current.templatePresetPanel).toBeNull()
   })
 })
+
+describe("$$$ 变量块斜杠命令作用域", () => {
+  const createEditorView = (doc: string, cursor: number): EditorView => {
+    const editorView = new EditorView({
+      state: EditorState.create({ doc, selection: { anchor: cursor } }),
+    })
+    editorView.coordsAtPos = vi.fn().mockReturnValue({ left: 10, right: 20, top: 10, bottom: 20 })
+    return editorView
+  }
+
+  const syncCommandIds = (editorView: EditorView): string[] => {
+    const editorRef = { current: editorView }
+    const { result } = renderHook(() => useMarkdownPanels({ editorViewRef: editorRef }))
+    act(() => {
+      result.current.syncSlashCommandPanel(editorView)
+    })
+    return result.current.slashCommandPanel?.commands.map((command) => command.id) ?? []
+  }
+
+  it("$$$ 块位于光标下方时展示模板块命令，不展示变量块命令", () => {
+    const doc = [
+      "&&& bugTemplate --start 「title: Fix Bug」",
+      "# Fix Bug",
+      "/",
+      "$$$ varTemplate --start 「title: 」",
+      'key: "var"',
+      "$$$ varTemplate --end",
+      "&&& bugTemplate --end",
+    ].join("\n")
+    const cursor = doc.indexOf("/") + 1
+
+    const commandIds = syncCommandIds(createEditorView(doc, cursor))
+
+    expect(commandIds).toContain("suppleTemplate")
+    expect(commandIds).not.toContain("singleLine")
+    expect(commandIds).not.toContain("multiLine")
+    expect(commandIds).not.toContain("templatePreset")
+  })
+
+  it("光标在 $$$ 块内时仅展示变量块命令", () => {
+    const doc = ["$$$ varTemplate --start 「title: 」", "/", "$$$ varTemplate --end"].join("\n")
+    const cursor = doc.indexOf("/") + 1
+
+    const commandIds = syncCommandIds(createEditorView(doc, cursor))
+
+    expect(commandIds).toEqual(["singleLine", "multiLine", "templatePreset"])
+  })
+
+  it("光标在 $$$ 块下方时展示全局命令，不展示变量块命令", () => {
+    const doc = [
+      "$$$ varTemplate --start 「title: 」",
+      'key: "var"',
+      "$$$ varTemplate --end",
+      "/",
+    ].join("\n")
+    const cursor = doc.lastIndexOf("/") + 1
+
+    const commandIds = syncCommandIds(createEditorView(doc, cursor))
+
+    expect(commandIds).toContain("addTemplate")
+    expect(commandIds).not.toContain("templatePreset")
+  })
+})

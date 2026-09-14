@@ -39,6 +39,7 @@ const MARKDOWN_VARIABLE_TRIGGER_RE = /(^|[\s.,;:!?，。；：！？、…()[\]{
 
 /**
  * 判断光标位置是否处于文档中的 $$$ 变量模板块区域内。
+ * 范围取 [开始行行首, 结束行行尾]（含两个边界行）；块上方或下方的光标一律视为块外。
  */
 export const isInsideMarkdownVariableBlock = (docText: string, cursor: number): boolean => {
   const lines = docText.split("\n")
@@ -51,10 +52,11 @@ export const isInsideMarkdownVariableBlock = (docText: string, cursor: number): 
     if (!inBlock) {
       if (MARKDOWN_VAR_TEMPLATE_START_RE.test(line)) {
         inBlock = true
+        if (cursor >= currentOffset && cursor <= lineEnd) return true
       }
     } else {
       if (MARKDOWN_VAR_TEMPLATE_END_RE.test(line)) {
-        if (cursor <= lineEnd) return true
+        if (cursor >= currentOffset && cursor <= lineEnd) return true
         inBlock = false
       } else if (cursor >= currentOffset && cursor <= lineEnd + 1) {
         return true

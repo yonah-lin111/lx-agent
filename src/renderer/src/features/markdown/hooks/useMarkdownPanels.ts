@@ -445,6 +445,7 @@ export const useMarkdownPanels = ({
             commandLine.value,
             isInsideTemplateBlock,
             customSlashCommandsRef.current,
+            isInsideVarBlock,
           )
         : false
     const commands = commandLine

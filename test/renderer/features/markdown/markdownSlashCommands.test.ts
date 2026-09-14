@@ -315,6 +315,28 @@ describe("Markdown 斜杠命令武装判定", () => {
     expect(getMarkdownSelectCommandValue("/summaryTitle", true)).toBeNull()
   })
 
+  it("作用域为 varTemplate 的选择型命令仅在变量块内武装，块外不得生效", () => {
+    // 变量块外：不武装，取值返回 null（避免被当作 /gitWorktree 执行切换）
+    expect(getMarkdownArmedSlashCommand("/templatePreset bug", false)).toBeNull()
+    expect(getMarkdownArmedSlashCommand("/templatePreset bug", false, [], false)).toBeNull()
+    expect(getMarkdownSelectCommandValue("/templatePreset bug", false)).toBeNull()
+
+    // 变量块内：正常武装并取到值
+    expect(getMarkdownArmedSlashCommand("/templatePreset bug", false, [], true)?.id).toBe(
+      "templatePreset",
+    )
+    expect(getMarkdownSelectCommandValue("/templatePreset bug", false, [], true)).toBe("bug")
+
+    // 其余作用域命令不受变量块标记影响
+    expect(getMarkdownArmedSlashCommand("/gitWorktree feature-x", false, [], false)?.id).toBe(
+      "gitWorktree",
+    )
+    expect(getMarkdownArmedSlashCommand("/sendPrompt agent", true, [], false)?.id).toBe(
+      "sendPrompt",
+    )
+    expect(getMarkdownArmedSlashCommand("/summaryTitle", true, [], false)?.id).toBe("summaryTitle")
+  })
+
   it("自定义命令：支持传入并在指定范围生效", () => {
     const customCommands = [
       {

@@ -1076,13 +1076,14 @@ const isFuzzyMatch = (query: string, keyword: string): boolean => {
 /**
  * 判定光标行为已武装的斜杠命令行，返回对应命令：
  * - 确认型：行内容与某个确认命令标签完全一致且位于模板块内；
- * - 选择型：行以「/命令 值」形态存在（标签后带非空值），等待回车触发；
+ * - 选择型：行以「/命令 值」形态存在（标签后带非空值），等待回车触发；varTemplate 作用域命令仅在变量块内可武装；
  * 已武装状态下命令面板不弹出，Enter 直接触发该命令。
  */
 export const getMarkdownArmedSlashCommand = (
   lineValue: string,
   isInsideTemplateBlock: boolean,
   customCommands: MarkdownSlashCommand[] = [],
+  isInsideVarBlock = false,
 ): MarkdownSlashCommand | null => {
   const value = lineValue.trim()
   const allCommands = [...markdownSlashCommands, ...customCommands]
@@ -1092,6 +1093,7 @@ export const getMarkdownArmedSlashCommand = (
         return isInsideTemplateBlock && command.label === value
       }
       if (command.kind === "select") {
+        if (command.scope === "varTemplate" && !isInsideVarBlock) return false
         return value.startsWith(`${command.label} `) && value.length > command.label.length + 1
       }
       return false
@@ -1104,16 +1106,28 @@ export const isMarkdownConfirmCommandArmed = (
   lineValue: string,
   isInsideTemplateBlock: boolean,
   customCommands: MarkdownSlashCommand[] = [],
+  isInsideVarBlock = false,
 ): boolean =>
-  getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock, customCommands) !== null
+  getMarkdownArmedSlashCommand(
+    lineValue,
+    isInsideTemplateBlock,
+    customCommands,
+    isInsideVarBlock,
+  ) !== null
 
 // 提取选择型命令行携带的值（标签后的首个词）；非选择型或缺失时返回 null。
 export const getMarkdownSelectCommandValue = (
   lineValue: string,
   isInsideTemplateBlock: boolean,
   customCommands: MarkdownSlashCommand[] = [],
+  isInsideVarBlock = false,
 ): string | null => {
-  const command = getMarkdownArmedSlashCommand(lineValue, isInsideTemplateBlock, customCommands)
+  const command = getMarkdownArmedSlashCommand(
+    lineValue,
+    isInsideTemplateBlock,
+    customCommands,
+    isInsideVarBlock,
+  )
   if (!command || command.kind !== "select") return null
   const value = lineValue.trim()
   const rest = value.slice(command.label.length).trim()
