@@ -203,4 +203,65 @@ describe("ProjectRecentItemsTags Component", () => {
     expect(document.querySelector(".project-recent-tag")).toBeNull()
     expect(mockNavigate).not.toHaveBeenCalled()
   })
+
+  it("悬停详情中的状态徽标只使用预设字号 text-xs", async () => {
+    mockSearchParams = new URLSearchParams("itemId=item-1")
+    useRecentItemsStore.setState({ ids: ["item-1"] })
+
+    mockedApi.listProjects.mockResolvedValue([
+      {
+        id: "p1",
+        name: "Project A",
+        type: "virtual",
+        referencedFolders: [],
+        createdAt: "",
+        updatedAt: "",
+      },
+    ])
+    mockedApi.listFolders.mockResolvedValue([])
+    mockedApi.list.mockResolvedValue([
+      {
+        id: "item-1",
+        projectId: "p1",
+        name: "Item C",
+        itemData: JSON.stringify([
+          {
+            id: "page-1",
+            name: "Page 1",
+            content: "&&& TaskA\n&&& done\n&&& TaskB\n&&& in_progress\n&&& TaskC\n&&& --end",
+          },
+        ]),
+        enabledFolderPaths: [],
+        status: "todo",
+        createdAt: "",
+        updatedAt: "",
+      },
+    ])
+
+    let container: HTMLElement
+    await act(async () => {
+      ;({ container } = render(<ProjectRecentItemsTags />))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+
+    const tag = container!.querySelector(".project-recent-tag") as HTMLElement
+    expect(tag).not.toBeNull()
+    fireEvent.mouseEnter(tag.parentElement as HTMLElement)
+
+    // 悬停气泡 150ms 延迟后挂载，等待后校验徽标字号。
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    })
+
+    const tooltip = document.querySelector('[role="tooltip"]')
+    expect(tooltip).not.toBeNull()
+    for (const label of ["待办 1", "进行中 1", "已完成 1"]) {
+      const badge = tooltip!.querySelector(`[aria-label="${label}"]`) as HTMLElement
+      expect(badge).not.toBeNull()
+      expect(badge.className).toContain("text-xs")
+      expect(badge.className).not.toContain("text-[10px]")
+    }
+  })
 })
