@@ -155,6 +155,10 @@ export class TurnStore {
     this.runMessages = []
     this.pendingCalls.clear()
     this.pendingChildCalls.clear()
+    // 跨轮 pending 状态清零，避免上一轮残留污染本轮落库。
+    this.pendingTodo = null
+    this.pendingCopiedFiles = null
+    this.overflowDetected = false
     this.sessionInput = {
       binding: input.binding,
       cwd: input.cwd,
@@ -172,6 +176,10 @@ export class TurnStore {
     this.pendingChildCalls.clear()
     this.currentRunGeneration = -1
     this.pendingSnapshotStart = null
+    // 被丢弃轮次的 pending 状态不得带入下一轮落库。
+    this.pendingTodo = null
+    this.pendingCopiedFiles = null
+    this.overflowDetected = false
   }
 
   // 当前 turn 落盘输入（新建会话建行判断用）。
@@ -497,11 +505,12 @@ export class TurnStore {
     // 文件快照：git 操作（add/write-tree/diff）放事务外，避免阻塞 DB 事务。
     const snapshotRecord = this.computeSnapshotRecord(messages)
 
+    // 本轮消息的 DB seq（事务提交成功后才写回内存对齐数组）。
+    const appendedSeqs: number[] = []
     agentSessionService.transaction(() => {
       const { sessionId } = this.createSessionIfNeeded(input, now)
 
       let seq = agentSessionService.nextSeq(sessionId)
-      const appendedSeqs: number[] = []
       for (const entry of entries) {
         agentSessionService.insertEntry({
           externalId: entry.externalId,
@@ -573,8 +582,6 @@ export class TurnStore {
       }
 
       agentSessionService.touchSession(sessionId, now)
-      // 本轮消息 seq 追加到对齐数组（与 agent.state.messages 尾部对应）。
-      this.messageSeqs.push(...appendedSeqs)
       // 本轮文件快照（hash_start → hash_end + 变更列表）。
       if (snapshotRecord) {
         agentSessionService.insertSnapshot({
@@ -588,6 +595,9 @@ export class TurnStore {
         })
       }
     })
+
+    // 事务提交成功后才更新内存对齐（回滚时不得追加幽灵 seq）。
+    this.messageSeqs.push(...appendedSeqs)
 
     // 检查消息中是否包含前端设计 <front_design> 块，若是则异步拆分落盘到 ~/.lx/session/{sessionId}/design/{designId}/
     for (const message of messages) {

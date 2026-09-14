@@ -3,6 +3,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const cpMock = vi.hoisted(() => ({ execSync: vi.fn() }))
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>()
+  return { ...actual, execSync: cpMock.execSync }
+})
+
 let appDataRoot = ""
 
 vi.mock("@/paths", () => ({
@@ -18,6 +25,10 @@ let projectCwd = ""
 
 beforeEach(() => {
   vi.resetModules()
+  cpMock.execSync.mockReset()
+  cpMock.execSync.mockImplementation(() => {
+    throw new Error("not a git repository")
+  })
   rootDir = mkdtempSync(join(tmpdir(), "lx-instr-"))
   appDataRoot = rootDir
   projectCwd = join(rootDir, "project")
@@ -102,5 +113,41 @@ describe("instructionLoader", () => {
     const block = formatInstructions([{ path: "/p/AGENTS.md", content: "rules" }])
     expect(block).toContain("Instructions from: /p/AGENTS.md")
     expect(block).toContain("rules")
+  })
+
+  describe("findGitRepoRoot 按 cwd 的短 TTL 缓存", () => {
+    it("同一 cwd 在 TTL 内复用结果，过期后重新执行 git", async () => {
+      const { findGitRepoRoot, clearGitRepoRootCache, setGitRepoRootCacheClock } =
+        await importLoader()
+      let now = 1_000
+      setGitRepoRootCacheClock(() => now)
+      clearGitRepoRootCache()
+      cpMock.execSync.mockReturnValue(`${projectCwd}\n`)
+
+      expect(findGitRepoRoot(projectCwd)).toBe(projectCwd)
+      now += 4_000
+      expect(findGitRepoRoot(projectCwd)).toBe(projectCwd)
+      expect(cpMock.execSync).toHaveBeenCalledTimes(1)
+
+      now += 2_000
+      expect(findGitRepoRoot(projectCwd)).toBe(projectCwd)
+      expect(cpMock.execSync).toHaveBeenCalledTimes(2)
+    })
+
+    it("不同 cwd 缓存隔离，失败结果同样被缓存", async () => {
+      const { findGitRepoRoot, clearGitRepoRootCache, setGitRepoRootCacheClock } =
+        await importLoader()
+      setGitRepoRootCacheClock(() => 10_000)
+      clearGitRepoRootCache()
+
+      expect(findGitRepoRoot(projectCwd)).toBeUndefined()
+      expect(findGitRepoRoot(projectCwd)).toBeUndefined()
+      expect(cpMock.execSync).toHaveBeenCalledTimes(1)
+
+      const otherDir = join(projectCwd, "other")
+      mkdirSync(otherDir, { recursive: true })
+      expect(findGitRepoRoot(otherDir)).toBeUndefined()
+      expect(cpMock.execSync).toHaveBeenCalledTimes(2)
+    })
   })
 })

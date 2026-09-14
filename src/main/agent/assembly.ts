@@ -51,6 +51,90 @@ export interface BuildSystemPromptOptions {
   variables?: Record<string, string | undefined>
 }
 
+// git 环境变量缓存 TTL：5 秒。同一轮发送可能多次装配系统提示词，5 秒内复用可消除重复的同步 git 调用，
+// 同时把分支/工作树状态的最大陈旧窗口限制在 5 秒。
+const GIT_ENV_CACHE_TTL_MS = 5 * 1000
+
+// 按 cwd 缓存 git 派生变量（含非 git 仓库/超时的空结果），避免同一 cwd 反复承受 execSync 卡顿。
+const gitEnvCache = new Map<
+  string,
+  { vars: Record<string, string | undefined>; expiresAt: number }
+>()
+
+// 缓存时钟（测试可注入）。
+let gitEnvCacheNow: () => number = () => Date.now()
+
+/** 注入 git 环境变量缓存时钟（测试用） */
+export const setGitEnvCacheClock = (now: () => number): void => {
+  gitEnvCacheNow = now
+}
+
+/** 清空 git 环境变量缓存（测试用，避免跨用例污染） */
+export const clearGitEnvCache = (): void => {
+  gitEnvCache.clear()
+}
+
+/** 收集 git 派生环境变量（按 cwd 短 TTL 缓存，失败结果同样缓存） */
+const collectGitEnvironmentVariables = (cwd: string): Record<string, string | undefined> => {
+  const now = gitEnvCacheNow()
+  const cached = gitEnvCache.get(cwd)
+  if (cached && cached.expiresAt > now) {
+    return cached.vars
+  }
+
+  const vars: Record<string, string | undefined> = {}
+  try {
+    const repoRoot = execSync("git rev-parse --show-toplevel", {
+      cwd,
+      timeout: 1000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    if (repoRoot) {
+      vars.repo_root = repoRoot
+    }
+  } catch {
+    // 非 git 仓库或超时，静默跳过
+  }
+
+  try {
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+      cwd,
+      timeout: 1000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    if (branch) {
+      vars.git_branch = branch
+    }
+  } catch {
+    // 非 git 仓库或超时，静默跳过
+  }
+
+  try {
+    const gitCommonDir = execSync("git rev-parse --git-common-dir", {
+      cwd,
+      timeout: 1000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    const gitDir = execSync("git rev-parse --git-dir", {
+      cwd,
+      timeout: 1000,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim()
+    if (gitCommonDir && gitDir && gitCommonDir !== gitDir) {
+      vars.is_worktree = "true"
+    }
+  } catch {
+    // 非 git 仓库或超时，静默跳过
+  }
+
+  gitEnvCache.set(cwd, { vars, expiresAt: now + GIT_ENV_CACHE_TTL_MS })
+  return vars
+}
+
 /** 同步收集环境上下文变量 (cwd, platform, date, git repo_root & git_branch) */
 export const collectEnvironmentVariables = (cwd?: string): Record<string, string | undefined> => {
   const vars: Record<string, string | undefined> = {
@@ -59,53 +143,7 @@ export const collectEnvironmentVariables = (cwd?: string): Record<string, string
   }
   if (cwd) {
     vars.cwd = cwd
-    try {
-      const repoRoot = execSync("git rev-parse --show-toplevel", {
-        cwd,
-        timeout: 1000,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
-      if (repoRoot) {
-        vars.repo_root = repoRoot
-      }
-    } catch {
-      // 非 git 仓库或超时，静默跳过
-    }
-
-    try {
-      const branch = execSync("git rev-parse --abbrev-ref HEAD", {
-        cwd,
-        timeout: 1000,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
-      if (branch) {
-        vars.git_branch = branch
-      }
-    } catch {
-      // 非 git 仓库或超时，静默跳过
-    }
-
-    try {
-      const gitCommonDir = execSync("git rev-parse --git-common-dir", {
-        cwd,
-        timeout: 1000,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
-      const gitDir = execSync("git rev-parse --git-dir", {
-        cwd,
-        timeout: 1000,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
-      if (gitCommonDir && gitDir && gitCommonDir !== gitDir) {
-        vars.is_worktree = "true"
-      }
-    } catch {
-      // 非 git 仓库或超时，静默跳过
-    }
+    Object.assign(vars, collectGitEnvironmentVariables(cwd))
   }
   return vars
 }

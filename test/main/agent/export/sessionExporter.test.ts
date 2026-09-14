@@ -10,7 +10,12 @@ import type {
   UserMessage,
 } from "@shared/contracts/agent"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { escapeHtml, generateSessionHtml } from "@/agent/export/htmlTemplate"
+import {
+  escapeHtml,
+  formatTimestamp,
+  generateSessionHtml,
+  simpleMarkdownToHtml,
+} from "@/agent/export/htmlTemplate"
 import {
   copySessionText,
   exportSessionToFile,
@@ -105,6 +110,47 @@ describe("Session Export & Share System (v10)", () => {
       expect(escapeHtml("<script>alert('xss')</script>")).toBe(
         "&lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;",
       )
+    })
+
+    it("should escape invalid timestamp fallback", () => {
+      expect(formatTimestamp(undefined)).toBe("")
+      expect(formatTimestamp(Number.NaN)).toBe("")
+      expect(formatTimestamp("<img src=x onerror=alert(1)>")).toBe(
+        "&lt;img src=x onerror=alert(1)&gt;",
+      )
+    })
+
+    it("should render inline code as <code> without double escaping", () => {
+      const html = simpleMarkdownToHtml("读取 `<script>alert(1)</script>`")
+
+      expect(html).toContain("<code>&lt;script&gt;alert(1)&lt;/script&gt;</code>")
+      expect(html).not.toContain("&lt;code&gt;")
+    })
+
+    it("should keep code block content with replacement patterns literal", () => {
+      const html = simpleMarkdownToHtml('```\nconst tpl = "a$&b$\'c"\n```')
+
+      expect(html).toContain('<div class="code-block-wrapper">')
+      expect(html).toContain("<pre><code>")
+      expect(html).toContain("a$&amp;b$&#039;c")
+      expect(html).not.toContain("__CODE_BLOCK_")
+    })
+
+    it("should escape malicious timestamp in generated HTML", () => {
+      const session = {
+        ...mockSession,
+        messages: [
+          {
+            role: "user",
+            content: "hi",
+            timestamp: "<img src=x onerror=alert(1)>",
+          } as unknown as UserMessage,
+        ],
+      } as AgentRestoredSession
+      const html = generateSessionHtml(session, mockSummary)
+
+      expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;")
+      expect(html).not.toContain("<img src=x onerror=alert(1)>")
     })
 
     it("should generate self-contained HTML with dark/light themes and message blocks", () => {

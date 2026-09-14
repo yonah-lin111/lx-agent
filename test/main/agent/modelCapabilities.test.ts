@@ -51,6 +51,35 @@ describe("modelSupportsImageInput", () => {
     expect(modelSupportsImageInput("openai", "my-local")).toBe(false)
   })
 
+  it("新模型关键词回退：claude-sonnet-4/opus-4/haiku-4、gpt-5、gpt-4.1、o3/o4 判定为视觉模型", () => {
+    const newVisionModels = [
+      "claude-sonnet-4-20250514",
+      "claude-opus-4-1",
+      "claude-haiku-4-5",
+      "gpt-5.2-codex",
+      "gpt-4.1-mini",
+      "o3",
+      "o3-mini",
+      "o4-mini",
+    ]
+    mocks.getModelProviderSettings.mockReturnValue(
+      settingsWith(Object.fromEntries(newVisionModels.map((id) => [id, {}]))),
+    )
+    for (const id of newVisionModels) {
+      expect(modelSupportsImageInput("openai", id), id).toBe(true)
+    }
+  })
+
+  it("短关键词（o3/o4）按 token 边界匹配，不误伤本地模型名", () => {
+    const nonVisionModels = ["my-local-o3x", "foo3", "o4spark", "llama-3.1-70b", "deepseek-chat"]
+    mocks.getModelProviderSettings.mockReturnValue(
+      settingsWith(Object.fromEntries(nonVisionModels.map((id) => [id, {}]))),
+    )
+    for (const id of nonVisionModels) {
+      expect(modelSupportsImageInput("openai", id), id).toBe(false)
+    }
+  })
+
   it("Provider 或模型缺失时走关键词回退（不抛错）", () => {
     mocks.getModelProviderSettings.mockReturnValue(settingsWith({}))
     expect(modelSupportsImageInput("missing", "gpt-4o")).toBe(true)

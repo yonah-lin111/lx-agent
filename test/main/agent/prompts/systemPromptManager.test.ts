@@ -358,4 +358,99 @@ describe("SystemPromptManager", () => {
       })
     })
   })
+
+  describe("外部文本原样注入 (literal sections)", () => {
+    it("literal 段跳过插值，{{name}}/{{#if}}/非法变量名原样保留且不抛错", () => {
+      const manager = new SystemPromptManager()
+      manager.registerSection({
+        name: "external",
+        order: 0,
+        literal: true,
+        text: "Use {{unknown_var}}, {{#if feature}}x{{/if}}, {{123bad}} and a lone {{ literally.",
+      })
+
+      const rendered = manager.renderSync({})
+      expect(rendered).toContain("{{unknown_var}}")
+      expect(rendered).toContain("{{#if feature}}")
+      expect(rendered).toContain("{{123bad}}")
+      expect(rendered).toContain("a lone {{ literally")
+    })
+
+    it("literal 段在异步装配路径同样跳过插值", async () => {
+      const manager = new SystemPromptManager()
+      manager.registerSection({
+        name: "external",
+        order: 0,
+        literal: true,
+        text: "Keep {{unknown_var}} as-is",
+      })
+
+      const assembly = await manager.assemble({})
+      expect(assembly.rendered).toBe("Keep {{unknown_var}} as-is")
+    })
+
+    it("literal context 同样跳过插值", async () => {
+      const manager = new SystemPromptManager()
+      manager.registerContext({
+        name: "external-context",
+        order: 0,
+        literal: true,
+        text: "Context {{unknown_var}}",
+      })
+
+      expect(manager.renderSync({})).toContain("Context {{unknown_var}}")
+      const assembly = await manager.assemble({})
+      expect(assembly.rendered).toBe("Context {{unknown_var}}")
+    })
+
+    it("受控模板（未标记 literal）遇到未注册变量仍严格抛错", () => {
+      const manager = new SystemPromptManager()
+      manager.registerSection({
+        name: "controlled",
+        order: 0,
+        text: "Hello {{unknown_var}}",
+      })
+
+      expect(() => manager.renderSync({})).toThrow(/unknown prompt variable/)
+      expect(() => manager.renderSync({})).toThrow(/"controlled"/)
+    })
+  })
+
+  describe("默认管理器的外部内容段 (literal)", () => {
+    it("技能描述含 {{...}} 模板文本时不抛错且原样注入", async () => {
+      const manager = createDefaultSystemPromptManager()
+      const assembly = await manager.assemble({
+        activeSkills: [
+          {
+            name: "templated-skill",
+            description: "Uses {{unknown_var}} and {{#if feature}} blocks",
+            filePath: "/path/to/SKILL.md",
+            baseDir: "/path/to",
+            disableModelInvocation: false,
+          },
+        ],
+      })
+
+      const skills = assembly.sections.find((s) => s.name === PROMPT_SECTION_NAMES.SKILLS)
+      expect(skills?.text).toContain("{{unknown_var}}")
+      expect(skills?.text).toContain("{{#if feature}}")
+    })
+
+    it("MEMORY.md 原文含 {{...}} 模板文本时不抛错且原样注入", async () => {
+      const manager = createDefaultSystemPromptManager()
+      const assembly = await manager.assemble({
+        workspaceMemory: {
+          memoryPath: "/mem/MEMORY.md",
+          rawContent: "Remember {{name}} and {{#if x}} rules",
+          sections: [],
+          notesCount: 0,
+          rolloutsCount: 0,
+        },
+      })
+
+      const memory = assembly.sections.find((s) => s.name === PROMPT_SECTION_NAMES.WORKSPACE_MEMORY)
+      expect(memory?.text).toContain("{{name}}")
+      expect(memory?.text).toContain("{{#if x}}")
+    })
+  })
 })

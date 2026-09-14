@@ -37,7 +37,7 @@ flowchart TD
         Runner --> SPM[SystemPromptManager: 动态提示词分层装配]
         Runner --> Guardian[GuardianEvaluator: 四维风险防线]
         Runner --> Perm[PermissionManager: 模式/沙箱/规则/审批策略]
-        Runner --> Guard[RepeatToolGuard + HarnessFeedbackGuard]
+        Runner --> Guard[RepeatToolGuard]
         Runner --> Compaction[ContextCompactor + ContextPruner]
     end
 
@@ -107,7 +107,6 @@ src/main/agent/
 │   ├── guardianEvaluator.ts   # Guardian 四维安全规则引擎
 │   ├── commandSafetyGuard.ts  # 高危 Shell 命令语法树拆解与拦截
 │   ├── repeatToolGuard.ts     # 工具重复调用死循环熔断 (3/5/7)
-│   └── harnessFeedbackGuard.ts# 截断/Patch 失败的模型自愈反馈
 ├── permissions/           # 权限信任与多级审批体系
 │   ├── permissionManager.ts  # 模式/沙箱/规则/会话白名单调度
 │   └── rule.ts               # Tool(arg) 规则解析引擎

@@ -18,7 +18,15 @@ export interface ContextPrunerOptions {
   prunableTools?: string[]
 }
 
-const DEFAULT_PRUNABLE_TOOLS = ["read", "grep", "find", "ls", "webfetch", "webSearch", "view_image"]
+const DEFAULT_PRUNABLE_TOOLS = [
+  "read",
+  "grep",
+  "find",
+  "ls",
+  "webfetch",
+  "web_search",
+  "view_image",
+]
 
 /**
  * 纯函数：对 AgentMessage[] 执行只读工具大输出修剪

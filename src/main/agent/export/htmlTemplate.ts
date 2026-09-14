@@ -26,7 +26,7 @@ export function escapeHtml(str: string | undefined | null): string {
 export function formatTimestamp(ts: number | string | undefined): string {
   if (!ts) return ""
   const date = typeof ts === "number" ? new Date(ts) : new Date(ts)
-  if (Number.isNaN(date.getTime())) return String(ts)
+  if (Number.isNaN(date.getTime())) return escapeHtml(String(ts))
   return date.toLocaleString("zh-CN", {
     year: "numeric",
     month: "2-digit",
@@ -67,16 +67,17 @@ export function simpleMarkdownToHtml(markdown: string): string {
     return placeholder
   })
 
-  // 行内代码
-  text = text.replace(/`([^`]+)`/g, (_, code) => `<code>${escapeHtml(code)}</code>`)
-
-  // 转义常规 HTML
+  // 转义常规 HTML（先转义再生成行内代码标签，避免 <code> 标签被二次转义）
   text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
-  // 恢复代码块占位符
-  codeBlocks.forEach((block, idx) => {
-    text = text.replace(`__CODE_BLOCK_${idx}__`, block)
-  })
+  // 行内代码（内容已转义，直接包裹）
+  text = text.replace(/`([^`]+)`/g, (_, code) => `<code>${code}</code>`)
+
+  // 恢复代码块占位符：函数形式避免 $& 等替换语义，单次扫描避免重扫已插入内容
+  text = text.replace(
+    /__CODE_BLOCK_(\d+)__/g,
+    (_match, idx: string) => codeBlocks[Number(idx)] ?? "",
+  )
 
   // 标题
   text = text.replace(/^### (.*$)/gim, "<h3>$1</h3>")

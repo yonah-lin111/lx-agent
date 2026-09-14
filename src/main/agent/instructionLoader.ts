@@ -26,19 +26,49 @@ const readInstructionFile = (path: string): InstructionFile | null => {
   }
 }
 
-/** 解析仓库根目录（非 git 仓库或失败回退 undefined） */
+// git 根目录缓存 TTL：5 秒。装配系统提示词时每条指令链都会解析一次根目录，
+// 5 秒内复用可避免同一轮发送重复同步执行 git，同时限制目录变更的陈旧窗口。
+const GIT_ROOT_CACHE_TTL_MS = 5 * 1000
+
+// 按 cwd 缓存 git 根目录（含非 git 仓库/失败结果），避免反复承受 execSync 超时。
+const gitRootCache = new Map<string, { root: string | undefined; expiresAt: number }>()
+
+// 缓存时钟（测试可注入）。
+let gitRootCacheNow: () => number = () => Date.now()
+
+/** 注入 git 根目录缓存时钟（测试用） */
+export const setGitRepoRootCacheClock = (now: () => number): void => {
+  gitRootCacheNow = now
+}
+
+/** 清空 git 根目录缓存（测试用，避免跨用例污染） */
+export const clearGitRepoRootCache = (): void => {
+  gitRootCache.clear()
+}
+
+/** 解析仓库根目录（非 git 仓库或失败回退 undefined；按 cwd 短 TTL 缓存） */
 export const findGitRepoRoot = (cwd: string): string | undefined => {
+  const now = gitRootCacheNow()
+  const cached = gitRootCache.get(cwd)
+  if (cached && cached.expiresAt > now) {
+    return cached.root
+  }
+
+  let root: string | undefined
   try {
-    const root = execSync("git rev-parse --show-toplevel", {
+    const output = execSync("git rev-parse --show-toplevel", {
       cwd,
       timeout: 1000,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim()
-    return root && existsSync(root) ? resolve(root) : undefined
+    root = output && existsSync(output) ? resolve(output) : undefined
   } catch {
-    return undefined
+    root = undefined
   }
+
+  gitRootCache.set(cwd, { root, expiresAt: now + GIT_ROOT_CACHE_TTL_MS })
+  return root
 }
 
 /** 获取从 repoRoot 到 targetDir 的所有目录路径链（从浅到深：repoRoot, ..., targetDir） */
