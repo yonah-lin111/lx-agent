@@ -53,7 +53,7 @@ const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
       {card.todo > 0 && (
         <span
           aria-label={`待办 ${card.todo}`}
-          className="flex items-center gap-1 rounded-[4px] bg-white/5 px-1 text-[10px] leading-4 text-white/50"
+          className="flex items-center gap-1 rounded-[4px] bg-white/5 px-1 text-xs leading-4 text-white/50"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
           {card.todo}
@@ -62,7 +62,7 @@ const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
       {card.inProgress > 0 && (
         <span
           aria-label={`进行中 ${card.inProgress}`}
-          className="flex items-center gap-1 rounded-[4px] bg-amber-400/10 px-1 text-[10px] leading-4 text-amber-400"
+          className="flex items-center gap-1 rounded-[4px] bg-amber-400/10 px-1 text-xs leading-4 text-amber-400"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
           {card.inProgress}
@@ -71,7 +71,7 @@ const renderStatusBadges = (card: RecentItemCard): React.ReactNode => {
       {card.done > 0 && (
         <span
           aria-label={`已完成 ${card.done}`}
-          className="flex items-center gap-1 rounded-[4px] bg-emerald-400/10 px-1 text-[10px] leading-4 text-emerald-400"
+          className="flex items-center gap-1 rounded-[4px] bg-emerald-400/10 px-1 text-xs leading-4 text-emerald-400"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           {card.done}
