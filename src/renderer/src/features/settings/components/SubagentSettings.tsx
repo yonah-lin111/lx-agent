@@ -11,6 +11,7 @@ import {
 import { AlertTriangle, Edit2, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxInfoTooltip } from "@/components/ui/LxInfoTooltip"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxModal } from "@/components/ui/LxModal"
 import { LxSelect } from "@/components/ui/LxSelect"
@@ -266,9 +267,12 @@ export const SubagentSettings = (): React.JSX.Element => {
 
       {/* 全局治理卡片 */}
       <div className="settings-item-card flex flex-col gap-3 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-3">
-        <h3 className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
-          {t("settings.subagentsGlobal")}
-        </h3>
+        <div className="flex min-w-0 items-center gap-2">
+          <h3 className="text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.85))]">
+            {t("settings.subagentsGlobal")}
+          </h3>
+          <LxInfoTooltip markdown={t("settings.subagentsGlobalDoc")} placement="right" />
+        </div>
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-[var(--color-theme-text-muted,rgba(255,255,255,0.6))]">
@@ -361,7 +365,7 @@ export const SubagentSettings = (): React.JSX.Element => {
           {builtins.map((role) => (
             <div
               key={role.name}
-              className="flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+              className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-xs font-semibold text-[var(--color-theme-text,rgba(255,255,255,0.9))]">
@@ -412,7 +416,7 @@ export const SubagentSettings = (): React.JSX.Element => {
             {roleEntries.map(([name, config]) => (
               <div
                 key={name}
-                className="flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
+                className="settings-item-card flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-theme-border,rgba(255,255,255,0.06))] bg-[var(--color-theme-surface,rgba(255,255,255,0.02))] p-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">

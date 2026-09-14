@@ -364,6 +364,21 @@ Run user commands at key agent lifecycle points — sessions, prompt submission,
     subagents: "Subagents",
     subagentsDesc: "Configure subagent roles and runtime limits; takes effect for new sessions",
     subagentsGlobal: "Global Governance",
+    subagentsGlobalDoc: `### Global Governance
+
+Constrains how all subagents run; changes take effect for **new sessions** only, running sessions keep the previous configuration.
+
+#### 🎯 Default Subagent Model
+- Roles without their own model use this default; leave empty to inherit the current session model.
+- Resolution order: role model override > global default model > current session model.
+
+#### 🧭 Subagent Mode
+- Subagents do not inherit the main agent's mode; defaults to Build.
+- Build executes; Plan and Review are strictly read-only; Design targets the front-end design canvas.
+
+#### ⚙️ Runtime Limits
+- **Max Concurrent**: 1–32; empty means unlimited. Once the limit is reached, new delegations are rejected immediately instead of queued — reuse an existing subagent or wait for one to finish.
+- **Max Nesting Depth**: 1–5; controls how many levels a subagent may keep delegating, 1 means subagents cannot delegate further.`,
     subagentsDefaultModel: "Default Subagent Model",
     subagentsInheritModel: "Inherit current session model",
     subagentsMode: "Subagent Mode",

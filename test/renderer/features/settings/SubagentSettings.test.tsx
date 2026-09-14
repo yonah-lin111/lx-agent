@@ -86,6 +86,9 @@ describe("SubagentSettings", () => {
 
     expect(await screen.findByText("worker")).toBeTruthy()
     expect(screen.getByText("explorer")).toBeTruthy()
+    // Global Governance 说明图标与内置角色卡片的主题钩子类。
+    expect(screen.getByLabelText("Info")).toBeTruthy()
+    expect(screen.getByText("explorer").closest(".settings-item-card")).not.toBeNull()
     expect(screen.getByText("Execution and production work")).toBeTruthy()
     expect(screen.getByText("read, grep, lsp")).toBeTruthy()
     expect(screen.getByText("Inherit parent tools")).toBeTruthy()
@@ -105,6 +108,8 @@ describe("SubagentSettings", () => {
     await screen.findByText("my-reviewer")
     // 自定义角色来源标识。
     expect(screen.getByText("Custom")).toBeTruthy()
+    // 自定义角色卡片同样接入主题钩子类。
+    expect(screen.getByText("my-reviewer").closest(".settings-item-card")).not.toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Add Role" }))
     const nameInput = await screen.findByPlaceholderText("e.g. my-reviewer")

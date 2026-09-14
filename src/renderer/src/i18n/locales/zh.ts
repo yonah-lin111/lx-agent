@@ -365,6 +365,21 @@ export const zh: TranslationDictionary = {
     subagents: "子代理",
     subagentsDesc: "配置子代理角色与运行时治理项；保存后对新会话生效",
     subagentsGlobal: "全局治理",
+    subagentsGlobalDoc: `### 全局治理
+
+约束所有子代理的运行方式；保存后仅对**新会话**生效，运行中的会话沿用旧配置。
+
+#### 🎯 默认子代理模型
+- 未单独配置模型的角色使用该默认模型；留空表示继承当前会话模型。
+- 模型优先级：角色模型覆盖 > 全局默认模型 > 当前会话模型。
+
+#### 🧭 子代理模式
+- 子代理不继承主 Agent 的协作模式，缺省为 Build。
+- Build 构建执行；Plan 与 Review 严格只读；Design 面向前端设计看板。
+
+#### ⚙️ 运行限制
+- **最大并发**：1–32；留空表示不限制。达到上限的委派会被立即拒绝而非排队，应复用已有子代理或等待其完成。
+- **最大嵌套深度**：1–5；控制子代理继续向下委派的层数，1 表示子代理不可再委派。`,
     subagentsDefaultModel: "默认子代理模型",
     subagentsInheritModel: "继承当前会话模型",
     subagentsMode: "子代理模式",
