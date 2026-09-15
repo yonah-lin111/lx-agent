@@ -45,7 +45,7 @@ export const LxTagDemo = (): React.JSX.Element => {
       >
         <div className="flex flex-wrap items-center gap-2">
           <LxTag size="small">Small</LxTag>
-          <LxTag size="medium">Default</LxTag>
+          <LxTag size="medium">Medium</LxTag>
           <LxTag size="large">Large</LxTag>
         </div>
       </UiPreviewSection>

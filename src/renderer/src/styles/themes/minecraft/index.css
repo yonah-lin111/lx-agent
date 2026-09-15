@@ -559,6 +559,57 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* ========================================================
+ * LxCheckbox / LxRadio 魔改（经典直角像素方格与像素圆点）
+ * ======================================================== */
+[data-theme="minecraft"] .lx-checkbox-box,
+[data-theme="minecraft"] .lx-radio-dot {
+  border-radius: 0px !important;
+  border: 2px solid #000000 !important;
+  background-color: #14141d !important;
+  transition: none !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.15),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 悬停：提亮右下内高光，保持凸起浮雕 */
+[data-theme="minecraft"] .lx-checkbox:hover .lx-checkbox-box,
+[data-theme="minecraft"] .lx-radio:hover .lx-radio-dot {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.3),
+    2px 2px 0px 0px #000000 !important;
+}
+
+/* 选中：经验条荧光绿底 + 黑色勾/点 + 外发光 */
+[data-theme="minecraft"] .lx-checkbox input:checked + .lx-checkbox-box,
+[data-theme="minecraft"] .lx-radio input:checked + .lx-radio-dot {
+  background-color: #55ff55 !important;
+  border-color: #000000 !important;
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(255, 255, 255, 0.55),
+    inset -2px -2px 0px 0px rgba(0, 0, 0, 0.8),
+    2px 2px 0px 0px #000000,
+    0px 0px 8px rgba(85, 255, 85, 0.4) !important;
+}
+
+/* 键盘聚焦：绿色微光提示 */
+[data-theme="minecraft"] .lx-checkbox input:focus-visible + .lx-checkbox-box,
+[data-theme="minecraft"] .lx-radio input:focus-visible + .lx-radio-dot {
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.2),
+    2px 2px 0px 0px #000000,
+    0px 0px 6px rgba(85, 255, 85, 0.35) !important;
+}
+
+/* 单选项行容器直角化 */
+[data-theme="minecraft"] .lx-radio {
+  border-radius: 0px !important;
+}
+
+/* ========================================================
  * 设置页面配置卡片（经典直角石质像素凹槽）
  * ======================================================== */
 [data-theme="minecraft"] .settings-item-card {

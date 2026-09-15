@@ -54,6 +54,24 @@ export const LxCheckboxDemo = (): React.JSX.Element => {
         </div>
       </UiPreviewSection>
       <UiPreviewSection
+        title={t("uiPreview.demos.checkboxSizes")}
+        description={t("uiPreview.demos.checkboxSizesDesc")}
+      >
+        <div className="flex flex-wrap items-center gap-4">
+          {(["small", "medium", "large"] as const).map((size) => (
+            <label key={size} className="flex items-center gap-2 text-xs text-white/70">
+              <LxCheckbox
+                checked
+                size={size}
+                onChange={() => {}}
+                aria-label={t("uiPreview.demos.checkboxSizes")}
+              />
+              {t(`uiPreview.demos.${size}Size`)}
+            </label>
+          ))}
+        </div>
+      </UiPreviewSection>
+      <UiPreviewSection
         title={t("uiPreview.demos.disabledState")}
         description={t("uiPreview.demos.disabledStateCheckboxDesc")}
       >

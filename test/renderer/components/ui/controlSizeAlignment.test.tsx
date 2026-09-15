@@ -3,9 +3,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { LxCheckbox } from "@/components/ui/LxCheckbox"
 import { LxIconButton } from "@/components/ui/LxIconButton"
 import { LxInput } from "@/components/ui/LxInput"
 import { LxNavItem } from "@/components/ui/LxNavItem"
+import { LxRadio } from "@/components/ui/LxRadio"
 import { LxSelect } from "@/components/ui/LxSelect"
 import { LxTag } from "@/components/ui/LxTag"
 
@@ -35,6 +37,20 @@ const NAV_ITEM_HEIGHT_STEPS = [
   { size: "small", height: "h-6" },
   { size: "medium", height: "h-7" },
   { size: "large", height: "h-8" },
+] as const
+
+// LxCheckbox 方框尺寸对齐 LxIconButton 的图标档位。
+const CHECKBOX_SIZE_STEPS = [
+  { size: "small", box: "h-3.5" },
+  { size: "medium", box: "h-4" },
+  { size: "large", box: "h-[18px]" },
+] as const
+
+// LxRadio 行高对齐控件阶梯，圆框对齐图标档位。
+const RADIO_SIZE_STEPS = [
+  { size: "small", row: "h-6", box: "h-3.5" },
+  { size: "medium", row: "h-7", box: "h-4" },
+  { size: "large", row: "h-8", box: "h-[18px]" },
 ] as const
 
 describe("控件尺寸阶梯对齐", () => {
@@ -103,6 +119,22 @@ describe("控件尺寸阶梯对齐", () => {
     expect(container.querySelector(".lx-nav-item")?.className).toContain(height)
   })
 
+  it.each(CHECKBOX_SIZE_STEPS)("LxCheckbox $size 方框尺寸为 $box", ({ size, box }) => {
+    const { container } = render(<LxCheckbox size={size} onChange={() => {}} />)
+    const root = container.querySelector(".lx-checkbox")
+    expect(root?.getAttribute("data-size")).toBe(size)
+    expect(container.querySelector(".lx-checkbox-box")?.parentElement).toBe(root)
+    expect(root?.className).toContain(box)
+  })
+
+  it.each(RADIO_SIZE_STEPS)("LxRadio $size 行高 $row、圆框 $box", ({ size, row, box }) => {
+    const { container } = render(<LxRadio size={size} value="a" label="A" />)
+    const label = container.querySelector(".lx-radio")
+    expect(label?.getAttribute("data-size")).toBe(size)
+    expect(label?.className).toContain(row)
+    expect(container.querySelector(".lx-radio-dot")?.className).toContain(box)
+  })
+
   it("各 Lx 控件默认档统一为 medium（h-7）", () => {
     expect(
       render(<LxIconButton aria-label="default-icon" />).container.querySelector("button")
@@ -123,6 +155,17 @@ describe("控件尺寸阶梯对齐", () => {
         <LxSelect value="a" onChange={() => {}} options={[{ value: "a", label: "A" }]} />,
       ).container.querySelector(".lx-select-trigger")?.className,
     ).toContain("h-7")
+
+    const checkbox = render(<LxCheckbox onChange={() => {}} />)
+    expect(checkbox.container.querySelector(".lx-checkbox")?.getAttribute("data-size")).toBe(
+      "medium",
+    )
+    expect(checkbox.container.querySelector(".lx-checkbox")?.className).toContain("h-4")
+
+    const radio = render(<LxRadio value="a" label="A" />)
+    expect(radio.container.querySelector(".lx-radio")?.getAttribute("data-size")).toBe("medium")
+    expect(radio.container.querySelector(".lx-radio")?.className).toContain("h-7")
+    expect(radio.container.querySelector(".lx-radio-dot")?.className).toContain("h-4")
   })
 
   it("LxInput 默认尺寸为 medium（h-7），多行输入保持内容撑高", () => {
