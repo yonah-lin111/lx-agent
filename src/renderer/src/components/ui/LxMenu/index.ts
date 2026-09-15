@@ -1,1 +1,1 @@
-export { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu/LxMenu"
+export { LxMenu, LxMenuSeparator } from "@/components/ui/LxMenu/LxMenu"

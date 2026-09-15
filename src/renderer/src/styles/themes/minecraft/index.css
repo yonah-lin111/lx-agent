@@ -391,13 +391,15 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     4px 4px 0px 0px #000000 !important;
 }
 
-/* 面板选项 Item（3D 凸起） */
+/* 面板选项 Item（3D 凸起；LxMenuItem 为统一实现，禁止马赛克纹理透出） */
+[data-theme="minecraft"] .lx-menu-item,
 [data-theme="minecraft"] .markdown-command-menu [role="option"],
 [data-theme="minecraft"] [role="listbox"] [role="option"],
 [data-theme="minecraft"] [role="menu"] [role="menuitem"],
 [data-theme="minecraft"] [role="menu"] [role="menuitemradio"],
-[data-theme="minecraft"] [role="menu"] button {
+[data-theme="minecraft"] [role="menu"] button:not([data-active="true"]) {
   background-color: #1e1e2a !important;
+  background-image: none !important;
   border: 2px solid #000000 !important;
   border-left: 4px solid transparent !important;
   box-shadow:
@@ -409,22 +411,24 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
 }
 
 /* 面板选项悬停（未选中）：稍亮底色 + 白字 */
+[data-theme="minecraft"] .lx-menu-item:hover:not([data-active="true"]),
 [data-theme="minecraft"] .markdown-command-menu [role="option"]:hover:not([aria-selected="true"]),
 [data-theme="minecraft"] [role="listbox"] [role="option"]:hover:not([aria-selected="true"]),
-[data-theme="minecraft"] [role="menu"] [role="menuitem"]:hover:not([aria-selected="true"]),
+[data-theme="minecraft"]
+  [role="menu"]
+  [role="menuitem"]:hover:not([aria-selected="true"]):not([data-active="true"]),
 [data-theme="minecraft"] [role="menu"] [role="menuitemradio"]:hover:not([aria-checked="true"]),
-[data-theme="minecraft"] [role="menu"] button:hover {
+[data-theme="minecraft"] [role="menu"] button:hover:not([data-active="true"]) {
   background-color: #2b2b3b !important;
   color: #ffffff !important;
 }
 
 /* 面板选项激活/选中态（3D 凸起 + 左侧 4px 荧光绿指示边框 + 内部微光，区别于 hover） */
+[data-theme="minecraft"] .lx-menu-item[data-active="true"],
 [data-theme="minecraft"] .markdown-command-menu [role="option"][aria-selected="true"],
 [data-theme="minecraft"] [role="listbox"] [role="option"][aria-selected="true"],
 [data-theme="minecraft"] [role="menu"] [role="menuitem"][aria-selected="true"],
-[data-theme="minecraft"] [role="menu"] [role="menuitemradio"][aria-checked="true"],
-[data-theme="minecraft"] [role="menu"] [role="menuitem"].bg-white\/8,
-[data-theme="minecraft"] [role="menu"] [role="menuitem"].bg-white\/5 {
+[data-theme="minecraft"] [role="menu"] [role="menuitemradio"][aria-checked="true"] {
   background-color: #14141c !important;
   color: #ffffff !important;
   border: 2px solid #000000 !important;
@@ -1128,33 +1132,6 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
     1px 1px 0px 0px #000000 !important;
   padding: 1px 6px !important;
   font-family: var(--theme-font-family) !important;
-}
-
-[data-theme="minecraft"] .theme-menu-option {
-  border-radius: 0px !important;
-  border: 2px solid #000000 !important;
-  background-color: #1e1e2a !important;
-  color: #a0a0b0 !important;
-  box-shadow:
-    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.1),
-    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.6) !important;
-  font-family: var(--theme-font-family) !important;
-  transition: none !important;
-}
-
-[data-theme="minecraft"] .theme-menu-option:hover:not(.bg-white\/10) {
-  background-color: #2b2b3b !important;
-  color: #ffffff !important;
-}
-
-[data-theme="minecraft"] .theme-menu-option.bg-white\/10 {
-  background-color: #14141c !important;
-  color: #ffffff !important;
-  border: 2px solid #000000 !important;
-  border-left: 4px solid #55ff55 !important;
-  box-shadow:
-    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.95),
-    inset -1px -1px 0px 0px rgba(85, 255, 85, 0.25) !important;
 }
 
 /* ========================================================

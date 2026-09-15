@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useContext, useEffect } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { LxMenu, LxMenuItem } from "@/components/ui/LxMenu/LxMenu"
+import { LxMenu } from "@/components/ui/LxMenu/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { TooltipLayerContext } from "@/components/ui/LxTooltip"
 
 // 模拟菜单内的嵌套 portal 浮层（如二级子菜单）：向菜单层注册 body 下节点。

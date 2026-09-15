@@ -15,6 +15,7 @@ import {
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LxIconButton } from "@/components/ui/LxIconButton"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import { useLxAgentToast } from "@/components/ui/LxToast"
 import { LxTooltip } from "@/components/ui/LxTooltip"
 import { agentApi } from "@/features/agent/api/agentApi"
@@ -846,19 +847,14 @@ export const FrontDesignPage = (): React.JSX.Element => {
                   {THEME_OPTIONS.map((opt) => {
                     const isSelected = pageTheme === opt.id
                     return (
-                      <button
+                      <LxMenuItem
                         key={opt.id}
-                        type="button"
+                        active={isSelected}
+                        trailing={isSelected ? <Check className="text-emerald-400" /> : null}
                         onClick={() => handleSelectTheme(opt.id)}
-                        className={`theme-menu-option flex w-full cursor-pointer items-center justify-between gap-3 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                          isSelected
-                            ? "bg-white/10 font-semibold text-white"
-                            : "text-white/70 hover:bg-white/5 hover:text-white"
-                        }`}
                       >
-                        <span>{opt.label}</span>
-                        {isSelected && <Check className="h-3 w-3 shrink-0 text-emerald-400" />}
-                      </button>
+                        {opt.label}
+                      </LxMenuItem>
                     )
                   })}
                 </div>

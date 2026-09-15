@@ -11,7 +11,8 @@ import {
 import type React from "react"
 import { useEffect, useState } from "react"
 
-import { LxMenu, LxMenuItem, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenu, LxMenuSeparator } from "@/components/ui/LxMenu"
+import { LxMenuItem } from "@/components/ui/LxMenuItem"
 import type { ProjectNavigationMenuType, PromptStatus } from "@/features/project-navigation/types"
 import { type TranslationKey, useTranslation } from "@/i18n"
 

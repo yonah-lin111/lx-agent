@@ -31,16 +31,6 @@ interface LxMenuProps {
   maxWidth?: number
 }
 
-// 菜单项属性。
-interface LxMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode
-  leading?: React.ReactNode
-  trailing?: React.ReactNode
-  active?: boolean
-  danger?: boolean
-  menuRole?: "menuitem" | "menuitemradio"
-}
-
 // 菜单边缘留白。
 const VIEWPORT_PADDING = 8
 
@@ -185,43 +175,6 @@ export const LxMenu = ({
     document.body,
   )
 }
-
-/**
- * 渲染带可选前后内容及危险态的通用菜单项。
- */
-export const LxMenuItem = ({
-  children,
-  leading,
-  trailing,
-  active = false,
-  danger = false,
-  menuRole = "menuitem",
-  className = "",
-  ...props
-}: LxMenuItemProps): React.JSX.Element => (
-  <button
-    className={`flex w-full items-center gap-2 rounded-[4px] px-2 py-2 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 ${
-      danger
-        ? active
-          ? "bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-400/45"
-          : "text-rose-400/80 hover:bg-rose-400/10 hover:text-rose-300 focus-visible:outline-rose-400/45"
-        : "text-white/75 hover:bg-white/8 hover:text-white focus-visible:outline-white/45"
-    } ${className}`}
-    role={menuRole}
-    type="button"
-    {...props}
-  >
-    {leading ? (
-      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{leading}</span>
-    ) : null}
-    <span className="min-w-0 flex-1 truncate whitespace-nowrap">{children}</span>
-    {trailing ? (
-      <span className="ml-auto flex shrink-0 items-center pl-2 text-xs font-mono text-white/40">
-        {trailing}
-      </span>
-    ) : null}
-  </button>
-)
 
 /**
  * 渲染菜单项之间的视觉分割线。
