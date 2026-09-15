@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type {
@@ -23,11 +23,10 @@ import type { ModelSelection } from "@shared/settings"
 import { agentSessionService, createExternalId } from "@/services/agentSessionService"
 import { getDefaultCapabilities } from "@/services/capabilityService"
 import { projectService } from "@/services/projectService"
-import { getAppDataRoot } from "../paths"
 import type { QueuedMessage, SessionRunnerOptions } from "./sessionRunner.types"
 import { buildSessionAgent } from "./sessionRunnerAgentFactory"
 import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
-import { dispatchPromptHooks } from "./sessionRunnerToolHooks"
+import { continueChat, discardPendingTurn, runSessionTurn } from "./sessionRunnerTurns"
 
 export type { SessionRunnerOptions } from "./sessionRunner.types"
 
@@ -55,9 +54,8 @@ import type { LoadedSkill } from "./skills/skillLoader"
 import { resolveDefaultModel, resolveModelSelection } from "./stream/modelFactory"
 import { SubagentPool } from "./subagent/subagentPool"
 import { SubagentRuntime } from "./subagent/subagentRuntime"
-import { generateSessionTitle } from "./titleGenerator"
 import { ToolRegistry } from "./tools/registry"
-import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } from "./turnStore"
+import { type AttachedFile, type SessionBinding, TurnStore } from "./turnStore"
 
 /**
  * 单会话 Agent 实例运行器：负责单个会话/标签页的状态机循环、工具注册、上下文管理与事件分发。
@@ -415,193 +413,17 @@ export class AgentSessionRunner {
     return result
   }
 
-  // 轮次执行入口：队列 drain 与 send 共用（实现随后续增量搬移至 sessionRunnerTurns.ts）。
+  // 轮次执行入口：队列 drain 与 send 共用（实现见 sessionRunnerTurns.ts）。
   public async runOne(
     text: string,
     files?: AttachedFile[],
     overrideCwd?: string,
   ): Promise<AgentSendResult> {
-    const agent = this.agent
-    if (!agent) {
-      return { ok: false, error: "Agent 尚未就绪，请重试。" }
-    }
-    const isNewSession = !this.currentSessionId
-    if (isNewSession) {
-      agent.state.messages = []
-      this.turnStore.resetSeqs()
-      this.compactor.setBoundary(null)
-      this.turnStore.resetOverflow()
-    }
-    const { expanded, command } = expandAndDetectCommand(
-      text,
-      overrideCwd ?? this.getEffectiveCwd(),
-    )
-    // 生命周期 hook：SessionStart（每个会话一次）+ UserPromptSubmit（每次提交）。
-    const promptHooks = await dispatchPromptHooks(this, expanded, isNewSession)
-    if ("error" in promptHooks) {
-      return { ok: false, error: promptHooks.error }
-    }
-    this.beginSessionTurn(text)
-    this.turnStore.captureSnapshot()
-
-    if (isNewSession && this.turnStore.getSessionInput()) {
-      let createResult:
-        | {
-            sessionId: string
-            initialModelMessage?: ModelSwitchMessage
-            initialModelSeq?: number
-          }
-        | undefined
-      agentSessionService.transaction(() => {
-        createResult = this.turnStore.createSessionIfNeeded(
-          this.turnStore.getSessionInput()!,
-          new Date().toISOString(),
-        )
-      })
-      // 事务提交成功后再对齐内存 seq（回滚不得留下幽灵 seq）。
-      if (createResult?.initialModelSeq !== undefined) {
-        this.turnStore.appendMessageSeq(createResult.initialModelSeq)
-      }
-      if (createResult?.initialModelMessage) {
-        agent.state.appendMessage(createResult.initialModelMessage)
-        this.emitEvent({
-          type: "model_switch",
-          message: createResult.initialModelMessage,
-        })
-      }
-      if (this.currentSessionId) {
-        this.generateTitle(this.currentSessionId, text)
-      }
-    }
-
-    if (files && files.length > 0 && this.currentSessionId) {
-      this.turnStore.setCopiedFiles(processPendingFiles(this.currentSessionId, files))
-    } else {
-      this.turnStore.clearCopiedFiles()
-    }
-
-    const effectiveCwd = this.cwd ?? resolveCwd() ?? homedir()
-    this.currentTurnContext = new TurnContext({
-      turnId: `turn-${Date.now()}`,
-      sessionId: this.currentSessionId ?? "draft-session",
-      cwd: effectiveCwd,
-      modelSelection: this.requestedModel,
-      capabilities: this.activeCapabilities,
-      collaborationMode: this.collaborationMode,
-    })
-
-    try {
-      const currentSandboxPolicy = permissionManager.getSandboxPolicy()
-      const contextUsage = this.compactor.getUsage()
-      agent.state.systemPrompt = buildSystemPromptSync({
-        cwd: this.currentTurnContext.snapshot.cwd,
-        sessionId: this.currentSessionId ?? undefined,
-        modelId: agent.state.model.id,
-        sandboxPolicy: currentSandboxPolicy,
-        collaborationMode: this.collaborationMode,
-        contextUsage,
-        activeSkills: this.activeSkills,
-        personality: this.personality,
-        variables: this.currentTurnContext.snapshot.variables,
-      })
-      const userMessage: UserMessage = {
-        role: "user",
-        content: expanded,
-        timestamp: Date.now(),
-        ...(command ? { command } : {}),
-      }
-      // hook 注入消息先于本轮用户消息落位。
-      await agent.prompt(
-        promptHooks.messages.length > 0 ? [...promptHooks.messages, userMessage] : userMessage,
-      )
-
-      if (this.turnStore.consumeOverflow()) {
-        this.removeLastOverflowMessage()
-        const compacted = await this.compactor.compactIfNeeded(true)
-        if (!compacted) {
-          throw new Error("上下文超出模型窗口且自动压缩失败，请新建会话或重试。")
-        }
-        this.beginSessionTurn(text)
-        await agent.continue()
-        if (this.turnStore.consumeOverflow()) {
-          this.removeLastOverflowMessage()
-          throw new Error("上下文压缩后仍超出模型窗口，请新建会话或减少会话长度。")
-        }
-      } else {
-        await this.compactor.compactIfNeeded(false)
-      }
-    } catch (error) {
-      this.discardPendingTurn()
-      this.currentTurnContext = undefined
-      if (
-        isNewSession &&
-        this.currentSessionId &&
-        !this.turnStore.hasSessionMessages(this.currentSessionId)
-      ) {
-        const sessionIdToDelete = this.currentSessionId
-        agentSessionService.deleteSession(sessionIdToDelete)
-        this.setSessionId(null)
-        this.sessionBinding = null
-
-        try {
-          const sessionDir = join(getAppDataRoot(), "session", sessionIdToDelete)
-          if (existsSync(sessionDir)) {
-            rmSync(sessionDir, { recursive: true, force: true })
-          }
-        } catch (err) {
-          console.error(
-            `Failed to clean up failed session attachments directory: ${sessionIdToDelete}`,
-            err,
-          )
-        }
-      }
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-    if (!this.currentSessionId) {
-      return { ok: false, error: "会话持久化失败。" }
-    }
-    return { ok: true, sessionId: this.currentSessionId }
+    return runSessionTurn(this, text, files, overrideCwd)
   }
 
   public async continue(prompt?: string): Promise<AgentSendResult> {
-    await mcpManager.ensureConnected()
-    if (this.isBusy()) {
-      return { ok: false, error: "Agent 正在处理中，请等待完成或点击停止。" }
-    }
-    const ready = this.ensureReady()
-    if ("error" in ready) {
-      return { ok: false, error: ready.error }
-    }
-    const { agent } = ready
-    if (!this.currentSessionId) {
-      return { ok: false, error: "没有可继续的会话。" }
-    }
-
-    const lastMessage = agent.state.messages[agent.state.messages.length - 1]
-    const isInterrupted =
-      lastMessage?.role === "assistant" &&
-      (lastMessage.stopReason === "length" || lastMessage.stopReason === "aborted")
-    if (!isInterrupted) {
-      return { ok: false, error: "当前没有可继续的对话。" }
-    }
-
-    const continueText = prompt?.trim() || "请继续输出刚才被中断的内容。"
-    agent.steer({ role: "user", content: continueText, timestamp: Date.now() })
-    this.beginSessionTurn(continueText)
-    this.turnStore.captureSnapshot()
-    try {
-      await agent.continue()
-      if (this.turnStore.consumeOverflow()) {
-        this.removeLastOverflowMessage()
-        throw new Error("上下文超出模型窗口，请新建会话或重试。")
-      }
-      await this.compactor.compactIfNeeded(false)
-    } catch (error) {
-      this.discardPendingTurn()
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-    void kickDrain(this)
-    return { ok: true, sessionId: this.currentSessionId }
+    return continueChat(this, prompt)
   }
 
   public abort(): void {
@@ -611,7 +433,7 @@ export class AgentSessionRunner {
   }
 
   public restoreMessages(messages: AgentMessage[]): void {
-    this.discardPendingTurn()
+    discardPendingTurn(this)
     this.agent?.abort()
     clearQueue(this)
     const ready = this.ensureReady()
@@ -640,7 +462,7 @@ export class AgentSessionRunner {
     projectId?: string | null,
     page?: string | null,
   ): Promise<void> {
-    this.discardPendingTurn()
+    discardPendingTurn(this)
     this.agent?.abort()
     clearQueue(this)
     await mcpManager.ensureConnected()
@@ -780,24 +602,6 @@ export class AgentSessionRunner {
     return { ok: true }
   }
 
-  private beginSessionTurn(text: string): void {
-    this.turnStore.beginTurn({
-      text,
-      binding: this.sessionBinding ?? {},
-      cwd: this.cwd ?? "",
-      capabilities: {
-        tools: [...this.activeCapabilities],
-        mcp: [...this.activeMcp],
-        skills: this.activeSkills.map((skill) => skill.name),
-      },
-      modelSelection: this.requestedModel,
-    })
-  }
-
-  private discardPendingTurn(): void {
-    this.turnStore.discardTurn()
-  }
-
   public getContextUsage(selection?: ModelSelection): AgentContextUsage {
     return this.compactor.getUsage(selection)
   }
@@ -836,34 +640,6 @@ export class AgentSessionRunner {
       ...assembly,
       activeTools,
     }
-  }
-
-  private removeLastOverflowMessage(): void {
-    const state = this.agent?.state
-    if (!state) return
-    while (
-      state.messages.length > 0 &&
-      isOverflowFailure(state.messages[state.messages.length - 1])
-    ) {
-      state.removeLastMessage()
-    }
-  }
-
-  private generateTitle(sessionId: string, userText: string): void {
-    this.emitEvent({ type: "session_title", sessionId, title: null })
-    void generateSessionTitle(
-      [{ role: "user", content: userText, timestamp: Date.now() }],
-      sessionId,
-    ).then((generated) => {
-      const session = agentSessionService.getSession(sessionId)
-      if (!session) return
-      let title = session.title
-      if (generated && this.currentSessionId === sessionId) {
-        agentSessionService.renameSession(sessionId, generated, new Date().toISOString())
-        title = generated
-      }
-      this.emitEvent({ type: "session_title", sessionId, title })
-    })
   }
 
   public getTurnStore(): TurnStore {
