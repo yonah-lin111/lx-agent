@@ -47,4 +47,9 @@ describe("我的世界主题复选框与单选项", () => {
     const block = getRuleBlock('[data-theme="minecraft"] .lx-radio {')
     expect(block).toContain("border-radius: 0px !important")
   })
+
+  it("单选项选中内点直角化，统一像素语言", () => {
+    const block = getRuleBlock('[data-theme="minecraft"] .lx-radio-dot::before {')
+    expect(block).toContain("border-radius: 0px !important")
+  })
 })

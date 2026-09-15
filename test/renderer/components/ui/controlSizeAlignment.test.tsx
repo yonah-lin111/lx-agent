@@ -127,6 +127,17 @@ describe("控件尺寸阶梯对齐", () => {
     expect(root?.className).toContain(box)
   })
 
+  it("LxCheckbox 勾选标记按 padding box 绝对居中，不受主题边框宽度影响", () => {
+    const { container } = render(<LxCheckbox onChange={() => {}} />)
+    const boxClassName = container.querySelector(".lx-checkbox-box")?.className ?? ""
+    expect(boxClassName).toContain("before:left-1/2")
+    expect(boxClassName).toContain("before:top-1/2")
+    expect(boxClassName).toContain("before:-translate-x-1/2")
+    expect(boxClassName).toContain("before:-translate-y-1/2")
+    expect(boxClassName).toContain("before:rotate-45")
+    expect(boxClassName).not.toMatch(/before:left-\[/)
+  })
+
   it.each(RADIO_SIZE_STEPS)("LxRadio $size 行高 $row、圆框 $box", ({ size, row, box }) => {
     const { container } = render(<LxRadio size={size} value="a" label="A" />)
     const label = container.querySelector(".lx-radio")

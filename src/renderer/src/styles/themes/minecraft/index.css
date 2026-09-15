@@ -609,6 +609,11 @@ button:not([role="option"]):not(.agent-tool-diff-toggle):not([data-variant="ghos
   border-radius: 0px !important;
 }
 
+/* 选中内点改直角方块，统一像素语言 */
+[data-theme="minecraft"] .lx-radio-dot::before {
+  border-radius: 0px !important;
+}
+
 /* ========================================================
  * 设置页面配置卡片（经典直角石质像素凹槽）
  * ======================================================== */
