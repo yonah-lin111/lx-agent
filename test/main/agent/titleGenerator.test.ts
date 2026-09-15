@@ -136,31 +136,20 @@ describe("generateSessionTitle", () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it("opencode Go Provider 的会话标题携带真实会话 ID 头", async () => {
+  it("opencode Go Provider 的会话标题不注入附加请求头", async () => {
     mockStream("会话标题")
     settings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
     await generateSessionTitle([{ role: "user", content: "test", timestamp: 0 }], "ses_lx_7")
-    expect(streamTextMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "x-opencode-session": "ses_lx_7",
-          "user-agent": expect.stringMatching(/^lx-agent\//),
-        }),
-      }),
-    )
+    const lastOptions = streamTextMock.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
   })
 
-  it("模板标题无会话上下文时使用合成会话 ID 头", async () => {
+  it("opencode Go Provider 的模板标题不注入附加请求头", async () => {
     mockStream("模板标题")
     settings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
     await generateTemplateTitle("实现一个功能")
-    expect(streamTextMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "x-opencode-session": "lx-agent:template-title",
-        }),
-      }),
-    )
+    const lastOptions = streamTextMock.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
   })
 
   it("非 opencode Go Provider 不注入请求头", async () => {

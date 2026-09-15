@@ -278,18 +278,12 @@ describe("generateCompactionSummary", () => {
     expect(lastCall.messages[0]?.content).toContain("Hook(PreToolUse): policy hit")
   })
 
-  it("opencode Go Provider 的摘要请求携带真实会话 ID 头", async () => {
+  it("opencode Go Provider 的摘要请求不注入附加头", async () => {
     mockStream("摘要")
     mockSettings.providers.p.options.baseURL = "https://opencode.ai/zen/go/v1"
     await generateCompactionSummary([user("test")], { provider: "p", model: "m" }, "ses_lx_9")
-    expect(streamTextMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "x-opencode-session": "ses_lx_9",
-          "user-agent": expect.stringMatching(/^lx-agent\//),
-        }),
-      }),
-    )
+    const lastOptions = streamTextMock.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
     mockSettings.providers.p.options.baseURL = "http://localhost"
   })
 

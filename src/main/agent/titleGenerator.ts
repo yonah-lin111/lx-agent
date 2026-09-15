@@ -3,10 +3,6 @@ import { streamText } from "ai"
 import { getModelProviderSettings } from "@/services/settingsService"
 import type { Model } from "./core/types"
 import { resolveLanguageModel, resolveModelSelection } from "./stream/modelFactory"
-import {
-  buildOpencodeGoRequestHeaders,
-  OPENCODE_GO_AUXILIARY_SESSION_IDS,
-} from "./stream/opencodeGoHeaders"
 import { recordModelCall, toUsage } from "./usageRecorder"
 
 // 标题生成超时（秒）：兜底避免无响应 provider 挂住后台任务。
@@ -64,10 +60,6 @@ export const generateSessionTitle = async (
     if ("error" in resolved) return null
     loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
-    const requestHeaders = buildOpencodeGoRequestHeaders(
-      settings.providers[resolved.model.provider],
-      sessionId ?? OPENCODE_GO_AUXILIARY_SESSION_IDS.auxiliary,
-    )
 
     const input = extractTurnText(firstTurn)
     if (!input) return null
@@ -75,7 +67,6 @@ export const generateSessionTitle = async (
     const result = streamText({
       model: languageModel,
       abortSignal: AbortSignal.timeout(TITLE_TIMEOUT_MS),
-      ...(requestHeaders ? { headers: requestHeaders } : {}),
       messages: [
         {
           role: "user",
@@ -129,15 +120,10 @@ export const generateTemplateTitle = async (content: string): Promise<string | n
     if ("error" in resolved) return null
     loggedModel = resolved.model
     const languageModel = resolveLanguageModel(resolved.model)
-    const requestHeaders = buildOpencodeGoRequestHeaders(
-      settings.providers[resolved.model.provider],
-      OPENCODE_GO_AUXILIARY_SESSION_IDS.templateTitle,
-    )
 
     const result = streamText({
       model: languageModel,
       abortSignal: AbortSignal.timeout(TITLE_TIMEOUT_MS),
-      ...(requestHeaders ? { headers: requestHeaders } : {}),
       messages: [
         {
           role: "user",

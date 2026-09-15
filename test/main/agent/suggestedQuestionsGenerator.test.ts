@@ -102,7 +102,7 @@ describe("trimSuggestedQuestionContext", () => {
 })
 
 describe("generateSuggestedQuestions 请求头", () => {
-  it("opencode Go Provider 使用合成会话 ID 头", async () => {
+  it("opencode Go Provider 不注入附加请求头", async () => {
     const streamTextMock = vi.mocked(streamText)
     streamTextMock.mockReset()
     streamTextMock.mockReturnValueOnce({
@@ -114,14 +114,8 @@ describe("generateSuggestedQuestions 请求头", () => {
     const questions = await generateSuggestedQuestions([{ role: "user", content: "hi" }])
 
     expect(questions).toEqual(["问题一？", "问题二？"])
-    expect(streamTextMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "x-opencode-session": "lx-agent:suggested-questions",
-          "user-agent": expect.stringMatching(/^lx-agent\//),
-        }),
-      }),
-    )
+    const lastOptions = streamTextMock.mock.calls.at(-1)?.[0] as { headers?: unknown }
+    expect(lastOptions.headers).toBeUndefined()
     settingsState.settings.providers.p.options.baseURL = "http://localhost"
   })
 })
