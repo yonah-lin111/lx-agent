@@ -18,6 +18,8 @@ import {
   isInsideMarkdownFrontmatter,
   isInsideMarkdownVariableBlock,
   isInsideMarkdownVarMultilineString,
+  MARKDOWN_VAR_TEMPLATE_END_RE,
+  MARKDOWN_VAR_TEMPLATE_START_RE,
   mergeMarkdownVarBlock,
   moveMarkdownVarBlockToTop,
   parseMarkdownVariables,
@@ -1215,5 +1217,25 @@ $$$ varTemplate --end`
         ].join("\n"),
       )
     })
+  })
+})
+
+describe("变量模板块正则边界", () => {
+  it("MARKDOWN_VAR_TEMPLATE_START_RE 匹配开始行形态", () => {
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("$$$ varTemplate --start 「title: 」")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("$$$ varTemplate --start")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("$$$ varTemplate")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("   $$$ varTemplate --start")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("$$$ varTemplate --end")).toBe(false)
+    expect(MARKDOWN_VAR_TEMPLATE_START_RE.test("正文 $$$ varTemplate --start")).toBe(false)
+  })
+
+  it("MARKDOWN_VAR_TEMPLATE_END_RE 匹配结束行形态", () => {
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ varTemplate --end")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("   $$$ --end")).toBe(true)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ varTemplate --start")).toBe(false)
+    expect(MARKDOWN_VAR_TEMPLATE_END_RE.test("$$$ --end trailing")).toBe(false)
   })
 })
