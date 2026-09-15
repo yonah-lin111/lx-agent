@@ -14,24 +14,46 @@
 - 代码、标签属性与逻辑字符串使用英文；禁止写入 Unicode 替换字符 `U+FFFD`。
 - 项目模块使用对应进程源码根目录的 `@/` 绝对路径别名；shared 使用 `@shared/`。禁止 `../` 等相对导入。
 
-## IPC 与数据库
+## IPC
 
 - IPC channel 定义在 `src/shared/ipc/`，main 和 preload 必须复用同一常量。
 - preload 只暴露最小白名单 API，参数和返回值使用 shared 契约类型。
 - 每个 IPC 领域应有 main handler、preload API 和 renderer feature API 三层。
 - 需要校验外部输入时，在 main handler 或 service 边界使用运行时校验；TypeScript 类型不等于运行时校验。
-- 数据库 schema 变更必须新增独立迁移文件，不能修改既有迁移以伪造历史。
-- 数据迁移必须是独立 TypeScript 文件，禁止混入 schema、建表初始化或数据库连接文件。详细机制见 `docs/standards/database-migrations.md`。
 - 禁止在 main、preload、renderer 三处重复硬编码 IPC channel 或 DTO。
+
+## 数据库迁移
+
+- 数据库 schema 变更只通过迁移文件落地，`CREATE TABLE` / `ALTER TABLE` 一律写在 `src/main/db/migrations/`，禁止混入 schema、建表初始化或数据库连接文件。
+- 迁移只进不退：已应用的迁移不可修改、不可回删；任何变更必须新增 `NNNN_<英文 kebab-case 名称>.ts`，数字前缀全局递增，并在 `migrations/index.ts` 按版本升序登记。
+- 每个迁移文件导出唯一的 `migration` 对象：
+
+```ts
+import type { Migration } from "./types"
+
+export const migration: Migration = {
+  version: 2,
+  name: "drop_project_item_sort_order",
+  up: (database) => {
+    database.exec("ALTER TABLE project_item DROP COLUMN sort_order")
+  },
+}
+```
+
+- `version` 必须与文件名数字前缀一致且全局唯一；`up` 接收 better-sqlite3 连接，执行该迁移的全部 DDL / 数据变更；无需 `IF NOT EXISTS` 等幂等写法，运行器保证每个迁移只执行一次。
+- 追踪表 `_migrations(version, name, applied_at)` 记录已应用版本；启动时 `initDatabase` 调用 `runMigrations`，按版本升序在每个独立事务内执行未应用迁移并登记。
+- 旧库兼容：迁移系统启用前的历史 schema 烘焙为 `0001_init`；追踪表为空且探测到 `LEGACY_PROBE_TABLE`（`project_item`）时，0001 登记为已应用（基线），只补跑其后迁移。
+- 变更流程：新建迁移文件 → `index.ts` 登记 → `up` 内处理既有数据（如 `PRAGMA table_info` 探测后补数据或删列）→ 更新 `test/main/db/index.test.ts` 断言。
+- 迁移测试必须覆盖：全新库全量应用、旧库基线补跑、重复执行幂等。
 
 ## 拆分规则
 
-- `.tsx` 或 `.ts` 超过 1200 行时必须按职责拆分，重构拆分后的各个独立文件行数应控制在 500 行左右。
-- 组件超过 1200 行时转换为目录：`index.tsx` 为对外入口，主视图放 `<ComponentName>.tsx`，细分视图放 `components/`，逻辑放 `hooks/`，类型、常量、工具分别放 `types.ts`、`constants.ts`、`utils.ts`。拆分后各子文件通常不超过 500 行。
-- 逻辑或 Hook 超过 1200 行时，拆为职责单一的子 Hook 或模块（单文件建议 500 行左右），不能仅压缩代码排版。
+- `.tsx` 或 `.ts` 超过 1000 行时必须按职责拆分，拆分后的各个独立文件行数应控制在 500 行左右。
+- 组件超过 1000 行时转换为目录：`index.tsx` 为对外入口，主视图放 `<ComponentName>.tsx`，细分视图放 `components/`，逻辑放 `hooks/`，类型、常量、工具分别放 `types.ts`、`constants.ts`、`utils.ts`。
+- 逻辑或 Hook 超过 1000 行时，拆为职责单一的子 Hook 或模块（单文件建议 500 行左右），不能仅压缩代码排版。
 - 未超过阈值但同时包含视图、领域操作和基础设施调用时，也应按边界拆分。
 - service 处理两个无关聚合时拆分；feature API 无法共享错误处理或刷新逻辑时按实体拆分。
-- 不因文件不足 1200 行而拒绝必要拆分，也不为“整齐”进行过度拆分。
+- 不因文件未超 1000 行而拒绝必要拆分，也不为"整齐"进行过度拆分。
 
 ## 测试与验证
 
