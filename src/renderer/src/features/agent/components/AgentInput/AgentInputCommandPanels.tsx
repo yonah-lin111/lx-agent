@@ -1,9 +1,20 @@
 import type { SkillItem } from "@shared/contracts/agent"
 import type { ProjectFileEntry } from "@shared/project"
-import { Bot, FileText, Folder, History, Palette } from "lucide-react"
+import {
+  Bot,
+  Cpu,
+  FileText,
+  Folder,
+  History,
+  MessageSquare,
+  Palette,
+  Sparkles,
+  SquareSlash,
+  UserCog,
+} from "lucide-react"
 import type React from "react"
 import type { CSSProperties } from "react"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { LxCommandPanel, LxCommandPanelItem } from "@/components/ui/LxCommandPanel"
 import { LxTag } from "@/components/ui/LxTag"
 import type { FrontDesignItem } from "@/features/agent/hooks/frontDesignStore"
 import { getMentionDirectoryTag } from "@/features/project/utils"
@@ -91,41 +102,12 @@ export interface AgentInputHistoryPromptPanelProps {
 export const panelClassName =
   "scrollbar-hidden pointer-events-auto fixed z-50 overflow-y-auto rounded-[6px] border border-white/10 bg-[#303030] p-1 text-sm shadow-[0_10px_28px_rgba(0,0,0,0.45)]"
 
-/**
- * 面板淡入/淡出动画：关闭后保留最后数据渲染 120ms 播放退场动画，
- * 与 MarkdownBlockCommandMenu / GitWorktreeCommandMenu 一致的过渡体验。
- */
-export const usePanelAnimation = <T,>(
-  visible: boolean,
-  data: T | null,
-): { displayData: T; isAnimatingOut: boolean } | null => {
-  const [shouldRender, setShouldRender] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
-
-  const lastDataRef = useRef<T | null>(null)
-  if (visible && data) lastDataRef.current = data
-
-  useEffect(() => {
-    if (visible) {
-      setShouldRender(true)
-      setIsAnimatingOut(false)
-      return
-    }
-    if (!shouldRender) return
-
-    setIsAnimatingOut(true)
-    const timer = setTimeout(() => {
-      setShouldRender(false)
-      setIsAnimatingOut(false)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [visible, shouldRender])
-
-  if (!shouldRender) return null
-  const displayData = (visible && data ? data : lastDataRef.current) as T | null
-  if (!displayData) return null
-  return { displayData, isAnimatingOut }
-}
+// 命令类型对应的左侧图标与底色。
+const commandKindStyles = {
+  builtin: { icon: SquareSlash, className: "bg-white/5 text-white/70" },
+  prompt: { icon: FileText, className: "bg-amber-500/20 text-amber-300" },
+  skill: { icon: Sparkles, className: "bg-[#7c3aed]/20 text-[#c084fc]" },
+} as const
 
 /**
  * 读取 CSS 变量中的尺寸（支持 px/rem/vh/vw）换算为像素。
@@ -181,101 +163,6 @@ export const getAgentPanelPosition = (kind: AgentPanelKind, rect: DOMRect): CSSP
   }
 }
 
-/**
- * 激活项与面板边缘保持间距，避免上下键移动时被裁切。
- */
-export const useActiveItemScrollIntoView = (
-  isOpen: boolean,
-  position: CSSProperties | null,
-  activeIndex: number,
-): React.RefObject<HTMLDivElement | null> => {
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    if (!isOpen || !position) return
-    const container = panelRef.current
-    if (!container) return
-
-    const activeElement = container.querySelector(
-      `[data-index="${activeIndex}"]`,
-    ) as HTMLElement | null
-    if (!activeElement) return
-
-    const scrollPadding = 4
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = activeElement.getBoundingClientRect()
-
-    if (activeRect.top < containerRect.top + scrollPadding) {
-      container.scrollTop -= containerRect.top + scrollPadding - activeRect.top
-    } else if (activeRect.bottom > containerRect.bottom - scrollPadding) {
-      container.scrollTop += activeRect.bottom - (containerRect.bottom - scrollPadding)
-    }
-  }, [isOpen, position, activeIndex])
-
-  return panelRef
-}
-
-/**
- * 渲染 Agent 输入框的模型选择面板。
- */
-export const AgentInputModelPanel = ({
-  isOpen,
-  position,
-  models,
-  activeIndex,
-  onSelect,
-}: AgentInputModelPanelProps): React.JSX.Element | null => {
-  const { t } = useTranslation()
-  const hasData = position !== null && models.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, models, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    models: displayModels,
-    activeIndex: displayIndex,
-  } = animated.displayData
-
-  return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.modelSelect")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
-    >
-      {displayModels.map((model, index) => (
-        <div
-          key={model.id}
-          role="option"
-          data-index={index}
-          aria-selected={index === displayIndex}
-          className={`flex h-11 w-full cursor-pointer items-center gap-3 rounded-[4px] px-2 text-left text-xs transition-colors ${
-            index === displayIndex ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-          }`}
-          onMouseDown={(event) => {
-            event.preventDefault()
-            onSelect?.(model)
-          }}
-        >
-          <span className="truncate font-medium">{model.label}</span>
-          <span className="ml-auto shrink-0 text-white/35">{model.provider}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 const formatSessionTime = (dateStr?: string, justNowText = "Just now"): string => {
   if (!dateStr) return ""
   const time = new Date(dateStr).getTime()
@@ -292,6 +179,49 @@ const formatSessionTime = (dateStr?: string, justNowText = "Just now"): string =
 }
 
 /**
+ * 渲染 Agent 输入框的模型选择面板。
+ */
+export const AgentInputModelPanel = ({
+  isOpen,
+  position,
+  models,
+  activeIndex,
+  onSelect,
+}: AgentInputModelPanelProps): React.JSX.Element | null => {
+  const { t } = useTranslation()
+  const panelData =
+    position !== null && models.length > 0 ? { position, activeIndex, models } : null
+
+  return (
+    <LxCommandPanel
+      ariaLabel={t("agent.modelSelect")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
+    >
+      {(displayData) => (
+        <>
+          {displayData.models.map((model, index) => (
+            <LxCommandPanelItem
+              key={model.id}
+              active={index === displayData.activeIndex}
+              className="flex h-11 items-center gap-3 px-2 text-xs"
+              index={index}
+              leading={<Cpu className="h-3.5 w-3.5 shrink-0 text-teal-300/60" />}
+              onSelect={() => onSelect?.(model)}
+            >
+              <span className="truncate font-medium">{model.label}</span>
+              <span className="ml-auto shrink-0 text-white/35">{model.provider}</span>
+            </LxCommandPanelItem>
+          ))}
+        </>
+      )}
+    </LxCommandPanel>
+  )
+}
+
+/**
  * 渲染 Agent 输入框的项目选择面板（/project 触发）。
  */
 export const AgentInputProjectPanel = ({
@@ -302,78 +232,61 @@ export const AgentInputProjectPanel = ({
   onSelect,
 }: AgentInputProjectPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && projects.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, projects, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    projects: displayProjects,
-    activeIndex: displayIndex,
-  } = animated.displayData
+  const panelData =
+    position !== null && projects.length > 0 ? { position, activeIndex, projects } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.projectSelect")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.projectSelect")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displayProjects.map((project, index) => {
-        const isActive = index === displayIndex
-        return (
-          <div
-            key={project.id || project.path || "desktop"}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(project)
-            }}
-          >
-            <Folder
-              className={`h-3.5 w-3.5 shrink-0 ${
-                project.isDesktop ? "text-violet-400" : "text-sky-400"
-              }`}
-            />
-            <span
-              className={`truncate font-medium ${
-                project.isDesktop ? "text-violet-300" : "text-white"
-              }`}
-            >
-              {project.name}
-            </span>
-            {project.isCurrent && (
-              <LxTag
-                bgClass="bg-emerald-500/20 text-emerald-300"
-                className="pointer-events-none shrink-0"
-                size="small"
+      {(displayData) => (
+        <>
+          {displayData.projects.map((project, index) => {
+            const isActive = index === displayData.activeIndex
+            return (
+              <LxCommandPanelItem
+                key={project.id || project.path || "desktop"}
+                active={isActive}
+                className="flex h-11 items-center gap-2 px-2 text-xs"
+                index={index}
+                leading={
+                  <Folder
+                    className={`h-3.5 w-3.5 shrink-0 ${
+                      project.isDesktop ? "text-violet-400" : "text-sky-400"
+                    }`}
+                  />
+                }
+                onSelect={() => onSelect?.(project)}
               >
-                current
-              </LxTag>
-            )}
-            <span className="ml-auto shrink-0 max-w-[50%] truncate text-xs text-white/35">
-              {project.path}
-            </span>
-          </div>
-        )
-      })}
-    </div>
+                <span
+                  className={`truncate font-medium ${
+                    project.isDesktop ? "text-violet-300" : "text-white"
+                  }`}
+                >
+                  {project.name}
+                </span>
+                {project.isCurrent && (
+                  <LxTag
+                    bgClass="bg-emerald-500/20 text-emerald-300"
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    current
+                  </LxTag>
+                )}
+                <span className="ml-auto shrink-0 max-w-[50%] truncate text-xs text-white/35">
+                  {project.path}
+                </span>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -388,71 +301,53 @@ export const AgentInputSessionPanel = ({
   onSelect,
 }: AgentInputSessionPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && sessions.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, sessions, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    sessions: displaySessions,
-    activeIndex: displayIndex,
-  } = animated.displayData
+  const panelData =
+    position !== null && sessions.length > 0 ? { position, activeIndex, sessions } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.sessionSelect")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.sessionSelect")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displaySessions.map((session, index) => {
-        const isActive = index === displayIndex
-        const timeDisplay = formatSessionTime(session.updatedAt, t("agent.justNow"))
+      {(displayData) => (
+        <>
+          {displayData.sessions.map((session, index) => {
+            const isActive = index === displayData.activeIndex
+            const timeDisplay = formatSessionTime(session.updatedAt, t("agent.justNow"))
 
-        return (
-          <div
-            key={session.id}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(session)
-            }}
-          >
-            <span className="truncate font-medium text-white">
-              {session.title || t("agent.unnamedSession")}
-            </span>
-            {session.isCurrent && (
-              <LxTag
-                bgClass="bg-emerald-500/20 text-emerald-300"
-                className="pointer-events-none shrink-0"
-                size="small"
+            return (
+              <LxCommandPanelItem
+                key={session.id}
+                active={isActive}
+                className="flex h-11 items-center gap-2 px-2 text-xs"
+                index={index}
+                leading={<MessageSquare className="h-3.5 w-3.5 shrink-0 text-sky-400/70" />}
+                onSelect={() => onSelect?.(session)}
               >
-                current
-              </LxTag>
-            )}
-            {timeDisplay && (
-              <span className="ml-auto shrink-0 text-xs text-white/35">{timeDisplay}</span>
-            )}
-          </div>
-        )
-      })}
-    </div>
+                <span className="truncate font-medium text-white">
+                  {session.title || t("agent.unnamedSession")}
+                </span>
+                {session.isCurrent && (
+                  <LxTag
+                    bgClass="bg-emerald-500/20 text-emerald-300"
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    current
+                  </LxTag>
+                )}
+                {timeDisplay && (
+                  <span className="ml-auto shrink-0 text-xs text-white/35">{timeDisplay}</span>
+                )}
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -488,16 +383,7 @@ export const AgentUndoConfirmPanel = ({
   onSelect,
 }: AgentUndoConfirmPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null
-  const animated = usePanelAnimation(isOpen && hasData, hasData ? { position, activeIndex } : null)
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const { position: displayPosition, activeIndex: displayIndex } = animated.displayData
+  const panelData = position !== null ? { position, activeIndex } : null
 
   const options = [
     {
@@ -515,65 +401,63 @@ export const AgentUndoConfirmPanel = ({
   ]
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.undoConfirmTitle")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.undoConfirmTitle")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      <div className="px-2.5 py-1.5 text-xs font-medium text-white/50 border-b border-white/10 mb-1">
-        {t("agent.undoConfirmTitle")}
-      </div>
-      {options.map((opt, index) => {
-        const isActive = index === displayIndex
-        return (
-          <div
-            key={opt.id}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-10 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive
-                ? opt.danger
-                  ? "bg-red-500/20 text-red-200"
-                  : "bg-white/8 text-white"
-                : opt.danger
-                  ? "text-red-300/80 hover:bg-white/5"
-                  : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(index)
-            }}
-          >
-            <span
-              className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-xs font-semibold ${
-                opt.danger ? "bg-red-500/30 text-red-200" : "bg-white/10 text-white/70"
-              }`}
-            >
-              {index + 1}
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span
-                className={`flex shrink-0 items-center text-sm font-medium leading-none ${
-                  opt.danger ? "text-red-300" : "text-white"
-                }`}
-              >
-                {opt.label}
-              </span>
-              {opt.desc && (
-                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/40">
-                  {opt.desc}
-                </span>
-              )}
-            </span>
+      {(displayData) => (
+        <>
+          <div className="px-2.5 py-1.5 text-xs font-medium text-white/50 border-b border-white/10 mb-1">
+            {t("agent.undoConfirmTitle")}
           </div>
-        )
-      })}
-    </div>
+          {options.map((opt, index) => {
+            const isActive = index === displayData.activeIndex
+            return (
+              <LxCommandPanelItem
+                key={opt.id}
+                active={isActive}
+                activeClassName={
+                  opt.danger ? "bg-red-500/20 text-red-200" : "bg-white/8 text-white"
+                }
+                className="flex h-10 items-center gap-2 px-2"
+                idleClassName={
+                  opt.danger ? "text-red-300/80 hover:bg-white/5" : "text-white/75 hover:bg-white/5"
+                }
+                index={index}
+                leading={
+                  <span
+                    className={`flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-xs font-semibold ${
+                      opt.danger ? "bg-red-500/30 text-red-200" : "bg-white/10 text-white/70"
+                    }`}
+                  >
+                    {index + 1}
+                  </span>
+                }
+                onSelect={() => onSelect?.(index)}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span
+                    className={`flex shrink-0 items-center text-sm font-medium leading-none ${
+                      opt.danger ? "text-red-300" : "text-white"
+                    }`}
+                  >
+                    {opt.label}
+                  </span>
+                  {opt.desc && (
+                    <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/40">
+                      {opt.desc}
+                    </span>
+                  )}
+                </span>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -588,84 +472,73 @@ export const AgentInputCommandPanel = ({
   onSelect,
 }: AgentInputCommandPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && commands.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, commands, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    commands: displayCommands,
-    activeIndex: displayIndex,
-  } = animated.displayData
+  const panelData =
+    position !== null && commands.length > 0 ? { position, activeIndex, commands } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.slashCommands")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.slashCommands")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displayCommands.map((command, index) => {
-        const tags = getCommandTags(command)
-        const isActive = index === displayIndex
+      {(displayData) => (
+        <>
+          {displayData.commands.map((command, index) => {
+            const tags = getCommandTags(command)
+            const isActive = index === displayData.activeIndex
+            const kindStyle = commandKindStyles[command.kind ?? "builtin"]
+            const CommandIcon = kindStyle.icon
 
-        return (
-          <div
-            key={command.id}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(command)
-            }}
-          >
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-white/5 text-sm text-white/70">
-              {command.kind === "skill" ? "@" : "/"}
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                <span className="font-medium">{command.name}</span>
-                {command.argumentHint && (
-                  <span className="text-xs font-normal text-white/35">{command.argumentHint}</span>
-                )}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                {command.description}
-              </span>
-            </span>
-            {tags.length > 0 && (
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                {tags.map((tag) => (
-                  <LxTag
-                    key={tag.label}
-                    bgClass={tag.bgClass}
-                    className="pointer-events-none shrink-0"
-                    size="small"
+            return (
+              <LxCommandPanelItem
+                key={command.id}
+                active={isActive}
+                className="flex h-11 items-center gap-2 px-2"
+                index={index}
+                leading={
+                  <span
+                    className={`flex h-6 w-6 flex-none items-center justify-center rounded-[4px] ${kindStyle.className}`}
                   >
-                    {tag.label}
-                  </LxTag>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+                    <CommandIcon className="h-3.5 w-3.5" />
+                  </span>
+                }
+                onSelect={() => onSelect?.(command)}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                    <span className="font-medium">{command.name}</span>
+                    {command.argumentHint && (
+                      <span className="text-xs font-normal text-white/35">
+                        {command.argumentHint}
+                      </span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                    {command.description}
+                  </span>
+                </span>
+                {tags.length > 0 && (
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    {tags.map((tag) => (
+                      <LxTag
+                        key={tag.label}
+                        bgClass={tag.bgClass}
+                        className="pointer-events-none shrink-0"
+                        size="small"
+                      >
+                        {tag.label}
+                      </LxTag>
+                    ))}
+                  </div>
+                )}
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -681,83 +554,64 @@ export const AgentInputHistoryPromptPanel = ({
   onSelect,
 }: AgentInputHistoryPromptPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && prompts.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, prompts, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    prompts: displayPrompts,
-    activeIndex: displayIndex,
-  } = animated.displayData
+  const panelData =
+    position !== null && prompts.length > 0 ? { position, activeIndex, prompts } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.historyPromptSelect")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.historyPromptSelect")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displayPrompts.map((item, index) => {
-        const isActive = index === displayIndex
-        const [firstLine = "", ...restLines] = item.text.split("\n")
-        const title = firstLine.trim() || item.text.trim()
-        const preview = restLines.join(" ").replace(/\s+/g, " ").trim()
+      {(displayData) => (
+        <>
+          {displayData.prompts.map((item, index) => {
+            const isActive = index === displayData.activeIndex
+            const [firstLine = "", ...restLines] = item.text.split("\n")
+            const title = firstLine.trim() || item.text.trim()
+            const preview = restLines.join(" ").replace(/\s+/g, " ").trim()
 
-        return (
-          <div
-            key={item.id}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`group relative flex min-h-11 w-full cursor-pointer flex-col justify-center rounded-[4px] px-2 py-1 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(item)
-            }}
-          >
-            <div className="flex w-full items-center gap-2">
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[3px] bg-white/5 text-white/70">
-                <History className="h-3 w-3" />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm leading-none text-white">
-                {title}
-              </span>
-              {preview && (
-                <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
-                  {preview}
-                </span>
-              )}
-              <LxTag
-                bgClass="bg-white/10 text-white/50"
-                className="pointer-events-none shrink-0 font-mono tabular-nums"
-                size="small"
+            return (
+              <LxCommandPanelItem
+                key={item.id}
+                active={isActive}
+                className="group relative flex min-h-11 flex-col justify-center px-2 py-1"
+                index={index}
+                onSelect={() => onSelect?.(item)}
               >
-                {displayPrompts.length - index}
-              </LxTag>
-            </div>
-            {isActive && (
-              <div className="mt-1 max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded border border-white/5 bg-black/20 p-1.5 font-mono text-xs text-white/60">
-                {item.text}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+                <div className="flex w-full items-center gap-2">
+                  <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[3px] bg-white/5 text-white/70">
+                    <History className="h-3 w-3" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm leading-none text-white">
+                    {title}
+                  </span>
+                  {preview && (
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
+                      {preview}
+                    </span>
+                  )}
+                  <LxTag
+                    bgClass="bg-white/10 text-white/50"
+                    className="pointer-events-none shrink-0 font-mono tabular-nums"
+                    size="small"
+                  >
+                    {displayData.prompts.length - index}
+                  </LxTag>
+                </div>
+                {isActive && (
+                  <div className="mt-1 max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded border border-white/5 bg-black/20 p-1.5 font-mono text-xs text-white/60">
+                    {item.text}
+                  </div>
+                )}
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -821,280 +675,248 @@ export const AgentInputFilePanel = ({
   onSelect,
 }: AgentInputFilePanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && items.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, items, activeIndex, worktreeName } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    items: displayItems,
-    activeIndex: displayIndex,
-    worktreeName: displayWorktreeName,
-  } = animated.displayData
+  const panelData =
+    position !== null && items.length > 0 ? { position, activeIndex, items, worktreeName } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.fileMention")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.fileMention")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displayItems.map((item, index) => {
-        const isActive = index === displayIndex
+      {(displayData) => (
+        <>
+          {displayData.items.map((item, index) => {
+            const isActive = index === displayData.activeIndex
 
-        if (item.kind === "skill") {
-          const { skill } = item
-          const description = skill.shortDescription || skill.description
+            if (item.kind === "skill") {
+              const { skill } = item
+              const description = skill.shortDescription || skill.description
 
-          return (
-            <div
-              key={`skill-${skill.name}`}
-              role="option"
-              data-index={index}
-              aria-selected={isActive}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-              }`}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                onSelect?.(item)
-              }}
-            >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-xs font-bold text-[#c084fc]">
-                $
-              </span>
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                  <span className="font-mono font-medium">${skill.name}</span>
-                  {skill.displayName && (
-                    <span className="text-xs font-normal text-white/35">({skill.displayName})</span>
-                  )}
-                </span>
-                {description && (
-                  <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                    {description}
-                  </span>
-                )}
-              </span>
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <LxTag
-                  bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
-                  className="pointer-events-none shrink-0"
-                  size="small"
-                >
-                  Skill
-                </LxTag>
-              </div>
-            </div>
-          )
-        }
-
-        if (item.kind === "design") {
-          const { design } = item
-          const title = design.title || t("frontDesign.title")
-          const lines = design.html ? design.html.split("\n").length : 0
-          const modeLabel = design.mode === "css" ? "CSS" : "Tailwind"
-          const versionLabel = design.version ? `v${design.version}` : undefined
-
-          return (
-            <div
-              key={`design-${design.id}`}
-              role="option"
-              data-index={index}
-              aria-selected={isActive}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-              }`}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                onSelect?.(item)
-              }}
-            >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 font-mono text-xs font-bold text-pink-400">
-                <Palette className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                  <span className="font-medium text-white truncate max-w-[220px]">{title}</span>
-                  {versionLabel && (
-                    <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-xs font-medium text-pink-300">
-                      {versionLabel}
+              return (
+                <LxCommandPanelItem
+                  key={`skill-${skill.name}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 text-[#c084fc]">
+                      <Sparkles className="h-3.5 w-3.5" />
                     </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-mono font-medium">${skill.name}</span>
+                      {skill.displayName && (
+                        <span className="text-xs font-normal text-white/35">
+                          ({skill.displayName})
+                        </span>
+                      )}
+                    </span>
+                    {description && (
+                      <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                        {description}
+                      </span>
+                    )}
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag
+                      bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      Skill
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
+
+            if (item.kind === "design") {
+              const { design } = item
+              const title = design.title || t("frontDesign.title")
+              const lines = design.html ? design.html.split("\n").length : 0
+              const modeLabel = design.mode === "css" ? "CSS" : "Tailwind"
+              const versionLabel = design.version ? `v${design.version}` : undefined
+
+              return (
+                <LxCommandPanelItem
+                  key={`design-${design.id}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-pink-500/20 text-pink-400">
+                      <Palette className="h-3.5 w-3.5" />
+                    </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-medium text-white truncate max-w-[220px]">{title}</span>
+                      {versionLabel && (
+                        <span className="rounded bg-pink-500/20 border border-pink-500/30 px-1 py-0.2 text-xs font-medium text-pink-300">
+                          {versionLabel}
+                        </span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                      {lines} {t("frontDesign.lines")} · {modeLabel}
+                    </span>
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag
+                      bgClass="bg-pink-500/20 text-pink-300"
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      Design
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
+
+            if (item.kind === "subagent") {
+              const { subagent } = item
+              return (
+                <LxCommandPanelItem
+                  key={`subagent-${subagent.name}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 text-sky-300">
+                      <UserCog className="h-3.5 w-3.5" />
+                    </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-mono font-medium">@agent:{subagent.name}</span>
+                    </span>
+                    {subagent.description && (
+                      <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                        {subagent.description}
+                      </span>
+                    )}
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag
+                      bgClass={
+                        subagent.builtIn
+                          ? "bg-sky-500/20 text-sky-300"
+                          : "bg-[#7c3aed]/20 text-[#c084fc]"
+                      }
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      {subagent.builtIn
+                        ? t("agent.subagentMentionTag")
+                        : t("settings.subagentsCustomTag")}
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
+
+            if (item.kind === "claw") {
+              const { claw } = item
+              return (
+                <LxCommandPanelItem
+                  key={`claw-${claw.instanceId}/${claw.agentId}`}
+                  active={isActive}
+                  className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                  index={index}
+                  leading={
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 text-sky-400">
+                      <Bot className="h-3.5 w-3.5" />
+                    </span>
+                  }
+                  onSelect={() => onSelect?.(item)}
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                      <span className="font-medium text-white truncate max-w-[220px]">
+                        {claw.name}
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
+                      {claw.instanceId}/{claw.agentId}
+                    </span>
+                  </span>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <LxTag
+                      bgClass="bg-sky-500/20 text-sky-300"
+                      className="pointer-events-none shrink-0"
+                      size="small"
+                    >
+                      {claw.instanceName}
+                    </LxTag>
+                  </div>
+                </LxCommandPanelItem>
+              )
+            }
+
+            const { file } = item
+            const normalizedPath = file.path.replace(/\/$/, "")
+            const slashIndex = normalizedPath.lastIndexOf("/")
+            const name = normalizedPath.slice(slashIndex + 1)
+            const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
+            const Icon = file.isDirectory ? Folder : FileText
+            const directoryTag = getMentionDirectoryTag(file.path)
+
+            return (
+              <LxCommandPanelItem
+                key={`file-${file.path}`}
+                active={isActive}
+                className="flex min-h-11 items-center gap-2 px-2 py-1 text-xs"
+                index={index}
+                leading={<Icon className="h-4 w-4 shrink-0 text-[#eab308]" />}
+                onSelect={() => onSelect?.(item)}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
+                    >
+                      {file.isDirectory ? `${name}/` : name}
+                    </span>
+                    {directoryTag && (
+                      <LxTag
+                        bgClass={directoryTag.bgClass}
+                        className="pointer-events-none shrink-0"
+                        size="small"
+                      >
+                        {directoryTag.label}
+                      </LxTag>
+                    )}
+                    {displayData.worktreeName && (
+                      <LxTag
+                        bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                        className="pointer-events-none shrink-0"
+                        size="small"
+                      >
+                        {displayData.worktreeName}
+                      </LxTag>
+                    )}
+                  </span>
+                  {directory && (
+                    <span className="block truncate text-xs text-white/40">{directory}</span>
                   )}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                  {lines} {t("frontDesign.lines")} · {modeLabel}
-                </span>
-              </span>
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <LxTag
-                  bgClass="bg-pink-500/20 text-pink-300"
-                  className="pointer-events-none shrink-0"
-                  size="small"
-                >
-                  Design
-                </LxTag>
-              </div>
-            </div>
-          )
-        }
-
-        if (item.kind === "subagent") {
-          const { subagent } = item
-          return (
-            <div
-              key={`subagent-${subagent.name}`}
-              role="option"
-              data-index={index}
-              aria-selected={isActive}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-              }`}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                onSelect?.(item)
-              }}
-            >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-xs font-bold text-sky-300">
-                @
-              </span>
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                  <span className="font-mono font-medium">@agent:{subagent.name}</span>
-                </span>
-                {subagent.description && (
-                  <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                    {subagent.description}
-                  </span>
-                )}
-              </span>
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <LxTag
-                  bgClass={
-                    subagent.builtIn
-                      ? "bg-sky-500/20 text-sky-300"
-                      : "bg-[#7c3aed]/20 text-[#c084fc]"
-                  }
-                  className="pointer-events-none shrink-0"
-                  size="small"
-                >
-                  {subagent.builtIn
-                    ? t("agent.subagentMentionTag")
-                    : t("settings.subagentsCustomTag")}
-                </LxTag>
-              </div>
-            </div>
-          )
-        }
-
-        if (item.kind === "claw") {
-          const { claw } = item
-          return (
-            <div
-              key={`claw-${claw.instanceId}/${claw.agentId}`}
-              role="option"
-              data-index={index}
-              aria-selected={isActive}
-              className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-                isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-              }`}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                onSelect?.(item)
-              }}
-            >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] bg-sky-500/20 font-mono text-xs font-bold text-sky-400">
-                <Bot className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                  <span className="font-medium text-white truncate max-w-[220px]">{claw.name}</span>
-                </span>
-                <span className="min-w-0 flex-1 truncate font-mono text-xs leading-none text-white/45">
-                  {claw.instanceId}/{claw.agentId}
-                </span>
-              </span>
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <LxTag
-                  bgClass="bg-sky-500/20 text-sky-300"
-                  className="pointer-events-none shrink-0"
-                  size="small"
-                >
-                  {claw.instanceName}
-                </LxTag>
-              </div>
-            </div>
-          )
-        }
-
-        const { file } = item
-        const normalizedPath = file.path.replace(/\/$/, "")
-        const slashIndex = normalizedPath.lastIndexOf("/")
-        const name = normalizedPath.slice(slashIndex + 1)
-        const directory = slashIndex < 0 ? "" : normalizedPath.slice(0, slashIndex)
-        const Icon = file.isDirectory ? Folder : FileText
-        const directoryTag = getMentionDirectoryTag(file.path)
-
-        return (
-          <div
-            key={`file-${file.path}`}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1 text-left text-xs transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(item)
-            }}
-          >
-            <Icon className="h-4 w-4 shrink-0 text-[#eab308]" />
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className={`min-w-0 flex-1 truncate ${isActive ? "text-white" : "text-white/75"}`}
-                >
-                  {file.isDirectory ? `${name}/` : name}
-                </span>
-                {directoryTag && (
-                  <LxTag
-                    bgClass={directoryTag.bgClass}
-                    className="pointer-events-none shrink-0"
-                    size="small"
-                  >
-                    {directoryTag.label}
-                  </LxTag>
-                )}
-                {displayWorktreeName && (
-                  <LxTag
-                    bgClass="border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                    className="pointer-events-none shrink-0"
-                    size="small"
-                  >
-                    {displayWorktreeName}
-                  </LxTag>
-                )}
-              </span>
-              {directory && (
-                <span className="block truncate text-xs text-white/40">{directory}</span>
-              )}
-            </span>
-          </div>
-        )
-      })}
-    </div>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
 
@@ -1117,80 +939,65 @@ export const AgentSkillMentionPanel = ({
   onSelect,
 }: AgentSkillMentionPanelProps): React.JSX.Element | null => {
   const { t } = useTranslation()
-  const hasData = position !== null && skills.length > 0
-  const animated = usePanelAnimation(
-    isOpen && hasData,
-    hasData ? { position, skills, activeIndex } : null,
-  )
-  const panelRef = useActiveItemScrollIntoView(
-    isOpen,
-    position,
-    animated?.displayData.activeIndex ?? 0,
-  )
-  if (!animated) return null
-
-  const {
-    position: displayPosition,
-    skills: displaySkills,
-    activeIndex: displayIndex,
-  } = animated.displayData
+  const panelData =
+    position !== null && skills.length > 0 ? { position, activeIndex, skills } : null
 
   return (
-    <div
-      ref={panelRef}
-      aria-label={t("agent.skillMention")}
-      className={`${panelClassName} ${
-        animated.isAnimatingOut ? "animate-tooltip-out" : "animate-tooltip-in"
-      }`}
-      role="listbox"
-      style={displayPosition}
+    <LxCommandPanel
+      ariaLabel={t("agent.skillMention")}
+      className={panelClassName}
+      data={panelData}
+      scrollActiveItem
+      visible={isOpen}
     >
-      {displaySkills.map((skill, index) => {
-        const isActive = index === displayIndex
-        const description = skill.shortDescription || skill.description
+      {(displayData) => (
+        <>
+          {displayData.skills.map((skill, index) => {
+            const isActive = index === displayData.activeIndex
+            const description = skill.shortDescription || skill.description
 
-        return (
-          <div
-            key={skill.name}
-            role="option"
-            data-index={index}
-            aria-selected={isActive}
-            className={`flex h-11 w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 text-left transition-colors ${
-              isActive ? "bg-white/8 text-white" : "text-white/75 hover:bg-white/5"
-            }`}
-            onMouseDown={(event) => {
-              event.preventDefault()
-              onSelect?.(skill)
-            }}
-          >
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 font-mono text-sm font-bold text-[#c084fc]">
-              $
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
-                <span className="font-mono font-medium">${skill.name}</span>
-                {skill.displayName && (
-                  <span className="text-xs font-normal text-white/35">({skill.displayName})</span>
-                )}
-              </span>
-              {description && (
-                <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
-                  {description}
-                </span>
-              )}
-            </span>
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              <LxTag
-                bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
-                className="pointer-events-none shrink-0"
-                size="small"
+            return (
+              <LxCommandPanelItem
+                key={skill.name}
+                active={isActive}
+                className="flex h-11 items-center gap-2 px-2"
+                index={index}
+                leading={
+                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-[4px] bg-[#7c3aed]/20 text-[#c084fc]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
+                }
+                onSelect={() => onSelect?.(skill)}
               >
-                Skill
-              </LxTag>
-            </div>
-          </div>
-        )
-      })}
-    </div>
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="flex shrink-0 items-center gap-1.5 text-sm leading-none text-white">
+                    <span className="font-mono font-medium">${skill.name}</span>
+                    {skill.displayName && (
+                      <span className="text-xs font-normal text-white/35">
+                        ({skill.displayName})
+                      </span>
+                    )}
+                  </span>
+                  {description && (
+                    <span className="min-w-0 flex-1 truncate text-xs leading-none text-white/45">
+                      {description}
+                    </span>
+                  )}
+                </span>
+                <div className="ml-auto flex shrink-0 items-center gap-1">
+                  <LxTag
+                    bgClass="bg-[#7c3aed]/20 text-[#c084fc]"
+                    className="pointer-events-none shrink-0"
+                    size="small"
+                  >
+                    Skill
+                  </LxTag>
+                </div>
+              </LxCommandPanelItem>
+            )
+          })}
+        </>
+      )}
+    </LxCommandPanel>
   )
 }
