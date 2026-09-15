@@ -27,6 +27,13 @@ import { getSubagentSettings } from "@/services/settingsService"
 import { getAppDataRoot } from "../paths"
 import type { QueuedMessage, SessionRunnerOptions } from "./sessionRunner.types"
 import { clearQueue, enqueueMessage, kickDrain } from "./sessionRunnerQueue"
+import {
+  afterToolCallWithGuard,
+  beforeToolCallWithGuard,
+  dispatchPostToolUse,
+  dispatchPreToolUse,
+  dispatchPromptHooks,
+} from "./sessionRunnerToolHooks"
 
 export type { SessionRunnerOptions } from "./sessionRunner.types"
 
@@ -36,16 +43,8 @@ import { pruneHistoricalToolOutputs } from "./compaction/contextPruner"
 import { ContextCompactor } from "./contextCompactor"
 import { Agent } from "./core/agent"
 import { TurnContext } from "./core/turnContext"
-import type {
-  AfterToolCallContext,
-  AfterToolCallResult,
-  AgentTool,
-  BeforeToolCallContext,
-  BeforeToolCallResult,
-  ToolHookResult,
-} from "./core/types"
-import { repeatToolGuard } from "./guard/repeatToolGuard"
-import { firstBlock, firstStop, hookResultMessages, hooksManager } from "./hooks"
+import type { AgentTool } from "./core/types"
+import { hookResultMessages, hooksManager } from "./hooks"
 import { lspManager } from "./lsp/lspManager"
 import { mcpManager } from "./mcp/mcpManager"
 import { permissionManager } from "./permissions/permissionManager"
@@ -77,39 +76,40 @@ import { type AttachedFile, isOverflowFailure, type SessionBinding, TurnStore } 
 export class AgentSessionRunner {
   public currentSessionId: string | null
   public tabId?: string
-  private agent?: Agent
+  // 内部协作面：由 sessionRunnerAgentFactory / 工具守卫模块共享。
+  public agent?: Agent
   private registry?: ToolRegistry
-  private subagentPool = new SubagentPool()
+  public subagentPool = new SubagentPool()
   // 会话级并发槽位：跨嵌套深度共享，registry 重建不重置计数。
-  private subagentRuntime?: SubagentRuntime
-  private cwd?: string
-  private personality?: PersonalityName
+  public subagentRuntime?: SubagentRuntime
+  public cwd?: string
+  public personality?: PersonalityName
   private unsubscribe?: () => void
   private eventSink?: (event: AgentEvent) => void
-  private requestedModel?: ModelSelection
-  private requestedCwd?: string
-  private sessionBinding: SessionBinding | null = null
-  private activeCapabilities: string[] = getDefaultCapabilities().tools
-  private activeMcp: string[] = []
-  private activeSkills: LoadedSkill[] = []
-  private collaborationMode: CollaborationMode = "build"
-  private builtSignature = ""
-  // SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
-  private sessionStartFired = false
+  public requestedModel?: ModelSelection
+  public requestedCwd?: string
+  public sessionBinding: SessionBinding | null = null
+  public activeCapabilities: string[] = getDefaultCapabilities().tools
+  public activeMcp: string[] = []
+  public activeSkills: LoadedSkill[] = []
+  public collaborationMode: CollaborationMode = "build"
+  public builtSignature = ""
+  // 内部协作面：SessionStart 每个会话只派发一次（会话切换/销毁后重置）。
+  public sessionStartFired = false
   // 内部协作面：排队状态由 sessionRunnerQueue 模块读写（禁止外部调用）。
   public messageQueue: QueuedMessage[] = []
   public draining = false
-  // 本会话待附加的重复调用提醒（toolCallId → reminder，afterToolCall 附加后清除）。
-  private readonly guardReminders = new Map<string, string>()
+  // 内部协作面：重复调用提醒（toolCallId → reminder，afterToolCall 附加后清除）。
+  public readonly guardReminders = new Map<string, string>()
   private onSessionCreatedCallback?: (
     runner: AgentSessionRunner,
     oldKey: string,
     newSessionId: string,
   ) => void
 
-  private readonly turnStore: TurnStore
-  private readonly compactor: ContextCompactor
-  private currentTurnContext?: TurnContext
+  public readonly turnStore: TurnStore
+  public readonly compactor: ContextCompactor
+  public currentTurnContext?: TurnContext
 
   constructor(options: SessionRunnerOptions) {
     this.currentSessionId = options.sessionId
@@ -226,128 +226,6 @@ export class AgentSessionRunner {
     this.sessionStartFired = false
   }
 
-  // 派发 SessionStart（每个会话一次）与 UserPromptSubmit；提交被拒绝时返回 error。
-  private async dispatchPromptHooks(
-    prompt: string,
-    isNewSession: boolean,
-  ): Promise<{ messages: AgentMessage[] } | { error: string }> {
-    const messages: AgentMessage[] = []
-    if (!this.sessionStartFired) {
-      const startResult = await hooksManager.dispatch({
-        event: "SessionStart",
-        sessionId: this.currentSessionId,
-        cwd: this.getEffectiveCwd(),
-        model: this.agent?.state.model.id,
-        payload: { source: isNewSession ? "startup" : "resume" },
-      })
-      messages.push(...hookResultMessages(startResult))
-      this.sessionStartFired = true
-    }
-
-    const submitResult = await hooksManager.dispatch({
-      event: "UserPromptSubmit",
-      sessionId: this.currentSessionId,
-      cwd: this.getEffectiveCwd(),
-      model: this.agent?.state.model.id,
-      payload: { prompt },
-    })
-    const stop = firstStop(submitResult)
-    if (stop) {
-      // 提交被拒绝：SessionStart 视为未发生，允许用户重试。
-      this.sessionStartFired = false
-      return { error: stop.reason || "Prompt submission was rejected by a hook." }
-    }
-    messages.push(...hookResultMessages(submitResult))
-    return { messages }
-  }
-
-  // 重复调用守卫 + 权限门控（主/子代理共用）；提醒暂存到 toolCallId，由 afterToolCall 附加。
-  private beforeToolCallWithGuard(
-    context: BeforeToolCallContext,
-    signal: AbortSignal | undefined,
-    collaborationMode: CollaborationMode,
-    cwd: string,
-  ): Promise<BeforeToolCallResult | undefined> {
-    if (this.currentSessionId) {
-      const guardResult = repeatToolGuard.record(
-        this.currentSessionId,
-        context.toolCall.name,
-        context.args,
-      )
-      if (guardResult.blocked) {
-        return Promise.resolve({ block: true, reason: guardResult.blockReason })
-      }
-      if (guardResult.reminder) {
-        this.guardReminders.set(context.toolCall.id, guardResult.reminder)
-      }
-    }
-    return permissionManager.gate(context, this.currentSessionId, signal, {
-      collaborationMode,
-      cwd,
-    })
-  }
-
-  // 工具结果收尾：附加本调用的重复调用提醒（仅成功结果），随后清除暂存。
-  private afterToolCallWithGuard(context: AfterToolCallContext): AfterToolCallResult | undefined {
-    const reminder = this.guardReminders.get(context.toolCall.id)
-    if (reminder === undefined) return undefined
-    this.guardReminders.delete(context.toolCall.id)
-    if (context.isError) return undefined
-    return { content: [...context.result.content, { type: "text", text: reminder }] }
-  }
-
-  // PreToolUse hook 派发（权限解析后）；可阻断并注入审计消息。
-  private async dispatchPreToolUse(
-    context: BeforeToolCallContext,
-    cwd: string,
-    signal?: AbortSignal,
-  ): Promise<ToolHookResult | undefined> {
-    const result = await hooksManager.dispatch({
-      event: "PreToolUse",
-      sessionId: this.currentSessionId,
-      cwd,
-      model: this.agent?.state.model.id,
-      toolName: context.toolCall.name,
-      payload: {
-        tool_name: context.toolCall.name,
-        tool_input: context.args,
-        tool_use_id: context.toolCall.id,
-      },
-      signal,
-    })
-    const block = firstBlock(result)
-    return {
-      ...(block ? { block } : {}),
-      messages: hookResultMessages(result),
-    }
-  }
-
-  // PostToolUse hook 派发：仅注入审计消息。
-  private async dispatchPostToolUse(
-    context: AfterToolCallContext,
-    cwd: string,
-    signal?: AbortSignal,
-  ): Promise<ToolHookResult | undefined> {
-    const toolResponse = context.result.content
-      .map((contentBlock) => (contentBlock.type === "text" ? contentBlock.text : "[image]"))
-      .join("\n")
-    const result = await hooksManager.dispatch({
-      event: "PostToolUse",
-      sessionId: this.currentSessionId,
-      cwd,
-      model: this.agent?.state.model.id,
-      toolName: context.toolCall.name,
-      payload: {
-        tool_name: context.toolCall.name,
-        tool_input: context.args,
-        tool_use_id: context.toolCall.id,
-        tool_response: toolResponse,
-      },
-      signal,
-    })
-    return { messages: hookResultMessages(result) }
-  }
-
   private ensureReady(): { agent: Agent } | { error: string } {
     permissionManager.load()
     permissionManager.setMcpTools(this.currentSessionId, this.activeMcp)
@@ -453,10 +331,10 @@ export class AgentSessionRunner {
           subagentSettings,
           subagentRuntime: this.subagentRuntime,
           beforeToolCall: (context, signal) =>
-            this.beforeToolCallWithGuard(context, signal, subagentMode, cwd),
-          afterToolCall: async (context) => this.afterToolCallWithGuard(context),
-          preToolUse: (context, signal) => this.dispatchPreToolUse(context, cwd, signal),
-          postToolUse: (context, signal) => this.dispatchPostToolUse(context, cwd, signal),
+            beforeToolCallWithGuard(this, context, signal, subagentMode, cwd),
+          afterToolCall: async (context) => afterToolCallWithGuard(this, context),
+          preToolUse: (context, signal) => dispatchPreToolUse(this, context, cwd, signal),
+          postToolUse: (context, signal) => dispatchPostToolUse(this, context, cwd, signal),
           getCwd: () => this.cwd ?? cwd,
           recordChildCall: (parentToolCallId, child) =>
             this.turnStore.recordChildCall(parentToolCallId, child),
@@ -484,11 +362,11 @@ export class AgentSessionRunner {
         }),
         beforeToolCall: async (context, signal) => {
           this.currentTurnContext?.recordToolCall()
-          return this.beforeToolCallWithGuard(context, signal, this.collaborationMode, cwd)
+          return beforeToolCallWithGuard(this, context, signal, this.collaborationMode, cwd)
         },
-        afterToolCall: async (context) => this.afterToolCallWithGuard(context),
-        preToolUse: (context, signal) => this.dispatchPreToolUse(context, cwd, signal),
-        postToolUse: (context, signal) => this.dispatchPostToolUse(context, cwd, signal),
+        afterToolCall: async (context) => afterToolCallWithGuard(this, context),
+        preToolUse: (context, signal) => dispatchPreToolUse(this, context, cwd, signal),
+        postToolUse: (context, signal) => dispatchPostToolUse(this, context, cwd, signal),
         onAgentStop: async () => {
           const messages = this.agent?.state.messages ?? []
           const lastAssistant = [...messages]
@@ -682,7 +560,7 @@ export class AgentSessionRunner {
       overrideCwd ?? this.getEffectiveCwd(),
     )
     // 生命周期 hook：SessionStart（每个会话一次）+ UserPromptSubmit（每次提交）。
-    const promptHooks = await this.dispatchPromptHooks(expanded, isNewSession)
+    const promptHooks = await dispatchPromptHooks(this, expanded, isNewSession)
     if ("error" in promptHooks) {
       return { ok: false, error: promptHooks.error }
     }
