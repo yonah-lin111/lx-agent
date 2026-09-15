@@ -6,23 +6,25 @@ import { LxMenuItem } from "@/components/ui/LxMenuItem"
 describe("LxMenuItem", () => {
   afterEach(cleanup)
 
-  it("尺寸档位对齐 LxIconButton 高度，默认 medium", () => {
+  it("尺寸档位由垂直内边距驱动，默认 medium", () => {
     const medium = render(<LxMenuItem>item</LxMenuItem>)
-    const mediumClassName = medium.container.querySelector(".lx-menu-item")?.className ?? ""
-    expect(mediumClassName).toContain("h-7")
-    expect(mediumClassName).toContain("px-2.5")
-    expect(mediumClassName).toContain("text-sm")
-    expect(mediumClassName).toContain("rounded-[6px]")
+    const mediumItem = medium.container.querySelector<HTMLElement>(".lx-menu-item")
+    expect(mediumItem?.classList.contains("py-1.5")).toBe(true)
+    expect(mediumItem?.classList.contains("px-2.5")).toBe(true)
+    expect(mediumItem?.classList.contains("text-sm")).toBe(true)
+    expect(mediumItem?.className).toContain("rounded-[6px]")
 
     const small = render(<LxMenuItem size="small">item</LxMenuItem>)
-    const smallClassName = small.container.querySelector(".lx-menu-item")?.className ?? ""
-    expect(smallClassName).toContain("h-6")
-    expect(smallClassName).toContain("text-xs")
+    const smallItem = small.container.querySelector<HTMLElement>(".lx-menu-item")
+    expect(smallItem?.classList.contains("py-1")).toBe(true)
+    expect(smallItem?.classList.contains("text-xs")).toBe(true)
+    expect(smallItem?.classList.contains("py-1.5")).toBe(false)
 
     const large = render(<LxMenuItem size="large">item</LxMenuItem>)
-    const largeClassName = large.container.querySelector(".lx-menu-item")?.className ?? ""
-    expect(largeClassName).toContain("h-8")
-    expect(largeClassName).toContain("text-sm")
+    const largeItem = large.container.querySelector<HTMLElement>(".lx-menu-item")
+    expect(largeItem?.classList.contains("py-2")).toBe(true)
+    expect(largeItem?.classList.contains("px-3")).toBe(true)
+    expect(largeItem?.classList.contains("text-sm")).toBe(true)
   })
 
   it("文字对齐只作用于文字区，默认左对齐", () => {

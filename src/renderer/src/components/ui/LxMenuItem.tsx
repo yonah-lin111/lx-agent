@@ -22,11 +22,11 @@ export interface LxMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonEl
   menuRole?: LxMenuItemRole
 }
 
-// 尺寸阶梯：行高与 LxIconButton 对齐；字号 small=xs，medium/large=sm。
+// 尺寸阶梯：行高由垂直内边距驱动，随字号自然增高；字号 small=xs，medium/large=sm。
 const SIZE_ROW_CLASSES: Record<LxMenuItemSize, string> = {
-  small: "h-6 gap-1.5 px-2 text-xs",
-  medium: "h-7 gap-2 px-2.5 text-sm",
-  large: "h-8 gap-2 px-3 text-sm",
+  small: "gap-1.5 px-2 py-1 text-xs",
+  medium: "gap-2 px-2.5 py-1.5 text-sm",
+  large: "gap-2 px-3 py-2 text-sm",
 }
 
 // leading 槽为纯图标位，尺寸随档位固定。
